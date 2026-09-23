@@ -116,6 +116,14 @@ at the user's request (other sessions are working in the `main` checkout meanwhi
 - No project rule broken: the standing "work on `main` only" choice yields to the user's explicit request
   for a worktree.
 
+### Iteration 5 — 2026-09-24 — ⚙️ Post-implementation — Layout strip always shown
+
+Requested while testing **Clear all**: emptying the grid hid the layout strip, so the preview grew and
+the window content changed size. The layout strip must stay visible whatever the image count — its space
+is reserved (more controls will likely land in it later) — and the single-image case gets its thumbnail
+too. Changes a decision of the layout variants workfile ("the strip is hidden with a single image").
+Details asked before touching the code (Q8–Q9).
+
 ---
 
 ## Implementation Log
@@ -144,6 +152,8 @@ Questions asked by the agent during design, with user responses.
 | 5 | Button label (and icon or not)? | Clear all, text only | 2026-09-23 |
 | 6 | Keyboard shortcut for clearing everything? | None | 2026-09-23 |
 | 7 | Status line after clearing? | A confirmation message, replacing the current one | 2026-09-23 |
+| 8 | Layout strip content with no image? | | |
+| 9 | Mirror toggle with a single image? | | |
 
 ---
 
