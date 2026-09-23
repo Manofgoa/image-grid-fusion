@@ -9,8 +9,18 @@ namespace ImageGridFusion.Imaging;
 /// </summary>
 public static class ImageLoader
 {
-    /// <summary>Returns null when the file cannot be read or is not an image.</summary>
-    public static SourceImage? TryLoadFile(string path)
+    /// <summary>
+    /// Loads a file as an image, else as a preview: a video frame, a PDF page, rendered text, and
+    /// last the thumbnail Windows shows for it. Returns null when the file has no preview at all.
+    /// Blocks on file and WinRT calls: meant to run off the UI thread.
+    /// </summary>
+    public static SourceImage? TryLoadFile(string path) =>
+        TryDecode(path)
+        ?? TryThumbnail(path);
+
+    public static SourceImage FromImage(Image image) => new(Copy(image), filePath: null);
+
+    private static SourceImage? TryDecode(string path)
     {
         try
         {
@@ -25,9 +35,30 @@ public static class ImageLoader
         }
     }
 
-    public static SourceImage FromImage(Image image) => new(Copy(image), filePath: null);
+    /// <summary>Renders the initial page; a source that fails there is dropped, and the next producer tried.</summary>
+    private static SourceImage? TryPages(string path, PageSource? pages)
+    {
+        if (pages is null)
+        {
+            return null;
+        }
 
-    private static Bitmap Copy(Image image)
+        try
+        {
+            return new SourceImage(pages.Render(pages.InitialPage), path, pages, pages.InitialPage);
+        }
+        catch (Exception)
+        {
+            // WinRT reports decoding failures with assorted exception types.
+            pages.Dispose();
+            return null;
+        }
+    }
+
+    private static SourceImage? TryThumbnail(string path) =>
+        ShellThumbnail.TryLoad(path) is { } thumbnail ? new SourceImage(thumbnail, path) : null;
+
+    internal static Bitmap Copy(Image image)
     {
         var copy = new Bitmap(image.Width, image.Height, PixelFormat.Format32bppArgb);
         using (var g = Graphics.FromImage(copy))
