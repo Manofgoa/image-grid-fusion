@@ -8,6 +8,9 @@ namespace ImageGridFusion.UI;
 
 internal sealed class MainForm : Form
 {
+    private const int ThresholdStepPercent = 5;
+    private const int MaxThresholdPercent = 50;
+
     private readonly string[] _startupFiles;
     private readonly GridPreview _preview = new() { Dock = DockStyle.Fill, AllowDrop = true };
     private readonly LayoutStrip _layouts = new() { Dock = DockStyle.Left, Width = 80, AllowDrop = true };
@@ -24,6 +27,23 @@ internal sealed class MainForm : Form
     /// <summary>Set while an export runs: the grid is locked until it ends.</summary>
     private CancellationTokenSource? _export;
     private bool _closeAfterExport;
+
+    // One slider position per step: the value is a step index, not a percentage.
+    private readonly TrackBar _threshold = new()
+    {
+        Minimum = 0,
+        Maximum = MaxThresholdPercent / ThresholdStepPercent,
+        Value = (int)Math.Round(FitCalculator.DefaultCropThreshold * 100 / ThresholdStepPercent),
+        SmallChange = 1,
+        LargeChange = 1,
+        TickStyle = TickStyle.None,
+
+        // Without ticks the thumb sits at the top: a height fitted to it keeps it level with the label.
+        AutoSize = false,
+        Size = new Size(160, 26),
+        Anchor = AnchorStyles.Left,
+    };
+    private readonly Label _thresholdLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
 
     public MainForm(string[] args)
     {
@@ -70,10 +90,27 @@ internal sealed class MainForm : Form
         _bottom.Controls.Add(_statusLine, 1, 0);
         _bottom.Controls.Add(_outputButtons, 2, 0);
 
-        // The fill control goes first so the bottom panel, then the layout strip above it, are docked before it.
+        // Settings on the left; the label follows the slider so its changing width never moves it.
+        var top = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            ColumnCount = 2,
+            RowCount = 1,
+            Padding = new Padding(8),
+        };
+        top.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        top.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        top.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        top.Controls.Add(_threshold, 0, 0);
+        top.Controls.Add(_thresholdLabel, 1, 0);
+
+        // Docked in reverse order of addition: the top and bottom bars span the whole width, then the
+        // layout strip takes the left of what remains, and the fill control goes first so it gets the rest.
         Controls.Add(_preview);
         Controls.Add(_layouts);
         Controls.Add(_bottom);
+        Controls.Add(top);
         ResumeLayout(performLayout: true);
 
         // A long message wraps within the space left between the buttons, the bottom bar growing taller.
@@ -84,6 +121,7 @@ internal sealed class MainForm : Form
         _copyButton.Click += (_, _) => CopyToClipboard();
         _saveButton.Click += (_, _) => Save();
         _cancelButton.Click += (_, _) => _export?.Cancel();
+        _threshold.ValueChanged += (_, _) => UpdateThreshold();
         _preview.ImagesChanged += (_, _) => UpdateButtons();
         _preview.LayoutChanged += (_, _) =>
         {
@@ -103,6 +141,7 @@ internal sealed class MainForm : Form
         _preview.DropZoneClicked += (_, _) => PickFiles();
         _layouts.DragEnter += OnDragEnter;
         _layouts.DragDrop += OnDragDrop;
+        UpdateThreshold();
         UpdateButtons();
         FitStatusWidth();
     }
@@ -111,6 +150,9 @@ internal sealed class MainForm : Form
     {
         base.OnShown(e);
         _ = Task.Run(CleanTempVideos);
+
+        // Copy and Save start disabled, so the slider would take the focus and move with unaimed keys or wheel.
+        _preview.Focus();
 
         // Files dropped on the .exe icon; loaded once the window is visible so startup stays fast.
         if (_startupFiles.Length > 0)
@@ -464,7 +506,7 @@ internal sealed class MainForm : Form
         if (!HasAnimation)
         {
             Cursor.Current = Cursors.WaitCursor;
-            return Compositor.Render(_preview.Images, _preview.ActiveLayout!);
+            return Compositor.Render(_preview.Images, _preview.ActiveLayout!, _preview.CropThreshold);
         }
 
         using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!);
@@ -654,6 +696,14 @@ internal sealed class MainForm : Form
         _saveButton.Enabled = any;
         _forceImage.Visible = HasAnimation;
         _forceImage.Enabled = !IsExporting;
+    }
+
+    /// <summary>Applies the slider position, live while it is dragged: the preview, then every export, use it.</summary>
+    private void UpdateThreshold()
+    {
+        int percent = _threshold.Value * ThresholdStepPercent;
+        _thresholdLabel.Text = $"Crop: {percent}%";
+        _preview.CropThreshold = percent / 100.0;
     }
 
     /// <summary>Shows a message that stays until the next one replaces it; errors in red.</summary>

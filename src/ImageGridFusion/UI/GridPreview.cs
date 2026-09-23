@@ -39,6 +39,7 @@ internal sealed class GridPreview : Control
 
     private readonly List<SourceImage> _images = [];
     private GridLayout? _layout;
+    private double _cropThreshold = FitCalculator.DefaultCropThreshold;
     private Bitmap? _cache;
     private int _selected = -1;
     private int _hovered = -1;
@@ -96,6 +97,23 @@ internal sealed class GridPreview : Control
 
     /// <summary>Layout the images are shown and exported with; <c>null</c> while there is no image.</summary>
     public GridLayout? ActiveLayout => _layout;
+
+    /// <summary>Share of the overflowing axis that may be cropped, shown and exported with; see <see cref="FitCalculator"/>.</summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public double CropThreshold
+    {
+        get => _cropThreshold;
+        set
+        {
+            if (value != _cropThreshold)
+            {
+                _cropThreshold = value;
+                _cache?.Dispose();
+                _cache = null;
+                Invalidate();
+            }
+        }
+    }
 
     public int FreeSlots => GridLayout.MaxImages - _images.Count;
 
@@ -267,13 +285,13 @@ internal sealed class GridPreview : Control
             return;
         }
 
-        // Rendered at display size, and only again when the images or the size change.
+        // Rendered at display size, and only again when the images, the layout, the threshold or the size change.
         if (_cache is null || _cache.Size != canvas.Size)
         {
             _cache?.Dispose();
             _cache = new Bitmap(canvas.Width, canvas.Height);
             using var cacheGraphics = Graphics.FromImage(_cache);
-            Compositor.Draw(cacheGraphics, _images, _layout!, canvas.Size);
+            Compositor.Draw(cacheGraphics, _images, _layout!, canvas.Size, _cropThreshold);
         }
 
         g.DrawImageUnscaled(_cache, canvas.Location);
