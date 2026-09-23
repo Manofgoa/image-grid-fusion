@@ -40,12 +40,12 @@ Agreed with the user (Q&A #1–#3):
 | When | **Live**: during zoom and pan, at every redraw — as today, through the per-region cache of `BandColor.For` |
 | Outputs | **Preview and exported image** — both already go through `Compositor.DrawCell`, so one change in `BandColor` covers both |
 
-Proposed rule (pending Open Question 1):
+Rule (Q&A #6, #7):
 
 1. **Unchanged** — if at least three sides of the visible part are uniform and agree, their average
    color wins (a white product shot keeps white bands).
 2. **New fallback** — otherwise, the **most frequent color of the edge bands of the visible part**:
-   the pixels of the four bands (same 2 % depth, pending Open Question 2) are pooled, transparent ones
+   the pixels of the four bands (same 2 % depth as the uniform-side test) are pooled, transparent ones
    (alpha < 128) ignored, quantized to 4 bits per channel as `DominantColor` does; the most populated
    bucket wins and its pixels are averaged.
 3. If the edges hold no opaque pixel at all, the whole-image `Dominant` stays as the last resort.
@@ -84,8 +84,9 @@ start frame chosen with the slider.
 
 ## Test Impact
 
-No test project exists in the solution; every previous workfile stayed test-free by the user's
-decision. Pending Open Question 3. If it stays test-free, verification is manual:
+No unit test is created or updated: the user chose to stay without a test project (Q&A #8), as every
+previous workfile did. The behaviours below stay untested by decision, not because nothing testable
+changes. Verification is manual:
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
@@ -103,10 +104,10 @@ decision. Pending Open Question 3. If it stays test-free, verification is manual
 - [x] ~~When is the color recomputed?~~ → Live, during zoom and pan (Q&A #2)
 - [x] ~~Which outputs?~~ → Preview and exported image (Q&A #3)
 - [x] ~~Which frame for a video?~~ → The start frame chosen with the horizontal slider (Q&A #5)
-- [ ] 1. Keep the "three uniform sides" rule first and replace only the whole-image fallback by the
-  edge majority — or use the edge majority alone, always?
-- [ ] 2. Edge depth used for the majority: the same 2 % bands as the uniform-side test, or thicker?
-- [ ] 3. Unit tests: stay without a test project (manual checks), as in every previous workfile?
+- [x] ~~Keep the "three uniform sides" rule first, or the edge majority alone?~~ → Three uniform sides
+  first; only the whole-image fallback is replaced by the edge majority (Q&A #6)
+- [x] ~~Edge depth used for the majority?~~ → The same 2 % bands as the uniform-side test (Q&A #7)
+- [x] ~~Unit tests: stay without a test project?~~ → Yes, manual checks (Q&A #8)
 
 ---
 
@@ -124,6 +125,13 @@ is already per visible part and live; the defect is the fallback on the whole-im
 when fewer than three sides are uniform. Proposal: fallback on the majority color of the visible
 part's edge bands. The user added that a video uses the slider's start frame; the preview and still
 export already do, the video and carousel exports use frame 0 — to fix.
+
+### Iteration 2 — 2026-09-24
+
+Open questions settled: the three-uniform-sides rule stays first; only its fallback changes, from the
+whole-image dominant color to the majority color of the visible part's 2 % edge bands (Q&A #6, #7).
+No test project, manual checks (Q&A #8). The Color Rule and Test Impact sections now state it as
+agreed design.
 
 ---
 
@@ -146,9 +154,9 @@ export already do, the video and carousel exports use frame 0 — to fix.
 | 3 | Which outputs are concerned? | Preview and exported image | 2026-09-24 |
 | 4 | Depth of the subject? | No preference — single scout pass | 2026-09-24 |
 | 5 | (User, unprompted) Which frame for a video? | The start frame chosen with the horizontal slider | 2026-09-24 |
-| 6 | Keep the three-uniform-sides rule first, or edge majority alone? | | |
-| 7 | Edge depth for the majority: 2 % or thicker? | | |
-| 8 | Unit tests: stay without a test project? | | |
+| 6 | Keep the three-uniform-sides rule first, or edge majority alone? | Three uniform sides first, edge majority as fallback | 2026-09-24 |
+| 7 | Edge depth for the majority: 2 % or thicker? | 2 %, as today | 2026-09-24 |
+| 8 | Unit tests: stay without a test project? | Yes, manual checks | 2026-09-24 |
 
 ---
 
