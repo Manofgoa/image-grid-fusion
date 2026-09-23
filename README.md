@@ -21,6 +21,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
   - Drop a file onto a cell to replace it
   - **Clear all** (bottom left) removes every image at once, with no confirmation, back to the initial state
 - Copy to clipboard (`Ctrl+C`) or save (`Ctrl+S`): a PNG, or an MP4 video when the grid holds animated content
+- Lives in the notification area: closing the window only hides it, the tray icon brings it back, and it can start with Windows (see Tray & startup)
 
 ## Adding images
 
@@ -67,7 +68,7 @@ A single-page PDF, a text that fits its cell, a one-frame GIF and plain images s
   - The canvas is sized once, from the first frames (see Canvas size), and rounded down to even dimensions; the bands keep the color of the first frame.
   - A sound Windows cannot re-encode leaves the video silent, with a note in the status line.
 - **Force as image**: this checkbox, next to Copy, appears only while the grid holds multiple content. Checked, Copy and Save produce a PNG again, each content showing its **first frame that is not empty** (not a flat black, white or single-color frame, like a video's intro), else its first frame.
-- **While exporting**, the status line shows the progress with a **Cancel** button, and the grid is locked: no adding, removing, swapping, clearing or changing the layout. The animation and the sliders keep working. Closing the window cancels the export first; a cancelled export leaves no file.
+- **While exporting**, the status line shows the progress with a **Cancel** button, and the grid is locked: no adding, removing, swapping, clearing or changing the layout. The animation and the sliders keep working. Closing the window only hides it and the export goes on; quitting (see Tray & startup) cancels the export first. A cancelled export leaves no file.
 
 ## Layouts
 
@@ -155,6 +156,17 @@ Output resolution is kept as high as possible so source images aren't needlessly
 - **Copy** button / `Ctrl+C`: puts the full-resolution result on the clipboard, both as a standard bitmap and in the PNG clipboard format; with animated content, an MP4 file instead (see Animated content).
 - **Save** button / `Ctrl+S`: saves the result as a PNG file; with animated content, as an MP4 video, unless **Force as image** is checked.
 - A status line reports feedback and errors (skipped files with no preview, ignored excess files, removed images, copy/save confirmation or failure).
+
+## Tray & startup
+
+- The app shows an icon in the Windows notification area (system tray) for as long as it runs.
+- **Closing the window** (its **×**, `Alt+F4`, or *Close window* in the taskbar) only hides it: the app keeps running, with its grid unchanged.
+- **Click** the tray icon to bring the window back. **Right-click** it for a menu: **Open**, or **Quit** to close the app completely. Quitting is the only way to exit; logging off or shutting down Windows closes it too.
+- **Start with Windows**: the **⚙** button in the bottom bar opens a menu with this checkable option, off by default. Ticked, the app is launched at session start, hidden: only the tray icon appears.
+  - It is stored as a per-user `ImageGridFusion` value in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, running the exe with `--tray`. No settings file, no admin rights.
+  - If the exe is moved, the registration follows it the next time it is launched from its new place (any copy of the exe launched takes the registration over).
+  - Disabling the app in Windows *Settings → Apps → Startup* is not reflected by the option.
+- Several instances can run side by side, each with its own window and tray icon.
 
 ## Build & run
 
