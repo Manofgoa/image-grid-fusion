@@ -78,12 +78,26 @@ fraction `f` of a side of `n` px falls at `floor(n × f)`, so no pixel is lost t
 A single **mirror** toggle, next to the thumbnails, replaces dedicated mirrored layouts
 (Q&A #8). "Big image on the right" from the brief is `3-big-left` with the mirror on.
 
-| Layout | Asymmetric along | Mirrored version |
+- It flips the layout **along its asymmetric axis** (Q&A #15): left↔right for layouts whose
+  featured cell is on the left, top↔bottom for big-top layouts.
+- On a **symmetric** layout the toggle is **disabled** (Q&A #16): flipping would only reorder the
+  images, which drag-to-swap already does.
+- It is **reset to off** whenever the layout or the image count changes (Q&A #17).
+
+| Layout | Flipped along | Mirrored version |
 |---|---|---|
 | `2-split` | horizontal | `[2│1 1]` |
 | `3-big-left`, `3-featured`, `4-featured`, `4-big-left` | horizontal | featured cell on the right |
-| `3-big-top`, `4-big-top` | vertical | featured cell at the bottom *(pending Q&A #15)* |
-| `2-columns`, `2-rows`, `3-columns`, `4-grid`, `4-columns` | symmetric | mirror would only reorder images — *(pending Q&A #16)* |
+| `3-big-top`, `4-big-top` | vertical | featured cell at the bottom |
+| `2-columns`, `2-rows`, `3-columns`, `4-grid`, `4-columns` | — | toggle disabled |
+
+### Image-to-Cell Mapping
+
+Image `1` always takes the **featured cell** (the big one), the others follow in the reading
+order of the remaining cells (Q&A #18). The mirror moves the cells, not the images: in
+`3-big-left` mirrored, image 1 is the big cell on the right. The v1 "reading order" (last image,
+replace rule, command-line order) therefore means **image order**, which is the cell order of the
+layout — unchanged for the default layouts.
 
 ---
 
@@ -132,13 +146,16 @@ Depends on Open Question "unit tests". v1 has no test project (declined, v1 Q&A 
       `4-big-left`, `4-big-top`
 - [x] ~~Mirrors: a dedicated thumbnail per mirrored variant (e.g. `3-big-right`), or a single
       "mirror" toggle applying to every asymmetric layout?~~ → A single mirror toggle
-- [ ] Mirror axis: horizontal only (big-top layouts cannot be flipped), or flip along whichever
-      axis the layout is asymmetric on (big-top → big-bottom)?
-- [ ] Mirror on a symmetric layout: disabled, or allowed (reverses the image order)?
-- [ ] Mirror state when the layout or the image count changes: kept, or reset to off?
-- [ ] Which image goes where when the variant changes: image 1 always takes the featured (big)
+- [x] ~~Mirror axis: horizontal only (big-top layouts cannot be flipped), or flip along whichever
+      axis the layout is asymmetric on (big-top → big-bottom)?~~ → Along the asymmetric axis
+- [x] ~~Mirror on a symmetric layout: disabled, or allowed (reverses the image order)?~~ →
+      Disabled
+- [x] ~~Mirror state when the layout or the image count changes: kept, or reset to off?~~ →
+      Reset to off
+- [x] ~~Which image goes where when the variant changes: image 1 always takes the featured (big)
       cell, then the others in reading order — or strict reading order of the cells
-      (left→right, top→bottom), so in `3-big-right` image 1 would be the top-left small cell?
+      (left→right, top→bottom), so in `3-big-right` image 1 would be the top-left small cell?~~ →
+      Image 1 always takes the featured cell
 - [ ] When the image count changes (image added or removed): back to the default variant of the
       new count, or back to the variant last picked for that count during the session?
 - [ ] Thumbnail look: neutral schematic rectangles, or miniatures showing the actual images?
@@ -176,6 +193,12 @@ Catalog settled (Q&A #5–#8): every proposed layout is kept. Mirrored layouts a
 single mirror toggle, so `3-big-right` leaves the catalog and becomes `3-big-left` mirrored.
 Three questions follow from the toggle (axis, symmetric layouts, persistence of its state).
 
+### Iteration 3 — 2026-09-23
+
+Mirror and mapping settled (Q&A #15–#18): the mirror flips along the layout's asymmetric axis
+(big-top gains a big-bottom version), is disabled on symmetric layouts, and resets to off on any
+layout or count change. Image 1 always takes the featured cell; new `### Image-to-Cell Mapping`.
+
 ---
 
 ## Implementation Log
@@ -205,15 +228,16 @@ Questions asked by the agent during design, with user responses.
 | 6 | Which 3-image variants are kept? | All: big-left (+ big-right), columns, featured, big-top | 2026-09-23 |
 | 7 | Which 4-image variants are kept? | All four new ones: columns, featured, big-left, big-top (+ grid) | 2026-09-23 |
 | 8 | Mirrors: dedicated thumbnails or a mirror toggle? | A single mirror toggle | 2026-09-23 |
-| 9 | Image-to-cell mapping when the variant changes? | | |
+| 9 | Image-to-cell mapping when the variant changes? | Asked as #18 | 2026-09-23 |
 | 10 | Variant after the image count changes? | | |
 | 11 | Thumbnail look? | | |
 | 12 | Thumbnail row placement? | | |
 | 13 | Keyboard shortcut to cycle variants? | | |
 | 14 | Unit tests for the layouts? | | |
-| 15 | Mirror axis: horizontal only, or the layout's asymmetric axis? | | |
-| 16 | Mirror on a symmetric layout? | | |
-| 17 | Mirror state when layout or count changes? | | |
+| 15 | Mirror axis: horizontal only, or the layout's asymmetric axis? | The asymmetric axis | 2026-09-23 |
+| 16 | Mirror on a symmetric layout? | Disabled | 2026-09-23 |
+| 17 | Mirror state when layout or count changes? | Reset to off | 2026-09-23 |
+| 18 | Image-to-cell mapping when the variant changes? | Image 1 always takes the featured cell | 2026-09-23 |
 
 ---
 
