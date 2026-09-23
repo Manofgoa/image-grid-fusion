@@ -601,6 +601,23 @@ internal sealed class GridPreview : Control
     }
 
     /// <summary>
+    /// The window hidden in the tray stops the animations and the sound; shown again, they play from
+    /// the start. A minimized window stays visible and plays on.
+    /// </summary>
+    protected override void OnVisibleChanged(EventArgs e)
+    {
+        base.OnVisibleChanged(e);
+        if (Visible)
+        {
+            SyncPlayer();
+        }
+        else
+        {
+            _player.Stop();
+        }
+    }
+
+    /// <summary>
     /// Takes the ghost from the source cell as the preview shows it, scaled down, and keeps the
     /// grab point at the same relative place inside it.
     /// </summary>
@@ -809,9 +826,17 @@ internal sealed class GridPreview : Control
         return index >= 0 && SliderBounds(CellBounds()[index], _images[index]).Contains(location);
     }
 
-    /// <summary>Plays the animated images, at the size of their cells, and holds the hovered one.</summary>
+    /// <summary>
+    /// Plays the animated images, at the size of their cells, and holds the hovered one. Nothing plays
+    /// behind a hidden window: showing it syncs again.
+    /// </summary>
     private void SyncPlayer()
     {
+        if (!Visible)
+        {
+            return;
+        }
+
         _player.Sync(_images);
         UpdateDisplaySizes();
         UpdateHold();
