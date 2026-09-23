@@ -16,6 +16,17 @@ public static class Carousel
     /// <summary>One full loop: one step per image, back to the starting arrangement.</summary>
     public static TimeSpan Length(int count) => StepDuration * count;
 
+    /// <summary>
+    /// Whole loops covering <paramref name="contents"/>, the longest content playing: it ends before
+    /// the video does, which still ends on a full loop, back to the starting arrangement.
+    /// </summary>
+    public static TimeSpan Length(int count, TimeSpan contents)
+    {
+        var loop = Length(count);
+        long loops = Math.Max(1, (long)Math.Ceiling(contents.Ticks / (double)loop.Ticks));
+        return loop * loops;
+    }
+
     /// <summary>Step shown at <paramref name="time"/> from the start, for <paramref name="count"/> images.</summary>
     public static int StepAt(TimeSpan time, int count) => (int)(time.Ticks / StepDuration.Ticks % count);
 
