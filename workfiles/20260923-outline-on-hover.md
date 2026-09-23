@@ -35,7 +35,7 @@ Components involved:
 Finding from the exploration: **there are no empty cells**. `GridLayout.Cells(count, …)` lays out
 exactly as many cells as there are images (1 to 4), filling the canvas. The only "empty" surface
 is the empty state (0 images), a dashed canvas with a hint text. The scoping answer "empty cells"
-therefore maps to that empty state — see Open Questions.
+therefore maps to that empty state, which **does** get the outline (Q&A #4).
 
 ---
 
@@ -45,11 +45,13 @@ therefore maps to that empty state — see Open Questions.
 
 - Contour of the hovered cell, **inset** inside the cell (`PenAlignment.Inset`, like the
   selection), so two adjacent cells never share a line.
-- Proposed: **1 logical px** (`LogicalToDeviceUnits(1)`), **white at ~50 % alpha**
-  (`Color.FromArgb(128, 255, 255, 255)`) — see Open Questions.
+- **1 logical px** (`LogicalToDeviceUnits(1)`), **white at ~50 % alpha**
+  (`Color.FromArgb(128, 255, 255, 255)`) (Q&A #6).
 - On the **selected cell**, the hover outline is drawn **just inside** the selection border
   (rectangle deflated by the selection thickness), so both stay visible instead of the thicker
-  one hiding the other.
+  one hiding the other (Q&A #6).
+- On the **empty canvas**, the outline is drawn just inside its dashed border, so it does not
+  merge with the dashes.
 
 ### When It Shows
 
@@ -57,10 +59,13 @@ therefore maps to that empty state — see Open Questions.
 |---|---|
 | Mouse move, no button pressed | `_hovered` (already tracked) |
 | Cursor on the **×** | The same cell — the outline stays |
-| Swap drag (cell onto cell) | See Open Questions |
-| Explorer file drag | See Open Questions |
+| Swap drag (cell onto cell) | The cell under the cursor (`_dropTarget`), **source cell included**, drawn above its dimming (Q&A #5) |
+| Explorer file drag | The cell under the cursor, only when the cursor is on a cell — not when the drop falls back to the whole canvas or the excess-rule cell (Q&A #5) |
+| Empty state (0 images), mouse move or Explorer file drag | The **whole canvas**, while the cursor is on it (Q&A #4, #5) |
 | Cursor leaves the control, cell removed | None (already reset today) |
-| Empty state (0 images) | See Open Questions |
+
+The empty canvas has no cell index, so `GridPreview` tracks "cursor on the empty canvas" next to
+`_hovered`, both for mouse moves and for `ShowDropTarget`.
 
 ### Paint Order
 
@@ -83,13 +88,15 @@ control.
 
 ## Open Questions
 
-- [ ] Empty state (0 images): does the dashed canvas get a hover outline? Proposed: **no** — it
-      is already a dashed drop area, and there is no image to point at.
-- [ ] During drags, which cell gets the outline? Proposed: the **cell under the cursor**, in both
-      the swap drag (source cell included, above its dimming) and the Explorer file drag (only
-      when the cursor is on a cell).
-- [ ] Exact look: 1 px white at ~50 % alpha, inside the selection border on the selected cell?
-- [ ] README: update the line "Hover a cell for a **×** to remove it" to mention the outline?
+- [x] ~~Empty state (0 images): does the dashed canvas get a hover outline?~~ → **Yes**, the whole
+      canvas while the cursor is on it (Q&A #4)
+- [x] ~~During drags, which cell gets the outline?~~ → The **cell under the cursor** in both the
+      swap drag (source included) and the Explorer file drag (only on a cell, or on the empty
+      canvas) (Q&A #5)
+- [x] ~~Exact look?~~ → 1 px white at ~50 % alpha, inside the selection border on the selected
+      cell (Q&A #6)
+- [x] ~~README: mention the outline?~~ → **Yes**, e.g. "Hover a cell to outline it and show a
+      **×** to remove it" (Q&A #7)
 
 ---
 
@@ -106,6 +113,13 @@ Initial design from the scoping batch: discreet neutral outline, inset, on the h
 coexisting with the selection border (drawn inside it) and kept during drags. Exploration showed
 there are no empty cells, only the 0-image empty state. Four questions left open: empty state,
 drag behaviour, exact look, README wording.
+
+### Iteration 2 — 2026-09-23
+
+Open questions answered (Q&A #4–#7). Changed from the proposals: the **empty canvas does get the
+outline** (proposed: no). Derived from #4 and #5 together: the outline covers the empty canvas
+during an Explorer file drag too, since it follows whatever surface is under the cursor. Look,
+drag behaviour and README update as proposed.
 
 ---
 
@@ -131,10 +145,11 @@ Questions asked by the agent during design, with user responses.
 | 1 | Hover outline style? | Discreet neutral (thin white/grey semi-transparent) | 2026-09-23 |
 | 2 | Where does the outline appear? | Filled cells, empty cells, the selected cell, during a drag | 2026-09-23 |
 | 3 | Exploration depth? | Straightforward | 2026-09-23 |
-| 4 | Empty state (0 images): hover outline on the dashed canvas? | | |
-| 5 | During drags, which cell gets the outline? | | |
-| 6 | Exact look: 1 px white ~50 % alpha, inside the selection on the selected cell? | | |
-| 7 | README: mention the outline on the hover line? | | |
+| 4 | Empty state (0 images): hover outline on the dashed canvas? | Yes | 2026-09-23 |
+| 5 | During drags, which cell gets the outline? | The cell under the cursor, in both drags, source cell included | 2026-09-23 |
+| 6 | Exact look: 1 px white ~50 % alpha, inside the selection on the selected cell? | Yes | 2026-09-23 |
+| 7 | README: mention the outline on the hover line? | Yes | 2026-09-23 |
+| 8 | Go for implementation? | | |
 
 ---
 
