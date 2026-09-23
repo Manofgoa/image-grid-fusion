@@ -7,8 +7,8 @@ namespace ImageGridFusion.Composition;
 
 /// <summary>
 /// Color of the bands of a cell: the background of the part of the image the cell shows, when at
-/// least three of its sides carry one uniform color, otherwise the <see cref="Dominant"/> color of the
-/// whole image. Keeps a downsampled copy of the frame it was computed on, so the part shown (cell,
+/// least three of its sides carry one uniform color, otherwise the most frequent color of its sides,
+/// and the <see cref="Dominant"/> color of the whole image only when those sides are transparent. Keeps a downsampled copy of the frame it was computed on, so the part shown (cell,
 /// zoom, focus) can change without that frame, and an animation keeps its color while playing.
 /// </summary>
 public sealed class BandColor
@@ -44,7 +44,7 @@ public sealed class BandColor
         _height = height;
     }
 
-    /// <summary>Most frequent color of the whole image, used when the sides shown do not agree.</summary>
+    /// <summary>Most frequent color of the whole image, used when the sides shown are transparent.</summary>
     public Color Dominant { get; }
 
     /// <summary>Samples <paramref name="image"/>, which can be disposed afterwards.</summary>
@@ -93,7 +93,7 @@ public sealed class BandColor
             return last.Color;
         }
 
-        var color = Background(region) ?? Dominant;
+        var color = Background(region) ?? MostFrequentOnSides(region) ?? Dominant;
         _last = new Cached(region, color);
         return color;
     }
@@ -112,8 +112,7 @@ public sealed class BandColor
     /// <summary>The color shared by at least three uniform sides of <paramref name="region"/>, if any.</summary>
     private Color? Background(Rectangle region)
     {
-        int depthX = Math.Max(1, (int)Math.Round(region.Width * BandDepth));
-        int depthY = Math.Max(1, (int)Math.Round(region.Height * BandDepth));
+        var (depthX, depthY) = Depths(region);
         Rectangle[] bands =
         [
             new(region.Left, region.Top, region.Width, depthY),
@@ -146,6 +145,53 @@ public sealed class BandColor
 
         return null;
     }
+
+    /// <summary>
+    /// Most frequent color of the sides of <paramref name="region"/>, over the same bands as the
+    /// uniform test: opaque pixels quantized to 4 bits per channel, the most populated bucket wins
+    /// and its pixels are averaged. None when the sides are transparent.
+    /// </summary>
+    private Color? MostFrequentOnSides(Rectangle region)
+    {
+        var (depthX, depthY) = Depths(region);
+        var counts = new int[4096];
+        var sums = new long[4096, 3];
+        for (int y = region.Top; y < region.Bottom; y++)
+        {
+            bool edgeRow = y < region.Top + depthY || y >= region.Bottom - depthY;
+            for (int x = region.Left; x < region.Right; x++)
+            {
+                // Each pixel counts once, corners included.
+                if (!edgeRow && x >= region.Left + depthX && x < region.Right - depthX)
+                {
+                    x = region.Right - depthX - 1;
+                    continue;
+                }
+
+                int argb = _pixels[y * _width + x];
+                if ((argb >> 24 & 0xFF) < 128)
+                {
+                    continue;
+                }
+
+                int r = argb >> 16 & 0xFF, g = argb >> 8 & 0xFF, b = argb & 0xFF;
+                int bucket = (r >> 4) << 8 | (g >> 4) << 4 | b >> 4;
+                counts[bucket]++;
+                sums[bucket, 0] += r;
+                sums[bucket, 1] += g;
+                sums[bucket, 2] += b;
+            }
+        }
+
+        int best = Array.IndexOf(counts, counts.Max());
+        int n = counts[best];
+        return n == 0 ? null : Color.FromArgb((int)(sums[best, 0] / n), (int)(sums[best, 1] / n), (int)(sums[best, 2] / n));
+    }
+
+    /// <summary>Depth of the side bands of <paramref name="region"/>, horizontally and vertically.</summary>
+    private static (int X, int Y) Depths(Rectangle region) => (
+        Math.Max(1, (int)Math.Round(region.Width * BandDepth)),
+        Math.Max(1, (int)Math.Round(region.Height * BandDepth)));
 
     /// <summary>Mean color of the band, when most of it is opaque and nearly all its opaque pixels match that mean.</summary>
     private Side? UniformSide(Rectangle band)
