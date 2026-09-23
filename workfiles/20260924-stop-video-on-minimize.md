@@ -128,6 +128,10 @@ own `OnVisibleChanged` and calls a new public `GridPreview.WindowVisibleChanged(
 (a child's `Visible` does reflect its hidden parent). The earlier closure ("Terminé") is
 superseded by this fix.
 
+Delivered: the `SyncCarousel()` call another session had added to the old override moves with it
+into `WindowVisibleChanged()`, so the live carousel now stops too while the window is hidden.
+Build: 0 warning, 0 error.
+
 ---
 
 ## Implementation Log
