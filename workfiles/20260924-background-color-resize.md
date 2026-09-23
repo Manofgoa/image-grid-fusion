@@ -1,0 +1,155 @@
+# Background Color Resize
+
+> Working document — the band (background) color of a cell must follow the majority color of the
+> edges of the part the cell shows after zoom, instead of falling back on the whole image.
+> This file is the source of truth for the planned work until implemented,
+> then the log of every adjustment made to it afterwards.
+
+---
+
+## Overview
+
+When an image does not fill its cell, the remaining bands (and transparent pixels) are painted with a
+background color computed by `BandColor` (`src/ImageGridFusion/Composition/BandColor.cs`).
+
+What the code does today:
+
+1. `Compositor.DrawCell` computes the part of the bitmap the cell shows (crop, zoom, focus,
+   orientation) and asks `BandColor.For(bitmapPart, bitmapSize)` for the color — so the lookup is
+   **already** based on the visible part, and already runs at every redraw (cached per region).
+2. `BandColor.Background` returns a color only when **at least three of the four sides** of that part
+   are uniform and agree (CIELAB ΔE ≤ 10, 90 % of a 2 %-deep band matching).
+3. Otherwise it falls back on `Dominant` — the most frequent color of the **whole image**
+   (`DominantColor.Compute`, computed once in `BandColor.Of`).
+
+The reported symptom — "it takes the base image" — is step 3: as soon as the zoomed view has busy
+edges, the color jumps to a color of the full image that may not even be visible in the cell.
+
+Goal: the fallback, and more generally the color, comes from the edges of the **visible part** of the
+image in its cell, recomputed live during zoom and pan, identically in the preview and in the export.
+
+---
+
+## Color Rule
+
+Agreed with the user (Q&A #1–#3):
+
+| Aspect | Decision |
+|---|---|
+| "Current view" | The part of the image visible **in each cell**, after crop, zoom and pan (the `bitmapPart` `Compositor.DrawCell` already computes) |
+| When | **Live**: during zoom and pan, at every redraw — as today, through the per-region cache of `BandColor.For` |
+| Outputs | **Preview and exported image** — both already go through `Compositor.DrawCell`, so one change in `BandColor` covers both |
+
+Proposed rule (pending Open Question 1):
+
+1. **Unchanged** — if at least three sides of the visible part are uniform and agree, their average
+   color wins (a white product shot keeps white bands).
+2. **New fallback** — otherwise, the **most frequent color of the edge bands of the visible part**:
+   the pixels of the four bands (same 2 % depth, pending Open Question 2) are pooled, transparent ones
+   (alpha < 128) ignored, quantized to 4 bits per channel as `DominantColor` does; the most populated
+   bucket wins and its pixels are averaged.
+3. If the edges hold no opaque pixel at all, the whole-image `Dominant` stays as the last resort.
+
+Computed on the 512 px sample `BandColor` already keeps, so the cost per region stays a few thousand
+pixels at most — compatible with the live requirement. The cache (`_last`) is unchanged.
+
+---
+
+## Video Cells
+
+Agreed with the user (message during exploration, Q&A #5): for a video (or any animation), the color
+is computed on the **start frame chosen with the horizontal slider** (the page `SourceImage.Page`
+shows), not on another frame, and stays fixed while it plays.
+
+| Output | Today | Planned |
+|---|---|---|
+| Preview | `SourceImage.ShowPage` computes `BandColor.Of` on the chosen page; `ShowFrame` keeps it while playing | ✅ already right — no change |
+| Grid still export | `BandColor.Of(item.Source.Render(item.Page))` — the chosen page | ✅ already right — no change |
+| Grid video export (`GridExport`, line ~92) | `BandColor.Of(FrameAt(TimeSpan.Zero))` — **frame 0**, not the chosen page | Use the item's `BandColor`, computed on the chosen page |
+| Carousel export (`CarouselExport`, line ~50) | Same, frame 0 for an animated item | Same fix |
+
+`BandColor.For` already accepts a frame of another size than the one sampled ("the frame shown may be
+another frame of the same animation"), so reusing the chosen page's `BandColor` on the exported frames
+is supported as is.
+
+---
+
+## Documentation
+
+README, section *Crop* (lines ~145–148): the "otherwise the most frequent color of the whole image"
+bullet becomes the edge-majority rule, and the animation sentence states that the color comes from the
+start frame chosen with the slider.
+
+---
+
+## Test Impact
+
+No test project exists in the solution; every previous workfile stayed test-free by the user's
+decision. Pending Open Question 3. If it stays test-free, verification is manual:
+
+| Behaviour to pin | Test file | Create / Update |
+|---|---|---|
+| Busy edges on the zoomed view → band color is the majority color of those edges, not a whole-image color | — (manual) | — |
+| Three uniform sides → unchanged average color | — (manual) | — |
+| Color follows live while zooming / panning | — (manual) | — |
+| Exported image uses the same color as the preview | — (manual) | — |
+| Video export: color of the slider's start frame, not frame 0 | — (manual) | — |
+
+---
+
+## Open Questions
+
+- [x] ~~What is the "current view"?~~ → The visible part of the image in each cell (Q&A #1)
+- [x] ~~When is the color recomputed?~~ → Live, during zoom and pan (Q&A #2)
+- [x] ~~Which outputs?~~ → Preview and exported image (Q&A #3)
+- [x] ~~Which frame for a video?~~ → The start frame chosen with the horizontal slider (Q&A #5)
+- [ ] 1. Keep the "three uniform sides" rule first and replace only the whole-image fallback by the
+  edge majority — or use the edge majority alone, always?
+- [ ] 2. Edge depth used for the majority: the same 2 % bands as the uniform-side test, or thicker?
+- [ ] 3. Unit tests: stay without a test project (manual checks), as in every previous workfile?
+
+---
+
+## Design Iterations
+
+Chronological log of design refinements, of the choices the implementation run
+took on its own — flagged `🧭 Implementation choices` — and of every adjustment
+requested afterwards — flagged `⚙️ Post-implementation`. One entry per request,
+in the order the requests were made.
+
+### Iteration 1 — 2026-09-24
+
+Scoping batch answered (visible part per cell, live, preview + export). Exploration showed the lookup
+is already per visible part and live; the defect is the fallback on the whole-image dominant color
+when fewer than three sides are uniform. Proposal: fallback on the majority color of the visible
+part's edge bands. The user added that a video uses the slider's start frame; the preview and still
+export already do, the video and carousel exports use frame 0 — to fix.
+
+---
+
+## Implementation Log
+
+| Step | Iteration | Date | Notes |
+|---|---|---|---|
+| Code | | | |
+| Unit tests | | | |
+| README | | | |
+
+---
+
+## Q&A Log
+
+| # | Question | Answer | Date |
+|---|---|---|---|
+| 1 | What is the "current view" whose edges give the color? | The visible part in each cell | 2026-09-24 |
+| 2 | When is the color recomputed? | Live, during zoom and pan | 2026-09-24 |
+| 3 | Which outputs are concerned? | Preview and exported image | 2026-09-24 |
+| 4 | Depth of the subject? | No preference — single scout pass | 2026-09-24 |
+| 5 | (User, unprompted) Which frame for a video? | The start frame chosen with the horizontal slider | 2026-09-24 |
+| 6 | Keep the three-uniform-sides rule first, or edge majority alone? | | |
+| 7 | Edge depth for the majority: 2 % or thicker? | | |
+| 8 | Unit tests: stay without a test project? | | |
+
+---
+
+*Last updated: 2026-09-24*
