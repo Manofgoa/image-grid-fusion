@@ -171,6 +171,7 @@ says so rather than staying blank.
 | Code | 3 | 2026-09-23 | `d50aeb6` — `GridPreview.cs` |
 | Unit tests | — | — | Not applicable: no test project, painting only |
 | README | 3 | 2026-09-23 | `c80ebc8` — hover line mentions the outline |
+| Manual test | 4 | 2026-09-23 | Run and checked by the user: feature validated |
 
 ---
 
