@@ -193,13 +193,17 @@ against 22.4 %–26.6 % for black).
 Decided (Q&A #10): tolerance ΔE 20 (twice the uniform-side tolerance), and the whole-image last
 resort (`DominantColor`) uses the same grouping. The Color Rule section describes it.
 
+Implemented as `DominantColor.MostFrequent`, shared by `DominantColor.Compute` and
+`BandColor.MostFrequentOnSides`. The CIELAB conversion and distance moved from `BandColor` to a
+shared `Lab` struct (`Composition/Lab.cs`), used by both.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 3 | 2026-09-24 | `BandColor` edge-majority fallback; video and carousel exports use the chosen page's color |
+| Code | 3, 5 | 2026-09-24 | `BandColor` edge-majority fallback; video and carousel exports use the chosen page's color; shades grouped within ΔE 20 before the vote |
 | Unit tests | — | 2026-09-24 | Not applicable: no test project, manual checks only (Q&A #8) |
 | README | — | 2026-09-24 | Declined: the go covered the code only (Q&A #9) |
 
