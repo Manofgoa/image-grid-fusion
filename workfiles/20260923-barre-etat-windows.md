@@ -181,6 +181,13 @@ User request: *right click on the notification icon must allow closing the app c
 Already covered by the tray menu's **Quit**; the design now states explicitly that it is reached
 by a right click and ends the process, and a manual check pins it. No open question left.
 
+### Iteration 5 — 2026-09-24 — ✅ Implemented
+
+Go given by the user (*"GO implémente dans un worktree spécifique que tu supprimeras à la fin"*),
+after the first go was declined (Q&A #11). Read as **code only**: the go names neither tests nor
+documentation. Work happens in a dedicated worktree on `feature/barre-etat-windows`, branched from
+`main` at `7eb1142`; the worktree is removed at the end of the run.
+
 ---
 
 ## Implementation Log
@@ -216,4 +223,4 @@ Questions asked by the agent during design, with user responses.
 
 ---
 
-*Last updated: 2026-09-23*
+*Last updated: 2026-09-24*
