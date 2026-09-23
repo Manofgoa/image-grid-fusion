@@ -45,16 +45,22 @@ the held one), this means the whole grid restarts.
 
 ## Design
 
-Hiding the window changes the effective visibility of `GridPreview` (a child control): WinForms
-raises its `VisibleChanged`. A minimize does not change `Visible`, so reacting to visibility
-matches the "tray only" scope by construction.
+`MainForm` reacts to its own visibility and tells the preview. A minimize does not change
+`Visible`, so reacting to visibility matches the "tray only" scope by construction.
+
+A child control cannot watch this by itself: WinForms raises a child's `VisibleChanged` when its
+parent becomes visible, **never when the parent becomes invisible** (stated in `Control.cs`:
+*"OnVisibleChanged/OnParentVisibleChanged is not called when a parent becomes invisible"*). The
+form's own `OnVisibleChanged` is raised both ways.
 
 1. **`AnimationPlayer.Stop()`** (new): cancels and clears every playback (as `Dispose` does for
    playbacks) and stops the sound (`_sound.Follow(null)`, which disposes the media player). The
    player stays usable: a later `Sync` starts everything again.
    - Playbacks restarted by `Sync` begin on a whole second of the shared clock with position 0:
      that already is "from the start", in step.
-2. **`GridPreview.OnVisibleChanged`** (override): hidden → `_player.Stop()`; shown → `SyncPlayer()`.
+2. **`MainForm.OnVisibleChanged`** (override): calls `_preview.WindowVisibleChanged()`.
+   **`GridPreview.WindowVisibleChanged()`** (public): window shown → `SyncPlayer()`; hidden →
+   `_player.Stop()`.
 3. **`GridPreview.SyncPlayer`**: does nothing while the control is not visible, so no change of
    the grid can restart playback behind a hidden window (e.g. startup with `--tray`, where the
    window is never shown until the tray icon is clicked).
@@ -112,6 +118,16 @@ The code follows the design as written; no rule broken, no variant substituted.
 - Build checked (0 warning, 0 error). No unit test (no test project); the manual check of
   *Test Impact* is left to the user.
 
+### Iteration 4 — 2026-09-24 — ⚙️ Post-implementation — Hiding the window did not stop playback
+
+Reported by the user: closing to the tray does not stop the videos. Cause: the design relied on
+`GridPreview.OnVisibleChanged`, which WinForms never raises when the parent window is hidden
+(only when it is shown again), so `_player.Stop()` was never reached. Fix: the form overrides its
+own `OnVisibleChanged` and calls a new public `GridPreview.WindowVisibleChanged()`; the
+`GridPreview.OnVisibleChanged` override is removed. The `SyncPlayer` guard on `Visible` stays
+(a child's `Visible` does reflect its hidden parent). The earlier closure ("Terminé") is
+superseded by this fix.
+
 ---
 
 ## Implementation Log
@@ -121,7 +137,7 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 2 | 2026-09-24 | `AnimationPlayer.Stop()`, `GridPreview.OnVisibleChanged`, visibility guard in `SyncPlayer` |
+| Code | 2, 4 | 2026-09-24 | `AnimationPlayer.Stop()`, visibility guard in `SyncPlayer`; iteration 4: hook moved to `MainForm.OnVisibleChanged` → `GridPreview.WindowVisibleChanged()` |
 | Unit tests | — | — | Not applicable: no test project in the repository |
 | Closure | 3 | 2026-09-24 | User confirmed the task finished ("Terminé"), without a hand test run in this session |
 | README | — | 2026-09-24 | Not authorized: the go covered the code only (planned: *Tray & startup*, playback stops while hidden, restarts from the start when reopened) |
