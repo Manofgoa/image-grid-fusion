@@ -238,7 +238,7 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | Iterations 5, 6 | 2026-09-24 | 4 commits: carousel logic, carousel export, live preview, check box and Save; then Copy exports the carousel video |
+| Code | Iterations 5, 6, 7 | 2026-09-24 | 4 commits: carousel logic, carousel export, live preview, check box and Save; then Copy exports the carousel video; then contents play in it over whole loops |
 | Unit tests | — | 2026-09-24 | Not applicable: no test project, by decision (Q&A 12) |
 | README | — | 2026-09-24 | Not done: the go covered the code only |
 
