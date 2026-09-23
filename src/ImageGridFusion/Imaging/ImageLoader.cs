@@ -16,6 +16,7 @@ public static class ImageLoader
     /// </summary>
     public static SourceImage? TryLoadFile(string path) =>
         TryDecode(path)
+        ?? TryPages(path, VideoFrames.TryOpen(path))
         ?? TryPages(path, PdfPages.TryOpen(path))
         ?? TryThumbnail(path);
 
