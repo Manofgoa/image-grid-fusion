@@ -40,8 +40,21 @@ Agreed:
 - Each image is fitted to the cell it currently occupies with the usual fitting rules
   (cells of a layout may have different ratios, so an image's crop / bands change as it moves).
 - **1 image**: nothing to rotate — the mode is unavailable.
+- **Loop order: clockwise** around the grid, geometrically — a true carousel. Cells lined up in a
+  single row go left → right and wrap from the last one back to the first. Default layouts
+  (cell numbers as in the README's *Layouts*):
 
-To settle: the order of the loop (see Open Questions).
+  | Layout | Loop |
+  |---|---|
+  | 2 images (any) | 1 → 2 → 1 |
+  | 3 · Big left, Three columns, Featured | 1 → 2 → 3 → 1 |
+  | 3 · Big top | 1 → 3 → 2 → 1 |
+  | 4 · Grid | 1 → 2 → 4 → 3 → 1 |
+  | 4 · Four columns, Featured, Big left | 1 → 2 → 3 → 4 → 1 |
+  | 4 · Big top | 1 → 4 → 3 → 2 → 1 |
+
+  A **mirrored** layout follows the clockwise path of the mirrored grid, which reverses the cell
+  order of the loop (e.g. *Big left* mirrored: 1 → 3 → 2 → 1).
 
 ---
 
@@ -49,8 +62,14 @@ To settle: the order of the loop (see Open Questions).
 
 Agreed: the rotation plays in the grid preview itself.
 
-To settle: how the mode is turned on, and what happens to the preview's interactions
-(hover, select, swap, remove, sliders, drops) while it plays (see Open Questions).
+- **Toggle**: a **`Carrousel`** check box in a **new toolbar at the top** of the window. The app has
+  no top toolbar today (the controls live in the left layout strip and the bottom bar), so this
+  feature introduces it. The check box is disabled with a single image.
+- Checking it starts the rotation from the current arrangement; unchecking it stops it and brings
+  the images back to their own cells (the arrangement the user built).
+
+To settle: what happens to the preview's interactions (hover, select, swap, remove, sliders,
+drops) while it plays (see Open Questions).
 
 ---
 
@@ -72,7 +91,10 @@ Proposed technical route (from exploration, to be confirmed by the design):
 - Cells holding a video, a PDF or a text show their **current page / frame, frozen** — the source
   video does not play inside the exported video.
 
-To settle: video length, how the export is triggered (see Open Questions).
+- **Length**: exactly **one full loop** — N seconds for N images, starting from the user's own
+  arrangement; replayed in a loop, it has no visible seam.
+- **Trigger**: while `Carrousel` is checked, **`Save…` / `Ctrl+S` writes an MP4** instead of a PNG
+  (the save dialog offers `.mp4`). Unchecked, `Save…` writes a PNG as today.
 
 ---
 
@@ -90,10 +112,10 @@ mean creating the first test project — see Open Questions.
 
 ## Open Questions
 
-- [ ] Loop order: reading order (cell 1 → 2 → 3 → 4 → 1), or a geometric clockwise path around the grid (e.g. 2×2 grid: 1 → 2 → 4 → 3 → 1)?
-- [ ] Video length: exactly one full loop (N seconds, loops seamlessly when replayed), or a user-chosen duration / number of loops?
-- [ ] How is the mode turned on: a toggle below the mirror toggle in the layout strip, or a toggle next to Copy / Save?
-- [ ] How is the video exported: `Save…` writes an MP4 instead of a PNG while the mode is on, or a separate `Save video…` button?
+- [x] ~~Loop order: reading order (cell 1 → 2 → 3 → 4 → 1), or a geometric clockwise path around the grid (e.g. 2×2 grid: 1 → 2 → 4 → 3 → 1)?~~ → Clockwise, geometric
+- [x] ~~Video length: exactly one full loop (N seconds, loops seamlessly when replayed), or a user-chosen duration / number of loops?~~ → One full loop
+- [x] ~~How is the mode turned on: a toggle below the mirror toggle in the layout strip, or a toggle next to Copy / Save?~~ → A `Carrousel` check box in a new top toolbar
+- [x] ~~How is the video exported: `Save…` writes an MP4 instead of a PNG while the mode is on, or a separate `Save video…` button?~~ → `Save…` writes an MP4 while the mode is on
 - [ ] Preview interactions while the rotation plays: rotation pauses while the mouse is over the preview, any edit stops the mode, or interactions are disabled while it plays?
 - [ ] `Copy` while the mode is on: copies the still image of the starting arrangement, the arrangement currently shown, or is disabled?
 - [ ] Video frame size: the largest canvas over all N arrangements (no image downscaled at any step), or the canvas of the starting arrangement?
@@ -116,6 +138,13 @@ Exploration found no test project, a PNG-only output path (`Compositor.Render`),
 `Windows.Media.Editing` already referenced — a candidate MP4 encoder with no new dependency.
 Eight questions remain open (loop order, video length, UI entry points, interactions, Copy,
 frame size, tests).
+
+### Iteration 2 — 2026-09-24
+
+First batch answered. Loop is clockwise and geometric (per-layout table, mirrored layouts reverse
+it); the video is one full loop; `Save…` writes an MP4 while the mode is on. The user rejected both
+proposed toggle placements: the mode is a `Carrousel` check box in a **new top toolbar**, which the
+app does not have yet. Four questions remain (interactions, Copy, frame size, tests).
 
 ---
 
@@ -142,10 +171,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | How do images move from one position to the next? | Hard cut, then a 1-second hold | 2026-09-24 |
 | 3 | What is the expected deliverable? | Live preview + export | 2026-09-24 |
 | 4 | Is the exploration expected to be straightforward or tricky / long? | Straightforward | 2026-09-24 |
-| 5 | Loop order: reading order or geometric clockwise path? | | 2026-09-24 |
-| 6 | Video length: one full loop or user-chosen? | | 2026-09-24 |
-| 7 | Where is the mode toggled? | | 2026-09-24 |
-| 8 | How is the video exported? | | 2026-09-24 |
+| 5 | Loop order: reading order or geometric clockwise path? | Clockwise, geometric | 2026-09-24 |
+| 6 | Video length: one full loop or user-chosen? | One full loop | 2026-09-24 |
+| 7 | Where is the mode toggled? (below Mirror, or next to Copy / Save) | Neither — a `Carrousel` check box in a top toolbar |  2026-09-24 |
+| 8 | How is the video exported? | `Save…` writes an MP4 while the mode is on | 2026-09-24 |
 | 9 | Preview interactions while the rotation plays? | | 2026-09-24 |
 | 10 | What does Copy do while the mode is on? | | 2026-09-24 |
 | 11 | Video frame size? | | 2026-09-24 |
