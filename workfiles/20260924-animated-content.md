@@ -63,13 +63,22 @@ A source is **multiple** when it has more than one frame / page to show:
 - Further formats are expected later ("on étoffera par la suite"): the design keeps one
   abstraction every format plugs into.
 
-### Proposed model
+### Model (as implemented)
 
-A time-based contract next to `PageSource`: a source exposes its **loop duration** and returns
-the **frame at a time `t`** (`t` taken modulo its duration). PDF and text map `t` to a page /
-scroll offset; GIF to a frame index; video to a decoded frame. GIF support needs a new source
-(multi-frame decoding via GDI+ `FrameDimension.Time` + the frame-delay property), since GIFs
-are still-only today.
+- `PageSource` gains `LoopDuration` (zero = still), `OpenAnimation()` → an `AnimationReader`,
+  `PageAt(t)` (what the slider shows) and `TimeOf(page)` (where the animation resumes).
+  `SourceImage.IsAnimated` = `LoopDuration > 0`.
+- `AnimationReader.FrameAt(t)` returns the frame at `t`, or `null` when unchanged; `Reset()`
+  forces the next frame after a re-layout; `ProbeTimes(loop)` lists where to look for a
+  non-empty still. Each reader is independent: the preview and an export read in parallel.
+- `StepReader` serves PDFs (1 s per page), texts (1 s per half-page view) and GIFs (their delays).
+- `VideoReader` (Media Foundation Source Reader, RGB32) serves videos: sequential reads, a seek to
+  the key frame before `t` when going back or more than 2 s ahead; crops to the minimum display
+  aperture and applies the rotation stored by phones.
+- `GifFrames` (new `PageSource`, tried before the plain image decoder): GDI+ frames and delays;
+  delays under 20 ms are stretched to 100 ms, like browsers. GIFs get the hover slider too.
+- `PdfPages` and `GifFrames` serialize their rendering (a lock): the slider and several readers
+  may render at the same time.
 
 ---
 
@@ -87,6 +96,20 @@ advance every second in their cells.
   stands. The other cells keep playing.
 - **Sound**: the preview plays the **export's audio source** (see *Export*), in step with that
   video — it pauses while that cell is paused by the hover, and loops with it.
+
+As implemented (`UI/AnimationPlayer.cs`, `UI/PreviewSound.cs`):
+
+- One loop per animated image, polling every 33 ms: decode off the UI thread, show on it
+  (`SourceImage.ShowFrame`, which keeps the dominant color), then redraw only that cell in the
+  preview cache (`Compositor.DrawCell`).
+- Frames larger than their cell are scaled down to it off the UI thread, so the UI thread draws
+  about 1:1; exports use their own readers at full resolution.
+- A new animated image starts on a whole second of the clock; a cell resumed after a hover goes on
+  from its paused position (not re-aligned), or from `TimeOf(page)` when its slider moved it.
+- The sound plays through WinRT's `MediaPlayer` (looping, no Windows media overlay), re-synced when
+  it drifts more than 250 ms from the frames.
+- A text laid out again (layout change) resets its reader, and its step count follows the layout.
+- The preview keeps playing while an export runs.
 
 ---
 
@@ -114,7 +137,7 @@ Agreed:
   **animate inside the rotation video** too — that workfile's *frozen* assumption is to be
   revised there.
 
-Proposed (to be confirmed by reading this section):
+Details (proposed during design, implemented as written unless noted):
 
 - The export always starts at `t = 0` for every source, whatever the preview shows.
 - **30 fps**, constant.
@@ -130,12 +153,33 @@ Proposed (to be confirmed by reading this section):
   any flat color). Search order: video samples every 0.5 s, PDF pages in order, GIF frames in
   order; text is never empty. If every frame is empty → the frame at `t = 0`.
 - `Save…` dialog: `MP4 video (*.mp4)` filter, default name `fusion-{timestamp}.mp4`.
-- The checkbox sits in the buttons `FlowLayoutPanel`, next to `Save…`; its state is kept for the
-  session. It applies to `Copy` too: checked → `Copy` copies the still image, as today.
+- The checkbox sits in the buttons `FlowLayoutPanel`, **left of `Copy`** (order: *Force as image*,
+  *Copy*, *Save…*); its state is kept for the session. It applies to `Copy` too: checked → `Copy`
+  copies the still image, as today.
 - `Copy`'s video file: written to `%TEMP%\ImageGridFusion\fusion-{timestamp}.mp4` and left there
-  (the clipboard needs the file to outlive the copy); files of previous sessions are removed at
-  startup.
+  (the clipboard needs the file to outlive the copy); every `.mp4` there is removed at startup.
 - `Save…` and `Copy` run the same export; a second export cannot start while one runs.
+
+As implemented (`Imaging/VideoEncoder.cs`, `Imaging/GridExport.cs`, `UI/MainForm.cs`):
+
+- **Video**: Sink Writer, H.264 High profile, about 0.12 bit per pixel and frame, clamped to
+  [2, 40] Mbit/s; RGB32 input, software encoder.
+- **Sound**: the source's first audio track decoded to 16-bit PCM (44.1 or 48 kHz, mono or stereo)
+  and re-encoded to AAC at 192 kbit/s — not muxed as-is, so any codec Windows decodes works;
+  written up to 1 s ahead of the video, looped every duration of its video, cut at the end of each
+  loop and of the export. A sound that cannot be re-encoded → silent video, and the status line
+  says `no sound ({file}: its sound cannot be re-encoded)`.
+- **Empty frame**: 32 × 32 samples, flat when within 24 per channel of the average, empty from
+  98 % flat samples; videos probed every 0.5 s, at most 240 probes (2 min).
+- **Force as image with animated content**: rendered off the UI thread, grid locked, status
+  `Rendering the image…`, no Cancel (not cancellable).
+- **Lock** (`GridPreview.Locked`): clicks other than on a slider are ignored (no selection, no ×,
+  no swap, no drop zone); drop highlight, paste, drops, `Delete`, *Clear all* and the layout strip
+  are disabled; adding files says `The grid is locked until the export ends.` Closing the window
+  cancels the export and closes once it has stopped.
+- **Status**: `Exporting the video… 42 %` + *Cancel*; `Saved {name} (W × H, m:ss).`;
+  `Copied {name} to the clipboard (W × H, m:ss).`; `Video export cancelled.`; `Export failed: …`.
+  A cancelled or failed export deletes its file.
 
 ---
 
@@ -158,6 +202,10 @@ with the existing `Compositor`, H.264 encoding, and muxing one source's audio.
 
 Agreed: **Option A — Media Foundation interop**, no new dependency. A source whose codec has no
 Media Foundation decoder is reported in the status line like today's unreadable files.
+
+As implemented: `Imaging/MediaFoundation.cs` declares the COM interfaces and entry points. Sound
+is **re-encoded** to AAC rather than muxed as-is (see *Export*), so any audio codec Windows decodes
+works, and looping and cutting stay sample-accurate.
 
 ---
 
@@ -184,6 +232,8 @@ untested by decision, not because nothing testable changes.
 - [x] ~~Progress of a long video export: progress + cancel in the status line, or a modal progress dialog with Cancel?~~ → Status line + Cancel
 - [x] ~~Scrolling mode overlap: which workfile owns the shared video export (clock, compositing per frame, encoder), and when both apply, do multi-content cells animate inside the rotation video (this workfile) or stay frozen (current *scrolling mode* assumption)?~~ → This workfile owns it; contents animate inside the rotation video
 - [x] ~~Tests: create a first test project to pin the timing logic, or keep the solution test-free?~~ → No tests
+- [ ] *(found during the run, out of scope)* The live preview draws each new animated frame without the image's look from *action on image* (rotation, flips, black & white, zoom): `GridPreview.RedrawCell` builds `new Frame(image.Bitmap, image.Dominant)` without `image.Look`, while full redraws and exports apply it. Fix it here or in *action on image*?
+- [ ] *(found during the run)* The rotation phones store in videos (`MF_MT_VIDEO_ROTATION`) is applied clockwise to played frames, untested on a real rotated file: to check by hand with a portrait phone video.
 
 ---
 
@@ -222,6 +272,45 @@ Go given ("Vas y implémente") after a first "No". Scope frozen on the design se
 stand. Taken as code + README (the tests were already declined); the run stays on `main`, the
 standing choice for this repository.
 
+### Iteration 4 — 2026-09-24 — 🧭 Implementation choices
+
+No project rule was broken. Choices the frozen design did not state:
+
+- **Go read as code + README**: "Vas y implémente" named no option; the tests were already
+  declined, so the only difference was the README, updated.
+- **GIFs get the hover slider** (frame by frame): making them a `PageSource` gives it for free,
+  and it matches the hover rule of the other animated sources. Delays under 20 ms → 100 ms.
+- **Preview frames scaled down** to their cell off the UI thread (performance); exports decode at
+  full resolution with their own readers.
+- **Resume after a hover** is not re-aligned to the whole second: a held cell may step a fraction
+  of a second apart from the others afterwards.
+- **Sound re-encoded** to AAC (PCM 44.1 / 48 kHz, mono / stereo, 192 kbit/s) instead of muxing the
+  source's AAC as-is: works for every codec Windows decodes, and loops / cuts cleanly.
+- **Encoder settings**: H.264 High profile, ~0.12 bit per pixel and frame, [2, 40] Mbit/s,
+  software encoder.
+- **Video rotation and display aperture** applied to played frames; the rotation is untested on a
+  real phone video (see Open Questions).
+- **Seek rule**: back in time, or more than 2 s ahead → seek to the key frame before.
+- **Empty-frame thresholds**: 32 × 32 samples, ±24 per channel, 98 %; video probes every 0.5 s,
+  240 at most.
+- **Forced still with animated content** runs off the UI thread with the grid locked, without
+  Cancel.
+- **Checkbox placement**: left of `Copy` rather than right next to `Save…`, so Copy and Save stay
+  side by side.
+- **Temp cleanup** removes every `.mp4` of `%TEMP%\ImageGridFusion` at startup, including one a
+  second running instance just copied.
+- **Lock scope**: while locked, clicks outside the sliders are ignored altogether (no selection
+  either); the preview keeps playing.
+- **Verification without a test project**: two throwaway harnesses in the session scratchpad (not
+  in the repository) encoded a synthetic video with a generated sine sound and checked the decoded
+  orientation, frame timing, seek back, sound presence and 7 s looping, even canvas size, forced
+  still skipping a black intro, cancellation deleting the file, text steps, live playback, hover
+  hold / resume, and a full `MainForm` export with the grid locked then unlocked.
+- **Parallel sessions**: *action on image* integrated its looks into `GridExport` right after this
+  run's export commit (its own commit `d9c2b1f`); the preview's per-frame redraw still ignores
+  looks (see Open Questions). The *scrolling mode* workfile still assumes frozen contents and a
+  `MediaComposition` encoder: to revise there.
+
 ---
 
 ## Implementation Log
@@ -231,9 +320,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | 2 | 2026-09-24 | Declined: the solution stays test-free |
-| README | | | |
+| Code | 3 | 2026-09-24 | Animation model, PDF / text / GIF animation, Media Foundation reader and encoder, grid export, live preview with sound, Save / Copy MP4 with Force as image, progress, Cancel and lock |
+| Unit tests | 2 | 2026-09-24 | Declined: the solution stays test-free (throwaway scratchpad harnesses used instead, see Iteration 4) |
+| README | 3 | 2026-09-24 | *Animated content* section, Features, Previews (animated GIF), Output |
+| Manual validation | | | Pending: to test in the app |
 
 ---
 
