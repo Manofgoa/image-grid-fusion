@@ -165,12 +165,35 @@ internal sealed class MainForm : Form
         {
             Title = "Add images",
             Multiselect = true,
-            Filter = "Images|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.tif;*.tiff;*.webp|All files (*.*)|*.*",
+            Filter = PickerFilter(),
         };
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
             await AddFilesAsync(dialog.FileNames);
         }
+    }
+
+    /// <summary>
+    /// Every supported type at once, then one filter per type, then all files. Videos mirror
+    /// <see cref="VideoFrames"/>; text is detected by content, so only its common extensions are listed.
+    /// </summary>
+    private static string PickerFilter()
+    {
+        (string Name, string[] Extensions)[] types =
+        [
+            ("Images", new[] { "png", "jpg", "jpeg", "bmp", "gif", "tif", "tiff", "webp" }),
+            ("Videos", new[] { "mp4", "m4v", "mov", "avi", "wmv", "asf", "mkv", "webm", "3gp", "3g2", "mpg", "mpeg", "ts", "m2ts", "mts" }),
+            ("PDF", new[] { "pdf" }),
+            ("Text", new[] { "txt", "md", "log", "csv", "json", "xml" }),
+        ];
+
+        static string Patterns(IEnumerable<string> extensions) => string.Join(";", extensions.Select(e => $"*.{e}"));
+
+        return string.Join(
+            "|",
+            types.Select(t => $"{t.Name}|{Patterns(t.Extensions)}")
+                .Prepend($"Supported files|{Patterns(types.SelectMany(t => t.Extensions))}")
+                .Append("All files (*.*)|*.*"));
     }
 
     private async void Paste()
