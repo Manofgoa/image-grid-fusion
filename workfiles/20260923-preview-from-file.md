@@ -318,7 +318,7 @@ says so rather than staying blank.
 | Code | 4, 6 | 2026-09-24 | TFM, page model, four producers, page loader, slider, status message; then SVG thumbnail first, exact video frames |
 | Unit tests | — | 2026-09-23 | Declined: no test project (Q&A #16); harness checks listed in Iteration 4 |
 | README | 4 | 2026-09-24 | Previews section, features, status line, publish path, minimum OS, tech. Iteration 5 changes declined (code only) |
-| Manual validation | 4 | 2026-09-24 | Validated by the user on committed `main` (`75918c9`, which also holds the live-animation work); app closed cleanly |
+| Manual validation | 4, 6 | 2026-09-24 | Validated by the user on committed `main` (`75918c9`, which also holds the live-animation work); app closed cleanly. Iteration 6 validated on `b6189cb` |
 
 ---
 
