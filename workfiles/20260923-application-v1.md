@@ -240,6 +240,9 @@ Planned as separate workfiles, not part of v1:
       design comes in a future task)
 - [x] ~~Minimum canvas width when every source is small?~~ → 1200 px floor (small sources are
       upscaled)
+- [ ] How should Copy/Save failures be reported (clipboard busy, write denied)? Today the default
+      WinForms exception dialog appears.
+- [ ] Should Copy give visible feedback (status line message, brief button text change)?
 
 ---
 
@@ -298,6 +301,32 @@ Go given for **Milestone 1, code only**, on `main` (user's choice). Scope frozen
 `### Milestone 1 — Minimal app`. Milestone 2 and the README update stay gated; unit tests stay
 declined.
 
+### Iteration 5 — 2026-09-23 — 🧭 Implementation choices
+
+Milestone 1 delivered. Choices the frozen design did not state:
+
+- **UI language**: labels in English (`Copy`, `Save…`, empty-state hint), consistent with the
+  README.
+- **Preview look**: dark gray background (`#404040`), selection border and drop-target overlay
+  in the system highlight color, × drawn as a dark translucent circle.
+- **× acts on mouse down**, not on release.
+- **Swap**: the selection follows the dragged image to its new cell.
+- **Loading**: files are decoded in order only until the free slots are filled — excess files are
+  not decoded at all (still ignored silently, as Milestone 1 has no status line).
+- **Fully transparent image**: dominant color falls back to black.
+- **Export bitmap** is 24bpp (no alpha channel), which keeps the PNG smaller.
+- **Mid-run user request**: a second solution `src/ImageGridFusion.slnx` was added next to the
+  root `ImageGridFusion.slnx` ("add a slnx at the root of src" read literally — the root one is
+  kept).
+
+Gaps found, not implemented (scope freeze) — offered as open questions:
+
+- Copy/Save failures (clipboard held by another app, write denied) fall back to the default
+  WinForms exception dialog.
+- No feedback after Copy — the Milestone 2 status line would cover it.
+
+No project rule was broken.
+
 ---
 
 ## Implementation Log
@@ -307,7 +336,7 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 4 | 2026-09-23 | Milestone 1 delivered; Milestone 2 not started |
 | Unit tests | 1 | 2026-09-23 | Declined by the user (Q&A #12) |
 | README | | | Must be updated: the list UI, the "centered instead" fitting wording and the fill color no longer match the design |
 
