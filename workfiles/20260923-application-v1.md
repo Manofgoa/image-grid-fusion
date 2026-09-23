@@ -178,7 +178,10 @@ files are ignored with a status message.
   `fusion-yyyyMMdd-HHmmss.png`, default folder = folder of the first file-backed image, else the
   user's Pictures folder.
 - Both are disabled when there is no image.
-- A status line shows short messages (skipped file, copied, saved).
+- A status line shows short messages for a few seconds: skipped files, ignored excess files,
+  copied, saved.
+- Copy/Save failures (clipboard held by another app, write denied) show a short **red** message
+  in the status line — no blocking dialog.
 
 ---
 
@@ -240,9 +243,9 @@ Planned as separate workfiles, not part of v1:
       design comes in a future task)
 - [x] ~~Minimum canvas width when every source is small?~~ → 1200 px floor (small sources are
       upscaled)
-- [ ] How should Copy/Save failures be reported (clipboard busy, write denied)? Today the default
-      WinForms exception dialog appears.
-- [ ] Should Copy give visible feedback (status line message, brief button text change)?
+- [x] ~~How should Copy/Save failures be reported (clipboard busy, write denied)?~~ → Short red
+      message in the status line, no blocking dialog
+- [x] ~~Should Copy give visible feedback?~~ → Status line message for a few seconds
 
 ---
 
@@ -327,6 +330,18 @@ Gaps found, not implemented (scope freeze) — offered as open questions:
 
 No project rule was broken.
 
+### Iteration 6 — 2026-09-23 — ⚙️ Post-implementation — Failure and copy feedback
+
+The two gaps found in Milestone 1 are settled (Q&A #24–#25): Copy/Save failures show a red
+status-line message instead of the WinForms exception dialog, and Copy confirms itself with a
+status-line message. Both land with the Milestone 2 status line.
+
+### Iteration 7 — 2026-09-23 — ⚙️ Post-implementation — Go for Milestone 2
+
+The user liked Milestone 1 and gave the go for **Milestone 2, code + README** (Q&A #26), on
+`main`. Scope frozen as described in `### Milestone 2 — Rest of v1` plus Iteration 6. Unit tests
+stay declined.
+
 ---
 
 ## Implementation Log
@@ -371,6 +386,9 @@ Questions asked by the agent during design, with user responses.
 | 21 | Minimum canvas width for small sources? | 1200 px floor | 2026-09-23 |
 | 22 | Which extras go into Milestone 1 (drag-to-swap, × on hover, EXIF, Save)? | Drag-to-swap, × on hover, Save as PNG | 2026-09-23 |
 | 23 | Which branch for the implementation? | Stay on `main` | 2026-09-23 |
+| 24 | How are Copy/Save failures reported? | Red message in the status line | 2026-09-23 |
+| 25 | Visual feedback after Copy? | Status line message | 2026-09-23 |
+| 26 | Go for Milestone 2: which scope? | Code + README | 2026-09-23 |
 
 ---
 
