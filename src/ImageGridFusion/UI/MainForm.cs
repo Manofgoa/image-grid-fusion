@@ -133,6 +133,7 @@ internal sealed class MainForm : Form
         _saveButton.Click += (_, _) => Save();
         _cancelButton.Click += (_, _) => _export?.Cancel();
         _threshold.ValueChanged += (_, _) => UpdateThreshold();
+        _forceImage.CheckedChanged += (_, _) => _preview.ForceStill = _forceImage.Checked;
         _preview.ImagesChanged += (_, _) => UpdateButtons();
         _preview.LayoutChanged += (_, _) =>
         {
