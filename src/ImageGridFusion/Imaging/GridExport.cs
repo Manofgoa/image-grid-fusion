@@ -89,7 +89,7 @@ internal static class GridExport
 
                 readers[i] = item.Source.OpenAnimation();
                 var first = readers[i]!.FrameAt(TimeSpan.Zero) ?? throw new InvalidOperationException("A source has no frame to show.");
-                frames[i] = new Frame(first, BandColor.Of(first), item.Look);
+                frames[i] = new Frame(first, item.BandColor, item.Look);
             }
 
             var canvas = Animation.EvenSize(CanvasSizer.Compute(frames.Select(f => f.Size).ToList(), job.Layout, job.CropThreshold));

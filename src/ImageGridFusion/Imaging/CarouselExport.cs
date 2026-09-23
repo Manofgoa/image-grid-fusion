@@ -47,7 +47,7 @@ internal static class CarouselExport
                 }
 
                 owned[i] = true;
-                frames[i] = new Frame(first, BandColor.Of(first), item.Look);
+                frames[i] = new Frame(first, item.BandColor, item.Look);
             }
 
             int steps = frames.Length;
