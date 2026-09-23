@@ -13,8 +13,14 @@ internal sealed class MainForm : Form
     private readonly Button _clearButton = new() { Text = "Clear all", AutoSize = true };
     private readonly Button _copyButton = new() { Text = "Copy", AutoSize = true };
     private readonly Button _saveButton = new() { Text = "Save…", AutoSize = true };
+    private readonly CheckBox _forceImage = new() { Text = "Force as image", AutoSize = true, Anchor = AnchorStyles.Left, Visible = false };
+    private readonly Button _cancelButton = new() { Text = "Cancel", AutoSize = true, Visible = false };
     private readonly Label _status = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly System.Windows.Forms.Timer _statusTimer = new();
+
+    /// <summary>Set while an export runs: the grid is locked until it ends.</summary>
+    private CancellationTokenSource? _export;
+    private bool _closeAfterExport;
 
     public MainForm(string[] args)
     {
@@ -30,6 +36,7 @@ internal sealed class MainForm : Form
         AllowDrop = true;
 
         var buttons = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = Padding.Empty };
+        buttons.Controls.Add(_forceImage);
         buttons.Controls.Add(_copyButton);
         buttons.Controls.Add(_saveButton);
 
@@ -47,7 +54,10 @@ internal sealed class MainForm : Form
         bottom.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         bottom.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         bottom.Controls.Add(_clearButton, 0, 0);
-        bottom.Controls.Add(_status, 1, 0);
+        var statusLine = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = Padding.Empty, Anchor = AnchorStyles.Left };
+        statusLine.Controls.Add(_status);
+        statusLine.Controls.Add(_cancelButton);
+        bottom.Controls.Add(statusLine, 1, 0);
         bottom.Controls.Add(buttons, 2, 0);
 
         // The fill control goes first so the bottom panel, then the layout strip above it, are docked before it.
@@ -64,8 +74,15 @@ internal sealed class MainForm : Form
         _clearButton.Click += (_, _) => ClearAll();
         _copyButton.Click += (_, _) => CopyToClipboard();
         _saveButton.Click += (_, _) => Save();
+        _cancelButton.Click += (_, _) => _export?.Cancel();
         _preview.ImagesChanged += (_, _) => UpdateButtons();
-        _preview.LayoutChanged += (_, _) => _layouts.ActiveLayout = _preview.ActiveLayout;
+        _preview.LayoutChanged += (_, _) =>
+        {
+            _layouts.ActiveLayout = _preview.ActiveLayout;
+
+            // A text may fit its new cell, or no longer: it stops or starts scrolling.
+            UpdateButtons();
+        };
         _layouts.LayoutPicked += (_, layout) => _preview.SetLayout(layout);
         _layouts.MirrorToggled += (_, _) => _preview.SetLayout(_preview.ActiveLayout!.Mirrored());
         DragEnter += OnDragEnter;
@@ -93,12 +110,27 @@ internal sealed class MainForm : Form
     protected override async void OnShown(EventArgs e)
     {
         base.OnShown(e);
+        _ = Task.Run(CleanTempVideos);
 
         // Files dropped on the .exe icon; loaded once the window is visible so startup stays fast.
         if (_startupFiles.Length > 0)
         {
             await AddFilesAsync(_startupFiles);
         }
+    }
+
+    /// <summary>Closing during an export cancels it first; the window closes once it has stopped.</summary>
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        if (_export is not null)
+        {
+            e.Cancel = true;
+            _closeAfterExport = true;
+            _export.Cancel();
+            return;
+        }
+
+        base.OnFormClosing(e);
     }
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -114,7 +146,7 @@ internal sealed class MainForm : Form
             case Keys.Control | Keys.S:
                 Save();
                 return true;
-            case Keys.Delete when _preview.HasSelection:
+            case Keys.Delete when _preview.HasSelection && !IsExporting:
                 _preview.RemoveSelected();
                 return true;
             case Keys.Escape when _preview.HasSelection:
@@ -139,7 +171,7 @@ internal sealed class MainForm : Form
 
     private void OnPreviewDragOver(object? sender, DragEventArgs e)
     {
-        if (e.Effect != DragDropEffects.None)
+        if (e.Effect != DragDropEffects.None && !IsExporting)
         {
             _preview.ShowDropTarget(_preview.PointToClient(new Point(e.X, e.Y)));
         }
@@ -198,6 +230,11 @@ internal sealed class MainForm : Form
 
     private async void Paste()
     {
+        if (RefuseWhileExporting())
+        {
+            return;
+        }
+
         string[]? files = null;
         try
         {
@@ -236,6 +273,11 @@ internal sealed class MainForm : Form
     /// </summary>
     private async Task AddFilesAsync(string[] paths, int targetCell = -1)
     {
+        if (RefuseWhileExporting())
+        {
+            return;
+        }
+
         int wanted = (targetCell >= 0 ? 1 : 0) + _preview.FreeSlots + 1;
         var (images, skipped, notLoaded) = await Task.Run(() =>
         {
@@ -282,6 +324,11 @@ internal sealed class MainForm : Form
 
     private void ClearAll()
     {
+        if (IsExporting)
+        {
+            return;
+        }
+
         int count = _preview.Images.Count;
         if (count == 0)
         {
@@ -292,17 +339,44 @@ internal sealed class MainForm : Form
         ShowStatus(count == 1 ? "1 image removed." : $"{count} images removed.");
     }
 
-    private void CopyToClipboard()
+    /// <summary>
+    /// Copies the grid: a still image, or — with animated content, unless forced to an image — an MP4
+    /// video, written to the temp folder and put on the clipboard as a file.
+    /// </summary>
+    private async void CopyToClipboard()
     {
-        if (_preview.Images.Count == 0)
+        if (_preview.Images.Count == 0 || IsExporting)
         {
             return;
         }
 
-        Cursor.Current = Cursors.WaitCursor;
+        if (ExportsVideo)
+        {
+            string path = TempVideoPath();
+            if (await ExportVideoAsync(path) is { } video)
+            {
+                try
+                {
+                    Clipboard.SetFileDropList([path]);
+                    ShowStatus($"Copied {Path.GetFileName(path)} to the clipboard ({Describe(video)}).");
+                }
+                catch (ExternalException ex)
+                {
+                    ShowStatus($"Copy failed: {ex.Message}", error: true);
+                }
+            }
+
+            return;
+        }
+
+        using var result = await RenderStillAsync();
+        if (result is null)
+        {
+            return;
+        }
+
         try
         {
-            using var result = Compositor.Render(_preview.Images, _preview.ActiveLayout!);
             using var png = new MemoryStream();
             result.Save(png, ImageFormat.Png);
 
@@ -319,18 +393,21 @@ internal sealed class MainForm : Form
         }
     }
 
-    private void Save()
+    /// <summary>Saves the grid as a PNG, or — with animated content, unless forced to an image — as an MP4 video.</summary>
+    private async void Save()
     {
-        if (_preview.Images.Count == 0)
+        if (_preview.Images.Count == 0 || IsExporting)
         {
             return;
         }
 
+        bool video = ExportsVideo;
+        string extension = video ? "mp4" : "png";
         using var dialog = new SaveFileDialog
         {
-            Filter = "PNG image (*.png)|*.png",
-            DefaultExt = "png",
-            FileName = $"fusion-{DateTime.Now:yyyyMMdd-HHmmss}.png",
+            Filter = video ? "MP4 video (*.mp4)|*.mp4" : "PNG image (*.png)|*.png",
+            DefaultExt = extension,
+            FileName = $"fusion-{DateTime.Now:yyyyMMdd-HHmmss}.{extension}",
             InitialDirectory = DefaultSaveFolder(),
         };
         if (dialog.ShowDialog(this) != DialogResult.OK)
@@ -338,17 +415,182 @@ internal sealed class MainForm : Form
             return;
         }
 
-        Cursor.Current = Cursors.WaitCursor;
+        if (video)
+        {
+            if (await ExportVideoAsync(dialog.FileName) is { } result)
+            {
+                ShowStatus($"Saved {Path.GetFileName(dialog.FileName)} ({Describe(result)}).");
+            }
+
+            return;
+        }
+
+        using var still = await RenderStillAsync();
+        if (still is null)
+        {
+            return;
+        }
+
         try
         {
-            using var result = Compositor.Render(_preview.Images, _preview.ActiveLayout!);
-            result.Save(dialog.FileName, ImageFormat.Png);
-            ShowStatus($"Saved {Path.GetFileName(dialog.FileName)} ({result.Width} × {result.Height}).");
+            still.Save(dialog.FileName, ImageFormat.Png);
+            ShowStatus($"Saved {Path.GetFileName(dialog.FileName)} ({still.Width} × {still.Height}).");
         }
         catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException)
         {
             ShowStatus($"Save failed: {ex.Message}", error: true);
         }
+    }
+
+    private bool IsExporting => _export is not null;
+
+    private bool HasAnimation => _preview.Images.Any(i => i.IsAnimated);
+
+    /// <summary>Animated content exports as a video, unless "Force as image" is checked.</summary>
+    private bool ExportsVideo => HasAnimation && !_forceImage.Checked;
+
+    /// <summary>
+    /// Renders the still: the images as shown, or, for animated content, the first frame of each that
+    /// is not empty — off the UI thread, the grid locked meanwhile. Returns null on failure.
+    /// </summary>
+    private async Task<Bitmap?> RenderStillAsync()
+    {
+        if (!HasAnimation)
+        {
+            Cursor.Current = Cursors.WaitCursor;
+            return Compositor.Render(_preview.Images, _preview.ActiveLayout!);
+        }
+
+        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!);
+        BeginExport("Rendering the image…", cancellable: false);
+        try
+        {
+            return await Task.Run(() => GridExport.RenderStill(job));
+        }
+        catch (Exception ex) when (ex is ExternalException or InvalidOperationException)
+        {
+            ShowStatus($"Export failed: {ex.Message}", error: true);
+            return null;
+        }
+        finally
+        {
+            EndExport();
+        }
+    }
+
+    /// <summary>
+    /// Writes the MP4 video to <paramref name="path"/> off the UI thread, with its progress and a
+    /// Cancel button in the status line, the grid locked meanwhile. Returns null when cancelled or failing.
+    /// </summary>
+    private async Task<GridExport.Result?> ExportVideoAsync(string path)
+    {
+        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!);
+        var cancellation = BeginExport("Exporting the video… 0 %", cancellable: true);
+        var progress = new Progress<double>(done =>
+        {
+            // Reports still queued when the export ends are dropped: they would hide its outcome.
+            if (IsExporting)
+            {
+                ShowProgress($"Exporting the video… {done:P0}");
+            }
+        });
+        try
+        {
+            return await Task.Run(() => GridExport.RenderVideo(job, path, progress, cancellation));
+        }
+        catch (OperationCanceledException)
+        {
+            ShowStatus("Video export cancelled.");
+            return null;
+        }
+        catch (Exception ex) when (ex is ExternalException or InvalidOperationException or IOException or UnauthorizedAccessException)
+        {
+            ShowStatus($"Export failed: {ex.Message}", error: true);
+            return null;
+        }
+        finally
+        {
+            EndExport();
+        }
+    }
+
+    private CancellationToken BeginExport(string message, bool cancellable)
+    {
+        _export = new CancellationTokenSource();
+        _preview.Locked = true;
+        _layouts.Enabled = false;
+        _cancelButton.Visible = cancellable;
+        UpdateButtons();
+        ShowProgress(message);
+        return _export.Token;
+    }
+
+    private void EndExport()
+    {
+        _export?.Dispose();
+        _export = null;
+        _preview.Locked = false;
+        _layouts.Enabled = true;
+        _cancelButton.Visible = false;
+        UpdateButtons();
+        if (_closeAfterExport)
+        {
+            Close();
+        }
+    }
+
+    private static string Describe(GridExport.Result video)
+    {
+        string length = video.Length.ToString(video.Length.TotalHours >= 1 ? @"h\:mm\:ss" : @"m\:ss");
+        string text = $"{video.Size.Width} × {video.Size.Height}, {length}";
+        return video.SoundProblem is null ? text : $"{text}, {video.SoundProblem}";
+    }
+
+    /// <summary>Videos copied to the clipboard live here: the clipboard only holds their path.</summary>
+    private static string TempVideoFolder => Path.Combine(Path.GetTempPath(), "ImageGridFusion");
+
+    private static string TempVideoPath()
+    {
+        Directory.CreateDirectory(TempVideoFolder);
+        return Path.Combine(TempVideoFolder, $"fusion-{DateTime.Now:yyyyMMdd-HHmmss}.mp4");
+    }
+
+    /// <summary>Removes the videos copied by previous sessions.</summary>
+    private static void CleanTempVideos()
+    {
+        try
+        {
+            if (!Directory.Exists(TempVideoFolder))
+            {
+                return;
+            }
+
+            foreach (var file in Directory.EnumerateFiles(TempVideoFolder, "*.mp4"))
+            {
+                try
+                {
+                    File.Delete(file);
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    // In use, or protected: left for a later session.
+                }
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // The temp folder cannot be listed: nothing to clean.
+        }
+    }
+
+    private bool RefuseWhileExporting()
+    {
+        if (IsExporting)
+        {
+            ShowStatus("The grid is locked until the export ends.");
+        }
+
+        return IsExporting;
     }
 
     /// <summary>Folder of the first image that came from a file, else the user's Pictures folder.</summary>
@@ -360,10 +602,20 @@ internal sealed class MainForm : Form
 
     private void UpdateButtons()
     {
-        bool any = _preview.Images.Count > 0;
+        bool any = _preview.Images.Count > 0 && !IsExporting;
         _clearButton.Enabled = any;
         _copyButton.Enabled = any;
         _saveButton.Enabled = any;
+        _forceImage.Visible = HasAnimation;
+        _forceImage.Enabled = !IsExporting;
+    }
+
+    /// <summary>Shows a message that stays until replaced: the progress of an export.</summary>
+    private void ShowProgress(string message)
+    {
+        _statusTimer.Stop();
+        _status.ForeColor = SystemColors.ControlText;
+        _status.Text = message;
     }
 
     /// <summary>Shows a message for a few seconds; errors in red, and a little longer.</summary>
