@@ -91,10 +91,11 @@ public sealed class VideoFrames : PageSource, IHasSound
         }
     }
 
+    /// <summary>The exact frame: at the nearest key frame, neighbour positions would repeat the same image.</summary>
     public override Bitmap Render(int page)
     {
         using var frame = _composition
-            .GetThumbnailAsync(Time(page), _width, _height, VideoFramePrecision.NearestKeyFrame)
+            .GetThumbnailAsync(Time(page), _width, _height, VideoFramePrecision.NearestFrame)
             .AsTask().GetAwaiter().GetResult();
         using var image = Image.FromStream(frame.AsStream());
         return ImageLoader.Copy(image);
