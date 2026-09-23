@@ -50,8 +50,9 @@ Relevant components:
   width is reserved, so the preview never changes size when images are added or cleared.
 - **1 image**: the strip shows the single-image layout thumbnail, active, and the mirror toggle below
   it, disabled (the layout is symmetric).
-- **No image**: the strip shows the single-image layout thumbnail **greyed out**, and the mirror toggle
-  disabled; nothing in it reacts to the mouse.
+- **No image**: the strip shows the single-image layout thumbnail **greyed out** — in the disabled
+  mirror icon's grey, darker than the grey of the unselected thumbnails — and the mirror toggle
+  disabled; nothing in it reacts to the mouse (no hover, no tooltip).
 
 ## Code
 
@@ -133,6 +134,10 @@ is reserved (more controls will likely land in it later) — and the single-imag
 too. Changes a decision of the layout variants workfile ("the strip is hidden with a single image").
 Details asked before touching the code (Q8–Q9): with no image, the single-image thumbnail greyed out
 plus the disabled mirror toggle; with one image, the mirror toggle shown disabled.
+Implemented in `LayoutStrip` (no more `Visible` toggling; the catalog falls back to the single-image
+layouts when there is no active layout). Choice taken alone: "greyed out" uses the disabled mirror
+icon's grey, so the empty thumbnail reads as disabled rather than as an unselected option. Built on
+`main` directly (only `LayoutStrip.cs` and `README.md` touched, both clean in the shared checkout).
 
 ---
 
@@ -143,9 +148,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 3 | 2026-09-24 | `GridPreview.Clear()`, **Clear all** button in `MainForm`; build clean |
+| Code | 3, 5 | 2026-09-24 | `GridPreview.Clear()`, **Clear all** button in `MainForm`; layout strip always shown; build clean |
 | Unit tests | 3 | 2026-09-24 | Not applicable: no test project, UI-only change |
-| README | 3 | 2026-09-24 | *Features* (Clear all) and *Output* (status line) |
+| README | 3, 5 | 2026-09-24 | *Features* (Clear all), *Output* (status line), *Layouts* (strip always shown) |
 
 ---
 
