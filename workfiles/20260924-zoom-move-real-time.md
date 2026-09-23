@@ -49,11 +49,15 @@ Relevant components: `UI/GridPreview.cs` (gestures, `_cache` bitmap, `SetLook`, 
 
 1. **Synchronous paint**: while a gesture is live, `RedrawCell` follows `Invalidate(cell)` with
    `Update()`, so the cell is painted before the next mouse move is processed.
-2. **Light render**: while a gesture is live, the cell is drawn in a *fast* mode — `DrawCell` takes a
-   quality flag; fast mode uses a cheap interpolation (bilinear) and default pixel offset/compositing.
-   Geometry (fit, crop threshold, zoom, focus, orientation, grayscale, dominant-color bands) is
-   unchanged, so the light frame sits exactly where the final one will.
+2. **Light render**: while a gesture is live, the cell is drawn in a *fast* mode —
+   `Compositor.DrawCell(..., fast: true)` uses bilinear interpolation and high-speed compositing; the
+   pixel offset stays `HighQuality`, since changing it would shift the frame by half a pixel.
+   Geometry (fit, crop threshold, zoom, focus, orientation, grayscale, band color) is unchanged, so
+   the light frame sits exactly where the final one will.
 3. **Final render**: when the gesture ends, the cell is redrawn once at full quality.
+4. **One live image at a time** (`GridPreview._live`): `BeginLive` on another image first ends the
+   previous gesture (its full render included); `EndLive` refreshes the decode sizes and redraws the
+   cell in full.
 
 ### Gesture boundaries
 
@@ -74,12 +78,15 @@ end of the gesture rather than on every step, the frame being scaled from its cu
 New gesture (Q&A #5–#7):
 
 - **Input**: the plain wheel over a cell zooms that cell — no modifier. Ignored while the preview is
-  locked (export in progress), like the zoom slider.
-- **Step**: one notch (`WHEEL_DELTA` = 120, partial deltas accumulated) multiplies the zoom by
+  locked (export in progress), like the zoom slider, and while another gesture runs (pan, cell drag,
+  zoom or page slider).
+- **Step**: one notch (`WHEEL_DELTA` = 120, partial deltas accumulated per cell, reset when the wheel
+  moves to another cell) multiplies the zoom by
   2^(1/4) — four notches double it — clamped to `ImageLook.MinZoom` … `ImageLook.MaxZoom`; crossing
   100 % lands on exactly 100 %, like the slider's snap.
 - **Anchor**: the point of the image under the cursor stays under the cursor; the focus is shifted
-  accordingly (then clamped by the fit as usual).
+  accordingly (then clamped by the fit as usual). A cursor over a band anchors on the nearest image
+  edge. At or below 100 % the focus goes back to the center, the existing `ImageLook.WithZoom` rule.
 - **End**: the full-quality render happens after ~150 ms without a notch (a one-shot timer, restarted
   on each notch).
 
@@ -144,6 +151,25 @@ Go given ("Go implémente") after a first "No" at the gate. Taken as the design'
 code and README, unit tests declined by design. Branch Gate: stays on `main`, the standing choice for
 this repository.
 
+### Iteration 4 — 2026-09-24 — 🧭 Implementation choices
+
+No project rule broken. Choices the frozen design did not state:
+
+- **Go read as the full scope**: "Go implémente" matched no gate option word for word; taken as the
+  design's deliverables (code + README), since the design already listed the README and declined tests.
+- **Branch Gate not asked**: stayed on `main`, the standing choice recorded for this repository.
+- **Pixel offset kept in fast mode** (divergent): the design said "default pixel offset"; kept
+  `HighQuality` so the light frame does not jump half a pixel against the final one.
+- **One live image at a time**: a gesture started on another cell (e.g. a pan within 150 ms of a wheel
+  zoom elsewhere) ends the previous one first, with its full render.
+- **Pan goes live on its first move**, not on the press — a plain click on a zoomed cell draws nothing new.
+- **Wheel ignored during another gesture**, and partial deltas accumulated per cell.
+- **Anchor details**: the point under the cursor is clamped to the image when over a band; at or below
+  100 % the focus returns to the center (existing `WithZoom` rule), so the anchor applies above 100 % only.
+
+Parallel work: another session committed on `main` during the run (`ce497f6`, a workfile); only the
+files of this run were committed.
+
 ---
 
 ## Implementation Log
@@ -153,9 +179,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
+| Code | 3, 4 | 2026-09-24 | `cf72d93` fast `DrawCell`, `e6c55db` live pan and zoom slider, `ca58a79` wheel zoom; builds with 0 warnings. Manual verification pending |
+| Unit tests | 2 | 2026-09-24 | Declined — solution kept test-free (Q&A #8) |
+| README | 3 | 2026-09-24 | `3f84202` zoom slider, wheel zoom, pan and live display |
 
 ---
 
