@@ -7,8 +7,9 @@ namespace ImageGridFusion.UI;
 /// <summary>
 /// Plays the animated images of the grid live, on one clock so their steps change together. Frames
 /// are decoded off the UI thread and shown on it; an image held (hovered, or browsed with its slider)
-/// stops where it stands and resumes from there, or from the page the slider left it on. Also plays
-/// the sound of the grid's sound source in step with it. Used from the UI thread only.
+/// stops where it stands and resumes from there, or from the page the slider left it on; forced
+/// still, every image is held so. Also plays the sound of the grid's sound source in step with it.
+/// Used from the UI thread only.
 /// </summary>
 internal sealed class AnimationPlayer : IDisposable
 {
@@ -18,9 +19,43 @@ internal sealed class AnimationPlayer : IDisposable
     private readonly Dictionary<SourceImage, Playback> _playbacks = [];
     private readonly PreviewSound _sound = new();
     private SourceImage? _held;
+    private bool _forceStill;
 
     /// <summary>Raised on the UI thread once an image shows a new frame.</summary>
     public event EventHandler<SourceImage>? FrameShown;
+
+    /// <summary>
+    /// Holds every image still, the sound silent; released, each one resumes like a released hold,
+    /// but the one still held.
+    /// </summary>
+    public bool ForceStill
+    {
+        get => _forceStill;
+        set
+        {
+            if (value == _forceStill)
+            {
+                return;
+            }
+
+            _forceStill = value;
+            foreach (var playback in _playbacks.Values)
+            {
+                if (value)
+                {
+                    // The one held already keeps where it was paused, and the page its slider may have left it on.
+                    if (playback.PausedAt is null)
+                    {
+                        Pause(playback);
+                    }
+                }
+                else if (playback.Image != _held)
+                {
+                    Resume(playback);
+                }
+            }
+        }
+    }
 
     /// <summary>Plays the animated images not playing yet, stops the ones gone or shown still, and follows the sound source.</summary>
     public void Sync(IReadOnlyList<SourceImage> images)
@@ -42,7 +77,13 @@ internal sealed class AnimationPlayer : IDisposable
                 var start = TimeSpan.FromSeconds(Math.Floor(_clock.Elapsed.TotalSeconds));
                 var playback = new Playback(image, start);
                 _playbacks[image] = playback;
-                if (image == _held)
+                if (_forceStill)
+                {
+                    // Stands at the page it shows, so that releasing it resumes from there.
+                    playback.PausedAt = image.Pages!.TimeOf(image.Page);
+                    playback.PausedPage = image.Page;
+                }
+                else if (image == _held)
                 {
                     Pause(playback);
                 }
@@ -62,13 +103,14 @@ internal sealed class AnimationPlayer : IDisposable
             return;
         }
 
-        if (_held is not null && _playbacks.TryGetValue(_held, out var released))
+        // Forced still, every image is held already: releasing one would let it play.
+        if (!_forceStill && _held is not null && _playbacks.TryGetValue(_held, out var released))
         {
             Resume(released);
         }
 
         _held = image;
-        if (image is not null && _playbacks.TryGetValue(image, out var held))
+        if (!_forceStill && image is not null && _playbacks.TryGetValue(image, out var held))
         {
             Pause(held);
         }
