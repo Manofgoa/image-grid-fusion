@@ -195,6 +195,13 @@ internal sealed class MainForm : Form
         }
     }
 
+    /// <summary>Hidden in the tray, the preview stops playing; shown again, it plays from the start.</summary>
+    protected override void OnVisibleChanged(EventArgs e)
+    {
+        base.OnVisibleChanged(e);
+        _preview.WindowVisibleChanged();
+    }
+
     /// <summary>
     /// The ×, Alt+F4 and the taskbar's Close window only hide it: the app keeps running in the tray,
     /// grid unchanged. A real close (Quit, logoff, shutdown) during an export cancels it first; the
