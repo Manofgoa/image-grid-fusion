@@ -156,6 +156,8 @@ a click or `Tab` still focuses the slider (Q&A #11).
 
 The README step, left out by the code-only go, is now requested (Q&A #12): the changes listed under `### README`.
 The branch is then to be merged into `main`, only once `main` has no uncommitted changes (Q&A #13).
+**Merge not done** on 2026-09-24: `main` (at `95dd898`) still had uncommitted changes in `GridPreview.cs` and
+`MainForm.cs`, the two files this branch touches.
 
 ---
 
