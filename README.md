@@ -14,11 +14,12 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 - No image list: the grid preview *is* the interface
   - Click a cell to select it, `Esc` to deselect
   - Hover a cell to outline it and show a **×** to remove it, or press `Delete` to remove the selected one
-  - Hover a cell holding a video, a PDF or a long text to show a slider along its bottom, browsing its frames or pages
+  - Videos, animated GIFs, PDFs of several pages and long texts play live in their cell (see Animated content)
+  - Hover a cell holding a video, a GIF, a PDF or a long text to hold it still and show a slider along its bottom, browsing its frames or pages
   - Drag a cell onto another to swap the two images
   - Drop a file onto a cell to replace it
   - **Clear all** (bottom left) removes every image at once, with no confirmation, back to the initial state
-- Copy to clipboard (`Ctrl+C`) or save as PNG (`Ctrl+S`)
+- Copy to clipboard (`Ctrl+C`) or save (`Ctrl+S`): a PNG, or an MP4 video when the grid holds animated content
 
 ## Adding images
 
@@ -32,6 +33,7 @@ A file that is not an image is turned into one when it can be previewed. The fir
 
 | File | Becomes | Slider |
 |---|---|---|
+| Animated GIF (two frames or more) | Its frames, played with their own delays | Frame by frame |
 | Image GDI+ can decode (png, jpg, bmp, gif, tif…) | The image itself | — |
 | Video (mp4, mov, m4v, avi, wmv, mkv, webm, 3gp, mpg, ts…) | A frame, first shown at 10 % of the duration | Positions a coarse step apart: duration / 100, never under 1 s |
 | PDF | A whole page, rendered with its long side at 1600 px | Page by page |
@@ -43,6 +45,28 @@ A file that is not an image is turned into one when it can be previewed. The fir
 - The slider appears only while the cell is hovered, and never in the output. The image follows it live while dragging.
 - **Text** is recognized from its content: at most 1 MB, UTF-8 or UTF-16 with a byte order mark, and no NUL byte in its first 8 KB. It is rendered on pages shaped like its cell, at the cell's size on a 1200 px canvas, and laid out again when the cell changes (layout, swap, image count), keeping the reading position.
 - **Readable text**: the font is the largest size between 24 and 96 px at which the whole text fits one page; below 24 px, the text is paginated at 24 px instead. Since the canvas is never narrower than the width at which no image is downscaled (see Canvas size), the text is at least that tall in the output. PDFs are rendered whole, so their small print may stay unreadable in a small cell.
+
+## Animated content
+
+A cell holding **multiple content** plays it, live in the preview and in the exported video:
+
+| Content | Plays | One loop lasts |
+|---|---|---|
+| Video | Its frames, decoded one after the other | The video's duration |
+| Animated GIF | Its frames, each for its own delay (0 or 10 ms delays stretched to 100 ms, like browsers do) | The sum of its delays |
+| PDF of several pages | The next page every second | 1 s per page |
+| Text longer than its cell | Every second, the view moves down half a page, keeping the lower half of the previous view on top, until the end of the text shows | 1 s per view |
+
+A single-page PDF, a text that fits its cell, a one-frame GIF and plain images stay still.
+
+- **Live preview**: every cell plays on one clock, so pages and views change together. Hovering a cell holds it still and shows its slider; leaving the cell resumes from where it stands, or from the page the slider was moved to.
+- **Sound**: the sound of image 1 when it is a video with sound, else of the first video with sound in grid order. The preview plays it in step with that video (held with it, looping with it), and the exported video carries it.
+- **Export**: as soon as the grid holds multiple content, **Save** writes an **MP4 video** (H.264, AAC sound) instead of a PNG, and **Copy** puts an MP4 file on the clipboard (written to `%TEMP%\ImageGridFusion`, cleaned at the next start), pastable in Explorer, chat apps or mail.
+  - Every content starts from its beginning; the video lasts as long as the longest loop, the shorter ones starting over until it ends. 30 fps.
+  - The canvas is sized once, from the first frames (see Canvas size), and rounded down to even dimensions; the bands keep the color of the first frame.
+  - A sound Windows cannot re-encode leaves the video silent, with a note in the status line.
+- **Force as image**: this checkbox, next to Copy, appears only while the grid holds multiple content. Checked, Copy and Save produce a PNG again, each content showing its **first frame that is not empty** (not a flat black, white or single-color frame, like a video's intro), else its first frame.
+- **While exporting**, the status line shows the progress with a **Cancel** button, and the grid is locked: no adding, removing, swapping, clearing or changing the layout. The animation and the sliders keep working. Closing the window cancels the export first; a cancelled export leaves no file.
 
 ## Layouts
 
@@ -123,8 +147,8 @@ Output resolution is kept as high as possible so source images aren't needlessly
 
 ## Output
 
-- **Copy** button / `Ctrl+C`: puts the full-resolution result on the clipboard, both as a standard bitmap and in the PNG clipboard format.
-- **Save** button / `Ctrl+S`: saves the result as a PNG file.
+- **Copy** button / `Ctrl+C`: puts the full-resolution result on the clipboard, both as a standard bitmap and in the PNG clipboard format; with animated content, an MP4 file instead (see Animated content).
+- **Save** button / `Ctrl+S`: saves the result as a PNG file; with animated content, as an MP4 video, unless **Force as image** is checked.
 - A status line reports feedback and errors (skipped files with no preview, ignored excess files, removed images, copy/save confirmation or failure).
 
 ## Build & run
