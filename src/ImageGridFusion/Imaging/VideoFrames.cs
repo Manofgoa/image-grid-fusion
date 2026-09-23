@@ -8,8 +8,9 @@ namespace ImageGridFusion.Imaging;
 /// Frames of a video, decoded by Windows (Media Foundation, through <see cref="MediaComposition"/>),
 /// at positions a coarse step apart: duration / 100, never under a second. A codec Windows lacks
 /// (HEVC without its extension, some mkv / avi) makes the file fall back to its thumbnail, if any.
+/// Played frame by frame by a <see cref="VideoReader"/>.
 /// </summary>
-public sealed class VideoFrames : PageSource
+public sealed class VideoFrames : PageSource, IHasSound
 {
     private const int MaxPositions = 100;
 
@@ -20,23 +21,36 @@ public sealed class VideoFrames : PageSource
         ".mp4", ".m4v", ".mov", ".avi", ".wmv", ".asf", ".mkv", ".webm", ".3gp", ".3g2", ".mpg", ".mpeg", ".ts", ".m2ts", ".mts",
     };
 
+    private readonly string _path;
     private readonly MediaComposition _composition;
     private readonly TimeSpan _duration;
     private readonly TimeSpan _step;
     private readonly int _width;
     private readonly int _height;
 
-    private VideoFrames(MediaComposition composition, TimeSpan duration, int width, int height)
+    private VideoFrames(string path, MediaComposition composition, TimeSpan duration, int width, int height, bool hasSound)
     {
+        _path = path;
         _composition = composition;
         _duration = duration;
         _width = width;
         _height = height;
         _step = Step(duration);
         Count = Positions(duration);
+        HasSound = hasSound;
     }
 
     public override int Count { get; }
+
+    public bool HasSound { get; }
+
+    public override TimeSpan LoopDuration => _duration;
+
+    public override AnimationReader OpenAnimation() => VideoReader.Open(_path);
+
+    public override int PageAt(TimeSpan time) => Math.Clamp((int)(time / _step), 0, Count - 1);
+
+    public override TimeSpan TimeOf(int page) => Count == 1 ? TimeSpan.Zero : _step * page;
 
     /// <summary>The position nearest to 10 % of the duration, past the usual black intro frames.</summary>
     public override int InitialPage => Math.Min(Count - 1, (int)Math.Round(_duration * 0.1 / _step));
@@ -68,7 +82,7 @@ public sealed class VideoFrames : PageSource
 
             var composition = new MediaComposition();
             composition.Clips.Add(clip);
-            return new VideoFrames(composition, clip.OriginalDuration, (int)properties.Width, (int)properties.Height);
+            return new VideoFrames(path, composition, clip.OriginalDuration, (int)properties.Width, (int)properties.Height, clip.EmbeddedAudioTracks.Count > 0);
         }
         catch (Exception)
         {
