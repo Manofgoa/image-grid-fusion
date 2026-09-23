@@ -175,6 +175,9 @@ Questions asked by the agent during design, with user responses.
 | 8 | Create a unit-test project? | No tests | 2026-09-23 |
 | 9 | Go for implementation? | No | 2026-09-23 |
 | 10 | Go for implementation? (asked again by the user) | "GO implémente", in a dedicated worktree removed at the end — read as *Implement the code* | 2026-09-24 |
+| 11 | Slider takes the keyboard focus at startup: keep it, or take it out? | | |
+| 12 | Update the README now? | | |
+| 13 | Merge the branch into `main`? | | |
 
 ---
 
