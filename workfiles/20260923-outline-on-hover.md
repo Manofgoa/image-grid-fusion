@@ -149,7 +149,7 @@ Questions asked by the agent during design, with user responses.
 | 5 | During drags, which cell gets the outline? | The cell under the cursor, in both drags, source cell included | 2026-09-23 |
 | 6 | Exact look: 1 px white ~50 % alpha, inside the selection on the selected cell? | Yes | 2026-09-23 |
 | 7 | README: mention the outline on the hover line? | Yes | 2026-09-23 |
-| 8 | Go for implementation? | | |
+| 8 | Go for implementation? | No — the gate holds | 2026-09-23 |
 
 ---
 
