@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using ImageGridFusion.Composition;
@@ -352,12 +353,14 @@ internal sealed class MainForm : Form
         if (ExportsVideo)
         {
             string path = TempVideoPath();
+            var videoClock = Stopwatch.StartNew();
             if (await ExportVideoAsync(path) is { } video)
             {
+                var encoding = videoClock.Elapsed;
                 try
                 {
                     Clipboard.SetFileDropList([path]);
-                    ShowStatus($"Copied {Path.GetFileName(path)} to the clipboard ({Describe(video)}).");
+                    ShowStatus(VideoSummary($"Copied {Path.GetFileName(path)}", path, video, encoding));
                 }
                 catch (ExternalException ex)
                 {
@@ -368,6 +371,7 @@ internal sealed class MainForm : Form
             return;
         }
 
+        var clock = Stopwatch.StartNew();
         using var result = await RenderStillAsync();
         if (result is null)
         {
@@ -378,13 +382,14 @@ internal sealed class MainForm : Form
         {
             using var png = new MemoryStream();
             result.Save(png, ImageFormat.Png);
+            var encoding = clock.Elapsed;
 
             // Standard bitmap for most apps, plus the PNG format that browsers paste more reliably.
             var data = new DataObject();
             data.SetImage(result);
             data.SetData("PNG", png);
             Clipboard.SetDataObject(data, copy: true);
-            ShowStatus($"Copied to the clipboard ({result.Width} × {result.Height}).");
+            ShowStatus(StillSummary("Copied to the clipboard", result.Size, png.Length, encoding));
         }
         catch (ExternalException ex)
         {
@@ -414,11 +419,13 @@ internal sealed class MainForm : Form
             return;
         }
 
+        string saved = $"Saved {Path.GetFileName(dialog.FileName)}";
+        var clock = Stopwatch.StartNew();
         if (video)
         {
             if (await ExportVideoAsync(dialog.FileName) is { } result)
             {
-                ShowStatus($"Saved {Path.GetFileName(dialog.FileName)} ({Describe(result)}).");
+                ShowStatus(VideoSummary(saved, dialog.FileName, result, clock.Elapsed));
             }
 
             return;
@@ -433,7 +440,7 @@ internal sealed class MainForm : Form
         try
         {
             still.Save(dialog.FileName, ImageFormat.Png);
-            ShowStatus($"Saved {Path.GetFileName(dialog.FileName)} ({still.Width} × {still.Height}).");
+            ShowStatus(StillSummary(saved, still.Size, new FileInfo(dialog.FileName).Length, clock.Elapsed));
         }
         catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException)
         {
@@ -538,12 +545,52 @@ internal sealed class MainForm : Form
         }
     }
 
-    private static string Describe(GridExport.Result video)
+    /// <summary>What a still copy or save produced, for the status line: one frame, no duration, no sound.</summary>
+    private static string StillSummary(string done, Size size, long bytes, TimeSpan encoding) =>
+        Summary(done, "PNG", size, bytes, 1, TimeSpan.Zero, sound: null, encoding);
+
+    /// <summary>What a video copy or save produced, for the status line, <paramref name="path"/> being the file written.</summary>
+    private static string VideoSummary(string done, string path, GridExport.Result video, TimeSpan encoding) =>
+        Summary(
+            done,
+            "MP4 video",
+            video.Size,
+            new FileInfo(path).Length,
+            video.Frames,
+            video.Length,
+            video.SoundProblem ?? (video.SoundPath is null ? "no sound" : $"sound: {Path.GetFileName(video.SoundPath)}"),
+            encoding);
+
+    private static string Summary(string done, string format, Size size, long bytes, int frames, TimeSpan length, string? sound, TimeSpan encoding)
     {
-        string length = video.Length.ToString(video.Length.TotalHours >= 1 ? @"h\:mm\:ss" : @"m\:ss");
-        string text = $"{video.Size.Width} × {video.Size.Height}, {length}";
-        return video.SoundProblem is null ? text : $"{text}, {video.SoundProblem}";
+        var fields = new List<string>
+        {
+            done,
+            format,
+            $"{size.Width} × {size.Height}",
+            FileSize(bytes),
+            frames == 1 ? "1 frame" : $"{frames} frames",
+            Seconds(length),
+        };
+        if (sound is not null)
+        {
+            fields.Add(sound);
+        }
+
+        fields.Add($"encoded in {Seconds(encoding)}");
+        return string.Join(" · ", fields);
     }
+
+    /// <summary>Binary units: whole kilobytes, then one decimal.</summary>
+    private static string FileSize(long bytes) => bytes switch
+    {
+        < 1024 => $"{bytes} B",
+        < 1024 * 1024 => $"{bytes / 1024.0:0} KB",
+        < 1024L * 1024 * 1024 => $"{bytes / (1024.0 * 1024):0.0} MB",
+        _ => $"{bytes / (1024.0 * 1024 * 1024):0.0} GB",
+    };
+
+    private static string Seconds(TimeSpan time) => time == TimeSpan.Zero ? "0 s" : $"{time.TotalSeconds:0.0} s";
 
     /// <summary>Videos copied to the clipboard live here: the clipboard only holds their path.</summary>
     private static string TempVideoFolder => Path.Combine(Path.GetTempPath(), "ImageGridFusion");
