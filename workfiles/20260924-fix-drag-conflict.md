@@ -45,7 +45,9 @@ the drag starts, not by the zoom state:
 ## Drag Handle
 
 - **Glyph**: four-arrow move symbol (✥), drawn in white on the same dark translucent disc as the
-  × (`150` alpha, `230` when hot), 24 px logical.
+  × (`150` alpha, `230` when hot), 24 px logical. Drawn by hand like the toolbar glyphs: four
+  2 px strokes from the center, each ending in an arrow cap (`PaintHandle`).
+- **Size rule**: none — the handle shows whatever the cell size, like the ×.
 - **Visibility**: only on the hovered cell, under the same conditions as the × and the toolbar
   (not while dragging, not while the grid is locked by an export).
 - **Placement**: top-right of the cell, just **below the ×** — same right edge, one button gap
@@ -62,7 +64,8 @@ the drag starts, not by the zoom state:
 - A press anywhere in the cell that is not the ×, a toolbar button, the zoom slider, the page slider
   or the handle **always** arms a pan — whatever the zoom.
 - At 100 % or below, the pan does nothing (the fitting rule keeps the image centered): the gesture
-  never turns into a swap. The press still selects the cell.
+  never turns into a swap. The press still selects the cell, and the cursor stays the default
+  one (the `SizeAll` cursor only shows while the image actually moves).
 - `Ctrl` + drag is **removed**: `Ctrl` no longer changes the gesture, the handle is the only way to
   swap.
 
@@ -70,6 +73,9 @@ the drag starts, not by the zoom state:
 
 `README.md`, the two gesture lines under the cell actions: the swap starts from the handle, a drag
 elsewhere moves a zoomed-in image within its cell; the `Ctrl` + drag mention goes away.
+
+**Not done in this run** (declined at the go): the README still says "`Ctrl` + drag swaps it
+instead" and "Drag a cell onto another to swap the two images" — both now stale.
 
 ---
 
@@ -117,6 +123,22 @@ handle is the only way to swap. No open question left.
 Go given for **the code only** ("Implement the code"): the README update and the unit tests are
 declined for this run. Run on `main`, the standing choice for this repository.
 
+### Iteration 4 — 2026-09-24 — 🧭 Implementation choices
+
+No project rule broken. Choices the frozen design did not state:
+
+- **Glyph** drawn by hand (four strokes with arrow caps from the center), not the ✥ font
+  character — matches how every toolbar glyph is drawn and stays crisp at any DPI.
+- **Cursor at ≤ 100 %**: a drag that moves nothing keeps the default cursor; `SizeAll` appears
+  only while the image actually moves (and over the handle).
+- **No size rule** for the handle: it shows in any cell, like the × — in a very short multi-page
+  cell it may touch the page slider.
+- **Guard** `_pressed < _images.Count` before reading the zoom during a pan, as `PanBy` already
+  guards its index.
+- **Build** into the scratchpad (`-o`), because another session was working in the same checkout;
+  its uncommitted files (`Carousel.cs`, `CarouselExport.cs`, `MainForm.cs`) were left untouched.
+- **README left stale** on purpose: the go covered the code only (see Documentation).
+
 ---
 
 ## Implementation Log
@@ -126,9 +148,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable — no test project, UI gesture code only |
-| README | | | |
+| Code | 3, 4 | 2026-09-24 | `GridPreview`: handle below the ×, pan everywhere else, `Ctrl` + drag removed; builds with 0 warnings |
+| Unit tests | 3 | 2026-09-24 | Not applicable — no test project, UI gesture code only |
+| README | 3 | 2026-09-24 | Declined at the go ("Implement the code") — gesture lines now stale |
 
 ---
 
