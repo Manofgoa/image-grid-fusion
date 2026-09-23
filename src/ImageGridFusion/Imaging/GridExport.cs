@@ -55,7 +55,7 @@ internal static class GridExport
     public sealed record Item(Bitmap? Still, Color Dominant, PageSource? Source, TimeSpan Loop);
 
     /// <summary>What an export produced.</summary>
-    public sealed record Result(Size Size, string? SoundProblem);
+    public sealed record Result(Size Size, TimeSpan Length, string? SoundProblem);
 
     /// <summary>
     /// Writes the video to <paramref name="path"/>: 30 fps, as long as the longest loop, the others
@@ -110,7 +110,7 @@ internal static class GridExport
 
             encoder.Finish();
             finished = true;
-            return new Result(canvas, encoder.SoundProblem);
+            return new Result(canvas, job.Length, encoder.SoundProblem);
         }
         finally
         {
