@@ -26,12 +26,12 @@ Components involved:
 
 | Component | Role |
 |---|---|
-| `Composition/DominantColor.cs` | Majority color, unchanged; stays the fallback |
-| `Composition/` — new border detection (e.g. `BorderBackground`) | Downsampled pixels of the reference frame, and the detection on any rectangle of them |
-| `Composition/SourceImage.cs` | Builds the reference sample where it computes `Dominant` today (load, `ShowPage`), never in `ShowFrame` |
-| `Composition/Compositor.cs` | `Frame` carries the sample; `DrawCell` detects on the visible part, falls back to `Dominant` |
-| `Imaging/GridExport.cs` | `Item` carries the sample; animated items build it from the frame they compute `Dominant` on |
-| `UI/GridPreview.cs` | Builds its `Frame` with the sample (line 788) |
+| `Composition/DominantColor.cs` | Majority color, unchanged; stays the fallback, called by `BandColor.Of` |
+| `Composition/BandColor.cs` | `BandColor.Of(Bitmap)`: 512-px sample of the reference frame plus its `Dominant`; `For(part, size)`: the detection on any part of it |
+| `Composition/SourceImage.cs` | `BandColor` property (replaces `Dominant`), built on load and in `ShowPage`, never in `ShowFrame` |
+| `Composition/Compositor.cs` | `Frame(Bitmap, BandColor, Look)`; `DrawCell` computes the fit first, maps `Fit.Source` to the bitmap (`BitmapPart`), asks `BandColor.For` |
+| `Imaging/GridExport.cs` | `Item` carries the `BandColor`; animated items build it from the frame they export (`BandColor.Of`) |
+| `UI/GridPreview.cs` | Builds its `Frame` with `image.BandColor` |
 | `README.md` | *Fitting rules* describes the band color (line 140) |
 
 ---
@@ -65,8 +65,9 @@ Proposed algorithm:
    then scaled to the sample. Rotations and flips only permute the sides; the rule is symmetric.
 3. **Bands**: each side's band is **2 %** of the perpendicular dimension of the region, at least 1 px.
    Corners belong to both adjacent bands.
-4. **Side color**: mean color of the band's opaque pixels. The side is uniform when ≥ 90 % of those
-   pixels are within ΔE 10 of that mean; a mostly transparent band does not vote.
+4. **Side color**: mean color (RGB) of the band's opaque pixels (alpha ≥ 128), compared in CIELAB.
+   The side is uniform when ≥ 90 % of those pixels are within ΔE 10 of that mean; a band with fewer
+   than half its pixels opaque does not vote.
 5. **Agreement**: among uniform sides, the largest group whose colors are pairwise within ΔE 10.
    A group of **3 or 4** sides wins; its color is the mean of the group's side colors.
    A 2 + 2 split, or fewer than 3 uniform sides → no border background.
@@ -74,9 +75,10 @@ Proposed algorithm:
    color, as today, stable when zooming (Q&A #9). Black & white is applied on top by the compositor,
    as today.
 
-Cost: only band pixels are read — a few thousand per cell — so detecting on every draw (preview
-repaints, animation ticks, focus drags) needs no cache. Memory: at most 512 × 512 × 4 B = 1 MB per
-image for the sample.
+Cost: only band pixels are read — a few thousand per cell. The last answer is still kept (one entry,
+keyed by the part in sample pixels), since the preview redraws the same part at every animation tick;
+it is swapped as a whole, so an export thread can share the `BandColor` of a still image with the
+preview. Memory: at most 512 × 512 × 4 B = 1 MB per image for the sample.
 
 ---
 
@@ -155,6 +157,31 @@ Go given ("GO", read as code and README: the README section belongs to the froze
 not applicable by decision). Branch: stays on `main`, the project's standing choice. Scope frozen as
 described in the sections above.
 
+### Iteration 5 — 2026-09-24 — 🧭 Implementation choices
+
+No project rule broken. Choices the frozen design did not state:
+
+- **Scope of "GO"**: read as code + README — the README section belongs to the frozen design; unit
+  tests not applicable (Q&A #5).
+- **Names**: the class is `BandColor`; it replaces `Color Dominant` in `Frame`, `SourceImage` and
+  `GridExport.Item` (property `BandColor`), and keeps the whole-image majority as `BandColor.Dominant`.
+  `DominantColor` itself is unchanged.
+- **One-entry cache** in `BandColor.For` — the design said none was needed; added because the preview
+  asks for every cell at every animation tick, and cheap to keep thread-safe (immutable record swapped
+  as a whole).
+- **Mostly transparent**: fewer than half of the band's pixels opaque; a pixel is opaque from alpha 128.
+- **Colors**: a side's color is the RGB mean of its opaque pixels; the winning color is the mean of the
+  agreeing sides' colors; distances use CIELAB ΔE76 on a linearized sRGB → XYZ (D65) conversion.
+- **Sample**: drawn with source-copy compositing so alpha survives; the part shown is rounded to whole
+  sample pixels. `Compositor.BitmapPart` is extracted from `DrawOriented`, which now receives it.
+- **Manual check** (no test project): a throwaway console in the scratchpad ran `BandColor` on synthetic
+  images — white background → white, even with the subject touching one edge; subject touching two
+  opposite edges, a 2 + 2 split or a transparent background → majority color; noisy off-white and a
+  white/off-white mix → the background; zoomed into the subject → the subject's color at the visible
+  borders.
+- **Commits** waited twice for another session's merge in the shared `main` checkout; its uncommitted
+  files were never staged.
+
 ---
 
 ## Implementation Log
@@ -164,9 +191,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable — test-free by decision (Q&A #5) |
-| README | | | |
+| Code | 4 | 2026-09-24 | `BandColor` class, then compositor / source image / export / preview wiring; build clean. Throwaway sanity check on synthetic images (scratchpad, not in the repo) — see Iteration 5 |
+| Unit tests | 4 | 2026-09-24 | Not applicable — test-free by decision (Q&A #5) |
+| README | 4 | 2026-09-24 | *Fitting rules*: the band color rule |
 
 ---
 
