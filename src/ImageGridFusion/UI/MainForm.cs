@@ -243,7 +243,7 @@ internal sealed class MainForm : Form
         var messages = new List<string>();
         if (skipped > 0)
         {
-            messages.Add($"{Files(skipped)} skipped: not a readable image");
+            messages.Add($"{Files(skipped)} skipped: no preview available");
         }
 
         if (ignored > 0)
