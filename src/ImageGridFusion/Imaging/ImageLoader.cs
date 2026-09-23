@@ -14,13 +14,17 @@ public static class ImageLoader
     /// rendered text, and last the thumbnail Windows shows for it. Returns null when the file has no
     /// preview at all. Blocks on file and WinRT calls: meant to run off the UI thread.
     /// </summary>
+    /// <remarks>An SVG is text too: its thumbnail, when Windows has one, comes first so it shows as a drawing.</remarks>
     public static SourceImage? TryLoadFile(string path) =>
         TryPages(path, GifFrames.TryOpen(path))
         ?? TryDecode(path)
         ?? TryPages(path, VideoFrames.TryOpen(path))
         ?? TryPages(path, PdfPages.TryOpen(path))
+        ?? (IsSvg(path) ? TryThumbnail(path) : null)
         ?? TryPages(path, TextPages.TryOpen(path, new Size(GridLayout.RatioWidth, GridLayout.RatioHeight)))
         ?? TryThumbnail(path);
+
+    private static bool IsSvg(string path) => Path.GetExtension(path).Equals(".svg", StringComparison.OrdinalIgnoreCase);
 
     public static SourceImage FromImage(Image image) => new(Copy(image), filePath: null);
 
