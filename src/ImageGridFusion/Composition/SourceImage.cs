@@ -1,7 +1,7 @@
 namespace ImageGridFusion.Composition;
 
 /// <summary>
-/// An image of the grid: an owned 32bpp copy, its dominant color and the file it came from, if any.
+/// An image of the grid: an owned 32bpp copy, the color of its bands and the file it came from, if any.
 /// A file with several pages (PDF, video, long text) keeps its <see cref="Pages"/> and shows one of them.
 /// </summary>
 public sealed class SourceImage : IDisposable
@@ -12,7 +12,7 @@ public sealed class SourceImage : IDisposable
         FilePath = filePath;
         Pages = pages;
         Page = page;
-        Dominant = DominantColor.Compute(bitmap);
+        BandColor = BandColor.Of(bitmap);
     }
 
     public Bitmap Bitmap { get; private set; }
@@ -24,7 +24,8 @@ public sealed class SourceImage : IDisposable
     /// <summary>Index of the page <see cref="Bitmap"/> shows, in <see cref="Pages"/>.</summary>
     public int Page { get; private set; }
 
-    public Color Dominant { get; private set; }
+    /// <summary>Computed on the page shown, not on each frame of an animation.</summary>
+    public BandColor BandColor { get; private set; }
 
     /// <summary>Actions on the image, kept whatever cell it moves to and whatever page it shows.</summary>
     public ImageLook Look { get; set; } = ImageLook.None;
@@ -40,12 +41,12 @@ public sealed class SourceImage : IDisposable
     public void ShowPage(int page, Bitmap bitmap)
     {
         ShowFrame(page, bitmap);
-        Dominant = DominantColor.Compute(bitmap);
+        BandColor = BandColor.Of(bitmap);
     }
 
     /// <summary>
     /// Shows a frame of the animation, which stands at <paramref name="page"/>: takes ownership of
-    /// <paramref name="bitmap"/> and keeps the dominant color, so bands do not flicker while playing.
+    /// <paramref name="bitmap"/> and keeps the band color, so bands do not flicker while playing.
     /// </summary>
     public void ShowFrame(int page, Bitmap bitmap)
     {
