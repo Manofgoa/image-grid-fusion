@@ -43,8 +43,9 @@ Constraints found by exploration:
 - The bottom of the cell belongs to the page slider, the top-right corner to the **×**.
 - The word *Mirror* is taken by the layout toggle: the image action is called **Flip** in the UI
   and the README to avoid confusion.
-- The *animated content* workfile (`20260924-animated-content.md`, not implemented) makes
-  multi-page cells play: the actions belong to the image, so they apply to every page / frame.
+- The *animated content* workfile (`20260924-animated-content.md`, implemented during this
+  design) makes multi-page cells play: the actions belong to the image, so they apply to every
+  page / frame, in the preview and in the MP4 / still export (`Imaging/GridExport.cs`).
 
 ---
 
@@ -53,20 +54,24 @@ Constraints found by exploration:
 - Shown on the **hovered** cell only, never in the output, hidden while a swap drag is running
   (like the **×**).
 - Placed along the **top** of the cell, left of the **×**, as a row of 24 px buttons with the
-  same look as the **×** (semi-transparent dark round, white glyph, lighter when hot).
+  same look as the **×** (semi-transparent dark round, white glyph, darker when hot). Glyphs are
+  drawn as vectors, not taken from a symbol font.
+- Hidden while an export runs (grid locked), like the **×**.
 - Buttons, left to right:
 
-| Button | Action | State shown |
-|---|---|---|
-| ⟲ | Rotate 90° counter-clockwise | — |
-| ⟳ | Rotate 90° clockwise | — |
-| ⇆ | Flip horizontally | Highlighted while on |
-| ⇅ | Flip vertically | Highlighted while on |
-| ◐ | Black & white | Highlighted while on |
-| ↺ | Reset: back to the image as loaded (every action off, zoom 100 %) | Shown only while at least one action is active |
+| Button | Glyph | Action | State shown |
+|---|---|---|---|
+| Rotate left | Arc arrow turning counter-clockwise | Rotate 90° counter-clockwise | — |
+| Rotate right | Arc arrow turning clockwise | Rotate 90° clockwise | — |
+| Flip horizontally | Filled triangle and its outlined mirror on each side of a vertical axis | Flip left↔right | Filled with the highlight color while on |
+| Flip vertically | Same, around a horizontal axis | Flip top↔bottom | Filled with the highlight color while on |
+| Black & white | Half-filled circle | Black & white | Filled with the highlight color while on |
+| Reset | Almost full counter-clockwise arc around a dot | Back to the image as loaded (every action off, zoom 100 %) | Shown only while at least one action is active |
 
 - **Narrow cell**: when the row does not fit left of the **×**, the buttons wrap onto a second
-  row, and the zoom slider starts below the last row, shortened accordingly.
+  row, and the zoom slider starts below the last row, shortened accordingly. Each button keeps its
+  slot whether Reset is shown or not, and the slider always leaves room for the full toolbar, so
+  nothing moves when Reset appears.
 - No keyboard shortcut: the actions are reached from the toolbar only.
 - The **zoom slider** is a separate vertical pill along the **left** edge of the cell, below the
   button row and above the page slider (see Zoom).
@@ -92,14 +97,21 @@ The actions are stored **on the image** (`SourceImage`), not on the cell:
   work on the **oriented** size — a portrait rotated to landscape fills a landscape cell.
 - Flips are expressed in the **screen** frame: ⇆ always flips left↔right as the user sees it,
   whatever the rotation.
-- **Black & white** is a luminance grayscale of the image. The bands and transparent pixels use
-  the dominant color of the **transformed** image, so they turn grey too.
+- A rotation turns the flips with it (a quarter turn swaps which axis is flipped) and the
+  `Focus`, so the same part of the image stays centered.
+- **Black & white** is a luminance grayscale (0.299 R + 0.587 G + 0.114 B) of the image. The
+  bands and transparent pixels use the same grayscale of the dominant color, so they turn grey
+  too.
 - The actions **follow the image**: kept when it is swapped with another cell and when the
   layout (or the image count) changes — `Focus` being normalized, the same part of the image
   stays centered in the new cell shape. Replacing the image with another file (drop on the cell,
   or a full grid receiving a new image) starts from a fresh image, with no action.
-- The transformed bitmap is derived from the page bitmap, so a multi-page source keeps its
-  actions when its page changes (slider today, playback with *animated content*).
+- The actions are applied **when drawing** (`Compositor.DrawCell`): the bitmap part to show goes
+  to a rotated / flipped parallelogram, through a grayscale color matrix. No transformed copy is
+  kept, so a multi-page source keeps its actions whatever page or frame it shows, at no cost per
+  frame.
+- A **text** turned a quarter is laid out again in the turned shape of its cell, so it still
+  fills its cell once rotated.
 
 ---
 
@@ -112,15 +124,19 @@ The actions are stored **on the image** (`SourceImage`), not on the cell:
   image stays centered on that axis until it overflows.
 - **Zoom out** (< 100 %): the image shrinks inside its cell, centered, and the uncovered area
   shows the dominant color, like the bands.
-- **Slider**: vertical pill along the left edge of the cell, 100 % marked on its track, the
-  current percentage shown next to the thumb while it is hovered or dragged; the image follows
-  it live.
+- **Slider**: vertical pill along the left edge of the cell, zoom going up on a **log scale**
+  (50 → 100 % and each doubling take the same length, so 100 % sits at a third of the track),
+  100 % marked by a tick and **snapping** within 4 px of it; the current percentage shows in a
+  pill right of the thumb while the slider is hovered or dragged; the image follows it live.
+- Back to 100 % or below, `Focus` returns to the center: 100 % is exactly the fitting rule.
 - **Pan**: while the zoom is **above 100 %**, dragging the image moves `Focus`, clamped so the
   cell never shows beyond the image on an axis where the image overflows.
 - **Swap**: at 100 % or below, dragging a cell swaps it as today. A zoomed-in image is swapped
   with **Ctrl + drag**; Ctrl + drag swaps whatever the zoom.
 - The canvas size is computed from the **unzoomed** fit, so moving the slider never changes the
   output resolution.
+- Animated frames are decoded at the cell size in the frame's own orientation, enlarged by a zoom
+  in, so a zoomed video stays sharp while playing.
 
 ---
 
@@ -148,6 +164,8 @@ behaviours below would be the ones to pin if a test project were added:
 - [x] ~~What happens to the toolbar in a **cell too narrow** for all the buttons (e.g. *Four columns*)?~~ → The buttons wrap onto a second row, the zoom slider shortens below
 - [x] ~~Are **keyboard shortcuts** on the selected cell part of the scope?~~ → No, out of scope
 - [x] ~~Unit tests: stay test-free like the previous workfiles, or add a test project?~~ → Stay test-free
+- [ ] *(raised by the implementation run)* Tooltips on the toolbar buttons, naming each action — the glyphs alone may not tell rotate left from reset
+- [ ] *(raised by the implementation run)* Update the README (*Features* list, a note under *Fitting rules* on zoom and rotation) — left out, the go covered the code only
 
 ---
 
@@ -184,6 +202,36 @@ tests are declined.
 Go given for **the code only** (README not authorized, unit tests already declined). The run
 stays on `main`, the standing choice for this repository.
 
+### Iteration 5 — 2026-09-24 — 🧭 Implementation choices
+
+Choices the run took on its own; the domain sections above now describe them.
+
+- **Draw-time actions** instead of a transformed bitmap derived from each page: the compositor
+  maps the visible part of the bitmap to a rotated / flipped parallelogram, with a grayscale color
+  matrix. Same result, and nothing to recompute per animation frame.
+- **Grey bands**: the grayscale of the dominant color, not a new dominant color of the grey image
+  (same color, no extra pass).
+- **Zoom slider**: log scale, 100 % tick with a 4 px snap, percentage pill right of the thumb.
+  Back to 100 % or below recenters the image, so 100 % is exactly the fitting rule and a reset
+  image counts as untouched.
+- **Rotation carries the flips and the focus**, so the flips stay in the screen frame and the
+  centered part stays centered.
+- **Rotated text** is laid out again in the turned cell shape, so it fills its cell.
+- **Toolbar and zoom slider hidden while an export runs**, like the ×.
+- **Stable toolbar slots**: every button keeps its place whether Reset is shown, and the zoom
+  slider always leaves room for the full toolbar.
+- **Vector glyphs** instead of the ⟲ ⟳ ⇆ ⇅ ◐ ↺ characters, which depend on symbol-font coverage;
+  the flip icon is a filled triangle and its outlined mirror around an axis.
+- **Animated frames** are decoded at the size the zoom and rotation need. A held (hovered) video
+  keeps its last frame at the previous resolution until it plays again.
+- **Commits**: the whole preview UI (toolbar, zoom slider, pan) landed in one commit, its changes
+  being interleaved in `GridPreview.cs`.
+- **Verification**: no test project (unit tests declined); the orientation / zoom math and the
+  toolbar, slider, pan and swap interactions were checked with throwaway programs in the session
+  scratchpad, rendering the preview off screen.
+
+No project rule was broken.
+
 ---
 
 ## Implementation Log
@@ -193,9 +241,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 5 | 2026-09-24 | Composition (`ImageLook`, `FitCalculator`, `Compositor`, `SourceImage`), export (`GridExport`), preview UI (`GridPreview`) |
 | Unit tests | 3 | 2026-09-24 | Declined: the solution stays test-free (Q&A #12) |
-| README | | | |
+| README | 4 | 2026-09-24 | Not authorized: the go covered the code only |
 
 ---
 
