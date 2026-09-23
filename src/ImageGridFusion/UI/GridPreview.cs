@@ -1,4 +1,5 @@
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using ImageGridFusion.Composition;
 
 namespace ImageGridFusion.UI;
@@ -9,6 +10,9 @@ namespace ImageGridFusion.UI;
 /// </summary>
 internal sealed class GridPreview : Control
 {
+    private const float GhostScale = 0.4f;
+    private const float GhostOpacity = 0.7f;
+
     private readonly List<SourceImage> _images = [];
     private Bitmap? _cache;
     private int _selected = -1;
@@ -18,6 +22,9 @@ internal sealed class GridPreview : Control
     private Point _pressPoint;
     private bool _dragging;
     private int _dropTarget = -1;
+    private Bitmap? _ghost;
+    private Size _ghostOffset;
+    private Point _dragPoint;
     private int _externalTarget = -1;
 
     public GridPreview()
@@ -110,6 +117,7 @@ internal sealed class GridPreview : Control
             _images.ForEach(i => i.Dispose());
             _images.Clear();
             _cache?.Dispose();
+            _ghost?.Dispose();
         }
 
         base.Dispose(disposing);
@@ -144,6 +152,12 @@ internal sealed class GridPreview : Control
 
         var cells = CellBounds();
         g.SmoothingMode = SmoothingMode.AntiAlias;
+        if (_dragging && _pressed < cells.Length)
+        {
+            using var dim = new SolidBrush(Color.FromArgb(120, 0, 0, 0));
+            g.FillRectangle(dim, cells[_pressed]);
+        }
+
         int highlighted = _dragging && _dropTarget != _pressed ? _dropTarget : _externalTarget;
         if (highlighted >= 0 && highlighted < cells.Length)
         {
@@ -160,6 +174,11 @@ internal sealed class GridPreview : Control
         if (_hovered >= 0 && !_dragging)
         {
             PaintCloseButton(g, CloseBounds(cells[_hovered]), _hoveringClose);
+        }
+
+        if (_dragging && _ghost is not null)
+        {
+            PaintGhost(g, _ghost, GhostBounds());
         }
     }
 
@@ -209,9 +228,13 @@ internal sealed class GridPreview : Control
                 return;
             }
 
-            _dragging = true;
-            Cursor = Cursors.SizeAll;
+            StartDrag(e.Location);
+            return;
         }
+
+        Invalidate(GhostBounds());
+        _dragPoint = e.Location;
+        Invalidate(GhostBounds());
 
         int target = CellAt(e.Location);
         if (target != _dropTarget)
@@ -229,13 +252,19 @@ internal sealed class GridPreview : Control
             Swap(_pressed, _dropTarget);
         }
 
-        _pressed = -1;
-        _dragging = false;
-        _dropTarget = -1;
-        Cursor = Cursors.Default;
+        EndDrag();
         _hovered = -1;
         UpdateHover(e.Location);
-        Invalidate();
+    }
+
+    // The capture is released right after OnMouseUp; losing it earlier (Alt+Tab, a dialog) cancels the drag.
+    protected override void OnMouseCaptureChanged(EventArgs e)
+    {
+        base.OnMouseCaptureChanged(e);
+        if (_pressed >= 0)
+        {
+            EndDrag();
+        }
     }
 
     protected override void OnMouseLeave(EventArgs e)
@@ -248,6 +277,56 @@ internal sealed class GridPreview : Control
             Invalidate();
         }
     }
+
+    /// <summary>
+    /// Takes the ghost from the source cell as the preview shows it, scaled down, and keeps the
+    /// grab point at the same relative place inside it.
+    /// </summary>
+    private void StartDrag(Point location)
+    {
+        var cells = CellBounds();
+        if (_pressed >= cells.Length)
+        {
+            EndDrag();
+            return;
+        }
+
+        _dragging = true;
+        _dragPoint = location;
+        _dropTarget = CellAt(location);
+        Cursor = Cursors.SizeAll;
+
+        var canvas = CanvasBounds();
+        var cell = cells[_pressed];
+        _ghostOffset = new Size(
+            (int)((_pressPoint.X - cell.X) * GhostScale),
+            (int)((_pressPoint.Y - cell.Y) * GhostScale));
+        if (_cache is not null)
+        {
+            var source = cell with { X = cell.X - canvas.X, Y = cell.Y - canvas.Y };
+            _ghost = new Bitmap(Math.Max(1, (int)(cell.Width * GhostScale)), Math.Max(1, (int)(cell.Height * GhostScale)));
+            using var ghostGraphics = Graphics.FromImage(_ghost);
+            ghostGraphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            ghostGraphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            ghostGraphics.DrawImage(_cache, new Rectangle(Point.Empty, _ghost.Size), source, GraphicsUnit.Pixel);
+        }
+
+        Invalidate();
+    }
+
+    private void EndDrag()
+    {
+        _pressed = -1;
+        _dragging = false;
+        _dropTarget = -1;
+        _ghost?.Dispose();
+        _ghost = null;
+        Cursor = Cursors.Default;
+        Invalidate();
+    }
+
+    private Rectangle GhostBounds() =>
+        _ghost is null ? Rectangle.Empty : new Rectangle(_dragPoint - _ghostOffset, _ghost.Size);
 
     private void RemoveAt(int index)
     {
@@ -351,6 +430,13 @@ internal sealed class GridPreview : Control
         using var pen = new Pen(Color.White, LogicalToDeviceUnits(2));
         g.DrawLine(pen, bounds.Left + pad, bounds.Top + pad, bounds.Right - pad, bounds.Bottom - pad);
         g.DrawLine(pen, bounds.Right - pad, bounds.Top + pad, bounds.Left + pad, bounds.Bottom - pad);
+    }
+
+    private static void PaintGhost(Graphics g, Bitmap ghost, Rectangle bounds)
+    {
+        using var attributes = new ImageAttributes();
+        attributes.SetColorMatrix(new ColorMatrix { Matrix33 = GhostOpacity });
+        g.DrawImage(ghost, bounds, 0, 0, ghost.Width, ghost.Height, GraphicsUnit.Pixel, attributes);
     }
 
     private void PaintEmptyState(Graphics g, Rectangle canvas)
