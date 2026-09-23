@@ -112,6 +112,11 @@ image is not zoomed in. Placement next to the existing × and the fate of `Ctrl`
 Open questions answered: the handle sits just below the ×, and `Ctrl` + drag is removed — the
 handle is the only way to swap. No open question left.
 
+### Iteration 3 — 2026-09-24 — ✅ Implemented
+
+Go given for **the code only** ("Implement the code"): the README update and the unit tests are
+declined for this run. Run on `main`, the standing choice for this repository.
+
 ---
 
 ## Implementation Log
