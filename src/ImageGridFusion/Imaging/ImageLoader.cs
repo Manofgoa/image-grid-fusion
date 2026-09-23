@@ -18,6 +18,7 @@ public static class ImageLoader
         TryDecode(path)
         ?? TryPages(path, VideoFrames.TryOpen(path))
         ?? TryPages(path, PdfPages.TryOpen(path))
+        ?? TryPages(path, TextPages.TryOpen(path, new Size(GridLayout.RatioWidth, GridLayout.RatioHeight)))
         ?? TryThumbnail(path);
 
     public static SourceImage FromImage(Image image) => new(Copy(image), filePath: null);
