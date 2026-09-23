@@ -30,9 +30,11 @@ Relevant components:
 
 | Aspect | Decision |
 |---|---|
-| Placement | In the main bar of the window, always visible *(exact spot: see Open Questions — the app has no top toolbar today)* |
+| Placement | A **new top bar**, docked at the top of the window, always visible; it is meant to host future settings too. The bottom bar (status + Copy / Save) is unchanged |
+| Control | A slider (`TrackBar`) with a **value label** next to it, e.g. `Crop: 15%`, updated as the slider moves |
 | Range | 0% – 50%, step 5% (11 positions) |
 | Default | 15% (`FitCalculator.DefaultCropThreshold`, unchanged) |
+| Update | **Live**: the preview re-renders on every slider position while dragging, not only on release |
 | Persistence | Session only — back to 15% at every launch; no settings file |
 
 ### Behaviour
@@ -64,23 +66,22 @@ No change expected: `FitCalculator`, `CanvasSizer` and `Compositor` already take
 
 ## Test Impact
 
-No test project exists in the repository today, and the composition layer already takes the threshold as a
-parameter — the new behaviour is UI wiring. Whether to create a test project is an open question; the rows
-below apply only if it is created.
+**None — deliberately.** No test project exists in the repository, the composition layer already takes the
+threshold as a parameter, and the new behaviour is UI wiring only. The user chose not to create a test project
+for this task (Q&A #8).
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| `FitCalculator.Compute` with threshold 0 crops nothing (source = whole image, bands on the other axis) | `tests/ImageGridFusion.Tests/FitCalculatorTests.cs` | create *(pending Open Question)* |
-| `FitCalculator.Compute` with threshold 0.5 crops at most 50% of the overflowing axis, centered | `tests/ImageGridFusion.Tests/FitCalculatorTests.cs` | create *(pending Open Question)* |
+| — | — | — |
 
 ---
 
 ## Open Questions
 
-- [ ] The app has no top toolbar: where does the slider go — in the existing bottom bar (between the status line and Copy / Save), or in a new top bar?
-- [ ] Does the preview update live while the slider is dragged, or only when it is released?
-- [ ] What does the slider show next to it — a label with the value (e.g. `Crop: 15%`), a tooltip only, or nothing?
-- [ ] Create a unit-test project to pin the threshold bounds of `FitCalculator`, or leave tests out (UI wiring only)?
+- [x] ~~The app has no top toolbar: where does the slider go — in the existing bottom bar (between the status line and Copy / Save), or in a new top bar?~~ → New top bar
+- [x] ~~Does the preview update live while the slider is dragged, or only when it is released?~~ → Live
+- [x] ~~What does the slider show next to it — a label with the value (e.g. `Crop: 15%`), a tooltip only, or nothing?~~ → A label with the value
+- [x] ~~Create a unit-test project to pin the threshold bounds of `FitCalculator`, or leave tests out (UI wiring only)?~~ → No tests
 
 ---
 
@@ -99,6 +100,12 @@ to `MainForm` (slider, export calls) and `GridPreview` (threshold property, cach
 Four open questions remain: exact placement (no top toolbar exists), live vs on-release update, value display,
 and whether to create a test project.
 
+### Iteration 2 — 2026-09-23
+
+Open questions answered: the slider goes in a **new top bar** (not the existing bottom bar), the preview updates
+**live** while dragging, a **value label** (`Crop: 15%`) sits next to the slider, and **no test project** is
+created — `## Test Impact` is now explicitly empty. Design sections updated accordingly.
+
 ---
 
 ## Implementation Log
@@ -109,7 +116,7 @@ says so rather than staying blank.
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
 | Code | | | |
-| Unit tests | | | |
+| Unit tests | 2 | 2026-09-23 | Not applicable — no test project, declined by the user (Q&A #8) |
 | README | | | |
 
 ---
@@ -124,10 +131,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | Which value range? | 0–50%, step 5% | 2026-09-23 |
 | 3 | Is the chosen value kept between launches? | No, session only | 2026-09-23 |
 | 4 | Is the subject straightforward or tricky? | Straightforward | 2026-09-23 |
-| 5 | No top toolbar exists: bottom bar or new top bar? | | |
-| 6 | Live preview update while dragging, or on release? | | |
-| 7 | What is shown next to the slider? | | |
-| 8 | Create a unit-test project? | | |
+| 5 | No top toolbar exists: bottom bar or new top bar? | New top bar | 2026-09-23 |
+| 6 | Live preview update while dragging, or on release? | Live | 2026-09-23 |
+| 7 | What is shown next to the slider? | A label with the value | 2026-09-23 |
+| 8 | Create a unit-test project? | No tests | 2026-09-23 |
 
 ---
 
