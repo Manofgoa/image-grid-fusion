@@ -5,7 +5,7 @@ namespace ImageGridFusion.Imaging;
 
 /// <summary>
 /// Exports a grid holding animated content: as an MP4 video of every source playing from its start,
-/// or, forced to a still, as the first frame of each source that is not empty.
+/// or, forced to a still, as the page each source shows (the one its slider selects).
 /// </summary>
 internal static class GridExport
 {
@@ -41,8 +41,8 @@ internal static class GridExport
 
         public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout, double cropThreshold) => new(
             images.Select(i => i.IsAnimated
-                ? new Item(null, i.BandColor, i.Pages, i.Pages!.LoopDuration, i.Look)
-                : new Item(new Bitmap(i.Bitmap), i.BandColor, null, TimeSpan.Zero, i.Look)).ToList(),
+                ? new Item(null, i.BandColor, i.Pages, i.Pages!.LoopDuration, i.Look, i.Page)
+                : new Item(new Bitmap(i.Bitmap), i.BandColor, null, TimeSpan.Zero, i.Look, 0)).ToList(),
             layout,
             cropThreshold,
             Animation.SoundSource(images));
@@ -56,8 +56,11 @@ internal static class GridExport
         }
     }
 
-    /// <summary>A cell: a still copy, or an animated source with its loop, and the actions on the image.</summary>
-    public sealed record Item(Bitmap? Still, BandColor BandColor, PageSource? Source, TimeSpan Loop, ImageLook Look);
+    /// <summary>
+    /// A cell: a still copy, or an animated source with its loop and the page it shows, and the actions
+    /// on the image.
+    /// </summary>
+    public sealed record Item(Bitmap? Still, BandColor BandColor, PageSource? Source, TimeSpan Loop, ImageLook Look, int Page);
 
     /// <summary>What an export produced; <see cref="SoundPath"/> is the source whose sound was written, if any.</summary>
     public sealed record Result(Size Size, TimeSpan Length, int Frames, string? SoundPath, string? SoundProblem);
@@ -137,8 +140,8 @@ internal static class GridExport
     }
 
     /// <summary>
-    /// Renders the grid as a still, each animated source showing its first frame that is not empty
-    /// (else its first frame). Blocks: meant to run off the UI thread.
+    /// Renders the grid as a still, each animated source showing the page it shows in the preview.
+    /// Blocks: meant to run off the UI thread.
     /// </summary>
     public static Bitmap RenderStill(Job job)
     {
@@ -155,7 +158,7 @@ internal static class GridExport
                     continue;
                 }
 
-                var frame = FirstNonEmptyFrame(item.Source, item.Loop);
+                var frame = item.Source.Render(item.Page);
                 owned.Add(frame);
                 frames[i] = new Frame(frame, BandColor.Of(frame), item.Look);
             }
@@ -166,36 +169,6 @@ internal static class GridExport
         {
             owned.ForEach(b => b.Dispose());
         }
-    }
-
-    private static Bitmap FirstNonEmptyFrame(PageSource source, TimeSpan loop)
-    {
-        using var reader = source.OpenAnimation();
-        Bitmap? first = null;
-        foreach (var time in reader.ProbeTimes(loop))
-        {
-            if (reader.FrameAt(time) is not { } frame)
-            {
-                continue;
-            }
-
-            if (!EmptyFrame.IsEmpty(frame))
-            {
-                first?.Dispose();
-                return frame;
-            }
-
-            if (first is null)
-            {
-                first = frame;
-            }
-            else
-            {
-                frame.Dispose();
-            }
-        }
-
-        return first ?? reader.FrameAt(TimeSpan.Zero) ?? throw new InvalidOperationException("A source has no frame to show.");
     }
 
     private static void TryDelete(string path)

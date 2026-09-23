@@ -538,8 +538,8 @@ internal sealed class MainForm : Form
     private bool ExportsVideo => HasAnimation && !_forceImage.Checked;
 
     /// <summary>
-    /// Renders the still: the images as shown, or, for animated content, the first frame of each that
-    /// is not empty — off the UI thread, the grid locked meanwhile. Returns null on failure.
+    /// Renders the still: the images as shown, or, for animated content, the page each one's slider
+    /// selects, at full size — off the UI thread, the grid locked meanwhile. Returns null on failure.
     /// </summary>
     private async Task<Bitmap?> RenderStillAsync()
     {
