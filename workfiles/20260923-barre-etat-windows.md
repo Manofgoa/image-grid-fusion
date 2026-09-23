@@ -65,9 +65,11 @@ and possibly an application icon (`.ico`) in the project.
 ## Tray Icon
 
 - `NotifyIcon`, visible for the whole life of the process, tooltip `Image Grid Fusion`.
-- Context menu: **Open**, separator, **Quit**.
-- Click to reopen: see Open Questions (single vs double click).
-- Icon: see Open Questions.
+- Context menu (right click): **Open**, separator, **Quit**.
+- A **single left click** reopens the window.
+- Icon: a **dedicated `.ico`** added to the project — a simple 2×2 grid glyph, multi-size
+  (16, 24, 32, 48, 256 px) — set as the project's `ApplicationIcon`. The same icon is used by the
+  exe, the window (`MainForm.Icon`) and the tray.
 
 ## Start with Windows
 
@@ -77,9 +79,10 @@ and possibly an application icon (`.ico`) in the project.
 - **The registry is the only source of truth**: no settings file. The control reads the value's
   presence when the window is built, and writes / deletes the value when toggled.
 - **Off by default**: nothing is registered until the user ticks the setting.
-- The setting lives **in the main window** (user decision) — exact control and placement: see
-  Open Questions.
-- A registry write failure shows an error in the status line and reverts the control.
+- The setting lives **in the main window**: a small **⚙ button** in the bottom bar, left of
+  **Copy**, opens a menu holding a checkable **Start with Windows** item. The menu is the home for
+  future settings.
+- A registry write failure shows an error in the status line and reverts the item.
 - Known limit: disabling the app in Windows *Settings → Apps → Startup* (the `StartupApproved`
   key) is not reflected by the control — it only reflects the `Run` value.
 
@@ -104,13 +107,14 @@ manually:
 
 ## Open Questions
 
-- [ ] What form does the "Start with Windows" setting take in the window — a checkbox in the
-  bottom bar (e.g. left of **Copy**), or something else (a small ⚙ menu button)?
-- [ ] Which icon for the tray (and, as a side effect, the window and the exe)? The repo has none:
+- [x] ~~What form does the "Start with Windows" setting take in the window — a checkbox in the
+  bottom bar (e.g. left of **Copy**), or something else (a small ⚙ menu button)?~~ → ⚙ button in
+  the bottom bar, opening a menu with a checkable item
+- [x] ~~Which icon for the tray (and, as a side effect, the window and the exe)? The repo has none:
   create a dedicated `.ico` (e.g. a 2×2 grid glyph) set as `ApplicationIcon`, or use the default
-  WinForms / system application icon?
-- [ ] Reopen from the tray on a **single** click, or on a **double** click (Windows convention for
-  many apps)?
+  WinForms / system application icon?~~ → dedicated `.ico`, 2×2 grid glyph, set as `ApplicationIcon`
+- [x] ~~Reopen from the tray on a **single** click, or on a **double** click (Windows convention for
+  many apps)?~~ → single left click
 - [ ] On the first close to tray, show a one-time balloon notification ("Image Grid Fusion is
   still running in the notification area"), or nothing?
 - [ ] If the exe was moved after being registered, the `Run` value points to the old path: show
@@ -141,6 +145,18 @@ Proposed: an `ApplicationContext` owning the tray icon and the form; user close 
 hide; real exit from the tray **Quit** or a system-initiated close; registration in the per-user
 `Run` key, with the registry as the only source of truth. Six questions left open.
 
+### Iteration 2 — 2026-09-23
+
+User answers to Q&A #5–#7:
+
+- Setting: a ⚙ button in the bottom bar, left of **Copy**, opening a menu with a checkable
+  **Start with Windows** item (room for future settings).
+- Icon: a dedicated multi-size `.ico` (2×2 grid glyph), set as `ApplicationIcon` and reused for the
+  window and the tray.
+- Tray: a single left click reopens the window; right click opens the menu.
+
+Three questions remain open (balloon, moved exe, tests).
+
 ---
 
 ## Implementation Log
@@ -166,9 +182,9 @@ Questions asked by the agent during design, with user responses.
 | 2 | When launched by Windows at session start: hidden (tray only) or window shown? | Hidden, tray icon only | 2026-09-23 |
 | 3 | Relaunching the exe while an instance runs: single instance (reopen it) or several instances? | Several instances allowed | 2026-09-23 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward | 2026-09-23 |
-| 5 | Form and placement of the "Start with Windows" setting in the window? | | |
-| 6 | Tray icon: dedicated `.ico` or default icon? | | |
-| 7 | Reopen from the tray on single or double click? | | |
+| 5 | Form and placement of the "Start with Windows" setting in the window? | ⚙ button with a menu (first ask dismissed, re-asked) | 2026-09-23 |
+| 6 | Tray icon: dedicated `.ico` or default icon? | Dedicated `.ico` | 2026-09-23 |
+| 7 | Reopen from the tray on single or double click? | Single click | 2026-09-23 |
 | 8 | One-time balloon on the first close to tray? | | |
 | 9 | Registered path no longer matching the current exe: ticked, unticked, or rewritten? | | |
 | 10 | Unit tests: stay without a test project? | | |
