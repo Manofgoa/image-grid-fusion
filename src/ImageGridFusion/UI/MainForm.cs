@@ -11,7 +11,7 @@ internal sealed class MainForm : Form
     private readonly GridPreview _preview = new() { Dock = DockStyle.Fill, AllowDrop = true };
     private readonly Button _copyButton = new() { Text = "Copy", AutoSize = true };
     private readonly Button _saveButton = new() { Text = "Save…", AutoSize = true };
-    private readonly Label _status = new() { Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
+    private readonly Label _status = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly System.Windows.Forms.Timer _statusTimer = new();
 
     public MainForm(string[] args)
@@ -42,6 +42,7 @@ internal sealed class MainForm : Form
         };
         bottom.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         bottom.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        bottom.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         bottom.Controls.Add(_status, 0, 0);
         bottom.Controls.Add(buttons, 1, 0);
 
