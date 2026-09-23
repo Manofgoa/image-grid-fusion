@@ -8,7 +8,7 @@ namespace ImageGridFusion.UI;
 
 internal sealed class MainForm : Form
 {
-    private const int ThresholdStepPercent = 5;
+    private const int ThresholdStepPercent = 1;
     private const int MaxThresholdPercent = 50;
 
     private readonly string[] _startupFiles;
