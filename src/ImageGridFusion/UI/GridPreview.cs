@@ -803,7 +803,7 @@ internal sealed class GridPreview : Control
         var cell = _layout.Cells(canvas.Size)[index];
         using (var g = Graphics.FromImage(_cache))
         {
-            Compositor.DrawCell(g, new Frame(image.Bitmap, image.Dominant, image.Look), cell);
+            Compositor.DrawCell(g, new Frame(image.Bitmap, image.Dominant, image.Look), cell, _cropThreshold);
         }
 
         cell.Offset(canvas.Location);
@@ -1078,7 +1078,7 @@ internal sealed class GridPreview : Control
         var image = _images[index];
         var look = image.Look;
         var size = look.Oriented(image.Bitmap.Size);
-        var fit = FitCalculator.Compute(cells[index], size, FitCalculator.DefaultCropThreshold, look.Zoom, look.Focus);
+        var fit = FitCalculator.Compute(cells[index], size, _cropThreshold, look.Zoom, look.Focus);
         double scale = fit.Destination.Width / fit.Source.Width;
         var focus = new PointF(
             (float)((fit.Source.X + fit.Source.Width / 2 - delta.Width / scale) / size.Width),
