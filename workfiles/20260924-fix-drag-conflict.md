@@ -48,7 +48,9 @@ the drag starts, not by the zoom state:
   × (`150` alpha, `230` when hot), 24 px logical.
 - **Visibility**: only on the hovered cell, under the same conditions as the × and the toolbar
   (not while dragging, not while the grid is locked by an export).
-- **Placement**: top-right of the cell — *see Open Questions* (the × already sits there).
+- **Placement**: top-right of the cell, just **below the ×** — same right edge, one button gap
+  under it. The toolbar keeps all its slots (its rows stay left of the ×), so the column below the
+  × is always free.
 - **Hover**: `SizeAll` cursor over the handle (it announces a move, not a click), disc turns hot.
 - **Press on the handle**: selects the cell (as a press on the image does today) and arms the swap;
   the swap starts once the pointer leaves the system drag rectangle, exactly as today (ghost,
@@ -61,12 +63,13 @@ the drag starts, not by the zoom state:
   or the handle **always** arms a pan — whatever the zoom.
 - At 100 % or below, the pan does nothing (the fitting rule keeps the image centered): the gesture
   never turns into a swap. The press still selects the cell.
-- `Ctrl` + drag — *see Open Questions*.
+- `Ctrl` + drag is **removed**: `Ctrl` no longer changes the gesture, the handle is the only way to
+  swap.
 
 ## Documentation
 
 `README.md`, the two gesture lines under the cell actions: the swap starts from the handle, a drag
-elsewhere moves a zoomed-in image within its cell.
+elsewhere moves a zoomed-in image within its cell; the `Ctrl` + drag mention goes away.
 
 ---
 
@@ -83,11 +86,11 @@ gesture routing and painting inside `GridPreview` (a WinForms control). Validate
 
 ## Open Questions
 
-- [ ] The × already takes the top-right corner. Where does the handle go: just **below** the ×
+- [x] ~~The × already takes the top-right corner. Where does the handle go: just **below** the ×
   (the toolbar keeps all its slots), just **left** of the × (the toolbar loses one slot per row
-  and wraps sooner), or **in the corner**, the × moving one slot left?
-- [ ] `Ctrl` + drag currently swaps a zoomed-in image. Remove it (the handle is the only way to
-  swap), or keep it as a shortcut?
+  and wraps sooner), or **in the corner**, the × moving one slot left?~~ → Just below the ×
+- [x] ~~`Ctrl` + drag currently swaps a zoomed-in image. Remove it (the handle is the only way to
+  swap), or keep it as a shortcut?~~ → Removed; the handle is the only way to swap
 
 ---
 
@@ -103,6 +106,11 @@ in the order the requests were made.
 Initial design from the request and the scoping answers: a move handle (✥), shown on hover only,
 is the sole way to start a swap; a drag anywhere else always pans, and simply does nothing when the
 image is not zoomed in. Placement next to the existing × and the fate of `Ctrl` + drag left open.
+
+### Iteration 2 — 2026-09-24
+
+Open questions answered: the handle sits just below the ×, and `Ctrl` + drag is removed — the
+handle is the only way to swap. No open question left.
 
 ---
 
@@ -129,8 +137,8 @@ Questions asked by the agent during design, with user responses.
 | 2 | Which glyph for the icon? | Four-arrow move symbol ✥ | 2026-09-24 |
 | 3 | Outside the icon, is drag & drop entirely impossible? | Yes, only from the icon — elsewhere a drag always pans, even with nothing to move | 2026-09-24 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward — single exploration pass | 2026-09-24 |
-| 5 | Where does the handle go, given the × already takes the top-right corner? | | |
-| 6 | `Ctrl` + drag: remove it or keep it as a swap shortcut? | | |
+| 5 | Where does the handle go, given the × already takes the top-right corner? | Just below the × | 2026-09-24 |
+| 6 | `Ctrl` + drag: remove it or keep it as a swap shortcut? | Remove it | 2026-09-24 |
 
 ---
 
