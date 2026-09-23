@@ -43,15 +43,18 @@ therefore maps to that empty state, which **does** get the outline (Q&A #4).
 
 ### Look
 
-- Contour of the hovered cell, **inset** inside the cell (`PenAlignment.Inset`, like the
-  selection), so two adjacent cells never share a line.
-- **1 logical px** (`LogicalToDeviceUnits(1)`), **white at ~50 % alpha**
-  (`Color.FromArgb(128, 255, 255, 255)`) (Q&A #6).
+- Contour of the hovered cell, **inside** the cell, so two adjacent cells never share a line.
+  Painted by `PaintHoverOutline` as **four filled bands** (top, bottom, then the two sides between
+  them), not with a pen: crisp at 1 px and evenly translucent, corners included.
+- **1 logical px** (`HoverOutlineWidth`, through `LogicalToDeviceUnits`), **white at 50 % alpha**
+  (`HoverOutlineColor = Color.FromArgb(128, Color.White)`) (Q&A #6).
 - On the **selected cell**, the hover outline is drawn **just inside** the selection border
   (rectangle deflated by the selection thickness), so both stay visible instead of the thicker
   one hiding the other (Q&A #6).
-- On the **empty canvas**, the outline is drawn just inside its dashed border, so it does not
-  merge with the dashes.
+- On the **empty canvas**, the outline is drawn just inside its dashed border
+  (`EmptyBorderWidth`), so it does not merge with the dashes. Both border widths
+  (`SelectionWidth`, `EmptyBorderWidth`) are now constants shared by their painting and the
+  outline inset.
 
 ### When It Shows
 
@@ -64,8 +67,18 @@ therefore maps to that empty state, which **does** get the outline (Q&A #4).
 | Empty state (0 images), mouse move or Explorer file drag | The **whole canvas**, while the cursor is on it (Q&A #4, #5) |
 | Cursor leaves the control, cell removed | None (already reset today) |
 
-The empty canvas has no cell index, so `GridPreview` tracks "cursor on the empty canvas" next to
-`_hovered`, both for mouse moves and for `ShowDropTarget`.
+The empty canvas has no cell index, so `GridPreview` tracks it apart:
+
+- **Mouse moves**: `_hoveringCanvas`, set by `UpdateHover` and reset by `OnMouseLeave`, next to
+  `_hovered`.
+- **Explorer drag**: `ShowDropTarget` also stores `_externalDrag` (a drag is over the control) and
+  `_externalHover`, the surface under the cursor (`SurfaceAt`: its cell, else the empty canvas,
+  else none). It repaints when either the drop target or that surface changes — they differ when
+  the cursor enters the cell the excess rule already highlights, or crosses the empty canvas's
+  edge.
+- `HoverOutlineBounds` picks, in this order: the Explorer drag surface, the empty canvas under
+  the mouse, the swap target during a drag, the hovered cell — then deflates it by the border
+  already drawn there.
 
 ### Paint Order
 
@@ -127,6 +140,25 @@ Go given ("Lance les dévs", Q&A #9), taken as **code, unit tests and documentat
 update was agreed in design (Q&A #7) and unit tests do not apply. Branch: **stays on `main`**, the
 user's standing choice for this repository. Scope frozen on the design sections as of Iteration 2.
 
+### Iteration 4 — 2026-09-23 — 🧭 Implementation choices
+
+- **Four filled bands instead of a pen**: GDI+ draws a 1 px pen centred on the rectangle edge
+  even with `PenAlignment.Inset`, which would put half of the line outside the cell and blur it
+  under anti-aliasing. Filling four non-overlapping bands keeps the outline crisp, inside the
+  cell, and evenly translucent at the corners.
+- **Separate Explorer-drag surface** (`_externalDrag`, `_externalHover`, `SurfaceAt`) rather than
+  reusing `_externalTarget`: the drop target falls back to the whole canvas or the excess-rule
+  cell when the cursor is not on a cell, while the outline must only mark what is under it.
+- **Border widths as constants** (`SelectionWidth`, `EmptyBorderWidth`): the outline inset reads
+  the same values the borders are painted with.
+- **Concurrent work**: another session committed the layout variants on `main` during this run
+  (`b8ee8ec`, `966a36a`). `GridPreview` now takes its cells from the active layout; the outline
+  follows them unchanged. `SetLayout` resets the hover, so after a layout change the outline
+  reappears on the next mouse move.
+- **Not checked visually**: the change was built (0 warning, 0 error), not run.
+
+No project rule broken.
+
 ---
 
 ## Implementation Log
@@ -136,9 +168,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 3 | 2026-09-23 | `d50aeb6` — `GridPreview.cs` |
 | Unit tests | — | — | Not applicable: no test project, painting only |
-| README | | | |
+| README | 3 | 2026-09-23 | `c80ebc8` — hover line mentions the outline |
 
 ---
 
