@@ -323,7 +323,7 @@ says so rather than staying blank.
 | Code | 3 | 2026-09-24 | Animation model, PDF / text / GIF animation, Media Foundation reader and encoder, grid export, live preview with sound, Save / Copy MP4 with Force as image, progress, Cancel and lock |
 | Unit tests | 2 | 2026-09-24 | Declined: the solution stays test-free (throwaway scratchpad harnesses used instead, see Iteration 4) |
 | README | 3 | 2026-09-24 | *Animated content* section, Features, Previews (animated GIF), Output |
-| Manual validation | | | Pending: to test in the app |
+| Manual validation | 4 | 2026-09-24 | Tested by the user in the app built from `main` (`7d4a782`), closed without error; finalized at the user's request |
 
 ---
 
