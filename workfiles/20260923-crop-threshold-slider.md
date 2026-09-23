@@ -50,6 +50,9 @@ Relevant components:
   - the **preview** — setting `CropThreshold` drops the cached render and repaints;
   - the **export** — `Compositor.Render(_preview.Images, _preview.ActiveLayout!, _preview.CropThreshold)` for copy and save.
 - Preview and export always use the same value — export reads it from the preview — what you see is what you copy.
+  This covers every render path: the preview (whole grid, a redrawn animation frame, panning a zoomed image), the
+  still copy / save, and `GridExport` (video, and still of animated content), whose job captures the threshold.
+- The slider is disabled while an export runs, like the layout strip.
 - The output canvas size (`CanvasSizer`) depends on the threshold, so the exported resolution may change with it;
   this is expected and needs no extra handling.
 
@@ -158,6 +161,20 @@ The README step, left out by the code-only go, is now requested (Q&A #12): the c
 The branch is then to be merged into `main`, only once `main` has no uncommitted changes (Q&A #13).
 **Merge not done** on 2026-09-24: `main` (at `95dd898`) still had uncommitted changes in `GridPreview.cs` and
 `MainForm.cs`, the two files this branch touches.
+
+### Iteration 7 — 2026-09-24 — ⚙️ Post-implementation — Merged into main, threshold on main's new render paths
+
+The user asked to merge into `main` once it was clean. Merged as `1961b94` (conflict in `MainForm.cs` only).
+`main` had grown render paths the branch did not know, all still on the default 15% — which broke "preview and
+export always use the same value":
+
+- `MainForm.RenderStillAsync` (still copy / save) — fixed in the merge itself, where the branch's Copy / Save call went;
+- `GridExport` (video export, and still export of animated content) — the job now captures the threshold with the layout;
+- `GridPreview.RedrawCell` (a new animation frame redrawn into the cached preview) and `GridPreview.PanBy`
+  (panning a zoomed-in image works from where it is shown) — both now use `CropThreshold`.
+
+The slider is also disabled while an export runs, like the layout strip: the job has captured the threshold, so
+moving it would make the preview differ from what is being exported.
 
 ---
 
