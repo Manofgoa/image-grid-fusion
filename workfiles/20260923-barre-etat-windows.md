@@ -58,8 +58,10 @@ and possibly an application icon (`.ico`) in the project.
   for real, so a logoff or shutdown is never blocked.
 - **Reopen**: clicking the tray icon, or its menu's **Open**, shows the window, restores it if
   minimized, and brings it to the front.
-- **Quit** (tray menu): disposes the tray icon (so no ghost icon remains in the tray) and exits
-  the process.
+- **Quit** (tray icon's right-click menu) **closes the app completely**: it disposes the tray icon
+  (so no ghost icon remains in the tray), closes the form for real and ends the process. It is the
+  only user-facing way to exit.
+- No notification when the window is hidden: it disappears silently.
 - The minimize button keeps its default behaviour (window minimized to the taskbar).
 
 ## Tray Icon
@@ -83,6 +85,10 @@ and possibly an application icon (`.ico`) in the project.
   **Copy**, opens a menu holding a checkable **Start with Windows** item. The menu is the home for
   future settings.
 - A registry write failure shows an error in the status line and reverts the item.
+- **Moved exe**: at every launch, if the `Run` value exists but differs from the current
+  `"<exe path>" --tray`, it is silently rewritten with the current path; the item stays ticked.
+  Consequence: launching another copy of the exe (e.g. a `dotnet run` build next to the published
+  exe) moves the registration to that copy.
 - Known limit: disabling the app in Windows *Settings → Apps → Startup* (the `StartupApproved`
   key) is not reflected by the control — it only reflects the `Run` value.
 
@@ -91,14 +97,15 @@ and possibly an application icon (`.ico`) in the project.
 ## Test Impact
 
 The solution has no test project (declined in v1, Q&A #12 of `20260923-application-v1.md`, and
-in every workfile since). Pending confirmation (Open Questions), the behaviours are checked
-manually:
+in every workfile since), and the user chose to stay without one (Q&A #10): the behaviours are
+checked manually.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
 | **×** / `Alt+F4` hides the window, the process and the tray icon stay | — (manual) | — |
 | Tray click / **Open** restores the window with its grid unchanged | — (manual) | — |
-| Tray **Quit** exits, no icon left in the tray | — (manual) | — |
+| Tray right click → **Quit** ends the process, no icon left in the tray | — (manual) | — |
+| Registered path differing from the current exe → rewritten at launch | — (manual, `regedit`) | — |
 | Setting on → `Run` value written with `--tray`; off → value deleted | — (manual, `regedit`) | — |
 | Launch with `--tray` → no window, tray icon only; `--tray` not loaded as a file | — (manual) | — |
 | Two instances → two tray icons, independent | — (manual) | — |
@@ -115,13 +122,14 @@ manually:
   WinForms / system application icon?~~ → dedicated `.ico`, 2×2 grid glyph, set as `ApplicationIcon`
 - [x] ~~Reopen from the tray on a **single** click, or on a **double** click (Windows convention for
   many apps)?~~ → single left click
-- [ ] On the first close to tray, show a one-time balloon notification ("Image Grid Fusion is
-  still running in the notification area"), or nothing?
-- [ ] If the exe was moved after being registered, the `Run` value points to the old path: show
+- [x] ~~On the first close to tray, show a one-time balloon notification ("Image Grid Fusion is
+  still running in the notification area"), or nothing?~~ → nothing
+- [x] ~~If the exe was moved after being registered, the `Run` value points to the old path: show
   the setting as ticked anyway (value present), or as unticked (value present but not pointing to
-  the current exe), or silently rewrite it to the current path on launch?
-- [ ] Unit tests: stay without a test project (manual checks above), as in every previous
-  workfile?
+  the current exe), or silently rewrite it to the current path on launch?~~ → silently rewritten
+  at launch, item stays ticked
+- [x] ~~Unit tests: stay without a test project (manual checks above), as in every previous
+  workfile?~~ → yes, manual checks only
 
 ---
 
@@ -157,6 +165,22 @@ User answers to Q&A #5–#7:
 
 Three questions remain open (balloon, moved exe, tests).
 
+### Iteration 3 — 2026-09-23
+
+User answers to Q&A #8–#10:
+
+- No notification when the window is hidden to the tray.
+- A `Run` value pointing to another exe path is silently rewritten with the current path at
+  launch; the item stays ticked (noted consequence: another copy of the exe takes over the
+  registration).
+- No test project: manual checks only.
+
+### Iteration 4 — 2026-09-23
+
+User request: *right click on the notification icon must allow closing the app completely*.
+Already covered by the tray menu's **Quit**; the design now states explicitly that it is reached
+by a right click and ends the process, and a manual check pins it. No open question left.
+
 ---
 
 ## Implementation Log
@@ -185,9 +209,9 @@ Questions asked by the agent during design, with user responses.
 | 5 | Form and placement of the "Start with Windows" setting in the window? | ⚙ button with a menu (first ask dismissed, re-asked) | 2026-09-23 |
 | 6 | Tray icon: dedicated `.ico` or default icon? | Dedicated `.ico` | 2026-09-23 |
 | 7 | Reopen from the tray on single or double click? | Single click | 2026-09-23 |
-| 8 | One-time balloon on the first close to tray? | | |
-| 9 | Registered path no longer matching the current exe: ticked, unticked, or rewritten? | | |
-| 10 | Unit tests: stay without a test project? | | |
+| 8 | One-time balloon on the first close to tray? | No, nothing | 2026-09-23 |
+| 9 | Registered path no longer matching the current exe: ticked, unticked, or rewritten? | Rewritten at launch | 2026-09-23 |
+| 10 | Unit tests: stay without a test project? | Yes, manual checks | 2026-09-23 |
 
 ---
 
