@@ -12,6 +12,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly MainForm _form;
     private readonly ContextMenuStrip _menu = new();
     private readonly NotifyIcon _tray;
+    private bool _exited;
 
     public TrayApplicationContext(MainForm form, bool hidden)
     {
@@ -46,6 +47,14 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     protected override void ExitThreadCore()
     {
+        // Reached twice when Quit closes the window at once: FormClosed, then Quit itself.
+        if (_exited)
+        {
+            return;
+        }
+
+        _exited = true;
+
         // Disposing removes the icon from the tray at once, instead of leaving a ghost until hovered.
         _tray.Dispose();
         _menu.Dispose();
@@ -65,11 +74,16 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private void Quit()
     {
-        _form.FormClosed -= OnFormClosed;
         _form.CloseForGood();
-        ExitThread();
+
+        // Closed at once, or never shown (disposed without FormClosed). A running export delays the
+        // close until it has stopped: FormClosed then ends the app.
+        if (_form.IsDisposed)
+        {
+            ExitThread();
+        }
     }
 
-    /// <summary>The window closed for real: Windows is ending the session, or the Task Manager closed it.</summary>
+    /// <summary>The window closed for real: Quit, Windows ending the session, or the Task Manager.</summary>
     private void OnFormClosed(object? sender, FormClosedEventArgs e) => ExitThread();
 }
