@@ -46,11 +46,14 @@ Relevant components:
 
 ## Code
 
-- `GridPreview` gets a public `Clear()`: disposes every image, empties the list, resets selection,
-  hover and pressed state, then calls `OnImagesChanged()` **once** (a single `ImagesChanged` /
-  `LayoutChanged`, not one per image). Does nothing when the grid is already empty.
-- `MainForm` adds the button, wires `Click` to a handler that reads the image count, calls
-  `_preview.Clear()` and shows the status message; the button is enabled in `UpdateButtons()`.
+- `GridPreview` gets a public `Clear()`: disposes every image, empties the list, resets selection and
+  hover, resets the pressed / drag state through the existing `EndDrag()`, then calls
+  `OnImagesChanged()` **once** (a single `ImagesChanged` / `LayoutChanged`, not one per image). Does
+  nothing when the grid is already empty.
+- `MainForm` adds `_clearButton` in column 0 of the bottom `TableLayoutPanel` (now 3 columns:
+  AutoSize, 100 %, AutoSize), wires `Click` to `ClearAll()` — reads the image count, returns on an empty
+  grid, calls `_preview.Clear()` and shows the status message — and enables the button in
+  `UpdateButtons()`.
 
 ---
 
@@ -99,6 +102,20 @@ Go given (after an earlier "No"): implement the design as it stands, code and RE
 dedicated git worktree on `feature/delete-all-images`, merged back into `main` and removed at the end,
 at the user's request (other sessions are working in the `main` checkout meanwhile).
 
+### Iteration 4 — 2026-09-24 — 🧭 Implementation choices
+
+- **Go scope**: the go ("GO implémente") named none of the three gate options; read as *code and
+  documentation*, since the Implementation Log lists the README step. Unit tests: not applicable.
+- **Drag state**: `Clear()` resets the pressed / drag state by calling the existing `EndDrag()` rather
+  than resetting `_pressed` by hand (a click on the button cannot happen mid-drag, so it is a safety net).
+- **Empty-grid guard**: `MainForm.ClearAll()` returns on an empty grid, like `CopyToClipboard()` and
+  `Save()`, although the button is disabled then.
+- **Branch**: `main` moved during the run (drop zone and file preview commits from other sessions); the
+  branch was rebased onto it without conflict, rebuilt, then fast-forwarded into `main`. The worktree
+  (in the session scratchpad) was removed and the branch deleted.
+- No project rule broken: the standing "work on `main` only" choice yields to the user's explicit request
+  for a worktree.
+
 ---
 
 ## Implementation Log
@@ -108,9 +125,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable: no test project, UI-only change |
-| README | | | |
+| Code | 3 | 2026-09-24 | `GridPreview.Clear()`, **Clear all** button in `MainForm`; build clean |
+| Unit tests | 3 | 2026-09-24 | Not applicable: no test project, UI-only change |
+| README | 3 | 2026-09-24 | *Features* (Clear all) and *Output* (status line) |
 
 ---
 
@@ -130,4 +147,4 @@ Questions asked by the agent during design, with user responses.
 
 ---
 
-*Last updated: 2026-09-23*
+*Last updated: 2026-09-24*
