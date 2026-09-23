@@ -1,4 +1,5 @@
 using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
 using ImageGridFusion.Composition;
 using ImageGridFusion.Imaging;
 
@@ -10,6 +11,8 @@ internal sealed class MainForm : Form
     private readonly GridPreview _preview = new() { Dock = DockStyle.Fill, AllowDrop = true };
     private readonly Button _copyButton = new() { Text = "Copy", AutoSize = true };
     private readonly Button _saveButton = new() { Text = "Save…", AutoSize = true };
+    private readonly Label _status = new() { Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
+    private readonly System.Windows.Forms.Timer _statusTimer = new();
 
     public MainForm(string[] args)
     {
@@ -24,21 +27,34 @@ internal sealed class MainForm : Form
         MinimumSize = new Size(480, 320);
         AllowDrop = true;
 
-        var buttons = new FlowLayoutPanel
+        var buttons = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = Padding.Empty };
+        buttons.Controls.Add(_copyButton);
+        buttons.Controls.Add(_saveButton);
+
+        // Status line on the left, buttons on the right.
+        var bottom = new TableLayoutPanel
         {
             Dock = DockStyle.Bottom,
             AutoSize = true,
-            FlowDirection = FlowDirection.RightToLeft,
+            ColumnCount = 2,
+            RowCount = 1,
             Padding = new Padding(8),
         };
-        buttons.Controls.Add(_saveButton);
-        buttons.Controls.Add(_copyButton);
+        bottom.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        bottom.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        bottom.Controls.Add(_status, 0, 0);
+        bottom.Controls.Add(buttons, 1, 0);
 
         // The fill control goes first so the bottom panel is docked before it.
         Controls.Add(_preview);
-        Controls.Add(buttons);
+        Controls.Add(bottom);
         ResumeLayout(performLayout: true);
 
+        _statusTimer.Tick += (_, _) =>
+        {
+            _statusTimer.Stop();
+            _status.Text = string.Empty;
+        };
         _copyButton.Click += (_, _) => CopyToClipboard();
         _saveButton.Click += (_, _) => Save();
         _preview.ImagesChanged += (_, _) => UpdateButtons();
@@ -49,6 +65,16 @@ internal sealed class MainForm : Form
         _preview.DragLeave += (_, _) => _preview.ShowDropTarget(-1);
         _preview.DragDrop += OnDragDrop;
         UpdateButtons();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _statusTimer.Dispose();
+        }
+
+        base.Dispose(disposing);
     }
 
     protected override async void OnShown(EventArgs e)
@@ -114,18 +140,36 @@ internal sealed class MainForm : Form
 
     private async void Paste()
     {
-        if (Clipboard.ContainsFileDropList())
+        string[]? files = null;
+        try
         {
-            await AddFilesAsync(Clipboard.GetFileDropList().Cast<string>().ToArray());
-        }
-        else if (Clipboard.ContainsImage())
-        {
-            using var image = Clipboard.GetImage();
-            if (image is not null)
+            if (Clipboard.ContainsFileDropList())
             {
-                _preview.Add([ImageLoader.FromImage(image)]);
+                files = Clipboard.GetFileDropList().Cast<string>().ToArray();
+            }
+            else if (Clipboard.GetImage() is { } image)
+            {
+                using (image)
+                {
+                    _preview.Add([ImageLoader.FromImage(image)]);
+                }
+
+                return;
             }
         }
+        catch (ExternalException ex)
+        {
+            ShowStatus($"Paste failed: {ex.Message}", error: true);
+            return;
+        }
+
+        if (files is null)
+        {
+            ShowStatus("Nothing to paste: the clipboard holds no image.");
+            return;
+        }
+
+        await AddFilesAsync(files);
     }
 
     /// <summary>
@@ -135,9 +179,10 @@ internal sealed class MainForm : Form
     private async Task AddFilesAsync(string[] paths, int targetCell = -1)
     {
         int wanted = (targetCell >= 0 ? 1 : 0) + _preview.FreeSlots + 1;
-        var images = await Task.Run(() =>
+        var (images, skipped, notLoaded) = await Task.Run(() =>
         {
             var loaded = new List<SourceImage>();
+            int unreadable = 0, attempted = 0;
             foreach (var path in paths)
             {
                 if (loaded.Count == wanted)
@@ -145,15 +190,36 @@ internal sealed class MainForm : Form
                     break;
                 }
 
+                attempted++;
                 if (ImageLoader.TryLoadFile(path) is { } image)
                 {
                     loaded.Add(image);
                 }
+                else
+                {
+                    unreadable++;
+                }
             }
 
-            return loaded;
+            return (loaded, unreadable, paths.Length - attempted);
         });
-        _preview.Add(images, targetCell);
+        int ignored = notLoaded + _preview.Add(images, targetCell);
+
+        var messages = new List<string>();
+        if (skipped > 0)
+        {
+            messages.Add($"{Files(skipped)} skipped: not a readable image");
+        }
+
+        if (ignored > 0)
+        {
+            messages.Add($"{Files(ignored)} ignored: the grid holds {GridLayout.MaxImages} images at most");
+        }
+
+        if (messages.Count > 0)
+        {
+            ShowStatus(string.Join(" · ", messages) + ".");
+        }
     }
 
     private void CopyToClipboard()
@@ -164,15 +230,23 @@ internal sealed class MainForm : Form
         }
 
         Cursor.Current = Cursors.WaitCursor;
-        using var result = Compositor.Render(_preview.Images);
-        using var png = new MemoryStream();
-        result.Save(png, ImageFormat.Png);
+        try
+        {
+            using var result = Compositor.Render(_preview.Images);
+            using var png = new MemoryStream();
+            result.Save(png, ImageFormat.Png);
 
-        // Standard bitmap for most apps, plus the PNG format that browsers paste more reliably.
-        var data = new DataObject();
-        data.SetImage(result);
-        data.SetData("PNG", png);
-        Clipboard.SetDataObject(data, copy: true);
+            // Standard bitmap for most apps, plus the PNG format that browsers paste more reliably.
+            var data = new DataObject();
+            data.SetImage(result);
+            data.SetData("PNG", png);
+            Clipboard.SetDataObject(data, copy: true);
+            ShowStatus($"Copied to the clipboard ({result.Width} × {result.Height}).");
+        }
+        catch (ExternalException ex)
+        {
+            ShowStatus($"Copy failed: {ex.Message}", error: true);
+        }
     }
 
     private void Save()
@@ -195,8 +269,16 @@ internal sealed class MainForm : Form
         }
 
         Cursor.Current = Cursors.WaitCursor;
-        using var result = Compositor.Render(_preview.Images);
-        result.Save(dialog.FileName, ImageFormat.Png);
+        try
+        {
+            using var result = Compositor.Render(_preview.Images);
+            result.Save(dialog.FileName, ImageFormat.Png);
+            ShowStatus($"Saved {Path.GetFileName(dialog.FileName)} ({result.Width} × {result.Height}).");
+        }
+        catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException)
+        {
+            ShowStatus($"Save failed: {ex.Message}", error: true);
+        }
     }
 
     /// <summary>Folder of the first image that came from a file, else the user's Pictures folder.</summary>
@@ -212,4 +294,16 @@ internal sealed class MainForm : Form
         _copyButton.Enabled = any;
         _saveButton.Enabled = any;
     }
+
+    /// <summary>Shows a message for a few seconds; errors in red, and a little longer.</summary>
+    private void ShowStatus(string message, bool error = false)
+    {
+        _status.ForeColor = error ? Color.Firebrick : SystemColors.ControlText;
+        _status.Text = message;
+        _statusTimer.Stop();
+        _statusTimer.Interval = error ? 8000 : 4000;
+        _statusTimer.Start();
+    }
+
+    private static string Files(int count) => count == 1 ? "1 file" : $"{count} files";
 }
