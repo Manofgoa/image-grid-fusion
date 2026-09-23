@@ -579,11 +579,13 @@ internal sealed class MainForm : Form
     /// <summary>
     /// Writes the MP4 video to <paramref name="path"/> off the UI thread, with its progress and a
     /// Cancel button in the status line, the grid locked meanwhile: the contents playing, or the
-    /// <paramref name="carousel"/> of the images. Returns null when cancelled or failing.
+    /// <paramref name="carousel"/> of the images, its contents playing unless forced to images.
+    /// Returns null when cancelled or failing.
     /// </summary>
     private async Task<GridExport.Result?> ExportVideoAsync(string path, bool carousel = false)
     {
         using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CropThreshold);
+        bool playContents = !_forceImage.Checked;
         var cancellation = BeginExport("Exporting the video… 0 %", cancellable: true);
         var progress = new Progress<double>(done =>
         {
@@ -596,7 +598,7 @@ internal sealed class MainForm : Form
         try
         {
             return await Task.Run(() => carousel
-                ? CarouselExport.RenderVideo(job, path, progress, cancellation)
+                ? CarouselExport.RenderVideo(job, playContents, path, progress, cancellation)
                 : GridExport.RenderVideo(job, path, progress, cancellation));
         }
         catch (OperationCanceledException)
