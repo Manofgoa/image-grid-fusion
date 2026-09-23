@@ -151,6 +151,7 @@ says so rather than staying blank.
 | Code | 3, 5 | 2026-09-24 | `GridPreview.Clear()`, **Clear all** button in `MainForm`; layout strip always shown; build clean |
 | Unit tests | 3 | 2026-09-24 | Not applicable: no test project, UI-only change |
 | README | 3, 5 | 2026-09-24 | *Features* (Clear all), *Output* (status line), *Layouts* (strip always shown) |
+| Manual validation | 5 | 2026-09-24 | Validated by the user in the running app ("feature validée") |
 
 ---
 
