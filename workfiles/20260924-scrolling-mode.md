@@ -103,11 +103,17 @@ Agreed: the rotation can be exported as a video file.
   The live preview is not affected: it keeps fitting the grid to the window.
 - **H.264 constraints**: even dimensions (rounded down, as the animated export does); the canvas'
   4096 px maximum stays within what the Windows H.264 encoder accepts.
-- Cells holding a video, a GIF, a PDF or a text show their **current page, frozen** — the page their
-  slider selects, rendered at full size, as *Force as image* does. The source video does not play
-  inside the exported video, so the carousel video is **silent**.
-- **Length**: exactly **one full loop** — N seconds for N images, starting from the user's own
-  arrangement; replayed in a loop, it has no visible seam.
+- **Animated contents** (video, GIF, PDF of several pages, long text):
+  - *Force as image* unchecked: they **play** while they move, from their start, as in the
+    animated-content export — the shorter ones starting over, the sound of the animated export
+    (image 1's, else the first video with sound) carried by the video. The canvas and the band
+    colors come from their first frames.
+  - *Force as image* checked: each shows its **current page, frozen** — the page its slider
+    selects, rendered at full size. The video is **silent**.
+- **Length**: a whole number of **full loops** — N seconds each for N images, starting from the
+  user's own arrangement, so replayed in a loop it has no visible seam. One loop when nothing plays;
+  when contents play, as many loops as needed for the longest content to end (e.g. 3 images and a
+  7.5 s video: 3 loops, 9 s).
 - **Trigger**: while `Carrousel` is checked, **`Save…` / `Ctrl+S` writes the carousel's MP4**,
   whatever the contents and whether *Force as image* is checked (the save dialog offers `.mp4`).
   Unchecked, `Save…` behaves as without the mode (PNG, or the animated-content MP4).
@@ -212,6 +218,16 @@ animated content, MP4 export, *Force as image*); the choices below adapt the fro
 Requested by the user while testing: in carousel mode, `Copy` must export a video. It now writes
 the carousel's MP4, like `Save…`, and puts the file on the clipboard as the animated-content copy
 does. This reverses the Q&A 10 decision (Copy kept the still of the user's own arrangement).
+
+### Iteration 7 — 2026-09-24 — ⚙️ Post-implementation — Contents play in the carousel video
+
+Requested by the user while testing: with a video in the grid and *Force as image* unchecked, the
+video must play in the carousel video, and every video must reach its end, even if that takes
+several carousel loops. The carousel export now plays animated contents like the animated export
+(from their start, shorter ones starting over, with its sound), and its length is the smallest
+whole number of carousel loops covering the longest content. *Force as image* keeps the frozen,
+silent behaviour. This reverses the frozen-contents point of the design (Iteration 3) and the
+"silent" consequence of Iteration 5. Carrying the sound is taken as part of "the video plays".
 
 ---
 
