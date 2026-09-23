@@ -689,11 +689,11 @@ internal sealed class GridPreview : Control
 
     /// <summary>
     /// The window hidden in the tray stops the animations and the sound; shown again, they play from
-    /// the start. A minimized window stays visible and plays on.
+    /// the start. A minimized window stays visible and plays on. Called by the window: WinForms raises
+    /// a child's <see cref="Control.VisibleChanged"/> when its parent is shown, never when it is hidden.
     /// </summary>
-    protected override void OnVisibleChanged(EventArgs e)
+    public void WindowVisibleChanged()
     {
-        base.OnVisibleChanged(e);
         if (Visible)
         {
             SyncPlayer();
