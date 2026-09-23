@@ -9,7 +9,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <RootNamespace>ImageGridFusion</RootNamespace>
+    <ApplicationIcon>app.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <!-- Also embedded, so the window and the tray icon load it without going through the exe's resources. -->
+  <ItemGroup>
+    <EmbeddedResource Include="app.ico" LogicalName="ImageGridFusion.app.ico" />
+  </ItemGroup>
 
   <!-- dotnet publish -c Release: one small .exe, precompiled for fast startup; needs the .NET 10 Desktop Runtime. -->
   <PropertyGroup>
