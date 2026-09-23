@@ -65,6 +65,9 @@ Constraints found by exploration:
 | ◐ | Black & white | Highlighted while on |
 | ↺ | Reset: back to the image as loaded (every action off, zoom 100 %) | Shown only while at least one action is active |
 
+- **Narrow cell**: when the row does not fit left of the **×**, the buttons wrap onto a second
+  row, and the zoom slider starts below the last row, shortened accordingly.
+- No keyboard shortcut: the actions are reached from the toolbar only.
 - The **zoom slider** is a separate vertical pill along the **left** edge of the cell, below the
   button row and above the page slider (see Zoom).
 - Clicking a button or the zoom slider neither selects the cell nor starts a swap (same rule as
@@ -91,6 +94,10 @@ The actions are stored **on the image** (`SourceImage`), not on the cell:
   whatever the rotation.
 - **Black & white** is a luminance grayscale of the image. The bands and transparent pixels use
   the dominant color of the **transformed** image, so they turn grey too.
+- The actions **follow the image**: kept when it is swapped with another cell and when the
+  layout (or the image count) changes — `Focus` being normalized, the same part of the image
+  stays centered in the new cell shape. Replacing the image with another file (drop on the cell,
+  or a full grid receiving a new image) starts from a fresh image, with no action.
 - The transformed bitmap is derived from the page bitmap, so a multi-page source keeps its
   actions when its page changes (slider today, playback with *animated content*).
 
@@ -119,7 +126,7 @@ The actions are stored **on the image** (`SourceImage`), not on the cell:
 
 ## Test Impact
 
-No test project exists in the solution, and the previous workfiles declined unit tests. The
+No test project exists in the solution, and the solution stays test-free (Q&A #12). The
 behaviours below would be the ones to pin if a test project were added:
 
 | Behaviour to pin | Test file | Create / Update |
@@ -137,10 +144,10 @@ behaviours below would be the ones to pin if a test project were added:
 - [x] ~~Where does the **zoom slider** go, given the bottom is the page slider's and the top holds the buttons?~~ → Vertical pill along the left edge of the cell
 - [x] ~~What is the **zoom range**?~~ → 50 % → 400 %, zoom out allowed (dominant-color bands around)
 - [x] ~~How are the actions **reset** — a dedicated button, double-click, nothing?~~ → ↺ button in the toolbar, shown only while an action is active
-- [ ] Do the actions **follow the image** when it is swapped, and survive a layout change?
-- [ ] What happens to the toolbar in a **cell too narrow** for all the buttons (e.g. *Four columns*)?
-- [ ] Are **keyboard shortcuts** on the selected cell part of the scope?
-- [ ] Unit tests: stay test-free like the previous workfiles, or add a test project?
+- [x] ~~Do the actions **follow the image** when it is swapped, and survive a layout change?~~ → Yes, they belong to the image; replacing it with another file starts fresh
+- [x] ~~What happens to the toolbar in a **cell too narrow** for all the buttons (e.g. *Four columns*)?~~ → The buttons wrap onto a second row, the zoom slider shortens below
+- [x] ~~Are **keyboard shortcuts** on the selected cell part of the scope?~~ → No, out of scope
+- [x] ~~Unit tests: stay test-free like the previous workfiles, or add a test project?~~ → Stay test-free
 
 ---
 
@@ -166,6 +173,12 @@ slider: vertical, along the left edge. Zoom range widened to **50 % → 400 %**,
 now part of the design (image centered, dominant-color area around). A **↺ reset** button joins
 the toolbar, shown only while an action is active.
 
+### Iteration 3 — 2026-09-24
+
+Answers Q&A #9–#12. The actions follow the image across swaps and layout changes. A narrow cell
+wraps the toolbar onto a second row. No keyboard shortcut. The solution stays test-free, so unit
+tests are declined.
+
 ---
 
 ## Implementation Log
@@ -176,7 +189,7 @@ says so rather than staying blank.
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
 | Code | | | |
-| Unit tests | | | |
+| Unit tests | 3 | 2026-09-24 | Declined: the solution stays test-free (Q&A #12) |
 | README | | | |
 
 ---
@@ -195,10 +208,10 @@ Questions asked by the agent during design, with user responses.
 | 6 | Where does the zoom slider go? | Vertical, along the left edge of the cell | 2026-09-24 |
 | 7 | What is the zoom range? | 50 % → 400 % | 2026-09-24 |
 | 8 | How are the actions reset? | ↺ button in the toolbar | 2026-09-24 |
-| 9 | Do the actions follow the image on swap and survive a layout change? | | |
-| 10 | What happens to the toolbar in a too narrow cell? | | |
-| 11 | Are keyboard shortcuts in scope? | | |
-| 12 | Unit tests: stay test-free or add a test project? | | |
+| 9 | Do the actions follow the image on swap and survive a layout change? | Yes, they follow the image | 2026-09-24 |
+| 10 | What happens to the toolbar in a too narrow cell? | Buttons wrap onto a second row | 2026-09-24 |
+| 11 | Are keyboard shortcuts in scope? | No, out of scope | 2026-09-24 |
+| 12 | Unit tests: stay test-free or add a test project? | Stay test-free | 2026-09-24 |
 
 ---
 
