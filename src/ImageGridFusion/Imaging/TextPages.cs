@@ -56,6 +56,40 @@ public sealed class TextPages : PageSource
     public override string Label(int page) => $"{page + 1} / {Count}";
 
     /// <summary>
+    /// A text longer than its page scrolls: every <see cref="Animation.StepDuration"/>, the view moves
+    /// down half a page, keeping the lower half of the previous view on top, until the end shows.
+    /// </summary>
+    public override TimeSpan LoopDuration
+    {
+        get
+        {
+            var layout = Volatile.Read(ref _layout);
+            return layout.PageCount > 1 ? Animation.StepDuration * layout.ViewCount : TimeSpan.Zero;
+        }
+    }
+
+    public override AnimationReader OpenAnimation() => new StepReader(
+        () => Views(Volatile.Read(ref _layout)),
+        view =>
+        {
+            var layout = Volatile.Read(ref _layout);
+            return RenderFrom(layout, layout.ViewStart(view));
+        });
+
+    public override int PageAt(TimeSpan time)
+    {
+        var layout = Volatile.Read(ref _layout);
+        return layout.ViewStart(StepReader.StepAt(Views(layout), time)) / layout.LinesPerPage;
+    }
+
+    public override TimeSpan TimeOf(int page)
+    {
+        var layout = Volatile.Read(ref _layout);
+        int line = Math.Clamp(page, 0, layout.PageCount - 1) * layout.LinesPerPage;
+        return StepReader.StartOf(Views(layout), (line + layout.HalfPage - 1) / layout.HalfPage);
+    }
+
+    /// <summary>
     /// Returns null unless the file is text: at most 1 MB, not empty, UTF-16 with a byte order mark,
     /// or valid UTF-8 with no NUL byte in its first 8 KB. The extension plays no part.
     /// </summary>
@@ -85,6 +119,14 @@ public sealed class TextPages : PageSource
     public override Bitmap Render(int page)
     {
         var layout = Volatile.Read(ref _layout);
+        return RenderFrom(layout, Math.Clamp(page, 0, layout.PageCount - 1) * layout.LinesPerPage);
+    }
+
+    private static TimeSpan[] Views(Layout layout) => Enumerable.Repeat(Animation.StepDuration, layout.ViewCount).ToArray();
+
+    /// <summary>Renders a page's worth of lines, from line <paramref name="first"/>.</summary>
+    private static Bitmap RenderFrom(Layout layout, int first)
+    {
         var (_, lineSpacing) = Metrics.Value;
         var bitmap = new Bitmap(layout.PageSize.Width, layout.PageSize.Height, PixelFormat.Format32bppArgb);
         using var g = Graphics.FromImage(bitmap);
@@ -98,7 +140,6 @@ public sealed class TextPages : PageSource
         using var format = (StringFormat)StringFormat.GenericTypographic.Clone();
         format.FormatFlags |= StringFormatFlags.NoWrap | StringFormatFlags.MeasureTrailingSpaces;
 
-        int first = Math.Clamp(page, 0, layout.PageCount - 1) * layout.LinesPerPage;
         int last = Math.Min(layout.Lines.Length, first + layout.LinesPerPage);
         float height = layout.FontSize * lineSpacing;
         for (int i = first; i < last; i++)
@@ -255,5 +296,16 @@ public sealed class TextPages : PageSource
     private sealed record Layout(Size PageSize, int FontSize, int Margin, string[] Lines, int[] LineStarts, int LinesPerPage)
     {
         public int PageCount => Math.Max(1, (Lines.Length + LinesPerPage - 1) / LinesPerPage);
+
+        /// <summary>How far the animation moves down at each step.</summary>
+        public int HalfPage => Math.Max(1, LinesPerPage / 2);
+
+        /// <summary>Views of the animation: half a page apart, the last one ending on the last line.</summary>
+        public int ViewCount => LastStart == 0 ? 1 : (LastStart + HalfPage - 1) / HalfPage + 1;
+
+        public int ViewStart(int view) => Math.Min(Math.Clamp(view, 0, ViewCount - 1) * HalfPage, LastStart);
+
+        /// <summary>First line of the view that ends on the last line.</summary>
+        private int LastStart => Math.Max(0, Lines.Length - LinesPerPage);
     }
 }
