@@ -15,6 +15,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
   - Hover a cell to outline it and show a **×** to remove it, or press `Delete` to remove the selected one
   - Drag a cell onto another to swap the two images
   - Drop a file onto a cell to replace it
+  - **Clear all** (bottom left) removes every image at once, with no confirmation, back to the initial state
 - Copy to clipboard (`Ctrl+C`) or save as PNG (`Ctrl+S`)
 
 ## Adding images
@@ -104,7 +105,7 @@ Output resolution is kept as high as possible so source images aren't needlessly
 
 - **Copy** button / `Ctrl+C`: puts the full-resolution result on the clipboard, both as a standard bitmap and in the PNG clipboard format.
 - **Save** button / `Ctrl+S`: saves the result as a PNG file.
-- A status line reports feedback and errors (skipped files, ignored excess files, copy/save confirmation or failure).
+- A status line reports feedback and errors (skipped files, ignored excess files, removed images, copy/save confirmation or failure).
 
 ## Build & run
 
