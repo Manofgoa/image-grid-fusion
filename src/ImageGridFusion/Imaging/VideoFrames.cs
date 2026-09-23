@@ -6,15 +6,13 @@ namespace ImageGridFusion.Imaging;
 
 /// <summary>
 /// Frames of a video, decoded by Windows (Media Foundation, through <see cref="MediaComposition"/>),
-/// at positions a coarse step apart: duration / 100, never under a second. A codec Windows lacks
+/// at 100 positions 1 % of the duration apart. A codec Windows lacks
 /// (HEVC without its extension, some mkv / avi) makes the file fall back to its thumbnail, if any.
 /// Played frame by frame by a <see cref="VideoReader"/>.
 /// </summary>
 public sealed class VideoFrames : PageSource, IHasSound
 {
     private const int MaxPositions = 100;
-
-    private static readonly TimeSpan MinStep = TimeSpan.FromSeconds(1);
 
     private static readonly HashSet<string> Extensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -57,9 +55,9 @@ public sealed class VideoFrames : PageSource, IHasSound
 
     public override string Label(int page) => Time(page).ToString(_duration.TotalHours >= 1 ? @"h\:mm\:ss" : @"m\:ss");
 
-    public static TimeSpan Step(TimeSpan duration) => duration / MaxPositions < MinStep ? MinStep : duration / MaxPositions;
+    public static TimeSpan Step(TimeSpan duration) => duration / MaxPositions;
 
-    /// <summary>Positions k × step, 0 ≤ k &lt; count: at most 100, and a single one under two steps.</summary>
+    /// <summary>Positions k × step, 0 ≤ k &lt; count: 100, or a single one for a duration too short to split.</summary>
     public static int Positions(TimeSpan duration) => Math.Clamp((int)Math.Floor(duration / Step(duration)), 1, MaxPositions);
 
     /// <summary>Returns null when the file is not a video Windows can decode.</summary>
