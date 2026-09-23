@@ -52,6 +52,10 @@ first producer that succeeds:
 A dedicated producer that fails (e.g. a video whose codec Media Foundation lacks) falls through
 to the Shell thumbnail, then to rejection.
 
+**Exception — `.svg`**: the Shell thumbnail is tried **before** text, so a drawing shows as a
+drawing when a thumbnail handler exists (e.g. PowerToys); without one, its source is rendered as
+text.
+
 Producers run off the UI thread, inside the existing `Task.Run` of `AddFilesAsync`.
 
 How each producer recognises its files:
@@ -107,7 +111,8 @@ recommendation, confirmed by the user).
 - **Initial frame at 10 %** of the duration (skips black intro frames).
 - **Slider step = duration / 100, never under 1 s**: at most 100 positions, never two positions
   less than a second apart. A video shorter than 2 s has a single position (no slider).
-- Frames are taken at the nearest key frame (fast; precision irrelevant at a coarse step).
+- Frames are taken at the **exact** time of each position (`NearestFrame`), so neighbouring
+  positions never repeat the same key frame.
 - Frame rendered at the video's native resolution (its encoding width × height).
 - A single-position video shows the 10 % frame. Label: `m:ss`, or `h:mm:ss` past an hour.
 
@@ -198,13 +203,15 @@ Raised by the implementation run (outside the frozen scope, not implemented):
       PDFs and text need *All files*. Add them to the default filter?~~ → Already done on
       `main` by another session: `MainForm.PickerFilter` lists images, videos, PDF and text
       *(checked 2026-09-24)*
-- [ ] SVG files are XML, so they are rendered as their **source text** (text comes before the
-      Shell thumbnail). Prefer the thumbnail for svg (needs a thumbnail handler, e.g. PowerToys)?
-- [ ] Key-frame precision: on the generated test video, `NearestFrame` was as fast as
+- [x] ~~SVG files are XML, so they are rendered as their **source text** (text comes before the
+      Shell thumbnail). Prefer the thumbnail for svg (needs a thumbnail handler, e.g. PowerToys)?~~
+      → Thumbnail first for `.svg`, source text only when Windows has none (see Iteration 5)
+- [x] ~~Key-frame precision: on the generated test video, `NearestFrame` was as fast as
       `NearestKeyFrame` (~450 ms per frame). Real videos with long key-frame intervals would show
-      the same frame for several slider positions. Switch to `NearestFrame`?
-- [ ] A portrait PDF page in a small or landscape cell pushes the canvas to 4096 px (bigger
-      export files). Acceptable, or render PDF pages smaller?
+      the same frame for several slider positions. Switch to `NearestFrame`?~~ → Yes, exact frame
+      (see Iteration 5)
+- [x] ~~A portrait PDF page in a small or landscape cell pushes the canvas to 4096 px (bigger
+      export files). Acceptable, or render PDF pages smaller?~~ → Kept as is
 
 ---
 
@@ -275,6 +282,15 @@ No project rule broken. Choices the frozen design did not state:
 - **Parallel sessions**: the drop-zone and delete-all-images sessions committed to `main`
   during the run; their files were never staged with this run's commits.
 
+### Iteration 5 — 2026-09-24 — ⚙️ Post-implementation — SVG thumbnail first, exact video frames
+
+Answers to the questions the run raised (Q&A #17–19):
+
+- `.svg`: the Shell thumbnail is tried before text; the source text stays the fallback.
+- Video: frames at the exact position (`NearestFrame`) instead of the nearest key frame.
+- PDF pages keep their 1600 px long side, even when that widens the canvas to 4096 px.
+- The picker filter question was already settled on `main` by another session.
+
 ---
 
 ## Implementation Log
@@ -313,9 +329,9 @@ Questions asked by the agent during design, with user responses.
 | 14 | Video: initial frame and slider step? | 10 %, step = duration / 100, min 1 s | 2026-09-23 |
 | 15 | Slider: live while dragging, or on release? | Live while dragging | 2026-09-23 |
 | 16 | Create a test project for the pure logic? | No, manual checks | 2026-09-23 |
-| 17 | SVG: render its source text, or prefer the Windows thumbnail? | | 2026-09-24 |
-| 18 | Video frames: nearest key frame, or exact frame? | | 2026-09-24 |
-| 19 | Portrait PDF page pushing the canvas to 4096 px: keep, or render smaller? | | 2026-09-24 |
+| 17 | SVG: render its source text, or prefer the Windows thumbnail? | Windows thumbnail first, text as the fallback | 2026-09-24 |
+| 18 | Video frames: nearest key frame, or exact frame? | Exact frame | 2026-09-24 |
+| 19 | Portrait PDF page pushing the canvas to 4096 px: keep, or render smaller? | Keep | 2026-09-24 |
 
 ---
 
