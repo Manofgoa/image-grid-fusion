@@ -65,6 +65,9 @@ icon), `UI/StartupRegistration.cs` (the `Run` value), `UI/AppIcon.cs` and `app.i
 - **Quit** (tray icon's right-click menu) **closes the app completely**: `MainForm.CloseForGood()`
   closes the form without the hide, then the context disposes the tray icon (so no ghost icon
   remains in the tray) and ends the process. It is the only user-facing way to exit.
+- **Quit during an export**: the export is cancelled first, and the app ends once it has stopped
+  and the window has closed.
+- A × during an export only hides the window: the export goes on in the background.
 - No notification when the window is hidden: it disappears silently.
 - The minimize button keeps its default behaviour (window minimized to the taskbar).
 
@@ -91,8 +94,8 @@ icon), `UI/StartupRegistration.cs` (the `Run` value), `UI/AppIcon.cs` and `app.i
   value's presence **each time the ⚙ menu opens**, and toggling it writes / deletes the value. A
   registry that cannot be read shows the item unticked.
 - **Off by default**: nothing is registered until the user ticks the setting.
-- The setting lives **in the main window**: a small **⚙ button** in the bottom bar, left of
-  **Copy**, with a *Settings* tooltip, opens above itself a menu holding a checkable
+- The setting lives **in the main window**: a small **⚙ button** in the bottom bar, first of the
+  right-hand group (before *Force as image*, **Copy**, **Save…**), with a *Settings* tooltip, opens above itself a menu holding a checkable
   **Start with Windows** item. The menu is the home for future settings. The button sizes itself
   like **Copy** / **Save…** (same height).
 - A registry write failure shows an error in the status line and leaves the item as it was.
@@ -234,6 +237,31 @@ normal start shows the window with the new icon and the ⚙ button; a simulated 
 hides the window and the process keeps running. The tray menu, the reopen click and the
 registry toggle are left to the manual checks in `## Test Impact`.
 
+### Iteration 7 — 2026-09-24 — ⚙️ Post-implementation — Merge into main
+
+User decision (Q&A #12): merge the branch now. `main` had moved on meanwhile (Clear all button,
+crop slider, video export, a status line without timer). Merged in `4e9dd79`, one conflict in
+`MainForm.cs`, resolved by keeping both sides:
+
+- `main`'s `OnFormClosing` (closing during an export cancels it first) and the branch's (the user
+  close hides) are **one override**: the hide comes first, so a × during an export only hides the
+  window and the export goes on; a real close cancels the export first.
+- The ⚙ button is the **first** control of the right-hand group, before `main`'s *Force as image*
+  checkbox, so that checkbox stays next to **Copy** / **Save…**, which it acts on.
+- The branch's status timer disposal is dropped: `main` no longer has the timer.
+
+### Iteration 8 — 2026-09-24 — ⚙️ Post-implementation — Quit during an export
+
+Found at the merge: **Quit** while a video export runs closed the window with its export cancel
+pending, then ended the message loop at once, abandoning the export mid-write. Now Quit ends the
+app only once the window has really closed: at once when no export runs, after the export has
+stopped otherwise (`FormClosed` → `ExitThread`).
+
+### Iteration 9 — 2026-09-24 — ⚙️ Post-implementation — README
+
+User request (Q&A #13): document the tray icon, closing to the tray, **Quit**, the ⚙ menu and
+*Start with Windows* in the README, on `main`.
+
 ---
 
 ## Implementation Log
@@ -243,9 +271,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 5, 6 | 2026-09-24 | Icon, tray lifetime and close-to-tray, Start with Windows; 3 commits on `feature/barre-etat-windows` |
+| Code | 5, 6, 7, 8 | 2026-09-24 | Icon, tray lifetime and close-to-tray, Start with Windows; 3 commits on `feature/barre-etat-windows`, merged into `main` (`4e9dd79`), then the Quit-during-export fix |
 | Unit tests | — | 2026-09-24 | Not applicable: no test project, manual checks only (Q&A #10) |
-| README | — | 2026-09-24 | Not done: the go covered the code only |
+| README | 9 | 2026-09-24 | Not in the go (code only); requested afterwards, done on `main` |
 
 ---
 
@@ -266,6 +294,9 @@ Questions asked by the agent during design, with user responses.
 | 9 | Registered path no longer matching the current exe: ticked, unticked, or rewritten? | Rewritten at launch | 2026-09-23 |
 | 10 | Unit tests: stay without a test project? | Yes, manual checks | 2026-09-23 |
 | 11 | Go for implementation? (No / code / code, tests and documentation) | No — the gate holds | 2026-09-23 |
+| 12 | The branch: merge after the other session, merge now, or leave it? | Merge now | 2026-09-24 |
+| 13 | Update the README? | Yes, on `main`, after the merge | 2026-09-24 |
+| 14 | Run the app for a manual test now? | No | 2026-09-24 |
 
 ---
 
