@@ -9,6 +9,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 - Output ratio locked to 1200:628 (≈1.91:1); the ratio matters, not the resolution (see Canvas size)
 - Drag & drop images onto the `.exe` icon or onto the window, or paste them with `Ctrl+V`
 - Several layouts per image count, picked from a strip of thumbnails, plus a mirror toggle (see Layouts)
+- Crop threshold slider in the top bar, from 0% to 50% (see Fitting rules)
 - No image list: the grid preview *is* the interface
   - Click a cell to select it, `Esc` to deselect
   - Hover a cell to outline it and show a **×** to remove it, or press `Delete` to remove the selected one
@@ -90,8 +91,9 @@ Big left, mirrored
 ## Fitting rules
 
 - Each image is scaled to fill its cell, with no gap between cells.
-- Up to 15% of the overflowing axis may be cropped in total (7.5% per side).
-- Beyond that threshold, the image is cropped exactly to 15% and centered, and the remaining bands are filled with the dominant color of the whole image.
+- Up to a threshold of the overflowing axis may be cropped in total, split evenly on both sides — 15% by default (7.5% per side).
+- Beyond that threshold, the image is cropped exactly to it and centered, and the remaining bands are filled with the dominant color of the whole image.
+- The threshold is set with the **Crop** slider in the top bar, from 0% (no crop, bands only) to 50%, in steps of 5%. The preview follows it live, and copy / save use the same value. It is not remembered: every launch starts at 15%.
 - The same rule applies whether the source image is too small (upscaled) or too large (downscaled).
 - EXIF orientation is applied on load, so photos from phones appear upright.
 
@@ -116,5 +118,4 @@ C# / WinForms on .NET 10, using `System.Drawing` (GDI+) with high-quality bicubi
 
 ## Planned
 
-- Crop threshold slider, to adjust the 15% limit from the UI.
 - A dedicated frame design for the single-image case.
