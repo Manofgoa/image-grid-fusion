@@ -36,6 +36,7 @@ Relevant components:
 | Default | 15% (`FitCalculator.DefaultCropThreshold`, unchanged) |
 | Update | **Live**: the preview re-renders on every slider position while dragging, not only on release |
 | Persistence | Session only — back to 15% at every launch; no settings file |
+| Focus | The slider does **not** take the keyboard focus at startup — the preview does — so keys and the wheel never move it unaimed; a click or `Tab` still gives it the focus |
 
 ### Behaviour
 
@@ -59,7 +60,7 @@ No change: `FitCalculator`, `CanvasSizer` and `Compositor` already take the thre
 
 ### README
 
-*Not updated — the go covered the code only (see Iteration 3). Planned changes, still pending:*
+*Requested after implementation (Iteration 6):*
 
 - `## Fitting rules`: describe the threshold as adjustable (0–50%, step 5%, 15% by default, not remembered between launches)
   instead of a fixed 15%.
@@ -86,7 +87,7 @@ for this task (Q&A #8).
 - [x] ~~Does the preview update live while the slider is dragged, or only when it is released?~~ → Live
 - [x] ~~What does the slider show next to it — a label with the value (e.g. `Crop: 15%`), a tooltip only, or nothing?~~ → A label with the value
 - [x] ~~Create a unit-test project to pin the threshold bounds of `FitCalculator`, or leave tests out (UI wiring only)?~~ → No tests
-- [ ] *(raised during implementation, not implemented)* At startup the slider is the only enabled focusable control (Copy / Save are disabled until an image is added), so it takes the keyboard focus: arrow keys, `Home` / `End` and the mouse wheel then change the threshold without the user aiming at it. Keep it, or take the slider out of the startup focus (e.g. focus the preview, or `TabStop = false`)?
+- [x] *(raised during implementation)* ~~At startup the slider is the only enabled focusable control (Copy / Save are disabled until an image is added), so it takes the keyboard focus: arrow keys, `Home` / `End` and the mouse wheel then change the threshold without the user aiming at it. Keep it, or take the slider out of the startup focus (e.g. focus the preview, or `TabStop = false`)?~~ → Out of the startup focus; still reachable by click and Tab (see Iteration 5)
 
 ---
 
@@ -138,11 +139,23 @@ Choices the frozen design did not state, taken during the run:
 - **`[DesignerSerializationVisibility(Hidden)]`** on `GridPreview.CropThreshold`: the WinForms analyzer (WFO1000)
   fails the build on a public settable control property otherwise; same attribute as `LayoutStrip.ActiveLayout`.
 
-No project rule was broken. Out of scope, raised as an open question: the slider takes the keyboard focus at startup.
+No project rule was broken. Out of scope, raised as an open question: the slider takes the keyboard focus at startup
+*(resolved after implementation, see Iteration 5)*.
 
 Verified by hand in the running app (UI Automation + window captures): starts at `Crop: 15%`, thumb level with the
 label; with a 3:1 image, 0% shows the whole image with bands, 15% a light crop with bands, 50% fills the cell — the
 preview follows each position live.
+
+### Iteration 5 — 2026-09-24 — ⚙️ Post-implementation — Slider out of the startup focus
+
+The slider was the only enabled focusable control at startup, so arrow keys, `Home` / `End` and the mouse wheel
+changed the threshold unaimed. The user chose to take it out of the startup focus: the preview gets it instead;
+a click or `Tab` still focuses the slider (Q&A #11).
+
+### Iteration 6 — 2026-09-24 — ⚙️ Post-implementation — README update
+
+The README step, left out by the code-only go, is now requested (Q&A #12): the changes listed under `### README`.
+The branch is then to be merged into `main`, only once `main` has no uncommitted changes (Q&A #13).
 
 ---
 
@@ -175,9 +188,9 @@ Questions asked by the agent during design, with user responses.
 | 8 | Create a unit-test project? | No tests | 2026-09-23 |
 | 9 | Go for implementation? | No | 2026-09-23 |
 | 10 | Go for implementation? (asked again by the user) | "GO implémente", in a dedicated worktree removed at the end — read as *Implement the code* | 2026-09-24 |
-| 11 | Slider takes the keyboard focus at startup: keep it, or take it out? | | |
-| 12 | Update the README now? | | |
-| 13 | Merge the branch into `main`? | | |
+| 11 | Slider takes the keyboard focus at startup: keep it, or take it out? | Take it out of the startup focus; still reachable by click and Tab | 2026-09-24 |
+| 12 | Update the README now? | Yes | 2026-09-24 |
+| 13 | Merge the branch into `main`? | Yes — only once `main` has no uncommitted changes; otherwise stop and report | 2026-09-24 |
 
 ---
 
