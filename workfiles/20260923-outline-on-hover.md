@@ -121,6 +121,12 @@ outline** (proposed: no). Derived from #4 and #5 together: the outline covers th
 during an Explorer file drag too, since it follows whatever surface is under the cursor. Look,
 drag behaviour and README update as proposed.
 
+### Iteration 3 — 2026-09-23 — ✅ Implemented
+
+Go given ("Lance les dévs", Q&A #9), taken as **code, unit tests and documentation**: the README
+update was agreed in design (Q&A #7) and unit tests do not apply. Branch: **stays on `main`**, the
+user's standing choice for this repository. Scope frozen on the design sections as of Iteration 2.
+
 ---
 
 ## Implementation Log
@@ -150,6 +156,7 @@ Questions asked by the agent during design, with user responses.
 | 6 | Exact look: 1 px white ~50 % alpha, inside the selection on the selected cell? | Yes | 2026-09-23 |
 | 7 | README: mention the outline on the hover line? | Yes | 2026-09-23 |
 | 8 | Go for implementation? | No — the gate holds | 2026-09-23 |
+| 9 | Go for implementation (given unprompted)? | "Lance les dévs" — code, unit tests (n/a) and README | 2026-09-23 |
 
 ---
 
