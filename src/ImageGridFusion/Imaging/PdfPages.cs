@@ -26,6 +26,17 @@ public sealed class PdfPages : PageSource
 
     public override string Label(int page) => $"{page + 1} / {Count}";
 
+    /// <summary>One page per <see cref="Animation.StepDuration"/>, when there are several.</summary>
+    public override TimeSpan LoopDuration => Count > 1 ? Animation.StepDuration * Count : TimeSpan.Zero;
+
+    public override AnimationReader OpenAnimation() => new StepReader(Steps, Render);
+
+    public override int PageAt(TimeSpan time) => StepReader.StepAt(Steps(), time);
+
+    public override TimeSpan TimeOf(int page) => StepReader.StartOf(Steps(), page);
+
+    private TimeSpan[] Steps() => Enumerable.Repeat(Animation.StepDuration, Count).ToArray();
+
     /// <summary>Returns null when the file is not a PDF Windows can open (encrypted, damaged…).</summary>
     public static PdfPages? TryOpen(string path)
     {
@@ -61,7 +72,16 @@ public sealed class PdfPages : PageSource
         }
     }
 
+    /// <summary>Serialized: the slider and the animation readers may render at the same time.</summary>
     public override Bitmap Render(int page)
+    {
+        lock (_document)
+        {
+            return RenderPage(page);
+        }
+    }
+
+    private Bitmap RenderPage(int page)
     {
         using var pdfPage = _document.GetPage((uint)page);
         var size = pdfPage.Size;
