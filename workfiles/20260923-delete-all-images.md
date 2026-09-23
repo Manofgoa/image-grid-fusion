@@ -44,6 +44,15 @@ Relevant components:
 - Label **Clear all**, text only; the button follows the existing ones: a standard WinForms `Button`,
   `AutoSize = true`.
 
+## UI — Layout Strip
+
+- The layout strip on the left of the preview is **always visible**, whatever the image count: its
+  width is reserved, so the preview never changes size when images are added or cleared.
+- **1 image**: the strip shows the single-image layout thumbnail, active, and the mirror toggle below
+  it, disabled (the layout is symmetric).
+- **No image**: the strip shows the single-image layout thumbnail **greyed out**, and the mirror toggle
+  disabled; nothing in it reacts to the mouse.
+
 ## Code
 
 - `GridPreview` gets a public `Clear()`: disposes every image, empties the list, resets selection and
@@ -122,7 +131,8 @@ Requested while testing **Clear all**: emptying the grid hid the layout strip, s
 the window content changed size. The layout strip must stay visible whatever the image count — its space
 is reserved (more controls will likely land in it later) — and the single-image case gets its thumbnail
 too. Changes a decision of the layout variants workfile ("the strip is hidden with a single image").
-Details asked before touching the code (Q8–Q9).
+Details asked before touching the code (Q8–Q9): with no image, the single-image thumbnail greyed out
+plus the disabled mirror toggle; with one image, the mirror toggle shown disabled.
 
 ---
 
@@ -152,8 +162,8 @@ Questions asked by the agent during design, with user responses.
 | 5 | Button label (and icon or not)? | Clear all, text only | 2026-09-23 |
 | 6 | Keyboard shortcut for clearing everything? | None | 2026-09-23 |
 | 7 | Status line after clearing? | A confirmation message, replacing the current one | 2026-09-23 |
-| 8 | Layout strip content with no image? | | |
-| 9 | Mirror toggle with a single image? | | |
+| 8 | Layout strip content with no image? | The single-image thumbnail greyed out, plus the mirror toggle disabled | 2026-09-24 |
+| 9 | Mirror toggle with a single image? | Shown, disabled | 2026-09-24 |
 
 ---
 
