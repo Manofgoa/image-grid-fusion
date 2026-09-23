@@ -6,11 +6,14 @@ namespace ImageGridFusion.Composition;
 
 /// <summary>
 /// Most frequent color of an image: pixels of a downsampled copy are quantized to 4 bits per
-/// channel, the most populated bucket wins, and its pixels are averaged.
+/// channel, then the buckets are voted on by <see cref="MostFrequent"/>.
 /// </summary>
 public static class DominantColor
 {
     private const int SampleSide = 64;
+
+    /// <summary>Perceptual distance (CIELAB ΔE76) under which two shades count as one color in the vote.</summary>
+    private const double SameColor = 20;
 
     public static Color Compute(Bitmap image)
     {
@@ -59,13 +62,35 @@ public static class DominantColor
             }
         }
 
-        int best = Array.IndexOf(counts, counts.Max());
-        int n = counts[best];
-        if (n == 0)
+        return MostFrequent(counts, sums) ?? Color.Black;
+    }
+
+    /// <summary>
+    /// Most frequent color of quantized pixels: the populated buckets, most populated first, each join
+    /// the first group whose seed is within <see cref="SameColor"/> of their mean, or seed a new one; the
+    /// largest group wins with its seed's mean, its most frequent shade. Grouping keeps the many shades
+    /// of a varied color from losing to a flat color held by a single bucket. None when no bucket is
+    /// populated.
+    /// </summary>
+    internal static Color? MostFrequent(int[] counts, long[,] sums)
+    {
+        var groups = new List<(Lab Seed, Color Color, int Count)>();
+        foreach (int bucket in Enumerable.Range(0, counts.Length).Where(i => counts[i] > 0).OrderByDescending(i => counts[i]))
         {
-            return Color.Black;
+            int n = counts[bucket];
+            var color = Color.FromArgb((int)(sums[bucket, 0] / n), (int)(sums[bucket, 1] / n), (int)(sums[bucket, 2] / n));
+            var lab = Lab.Of(color);
+            int group = groups.FindIndex(g => g.Seed.DistanceTo(lab) <= SameColor);
+            if (group < 0)
+            {
+                groups.Add((lab, color, n));
+            }
+            else
+            {
+                groups[group] = groups[group] with { Count = groups[group].Count + n };
+            }
         }
 
-        return Color.FromArgb((int)(sums[best, 0] / n), (int)(sums[best, 1] / n), (int)(sums[best, 2] / n));
+        return groups.Count == 0 ? null : groups.MaxBy(g => g.Count).Color;
     }
 }
