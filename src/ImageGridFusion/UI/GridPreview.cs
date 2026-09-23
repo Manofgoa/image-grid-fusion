@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using ImageGridFusion.Composition;
@@ -40,8 +41,10 @@ internal sealed class GridPreview : Control
     private bool _hoveringDropZone;
     private bool _pressedDropZone;
     private readonly PageLoader _pageLoader = new();
+    private readonly AnimationPlayer _player = new();
     private int _sliding = -1;
     private bool _hoveringSlider;
+    private bool _locked;
 
     public GridPreview()
     {
@@ -57,6 +60,7 @@ internal sealed class GridPreview : Control
             _cache = null;
             Invalidate();
         };
+        _player.FrameShown += (_, image) => RedrawCell(image);
     }
 
     public event EventHandler? ImagesChanged;
@@ -75,6 +79,22 @@ internal sealed class GridPreview : Control
     public int FreeSlots => GridLayout.MaxImages - _images.Count;
 
     public bool HasSelection => _selected >= 0;
+
+    /// <summary>
+    /// While an export runs: images can be neither removed nor swapped, and the drop zone is inert.
+    /// Browsing pages, and the live animation, go on.
+    /// </summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool Locked
+    {
+        get => _locked;
+        set
+        {
+            _locked = value;
+            _pressed = -1;
+            EndDrag();
+        }
+    }
 
     /// <summary>
     /// Adds images: the first one replaces <paramref name="targetCell"/> when given (a drop onto a
@@ -146,6 +166,7 @@ internal sealed class GridPreview : Control
         _cache?.Dispose();
         _cache = null;
         FitPagesToCells();
+        SyncPlayer();
         Invalidate();
         LayoutChanged?.Invoke(this, EventArgs.Empty);
     }
@@ -190,6 +211,7 @@ internal sealed class GridPreview : Control
     {
         if (disposing)
         {
+            _player.Dispose();
             _images.ForEach(i => i.Dispose());
             _images.Clear();
             _cache?.Dispose();
@@ -258,7 +280,7 @@ internal sealed class GridPreview : Control
 
         PaintHoverOutline(g, HoverOutlineBounds(canvas, cells));
 
-        if (_hovered >= 0 && !_dragging)
+        if (_hovered >= 0 && !_dragging && !_locked)
         {
             PaintCloseButton(g, CloseBounds(cells[_hovered]), _hoveringClose);
         }
@@ -284,6 +306,11 @@ internal sealed class GridPreview : Control
         }
 
         // The selection is kept: a full grid replaces the selected cell with the first added image.
+        if (_locked && !IsOnSlider(e.Location))
+        {
+            return;
+        }
+
         if (DropZoneBounds(CanvasBounds()).Contains(e.Location))
         {
             _pressedDropZone = true;
@@ -308,6 +335,7 @@ internal sealed class GridPreview : Control
         if (SliderBounds(CellBounds()[index], _images[index]).Contains(e.Location))
         {
             _sliding = index;
+            UpdateHold();
             SlideTo(e.X);
             return;
         }
@@ -402,6 +430,7 @@ internal sealed class GridPreview : Control
         if (_sliding >= 0)
         {
             _sliding = -1;
+            UpdateHold();
             Invalidate();
         }
     }
@@ -419,6 +448,14 @@ internal sealed class GridPreview : Control
             Cursor = Cursors.Default;
             Invalidate();
         }
+
+        UpdateHold();
+    }
+
+    protected override void OnResize(EventArgs e)
+    {
+        base.OnResize(e);
+        UpdateDisplaySizes();
     }
 
     /// <summary>
@@ -575,6 +612,7 @@ internal sealed class GridPreview : Control
         }
 
         FitPagesToCells();
+        SyncPlayer();
 
         ImagesChanged?.Invoke(this, EventArgs.Empty);
         if (layoutReset)
@@ -602,7 +640,59 @@ internal sealed class GridPreview : Control
         _hoveringDropZone = onDropZone;
         _hoveringSlider = onSlider;
         Cursor = onClose || onDropZone || onSlider ? Cursors.Hand : Cursors.Default;
+        UpdateHold();
         Invalidate();
+    }
+
+    /// <summary>The hovered cell, or the one whose slider is dragged, holds its animation still.</summary>
+    private void UpdateHold()
+    {
+        int held = _sliding >= 0 ? _sliding : _hovered;
+        _player.Hold(held >= 0 && held < _images.Count ? _images[held] : null);
+    }
+
+    private bool IsOnSlider(Point location)
+    {
+        int index = CellAt(location);
+        return index >= 0 && SliderBounds(CellBounds()[index], _images[index]).Contains(location);
+    }
+
+    /// <summary>Plays the animated images, at the size of their cells, and holds the hovered one.</summary>
+    private void SyncPlayer()
+    {
+        _player.Sync(_images);
+        UpdateDisplaySizes();
+        UpdateHold();
+    }
+
+    private void UpdateDisplaySizes()
+    {
+        var cells = CellBounds();
+        for (int i = 0; i < cells.Length && i < _images.Count; i++)
+        {
+            _player.SetDisplaySize(_images[i], cells[i].Size);
+        }
+    }
+
+    /// <summary>Draws the new frame of an image into the cached preview, and repaints only its cell.</summary>
+    private void RedrawCell(SourceImage image)
+    {
+        int index = _images.IndexOf(image);
+        var canvas = CanvasBounds();
+        if (index < 0 || _layout is null || _cache is null || _cache.Size != canvas.Size)
+        {
+            Invalidate();
+            return;
+        }
+
+        var cell = _layout.Cells(canvas.Size)[index];
+        using (var g = Graphics.FromImage(_cache))
+        {
+            Compositor.DrawCell(g, new Frame(image.Bitmap, image.Dominant), cell);
+        }
+
+        cell.Offset(canvas.Location);
+        Invalidate(cell);
     }
 
     /// <summary>
@@ -728,6 +818,7 @@ internal sealed class GridPreview : Control
             if (_images[i].Pages is { PageSize: { } size } pages && size != cells[i].Size)
             {
                 _pageLoader.Request(_images[i], pages.Resize(cells[i].Size, _pageLoader.Target(_images[i])));
+                _player.Refresh(_images[i]);
             }
         }
     }
