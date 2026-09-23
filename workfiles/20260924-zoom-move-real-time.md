@@ -18,6 +18,7 @@ Scope agreed with the user (Q&A #1–#4):
 - Quality trade-off: **light preview during the gesture, full-quality render at its end**.
 - **Video and animated cells behave the same** as still images.
 - Exploration depth: straightforward — a single scout pass.
+- Deliverables: code and README; no unit tests (Q&A #8, #9).
 
 Relevant components: `UI/GridPreview.cs` (gestures, `_cache` bitmap, `SetLook`, `RedrawCell`),
 `Composition/Compositor.cs` (`DrawCell`), `UI/AnimationPlayer.cs` (frame decoding at display size).
@@ -60,7 +61,7 @@ Relevant components: `UI/GridPreview.cs` (gestures, `_cache` bitmap, `SetLook`, 
 |---|---|---|
 | Pan | first `PanBy` of a press on a zoomed cell | mouse up / capture lost |
 | Zoom slider | mouse down on the slider | mouse up / capture lost |
-| Wheel zoom | first wheel notch | a short quiet delay after the last notch (see Open Questions) |
+| Wheel zoom | first wheel notch | ~150 ms after the last notch |
 
 ### Video and animated cells
 
@@ -70,28 +71,48 @@ end of the gesture rather than on every step, the frame being scaled from its cu
 
 ### Wheel zoom
 
-New gesture — see Open Questions for its exact behaviour.
+New gesture (Q&A #5–#7):
+
+- **Input**: the plain wheel over a cell zooms that cell — no modifier. Ignored while the preview is
+  locked (export in progress), like the zoom slider.
+- **Step**: one notch (`WHEEL_DELTA` = 120, partial deltas accumulated) multiplies the zoom by
+  2^(1/4) — four notches double it — clamped to `ImageLook.MinZoom` … `ImageLook.MaxZoom`; crossing
+  100 % lands on exactly 100 %, like the slider's snap.
+- **Anchor**: the point of the image under the cursor stays under the cursor; the focus is shifted
+  accordingly (then clamped by the fit as usual).
+- **End**: the full-quality render happens after ~150 ms without a notch (a one-shot timer, restarted
+  on each notch).
 
 ---
 
 ## Test Impact
 
-To be settled — see Open Questions. Every previous workfile kept the solution test-free by user
-decision; nothing is written here until that is confirmed for this one.
+No unit test is created or updated: the user chose to keep the solution test-free (Q&A #8), as every
+previous workfile did. The gesture boundaries, fast/final render switch, wheel step, snap and cursor
+anchor stay untested by decision, not because nothing testable changes. Verification is manual: pan
+and slider-zoom a large photo, wheel-zoom on a corner of a still image, then the same on a video and a
+GIF cell; check the final frame sharpens on release / after the wheel stops.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| — | — | — |
+| — (declined, Q&A #8) | — | — |
+
+---
+
+## Documentation
+
+README: add a short description of the zoom and pan gestures — zoom slider, wheel zoom under the
+cursor, drag to pan a zoomed image, Ctrl + drag to swap (Q&A #9).
 
 ---
 
 ## Open Questions
 
-- [ ] Wheel zoom: which input zooms — the plain wheel over a cell, or Ctrl + wheel only?
-- [ ] Wheel zoom: anchored on the point under the cursor, or on the current center (focus)?
-- [ ] Wheel zoom: when does the full-quality render happen — after a short quiet delay (~150 ms) following the last notch?
-- [ ] Unit tests: keep the solution test-free, as in every previous workfile?
-- [ ] README: document the zoom/pan gestures (including the new wheel zoom), or leave it as is?
+- [x] ~~Wheel zoom: which input zooms — the plain wheel over a cell, or Ctrl + wheel only?~~ → Plain wheel
+- [x] ~~Wheel zoom: anchored on the point under the cursor, or on the current center (focus)?~~ → Under the cursor
+- [x] ~~Wheel zoom: when does the full-quality render happen — after a short quiet delay (~150 ms) following the last notch?~~ → Yes, ~150 ms after the last notch
+- [x] ~~Unit tests: keep the solution test-free, as in every previous workfile?~~ → Yes, no unit tests
+- [x] ~~README: document the zoom/pan gestures (including the new wheel zoom), or leave it as is?~~ → Document them
 
 ---
 
@@ -109,6 +130,13 @@ Root cause identified: full-quality synchronous redraws on every mouse move star
 Proposal: synchronous `Update()` during gestures, a fast `DrawCell` mode while the gesture lasts,
 one full-quality redraw at its end; animated decode size refreshed at gesture end. Wheel zoom is a
 new gesture (it does not exist yet) — its behaviour is left to Open Questions.
+
+### Iteration 2 — 2026-09-24
+
+Open questions answered (Q&A #5–#9). Wheel zoom specified: plain wheel, anchored under the cursor,
+full-quality render ~150 ms after the last notch; step of 2^(1/4) per notch with the 100 % snap and
+ignored while locked (proposed by the agent, part of the design submitted for the go). Deliverables:
+code and README; unit tests declined.
 
 ---
 
@@ -135,11 +163,11 @@ Questions asked by the agent during design, with user responses.
 | 2 | If the full render is too heavy to follow the mouse, which trade-off during the gesture? | Light preview during the gesture, full render at its end | 2026-09-24 |
 | 3 | Are video / animated cells concerned? | Yes, same behaviour | 2026-09-24 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward | 2026-09-24 |
-| 5 | Wheel zoom: plain wheel or Ctrl + wheel? | | |
-| 6 | Wheel zoom: anchored on the cursor or on the center? | | |
-| 7 | Wheel zoom: full-quality render after a short quiet delay? | | |
-| 8 | Unit tests: keep the solution test-free? | | |
-| 9 | README: document the zoom/pan gestures? | | |
+| 5 | Wheel zoom: plain wheel or Ctrl + wheel? | Plain wheel | 2026-09-24 |
+| 6 | Wheel zoom: anchored on the cursor or on the center? | Under the cursor | 2026-09-24 |
+| 7 | Wheel zoom: full-quality render after a short quiet delay? | Yes, ~150 ms after the last notch | 2026-09-24 |
+| 8 | Unit tests: keep the solution test-free? | Yes — unit tests not selected | 2026-09-24 |
+| 9 | README: document the zoom/pan gestures? | Yes | 2026-09-24 |
 
 ---
 
