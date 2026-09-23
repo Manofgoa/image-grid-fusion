@@ -33,11 +33,16 @@ Components involved: `UI/MainForm.cs`, `UI/GridPreview.cs`, `UI/AnimationPlayer.
 
 - `MainForm` forwards the checkbox state to the preview (e.g. a `GridPreview.ForceStill` property,
   set on `CheckedChanged`), which forwards it to `AnimationPlayer`.
-- `AnimationPlayer` treats "forced still" as **every playback held**, reusing the existing
-  hold mechanism (`Pause` / `Resume`): the playback loop keeps running but renders nothing while
-  paused. Applies to **every animated content** (videos, GIFs, scrolling texts), the checkbox being global.
-- On entering the forced state, each animated cell is re-rendered at its current page
-  (`SourceImage.Page`), so the cell shows exactly the selected frame rather than the last
+- `AnimationPlayer.ForceStill` holds **every playback**, reusing the existing hold mechanism
+  (`Pause` / `Resume`): the playback loop keeps running but renders nothing while paused. Applies to
+  **every animated content** (videos, GIFs, scrolling texts), the checkbox being global.
+- While forced, hovering a cell neither pauses nor releases anything (`Hold` only records which
+  cell is held). A cell already held when the box is checked keeps its pause point, and the page
+  its slider may have moved it to.
+- A playback started while forced (content added, window shown again from the tray) is paused at
+  the time of the page it shows (`TimeOf(Page)`), so unchecking resumes from that page.
+- On entering the forced state, `GridPreview.ForceStill` asks the page loader for each animated
+  cell's current page (`SourceImage.Page`), so the cell shows exactly the selected frame rather than the last
   animation frame, which sits somewhere between two pages.
 - The hover slider keeps working while forced: dragging it renders the page under the cursor live
   (existing `GridPreview` behaviour).
@@ -59,8 +64,8 @@ Components involved: `UI/MainForm.cs`, `UI/GridPreview.cs`, `UI/AnimationPlayer.
 - `GridExport.Job.Capture` records, for each animated source, the page it shows (`SourceImage.Page`).
 - `GridExport.RenderStill` renders each animated source at that page (`PageSource.Render(page)`,
   the same call the hover slider uses), instead of `FirstNonEmptyFrame`.
-- `FirstNonEmptyFrame` is removed if nothing else uses it; `EmptyFrame` / `ProbeTimes` stay if
-  another caller still needs them.
+- `FirstNonEmptyFrame` is removed, and with it `EmptyFrame` (whole file) and
+  `AnimationReader.ProbeTimes` (with its `StepReader` and `VideoReader` overrides): no other caller.
 - The video export (checkbox unchecked) is unchanged: every source plays from its start.
 
 ---
@@ -74,8 +79,9 @@ Components involved: `UI/MainForm.cs`, `UI/GridPreview.cs`, `UI/AnimationPlayer.
 
 - The crop slider keeps its default of 15% (`FitCalculator.DefaultCropThreshold`, step index 15)
   and its **160 px width** (~3 px per step); keyboard and wheel move it 1% at a time.
-- A video with a single position today (under 2 s) now gets 100 positions like any other;
-  `VideoFrames.Positions` and the lone-position case (`Count == 1` → 10% mark) follow from the new step.
+- A video with a single position today (under 2 s) now gets 100 positions like any other. The
+  lone-position case (`Count == 1` → 10% mark) is kept in `VideoFrames.Positions`, for a duration
+  too short to split (under 100 ticks).
 
 ---
 
@@ -111,6 +117,9 @@ The solution holds no unit test project (`ImageGridFusion.slnx` references only
 - [x] ~~Q4 — Crop slider at 51 positions: keep its 160 px width, or widen it?~~ → Keep 160 px.
 - [x] ~~Q5 — On uncheck, resume like a released hover, or restart every content from its start?~~ → Like a released hover.
 - [x] ~~Q6 — While forced, the preview sound stops too?~~ → Yes, silent while forced.
+- [ ] Q7 — *(found during the run)* The video slider's label shows `m:ss`: at 1% steps, a 20 s
+  video shows each second on five positions in a row. Show tenths of a second when the step is under
+  a second?
 
 ---
 
@@ -141,6 +150,22 @@ Go given ("Go implémente", read as *Implement the code*: no documentation autho
 `main` (standing choice, see the Branch Gate rule of this repo), with small commits because other
 sessions change the repository in parallel.
 
+### Iteration 4 — 2026-09-24 — 🧭 Implementation choices
+
+- **Go read as *Implement the code***: "Go implémente" named no option; the README is left untouched.
+- **On `main`**, per the repository's standing Branch Gate choice; every unit committed on its own,
+  other sessions committing on `main` in parallel (carousel, scrolling mode).
+- **Dead code removed**: `EmptyFrame.cs` and `AnimationReader.ProbeTimes` (with both overrides) went
+  with `FirstNonEmptyFrame`, in a commit of their own.
+- **Forced while hovered**: the held cell keeps its pause point and slider page, so releasing the
+  hover later resumes from the right place.
+- **Started while forced**: a new playback is paused at the time of its page rather than at the clock,
+  so unchecking resumes from the page it shows.
+- **Lone video position kept** for durations under 100 ticks, rather than removing the `Count == 1` paths.
+- **Builds into the scratchpad**: the `bin` executable was locked by a running instance of the app.
+- **Found, not implemented**: repeated `m:ss` labels on the video slider at 1% steps — added as Q7.
+- No project rule broken.
+
 ---
 
 ## Implementation Log
@@ -150,9 +175,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | Iterations 3, 4 | 2026-09-24 | Crop step, video step, still export, dead code removal, forced still preview |
 | Unit tests | | | Not applicable: no test project in the solution |
-| README | | | |
+| README | | | Not authorized: the go covered the code only |
 
 ---
 
