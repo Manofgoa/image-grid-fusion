@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "mini-apps-local": {
+      "source": {
+        "source": "directory",
+        "path": "C:\\Dev\\Perso\\mini-apps\\shared"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "mini-apps@mini-apps-local": true
+  }
+}
