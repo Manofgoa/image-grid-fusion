@@ -17,6 +17,9 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
   - Hover a cell to outline it and show a **×** to remove it, or press `Delete` to remove the selected one
   - Videos, animated GIFs, PDFs of several pages and long texts play live in their cell (see Animated content)
   - Hover a cell holding a video, a GIF, a PDF or a long text to hold it still and show a slider along its bottom, browsing its frames or pages
+  - Zoom a cell from 50 % to 400 %: with the slider shown along its left edge while hovered (it snaps to 100 %), or with the mouse wheel over it, around the point under the mouse (4 notches double the zoom; crossing 100 % stops on it)
+  - Drag a zoomed-in image to move it within its cell; `Ctrl` + drag swaps it instead
+  - Zooming and moving show live, smoothed once the gesture ends (the wheel: once it stops turning); not while exporting
   - Drag a cell onto another to swap the two images
   - Drop a file onto a cell to replace it
   - **Clear all** (bottom left) removes every image at once, with no confirmation, back to the initial state
