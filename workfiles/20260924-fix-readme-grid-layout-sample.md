@@ -103,6 +103,12 @@ Both are brought back to 21 with 6/5/6 cells; headers and captions already follo
 Go given for code, unit tests and documentation. Code and unit tests do not apply; the run
 edits `README.md` only, on `main`.
 
+### Iteration 3 — 2026-09-24 — 🧭 Implementation choices
+
+- **Branch**: stayed on `main` without asking the branch question — the user's standing rule for
+  this app is that work lands on `main`.
+- No other divergent choice: the diagrams are exactly the ones in *Diagram Grid*.
+
 ---
 
 ## Implementation Log
@@ -114,7 +120,7 @@ says so rather than staying blank.
 |---|---|---|---|
 | Code | — | — | Not applicable: documentation only |
 | Unit tests | — | — | Not applicable: nothing testable changes |
-| README | | | |
+| README | 2 | 2026-09-24 | *Three columns* (3 images) and *Big top* (4 images) redrawn at 21 characters; every diagram line measured at 21 per block, 2-space gaps |
 
 ---
 
