@@ -138,7 +138,10 @@ Big left, mirrored
 
 - Each image is scaled to fill its cell, with no gap between cells.
 - Up to a threshold of the overflowing axis may be cropped in total, split evenly on both sides — 15% by default (7.5% per side).
-- Beyond that threshold, the image is cropped exactly to it and centered, and the remaining bands are filled with the dominant color of the whole image.
+- Beyond that threshold, the image is cropped exactly to it and centered, and the remaining bands (and transparent pixels) are filled with a background color:
+  - the image's own background, when at least three sides of the part the cell shows carry one uniform color (identical or very close, JPEG noise and slight gradients included) — a white product shot gets white bands even if its subject is mostly red. A side where the subject touches the edge, or a mostly transparent side, does not count;
+  - otherwise the most frequent color of the whole image.
+  The sides are those of the part actually shown, after the crop and any zoom, so the color follows the zoom and the focus. An animation keeps the same color while it plays.
 - The threshold is set with the **Crop** slider in the top bar, from 0% (no crop, bands only) to 50%, in steps of 5%. The preview follows it live, and copy / save use the same value. It is not remembered: every launch starts at 15%.
 - The same rule applies whether the source image is too small (upscaled) or too large (downscaled).
 - EXIF orientation is applied on load, so photos from phones appear upright.
