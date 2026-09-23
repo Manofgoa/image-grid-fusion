@@ -162,6 +162,11 @@ All seven open questions answered (Q&A #5–#11); the design sections now descri
   the preview's edges; source cell under a dark translucent overlay.
 - Unit tests declined.
 
+### Iteration 3 — 2026-09-23
+
+Go for implementation asked (Q&A #12): **No**. The gate holds; the design stays as it is,
+waiting for Milestone 2 of `20260923-application-v1.md` to be delivered first.
+
 ---
 
 ## Implementation Log
@@ -194,7 +199,7 @@ Questions asked by the agent during design, with user responses.
 | 9 | In-grid ghost outside the preview: clipped or everywhere? | Clipped at the preview edges | 2026-09-23 |
 | 10 | Source cell dimming style? | Dark translucent overlay | 2026-09-23 |
 | 11 | Unit tests: none, or a test project for the ghost bounds? | None | 2026-09-23 |
-| 12 | Go for implementation? | | |
+| 12 | Go for implementation? | No — the gate holds | 2026-09-23 |
 
 ---
 
