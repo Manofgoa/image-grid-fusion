@@ -149,6 +149,7 @@ says so rather than staying blank.
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
 | Code | 3, 4 | 2026-09-24 | `GridPreview`: handle below the ×, pan everywhere else, `Ctrl` + drag removed; builds with 0 warnings |
+| Manual validation | 4 | 2026-09-24 | Checklist run by hand in the app ("C'est ok"), app closed cleanly (exit code 0) |
 | Unit tests | 3 | 2026-09-24 | Not applicable — no test project, UI gesture code only |
 | README | 3 | 2026-09-24 | Declined at the go ("Implement the code") — gesture lines now stale |
 
