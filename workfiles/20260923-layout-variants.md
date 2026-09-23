@@ -127,6 +127,7 @@ layout — unchanged for the default layouts.
 - **Image count changes** (Q&A #10): the layout goes back to the **default** of the new count,
   and the mirror to off.
 - **Not remembered across launches** (Q&A #3): every launch starts on the default layouts.
+- **No keyboard shortcut** (Q&A #13): layouts and mirror are mouse-only.
 - Canvas sizing and export use the **active variant**: `CanvasSizer` computes the width from that
   variant's cell fractions, so switching variant can change the output resolution.
 
@@ -183,7 +184,7 @@ either (v1 Q&A #12). Nothing is created or updated.
       Neutral schematic rectangles
 - [x] ~~Thumbnail row placement: in the bottom bar left of Copy/Save, a bar above the preview, or a
       vertical strip on the side?~~ → Vertical strip on the left of the preview
-- [ ] Keyboard shortcut to cycle through the variants of the current count?
+- [x] ~~Keyboard shortcut to cycle through the variants of the current count?~~ → None
 - [x] ~~Unit tests: still none, or create a test project now for the layouts (every variant tiles
       the canvas exactly, cell count matches, fractions match pixels)?~~ → Still none
 
@@ -227,6 +228,10 @@ UI and tests settled (Q&A #10–#12, #14): the layout resets to the default when
 changes; thumbnails are neutral schematics in a vertical strip on the left of the preview, with
 the mirror toggle below them; no unit tests. Only the keyboard shortcut remains open.
 
+### Iteration 5 — 2026-09-23
+
+Last open question answered (Q&A #13): no keyboard shortcut. The design is complete.
+
 ---
 
 ## Implementation Log
@@ -260,7 +265,7 @@ Questions asked by the agent during design, with user responses.
 | 10 | Variant after the image count changes? | Default of the new count | 2026-09-23 |
 | 11 | Thumbnail look? | Neutral schematics | 2026-09-23 |
 | 12 | Thumbnail row placement? | Vertical strip on the left of the preview | 2026-09-23 |
-| 13 | Keyboard shortcut to cycle variants? | | |
+| 13 | Keyboard shortcut to cycle variants? | None | 2026-09-23 |
 | 14 | Unit tests for the layouts? | No | 2026-09-23 |
 | 15 | Mirror axis: horizontal only, or the layout's asymmetric axis? | The asymmetric axis | 2026-09-23 |
 | 16 | Mirror on a symmetric layout? | Disabled | 2026-09-23 |
