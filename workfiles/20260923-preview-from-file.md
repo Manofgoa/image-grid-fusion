@@ -77,7 +77,7 @@ recommendation, confirmed by the user).
 
 - Requires `TargetFramework` → `net10.0-windows10.0.19041.0` (WinRT projections via CsWinRT;
   adds a few MB of `Microsoft.Windows.SDK.NET.dll` + `WinRT.Runtime.dll`, compatible with
-  single-file + R2R). Minimum OS becomes Windows 10 2004.
+  single-file + R2R). Minimum OS becomes Windows 10 2004, stated in the README.
 - WinRT async calls are awaited (`AsTask()`), never `.Result`.
 - Known limit: video depends on the codecs installed. H.264 mp4 / mov work everywhere; HEVC needs
   the Store extension; mkv / avi are uneven. Third-party fallback (FFMediaToolkit + FFmpeg,
