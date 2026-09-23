@@ -33,19 +33,24 @@ Relevant components:
   only *Planned*).
 - **Empty grid**: the button stays visible but is **disabled**, like **Copy** and **Save…**
   (`UpdateButtons()`).
+- **Status line**: after clearing, a confirmation replaces the current message, through the existing
+  `ShowStatus()` (4 s): `1 image removed.` / `{n} images removed.`
+- **No keyboard shortcut**: the button is the only way to clear everything.
 
 ## UI — Bottom Bar
 
-- The bottom bar gets a third column: `[Clear button] [status line, fills] [Copy] [Save…]`.
+- The bottom bar gets a third column: `[Clear all] [status line, fills] [Copy] [Save…]`.
   The status line moves right of the new button and keeps filling the free width.
-- The button follows the existing ones: a standard WinForms `Button`, `AutoSize = true`.
+- Label **Clear all**, text only; the button follows the existing ones: a standard WinForms `Button`,
+  `AutoSize = true`.
 
 ## Code
 
 - `GridPreview` gets a public `Clear()`: disposes every image, empties the list, resets selection,
   hover and pressed state, then calls `OnImagesChanged()` **once** (a single `ImagesChanged` /
   `LayoutChanged`, not one per image). Does nothing when the grid is already empty.
-- `MainForm` adds the button, wires `Click` to `_preview.Clear()`, and enables it in `UpdateButtons()`.
+- `MainForm` adds the button, wires `Click` to a handler that reads the image count, calls
+  `_preview.Clear()` and shows the status message; the button is enabled in `UpdateButtons()`.
 
 ---
 
@@ -62,9 +67,9 @@ The solution has no test project, and the change is UI-only (a button and a list
 
 ## Open Questions
 
-- [ ] Button label (and icon or not)?
-- [ ] Keyboard shortcut for clearing everything?
-- [ ] Status line after clearing: a confirmation message, and/or wipe the current message?
+- [x] ~~Button label (and icon or not)?~~ → **Clear all**, text only
+- [x] ~~Keyboard shortcut for clearing everything?~~ → None
+- [x] ~~Status line after clearing: a confirmation message, and/or wipe the current message?~~ → A confirmation message (`{n} images removed.`) replacing the current one
 
 ---
 
@@ -82,6 +87,11 @@ bottom bar, no confirmation, full reset, disabled on an empty grid. Exploration 
 reset" needs nothing beyond removing the images: layout, mirror and selection already reset with an
 empty grid, and the app keeps no other setting. `GridPreview.Clear()` notifies once. No test project,
 so no test impact.
+
+### Iteration 2 — 2026-09-23
+
+Open questions answered (Q5–Q7): label **Clear all** (text only), no keyboard shortcut, and a
+confirmation on the status line after clearing (`{n} images removed.`, via `ShowStatus()`).
 
 ---
 
@@ -108,9 +118,9 @@ Questions asked by the agent during design, with user responses.
 | 2 | What is reset besides the images? | Everything (back to the app's initial state) | 2026-09-23 |
 | 3 | Button behaviour on an empty grid? | Disabled (visible, greyed out) | 2026-09-23 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward | 2026-09-23 |
-| 5 | Button label (and icon or not)? | | |
-| 6 | Keyboard shortcut for clearing everything? | | |
-| 7 | Status line after clearing? | | |
+| 5 | Button label (and icon or not)? | Clear all, text only | 2026-09-23 |
+| 6 | Keyboard shortcut for clearing everything? | None | 2026-09-23 |
+| 7 | Status line after clearing? | A confirmation message, replacing the current one | 2026-09-23 |
 
 ---
 
