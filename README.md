@@ -8,6 +8,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 - Merges 1 to 4 images into one; a single image fills the whole canvas and is exportable
 - Output ratio locked to 1200:628 (≈1.91:1); the ratio matters, not the resolution (see Canvas size)
 - Drag & drop images onto the `.exe` icon or onto the window, or paste them with `Ctrl+V`
+- An **Add images** drop zone right of the preview: drop files onto it to add them after the current ones, or click it to pick files
 - Several layouts per image count, picked from a strip of thumbnails, plus a mirror toggle (see Layouts)
 - No image list: the grid preview *is* the interface
   - Click a cell to select it, `Esc` to deselect
@@ -20,7 +21,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 
 - While cells are free, new images fill them in order.
 - Once the grid is full, a new image replaces the selected cell, or the last image (image 4) if none is selected.
-- Adding several files at once (paste, drop, or command-line arguments): free slots are filled first, the first excess file applies the replace rule above, and any further excess is ignored, with a status-line message.
+- Adding several files at once (paste, drop, the Add images picker, or command-line arguments): free slots are filled first, the first excess file applies the replace rule above, and any further excess is ignored, with a status-line message.
 
 ## Layouts
 
