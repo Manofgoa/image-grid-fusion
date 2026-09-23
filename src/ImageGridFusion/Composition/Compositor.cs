@@ -51,12 +51,15 @@ public static class Compositor
         }
     }
 
-    /// <summary>Draws one frame into its cell, leaving the rest of <paramref name="g"/> untouched.</summary>
-    public static void DrawCell(Graphics g, Frame frame, Rectangle cell, double threshold = FitCalculator.DefaultCropThreshold)
+    /// <summary>
+    /// Draws one frame into its cell, leaving the rest of <paramref name="g"/> untouched.
+    /// <paramref name="fast"/> trades smoothing for speed, the frame landing at the same place.
+    /// </summary>
+    public static void DrawCell(Graphics g, Frame frame, Rectangle cell, double threshold = FitCalculator.DefaultCropThreshold, bool fast = false)
     {
-        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+        g.InterpolationMode = fast ? InterpolationMode.Bilinear : InterpolationMode.HighQualityBicubic;
         g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-        g.CompositingQuality = CompositingQuality.HighQuality;
+        g.CompositingQuality = fast ? CompositingQuality.HighSpeed : CompositingQuality.HighQuality;
 
         var look = frame.Look ?? ImageLook.None;
 
