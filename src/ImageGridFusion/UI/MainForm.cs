@@ -7,6 +7,9 @@ namespace ImageGridFusion.UI;
 
 internal sealed class MainForm : Form
 {
+    private const int ThresholdStepPercent = 5;
+    private const int MaxThresholdPercent = 50;
+
     private readonly string[] _startupFiles;
     private readonly GridPreview _preview = new() { Dock = DockStyle.Fill, AllowDrop = true };
     private readonly LayoutStrip _layouts = new() { Dock = DockStyle.Left, Width = 80, AllowDrop = true };
@@ -14,6 +17,23 @@ internal sealed class MainForm : Form
     private readonly Button _saveButton = new() { Text = "Save…", AutoSize = true };
     private readonly Label _status = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly System.Windows.Forms.Timer _statusTimer = new();
+
+    // One slider position per step: the value is a step index, not a percentage.
+    private readonly TrackBar _threshold = new()
+    {
+        Minimum = 0,
+        Maximum = MaxThresholdPercent / ThresholdStepPercent,
+        Value = (int)Math.Round(FitCalculator.DefaultCropThreshold * 100 / ThresholdStepPercent),
+        SmallChange = 1,
+        LargeChange = 1,
+        TickStyle = TickStyle.None,
+
+        // Without ticks the thumb sits at the top: a height fitted to it keeps it level with the label.
+        AutoSize = false,
+        Size = new Size(160, 26),
+        Anchor = AnchorStyles.Left,
+    };
+    private readonly Label _thresholdLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
 
     public MainForm(string[] args)
     {
@@ -47,10 +67,27 @@ internal sealed class MainForm : Form
         bottom.Controls.Add(_status, 0, 0);
         bottom.Controls.Add(buttons, 1, 0);
 
-        // The fill control goes first so the bottom panel, then the layout strip above it, are docked before it.
+        // Settings on the left; the label follows the slider so its changing width never moves it.
+        var top = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            ColumnCount = 2,
+            RowCount = 1,
+            Padding = new Padding(8),
+        };
+        top.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        top.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        top.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        top.Controls.Add(_threshold, 0, 0);
+        top.Controls.Add(_thresholdLabel, 1, 0);
+
+        // Docked in reverse order of addition: the top and bottom bars span the whole width, then the
+        // layout strip takes the left of what remains, and the fill control goes first so it gets the rest.
         Controls.Add(_preview);
         Controls.Add(_layouts);
         Controls.Add(bottom);
+        Controls.Add(top);
         ResumeLayout(performLayout: true);
 
         _statusTimer.Tick += (_, _) =>
@@ -60,6 +97,7 @@ internal sealed class MainForm : Form
         };
         _copyButton.Click += (_, _) => CopyToClipboard();
         _saveButton.Click += (_, _) => Save();
+        _threshold.ValueChanged += (_, _) => UpdateThreshold();
         _preview.ImagesChanged += (_, _) => UpdateButtons();
         _preview.LayoutChanged += (_, _) => _layouts.ActiveLayout = _preview.ActiveLayout;
         _layouts.LayoutPicked += (_, layout) => _preview.SetLayout(layout);
@@ -72,6 +110,7 @@ internal sealed class MainForm : Form
         _preview.DragDrop += OnDragDrop;
         _layouts.DragEnter += OnDragEnter;
         _layouts.DragDrop += OnDragDrop;
+        UpdateThreshold();
         UpdateButtons();
     }
 
@@ -308,6 +347,14 @@ internal sealed class MainForm : Form
         bool any = _preview.Images.Count > 0;
         _copyButton.Enabled = any;
         _saveButton.Enabled = any;
+    }
+
+    /// <summary>Applies the slider position, live while it is dragged: the preview, then every export, use it.</summary>
+    private void UpdateThreshold()
+    {
+        int percent = _threshold.Value * ThresholdStepPercent;
+        _thresholdLabel.Text = $"Crop: {percent}%";
+        _preview.CropThreshold = percent / 100.0;
     }
 
     /// <summary>Shows a message for a few seconds; errors in red, and a little longer.</summary>
