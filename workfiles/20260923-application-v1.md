@@ -188,7 +188,7 @@ The v1 is delivered in two milestones, so the direction can be checked on a runn
 
 ### Milestone 1 — Minimal app
 
-Implementation not yet authorized (the user answered "No" to the go on 2026-09-23).
+Implementation authorized on 2026-09-23 (Iteration 4), code only.
 Work happens on `main` (user's deliberate choice, Q&A #23).
 
 - Solution and WinForms project (`net10.0-windows`).
@@ -291,6 +291,12 @@ Last open question answered and Milestone 1 scope settled (Q&A #21–#23):
 - Drag-to-swap, × on hover and Save as PNG move from Milestone 2 into Milestone 1.
 - Branch: stay on `main`, deliberately.
 - Go for implementation: **No** — the gate holds, the design stays open.
+
+### Iteration 4 — 2026-09-23 — ✅ Implemented
+
+Go given for **Milestone 1, code only**, on `main` (user's choice). Scope frozen as described in
+`### Milestone 1 — Minimal app`. Milestone 2 and the README update stay gated; unit tests stay
+declined.
 
 ---
 
