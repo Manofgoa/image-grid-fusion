@@ -199,6 +199,12 @@ All open questions answered in two batches:
 - Slider: live while dragging, only the latest position rendered.
 - Tests: no test project; manual checks listed in *Test Impact*.
 
+### Iteration 3 — 2026-09-23 — ✅ Implemented
+
+Go given ("Allez go", after a first "No"). Scope frozen as the design sections stand in
+Iteration 2: code, plus the README (the design itself states the minimum OS there); no unit
+tests, as agreed. Work stays on `main` — the project's standing choice.
+
 ---
 
 ## Implementation Log
