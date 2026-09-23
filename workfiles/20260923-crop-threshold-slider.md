@@ -60,11 +60,11 @@ No change: `FitCalculator`, `CanvasSizer` and `Compositor` already take the thre
 
 ### README
 
-*Requested after implementation (Iteration 6):*
+*Done after implementation (Iteration 6):*
 
 - `## Fitting rules`: describe the threshold as adjustable (0–50%, step 5%, 15% by default, not remembered between launches)
   instead of a fixed 15%.
-- `## Output` or `## Features`: mention the slider.
+- `## Features`: mention the slider.
 - `## Planned`: remove the *Crop threshold slider* entry.
 
 ---
@@ -166,9 +166,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 3, 4 | 2026-09-24 | `e84946e` threshold through preview and export · `fc89a62` top bar slider; branch `feature/crop-threshold-slider` |
+| Code | 3, 4, 5 | 2026-09-24 | `e84946e` threshold through preview and export · `fc89a62` top bar slider · `de72825` slider out of the startup focus (`_preview.Focus()` in `OnShown` — `ActiveControl` set in the constructor did not hold); branch `feature/crop-threshold-slider` |
 | Unit tests | 2 | 2026-09-23 | Not applicable — no test project, declined by the user (Q&A #8) |
-| README | 3 | 2026-09-24 | Not done — the go covered the code only; changes listed under `### README` |
+| README | 3, 6 | 2026-09-24 | Left out by the code-only go (Iteration 3), then done on request (Iteration 6): Features, Fitting rules, Planned |
 
 ---
 
