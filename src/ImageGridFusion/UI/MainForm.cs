@@ -437,11 +437,12 @@ internal sealed class MainForm : Form
             return;
         }
 
-        if (ExportsVideo)
+        bool carousel = ExportsCarousel;
+        if (carousel || ExportsVideo)
         {
             string path = TempVideoPath();
             var videoClock = Stopwatch.StartNew();
-            if (await ExportVideoAsync(path) is { } video)
+            if (await ExportVideoAsync(path, carousel) is { } video)
             {
                 var encoding = videoClock.Elapsed;
                 try
@@ -543,7 +544,7 @@ internal sealed class MainForm : Form
     /// <summary>Animated content exports as a video, unless "Force as image" is checked.</summary>
     private bool ExportsVideo => HasAnimation && !_forceImage.Checked;
 
-    /// <summary>While "Carrousel" is checked, Save writes the carousel's video; Copy is unchanged.</summary>
+    /// <summary>While "Carrousel" is checked, Copy and Save produce the carousel's video.</summary>
     private bool ExportsCarousel => _carousel.Checked && Carousel.CanPlay(_preview.Images.Count);
 
     /// <summary>
