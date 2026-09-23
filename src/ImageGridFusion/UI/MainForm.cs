@@ -9,6 +9,7 @@ internal sealed class MainForm : Form
 {
     private readonly string[] _startupFiles;
     private readonly GridPreview _preview = new() { Dock = DockStyle.Fill, AllowDrop = true };
+    private readonly LayoutStrip _layouts = new() { Dock = DockStyle.Left, Width = 80, AllowDrop = true };
     private readonly Button _copyButton = new() { Text = "Copy", AutoSize = true };
     private readonly Button _saveButton = new() { Text = "Save…", AutoSize = true };
     private readonly Label _status = new() { AutoSize = true, Anchor = AnchorStyles.Left };
@@ -46,8 +47,9 @@ internal sealed class MainForm : Form
         bottom.Controls.Add(_status, 0, 0);
         bottom.Controls.Add(buttons, 1, 0);
 
-        // The fill control goes first so the bottom panel is docked before it.
+        // The fill control goes first so the bottom panel, then the layout strip above it, are docked before it.
         Controls.Add(_preview);
+        Controls.Add(_layouts);
         Controls.Add(bottom);
         ResumeLayout(performLayout: true);
 
@@ -59,12 +61,17 @@ internal sealed class MainForm : Form
         _copyButton.Click += (_, _) => CopyToClipboard();
         _saveButton.Click += (_, _) => Save();
         _preview.ImagesChanged += (_, _) => UpdateButtons();
+        _preview.LayoutChanged += (_, _) => _layouts.ActiveLayout = _preview.ActiveLayout;
+        _layouts.LayoutPicked += (_, layout) => _preview.SetLayout(layout);
+        _layouts.MirrorToggled += (_, _) => _preview.SetLayout(_preview.ActiveLayout!.Mirrored());
         DragEnter += OnDragEnter;
         DragDrop += OnDragDrop;
         _preview.DragEnter += OnDragEnter;
         _preview.DragOver += OnPreviewDragOver;
         _preview.DragLeave += (_, _) => _preview.ShowDropTarget(null);
         _preview.DragDrop += OnDragDrop;
+        _layouts.DragEnter += OnDragEnter;
+        _layouts.DragDrop += OnDragDrop;
         UpdateButtons();
     }
 
