@@ -179,6 +179,11 @@ Answers Q&A #9–#12. The actions follow the image across swaps and layout chang
 wraps the toolbar onto a second row. No keyboard shortcut. The solution stays test-free, so unit
 tests are declined.
 
+### Iteration 4 — 2026-09-24 — ✅ Implemented
+
+Go given for **the code only** (README not authorized, unit tests already declined). The run
+stays on `main`, the standing choice for this repository.
+
 ---
 
 ## Implementation Log
