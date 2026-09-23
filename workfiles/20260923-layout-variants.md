@@ -110,7 +110,8 @@ layout — unchanged for the default layouts.
   of the actual images.
 - **Placement** (Q&A #12): a **vertical strip on the left of the preview**, thumbnails stacked
   top to bottom, the mirror toggle below them. The bottom bar keeps Copy / Save and the status
-  line.
+  line. The **right** side of the preview is reserved for the add-images drop zone
+  (`20260923-drop-zone.md`).
 
   ```
   +-----+------------------------------+
@@ -227,6 +228,12 @@ layout or count change. Image 1 always takes the featured cell; new `### Image-t
 UI and tests settled (Q&A #10–#12, #14): the layout resets to the default when the image count
 changes; thumbnails are neutral schematics in a vertical strip on the left of the preview, with
 the mirror toggle below them; no unit tests. Only the keyboard shortcut remains open.
+
+### Iteration 5 — 2026-09-23
+
+Cross-reference from `20260923-drop-zone.md` (its Q&A #11): the right side of the preview is
+reserved for the add-images drop zone. No conflict with the left thumbnail strip; noted in
+`### Variant Selection (UI)`.
 
 ### Iteration 5 — 2026-09-23
 
