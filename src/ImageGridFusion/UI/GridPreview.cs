@@ -68,6 +68,9 @@ internal sealed class GridPreview : Control
     private bool _panning;
     private Point _panPoint;
 
+    // The image panned or zoomed right now: drawn fast and painted at once, drawn again in full at the end.
+    private SourceImage? _live;
+
     public GridPreview()
     {
         SetStyle(
@@ -402,6 +405,7 @@ internal sealed class GridPreview : Control
         {
             _zooming = index;
             UpdateHold();
+            BeginLive(index);
             ZoomTo(e.Y);
             return;
         }
@@ -439,6 +443,7 @@ internal sealed class GridPreview : Control
         if (_panning)
         {
             Cursor = Cursors.SizeAll;
+            BeginLive(_pressed);
             PanBy(_pressed, new Size(e.X - _panPoint.X, e.Y - _panPoint.Y));
             _panPoint = e.Location;
             return;
@@ -483,6 +488,7 @@ internal sealed class GridPreview : Control
         if (_zooming >= 0)
         {
             _zooming = -1;
+            EndLive();
             UpdateHover(e.Location);
             UpdateHold();
             Invalidate();
@@ -523,6 +529,7 @@ internal sealed class GridPreview : Control
         {
             _sliding = -1;
             _zooming = -1;
+            EndLive();
             UpdateHold();
             Invalidate();
         }
@@ -593,6 +600,7 @@ internal sealed class GridPreview : Control
     {
         _pressed = -1;
         _panning = false;
+        EndLive();
         _dragging = false;
         _dropTarget = -1;
         _ghost?.Dispose();
@@ -789,6 +797,33 @@ internal sealed class GridPreview : Control
         return new Size((int)Math.Ceiling(size.Width * zoom), (int)Math.Ceiling(size.Height * zoom));
     }
 
+    /// <summary>
+    /// Starts showing the look of an image live, while a gesture changes it: the cell is drawn fast,
+    /// and painted before the next mouse message, which would otherwise hold the paint back.
+    /// </summary>
+    private void BeginLive(int index)
+    {
+        var image = _images[index];
+        if (image != _live)
+        {
+            EndLive();
+            _live = image;
+        }
+    }
+
+    /// <summary>The gesture is over: the frames are decoded at the new zoom, and the cell drawn in full.</summary>
+    private void EndLive()
+    {
+        if (_live is not { } image)
+        {
+            return;
+        }
+
+        _live = null;
+        UpdateDisplaySizes();
+        RedrawCell(image);
+    }
+
     /// <summary>Draws the new frame of an image into the cached preview, and repaints only its cell.</summary>
     private void RedrawCell(SourceImage image)
     {
@@ -800,14 +835,19 @@ internal sealed class GridPreview : Control
             return;
         }
 
+        bool live = image == _live;
         var cell = _layout.Cells(canvas.Size)[index];
         using (var g = Graphics.FromImage(_cache))
         {
-            Compositor.DrawCell(g, new Frame(image.Bitmap, image.BandColor, image.Look), cell, _cropThreshold);
+            Compositor.DrawCell(g, new Frame(image.Bitmap, image.BandColor, image.Look), cell, _cropThreshold, fast: live);
         }
 
         cell.Offset(canvas.Location);
         Invalidate(cell);
+        if (live)
+        {
+            Update();
+        }
     }
 
     /// <summary>
@@ -1008,7 +1048,12 @@ internal sealed class GridPreview : Control
             FitPagesToCells();
         }
 
-        UpdateDisplaySizes();
+        // During a gesture, the frame shown is scaled; decoding it again at each step would only slow it down.
+        if (image != _live)
+        {
+            UpdateDisplaySizes();
+        }
+
         RedrawCell(image);
     }
 
