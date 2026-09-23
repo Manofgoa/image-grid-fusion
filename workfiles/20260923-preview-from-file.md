@@ -194,8 +194,10 @@ one** — every behaviour is checked manually. The manual checks to run:
 
 Raised by the implementation run (outside the frozen scope, not implemented):
 
-- [ ] The drop zone's file picker (another workfile) defaults to an *Images* filter: videos,
-      PDFs and text need *All files*. Add them to the default filter?
+- [x] ~~The drop zone's file picker (another workfile) defaults to an *Images* filter: videos,
+      PDFs and text need *All files*. Add them to the default filter?~~ → Already done on
+      `main` by another session: `MainForm.PickerFilter` lists images, videos, PDF and text
+      *(checked 2026-09-24)*
 - [ ] SVG files are XML, so they are rendered as their **source text** (text comes before the
       Shell thumbnail). Prefer the thumbnail for svg (needs a thumbnail handler, e.g. PowerToys)?
 - [ ] Key-frame precision: on the generated test video, `NearestFrame` was as fast as
@@ -311,6 +313,9 @@ Questions asked by the agent during design, with user responses.
 | 14 | Video: initial frame and slider step? | 10 %, step = duration / 100, min 1 s | 2026-09-23 |
 | 15 | Slider: live while dragging, or on release? | Live while dragging | 2026-09-23 |
 | 16 | Create a test project for the pure logic? | No, manual checks | 2026-09-23 |
+| 17 | SVG: render its source text, or prefer the Windows thumbnail? | | 2026-09-24 |
+| 18 | Video frames: nearest key frame, or exact frame? | | 2026-09-24 |
+| 19 | Portrait PDF page pushing the canvas to 4096 px: keep, or render smaller? | | 2026-09-24 |
 
 ---
 
