@@ -45,6 +45,8 @@ internal sealed class MainForm : Form
         DragEnter += OnDragEnter;
         DragDrop += OnDragDrop;
         _preview.DragEnter += OnDragEnter;
+        _preview.DragOver += OnPreviewDragOver;
+        _preview.DragLeave += (_, _) => _preview.ShowDropTarget(-1);
         _preview.DragDrop += OnDragDrop;
         UpdateButtons();
     }
@@ -89,13 +91,26 @@ internal sealed class MainForm : Form
         e.Effect = e.Data?.GetDataPresent(DataFormats.FileDrop) == true ? DragDropEffects.Copy : DragDropEffects.None;
     }
 
-    private async void OnDragDrop(object? sender, DragEventArgs e)
+    private void OnPreviewDragOver(object? sender, DragEventArgs e)
     {
-        if (e.Data?.GetData(DataFormats.FileDrop) is string[] paths)
+        if (e.Effect != DragDropEffects.None)
         {
-            await AddFilesAsync(paths);
+            _preview.ShowDropTarget(DropCell(e));
         }
     }
+
+    private async void OnDragDrop(object? sender, DragEventArgs e)
+    {
+        _preview.ShowDropTarget(-1);
+        if (e.Data?.GetData(DataFormats.FileDrop) is string[] paths)
+        {
+            // Onto a cell: replaces it. Elsewhere in the window: added like a paste.
+            int target = sender == _preview ? DropCell(e) : -1;
+            await AddFilesAsync(paths, target);
+        }
+    }
+
+    private int DropCell(DragEventArgs e) => _preview.CellAt(_preview.PointToClient(new Point(e.X, e.Y)));
 
     private async void Paste()
     {
@@ -108,20 +123,18 @@ internal sealed class MainForm : Form
             using var image = Clipboard.GetImage();
             if (image is not null)
             {
-                _preview.Append([ImageLoader.FromImage(image)]);
+                _preview.Add([ImageLoader.FromImage(image)]);
             }
         }
     }
 
-    /// <summary>Loads files in the given order, off the UI thread, until the free slots are filled.</summary>
-    private async Task AddFilesAsync(string[] paths)
+    /// <summary>
+    /// Loads files in the given order, off the UI thread, and only as many as can be placed:
+    /// the target cell, the free slots, and one excess file for the replace rule.
+    /// </summary>
+    private async Task AddFilesAsync(string[] paths, int targetCell = -1)
     {
-        int wanted = _preview.FreeSlots;
-        if (wanted <= 0)
-        {
-            return;
-        }
-
+        int wanted = (targetCell >= 0 ? 1 : 0) + _preview.FreeSlots + 1;
         var images = await Task.Run(() =>
         {
             var loaded = new List<SourceImage>();
@@ -140,7 +153,7 @@ internal sealed class MainForm : Form
 
             return loaded;
         });
-        _preview.Append(images);
+        _preview.Add(images, targetCell);
     }
 
     private void CopyToClipboard()

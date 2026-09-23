@@ -18,6 +18,7 @@ internal sealed class GridPreview : Control
     private Point _pressPoint;
     private bool _dragging;
     private int _dropTarget = -1;
+    private int _externalTarget = -1;
 
     public GridPreview()
     {
@@ -37,23 +38,53 @@ internal sealed class GridPreview : Control
 
     public bool HasSelection => _selected >= 0;
 
-    /// <summary>Appends images up to the limit; the excess is disposed and ignored.</summary>
-    public void Append(IEnumerable<SourceImage> images)
+    /// <summary>
+    /// Adds images: the first one replaces <paramref name="targetCell"/> when given (a drop onto a
+    /// cell); the others fill the free slots; the first excess image replaces the selected cell, else
+    /// the last one; any further excess is disposed. Returns the number of images ignored.
+    /// </summary>
+    public int Add(IReadOnlyList<SourceImage> images, int targetCell = -1)
     {
-        foreach (var image in images)
+        int ignored = 0;
+        bool excessReplaced = false;
+        for (int i = 0; i < images.Count; i++)
         {
-            if (_images.Count < GridLayout.MaxImages)
+            var image = images[i];
+            if (i == 0 && targetCell >= 0 && targetCell < _images.Count)
+            {
+                Replace(targetCell, image);
+            }
+            else if (_images.Count < GridLayout.MaxImages)
             {
                 _images.Add(image);
+            }
+            else if (!excessReplaced)
+            {
+                Replace(_selected >= 0 ? _selected : _images.Count - 1, image);
+                excessReplaced = true;
             }
             else
             {
                 image.Dispose();
+                ignored++;
             }
         }
 
         OnImagesChanged();
+        return ignored;
     }
+
+    /// <summary>Highlights the cell an external drag (files from Explorer) would replace; -1 clears it.</summary>
+    public void ShowDropTarget(int index)
+    {
+        if (index != _externalTarget)
+        {
+            _externalTarget = index;
+            Invalidate();
+        }
+    }
+
+    public int CellAt(Point location) => Array.FindIndex(CellBounds(), c => c.Contains(location));
 
     public void RemoveSelected()
     {
@@ -113,10 +144,11 @@ internal sealed class GridPreview : Control
 
         var cells = CellBounds();
         g.SmoothingMode = SmoothingMode.AntiAlias;
-        if (_dragging && _dropTarget >= 0 && _dropTarget != _pressed)
+        int highlighted = _dragging && _dropTarget != _pressed ? _dropTarget : _externalTarget;
+        if (highlighted >= 0 && highlighted < cells.Length)
         {
             using var brush = new SolidBrush(Color.FromArgb(90, SystemColors.Highlight));
-            g.FillRectangle(brush, cells[_dropTarget]);
+            g.FillRectangle(brush, cells[highlighted]);
         }
 
         if (_selected >= 0)
@@ -227,6 +259,12 @@ internal sealed class GridPreview : Control
         OnImagesChanged();
     }
 
+    private void Replace(int index, SourceImage image)
+    {
+        _images[index].Dispose();
+        _images[index] = image;
+    }
+
     private void Swap(int a, int b)
     {
         (_images[a], _images[b]) = (_images[b], _images[a]);
@@ -294,8 +332,6 @@ internal sealed class GridPreview : Control
 
         return cells;
     }
-
-    private int CellAt(Point location) => Array.FindIndex(CellBounds(), c => c.Contains(location));
 
     private Rectangle CloseBounds(Rectangle cell)
     {
