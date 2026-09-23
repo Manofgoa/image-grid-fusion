@@ -138,6 +138,12 @@ full-quality render ~150 ms after the last notch; step of 2^(1/4) per notch with
 ignored while locked (proposed by the agent, part of the design submitted for the go). Deliverables:
 code and README; unit tests declined.
 
+### Iteration 3 — 2026-09-24 — ✅ Implemented
+
+Go given ("Go implémente") after a first "No" at the gate. Taken as the design's full deliverables —
+code and README, unit tests declined by design. Branch Gate: stays on `main`, the standing choice for
+this repository.
+
 ---
 
 ## Implementation Log
