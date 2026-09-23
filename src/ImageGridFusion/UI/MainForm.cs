@@ -116,6 +116,13 @@ internal sealed class MainForm : Form
     private static void OnDragEnter(object? sender, DragEventArgs e)
     {
         e.Effect = e.Data?.GetDataPresent(DataFormats.FileDrop) == true ? DragDropEffects.Copy : DragDropEffects.None;
+
+        // WinForms hands the drag to the shell helper only when a drop image type is set, and the
+        // following DragOver events keep it: that is what keeps Explorer's thumbnail over the window.
+        if (e.Effect == DragDropEffects.Copy)
+        {
+            e.DropImageType = DropImageType.Copy;
+        }
     }
 
     private void OnPreviewDragOver(object? sender, DragEventArgs e)
