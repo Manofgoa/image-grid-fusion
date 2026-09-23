@@ -803,7 +803,7 @@ internal sealed class GridPreview : Control
         var cell = _layout.Cells(canvas.Size)[index];
         using (var g = Graphics.FromImage(_cache))
         {
-            Compositor.DrawCell(g, new Frame(image.Bitmap, image.Dominant, image.Look), cell, _cropThreshold);
+            Compositor.DrawCell(g, new Frame(image.Bitmap, image.BandColor, image.Look), cell, _cropThreshold);
         }
 
         cell.Offset(canvas.Location);
