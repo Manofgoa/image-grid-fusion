@@ -149,6 +149,12 @@ Answers Q&A #8–#9: the detection always uses the part the cell shows, threshol
 or not; when the visible borders do not agree, the band color falls back to the whole image's majority
 color, unchanged. No open question remains.
 
+### Iteration 4 — 2026-09-24 — ✅ Implemented
+
+Go given ("GO", read as code and README: the README section belongs to the frozen design; unit tests
+not applicable by decision). Branch: stays on `main`, the project's standing choice. Scope frozen as
+described in the sections above.
+
 ---
 
 ## Implementation Log
