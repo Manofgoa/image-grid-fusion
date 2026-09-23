@@ -70,8 +70,11 @@ Mirrored versions are not separate layouts: they come from the mirror toggle (se
 | `4-big-left` | `[1│2/3/4]` | left half · three stacked cells on the right half | 0.95 · 2.87 · 2.87 · 2.87 | one portrait + three wide images |
 | `4-big-top` | `[1 1 1]` over `[2│3│4]` | top half · three thirds below | 3.82 · 1.27 · 1.27 · 1.27 | one panorama + three |
 
-Integer splits keep the v1 rule: cells tile the canvas exactly with no gap, and a boundary at
-fraction `f` of a side of `n` px falls at `floor(n × f)`, so no pixel is lost to rounding.
+Integer splits keep the v1 rule: cells tile the canvas exactly with no gap. Each layout is
+described on a small grid of integer units (e.g. 3 × 3 for `4-featured`), and a boundary at `u`
+units out of `n` on a side of `size` px falls at `floor(size × u / n)` — the v1 `floor(size / 2)`
+for halves — so neighbour cells share it and no pixel is lost. The 1-image case is a catalog
+entry too (`1-single`), with no alternative.
 
 ### Mirror
 
@@ -83,6 +86,8 @@ A single **mirror** toggle, next to the thumbnails, replaces dedicated mirrored 
 - On a **symmetric** layout the toggle is **disabled** (Q&A #16): flipping would only reorder the
   images, which drag-to-swap already does.
 - It is **reset to off** whenever the layout or the image count changes (Q&A #17).
+- Mirroring flips the cells in grid units, so the mirrored layout tiles the canvas as exactly as
+  the original; a mirrored cell may be 1 px wider or narrower than its unmirrored counterpart.
 
 | Layout | Flipped along | Mirrored version |
 |---|---|---|
@@ -124,7 +129,15 @@ layout — unchanged for the default layouts.
   +------------------------------------+
   ```
 
-- With 0 or 1 image there is nothing to choose: the strip is hidden *(proposed)*.
+- The **active thumbnail** shows the layout as applied, mirror included; clicking it again does
+  nothing. Each thumbnail has a tooltip with the layout name; the mirror's tooltip names its axis,
+  or says it is unavailable on a symmetric layout.
+- The **mirror toggle** draws two triangles facing away from a dashed axis, turned upright for a
+  vertical flip; it looks pressed when on and is greyed out when disabled.
+- The strip is 80 px wide (logical), slightly darker than the preview. Dropping files on it acts
+  like a drop elsewhere in the window (appended).
+- The selection follows its image across layout changes.
+- With 0 or 1 image there is nothing to choose: the strip is hidden.
 - **Image count changes** (Q&A #10): the layout goes back to the **default** of the new count,
   and the mirror to off.
 - **Not remembered across launches** (Q&A #3): every launch starts on the default layouts.
@@ -134,17 +147,21 @@ layout — unchanged for the default layouts.
 
 ---
 
-## Code Impact (proposal)
+## Code Structure
 
-- `GridLayout`: a layout becomes data — a list of cells expressed as fractions of the canvas —
-  from which both `Cells` (pixels, exact integer tiling) and `CellFractions` are derived, so a
-  variant is described once instead of twice. A catalog lists the variants per image count, the
-  first one being the default.
-- `Compositor.Draw`, `CanvasSizer.Compute`: take the layout to use instead of deriving it from
-  the image count.
-- `GridPreview`: holds the active layout, uses it for rendering and hit-testing.
-- `MainForm`: hosts the thumbnail strip and resets the active layout when the image count
-  changes.
+- `Composition/GridLayout.cs`: `GridLayout` is now a class whose instances are layouts — cells on
+  a grid of units, cell 0 featured — with `Cells(canvas)`, `CellFractions()`, `MirrorAxis`,
+  `IsMirrored` and `Mirrored()`. Static members keep the output ratio, `MaxImages`, and the
+  catalog: `For(count)` (default first) and `Default(count)`.
+- `Compositor.Render` / `Draw`, `CanvasSizer.Compute`: take the layout to use; `CanvasSizer`
+  rejects a layout whose cell count differs from the image count.
+- `UI/GridPreview.cs`: holds the active layout (`ActiveLayout`, `SetLayout`), uses it for
+  rendering and hit-testing, **resets it to the default** when the image count changes, and
+  raises `LayoutChanged`.
+- `UI/LayoutStrip.cs`: new custom-painted control — thumbnails, mirror toggle, tooltips; raises
+  `LayoutPicked` and `MirrorToggled`.
+- `UI/MainForm.cs`: docks the strip on the left above the bottom bar, relays the events between
+  strip and preview, and exports with the active layout.
 
 ---
 
@@ -248,6 +265,37 @@ Go for implementation asked (Q&A #19): **No** — the gate holds, the design sta
 Go given (Q&A #20–#21): **code + README**, on `main` (user's deliberate choice). Scope frozen as
 the design sections stand at this iteration. Unit tests stay declined (Q&A #14).
 
+### Iteration 8 — 2026-09-23 — 🧭 Implementation choices
+
+Code and README delivered on `main`. Choices the frozen design did not state:
+
+- **Integer unit grids**: layouts are described on grids of units rather than fractions, which
+  keeps exact tiling for thirds and for mirrored layouts (floating-point fractions could leave a
+  1 px gap or overlap between neighbours).
+- **Layout reset lives in `GridPreview`**, not in `MainForm` as the proposal said: the preview
+  owns the images and is the only place that sees the count change; it raises `LayoutChanged`
+  for the strip.
+- **`1-single`** is a catalog entry, so every image count goes through the same code path.
+- **Clicking the active thumbnail does nothing** — it does not turn the mirror off.
+- **Active thumbnail shows the mirror**; tooltips name each layout (English, like the rest of the
+  UI) and explain the mirror state.
+- **Mirror icon** drawn by hand (triangles and a dashed axis) rather than a Unicode glyph, whose
+  availability depends on the fonts.
+- **Strip accepts file drops**, handled as a drop elsewhere in the window, so the new strip does
+  not become a dead zone for the v1 drop rule.
+- **Selection kept** across layout changes (it follows its image); hover is reset.
+- **Property named `ActiveLayout`**: `Layout` clashes with the inherited `Control.Layout` event.
+- **README**: the replace rule now says "the last image (image 4)" instead of "the last cell in
+  reading order", since a mirrored layout's reading order no longer matches the image order.
+
+Verification: build with no warning; a scratch harness (outside the repo) checked that each of
+the 13 layouts, and its mirror, covers every pixel exactly once on 5 canvas sizes, that
+mirroring twice returns the original, and rendered the window off-screen (3 images mirrored,
+4 images big-top mirrored, 2 rows with the mirror disabled, 1 image with the strip hidden). The
+clicks themselves were not exercised by a human.
+
+No project rule was broken. No gap outside the frozen scope was found.
+
 ---
 
 ## Implementation Log
@@ -257,9 +305,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 7, 8 | 2026-09-23 | Layout engine, then thumbnail strip and mirror |
 | Unit tests | 4 | 2026-09-23 | Declined by the user (Q&A #14) |
-| README | | | |
+| README | 8 | 2026-09-23 | Layouts section rewritten, mirror, replace rule wording |
 
 ---
 
