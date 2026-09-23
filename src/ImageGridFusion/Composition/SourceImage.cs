@@ -26,6 +26,9 @@ public sealed class SourceImage : IDisposable
 
     public Color Dominant { get; private set; }
 
+    /// <summary>Actions on the image, kept whatever cell it moves to and whatever page it shows.</summary>
+    public ImageLook Look { get; set; } = ImageLook.None;
+
     public Size Size => Bitmap.Size;
 
     public bool IsDisposed { get; private set; }

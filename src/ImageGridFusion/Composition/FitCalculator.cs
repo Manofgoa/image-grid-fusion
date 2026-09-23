@@ -21,9 +21,17 @@ public static class FitCalculator
         return Math.Min(fill, fit / (1 - Math.Clamp(threshold, 0, 0.99)));
     }
 
-    public static Fit Compute(Rectangle cell, Size image, double threshold = DefaultCropThreshold)
+    public static Fit Compute(Rectangle cell, Size image, double threshold = DefaultCropThreshold) =>
+        Compute(cell, image, threshold, 1, new PointF(0.5f, 0.5f));
+
+    /// <summary>
+    /// Same fit, scaled by <paramref name="zoom"/>: the part drawn is centered on <paramref name="focus"/>
+    /// (fractions of the image), moved just enough for the cell never to show beyond the image on an
+    /// axis where it overflows. An axis where the image does not fill the cell stays centered.
+    /// </summary>
+    public static Fit Compute(Rectangle cell, Size image, double threshold, double zoom, PointF focus)
     {
-        double scale = Scale(cell.Width, cell.Height, image, threshold);
+        double scale = Scale(cell.Width, cell.Height, image, threshold) * zoom;
 
         double sourceWidth = Math.Min(image.Width, cell.Width / scale);
         double sourceHeight = Math.Min(image.Height, cell.Height / scale);
@@ -31,8 +39,8 @@ public static class FitCalculator
         double destinationHeight = sourceHeight * scale;
 
         var source = new RectangleF(
-            (float)((image.Width - sourceWidth) / 2),
-            (float)((image.Height - sourceHeight) / 2),
+            (float)Math.Clamp(focus.X * image.Width - sourceWidth / 2, 0, image.Width - sourceWidth),
+            (float)Math.Clamp(focus.Y * image.Height - sourceHeight / 2, 0, image.Height - sourceHeight),
             (float)sourceWidth,
             (float)sourceHeight);
         var destination = new RectangleF(
