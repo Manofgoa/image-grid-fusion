@@ -82,9 +82,11 @@ advance every second in their cells.
 - Frames are produced off the UI thread (same spirit as `PageLoader`).
 - Video playback needs **sequential** decoding: the current `GetThumbnailAsync` per frame
   (nearest key frame) is far too slow and too coarse for 30 fps. See *Technical Route*.
-
-To settle: how the live animation coexists with the hover slider; whether the preview plays
-sound (see Open Questions).
+- **Hover slider**: hovering a multiple-content cell **pauses its animation** and shows the
+  slider for manual browsing, as today; leaving the cell resumes the animation from where it
+  stands. The other cells keep playing.
+- **Sound**: the preview plays the **export's audio source** (see *Export*), in step with that
+  video — it pauses while that cell is paused by the hover, and loops with it.
 
 ---
 
@@ -100,8 +102,17 @@ Agreed:
   start until the video ends.
 - **Format**: MP4 (H.264) **with sound**: the audio of the **main image** when it is a video;
   otherwise the audio of the **first video of the grid** (grid order).
+- **Main image** = **image 1** (the first cell), whether the layout has a featured cell or not.
 - **Forced image frame**: for each multiple content, the **first frame that is not empty**
   (e.g. not a fully black frame).
+- **`Copy`** with multiple content copies an **MP4 video**: the same video as `Save…`, rendered
+  to a file then put on the clipboard as a file (pastable in Explorer, chat apps, mail).
+- **Progress**: percentage in the **status line** with a **Cancel** action; the app stays usable,
+  but the grid is locked (no add / remove / swap / layout change) while the export runs.
+- **Shared infrastructure**: this workfile **owns** the video export (playback clock, per-frame
+  compositing, encoder, audio muxing). *Scrolling mode* builds on it, and multi-content cells
+  **animate inside the rotation video** too — that workfile's *frozen* assumption is to be
+  revised there.
 
 Proposed (to be confirmed by reading this section):
 
@@ -120,10 +131,11 @@ Proposed (to be confirmed by reading this section):
   order; text is never empty. If every frame is empty → the frame at `t = 0`.
 - `Save…` dialog: `MP4 video (*.mp4)` filter, default name `fusion-{timestamp}.mp4`.
 - The checkbox sits in the buttons `FlowLayoutPanel`, next to `Save…`; its state is kept for the
-  session.
-
-To settle: what `Copy` does with multiple content, how progress / cancel is shown during a
-long export (see Open Questions).
+  session. It applies to `Copy` too: checked → `Copy` copies the still image, as today.
+- `Copy`'s video file: written to `%TEMP%\ImageGridFusion\fusion-{timestamp}.mp4` and left there
+  (the clipboard needs the file to outlive the copy); files of previous sessions are removed at
+  startup.
+- `Save…` and `Copy` run the same export; a second export cannot start while one runs.
 
 ---
 
@@ -144,32 +156,34 @@ with the existing `Compositor`, H.264 encoding, and muxing one source's audio.
 - The same decoder would serve the live preview (paced to the clock) and the export (as fast as
   possible).
 
-To settle: the route (see Open Questions).
+Agreed: **Option A — Media Foundation interop**, no new dependency. A source whose codec has no
+Media Foundation decoder is reported in the status line like today's unreadable files.
 
 ---
 
 ## Test Impact
 
-No test project exists. The pure logic this feature adds is testable without UI: loop durations,
-frame / page / scroll offset at time `t`, looping of shorter sources, export length, even-size
-rounding, empty-frame detection, audio source choice. Pending the test-project question.
+No test project exists, and the user chose to **keep the solution test-free**: no unit test is
+created or updated. The pure logic (loop durations, frame / page / scroll offset at time `t`,
+looping, export length, even-size rounding, empty-frame detection, audio source choice) stays
+untested by decision, not because nothing testable changes.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| — (pending the test-project question) | — | — |
+| — (declined: no test project) | — | — |
 
 ---
 
 ## Open Questions
 
-- [ ] Technical route: Media Foundation interop (zero dependency) or FFmpeg?
-- [ ] "Main image" in a layout without a featured cell: image 1 (first cell), or no main image (straight to the first video of the grid)?
-- [ ] Live animation vs hover slider: hovering a cell pauses its animation and shows the slider for manual browsing, the slider only sets where the animation resumes, or the slider goes away for multiple content?
-- [ ] Sound in the live preview: silent, or the export's audio source plays?
-- [ ] `Copy` with multiple content in the grid: copies the still image (first non-empty frames), copies the frames currently shown, or is disabled?
-- [ ] Progress of a long video export: progress + cancel in the status line, or a modal progress dialog with Cancel?
-- [ ] Scrolling mode overlap: which workfile owns the shared video export (clock, compositing per frame, encoder), and when both apply, do multi-content cells animate inside the rotation video (this workfile) or stay frozen (current *scrolling mode* assumption)?
-- [ ] Tests: create a first test project to pin the timing logic, or keep the solution test-free?
+- [x] ~~Technical route: Media Foundation interop (zero dependency) or FFmpeg?~~ → Media Foundation interop
+- [x] ~~"Main image" in a layout without a featured cell: image 1 (first cell), or no main image (straight to the first video of the grid)?~~ → Image 1, in every layout
+- [x] ~~Live animation vs hover slider: hovering a cell pauses its animation and shows the slider for manual browsing, the slider only sets where the animation resumes, or the slider goes away for multiple content?~~ → Hover pauses the cell's animation and shows the slider
+- [x] ~~Sound in the live preview: silent, or the export's audio source plays?~~ → The export's audio source plays
+- [x] ~~`Copy` with multiple content in the grid: copies the still image (first non-empty frames), copies the frames currently shown, or is disabled?~~ → Copies an MP4 video
+- [x] ~~Progress of a long video export: progress + cancel in the status line, or a modal progress dialog with Cancel?~~ → Status line + Cancel
+- [x] ~~Scrolling mode overlap: which workfile owns the shared video export (clock, compositing per frame, encoder), and when both apply, do multi-content cells animate inside the rotation video (this workfile) or stay frozen (current *scrolling mode* assumption)?~~ → This workfile owns it; contents animate inside the rotation video
+- [x] ~~Tests: create a first test project to pin the timing logic, or keep the solution test-free?~~ → No tests
 
 ---
 
@@ -191,6 +205,17 @@ the hover slider already committed, GIFs still-only, video frames fetched by thu
 for playback), no audio anywhere, a zero-dependency stack, no test project, and an overlapping
 video export in the *scrolling mode* workfile. Eight questions remain open.
 
+### Iteration 2 — 2026-09-24
+
+All eight open questions answered. Media Foundation interop (no dependency) for decoding and
+encoding; main image = image 1 in every layout; hovering a cell pauses its animation and shows
+the slider; the preview plays the export's audio source; `Copy` copies an MP4 video (file on the
+clipboard, written under `%TEMP%`); export progress + Cancel in the status line, grid locked
+meanwhile; this workfile owns the shared video export and contents animate inside the
+*scrolling mode* rotation video; no test project. Added with them, for the user to read:
+"Force as image" applies to `Copy` too, one export at a time, temp videos of previous sessions
+cleaned at startup.
+
 ---
 
 ## Implementation Log
@@ -201,7 +226,7 @@ says so rather than staying blank.
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
 | Code | | | |
-| Unit tests | | | |
+| Unit tests | 2 | 2026-09-24 | Declined: the solution stays test-free |
 | README | | | |
 
 ---
@@ -220,14 +245,14 @@ Questions asked by the agent during design, with user responses.
 | 6 | Without any video, does a PDF / GIF / text switch the export to video? | Yes, any multiple content | 2026-09-24 |
 | 7 | Sound when the main image is not a video? | The first video of the grid | 2026-09-24 |
 | 8 | Is the exploration expected to be straightforward or tricky / long? | Tricky / long | 2026-09-24 |
-| 9 | Technical route: Media Foundation interop or FFmpeg? | | 2026-09-24 |
-| 10 | Main image in a layout without a featured cell? | | 2026-09-24 |
-| 11 | Live animation vs hover slider? | | 2026-09-24 |
-| 12 | Sound in the live preview? | | 2026-09-24 |
-| 13 | What does Copy do with multiple content? | | 2026-09-24 |
-| 14 | Progress / cancel of a long video export? | | 2026-09-24 |
-| 15 | Scrolling mode overlap: ownership and combined behaviour? | | 2026-09-24 |
-| 16 | Create a first test project? | | 2026-09-24 |
+| 9 | Technical route: Media Foundation interop or FFmpeg? | Media Foundation interop | 2026-09-24 |
+| 10 | Main image in a layout without a featured cell? | Image 1 | 2026-09-24 |
+| 11 | Live animation vs hover slider? | Hover pauses the cell's animation and shows the slider | 2026-09-24 |
+| 12 | Sound in the live preview? | The export's audio source plays | 2026-09-24 |
+| 13 | What does Copy do with multiple content? | Copies an MP4 video | 2026-09-24 |
+| 14 | Progress / cancel of a long video export? | Status line + Cancel | 2026-09-24 |
+| 15 | Scrolling mode overlap: ownership and combined behaviour? | This workfile owns the export; contents animate in the rotation video | 2026-09-24 |
+| 16 | Create a first test project? | No | 2026-09-24 |
 
 ---
 
