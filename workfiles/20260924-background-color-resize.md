@@ -50,6 +50,10 @@ Rule (Q&A #6, #7):
    bucket wins and its pixels are averaged.
 3. If the edges hold no opaque pixel at all, the whole-image `Dominant` stays as the last resort.
 
+Implemented as `BandColor.MostFrequentOnSides`, called between `Background` and `Dominant` in
+`BandColor.For`; each edge pixel counts once (corners are not counted twice). The band depths are
+shared with the uniform-side test through `BandColor.Depths`.
+
 Computed on the 512 px sample `BandColor` already keeps, so the cost per region stays a few thousand
 pixels at most — compatible with the live requirement. The cache (`_last`) is unchanged.
 
@@ -66,7 +70,7 @@ shows), not on another frame, and stays fixed while it plays.
 | Preview | `SourceImage.ShowPage` computes `BandColor.Of` on the chosen page; `ShowFrame` keeps it while playing | ✅ already right — no change |
 | Grid still export | `BandColor.Of(item.Source.Render(item.Page))` — the chosen page | ✅ already right — no change |
 | Grid video export (`GridExport`, line ~92) | `BandColor.Of(FrameAt(TimeSpan.Zero))` — **frame 0**, not the chosen page | Use the item's `BandColor`, computed on the chosen page |
-| Carousel export (`CarouselExport`, line ~50) | Same, frame 0 for an animated item | Same fix |
+| Carousel export (`CarouselExport`, line ~50) | Same, frame 0 for an animated item | Same fix — applied to both branches (playing contents or forced to images) |
 
 `BandColor.For` already accepts a frame of another size than the one sampled ("the frame shown may be
 another frame of the same animation"), so reusing the chosen page's `BandColor` on the exported frames
@@ -139,15 +143,29 @@ Go given for the code only (Q&A #9): README and unit tests are not part of the r
 `main`, the standing choice for this repository. Scope frozen as the Color Rule and Video Cells
 sections stand above.
 
+### Iteration 4 — 2026-09-24 — 🧭 Implementation choices
+
+- The edge majority counts each pixel of the four 2 % bands once — the corners, shared by two bands,
+  are not counted twice, so no corner weighs more than the middle of a side.
+- The carousel export takes the item's `BandColor` on both of its branches: when contents play
+  (previously frame 0) and when they are forced to images (previously recomputed on the chosen page,
+  which gives the same color). One line instead of two paths.
+- The item's `BandColor` is the one the preview computed on the chosen page, possibly from a
+  scaled-down page bitmap; `BandColor` samples at 512 px at most either way, so the color matches the
+  preview's.
+- The still export (`GridExport.Render`, line ~163) keeps recomputing on the chosen page, as the frozen
+  design said "no change".
+- No rule broken. Branch: `main`, the standing choice for this repository (no Branch Gate question).
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
+| Code | 3 | 2026-09-24 | `BandColor` edge-majority fallback; video and carousel exports use the chosen page's color |
+| Unit tests | — | 2026-09-24 | Not applicable: no test project, manual checks only (Q&A #8) |
+| README | — | 2026-09-24 | Declined: the go covered the code only (Q&A #9) |
 
 ---
 
