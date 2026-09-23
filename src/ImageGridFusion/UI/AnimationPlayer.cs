@@ -1,0 +1,242 @@
+using System.Diagnostics;
+using System.Drawing.Drawing2D;
+using ImageGridFusion.Composition;
+
+namespace ImageGridFusion.UI;
+
+/// <summary>
+/// Plays the animated images of the grid live, on one clock so their steps change together. Frames
+/// are decoded off the UI thread and shown on it; an image held (hovered, or browsed with its slider)
+/// stops where it stands and resumes from there, or from the page the slider left it on. Also plays
+/// the sound of the grid's sound source in step with it. Used from the UI thread only.
+/// </summary>
+internal sealed class AnimationPlayer : IDisposable
+{
+    private static readonly TimeSpan Interval = TimeSpan.FromMilliseconds(33);
+
+    private readonly Stopwatch _clock = Stopwatch.StartNew();
+    private readonly Dictionary<SourceImage, Playback> _playbacks = [];
+    private readonly PreviewSound _sound = new();
+    private SourceImage? _held;
+
+    /// <summary>Raised on the UI thread once an image shows a new frame.</summary>
+    public event EventHandler<SourceImage>? FrameShown;
+
+    /// <summary>Plays the animated images not playing yet, stops the ones gone or shown still, and follows the sound source.</summary>
+    public void Sync(IReadOnlyList<SourceImage> images)
+    {
+        foreach (var (image, playback) in _playbacks.ToList())
+        {
+            if (!images.Contains(image) || !image.IsAnimated)
+            {
+                playback.Stop();
+                _playbacks.Remove(image);
+            }
+        }
+
+        foreach (var image in images)
+        {
+            if (image.IsAnimated && !_playbacks.ContainsKey(image))
+            {
+                // Started on a whole second of the clock, so steps change together in every cell.
+                var start = TimeSpan.FromSeconds(Math.Floor(_clock.Elapsed.TotalSeconds));
+                var playback = new Playback(image, start);
+                _playbacks[image] = playback;
+                if (image == _held)
+                {
+                    Pause(playback);
+                }
+
+                _ = RunAsync(playback);
+            }
+        }
+
+        _sound.Follow(Animation.SoundSource(images));
+    }
+
+    /// <summary>Holds <paramref name="image"/> still, and lets the one held before play on; <c>null</c> holds none.</summary>
+    public void Hold(SourceImage? image)
+    {
+        if (image == _held)
+        {
+            return;
+        }
+
+        if (_held is not null && _playbacks.TryGetValue(_held, out var released))
+        {
+            Resume(released);
+        }
+
+        _held = image;
+        if (image is not null && _playbacks.TryGetValue(image, out var held))
+        {
+            Pause(held);
+        }
+    }
+
+    /// <summary>Size the frames of <paramref name="image"/> are shown at: larger frames are scaled down off the UI thread.</summary>
+    public void SetDisplaySize(SourceImage image, Size size)
+    {
+        if (_playbacks.TryGetValue(image, out var playback))
+        {
+            playback.DisplaySize = size;
+        }
+    }
+
+    /// <summary>The pages were laid out again: the next frame is rendered even if at the same step.</summary>
+    public void Refresh(SourceImage image)
+    {
+        if (_playbacks.TryGetValue(image, out var playback))
+        {
+            playback.Reader?.Reset();
+        }
+    }
+
+    public void Dispose()
+    {
+        foreach (var playback in _playbacks.Values)
+        {
+            playback.Stop();
+        }
+
+        _playbacks.Clear();
+        _sound.Dispose();
+    }
+
+    private TimeSpan Position(Playback playback) => playback.PausedAt ?? _clock.Elapsed - playback.Offset;
+
+    private void Pause(Playback playback)
+    {
+        playback.PausedAt = Position(playback);
+        playback.PausedPage = playback.Image.Page;
+    }
+
+    /// <summary>Resumes where the image stands, or at the page its slider moved it to meanwhile.</summary>
+    private void Resume(Playback playback)
+    {
+        if (playback.PausedAt is not { } position)
+        {
+            return;
+        }
+
+        if (!playback.Image.IsDisposed && playback.Image.Page != playback.PausedPage)
+        {
+            position = playback.Image.Pages!.TimeOf(playback.Image.Page);
+            playback.Reader?.Reset();
+        }
+
+        playback.PausedAt = null;
+        playback.Offset = _clock.Elapsed - position;
+    }
+
+    private async Task RunAsync(Playback playback)
+    {
+        var image = playback.Image;
+        var pages = image.Pages!;
+        var cancellation = playback.Cancellation.Token;
+        try
+        {
+            playback.Reader = await Task.Run(pages.OpenAnimation, cancellation);
+            while (!cancellation.IsCancellationRequested && !image.IsDisposed)
+            {
+                var loop = pages.LoopDuration;
+                var time = Animation.LoopTime(Position(playback), loop);
+                bool playing = playback.PausedAt is null;
+                if (image == _sound.Image)
+                {
+                    _sound.Sync(time, playing);
+                }
+
+                if (playing && loop > TimeSpan.Zero)
+                {
+                    var reader = playback.Reader;
+                    var size = playback.DisplaySize;
+                    var frame = await Task.Run(() => ScaleDown(reader.FrameAt(time), size), cancellation);
+                    if (frame is not null)
+                    {
+                        if (cancellation.IsCancellationRequested || image.IsDisposed || playback.PausedAt is not null)
+                        {
+                            frame.Dispose();
+                        }
+                        else
+                        {
+                            image.ShowFrame(pages.PageAt(time), frame);
+                            FrameShown?.Invoke(this, image);
+                        }
+                    }
+                }
+
+                await Task.Delay(Interval, cancellation);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception)
+        {
+            // A source that fails to decode stops playing and keeps the frame it shows.
+        }
+        finally
+        {
+            if (image == _sound.Image)
+            {
+                _sound.Sync(TimeSpan.Zero, playing: false);
+            }
+
+            // Released on the thread pool, where Media Foundation objects live.
+            if (playback.Reader is { } reader)
+            {
+                _ = Task.Run(reader.Dispose);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Scales a frame down to just cover <paramref name="size"/> (the cell it fills), so the UI thread
+    /// only draws it about 1:1; smaller frames are kept as they are.
+    /// </summary>
+    private static Bitmap? ScaleDown(Bitmap? frame, Size size)
+    {
+        if (frame is null || size.Width <= 0 || size.Height <= 0)
+        {
+            return frame;
+        }
+
+        double scale = Math.Max(size.Width / (double)frame.Width, size.Height / (double)frame.Height);
+        if (scale >= 0.75)
+        {
+            return frame;
+        }
+
+        var scaled = new Bitmap(Math.Max(1, (int)Math.Ceiling(frame.Width * scale)), Math.Max(1, (int)Math.Ceiling(frame.Height * scale)));
+        using (frame)
+        using (var g = Graphics.FromImage(scaled))
+        {
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.DrawImage(frame, new Rectangle(Point.Empty, scaled.Size));
+        }
+
+        return scaled;
+    }
+
+    private sealed class Playback(SourceImage image, TimeSpan offset)
+    {
+        public SourceImage Image { get; } = image;
+
+        /// <summary>Clock time at which the loop started.</summary>
+        public TimeSpan Offset { get; set; } = offset;
+
+        public TimeSpan? PausedAt { get; set; }
+
+        public int PausedPage { get; set; }
+
+        public Size DisplaySize { get; set; }
+
+        public AnimationReader? Reader { get; set; }
+
+        public CancellationTokenSource Cancellation { get; } = new();
+
+        public void Stop() => Cancellation.Cancel();
+    }
+}
