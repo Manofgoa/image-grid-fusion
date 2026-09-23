@@ -244,6 +244,7 @@ says so rather than staying blank.
 | Code | 5 | 2026-09-24 | Composition (`ImageLook`, `FitCalculator`, `Compositor`, `SourceImage`), export (`GridExport`), preview UI (`GridPreview`) |
 | Unit tests | 3 | 2026-09-24 | Declined: the solution stays test-free (Q&A #12) |
 | README | 4 | 2026-09-24 | Not authorized: the go covered the code only |
+| Manual test | — | 2026-09-24 | Skipped: the user closed the session without testing the app |
 
 ---
 
