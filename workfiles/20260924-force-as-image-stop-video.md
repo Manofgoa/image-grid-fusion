@@ -135,6 +135,12 @@ the Selected Frames*); every animated content stops, not only videos; the video 
 1 s minimum step; the crop slider keeps its width; unchecking resumes like a released hover; the
 preview sound is silent while forced.
 
+### Iteration 3 — 2026-09-24 — ✅ Implemented
+
+Go given ("Go implémente", read as *Implement the code*: no documentation authorized). Run on
+`main` (standing choice, see the Branch Gate rule of this repo), with small commits because other
+sessions change the repository in parallel.
+
 ---
 
 ## Implementation Log
