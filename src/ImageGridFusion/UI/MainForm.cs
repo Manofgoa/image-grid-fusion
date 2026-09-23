@@ -23,6 +23,7 @@ internal sealed class MainForm : Form
         AutoScaleDimensions = new SizeF(96F, 96F);
         AutoScaleMode = AutoScaleMode.Dpi;
         Text = "Image Grid Fusion";
+        Icon = AppIcon.Load();
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(960, 580);
         MinimumSize = new Size(480, 320);
