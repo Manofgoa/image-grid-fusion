@@ -37,8 +37,8 @@ internal static class GridExport
 
         public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout) => new(
             images.Select(i => i.IsAnimated
-                ? new Item(null, i.Dominant, i.Pages, i.Pages!.LoopDuration)
-                : new Item(new Bitmap(i.Bitmap), i.Dominant, null, TimeSpan.Zero)).ToList(),
+                ? new Item(null, i.Dominant, i.Pages, i.Pages!.LoopDuration, i.Look)
+                : new Item(new Bitmap(i.Bitmap), i.Dominant, null, TimeSpan.Zero, i.Look)).ToList(),
             layout,
             Animation.SoundSource(images));
 
@@ -51,8 +51,8 @@ internal static class GridExport
         }
     }
 
-    /// <summary>A cell: a still copy, or an animated source with its loop.</summary>
-    public sealed record Item(Bitmap? Still, Color Dominant, PageSource? Source, TimeSpan Loop);
+    /// <summary>A cell: a still copy, or an animated source with its loop, and the actions on the image.</summary>
+    public sealed record Item(Bitmap? Still, Color Dominant, PageSource? Source, TimeSpan Loop, ImageLook Look);
 
     /// <summary>What an export produced.</summary>
     public sealed record Result(Size Size, TimeSpan Length, string? SoundProblem);
@@ -75,16 +75,16 @@ internal static class GridExport
                 var item = job.Items[i];
                 if (item.Source is null)
                 {
-                    frames[i] = new Frame(item.Still!, item.Dominant);
+                    frames[i] = new Frame(item.Still!, item.Dominant, item.Look);
                     continue;
                 }
 
                 readers[i] = item.Source.OpenAnimation();
                 var first = readers[i]!.FrameAt(TimeSpan.Zero) ?? throw new InvalidOperationException("A source has no frame to show.");
-                frames[i] = new Frame(first, DominantColor.Compute(first));
+                frames[i] = new Frame(first, DominantColor.Compute(first), item.Look);
             }
 
-            var canvas = Animation.EvenSize(CanvasSizer.Compute(frames.Select(f => f.Bitmap.Size).ToList(), job.Layout));
+            var canvas = Animation.EvenSize(CanvasSizer.Compute(frames.Select(f => f.Size).ToList(), job.Layout));
             using var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppRgb);
             using var g = Graphics.FromImage(bitmap);
             encoder = VideoEncoder.Create(path, canvas, job.Length, job.SoundPath, job.SoundLoop);
@@ -146,13 +146,13 @@ internal static class GridExport
                 var item = job.Items[i];
                 if (item.Source is null)
                 {
-                    frames[i] = new Frame(item.Still!, item.Dominant);
+                    frames[i] = new Frame(item.Still!, item.Dominant, item.Look);
                     continue;
                 }
 
                 var frame = FirstNonEmptyFrame(item.Source, item.Loop);
                 owned.Add(frame);
-                frames[i] = new Frame(frame, DominantColor.Compute(frame));
+                frames[i] = new Frame(frame, DominantColor.Compute(frame), item.Look);
             }
 
             return Compositor.Render(frames, job.Layout);
