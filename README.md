@@ -11,7 +11,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 - Several layouts per image count, picked from a strip of thumbnails, plus a mirror toggle (see Layouts)
 - No image list: the grid preview *is* the interface
   - Click a cell to select it, `Esc` to deselect
-  - Hover a cell for a **×** to remove it, or press `Delete` to remove the selected one
+  - Hover a cell to outline it and show a **×** to remove it, or press `Delete` to remove the selected one
   - Drag a cell onto another to swap the two images
   - Drop a file onto a cell to replace it
 - Copy to clipboard (`Ctrl+C`) or save as PNG (`Ctrl+S`)
