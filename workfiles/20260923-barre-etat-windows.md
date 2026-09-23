@@ -212,6 +212,7 @@ Questions asked by the agent during design, with user responses.
 | 8 | One-time balloon on the first close to tray? | No, nothing | 2026-09-23 |
 | 9 | Registered path no longer matching the current exe: ticked, unticked, or rewritten? | Rewritten at launch | 2026-09-23 |
 | 10 | Unit tests: stay without a test project? | Yes, manual checks | 2026-09-23 |
+| 11 | Go for implementation? (No / code / code, tests and documentation) | No — the gate holds | 2026-09-23 |
 
 ---
 
