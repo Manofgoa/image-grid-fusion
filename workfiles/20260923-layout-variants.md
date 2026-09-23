@@ -271,6 +271,7 @@ Questions asked by the agent during design, with user responses.
 | 16 | Mirror on a symmetric layout? | Disabled | 2026-09-23 |
 | 17 | Mirror state when layout or count changes? | Reset to off | 2026-09-23 |
 | 18 | Image-to-cell mapping when the variant changes? | Image 1 always takes the featured cell | 2026-09-23 |
+| 19 | Go for implementation: which scope? | | |
 
 ---
 
