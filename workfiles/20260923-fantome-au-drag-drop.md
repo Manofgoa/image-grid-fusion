@@ -205,6 +205,11 @@ Drop-zone overlap settled (Q&A #13): the ghost is implemented first, and the who
 highlight is kept when the drop zone arrives; the strip adds its own highlight on hover. No open
 question remains.
 
+### Iteration 6 — 2026-09-23 — ✅ Implemented
+
+Go given for **code only** (Q&A #14). Scope frozen as the design sections stand at Iteration 5.
+Unit tests stay declined (Q&A #11); the README is not part of the go.
+
 ---
 
 ## Implementation Log
@@ -239,7 +244,7 @@ Questions asked by the agent during design, with user responses.
 | 11 | Unit tests: none, or a test project for the ghost bounds? | None | 2026-09-23 |
 | 12 | Go for implementation? | No — the gate holds | 2026-09-23 |
 | 13 | Overlap with the drop zone: does the whole-canvas append highlight stay, and which task goes first? | Ghost first, canvas highlight kept; the strip adds its own | 2026-09-23 |
-| 14 | Go for implementation (second ask)? | | |
+| 14 | Go for implementation (second ask)? | Implement the code (code only) | 2026-09-23 |
 
 ---
 
