@@ -46,7 +46,7 @@ A file that is not an image is turned into one when it can be previewed. The fir
 
 ## Layouts
 
-Each image count offers several layouts, picked by clicking a thumbnail in the strip on the left of the preview (the strip is hidden with a single image). The first layout of each count is the default; the app starts on it, and goes back to it whenever the number of images changes.
+Each image count offers several layouts, picked by clicking a thumbnail in the strip on the left of the preview. The strip is always shown, so the preview keeps its size: with a single image it holds that count's only layout, and with no image the same thumbnail greyed out. The first layout of each count is the default; the app starts on it, and goes back to it whenever the number of images changes.
 
 Image **1** always takes the featured (big) cell; the other images follow in reading order (left→right, top→bottom). Cell ratios are given for a 1.91:1 canvas: below 1 suits portraits and phone screenshots, around 1.9 landscapes, above 3 panoramas.
 
