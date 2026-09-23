@@ -143,7 +143,8 @@ says so rather than staying blank.
 |---|---|---|---|
 | Code | 2, 4 | 2026-09-24 | `AnimationPlayer.Stop()`, visibility guard in `SyncPlayer`; iteration 4: hook moved to `MainForm.OnVisibleChanged` → `GridPreview.WindowVisibleChanged()` |
 | Unit tests | — | — | Not applicable: no test project in the repository |
-| Closure | 3 | 2026-09-24 | User confirmed the task finished ("Terminé"), without a hand test run in this session |
+| Closure | 3 | 2026-09-24 | User confirmed the task finished ("Terminé"), without a hand test run in this session — superseded by iteration 4 |
+| Manual validation | 4 | 2026-09-24 | App launched after the hide fix, tested by hand, closed cleanly (exit code 0); user validated ("C'est OK je valide") |
 | README | — | 2026-09-24 | Not authorized: the go covered the code only (planned: *Tray & startup*, playback stops while hidden, restarts from the start when reopened) |
 
 ---
