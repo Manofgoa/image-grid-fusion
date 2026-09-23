@@ -92,7 +92,11 @@ internal sealed class AnimationPlayer : IDisposable
         }
     }
 
-    public void Dispose()
+    /// <summary>
+    /// Stops every image and the sound; each cell keeps the frame it shows. The next <see cref="Sync"/>
+    /// plays them again from the start.
+    /// </summary>
+    public void Stop()
     {
         foreach (var playback in _playbacks.Values)
         {
@@ -100,6 +104,12 @@ internal sealed class AnimationPlayer : IDisposable
         }
 
         _playbacks.Clear();
+        _sound.Follow(null);
+    }
+
+    public void Dispose()
+    {
+        Stop();
         _sound.Dispose();
     }
 
