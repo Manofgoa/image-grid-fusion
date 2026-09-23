@@ -241,6 +241,7 @@ says so rather than staying blank.
 | Code | Iterations 5, 6, 7 | 2026-09-24 | 4 commits: carousel logic, carousel export, live preview, check box and Save; then Copy exports the carousel video; then contents play in it over whole loops |
 | Unit tests | — | 2026-09-24 | Not applicable: no test project, by decision (Q&A 12) |
 | README | — | 2026-09-24 | Not done: the go covered the code only |
+| Manual test | Iteration 7 | 2026-09-24 | Validated by hand by the user (carousel, pause, Copy / Save as video, contents playing over whole loops); app closed with exit code 0 |
 
 ---
 
