@@ -107,6 +107,9 @@ right of the canvas, highlighted while files are dragged over it. See Open Quest
   is extracted from `GridPreview.Add` into a helper that both `Add` and the highlight use.
   Only drags over the preview are highlighted; over the button row, Windows' drag image alone
   shows the drag.
+- **Drop zone** (Q&A #13): this task is implemented **before** `20260923-drop-zone.md`. The
+  whole-canvas highlight when appending **stays** once the drop zone exists; the strip only adds
+  its own highlight when the cursor is over it.
 
 ---
 
@@ -140,9 +143,10 @@ updated.
       Dark translucent overlay
 - [x] ~~Unit tests: none (consistent with v1), or create a test project for the extractable logic
       (ghost bounds)?~~ → None
-- [ ] Overlap with `20260923-drop-zone.md`: once the "Add images" strip exists, appending gets its
+- [x] ~~Overlap with `20260923-drop-zone.md`: once the "Add images" strip exists, appending gets its
       own target. Does the "whole canvas when appending" highlight stay, or does the strip take
-      it over — and which of the two tasks is implemented first?
+      it over — and which of the two tasks is implemented first?~~ → Ghost first; the whole-canvas
+      highlight stays, the strip adds its own highlight when hovered
 
 ---
 
@@ -195,6 +199,12 @@ The user asked whether implementation can start. Re-reading the repository befor
 - New open question: overlap with the not-yet-implemented `20260923-drop-zone.md`, whose strip
   also highlights during a file drag.
 
+### Iteration 5 — 2026-09-23
+
+Drop-zone overlap settled (Q&A #13): the ghost is implemented first, and the whole-canvas append
+highlight is kept when the drop zone arrives; the strip adds its own highlight on hover. No open
+question remains.
+
 ---
 
 ## Implementation Log
@@ -228,7 +238,8 @@ Questions asked by the agent during design, with user responses.
 | 10 | Source cell dimming style? | Dark translucent overlay | 2026-09-23 |
 | 11 | Unit tests: none, or a test project for the ghost bounds? | None | 2026-09-23 |
 | 12 | Go for implementation? | No — the gate holds | 2026-09-23 |
-| 13 | Overlap with the drop zone: does the whole-canvas append highlight stay, and which task goes first? | | |
+| 13 | Overlap with the drop zone: does the whole-canvas append highlight stay, and which task goes first? | Ghost first, canvas highlight kept; the strip adds its own | 2026-09-23 |
+| 14 | Go for implementation (second ask)? | | |
 
 ---
 
