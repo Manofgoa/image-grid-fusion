@@ -123,6 +123,7 @@ says so rather than staying blank.
 |---|---|---|---|
 | Code | 2 | 2026-09-24 | `AnimationPlayer.Stop()`, `GridPreview.OnVisibleChanged`, visibility guard in `SyncPlayer` |
 | Unit tests | — | — | Not applicable: no test project in the repository |
+| Closure | 3 | 2026-09-24 | User confirmed the task finished ("Terminé"), without a hand test run in this session |
 | README | — | 2026-09-24 | Not authorized: the go covered the code only (planned: *Tray & startup*, playback stops while hidden, restarts from the start when reopened) |
 
 ---
