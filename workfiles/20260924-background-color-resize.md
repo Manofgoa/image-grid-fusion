@@ -133,6 +133,12 @@ whole-image dominant color to the majority color of the visible part's 2 % edge 
 No test project, manual checks (Q&A #8). The Color Rule and Test Impact sections now state it as
 agreed design.
 
+### Iteration 3 — 2026-09-24 — ✅ Implemented
+
+Go given for the code only (Q&A #9): README and unit tests are not part of the run. Branch: stays on
+`main`, the standing choice for this repository. Scope frozen as the Color Rule and Video Cells
+sections stand above.
+
 ---
 
 ## Implementation Log
@@ -157,6 +163,7 @@ agreed design.
 | 6 | Keep the three-uniform-sides rule first, or edge majority alone? | Three uniform sides first, edge majority as fallback | 2026-09-24 |
 | 7 | Edge depth for the majority: 2 % or thicker? | 2 %, as today | 2026-09-24 |
 | 8 | Unit tests: stay without a test project? | Yes, manual checks | 2026-09-24 |
+| 9 | Go for implementation? | Implement the code | 2026-09-24 |
 
 ---
 
