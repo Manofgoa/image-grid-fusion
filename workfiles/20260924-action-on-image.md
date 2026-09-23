@@ -63,9 +63,12 @@ Constraints found by exploration:
 | ⇆ | Flip horizontally | Highlighted while on |
 | ⇅ | Flip vertically | Highlighted while on |
 | ◐ | Black & white | Highlighted while on |
-| 🔍 zoom slider | See Zoom | Current percentage |
+| ↺ | Reset: back to the image as loaded (every action off, zoom 100 %) | Shown only while at least one action is active |
 
-- Clicking a button neither selects the cell nor starts a swap (same rule as the page slider).
+- The **zoom slider** is a separate vertical pill along the **left** edge of the cell, below the
+  button row and above the page slider (see Zoom).
+- Clicking a button or the zoom slider neither selects the cell nor starts a swap (same rule as
+  the page slider).
 
 ---
 
@@ -78,7 +81,7 @@ The actions are stored **on the image** (`SourceImage`), not on the cell:
 | `Rotation` | 0, 90, 180, 270 (clockwise) | 0 |
 | `FlipX` / `FlipY` | on / off | off |
 | `Grayscale` | on / off | off |
-| `Zoom` | ≥ 1 (1 = the fitting rule as today) | 1 |
+| `Zoom` | 0.5 to 4 (1 = the fitting rule as today) | 1 |
 | `Focus` | point of the image shown at the center of the cell, in normalized image coordinates | center (0.5, 0.5) |
 
 - **Orientation** (rotation + flips) is applied **before** fitting: a 90° / 270° rotation swaps
@@ -95,13 +98,20 @@ The actions are stored **on the image** (`SourceImage`), not on the cell:
 
 ## Zoom
 
-- **Zoom 100 %** is the image as the fitting rule draws it today; the slider only zooms **in**
-  (range: see Open Questions).
-- Zooming shrinks the part of the image drawn in the cell, around `Focus`.
-- **Pan**: dragging the image moves `Focus`, clamped so the cell never shows beyond the image on
-  an axis where the image overflows. On an axis where the fitting rule leaves bands at 100 %,
-  zooming in reduces the bands first, and the image stays centered on that axis until it
-  overflows.
+- **Range 50 % → 400 %**. **Zoom 100 %** is the image as the fitting rule draws it today; the
+  zoom scales that fit around `Focus`.
+- **Zoom in** (> 100 %): the part of the image drawn in the cell shrinks around `Focus`. On an
+  axis where the fitting rule leaves bands at 100 %, zooming in reduces the bands first, and the
+  image stays centered on that axis until it overflows.
+- **Zoom out** (< 100 %): the image shrinks inside its cell, centered, and the uncovered area
+  shows the dominant color, like the bands.
+- **Slider**: vertical pill along the left edge of the cell, 100 % marked on its track, the
+  current percentage shown next to the thumb while it is hovered or dragged; the image follows
+  it live.
+- **Pan**: while the zoom is **above 100 %**, dragging the image moves `Focus`, clamped so the
+  cell never shows beyond the image on an axis where the image overflows.
+- **Swap**: at 100 % or below, dragging a cell swaps it as today. A zoomed-in image is swapped
+  with **Ctrl + drag**; Ctrl + drag swaps whatever the zoom.
 - The canvas size is computed from the **unzoomed** fit, so moving the slider never changes the
   output resolution.
 
@@ -123,10 +133,10 @@ behaviours below would be the ones to pin if a test project were added:
 
 ## Open Questions
 
-- [ ] How is **pan** (drag inside a zoomed image) told apart from the existing **swap** (drag a cell onto another)?
-- [ ] Where does the **zoom slider** go, given the bottom is the page slider's and the top holds the buttons?
-- [ ] What is the **zoom range**?
-- [ ] How are the actions **reset** — a dedicated button, double-click, nothing?
+- [x] ~~How is **pan** (drag inside a zoomed image) told apart from the existing **swap** (drag a cell onto another)?~~ → Drag pans while zoomed in (> 100 %), swaps otherwise; Ctrl + drag always swaps
+- [x] ~~Where does the **zoom slider** go, given the bottom is the page slider's and the top holds the buttons?~~ → Vertical pill along the left edge of the cell
+- [x] ~~What is the **zoom range**?~~ → 50 % → 400 %, zoom out allowed (dominant-color bands around)
+- [x] ~~How are the actions **reset** — a dedicated button, double-click, nothing?~~ → ↺ button in the toolbar, shown only while an action is active
 - [ ] Do the actions **follow the image** when it is swapped, and survive a layout change?
 - [ ] What happens to the toolbar in a **cell too narrow** for all the buttons (e.g. *Four columns*)?
 - [ ] Are **keyboard shortcuts** on the selected cell part of the scope?
@@ -148,6 +158,13 @@ Initial design from the request and the scoping batch (Q&A #1–#4): actions rea
 The actions are stored on the image, orientation is applied before the fitting rule, black &
 white is a luminance grayscale, and the canvas size ignores the zoom. The image flip is named
 *Flip* to keep it apart from the layout *Mirror* toggle.
+
+### Iteration 2 — 2026-09-24
+
+Answers Q&A #5–#8. Pan vs swap: drag pans only while zoomed in, Ctrl + drag always swaps. Zoom
+slider: vertical, along the left edge. Zoom range widened to **50 % → 400 %**, so zooming out is
+now part of the design (image centered, dominant-color area around). A **↺ reset** button joins
+the toolbar, shown only while an action is active.
 
 ---
 
@@ -174,10 +191,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | Which kind of rotation? | 90° steps | 2026-09-24 |
 | 3 | Can the zoomed image be moved inside its cell? | Zoom + drag to pan | 2026-09-24 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward (single scout pass) | 2026-09-24 |
-| 5 | How is pan told apart from swap? | | |
-| 6 | Where does the zoom slider go? | | |
-| 7 | What is the zoom range? | | |
-| 8 | How are the actions reset? | | |
+| 5 | How is pan told apart from swap? | Drag pans when zoomed in, swaps at 100 % or below; Ctrl + drag swaps a zoomed image | 2026-09-24 |
+| 6 | Where does the zoom slider go? | Vertical, along the left edge of the cell | 2026-09-24 |
+| 7 | What is the zoom range? | 50 % → 400 % | 2026-09-24 |
+| 8 | How are the actions reset? | ↺ button in the toolbar | 2026-09-24 |
 | 9 | Do the actions follow the image on swap and survive a layout change? | | |
 | 10 | What happens to the toolbar in a too narrow cell? | | |
 | 11 | Are keyboard shortcuts in scope? | | |
