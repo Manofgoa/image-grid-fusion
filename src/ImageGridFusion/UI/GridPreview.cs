@@ -25,7 +25,7 @@ internal sealed class GridPreview : Control
     private Bitmap? _ghost;
     private Size _ghostOffset;
     private Point _dragPoint;
-    private int _externalTarget = -1;
+    private Rectangle _externalTarget;
 
     public GridPreview()
     {
@@ -67,7 +67,7 @@ internal sealed class GridPreview : Control
             }
             else if (!excessReplaced)
             {
-                Replace(_selected >= 0 ? _selected : _images.Count - 1, image);
+                Replace(ExcessTarget(), image);
                 excessReplaced = true;
             }
             else
@@ -81,12 +81,17 @@ internal sealed class GridPreview : Control
         return ignored;
     }
 
-    /// <summary>Highlights the cell an external drag (files from Explorer) would replace; -1 clears it.</summary>
-    public void ShowDropTarget(int index)
+    /// <summary>
+    /// Highlights what an external drag (files from Explorer) at <paramref name="location"/> would
+    /// fill: the cell under it, else the whole canvas while there is room, else the cell the
+    /// excess rule replaces. <c>null</c> clears it.
+    /// </summary>
+    public void ShowDropTarget(Point? location)
     {
-        if (index != _externalTarget)
+        var target = location is { } point ? DropTargetBounds(point) : Rectangle.Empty;
+        if (target != _externalTarget)
         {
-            _externalTarget = index;
+            _externalTarget = target;
             Invalidate();
         }
     }
@@ -133,9 +138,11 @@ internal sealed class GridPreview : Control
             return;
         }
 
+        using var highlight = new SolidBrush(Color.FromArgb(90, SystemColors.Highlight));
         if (_images.Count == 0)
         {
             PaintEmptyState(g, canvas);
+            g.FillRectangle(highlight, _externalTarget);
             return;
         }
 
@@ -158,11 +165,16 @@ internal sealed class GridPreview : Control
             g.FillRectangle(dim, cells[_pressed]);
         }
 
-        int highlighted = _dragging && _dropTarget != _pressed ? _dropTarget : _externalTarget;
-        if (highlighted >= 0 && highlighted < cells.Length)
+        if (_dragging)
         {
-            using var brush = new SolidBrush(Color.FromArgb(90, SystemColors.Highlight));
-            g.FillRectangle(brush, cells[highlighted]);
+            if (_dropTarget >= 0 && _dropTarget != _pressed && _dropTarget < cells.Length)
+            {
+                g.FillRectangle(highlight, cells[_dropTarget]);
+            }
+        }
+        else
+        {
+            g.FillRectangle(highlight, _externalTarget);
         }
 
         if (_selected >= 0)
@@ -323,6 +335,21 @@ internal sealed class GridPreview : Control
         _ghost = null;
         Cursor = Cursors.Default;
         Invalidate();
+    }
+
+    /// <summary>Cell the first excess image replaces when the grid is full: the selected one, else the last.</summary>
+    private int ExcessTarget() => _selected >= 0 ? _selected : _images.Count - 1;
+
+    private Rectangle DropTargetBounds(Point location)
+    {
+        var cells = CellBounds();
+        int cell = Array.FindIndex(cells, c => c.Contains(location));
+        if (cell >= 0)
+        {
+            return cells[cell];
+        }
+
+        return _images.Count < GridLayout.MaxImages ? CanvasBounds() : cells[ExcessTarget()];
     }
 
     private Rectangle GhostBounds() =>

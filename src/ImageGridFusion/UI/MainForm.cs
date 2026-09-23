@@ -63,7 +63,7 @@ internal sealed class MainForm : Form
         DragDrop += OnDragDrop;
         _preview.DragEnter += OnDragEnter;
         _preview.DragOver += OnPreviewDragOver;
-        _preview.DragLeave += (_, _) => _preview.ShowDropTarget(-1);
+        _preview.DragLeave += (_, _) => _preview.ShowDropTarget(null);
         _preview.DragDrop += OnDragDrop;
         UpdateButtons();
     }
@@ -122,13 +122,13 @@ internal sealed class MainForm : Form
     {
         if (e.Effect != DragDropEffects.None)
         {
-            _preview.ShowDropTarget(DropCell(e));
+            _preview.ShowDropTarget(_preview.PointToClient(new Point(e.X, e.Y)));
         }
     }
 
     private async void OnDragDrop(object? sender, DragEventArgs e)
     {
-        _preview.ShowDropTarget(-1);
+        _preview.ShowDropTarget(null);
         if (e.Data?.GetData(DataFormats.FileDrop) is string[] paths)
         {
             // Onto a cell: replaces it. Elsewhere in the window: added like a paste.
