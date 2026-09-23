@@ -216,6 +216,12 @@ meanwhile; this workfile owns the shared video export and contents animate insid
 "Force as image" applies to `Copy` too, one export at a time, temp videos of previous sessions
 cleaned at startup.
 
+### Iteration 3 — 2026-09-24 — ✅ Implemented
+
+Go given ("Vas y implémente") after a first "No". Scope frozen on the design sections as they
+stand. Taken as code + README (the tests were already declined); the run stays on `main`, the
+standing choice for this repository.
+
 ---
 
 ## Implementation Log
@@ -253,6 +259,7 @@ Questions asked by the agent during design, with user responses.
 | 14 | Progress / cancel of a long video export? | Status line + Cancel | 2026-09-24 |
 | 15 | Scrolling mode overlap: ownership and combined behaviour? | This workfile owns the export; contents animate in the rotation video | 2026-09-24 |
 | 16 | Create a first test project? | No | 2026-09-24 |
+| 17 | Go for the implementation? | No (first ask), then "Vas y implémente" | 2026-09-24 |
 
 ---
 
