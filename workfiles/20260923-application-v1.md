@@ -27,8 +27,9 @@ Environment (checked 2026-09-23): .NET SDK `10.0.401` and runtime
   `PixelOffsetMode.HighQuality`, `ImageAttributes` with `WrapMode.TileFlipXY` (avoids the
   semi-transparent halo GDI+ leaves on scaled image edges).
 - **Publish**: framework-dependent single file — `PublishReadyToRun`, `PublishSingleFile`,
-  `SelfContained=false`, `RuntimeIdentifier=win-x64`. A few MB; requires the .NET 10 Desktop
-  runtime on the machine (installed on the dev machine).
+  `SelfContained=false`, `RuntimeIdentifier=win-x64`, set in the `.csproj` (the standard
+  `.gitignore` excludes `*.pubxml`). `dotnet publish src/ImageGridFusion -c Release` produces a
+  ≈ 260 KB exe; requires the .NET 10 Desktop runtime (installed on the dev machine).
 - **High DPI**: `ApplicationHighDpiMode=PerMonitorV2`.
 - **No unit test project** in v1 (user decision).
 - Layout:
@@ -162,7 +163,9 @@ Single resizable window. **No list**: the preview *is* the interface.
 
 Several files added at once, going beyond 4 (paste, drop, command line): free slots are filled
 in order, the **first** excess file applies the replace rule above, and the remaining excess
-files are ignored with a status message.
+files are ignored with a status message. Several files dropped **onto a cell**: the first
+replaces that cell, the others follow the same rule. While files from Explorer are dragged over
+the preview, the cell they would replace is highlighted.
 
 ### Launch
 
@@ -178,10 +181,10 @@ files are ignored with a status message.
   `fusion-yyyyMMdd-HHmmss.png`, default folder = folder of the first file-backed image, else the
   user's Pictures folder.
 - Both are disabled when there is no image.
-- A status line shows short messages for a few seconds: skipped files, ignored excess files,
-  copied, saved.
-- Copy/Save failures (clipboard held by another app, write denied) show a short **red** message
-  in the status line — no blocking dialog.
+- A status line (left of the buttons) shows short messages for 4 s: skipped files, ignored
+  excess files, copied, saved, nothing to paste.
+- Copy/Save/Paste failures (clipboard held by another app, write denied) show a short **red**
+  message in the status line for 8 s — no blocking dialog.
 
 ---
 
@@ -342,6 +345,27 @@ The user liked Milestone 1 and gave the go for **Milestone 2, code + README** (Q
 `main`. Scope frozen as described in `### Milestone 2 — Rest of v1` plus Iteration 6. Unit tests
 stay declined.
 
+### Iteration 8 — 2026-09-23 — 🧭 Implementation choices
+
+Milestone 2 delivered — the v1 scope is complete. Choices the frozen design did not state:
+
+- **Publish settings in the `.csproj`**, not in a publish profile: the standard `.gitignore`
+  excludes `*.pubxml`. Side effect: `RuntimeIdentifier=win-x64` moves the build output to
+  `bin/<Configuration>/net10.0-windows/win-x64/`. Published exe ≈ 260 KB, input-idle ≈ 260 ms
+  after launch on the dev machine.
+- **Drop highlight**: files dragged from Explorer over a cell highlight it before the drop.
+- **Several files dropped onto a cell**: the first replaces the cell, the others follow the normal
+  add rule (on a full grid, the second one replaces the selected/last cell).
+- **Excess files** past the one replacement are not decoded; they are reported as "ignored",
+  even if some would not have been readable.
+- **Status line**: messages in English; info for 4 s, errors in red for 8 s; an extra
+  "Nothing to paste" message when the clipboard holds neither files nor an image; Paste failures
+  are reported like Copy/Save failures.
+- **README** rewritten by a subagent from the design sections, reviewed before commit; it adds a
+  short "Planned" list for the future tasks.
+
+No project rule was broken. Work stayed on `main` (user's choice, Q&A #23).
+
 ---
 
 ## Implementation Log
@@ -351,9 +375,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 4 | 2026-09-23 | Milestone 1 delivered; Milestone 2 not started |
+| Code | 4, 7 | 2026-09-23 | Milestone 1 (Iteration 4), Milestone 2 (Iteration 7) — v1 complete |
 | Unit tests | 1 | 2026-09-23 | Declined by the user (Q&A #12) |
-| README | | | Must be updated: the list UI, the "centered instead" fitting wording and the fill color no longer match the design |
+| README | 7 | 2026-09-23 | Rewritten for v1 |
 
 ---
 
