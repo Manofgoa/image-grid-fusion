@@ -14,10 +14,6 @@ internal sealed class VideoReader : AnimationReader
     /// <summary>Beyond this jump forward, seeking beats decoding every frame in between.</summary>
     private static readonly TimeSpan SeekAhead = TimeSpan.FromSeconds(2);
 
-    /// <summary>Probes a still is looked for at, while every frame found so far is empty.</summary>
-    private static readonly TimeSpan ProbeStep = TimeSpan.FromSeconds(0.5);
-    private const int MaxProbes = 240;
-
     private readonly IMFSourceReader _reader;
     private Format _format;
 
@@ -68,14 +64,6 @@ internal sealed class VideoReader : AnimationReader
         finally
         {
             MediaFoundation.Release(attributes);
-        }
-    }
-
-    public override IEnumerable<TimeSpan> ProbeTimes(TimeSpan loop)
-    {
-        for (int i = 0; i < MaxProbes && ProbeStep * i < loop; i++)
-        {
-            yield return ProbeStep * i;
         }
     }
 

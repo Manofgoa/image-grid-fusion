@@ -30,12 +30,6 @@ public abstract class AnimationReader : IDisposable
     /// </summary>
     public void Reset() => _stale = true;
 
-    /// <summary>
-    /// Times worth trying, in order, to find a frame that is not empty (see <see cref="EmptyFrame"/>),
-    /// for a loop of <paramref name="loop"/>.
-    /// </summary>
-    public abstract IEnumerable<TimeSpan> ProbeTimes(TimeSpan loop);
-
     public virtual void Dispose()
     {
     }
@@ -89,15 +83,6 @@ public sealed class StepReader : AnimationReader
     /// <summary>Time at which <paramref name="step"/> starts.</summary>
     public static TimeSpan StartOf(IReadOnlyList<TimeSpan> durations, int step) =>
         durations.Take(Math.Clamp(step, 0, durations.Count)).Aggregate(TimeSpan.Zero, (sum, d) => sum + d);
-
-    public override IEnumerable<TimeSpan> ProbeTimes(TimeSpan loop)
-    {
-        var durations = _durations();
-        for (int step = 0; step < durations.Count; step++)
-        {
-            yield return StartOf(durations, step);
-        }
-    }
 
     protected override Bitmap? Read(TimeSpan time)
     {
