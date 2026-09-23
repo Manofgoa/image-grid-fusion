@@ -15,6 +15,10 @@ internal sealed class MainForm : Form
     private readonly GridPreview _preview = new() { Dock = DockStyle.Fill, AllowDrop = true };
     private readonly LayoutStrip _layouts = new() { Dock = DockStyle.Left, Width = 80, AllowDrop = true };
     private readonly Button _clearButton = new() { Text = "Clear all", AutoSize = true };
+    private readonly Button _settingsButton = new() { Text = "⚙", Size = new Size(32, 23), AutoSize = true };
+    private readonly ContextMenuStrip _settingsMenu = new();
+    private readonly ToolStripMenuItem _startWithWindows = new("Start with Windows");
+    private readonly ToolTip _toolTip = new();
     private readonly Button _copyButton = new() { Text = "Copy", AutoSize = true };
     private readonly Button _saveButton = new() { Text = "Save…", AutoSize = true };
     private readonly CheckBox _forceImage = new() { Text = "Force as image", AutoSize = true, Anchor = AnchorStyles.Left, Visible = false };
@@ -27,6 +31,7 @@ internal sealed class MainForm : Form
     /// <summary>Set while an export runs: the grid is locked until it ends.</summary>
     private CancellationTokenSource? _export;
     private bool _closeAfterExport;
+    private bool _closingForGood;
 
     // One slider position per step: the value is a step index, not a percentage.
     private readonly TrackBar _threshold = new()
@@ -53,12 +58,14 @@ internal sealed class MainForm : Form
         AutoScaleDimensions = new SizeF(96F, 96F);
         AutoScaleMode = AutoScaleMode.Dpi;
         Text = "Image Grid Fusion";
+        Icon = AppIcon.Load();
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(960, 580);
         MinimumSize = new Size(480, 320);
         AllowDrop = true;
 
         _outputButtons = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = Padding.Empty };
+        _outputButtons.Controls.Add(_settingsButton);
         _outputButtons.Controls.Add(_forceImage);
         _outputButtons.Controls.Add(_copyButton);
         _outputButtons.Controls.Add(_saveButton);
@@ -118,6 +125,10 @@ internal sealed class MainForm : Form
         _outputButtons.SizeChanged += (_, _) => FitStatusWidth();
         _cancelButton.VisibleChanged += (_, _) => FitStatusWidth();
         _clearButton.Click += (_, _) => ClearAll();
+        _settingsMenu.Items.Add(_startWithWindows);
+        _toolTip.SetToolTip(_settingsButton, "Settings");
+        _settingsButton.Click += (_, _) => ShowSettings();
+        _startWithWindows.Click += (_, _) => ToggleStartWithWindows();
         _copyButton.Click += (_, _) => CopyToClipboard();
         _saveButton.Click += (_, _) => Save();
         _cancelButton.Click += (_, _) => _export?.Cancel();
@@ -146,6 +157,24 @@ internal sealed class MainForm : Form
         FitStatusWidth();
     }
 
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _settingsMenu.Dispose();
+            _toolTip.Dispose();
+        }
+
+        base.Dispose(disposing);
+    }
+
+    /// <summary>Closes the window for real, instead of hiding it; the tray's Quit.</summary>
+    public void CloseForGood()
+    {
+        _closingForGood = true;
+        Close();
+    }
+
     protected override async void OnShown(EventArgs e)
     {
         base.OnShown(e);
@@ -161,9 +190,20 @@ internal sealed class MainForm : Form
         }
     }
 
-    /// <summary>Closing during an export cancels it first; the window closes once it has stopped.</summary>
+    /// <summary>
+    /// The ×, Alt+F4 and the taskbar's Close window only hide it: the app keeps running in the tray,
+    /// grid unchanged. A real close (Quit, logoff, shutdown) during an export cancels it first; the
+    /// window closes once it has stopped.
+    /// </summary>
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
+        if (e.CloseReason == CloseReason.UserClosing && !_closingForGood)
+        {
+            e.Cancel = true;
+            Hide();
+            return;
+        }
+
         if (_export is not null)
         {
             e.Cancel = true;
@@ -690,6 +730,27 @@ internal sealed class MainForm : Form
     {
         string? file = _preview.Images.Select(i => i.FilePath).FirstOrDefault(p => p is not null);
         return Path.GetDirectoryName(file) ?? Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
+    }
+
+    /// <summary>Opens the settings menu above the ⚙ button, ticked from the registry as it is now.</summary>
+    private void ShowSettings()
+    {
+        _startWithWindows.Checked = StartupRegistration.IsEnabled;
+        _settingsMenu.Show(_settingsButton, Point.Empty, ToolStripDropDownDirection.AboveRight);
+    }
+
+    private void ToggleStartWithWindows()
+    {
+        bool enable = !_startWithWindows.Checked;
+        try
+        {
+            StartupRegistration.SetEnabled(enable);
+            _startWithWindows.Checked = enable;
+        }
+        catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+        {
+            ShowStatus($"Start with Windows failed: {ex.Message}", error: true);
+        }
     }
 
     private void UpdateButtons()
