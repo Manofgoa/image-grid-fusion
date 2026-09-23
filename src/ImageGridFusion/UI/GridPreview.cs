@@ -79,6 +79,12 @@ internal sealed class GridPreview : Control
     private int _wheelCell = -1;
     private int _wheelDelta;
 
+    // Carousel: the step shown, 0 being the user's own arrangement, which the pause shows too.
+    private readonly System.Windows.Forms.Timer _carouselTimer = new() { Interval = (int)Carousel.StepDuration.TotalMilliseconds };
+    private bool _playsCarousel;
+    private bool _carouselPaused;
+    private int _carouselStep;
+
     public GridPreview()
     {
         SetStyle(
@@ -95,6 +101,7 @@ internal sealed class GridPreview : Control
         };
         _player.FrameShown += (_, image) => RedrawCell(image);
         _wheelEnd.Tick += (_, _) => EndLive();
+        _carouselTimer.Tick += (_, _) => OnCarouselTick();
     }
 
     public event EventHandler? ImagesChanged;
@@ -175,6 +182,25 @@ internal sealed class GridPreview : Control
     }
 
     /// <summary>
+    /// The carousel: every second, the images move one cell clockwise (see <see cref="Carousel"/>).
+    /// While the mouse or a drag is over the preview, it pauses on the user's own arrangement, which
+    /// stays fully editable; it starts again from there once the mouse leaves. Needs two images.
+    /// </summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool PlaysCarousel
+    {
+        get => _playsCarousel;
+        set
+        {
+            if (value != _playsCarousel)
+            {
+                _playsCarousel = value;
+                SyncCarousel();
+            }
+        }
+    }
+
+    /// <summary>
     /// Adds images: the first one replaces <paramref name="targetCell"/> when given (a drop onto a
     /// cell); the others fill the free slots; the first excess image replaces the selected cell, else
     /// the last one; any further excess is disposed. Returns the number of images ignored.
@@ -246,6 +272,7 @@ internal sealed class GridPreview : Control
         _cache?.Dispose();
         _cache = null;
         FitPagesToCells();
+        SyncCarousel();
         SyncPlayer();
         Invalidate();
         LayoutChanged?.Invoke(this, EventArgs.Empty);
@@ -295,6 +322,7 @@ internal sealed class GridPreview : Control
         if (disposing)
         {
             _wheelEnd.Dispose();
+            _carouselTimer.Dispose();
             _player.Dispose();
             _images.ForEach(i => i.Dispose());
             _images.Clear();
@@ -325,13 +353,14 @@ internal sealed class GridPreview : Control
             return;
         }
 
-        // Rendered at display size, and only again when the images, the layout, the threshold or the size change.
+        // Rendered at display size, and only again when the images, the layout, the threshold, the size or the carousel step change.
         if (_cache is null || _cache.Size != canvas.Size)
         {
             _cache?.Dispose();
             _cache = new Bitmap(canvas.Width, canvas.Height);
             using var cacheGraphics = Graphics.FromImage(_cache);
-            Compositor.Draw(cacheGraphics, _images, _layout!, canvas.Size, _cropThreshold);
+            IReadOnlyList<SourceImage> shown = _carouselStep == 0 ? _images : Carousel.Arrange(_images, _layout!, _carouselStep);
+            Compositor.Draw(cacheGraphics, shown, _layout!, canvas.Size, _cropThreshold);
         }
 
         g.DrawImageUnscaled(_cache, canvas.Location);
@@ -359,7 +388,7 @@ internal sealed class GridPreview : Control
         if (_selected >= 0)
         {
             using var pen = new Pen(SystemColors.Highlight, LogicalToDeviceUnits(SelectionWidth)) { Alignment = PenAlignment.Inset };
-            g.DrawRectangle(pen, cells[_selected]);
+            g.DrawRectangle(pen, cells[ShownCell(_selected)]);
         }
 
         PaintHoverOutline(g, HoverOutlineBounds(canvas, cells));
@@ -456,9 +485,16 @@ internal sealed class GridPreview : Control
         Invalidate();
     }
 
+    protected override void OnMouseEnter(EventArgs e)
+    {
+        base.OnMouseEnter(e);
+        PauseCarousel();
+    }
+
     protected override void OnMouseMove(MouseEventArgs e)
     {
         base.OnMouseMove(e);
+        PauseCarousel();
         if (_sliding >= 0)
         {
             SlideTo(e.X);
@@ -619,6 +655,20 @@ internal sealed class GridPreview : Control
         }
 
         UpdateHold();
+        ResumeCarousel();
+    }
+
+    // Files dragged from Explorer bring no mouse message: they pause the carousel on their own.
+    protected override void OnDragEnter(DragEventArgs drgevent)
+    {
+        base.OnDragEnter(drgevent);
+        PauseCarousel();
+    }
+
+    protected override void OnDragLeave(EventArgs e)
+    {
+        base.OnDragLeave(e);
+        ResumeCarousel();
     }
 
     protected override void OnResize(EventArgs e)
@@ -642,6 +692,8 @@ internal sealed class GridPreview : Control
         {
             _player.Stop();
         }
+
+        SyncCarousel();
     }
 
     /// <summary>
@@ -803,6 +855,7 @@ internal sealed class GridPreview : Control
         }
 
         FitPagesToCells();
+        SyncCarousel();
         SyncPlayer();
 
         ImagesChanged?.Invoke(this, EventArgs.Empty);
@@ -874,8 +927,85 @@ internal sealed class GridPreview : Control
         var cells = CellBounds();
         for (int i = 0; i < cells.Length && i < _images.Count; i++)
         {
-            _player.SetDisplaySize(_images[i], FrameDisplaySize(_images[i], cells[i]));
+            _player.SetDisplaySize(_images[i], FrameDisplaySize(_images[i], cells[ShownCell(i)]));
         }
+    }
+
+    /// <summary>Cell image <paramref name="index"/> is shown in: its own, unless the carousel moved it.</summary>
+    private int ShownCell(int index) =>
+        _carouselStep == 0 || _layout is null ? index : Carousel.CellOf(index, _layout, _carouselStep);
+
+    /// <summary>
+    /// Starts or stops the carousel after a change of mode, images, layout or visibility: always back to
+    /// the user's own arrangement, the next step a full second away. Nothing plays behind a hidden window.
+    /// </summary>
+    private void SyncCarousel()
+    {
+        _carouselTimer.Stop();
+        ShowCarouselStep(0);
+        if (_playsCarousel && Visible && Carousel.CanPlay(_images.Count))
+        {
+            _carouselPaused = IsPointerOver();
+            _carouselTimer.Start();
+        }
+    }
+
+    /// <summary>The mouse, or a drag, came over the preview: the user's own arrangement is shown, to edit.</summary>
+    private void PauseCarousel()
+    {
+        if (_carouselTimer.Enabled && !_carouselPaused)
+        {
+            _carouselPaused = true;
+            ShowCarouselStep(0);
+        }
+    }
+
+    /// <summary>The mouse left: the arrangement stays a full second, then the carousel moves on.</summary>
+    private void ResumeCarousel()
+    {
+        if (_carouselTimer.Enabled && _carouselPaused && !IsPointerOver())
+        {
+            _carouselPaused = false;
+            _carouselTimer.Stop();
+            _carouselTimer.Start();
+        }
+    }
+
+    /// <summary>
+    /// Moves on a step, unless the pointer is over the preview. Checked on every tick too, since a
+    /// drop from Explorer may leave the pointer there, or gone, without any mouse message.
+    /// </summary>
+    private void OnCarouselTick()
+    {
+        if (IsPointerOver())
+        {
+            PauseCarousel();
+            return;
+        }
+
+        if (_carouselPaused)
+        {
+            _carouselPaused = false;
+            return;
+        }
+
+        ShowCarouselStep((_carouselStep + 1) % _images.Count);
+    }
+
+    private bool IsPointerOver() => Capture || ClientRectangle.Contains(PointToClient(MousePosition));
+
+    private void ShowCarouselStep(int step)
+    {
+        if (step == _carouselStep)
+        {
+            return;
+        }
+
+        _carouselStep = step;
+        _cache?.Dispose();
+        _cache = null;
+        UpdateDisplaySizes();
+        Invalidate();
     }
 
     /// <summary>
@@ -930,7 +1060,7 @@ internal sealed class GridPreview : Control
         }
 
         bool live = image == _live;
-        var cell = _layout.Cells(canvas.Size)[index];
+        var cell = _layout.Cells(canvas.Size)[ShownCell(index)];
         using (var g = Graphics.FromImage(_cache))
         {
             Compositor.DrawCell(g, new Frame(image.Bitmap, image.BandColor, image.Look), cell, _cropThreshold, fast: live);
