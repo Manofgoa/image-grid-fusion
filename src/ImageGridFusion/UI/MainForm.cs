@@ -10,6 +10,10 @@ internal sealed class MainForm : Form
     private readonly string[] _startupFiles;
     private readonly GridPreview _preview = new() { Dock = DockStyle.Fill, AllowDrop = true };
     private readonly LayoutStrip _layouts = new() { Dock = DockStyle.Left, Width = 80, AllowDrop = true };
+    private readonly Button _settingsButton = new() { Text = "⚙", Size = new Size(32, 23), AutoSize = true };
+    private readonly ContextMenuStrip _settingsMenu = new();
+    private readonly ToolStripMenuItem _startWithWindows = new("Start with Windows");
+    private readonly ToolTip _toolTip = new();
     private readonly Button _copyButton = new() { Text = "Copy", AutoSize = true };
     private readonly Button _saveButton = new() { Text = "Save…", AutoSize = true };
     private readonly Label _status = new() { AutoSize = true, Anchor = AnchorStyles.Left };
@@ -31,6 +35,7 @@ internal sealed class MainForm : Form
         AllowDrop = true;
 
         var buttons = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = Padding.Empty };
+        buttons.Controls.Add(_settingsButton);
         buttons.Controls.Add(_copyButton);
         buttons.Controls.Add(_saveButton);
 
@@ -60,6 +65,10 @@ internal sealed class MainForm : Form
             _statusTimer.Stop();
             _status.Text = string.Empty;
         };
+        _settingsMenu.Items.Add(_startWithWindows);
+        _toolTip.SetToolTip(_settingsButton, "Settings");
+        _settingsButton.Click += (_, _) => ShowSettings();
+        _startWithWindows.Click += (_, _) => ToggleStartWithWindows();
         _copyButton.Click += (_, _) => CopyToClipboard();
         _saveButton.Click += (_, _) => Save();
         _preview.ImagesChanged += (_, _) => UpdateButtons();
@@ -82,6 +91,8 @@ internal sealed class MainForm : Form
         if (disposing)
         {
             _statusTimer.Dispose();
+            _settingsMenu.Dispose();
+            _toolTip.Dispose();
         }
 
         base.Dispose(disposing);
@@ -323,6 +334,27 @@ internal sealed class MainForm : Form
     {
         string? file = _preview.Images.Select(i => i.FilePath).FirstOrDefault(p => p is not null);
         return Path.GetDirectoryName(file) ?? Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
+    }
+
+    /// <summary>Opens the settings menu above the ⚙ button, ticked from the registry as it is now.</summary>
+    private void ShowSettings()
+    {
+        _startWithWindows.Checked = StartupRegistration.IsEnabled;
+        _settingsMenu.Show(_settingsButton, Point.Empty, ToolStripDropDownDirection.AboveRight);
+    }
+
+    private void ToggleStartWithWindows()
+    {
+        bool enable = !_startWithWindows.Checked;
+        try
+        {
+            StartupRegistration.SetEnabled(enable);
+            _startWithWindows.Checked = enable;
+        }
+        catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+        {
+            ShowStatus($"Start with Windows failed: {ex.Message}", error: true);
+        }
     }
 
     private void UpdateButtons()
