@@ -134,7 +134,7 @@ Output resolution is kept as high as possible so source images aren't needlessly
 
 ## Tech
 
-C# / WinForms on .NET 10, using `System.Drawing` (GDI+) with high-quality bicubic interpolation. Previews use Windows' own components only, no third-party library: `Windows.Data.Pdf` for PDFs, `Windows.Media.Editing` (Media Foundation) for video frames, and the Shell's `IShellItemImageFactory` for thumbnails.
+C# / WinForms on .NET 10, using `System.Drawing` (GDI+) with high-quality bicubic interpolation. Previews and exports use Windows' own components only, no third-party library: `Windows.Data.Pdf` for PDFs, Media Foundation for videos (`Windows.Media.Editing` for the slider's stills, the Source Reader for frame-by-frame playback, the Sink Writer for the MP4 export), and the Shell's `IShellItemImageFactory` for thumbnails.
 
 ## Planned
 
