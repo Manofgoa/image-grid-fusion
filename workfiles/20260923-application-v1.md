@@ -118,7 +118,8 @@ Resolution as high as possible so no source is needlessly downscaled, capped at 
 
 - Cell sizes are proportional to `W`, so for each image the applied scale is `s_i = k_i × W`.
 - The width at which image `i` is drawn at exactly 1:1 is `W_i = 1 / k_i`.
-- `W = min(4096, max_i W_i)`, then `H` follows from the ratio.
+- `W = clamp(max_i W_i, 1200, 4096)`, then `H` follows from the ratio. The 1200 px floor
+  (reference 1200×628) upscales small sources rather than producing a tiny output.
 - Because the scale accounts for the 15 % threshold, an image in "crop + bands" mode counts at
   its real applied scale, not at its fill scale.
 
@@ -187,21 +188,22 @@ The v1 is delivered in two milestones, so the direction can be checked on a runn
 
 ### Milestone 1 — Minimal app
 
-Scope pending the user's go (see Q&A #22):
+Implementation not yet authorized (the user answered "No" to the go on 2026-09-23).
+Work happens on `main` (user's deliberate choice, Q&A #23).
 
 - Solution and WinForms project (`net10.0-windows`).
-- `Composition/` in full: layouts 1–4, canvas sizing, fitting rule with the 15 % threshold,
-  dominant color fill, compositor.
+- `Composition/` in full: layouts 1–4, canvas sizing (1200–4096 px), fitting rule with the 15 %
+  threshold, dominant color fill, compositor.
 - Intake: drop on the window, `Ctrl+V`, command-line arguments; images are appended up to 4,
   any excess is ignored.
 - Grid preview rendered like the final result; click to select, `Esc` to deselect, `Delete` to
-  remove.
-- `Ctrl+C` / Copy button to the clipboard.
+  remove, × on hover to remove, drag a cell onto another to swap.
+- `Ctrl+C` / Copy button to the clipboard; `Ctrl+S` / Save button writing PNG.
 
 ### Milestone 2 — Rest of v1
 
-Everything else in the design sections: drag-to-swap, drop onto a cell, replace rule when full,
-× on hover, Save as PNG, EXIF orientation, status line, publish configuration, README update.
+Everything else in the design sections: drop onto a cell, replace rule when full, EXIF
+orientation, status line, publish configuration, README update.
 Once Milestone 1 has fixed the interfaces, these can be split across parallel agents
 (e.g. grid interactions vs. loading/saving).
 
@@ -236,8 +238,8 @@ Planned as separate workfiles, not part of v1:
       excess file applies the replace rule, the rest is ignored with a status message
 - [x] ~~With a single image?~~ → Shown alone on the whole canvas, exportable (a dedicated frame
       design comes in a future task)
-- [ ] Minimum canvas width when every source is small (e.g. four 300 px thumbnails): no minimum,
-      the output stays small and sharp (recommended), or a floor such as 1200 px (upscaled)?
+- [x] ~~Minimum canvas width when every source is small?~~ → 1200 px floor (small sources are
+      upscaled)
 
 ---
 
@@ -281,6 +283,15 @@ Open questions answered (Q&A #17–#20), a minimal first version requested, futu
   new `## Future Tasks` section; the threshold becomes a parameter (default `0.15`) so the
   slider task does not have to rework the fitting code.
 
+### Iteration 3 — 2026-09-23
+
+Last open question answered and Milestone 1 scope settled (Q&A #21–#23):
+
+- Canvas width gets a 1200 px floor: `W = clamp(max_i W_i, 1200, 4096)`.
+- Drag-to-swap, × on hover and Save as PNG move from Milestone 2 into Milestone 1.
+- Branch: stay on `main`, deliberately.
+- Go for implementation: **No** — the gate holds, the design stays open.
+
 ---
 
 ## Implementation Log
@@ -322,8 +333,9 @@ Questions asked by the agent during design, with user responses.
 | 18 | Drag inside the grid: swap or move? | Swap | 2026-09-23 |
 | 19 | Several files beyond the limit at once? | Free slots first, first excess replaces, rest ignored | 2026-09-23 |
 | 20 | Behaviour with a single image? | Full canvas, exportable; a dedicated frame design will come in a later task | 2026-09-23 |
-| 21 | Minimum canvas width for small sources? | | |
-| 22 | Which extras go into Milestone 1 (drag-to-swap, × on hover, EXIF, Save)? | | |
+| 21 | Minimum canvas width for small sources? | 1200 px floor | 2026-09-23 |
+| 22 | Which extras go into Milestone 1 (drag-to-swap, × on hover, EXIF, Save)? | Drag-to-swap, × on hover, Save as PNG | 2026-09-23 |
+| 23 | Which branch for the implementation? | Stay on `main` | 2026-09-23 |
 
 ---
 
