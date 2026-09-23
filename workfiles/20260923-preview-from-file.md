@@ -285,7 +285,7 @@ says so rather than staying blank.
 | Code | 4 | 2026-09-24 | TFM, page model, four producers, page loader, slider, status message |
 | Unit tests | — | 2026-09-23 | Declined: no test project (Q&A #16); harness checks listed in Iteration 4 |
 | README | 4 | 2026-09-24 | Previews section, features, status line, publish path, minimum OS, tech |
-| Manual validation | | | Pending: the checks listed in *Test Impact* |
+| Manual validation | 4 | 2026-09-24 | Validated by the user on committed `main` (`75918c9`, which also holds the live-animation work); app closed cleanly |
 
 ---
 
