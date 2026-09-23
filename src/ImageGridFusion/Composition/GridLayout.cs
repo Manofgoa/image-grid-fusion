@@ -109,4 +109,47 @@ public sealed class GridLayout
     /// <summary>Cell sizes as fractions of the canvas width and height, same order as <see cref="Cells"/>.</summary>
     public (double Width, double Height)[] CellFractions() =>
         _units.Select(u => ((double)u.Width / _columns, (double)u.Height / _rows)).ToArray();
+
+    /// <summary>
+    /// Cell indices clockwise around the grid, from the featured cell. A cell is placed where it first
+    /// meets the border, walked clockwise from the top-left corner; cells in a single row go left to
+    /// right. Follows the geometry, so a mirrored layout reverses the order of its cells.
+    /// </summary>
+    public int[] ClockwiseLoop()
+    {
+        var order = Enumerable.Range(0, Count).OrderBy(i => BorderPosition(_units[i])).ToArray();
+        int start = Array.IndexOf(order, 0);
+        return [.. order.Skip(start), .. order.Take(start)];
+    }
+
+    /// <summary>
+    /// Earliest point of the border a cell touches, walking it clockwise in units: the top edge left to
+    /// right, the right edge downward, the bottom edge right to left, the left edge upward. Every cell
+    /// of the catalog touches the border; one that would not goes last.
+    /// </summary>
+    private double BorderPosition(Rectangle unit)
+    {
+        var positions = new List<double>(4);
+        if (unit.Top == 0)
+        {
+            positions.Add(unit.Left);
+        }
+
+        if (unit.Right == _columns)
+        {
+            positions.Add(_columns + unit.Top);
+        }
+
+        if (unit.Bottom == _rows)
+        {
+            positions.Add(_columns + _rows + (_columns - unit.Right));
+        }
+
+        if (unit.Left == 0)
+        {
+            positions.Add((2 * _columns) + _rows + (_rows - unit.Bottom));
+        }
+
+        return positions.Count > 0 ? positions.Min() : double.MaxValue;
+    }
 }
