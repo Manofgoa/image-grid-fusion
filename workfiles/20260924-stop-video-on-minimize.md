@@ -95,6 +95,12 @@ coming back from the tray restarts them from the start; a taskbar minimize is no
 Implemented by reacting to `GridPreview`'s visibility, with a new `AnimationPlayer.Stop()` and a
 visibility guard in `SyncPlayer`. README's *Tray & startup* section gets one line.
 
+### Iteration 2 — 2026-09-24 — ✅ Implemented
+
+Go given after a first "No": "Go implémente". Read as **Implement the code** — code only, the
+README step is not authorized (same reading as the earlier workfiles of this repository). Branch
+Gate: stays on `main`, the standing choice for this repository.
+
 ---
 
 ## Implementation Log
@@ -120,6 +126,7 @@ Questions asked by the agent during design, with user responses.
 | 2 | When the window is reopened from the tray icon, should playback resume? | Yes, resume | 2026-09-24 |
 | 3 | Which cases trigger the stop: tray only, or also a taskbar minimize? | Tray only | 2026-09-24 |
 | 4 | Exploration depth: straightforward or tricky / long? | Straightforward | 2026-09-24 |
+| 5 | Implementation go: No / code only / code, tests and documentation? | No, then "Go implémente" (code only) | 2026-09-24 |
 
 ---
 
