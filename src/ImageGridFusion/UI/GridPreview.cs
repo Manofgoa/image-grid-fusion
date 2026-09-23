@@ -12,6 +12,11 @@ internal sealed class GridPreview : Control
 {
     private const float GhostScale = 0.4f;
     private const float GhostOpacity = 0.7f;
+    private const int SelectionWidth = 3;
+    private const int EmptyBorderWidth = 2;
+    private const int HoverOutlineWidth = 1;
+
+    private static readonly Color HoverOutlineColor = Color.FromArgb(128, Color.White);
 
     private readonly List<SourceImage> _images = [];
     private GridLayout? _layout;
@@ -19,6 +24,7 @@ internal sealed class GridPreview : Control
     private int _selected = -1;
     private int _hovered = -1;
     private bool _hoveringClose;
+    private bool _hoveringCanvas;
     private int _pressed = -1;
     private Point _pressPoint;
     private bool _dragging;
@@ -27,6 +33,8 @@ internal sealed class GridPreview : Control
     private Size _ghostOffset;
     private Point _dragPoint;
     private Rectangle _externalTarget;
+    private bool _externalDrag;
+    private Rectangle _externalHover;
 
     public GridPreview()
     {
@@ -91,14 +99,17 @@ internal sealed class GridPreview : Control
     /// <summary>
     /// Highlights what an external drag (files from Explorer) at <paramref name="location"/> would
     /// fill: the cell under it, else the whole canvas while there is room, else the cell the
-    /// excess rule replaces. <c>null</c> clears it.
+    /// excess rule replaces. Outlines the cell or empty canvas under it. <c>null</c> clears both.
     /// </summary>
     public void ShowDropTarget(Point? location)
     {
         var target = location is { } point ? DropTargetBounds(point) : Rectangle.Empty;
-        if (target != _externalTarget)
+        var hover = location is { } at ? SurfaceAt(at) : Rectangle.Empty;
+        _externalDrag = location is not null;
+        if (target != _externalTarget || hover != _externalHover)
         {
             _externalTarget = target;
+            _externalHover = hover;
             Invalidate();
         }
     }
@@ -167,6 +178,7 @@ internal sealed class GridPreview : Control
         {
             PaintEmptyState(g, canvas);
             g.FillRectangle(highlight, _externalTarget);
+            PaintHoverOutline(g, HoverOutlineBounds(canvas, []));
             return;
         }
 
@@ -203,9 +215,11 @@ internal sealed class GridPreview : Control
 
         if (_selected >= 0)
         {
-            using var pen = new Pen(SystemColors.Highlight, LogicalToDeviceUnits(3)) { Alignment = PenAlignment.Inset };
+            using var pen = new Pen(SystemColors.Highlight, LogicalToDeviceUnits(SelectionWidth)) { Alignment = PenAlignment.Inset };
             g.DrawRectangle(pen, cells[_selected]);
         }
+
+        PaintHoverOutline(g, HoverOutlineBounds(canvas, cells));
 
         if (_hovered >= 0 && !_dragging)
         {
@@ -306,10 +320,11 @@ internal sealed class GridPreview : Control
     protected override void OnMouseLeave(EventArgs e)
     {
         base.OnMouseLeave(e);
-        if (_hovered >= 0 && !_dragging)
+        if ((_hovered >= 0 || _hoveringCanvas) && !_dragging)
         {
             _hovered = -1;
             _hoveringClose = false;
+            _hoveringCanvas = false;
             Invalidate();
         }
     }
@@ -376,6 +391,43 @@ internal sealed class GridPreview : Control
         return _images.Count < GridLayout.MaxImages ? CanvasBounds() : cells[ExcessTarget()];
     }
 
+    /// <summary>Surface under <paramref name="location"/>: its cell, else the empty canvas, else none.</summary>
+    private Rectangle SurfaceAt(Point location)
+    {
+        if (_images.Count > 0)
+        {
+            return Array.Find(CellBounds(), c => c.Contains(location));
+        }
+
+        var canvas = CanvasBounds();
+        return canvas.Contains(location) ? canvas : Rectangle.Empty;
+    }
+
+    /// <summary>
+    /// Surface the hover outline marks: the one under an external drag, else the empty canvas under
+    /// the mouse, else the swap target during a drag, else the hovered cell. Kept inside the border
+    /// already drawn there (the dashed empty state, or the selection) so both stay visible.
+    /// </summary>
+    private Rectangle HoverOutlineBounds(Rectangle canvas, Rectangle[] cells)
+    {
+        Rectangle CellOrNone(int index) => index >= 0 && index < cells.Length ? cells[index] : Rectangle.Empty;
+
+        var bounds = _externalDrag ? _externalHover
+            : _images.Count == 0 ? (_hoveringCanvas ? canvas : Rectangle.Empty)
+            : _dragging ? CellOrNone(_dropTarget)
+            : CellOrNone(_hovered);
+        if (bounds.IsEmpty)
+        {
+            return bounds;
+        }
+
+        int border = _images.Count == 0 ? EmptyBorderWidth
+            : bounds == CellOrNone(_selected) ? SelectionWidth
+            : 0;
+        int inset = LogicalToDeviceUnits(border);
+        return Rectangle.Inflate(bounds, -inset, -inset);
+    }
+
     private Rectangle GhostBounds() =>
         _ghost is null ? Rectangle.Empty : new Rectangle(_dragPoint - _ghostOffset, _ghost.Size);
 
@@ -427,13 +479,15 @@ internal sealed class GridPreview : Control
     {
         int hovered = CellAt(location);
         bool onClose = hovered >= 0 && CloseBounds(CellBounds()[hovered]).Contains(location);
-        if (hovered == _hovered && onClose == _hoveringClose)
+        bool onCanvas = _images.Count == 0 && CanvasBounds().Contains(location);
+        if (hovered == _hovered && onClose == _hoveringClose && onCanvas == _hoveringCanvas)
         {
             return;
         }
 
         _hovered = hovered;
         _hoveringClose = onClose;
+        _hoveringCanvas = onCanvas;
         Cursor = onClose ? Cursors.Hand : Cursors.Default;
         Invalidate();
     }
@@ -496,6 +550,26 @@ internal sealed class GridPreview : Control
         g.DrawLine(pen, bounds.Right - pad, bounds.Top + pad, bounds.Left + pad, bounds.Bottom - pad);
     }
 
+    /// <summary>Contour drawn inside <paramref name="bounds"/> as four bands, crisp and evenly translucent.</summary>
+    private void PaintHoverOutline(Graphics g, Rectangle bounds)
+    {
+        int width = LogicalToDeviceUnits(HoverOutlineWidth);
+        if (bounds.Width <= 2 * width || bounds.Height <= 2 * width)
+        {
+            return;
+        }
+
+        using var brush = new SolidBrush(HoverOutlineColor);
+        g.FillRectangles(
+            brush,
+            [
+                new Rectangle(bounds.X, bounds.Y, bounds.Width, width),
+                new Rectangle(bounds.X, bounds.Bottom - width, bounds.Width, width),
+                new Rectangle(bounds.X, bounds.Y + width, width, bounds.Height - 2 * width),
+                new Rectangle(bounds.Right - width, bounds.Y + width, width, bounds.Height - 2 * width),
+            ]);
+    }
+
     private static void PaintGhost(Graphics g, Bitmap ghost, Rectangle bounds)
     {
         using var attributes = new ImageAttributes();
@@ -505,7 +579,7 @@ internal sealed class GridPreview : Control
 
     private void PaintEmptyState(Graphics g, Rectangle canvas)
     {
-        using (var pen = new Pen(ForeColor, LogicalToDeviceUnits(2)) { DashStyle = DashStyle.Dash })
+        using (var pen = new Pen(ForeColor, LogicalToDeviceUnits(EmptyBorderWidth)) { DashStyle = DashStyle.Dash })
         {
             g.DrawRectangle(pen, canvas);
         }
