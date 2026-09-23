@@ -13,8 +13,8 @@ Today each image count (2, 3, 4) has exactly one layout, hard-coded in
 for a given image count, the user picks one of several layouts by clicking a thumbnail.
 
 The starting ideas from the brief were "the big image on the right" (mirror of the 3-image
-layout) and "2 stacked images"; the user asked to discuss which layouts are worth adding — the
-catalog below is a proposal to choose from, not an agreed list yet.
+layout) and "2 stacked images"; after discussing a catalog, the user kept every proposed layout,
+with mirrored versions obtained through a single "mirror" button rather than separate layouts.
 
 Out of scope: the 1-image case (its frame design is a separate future task, see
 `20260923-application-v1.md`), the output ratio (stays `1200:628`), the fitting rule.
@@ -35,11 +35,13 @@ only consumes cells by index, so a variant only has to change what these two ret
 
 ---
 
-## Layout Catalog (proposal)
+## Layout Catalog
 
 Canvas ratio `R = 1200 / 628 ≈ 1.91`. A cell's ratio decides which images it suits: < 1 favours
 portraits and phone screenshots, ≈ 1.9 landscapes and desktop screenshots, > 3 panoramas only.
-**★** = the current layout, proposed as the default of its count.
+**★** = the current layout, default of its count. Every layout below is kept (Q&A #5–#7).
+Mirrored versions are not separate layouts: they come from the mirror toggle (see
+`### Mirror`).
 
 ### 2 images
 
@@ -54,7 +56,6 @@ portraits and phone screenshots, ≈ 1.9 landscapes and desktop screenshots, > 3
 | Id | Sketch | Cells | Cell ratios | Suits |
 |---|---|---|---|---|
 | ★ `3-big-left` | `[1│2/3]` | left half · two stacked quarters on the right | 0.95 · 1.91 · 1.91 | one portrait + two landscapes |
-| `3-big-right` | `[2/3│1]` | mirror of the above | 0.95 · 1.91 · 1.91 | same, featured image on the right |
 | `3-columns` | `[1│2│3]` | three thirds side by side | 0.64 · 0.64 · 0.64 | three portraits / phone screenshots |
 | `3-featured` | `[1 1│2/3]` | left 2/3 · two stacked cells on the right third | 1.27 · 1.27 · 1.27 | one featured landscape + two, all cells the same shape |
 | `3-big-top` | `[1]` over `[2│3]` | top half · two quarters below | 3.82 · 1.91 · 1.91 | one panorama + two landscapes |
@@ -71,6 +72,18 @@ portraits and phone screenshots, ≈ 1.9 landscapes and desktop screenshots, > 3
 
 Integer splits keep the v1 rule: cells tile the canvas exactly with no gap, and a boundary at
 fraction `f` of a side of `n` px falls at `floor(n × f)`, so no pixel is lost to rounding.
+
+### Mirror
+
+A single **mirror** toggle, next to the thumbnails, replaces dedicated mirrored layouts
+(Q&A #8). "Big image on the right" from the brief is `3-big-left` with the mirror on.
+
+| Layout | Asymmetric along | Mirrored version |
+|---|---|---|
+| `2-split` | horizontal | `[2│1 1]` |
+| `3-big-left`, `3-featured`, `4-featured`, `4-big-left` | horizontal | featured cell on the right |
+| `3-big-top`, `4-big-top` | vertical | featured cell at the bottom *(pending Q&A #15)* |
+| `2-columns`, `2-rows`, `3-columns`, `4-grid`, `4-columns` | symmetric | mirror would only reorder images — *(pending Q&A #16)* |
 
 ---
 
@@ -112,11 +125,17 @@ Depends on Open Question "unit tests". v1 has no test project (declined, v1 Q&A 
 
 ## Open Questions
 
-- [ ] Which 2-image variants are kept?
-- [ ] Which 3-image variants are kept?
-- [ ] Which 4-image variants are kept?
-- [ ] Mirrors: a dedicated thumbnail per mirrored variant (e.g. `3-big-right`), or a single
-      "mirror" toggle applying to every asymmetric layout?
+- [x] ~~Which 2-image variants are kept?~~ → All: `2-columns` (default), `2-rows`, `2-split`
+- [x] ~~Which 3-image variants are kept?~~ → All: `3-big-left` (default), `3-columns`,
+      `3-featured`, `3-big-top` (`3-big-right` becomes the mirror of `3-big-left`)
+- [x] ~~Which 4-image variants are kept?~~ → All: `4-grid` (default), `4-columns`, `4-featured`,
+      `4-big-left`, `4-big-top`
+- [x] ~~Mirrors: a dedicated thumbnail per mirrored variant (e.g. `3-big-right`), or a single
+      "mirror" toggle applying to every asymmetric layout?~~ → A single mirror toggle
+- [ ] Mirror axis: horizontal only (big-top layouts cannot be flipped), or flip along whichever
+      axis the layout is asymmetric on (big-top → big-bottom)?
+- [ ] Mirror on a symmetric layout: disabled, or allowed (reverses the image order)?
+- [ ] Mirror state when the layout or the image count changes: kept, or reset to off?
 - [ ] Which image goes where when the variant changes: image 1 always takes the featured (big)
       cell, then the others in reading order — or strict reading order of the cells
       (left→right, top→bottom), so in `3-big-right` image 1 would be the top-left small cell?
@@ -151,6 +170,12 @@ Initial design from the brief and the scoping batch (Q&A #1–#4):
 - Proposed by the agent, open to review: current layouts stay the defaults, thumbnail row hidden
   with 0–1 image, canvas sized on the active variant, layouts described once as fractions.
 
+### Iteration 2 — 2026-09-23
+
+Catalog settled (Q&A #5–#8): every proposed layout is kept. Mirrored layouts are replaced by a
+single mirror toggle, so `3-big-right` leaves the catalog and becomes `3-big-left` mirrored.
+Three questions follow from the toggle (axis, symmetric layouts, persistence of its state).
+
 ---
 
 ## Implementation Log
@@ -176,16 +201,19 @@ Questions asked by the agent during design, with user responses.
 | 2 | What does "2 stacked images" mean exactly? | Unknown — it was a Claude suggestion; the user wants to discuss nice layouts to add | 2026-09-23 |
 | 3 | Is the chosen variant remembered? | No, default at every launch | 2026-09-23 |
 | 4 | Depth of exploration? | Straightforward | 2026-09-23 |
-| 5 | Which 2-image variants are kept? | | |
-| 6 | Which 3-image variants are kept? | | |
-| 7 | Which 4-image variants are kept? | | |
-| 8 | Mirrors: dedicated thumbnails or a mirror toggle? | | |
+| 5 | Which 2-image variants are kept? | All three: `2-columns`, `2-rows`, `2-split` | 2026-09-23 |
+| 6 | Which 3-image variants are kept? | All: big-left (+ big-right), columns, featured, big-top | 2026-09-23 |
+| 7 | Which 4-image variants are kept? | All four new ones: columns, featured, big-left, big-top (+ grid) | 2026-09-23 |
+| 8 | Mirrors: dedicated thumbnails or a mirror toggle? | A single mirror toggle | 2026-09-23 |
 | 9 | Image-to-cell mapping when the variant changes? | | |
 | 10 | Variant after the image count changes? | | |
 | 11 | Thumbnail look? | | |
 | 12 | Thumbnail row placement? | | |
 | 13 | Keyboard shortcut to cycle variants? | | |
 | 14 | Unit tests for the layouts? | | |
+| 15 | Mirror axis: horizontal only, or the layout's asymmetric axis? | | |
+| 16 | Mirror on a symmetric layout? | | |
+| 17 | Mirror state when layout or count changes? | | |
 
 ---
 
