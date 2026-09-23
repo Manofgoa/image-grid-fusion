@@ -10,6 +10,7 @@ internal sealed class MainForm : Form
     private readonly string[] _startupFiles;
     private readonly GridPreview _preview = new() { Dock = DockStyle.Fill, AllowDrop = true };
     private readonly LayoutStrip _layouts = new() { Dock = DockStyle.Left, Width = 80, AllowDrop = true };
+    private readonly Button _clearButton = new() { Text = "Clear all", AutoSize = true };
     private readonly Button _copyButton = new() { Text = "Copy", AutoSize = true };
     private readonly Button _saveButton = new() { Text = "Save…", AutoSize = true };
     private readonly Label _status = new() { AutoSize = true, Anchor = AnchorStyles.Left };
@@ -32,20 +33,22 @@ internal sealed class MainForm : Form
         buttons.Controls.Add(_copyButton);
         buttons.Controls.Add(_saveButton);
 
-        // Status line on the left, buttons on the right.
+        // Clear button on the left, then the status line, output buttons on the right.
         var bottom = new TableLayoutPanel
         {
             Dock = DockStyle.Bottom,
             AutoSize = true,
-            ColumnCount = 2,
+            ColumnCount = 3,
             RowCount = 1,
             Padding = new Padding(8),
         };
+        bottom.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         bottom.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         bottom.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         bottom.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        bottom.Controls.Add(_status, 0, 0);
-        bottom.Controls.Add(buttons, 1, 0);
+        bottom.Controls.Add(_clearButton, 0, 0);
+        bottom.Controls.Add(_status, 1, 0);
+        bottom.Controls.Add(buttons, 2, 0);
 
         // The fill control goes first so the bottom panel, then the layout strip above it, are docked before it.
         Controls.Add(_preview);
@@ -58,6 +61,7 @@ internal sealed class MainForm : Form
             _statusTimer.Stop();
             _status.Text = string.Empty;
         };
+        _clearButton.Click += (_, _) => ClearAll();
         _copyButton.Click += (_, _) => CopyToClipboard();
         _saveButton.Click += (_, _) => Save();
         _preview.ImagesChanged += (_, _) => UpdateButtons();
@@ -253,6 +257,18 @@ internal sealed class MainForm : Form
         }
     }
 
+    private void ClearAll()
+    {
+        int count = _preview.Images.Count;
+        if (count == 0)
+        {
+            return;
+        }
+
+        _preview.Clear();
+        ShowStatus(count == 1 ? "1 image removed." : $"{count} images removed.");
+    }
+
     private void CopyToClipboard()
     {
         if (_preview.Images.Count == 0)
@@ -322,6 +338,7 @@ internal sealed class MainForm : Form
     private void UpdateButtons()
     {
         bool any = _preview.Images.Count > 0;
+        _clearButton.Enabled = any;
         _copyButton.Enabled = any;
         _saveButton.Enabled = any;
     }
