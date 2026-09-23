@@ -14,6 +14,7 @@ internal sealed class MainForm : Form
     private readonly Button _saveButton = new() { Text = "Save…", AutoSize = true };
     private readonly Label _status = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly System.Windows.Forms.Timer _statusTimer = new();
+    private bool _closingForGood;
 
     public MainForm(string[] args)
     {
@@ -84,6 +85,26 @@ internal sealed class MainForm : Form
         }
 
         base.Dispose(disposing);
+    }
+
+    /// <summary>Closes the window for real, instead of hiding it; the tray's Quit.</summary>
+    public void CloseForGood()
+    {
+        _closingForGood = true;
+        Close();
+    }
+
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        // The ×, Alt+F4 and the taskbar's Close window only hide it: the app keeps running in the
+        // tray, grid unchanged. Closes started by Windows (logoff, shutdown) go through.
+        if (e.CloseReason == CloseReason.UserClosing && !_closingForGood)
+        {
+            e.Cancel = true;
+            Hide();
+        }
+
+        base.OnFormClosing(e);
     }
 
     protected override async void OnShown(EventArgs e)

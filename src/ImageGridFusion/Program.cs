@@ -8,6 +8,10 @@ internal static class Program
     private static void Main(string[] args)
     {
         ApplicationConfiguration.Initialize();
-        Application.Run(new MainForm(args));
+
+        // The hidden-start argument is not a file to load.
+        static bool IsHidden(string arg) => arg.Equals(TrayApplicationContext.HiddenArgument, StringComparison.OrdinalIgnoreCase);
+        string[] files = args.Where(arg => !IsHidden(arg)).ToArray();
+        Application.Run(new TrayApplicationContext(new MainForm(files), hidden: args.Any(IsHidden)));
     }
 }
