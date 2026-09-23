@@ -10,12 +10,13 @@ namespace ImageGridFusion.Imaging;
 public static class ImageLoader
 {
     /// <summary>
-    /// Loads a file as an image, else as a preview: a video frame, a PDF page, rendered text, and
-    /// last the thumbnail Windows shows for it. Returns null when the file has no preview at all.
-    /// Blocks on file and WinRT calls: meant to run off the UI thread.
+    /// Loads a file as an animated GIF, an image, else as a preview: a video frame, a PDF page,
+    /// rendered text, and last the thumbnail Windows shows for it. Returns null when the file has no
+    /// preview at all. Blocks on file and WinRT calls: meant to run off the UI thread.
     /// </summary>
     public static SourceImage? TryLoadFile(string path) =>
-        TryDecode(path)
+        TryPages(path, GifFrames.TryOpen(path))
+        ?? TryDecode(path)
         ?? TryPages(path, VideoFrames.TryOpen(path))
         ?? TryPages(path, PdfPages.TryOpen(path))
         ?? TryPages(path, TextPages.TryOpen(path, new Size(GridLayout.RatioWidth, GridLayout.RatioHeight)))
