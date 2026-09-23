@@ -128,6 +128,9 @@ internal sealed class MainForm : Form
     {
         base.OnShown(e);
 
+        // Copy and Save start disabled, so the slider would take the focus and move with unaimed keys or wheel.
+        _preview.Focus();
+
         // Files dropped on the .exe icon; loaded once the window is visible so startup stays fast.
         if (_startupFiles.Length > 0)
         {
