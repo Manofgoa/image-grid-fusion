@@ -98,6 +98,11 @@ Measured every diagram line of `README.md`: only the two three-cells-in-a-row bl
 Both are brought back to 21 with 6/5/6 cells; headers and captions already follow the
 23-column grid and need no change.
 
+### Iteration 2 — 2026-09-24 — ✅ Implemented
+
+Go given for code, unit tests and documentation. Code and unit tests do not apply; the run
+edits `README.md` only, on `main`.
+
 ---
 
 ## Implementation Log
