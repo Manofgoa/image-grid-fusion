@@ -26,8 +26,9 @@ Environment (checked 2026-09-23): .NET SDK `10.0.401` and runtime
 - **Image processing**: `System.Drawing` (GDI+), `InterpolationMode.HighQualityBicubic`,
   `PixelOffsetMode.HighQuality`, `ImageAttributes` with `WrapMode.TileFlipXY` (avoids the
   semi-transparent halo GDI+ leaves on scaled image edges).
-- **Publish**: `PublishReadyToRun`, `PublishSingleFile`, `RuntimeIdentifier=win-x64`.
-  Self-contained or framework-dependent: see Open Questions.
+- **Publish**: framework-dependent single file — `PublishReadyToRun`, `PublishSingleFile`,
+  `SelfContained=false`, `RuntimeIdentifier=win-x64`. A few MB; requires the .NET 10 Desktop
+  runtime on the machine (installed on the dev machine).
 - **High DPI**: `ApplicationHighDpiMode=PerMonitorV2`.
 - **No unit test project** in v1 (user decision).
 - Layout:
@@ -62,6 +63,7 @@ Environment (checked 2026-09-23): .NET SDK `10.0.401` and runtime
 
 | Images | Cells (reading order) | Cell ratio |
 |---|---|---|
+| 1 | `1` whole canvas | ≈ 1.91:1 |
 | 2 | `1` left half · `2` right half | ≈ 0.955:1 each |
 | 3 | `1` left half · `2` top-right quarter · `3` bottom-right quarter | 0.955:1 · ≈ 1.91:1 · ≈ 1.91:1 |
 | 4 | `1` top-left · `2` top-right · `3` bottom-left · `4` bottom-right | ≈ 1.91:1 each |
@@ -80,7 +82,8 @@ Let `cw × ch` be the cell size and `w × h` the source size.
 - `sFill = max(cw / w, ch / h)` — scale that fills the cell.
 - `sFit  = min(cw / w, ch / h)` — scale that shows the whole image.
 - **Crop threshold**: at most **15 % in total** of the source along the overflowing axis,
-  split evenly (7.5 % each side).
+  split evenly (7.5 % each side). The threshold is a parameter of the fitting computation
+  (default `0.15`), not a hard-coded literal, so the future slider task can drive it.
 - **Applied scale**: `s = min(sFill, sFit / 0.85)`.
   - Filling needs ≤ 15 % crop → `s = sFill`: the cell is filled, centered crop.
   - Filling needs > 15 % crop → **crop exactly to the threshold** (15 % of the overflowing axis,
@@ -130,8 +133,8 @@ Single resizable window. **No list**: the preview *is* the interface.
 - Shows the composed result exactly as it will be exported, at the output ratio, scaled to fit the
   window (letterboxed). Rendered at display size for responsiveness; full resolution is rendered
   only on export.
-- Empty state: a centered hint — drop 2 to 4 images or paste them with `Ctrl+V`.
-- 1 image: see Open Questions.
+- Empty state: a centered hint — drop 1 to 4 images or paste them with `Ctrl+V`.
+- 1 image: shown alone on the whole canvas (single cell, same fitting rule), exportable.
 
 ### Selection
 
@@ -145,7 +148,7 @@ Single resizable window. **No list**: the preview *is* the interface.
 
 ### Reordering
 
-- Dragging a cell onto another cell reorders the images (swap or move: see Open Questions).
+- Dragging a cell onto another cell **swaps** the two images.
 
 ### Adding & Replacing Images
 
@@ -156,7 +159,9 @@ Single resizable window. **No list**: the preview *is* the interface.
 | `Ctrl+V` (bitmap, or files copied in Explorer) | Appended | Replaces the selected cell, else the last cell in reading order |
 | Files dropped on the `.exe` icon (command-line arguments) | Loaded in argument order | Nothing is selected at startup → excess replaces the last cell |
 
-Several files dropped or pasted at once, going beyond 4: see Open Questions.
+Several files added at once, going beyond 4 (paste, drop, command line): free slots are filled
+in order, the **first** excess file applies the replace rule above, and the remaining excess
+files are ignored with a status message.
 
 ### Launch
 
@@ -171,8 +176,44 @@ Several files dropped or pasted at once, going beyond 4: see Open Questions.
 - **Save** button + `Ctrl+S`: "Save as" dialog, **PNG** only. Default name
   `fusion-yyyyMMdd-HHmmss.png`, default folder = folder of the first file-backed image, else the
   user's Pictures folder.
-- Both are disabled below 2 images.
+- Both are disabled when there is no image.
 - A status line shows short messages (skipped file, copied, saved).
+
+---
+
+## Delivery Plan
+
+The v1 is delivered in two milestones, so the direction can be checked on a running app early.
+
+### Milestone 1 — Minimal app
+
+Scope pending the user's go (see Q&A #22):
+
+- Solution and WinForms project (`net10.0-windows`).
+- `Composition/` in full: layouts 1–4, canvas sizing, fitting rule with the 15 % threshold,
+  dominant color fill, compositor.
+- Intake: drop on the window, `Ctrl+V`, command-line arguments; images are appended up to 4,
+  any excess is ignored.
+- Grid preview rendered like the final result; click to select, `Esc` to deselect, `Delete` to
+  remove.
+- `Ctrl+C` / Copy button to the clipboard.
+
+### Milestone 2 — Rest of v1
+
+Everything else in the design sections: drag-to-swap, drop onto a cell, replace rule when full,
+× on hover, Save as PNG, EXIF orientation, status line, publish configuration, README update.
+Once Milestone 1 has fixed the interfaces, these can be split across parallel agents
+(e.g. grid interactions vs. loading/saving).
+
+---
+
+## Future Tasks (out of scope)
+
+Planned as separate workfiles, not part of v1:
+
+- **Crop threshold slider** — let the user adjust the 15 % threshold from the UI.
+- **Single-image frame design** — an app-specific frame or decoration when only one image is
+  present (v1 shows it alone, full canvas).
 
 ---
 
@@ -188,17 +229,13 @@ Several files dropped or pasted at once, going beyond 4: see Open Questions.
 
 ## Open Questions
 
-- [ ] Publish mode: **self-contained** single file (≈ 60–150 MB, runs on any Windows x64) or
-      **framework-dependent** single file (a few MB, needs the .NET 10 Desktop runtime)?
-      The runtime `Microsoft.WindowsDesktop.App 10.0.12` is installed on the dev machine.
-- [ ] Reordering by drag inside the grid: **swap** the two images (recommended), or **move** the
-      dragged image to the target position and shift the others?
-- [ ] Several files added at once beyond the 4-image limit (e.g. 3 files pasted on a 3-image grid,
-      6 files dropped on the `.exe`): fill the free slots, then apply the replace rule to the
-      **first** excess file only and ignore the rest with a status message (recommended), or
-      something else?
-- [ ] With a single image: show it in the left cell of the 2-image layout with an empty placeholder
-      on the right, Copy/Save disabled (recommended), or another behaviour?
+- [x] ~~Publish mode: self-contained or framework-dependent single file?~~ → Framework-dependent
+      single file
+- [x] ~~Reordering by drag inside the grid: swap or move?~~ → Swap
+- [x] ~~Several files added at once beyond the 4-image limit?~~ → Fill free slots, the first
+      excess file applies the replace rule, the rest is ignored with a status message
+- [x] ~~With a single image?~~ → Shown alone on the whole canvas, exportable (a dedicated frame
+      design comes in a future task)
 - [ ] Minimum canvas width when every source is small (e.g. four 300 px thumbnails): no minimum,
       the output stays small and sharp (recommended), or a floor such as 1200 px (upscaled)?
 
@@ -228,6 +265,21 @@ Initial design built from the user's brief and the scoping batch (Q&A #1–#16):
 - Proposed by the agent, open to review: ratio constant `1200:628`, `Composition/` kept free of
   WinForms, EXIF orientation applied on load, dominant color by 4-bit quantization, preview
   rendered at display size, `Ctrl+C` / `Ctrl+S` shortcuts, default save name and folder.
+
+### Iteration 2 — 2026-09-23
+
+Open questions answered (Q&A #17–#20), a minimal first version requested, future tasks named:
+
+- Publish: framework-dependent single file.
+- Drag inside the grid swaps the two images.
+- Excess files at once: free slots first, the first excess file replaces, the rest is ignored.
+- One image: shown alone on the whole canvas and exportable — layout table gains a 1-image row,
+  Copy/Save are enabled from 1 image.
+- The user asked for a minimal app first, to check the direction on a running app → new
+  `## Delivery Plan` with Milestone 1 (minimal) and Milestone 2 (rest of v1).
+- The user plans a crop-threshold slider and a single-image frame design as later tasks →
+  new `## Future Tasks` section; the threshold becomes a parameter (default `0.15`) so the
+  slider task does not have to rework the fitting code.
 
 ---
 
@@ -266,11 +318,12 @@ Questions asked by the agent during design, with user responses.
 | 14 | With fewer than 4 images, a file dropped onto an existing cell? | Replaces the targeted cell | 2026-09-23 |
 | 15 | Publish self-contained or framework-dependent? | Asked back whether the .NET 10 runtime is installed — checked: yes (10.0.12). Still open | 2026-09-23 |
 | 16 | Depth of exploration? | Straightforward | 2026-09-23 |
-| 17 | Publish mode (after the runtime check)? | | |
-| 18 | Drag inside the grid: swap or move? | | |
-| 19 | Several files beyond the limit at once? | | |
-| 20 | Behaviour with a single image? | | |
+| 17 | Publish mode (after the runtime check)? | Framework-dependent single file | 2026-09-23 |
+| 18 | Drag inside the grid: swap or move? | Swap | 2026-09-23 |
+| 19 | Several files beyond the limit at once? | Free slots first, first excess replaces, rest ignored | 2026-09-23 |
+| 20 | Behaviour with a single image? | Full canvas, exportable; a dedicated frame design will come in a later task | 2026-09-23 |
 | 21 | Minimum canvas width for small sources? | | |
+| 22 | Which extras go into Milestone 1 (drag-to-swap, × on hover, EXIF, Save)? | | |
 
 ---
 
