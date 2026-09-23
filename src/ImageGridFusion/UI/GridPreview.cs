@@ -39,6 +39,9 @@ internal sealed class GridPreview : Control
     private Rectangle _externalHover;
     private bool _hoveringDropZone;
     private bool _pressedDropZone;
+    private readonly PageLoader _pageLoader = new();
+    private int _sliding = -1;
+    private bool _hoveringSlider;
 
     public GridPreview()
     {
@@ -48,6 +51,12 @@ internal sealed class GridPreview : Control
             true);
         BackColor = Color.FromArgb(64, 64, 64);
         ForeColor = Color.Gainsboro;
+        _pageLoader.PageShown += (_, _) =>
+        {
+            _cache?.Dispose();
+            _cache = null;
+            Invalidate();
+        };
     }
 
     public event EventHandler? ImagesChanged;
@@ -133,8 +142,10 @@ internal sealed class GridPreview : Control
         _layout = layout;
         _hovered = -1;
         _hoveringClose = false;
+        _hoveringSlider = false;
         _cache?.Dispose();
         _cache = null;
+        FitPagesToCells();
         Invalidate();
         LayoutChanged?.Invoke(this, EventArgs.Empty);
     }
@@ -252,6 +263,12 @@ internal sealed class GridPreview : Control
             PaintCloseButton(g, CloseBounds(cells[_hovered]), _hoveringClose);
         }
 
+        int slider = _sliding >= 0 ? _sliding : _hovered;
+        if (slider >= 0 && slider < cells.Length && !_dragging)
+        {
+            PaintSlider(g, _images[slider], SliderBounds(cells[slider], _images[slider]));
+        }
+
         if (_dragging && _ghost is not null)
         {
             PaintGhost(g, _ghost, GhostBounds());
@@ -287,6 +304,14 @@ internal sealed class GridPreview : Control
             return;
         }
 
+        // Browsing pages neither selects the cell nor starts a swap.
+        if (SliderBounds(CellBounds()[index], _images[index]).Contains(e.Location))
+        {
+            _sliding = index;
+            SlideTo(e.X);
+            return;
+        }
+
         _selected = index;
         _pressed = index;
         _pressPoint = e.Location;
@@ -296,6 +321,12 @@ internal sealed class GridPreview : Control
     protected override void OnMouseMove(MouseEventArgs e)
     {
         base.OnMouseMove(e);
+        if (_sliding >= 0)
+        {
+            SlideTo(e.X);
+            return;
+        }
+
         if (_pressed < 0 || e.Button != MouseButtons.Left)
         {
             UpdateHover(e.Location);
@@ -330,6 +361,14 @@ internal sealed class GridPreview : Control
     protected override void OnMouseUp(MouseEventArgs e)
     {
         base.OnMouseUp(e);
+        if (_sliding >= 0)
+        {
+            _sliding = -1;
+            UpdateHover(e.Location);
+            Invalidate();
+            return;
+        }
+
         if (_pressedDropZone)
         {
             _pressedDropZone = false;
@@ -359,15 +398,22 @@ internal sealed class GridPreview : Control
         {
             EndDrag();
         }
+
+        if (_sliding >= 0)
+        {
+            _sliding = -1;
+            Invalidate();
+        }
     }
 
     protected override void OnMouseLeave(EventArgs e)
     {
         base.OnMouseLeave(e);
-        if ((_hovered >= 0 || _hoveringCanvas || _hoveringDropZone) && !_dragging)
+        if ((_hovered >= 0 || _hoveringCanvas || _hoveringDropZone) && !_dragging && _sliding < 0)
         {
             _hovered = -1;
             _hoveringClose = false;
+            _hoveringSlider = false;
             _hoveringCanvas = false;
             _hoveringDropZone = false;
             Cursor = Cursors.Default;
@@ -496,6 +542,8 @@ internal sealed class GridPreview : Control
         _selected = -1;
         _hovered = -1;
         _hoveringClose = false;
+        _hoveringSlider = false;
+        _sliding = -1;
         OnImagesChanged();
     }
 
@@ -526,6 +574,8 @@ internal sealed class GridPreview : Control
             _layout = count is { } n ? GridLayout.Default(n) : null;
         }
 
+        FitPagesToCells();
+
         ImagesChanged?.Invoke(this, EventArgs.Empty);
         if (layoutReset)
         {
@@ -539,7 +589,9 @@ internal sealed class GridPreview : Control
         bool onClose = hovered >= 0 && CloseBounds(CellBounds()[hovered]).Contains(location);
         bool onCanvas = _images.Count == 0 && CanvasBounds().Contains(location);
         bool onDropZone = DropZoneBounds(CanvasBounds()).Contains(location);
-        if (hovered == _hovered && onClose == _hoveringClose && onCanvas == _hoveringCanvas && onDropZone == _hoveringDropZone)
+        bool onSlider = hovered >= 0 && SliderBounds(CellBounds()[hovered], _images[hovered]).Contains(location);
+        if (hovered == _hovered && onClose == _hoveringClose && onCanvas == _hoveringCanvas && onDropZone == _hoveringDropZone
+            && onSlider == _hoveringSlider)
         {
             return;
         }
@@ -548,7 +600,8 @@ internal sealed class GridPreview : Control
         _hoveringClose = onClose;
         _hoveringCanvas = onCanvas;
         _hoveringDropZone = onDropZone;
-        Cursor = onClose || onDropZone ? Cursors.Hand : Cursors.Default;
+        _hoveringSlider = onSlider;
+        Cursor = onClose || onDropZone || onSlider ? Cursors.Hand : Cursors.Default;
         Invalidate();
     }
 
@@ -605,6 +658,108 @@ internal sealed class GridPreview : Control
         int size = LogicalToDeviceUnits(24);
         int inset = LogicalToDeviceUnits(6);
         return new Rectangle(cell.Right - inset - size, cell.Y + inset, size, size);
+    }
+
+    /// <summary>
+    /// Pill along the bottom of a cell whose image has several pages; empty for a single page, or
+    /// when the cell is too narrow to slide in.
+    /// </summary>
+    private Rectangle SliderBounds(Rectangle cell, SourceImage image)
+    {
+        if (image.Pages is not { Count: > 1 })
+        {
+            return Rectangle.Empty;
+        }
+
+        int height = LogicalToDeviceUnits(24);
+        int inset = LogicalToDeviceUnits(6);
+        var bounds = new Rectangle(cell.X + inset, cell.Bottom - inset - height, cell.Width - 2 * inset, height);
+        return bounds.Width >= LogicalToDeviceUnits(120) ? bounds : Rectangle.Empty;
+    }
+
+    /// <summary>Horizontal span of the track, left of the label, which is sized for the widest one.</summary>
+    private (int Left, int Width) SliderTrack(Rectangle bounds, SourceImage image)
+    {
+        var pages = image.Pages!;
+        int pad = bounds.Height / 2;
+        int label = TextRenderer.MeasureText(pages.Label(pages.Count - 1), Font, Size.Empty, TextFormatFlags.NoPadding).Width;
+        return (bounds.X + pad, Math.Max(1, bounds.Width - 3 * pad - label));
+    }
+
+    /// <summary>Requests the page under <paramref name="x"/> on the slider being dragged, rendered live.</summary>
+    private void SlideTo(int x)
+    {
+        var cells = CellBounds();
+        if (_sliding >= cells.Length)
+        {
+            return;
+        }
+
+        var image = _images[_sliding];
+        var bounds = SliderBounds(cells[_sliding], image);
+        if (bounds.IsEmpty)
+        {
+            return;
+        }
+
+        var (left, width) = SliderTrack(bounds, image);
+        int page = (int)Math.Round(Math.Clamp((x - left) / (double)width, 0, 1) * (image.Pages!.Count - 1));
+        if (page != _pageLoader.Target(image))
+        {
+            _pageLoader.Request(image, page);
+            Invalidate(bounds);
+        }
+    }
+
+    /// <summary>
+    /// Text pages take the shape of their cell, at its size on a 1200 px canvas, so they never widen
+    /// the canvas: laid out again, keeping the reading position, whenever that cell changes.
+    /// </summary>
+    private void FitPagesToCells()
+    {
+        if (_layout is null)
+        {
+            return;
+        }
+
+        var cells = _layout.Cells(new Size(GridLayout.RatioWidth, GridLayout.RatioHeight));
+        for (int i = 0; i < _images.Count; i++)
+        {
+            if (_images[i].Pages is { PageSize: { } size } pages && size != cells[i].Size)
+            {
+                _pageLoader.Request(_images[i], pages.Resize(cells[i].Size, _pageLoader.Target(_images[i])));
+            }
+        }
+    }
+
+    private void PaintSlider(Graphics g, SourceImage image, Rectangle bounds)
+    {
+        if (bounds.IsEmpty)
+        {
+            return;
+        }
+
+        bool hot = _sliding >= 0 || _hoveringSlider;
+        using (var brush = new SolidBrush(Color.FromArgb(hot ? 230 : 150, 0, 0, 0)))
+        {
+            g.FillRoundedRectangle(brush, bounds, new Size(bounds.Height, bounds.Height));
+        }
+
+        var pages = image.Pages!;
+        int page = Math.Clamp(_pageLoader.Target(image), 0, pages.Count - 1);
+        var (left, width) = SliderTrack(bounds, image);
+        int y = bounds.Y + bounds.Height / 2;
+        using (var pen = new Pen(Color.FromArgb(160, Color.White), LogicalToDeviceUnits(2)))
+        {
+            g.DrawLine(pen, left, y, left + width, y);
+        }
+
+        int x = left + (int)Math.Round(width * (double)page / (pages.Count - 1));
+        int thumb = bounds.Height - LogicalToDeviceUnits(10);
+        g.FillEllipse(Brushes.White, x - thumb / 2, y - thumb / 2, thumb, thumb);
+
+        var label = Rectangle.FromLTRB(left + width + bounds.Height / 2, bounds.Y, bounds.Right - bounds.Height / 2, bounds.Bottom);
+        TextRenderer.DrawText(g, pages.Label(page), Font, label, Color.White, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
 
     private void PaintCloseButton(Graphics g, Rectangle bounds, bool hot)
