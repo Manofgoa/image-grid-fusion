@@ -46,9 +46,13 @@ Rule (Q&A #6, #7):
    color wins (a white product shot keeps white bands).
 2. **New fallback** — otherwise, the **most frequent color of the edge bands of the visible part**:
    the pixels of the four bands (same 2 % depth as the uniform-side test) are pooled, transparent ones
-   (alpha < 128) ignored, quantized to 4 bits per channel as `DominantColor` does; the most populated
-   bucket wins and its pixels are averaged.
-3. If the edges hold no opaque pixel at all, the whole-image `Dominant` stays as the last resort.
+   (alpha < 128) ignored, quantized to 4 bits per channel. The populated buckets are then **grouped by
+   perceptual similarity** (Q&A #10): most populated first, each joins the first group whose seed is
+   within CIELAB ΔE 20, else seeds a new group. The largest group wins; its color is its seed bucket's
+   average — its most frequent shade, a real color of the image. Without the grouping, the shades of a
+   varied color split over many buckets and lose to a flat color in a single one (Iteration 5).
+3. If the edges hold no opaque pixel at all, the whole-image `Dominant` stays as the last resort — with
+   the **same grouping** (Q&A #10).
 
 Implemented as `BandColor.MostFrequentOnSides`, called between `Background` and `Dominant` in
 `BandColor.For`; each edge pixel counts once (corners are not counted twice). The band depths are
@@ -112,8 +116,8 @@ changes. Verification is manual:
   first; only the whole-image fallback is replaced by the edge majority (Q&A #6)
 - [x] ~~Edge depth used for the majority?~~ → The same 2 % bands as the uniform-side test (Q&A #7)
 - [x] ~~Unit tests: stay without a test project?~~ → Yes, manual checks (Q&A #8)
-- [ ] 4. Edge majority by perceptual groups instead of 4-bit buckets: which tolerance, and does the
-  whole-image last resort (`DominantColor`) get the same grouping?
+- [x] ~~Edge majority by perceptual groups: which tolerance, and the whole-image last resort too?~~ →
+  ΔE 20, and the last resort gets the same grouping (Q&A #10)
 
 ---
 
@@ -184,7 +188,10 @@ Proposal: group the edge buckets by **perceptual similarity** before voting. Pop
 populated first, join the first group whose seed is within a CIELAB distance; the largest group wins
 and its color is its seed (its most frequent shade, a real color of the image rather than a blend).
 Simulated on the poster: red `(194,12,27)` wins at every tolerance from ΔE 15 to 30 (27.6 %–38.3 %
-against 22.4 %–26.6 % for black). Pending Open Question 4.
+against 22.4 %–26.6 % for black).
+
+Decided (Q&A #10): tolerance ΔE 20 (twice the uniform-side tolerance), and the whole-image last
+resort (`DominantColor`) uses the same grouping. The Color Rule section describes it.
 
 ---
 
@@ -211,7 +218,7 @@ against 22.4 %–26.6 % for black). Pending Open Question 4.
 | 7 | Edge depth for the majority: 2 % or thicker? | 2 %, as today | 2026-09-24 |
 | 8 | Unit tests: stay without a test project? | Yes, manual checks | 2026-09-24 |
 | 9 | Go for implementation? | Implement the code | 2026-09-24 |
-| 10 | Group the edge shades perceptually: tolerance, and the whole-image last resort too? | | |
+| 10 | Group the edge shades perceptually: tolerance, and the whole-image last resort too? | ΔE 20; yes, same grouping | 2026-09-24 |
 
 ---
 
