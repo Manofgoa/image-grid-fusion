@@ -16,7 +16,9 @@ internal sealed class MainForm : Form
     private readonly CheckBox _forceImage = new() { Text = "Force as image", AutoSize = true, Anchor = AnchorStyles.Left, Visible = false };
     private readonly Button _cancelButton = new() { Text = "Cancel", AutoSize = true, Visible = false };
     private readonly Label _status = new() { AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly System.Windows.Forms.Timer _statusTimer = new();
+    private readonly TableLayoutPanel _bottom;
+    private readonly FlowLayoutPanel _outputButtons;
+    private readonly FlowLayoutPanel _statusLine;
 
     /// <summary>Set while an export runs: the grid is locked until it ends.</summary>
     private CancellationTokenSource? _export;
@@ -35,13 +37,13 @@ internal sealed class MainForm : Form
         MinimumSize = new Size(480, 320);
         AllowDrop = true;
 
-        var buttons = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = Padding.Empty };
-        buttons.Controls.Add(_forceImage);
-        buttons.Controls.Add(_copyButton);
-        buttons.Controls.Add(_saveButton);
+        _outputButtons = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = Padding.Empty };
+        _outputButtons.Controls.Add(_forceImage);
+        _outputButtons.Controls.Add(_copyButton);
+        _outputButtons.Controls.Add(_saveButton);
 
         // Clear button on the left, then the status line, output buttons on the right.
-        var bottom = new TableLayoutPanel
+        _bottom = new TableLayoutPanel
         {
             Dock = DockStyle.Bottom,
             AutoSize = true,
@@ -49,28 +51,34 @@ internal sealed class MainForm : Form
             RowCount = 1,
             Padding = new Padding(8),
         };
-        bottom.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        bottom.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        bottom.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        bottom.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        bottom.Controls.Add(_clearButton, 0, 0);
-        var statusLine = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = Padding.Empty, Anchor = AnchorStyles.Left };
-        statusLine.Controls.Add(_status);
-        statusLine.Controls.Add(_cancelButton);
-        bottom.Controls.Add(statusLine, 1, 0);
-        bottom.Controls.Add(buttons, 2, 0);
+        _bottom.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        _bottom.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        _bottom.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        _bottom.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _bottom.Controls.Add(_clearButton, 0, 0);
+        _statusLine = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = false,
+            Margin = Padding.Empty,
+            Anchor = AnchorStyles.Left,
+        };
+        _statusLine.Controls.Add(_status);
+        _statusLine.Controls.Add(_cancelButton);
+        _bottom.Controls.Add(_statusLine, 1, 0);
+        _bottom.Controls.Add(_outputButtons, 2, 0);
 
         // The fill control goes first so the bottom panel, then the layout strip above it, are docked before it.
         Controls.Add(_preview);
         Controls.Add(_layouts);
-        Controls.Add(bottom);
+        Controls.Add(_bottom);
         ResumeLayout(performLayout: true);
 
-        _statusTimer.Tick += (_, _) =>
-        {
-            _statusTimer.Stop();
-            _status.Text = string.Empty;
-        };
+        // A long message wraps within the space left between the buttons, the bottom bar growing taller.
+        _bottom.SizeChanged += (_, _) => FitStatusWidth();
+        _outputButtons.SizeChanged += (_, _) => FitStatusWidth();
+        _cancelButton.VisibleChanged += (_, _) => FitStatusWidth();
         _clearButton.Click += (_, _) => ClearAll();
         _copyButton.Click += (_, _) => CopyToClipboard();
         _saveButton.Click += (_, _) => Save();
@@ -95,16 +103,7 @@ internal sealed class MainForm : Form
         _layouts.DragEnter += OnDragEnter;
         _layouts.DragDrop += OnDragDrop;
         UpdateButtons();
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            _statusTimer.Dispose();
-        }
-
-        base.Dispose(disposing);
+        FitStatusWidth();
     }
 
     protected override async void OnShown(EventArgs e)
@@ -491,7 +490,7 @@ internal sealed class MainForm : Form
             // Reports still queued when the export ends are dropped: they would hide its outcome.
             if (IsExporting)
             {
-                ShowProgress($"Exporting the video… {done:P0}");
+                ShowStatus($"Exporting the video… {done:P0}");
             }
         });
         try
@@ -521,7 +520,7 @@ internal sealed class MainForm : Form
         _layouts.Enabled = false;
         _cancelButton.Visible = cancellable;
         UpdateButtons();
-        ShowProgress(message);
+        ShowStatus(message);
         return _export.Token;
     }
 
@@ -610,22 +609,29 @@ internal sealed class MainForm : Form
         _forceImage.Enabled = !IsExporting;
     }
 
-    /// <summary>Shows a message that stays until replaced: the progress of an export.</summary>
-    private void ShowProgress(string message)
-    {
-        _statusTimer.Stop();
-        _status.ForeColor = SystemColors.ControlText;
-        _status.Text = message;
-    }
-
-    /// <summary>Shows a message for a few seconds; errors in red, and a little longer.</summary>
+    /// <summary>Shows a message that stays until the next one replaces it; errors in red.</summary>
     private void ShowStatus(string message, bool error = false)
     {
         _status.ForeColor = error ? Color.Firebrick : SystemColors.ControlText;
         _status.Text = message;
-        _statusTimer.Stop();
-        _statusTimer.Interval = error ? 8000 : 4000;
-        _statusTimer.Start();
+    }
+
+    /// <summary>
+    /// Caps the status text to the width its column leaves once the buttons around it are laid out,
+    /// so that a long message wraps instead of pushing them out of the window.
+    /// </summary>
+    private void FitStatusWidth()
+    {
+        int width = _bottom.ClientSize.Width - _bottom.Padding.Horizontal
+            - _clearButton.Width - _clearButton.Margin.Horizontal
+            - _outputButtons.Width - _outputButtons.Margin.Horizontal
+            - _statusLine.Margin.Horizontal - _status.Margin.Horizontal
+            - (_cancelButton.Visible ? _cancelButton.Width + _cancelButton.Margin.Horizontal : 0);
+        var maximum = new Size(Math.Max(1, width), 0);
+        if (_status.MaximumSize != maximum)
+        {
+            _status.MaximumSize = maximum;
+        }
     }
 
     private static string Files(int count) => count == 1 ? "1 file" : $"{count} files";
