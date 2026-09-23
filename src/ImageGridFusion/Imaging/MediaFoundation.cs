@@ -176,7 +176,7 @@ internal interface IMFAttributes
     [PreserveSig] int GetString(in Guid key, IntPtr value, int size, out int length);
     [PreserveSig] int GetAllocatedString(in Guid key, out IntPtr value, out int length);
     [PreserveSig] int GetBlobSize(in Guid key, out int size);
-    [PreserveSig] int GetBlob(in Guid key, [Out] byte[] buffer, int size, out int blobSize);
+    [PreserveSig] int GetBlob(in Guid key, [Out, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 2)] byte[] buffer, int size, out int blobSize);
     [PreserveSig] int GetAllocatedBlob(in Guid key, out IntPtr buffer, out int size);
     [PreserveSig] int GetUnknown(in Guid key, in Guid iid, out IntPtr value);
     [PreserveSig] int SetItem(in Guid key, IntPtr value);
@@ -187,7 +187,7 @@ internal interface IMFAttributes
     void SetDouble(in Guid key, double value);
     void SetGUID(in Guid key, in Guid value);
     void SetString(in Guid key, [MarshalAs(UnmanagedType.LPWStr)] string value);
-    void SetBlob(in Guid key, byte[] buffer, int size);
+    void SetBlob(in Guid key, [MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 2)] byte[] buffer, int size);
     void SetUnknown(in Guid key, [MarshalAs(UnmanagedType.IUnknown)] object value);
     void LockStore();
     void UnlockStore();
@@ -211,7 +211,7 @@ internal interface IMFMediaType : IMFAttributes
     [PreserveSig] new int GetString(in Guid key, IntPtr value, int size, out int length);
     [PreserveSig] new int GetAllocatedString(in Guid key, out IntPtr value, out int length);
     [PreserveSig] new int GetBlobSize(in Guid key, out int size);
-    [PreserveSig] new int GetBlob(in Guid key, [Out] byte[] buffer, int size, out int blobSize);
+    [PreserveSig] new int GetBlob(in Guid key, [Out, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 2)] byte[] buffer, int size, out int blobSize);
     [PreserveSig] new int GetAllocatedBlob(in Guid key, out IntPtr buffer, out int size);
     [PreserveSig] new int GetUnknown(in Guid key, in Guid iid, out IntPtr value);
     [PreserveSig] new int SetItem(in Guid key, IntPtr value);
@@ -222,7 +222,7 @@ internal interface IMFMediaType : IMFAttributes
     new void SetDouble(in Guid key, double value);
     new void SetGUID(in Guid key, in Guid value);
     new void SetString(in Guid key, [MarshalAs(UnmanagedType.LPWStr)] string value);
-    new void SetBlob(in Guid key, byte[] buffer, int size);
+    new void SetBlob(in Guid key, [MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 2)] byte[] buffer, int size);
     new void SetUnknown(in Guid key, [MarshalAs(UnmanagedType.IUnknown)] object value);
     new void LockStore();
     new void UnlockStore();
@@ -251,7 +251,7 @@ internal interface IMFSample : IMFAttributes
     [PreserveSig] new int GetString(in Guid key, IntPtr value, int size, out int length);
     [PreserveSig] new int GetAllocatedString(in Guid key, out IntPtr value, out int length);
     [PreserveSig] new int GetBlobSize(in Guid key, out int size);
-    [PreserveSig] new int GetBlob(in Guid key, [Out] byte[] buffer, int size, out int blobSize);
+    [PreserveSig] new int GetBlob(in Guid key, [Out, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 2)] byte[] buffer, int size, out int blobSize);
     [PreserveSig] new int GetAllocatedBlob(in Guid key, out IntPtr buffer, out int size);
     [PreserveSig] new int GetUnknown(in Guid key, in Guid iid, out IntPtr value);
     [PreserveSig] new int SetItem(in Guid key, IntPtr value);
@@ -262,7 +262,7 @@ internal interface IMFSample : IMFAttributes
     new void SetDouble(in Guid key, double value);
     new void SetGUID(in Guid key, in Guid value);
     new void SetString(in Guid key, [MarshalAs(UnmanagedType.LPWStr)] string value);
-    new void SetBlob(in Guid key, byte[] buffer, int size);
+    new void SetBlob(in Guid key, [MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 2)] byte[] buffer, int size);
     new void SetUnknown(in Guid key, [MarshalAs(UnmanagedType.IUnknown)] object value);
     new void LockStore();
     new void UnlockStore();
