@@ -106,6 +106,13 @@ Open questions answered: the slider goes in a **new top bar** (not the existing 
 **live** while dragging, a **value label** (`Crop: 15%`) sits next to the slider, and **no test project** is
 created — `## Test Impact` is now explicitly empty. Design sections updated accordingly.
 
+### Iteration 3 — 2026-09-24 — ✅ Implemented
+
+Go given on 2026-09-24 (after a first "No" on 2026-09-23), as a free-form "GO implémente" rather than one of the
+three choices; read as the closest one, **Implement the code** — README not covered. Work done in a dedicated
+worktree (`.claude/worktrees/crop-threshold-slider`, branch `feature/crop-threshold-slider`), removed at the end
+of the run; the branch is kept.
+
 ---
 
 ## Implementation Log
@@ -138,4 +145,4 @@ Questions asked by the agent during design, with user responses.
 
 ---
 
-*Last updated: 2026-09-23*
+*Last updated: 2026-09-24*
