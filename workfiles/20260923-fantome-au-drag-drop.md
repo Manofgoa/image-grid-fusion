@@ -31,9 +31,10 @@ Components involved:
   (`DragEnter` sets `Copy`, `DragDrop` loads the files). There is no `DragOver` handler, and the
   preview is not told where the cursor is during an external drag.
 
-Dependency: the target highlight for a file drop relies on **drop onto a cell replaces it**, from
-Milestone 2 of `20260923-application-v1.md`. That milestone has its go (Iteration 7 there) but is
-not delivered yet: right now every drop appends.
+Dependency: the target highlight for a file drop relies on **drop onto a cell replaces it** and on
+the **replace rule when full**, both from Milestone 2 of `20260923-application-v1.md`. That
+milestone has its go (Iteration 7 there) but is not delivered yet: right now every drop appends.
+**This task is implemented after Milestone 2** and reuses its cell targeting (Q&A #5).
 
 ---
 
@@ -50,12 +51,22 @@ not delivered yet: right now every drop appends.
 
 ## In-Grid Swap — Planned
 
-- **Ghost**: a translucent thumbnail of `_images[_pressed]` painted last in `OnPaint`, positioned
-  from the current cursor location. It is invalidated on every mouse move while dragging (only the
-  old and new ghost rectangles, not the whole control).
-- **Source cell dimmed**: painted over `cells[_pressed]` while `_dragging`.
-- **Target highlight**: kept as it is today.
-- Size, opacity, anchoring, dimming style and behaviour outside the control: see Open Questions.
+- **Ghost** (Q&A #8): a thumbnail of the source cell **as it appears in the preview** (its region
+  of the cached composition), scaled to **~40 % of the cell size** (aspect kept), drawn at
+  **70 % opacity**.
+  - **Anchored at the grab point**: the point pressed inside the cell keeps its relative position
+    inside the ghost — `ghost.Location = cursor − (pressPoint − cell.Location) × 0.4`.
+  - Painted **last** in `OnPaint`, above the dimming, the target highlight and the selection
+    border.
+  - **Clipped at the preview's edges** (Q&A #9): drawn by `GridPreview` itself, no extra window.
+    The capture keeps it tracking the cursor, and it reappears as soon as the cursor comes back.
+  - On each mouse move while dragging, only the old and new ghost rectangles are invalidated
+    (plus the cells whose highlight changes), not the whole control.
+- **Source cell dimmed** (Q&A #10): a dark translucent overlay (black, in the style of the ×
+  button) painted over `cells[_pressed]` while `_dragging`.
+- **Target highlight**: kept as it is today (`Highlight` overlay on the hovered cell, none on the
+  source cell itself).
+- On release or cancel, the ghost and the dimming disappear along with the highlight.
 
 ---
 
@@ -67,37 +78,56 @@ not delivered yet: right now every drop appends.
 
 ## File Drop — Planned
 
-- The preview is told the cursor position during an external drag (a `DragOver` handler) so it can
-  highlight the receiving cell, and forgets it on `DragLeave` / `DragDrop`.
-- Ghost source and highlight rule: see Open Questions.
+- **Ghost** (Q&A #6): **Windows' own drag image**, the thumbnail Explorer produces, with the
+  stack and file count when several files are dragged. The app decodes nothing during the drag.
+  - WinForms has to forward the drag to the shell's drop-target helper (`IDropTargetHelper`) for
+    the image to render over the window. To check during implementation: if .NET 10 WinForms
+    already does it, nothing to add; otherwise the preview and the form forward
+    `DragEnter` / `DragOver` / `DragLeave` / `Drop` to it.
+- **Highlight: everything that will receive the file** (Q&A #7). The preview is told the cursor
+  position during the drag (a `DragOver` handler), and forgets it on `DragLeave` / `DragDrop`.
+
+  | Cursor | Grid | Highlighted |
+  |---|---|---|
+  | Over a cell | any | That cell (it will be replaced) |
+  | Outside every cell | not full (empty included) | The whole canvas (the file will be appended) |
+  | Outside every cell | full | The cell the replace rule picks: the selected cell, else the last in reading order |
+
+  The overlay is the same `Highlight` tint as the in-grid swap. The rule mirrors Milestone 2's
+  intake rules, so it is read from the same logic rather than duplicated.
 
 ---
 
 ## Test Impact
 
-No unit test project exists: tests were declined for v1 (Q&A #12 of `20260923-application-v1.md`),
-and the planned work is painting only. Pending confirmation (Open Questions).
+**No unit tests**, declined by the user (Q&A #11): no test project exists (tests were declined
+for v1 too), and the planned work is painting only. Checked on screen. Nothing is created or
+updated.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| — (pending Q&A #11) | — | — |
+| — (declined) | — | — |
 
 ---
 
 ## Open Questions
 
-- [ ] Ordering with Milestone 2 (drop onto a cell): implement this after it, or bring the cell
-      targeting for file drops in here?
-- [ ] File drop ghost: Explorer's own drag image (Windows shell thumbnail, nothing decoded), or a
-      thumbnail the app decodes from the file on entry?
-- [ ] File drop highlight: which cells light up — the hovered cell only, the whole canvas when the
-      file will be appended, the cell the replace rule picks when the grid is full?
-- [ ] In-grid ghost: size, opacity and anchoring on the cursor?
-- [ ] In-grid ghost outside the preview (over the buttons, outside the window): clipped at the
-      preview edges, or following the cursor everywhere?
-- [ ] Source cell dimming style: dark translucent overlay, desaturation, or something else?
-- [ ] Unit tests: none (consistent with v1), or create a test project for the extractable logic
-      (ghost bounds)?
+- [x] ~~Ordering with Milestone 2 (drop onto a cell): implement this after it, or bring the cell
+      targeting for file drops in here?~~ → After Milestone 2, reusing its cell targeting
+- [x] ~~File drop ghost: Explorer's own drag image (Windows shell thumbnail, nothing decoded), or a
+      thumbnail the app decodes from the file on entry?~~ → Windows' drag image
+- [x] ~~File drop highlight: which cells light up — the hovered cell only, the whole canvas when the
+      file will be appended, the cell the replace rule picks when the grid is full?~~ → Everything
+      that will receive the file: hovered cell, else the whole canvas when appending, else the
+      cell the replace rule picks
+- [x] ~~In-grid ghost: size, opacity and anchoring on the cursor?~~ → ~40 % of the cell, 70 %
+      opacity, anchored at the grab point
+- [x] ~~In-grid ghost outside the preview (over the buttons, outside the window): clipped at the
+      preview edges, or following the cursor everywhere?~~ → Clipped at the preview edges
+- [x] ~~Source cell dimming style: dark translucent overlay, desaturation, or something else?~~ →
+      Dark translucent overlay
+- [x] ~~Unit tests: none (consistent with v1), or create a test project for the extractable logic
+      (ghost bounds)?~~ → None
 
 ---
 
@@ -120,6 +150,18 @@ Initial design built from the scoping batch (Q&A #1–#4) and a single read-only
 - The file-drop highlight depends on Milestone 2's drop onto a cell, which is not delivered yet.
 - Seven open questions listed before any detailed design.
 
+### Iteration 2 — 2026-09-23
+
+All seven open questions answered (Q&A #5–#11); the design sections now describe the full solution:
+
+- Ordering: implemented **after Milestone 2**, whose drop onto a cell and replace rule it reuses.
+- File drop: Windows' own drag image as the ghost (nothing decoded); the highlight shows
+  everything that will receive the file (hovered cell / whole canvas when appending / the cell
+  the replace rule picks when full).
+- In-grid swap: ghost at ~40 % of the cell, 70 % opacity, anchored at the grab point, clipped at
+  the preview's edges; source cell under a dark translucent overlay.
+- Unit tests declined.
+
 ---
 
 ## Implementation Log
@@ -130,7 +172,7 @@ says so rather than staying blank.
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
 | Code | | | |
-| Unit tests | | | |
+| Unit tests | 2 | 2026-09-23 | Declined by the user (Q&A #11) |
 | README | | | |
 
 ---
@@ -145,13 +187,14 @@ Questions asked by the agent during design, with user responses.
 | 2 | What does the ghost look like? | Thumbnail following the cursor + highlight of the target cell | 2026-09-23 |
 | 3 | What happens to the source cell during the drag? | Dimmed | 2026-09-23 |
 | 4 | Expected depth of the subject? | Straightforward (single scout pass) | 2026-09-23 |
-| 5 | Ordering with Milestone 2: after it, or bring drop-onto-cell targeting in here? | | |
-| 6 | File drop ghost: Explorer's drag image, or a thumbnail decoded by the app? | | |
-| 7 | File drop highlight: which cells light up? | | |
-| 8 | In-grid ghost: size, opacity and anchoring? | | |
-| 9 | In-grid ghost outside the preview: clipped or everywhere? | | |
-| 10 | Source cell dimming style? | | |
-| 11 | Unit tests: none, or a test project for the ghost bounds? | | |
+| 5 | Ordering with Milestone 2: after it, or bring drop-onto-cell targeting in here? | After Milestone 2 | 2026-09-23 |
+| 6 | File drop ghost: Explorer's drag image, or a thumbnail decoded by the app? | Windows' drag image | 2026-09-23 |
+| 7 | File drop highlight: which cells light up? | Everything that will receive the file (hovered cell / whole canvas when appending / replace-rule cell when full) | 2026-09-23 |
+| 8 | In-grid ghost: size, opacity and anchoring? | ~40 % of the cell, 70 % opacity, anchored at the grab point | 2026-09-23 |
+| 9 | In-grid ghost outside the preview: clipped or everywhere? | Clipped at the preview edges | 2026-09-23 |
+| 10 | Source cell dimming style? | Dark translucent overlay | 2026-09-23 |
+| 11 | Unit tests: none, or a test project for the ghost bounds? | None | 2026-09-23 |
+| 12 | Go for implementation? | | |
 
 ---
 
