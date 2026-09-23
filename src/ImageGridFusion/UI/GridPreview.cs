@@ -158,6 +158,23 @@ internal sealed class GridPreview : Control
         }
     }
 
+    /// <summary>Removes every image at once, raising <see cref="ImagesChanged"/> a single time.</summary>
+    public void Clear()
+    {
+        if (_images.Count == 0)
+        {
+            return;
+        }
+
+        _images.ForEach(i => i.Dispose());
+        _images.Clear();
+        _selected = -1;
+        _hovered = -1;
+        _hoveringClose = false;
+        EndDrag();
+        OnImagesChanged();
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (disposing)
