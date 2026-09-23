@@ -23,6 +23,9 @@ internal sealed class GridPreview : Control
     private const int ButtonInset = 6;
     private const int ButtonGap = 4;
     private const int MinZoomSliderHeight = 80;
+    private const int WheelNotch = 120;
+    private const int NotchesPerDoubling = 4;
+    private const int WheelEndDelay = 150;
 
     private static readonly Color HoverOutlineColor = Color.FromArgb(128, Color.White);
 
@@ -71,6 +74,11 @@ internal sealed class GridPreview : Control
     // The image panned or zoomed right now: drawn fast and painted at once, drawn again in full at the end.
     private SourceImage? _live;
 
+    // The wheel has no release: its zoom ends once no notch came for a moment.
+    private readonly System.Windows.Forms.Timer _wheelEnd = new() { Interval = WheelEndDelay };
+    private int _wheelCell = -1;
+    private int _wheelDelta;
+
     public GridPreview()
     {
         SetStyle(
@@ -86,6 +94,7 @@ internal sealed class GridPreview : Control
             Invalidate();
         };
         _player.FrameShown += (_, image) => RedrawCell(image);
+        _wheelEnd.Tick += (_, _) => EndLive();
     }
 
     public event EventHandler? ImagesChanged;
@@ -258,6 +267,7 @@ internal sealed class GridPreview : Control
     {
         if (disposing)
         {
+            _wheelEnd.Dispose();
             _player.Dispose();
             _images.ForEach(i => i.Dispose());
             _images.Clear();
@@ -514,6 +524,36 @@ internal sealed class GridPreview : Control
         EndDrag();
         _hovered = -1;
         UpdateHover(e.Location);
+    }
+
+    /// <summary>The wheel zooms the cell under the mouse, around the point under it; not while another gesture runs.</summary>
+    protected override void OnMouseWheel(MouseEventArgs e)
+    {
+        base.OnMouseWheel(e);
+        int index = CellAt(e.Location);
+        if (index < 0 || _locked || _pressed >= 0 || _sliding >= 0 || _zooming >= 0)
+        {
+            return;
+        }
+
+        // Fine-grained wheels send parts of a notch; they add up, per cell.
+        if (index != _wheelCell)
+        {
+            _wheelCell = index;
+            _wheelDelta = 0;
+        }
+
+        _wheelDelta += e.Delta;
+        int notches = _wheelDelta / WheelNotch;
+        _wheelDelta -= notches * WheelNotch;
+        if (notches == 0)
+        {
+            return;
+        }
+
+        BeginLive(index);
+        ZoomAt(index, e.Location, notches);
+        _wheelEnd.Start();
     }
 
     // The capture is released right after OnMouseUp; losing it earlier (Alt+Tab, a dialog) cancels the drag.
@@ -803,6 +843,7 @@ internal sealed class GridPreview : Control
     /// </summary>
     private void BeginLive(int index)
     {
+        _wheelEnd.Stop();
         var image = _images[index];
         if (image != _live)
         {
@@ -814,6 +855,7 @@ internal sealed class GridPreview : Control
     /// <summary>The gesture is over: the frames are decoded at the new zoom, and the cell drawn in full.</summary>
     private void EndLive()
     {
+        _wheelEnd.Stop();
         if (_live is not { } image)
         {
             return;
@@ -1109,6 +1151,48 @@ internal sealed class GridPreview : Control
             ? 1
             : Math.Pow(2, Math.Log2(ImageLook.MinZoom) + fraction * (Math.Log2(ImageLook.MaxZoom) - Math.Log2(ImageLook.MinZoom)));
         SetLook(_zooming, _images[_zooming].Look.WithZoom(zoom));
+    }
+
+    /// <summary>
+    /// Zooms by <paramref name="notches"/> of the wheel, <see cref="NotchesPerDoubling"/> of them
+    /// doubling the zoom, keeping the point of the image under <paramref name="location"/> in place;
+    /// lands on 100 % when crossing it.
+    /// </summary>
+    private void ZoomAt(int index, Point location, int notches)
+    {
+        var cells = CellBounds();
+        if (index >= cells.Length)
+        {
+            return;
+        }
+
+        var image = _images[index];
+        var look = image.Look;
+        double zoom = look.Zoom * Math.Pow(2, notches / (double)NotchesPerDoubling);
+        if ((look.Zoom - 1) * (zoom - 1) < 0)
+        {
+            zoom = 1;
+        }
+
+        var zoomed = look.WithZoom(zoom);
+        if (zoomed.Zoom <= 1)
+        {
+            SetLook(index, zoomed);
+            return;
+        }
+
+        // The point under the mouse, where it is actually shown, then the part that keeps it there.
+        var size = look.Oriented(image.Bitmap.Size);
+        var before = FitCalculator.Compute(cells[index], size, _cropThreshold, look.Zoom, look.Focus);
+        var after = FitCalculator.Compute(cells[index], size, _cropThreshold, zoomed.Zoom, zoomed.Focus);
+        double scaleBefore = before.Destination.Width / before.Source.Width;
+        double scaleAfter = after.Destination.Width / after.Source.Width;
+        double x = Math.Clamp(before.Source.X + (location.X - before.Destination.X) / scaleBefore, 0, size.Width);
+        double y = Math.Clamp(before.Source.Y + (location.Y - before.Destination.Y) / scaleBefore, 0, size.Height);
+        var focus = new PointF(
+            (float)((x - (location.X - after.Destination.X) / scaleAfter + after.Source.Width / 2) / size.Width),
+            (float)((y - (location.Y - after.Destination.Y) / scaleAfter + after.Source.Height / 2) / size.Height));
+        SetLook(index, zoomed.WithFocus(focus));
     }
 
     /// <summary>Moves a zoomed-in image by <paramref name="delta"/> within its cell, from where it is actually shown.</summary>
