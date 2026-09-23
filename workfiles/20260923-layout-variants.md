@@ -239,6 +239,10 @@ reserved for the add-images drop zone. No conflict with the left thumbnail strip
 
 Last open question answered (Q&A #13): no keyboard shortcut. The design is complete.
 
+### Iteration 6 — 2026-09-23
+
+Go for implementation asked (Q&A #19): **No** — the gate holds, the design stays open.
+
 ---
 
 ## Implementation Log
@@ -278,7 +282,7 @@ Questions asked by the agent during design, with user responses.
 | 16 | Mirror on a symmetric layout? | Disabled | 2026-09-23 |
 | 17 | Mirror state when layout or count changes? | Reset to off | 2026-09-23 |
 | 18 | Image-to-cell mapping when the variant changes? | Image 1 always takes the featured cell | 2026-09-23 |
-| 19 | Go for implementation: which scope? | | |
+| 19 | Go for implementation: which scope? | No — the gate holds | 2026-09-23 |
 
 ---
 
