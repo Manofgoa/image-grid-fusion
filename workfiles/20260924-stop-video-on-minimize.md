@@ -101,6 +101,17 @@ Go given after a first "No": "Go implémente". Read as **Implement the code** �
 README step is not authorized (same reading as the earlier workfiles of this repository). Branch
 Gate: stays on `main`, the standing choice for this repository.
 
+### Iteration 3 — 2026-09-24 — 🧭 Implementation choices
+
+The code follows the design as written; no rule broken, no variant substituted.
+
+- **Go read as code only**: "Go implémente" names none of the three choices; read as
+  *Implement the code*, like the earlier workfiles. The README line stays planned, not written.
+- **`AnimationPlayer.Dispose`** now goes through `Stop()` then disposes the sound: same effect as
+  before, one place stopping the playbacks.
+- Build checked (0 warning, 0 error). No unit test (no test project); the manual check of
+  *Test Impact* is left to the user.
+
 ---
 
 ## Implementation Log
@@ -110,9 +121,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 2 | 2026-09-24 | `AnimationPlayer.Stop()`, `GridPreview.OnVisibleChanged`, visibility guard in `SyncPlayer` |
 | Unit tests | — | — | Not applicable: no test project in the repository |
-| README | | | *Tray & startup*: playback stops while hidden, restarts from the start when reopened |
+| README | — | 2026-09-24 | Not authorized: the go covered the code only (planned: *Tray & startup*, playback stops while hidden, restarts from the start when reopened) |
 
 ---
 
