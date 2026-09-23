@@ -49,6 +49,7 @@ internal sealed class MainForm : Form
         Anchor = AnchorStyles.Left,
     };
     private readonly Label _thresholdLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _carousel = new() { Text = "Carrousel", AutoSize = true, Anchor = AnchorStyles.Right };
 
     public MainForm(string[] args)
     {
@@ -97,20 +98,22 @@ internal sealed class MainForm : Form
         _bottom.Controls.Add(_statusLine, 1, 0);
         _bottom.Controls.Add(_outputButtons, 2, 0);
 
-        // Settings on the left; the label follows the slider so its changing width never moves it.
+        // Settings on the left; the label follows the slider so its changing width never moves it. Modes on the right.
         var top = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
-            ColumnCount = 2,
+            ColumnCount = 3,
             RowCount = 1,
             Padding = new Padding(8),
         };
         top.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         top.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        top.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         top.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         top.Controls.Add(_threshold, 0, 0);
         top.Controls.Add(_thresholdLabel, 1, 0);
+        top.Controls.Add(_carousel, 2, 0);
 
         // Docked in reverse order of addition: the top and bottom bars span the whole width, then the
         // layout strip takes the left of what remains, and the fill control goes first so it gets the rest.
@@ -134,6 +137,7 @@ internal sealed class MainForm : Form
         _cancelButton.Click += (_, _) => _export?.Cancel();
         _threshold.ValueChanged += (_, _) => UpdateThreshold();
         _forceImage.CheckedChanged += (_, _) => _preview.ForceStill = _forceImage.Checked;
+        _carousel.CheckedChanged += (_, _) => _preview.PlaysCarousel = _carousel.Checked;
         _preview.ImagesChanged += (_, _) => UpdateButtons();
         _preview.LayoutChanged += (_, _) =>
         {
@@ -488,7 +492,8 @@ internal sealed class MainForm : Form
             return;
         }
 
-        bool video = ExportsVideo;
+        bool carousel = ExportsCarousel;
+        bool video = carousel || ExportsVideo;
         string extension = video ? "mp4" : "png";
         using var dialog = new SaveFileDialog
         {
@@ -506,7 +511,7 @@ internal sealed class MainForm : Form
         var clock = Stopwatch.StartNew();
         if (video)
         {
-            if (await ExportVideoAsync(dialog.FileName) is { } result)
+            if (await ExportVideoAsync(dialog.FileName, carousel) is { } result)
             {
                 ShowStatus(VideoSummary(saved, dialog.FileName, result, clock.Elapsed));
             }
@@ -537,6 +542,9 @@ internal sealed class MainForm : Form
 
     /// <summary>Animated content exports as a video, unless "Force as image" is checked.</summary>
     private bool ExportsVideo => HasAnimation && !_forceImage.Checked;
+
+    /// <summary>While "Carrousel" is checked, Save writes the carousel's video; Copy is unchanged.</summary>
+    private bool ExportsCarousel => _carousel.Checked && Carousel.CanPlay(_preview.Images.Count);
 
     /// <summary>
     /// Renders the still: the images as shown, or, for animated content, the page each one's slider
@@ -569,9 +577,10 @@ internal sealed class MainForm : Form
 
     /// <summary>
     /// Writes the MP4 video to <paramref name="path"/> off the UI thread, with its progress and a
-    /// Cancel button in the status line, the grid locked meanwhile. Returns null when cancelled or failing.
+    /// Cancel button in the status line, the grid locked meanwhile: the contents playing, or the
+    /// <paramref name="carousel"/> of the images. Returns null when cancelled or failing.
     /// </summary>
-    private async Task<GridExport.Result?> ExportVideoAsync(string path)
+    private async Task<GridExport.Result?> ExportVideoAsync(string path, bool carousel = false)
     {
         using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CropThreshold);
         var cancellation = BeginExport("Exporting the video… 0 %", cancellable: true);
@@ -585,7 +594,9 @@ internal sealed class MainForm : Form
         });
         try
         {
-            return await Task.Run(() => GridExport.RenderVideo(job, path, progress, cancellation));
+            return await Task.Run(() => carousel
+                ? CarouselExport.RenderVideo(job, path, progress, cancellation)
+                : GridExport.RenderVideo(job, path, progress, cancellation));
         }
         catch (OperationCanceledException)
         {
@@ -762,6 +773,14 @@ internal sealed class MainForm : Form
         _saveButton.Enabled = any;
         _forceImage.Visible = HasAnimation;
         _forceImage.Enabled = !IsExporting;
+
+        // A single image has nowhere to move: the mode turns off with it.
+        bool carousel = Carousel.CanPlay(_preview.Images.Count);
+        _carousel.Enabled = carousel;
+        if (!carousel)
+        {
+            _carousel.Checked = false;
+        }
     }
 
     /// <summary>Applies the slider position, live while it is dragged: the preview, then every export, use it.</summary>
