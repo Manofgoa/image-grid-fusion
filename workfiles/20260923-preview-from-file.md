@@ -291,6 +291,21 @@ Answers to the questions the run raised (Q&A #17–19):
 - PDF pages keep their 1600 px long side, even when that widens the canvas to 4096 px.
 - The picker filter question was already settled on `main` by another session.
 
+### Iteration 6 — 2026-09-24 — 🧭 Implementation choices
+
+Go for Iteration 5: **code only**. No project rule broken.
+
+- `.svg` recognised by its extension (the thumbnail-first rule needs to know before sniffing).
+- The README is **not** updated (code only was chosen): its *Previews* table still says text is
+  recognised whatever the extension, without the `.svg` exception.
+- Waited for another session's merge (`4e9dd79`) to finish before writing, and committed only
+  `ImageLoader.cs` and `VideoFrames.cs`; that session's and the background-color session's files
+  were left untouched.
+- Verification: build clean; the generated test video cannot tell the two precisions apart (every
+  one-second clip starts with a key frame), so the gain shows only on real videos with long
+  key-frame intervals; with no thumbnail handler on this machine, `diagram.svg` still falls back
+  to its source text, as designed.
+
 ---
 
 ## Implementation Log
@@ -300,9 +315,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 4 | 2026-09-24 | TFM, page model, four producers, page loader, slider, status message |
+| Code | 4, 6 | 2026-09-24 | TFM, page model, four producers, page loader, slider, status message; then SVG thumbnail first, exact video frames |
 | Unit tests | — | 2026-09-23 | Declined: no test project (Q&A #16); harness checks listed in Iteration 4 |
-| README | 4 | 2026-09-24 | Previews section, features, status line, publish path, minimum OS, tech |
+| README | 4 | 2026-09-24 | Previews section, features, status line, publish path, minimum OS, tech. Iteration 5 changes declined (code only) |
 | Manual validation | 4 | 2026-09-24 | Validated by the user on committed `main` (`75918c9`, which also holds the live-animation work); app closed cleanly |
 
 ---
