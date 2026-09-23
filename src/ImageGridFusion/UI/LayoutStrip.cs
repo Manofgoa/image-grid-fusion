@@ -6,13 +6,16 @@ namespace ImageGridFusion.UI;
 
 /// <summary>
 /// Vertical strip of schematic thumbnails, one per layout of the current image count, with the
-/// mirror toggle below them. Hidden while there is nothing to choose (0 or 1 image).
+/// mirror toggle below them. Always shown, so the preview keeps its size: with no image, it shows
+/// the single-image thumbnail greyed out and does not react to the mouse.
 /// </summary>
 internal sealed class LayoutStrip : Control
 {
+    private static readonly Color DisabledColor = Color.FromArgb(96, 96, 96);
+
     private readonly ToolTip _toolTip = new();
     private GridLayout? _active;
-    private IReadOnlyList<GridLayout> _layouts = [];
+    private IReadOnlyList<GridLayout> _layouts = GridLayout.For(1);
 
     // Index in _layouts, or _layouts.Count for the mirror toggle.
     private int _hovered = -1;
@@ -25,7 +28,6 @@ internal sealed class LayoutStrip : Control
             true);
         BackColor = Color.FromArgb(48, 48, 48);
         ForeColor = Color.Gainsboro;
-        Visible = false;
     }
 
     /// <summary>Raised with the catalog layout clicked, unmirrored.</summary>
@@ -42,8 +44,7 @@ internal sealed class LayoutStrip : Control
         set
         {
             _active = value;
-            _layouts = value is { Count: > 1 } ? GridLayout.For(value.Count) : [];
-            Visible = _layouts.Count > 0;
+            _layouts = GridLayout.For(value?.Count ?? 1);
             SetHovered(-1);
             Invalidate();
         }
@@ -67,22 +68,18 @@ internal sealed class LayoutStrip : Control
     {
         var g = e.Graphics;
         g.Clear(BackColor);
-        if (_active is null)
-        {
-            return;
-        }
-
         for (int i = 0; i < _layouts.Count; i++)
         {
             // The active thumbnail shows the layout as applied, mirror included.
-            bool active = _layouts[i].Id == _active.Id;
+            bool active = _layouts[i].Id == _active?.Id;
             var bounds = ItemBounds(i);
             PaintButton(g, bounds, active, i == _hovered);
-            PaintCells(g, active ? _active : _layouts[i], Rectangle.Inflate(bounds, -LogicalToDeviceUnits(4), -LogicalToDeviceUnits(4)), active);
+            var cellsColor = _active is null ? DisabledColor : active ? ForeColor : Color.Gray;
+            PaintCells(g, active ? _active! : _layouts[i], Rectangle.Inflate(bounds, -LogicalToDeviceUnits(4), -LogicalToDeviceUnits(4)), cellsColor);
         }
 
         var mirror = ItemBounds(MirrorIndex);
-        PaintButton(g, mirror, _active.IsMirrored, MirrorEnabled && _hovered == MirrorIndex);
+        PaintButton(g, mirror, _active?.IsMirrored == true, MirrorEnabled && _hovered == MirrorIndex);
         PaintMirrorIcon(g, mirror);
     }
 
@@ -193,9 +190,9 @@ internal sealed class LayoutStrip : Control
         }
     }
 
-    private void PaintCells(Graphics g, GridLayout layout, Rectangle area, bool active)
+    private void PaintCells(Graphics g, GridLayout layout, Rectangle area, Color color)
     {
-        using var brush = new SolidBrush(active ? ForeColor : Color.Gray);
+        using var brush = new SolidBrush(color);
         int gap = LogicalToDeviceUnits(1);
         foreach (var cell in layout.Cells(area.Size))
         {
@@ -208,14 +205,14 @@ internal sealed class LayoutStrip : Control
     /// <summary>Two triangles facing away from a dashed axis, turned upright for a vertical mirror.</summary>
     private void PaintMirrorIcon(Graphics g, Rectangle bounds)
     {
-        var color = !MirrorEnabled ? Color.FromArgb(96, 96, 96) : _active!.IsMirrored ? Color.White : ForeColor;
+        var color = !MirrorEnabled ? DisabledColor : _active!.IsMirrored ? Color.White : ForeColor;
         float cx = bounds.X + bounds.Width / 2f, cy = bounds.Y + bounds.Height / 2f;
         float half = LogicalToDeviceUnits(8), gap = LogicalToDeviceUnits(3), depth = LogicalToDeviceUnits(7);
 
         var state = g.Save();
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.TranslateTransform(cx, cy);
-        if (_active!.MirrorAxis == MirrorAxis.Vertical)
+        if (_active?.MirrorAxis == MirrorAxis.Vertical)
         {
             g.RotateTransform(90);
         }
