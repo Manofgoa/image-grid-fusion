@@ -63,10 +63,10 @@ or swapping the cell keeps its position.
 
 ---
 
-## Dependencies (recommendation, pending confirmation)
+## Dependencies
 
-Recommendation from the dependency review: **native Windows APIs first, third-party only where
-native provably falls short** — close to "native only" in practice.
+Agreed: **native Windows APIs only, no NuGet** (the dependency review's "native first"
+recommendation, confirmed by the user).
 
 | Content | API | Cost |
 |---|---|---|
@@ -88,24 +88,37 @@ native provably falls short** — close to "native only" in practice.
 
 ## Video
 
-- Position browsed with the slider at a coarse, useful step — not frame by frame.
+- **Initial frame at 10 %** of the duration (skips black intro frames).
+- **Slider step = duration / 100, never under 1 s**: at most 100 positions, never two positions
+  less than a second apart. A video shorter than 2 s has a single position (no slider).
 - Frames are taken at the nearest key frame (fast; precision irrelevant at a coarse step).
 - Frame rendered at the video's native resolution.
 
 ## PDF
 
-- Browsed **page by page** with the slider.
+- Initial page 1, browsed **page by page** with the slider.
+- **Whole page, best effort**: the page is rendered faithfully; the readability floor applies to
+  plain text only — small body text in a PDF may stay unreadable in a small cell.
 - Rendered with its long side at 1600 px (enough for the export, without pushing the canvas
   to 4096 on its own).
 
 ## Text
 
+- **Recognition by content sniffing**, whatever the extension: size ≤ 1 MB, valid UTF-8 (BOM or
+  not) or UTF-16 with BOM, and no NUL byte in the first 8 KB (for UTF-8).
 - **Readability by construction**: `CanvasSizer` widens the canvas until no image is downscaled
   (up to 4096 px), so a font height expressed in **pixels of the text bitmap** is at least that
   height in the exported image. The floor is therefore a pixel value of the rendered bitmap.
-- **Fit to content**: the font shrinks until the whole text fits the page; it never goes under
-  the floor. Below the floor, the text is **paginated** at the floor size and browsed with the
+- **Floor 24 px, ceiling 96 px** (font height in bitmap pixels ≈ export pixels; 24 px ≈ 12 px on
+  screen when X shows the image ~600 px wide).
+- **Fit to content**: the font is the largest size in [24, 96] at which the whole text fits the
+  page. When even 24 px does not fit, the text is **paginated** at 24 px and browsed with the
   slider, like a PDF.
+- **Page geometry follows the cell**: the page has the aspect ratio of the cell it sits in, at
+  that cell's size on a 1200 px canvas (so a text page never widens the canvas on its own). It is
+  **re-rendered** when that geometry changes — layout switch, image count change, cell move or
+  swap. Re-pagination keeps the reading position: the new page is the one holding the first line
+  of the old page.
 - Long lines wrap; tabs are expanded.
 
 ## Slider
@@ -113,39 +126,44 @@ native provably falls short** — close to "native only" in practice.
 - Drawn in `GridPreview.OnPaint`, **inside the cell, only while the cell is hovered** — a
   sibling of the × button. Hidden during a drag, like the ×.
 - Only for cells whose source has more than one position.
+- **Live while dragging**: each move requests the new position; only the latest request is
+  rendered, intermediate ones are dropped. Rendering runs off the UI thread.
 - Never exported: `Compositor.Render` draws only the bitmaps.
 
 ---
 
 ## Test Impact
 
-The solution has **no test project** today (see Open Questions). The new logic has pure,
-assertable parts:
+**No unit test changes**: the solution has no test project, and the user chose **not to create
+one** — every behaviour is checked manually. The manual checks to run:
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| Text font fits the content, never under the floor, paginates below it | pending the test-project decision | create |
-| Video slider positions (step from duration) | pending the test-project decision | create |
-| Text detection accepts text / rejects binary | pending the test-project decision | create |
-| Producer order and fall-through (dedicated → Shell thumbnail → reject) | — (needs real files and Windows APIs: manual check) | — |
-| Slider painting and hover | — (painting only) | — |
+| Text font fits in [24, 96] px, paginates at 24 px below it | — (manual: short / long .txt) | — |
+| Text page re-rendered on layout change, reading position kept | — (manual) | — |
+| Text detection accepts text of any extension, rejects binary | — (manual: .log, no-extension file, .exe) | — |
+| Video: first frame at 10 %, step = duration / 100 (min 1 s) | — (manual: short and long mp4) | — |
+| PDF: page 1 first, slider page by page | — (manual) | — |
+| Producer order and fall-through (dedicated → Shell thumbnail → reject) | — (manual: HEVC or mkv video, .docx, .zip) | — |
+| Slider only on hover, live while dragging, absent from export | — (manual, painting) | — |
 
 ---
 
 ## Open Questions
 
-- [ ] Dependency policy: adopt the recommendation above (native first, TFM →
-      `net10.0-windows10.0.19041.0`, no NuGet)?
-- [ ] PDF readability: body text of a whole page in a cell cannot reach the floor (an 11 pt line
+- [x] ~~Dependency policy: adopt the recommendation above (native first, TFM →
+      `net10.0-windows10.0.19041.0`, no NuGet)?~~ → Yes, native only, no FFmpeg fallback
+- [x] ~~PDF readability: body text of a whole page in a cell cannot reach the floor (an 11 pt line
       on an A4 page in a half-width cell ≈ 8 px). Accept whole pages as best effort, or something
-      else?
-- [ ] Text page geometry: page follows its cell's aspect ratio (re-rendered when the layout or
-      the cell changes), or a fixed page shape?
-- [ ] Readability floor value, and a ceiling for very short text?
-- [ ] How is a file recognised as text: extension list, or content sniffing?
-- [ ] Video: initial frame and slider step?
-- [ ] Slider: image updated live while dragging, or on release?
-- [ ] Tests: create a test project for the pure logic?
+      else?~~ → Whole page, best effort; the floor applies to plain text only
+- [x] ~~Text page geometry: page follows its cell's aspect ratio (re-rendered when the layout or
+      the cell changes), or a fixed page shape?~~ → Follows its cell, re-rendered on change
+- [x] ~~Readability floor value, and a ceiling for very short text?~~ → 24 px floor, 96 px ceiling
+- [x] ~~How is a file recognised as text: extension list, or content sniffing?~~ → Content
+      sniffing
+- [x] ~~Video: initial frame and slider step?~~ → 10 %, step = duration / 100, min 1 s
+- [x] ~~Slider: image updated live while dragging, or on release?~~ → Live, latest request only
+- [x] ~~Tests: create a test project for the pure logic?~~ → No, manual checks
 
 ---
 
@@ -168,6 +186,18 @@ UI, dependency review):
 - Text: shrink-to-fit with a floor in bitmap pixels, which the no-downscale rule of
   `CanvasSizer` carries unchanged into the export; paginated below the floor.
 - Dependencies: native-first recommendation, awaiting the user's confirmation.
+
+### Iteration 2 — 2026-09-23
+
+All open questions answered in two batches:
+
+- Dependencies: native Windows APIs only, TFM → `net10.0-windows10.0.19041.0`, no NuGet.
+- PDF: whole page, best effort — the readability floor is a plain-text guarantee only.
+- Text: recognised by content sniffing; font in [24, 96] px; page shaped like its cell and
+  re-rendered when the cell geometry changes, keeping the reading position.
+- Video: starts at 10 %, step = duration / 100 with a 1 s minimum.
+- Slider: live while dragging, only the latest position rendered.
+- Tests: no test project; manual checks listed in *Test Impact*.
 
 ---
 
@@ -195,17 +225,17 @@ Questions asked by the agent during design, with user responses.
 | 3 | Which page / frame for multi-page or temporal sources? | A slider to browse: video at a logical, useful step (not frame by frame), PDF page by page | 2026-09-23 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward | 2026-09-23 |
 | 5 | A file with no Windows thumbnail, not video / PDF / text: what does the drop do? | Rejected as today | 2026-09-23 |
-| 6 | Dependency policy for producing previews? | "What do you advise? Ask a Fable subagent" → recommendation recorded in *Dependencies*, pending confirmation | 2026-09-23 |
+| 6 | Dependency policy for producing previews? | "What do you advise? Ask a Fable subagent" → recommendation recorded in *Dependencies*, confirmed in #9 | 2026-09-23 |
 | 7 | Where does the page / frame slider appear? | In the cell, only while it is hovered | 2026-09-23 |
 | 8 | Text too long even at the floor? | Paginate + slider | 2026-09-23 |
-| 9 | Adopt the native-first dependency policy (TFM change, no NuGet)? | | 2026-09-23 |
-| 10 | PDF readability: whole page best effort, or something else? | | 2026-09-23 |
-| 11 | Text page geometry: follows the cell, or fixed shape? | | 2026-09-23 |
-| 12 | Readability floor value and ceiling? | | 2026-09-23 |
-| 13 | Text recognition: extension list or content sniffing? | | 2026-09-23 |
-| 14 | Video: initial frame and slider step? | | 2026-09-23 |
-| 15 | Slider: live while dragging, or on release? | | 2026-09-23 |
-| 16 | Create a test project for the pure logic? | | 2026-09-23 |
+| 9 | Adopt the native-first dependency policy (TFM change, no NuGet)? | Yes, native first | 2026-09-23 |
+| 10 | PDF readability: whole page best effort, or something else? | Whole page, best effort | 2026-09-23 |
+| 11 | Text page geometry: follows the cell, or fixed shape? | Follows its cell | 2026-09-23 |
+| 12 | Readability floor value and ceiling? | 24 px floor, 96 px ceiling | 2026-09-23 |
+| 13 | Text recognition: extension list or content sniffing? | Content sniffing | 2026-09-23 |
+| 14 | Video: initial frame and slider step? | 10 %, step = duration / 100, min 1 s | 2026-09-23 |
+| 15 | Slider: live while dragging, or on release? | Live while dragging | 2026-09-23 |
+| 16 | Create a test project for the pure logic? | No, manual checks | 2026-09-23 |
 
 ---
 
