@@ -54,12 +54,28 @@ to the Shell thumbnail, then to rejection.
 
 Producers run off the UI thread, inside the existing `Task.Run` of `AddFilesAsync`.
 
+How each producer recognises its files:
+
+| Producer | Recognised by | File |
+|---|---|---|
+| Video | Extension: mp4, m4v, mov, avi, wmv, asf, mkv, webm, 3gp, 3g2, mpg, mpeg, ts, m2ts, mts | `Imaging/VideoFrames.cs` |
+| PDF | `%PDF-` within the first KB, whatever the extension | `Imaging/PdfPages.cs` |
+| Text | Content sniffing (see *Text*) | `Imaging/TextPages.cs` |
+| Shell thumbnail | Windows answers `SIIGBF_THUMBNAILONLY` (1024 px requested, alpha kept) | `Imaging/ShellThumbnail.cs` |
+
+A PDF is read into memory, so it stays unlocked like an image; a video is read through its
+`StorageFile` while it is in the grid.
+
 ### Paged sources
 
-A preview with more than one page / frame keeps a handle on its source: page count (or
-duration), current position, and a way to render another position. `SourceImage` keeps its role
-(the bitmap the grid and the export draw); changing the position swaps the cell's bitmap. Moving
-or swapping the cell keeps its position.
+`Composition/PageSource.cs` — page count, initial page, a label per page, `Render(page)` (off the
+UI thread, one call at a time per source), and for text only `PageSize` / `Resize`. A
+`SourceImage` holds its `Pages` and the `Page` it shows; `ShowPage` swaps the bitmap and
+recomputes the dominant color. Moving or swapping the cell keeps its position; removing or
+replacing it disposes the source.
+
+`UI/PageLoader.cs` renders requested pages off the UI thread, one at a time per image, keeping
+only the latest request; a page that fails to render leaves the previous one shown.
 
 ---
 
@@ -92,15 +108,17 @@ recommendation, confirmed by the user).
 - **Slider step = duration / 100, never under 1 s**: at most 100 positions, never two positions
   less than a second apart. A video shorter than 2 s has a single position (no slider).
 - Frames are taken at the nearest key frame (fast; precision irrelevant at a coarse step).
-- Frame rendered at the video's native resolution.
+- Frame rendered at the video's native resolution (its encoding width × height).
+- A single-position video shows the 10 % frame. Label: `m:ss`, or `h:mm:ss` past an hour.
 
 ## PDF
 
 - Initial page 1, browsed **page by page** with the slider.
 - **Whole page, best effort**: the page is rendered faithfully; the readability floor applies to
   plain text only — small body text in a PDF may stay unreadable in a small cell.
-- Rendered with its long side at 1600 px (enough for the export, without pushing the canvas
-  to 4096 on its own).
+- Rendered with its long side at 1600 px, white background. Like any large image, a portrait
+  page in a small or landscape cell widens the canvas, up to 4096 px, by the no-downscale rule.
+- Label: `n / N`.
 
 ## Text
 
@@ -120,6 +138,12 @@ recommendation, confirmed by the user).
   swap. Re-pagination keeps the reading position: the new page is the one holding the first line
   of the old page.
 - Long lines wrap; tabs are expanded.
+- Rendering: Consolas (monospace, so columns and rows are plain arithmetic), near-black on white,
+  margin 4 % of the page's shorter side (8 px minimum), tab stops every 4 columns, word wrap at
+  spaces, hard break only inside a word wider than a line. Font height = em size in pixels.
+- An empty or whitespace-only file is not text (no preview). Line endings are normalised.
+- On load, the text is laid out on a provisional 1200 × 628 page; once placed, its cell's shape
+  replaces it (the provisional page may show letterboxed for a moment).
 
 ## Slider
 
@@ -129,6 +153,9 @@ recommendation, confirmed by the user).
 - **Live while dragging**: each move requests the new position; only the latest request is
   rendered, intermediate ones are dropped. Rendering runs off the UI thread.
 - Never exported: `Compositor.Render` draws only the bitmaps.
+- A dark pill, 24 px high, 6 px inside the cell's bottom edge, with a track, a white thumb and the
+  page label (`n / N` or a time) on the right; not shown when the pill would be under 120 px wide.
+  Hand cursor over it; pressing it neither selects the cell nor starts a swap.
 
 ---
 
@@ -164,6 +191,18 @@ one** — every behaviour is checked manually. The manual checks to run:
 - [x] ~~Video: initial frame and slider step?~~ → 10 %, step = duration / 100, min 1 s
 - [x] ~~Slider: image updated live while dragging, or on release?~~ → Live, latest request only
 - [x] ~~Tests: create a test project for the pure logic?~~ → No, manual checks
+
+Raised by the implementation run (outside the frozen scope, not implemented):
+
+- [ ] The drop zone's file picker (another workfile) defaults to an *Images* filter: videos,
+      PDFs and text need *All files*. Add them to the default filter?
+- [ ] SVG files are XML, so they are rendered as their **source text** (text comes before the
+      Shell thumbnail). Prefer the thumbnail for svg (needs a thumbnail handler, e.g. PowerToys)?
+- [ ] Key-frame precision: on the generated test video, `NearestFrame` was as fast as
+      `NearestKeyFrame` (~450 ms per frame). Real videos with long key-frame intervals would show
+      the same frame for several slider positions. Switch to `NearestFrame`?
+- [ ] A portrait PDF page in a small or landscape cell pushes the canvas to 4096 px (bigger
+      export files). Acceptable, or render PDF pages smaller?
 
 ---
 
@@ -205,6 +244,35 @@ Go given ("Allez go", after a first "No"). Scope frozen as the design sections s
 Iteration 2: code, plus the README (the design itself states the minimum OS there); no unit
 tests, as agreed. Work stays on `main` — the project's standing choice.
 
+### Iteration 4 — 2026-09-24 — 🧭 Implementation choices
+
+No project rule broken. Choices the frozen design did not state:
+
+- **Recognition**: video by extension list; PDF by its `%PDF-` header, extension ignored; text
+  as designed. An empty / whitespace-only text file has no preview.
+- **Locks**: a PDF is read into memory (no lock); a video is read through `StorageFile` while
+  it sits in the grid.
+- **Text rendering**: Consolas, near-black on white, 4 % margin, 4-column tabs, word wrap;
+  provisional 1200 × 628 layout at load, re-laid out once placed.
+- **Video**: native frame size from the encoding properties; a lone position shows 10 %;
+  labels `m:ss` / `h:mm:ss`.
+- **Shell thumbnail**: 1024 px requested, alpha channel kept (the HBITMAP is bottom-up: copied
+  row by row). As a side effect, formats GDI+ cannot decode but Windows thumbnails (webp, heic)
+  now enter the grid, at up to 1024 px.
+- **Slider**: geometry and label as described in *Slider*; a failed page render keeps the
+  previous page.
+- **Status line**: "skipped: no preview available".
+- **Corrected statement**: the design said a 1600 px PDF page would not widen the canvas on its
+  own — wrong in small or landscape cells (canvas up to 4096 px). Implemented as designed
+  (1600 px); the *PDF* section now says so, and an Open Question asks whether to change it.
+- **Verification**: no test project, so a scratch harness (outside the repo) ran every producer
+  on generated samples (numbered 30 s video, text, UTF-16, empty, binary, a public PDF, docx,
+  svg) and drove the real `GridPreview` offscreen: text re-laid out to 600 × 628 then 600 × 314
+  after a swap, the PDF slider dragged to page 235 / 407, export free of the slider. A first
+  version of the thumbnail copy came out upside down; fixed before committing.
+- **Parallel sessions**: the drop-zone and delete-all-images sessions committed to `main`
+  during the run; their files were never staged with this run's commits.
+
 ---
 
 ## Implementation Log
@@ -214,9 +282,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
+| Code | 4 | 2026-09-24 | TFM, page model, four producers, page loader, slider, status message |
+| Unit tests | — | 2026-09-23 | Declined: no test project (Q&A #16); harness checks listed in Iteration 4 |
+| README | 4 | 2026-09-24 | Previews section, features, status line, publish path, minimum OS, tech |
+| Manual validation | | | Pending: the checks listed in *Test Impact* |
 
 ---
 
@@ -245,4 +314,4 @@ Questions asked by the agent during design, with user responses.
 
 ---
 
-*Last updated: 2026-09-23*
+*Last updated: 2026-09-24*
