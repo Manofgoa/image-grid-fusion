@@ -15,6 +15,8 @@ internal sealed class GridPreview : Control
     private const int SelectionWidth = 3;
     private const int EmptyBorderWidth = 2;
     private const int HoverOutlineWidth = 1;
+    private const int CanvasMargin = 16;
+    private const int DropZoneWidth = 96;
 
     private static readonly Color HoverOutlineColor = Color.FromArgb(128, Color.White);
 
@@ -35,6 +37,8 @@ internal sealed class GridPreview : Control
     private Rectangle _externalTarget;
     private bool _externalDrag;
     private Rectangle _externalHover;
+    private bool _hoveringDropZone;
+    private bool _pressedDropZone;
 
     public GridPreview()
     {
@@ -47,6 +51,9 @@ internal sealed class GridPreview : Control
     }
 
     public event EventHandler? ImagesChanged;
+
+    /// <summary>Raised when the drop zone right of the canvas is clicked.</summary>
+    public event EventHandler? DropZoneClicked;
 
     /// <summary>Raised when the active layout changes, picked by the user or reset with the image count.</summary>
     public event EventHandler? LayoutChanged;
@@ -98,8 +105,9 @@ internal sealed class GridPreview : Control
 
     /// <summary>
     /// Highlights what an external drag (files from Explorer) at <paramref name="location"/> would
-    /// fill: the cell under it, else the whole canvas while there is room, else the cell the
-    /// excess rule replaces. Outlines the cell or empty canvas under it. <c>null</c> clears both.
+    /// fill: the drop zone or the cell under it, else the whole canvas while there is room, else the
+    /// cell the excess rule replaces. Outlines the drop zone, cell or empty canvas under it.
+    /// <c>null</c> clears both.
     /// </summary>
     public void ShowDropTarget(Point? location)
     {
@@ -174,6 +182,7 @@ internal sealed class GridPreview : Control
         }
 
         using var highlight = new SolidBrush(Color.FromArgb(90, SystemColors.Highlight));
+        PaintDropZone(g, DropZoneBounds(canvas));
         if (_images.Count == 0)
         {
             PaintEmptyState(g, canvas);
@@ -240,6 +249,13 @@ internal sealed class GridPreview : Control
             return;
         }
 
+        // The selection is kept: a full grid replaces the selected cell with the first added image.
+        if (DropZoneBounds(CanvasBounds()).Contains(e.Location))
+        {
+            _pressedDropZone = true;
+            return;
+        }
+
         int index = CellAt(e.Location);
         if (index < 0)
         {
@@ -297,6 +313,17 @@ internal sealed class GridPreview : Control
     protected override void OnMouseUp(MouseEventArgs e)
     {
         base.OnMouseUp(e);
+        if (_pressedDropZone)
+        {
+            _pressedDropZone = false;
+            if (DropZoneBounds(CanvasBounds()).Contains(e.Location))
+            {
+                DropZoneClicked?.Invoke(this, EventArgs.Empty);
+            }
+
+            return;
+        }
+
         if (_dragging && _dropTarget >= 0 && _dropTarget != _pressed)
         {
             Swap(_pressed, _dropTarget);
@@ -320,11 +347,13 @@ internal sealed class GridPreview : Control
     protected override void OnMouseLeave(EventArgs e)
     {
         base.OnMouseLeave(e);
-        if ((_hovered >= 0 || _hoveringCanvas) && !_dragging)
+        if ((_hovered >= 0 || _hoveringCanvas || _hoveringDropZone) && !_dragging)
         {
             _hovered = -1;
             _hoveringClose = false;
             _hoveringCanvas = false;
+            _hoveringDropZone = false;
+            Cursor = Cursors.Default;
             Invalidate();
         }
     }
@@ -381,6 +410,12 @@ internal sealed class GridPreview : Control
 
     private Rectangle DropTargetBounds(Point location)
     {
+        var zone = DropZoneBounds(CanvasBounds());
+        if (zone.Contains(location))
+        {
+            return zone;
+        }
+
         var cells = CellBounds();
         int cell = Array.FindIndex(cells, c => c.Contains(location));
         if (cell >= 0)
@@ -391,9 +426,15 @@ internal sealed class GridPreview : Control
         return _images.Count < GridLayout.MaxImages ? CanvasBounds() : cells[ExcessTarget()];
     }
 
-    /// <summary>Surface under <paramref name="location"/>: its cell, else the empty canvas, else none.</summary>
+    /// <summary>Surface under <paramref name="location"/>: the drop zone, its cell, else the empty canvas, else none.</summary>
     private Rectangle SurfaceAt(Point location)
     {
+        var zone = DropZoneBounds(CanvasBounds());
+        if (zone.Contains(location))
+        {
+            return zone;
+        }
+
         if (_images.Count > 0)
         {
             return Array.Find(CellBounds(), c => c.Contains(location));
@@ -421,7 +462,7 @@ internal sealed class GridPreview : Control
             return bounds;
         }
 
-        int border = _images.Count == 0 ? EmptyBorderWidth
+        int border = _images.Count == 0 || bounds == DropZoneBounds(canvas) ? EmptyBorderWidth
             : bounds == CellOrNone(_selected) ? SelectionWidth
             : 0;
         int inset = LogicalToDeviceUnits(border);
@@ -480,7 +521,8 @@ internal sealed class GridPreview : Control
         int hovered = CellAt(location);
         bool onClose = hovered >= 0 && CloseBounds(CellBounds()[hovered]).Contains(location);
         bool onCanvas = _images.Count == 0 && CanvasBounds().Contains(location);
-        if (hovered == _hovered && onClose == _hoveringClose && onCanvas == _hoveringCanvas)
+        bool onDropZone = DropZoneBounds(CanvasBounds()).Contains(location);
+        if (hovered == _hovered && onClose == _hoveringClose && onCanvas == _hoveringCanvas && onDropZone == _hoveringDropZone)
         {
             return;
         }
@@ -488,15 +530,20 @@ internal sealed class GridPreview : Control
         _hovered = hovered;
         _hoveringClose = onClose;
         _hoveringCanvas = onCanvas;
-        Cursor = onClose ? Cursors.Hand : Cursors.Default;
+        _hoveringDropZone = onDropZone;
+        Cursor = onClose || onDropZone ? Cursors.Hand : Cursors.Default;
         Invalidate();
     }
 
-    /// <summary>Largest rectangle at the output ratio that fits the control, centered.</summary>
+    /// <summary>
+    /// Largest rectangle at the output ratio that fits the control once the drop zone and its gap
+    /// are reserved on the right, centered in what remains.
+    /// </summary>
     private Rectangle CanvasBounds()
     {
-        int margin = LogicalToDeviceUnits(16);
+        int margin = LogicalToDeviceUnits(CanvasMargin);
         var area = Rectangle.Inflate(ClientRectangle, -margin, -margin);
+        area.Width -= LogicalToDeviceUnits(DropZoneWidth) + margin;
         if (area.Width <= 0 || area.Height <= 0)
         {
             return Rectangle.Empty;
@@ -512,6 +559,12 @@ internal sealed class GridPreview : Control
 
         return new Rectangle(area.X + (area.Width - width) / 2, area.Y + (area.Height - height) / 2, width, height);
     }
+
+    /// <summary>Strip right of the canvas, as high as it, where dropped or picked files are added.</summary>
+    private Rectangle DropZoneBounds(Rectangle canvas) =>
+        canvas.IsEmpty
+            ? Rectangle.Empty
+            : new Rectangle(canvas.Right + LogicalToDeviceUnits(CanvasMargin), canvas.Y, LogicalToDeviceUnits(DropZoneWidth), canvas.Height);
 
     private Rectangle[] CellBounds()
     {
@@ -575,6 +628,35 @@ internal sealed class GridPreview : Control
         using var attributes = new ImageAttributes();
         attributes.SetColorMatrix(new ColorMatrix { Matrix33 = GhostOpacity });
         g.DrawImage(ghost, bounds, 0, 0, ghost.Width, ghost.Height, GraphicsUnit.Pixel, attributes);
+    }
+
+    /// <summary>Dashed strip with a "+" above its label; brighter while the mouse is over it.</summary>
+    private void PaintDropZone(Graphics g, Rectangle zone)
+    {
+        var color = _hoveringDropZone ? Color.White : ForeColor;
+        using (var pen = new Pen(color, LogicalToDeviceUnits(EmptyBorderWidth)) { DashStyle = DashStyle.Dash })
+        {
+            g.DrawRectangle(pen, zone);
+        }
+
+        int plus = Math.Min(zone.Width * 2 / 5, LogicalToDeviceUnits(32));
+        int labelHeight = TextRenderer.MeasureText("Add images", Font).Height;
+        int gap = LogicalToDeviceUnits(8);
+        int top = zone.Y + (zone.Height - plus - gap - labelHeight) / 2;
+        int centerX = zone.X + zone.Width / 2;
+        using (var pen = new Pen(color, LogicalToDeviceUnits(3)))
+        {
+            g.DrawLine(pen, centerX, top, centerX, top + plus);
+            g.DrawLine(pen, centerX - plus / 2, top + plus / 2, centerX + plus / 2, top + plus / 2);
+        }
+
+        TextRenderer.DrawText(
+            g,
+            "Add images",
+            Font,
+            new Rectangle(zone.X, top + plus + gap, zone.Width, labelHeight),
+            color,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.Top | TextFormatFlags.EndEllipsis);
     }
 
     private void PaintEmptyState(Graphics g, Rectangle canvas)
