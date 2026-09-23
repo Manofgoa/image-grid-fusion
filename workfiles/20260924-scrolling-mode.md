@@ -81,9 +81,10 @@ Agreed: the rotation plays in the grid preview itself.
   the rotation restarts from that arrangement, taking any edit into account, after a full second on
   it. The pointer is also checked on every tick, since a drop from Explorer may bring no mouse message.
 - An edit that leaves a single image unchecks and disables `Carrousel`.
-- `Copy` / `Ctrl+C` is unchanged by the mode: it does what it does without it (the still of the
-  user's own arrangement, or the MP4 of the playing contents when the grid holds animated content),
-  whatever step is on screen.
+- `Copy` / `Ctrl+C` exports the **carousel's video** while `Carrousel` is checked, like `Save…`,
+  and puts the MP4 file on the clipboard the way the animated-content copy does (written to
+  `%TEMP%\ImageGridFusion`), whatever step is on screen and whether *Force as image* is checked.
+  Unchecked, it behaves as without the mode.
 
 ---
 
@@ -132,7 +133,7 @@ feature is checked by running the app. No test is created or updated.
 - [x] ~~How is the mode turned on: a toggle below the mirror toggle in the layout strip, or a toggle next to Copy / Save?~~ → A `Carrousel` check box in a new top toolbar
 - [x] ~~How is the video exported: `Save…` writes an MP4 instead of a PNG while the mode is on, or a separate `Save video…` button?~~ → `Save…` writes an MP4 while the mode is on
 - [x] ~~Preview interactions while the rotation plays: rotation pauses while the mouse is over the preview, any edit stops the mode, or interactions are disabled while it plays?~~ → Pause on hover, back to the user's arrangement, everything stays editable
-- [x] ~~`Copy` while the mode is on: copies the still image of the starting arrangement, the arrangement currently shown, or is disabled?~~ → Still image of the user's own arrangement
+- [x] ~~`Copy` while the mode is on: copies the still image of the starting arrangement, the arrangement currently shown, or is disabled?~~ → Still image of the user's own arrangement *(revised 2026-09-24, see Iteration 6)*
 - [x] ~~Video frame size: the largest canvas over all N arrangements (no image downscaled at any step), or the canvas of the starting arrangement?~~ → Largest canvas over the N arrangements
 - [x] ~~Tests: create a first test project to pin the rotation logic, or keep the solution test-free as so far?~~ → No test project
 
@@ -205,6 +206,12 @@ animated content, MP4 export, *Force as image*); the choices below adapt the fro
   to hold only this run's lines.
 - **Not verified by hand**: built with 0 warning and 0 error (into a scratch folder: another
   session's running instance held the exe), not run.
+
+### Iteration 6 — 2026-09-24 — ⚙️ Post-implementation — Copy exports the carousel video
+
+Requested by the user while testing: in carousel mode, `Copy` must export a video. It now writes
+the carousel's MP4, like `Save…`, and puts the file on the clipboard as the animated-content copy
+does. This reverses the Q&A 10 decision (Copy kept the still of the user's own arrangement).
 
 ---
 
