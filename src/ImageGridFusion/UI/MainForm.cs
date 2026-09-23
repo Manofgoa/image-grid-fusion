@@ -70,6 +70,7 @@ internal sealed class MainForm : Form
         _preview.DragOver += OnPreviewDragOver;
         _preview.DragLeave += (_, _) => _preview.ShowDropTarget(null);
         _preview.DragDrop += OnDragDrop;
+        _preview.DropZoneClicked += (_, _) => PickFiles();
         _layouts.DragEnter += OnDragEnter;
         _layouts.DragDrop += OnDragDrop;
         UpdateButtons();
@@ -145,13 +146,28 @@ internal sealed class MainForm : Form
         _preview.ShowDropTarget(null);
         if (e.Data?.GetData(DataFormats.FileDrop) is string[] paths)
         {
-            // Onto a cell: replaces it. Elsewhere in the window: added like a paste.
+            // Onto a cell: replaces it. Onto the drop zone or elsewhere in the window: added like a paste.
             int target = sender == _preview ? DropCell(e) : -1;
             await AddFilesAsync(paths, target);
         }
     }
 
     private int DropCell(DragEventArgs e) => _preview.CellAt(_preview.PointToClient(new Point(e.X, e.Y)));
+
+    /// <summary>Files chosen from the drop zone's picker are added like a drop onto it.</summary>
+    private async void PickFiles()
+    {
+        using var dialog = new OpenFileDialog
+        {
+            Title = "Add images",
+            Multiselect = true,
+            Filter = "Images|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.tif;*.tiff;*.webp|All files (*.*)|*.*",
+        };
+        if (dialog.ShowDialog(this) == DialogResult.OK)
+        {
+            await AddFilesAsync(dialog.FileNames);
+        }
+    }
 
     private async void Paste()
     {
