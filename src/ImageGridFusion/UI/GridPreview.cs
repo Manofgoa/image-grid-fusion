@@ -14,6 +14,7 @@ internal sealed class GridPreview : Control
     private const float GhostOpacity = 0.7f;
 
     private readonly List<SourceImage> _images = [];
+    private GridLayout? _layout;
     private Bitmap? _cache;
     private int _selected = -1;
     private int _hovered = -1;
@@ -39,7 +40,13 @@ internal sealed class GridPreview : Control
 
     public event EventHandler? ImagesChanged;
 
+    /// <summary>Raised when the active layout changes, picked by the user or reset with the image count.</summary>
+    public event EventHandler? LayoutChanged;
+
     public IReadOnlyList<SourceImage> Images => _images;
+
+    /// <summary>Layout the images are shown and exported with; <c>null</c> while there is no image.</summary>
+    public GridLayout? ActiveLayout => _layout;
 
     public int FreeSlots => GridLayout.MaxImages - _images.Count;
 
@@ -94,6 +101,23 @@ internal sealed class GridPreview : Control
             _externalTarget = target;
             Invalidate();
         }
+    }
+
+    /// <summary>Applies a layout for the current image count; the images keep their order.</summary>
+    public void SetLayout(GridLayout layout)
+    {
+        if (layout.Count != _images.Count)
+        {
+            throw new ArgumentException($"Layout {layout.Id} holds {layout.Count} images, not {_images.Count}.", nameof(layout));
+        }
+
+        _layout = layout;
+        _hovered = -1;
+        _hoveringClose = false;
+        _cache?.Dispose();
+        _cache = null;
+        Invalidate();
+        LayoutChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public int CellAt(Point location) => Array.FindIndex(CellBounds(), c => c.Contains(location));
@@ -152,7 +176,7 @@ internal sealed class GridPreview : Control
             _cache?.Dispose();
             _cache = new Bitmap(canvas.Width, canvas.Height);
             using var cacheGraphics = Graphics.FromImage(_cache);
-            Compositor.Draw(cacheGraphics, _images, canvas.Size);
+            Compositor.Draw(cacheGraphics, _images, _layout!, canvas.Size);
         }
 
         g.DrawImageUnscaled(_cache, canvas.Location);
@@ -383,7 +407,20 @@ internal sealed class GridPreview : Control
         _cache?.Dispose();
         _cache = null;
         Invalidate();
+
+        // A new image count starts on its default layout, mirror off.
+        int? count = _images.Count == 0 ? null : _images.Count;
+        bool layoutReset = _layout?.Count != count;
+        if (layoutReset)
+        {
+            _layout = count is { } n ? GridLayout.Default(n) : null;
+        }
+
         ImagesChanged?.Invoke(this, EventArgs.Empty);
+        if (layoutReset)
+        {
+            LayoutChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     private void UpdateHover(Point location)
@@ -425,12 +462,12 @@ internal sealed class GridPreview : Control
     private Rectangle[] CellBounds()
     {
         var canvas = CanvasBounds();
-        if (_images.Count == 0 || canvas.IsEmpty)
+        if (_layout is null || canvas.IsEmpty)
         {
             return [];
         }
 
-        var cells = GridLayout.Cells(_images.Count, canvas.Size);
+        var cells = _layout.Cells(canvas.Size);
         for (int i = 0; i < cells.Length; i++)
         {
             cells[i].Offset(canvas.Location);

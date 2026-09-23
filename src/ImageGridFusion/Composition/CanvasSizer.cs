@@ -9,9 +9,14 @@ public static class CanvasSizer
     public const int MinWidth = 1200;
     public const int MaxWidth = 4096;
 
-    public static Size Compute(IReadOnlyList<Size> images, double threshold = FitCalculator.DefaultCropThreshold)
+    public static Size Compute(IReadOnlyList<Size> images, GridLayout layout, double threshold = FitCalculator.DefaultCropThreshold)
     {
-        var fractions = GridLayout.CellFractions(images.Count);
+        if (layout.Count != images.Count)
+        {
+            throw new ArgumentException($"Layout {layout.Id} holds {layout.Count} images, not {images.Count}.", nameof(layout));
+        }
+
+        var fractions = layout.CellFractions();
         double widest = 0;
         for (int i = 0; i < images.Count; i++)
         {

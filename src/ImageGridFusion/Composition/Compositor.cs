@@ -7,17 +7,17 @@ namespace ImageGridFusion.Composition;
 public static class Compositor
 {
     /// <summary>Renders the final image at the size given by <see cref="CanvasSizer"/>.</summary>
-    public static Bitmap Render(IReadOnlyList<SourceImage> images, double threshold = FitCalculator.DefaultCropThreshold)
+    public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout layout, double threshold = FitCalculator.DefaultCropThreshold)
     {
-        var canvas = CanvasSizer.Compute(images.Select(i => i.Size).ToList(), threshold);
+        var canvas = CanvasSizer.Compute(images.Select(i => i.Size).ToList(), layout, threshold);
         var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format24bppRgb);
         using var g = Graphics.FromImage(bitmap);
-        Draw(g, images, canvas, threshold);
+        Draw(g, images, layout, canvas, threshold);
         return bitmap;
     }
 
-    /// <summary>Draws the grid in the rectangle (0, 0, canvas) of <paramref name="g"/>.</summary>
-    public static void Draw(Graphics g, IReadOnlyList<SourceImage> images, Size canvas, double threshold = FitCalculator.DefaultCropThreshold)
+    /// <summary>Draws the grid in the rectangle (0, 0, canvas) of <paramref name="g"/>; image i goes into cell i of the layout.</summary>
+    public static void Draw(Graphics g, IReadOnlyList<SourceImage> images, GridLayout layout, Size canvas, double threshold = FitCalculator.DefaultCropThreshold)
     {
         g.InterpolationMode = InterpolationMode.HighQualityBicubic;
         g.PixelOffsetMode = PixelOffsetMode.HighQuality;
@@ -27,7 +27,7 @@ public static class Compositor
         using var attributes = new ImageAttributes();
         attributes.SetWrapMode(WrapMode.TileFlipXY);
 
-        var cells = GridLayout.Cells(images.Count, canvas);
+        var cells = layout.Cells(canvas);
         using var clip = g.Clip;
         for (int i = 0; i < images.Count; i++)
         {
