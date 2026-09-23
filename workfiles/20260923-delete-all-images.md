@@ -93,6 +93,12 @@ so no test impact.
 Open questions answered (Q5–Q7): label **Clear all** (text only), no keyboard shortcut, and a
 confirmation on the status line after clearing (`{n} images removed.`, via `ShowStatus()`).
 
+### Iteration 3 — 2026-09-24 — ✅ Implemented
+
+Go given (after an earlier "No"): implement the design as it stands, code and README. The run happens in a
+dedicated git worktree on `feature/delete-all-images`, merged back into `main` and removed at the end,
+at the user's request (other sessions are working in the `main` checkout meanwhile).
+
 ---
 
 ## Implementation Log
