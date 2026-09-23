@@ -30,9 +30,37 @@ public static class ImageLoader
     private static Bitmap Copy(Image image)
     {
         var copy = new Bitmap(image.Width, image.Height, PixelFormat.Format32bppArgb);
-        using var g = Graphics.FromImage(copy);
-        // Explicit size: ignores the source DPI, which would otherwise rescale the drawing.
-        g.DrawImage(image, 0, 0, image.Width, image.Height);
+        using (var g = Graphics.FromImage(copy))
+        {
+            // Explicit size: ignores the source DPI, which would otherwise rescale the drawing.
+            g.DrawImage(image, 0, 0, image.Width, image.Height);
+        }
+
+        copy.RotateFlip(ExifRotation(image));
         return copy;
     }
+
+    /// <summary>GDI+ does not apply the EXIF orientation: phone photos would appear rotated.</summary>
+    private static RotateFlipType ExifRotation(Image image)
+    {
+        if (!image.PropertyIdList.Contains(OrientationTag))
+        {
+            return RotateFlipType.RotateNoneFlipNone;
+        }
+
+        byte[]? value = image.GetPropertyItem(OrientationTag)?.Value;
+        return value is { Length: > 0 } ? value[0] switch
+        {
+            2 => RotateFlipType.RotateNoneFlipX,
+            3 => RotateFlipType.Rotate180FlipNone,
+            4 => RotateFlipType.Rotate180FlipX,
+            5 => RotateFlipType.Rotate90FlipX,
+            6 => RotateFlipType.Rotate90FlipNone,
+            7 => RotateFlipType.Rotate270FlipX,
+            8 => RotateFlipType.Rotate270FlipNone,
+            _ => RotateFlipType.RotateNoneFlipNone,
+        } : RotateFlipType.RotateNoneFlipNone;
+    }
+
+    private const int OrientationTag = 0x0112;
 }
