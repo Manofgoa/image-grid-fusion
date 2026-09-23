@@ -26,6 +26,24 @@ public abstract class PageSource : IDisposable
 
     public abstract Bitmap Render(int page);
 
+    /// <summary>
+    /// Length of one loop of the animation; <see cref="TimeSpan.Zero"/> for a source shown still.
+    /// May change when the pages are laid out again (<see cref="Resize"/>).
+    /// </summary>
+    public virtual TimeSpan LoopDuration => TimeSpan.Zero;
+
+    /// <summary>
+    /// Opens a reader that renders the animation frame by frame, independently of <see cref="Render"/>
+    /// and of other readers. Only for a source with a <see cref="LoopDuration"/>; runs off the UI thread.
+    /// </summary>
+    public virtual AnimationReader OpenAnimation() => throw new NotSupportedException("This source is not animated.");
+
+    /// <summary>Page the slider shows at <paramref name="time"/> in the loop.</summary>
+    public virtual int PageAt(TimeSpan time) => 0;
+
+    /// <summary>Time in the loop where the animation shows <paramref name="page"/>: where it resumes after browsing.</summary>
+    public virtual TimeSpan TimeOf(int page) => TimeSpan.Zero;
+
     public virtual void Dispose()
     {
     }

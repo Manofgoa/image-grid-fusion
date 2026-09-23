@@ -30,13 +30,25 @@ public sealed class SourceImage : IDisposable
 
     public bool IsDisposed { get; private set; }
 
+    /// <summary>Plays when shown: a video, an animated GIF, a PDF of several pages, a text longer than its cell.</summary>
+    public bool IsAnimated => Pages is { LoopDuration: var loop } && loop > TimeSpan.Zero;
+
     /// <summary>Shows another page: takes ownership of <paramref name="bitmap"/> and disposes the previous one.</summary>
     public void ShowPage(int page, Bitmap bitmap)
+    {
+        ShowFrame(page, bitmap);
+        Dominant = DominantColor.Compute(bitmap);
+    }
+
+    /// <summary>
+    /// Shows a frame of the animation, which stands at <paramref name="page"/>: takes ownership of
+    /// <paramref name="bitmap"/> and keeps the dominant color, so bands do not flicker while playing.
+    /// </summary>
+    public void ShowFrame(int page, Bitmap bitmap)
     {
         var previous = Bitmap;
         Bitmap = bitmap;
         Page = page;
-        Dominant = DominantColor.Compute(bitmap);
         previous.Dispose();
     }
 
