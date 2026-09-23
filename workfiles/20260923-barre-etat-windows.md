@@ -1,0 +1,178 @@
+# Windows Tray & Startup
+
+> Working document — tray icon, close-to-tray, and an opt-in "start with Windows" setting.
+> This file is the source of truth for the planned work until implemented,
+> then the log of every adjustment made to it afterwards.
+
+---
+
+## Overview
+
+Three linked behaviours for the WinForms app:
+
+1. **Tray icon**: the app shows an icon in the Windows notification area (system tray) while it runs.
+2. **Close to tray**: closing the window (the **×**, `Alt+F4`) only hides it — the process keeps
+   running, and the window can be reopened from the tray icon. The app really exits only from the
+   tray menu's **Quit** (or when Windows ends the session).
+3. **Start with Windows**: an opt-in setting, **in the main window**, that registers the app to
+   launch at session start. When launched that way, the app starts **hidden**: only the tray icon
+   appears.
+
+Components touched: `Program.cs` (entry point, application lifetime), `UI/MainForm.cs` (closing
+behaviour, the setting's control), a new tray/lifetime class, a new startup-registration helper,
+and possibly an application icon (`.ico`) in the project.
+
+---
+
+## Current State (from the codebase)
+
+- `Program.Main` runs `Application.Run(new MainForm(args))`: closing `MainForm` ends the message
+  loop, hence the process.
+- `MainForm` has no icon of its own (no `ApplicationIcon` in the `.csproj`, no `.ico` in the repo):
+  the window and the exe use the default WinForms icon.
+- No settings persistence exists (no settings file, no registry access).
+- Command-line arguments are all treated as files to load (`_startupFiles`, loaded in `OnShown`).
+- Bottom bar: a `TableLayoutPanel` with the status line on the left and the **Copy** / **Save…**
+  buttons on the right.
+
+---
+
+## Application Lifetime
+
+- The message loop no longer belongs to `MainForm`: a `TrayApplicationContext` (an
+  `ApplicationContext`) owns the `NotifyIcon` and the `MainForm`, and `Program.Main` runs
+  `Application.Run(context)`.
+- **Normal launch**: the context shows the form, exactly as today.
+- **Launch with `--tray`** (the startup registration's argument): the form is created but not
+  shown; only the tray icon appears. `--tray` is stripped from the arguments before they reach
+  `_startupFiles`, so it is never treated as a file.
+- **Several instances are allowed** (user decision): each instance has its own window and its own
+  tray icon; relaunching the exe never reuses a running instance.
+
+## Closing & Reopening
+
+- `MainForm.FormClosing` with `CloseReason.UserClosing` (the **×**, `Alt+F4`, the taskbar's
+  *Close window*) is **cancelled** and the form is **hidden** instead. The grid state (images,
+  layout, mirror) stays as it was.
+- Any other close reason (`WindowsShutDown`, `TaskManagerClosing`, `ApplicationExitCall`) closes
+  for real, so a logoff or shutdown is never blocked.
+- **Reopen**: clicking the tray icon, or its menu's **Open**, shows the window, restores it if
+  minimized, and brings it to the front.
+- **Quit** (tray menu): disposes the tray icon (so no ghost icon remains in the tray) and exits
+  the process.
+- The minimize button keeps its default behaviour (window minimized to the taskbar).
+
+## Tray Icon
+
+- `NotifyIcon`, visible for the whole life of the process, tooltip `Image Grid Fusion`.
+- Context menu: **Open**, separator, **Quit**.
+- Click to reopen: see Open Questions (single vs double click).
+- Icon: see Open Questions.
+
+## Start with Windows
+
+- Registration: a value named `ImageGridFusion` under
+  `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, holding `"<exe path>" --tray`, where
+  `<exe path>` is `Environment.ProcessPath`. Per-user, no admin rights needed.
+- **The registry is the only source of truth**: no settings file. The control reads the value's
+  presence when the window is built, and writes / deletes the value when toggled.
+- **Off by default**: nothing is registered until the user ticks the setting.
+- The setting lives **in the main window** (user decision) — exact control and placement: see
+  Open Questions.
+- A registry write failure shows an error in the status line and reverts the control.
+- Known limit: disabling the app in Windows *Settings → Apps → Startup* (the `StartupApproved`
+  key) is not reflected by the control — it only reflects the `Run` value.
+
+---
+
+## Test Impact
+
+The solution has no test project (declined in v1, Q&A #12 of `20260923-application-v1.md`, and
+in every workfile since). Pending confirmation (Open Questions), the behaviours are checked
+manually:
+
+| Behaviour to pin | Test file | Create / Update |
+|---|---|---|
+| **×** / `Alt+F4` hides the window, the process and the tray icon stay | — (manual) | — |
+| Tray click / **Open** restores the window with its grid unchanged | — (manual) | — |
+| Tray **Quit** exits, no icon left in the tray | — (manual) | — |
+| Setting on → `Run` value written with `--tray`; off → value deleted | — (manual, `regedit`) | — |
+| Launch with `--tray` → no window, tray icon only; `--tray` not loaded as a file | — (manual) | — |
+| Two instances → two tray icons, independent | — (manual) | — |
+
+---
+
+## Open Questions
+
+- [ ] What form does the "Start with Windows" setting take in the window — a checkbox in the
+  bottom bar (e.g. left of **Copy**), or something else (a small ⚙ menu button)?
+- [ ] Which icon for the tray (and, as a side effect, the window and the exe)? The repo has none:
+  create a dedicated `.ico` (e.g. a 2×2 grid glyph) set as `ApplicationIcon`, or use the default
+  WinForms / system application icon?
+- [ ] Reopen from the tray on a **single** click, or on a **double** click (Windows convention for
+  many apps)?
+- [ ] On the first close to tray, show a one-time balloon notification ("Image Grid Fusion is
+  still running in the notification area"), or nothing?
+- [ ] If the exe was moved after being registered, the `Run` value points to the old path: show
+  the setting as ticked anyway (value present), or as unticked (value present but not pointing to
+  the current exe), or silently rewrite it to the current path on launch?
+- [ ] Unit tests: stay without a test project (manual checks above), as in every previous
+  workfile?
+
+---
+
+## Design Iterations
+
+Chronological log of design refinements, of the choices the implementation run
+took on its own — flagged `🧭 Implementation choices` — and of every adjustment
+requested afterwards — flagged `⚙️ Post-implementation`. One entry per request,
+in the order the requests were made.
+
+### Iteration 1 — 2026-09-23
+
+Initial design from the user's request and the scoping batch (Q&A #1–#4):
+
+- Setting in the main window (not in the tray menu, no first-launch prompt).
+- Launched at session start → hidden, tray icon only (`--tray` argument).
+- Several instances allowed, each with its own tray icon.
+- Subject sized as straightforward: one scout pass of the codebase.
+
+Proposed: an `ApplicationContext` owning the tray icon and the form; user close cancelled into a
+hide; real exit from the tray **Quit** or a system-initiated close; registration in the per-user
+`Run` key, with the registry as the only source of truth. Six questions left open.
+
+---
+
+## Implementation Log
+
+Which delivery steps are done, and in which iteration. A step that does not apply
+says so rather than staying blank.
+
+| Step | Iteration | Date | Notes |
+|---|---|---|---|
+| Code | | | |
+| Unit tests | | | |
+| README | | | |
+
+---
+
+## Q&A Log
+
+Questions asked by the agent during design, with user responses.
+
+| # | Question | Answer | Date |
+|---|---|---|---|
+| 1 | How is "start with Windows" offered? (tray menu checkbox / first-launch prompt + menu / setting in the window) | Setting in the window | 2026-09-23 |
+| 2 | When launched by Windows at session start: hidden (tray only) or window shown? | Hidden, tray icon only | 2026-09-23 |
+| 3 | Relaunching the exe while an instance runs: single instance (reopen it) or several instances? | Several instances allowed | 2026-09-23 |
+| 4 | Is the subject straightforward or tricky / long? | Straightforward | 2026-09-23 |
+| 5 | Form and placement of the "Start with Windows" setting in the window? | | |
+| 6 | Tray icon: dedicated `.ico` or default icon? | | |
+| 7 | Reopen from the tray on single or double click? | | |
+| 8 | One-time balloon on the first close to tray? | | |
+| 9 | Registered path no longer matching the current exe: ticked, unticked, or rewritten? | | |
+| 10 | Unit tests: stay without a test project? | | |
+
+---
+
+*Last updated: 2026-09-23*
