@@ -148,6 +148,33 @@ internal sealed class GridPreview : Control
     }
 
     /// <summary>
+    /// "Force as image": no animation plays, nor its sound, each cell showing the page its slider
+    /// selects — still browsed live. Released, they resume like a released hover.
+    /// </summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool ForceStill
+    {
+        get => _player.ForceStill;
+        set
+        {
+            if (value == _player.ForceStill)
+            {
+                return;
+            }
+
+            _player.ForceStill = value;
+            if (value)
+            {
+                // The last frame played sits between two pages, scaled down: the page itself replaces it.
+                foreach (var image in _images.Where(i => i.IsAnimated))
+                {
+                    _pageLoader.Request(image, _pageLoader.Target(image));
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// Adds images: the first one replaces <paramref name="targetCell"/> when given (a drop onto a
     /// cell); the others fill the free slots; the first excess image replaces the selected cell, else
     /// the last one; any further excess is disposed. Returns the number of images ignored.
