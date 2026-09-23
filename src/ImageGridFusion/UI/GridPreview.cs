@@ -67,6 +67,7 @@ internal sealed class GridPreview : Control
     private bool _locked;
     private Tool? _hoveredTool;
     private bool _hoveringZoom;
+    private bool _hoveringHandle;
     private int _zooming = -1;
     private bool _panning;
     private Point _panPoint;
@@ -269,6 +270,7 @@ internal sealed class GridPreview : Control
         _hoveringSlider = false;
         _hoveredTool = null;
         _hoveringZoom = false;
+        _hoveringHandle = false;
         _cache?.Dispose();
         _cache = null;
         FitPagesToCells();
@@ -312,6 +314,7 @@ internal sealed class GridPreview : Control
         _hoveringClose = false;
         _hoveredTool = null;
         _hoveringZoom = false;
+        _hoveringHandle = false;
         _zooming = -1;
         EndDrag();
         OnImagesChanged();
@@ -396,6 +399,7 @@ internal sealed class GridPreview : Control
         if (_hovered >= 0 && !_dragging && !_locked)
         {
             PaintCloseButton(g, CloseBounds(cells[_hovered]), _hoveringClose);
+            PaintHandle(g, HandleBounds(cells[_hovered]), _hoveringHandle);
             PaintToolbar(g, cells[_hovered], _images[_hovered]);
         }
 
@@ -476,11 +480,11 @@ internal sealed class GridPreview : Control
             return;
         }
 
-        // A zoomed-in image is dragged within its cell; Ctrl + drag swaps it, as any other.
+        // Only the handle swaps the image; a drag anywhere else moves it within its cell.
         _selected = index;
         _pressed = index;
         _pressPoint = e.Location;
-        _panning = _images[index].Look.Zoom > 1 && (ModifierKeys & Keys.Control) == 0;
+        _panning = !HandleBounds(CellBounds()[index]).Contains(e.Location);
         _panPoint = e.Location;
         Invalidate();
     }
@@ -513,11 +517,16 @@ internal sealed class GridPreview : Control
             return;
         }
 
+        // At 100 % or below the image stays centered: the drag moves nothing, and never turns into a swap.
         if (_panning)
         {
-            Cursor = Cursors.SizeAll;
-            BeginLive(_pressed);
-            PanBy(_pressed, new Size(e.X - _panPoint.X, e.Y - _panPoint.Y));
+            if (_pressed < _images.Count && _images[_pressed].Look.Zoom > 1)
+            {
+                Cursor = Cursors.SizeAll;
+                BeginLive(_pressed);
+                PanBy(_pressed, new Size(e.X - _panPoint.X, e.Y - _panPoint.Y));
+            }
+
             _panPoint = e.Location;
             return;
         }
@@ -648,6 +657,7 @@ internal sealed class GridPreview : Control
             _hoveringSlider = false;
             _hoveredTool = null;
             _hoveringZoom = false;
+            _hoveringHandle = false;
             _hoveringCanvas = false;
             _hoveringDropZone = false;
             Cursor = Cursors.Default;
@@ -822,6 +832,7 @@ internal sealed class GridPreview : Control
         _hoveringSlider = false;
         _hoveredTool = null;
         _hoveringZoom = false;
+        _hoveringHandle = false;
         _sliding = -1;
         _zooming = -1;
         OnImagesChanged();
@@ -875,8 +886,9 @@ internal sealed class GridPreview : Control
         bool actions = hovered >= 0 && !_locked;
         var onTool = actions ? ToolAt(CellBounds()[hovered], _images[hovered], location) : null;
         bool onZoom = actions && ZoomSliderBounds(CellBounds()[hovered], _images[hovered]).Contains(location);
+        bool onHandle = actions && HandleBounds(CellBounds()[hovered]).Contains(location);
         if (hovered == _hovered && onClose == _hoveringClose && onCanvas == _hoveringCanvas && onDropZone == _hoveringDropZone
-            && onSlider == _hoveringSlider && onTool == _hoveredTool && onZoom == _hoveringZoom)
+            && onSlider == _hoveringSlider && onTool == _hoveredTool && onZoom == _hoveringZoom && onHandle == _hoveringHandle)
         {
             return;
         }
@@ -888,7 +900,10 @@ internal sealed class GridPreview : Control
         _hoveringSlider = onSlider;
         _hoveredTool = onTool;
         _hoveringZoom = onZoom;
-        Cursor = onClose || onDropZone || onSlider || onTool is not null || onZoom ? Cursors.Hand : Cursors.Default;
+        _hoveringHandle = onHandle;
+        Cursor = onHandle ? Cursors.SizeAll
+            : onClose || onDropZone || onSlider || onTool is not null || onZoom ? Cursors.Hand
+            : Cursors.Default;
         UpdateHold();
         Invalidate();
     }
@@ -1127,6 +1142,13 @@ internal sealed class GridPreview : Control
         int size = LogicalToDeviceUnits(24);
         int inset = LogicalToDeviceUnits(6);
         return new Rectangle(cell.Right - inset - size, cell.Y + inset, size, size);
+    }
+
+    /// <summary>The drag handle that swaps the image, just below the ×: the toolbar rows stay left of it.</summary>
+    private Rectangle HandleBounds(Rectangle cell)
+    {
+        var close = CloseBounds(cell);
+        return close with { Y = close.Bottom + LogicalToDeviceUnits(ButtonGap) };
     }
 
     /// <summary>
@@ -1556,6 +1578,26 @@ internal sealed class GridPreview : Control
         using var pen = new Pen(Color.White, LogicalToDeviceUnits(2));
         g.DrawLine(pen, bounds.Left + pad, bounds.Top + pad, bounds.Right - pad, bounds.Bottom - pad);
         g.DrawLine(pen, bounds.Right - pad, bounds.Top + pad, bounds.Left + pad, bounds.Bottom - pad);
+    }
+
+    /// <summary>Round button like the ×, with four arrows pointing out of its center (✥).</summary>
+    private void PaintHandle(Graphics g, Rectangle bounds, bool hot)
+    {
+        using (var brush = new SolidBrush(Color.FromArgb(hot ? 230 : 150, 0, 0, 0)))
+        {
+            g.FillEllipse(brush, bounds);
+        }
+
+        int pad = bounds.Width / 5;
+        var glyph = Rectangle.Inflate(bounds, -pad, -pad);
+        var center = new PointF(glyph.X + glyph.Width / 2f, glyph.Y + glyph.Height / 2f);
+        using var pen = new Pen(Color.White, LogicalToDeviceUnits(2));
+        using var arrow = new AdjustableArrowCap(2f, 2f);
+        pen.CustomEndCap = arrow;
+        g.DrawLine(pen, center, new PointF(center.X, glyph.Top));
+        g.DrawLine(pen, center, new PointF(glyph.Right, center.Y));
+        g.DrawLine(pen, center, new PointF(center.X, glyph.Bottom));
+        g.DrawLine(pen, center, new PointF(glyph.Left, center.Y));
     }
 
     /// <summary>Contour drawn inside <paramref name="bounds"/> as four bands, crisp and evenly translucent.</summary>
