@@ -112,6 +112,8 @@ changes. Verification is manual:
   first; only the whole-image fallback is replaced by the edge majority (Q&A #6)
 - [x] ~~Edge depth used for the majority?~~ → The same 2 % bands as the uniform-side test (Q&A #7)
 - [x] ~~Unit tests: stay without a test project?~~ → Yes, manual checks (Q&A #8)
+- [ ] 4. Edge majority by perceptual groups instead of 4-bit buckets: which tolerance, and does the
+  whole-image last resort (`DominantColor`) get the same grouping?
 
 ---
 
@@ -157,6 +159,33 @@ sections stand above.
   design said "no change".
 - No rule broken. Branch: `main`, the standing choice for this repository (no Branch Gate question).
 
+### Iteration 5 — 2026-09-24 — ⚙️ Post-implementation — Shades split the majority
+
+Manual test (Soviet poster, whole image shown, bands left and right): the bands came out black where
+red was expected. The user asked whether the edges should be read deeper, or the edge and image
+shares compared.
+
+Measured on the screenshot, 2 % edge bands of the visible part, 17 556 pixels:
+
+| Family | Share of the edges |
+|---|---|
+| Reds (many shades) | 38.6 % |
+| Black / near black | 25.8 % |
+| Cream | 14.4 % |
+
+But the 4-bit buckets split red into several shades — `(12,0,1)` 7.3 %, `(11,0,1)` 5.7 %,
+`(11,1,1)` 4.6 %… — while flat black falls in a single bucket, `(0,0,0)` 18.3 %, which wins.
+
+- Deeper bands do not fix it: at 5 % and 10 % black is still the first bucket (14.3 %, 14.2 %).
+- The whole image does not either: its first bucket is black too (21.9 %) — the former whole-image
+  fallback would have given black here as well.
+
+Proposal: group the edge buckets by **perceptual similarity** before voting. Populated buckets, most
+populated first, join the first group whose seed is within a CIELAB distance; the largest group wins
+and its color is its seed (its most frequent shade, a real color of the image rather than a blend).
+Simulated on the poster: red `(194,12,27)` wins at every tolerance from ΔE 15 to 30 (27.6 %–38.3 %
+against 22.4 %–26.6 % for black). Pending Open Question 4.
+
 ---
 
 ## Implementation Log
@@ -182,6 +211,7 @@ sections stand above.
 | 7 | Edge depth for the majority: 2 % or thicker? | 2 %, as today | 2026-09-24 |
 | 8 | Unit tests: stay without a test project? | Yes, manual checks | 2026-09-24 |
 | 9 | Go for implementation? | Implement the code | 2026-09-24 |
+| 10 | Group the edge shades perceptually: tolerance, and the whole-image last resort too? | | |
 
 ---
 
