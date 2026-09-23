@@ -8,6 +8,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 - Merges 1 to 4 images into one; a single image fills the whole canvas and is exportable
 - Output ratio locked to 1200:628 (≈1.91:1); the ratio matters, not the resolution (see Canvas size)
 - Drag & drop images onto the `.exe` icon or onto the window, or paste them with `Ctrl+V`
+- Several layouts per image count, picked from a strip of thumbnails, plus a mirror toggle (see Layouts)
 - No image list: the grid preview *is* the interface
   - Click a cell to select it, `Esc` to deselect
   - Hover a cell for a **×** to remove it, or press `Delete` to remove the selected one
@@ -18,10 +19,14 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 ## Adding images
 
 - While cells are free, new images fill them in order.
-- Once the grid is full, a new image replaces the selected cell, or the last cell in reading order (left→right, top→bottom) if none is selected.
+- Once the grid is full, a new image replaces the selected cell, or the last image (image 4) if none is selected.
 - Adding several files at once (paste, drop, or command-line arguments): free slots are filled first, the first excess file applies the replace rule above, and any further excess is ignored, with a status-line message.
 
 ## Layouts
+
+Each image count offers several layouts, picked by clicking a thumbnail in the strip on the left of the preview (the strip is hidden with a single image). The first layout of each count is the default; the app starts on it, and goes back to it whenever the number of images changes.
+
+Image **1** always takes the featured (big) cell; the other images follow in reading order (left→right, top→bottom). Cell ratios are given for a 1.91:1 canvas: below 1 suits portraits and phone screenshots, around 1.9 landscapes, above 3 panoramas.
 
 **1 image** - fills the whole canvas
 
@@ -33,34 +38,53 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 +-------------------+
 ```
 
-**2 images** - side by side, 50/50
+**2 images**
 
 ```
-+--------+--------+
-|        |        |
-|   1    |   2    |
-|        |        |
-+--------+--------+
+Two columns (default)  Two rows               Two thirds + one third
++---------+---------+  +-------------------+  +------------+------+
+|         |         |  |         1         |  |            |      |
+|    1    |    2    |  +-------------------+  |     1      |  2   |
+|         |         |  |         2         |  |            |      |
++---------+---------+  +-------------------+  +------------+------+
+0.95 · 0.95            3.82 · 3.82            1.27 · 0.64
 ```
 
-**3 images** - first image takes the left half, the two others split the right half vertically
+**3 images**
 
 ```
-+--------+--------+
-|        |   2    |
-|   1    +--------+
-|        |   3    |
-+--------+--------+
+Big left (default)     Three columns          Featured               Big top
++---------+---------+  +------+------+------+  +------------+------+  +-------------------+
+|         |    2    |  |      |      |      |  |            |  2   |  |         1         |
+|    1    +---------+  |  1   |  2   |  3   |  |     1      +------+  +---------+---------+
+|         |    3    |  |      |      |      |  |            |  3   |  |    2    |    3    |
++---------+---------+  +------+------+------+  +------------+------+  +---------+---------+
+0.95 · 1.91 · 1.91     0.64 each              1.27 each              3.82 · 1.91 · 1.91
 ```
 
-**4 images** - 2x2 grid, equal cells
+**4 images**
 
 ```
-+--------+--------+
-|   1    |   2    |
-+--------+--------+
-|   3    |   4    |
-+--------+--------+
+Grid (default)         Four columns           Featured               Big left               Big top
++---------+---------+  +----+----+----+----+  +------------+------+  +---------+---------+  +-------------------+
+|    1    |    2    |  |    |    |    |    |  |            |  2   |  |         |    2    |  |         1         |
++---------+---------+  | 1  | 2  | 3  | 4  |  |     1      |  3   |  |    1    |    3    |  +------+------+------+
+|    3    |    4    |  |    |    |    |    |  |            |  4   |  |         |    4    |  |  2   |  3   |  4   |
++---------+---------+  +----+----+----+----+  +------------+------+  +---------+---------+  +------+------+------+
+1.91 each              0.48 each              1.27 · 1.91 ×3         0.95 · 2.87 ×3         3.82 · 1.27 ×3
+```
+
+### Mirror
+
+The toggle below the thumbnails flips the active layout along its asymmetric axis: left↔right for the layouts whose featured cell is on the left (*Two thirds + one third*, *Big left*, *Featured*), top↔bottom for *Big top*. It is disabled on symmetric layouts, where flipping would only reorder the images, and it turns off whenever the layout or the number of images changes. The images keep their cells: image 1 moves with the featured cell.
+
+```
+Big left, mirrored
++---------+---------+
+|    2    |         |
++---------+    1    |
+|    3    |         |
++---------+---------+
 ```
 
 ## Fitting rules
@@ -73,7 +97,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 
 ## Canvas size
 
-Output resolution is kept as high as possible so source images aren't needlessly downscaled: the canvas width is the width at which no image is downscaled, clamped between 1200 and 4096 px; height follows from the 1200:628 ratio.
+Output resolution is kept as high as possible so source images aren't needlessly downscaled: the canvas width is the width at which no image is downscaled in the active layout, clamped between 1200 and 4096 px; height follows from the 1200:628 ratio.
 
 ## Output
 
