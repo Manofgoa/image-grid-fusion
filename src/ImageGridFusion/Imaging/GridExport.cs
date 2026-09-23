@@ -15,10 +15,11 @@ internal static class GridExport
     /// </summary>
     public sealed class Job : IDisposable
     {
-        private Job(IReadOnlyList<Item> items, GridLayout layout, SourceImage? sound)
+        private Job(IReadOnlyList<Item> items, GridLayout layout, double cropThreshold, SourceImage? sound)
         {
             Items = items;
             Layout = layout;
+            CropThreshold = cropThreshold;
             SoundPath = sound?.FilePath;
             SoundLoop = sound?.Pages?.LoopDuration ?? TimeSpan.Zero;
             Length = items.Select(i => i.Loop).DefaultIfEmpty(TimeSpan.Zero).Max();
@@ -28,6 +29,9 @@ internal static class GridExport
 
         public GridLayout Layout { get; }
 
+        /// <summary>Crop threshold the preview shows; see <see cref="FitCalculator"/>.</summary>
+        public double CropThreshold { get; }
+
         public string? SoundPath { get; }
 
         public TimeSpan SoundLoop { get; }
@@ -35,11 +39,12 @@ internal static class GridExport
         /// <summary>Length of the video: the longest loop.</summary>
         public TimeSpan Length { get; }
 
-        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout) => new(
+        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout, double cropThreshold) => new(
             images.Select(i => i.IsAnimated
                 ? new Item(null, i.Dominant, i.Pages, i.Pages!.LoopDuration, i.Look)
                 : new Item(new Bitmap(i.Bitmap), i.Dominant, null, TimeSpan.Zero, i.Look)).ToList(),
             layout,
+            cropThreshold,
             Animation.SoundSource(images));
 
         public void Dispose()
@@ -84,7 +89,7 @@ internal static class GridExport
                 frames[i] = new Frame(first, DominantColor.Compute(first), item.Look);
             }
 
-            var canvas = Animation.EvenSize(CanvasSizer.Compute(frames.Select(f => f.Size).ToList(), job.Layout));
+            var canvas = Animation.EvenSize(CanvasSizer.Compute(frames.Select(f => f.Size).ToList(), job.Layout, job.CropThreshold));
             using var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppRgb);
             using var g = Graphics.FromImage(bitmap);
             encoder = VideoEncoder.Create(path, canvas, job.Length, job.SoundPath, job.SoundLoop);
@@ -103,7 +108,7 @@ internal static class GridExport
                     }
                 }
 
-                Compositor.Draw(g, frames, job.Layout, canvas);
+                Compositor.Draw(g, frames, job.Layout, canvas, job.CropThreshold);
                 encoder.WriteFrame(bitmap, time, Animation.FrameTime(k + 1) - time);
                 progress?.Report((k + 1) / (double)count);
             }
@@ -155,7 +160,7 @@ internal static class GridExport
                 frames[i] = new Frame(frame, DominantColor.Compute(frame), item.Look);
             }
 
-            return Compositor.Render(frames, job.Layout);
+            return Compositor.Render(frames, job.Layout, job.CropThreshold);
         }
         finally
         {

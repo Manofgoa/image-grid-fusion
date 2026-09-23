@@ -509,7 +509,7 @@ internal sealed class MainForm : Form
             return Compositor.Render(_preview.Images, _preview.ActiveLayout!, _preview.CropThreshold);
         }
 
-        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!);
+        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CropThreshold);
         BeginExport("Rendering the image…", cancellable: false);
         try
         {
@@ -532,7 +532,7 @@ internal sealed class MainForm : Form
     /// </summary>
     private async Task<GridExport.Result?> ExportVideoAsync(string path)
     {
-        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!);
+        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CropThreshold);
         var cancellation = BeginExport("Exporting the video… 0 %", cancellable: true);
         var progress = new Progress<double>(done =>
         {
@@ -567,6 +567,9 @@ internal sealed class MainForm : Form
         _export = new CancellationTokenSource();
         _preview.Locked = true;
         _layouts.Enabled = false;
+
+        // The job holds the threshold it started with: moving the slider would only mislead the preview.
+        _threshold.Enabled = false;
         _cancelButton.Visible = cancellable;
         UpdateButtons();
         ShowStatus(message);
@@ -579,6 +582,7 @@ internal sealed class MainForm : Form
         _export = null;
         _preview.Locked = false;
         _layouts.Enabled = true;
+        _threshold.Enabled = true;
         _cancelButton.Visible = false;
         UpdateButtons();
         if (_closeAfterExport)
