@@ -18,12 +18,11 @@ Relevant components:
 
 | Component | Role in this feature |
 |---|---|
-| `UI/GridPreview.cs` | Draws the grid; would play the live rotation |
-| `UI/MainForm.cs` | Buttons, shortcuts, status line; hosts the mode toggle and the video export |
-| `UI/LayoutStrip.cs` | Left strip with the layout thumbnails and the mirror toggle |
-| `Composition/Compositor.cs` | Renders image *i* into cell *i*; renders each video frame |
-| `Composition/CanvasSizer.cs` | Picks the canvas width from which image lands in which cell |
-| `Imaging/VideoFrames.cs` | Already uses `Windows.Media.Editing` (`MediaComposition`) to decode videos |
+| `Composition/GridLayout.cs` | `ClockwiseLoop()`: the loop of cells, from the layout's geometry |
+| `Composition/Carousel.cs` | Pure rules: step timing, arrangement at a step, cell of an image, one canvas for every step |
+| `Imaging/CarouselExport.cs` | Writes the carousel's MP4 with the existing `VideoEncoder` |
+| `UI/GridPreview.cs` | Plays the carousel live (`PlaysCarousel`), pauses it under the pointer |
+| `UI/MainForm.cs` | `Carrousel` check box in the top bar; `Save…` routes to the carousel export |
 
 ---
 
@@ -41,7 +40,9 @@ Agreed:
   (cells of a layout may have different ratios, so an image's crop / bands change as it moves).
 - **1 image**: nothing to rotate — the mode is unavailable.
 - **Loop order: clockwise** around the grid, geometrically — a true carousel. Cells lined up in a
-  single row go left → right and wrap from the last one back to the first. Default layouts
+  single row go left → right and wrap from the last one back to the first. It is computed from the
+  layout's geometry, not listed per layout: each cell is placed where it first meets the border,
+  walking the border clockwise from the top-left corner. Default layouts
   (cell numbers as in the README's *Layouts*):
 
   | Layout | Loop |
@@ -62,18 +63,26 @@ Agreed:
 
 Agreed: the rotation plays in the grid preview itself.
 
-- **Toggle**: a **`Carrousel`** check box in a **new toolbar at the top** of the window. The app has
-  no top toolbar today (the controls live in the left layout strip and the bottom bar), so this
-  feature introduces it. The check box is disabled with a single image.
+- **Toggle**: a **`Carrousel`** check box at the **right end of the top bar** (the bar holding the
+  Crop slider, added in parallel to this design). It is unchecked and disabled below two images, and
+  stays usable during an export, which only affects the preview.
 - Checking it starts the rotation from the current arrangement; unchecking it stops it and brings
   the images back to their own cells (the arrangement the user built).
-
-- **Pause on hover**: as soon as the mouse is over the preview, the rotation pauses and the grid
+- Any change of images, layout or mirror, and hiding the window in the tray, sends the carousel
+  back to the user's own arrangement; the next step comes a full second later. Nothing plays behind
+  a hidden window.
+- Animated contents keep playing while they move. Text pages keep the shape of their own cell and
+  are fitted with the usual rules in the others. The carousel has its own one-second clock, not the
+  animation clock, so PDF pages and text views do not change in step with it.
+- **Pause on hover**: as soon as the mouse (or a drag from Explorer, or a gesture holding the mouse)
+  is over the preview control — drop zone included — the rotation pauses and the grid
   shows the user's own arrangement again; every interaction (hover outline, **×**, select, swap,
   replace by drop, sliders, drop zone) works as usual on it. When the mouse leaves the preview,
-  the rotation restarts from that arrangement, taking any edit into account.
+  the rotation restarts from that arrangement, taking any edit into account, after a full second on
+  it. The pointer is also checked on every tick, since a drop from Explorer may bring no mouse message.
 - An edit that leaves a single image unchecks and disables `Carrousel`.
-- `Copy` / `Ctrl+C` is unchanged: it copies the still image of the user's own arrangement,
+- `Copy` / `Ctrl+C` is unchanged by the mode: it does what it does without it (the still of the
+  user's own arrangement, or the MP4 of the playing contents when the grid holds animated content),
   whatever step is on screen.
 
 ---
@@ -82,23 +91,25 @@ Agreed: the rotation plays in the grid preview itself.
 
 Agreed: the rotation can be exported as a video file.
 
-- **Encoder**: `Windows.Media.Editing.MediaComposition`, already used by `VideoFrames` to decode
-  videos — one clip per arrangement, each lasting 1 s, rendered to an **MP4 (H.264)** file with
-  `RenderToFileAsync`. No third-party library, in line with the README's *Tech* section.
-- **Frames**: each arrangement is rendered once with `Compositor` (images reordered so image *k*
-  lands in its current cell), then handed to the composition.
+- **Encoder**: the app's own `VideoEncoder` (Media Foundation Sink Writer, H.264, 30 fps), used by
+  the animated-content export. No third-party library, in line with the README's *Tech* section.
+- **Frames**: each arrangement is drawn once with `Compositor` (images reordered so image *k* lands
+  in its current cell), then written as the 30 frames of its second. Progress and Cancel in the
+  status line, the grid locked meanwhile, as for any video export.
 - **Frame size**: `CanvasSizer` depends on which image lands in which cell, so it differs from one
   arrangement to the next, while a video needs one frame size: the video uses the **largest canvas
   over the N arrangements**, so no image is downscaled at any step (still clamped to 4096 px).
   The live preview is not affected: it keeps fitting the grid to the window.
-- **H.264 constraints**: even dimensions (the 1200:628 height may come out odd); the canvas'
+- **H.264 constraints**: even dimensions (rounded down, as the animated export does); the canvas'
   4096 px maximum stays within what the Windows H.264 encoder accepts.
-- Cells holding a video, a PDF or a text show their **current page / frame, frozen** — the source
-  video does not play inside the exported video.
+- Cells holding a video, a GIF, a PDF or a text show their **current page, frozen** — the page their
+  slider selects, rendered at full size, as *Force as image* does. The source video does not play
+  inside the exported video, so the carousel video is **silent**.
 - **Length**: exactly **one full loop** — N seconds for N images, starting from the user's own
   arrangement; replayed in a loop, it has no visible seam.
-- **Trigger**: while `Carrousel` is checked, **`Save…` / `Ctrl+S` writes an MP4** instead of a PNG
-  (the save dialog offers `.mp4`). Unchecked, `Save…` writes a PNG as today.
+- **Trigger**: while `Carrousel` is checked, **`Save…` / `Ctrl+S` writes the carousel's MP4**,
+  whatever the contents and whether *Force as image* is checked (the save dialog offers `.mp4`).
+  Unchecked, `Save…` behaves as without the mode (PNG, or the animated-content MP4).
 
 ---
 
@@ -165,6 +176,36 @@ update, no test by earlier decision. Branch Gate: stays on `main`, the standing 
 repository; other sessions work on `main` in parallel, so the run commits often and stages only
 its own files.
 
+### Iteration 5 — 2026-09-24 — 🧭 Implementation choices
+
+No project rule was broken. The code moved a lot in parallel between design and go (top bar,
+animated content, MP4 export, *Force as image*); the choices below adapt the frozen design to it.
+
+- **Top bar**: the design planned a new top toolbar; one now exists (Crop slider), so the check box
+  went to its right end instead of a second bar.
+- **Encoder**: the existing `VideoEncoder` (Sink Writer, 30 fps) instead of `MediaComposition`, so
+  both video exports share one encoder, frame rate and even-size rule.
+- **Frozen contents**: "current page / frame" became the page each slider selects, rendered at full
+  size — the rule *Force as image* adopted meanwhile. Consequence: the carousel video is silent.
+- **Force as image × Carrousel**: `Save…` writes the carousel video even with *Force as image*
+  checked (the contents are frozen anyway); *Force as image* still governs `Copy` and the preview.
+- **Copy**: "unchanged" kept literally — it follows the current rules, so it gives the animated MP4
+  when the grid holds animated content, never the carousel.
+- **Loop order**: computed from each layout's geometry (border walk) rather than a hard-coded
+  table, so mirrored layouts follow on their own; it matches the table for every default layout.
+- **Pause**: over the whole preview control (drop zone included), during Explorer drags and mouse
+  captures, re-checked on every tick; a resume holds the user's arrangement a full second.
+- **Reset**: any change of images, layout, mirror or window visibility restarts from the user's
+  own arrangement; the check box stays usable during an export.
+- **Separate clock**: the carousel's one-second timer is not the animation clock, so PDF pages and
+  text views are not in step with it.
+- **Label**: `Carrousel` as the user wrote it, while the rest of the UI is in English.
+- **Parallel sessions**: another session edited `GridExport.cs`, `MainForm.cs`, `AnimationPlayer.cs`
+  and `GridPreview.cs` during the run. The export went into a new file, and each commit was checked
+  to hold only this run's lines.
+- **Not verified by hand**: built with 0 warning and 0 error (into a scratch folder: another
+  session's running instance held the exe), not run.
+
 ---
 
 ## Implementation Log
@@ -174,9 +215,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
+| Code | Iteration 5 | 2026-09-24 | 4 commits: carousel logic, carousel export, live preview, check box and Save |
+| Unit tests | — | 2026-09-24 | Not applicable: no test project, by decision (Q&A 12) |
+| README | — | 2026-09-24 | Not done: the go covered the code only |
 
 ---
 
