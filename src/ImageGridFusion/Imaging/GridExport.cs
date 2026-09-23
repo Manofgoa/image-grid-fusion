@@ -54,8 +54,8 @@ internal static class GridExport
     /// <summary>A cell: a still copy, or an animated source with its loop, and the actions on the image.</summary>
     public sealed record Item(Bitmap? Still, Color Dominant, PageSource? Source, TimeSpan Loop, ImageLook Look);
 
-    /// <summary>What an export produced.</summary>
-    public sealed record Result(Size Size, TimeSpan Length, string? SoundProblem);
+    /// <summary>What an export produced; <see cref="SoundPath"/> is the source whose sound was written, if any.</summary>
+    public sealed record Result(Size Size, TimeSpan Length, int Frames, string? SoundPath, string? SoundProblem);
 
     /// <summary>
     /// Writes the video to <paramref name="path"/>: 30 fps, as long as the longest loop, the others
@@ -110,7 +110,7 @@ internal static class GridExport
 
             encoder.Finish();
             finished = true;
-            return new Result(canvas, job.Length, encoder.SoundProblem);
+            return new Result(canvas, job.Length, count, encoder.SoundProblem is null ? job.SoundPath : null, encoder.SoundProblem);
         }
         finally
         {
