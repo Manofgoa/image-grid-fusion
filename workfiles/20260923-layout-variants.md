@@ -103,12 +103,30 @@ layout — unchanged for the default layouts.
 
 ## Variant Selection (UI)
 
-- **Layout thumbnails** (user decision): a row of small buttons, one per variant available for
-  the current image count; clicking one applies it and re-renders the preview immediately. The
-  active one is highlighted.
-- With 0 or 1 image there is nothing to choose: the thumbnail row is hidden *(proposed)*.
-- **Not remembered across launches** (user decision): every launch starts on the default
-  variant of each count.
+- **Layout thumbnails** (Q&A #1): one small button per layout available for the current image
+  count; clicking one applies it and re-renders the preview immediately. The active one is
+  highlighted.
+- **Look** (Q&A #11): neutral schematic rectangles drawing the shape of the cells — no rendering
+  of the actual images.
+- **Placement** (Q&A #12): a **vertical strip on the left of the preview**, thumbnails stacked
+  top to bottom, the mirror toggle below them. The bottom bar keeps Copy / Save and the status
+  line.
+
+  ```
+  +-----+------------------------------+
+  | [□] |                              |
+  | [□] |           preview            |
+  | [□] |                              |
+  | [⇄] |                              |
+  +-----+------------------------------+
+  | status               Copy  Save…   |
+  +------------------------------------+
+  ```
+
+- With 0 or 1 image there is nothing to choose: the strip is hidden *(proposed)*.
+- **Image count changes** (Q&A #10): the layout goes back to the **default** of the new count,
+  and the mirror to off.
+- **Not remembered across launches** (Q&A #3): every launch starts on the default layouts.
 - Canvas sizing and export use the **active variant**: `CanvasSizer` computes the width from that
   variant's cell fractions, so switching variant can change the output resolution.
 
@@ -123,17 +141,19 @@ layout — unchanged for the default layouts.
 - `Compositor.Draw`, `CanvasSizer.Compute`: take the layout to use instead of deriving it from
   the image count.
 - `GridPreview`: holds the active layout, uses it for rendering and hit-testing.
-- `MainForm`: hosts the thumbnail row and keeps the active variant in sync with the image count.
+- `MainForm`: hosts the thumbnail strip and resets the active layout when the image count
+  changes.
 
 ---
 
 ## Test Impact
 
-Depends on Open Question "unit tests". v1 has no test project (declined, v1 Q&A #12).
+**No unit tests** — declined by the user again for this task (Q&A #14); v1 has no test project
+either (v1 Q&A #12). Nothing is created or updated.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| *(pending the answer on unit tests)* | — | — |
+| — (declined) | — | — |
 
 ---
 
@@ -156,14 +176,16 @@ Depends on Open Question "unit tests". v1 has no test project (declined, v1 Q&A 
       cell, then the others in reading order — or strict reading order of the cells
       (left→right, top→bottom), so in `3-big-right` image 1 would be the top-left small cell?~~ →
       Image 1 always takes the featured cell
-- [ ] When the image count changes (image added or removed): back to the default variant of the
-      new count, or back to the variant last picked for that count during the session?
-- [ ] Thumbnail look: neutral schematic rectangles, or miniatures showing the actual images?
-- [ ] Thumbnail row placement: in the bottom bar left of Copy/Save, a bar above the preview, or a
-      vertical strip on the side?
+- [x] ~~When the image count changes (image added or removed): back to the default variant of the
+      new count, or back to the variant last picked for that count during the session?~~ →
+      Default of the new count
+- [x] ~~Thumbnail look: neutral schematic rectangles, or miniatures showing the actual images?~~ →
+      Neutral schematic rectangles
+- [x] ~~Thumbnail row placement: in the bottom bar left of Copy/Save, a bar above the preview, or a
+      vertical strip on the side?~~ → Vertical strip on the left of the preview
 - [ ] Keyboard shortcut to cycle through the variants of the current count?
-- [ ] Unit tests: still none, or create a test project now for the layouts (every variant tiles
-      the canvas exactly, cell count matches, fractions match pixels)?
+- [x] ~~Unit tests: still none, or create a test project now for the layouts (every variant tiles
+      the canvas exactly, cell count matches, fractions match pixels)?~~ → Still none
 
 ---
 
@@ -199,6 +221,12 @@ Mirror and mapping settled (Q&A #15–#18): the mirror flips along the layout's 
 (big-top gains a big-bottom version), is disabled on symmetric layouts, and resets to off on any
 layout or count change. Image 1 always takes the featured cell; new `### Image-to-Cell Mapping`.
 
+### Iteration 4 — 2026-09-23
+
+UI and tests settled (Q&A #10–#12, #14): the layout resets to the default when the image count
+changes; thumbnails are neutral schematics in a vertical strip on the left of the preview, with
+the mirror toggle below them; no unit tests. Only the keyboard shortcut remains open.
+
 ---
 
 ## Implementation Log
@@ -209,7 +237,7 @@ says so rather than staying blank.
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
 | Code | | | |
-| Unit tests | | | Pending Open Question |
+| Unit tests | 4 | 2026-09-23 | Declined by the user (Q&A #14) |
 | README | | | |
 
 ---
@@ -229,11 +257,11 @@ Questions asked by the agent during design, with user responses.
 | 7 | Which 4-image variants are kept? | All four new ones: columns, featured, big-left, big-top (+ grid) | 2026-09-23 |
 | 8 | Mirrors: dedicated thumbnails or a mirror toggle? | A single mirror toggle | 2026-09-23 |
 | 9 | Image-to-cell mapping when the variant changes? | Asked as #18 | 2026-09-23 |
-| 10 | Variant after the image count changes? | | |
-| 11 | Thumbnail look? | | |
-| 12 | Thumbnail row placement? | | |
+| 10 | Variant after the image count changes? | Default of the new count | 2026-09-23 |
+| 11 | Thumbnail look? | Neutral schematics | 2026-09-23 |
+| 12 | Thumbnail row placement? | Vertical strip on the left of the preview | 2026-09-23 |
 | 13 | Keyboard shortcut to cycle variants? | | |
-| 14 | Unit tests for the layouts? | | |
+| 14 | Unit tests for the layouts? | No | 2026-09-23 |
 | 15 | Mirror axis: horizontal only, or the layout's asymmetric axis? | The asymmetric axis | 2026-09-23 |
 | 16 | Mirror on a symmetric layout? | Disabled | 2026-09-23 |
 | 17 | Mirror state when layout or count changes? | Reset to off | 2026-09-23 |
