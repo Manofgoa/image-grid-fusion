@@ -10,4 +10,12 @@
     <RootNamespace>ImageGridFusion</RootNamespace>
   </PropertyGroup>
 
+  <!-- dotnet publish -c Release: one small .exe, precompiled for fast startup; needs the .NET 10 Desktop Runtime. -->
+  <PropertyGroup>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <PublishReadyToRun>true</PublishReadyToRun>
+  </PropertyGroup>
+
 </Project>
