@@ -247,7 +247,7 @@ internal sealed class MainForm : Form
         Cursor.Current = Cursors.WaitCursor;
         try
         {
-            using var result = Compositor.Render(_preview.Images, _preview.ActiveLayout!);
+            using var result = Compositor.Render(_preview.Images, _preview.ActiveLayout!, _preview.CropThreshold);
             using var png = new MemoryStream();
             result.Save(png, ImageFormat.Png);
 
@@ -286,7 +286,7 @@ internal sealed class MainForm : Form
         Cursor.Current = Cursors.WaitCursor;
         try
         {
-            using var result = Compositor.Render(_preview.Images, _preview.ActiveLayout!);
+            using var result = Compositor.Render(_preview.Images, _preview.ActiveLayout!, _preview.CropThreshold);
             result.Save(dialog.FileName, ImageFormat.Png);
             ShowStatus($"Saved {Path.GetFileName(dialog.FileName)} ({result.Width} × {result.Height}).");
         }
