@@ -9,8 +9,8 @@
 
 ## Overview
 
-Today a drag gives almost no visual feedback: dragging a cell onto another only switches the
-cursor to `SizeAll` and tints the target cell; dragging files from Explorer only shows the `Copy`
+Before this task, a drag gave almost no visual feedback: dragging a cell onto another only switched the
+cursor to `SizeAll` and tinted the target cell; dragging files from Explorer only showed the `Copy`
 cursor. This task adds a **ghost**, a translucent thumbnail that follows the cursor, to both kinds
 of drag, highlights the cell that will receive the drop, and dims the source cell during a swap.
 
@@ -41,72 +41,64 @@ right of the canvas, highlighted while files are dragged over it. See Open Quest
 
 ---
 
-## In-Grid Swap — Current State
+## In-Grid Swap
+
+What `GridPreview` does since this task (commit `aafb58e`):
 
 - The drag starts once the cursor leaves the `SystemInformation.DragSize` dead zone around the
-  press point. The control keeps the mouse capture until release, so move events keep coming
-  even outside its bounds.
-- `OnPaint` draws the cached composition, then one target overlay (`Highlight` at alpha 90):
-  `_dropTarget` during a swap when it is a cell other than `_pressed`, else `_externalTarget`
-  (the file drop target). Then the selection border, then the × on hover (hidden while dragging).
-- On release over another cell, `Swap` exchanges the two images and the selection follows the
-  dragged image.
-
-## In-Grid Swap — Planned
-
-- **Ghost** (Q&A #8): a thumbnail of the source cell **as it appears in the preview** (its region
-  of the cached composition), scaled to **~40 % of the cell size** (aspect kept), drawn at
-  **70 % opacity**.
-  - **Anchored at the grab point**: the point pressed inside the cell keeps its relative position
-    inside the ghost — `ghost.Location = cursor − (pressPoint − cell.Location) × 0.4`.
+  press point (`StartDrag`). The control keeps the mouse capture until release, so move events
+  keep coming even outside its bounds.
+- **Ghost** (Q&A #8): at drag start, the source cell's region of the cached composition (the cell
+  **as the preview shows it**) is scaled once into a ghost bitmap at **40 % of the cell size**
+  (`GhostScale`, aspect kept, high-quality bicubic). It is drawn at **70 % opacity**
+  (`GhostOpacity`, colour matrix) at every paint.
+  - **Anchored at the grab point**: `ghost.Location = cursor − (pressPoint − cell.Location) × 0.4`.
   - Painted **last** in `OnPaint`, above the dimming, the target highlight and the selection
     border.
-  - **Clipped at the preview's edges** (Q&A #9): drawn by `GridPreview` itself, no extra window.
-    The capture keeps it tracking the cursor, and it reappears as soon as the cursor comes back.
-  - On each mouse move while dragging, only the old and new ghost rectangles are invalidated
-    (plus the cells whose highlight changes), not the whole control.
-- **Source cell dimmed** (Q&A #10): a dark translucent overlay (black, in the style of the ×
-  button) painted over `cells[_pressed]` while `_dragging`.
-- **Target highlight**: kept as it is today (`Highlight` overlay on the hovered cell, none on the
-  source cell itself).
-- On release or cancel, the ghost and the dimming disappear along with the highlight.
+  - **Clipped at the preview's edges** (Q&A #9): drawn by `GridPreview` itself, no extra window;
+    it reappears as soon as the cursor comes back.
+  - On each mouse move, only the old and new ghost rectangles are invalidated; the whole control
+    is invalidated only when the target cell changes.
+- **Source cell dimmed** (Q&A #10): black overlay at alpha 120 (the × button uses 150) over
+  `cells[_pressed]` while dragging.
+- **Target highlight**: `Highlight` overlay at alpha 90 on the hovered cell, none on the source
+  cell itself — unchanged.
+- **End of drag** (`EndDrag`): on release (swap if over another cell), or on **capture loss**
+  (Alt+Tab, a dialog opening) which cancels the drag without swapping. The ghost bitmap is
+  disposed, dimming and highlight disappear.
+- Guard: if the pressed cell no longer exists when the drag would start or paint, nothing is
+  drawn for it (see the gap reported in Iteration 7).
 
 ---
 
-## File Drop — Current State
+## File Drop
 
-- `MainForm.OnDragEnter` accepts `DataFormats.FileDrop` with `DragDropEffects.Copy`.
-- `OnPreviewDragOver` calls `GridPreview.ShowDropTarget(cell)` with the hovered cell (or -1), which
-  highlights **that cell only**; nothing lights up outside a cell. `DragLeave` and `DragDrop`
-  clear it.
-- `OnDragDrop` loads the files off the UI thread: dropped onto a cell, the first file replaces it;
-  elsewhere they are added. `GridPreview.Add` applies the replace rule when full, inline:
-  `_selected >= 0 ? _selected : _images.Count - 1`.
-- No file is decoded during the drag.
+What `MainForm` and `GridPreview` do since this task (commits `bae3ca8`, `cc15f60`):
 
-## File Drop — Planned
-
-- **Ghost** (Q&A #6): **Windows' own drag image**, the thumbnail Explorer produces, with the
-  stack and file count when several files are dragged. The app decodes nothing during the drag.
-  - WinForms has to forward the drag to the shell's drop-target helper (`IDropTargetHelper`) for
-    the image to render over the window. To check during implementation: if .NET 10 WinForms
-    already does it, nothing to add; otherwise the preview and the form forward
-    `DragEnter` / `DragOver` / `DragLeave` / `Drop` to it.
-- **Highlight: everything that will receive the file** (Q&A #7). The existing `DragOver` /
-  `DragLeave` / `DragDrop` wiring stays; what changes is what `ShowDropTarget` can express: a
-  cell, the whole canvas, or nothing.
+- **Ghost** (Q&A #6): **Windows' own drag image**, the thumbnail Explorer produces (stack and
+  count for several files). The app decodes nothing during the drag.
+  - .NET 10 WinForms forwards the drag to the shell's drop-target helper only when
+    `DragEventArgs.DropImageType` is set (> `Invalid`), and the following `DragOver` events reuse
+    the value set in `DragEnter` (checked in `dotnet/winforms` `DropTarget.cs`). `OnDragEnter`
+    therefore sets `DropImageType.Copy` whenever it accepts files; no drop-description text.
+- **Highlight: everything that will receive the file** (Q&A #7). `OnPreviewDragOver` passes the
+  cursor position (client coordinates) to `GridPreview.ShowDropTarget(Point?)`, which resolves the
+  target itself (`DropTargetBounds`) and stores it as a rectangle; `DragLeave` / `DragDrop` pass
+  `null`.
 
   | Cursor | Grid | Highlighted |
   |---|---|---|
   | Over a cell | any | That cell (it will be replaced) |
   | Outside every cell | not full (empty included) | The whole canvas (the file will be appended) |
-  | Outside every cell | full | The cell the replace rule picks: the selected cell, else the last in reading order |
+  | Outside every cell | full | The cell the excess rule picks: the selected cell, else the last in reading order |
 
-  The overlay is the same `Highlight` tint as the in-grid swap. The rule mirrors Milestone 2's
-  intake rules, so it is read from the same logic rather than duplicated: the replace-rule index
-  is extracted from `GridPreview.Add` into a helper that both `Add` and the highlight use.
+  Same `Highlight` tint as the in-grid swap; on an empty grid it is painted over the dashed
+  empty state. The excess rule is one helper, `ExcessTarget()`, used by both `Add` and the
+  highlight.
   Only drags over the preview are highlighted; over the button row, Windows' drag image alone
   shows the drag.
+- Dropping itself is unchanged: onto a cell, the first file replaces it; elsewhere the files are
+  added (`AddFilesAsync(paths, target)`).
 - **Drop zone** (Q&A #13): this task is implemented **before** `20260923-drop-zone.md`. The
   whole-canvas highlight when appending **stays** once the drop zone exists; the strip only adds
   its own highlight when the cursor is over it.
@@ -147,6 +139,10 @@ updated.
       own target. Does the "whole canvas when appending" highlight stay, or does the strip take
       it over — and which of the two tasks is implemented first?~~ → Ghost first; the whole-canvas
       highlight stays, the strip adds its own highlight when hovered
+- [ ] Pressing `Delete` or `Ctrl+V` while a cell is being dragged changes the images under the
+      drag (found during the implementation run, pre-existing, not fixed): `_pressed` /
+      `_dropTarget` keep stale indexes, so the release may swap the wrong images or throw. Cancel
+      the drag whenever the images change?
 
 ---
 
@@ -210,6 +206,33 @@ question remains.
 Go given for **code only** (Q&A #14). Scope frozen as the design sections stand at Iteration 5.
 Unit tests stay declined (Q&A #11); the README is not part of the go.
 
+### Iteration 7 — 2026-09-23 — 🧭 Implementation choices
+
+Code delivered on `main` (user's choice) in three commits: in-grid ghost (`aafb58e`), file-drop
+highlight (`bae3ca8`), Windows drag image (`cc15f60`). Choices the frozen design did not state:
+
+- **Windows drag image**: checked in the WinForms source — the shell helper is only called when
+  `DropImageType` is set, so `OnDragEnter` sets `DropImageType.Copy` (no drop-description text).
+- **Ghost bitmap** built once at drag start (high-quality bicubic), then only blitted with 70 %
+  alpha, instead of rescaling the cell at every paint.
+- **Dimming**: black at alpha 120, a bit lighter than the × button's 150, so the source image
+  stays readable.
+- **Cancel** = mouse capture loss (Alt+Tab, a dialog); `Esc` does not cancel a drag (it still only
+  clears the selection, as before).
+- **`ShowDropTarget(Point?)`** replaces `ShowDropTarget(int)`: the preview resolves the target from
+  the cursor itself and keeps it as a rectangle, so the cell / canvas / excess-cell cases share one
+  code path.
+- **`ExcessTarget()`**: name of the helper extracted from `Add`.
+- **Empty grid**: the canvas highlight is painted over the dashed empty state.
+- **Guards** against a pressed cell that no longer exists (paint and drag start).
+
+Gap found, not fixed (scope freeze) — offered as an open question: `Delete` / `Ctrl+V` during a
+swap drag leaves stale indexes.
+
+Not verified on screen: the build passes (0 warnings), but no drag was driven in the running app.
+
+No project rule was broken.
+
 ---
 
 ## Implementation Log
@@ -219,9 +242,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 7 | 2026-09-23 | In-grid ghost, file-drop highlight, Windows drag image; on `main` |
 | Unit tests | 2 | 2026-09-23 | Declined by the user (Q&A #11) |
-| README | | | |
+| README | 6 | 2026-09-23 | Not part of the go (code only, Q&A #14) |
 
 ---
 
