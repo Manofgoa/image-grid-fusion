@@ -68,8 +68,13 @@ Agreed: the rotation plays in the grid preview itself.
 - Checking it starts the rotation from the current arrangement; unchecking it stops it and brings
   the images back to their own cells (the arrangement the user built).
 
-To settle: what happens to the preview's interactions (hover, select, swap, remove, sliders,
-drops) while it plays (see Open Questions).
+- **Pause on hover**: as soon as the mouse is over the preview, the rotation pauses and the grid
+  shows the user's own arrangement again; every interaction (hover outline, **×**, select, swap,
+  replace by drop, sliders, drop zone) works as usual on it. When the mouse leaves the preview,
+  the rotation restarts from that arrangement, taking any edit into account.
+- An edit that leaves a single image unchecks and disables `Carrousel`.
+- `Copy` / `Ctrl+C` is unchanged: it copies the still image of the user's own arrangement,
+  whatever step is on screen.
 
 ---
 
@@ -77,20 +82,19 @@ drops) while it plays (see Open Questions).
 
 Agreed: the rotation can be exported as a video file.
 
-Proposed technical route (from exploration, to be confirmed by the design):
-
 - **Encoder**: `Windows.Media.Editing.MediaComposition`, already used by `VideoFrames` to decode
   videos — one clip per arrangement, each lasting 1 s, rendered to an **MP4 (H.264)** file with
   `RenderToFileAsync`. No third-party library, in line with the README's *Tech* section.
 - **Frames**: each arrangement is rendered once with `Compositor` (images reordered so image *k*
   lands in its current cell), then handed to the composition.
-- **Canvas size**: `CanvasSizer` depends on which image lands in which cell, so it can differ from
-  one arrangement to the next, while a video needs one frame size — see Open Questions.
+- **Frame size**: `CanvasSizer` depends on which image lands in which cell, so it differs from one
+  arrangement to the next, while a video needs one frame size: the video uses the **largest canvas
+  over the N arrangements**, so no image is downscaled at any step (still clamped to 4096 px).
+  The live preview is not affected: it keeps fitting the grid to the window.
 - **H.264 constraints**: even dimensions (the 1200:628 height may come out odd); the canvas'
   4096 px maximum stays within what the Windows H.264 encoder accepts.
 - Cells holding a video, a PDF or a text show their **current page / frame, frozen** — the source
   video does not play inside the exported video.
-
 - **Length**: exactly **one full loop** — N seconds for N images, starting from the user's own
   arrangement; replayed in a loop, it has no visible seam.
 - **Trigger**: while `Carrousel` is checked, **`Save…` / `Ctrl+S` writes an MP4** instead of a PNG
@@ -100,13 +104,13 @@ Proposed technical route (from exploration, to be confirmed by the design):
 
 ## Test Impact
 
-The solution has no test project. Pure logic this feature adds (the arrangement at step *k*, the
-loop order, the fixed canvas size across arrangements) could be pinned by tests, but that would
-mean creating the first test project — see Open Questions.
+The solution has no test project, and the user chose to keep it that way: no test project is
+created for the rotation logic (loop order, arrangement at step *k*, fixed frame size). The
+feature is checked by running the app. No test is created or updated.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| — (pending the test-project question) | — | — |
+| — (no test project, by decision) | — | — |
 
 ---
 
@@ -116,10 +120,10 @@ mean creating the first test project — see Open Questions.
 - [x] ~~Video length: exactly one full loop (N seconds, loops seamlessly when replayed), or a user-chosen duration / number of loops?~~ → One full loop
 - [x] ~~How is the mode turned on: a toggle below the mirror toggle in the layout strip, or a toggle next to Copy / Save?~~ → A `Carrousel` check box in a new top toolbar
 - [x] ~~How is the video exported: `Save…` writes an MP4 instead of a PNG while the mode is on, or a separate `Save video…` button?~~ → `Save…` writes an MP4 while the mode is on
-- [ ] Preview interactions while the rotation plays: rotation pauses while the mouse is over the preview, any edit stops the mode, or interactions are disabled while it plays?
-- [ ] `Copy` while the mode is on: copies the still image of the starting arrangement, the arrangement currently shown, or is disabled?
-- [ ] Video frame size: the largest canvas over all N arrangements (no image downscaled at any step), or the canvas of the starting arrangement?
-- [ ] Tests: create a first test project to pin the rotation logic, or keep the solution test-free as so far?
+- [x] ~~Preview interactions while the rotation plays: rotation pauses while the mouse is over the preview, any edit stops the mode, or interactions are disabled while it plays?~~ → Pause on hover, back to the user's arrangement, everything stays editable
+- [x] ~~`Copy` while the mode is on: copies the still image of the starting arrangement, the arrangement currently shown, or is disabled?~~ → Still image of the user's own arrangement
+- [x] ~~Video frame size: the largest canvas over all N arrangements (no image downscaled at any step), or the canvas of the starting arrangement?~~ → Largest canvas over the N arrangements
+- [x] ~~Tests: create a first test project to pin the rotation logic, or keep the solution test-free as so far?~~ → No test project
 
 ---
 
@@ -145,6 +149,14 @@ First batch answered. Loop is clockwise and geometric (per-layout table, mirrore
 it); the video is one full loop; `Save…` writes an MP4 while the mode is on. The user rejected both
 proposed toggle placements: the mode is a `Carrousel` check box in a **new top toolbar**, which the
 app does not have yet. Four questions remain (interactions, Copy, frame size, tests).
+
+### Iteration 3 — 2026-09-24
+
+Second batch answered, no open question left. The rotation pauses while the mouse is over the
+preview, showing the user's own arrangement, fully editable, and restarts when it leaves. `Copy`
+keeps copying the still of the user's arrangement. The video uses the largest canvas over the N
+arrangements. No test project is created; the video export route (MediaComposition → MP4 H.264)
+moves from *proposed* to agreed.
 
 ---
 
@@ -175,10 +187,10 @@ Questions asked by the agent during design, with user responses.
 | 6 | Video length: one full loop or user-chosen? | One full loop | 2026-09-24 |
 | 7 | Where is the mode toggled? (below Mirror, or next to Copy / Save) | Neither — a `Carrousel` check box in a top toolbar |  2026-09-24 |
 | 8 | How is the video exported? | `Save…` writes an MP4 while the mode is on | 2026-09-24 |
-| 9 | Preview interactions while the rotation plays? | | 2026-09-24 |
-| 10 | What does Copy do while the mode is on? | | 2026-09-24 |
-| 11 | Video frame size? | | 2026-09-24 |
-| 12 | Create a first test project for the rotation logic? | | 2026-09-24 |
+| 9 | Preview interactions while the rotation plays? | Pause on hover, everything stays editable | 2026-09-24 |
+| 10 | What does Copy do while the mode is on? | Still image of the user's own arrangement | 2026-09-24 |
+| 11 | Video frame size? | Largest canvas over the N arrangements | 2026-09-24 |
+| 12 | Create a first test project for the rotation logic? | No | 2026-09-24 |
 
 ---
 
