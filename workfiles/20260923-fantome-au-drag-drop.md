@@ -28,13 +28,16 @@ Components involved:
   It already tracks `_pressed`, `_pressPoint`, `_dragging`, `_dropTarget` and paints a
   translucent highlight overlay on the target cell.
 - `src/ImageGridFusion/UI/MainForm.cs`: handles file drops on the form and on the preview
-  (`DragEnter` sets `Copy`, `DragDrop` loads the files). There is no `DragOver` handler, and the
-  preview is not told where the cursor is during an external drag.
+  (`DragEnter` sets `Copy`, `OnPreviewDragOver` tells the preview which cell is hovered through
+  `ShowDropTarget`, `DragLeave` / `DragDrop` clear it, `DragDrop` loads the files).
 
 Dependency: the target highlight for a file drop relies on **drop onto a cell replaces it** and on
-the **replace rule when full**, both from Milestone 2 of `20260923-application-v1.md`. That
-milestone has its go (Iteration 7 there) but is not delivered yet: right now every drop appends.
-**This task is implemented after Milestone 2** and reuses its cell targeting (Q&A #5).
+the **replace rule when full**, both from Milestone 2 of `20260923-application-v1.md`. This task
+is implemented after Milestone 2 and reuses its cell targeting (Q&A #5). **Milestone 2 is
+delivered** (`8696907`, v1 complete in `5d2584e`): the dependency is met.
+
+Overlap: `20260923-drop-zone.md` (designed, not implemented) adds an "Add images" strip to the
+right of the canvas, highlighted while files are dragged over it. See Open Questions.
 
 ---
 
@@ -43,9 +46,9 @@ milestone has its go (Iteration 7 there) but is not delivered yet: right now eve
 - The drag starts once the cursor leaves the `SystemInformation.DragSize` dead zone around the
   press point. The control keeps the mouse capture until release, so move events keep coming
   even outside its bounds.
-- `OnPaint` draws the cached composition, then the target overlay (`Highlight` at alpha 90) when
-  `_dropTarget` is a cell other than `_pressed`, then the selection border, then the × on hover
-  (hidden while dragging).
+- `OnPaint` draws the cached composition, then one target overlay (`Highlight` at alpha 90):
+  `_dropTarget` during a swap when it is a cell other than `_pressed`, else `_externalTarget`
+  (the file drop target). Then the selection border, then the × on hover (hidden while dragging).
 - On release over another cell, `Swap` exchanges the two images and the selection follows the
   dragged image.
 
@@ -72,8 +75,13 @@ milestone has its go (Iteration 7 there) but is not delivered yet: right now eve
 
 ## File Drop — Current State
 
-- `MainForm.OnDragEnter` accepts `DataFormats.FileDrop` with `DragDropEffects.Copy`. Nothing
-  else happens until `OnDragDrop` loads the files off the UI thread and appends them.
+- `MainForm.OnDragEnter` accepts `DataFormats.FileDrop` with `DragDropEffects.Copy`.
+- `OnPreviewDragOver` calls `GridPreview.ShowDropTarget(cell)` with the hovered cell (or -1), which
+  highlights **that cell only**; nothing lights up outside a cell. `DragLeave` and `DragDrop`
+  clear it.
+- `OnDragDrop` loads the files off the UI thread: dropped onto a cell, the first file replaces it;
+  elsewhere they are added. `GridPreview.Add` applies the replace rule when full, inline:
+  `_selected >= 0 ? _selected : _images.Count - 1`.
 - No file is decoded during the drag.
 
 ## File Drop — Planned
@@ -84,8 +92,9 @@ milestone has its go (Iteration 7 there) but is not delivered yet: right now eve
     the image to render over the window. To check during implementation: if .NET 10 WinForms
     already does it, nothing to add; otherwise the preview and the form forward
     `DragEnter` / `DragOver` / `DragLeave` / `Drop` to it.
-- **Highlight: everything that will receive the file** (Q&A #7). The preview is told the cursor
-  position during the drag (a `DragOver` handler), and forgets it on `DragLeave` / `DragDrop`.
+- **Highlight: everything that will receive the file** (Q&A #7). The existing `DragOver` /
+  `DragLeave` / `DragDrop` wiring stays; what changes is what `ShowDropTarget` can express: a
+  cell, the whole canvas, or nothing.
 
   | Cursor | Grid | Highlighted |
   |---|---|---|
@@ -94,7 +103,10 @@ milestone has its go (Iteration 7 there) but is not delivered yet: right now eve
   | Outside every cell | full | The cell the replace rule picks: the selected cell, else the last in reading order |
 
   The overlay is the same `Highlight` tint as the in-grid swap. The rule mirrors Milestone 2's
-  intake rules, so it is read from the same logic rather than duplicated.
+  intake rules, so it is read from the same logic rather than duplicated: the replace-rule index
+  is extracted from `GridPreview.Add` into a helper that both `Add` and the highlight use.
+  Only drags over the preview are highlighted; over the button row, Windows' drag image alone
+  shows the drag.
 
 ---
 
@@ -128,6 +140,9 @@ updated.
       Dark translucent overlay
 - [x] ~~Unit tests: none (consistent with v1), or create a test project for the extractable logic
       (ghost bounds)?~~ → None
+- [ ] Overlap with `20260923-drop-zone.md`: once the "Add images" strip exists, appending gets its
+      own target. Does the "whole canvas when appending" highlight stay, or does the strip take
+      it over — and which of the two tasks is implemented first?
 
 ---
 
@@ -167,6 +182,19 @@ All seven open questions answered (Q&A #5–#11); the design sections now descri
 Go for implementation asked (Q&A #12): **No**. The gate holds; the design stays as it is,
 waiting for Milestone 2 of `20260923-application-v1.md` to be delivered first.
 
+### Iteration 4 — 2026-09-23
+
+The user asked whether implementation can start. Re-reading the repository before answering:
+
+- **Milestone 2 was already delivered** (`8696907`, `5d2584e`), in parallel with this design.
+  The reason stated in Iteration 3 was therefore stale when written; the dependency is met.
+- The "Current State" sections described the Milestone 1 code: they now describe the existing
+  `OnPreviewDragOver` / `ShowDropTarget` wiring and the single highlight overlay. The planned
+  file-drop highlight becomes an extension of `ShowDropTarget` (cell / whole canvas / nothing)
+  plus a replace-rule helper shared with `Add`.
+- New open question: overlap with the not-yet-implemented `20260923-drop-zone.md`, whose strip
+  also highlights during a file drag.
+
 ---
 
 ## Implementation Log
@@ -200,6 +228,7 @@ Questions asked by the agent during design, with user responses.
 | 10 | Source cell dimming style? | Dark translucent overlay | 2026-09-23 |
 | 11 | Unit tests: none, or a test project for the ghost bounds? | None | 2026-09-23 |
 | 12 | Go for implementation? | No — the gate holds | 2026-09-23 |
+| 13 | Overlap with the drop zone: does the whole-canvas append highlight stay, and which task goes first? | | |
 
 ---
 
