@@ -8,8 +8,9 @@ namespace ImageGridFusion.Composition;
 /// <summary>
 /// Color of the bands of a cell: the background of the part of the image the cell shows, when at
 /// least three of its sides carry one uniform color, otherwise the most frequent color of its sides,
-/// and the <see cref="Dominant"/> color of the whole image only when those sides are transparent. Keeps a downsampled copy of the frame it was computed on, so the part shown (cell,
-/// zoom, focus) can change without that frame, and an animation keeps its color while playing.
+/// and the <see cref="Dominant"/> color of the whole image only when those sides are transparent.
+/// Keeps a downsampled copy of the frame it was computed on, so the part shown (cell, zoom, focus)
+/// can change without that frame, and an animation keeps its color while playing.
 /// </summary>
 public sealed class BandColor
 {
@@ -25,8 +26,6 @@ public sealed class BandColor
     private const double UniformShare = 0.9;
 
     private const int VotesNeeded = 3;
-
-    private static readonly double[] Linear = BuildLinearTable();
 
     private readonly int[] _pixels;
     private readonly int _width;
@@ -133,7 +132,7 @@ public sealed class BandColor
                 }
 
                 var group = Enumerable.Range(0, n).Where(i => (mask & 1 << i) != 0).Select(i => sides[i]).ToList();
-                if (group.All(a => group.All(b => Distance(a.Lab, b.Lab) <= Tolerance)))
+                if (group.All(a => group.All(b => a.Lab.DistanceTo(b.Lab) <= Tolerance)))
                 {
                     return Color.FromArgb(
                         (int)Math.Round(group.Average(s => s.Color.R)),
@@ -148,8 +147,8 @@ public sealed class BandColor
 
     /// <summary>
     /// Most frequent color of the sides of <paramref name="region"/>, over the same bands as the
-    /// uniform test: opaque pixels quantized to 4 bits per channel, the most populated bucket wins
-    /// and its pixels are averaged. None when the sides are transparent.
+    /// uniform test: opaque pixels quantized to 4 bits per channel, then voted on as
+    /// <see cref="DominantColor.MostFrequent"/> does. None when the sides are transparent.
     /// </summary>
     private Color? MostFrequentOnSides(Rectangle region)
     {
@@ -183,9 +182,7 @@ public sealed class BandColor
             }
         }
 
-        int best = Array.IndexOf(counts, counts.Max());
-        int n = counts[best];
-        return n == 0 ? null : Color.FromArgb((int)(sums[best, 0] / n), (int)(sums[best, 1] / n), (int)(sums[best, 2] / n));
+        return DominantColor.MostFrequent(counts, sums);
     }
 
     /// <summary>Depth of the side bands of <paramref name="region"/>, horizontally and vertically.</summary>
@@ -213,7 +210,7 @@ public sealed class BandColor
                 r += pr;
                 g += pg;
                 b += pb;
-                labs[opaque++] = ToLab(pr, pg, pb);
+                labs[opaque++] = Lab.Of(pr, pg, pb);
             }
         }
 
@@ -224,11 +221,11 @@ public sealed class BandColor
         }
 
         var mean = Color.FromArgb((int)(r / opaque), (int)(g / opaque), (int)(b / opaque));
-        var meanLab = ToLab(mean.R, mean.G, mean.B);
+        var meanLab = Lab.Of(mean);
         int matching = 0;
         for (int i = 0; i < opaque; i++)
         {
-            if (Distance(labs[i], meanLab) <= Tolerance)
+            if (labs[i].DistanceTo(meanLab) <= Tolerance)
             {
                 matching++;
             }
@@ -236,36 +233,6 @@ public sealed class BandColor
 
         return matching >= UniformShare * opaque ? new Side(mean, meanLab) : null;
     }
-
-    private static Lab ToLab(int r, int g, int b)
-    {
-        double lr = Linear[r], lg = Linear[g], lb = Linear[b];
-
-        // sRGB to XYZ (D65), each axis divided by the white point.
-        double x = (0.4124 * lr + 0.3576 * lg + 0.1805 * lb) / 0.95047;
-        double y = 0.2126 * lr + 0.7152 * lg + 0.0722 * lb;
-        double z = (0.0193 * lr + 0.1192 * lg + 0.9505 * lb) / 1.08883;
-
-        double fx = F(x), fy = F(y), fz = F(z);
-        return new Lab(116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz));
-
-        static double F(double t) => t > 216.0 / 24389 ? Math.Cbrt(t) : (24389.0 / 27 * t + 16) / 116;
-    }
-
-    private static double Distance(Lab a, Lab b)
-    {
-        double dl = a.L - b.L, da = a.A - b.A, db = a.B - b.B;
-        return Math.Sqrt(dl * dl + da * da + db * db);
-    }
-
-    /// <summary>sRGB channel value to linear light.</summary>
-    private static double[] BuildLinearTable() => Enumerable.Range(0, 256).Select(i =>
-    {
-        double c = i / 255.0;
-        return c <= 0.04045 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
-    }).ToArray();
-
-    private readonly record struct Lab(double L, double A, double B);
 
     private readonly record struct Side(Color Color, Lab Lab);
 
