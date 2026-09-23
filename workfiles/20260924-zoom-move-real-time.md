@@ -179,7 +179,7 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 3, 4 | 2026-09-24 | `cf72d93` fast `DrawCell`, `e6c55db` live pan and zoom slider, `ca58a79` wheel zoom; builds with 0 warnings. Manual verification pending |
+| Code | 3, 4 | 2026-09-24 | `cf72d93` fast `DrawCell`, `e6c55db` live pan and zoom slider, `ca58a79` wheel zoom; builds with 0 warnings. Validated by hand by the user on 2026-09-24 |
 | Unit tests | 2 | 2026-09-24 | Declined — solution kept test-free (Q&A #8) |
 | README | 3 | 2026-09-24 | `3f84202` zoom slider, wheel zoom, pan and live display |
 
