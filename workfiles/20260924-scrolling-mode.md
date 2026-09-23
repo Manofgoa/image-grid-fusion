@@ -158,6 +158,13 @@ keeps copying the still of the user's arrangement. The video uses the largest ca
 arrangements. No test project is created; the video export route (MediaComposition → MP4 H.264)
 moves from *proposed* to agreed.
 
+### Iteration 4 — 2026-09-24 — ✅ Implemented
+
+The go was declined twice, then given for the code ("Go implémente"): code only, no README
+update, no test by earlier decision. Branch Gate: stays on `main`, the standing choice for this
+repository; other sessions work on `main` in parallel, so the run commits often and stages only
+its own files.
+
 ---
 
 ## Implementation Log
