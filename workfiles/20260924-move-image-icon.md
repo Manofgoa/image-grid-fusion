@@ -52,17 +52,15 @@ along the left edge, page slider along the bottom. **The center of the cell is f
 
 ### Position and size
 
-- The handle is a disc **centered in the cell**.
-- Its diameter follows the cell (see Open Question on sizing): larger than today, so it can be
-  hit without aiming.
-- The old handle below the × disappears (see Open Question).
+- The handle is a disc **centered in the cell**, **48 logical px** in diameter (twice today's),
+  the same in every cell that has room for it.
+- The old handle below the × is **removed**: the central one replaces it.
 
 ### Look
 
 - Same visual language as today: dark translucent disc, four white arrows (✥), arrow strokes
   thicker in proportion to the size.
-- Hot state (mouse over the handle): more opaque, as today.
-- How visible it is while the mouse is elsewhere in the cell: see Open Question.
+- Resting opacity **like the ×** (alpha 150), 230 when the mouse is over the handle — as today.
 
 ### Interaction
 
@@ -73,8 +71,9 @@ along the left edge, page slider along the bottom. **The center of the cell is f
 
 ### Small cells
 
-- When the cell is too small for the handle not to collide with the other controls: see Open
-  Question.
+- When the centered 48 px disc would overlap another control (×, toolbar rows, zoom slider,
+  page slider), it **shrinks**, still centered, down to **24 px**.
+- Below 24 px, it **falls back** to today's spot and size: 24 px just below the ×.
 
 ### README
 
@@ -97,10 +96,10 @@ painting in `GridPreview`: **nothing to create or update**. Checked by running t
 
 ## Open Questions
 
-- [ ] Handle size: fixed (e.g. 48 px, twice today's), or proportional to the cell (e.g. a quarter of its short side, clamped between 32 and 64 px)?
-- [ ] The old small handle below the ×: removed (replaced by the central one), or kept as well?
-- [ ] Visibility while the mouse is in the cell but not on the handle: as opaque as the × (alpha 150), or discreet (fainter) so it hides less of the image, then fully opaque when hovered?
-- [ ] Cells too small for a central handle clear of the other controls: shrink it down to 24 px, and below that fall back to today's spot under the ×? Or always keep it centered, overlapping if need be?
+- [x] ~~Handle size: fixed (e.g. 48 px, twice today's), or proportional to the cell (e.g. a quarter of its short side, clamped between 32 and 64 px)?~~ → Fixed 48 px
+- [x] ~~The old small handle below the ×: removed (replaced by the central one), or kept as well?~~ → Removed
+- [x] ~~Visibility while the mouse is in the cell but not on the handle: as opaque as the × (alpha 150), or discreet (fainter) so it hides less of the image, then fully opaque when hovered?~~ → Like the × (alpha 150, 230 when hot)
+- [x] ~~Cells too small for a central handle clear of the other controls: shrink it down to 24 px, and below that fall back to today's spot under the ×? Or always keep it centered, overlapping if need be?~~ → Shrink down to 24 px, then fall back under the ×
 
 ---
 
@@ -117,6 +116,13 @@ Initial proposal from the scoping answers (central handle, mouse only, swap hand
 the scout pass on `GridPreview.cs`: a large ✥ disc centered in the hovered cell, same drag
 behaviour, the center simply stops being a pan zone. Sizing, removal of the old handle,
 resting visibility and small-cell fallback left as Open Questions. README swap line to fix.
+
+### Iteration 2 — 2026-09-24
+
+Open Questions answered (Q&A 5–8): fixed 48 px, old handle removed, resting opacity like the ×,
+and in cells too small the centered disc shrinks down to 24 px before falling back under the ×.
+The 48 px is the size wherever it fits; the shrink only applies when it would overlap another
+control. Design sections updated; no Open Question left.
 
 ---
 
@@ -143,10 +149,11 @@ Questions asked by the agent during design, with user responses.
 | 2 | Which devices must it work on? | Mouse only | 2026-09-24 |
 | 3 | Scope: moving only, or harmonize the other cell icons too? | Moving only | 2026-09-24 |
 | 4 | Is the subject simple or tricky / long? | Simple | 2026-09-24 |
-| 5 | Handle size: fixed or proportional to the cell? | | 2026-09-24 |
-| 6 | Old handle below the ×: removed or kept? | | 2026-09-24 |
-| 7 | Resting visibility: as opaque as the × or discreet? | | 2026-09-24 |
-| 8 | Small cells: shrink then fall back under the ×, or always centered? | | 2026-09-24 |
+| 5 | Handle size: fixed or proportional to the cell? | Fixed 48 px | 2026-09-24 |
+| 6 | Old handle below the ×: removed or kept? | Removed | 2026-09-24 |
+| 7 | Resting visibility: as opaque as the × or discreet? | Like the × | 2026-09-24 |
+| 8 | Small cells: shrink then fall back under the ×, or always centered? | Shrink, then fall back under the × | 2026-09-24 |
+| 9 | Go for implementation? | | 2026-09-24 |
 
 ---
 
