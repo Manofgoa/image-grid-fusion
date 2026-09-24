@@ -36,13 +36,15 @@ The project has **no NuGet dependency**: video goes through Media Foundation by 
 
 - Replaces `_forceImage` at the same place in `_outputButtons` (between ⚙ and Copy).
 - A `ComboBox` in `DropDownList` style, items in this order: **Image**, **GIF**, **Video**.
-- **Nothing animatable** (`!HasAnimation`): GIF and Video are **greyed out** and cannot be
-  selected; Image is selected. WinForms has no native disabled item: the list is owner-drawn
+- **Animatable** means: the grid holds animated content (`HasAnimation`), **or** the carousel is
+  on (`ExportsCarousel`) — the carousel moves even static images.
+- **Nothing animatable**: GIF and Video are **greyed out** and cannot be selected; Image is
+  selected. WinForms has no native disabled item: the list is owner-drawn
   (greyed text), and picking a greyed item puts the previous choice back.
 - **Default**: Video when the grid holds animatable content, else Image.
 - **Reset**: **any content change** — adding, removing or replacing a media (`ImagesChanged`) —
-  puts the default back, even when the animatable state does not change. A manual choice lasts
-  until the next content change.
+  puts the default back, even when the animatable state does not change. **Toggling the
+  carousel** does too. A manual choice lasts until the next of these changes.
 - **While exporting**: the dropdown is disabled, as the checkbox was.
 - **Preview**: Image freezes the preview (`ForceStill = true`), as the checked box did; GIF and
   Video let it play.
@@ -61,7 +63,10 @@ The project has **no NuGet dependency**: video goes through Media Foundation by 
 - **Known consequence** of the same settings: a large canvas (up to 4096 px wide) at 30 fps makes
   heavy GIF files. Accepted as the user's choice (Q&A #3).
 - **Save**: filter `GIF image (*.gif)|*.gif`, default name `fusion-yyyyMMdd-HHmmss.gif`.
-- **Copy**: see Open Questions.
+- **Copy**: the GIF is written to `%TEMP%\ImageGridFusion` (like the copied video) and put on the
+  clipboard **both** as a file (file drop list, pastable in Explorer, chat apps, mail) **and** as
+  the raw bytes in the `GIF` clipboard format, which some apps paste directly. The start-up
+  cleanup of that folder removes `.gif` files as well as `.mp4`.
 - **Status line**: the same summary as the video, with `GIF` as the format.
 - **Cancel / failure**: same behaviour as the video — progress `Exporting the GIF… n %`, the Cancel
   button, the incomplete file deleted.
@@ -72,13 +77,24 @@ The project has **no NuGet dependency**: video goes through Media Foundation by 
   to a sink instead of `VideoEncoder` directly: a small interface with
   `WriteFrame(Bitmap, TimeSpan time, TimeSpan duration)` and `Finish()`, implemented by
   `VideoEncoder` and by a new `Imaging/GifEncoder.cs`. The loop itself is not duplicated.
-- The encoder behind `GifEncoder`: see Open Questions.
+- `GifEncoder` uses **Windows' built-in WIC GIF encoder** by COM interop, as `VideoEncoder` uses
+  Media Foundation: no NuGet dependency. Each frame is converted to 8-bit indexed with a palette
+  WIC computes from it; the frame delay goes in the Graphic Control Extension
+  (`/grctlext/Delay`), the infinite loop in the NETSCAPE2.0 application extension
+  (`/appext/Application`, `/appext/Data`) on the encoder's metadata.
 
 ## Carousel Interplay
 
 With **Carrousel** checked, Copy and Save always produce the carousel's MP4 today, "Force as
-image" only freezing the contents while they move. How the dropdown behaves then: see Open
-Questions.
+image" only freezing the contents while they move. With the dropdown:
+
+- The carousel counts as **animatable**: GIF and Video are enabled even with static images, and
+  checking or unchecking it resets the default (Video when checked).
+- **Video**: the carousel's MP4, contents playing (today's unchecked behaviour).
+- **GIF**: the carousel as an infinitely looping GIF, contents playing, no sound —
+  `CarouselExport` writes to `GifEncoder` through the same frame sink.
+- **Image**: today's "Force as image" behaviour is kept — the carousel's MP4, contents frozen on
+  the page each shows, silent.
 
 ---
 
@@ -98,9 +114,9 @@ The solution holds no unit test project (`ImageGridFusion.slnx` references only
 - [x] ~~What resets the dropdown to its default?~~ → Any content change, even when the animatable state stays the same
 - [x] ~~With nothing animatable, what happens to GIF and Video?~~ → Greyed out, not selectable
 - [x] ~~Which settings does the GIF use?~~ → The video's: length, starting frames, 30 fps
-- [ ] With **Carrousel** checked, how does the dropdown behave (enabled choices, what Image means, does toggling the carousel reset the default)?
-- [ ] **Copy** as GIF: a `.gif` file on the clipboard (like the video), or the file plus the raw `GIF` clipboard format?
-- [ ] Which **GIF encoder**: Windows' built-in WIC encoder by COM interop, a hand-written encoder, or a NuGet package?
+- [x] ~~With **Carrousel** checked, how does the dropdown behave (enabled choices, what Image means, does toggling the carousel reset the default)?~~ → The carousel counts as animatable (GIF/Video enabled, toggling resets the default); GIF/Video export the carousel in that format; Image keeps today's frozen-contents carousel MP4
+- [x] ~~**Copy** as GIF: a `.gif` file on the clipboard (like the video), or the file plus the raw `GIF` clipboard format?~~ → Both: the file and the raw `GIF` format
+- [x] ~~Which **GIF encoder**: Windows' built-in WIC encoder by COM interop, a hand-written encoder, or a NuGet package?~~ → Windows' WIC encoder by COM interop
 
 ---
 
@@ -117,6 +133,14 @@ Initial proposal. The "Force as image" checkbox becomes an Image / GIF / Video d
 from the content (Video when animatable, else Image), reset on any content change; GIF and Video
 greyed out on static content. The GIF reuses the video's frame loop and settings, loops forever,
 has no sound. Three questions left: carousel interplay, GIF copy format, GIF encoder.
+
+### Iteration 2 — 2026-09-24
+
+The three open questions answered (Q&A #5–7). The carousel counts as animatable content: it
+enables GIF and Video, toggling it resets the default, GIF exports the carousel as a looping GIF,
+Image keeps today's frozen-contents carousel MP4. Copy as GIF puts both the file and the raw
+`GIF` clipboard format. The GIF is encoded with Windows' WIC encoder; the temp cleanup covers
+`.gif` files.
 
 ---
 
@@ -143,9 +167,9 @@ Questions asked by the agent during design, with user responses.
 | 2 | With nothing animatable, what happens to the GIF and Video options? | Greyed out | 2026-09-24 |
 | 3 | Which settings does the GIF use? | The same as the video | 2026-09-24 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward — a single scout pass | 2026-09-24 |
-| 5 | With Carrousel checked, how does the dropdown behave? | | |
-| 6 | Copy as GIF: file only, or file plus the raw GIF clipboard format? | | |
-| 7 | Which GIF encoder? | | |
+| 5 | With Carrousel checked, how does the dropdown behave? | The carousel counts as animatable; Image keeps the frozen-contents carousel MP4 | 2026-09-24 |
+| 6 | Copy as GIF: file only, or file plus the raw GIF clipboard format? | File plus the raw GIF format | 2026-09-24 |
+| 7 | Which GIF encoder? | Windows' WIC encoder (COM interop) | 2026-09-24 |
 
 ---
 
