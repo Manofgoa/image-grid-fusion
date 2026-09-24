@@ -170,6 +170,7 @@ Questions asked by the agent during design, with user responses.
 | 5 | With Carrousel checked, how does the dropdown behave? | The carousel counts as animatable; Image keeps the frozen-contents carousel MP4 | 2026-09-24 |
 | 6 | Copy as GIF: file only, or file plus the raw GIF clipboard format? | File plus the raw GIF format | 2026-09-24 |
 | 7 | Which GIF encoder? | Windows' WIC encoder (COM interop) | 2026-09-24 |
+| 8 | Design stable — start the implementation? | No — the gate holds | 2026-09-24 |
 
 ---
 
