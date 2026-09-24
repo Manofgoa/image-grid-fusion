@@ -197,6 +197,8 @@ Implemented as `DominantColor.MostFrequent`, shared by `DominantColor.Compute` a
 `BandColor.MostFrequentOnSides`. The CIELAB conversion and distance moved from `BandColor` to a
 shared `Lab` struct (`Composition/Lab.cs`), used by both.
 
+Validated by hand by the user on the poster: the bands are red. Task confirmed finished.
+
 ---
 
 ## Implementation Log
