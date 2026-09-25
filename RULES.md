@@ -23,8 +23,12 @@ Apply to **every effect**, the blur being the first one
 
 ### Effects Toolbar
 
-- An **always-visible row below the top bar**, one toggle button per effect. Nothing is added to
-  the cell's hover toolbar.
+- An **always-visible row below the top bar**: an **Effects** label, one toggle button per effect,
+  then a **Reset** button (not an effect). Every action on the image is an effect: the cell itself
+  only keeps the **×**, the **✥** swap handle, and the wheel and drag gestures (origin:
+  `workfiles/20260925-toolbar.md`).
+- An effect that does not apply to the selected image (e.g. Frames on a still image) has its button
+  **disabled**.
 - A button is **pressed** when its effect is active on the **selected cell**. With no cell
   selected, the toolbar stays visible but **disabled**.
 - Clicks:
