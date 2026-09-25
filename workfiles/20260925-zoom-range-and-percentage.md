@@ -28,8 +28,9 @@ Scope agreed with the user (Q&A #1–#8):
 - Exploration depth: straightforward — a single scout pass.
 
 Relevant components: `Composition/ImageLook.cs` (`MinZoom`, `MaxZoom`, `WithZoom`),
-`UI/GridPreview.cs` (`ZoomAt`, `ZoomTo`, `ZoomTrack`, `OnPaint`, `BarColor`, `PaintBlurBars`,
-`PaintPanGuides`, `CloseBounds`, `_wheelEnd`), `README.md`, `RULES.md`, `GLOSSARY.md`.
+`UI/GridPreview.cs` (`ZoomAt`, `ZoomSelected`, `OnPaint`, `HelperColor`, `HelperHalo`,
+`PaintBlurBars`, `PaintPanGuides`, `CloseBounds`, the zoom badge), `UI/MainForm.cs` (`_zoom`, the
+**Zoom** effect's slider), `README.md`, `RULES.md`, `GLOSSARY.md`.
 
 ---
 
@@ -43,8 +44,10 @@ Relevant components: `Composition/ImageLook.cs` (`MinZoom`, `MaxZoom`, `WithZoom
 - **Inputs changing the zoom**:
   - mouse wheel over a cell — `OnMouseWheel` → `ZoomAt` (`GridPreview.cs:1500-1526`), multiplicative,
     `NotchesPerDoubling = 4`, crossing 100 % stops on it;
-  - the zoom slider along the cell's left edge while hovered — `ZoomTo` (`GridPreview.cs:1468`),
-    log2 scale between `MinZoom` and `MaxZoom` (`ZoomTrack`, `ZoomFraction`, `ZoomY`), snaps to 100 %;
+  - the zoom slider — found along the cell's left edge by the scout pass; **when the go was given
+    it had moved to the options toolbar** (work of a parallel session): the **Zoom** effect's
+    `TrackBar` in `MainForm` (`_zoom`, in hundredths of a doubling between `log2(MinZoom)` and
+    `log2(MaxZoom)`, snapping to 100 %) → `GridPreview.ZoomSelected` on the selected cell;
   - no keyboard shortcut; the hover toolbar's *Reset* resets it with the other actions.
 - **Moved image**: `FitCalculator.MinCoveredShare = 0.1` keeps `min(10 % of the cell, drawn size)`
   covered **per axis** — a smaller minimum zoom does not conflict with it.
@@ -78,33 +81,39 @@ Relevant components: `Composition/ImageLook.cs` (`MinZoom`, `MaxZoom`, `WithZoom
 - **10 % → 1600 %** (`MinZoom = 0.1`, `MaxZoom = 16`, Q&A #5): about 7.3 doublings instead of 3,
   ~29 wheel notches end to end (`NotchesPerDoubling` unchanged). The last notch towards 10 % lands on
   the clamp, as the last notch towards a bound does today.
-- The slider keeps its height and its log scale: each doubling takes ~40 % of the length it takes
-  today. 100 % moves from a third of the track (from the bottom) to ~45 % (3.3 octaves below, 4
-  above); its snap is unchanged.
-- The `ZoomTrack` comment ("50 % → 100 % and each doubling take the same length") is updated.
+- The options-toolbar slider derives its range from the constants (`-332 … 400` hundredths of a
+  doubling), so it follows with no change: same width, same log scale, each doubling taking ~40 %
+  of the length it took; 100 % moves from a third of the track to ~45 %; its snap is unchanged. Its
+  lowest step, 2^-3.32, is clamped to exactly 10 %.
 - The bounds stay in `ImageLook` only; `WithZoom` stays the single clamp.
 
 ---
 
 ## Zoom Percentage
 
-- **Trigger**: every zoom change on a cell — wheel (`ZoomAt`) and slider (`ZoomTo`) alike. Not a
-  *Reset* click (it is not a zoom gesture). Shown on the **cell being zoomed**, selected or not.
+- **Trigger**: every zoom step on a cell — wheel (`ZoomAt`, any cell) and the **Zoom** effect's
+  slider (`ZoomSelected`, the selected cell) alike — a step pushing against a bound included, the
+  badge then reading `10 %` or `1600 %`. Not a *Reset* click, nor the slider synced when another
+  cell is selected. Shown on the **cell being zoomed**, selected or not.
 - **Value**: `Zoom × 100`, rounded to the unit, formatted `119 %`. It reads `100 %` when the zoom
   stops on it.
 - **Lifetime**: fully opaque while the zoom changes; held **1 s** after the last change, then fades
   out over **300 ms**. A new change during the fade brings it back to full opacity. Zooming another
   cell moves it there at once (one badge at a time).
-- **Look**: fluorescent green text over the **black halo** used by the bars and guides (a text
-  outline via a `GraphicsPath`), bold, fixed logical size scaled with `LogicalToDeviceUnits` — a
-  helper indicator, not part of the composition, so it does not scale with the cell.
+- **Look**: `HelperColor` text over `HelperHalo` — a `GraphicsPath` of the text, stroked with a
+  4 px round-joined halo then filled — in the control's font family, bold, 16 logical px scaled with
+  `LogicalToDeviceUnits`: a helper indicator, not part of the composition, so it does not scale
+  with the cell. Clipped to its cell.
 - **Position**: top-right corner of the cell, right-aligned on the close button's right edge,
   **just below the close button** (Q&A #6) — same 6 px inset, a `ButtonGap` below `CloseBounds`, so
   both stay visible. It keeps that place whether the hover toolbar is shown or not.
-- **Drawing**: a `PaintZoomBadge` method called from `OnPaint` beside `PaintBlurBars` /
-  `PaintPanGuides`; never in `Compositor`, so never in the exports nor the video export.
-- **Fade**: a dedicated `System.Windows.Forms.Timer` (~30 ms ticks during the fade only), each tick
-  invalidating the badge area only; stopped once transparent.
+- **Drawing**: `PaintZoomBadge`, called from `OnPaint` last before the drag ghost — above the ×
+  and the swap handle; never in `Compositor`, so never in the exports nor the video export. The
+  badge follows its **image** (`_zoomBadgeImage`), drawn on the cell showing it; a removed image
+  drops it.
+- **Fade**: a dedicated `System.Windows.Forms.Timer` (`_zoomBadgeTimer`): one tick waits out the
+  hold, then 30 ms ticks during the fade only, each invalidating the badge area only (where it was
+  last painted, and where it is now); stopped once transparent.
 
 ---
 
@@ -184,6 +193,27 @@ Go given ("GO", after a first "No"), read as **code, unit tests and documentatio
 `RULES.md` is part of the request itself. Branch gate: **stay on `main`** — the standing choice for
 this app. Scope frozen as described above.
 
+### Iteration 4 — 2026-09-25 — 🧭 Implementation choices
+
+No project rule broken.
+
+- **The zoom slider had moved** between the scout pass and the go: a parallel session put it in
+  the options toolbar (**Zoom** effect, `MainForm._zoom` → `GridPreview.ZoomSelected`). The badge is
+  raised from `ZoomSelected` instead of the former `ZoomTo`; the slider's range derives from
+  `MinZoom` / `MaxZoom`, so it needed no change, and the planned `ZoomTrack` comment update no
+  longer applies (its `MainForm` counterpart, "50 % → 100 % and each doubling take the same length",
+  is still true and was kept).
+- **A step against a bound shows the badge too** (`10 %` / `1600 %`), the zoom staying on it: it
+  tells why the wheel does nothing more.
+- **Badge look**: bold, 16 logical px, the control's font family; halo = a 4 px round-joined stroke
+  of the text path in `HelperHalo`; clipped to the cell; painted after the × and the swap handle.
+- **Timer**: one tick for the whole hold, then 30 ms ticks during the fade only.
+- **The badge follows its image**, not a cell index, so a swap or a removal during the hold does not
+  leave it on the wrong cell.
+- **Build**: an app instance was running and locked `bin/`; the builds went to a scratchpad output
+  folder instead of stopping it.
+- **Go read as the full scope** (code + documentation), the `RULES.md` rule being part of the request.
+
 ---
 
 ## Implementation Log
@@ -193,10 +223,11 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable — no test project |
-| README | | | |
-| RULES.md / GLOSSARY.md | | | |
+| Code | 3, 4 | 2026-09-25 | Range 10–1600 %, shared `HelperColor` / `HelperHalo`, zoom badge |
+| Unit tests | 3 | 2026-09-25 | Not applicable — no test project |
+| README | 3 | 2026-09-25 | Range and the zoom badge |
+| RULES.md / GLOSSARY.md | 3 | 2026-09-25 | *On-Cell Helper Indicators* rule, *Helper indicator* term |
+| Manual validation | | | Pending — the user tests the app |
 
 ---
 
