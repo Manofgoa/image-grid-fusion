@@ -80,6 +80,8 @@ them meaningless (see *Rules Amended*).
 ## Settings Menu
 
 - New item in the ⚙ menu: **Border color**, with a **color swatch** painted in the current color.
+- Default color, until the user picks one: **hotpink** (HTML `HotPink`, `#FF69B4` —
+  `Color.HotPink`).
 - A click opens the standard `ColorDialog`, preselected on the current color. **OK** → new color,
   applied at once to the grid and **persisted**; **Cancel** → nothing changes.
 - Persisted per user in the registry (`HKCU\Software\ImageGridFusion`), following the
@@ -141,7 +143,7 @@ blocking ones.
 - [ ] **Overlay or gap** — do the borders cover the edges of the images (cells unchanged), or
   shrink the cells to leave room for them?
 - [ ] **Thickness** — range and default?
-- [ ] **Default color** — before the user picks one?
+- [x] ~~**Default color** — before the user picks one?~~ → hotpink (`#FF69B4`)
 - [ ] **Effects *Reset* button** — does it leave the borders alone (it concerns the selected
   cell's effects)?
 - [ ] **Unit tests** — stay test-free like every previous workfile?
@@ -165,6 +167,11 @@ straightforward) — findings in *Current State*.
 Added from the user's follow-up message during exploration: a signature **Corners** style, the
 default — brackets at each corner covering 10 % of each edge; its color set from the ⚙ settings
 menu (item with a color swatch opening the color dialog), remembered between sessions.
+
+### Iteration 2 — 2026-09-26
+
+The user dismissed the first question batch (Q&A #5–#8, still open) and gave the default border
+color: **hotpink** (`#FF69B4`) — recorded in *Settings Menu*.
 
 ---
 
@@ -196,7 +203,7 @@ Questions asked by the agent during design, with user responses.
 | 7 | Active at start-up? What is remembered besides the color? | | 2026-09-26 |
 | 8 | Borders over the images, or cells shrunk to make room? | | 2026-09-26 |
 | 9 | Thickness range and default? | | 2026-09-26 |
-| 10 | Default color? | | 2026-09-26 |
+| 10 | Default color? | Hotpink (HTML), `#FF69B4` | 2026-09-26 |
 | 11 | Does the effects *Reset* button leave the borders alone? | | 2026-09-26 |
 | 12 | Unit tests: stay test-free? | | 2026-09-26 |
 
