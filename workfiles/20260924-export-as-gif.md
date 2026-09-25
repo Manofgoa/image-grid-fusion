@@ -123,6 +123,7 @@ The solution holds no unit test project (`ImageGridFusion.slnx` references only
 - [x] ~~Which buttons become **split buttons**: Copy and Save each, only Save, or a single Export button?~~ → Copy and Save each
 - [x] ~~Does a submenu choice **apply once** (exports right away, nothing remembered), or **stay** as the button's format until the next content change?~~ → Applies once
 - [x] ~~Does the button's main part **show the format** it will produce?~~ → Yes (`Copy MP4`, `Save PNG…`)
+- [ ] With the Frames effect's **Freeze**, is the submenu's **Image** entry obsolete too (and with it the frozen-contents carousel MP4)?
 
 ---
 
@@ -167,6 +168,15 @@ loses its only caller. GIF and MP4 Video are greyed in the submenu on static con
 carousel rules keep their meaning, Image from the submenu still giving the frozen-contents
 carousel MP4.
 
+### Iteration 5 — 2026-09-25
+
+User remark: the split buttons make "Force as image" obsolete, all the more since the **Frames**
+effect (delivered since Iteration 1) already picks a frame of a video and can **Freeze** it — a
+frozen cell exports as that still, and a grid whose contents are all frozen already exports as a
+PNG (`HasAnimation` now means *a content plays*, `SourceImage.Plays`). The checkbox is already
+removed since Iteration 4; the remark raises whether the submenu's **Image** entry is obsolete
+too (Q&A #13).
+
 ---
 
 ## Implementation Log
@@ -200,6 +210,7 @@ Questions asked by the agent during design, with user responses.
 | 10 | Does a submenu choice apply once, or stay as the button's format until the content changes? | Applies once | 2026-09-25 |
 | 11 | Does the main part of the button show the format it will produce? | Yes | 2026-09-25 |
 | 12 | Design stable — start the implementation? | No — the gate holds | 2026-09-25 |
+| 13 | With the Frames effect's Freeze, is the submenu's Image entry obsolete too? | | |
 
 ---
 
