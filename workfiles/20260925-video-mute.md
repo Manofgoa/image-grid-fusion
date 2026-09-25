@@ -201,6 +201,12 @@ preview mixes with an `AudioGraph` (200 % heard); this workfile builds the mixer
 reuse; no unit tests. § Applicability, § Preview, § Shared with the Soundtrack and § Test Impact
 updated. No open question remains.
 
+### Iteration 5 — 2026-09-26 — ✅ Implemented
+
+Go given by the user ("GO", after a first "No"), read as the full scope: code, README and RULES —
+unit tests were declined in Iteration 4. Branch Gate: **stays on `main`**, the standing choice of
+this repository. Scope frozen on the design sections as they stand.
+
 ---
 
 ## Implementation Log
@@ -240,6 +246,7 @@ Questions asked by the agent during design, with user responses.
 | 15 | What counts as an "audible" video for the rule on arrival? | Actually heard: sound track, not frozen, not muted, volume above 0 | 2026-09-25 |
 | 16 | Does this workfile build the mixer the soundtrack will reuse? | Yes, this workfile | 2026-09-25 |
 | 17 | May the implementation begin? | No — the gate holds | 2026-09-26 |
+| 18 | May the implementation begin? | GO — full scope (code, README, RULES) | 2026-09-26 |
 
 ---
 
