@@ -59,7 +59,7 @@ along the left edge, page slider along the bottom. **The center of the cell is f
 ### Look
 
 - Same visual language as today: dark translucent disc, four white arrows (✥), arrow strokes
-  thicker in proportion to the size.
+  thicker in proportion to the size — 2 px at 24 px, 4 px at 48 px.
 - Resting opacity **like the ×** (alpha 150), 230 when the mouse is over the handle — as today.
 
 ### Interaction
@@ -71,15 +71,18 @@ along the left edge, page slider along the bottom. **The center of the cell is f
 
 ### Small cells
 
-- When the centered 48 px disc would overlap another control (×, toolbar rows, zoom slider,
-  page slider), it **shrinks**, still centered, down to **24 px**.
+- When the centered 48 px disc would come closer than `ButtonGap` (4 px) to another control
+  (the ×, **every** toolbar slot — Reset included even while hidden, so the handle never jumps
+  when Reset appears —, the zoom slider, the page slider) or leave the cell, it **shrinks**,
+  still centered, one device pixel at a time, down to **24 px**.
 - Below 24 px, it **falls back** to today's spot and size: 24 px just below the ×.
 
 ### README
 
-- The *No image list* section still says `Ctrl` + drag swaps a zoomed image — stale since
-  `d3f0826` removed it — and never mentions the handle. The line describing the swap gesture
-  is updated to describe the central handle.
+- The *No image list* section said `Ctrl` + drag swaps a zoomed image — stale since `d3f0826`
+  removed it — and never mentioned the handle. The `Ctrl` clause is dropped, and the swap line
+  now says to drag the ✥ handle in the middle of the hovered cell (shrinking, or below the × in
+  a small cell).
 
 ---
 
@@ -129,6 +132,20 @@ control. Design sections updated; no Open Question left.
 Go given for code, unit tests and documentation (Q&A 9). Branch Gate: stays on `main`, the
 standing choice for this app. Scope frozen as the design sections above.
 
+### Iteration 4 — 2026-09-25 — 🧭 Implementation choices
+
+- **Branch**: stayed on `main` without asking the Branch Gate — the user's standing choice for
+  this app (no worktree requested for this run).
+- **Clearance**: the handle keeps a `ButtonGap` (4 px) gap from the other controls and must fit
+  inside the cell; the design only said "overlap".
+- **Toolbar slots**: every slot counts as taken, Reset included while hidden, so the handle's
+  size does not change when an action makes Reset appear.
+- **Shrink step**: one device pixel at a time, from 48 to 24 logical px.
+- **Stroke**: arrow stroke width grows linearly with the diameter (2 px at 24 px).
+- **Constant**: `HandleSize = 48` next to `ButtonSize`; `HandleBounds` now takes the image,
+  needed for the sliders' bounds.
+- No project rule broken.
+
 ---
 
 ## Implementation Log
@@ -138,9 +155,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable: no test project, UI only |
-| README | | | |
+| Code | 4 | 2026-09-25 | `GridPreview.HandleBounds` / `PaintHandle`; build clean, 0 warning |
+| Unit tests | 4 | 2026-09-25 | Not applicable: no test project, UI only |
+| README | 4 | 2026-09-25 | Swap line describes the central handle; stale `Ctrl` + drag removed |
 
 ---
 
