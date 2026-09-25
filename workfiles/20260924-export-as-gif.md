@@ -1,7 +1,7 @@
 # Export as GIF
 
-> Working document — replace the "Force as image" checkbox with an Image / GIF / Video format
-> dropdown, and add an infinitely looping animated GIF export.
+> Working document — replace the "Force as image" checkbox with Copy / Save split buttons whose
+> submenu forces Image / GIF / MP4 Video, and add an infinitely looping animated GIF export.
 > This file is the source of truth for the planned work until implemented,
 > then the log of every adjustment made to it afterwards.
 
@@ -14,8 +14,9 @@ visible only while the grid holds animated content (`HasAnimation`). Unchecked, 
 produce an MP4 video (`GridExport.RenderVideo`); checked, a PNG (`GridExport.RenderStill`), and the
 preview freezes (`GridPreview.ForceStill`).
 
-The checkbox becomes a **format dropdown** with three choices — **Image**, **GIF**, **Video** —
-and a new export writes an **animated GIF that loops forever**.
+The checkbox goes away: **Copy** and **Save** become **split buttons** — the main part exports in
+the adapted format (PNG or MP4), a ▾ submenu forces **Image**, **GIF** or **MP4 Video** — and a
+new export writes an **animated GIF that loops forever**.
 
 Relevant components:
 
@@ -32,22 +33,24 @@ The project has **no NuGet dependency**: video goes through Media Foundation by 
 
 ---
 
-## Format Dropdown (UI)
+## Split Buttons (UI)
 
-- Replaces `_forceImage` at the same place in `_outputButtons` (between ⚙ and Copy).
-- A `ComboBox` in `DropDownList` style, items in this order: **Image**, **GIF**, **Video**.
-- **Animatable** means: the grid holds animated content (`HasAnimation`), **or** the carousel is
-  on (`ExportsCarousel`) — the carousel moves even static images.
-- **Nothing animatable**: GIF and Video are **greyed out** and cannot be selected; Image is
-  selected. WinForms has no native disabled item: the list is owner-drawn
-  (greyed text), and picking a greyed item puts the previous choice back.
-- **Default**: Video when the grid holds animatable content, else Image.
-- **Reset**: **any content change** — adding, removing or replacing a media (`ImagesChanged`) —
-  puts the default back, even when the animatable state does not change. **Toggling the
-  carousel** does too. A manual choice lasts until the next of these changes.
-- **While exporting**: the dropdown is disabled, as the checkbox was.
-- **Preview**: Image freezes the preview (`ForceStill = true`), as the checked box did; GIF and
-  Video let it play.
+- **Copy** and **Save** each become a **split button**: a main part, and a narrow **▾ arrow** on
+  its right that opens a submenu with **Image**, **GIF**, **MP4 Video**, in that order.
+- The **Force as image** checkbox (`MainForm._forceImage`) is removed.
+- **Adapted format** — what the main part produces: **MP4** when the content is animatable, else
+  **PNG**. **Animatable** means the grid holds animated content (`HasAnimation`), **or** the
+  carousel is on (`ExportsCarousel`) — the carousel moves even static images.
+- **Label**: the main part names the format it will produce — `Copy PNG` / `Copy MP4`,
+  `Save PNG…` / `Save MP4…` — and follows the content and the carousel live.
+- **Submenu**: a choice **applies once** — it exports right away in that format; nothing is
+  remembered, the main part stays on the adapted format.
+- **Nothing animatable**: GIF and MP4 Video are **greyed out** in the submenu (native disabled
+  menu items); Image stays available.
+- **Shortcuts**: `Ctrl+C` / `Ctrl+S` do what the main part does (adapted format).
+- **While exporting**: both parts are disabled, as the buttons are today.
+- **Preview**: with no remembered format, nothing freezes the preview any more — it always plays.
+  `GridPreview.ForceStill` / `AnimationPlayer.ForceStill` lose their only caller.
 
 ## GIF Export
 
@@ -86,15 +89,15 @@ The project has **no NuGet dependency**: video goes through Media Foundation by 
 ## Carousel Interplay
 
 With **Carrousel** checked, Copy and Save always produce the carousel's MP4 today, "Force as
-image" only freezing the contents while they move. With the dropdown:
+image" only freezing the contents while they move. With the split buttons:
 
-- The carousel counts as **animatable**: GIF and Video are enabled even with static images, and
-  checking or unchecking it resets the default (Video when checked).
-- **Video**: the carousel's MP4, contents playing (today's unchecked behaviour).
+- The carousel counts as **animatable**: GIF and MP4 Video are enabled even with static images,
+  and the main part produces MP4.
+- **Main part / MP4 Video**: the carousel's MP4, contents playing (today's unchecked behaviour).
 - **GIF**: the carousel as an infinitely looping GIF, contents playing, no sound —
   `CarouselExport` writes to `GifEncoder` through the same frame sink.
-- **Image**: today's "Force as image" behaviour is kept — the carousel's MP4, contents frozen on
-  the page each shows, silent.
+- **Image** (from the submenu): today's "Force as image" behaviour is kept — the carousel's MP4,
+  contents frozen on the page each shows, silent.
 
 ---
 
@@ -111,15 +114,15 @@ The solution holds no unit test project (`ImageGridFusion.slnx` references only
 
 ## Open Questions
 
-- [x] ~~What resets the dropdown to its default?~~ → Any content change, even when the animatable state stays the same
-- [x] ~~With nothing animatable, what happens to GIF and Video?~~ → Greyed out, not selectable
+- [x] ~~What resets the dropdown to its default?~~ → Any content change, even when the animatable state stays the same *(revised 2026-09-25, see Iteration 4: a submenu choice applies once, nothing is left to reset)*
+- [x] ~~With nothing animatable, what happens to GIF and Video?~~ → Greyed out, not selectable *(revised 2026-09-25, see Iteration 4: greyed in the split buttons' submenu)*
 - [x] ~~Which settings does the GIF use?~~ → The video's: length, starting frames, 30 fps
-- [x] ~~With **Carrousel** checked, how does the dropdown behave (enabled choices, what Image means, does toggling the carousel reset the default)?~~ → The carousel counts as animatable (GIF/Video enabled, toggling resets the default); GIF/Video export the carousel in that format; Image keeps today's frozen-contents carousel MP4
+- [x] ~~With **Carrousel** checked, how does the dropdown behave (enabled choices, what Image means, does toggling the carousel reset the default)?~~ → The carousel counts as animatable (GIF/Video enabled, toggling resets the default); GIF/Video export the carousel in that format; Image keeps today's frozen-contents carousel MP4 *(revised 2026-09-25, see Iteration 4: no default left to reset; the rest holds for the submenu)*
 - [x] ~~**Copy** as GIF: a `.gif` file on the clipboard (like the video), or the file plus the raw `GIF` clipboard format?~~ → Both: the file and the raw `GIF` format
 - [x] ~~Which **GIF encoder**: Windows' built-in WIC encoder by COM interop, a hand-written encoder, or a NuGet package?~~ → Windows' WIC encoder by COM interop
-- [ ] Which buttons become **split buttons**: Copy and Save each, only Save, or a single Export button?
-- [ ] Does a submenu choice **apply once** (exports right away, nothing remembered), or **stay** as the button's format until the next content change?
-- [ ] Does the button's main part **show the format** it will produce?
+- [x] ~~Which buttons become **split buttons**: Copy and Save each, only Save, or a single Export button?~~ → Copy and Save each
+- [x] ~~Does a submenu choice **apply once** (exports right away, nothing remembered), or **stay** as the button's format until the next content change?~~ → Applies once
+- [x] ~~Does the button's main part **show the format** it will produce?~~ → Yes (`Copy MP4`, `Save PNG…`)
 
 ---
 
@@ -154,6 +157,16 @@ The Format Dropdown section is superseded; which buttons get split, whether a fo
 lasts or applies once, and the main button's label are asked (Q&A #9–11) before the domain
 sections are rewritten.
 
+### Iteration 4 — 2026-09-25
+
+Q&A #9–11 answered; the Format Dropdown section is replaced by **Split Buttons (UI)**. Copy and
+Save each get a ▾ submenu (Image / GIF / MP4 Video); the main part produces the adapted format
+(MP4 when animatable, else PNG) and names it in its label. A submenu choice applies once, so the
+reset rule of Q&A #1 has nothing left to reset, and the preview no longer freezes: `ForceStill`
+loses its only caller. GIF and MP4 Video are greyed in the submenu on static content. The
+carousel rules keep their meaning, Image from the submenu still giving the frozen-contents
+carousel MP4.
+
 ---
 
 ## Implementation Log
@@ -183,9 +196,9 @@ Questions asked by the agent during design, with user responses.
 | 6 | Copy as GIF: file only, or file plus the raw GIF clipboard format? | File plus the raw GIF format | 2026-09-24 |
 | 7 | Which GIF encoder? | Windows' WIC encoder (COM interop) | 2026-09-24 |
 | 8 | Design stable — start the implementation? | No — the gate holds | 2026-09-24 |
-| 9 | Which buttons become split buttons (Copy, Save, or a single Export)? | | |
-| 10 | Does a submenu choice apply once, or stay as the button's format until the content changes? | | |
-| 11 | Does the main part of the button show the format it will produce? | | |
+| 9 | Which buttons become split buttons (Copy, Save, or a single Export)? | Copy and Save each | 2026-09-25 |
+| 10 | Does a submenu choice apply once, or stay as the button's format until the content changes? | Applies once | 2026-09-25 |
+| 11 | Does the main part of the button show the format it will produce? | Yes | 2026-09-25 |
 
 ---
 
