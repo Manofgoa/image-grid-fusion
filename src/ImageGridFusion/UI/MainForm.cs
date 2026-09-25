@@ -54,15 +54,13 @@ internal sealed class MainForm : Form
     // Effects of the selected cell, then the options of the selected effect: see RULES.md.
     private readonly FlowLayoutPanel _effects = new() { Dock = DockStyle.Top, AutoSize = true, WrapContents = false, Padding = new Padding(8, 0, 8, 8) };
     private readonly FlowLayoutPanel _blurOptions = new() { Dock = DockStyle.Top, AutoSize = true, WrapContents = false, Padding = new Padding(8, 0, 8, 8), Visible = false };
-    // The padding leaves room for the selection's thicker border, which would clip the text otherwise.
+    // The standard look, as the options: the flat one sizes itself without its image, clipping both.
     private readonly CheckBox _blurButton = new()
     {
         Text = "Blur",
         AutoSize = true,
         AutoCheck = false,
         Appearance = Appearance.Button,
-        FlatStyle = FlatStyle.Flat,
-        Padding = new Padding(3, 1, 3, 1),
         TextImageRelation = TextImageRelation.ImageBeforeText,
     };
     private readonly RadioButton _gaussian = new()
@@ -196,7 +194,6 @@ internal sealed class MainForm : Form
         _threshold.ValueChanged += (_, _) => UpdateThreshold();
         _forceImage.CheckedChanged += (_, _) => _preview.ForceStill = _forceImage.Checked;
         _carousel.CheckedChanged += (_, _) => _preview.PlaysCarousel = _carousel.Checked;
-        _blurButton.FlatAppearance.CheckedBackColor = ControlPaint.LightLight(SystemColors.Highlight);
         UpdateEffectIcons();
         _blurButton.Click += (_, _) => ToggleBlur();
         _gaussian.CheckedChanged += (_, _) => SetBlurKind(_gaussian, BlurKind.Gaussian);
@@ -954,11 +951,9 @@ internal sealed class MainForm : Form
 
         _syncingEffects = true;
         _blurButton.Enabled = enabled;
-        _blurButton.Checked = blur is not null;
 
-        // Pressed: active. A thicker highlight border: selected, its options showing below.
-        _blurButton.FlatAppearance.BorderColor = _blurSelected ? SystemColors.Highlight : SystemColors.ControlDark;
-        _blurButton.FlatAppearance.BorderSize = _blurSelected ? 2 : 1;
+        // Pressed: active. Selected: its options show below.
+        _blurButton.Checked = blur is not null;
         if (blur is not null)
         {
             _gaussian.Checked = blur.Kind == BlurKind.Gaussian;
