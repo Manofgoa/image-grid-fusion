@@ -1,6 +1,7 @@
 # Video Mute and Volume
 
-> Working document — a sound effect to mute a video or set its volume, from 0 to 200 %.
+> Working document — a Volume effect to set a video's volume from 0 to 200 % or mute it, the
+> sounds of every video of the grid being mixed.
 > This file is the source of truth for the planned work until implemented,
 > then the log of every adjustment made to it afterwards.
 
@@ -9,64 +10,97 @@
 ## Overview
 
 Being able to mute a video of the grid, and more generally to set its volume: a slider from 0 %
-to 200 %, with a **Mute** check box that gets checked when the slider reaches 0. It acts on the
-preview and on the exported videos alike.
+to 200 %, with a **Mute** check box. The grid no longer plays a single elected sound: the sounds of
+**all its videos are mixed**, each with the volume of its cell. It acts on the preview and on the
+exported videos alike.
 
 Components concerned:
 
 | Component | Role today |
 |---|---|
-| `Composition/ImageLook.cs` | Effects state of a cell + image pair; `ImageEffect` enum, in toolbar order |
-| `Composition/Animation.cs` — `SoundSource` | Picks the **single** sound of the grid: image 1 when it is a video with sound, else the first video with sound in grid order; a frozen video has none |
-| `UI/PreviewSound.cs` | Plays that sound in the preview with `Windows.Media.Playback.MediaPlayer`, kept in step with the frames |
+| `Composition/ImageLook.cs` | Effects state of a cell + image pair (settings + on / off); `ImageEffect` enum, in toolbar order |
+| `Composition/Animation.cs` — `SoundSource` | Elects the **single** sound of the grid: image 1 when it is a video with sound, else the first video with sound in grid order; a frozen video has none. Replaced by the mix |
+| `UI/PreviewSound.cs` | Plays that one sound in the preview with a `Windows.Media.Playback.MediaPlayer` (volume capped at 100 %), kept in step with the frames |
 | `UI/AnimationPlayer.cs` | Calls `PreviewSound.Follow(Animation.SoundSource(...))` |
-| `Imaging/GridExport.cs`, `Imaging/CarouselExport.cs` | Pass the sound source's path, loop and start to `VideoEncoder.Create` |
-| `Imaging/VideoEncoder.cs` — `Sound` | Decodes the sound to 16-bit PCM with a Source Reader and feeds it to the AAC encoder |
-| `UI/MainForm.cs` | Effects toolbar (`_effectButtons`), options toolbar (`_options[effect]`), `OptionSlider`, `ChangeLook` |
-| `README.md` | Documents the sound (l. 111) and the exports (l. 112–115) |
+| `Imaging/GridExport.cs` | Captures the sound source's path, loop and start into its `Job`, passes them to `VideoEncoder.Create` |
+| `Imaging/VideoEncoder.cs` — `Sound` | One Source Reader, decoded to 16-bit PCM, encoded to AAC, looped, written ahead of the video |
+| `UI/MainForm.cs` | Effect tabs with their activation checkbox, options toolbar, `OptionSlider`, `ChangeLook` |
+| `README.md` | Documents the sound (*Sound* bullet) and the exports |
+| `RULES.md` | § Effects — the Volume effect follows it; its contextual default state is a new case |
+
+Related: `workfiles/20260925-soundtrack.md` (design stage) plans a global soundtrack **mixed over**
+the videos' sound, and asks whether per-video mute belongs to it or to this workfile.
 
 ---
 
-## Sound Effect
+## Volume Effect
 
-Agreed during scoping:
+Agreed:
 
-- A new **effect** of the effects toolbar, following every rule of `RULES.md` § Effects: it belongs
-  to the cell + image pair, lives on `ImageLook`, is not persisted, is reset when the cell's image
-  is replaced, follows the image when two cells are swapped, and is removed by *Reset*.
+- A new **effect** named **Volume**, with its tab and activation checkbox in the effects toolbar,
+  following `RULES.md` § Effects: it belongs to the cell + image pair, lives on `ImageLook`, is not
+  persisted, follows the image when two cells are swapped, is kept when the layout changes.
 - It acts on the **preview and the exports**.
 
-Options toolbar, while the effect is selected:
+### Options
 
-- A **volume slider**, from **0 %** to **200 %**, with its percentage label.
-- A **Mute** check box, **checked** when the slider reaches 0.
+- A **volume slider**, **0 %** to **200 %**, with its percentage label.
+- A **Mute** check box, **independent** of the slider:
+  - the slider reaching **0** checks Mute;
+  - checking Mute **keeps** the slider's value (the slider shown disabled), so unchecking brings it back;
+  - unchecking Mute while the slider is at 0 puts it back to **100 %**;
+  - moving the slider above 0 unchecks Mute.
+- Per `RULES.md`, acting on any option turns the effect on; the options row ends with the effect's
+  own *Reset*.
 
-To settle (see Open Questions): the effect's name, what activating it does, how the check box and
-the slider interact beyond "0 checks Mute", which images enable its button, and what a muted sound
-source means for the grid's single sound.
+### Sound on Arrival
+
+The volume a video gets when it enters a cell depends on the **other cells**:
+
+| Situation when the video arrives (drop, Ctrl+V, browse, replacement) | Its volume |
+|---|---|
+| No other cell holds an audible video | **100 %**, audible |
+| Another cell holds an audible video | **Muted** (0 %) |
+
+Examples given by the user: replacing the only video with sound → the new one is at 100 %;
+replacing one video with sound among several → the new one is muted.
+
+To settle (see Open Questions): what "audible" means exactly, how this maps onto the effect's
+on / off and settings, what its *Reset* brings back, and what a deletion does.
 
 ---
 
-## Preview
+## Mixing
 
-`PreviewSound` uses `MediaPlayer`, whose `Volume` is limited to **0…1**: 100 % at most. Reaching
-200 % in the preview needs another player (e.g. `Windows.Media.Audio.AudioGraph`, whose node gain
-may exceed 1) — see Open Questions.
+Every video of the grid with a sound track contributes its sound, **scaled by its cell's volume**,
+looping with its own video from its own starting point (Frames effect). A frozen video contributes
+nothing. A muted video contributes nothing.
 
----
+### Preview
 
-## Export
+`PreviewSound` today holds one `MediaPlayer`, whose `Volume` is limited to **0…1**. Mixing needs
+one sound per audible video, each kept in step with its own video; 200 % needs a gain above 1 —
+see Open Questions (`AudioGraph` vs several `MediaPlayer`s).
 
-`VideoEncoder.Sound.Write` holds each decoded sample as 16-bit PCM before handing it to the AAC
-encoder: the volume is applied there by scaling the samples, **clamped** to the 16-bit range
-above 100 %. A muted sound source writes no sound track (see Open Questions for what replaces it).
+### Export
+
+`VideoEncoder.Sound` becomes a mixer: one Source Reader per audible video, each converted to the
+same PCM format (48 kHz or 44.1 kHz, stereo, 16-bit), each looping on its own video's loop from its
+own start, **summed with its gain** and **clamped** to the 16-bit range, then encoded to a single
+AAC track. The export's length stays the longest loop. A sound Windows cannot re-encode is left out
+of the mix, with a note in the status line (as today for the single sound).
 
 ---
 
 ## README
 
-Update the *Sound* bullet (l. 111) and add the effect to the effects list: the volume, the mute,
-their effect on the preview and the exports.
+Rewrite the *Sound* bullet (mixed sounds instead of the elected one) and document the Volume effect:
+slider, Mute, the sound on arrival, preview and exports.
+
+## RULES
+
+The Volume effect's default state depends on the other cells: to be recorded in `RULES.md`
+§ Effects, next to the event table (see Open Questions).
 
 ---
 
@@ -77,20 +111,26 @@ Questions. Behaviours that would be pinned:
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| `ImageLook` sound state: defaults, activation, volume 0 ⇒ muted, reset | `src/ImageGridFusion.Tests/Composition/ImageLookTests.cs` | Create (pending the test-project decision) |
-| `Animation.SoundSource` with a muted video | `src/ImageGridFusion.Tests/Composition/AnimationTests.cs` | Create (pending the test-project decision) |
-| PCM gain: scaling at 50 % / 200 %, clamping to the 16-bit range | `src/ImageGridFusion.Tests/Imaging/SoundGainTests.cs` | Create (pending the test-project decision) |
+| Volume settings: slider ↔ Mute rules (0 checks Mute, Mute keeps the value, unmuting at 0 → 100 %) | `src/ImageGridFusion.Tests/Composition/ImageLookTests.cs` | Create (pending the test-project decision) |
+| Sound on arrival: 100 % with no other audible video, muted otherwise, replacement cases | `src/ImageGridFusion.Tests/Composition/AnimationTests.cs` | Create (pending the test-project decision) |
+| Which images contribute to the mix (frozen, muted, no sound track) | `src/ImageGridFusion.Tests/Composition/AnimationTests.cs` | Create (pending the test-project decision) |
+| PCM mix: gains summed, clamped to the 16-bit range | `src/ImageGridFusion.Tests/Imaging/SoundMixTests.cs` | Create (pending the test-project decision) |
 
 ---
 
 ## Open Questions
 
-- [ ] What is the effect called — "Volume", "Sound", or "Mute"?
-- [ ] What does activating the effect do: mute directly, or leave the volume at 100 % unmuted?
-- [ ] How do the Mute check box and the slider interact beyond "slider at 0 checks Mute"?
-- [ ] When the grid's sound source is muted, does the grid go silent, or does the sound move to the next video with sound?
-- [ ] Which images enable the effect's button: videos with a sound track only, and a frozen video?
-- [ ] 200 % in the preview: switch the preview sound to `AudioGraph`, or cap the preview at 100 % while the export amplifies?
+- [x] ~~What is the effect called — "Volume", "Sound", or "Mute"?~~ → **Volume**
+- [x] ~~What does activating the effect do: mute directly, or leave the volume at 100 % unmuted?~~ → Superseded: the volume is set **on arrival**, from the other cells (see § Sound on Arrival); how it maps onto on / off is asked below
+- [x] ~~How do the Mute check box and the slider interact beyond "slider at 0 checks Mute"?~~ → **Independent** check box (see § Options)
+- [x] ~~When the grid's sound source is muted, does the grid go silent, or does the sound move to the next video with sound?~~ → Neither: the sounds of all videos are **mixed**, each with its cell's volume
+- [ ] How does the sound on arrival map onto the effect's on / off: muted on arrival = effect **on** with Mute checked, audible = effect **off** (100 %)?
+- [ ] What does the Volume effect's *Reset* (and the global *Reset*) bring back: the rule on arrival, recomputed from the other cells, or plainly 100 %?
+- [ ] Deleting an image: the videos shifting into another cell are reset per `RULES.md` — recompute their sound on arrival, or keep their volume?
+- [ ] "Audible video" for the rule on arrival: a video with a sound track, playing (not frozen), not muted — does a volume at 0 % count as muted, and a video with no sound track count as silent?
+- [ ] Which images enable the effect's checkbox: videos with a sound track only — and a frozen video?
+- [ ] Preview mixing and 200 %: one `AudioGraph` (gain up to 2, one mix), or several `MediaPlayer`s (native, capped at 100 % in the preview)?
+- [ ] The soundtrack workfile also needs the mixer: does this workfile build the mixer (preview + export), the soundtrack building on it?
 - [ ] No test project exists: create one for this work, or ship without unit tests?
 
 ---
@@ -111,6 +151,23 @@ straightforward, so a single scout pass. The scout pass found that the grid play
 re-encodes 16-bit PCM where a gain can be applied, and that no test project exists. The points the
 design cannot settle alone are listed in Open Questions.
 
+### Iteration 2 — 2026-09-25
+
+User answers: the effect is named **Volume**; the Mute check box is **independent** of the slider;
+the volume a video gets depends on the other cells when it arrives (100 % when no other cell is
+audible, muted otherwise), instead of a fixed default; and the grid **mixes the sounds of all its
+videos**, each with its cell's volume, instead of electing one sound. The mixing turns
+`PreviewSound` and `VideoEncoder.Sound` into mixers.
+
+Meanwhile `main` moved on (`workfiles/20260925-ui-cleanup.md` delivered): effects are now tabs with
+an activation checkbox, an effect turned off keeps its settings and is drawn as its defaults, acting
+on an option turns the effect on, each effect has its own *Reset*, and the carousel (and
+`CarouselExport.cs`) is gone. The design is aligned on those rules. `workfiles/20260925-soundtrack.md`
+plans a global soundtrack mixed over the videos, which overlaps with the mixer.
+
+New open questions: the mapping of the sound on arrival onto on / off, *Reset*, deletion, the exact
+meaning of "audible", the preview mixer, and the split with the soundtrack workfile.
+
 ---
 
 ## Implementation Log
@@ -123,6 +180,7 @@ says so rather than staying blank.
 | Code | | | |
 | Unit tests | | | |
 | README | | | |
+| RULES | | | |
 
 ---
 
@@ -136,13 +194,18 @@ Questions asked by the agent during design, with user responses.
 | 2 | What does the mute act on? | Preview and exports | 2026-09-25 |
 | 3 | What is a video's default sound state? | A slider sets the volume, up to 200 %; reaching 0 checks the "Mute" box | 2026-09-25 |
 | 4 | Is the subject straightforward, or tricky / long? | Straightforward | 2026-09-25 |
-| 5 | What is the effect called? | | |
-| 6 | What does activating the effect do? | | |
-| 7 | How do the Mute check box and the slider interact? | | |
-| 8 | Muted sound source: silent grid, or the next video's sound? | | |
-| 9 | Which images enable the effect's button? | | |
-| 10 | 200 % in the preview: `AudioGraph`, or preview capped at 100 %? | | |
+| 5 | What is the effect called? | Volume | 2026-09-25 |
+| 6 | What does activating the effect do? | Depends on the other cells: no other video with sound → 100 % for the added video, otherwise 0 % (mute); replacing the only video with sound → 100 %; replacing one of several → 0 % (mute) | 2026-09-25 |
+| 7 | How do the Mute check box and the slider interact? | Independent check box | 2026-09-25 |
+| 8 | Muted sound source: silent grid, or the next video's sound? | Neither: the sounds are mixed, each with its own volume per cell | 2026-09-25 |
+| 9 | Which images enable the effect's checkbox? | | |
+| 10 | Preview mixing and 200 %: `AudioGraph`, or several `MediaPlayer`s capped at 100 %? | | |
 | 11 | No test project: create one, or no unit tests? | | |
+| 12 | Sound on arrival ↔ on / off: muted = on with Mute checked, audible = off? | | |
+| 13 | What does *Reset* bring back: the rule on arrival, or 100 %? | | |
+| 14 | Deletion: recompute the shifted videos' sound, or keep it? | | |
+| 15 | What counts as an "audible" video for the rule on arrival? | | |
+| 16 | Does this workfile build the mixer the soundtrack will reuse? | | |
 
 ---
 
