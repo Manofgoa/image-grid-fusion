@@ -223,7 +223,11 @@ internal sealed class GridPreview : Control
             {
                 image.Dispose();
                 ignored++;
+                continue;
             }
+
+            // Heard when no other video is, else muted, in the order the images arrive (RULES.md).
+            image.Look = Animation.SoundOnArrival(image, image.Look, _images);
         }
 
         OnImagesChanged();

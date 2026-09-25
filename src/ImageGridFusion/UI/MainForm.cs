@@ -112,6 +112,9 @@ internal sealed class MainForm : Form
     private readonly PictureBox _blurIntensityIcon = new() { SizeMode = PictureBoxSizeMode.CenterImage, Anchor = AnchorStyles.Left };
     private readonly TrackBar _blurIntensity = OptionSlider(0, 100, 10);
     private readonly Label _blurIntensityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly TrackBar _volume = OptionSlider(0, (int)(VolumeEffect.MaxLevel * 100), 10);
+    private readonly Label _volumeLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _mute = new() { Text = "Mute", AutoSize = true, Anchor = AnchorStyles.Left };
 
     // The selected tab belongs to the toolbar: it stays selected on every cell, and with none.
     private ImageEffect? _selectedEffect;
@@ -185,6 +188,7 @@ internal sealed class MainForm : Form
         _options[ImageEffect.Frames].Controls.AddRange([_frames, _framesLabel, _freeze]);
         _options[ImageEffect.BlackAndWhite].Controls.AddRange([_grayscaleIcon, _grayscale, _grayscaleLabel]);
         _options[ImageEffect.Blur].Controls.AddRange([_gaussian, _pixelate, _blurIntensityIcon, _blurIntensity, _blurIntensityLabel]);
+        _options[ImageEffect.Volume].Controls.AddRange([_volume, _volumeLabel, _mute]);
 
         // Docked in reverse order of addition: the options row and the tabs row, then the bottom bar,
         // span the whole width; the layout strip takes the left of what remains, and the fill control
@@ -243,6 +247,12 @@ internal sealed class MainForm : Form
         _gaussian.Click += (_, _) => SetBlurKind(BlurKind.Gaussian);
         _pixelate.Click += (_, _) => SetBlurKind(BlurKind.Pixelate);
         _blurIntensity.ValueChanged += (_, _) => SetBlurIntensity();
+        _volume.ValueChanged += (_, _) =>
+        {
+            _volumeLabel.Text = VolumeText(_volume.Value);
+            ChangeLook(ImageEffect.Volume, look => look.WithVolume(look.Volume!.WithLevel(_volume.Value / 100.0)));
+        };
+        _mute.CheckedChanged += (_, _) => ChangeLook(ImageEffect.Volume, look => look.WithVolume(look.Volume!.WithMuted(_mute.Checked)));
         // Freezing the last playing content turns the export back into an image.
         _preview.SelectedImageChanged += (_, _) => UpdateButtons();
         _preview.ImagesChanged += (_, _) => UpdateButtons();
@@ -307,6 +317,7 @@ internal sealed class MainForm : Form
                 ImageEffect.Flip => EffectIcons.Flip(size),
                 ImageEffect.Frames => EffectIcons.Frames(size),
                 ImageEffect.BlackAndWhite => EffectIcons.BlackAndWhite(size),
+                ImageEffect.Volume => EffectIcons.Volume(size),
                 _ => EffectIcons.Blur(size),
             });
         }
@@ -1059,17 +1070,36 @@ internal sealed class MainForm : Form
     /// <summary>The options row's Reset: the selected tab's effect back to its default state, off included.</summary>
     private void ResetSelectedEffect()
     {
-        if (_selectedEffect is { } effect && _preview.SelectedImage?.Look is { } look)
+        if (_selectedEffect is { } effect && ResetLook(effect) is { } look)
         {
-            _preview.SetSelectedLook(look.Reset(effect));
+            _preview.SetSelectedLook(look);
         }
     }
 
     /// <summary>The tabs row's Reset: every effect of the selected image back to its default state; the selected tab stays.</summary>
     private void ResetEffects()
     {
-        _preview.SetSelectedLook(ImageLook.None);
+        if (ResetLook(effect: null) is { } look)
+        {
+            _preview.SetSelectedLook(look);
+        }
+
         UpdateEffects();
+    }
+
+    /// <summary>
+    /// The look of the selected image once <paramref name="effect"/> is reset, or every effect when
+    /// <c>null</c>: the volume's default state is the sound on arrival, from the other cells (RULES.md).
+    /// </summary>
+    private ImageLook? ResetLook(ImageEffect? effect)
+    {
+        if (_preview.SelectedImage is not { } image)
+        {
+            return null;
+        }
+
+        var look = effect is { } one ? image.Look.Reset(one) : ImageLook.None;
+        return effect is null or ImageEffect.Volume ? Animation.SoundOnArrival(image, look, _preview.Images) : look;
     }
 
     /// <summary>The slider snaps to 100 % near its mark.</summary>
@@ -1092,6 +1122,8 @@ internal sealed class MainForm : Form
     }
 
     private static string AngleText(int degrees) => $"Angle: {degrees:+0;-0;0}°";
+
+    private static string VolumeText(int percent) => $"Volume: {percent} %";
 
     /// <summary>Not frozen, the slider sets where the content starts playing; frozen, the frame it shows.</summary>
     private void ChangeFrames(Func<FramesEffect, FramesEffect> change)
@@ -1147,7 +1179,7 @@ internal sealed class MainForm : Form
 
         _effectTabs.Selected = _selectedEffect;
         _effectTabs.Enabled = enabled;
-        _resetButton.Enabled = enabled && !look!.IsNone;
+        _resetButton.Enabled = enabled && ResetLook(effect: null) != look;
         if (look is not null)
         {
             _zoom.Value = Math.Clamp((int)Math.Round(Math.Log2(look.TurnOn(ImageEffect.Zoom).Zoom) * 100), _zoom.Minimum, _zoom.Maximum);
@@ -1182,6 +1214,14 @@ internal sealed class MainForm : Form
                 _pixelate.Checked = blur.Kind == BlurKind.Pixelate;
                 _blurIntensity.Value = (int)Math.Round(blur.Intensity * 100);
             }
+
+            // Muted, the slider keeps its level, out of reach until the sound is back.
+            if (look.TurnOn(ImageEffect.Volume).Volume is { } volume)
+            {
+                _volume.Value = (int)Math.Round(volume.Level * 100);
+                _volume.Enabled = !volume.IsMuted;
+                _mute.Checked = volume.IsMuted;
+            }
         }
 
         _zoomLabel.Text = $"Zoom: {(look?.TurnOn(ImageEffect.Zoom).Zoom ?? 1) * 100:0} %";
@@ -1189,6 +1229,7 @@ internal sealed class MainForm : Form
         UpdateFramesLabel();
         _grayscaleLabel.Text = $"Intensity: {_grayscale.Value}%";
         _blurIntensityLabel.Text = $"Intensity: {_blurIntensity.Value}%";
+        _volumeLabel.Text = VolumeText(_volume.Value);
         _syncingEffects = false;
 
         // An effect that does not apply to the image keeps its tab selectable, its options disabled.
@@ -1200,15 +1241,17 @@ internal sealed class MainForm : Form
         }
 
         _effectResetButton.Visible = _selectedEffect is not null;
-        _effectResetButton.Enabled = usable && look!.Reset(_selectedEffect!.Value) != look;
+        _effectResetButton.Enabled = usable && ResetLook(_selectedEffect) != look;
         _preview.ShowsBlurBars = _selectedEffect == ImageEffect.Blur && look?.IsActive(ImageEffect.Blur) == true;
     }
 
     /// <summary>Why <paramref name="effect"/> does not apply to <paramref name="image"/>; <c>null</c> when it does.</summary>
-    private static string? Unavailable(ImageEffect effect, SourceImage? image) =>
-        effect == ImageEffect.Frames && image is { IsAnimated: false }
-            ? "Frames only applies to videos, animated GIFs and content of several pages"
-            : null;
+    private static string? Unavailable(ImageEffect effect, SourceImage? image) => effect switch
+    {
+        ImageEffect.Frames when image is { IsAnimated: false } => "Frames only applies to videos, animated GIFs and content of several pages",
+        ImageEffect.Volume when image is { HasSound: false } => "Volume only applies to videos with a sound track",
+        _ => null,
+    };
 
     /// <summary>Shows a message that stays until the next one replaces it; errors in red.</summary>
     private void ShowStatus(string message, bool error = false)
