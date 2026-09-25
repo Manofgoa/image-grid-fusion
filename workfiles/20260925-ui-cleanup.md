@@ -35,7 +35,7 @@ went with it — see Iteration 8):
 
 ```
 ┌───────────────────────────────────────────────────────────────────┐
-│ Options of the selected tab   [Intensity ▭▭▭] [Kind …]    [Reset]  │  ← options row, always visible (tinted)
+│ Options of the selected tab   [Intensity ▭▭▭] [Kind …]    [Reset]  │  ← options row, always visible (white)
 └┬────────┬┘ ┌─────────┐ ┌─────────┐ ┌─────────┐            [Reset]  ← tabs row, tabs hang downward
  │☑ Blur  │  │☐ Zoom   │ │☑ B & W  │ │☐ Rotate │ …
  └────────┘  └─────────┘ └─────────┘ └─────────┘
@@ -43,11 +43,10 @@ went with it — see Iteration 8):
 ```
 
 - **Options row on top**, **tabs row below it**, the tabs hanging **downward** from the options row:
-  the selected tab is drawn in the options row's **tint**, its top edge open onto it; the others
+  the selected tab is drawn in the options row's **white**, its top edge open onto it; the others
   stay in the window's grey. Every tab is **as tall as the Reset button** beside them.
-- The tint is the **Windows accent color, much lightened** (mixed with white), shared by the options
-  row, its sliders and the selected tab, so the tab and its options read as one block. It follows a
-  change of the accent while the app runs; when the accent cannot be read, a fixed pale blue.
+- The buttons of the options row (quarter turns, flips, blur kinds, the effect's Reset) keep the
+  **normal grey** of buttons; they do not take the row's white.
 - The tabs are drawn by `UI/EffectTabs.cs` (WinForms has no downward tabs holding a checkbox); they
   take no keyboard focus.
 - The **Effects** label stays at the start of the tabs row, in **bold** and followed by a
@@ -321,6 +320,12 @@ background. The agent recommended tinting the **selected tab and the options row
 other tabs staying grey, so the link between a tab and its options — the original problem — shows at
 a glance. The user chose that, with the **Windows accent color, much lightened**.
 
+### Iteration 11 — 2026-09-25 — ⚙️ Post-implementation — Back to white, buttons grey
+
+User, after seeing the lightened accent (a pink here): ugly, especially as the background of the
+buttons. Back to **white** for the options row and the selected tab; the **buttons keep the normal
+grey**. Supersedes the tint of Iteration 10.
+
 ---
 
 ## Implementation Log
@@ -357,7 +362,7 @@ Questions asked by the agent during design, with user responses.
 | 12 | Go for implementation? | Code, unit tests and documentation | 2026-09-25 |
 | 13 | Style of the "Effects" label (section header, header + separator, bold only)? | Bold + a right arrow | 2026-09-25 |
 | 14 | Where does the color go (selected tab + options row, or the tabs row's background)? | Selected tab + options row | 2026-09-25 |
-| 15 | Which tint (lightened Windows accent, or a fixed pale blue)? | Lightened Windows accent | 2026-09-25 |
+| 15 | Which tint (lightened Windows accent, or a fixed pale blue)? | Lightened Windows accent — *superseded by Iteration 11: white, buttons grey* | 2026-09-25 |
 
 ---
 
