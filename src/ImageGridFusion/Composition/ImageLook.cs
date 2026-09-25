@@ -31,7 +31,10 @@ public sealed record ImageLook
     /// <summary>Scale of the fit given by the fitting rule: 1 draws the image as that rule does.</summary>
     public double Zoom { get; private init; } = 1;
 
-    /// <summary>Point of the oriented image kept at the center of the cell, in fractions of its width and height.</summary>
+    /// <summary>
+    /// Point of the oriented image kept at the center of the cell, in fractions of its width and
+    /// height; beyond 0…1 when the image is moved past the cell's edges (see <see cref="FitCalculator.Place"/>).
+    /// </summary>
     public PointF Focus { get; private init; } = Center;
 
     /// <summary>The blur effect, <c>null</c> while inactive. Turning or zooming the image leaves it in place.</summary>
@@ -72,14 +75,11 @@ public sealed record ImageLook
 
     public ImageLook ToggleGrayscale() => this with { Grayscale = !Grayscale };
 
-    /// <summary>At 100 % or below the image is centered again, as the fitting rule draws it.</summary>
-    public ImageLook WithZoom(double zoom)
-    {
-        double clamped = Math.Clamp(zoom, MinZoom, MaxZoom);
-        return this with { Zoom = clamped, Focus = clamped > 1 ? Focus : Center };
-    }
+    /// <summary>The focus is kept at every zoom; the gesture brings the image back within its stops (see <see cref="FitCalculator.WithinStops"/>).</summary>
+    public ImageLook WithZoom(double zoom) => this with { Zoom = Math.Clamp(zoom, MinZoom, MaxZoom) };
 
-    public ImageLook WithFocus(PointF focus) => this with { Focus = new PointF(Math.Clamp(focus.X, 0, 1), Math.Clamp(focus.Y, 0, 1)) };
+    /// <summary>Unclamped: how far the image may go depends on its cell, and is applied where the image is placed.</summary>
+    public ImageLook WithFocus(PointF focus) => this with { Focus = focus };
 
     public ImageLook WithBlur(BlurEffect? blur) => this with { Blur = blur };
 
