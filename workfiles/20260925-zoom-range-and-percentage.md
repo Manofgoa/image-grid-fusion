@@ -16,12 +16,12 @@ Three deliverables:
 2. **Zoom percentage** — while the zoom of a cell changes, its value (e.g. `119 %`) shows in the
    **top-right corner of that cell**, in fluorescent green, then fades out.
 3. **Rule** — `RULES.md` gains a rule: every **helper indicator** drawn over a cell in the preview
-   is fluorescent green. It covers **existing indicators too** (Q&A #3): those that break it are
-   recolored by this workfile.
+   is fluorescent green. It covers **existing indicators too** (Q&A #3) — they all already comply
+   under the agreed definition (Q&A #7–#8), so none is recolored.
 
-Scope agreed with the user (Q&A #1–#4):
+Scope agreed with the user (Q&A #1–#8):
 
-- **Range**: the agent proposes figures after reading the code (see *Zoom Range*, Open Question 1).
+- **Range**: 10 % → 1600 % (Q&A #1, #5).
 - **Percentage display**: visible from the first change, held ~1 s after the last one, then fades
   out. **Preview only**, never in the exports.
 - **Rule**: applies to every helper indicator, existing ones included.
@@ -75,12 +75,12 @@ Relevant components: `Composition/ImageLook.cs` (`MinZoom`, `MaxZoom`, `WithZoom
 
 ## Zoom Range
 
-- **Proposal: 25 % → 1600 %** (`MinZoom = 0.25`, `MaxZoom = 16`) — powers of two, so the slider's
-  log scale keeps whole octaves: 6 doublings instead of 3, 24 wheel notches end to end
-  (`NotchesPerDoubling` unchanged).
-- The slider keeps its height: each doubling takes half the length it takes today. 100 % stays at
-  a third of the track from the bottom (2 octaves below, 4 above — as 1 below, 2 above today); its
-  snap is unchanged.
+- **10 % → 1600 %** (`MinZoom = 0.1`, `MaxZoom = 16`, Q&A #5): about 7.3 doublings instead of 3,
+  ~29 wheel notches end to end (`NotchesPerDoubling` unchanged). The last notch towards 10 % lands on
+  the clamp, as the last notch towards a bound does today.
+- The slider keeps its height and its log scale: each doubling takes ~40 % of the length it takes
+  today. 100 % moves from a third of the track (from the bottom) to ~45 % (3.3 octaves below, 4
+  above); its snap is unchanged.
 - The `ZoomTrack` comment ("50 % → 100 % and each doubling take the same length") is updated.
 - The bounds stay in `ImageLook` only; `WithZoom` stays the single clamp.
 
@@ -98,8 +98,9 @@ Relevant components: `Composition/ImageLook.cs` (`MinZoom`, `MaxZoom`, `WithZoom
 - **Look**: fluorescent green text over the **black halo** used by the bars and guides (a text
   outline via a `GraphicsPath`), bold, fixed logical size scaled with `LogicalToDeviceUnits` — a
   helper indicator, not part of the composition, so it does not scale with the cell.
-- **Position**: top-right corner of the cell, right-aligned — exact placement relative to the close
-  button: Open Question 2.
+- **Position**: top-right corner of the cell, right-aligned on the close button's right edge,
+  **just below the close button** (Q&A #6) — same 6 px inset, a `ButtonGap` below `CloseBounds`, so
+  both stay visible. It keeps that place whether the hover toolbar is shown or not.
 - **Drawing**: a `PaintZoomBadge` method called from `OnPaint` beside `PaintBlurBars` /
   `PaintPanGuides`; never in `Compositor`, so never in the exports nor the video export.
 - **Fade**: a dedicated `System.Windows.Forms.Timer` (~30 ms ticks during the fade only), each tick
@@ -115,11 +116,16 @@ Relevant components: `Composition/ImageLook.cs` (`MinZoom`, `MaxZoom`, `WithZoom
     legible on any image;
   - it is drawn in the preview only, never in the exports;
   - the colour is defined **once** and shared.
-- **`GLOSSARY.md`**: new term *Helper indicator (indicateur d'aide)* — definition per Open
-  Question 3.
+  - a **helper indicator** is a measure or geometry aid: guides, handles, value readouts (Q&A #7).
+    Interaction feedback — selection outline, drop-target highlight, hover outline, drag dim — is
+    not one and keeps its colours;
+  - a hovered handle may turn **white** as its hover feedback (Q&A #8).
+- **`GLOSSARY.md`**: new term *Helper indicator (indicateur d'aide)* — a measure or geometry aid
+  drawn over a cell in the preview only (guides, handles, value readouts), always fluorescent green.
 - **Code**: `BarColor` becomes `HelperColor` (and the black halo a shared `HelperHalo`), its comment
-  generalised; every helper indicator uses them.
-- **Existing indicators recolored**: per Open Questions 3 and 4.
+  generalised; the blur bars, grips, magnetic guides and the zoom badge use them.
+- **Existing indicators recolored**: **none** — under this definition every existing helper
+  indicator is already fluorescent green, the white hovered grip being the allowed hover feedback.
 
 ---
 
@@ -136,15 +142,17 @@ Relevant components: `Composition/ImageLook.cs` (`MinZoom`, `MaxZoom`, `WithZoom
 
 ## Open Questions
 
-- [ ] **Range**: 25 % → 1600 % as proposed, or another range (e.g. 10 % → 1000 %, 20 % → 800 %)?
-- [ ] **Placement vs the close button**: the cell is hovered while zooming, so the close button is
+- [x] ~~**Range**: 25 % → 1600 % as proposed, or another range (e.g. 10 % → 1000 %, 20 % → 800 %)?~~
+  → 10 % → 1600 %
+- [x] ~~**Placement vs the close button**: the cell is hovered while zooming, so the close button is
   shown in the top-right corner. Badge **just below** the close button, **to its left** on the
-  same row, or **hide the close button** while the badge shows?
-- [ ] **What counts as a helper indicator**: only the measure / geometry aids (guides, handles,
+  same row, or **hide the close button** while the badge shows?~~ → Just below the close button
+- [x] ~~**What counts as a helper indicator**: only the measure / geometry aids (guides, handles,
   readouts — already green except the hovered grip), or also the interaction feedback (selection
-  outline, drop-target highlight, hover outline, drag dim) — which would then be recolored green?
-- [ ] **Hovered blur grip**: it turns white when hovered. Keep that hover feedback, or make it a
-  green variant (e.g. a brighter / filled green)?
+  outline, drop-target highlight, hover outline, drag dim) — which would then be recolored green?~~
+  → Measure / geometry aids only; interaction feedback keeps its colours
+- [x] ~~**Hovered blur grip**: it turns white when hovered. Keep that hover feedback, or make it a
+  green variant (e.g. a brighter / filled green)?~~ → Keep the white hover feedback
 
 ---
 
@@ -162,6 +170,13 @@ zooming, in fluorescent green"), the follow-up request (a rule: every helper ind
 cell in the preview is fluorescent green), the scoping answers (Q&A #1–#4) and the scout pass:
 range proposed at 25 % → 1600 %, a fading badge drawn from `OnPaint` only, a shared `HelperColor`,
 the rule in `RULES.md` and the term in `GLOSSARY.md`. Four questions left open.
+
+### Iteration 2 — 2026-09-25
+
+Open questions answered (Q&A #5–#8): range **10 % → 1600 %** instead of the proposed 25 % → 1600 %;
+badge **just below the close button**; a helper indicator is a **measure / geometry aid** only
+(interaction feedback keeps its colours); the hovered grip **stays white**. Consequence: no existing
+indicator is recolored — the rule documents what they already do and binds the new badge.
 
 ---
 
@@ -189,10 +204,11 @@ Questions asked by the agent during design, with user responses.
 | 2 | How does the percentage appear and disappear? | Visible while zooming, then fades out (~1 s after the last change); preview only | 2026-09-25 |
 | 3 | What does the fluorescent-green helper rule cover? | Everything, existing indicators included (recolored in this workfile) | 2026-09-25 |
 | 4 | Exploration depth? | Straightforward — single scout pass | 2026-09-25 |
-| 5 | Range: 25 % → 1600 % or another? | | 2026-09-25 |
-| 6 | Badge placement vs the close button? | | 2026-09-25 |
-| 7 | What counts as a helper indicator? | | 2026-09-25 |
-| 8 | Hovered blur grip colour? | | 2026-09-25 |
+| 5 | Range: 25 % → 1600 % or another? | 10 % → 1600 % | 2026-09-25 |
+| 6 | Badge placement vs the close button? | Just below the close button | 2026-09-25 |
+| 7 | What counts as a helper indicator? | Measure / geometry aids only (guides, handles, readouts) | 2026-09-25 |
+| 8 | Hovered blur grip colour? | Keep the white hover feedback | 2026-09-25 |
+| 9 | Go for implementation? | | 2026-09-25 |
 
 ---
 
