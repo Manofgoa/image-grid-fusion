@@ -9,7 +9,7 @@ public static class CanvasSizer
     public const int MinWidth = 1200;
     public const int MaxWidth = 4096;
 
-    public static Size Compute(IReadOnlyList<Size> images, GridLayout layout, double threshold = FitCalculator.DefaultCropThreshold)
+    public static Size Compute(IReadOnlyList<Size> images, GridLayout layout)
     {
         if (layout.Count != images.Count)
         {
@@ -23,7 +23,7 @@ public static class CanvasSizer
             // Scale of the image on a canvas 1 px wide: drawing it 1:1 needs a canvas 1 / scale wide.
             double cellWidth = fractions[i].Width;
             double cellHeight = fractions[i].Height * GridLayout.RatioHeight / GridLayout.RatioWidth;
-            double scaleAtUnitWidth = FitCalculator.Scale(cellWidth, cellHeight, images[i], threshold);
+            double scaleAtUnitWidth = FitCalculator.Scale(cellWidth, cellHeight, images[i]);
             widest = Math.Max(widest, 1 / scaleAtUnitWidth);
         }
 

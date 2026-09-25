@@ -52,7 +52,7 @@ internal static class CarouselExport
 
             int steps = frames.Length;
             var length = playContents ? Carousel.Length(steps, job.Length) : Carousel.Length(steps);
-            var canvas = Animation.EvenSize(Carousel.CanvasSize(frames.Select(f => f.Size).ToList(), job.Layout, job.CropThreshold));
+            var canvas = Animation.EvenSize(Carousel.CanvasSize(frames.Select(f => f.Size).ToList(), job.Layout));
             using var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppRgb);
             using var g = Graphics.FromImage(bitmap);
             encoder = playContents
@@ -80,7 +80,7 @@ internal static class CarouselExport
                 int step = Carousel.StepAt(time, steps);
                 if (step != drawn || changed)
                 {
-                    Compositor.Draw(g, Carousel.Arrange(frames, job.Layout, step), job.Layout, canvas, job.CropThreshold);
+                    Compositor.Draw(g, Carousel.Arrange(frames, job.Layout, step), job.Layout, canvas);
                     drawn = step;
                 }
 

@@ -24,30 +24,30 @@ public static class Compositor
     ]);
 
     /// <summary>Renders the final image at the size given by <see cref="CanvasSizer"/>.</summary>
-    public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout layout, double threshold = FitCalculator.DefaultCropThreshold) =>
-        Render(images.Select(i => new Frame(i.Bitmap, i.BandColor, i.Look)).ToList(), layout, threshold);
+    public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout layout) =>
+        Render(images.Select(i => new Frame(i.Bitmap, i.BandColor, i.Look)).ToList(), layout);
 
     /// <summary>Renders frames at the size given by <see cref="CanvasSizer"/>; frame i goes into cell i.</summary>
-    public static Bitmap Render(IReadOnlyList<Frame> frames, GridLayout layout, double threshold = FitCalculator.DefaultCropThreshold)
+    public static Bitmap Render(IReadOnlyList<Frame> frames, GridLayout layout)
     {
-        var canvas = CanvasSizer.Compute(frames.Select(f => f.Size).ToList(), layout, threshold);
+        var canvas = CanvasSizer.Compute(frames.Select(f => f.Size).ToList(), layout);
         var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format24bppRgb);
         using var g = Graphics.FromImage(bitmap);
-        Draw(g, frames, layout, canvas, threshold);
+        Draw(g, frames, layout, canvas);
         return bitmap;
     }
 
     /// <summary>Draws the grid in the rectangle (0, 0, canvas) of <paramref name="g"/>; image i goes into cell i of the layout.</summary>
-    public static void Draw(Graphics g, IReadOnlyList<SourceImage> images, GridLayout layout, Size canvas, double threshold = FitCalculator.DefaultCropThreshold) =>
-        Draw(g, images.Select(i => new Frame(i.Bitmap, i.BandColor, i.Look)).ToList(), layout, canvas, threshold);
+    public static void Draw(Graphics g, IReadOnlyList<SourceImage> images, GridLayout layout, Size canvas) =>
+        Draw(g, images.Select(i => new Frame(i.Bitmap, i.BandColor, i.Look)).ToList(), layout, canvas);
 
     /// <summary>Draws the grid in the rectangle (0, 0, canvas) of <paramref name="g"/>; frame i goes into cell i of the layout.</summary>
-    public static void Draw(Graphics g, IReadOnlyList<Frame> frames, GridLayout layout, Size canvas, double threshold = FitCalculator.DefaultCropThreshold)
+    public static void Draw(Graphics g, IReadOnlyList<Frame> frames, GridLayout layout, Size canvas)
     {
         var cells = layout.Cells(canvas);
         for (int i = 0; i < frames.Count; i++)
         {
-            DrawCell(g, frames[i], cells[i], threshold);
+            DrawCell(g, frames[i], cells[i]);
         }
     }
 
@@ -55,7 +55,7 @@ public static class Compositor
     /// Draws one frame into its cell, leaving the rest of <paramref name="g"/> untouched.
     /// <paramref name="fast"/> trades smoothing for speed, the frame landing at the same place.
     /// </summary>
-    public static void DrawCell(Graphics g, Frame frame, Rectangle cell, double threshold = FitCalculator.DefaultCropThreshold, bool fast = false)
+    public static void DrawCell(Graphics g, Frame frame, Rectangle cell, bool fast = false)
     {
         g.InterpolationMode = fast ? InterpolationMode.Bilinear : InterpolationMode.HighQualityBicubic;
         g.PixelOffsetMode = PixelOffsetMode.HighQuality;
@@ -71,7 +71,7 @@ public static class Compositor
             attributes.SetColorMatrix(GrayscaleMatrix);
         }
 
-        var fit = FitCalculator.Compute(cell, frame.Size, threshold, look.Zoom, look.Focus);
+        var fit = FitCalculator.Compute(cell, frame.Size, look.Zoom, look.Focus);
         bool oriented = look is not { Rotation: 0, FlipX: false, FlipY: false };
         var bitmapPart = oriented ? BitmapPart(frame.Bitmap.Size, look, fit.Source) : fit.Source;
 
@@ -100,7 +100,7 @@ public static class Compositor
         }
 
         // Every effect is drawn here, so the preview, the exports and a playing video all show it.
-        BlurRenderer.Draw(g, frame, cell, threshold, fast);
+        BlurRenderer.Draw(g, frame, cell, fast);
         g.Clip = clip;
     }
 

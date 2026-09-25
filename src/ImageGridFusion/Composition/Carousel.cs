@@ -54,12 +54,12 @@ public static class Carousel
     /// A single canvas for every arrangement: the largest <see cref="CanvasSizer"/> gives over the
     /// steps, so no image is downscaled at any of them.
     /// </summary>
-    public static Size CanvasSize(IReadOnlyList<Size> sizes, GridLayout layout, double threshold)
+    public static Size CanvasSize(IReadOnlyList<Size> sizes, GridLayout layout)
     {
         var largest = Size.Empty;
         for (int step = 0; step < sizes.Count; step++)
         {
-            var canvas = CanvasSizer.Compute(Arrange(sizes, layout, step), layout, threshold);
+            var canvas = CanvasSizer.Compute(Arrange(sizes, layout, step), layout);
             if (canvas.Width > largest.Width)
             {
                 largest = canvas;

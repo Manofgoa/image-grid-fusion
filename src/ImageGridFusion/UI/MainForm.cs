@@ -8,9 +8,6 @@ namespace ImageGridFusion.UI;
 
 internal sealed class MainForm : Form
 {
-    private const int ThresholdStepPercent = 1;
-    private const int MaxThresholdPercent = 50;
-
     private readonly string[] _startupFiles;
     private readonly GridPreview _preview = new() { Dock = DockStyle.Fill, AllowDrop = true };
     private readonly LayoutStrip _layouts = new() { Dock = DockStyle.Left, Width = 80, AllowDrop = true };
@@ -33,22 +30,6 @@ internal sealed class MainForm : Form
     private bool _closeAfterExport;
     private bool _closingForGood;
 
-    // One slider position per step: the value is a step index, not a percentage.
-    private readonly TrackBar _threshold = new()
-    {
-        Minimum = 0,
-        Maximum = MaxThresholdPercent / ThresholdStepPercent,
-        Value = (int)Math.Round(FitCalculator.DefaultCropThreshold * 100 / ThresholdStepPercent),
-        SmallChange = 1,
-        LargeChange = 1,
-        TickStyle = TickStyle.None,
-
-        // Without ticks the thumb sits at the top: a height fitted to it keeps it level with the label.
-        AutoSize = false,
-        Size = new Size(160, 26),
-        Anchor = AnchorStyles.Left,
-    };
-    private readonly Label _thresholdLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _carousel = new() { Text = "Carrousel", AutoSize = true, Anchor = AnchorStyles.Right };
 
     // Effects of the selected cell, then the options of the selected effect: see RULES.md.
@@ -144,22 +125,19 @@ internal sealed class MainForm : Form
         _bottom.Controls.Add(_statusLine, 1, 0);
         _bottom.Controls.Add(_outputButtons, 2, 0);
 
-        // Settings on the left; the label follows the slider so its changing width never moves it. Modes on the right.
+        // Modes on the right.
         var top = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
-            ColumnCount = 3,
+            ColumnCount = 2,
             RowCount = 1,
             Padding = new Padding(8),
         };
-        top.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         top.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         top.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         top.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        top.Controls.Add(_threshold, 0, 0);
-        top.Controls.Add(_thresholdLabel, 1, 0);
-        top.Controls.Add(_carousel, 2, 0);
+        top.Controls.Add(_carousel, 1, 0);
 
         _effects.Controls.Add(_blurButton);
         _blurOptions.Controls.Add(_gaussian);
@@ -191,7 +169,6 @@ internal sealed class MainForm : Form
         _copyButton.Click += (_, _) => CopyToClipboard();
         _saveButton.Click += (_, _) => Save();
         _cancelButton.Click += (_, _) => _export?.Cancel();
-        _threshold.ValueChanged += (_, _) => UpdateThreshold();
         _forceImage.CheckedChanged += (_, _) => _preview.ForceStill = _forceImage.Checked;
         _carousel.CheckedChanged += (_, _) => _preview.PlaysCarousel = _carousel.Checked;
         UpdateEffectIcons();
@@ -219,7 +196,6 @@ internal sealed class MainForm : Form
         _preview.DropZoneClicked += (_, _) => PickFiles();
         _layouts.DragEnter += OnDragEnter;
         _layouts.DragDrop += OnDragDrop;
-        UpdateThreshold();
         UpdateButtons();
         FitStatusWidth();
     }
@@ -651,10 +627,10 @@ internal sealed class MainForm : Form
         if (!HasAnimation)
         {
             Cursor.Current = Cursors.WaitCursor;
-            return Compositor.Render(_preview.Images, _preview.ActiveLayout!, _preview.CropThreshold);
+            return Compositor.Render(_preview.Images, _preview.ActiveLayout!);
         }
 
-        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CropThreshold);
+        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!);
         BeginExport("Rendering the image…", cancellable: false);
         try
         {
@@ -679,7 +655,7 @@ internal sealed class MainForm : Form
     /// </summary>
     private async Task<GridExport.Result?> ExportVideoAsync(string path, bool carousel = false)
     {
-        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CropThreshold);
+        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!);
         bool playContents = !_forceImage.Checked;
         var cancellation = BeginExport("Exporting the video… 0 %", cancellable: true);
         var progress = new Progress<double>(done =>
@@ -717,9 +693,6 @@ internal sealed class MainForm : Form
         _export = new CancellationTokenSource();
         _preview.Locked = true;
         _layouts.Enabled = false;
-
-        // The job holds the threshold it started with: moving the slider would only mislead the preview.
-        _threshold.Enabled = false;
         _cancelButton.Visible = cancellable;
         UpdateButtons();
         ShowStatus(message);
@@ -732,7 +705,6 @@ internal sealed class MainForm : Form
         _export = null;
         _preview.Locked = false;
         _layouts.Enabled = true;
-        _threshold.Enabled = true;
         _cancelButton.Visible = false;
         UpdateButtons();
         if (_closeAfterExport)
@@ -966,14 +938,6 @@ internal sealed class MainForm : Form
 
         _blurOptions.Visible = _blurSelected;
         _preview.ShowsBlurBars = _blurSelected;
-    }
-
-    /// <summary>Applies the slider position, live while it is dragged: the preview, then every export, use it.</summary>
-    private void UpdateThreshold()
-    {
-        int percent = _threshold.Value * ThresholdStepPercent;
-        _thresholdLabel.Text = $"Crop: {percent}%";
-        _preview.CropThreshold = percent / 100.0;
     }
 
     /// <summary>Shows a message that stays until the next one replaces it; errors in red.</summary>
