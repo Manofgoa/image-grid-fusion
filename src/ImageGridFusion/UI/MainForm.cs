@@ -51,6 +51,36 @@ internal sealed class MainForm : Form
     private readonly Label _thresholdLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _carousel = new() { Text = "Carrousel", AutoSize = true, Anchor = AnchorStyles.Right };
 
+    // Effects of the selected cell, then the options of the selected effect: see RULES.md.
+    private readonly FlowLayoutPanel _effects = new() { Dock = DockStyle.Top, AutoSize = true, WrapContents = false, Padding = new Padding(8, 0, 8, 8) };
+    private readonly FlowLayoutPanel _blurOptions = new() { Dock = DockStyle.Top, AutoSize = true, WrapContents = false, Padding = new Padding(8, 0, 8, 8), Visible = false };
+    private readonly CheckBox _blurButton = new()
+    {
+        Text = "Blur",
+        AutoSize = true,
+        AutoCheck = false,
+        Appearance = Appearance.Button,
+        FlatStyle = FlatStyle.Flat,
+    };
+    private readonly RadioButton _gaussian = new() { Text = "Gaussian", AutoSize = true, Appearance = Appearance.Button, Anchor = AnchorStyles.Left };
+    private readonly RadioButton _pixelate = new() { Text = "Pixelate", AutoSize = true, Appearance = Appearance.Button, Anchor = AnchorStyles.Left };
+    private readonly TrackBar _blurIntensity = new()
+    {
+        Minimum = 0,
+        Maximum = 100,
+        SmallChange = 1,
+        LargeChange = 10,
+        TickStyle = TickStyle.None,
+        AutoSize = false,
+        Size = new Size(160, 26),
+        Anchor = AnchorStyles.Left,
+    };
+    private readonly Label _blurIntensityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+
+    // The selected effect belongs to the toolbar: it stays selected on another cell where it is active.
+    private bool _blurSelected;
+    private bool _syncingEffects;
+
     public MainForm(string[] args)
     {
         _startupFiles = args;
@@ -115,11 +145,20 @@ internal sealed class MainForm : Form
         top.Controls.Add(_thresholdLabel, 1, 0);
         top.Controls.Add(_carousel, 2, 0);
 
-        // Docked in reverse order of addition: the top and bottom bars span the whole width, then the
-        // layout strip takes the left of what remains, and the fill control goes first so it gets the rest.
+        _effects.Controls.Add(_blurButton);
+        _blurOptions.Controls.Add(_gaussian);
+        _blurOptions.Controls.Add(_pixelate);
+        _blurOptions.Controls.Add(_blurIntensity);
+        _blurOptions.Controls.Add(_blurIntensityLabel);
+
+        // Docked in reverse order of addition: the top bar, the effects row and the options row, then
+        // the bottom bar, span the whole width; the layout strip takes the left of what remains, and the
+        // fill control goes first so it gets the rest.
         Controls.Add(_preview);
         Controls.Add(_layouts);
         Controls.Add(_bottom);
+        Controls.Add(_blurOptions);
+        Controls.Add(_effects);
         Controls.Add(top);
         ResumeLayout(performLayout: true);
 
@@ -138,6 +177,12 @@ internal sealed class MainForm : Form
         _threshold.ValueChanged += (_, _) => UpdateThreshold();
         _forceImage.CheckedChanged += (_, _) => _preview.ForceStill = _forceImage.Checked;
         _carousel.CheckedChanged += (_, _) => _preview.PlaysCarousel = _carousel.Checked;
+        _blurButton.FlatAppearance.CheckedBackColor = ControlPaint.LightLight(SystemColors.Highlight);
+        _blurButton.Click += (_, _) => ToggleBlur();
+        _gaussian.CheckedChanged += (_, _) => SetBlurKind(_gaussian, BlurKind.Gaussian);
+        _pixelate.CheckedChanged += (_, _) => SetBlurKind(_pixelate, BlurKind.Pixelate);
+        _blurIntensity.ValueChanged += (_, _) => SetBlurIntensity();
+        _preview.SelectedImageChanged += (_, _) => UpdateEffects();
         _preview.ImagesChanged += (_, _) => UpdateButtons();
         _preview.LayoutChanged += (_, _) =>
         {
@@ -791,6 +836,95 @@ internal sealed class MainForm : Form
         {
             _carousel.Checked = false;
         }
+
+        UpdateEffects();
+    }
+
+    /// <summary>
+    /// Inactive on the selected image: activates the blur and selects it. Active: selects it, and
+    /// shows its options and bars. Active and selected: deactivates it.
+    /// </summary>
+    private void ToggleBlur()
+    {
+        if (_preview.SelectedImage?.Look is not { } look)
+        {
+            return;
+        }
+
+        if (look.Blur is null)
+        {
+            _blurSelected = true;
+            _preview.SetSelectedLook(look.WithBlur(BlurEffect.Default));
+        }
+        else if (!_blurSelected)
+        {
+            _blurSelected = true;
+        }
+        else
+        {
+            _blurSelected = false;
+            _preview.SetSelectedLook(look.WithBlur(null));
+        }
+
+        UpdateEffects();
+    }
+
+    private void SetBlurKind(RadioButton button, BlurKind kind)
+    {
+        if (button.Checked)
+        {
+            ChangeBlur(blur => blur.WithKind(kind));
+        }
+    }
+
+    private void SetBlurIntensity()
+    {
+        _blurIntensityLabel.Text = $"Intensity: {_blurIntensity.Value}%";
+        ChangeBlur(blur => blur.WithIntensity(_blurIntensity.Value / 100.0));
+    }
+
+    /// <summary>Applies an option of the options row to the blur of the selected image; not while the row follows the image.</summary>
+    private void ChangeBlur(Func<BlurEffect, BlurEffect> change)
+    {
+        if (!_syncingEffects && _preview.SelectedImage?.Look is { Blur: { } blur } look)
+        {
+            _preview.SetSelectedLook(look.WithBlur(change(blur)));
+        }
+    }
+
+    /// <summary>
+    /// Shows the effects of the selected image: a button pressed per active effect, the options and
+    /// bars of the selected one. The selection of an effect is dropped where it is inactive; with no
+    /// cell selected, or during an export, the toolbar is disabled.
+    /// </summary>
+    private void UpdateEffects()
+    {
+        var blur = _preview.SelectedImage?.Look.Blur;
+        bool enabled = _preview.SelectedImage is not null && !IsExporting;
+        if (blur is null || !enabled)
+        {
+            _blurSelected = false;
+        }
+
+        _syncingEffects = true;
+        _blurButton.Enabled = enabled;
+        _blurButton.Checked = blur is not null;
+
+        // Pressed: active. A thicker highlight border: selected, its options showing below.
+        _blurButton.FlatAppearance.BorderColor = _blurSelected ? SystemColors.Highlight : SystemColors.ControlDark;
+        _blurButton.FlatAppearance.BorderSize = _blurSelected ? 2 : 1;
+        if (blur is not null)
+        {
+            _gaussian.Checked = blur.Kind == BlurKind.Gaussian;
+            _pixelate.Checked = blur.Kind == BlurKind.Pixelate;
+            _blurIntensity.Value = (int)Math.Round(blur.Intensity * 100);
+        }
+
+        _blurIntensityLabel.Text = $"Intensity: {_blurIntensity.Value}%";
+        _syncingEffects = false;
+
+        _blurOptions.Visible = _blurSelected;
+        _preview.ShowsBlurBars = _blurSelected;
     }
 
     /// <summary>Applies the slider position, live while it is dragged: the preview, then every export, use it.</summary>
