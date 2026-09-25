@@ -25,8 +25,9 @@ The **Background** effect makes that fill a toggle of the effects toolbar, with 
   preview by a grey / white **checkerboard**, as in drawing apps.
 
 It follows every effect rule of [RULES.md](../RULES.md) (state on the image's immutable look,
-not persisted, toolbar clicks, options row, rendering in `Compositor.DrawCell`), except where
-this workfile amends them (see *Open Questions*).
+not persisted, toolbar clicks, options row, rendering in `Compositor.DrawCell`); the reset rules
+are amended so that a reset brings every effect back to its **defaults** (see *Resets and
+RULES.md Amendment*).
 
 ---
 
@@ -60,13 +61,34 @@ this workfile amends them (see *Open Questions*).
 - `ImageLook.Background` is `null` when the effect is **inactive**, like `Blur`.
 - The **default look of a new image** has the Background active with its defaults — every path
   that places a new image in a cell starts from it instead of `ImageLook.None`.
+- A chosen color is **not remembered** across the automatic mode: re-checking *Automatic color*
+  drops it, and unchecking it **freezes the current automatic color** (the one computed for the
+  shown part at that moment) as the chosen color.
 - Nothing is persisted (effects rule).
+
+## Resets and RULES.md Amendment
+
+A reset brings every effect back to its **defaults**, instead of leaving none active — for the
+Background, that means active, automatic, 100 %. Every other effect's default is still
+*inactive*, so their behaviour does not change.
+
+| Event | Effects of the cells concerned |
+|---|---|
+| The cell's image is replaced (drop, Ctrl+V, browse) | Back to defaults |
+| An image is deleted | Back to defaults for the images that shift into another cell |
+| Two cells are swapped | Kept — they follow the image |
+| The layout changes | Kept |
+| The cell's *Reset* tool is clicked | Back to defaults, together with the other actions |
+
+RULES.md's *Scope and State* table is amended to this wording (*Reset — none active* → *Back to
+defaults*), and a line states that an effect may be **active by default**.
 
 ## Effects Toolbar and Options Toolbar
 
-- One more toggle in the effects row, with its own icon in `EffectIcons`. Clicks follow the
-  RULES.md table (inactive → activate + select; active → select; active and selected →
-  deactivate).
+- One more toggle in the effects row, with its own icon in `EffectIcons`, placed **first** —
+  before Zoom — as the background is the lowest layer of the cell (`ImageEffect.Background` is
+  the enum's first case). Clicks follow the RULES.md table (inactive → activate + select;
+  active → select; active and selected → deactivate).
 - Options row of the Background, in this order:
   1. **Automatic color** checkbox — checked by default.
   2. **Opacity** slider 0–100 %, default 100 %, with its value label (same layout as the blur's
@@ -91,17 +113,41 @@ this workfile amends them (see *Open Questions*).
 
 - The fill still covers the **whole cell**, so it also shows through the transparent pixels of
   the image itself (PNG with alpha), as today.
-- Preview: wherever the result is not fully opaque (background inactive, opacity < 100 %,
-  transparent image pixels), a grey / white **checkerboard** is visible underneath.
-- Exports: the rendering bitmaps must carry alpha for transparency to survive (see *Open
-  Questions*).
+- The **black-and-white** effect desaturates the fill **whatever its color** — automatic or
+  chosen.
+
+### Preview — Checkerboard
+
+- Wherever the result is not fully opaque (background inactive, opacity < 100 %, transparent
+  image pixels), a grey / white **checkerboard** is visible underneath.
+- Squares of **8 logical px**, scaled with `LogicalToDeviceUnits` — a screen-space aid, not
+  part of the image.
+- **Preview only**: drawn by the preview under the composed grid, never by the `Compositor`,
+  so it never reaches an export.
+
+### Exports
+
+| Format | Where the cell is transparent |
+|---|---|
+| PNG | **Transparency kept** — the rendering bitmap carries alpha (32 bpp ARGB) |
+| JPEG, video, GIF, and every other format without alpha | Flattened on **white** |
+
+- Today `Compositor.Render` is 24 bpp and the export bitmaps are 32 bpp RGB: the PNG path
+  switches to ARGB, the others composite the result over white before encoding.
 
 ---
 
 ## Test Impact
 
-To be settled with the user (see *Open Questions*). The solution has no test project, and every
-previous workfile stayed test-free.
+**Nothing to test** — the user chose to stay test-free (Q&A #11): the solution has no test
+project, as in every previous workfile. The default look, the resets and the frozen automatic
+color stay untested by decision, not because nothing testable changes.
+
+Manual verification: drop an image (Background active, automatic); change the opacity and
+check the checkerboard shows through; pick a color (checkbox unchecks), re-check and uncheck
+(the current automatic color is frozen); turn the effect off (checkerboard only); apply black
+and white on a chosen color; replace, delete, swap and *Reset* cells; export PNG (alpha kept)
+and JPEG / video (white); same on a playing video.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
@@ -114,21 +160,19 @@ previous workfile stayed test-free.
 Every question the design cannot settle on its own, listed before Iteration 1 — not only the
 blocking ones.
 
-- [ ] **Resets vs. "active by default"** — RULES.md says a replaced image and the cell's *Reset*
-  tool leave *no effect active*. Proposal: for these two events every effect goes back to its
-  **defaults** (the Background active, automatic, 100 %), and the RULES.md table is amended
-  accordingly. Deleting an image (images shifting into another cell) follows the same rule.
-- [ ] **Exports and transparency** — which formats keep the transparency, and what do formats
-  without alpha (JPEG, video, GIF) show where the cell is transparent?
-- [ ] **Checkerboard** — preview only (never in an export)? Square size fixed in logical px
-  (e.g. 8, scaled with `LogicalToDeviceUnits`) or relative to the cell?
-- [ ] **Black-and-white effect** — does it also desaturate a **chosen** color (it already
-  desaturates the automatic one)?
-- [ ] **Re-checking *Automatic color*** — is the chosen color remembered, so unchecking again
-  brings it back? Or does unchecking always start from the current automatic color?
-- [ ] **Button position** — where does the Background toggle sit in the effects row (enum order
-  = button order: Zoom, Rotate, Flip, Black and white, Blur)?
-- [ ] **Unit tests** — stay test-free like every previous workfile?
+- [x] ~~**Resets vs. "active by default"** — what do an image replacement, a deletion and the
+  cell's *Reset* do, now that an effect is active by default?~~ → Back to every effect's
+  defaults; RULES.md amended (Q&A #5)
+- [x] ~~**Exports and transparency** — which formats keep it, what do the others show?~~ → PNG
+  keeps the alpha; JPEG, video, GIF and other formats without alpha flatten on white (Q&A #6)
+- [x] ~~**Checkerboard** — where, and what size?~~ → Preview only, 8 logical px squares scaled
+  with `LogicalToDeviceUnits` (Q&A #7)
+- [x] ~~**Black-and-white effect** — does it desaturate a chosen color too?~~ → Yes, always
+  (Q&A #8)
+- [x] ~~**Re-checking *Automatic color*** — is the chosen color remembered?~~ → No: unchecking
+  freezes the current automatic color (Q&A #9)
+- [x] ~~**Button position** in the effects row?~~ → First, before Zoom (Q&A #10)
+- [x] ~~**Unit tests** — stay test-free?~~ → Yes, manual verification (Q&A #11)
 
 ---
 
@@ -146,6 +190,19 @@ active by default, automatic color checkbox (checked by default), opacity slider
 100 %, color button always enabled — choosing a color unchecks the automatic mode; inactive =
 transparent, shown by a checkerboard. Codebase explored in one pass (depth: straightforward):
 band-color rules, blur wiring, transparency support — findings in *Current State*.
+
+### Iteration 2 — 2026-09-26
+
+Every open question answered (Q&A #5–#11):
+- Resets bring every effect back to its **defaults** (Background active, automatic, 100 %) —
+  new *Resets and RULES.md Amendment* section.
+- Exports: PNG keeps the transparency, the other formats flatten on white — *Exports*.
+- Checkerboard: preview only, 8 logical px squares — *Preview — Checkerboard*.
+- Black and white desaturates a chosen color too.
+- The chosen color is not remembered: unchecking *Automatic color* freezes the current automatic
+  color.
+- The Background toggle comes first in the effects row.
+- No unit tests; manual verification listed in *Test Impact*.
 
 ---
 
@@ -172,14 +229,14 @@ Questions asked by the agent during design, with user responses.
 | 2 | With *Automatic color* checked, how does the color button behave? | Enabled; choosing a color unchecks the automatic mode | 2026-09-25 |
 | 3 | Opacity slider range and default? | 0–100 %, default 100 % | 2026-09-25 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward — single scout pass | 2026-09-25 |
-| 5 | Resets (image replaced, image deleted, cell *Reset*): back to the effects' defaults, RULES.md amended? | | 2026-09-25 |
-| 6 | Exports: which formats keep the transparency, what do the others show? | | 2026-09-25 |
-| 7 | Checkerboard: preview only? Square size? | | 2026-09-25 |
-| 8 | Does the black-and-white effect desaturate a chosen color too? | | 2026-09-25 |
-| 9 | Re-checking *Automatic color*: is the chosen color remembered? | | 2026-09-25 |
-| 10 | Position of the Background toggle in the effects row? | | 2026-09-25 |
-| 11 | Unit tests: stay test-free? | | 2026-09-25 |
+| 5 | Resets (image replaced, image deleted, cell *Reset*): back to the effects' defaults, RULES.md amended? | Back to defaults, RULES.md amended | 2026-09-26 |
+| 6 | Exports: which formats keep the transparency, what do the others show? | PNG keeps the alpha, the others flatten on white | 2026-09-26 |
+| 7 | Checkerboard: preview only? Square size? | Preview only, 8 logical px | 2026-09-26 |
+| 8 | Does the black-and-white effect desaturate a chosen color too? | Yes, always | 2026-09-26 |
+| 9 | Re-checking *Automatic color*: is the chosen color remembered? | No — unchecking freezes the current automatic color | 2026-09-26 |
+| 10 | Position of the Background toggle in the effects row? | First, before Zoom | 2026-09-26 |
+| 11 | Unit tests: stay test-free? | Yes | 2026-09-26 |
 
 ---
 
-*Last updated: 2026-09-25*
+*Last updated: 2026-09-26*
