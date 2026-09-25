@@ -61,3 +61,16 @@ Apply to **every effect**, the blur being the first one
   playback all show it from one place.
 - Its strength is **resolution-independent** (relative to the cell size), so the preview and an
   export at another size look the same.
+
+## On-Cell Helper Indicators
+
+Apply to every **helper indicator** — a measure or geometry aid drawn over a cell: guides, handles,
+value readouts (origin: `workfiles/20260925-zoom-range-and-percentage.md`).
+
+- It is **fluorescent green** (57, 255, 20), over a black halo that keeps it legible on any image —
+  `HelperColor` and `HelperHalo` in `GridPreview`, defined once and shared.
+- It is drawn in the **preview only** (`GridPreview.OnPaint`), never in `Compositor`, so it never
+  reaches the exports.
+- A hovered or dragged handle may turn **white**, as its hover feedback.
+- Interaction feedback is not a helper indicator and keeps its own colours: selection outline,
+  drop-target highlight, hover outline, dimmed cell being dragged.
