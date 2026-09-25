@@ -199,6 +199,7 @@ Questions asked by the agent during design, with user responses.
 | 9 | Which buttons become split buttons (Copy, Save, or a single Export)? | Copy and Save each | 2026-09-25 |
 | 10 | Does a submenu choice apply once, or stay as the button's format until the content changes? | Applies once | 2026-09-25 |
 | 11 | Does the main part of the button show the format it will produce? | Yes | 2026-09-25 |
+| 12 | Design stable — start the implementation? | No — the gate holds | 2026-09-25 |
 
 ---
 
