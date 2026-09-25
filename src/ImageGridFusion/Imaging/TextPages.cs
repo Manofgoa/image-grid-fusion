@@ -6,7 +6,8 @@ using ImageGridFusion.Composition;
 namespace ImageGridFusion.Imaging;
 
 /// <summary>
-/// A text file rendered by the app, in a monospace font, on pages shaped like the cell they fill.
+/// A text rendered by the app — a text file, or a text pasted or dropped — in a monospace font, on
+/// pages shaped like the cell they fill, each character in its own style (bold, colors…).
 /// The font is the largest size in [<see cref="MinFontSize"/>, <see cref="MaxFontSize"/>] at which
 /// the whole text fits one page; when even the smallest does not fit, the text is paginated at it.
 /// </summary>
@@ -26,19 +27,31 @@ public sealed class TextPages : PageSource
     private const int TabWidth = 4;
     private const string FontFamily = "Consolas";
 
-    private static readonly Color Paper = Color.White;
-    private static readonly Color Ink = Color.FromArgb(34, 34, 34);
+    private static readonly Color WhitePaper = Color.White;
+    private static readonly Color DarkInk = Color.FromArgb(34, 34, 34);
+    private static readonly Color LightInk = Color.FromArgb(221, 221, 221);
 
     /// <summary>Advance of one character and line spacing, per pixel of font height.</summary>
     private static readonly Lazy<(float Advance, float LineSpacing)> Metrics = new(Measure);
 
+    /// <summary>The whole text, normalized: the styles of the lines, by offset.</summary>
+    private readonly StyledText _text;
+
     /// <summary>Logical lines, tabs expanded, and the offset of each in the whole text.</summary>
     private readonly string[] _lines;
     private readonly int[] _lineOffsets;
+    private readonly Color _paper;
+
+    /// <summary>Color of the text that has none of its own: dark on a light paper, light on a dark one.</summary>
+    private readonly Color _ink;
     private Layout _layout;
 
-    private TextPages(string[] lines, Size pageSize)
+    private TextPages(StyledText text, Size pageSize)
     {
+        _text = text;
+        _paper = text.Paper ?? WhitePaper;
+        _ink = IsDark(_paper) ? LightInk : DarkInk;
+        string[] lines = text.Text.Split('\n');
         _lines = lines;
         _lineOffsets = new int[lines.Length];
         for (int i = 1; i < lines.Length; i++)
@@ -93,16 +106,14 @@ public sealed class TextPages : PageSource
     /// Returns null unless the file is text: at most 1 MB, not empty, UTF-16 with a byte order mark,
     /// or valid UTF-8 with no NUL byte in its first 8 KB. The extension plays no part.
     /// </summary>
-    public static TextPages? TryOpen(string path, Size pageSize)
-    {
-        string? text = TryReadText(path);
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return null;
-        }
+    public static TextPages? TryOpen(string path, Size pageSize) =>
+        TryReadText(path) is { } text ? TryCreate(StyledText.Plain(text), pageSize) : null;
 
-        string[] lines = text.ReplaceLineEndings("\n").TrimEnd().Split('\n').Select(ExpandTabs).ToArray();
-        return new TextPages(lines, pageSize);
+    /// <summary>Returns null when the text is empty or white space only.</summary>
+    public static TextPages? TryCreate(StyledText text, Size pageSize)
+    {
+        var normalized = text.Normalize(TabWidth);
+        return normalized.IsBlank ? null : new TextPages(normalized, pageSize);
     }
 
     public override int Resize(Size pageSize, int page)
@@ -125,30 +136,93 @@ public sealed class TextPages : PageSource
     private static TimeSpan[] Views(Layout layout) => Enumerable.Repeat(Animation.StepDuration, layout.ViewCount).ToArray();
 
     /// <summary>Renders a page's worth of lines, from line <paramref name="first"/>.</summary>
-    private static Bitmap RenderFrom(Layout layout, int first)
+    private Bitmap RenderFrom(Layout layout, int first)
     {
-        var (_, lineSpacing) = Metrics.Value;
+        var (advance, lineSpacing) = Metrics.Value;
         var bitmap = new Bitmap(layout.PageSize.Width, layout.PageSize.Height, PixelFormat.Format32bppArgb);
         using var g = Graphics.FromImage(bitmap);
-        g.Clear(Paper);
+        g.Clear(_paper);
 
         // No grid fitting: glyph advances then scale linearly with the size, as measured once.
         g.TextRenderingHint = TextRenderingHint.AntiAlias;
 
-        using var font = new Font(FontFamily, layout.FontSize, GraphicsUnit.Pixel);
-        using var ink = new SolidBrush(Ink);
+        var fonts = new Dictionary<FontStyle, Font>();
+        using var ink = new SolidBrush(_ink);
         using var format = (StringFormat)StringFormat.GenericTypographic.Clone();
         format.FormatFlags |= StringFormatFlags.NoWrap | StringFormatFlags.MeasureTrailingSpaces;
 
-        int last = Math.Min(layout.Lines.Length, first + layout.LinesPerPage);
-        float height = layout.FontSize * lineSpacing;
-        for (int i = first; i < last; i++)
+        try
         {
-            g.DrawString(layout.Lines[i], font, ink, layout.Margin, layout.Margin + (i - first) * height, format);
+            int last = Math.Min(layout.Lines.Length, first + layout.LinesPerPage);
+            float height = layout.FontSize * lineSpacing;
+            float width = layout.FontSize * advance;
+            for (int i = first; i < last; i++)
+            {
+                float y = layout.Margin + (i - first) * height;
+                string line = layout.Lines[i];
+                if (!_text.HasStyles)
+                {
+                    g.DrawString(line, FontOf(FontStyle.Regular), ink, layout.Margin, y, format);
+                    continue;
+                }
+
+                // Runs of one style, each at its column: the font is monospace, bold and italic too.
+                int start = layout.LineStarts[i];
+                for (int run = 0; run < line.Length;)
+                {
+                    ushort index = _text.StyleIndexAt(start + run);
+                    int end = run + 1;
+                    while (end < line.Length && _text.StyleIndexAt(start + end) == index)
+                    {
+                        end++;
+                    }
+
+                    var style = _text.StyleOf(index);
+                    float x = layout.Margin + run * width;
+                    if (style.Highlight is { } highlight)
+                    {
+                        using var fill = new SolidBrush(highlight);
+                        g.FillRectangle(fill, x, y, (end - run) * width, height);
+                    }
+
+                    if (style.Ink is { } color)
+                    {
+                        using var own = new SolidBrush(color);
+                        g.DrawString(line[run..end], FontOf(style.Font), own, x, y, format);
+                    }
+                    else
+                    {
+                        g.DrawString(line[run..end], FontOf(style.Font), ink, x, y, format);
+                    }
+
+                    run = end;
+                }
+            }
+        }
+        finally
+        {
+            foreach (var font in fonts.Values)
+            {
+                font.Dispose();
+            }
         }
 
         return bitmap;
+
+        Font FontOf(FontStyle style)
+        {
+            if (!fonts.TryGetValue(style, out var font))
+            {
+                font = new Font(FontFamily, layout.FontSize, style, GraphicsUnit.Pixel);
+                fonts[style] = font;
+            }
+
+            return font;
+        }
     }
+
+    /// <summary>Perceived lightness below the middle: a dark theme's background.</summary>
+    private static bool IsDark(Color color) => 0.299 * color.R + 0.587 * color.G + 0.114 * color.B < 128;
 
     /// <summary>Largest font at which the text fits one page, else pages at the smallest font.</summary>
     private Layout LayOut(Size pageSize)
@@ -256,29 +330,6 @@ public sealed class TextPages : PageSource
         {
             return null;
         }
-    }
-
-    private static string ExpandTabs(string line)
-    {
-        if (!line.Contains('\t'))
-        {
-            return line;
-        }
-
-        var builder = new StringBuilder(line.Length + 16);
-        foreach (char c in line)
-        {
-            if (c == '\t')
-            {
-                builder.Append(' ', TabWidth - builder.Length % TabWidth);
-            }
-            else
-            {
-                builder.Append(c);
-            }
-        }
-
-        return builder.ToString();
     }
 
     private static (float Advance, float LineSpacing) Measure()
