@@ -52,7 +52,6 @@ internal sealed class GridPreview : Control
 
     private readonly List<SourceImage> _images = [];
     private GridLayout? _layout;
-    private double _cropThreshold = FitCalculator.DefaultCropThreshold;
     private Bitmap? _cache;
     private int _selected = -1;
     private int _hovered = -1;
@@ -136,23 +135,6 @@ internal sealed class GridPreview : Control
 
     /// <summary>Layout the images are shown and exported with; <c>null</c> while there is no image.</summary>
     public GridLayout? ActiveLayout => _layout;
-
-    /// <summary>Share of the overflowing axis that may be cropped, shown and exported with; see <see cref="FitCalculator"/>.</summary>
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public double CropThreshold
-    {
-        get => _cropThreshold;
-        set
-        {
-            if (value != _cropThreshold)
-            {
-                _cropThreshold = value;
-                _cache?.Dispose();
-                _cache = null;
-                Invalidate();
-            }
-        }
-    }
 
     public int FreeSlots => GridLayout.MaxImages - _images.Count;
 
@@ -399,14 +381,14 @@ internal sealed class GridPreview : Control
             return;
         }
 
-        // Rendered at display size, and only again when the images, the layout, the threshold, the size or the carousel step change.
+        // Rendered at display size, and only again when the images, the layout, the size or the carousel step change.
         if (_cache is null || _cache.Size != canvas.Size)
         {
             _cache?.Dispose();
             _cache = new Bitmap(canvas.Width, canvas.Height);
             using var cacheGraphics = Graphics.FromImage(_cache);
             IReadOnlyList<SourceImage> shown = _carouselStep == 0 ? _images : Carousel.Arrange(_images, _layout!, _carouselStep);
-            Compositor.Draw(cacheGraphics, shown, _layout!, canvas.Size, _cropThreshold);
+            Compositor.Draw(cacheGraphics, shown, _layout!, canvas.Size);
         }
 
         g.DrawImageUnscaled(_cache, canvas.Location);
@@ -1180,7 +1162,7 @@ internal sealed class GridPreview : Control
         var cell = _layout.Cells(canvas.Size)[ShownCell(index)];
         using (var g = Graphics.FromImage(_cache))
         {
-            Compositor.DrawCell(g, new Frame(image.Bitmap, image.BandColor, image.Look), cell, _cropThreshold, fast: live);
+            Compositor.DrawCell(g, new Frame(image.Bitmap, image.BandColor, image.Look), cell, fast: live);
         }
 
         cell.Offset(canvas.Location);
@@ -1489,7 +1471,7 @@ internal sealed class GridPreview : Control
         var image = _images[_zooming];
         var zoomed = image.Look.WithZoom(zoom);
         var size = zoomed.Oriented(image.Bitmap.Size);
-        SetLook(_zooming, zoomed.WithFocus(FitCalculator.WithinStops(cells[_zooming], size, _cropThreshold, zoomed.Zoom, zoomed.Focus)));
+        SetLook(_zooming, zoomed.WithFocus(FitCalculator.WithinStops(cells[_zooming], size, zoomed.Zoom, zoomed.Focus)));
     }
 
     /// <summary>
@@ -1517,13 +1499,13 @@ internal sealed class GridPreview : Control
         var cell = cells[index];
         var zoomed = look.WithZoom(zoom);
         var size = look.Oriented(image.Bitmap.Size);
-        var before = FitCalculator.Compute(cell, size, _cropThreshold, look.Zoom, look.Focus).Image;
-        var after = FitCalculator.DrawnSize(cell, size, _cropThreshold, zoomed.Zoom);
+        var before = FitCalculator.Compute(cell, size, look.Zoom, look.Focus).Image;
+        var after = FitCalculator.DrawnSize(cell, size, zoomed.Zoom);
         double x = Math.Clamp((location.X - before.X) / before.Width, 0, 1);
         double y = Math.Clamp((location.Y - before.Y) / before.Height, 0, 1);
         var origin = new PointF((float)(location.X - x * after.Width), (float)(location.Y - y * after.Height));
         var focus = FitCalculator.FocusAt(cell, after, origin);
-        SetLook(index, zoomed.WithFocus(FitCalculator.WithinStops(cell, size, _cropThreshold, zoomed.Zoom, focus)));
+        SetLook(index, zoomed.WithFocus(FitCalculator.WithinStops(cell, size, zoomed.Zoom, focus)));
     }
 
     /// <summary>
@@ -1542,7 +1524,7 @@ internal sealed class GridPreview : Control
         var image = _images[index];
         var look = image.Look;
         var size = look.Oriented(image.Bitmap.Size);
-        var drawn = FitCalculator.DrawnSize(cell, size, _cropThreshold, look.Zoom);
+        var drawn = FitCalculator.DrawnSize(cell, size, look.Zoom);
         var placed = FitCalculator.Place(cell, drawn, look.Focus);
         var stops = FitCalculator.Stops(cell, drawn);
         bool free = (ModifierKeys & Keys.Shift) != 0;
@@ -1688,7 +1670,7 @@ internal sealed class GridPreview : Control
             return;
         }
 
-        var drawn = FitCalculator.DrawnSize(cell, image.Look.Oriented(image.Bitmap.Size), _cropThreshold, image.Look.Zoom);
+        var drawn = FitCalculator.DrawnSize(cell, image.Look.Oriented(image.Bitmap.Size), image.Look.Zoom);
         int inset = LogicalToDeviceUnits(2);
         int left = cell.Left + inset;
         int right = cell.Right - 1 - inset;

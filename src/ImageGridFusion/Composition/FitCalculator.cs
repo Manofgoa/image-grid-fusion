@@ -4,37 +4,37 @@ namespace ImageGridFusion.Composition;
 public readonly record struct Fit(RectangleF Source, RectangleF Destination, RectangleF Image);
 
 /// <summary>
-/// Scales an image to fill its cell, cropping at most <c>threshold</c> of the source along the
-/// overflowing axis (split evenly on both sides). Past the threshold, the image is cropped exactly
+/// Scales an image to fill its cell, cropping at most <see cref="CropThreshold"/> of the source along
+/// the overflowing axis (split evenly on both sides). Past the threshold, the image is cropped exactly
 /// to it and centered, leaving bands on the other axis.
 /// </summary>
 public static class FitCalculator
 {
-    public const double DefaultCropThreshold = 0.15;
+    /// <summary>Fixed: zooming and moving the image past its cell's edges crop more, or less.</summary>
+    public const double CropThreshold = 0.15;
 
     /// <summary>Share of the cell's width and height a moved image always keeps covering, so it can be grabbed back.</summary>
     public const double MinCoveredShare = 0.1;
 
-    public static double Scale(double cellWidth, double cellHeight, Size image, double threshold = DefaultCropThreshold)
+    public static double Scale(double cellWidth, double cellHeight, Size image)
     {
         double sx = cellWidth / image.Width;
         double sy = cellHeight / image.Height;
         double fill = Math.Max(sx, sy);
         double fit = Math.Min(sx, sy);
-        return Math.Min(fill, fit / (1 - Math.Clamp(threshold, 0, 0.99)));
+        return Math.Min(fill, fit / (1 - CropThreshold));
     }
 
-    public static Fit Compute(Rectangle cell, Size image, double threshold = DefaultCropThreshold) =>
-        Compute(cell, image, threshold, 1, new PointF(0.5f, 0.5f));
+    public static Fit Compute(Rectangle cell, Size image) => Compute(cell, image, 1, new PointF(0.5f, 0.5f));
 
     /// <summary>
     /// Same fit, scaled by <paramref name="zoom"/>: the image is placed with <paramref name="focus"/>
     /// (fractions of the image) at the center of the cell — see <see cref="Place"/> — and the part
     /// drawn is what of it falls in the cell; the rest of the cell shows the bands.
     /// </summary>
-    public static Fit Compute(Rectangle cell, Size image, double threshold, double zoom, PointF focus)
+    public static Fit Compute(Rectangle cell, Size image, double zoom, PointF focus)
     {
-        var drawn = DrawnSize(cell, image, threshold, zoom);
+        var drawn = DrawnSize(cell, image, zoom);
         var placed = Place(cell, drawn, focus);
         var destination = RectangleF.Intersect(placed, cell);
         double scale = drawn.Width / image.Width;
@@ -47,9 +47,9 @@ public static class FitCalculator
     }
 
     /// <summary>Size of the whole image once drawn in <paramref name="cell"/> at <paramref name="zoom"/>.</summary>
-    public static SizeF DrawnSize(Rectangle cell, Size image, double threshold, double zoom)
+    public static SizeF DrawnSize(Rectangle cell, Size image, double zoom)
     {
-        double scale = Scale(cell.Width, cell.Height, image, threshold) * zoom;
+        double scale = Scale(cell.Width, cell.Height, image) * zoom;
         return new SizeF((float)(image.Width * scale), (float)(image.Height * scale));
     }
 
@@ -90,9 +90,9 @@ public static class FitCalculator
         (cell.Y + cell.Height / 2f - origin.Y) / drawn.Height);
 
     /// <summary>The focus, moved just enough for the image to lie between its edge stops; see <see cref="Stops"/>.</summary>
-    public static PointF WithinStops(Rectangle cell, Size image, double threshold, double zoom, PointF focus)
+    public static PointF WithinStops(Rectangle cell, Size image, double zoom, PointF focus)
     {
-        var drawn = DrawnSize(cell, image, threshold, zoom);
+        var drawn = DrawnSize(cell, image, zoom);
         var placed = Place(cell, drawn, focus);
         var stops = Stops(cell, drawn);
         return FocusAt(cell, drawn, new PointF(Math.Clamp(placed.X, stops.Left, stops.Right), Math.Clamp(placed.Y, stops.Top, stops.Bottom)));
