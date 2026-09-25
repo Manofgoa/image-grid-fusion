@@ -9,7 +9,7 @@
 
 ## Overview
 
-Today, the bottom bar holds a **Force as image** checkbox (`MainForm._forceImage`), next to Copy,
+Before this work, the bottom bar held a **Force as image** checkbox (`MainForm._forceImage`), next to Copy,
 visible only while a content plays (`HasAnimation`, i.e. `SourceImage.Plays`: animated and not
 frozen by the **Frames** effect). Unchecked, Copy and Save produce an MP4 video
 (`GridExport.RenderVideo`); checked, a PNG (`GridExport.RenderStill`), and the preview freezes
@@ -50,6 +50,10 @@ The project has **no NuGet dependency**: video goes through Media Foundation by 
   the main part stays enabled and produces the PNG.
 - **Shortcuts**: `Ctrl+C` / `Ctrl+S` do what the main part does (adapted format).
 - **While exporting**: both parts are disabled, as the buttons are today.
+- **Built as** two adjacent buttons (WinForms has no split button outside tool strips): the main
+  part (`SplitMain`, no right margin) and a narrow `▾` button (`SplitArrow`, no left margin,
+  anchored top and bottom so it takes the row's height). The menu is a `ContextMenuStrip` opened
+  above the main part, aligned on its left edge, like the ⚙ menu.
 - **Preview**: with no remembered format, nothing freezes the preview any more — it always plays.
   `GridPreview.ForceStill` / `AnimationPlayer.ForceStill` lose their only caller.
 
@@ -75,7 +79,7 @@ The project has **no NuGet dependency**: video goes through Media Foundation by 
 - **Cancel / failure**: same behaviour as the video — progress `Exporting the GIF… n %`, the Cancel
   button, the incomplete file deleted.
 
-## Encoding Architecture (proposal)
+## Encoding Architecture
 
 - The frame loop of `GridExport.RenderVideo` writes frames
   to a sink instead of `VideoEncoder` directly: a small interface with
@@ -83,9 +87,13 @@ The project has **no NuGet dependency**: video goes through Media Foundation by 
   `VideoEncoder` and by a new `Imaging/GifEncoder.cs`. The loop itself is not duplicated.
 - `GifEncoder` uses **Windows' built-in WIC GIF encoder** by COM interop, as `VideoEncoder` uses
   Media Foundation: no NuGet dependency. Each frame is converted to 8-bit indexed with a palette
-  WIC computes from it; the frame delay goes in the Graphic Control Extension
-  (`/grctlext/Delay`), the infinite loop in the NETSCAPE2.0 application extension
-  (`/appext/Application`, `/appext/Data`) on the encoder's metadata.
+  WIC computes from it (`IWICPalette.InitializeFromBitmap`, 256 colors, error-diffusion dithering);
+  the frame delay goes in the Graphic Control Extension (`/grctlext/Delay`, set **before** the
+  pixels are written — WIC drops the extension otherwise), the infinite loop in the NETSCAPE2.0
+  application extension (`/appext/Application`, `/appext/Data`) on the encoder's metadata.
+- `GridExport.RenderVideo` became `GridExport.RenderAnimation(job, Format, …)`, `Format` being
+  `Mp4` or `Gif`; the GIF's `Result` carries no mixed nor failed sound, so the status line reads
+  `no sound`.
 
 ---
 
@@ -184,6 +192,31 @@ The code first re-reads what the "video mute and volume" run delivered on `main`
 (`c1d1b05..623a755`: `VideoEncoder.Create` with mixed sounds, `GridExport.Job.Sounds`,
 `GridExport.Result.MixedSounds` / `FailedSounds`, `Animation.Heard`).
 
+### Iteration 8 — 2026-09-26 — 🧭 Implementation choices
+
+No project rule was broken. Choices the frozen design did not state:
+
+- **Split button**: two adjacent buttons — the main part and a narrow `▾` one stretched to the
+  row's height — with a `ContextMenuStrip` opened above the main part, like the ⚙ menu.
+- **Dispatch**: a `GridExport.Format` enum (`Mp4`, `Gif`); `RenderVideo` renamed
+  `RenderAnimation`; the interface `IFrameEncoder` (`WriteFrame`, `Finish`, `IDisposable`) lives in
+  its own file. In `MainForm`, `CopyToClipboard` / `Save` (buttons and shortcuts) call
+  `Copy` / `SaveAs` with `AdaptedFormat` (MP4 while a content plays, else `null` for PNG); the
+  menus pass `Gif` or `Mp4`.
+- **WIC details**: error-diffusion dithering; the frame delay is set before `WriteSource` — found
+  while testing, the GIF otherwise came out with no Graphic Control Extension (all delays 0);
+  a delay never goes under 1 cs; the PROPVARIANT is laid out for 64-bit only (the app is win-x64).
+- **Copy as GIF**: one `DataObject` with the file drop list and the `GIF` stream (the file read
+  back); the copy's failure handling also catches `IOException` / `UnauthorizedAccessException`
+  for that read.
+- **Dead code removed with `ForceStill`**: `AnimationPlayer.Pause` / `Resume` and
+  `Playback.PausedPage` only served the forced still.
+- **Temp files**: `TempVideoPath()` became `TempExportPath(format)`; the start-up cleanup lists
+  `*.mp4` then `*.gif`.
+- **Verification**: the GIF encoder was checked by a throwaway harness in the scratchpad (not
+  committed): 30 frames at 30 fps → delays 3 / 4 / 3 cs, 100 cs in total, loop count 0, frames
+  decoded correctly. The app's UI was not run during the run.
+
 ---
 
 ## Implementation Log
@@ -193,9 +226,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable: no test project in the repository |
-| README | | | |
+| Code | 7, 8 | 2026-09-26 | `c035411` GIF encoder, `cfe4a7c` split buttons, `31c63ba` preview cleanup |
+| Unit tests | 7 | 2026-09-26 | Not applicable: no test project in the repository; the GIF encoder checked by a scratchpad harness |
+| README | 7 | 2026-09-26 | `418ee83` |
 
 ---
 
