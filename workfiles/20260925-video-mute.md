@@ -53,6 +53,12 @@ Agreed:
 - Per `RULES.md`, acting on any option turns the effect on; the options row ends with the effect's
   own *Reset*.
 
+### Applicability
+
+The checkbox is enabled for **every video with a sound track**, a frozen one included (its settings
+take effect again once it plays). For any other image — still, animated GIF, video without a sound
+track, preview of a text / PDF — the checkbox and the options are disabled, with a tooltip saying why.
+
 ### Sound on Arrival
 
 The volume a video gets when it enters a cell depends on the **other cells**:
@@ -86,9 +92,11 @@ nothing. A muted video contributes nothing.
 
 ### Preview
 
-`PreviewSound` today holds one `MediaPlayer`, whose `Volume` is limited to **0…1**. Mixing needs
-one sound per audible video, each kept in step with its own video; 200 % needs a gain above 1 —
-see Open Questions (`AudioGraph` vs several `MediaPlayer`s).
+`PreviewSound` today holds one `MediaPlayer`, whose `Volume` is limited to **0…1**. It is replaced
+by one **`Windows.Media.Audio.AudioGraph`**: one input node per video with sound, whose gain is the
+cell's volume (**up to 2**, so 200 % is heard in the preview), all mixed into the default output
+device. Each node is kept in step with its own video's frames — position, pause, loop — as
+`PreviewSound.Sync` does today for the single sound, with the same drift threshold.
 
 ### Export
 
@@ -97,6 +105,11 @@ same PCM format (48 kHz or 44.1 kHz, stereo, 16-bit), each looping on its own vi
 own start, **summed with its gain** and **clamped** to the 16-bit range, then encoded to a single
 AAC track. The export's length stays the longest loop. A sound Windows cannot re-encode is left out
 of the mix, with a note in the status line (as today for the single sound).
+
+### Shared with the Soundtrack
+
+This workfile **builds the mixer** — preview and export. `workfiles/20260925-soundtrack.md` then
+plugs its global soundtrack into it as one more source.
 
 ---
 
@@ -115,15 +128,12 @@ volume of the shifted videos.
 
 ## Test Impact
 
-The repository has **no test project** today (`src/` holds `ImageGridFusion` only) — see Open
-Questions. Behaviours that would be pinned:
+**None.** The repository has no test project (`src/` holds `ImageGridFusion` only), and the user
+chose to ship this work **without unit tests**: it is verified manually in the app.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| Volume settings: slider ↔ Mute rules (0 checks Mute, Mute keeps the value, unmuting at 0 → 100 %) | `src/ImageGridFusion.Tests/Composition/ImageLookTests.cs` | Create (pending the test-project decision) |
-| Sound on arrival: 100 % with no other audible video, muted otherwise, replacement cases | `src/ImageGridFusion.Tests/Composition/AnimationTests.cs` | Create (pending the test-project decision) |
-| Which images contribute to the mix (frozen, muted, no sound track) | `src/ImageGridFusion.Tests/Composition/AnimationTests.cs` | Create (pending the test-project decision) |
-| PCM mix: gains summed, clamped to the 16-bit range | `src/ImageGridFusion.Tests/Imaging/SoundMixTests.cs` | Create (pending the test-project decision) |
+| — (no unit tests, by decision) | — | — |
 
 ---
 
@@ -137,10 +147,10 @@ Questions. Behaviours that would be pinned:
 - [x] ~~What does the Volume effect's *Reset* (and the global *Reset*) bring back: the rule on arrival, recomputed from the other cells, or plainly 100 %?~~ → The rule on arrival, recomputed
 - [x] ~~Deleting an image: the videos shifting into another cell are reset per `RULES.md` — recompute their sound on arrival, or keep their volume?~~ → Keep their volume (exception to the rule)
 - [x] ~~"Audible video" for the rule on arrival: a video with a sound track, playing (not frozen), not muted — does a volume at 0 % count as muted, and a video with no sound track count as silent?~~ → Actually heard: sound track, not frozen, not muted, volume above 0
-- [ ] Which images enable the effect's checkbox: videos with a sound track only — and a frozen video?
-- [ ] Preview mixing and 200 %: one `AudioGraph` (gain up to 2, one mix), or several `MediaPlayer`s (native, capped at 100 % in the preview)?
-- [ ] The soundtrack workfile also needs the mixer: does this workfile build the mixer (preview + export), the soundtrack building on it?
-- [ ] No test project exists: create one for this work, or ship without unit tests?
+- [x] ~~Which images enable the effect's checkbox: videos with a sound track only — and a frozen video?~~ → Every video with a sound track, a frozen one included
+- [x] ~~Preview mixing and 200 %: one `AudioGraph` (gain up to 2, one mix), or several `MediaPlayer`s (native, capped at 100 % in the preview)?~~ → `AudioGraph`
+- [x] ~~The soundtrack workfile also needs the mixer: does this workfile build the mixer (preview + export), the soundtrack building on it?~~ → Yes, this workfile builds it
+- [x] ~~No test project exists: create one for this work, or ship without unit tests?~~ → No unit tests
 
 ---
 
@@ -184,6 +194,13 @@ has it off (100 %); every *Reset* recomputes the rule on arrival; a deletion kee
 videos' volume, an exception to `RULES.md`; "audible" means actually heard. § Sound on Arrival and
 § RULES updated.
 
+### Iteration 4 — 2026-09-25
+
+User answers: the checkbox is enabled for every video with a sound track, a frozen one included; the
+preview mixes with an `AudioGraph` (200 % heard); this workfile builds the mixer the soundtrack will
+reuse; no unit tests. § Applicability, § Preview, § Shared with the Soundtrack and § Test Impact
+updated. No open question remains.
+
 ---
 
 ## Implementation Log
@@ -194,7 +211,7 @@ says so rather than staying blank.
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
 | Code | | | |
-| Unit tests | | | |
+| Unit tests | 4 | 2026-09-25 | Declined by the user — no test project, manual verification |
 | README | | | |
 | RULES | | | |
 
@@ -214,14 +231,14 @@ Questions asked by the agent during design, with user responses.
 | 6 | What does activating the effect do? | Depends on the other cells: no other video with sound → 100 % for the added video, otherwise 0 % (mute); replacing the only video with sound → 100 %; replacing one of several → 0 % (mute) | 2026-09-25 |
 | 7 | How do the Mute check box and the slider interact? | Independent check box | 2026-09-25 |
 | 8 | Muted sound source: silent grid, or the next video's sound? | Neither: the sounds are mixed, each with its own volume per cell | 2026-09-25 |
-| 9 | Which images enable the effect's checkbox? | | |
-| 10 | Preview mixing and 200 %: `AudioGraph`, or several `MediaPlayer`s capped at 100 %? | | |
-| 11 | No test project: create one, or no unit tests? | | |
+| 9 | Which images enable the effect's checkbox? | Every video with a sound track (frozen included) | 2026-09-25 |
+| 10 | Preview mixing and 200 %: `AudioGraph`, or several `MediaPlayer`s capped at 100 %? | `AudioGraph` | 2026-09-25 |
+| 11 | No test project: create one, or no unit tests? | No unit tests | 2026-09-25 |
 | 12 | Sound on arrival ↔ on / off: muted = on with Mute checked, audible = off? | Yes, muted = on, audible = off | 2026-09-25 |
 | 13 | What does *Reset* bring back: the rule on arrival, or 100 %? | The rule on arrival, recomputed | 2026-09-25 |
 | 14 | Deletion: recompute the shifted videos' sound, or keep it? | Keep their volume | 2026-09-25 |
 | 15 | What counts as an "audible" video for the rule on arrival? | Actually heard: sound track, not frozen, not muted, volume above 0 | 2026-09-25 |
-| 16 | Does this workfile build the mixer the soundtrack will reuse? | | |
+| 16 | Does this workfile build the mixer the soundtrack will reuse? | Yes, this workfile | 2026-09-25 |
 
 ---
 
