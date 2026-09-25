@@ -124,6 +124,11 @@ and in cells too small the centered disc shrinks down to 24 px before falling ba
 The 48 px is the size wherever it fits; the shrink only applies when it would overlap another
 control. Design sections updated; no Open Question left.
 
+### Iteration 3 — 2026-09-25 — ✅ Implemented
+
+Go given for code, unit tests and documentation (Q&A 9). Branch Gate: stays on `main`, the
+standing choice for this app. Scope frozen as the design sections above.
+
 ---
 
 ## Implementation Log
@@ -153,8 +158,8 @@ Questions asked by the agent during design, with user responses.
 | 6 | Old handle below the ×: removed or kept? | Removed | 2026-09-24 |
 | 7 | Resting visibility: as opaque as the × or discreet? | Like the × | 2026-09-24 |
 | 8 | Small cells: shrink then fall back under the ×, or always centered? | Shrink, then fall back under the × | 2026-09-24 |
-| 9 | Go for implementation? | | 2026-09-24 |
+| 9 | Go for implementation? | Code, unit tests and documentation | 2026-09-25 |
 
 ---
 
-*Last updated: 2026-09-24*
+*Last updated: 2026-09-25*
