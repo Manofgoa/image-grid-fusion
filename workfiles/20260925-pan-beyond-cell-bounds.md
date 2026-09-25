@@ -152,22 +152,22 @@ in the preview — never in `Compositor`, so never exported:
 
 ## Test Impact
 
-To be settled (Open Question): the solution has no test project. The candidates, if tests are
-created, are pure functions of `Composition/`:
+No unit test is created or updated: the user chose to keep the solution test-free (Q&A #9), as every
+previous workfile did. The margin, the image ∩ cell fit, the no-regression of unmoved images, the
+magnetic stops and the zoom clamp stay untested by decision, not because nothing testable changes.
+Verification is manual: drag a photo past each edge at 50 %, 100 % and 200 % (with and without
+Shift), check the guides, the 10 % margin, the band color of the uncovered area, a wheel zoom on a
+pushed image, then a copy / save and a video cell.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| `FitCalculator.Compute` keeps at least the minimum margin of the image in the cell, on each axis | *(no test project yet)* | — |
-| `FitCalculator.Compute` returns the intersection of the image and the cell, `Source` matching `Destination` | *(no test project yet)* | — |
-| An in-range focus draws exactly as before (no regression for unmoved images) | *(no test project yet)* | — |
-| The magnetic stops hold until 24 px past them (edges outward only, center either way), then release; Shift bypasses them | *(no test project yet)* | — |
-| A zoom clamps the position back within the stops, without recentering at 100 % and below | *(no test project yet)* | — |
+| — (declined, Q&A #9) | — | — |
 
 ---
 
 ## Documentation
 
-README (to be confirmed, Open Question): replace "Drag a zoomed-in image to move it within its cell"
+README (Q&A #10): replace "Drag a zoomed-in image to move it within its cell"
 with the new gesture — at every zoom, past the edges with the magnetic stops (edges and center) and
 their green guides, Shift to ignore them, a margin always visible, a zoom bringing the image back
 within its stops — and mention in *Crop threshold* that the area uncovered by a moved image gets
@@ -187,9 +187,10 @@ the band color.
 - [x] ~~Zoom and a moved image: does 100 % and below still recenter the image, and does a zoom keep an
       in-range image within the stops?~~ → A zoom always brings the image back within its stops,
       even when it had been pushed beyond; no recentering at 100 % and below
-- [ ] Unit tests: create a test project to pin `FitCalculator` and the magnetic stop, or keep the
-      solution test-free as before?
-- [ ] README: update the pan description and the band-color note as described in *Documentation*?
+- [x] ~~Unit tests: create a test project to pin `FitCalculator` and the magnetic stop, or keep the
+      solution test-free as before?~~ → Stay test-free
+- [x] ~~README: update the pan description and the band-color note as described in *Documentation*?~~
+      → Yes
 
 ---
 
@@ -218,6 +219,11 @@ a horizontal line crossing at the cell center — drawn by the preview only. Res
 Shift bypasses every stop and guide. Zoom: always clamps the position back within the stops, and no
 longer recenters at 100 % and below (the recentering option was not chosen).
 
+### Iteration 3 — 2026-09-25
+
+Last open questions answered (Q&A #9, #10): no unit tests, the solution stays test-free; the README
+gets the new pan description and the band-color note. Design complete, submitted for the go.
+
 ---
 
 ## Implementation Log
@@ -228,7 +234,7 @@ says so rather than staying blank.
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
 | Code | | | |
-| Unit tests | | | |
+| Unit tests | 3 | 2026-09-25 | Declined — solution kept test-free (Q&A #9) |
 | README | | | |
 
 ---
@@ -247,8 +253,8 @@ Questions asked by the agent during design, with user responses.
 | 6 | Magnetic stops: edge alignment only, or also the centered position? | Both; fluorescent green dashed line on the magnetized edge, and for the center two crossing lines (vertical and horizontal) over the image, during the drag only | 2026-09-25 |
 | 7 | Resistance distance of the magnetic stop? | 24 logical px, Shift to skip insisting | 2026-09-25 |
 | 8 | Zoom and a moved image: recenter at 100 % and below; keep an in-range image within the stops? | Always clamp to the stops | 2026-09-25 |
-| 9 | Unit tests: create a test project, or stay test-free? | | |
-| 10 | README: update the pan description and the band-color note? | | |
+| 9 | Unit tests: create a test project, or stay test-free? | Stay test-free | 2026-09-25 |
+| 10 | README: update the pan description and the band-color note? | Yes | 2026-09-25 |
 
 ---
 
