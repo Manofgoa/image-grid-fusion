@@ -30,11 +30,12 @@ The rest of `RULES.md` § Effects (state on the cell + image pair, reset table, 
 
 ### Layout
 
-From top to bottom, below the top bar:
+From top to bottom, at the top of the window (the top bar held only the Carousel checkbox, and
+went with it — see Iteration 8):
 
 ```
-┌ Top bar ──────────────────────────────────────────────────────────┐
-│ Options of the selected tab   [Intensity ▭▭▭] [Kind …]    [Reset]  │  ← options row, always visible
+┌───────────────────────────────────────────────────────────────────┐
+│ Options of the selected tab   [Intensity ▭▭▭] [Kind …]    [Reset]  │  ← options row, always visible (white)
 └┬────────┬┘ ┌─────────┐ ┌─────────┐ ┌─────────┐            [Reset]  ← tabs row, tabs hang downward
  │☑ Blur  │  │☐ Zoom   │ │☑ B & W  │ │☐ Rotate │ …
  └────────┘  └─────────┘ └─────────┘ └─────────┘
@@ -42,7 +43,10 @@ From top to bottom, below the top bar:
 ```
 
 - **Options row on top**, **tabs row below it**, the tabs hanging **downward** from the options row:
-  the selected tab is drawn joined to the options panel it controls, the others behind.
+  the selected tab is drawn in the options row's white, its top edge open onto it; the others stay
+  in the window's grey. Every tab is **as tall as the Reset button** beside them.
+- The tabs are drawn by `UI/EffectTabs.cs` (WinForms has no downward tabs holding a checkbox); they
+  take no keyboard focus.
 - The **Effects** label stays at the start of the tabs row.
 - Tab order is unchanged: Zoom, Rotate, Flip, Frames, Black & white, Blur.
 - The tabs row's **Reset** (all effects) sits at its **far right**, **as tall as a tab**. It is not
@@ -50,6 +54,8 @@ From top to bottom, below the top bar:
 - The **options row is always visible**, at a fixed height (the tallest effect's options), so
   nothing below it jumps when the selection changes. It is **empty** while no tab is selected.
 - The options row ends with the **effect's own Reset** button (see *Settings Kept While Off*).
+- Tooltips: the options row's Reset *"Brings this effect back to its defaults"*, the tabs row's
+  *"Brings every effect of the cell back to its defaults"*.
 
 ### States
 
@@ -79,6 +85,10 @@ From top to bottom, below the top bar:
 - The wheel and drag gestures on a cell activate Zoom as soon as the image is zoomed or moved. On a
   cell whose Zoom is **off with kept settings**, the gesture starts from **what is shown** (100 %
   centered) and **replaces** the kept zoom and focus — no jump under the mouse.
+- The blur's **Gaussian / Pixelate** buttons act on click, so choosing the kind already shown still
+  turns the blur on.
+- A checkbox answers on the padding around it too (up to half the gap before the icon), so a click
+  just beside it does not only select the tab.
 - The effect's own Reset is the one control of the options row that does **not** check the effect:
   it brings back the default state, on / off included.
 
@@ -92,16 +102,18 @@ From top to bottom, below the top bar:
 - The options of an unchecked effect show its **kept settings**, editable.
 - Kept settings follow the effect's existing lifecycle (`RULES.md` § Scope and State): cleared when
   the image is replaced or shifts after a deletion, kept on swap and layout change, not persisted.
-- Today, `ImageLook` (`Composition/ImageLook.cs`) ties both together — `Deactivate` restores
-  defaults, `Frames` / `Grayscale` / `Blur` are active when non-null, Zoom / Rotate / Flip through an
-  `Activations` bit set. The model splits the two, with the rendered values derived from the
-  settings of the effects that are on.
+- In `ImageLook` (`Composition/ImageLook.cs`), the public values stay the **rendered** ones, so
+  `Compositor`, `FitCalculator` and the exports are untouched; the settings of an effect that is off
+  live in private `Kept…` values. `TurnOn` restores them (or the defaults), `TurnOff` keeps them and
+  restores the defaults, `Reset` restores the defaults and drops them.
+- Turning or flipping the image also turns or flips the **kept** zoom focus and flips, so they come
+  back on the same part of the image.
 
 ### Effect Not Applicable (e.g. Frames on a Still Image)
 
 - Its tab **stays selectable**, and stays selected when a cell it does not apply to is selected.
-- Its **checkbox is disabled**, with a **tooltip** saying why (e.g. Frames: only for videos,
-  animated GIFs and content of several pages).
+- Its **checkbox is disabled**, with a **tooltip** saying why — Frames: *"Frames only applies to
+  videos, animated GIFs and content of several pages"*.
 - Its **options are disabled** (shown, greyed out).
 
 ### No Cell Selected
@@ -151,6 +163,7 @@ Removed entirely:
 
 | Where | What goes |
 |---|---|
+| The top bar (`UI/MainForm.cs`) | It held only the Carousel checkbox: removed, the options row becomes the window's first row |
 | `Composition/Carousel.cs` | The whole file |
 | `Imaging/CarouselExport.cs` | The whole file |
 | `UI/GridPreview.cs` | `_carouselTimer`, `PlaysCarousel`, `SyncCarousel` / `PauseCarousel` / `ResumeCarousel` / `OnCarouselTick` / `ShowCarouselStep`, and their hooks in hover, drag, paint and dispose |
@@ -266,6 +279,31 @@ question left.
 Go given for code, tests and documentation (no test project: nothing to create). The run stays on
 `main`, as recorded for this repository.
 
+### Iteration 8 — 2026-09-25 — 🧭 Implementation choices
+
+- **Stayed on `main`** without asking the branch question: the memory recorded for this repository
+  says work on it lands on `main`.
+- **Top bar removed**: it held only the Carousel checkbox; the options row is now the window's first
+  row.
+- **Tabs drawn by a custom control** (`UI/EffectTabs.cs`): the selected tab in the options row's white
+  (`SystemColors.Window`), open onto it; the other tabs in the window's grey, a lighter grey on hover.
+  Every tab is exactly as tall as the Reset button — no shorter "behind" tabs, which would have made
+  Reset look taller again. The tabs take no keyboard focus (the former toggle buttons did).
+- **Options row** white, height fitted to the tallest options, refitted on a DPI change; the sliders
+  get the same white.
+- **Blur kind** buttons react on click rather than on a change of checked state, so choosing the kind
+  already shown turns the blur on, per the new rule.
+- **Kept settings follow the image**: a quarter turn or a flip also turns or flips the kept zoom focus
+  and kept flips. Both the wheel and a drag replace the kept zoom.
+- **Zoom slider on a Zoom that is off**: the effect is turned on from its kept settings, then the
+  slider's value is applied — one extra refresh in between.
+- **Checkbox hit area** includes the padding up to half the gap before the icon.
+- **Tooltips** added on both Reset buttons, and the Frames tooltip text chosen (see domain sections).
+- **Verification**: build clean; the idle state (no cell selected) was captured and checked — options
+  row empty, tabs disabled, Reset at the far right and as tall as the tabs. Interactive checks
+  (selecting a cell, a tab, toggling) were **not** run: the synthetic clicks moved the user's real
+  mouse and did not reach the window, so they were stopped.
+
 ---
 
 ## Implementation Log
@@ -275,10 +313,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable — no test project |
-| README | | | |
-| RULES.md / GLOSSARY.md | | | |
+| Code | 8 | 2026-09-25 | Carousel removed; `ImageLook` settings kept while off; `EffectTabs` + `MainForm` rewired |
+| Unit tests | 8 | 2026-09-25 | Not applicable — no test project |
+| README | 8 | 2026-09-25 | § Effects, Zoom, Blur |
+| RULES.md / GLOSSARY.md | 8 | 2026-09-25 | § Scope and State, Effects Toolbar, Options Toolbar, On-Cell Handles; new terms |
 
 ---
 
