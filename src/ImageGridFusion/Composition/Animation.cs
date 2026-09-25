@@ -24,14 +24,6 @@ public static class Animation
     public static TimeSpan FrameTime(int frame) => TimeSpan.FromTicks(frame * TimeSpan.TicksPerSecond / FramesPerSecond);
 
     /// <summary>
-    /// Image whose sound goes into the video, and plays in the preview: image 1 when it is a video with
-    /// sound, else the first video with sound in grid order; <c>null</c> when none has any. A frozen
-    /// video has no sound.
-    /// </summary>
-    public static SourceImage? SoundSource(IReadOnlyList<SourceImage> images) =>
-        images.FirstOrDefault(i => i.Plays && i.Pages is IHasSound { HasSound: true } && i.FilePath is not null);
-
-    /// <summary>
     /// Images whose sounds are mixed into the video, and in the preview, each at the gain of its volume
     /// effect: the videos with sound that play and are not muted. A frozen video has no sound.
     /// </summary>

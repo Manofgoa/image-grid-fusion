@@ -8,8 +8,8 @@ namespace ImageGridFusion.UI;
 /// Plays the animated images of the grid live, on one clock so their steps change together, each
 /// from the starting point of its frames effect. Frames are decoded off the UI thread and shown on
 /// it; a frozen image stands on its frame; forced still, every image stops where it stands and
-/// resumes from there, or from the page it was moved to meanwhile. Also plays the sound of the grid's
-/// sound source in step with it. Used from the UI thread only.
+/// resumes from there, or from the page it was moved to meanwhile. Also mixes the sounds of its videos,
+/// each in step with its frames. Used from the UI thread only.
 /// </summary>
 internal sealed class AnimationPlayer : IDisposable
 {
@@ -18,7 +18,6 @@ internal sealed class AnimationPlayer : IDisposable
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private readonly Dictionary<SourceImage, Playback> _playbacks = [];
     private readonly PreviewSound _sound = new();
-    private IReadOnlyList<SourceImage> _images = [];
     private bool _forceStill;
 
     /// <summary>Raised on the UI thread once an image shows a new frame.</summary>
@@ -57,10 +56,9 @@ internal sealed class AnimationPlayer : IDisposable
         }
     }
 
-    /// <summary>Plays the animated images not playing yet, stops the ones gone or shown still, and follows the sound source.</summary>
+    /// <summary>Plays the animated images not playing yet, stops the ones gone or shown still, and mixes the sounds of the videos.</summary>
     public void Sync(IReadOnlyList<SourceImage> images)
     {
-        _images = images;
         foreach (var (image, playback) in _playbacks.ToList())
         {
             if (!images.Contains(image) || !image.IsAnimated)
@@ -93,7 +91,7 @@ internal sealed class AnimationPlayer : IDisposable
             }
         }
 
-        _sound.Follow(Animation.SoundSource(images));
+        _sound.Follow(images);
     }
 
     /// <summary>
@@ -115,9 +113,6 @@ internal sealed class AnimationPlayer : IDisposable
                 playback.Reader?.Reset();
             }
         }
-
-        // A frozen video has no sound: another one may take over.
-        _sound.Follow(Animation.SoundSource(_images));
     }
 
     /// <summary>Size the frames of <paramref name="image"/> are shown at: larger frames are scaled down off the UI thread.</summary>
@@ -150,7 +145,7 @@ internal sealed class AnimationPlayer : IDisposable
         }
 
         _playbacks.Clear();
-        _sound.Follow(null);
+        _sound.Follow([]);
     }
 
     public void Dispose()
@@ -204,10 +199,7 @@ internal sealed class AnimationPlayer : IDisposable
                 var loop = pages.LoopDuration;
                 var time = Animation.LoopTime(Position(playback), loop);
                 bool playing = playback.PausedAt is null;
-                if (image == _sound.Image)
-                {
-                    _sound.Sync(time, playing);
-                }
+                _sound.Sync(image, time, playing);
 
                 if (playing && loop > TimeSpan.Zero)
                 {
@@ -240,10 +232,7 @@ internal sealed class AnimationPlayer : IDisposable
         }
         finally
         {
-            if (image == _sound.Image)
-            {
-                _sound.Sync(TimeSpan.Zero, playing: false);
-            }
+            _sound.Sync(image, TimeSpan.Zero, playing: false);
 
             // Released on the thread pool, where Media Foundation objects live.
             if (playback.Reader is { } reader)
