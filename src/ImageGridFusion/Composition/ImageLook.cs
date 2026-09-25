@@ -22,6 +22,9 @@ public sealed record ImageLook
     public const double MinZoom = 0.5;
     public const double MaxZoom = 4;
 
+    /// <summary>A fine angle goes this far either way from the quarter turn; beyond, the next quarter turn is nearer.</summary>
+    public const int MaxFineAngle = 45;
+
     // Before None, which reads it: static fields are initialized in order.
     private static readonly PointF Center = new(0.5f, 0.5f);
 
@@ -33,6 +36,12 @@ public sealed record ImageLook
 
     /// <summary>Clockwise rotation, in degrees: 0, 90, 180 or 270.</summary>
     public int Rotation { get; private init; }
+
+    /// <summary>
+    /// Clockwise angle added to <see cref="Rotation"/>, in degrees, within ±<see cref="MaxFineAngle"/>:
+    /// the image turns around the center of its cell, zoomed just enough to keep covering it.
+    /// </summary>
+    public int FineAngle { get; private init; }
 
     /// <summary>Left↔right flip, as the image is seen once rotated.</summary>
     public bool FlipX { get; private init; }
@@ -77,7 +86,7 @@ public sealed record ImageLook
         var look = effect switch
         {
             ImageEffect.Zoom => this with { Zoom = 1, Focus = Center },
-            ImageEffect.Rotate => Rotate(-Rotation / 90),
+            ImageEffect.Rotate => WithRotation(0),
             ImageEffect.Flip => (FlipX ? ToggleFlipX() : this) is var flipped && flipped.FlipY ? flipped.ToggleFlipY() : flipped,
             ImageEffect.BlackAndWhite => this with { Grayscale = false },
             _ => this with { Blur = null },
@@ -112,8 +121,10 @@ public sealed record ImageLook
         };
     }
 
-    /// <summary>Turns the image to <paramref name="degrees"/>: 0, 90, 180 or 270.</summary>
-    public ImageLook WithRotation(int degrees) => Rotate((degrees - Rotation) / 90);
+    /// <summary>Turns the image to <paramref name="degrees"/> exactly: 0, 90, 180 or 270, with no fine angle.</summary>
+    public ImageLook WithRotation(int degrees) => Rotate((degrees - Rotation) / 90) with { FineAngle = 0 };
+
+    public ImageLook WithFineAngle(int degrees) => Activated(ImageEffect.Rotate) with { FineAngle = Math.Clamp(degrees, -MaxFineAngle, MaxFineAngle) };
 
     public ImageLook ToggleFlipX() => Activated(ImageEffect.Flip) with { FlipX = !FlipX, Focus = new PointF(1 - Focus.X, Focus.Y) };
 

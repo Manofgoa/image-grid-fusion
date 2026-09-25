@@ -52,6 +52,8 @@ internal sealed class MainForm : Form
     private readonly TrackBar _zoom = OptionSlider((int)Math.Round(Math.Log2(ImageLook.MinZoom) * 100), (int)Math.Round(Math.Log2(ImageLook.MaxZoom) * 100), 10);
     private readonly Label _zoomLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox[] _quarterTurns = [OptionButton("0°"), OptionButton("90°"), OptionButton("180°"), OptionButton("270°")];
+    private readonly TrackBar _fineAngle = OptionSlider(-ImageLook.MaxFineAngle, ImageLook.MaxFineAngle, 5);
+    private readonly Label _fineAngleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _flipX = OptionButton("Horizontal");
     private readonly CheckBox _flipY = OptionButton("Vertical");
 
@@ -145,7 +147,7 @@ internal sealed class MainForm : Form
         _effects.Controls.AddRange([.. _effectButtons.Values]);
         _effects.Controls.Add(_resetButton);
         _options[ImageEffect.Zoom].Controls.AddRange([_zoom, _zoomLabel]);
-        _options[ImageEffect.Rotate].Controls.AddRange(_quarterTurns);
+        _options[ImageEffect.Rotate].Controls.AddRange([.. _quarterTurns, _fineAngle, _fineAngleLabel]);
         _options[ImageEffect.Flip].Controls.AddRange([_flipX, _flipY]);
         _options[ImageEffect.Blur].Controls.AddRange([_gaussian, _pixelate, _blurIntensityIcon, _blurIntensity, _blurIntensityLabel]);
 
@@ -188,6 +190,7 @@ internal sealed class MainForm : Form
             _quarterTurns[i].Click += (_, _) => ChangeLook(look => look.WithRotation(degrees));
         }
 
+        _fineAngle.ValueChanged += (_, _) => SetFineAngle();
         _flipX.Click += (_, _) => ChangeLook(look => look.ToggleFlipX());
         _flipY.Click += (_, _) => ChangeLook(look => look.ToggleFlipY());
         _gaussian.CheckedChanged += (_, _) => SetBlurKind(_gaussian, BlurKind.Gaussian);
@@ -977,6 +980,14 @@ internal sealed class MainForm : Form
         }
     }
 
+    private void SetFineAngle()
+    {
+        _fineAngleLabel.Text = AngleText(_fineAngle.Value);
+        ChangeLook(look => look.WithFineAngle(_fineAngle.Value));
+    }
+
+    private static string AngleText(int degrees) => $"Angle: {degrees:+0;-0;0}°";
+
     private void SetBlurKind(RadioButton button, BlurKind kind)
     {
         if (button.Checked)
@@ -1025,10 +1036,13 @@ internal sealed class MainForm : Form
         if (look is not null)
         {
             _zoom.Value = Math.Clamp((int)Math.Round(Math.Log2(look.Zoom) * 100), _zoom.Minimum, _zoom.Maximum);
+            // A quarter turn is pressed only while the angle falls exactly on it.
             for (int i = 0; i < _quarterTurns.Length; i++)
             {
-                _quarterTurns[i].Checked = look.Rotation == 90 * i;
+                _quarterTurns[i].Checked = look.Rotation == 90 * i && look.FineAngle == 0;
             }
+
+            _fineAngle.Value = look.FineAngle;
 
             _flipX.Checked = look.FlipX;
             _flipY.Checked = look.FlipY;
@@ -1041,6 +1055,7 @@ internal sealed class MainForm : Form
         }
 
         _zoomLabel.Text = $"Zoom: {(look?.Zoom ?? 1) * 100:0} %";
+        _fineAngleLabel.Text = AngleText(_fineAngle.Value);
         _blurIntensityLabel.Text = $"Intensity: {_blurIntensity.Value}%";
         _syncingEffects = false;
 
