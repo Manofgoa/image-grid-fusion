@@ -329,7 +329,7 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 6, 7 | 2026-09-25 | `46d9221` free placement and 10 % margin, `0da8167` drag at every zoom with magnetic stops and zoom clamp, `1492e9b` green guides; builds with 0 warnings |
+| Code | 6, 7 | 2026-09-25 | `46d9221` free placement and 10 % margin, `0da8167` drag at every zoom with magnetic stops and zoom clamp, `1492e9b` green guides; builds with 0 warnings. Validated by hand by the user on 2026-09-25 |
 | Unit tests | 3 | 2026-09-25 | Declined — solution kept test-free (Q&A #9) |
 | README | 6 | 2026-09-25 | `424df06` drag past the edges, stops and guides, Shift, band color of the uncovered area |
 
