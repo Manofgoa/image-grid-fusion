@@ -2,10 +2,20 @@ using System.Drawing.Drawing2D;
 
 namespace ImageGridFusion.Composition;
 
+/// <summary>Effects of the effects toolbar, in the order of its buttons: geometry first, then rendering.</summary>
+public enum ImageEffect
+{
+    Zoom,
+    Rotate,
+    Flip,
+    BlackAndWhite,
+    Blur,
+}
+
 /// <summary>
-/// Actions applied to one image of the grid: a rotation by quarter turns, flips in the screen frame,
-/// black &amp; white, and a zoom around <see cref="Focus"/>; and its effects, toggled from the effects
-/// toolbar (see RULES.md). Immutable, so an export can capture it.
+/// Effects applied to one image of the grid, toggled from the effects toolbar (see RULES.md): a zoom
+/// around <see cref="Focus"/>, a rotation by quarter turns, flips in the screen frame, black &amp;
+/// white, and the blur. Immutable, so an export can capture it.
 /// </summary>
 public sealed record ImageLook
 {
@@ -16,6 +26,10 @@ public sealed record ImageLook
     private static readonly PointF Center = new(0.5f, 0.5f);
 
     public static readonly ImageLook None = new();
+
+    // Zoom, Rotate and Flip are active once activated or changed, even at their default values; the
+    // other effects are active while their settings are set.
+    private int Activations { get; init; }
 
     /// <summary>Clockwise rotation, in degrees: 0, 90, 180 or 270.</summary>
     public int Rotation { get; private init; }
@@ -42,6 +56,35 @@ public sealed record ImageLook
 
     public bool IsNone => this == None;
 
+    public bool IsActive(ImageEffect effect) => effect switch
+    {
+        ImageEffect.BlackAndWhite => Grayscale,
+        ImageEffect.Blur => Blur is not null,
+        _ => (Activations & Bit(effect)) != 0,
+    };
+
+    /// <summary>Activates an effect with its defaults; one already active is left as it is.</summary>
+    public ImageLook Activate(ImageEffect effect) => IsActive(effect) ? this : effect switch
+    {
+        ImageEffect.BlackAndWhite => this with { Grayscale = true },
+        ImageEffect.Blur => this with { Blur = BlurEffect.Default },
+        _ => Activated(effect),
+    };
+
+    /// <summary>Deactivates an effect, bringing back its defaults: centered at 100 %, upright, unflipped, in color, sharp.</summary>
+    public ImageLook Deactivate(ImageEffect effect)
+    {
+        var look = effect switch
+        {
+            ImageEffect.Zoom => this with { Zoom = 1, Focus = Center },
+            ImageEffect.Rotate => Rotate(-Rotation / 90),
+            ImageEffect.Flip => (FlipX ? ToggleFlipX() : this) is var flipped && flipped.FlipY ? flipped.ToggleFlipY() : flipped,
+            ImageEffect.BlackAndWhite => this with { Grayscale = false },
+            _ => this with { Blur = null },
+        };
+        return look with { Activations = look.Activations & ~Bit(effect) };
+    }
+
     /// <summary>A quarter turn either way: the width and height of the image swap.</summary>
     public bool SwapsAxes => Rotation % 180 != 0;
 
@@ -60,7 +103,7 @@ public sealed record ImageLook
 
         // The flips are in the screen frame: turning a flipped image a quarter turn swaps which axis is flipped.
         bool swap = turns % 2 == 1;
-        return this with
+        return Activated(ImageEffect.Rotate) with
         {
             Rotation = (Rotation + 90 * turns) % 360,
             FlipX = swap ? FlipY : FlipX,
@@ -69,22 +112,27 @@ public sealed record ImageLook
         };
     }
 
-    public ImageLook ToggleFlipX() => this with { FlipX = !FlipX, Focus = new PointF(1 - Focus.X, Focus.Y) };
+    /// <summary>Turns the image to <paramref name="degrees"/>: 0, 90, 180 or 270.</summary>
+    public ImageLook WithRotation(int degrees) => Rotate((degrees - Rotation) / 90);
 
-    public ImageLook ToggleFlipY() => this with { FlipY = !FlipY, Focus = new PointF(Focus.X, 1 - Focus.Y) };
+    public ImageLook ToggleFlipX() => Activated(ImageEffect.Flip) with { FlipX = !FlipX, Focus = new PointF(1 - Focus.X, Focus.Y) };
 
-    public ImageLook ToggleGrayscale() => this with { Grayscale = !Grayscale };
+    public ImageLook ToggleFlipY() => Activated(ImageEffect.Flip) with { FlipY = !FlipY, Focus = new PointF(Focus.X, 1 - Focus.Y) };
 
     /// <summary>The focus is kept at every zoom; the gesture brings the image back within its stops (see <see cref="FitCalculator.WithinStops"/>).</summary>
-    public ImageLook WithZoom(double zoom) => this with { Zoom = Math.Clamp(zoom, MinZoom, MaxZoom) };
+    public ImageLook WithZoom(double zoom) => Activated(ImageEffect.Zoom) with { Zoom = Math.Clamp(zoom, MinZoom, MaxZoom) };
 
     /// <summary>Unclamped: how far the image may go depends on its cell, and is applied where the image is placed.</summary>
-    public ImageLook WithFocus(PointF focus) => this with { Focus = focus };
+    public ImageLook WithFocus(PointF focus) => Activated(ImageEffect.Zoom) with { Focus = focus };
 
     public ImageLook WithBlur(BlurEffect? blur) => this with { Blur = blur };
 
-    /// <summary>The same actions, every effect removed.</summary>
-    public ImageLook WithoutEffects() => this with { Blur = null };
+    /// <summary>Every effect removed: the look of an image that moves into another cell (RULES.md).</summary>
+    public ImageLook WithoutEffects() => None;
+
+    private static int Bit(ImageEffect effect) => 1 << (int)effect;
+
+    private ImageLook Activated(ImageEffect effect) => this with { Activations = Activations | Bit(effect) };
 
     /// <summary>
     /// Maps the pixels of a bitmap of <paramref name="size"/> to the oriented image: rotated, then

@@ -34,16 +34,28 @@ internal sealed class MainForm : Form
 
     // Effects of the selected cell, then the options of the selected effect: see RULES.md.
     private readonly FlowLayoutPanel _effects = new() { Dock = DockStyle.Top, AutoSize = true, WrapContents = false, Padding = new Padding(8, 0, 8, 8) };
-    private readonly FlowLayoutPanel _blurOptions = new() { Dock = DockStyle.Top, AutoSize = true, WrapContents = false, Padding = new Padding(8, 0, 8, 8), Visible = false };
-    // The standard look, as the options: the flat one sizes itself without its image, clipping both.
-    private readonly CheckBox _blurButton = new()
+    private readonly Label _effectsLabel = new() { Text = "Effects", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly Dictionary<ImageEffect, CheckBox> _effectButtons = Enum.GetValues<ImageEffect>().ToDictionary(e => e, EffectButton);
+    private readonly Button _resetButton = new()
     {
-        Text = "Blur",
+        Text = "Reset",
         AutoSize = true,
-        AutoCheck = false,
-        Appearance = Appearance.Button,
+        Anchor = AnchorStyles.Left,
         TextImageRelation = TextImageRelation.ImageBeforeText,
     };
+
+    // One row per effect that has options; only the selected effect's shows.
+    private readonly Dictionary<ImageEffect, FlowLayoutPanel> _options = new[] { ImageEffect.Zoom, ImageEffect.Rotate, ImageEffect.Flip, ImageEffect.Blur }
+        .ToDictionary(e => e, _ => new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = false, Padding = new Padding(8, 0, 8, 8), Visible = false });
+
+    // A log scale, in hundredths of a doubling: 50 % → 100 % and each doubling take the same length.
+    private readonly TrackBar _zoom = OptionSlider((int)Math.Round(Math.Log2(ImageLook.MinZoom) * 100), (int)Math.Round(Math.Log2(ImageLook.MaxZoom) * 100), 10);
+    private readonly Label _zoomLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox[] _quarterTurns = [OptionButton("0°"), OptionButton("90°"), OptionButton("180°"), OptionButton("270°")];
+    private readonly CheckBox _flipX = OptionButton("Horizontal");
+    private readonly CheckBox _flipY = OptionButton("Vertical");
+
+    // The standard look, as the options: the flat one sizes itself without its image, clipping both.
     private readonly RadioButton _gaussian = new()
     {
         Text = "Gaussian",
@@ -61,21 +73,11 @@ internal sealed class MainForm : Form
         TextImageRelation = TextImageRelation.ImageBeforeText,
     };
     private readonly PictureBox _blurIntensityIcon = new() { SizeMode = PictureBoxSizeMode.CenterImage, Anchor = AnchorStyles.Left };
-    private readonly TrackBar _blurIntensity = new()
-    {
-        Minimum = 0,
-        Maximum = 100,
-        SmallChange = 1,
-        LargeChange = 10,
-        TickStyle = TickStyle.None,
-        AutoSize = false,
-        Size = new Size(160, 26),
-        Anchor = AnchorStyles.Left,
-    };
+    private readonly TrackBar _blurIntensity = OptionSlider(0, 100, 10);
     private readonly Label _blurIntensityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
 
     // The selected effect belongs to the toolbar: it stays selected on another cell where it is active.
-    private bool _blurSelected;
+    private ImageEffect? _selectedEffect;
     private bool _syncingEffects;
 
     public MainForm(string[] args)
@@ -139,12 +141,13 @@ internal sealed class MainForm : Form
         top.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         top.Controls.Add(_carousel, 1, 0);
 
-        _effects.Controls.Add(_blurButton);
-        _blurOptions.Controls.Add(_gaussian);
-        _blurOptions.Controls.Add(_pixelate);
-        _blurOptions.Controls.Add(_blurIntensityIcon);
-        _blurOptions.Controls.Add(_blurIntensity);
-        _blurOptions.Controls.Add(_blurIntensityLabel);
+        _effects.Controls.Add(_effectsLabel);
+        _effects.Controls.AddRange([.. _effectButtons.Values]);
+        _effects.Controls.Add(_resetButton);
+        _options[ImageEffect.Zoom].Controls.AddRange([_zoom, _zoomLabel]);
+        _options[ImageEffect.Rotate].Controls.AddRange(_quarterTurns);
+        _options[ImageEffect.Flip].Controls.AddRange([_flipX, _flipY]);
+        _options[ImageEffect.Blur].Controls.AddRange([_gaussian, _pixelate, _blurIntensityIcon, _blurIntensity, _blurIntensityLabel]);
 
         // Docked in reverse order of addition: the top bar, the effects row and the options row, then
         // the bottom bar, span the whole width; the layout strip takes the left of what remains, and the
@@ -152,7 +155,7 @@ internal sealed class MainForm : Form
         Controls.Add(_preview);
         Controls.Add(_layouts);
         Controls.Add(_bottom);
-        Controls.Add(_blurOptions);
+        Controls.AddRange([.. _options.Values]);
         Controls.Add(_effects);
         Controls.Add(top);
         ResumeLayout(performLayout: true);
@@ -172,7 +175,21 @@ internal sealed class MainForm : Form
         _forceImage.CheckedChanged += (_, _) => _preview.ForceStill = _forceImage.Checked;
         _carousel.CheckedChanged += (_, _) => _preview.PlaysCarousel = _carousel.Checked;
         UpdateEffectIcons();
-        _blurButton.Click += (_, _) => ToggleBlur();
+        foreach (var (effect, button) in _effectButtons)
+        {
+            button.Click += (_, _) => ToggleEffect(effect);
+        }
+
+        _resetButton.Click += (_, _) => ResetEffects();
+        _zoom.ValueChanged += (_, _) => SetZoom();
+        for (int i = 0; i < _quarterTurns.Length; i++)
+        {
+            int degrees = 90 * i;
+            _quarterTurns[i].Click += (_, _) => ChangeLook(look => look.WithRotation(degrees));
+        }
+
+        _flipX.Click += (_, _) => ChangeLook(look => look.ToggleFlipX());
+        _flipY.Click += (_, _) => ChangeLook(look => look.ToggleFlipY());
         _gaussian.CheckedChanged += (_, _) => SetBlurKind(_gaussian, BlurKind.Gaussian);
         _pixelate.CheckedChanged += (_, _) => SetBlurKind(_pixelate, BlurKind.Pixelate);
         _blurIntensity.ValueChanged += (_, _) => SetBlurIntensity();
@@ -206,7 +223,12 @@ internal sealed class MainForm : Form
         {
             _settingsMenu.Dispose();
             _toolTip.Dispose();
-            _blurButton.Image?.Dispose();
+            foreach (var button in _effectButtons.Values)
+            {
+                button.Image?.Dispose();
+            }
+
+            _resetButton.Image?.Dispose();
             _gaussian.Image?.Dispose();
             _pixelate.Image?.Dispose();
             _blurIntensityIcon.Image?.Dispose();
@@ -225,8 +247,20 @@ internal sealed class MainForm : Form
     private void UpdateEffectIcons()
     {
         int size = LogicalToDeviceUnits(16);
-        Image?[] previous = [_blurButton.Image, _gaussian.Image, _pixelate.Image, _blurIntensityIcon.Image];
-        _blurButton.Image = EffectIcons.Blur(size);
+        Image?[] previous = [.. _effectButtons.Values.Select(b => b.Image), _resetButton.Image, _gaussian.Image, _pixelate.Image, _blurIntensityIcon.Image];
+        foreach (var (effect, button) in _effectButtons)
+        {
+            button.Image = effect switch
+            {
+                ImageEffect.Zoom => EffectIcons.Zoom(size),
+                ImageEffect.Rotate => EffectIcons.Rotate(size),
+                ImageEffect.Flip => EffectIcons.Flip(size),
+                ImageEffect.BlackAndWhite => EffectIcons.BlackAndWhite(size),
+                _ => EffectIcons.Blur(size),
+            };
+        }
+
+        _resetButton.Image = EffectIcons.Reset(size);
         _gaussian.Image = EffectIcons.Gaussian(size);
         _pixelate.Image = EffectIcons.Pixelate(size);
         _blurIntensityIcon.Image = EffectIcons.Intensity(size);
@@ -855,89 +889,167 @@ internal sealed class MainForm : Form
         UpdateEffects();
     }
 
+    /// <summary>A toggle of the effects row: pressed while its effect is active on the selected cell.</summary>
+    private static CheckBox EffectButton(ImageEffect effect) => new()
+    {
+        Text = effect switch
+        {
+            ImageEffect.BlackAndWhite => "Black & white",
+            _ => effect.ToString(),
+        },
+        UseMnemonic = false,
+        AutoSize = true,
+        AutoCheck = false,
+        Appearance = Appearance.Button,
+        Anchor = AnchorStyles.Left,
+        TextImageRelation = TextImageRelation.ImageBeforeText,
+    };
+
+    /// <summary>A toggle of an options row, pressed from the look of the selected image.</summary>
+    private static CheckBox OptionButton(string text) => new()
+    {
+        Text = text,
+        AutoSize = true,
+        AutoCheck = false,
+        Appearance = Appearance.Button,
+        Anchor = AnchorStyles.Left,
+    };
+
+    private static TrackBar OptionSlider(int minimum, int maximum, int largeChange) => new()
+    {
+        Minimum = minimum,
+        Maximum = maximum,
+        SmallChange = 1,
+        LargeChange = largeChange,
+        TickStyle = TickStyle.None,
+
+        // Without ticks the thumb sits at the top: a height fitted to it keeps it level with the label.
+        AutoSize = false,
+        Size = new Size(160, 26),
+        Anchor = AnchorStyles.Left,
+    };
+
     /// <summary>
-    /// Inactive on the selected image: activates the blur and selects it. Active: selects it, and
-    /// shows its options and bars. Active and selected: deactivates it.
+    /// Inactive on the selected image: activates the effect and selects it. Active: selects it, and
+    /// shows its options (and the blur's bars). Active and selected: deactivates it.
     /// </summary>
-    private void ToggleBlur()
+    private void ToggleEffect(ImageEffect effect)
     {
         if (_preview.SelectedImage?.Look is not { } look)
         {
             return;
         }
 
-        if (look.Blur is null)
+        if (!look.IsActive(effect))
         {
-            _blurSelected = true;
-            _preview.SetSelectedLook(look.WithBlur(BlurEffect.Default));
+            _selectedEffect = effect;
+            _preview.SetSelectedLook(look.Activate(effect));
         }
-        else if (!_blurSelected)
+        else if (_selectedEffect != effect)
         {
-            _blurSelected = true;
+            _selectedEffect = effect;
         }
         else
         {
-            _blurSelected = false;
-            _preview.SetSelectedLook(look.WithBlur(null));
+            _selectedEffect = null;
+            _preview.SetSelectedLook(look.Deactivate(effect));
         }
 
         UpdateEffects();
+    }
+
+    /// <summary>Removes every effect of the selected image, as it was added.</summary>
+    private void ResetEffects()
+    {
+        _selectedEffect = null;
+        _preview.SetSelectedLook(ImageLook.None);
+        UpdateEffects();
+    }
+
+    /// <summary>The slider snaps to 100 % near its mark.</summary>
+    private void SetZoom()
+    {
+        double zoom = Math.Abs(_zoom.Value) <= 4 ? 1 : Math.Pow(2, _zoom.Value / 100.0);
+        _zoomLabel.Text = $"Zoom: {zoom * 100:0} %";
+        if (!_syncingEffects)
+        {
+            _preview.ZoomSelected(zoom);
+        }
     }
 
     private void SetBlurKind(RadioButton button, BlurKind kind)
     {
         if (button.Checked)
         {
-            ChangeBlur(blur => blur.WithKind(kind));
+            ChangeLook(look => look.Blur is { } blur ? look.WithBlur(blur.WithKind(kind)) : look);
         }
     }
 
     private void SetBlurIntensity()
     {
         _blurIntensityLabel.Text = $"Intensity: {_blurIntensity.Value}%";
-        ChangeBlur(blur => blur.WithIntensity(_blurIntensity.Value / 100.0));
+        ChangeLook(look => look.Blur is { } blur ? look.WithBlur(blur.WithIntensity(_blurIntensity.Value / 100.0)) : look);
     }
 
-    /// <summary>Applies an option of the options row to the blur of the selected image; not while the row follows the image.</summary>
-    private void ChangeBlur(Func<BlurEffect, BlurEffect> change)
+    /// <summary>Applies an option of the options rows to the selected image; not while the rows follow the image.</summary>
+    private void ChangeLook(Func<ImageLook, ImageLook> change)
     {
-        if (!_syncingEffects && _preview.SelectedImage?.Look is { Blur: { } blur } look)
+        if (!_syncingEffects && _preview.SelectedImage?.Look is { } look)
         {
-            _preview.SetSelectedLook(look.WithBlur(change(blur)));
+            _preview.SetSelectedLook(change(look));
         }
     }
 
     /// <summary>
-    /// Shows the effects of the selected image: a button pressed per active effect, the options and
-    /// bars of the selected one. The selection of an effect is dropped where it is inactive; with no
-    /// cell selected, or during an export, the toolbar is disabled.
+    /// Shows the effects of the selected image: a button pressed per active effect, the options (and
+    /// the blur's bars) of the selected one. The selection of an effect is dropped where it is
+    /// inactive; with no cell selected, or during an export, the toolbar is disabled.
     /// </summary>
     private void UpdateEffects()
     {
-        var blur = _preview.SelectedImage?.Look.Blur;
-        bool enabled = _preview.SelectedImage is not null && !IsExporting;
-        if (blur is null || !enabled)
+        var look = _preview.SelectedImage?.Look;
+        bool enabled = look is not null && !IsExporting;
+        if (!enabled || _selectedEffect is { } selected && !look!.IsActive(selected))
         {
-            _blurSelected = false;
+            _selectedEffect = null;
         }
 
         _syncingEffects = true;
-        _blurButton.Enabled = enabled;
-
-        // Pressed: active. Selected: its options show below.
-        _blurButton.Checked = blur is not null;
-        if (blur is not null)
+        foreach (var (effect, button) in _effectButtons)
         {
-            _gaussian.Checked = blur.Kind == BlurKind.Gaussian;
-            _pixelate.Checked = blur.Kind == BlurKind.Pixelate;
-            _blurIntensity.Value = (int)Math.Round(blur.Intensity * 100);
+            button.Enabled = enabled;
+            button.Checked = look?.IsActive(effect) == true;
         }
 
+        _resetButton.Enabled = enabled && !look!.IsNone;
+        if (look is not null)
+        {
+            _zoom.Value = Math.Clamp((int)Math.Round(Math.Log2(look.Zoom) * 100), _zoom.Minimum, _zoom.Maximum);
+            for (int i = 0; i < _quarterTurns.Length; i++)
+            {
+                _quarterTurns[i].Checked = look.Rotation == 90 * i;
+            }
+
+            _flipX.Checked = look.FlipX;
+            _flipY.Checked = look.FlipY;
+            if (look.Blur is { } blur)
+            {
+                _gaussian.Checked = blur.Kind == BlurKind.Gaussian;
+                _pixelate.Checked = blur.Kind == BlurKind.Pixelate;
+                _blurIntensity.Value = (int)Math.Round(blur.Intensity * 100);
+            }
+        }
+
+        _zoomLabel.Text = $"Zoom: {(look?.Zoom ?? 1) * 100:0} %";
         _blurIntensityLabel.Text = $"Intensity: {_blurIntensity.Value}%";
         _syncingEffects = false;
 
-        _blurOptions.Visible = _blurSelected;
-        _preview.ShowsBlurBars = _blurSelected;
+        foreach (var (effect, row) in _options)
+        {
+            row.Visible = _selectedEffect == effect;
+        }
+
+        _preview.ShowsBlurBars = _selectedEffect == ImageEffect.Blur;
     }
 
     /// <summary>Shows a message that stays until the next one replaces it; errors in red.</summary>

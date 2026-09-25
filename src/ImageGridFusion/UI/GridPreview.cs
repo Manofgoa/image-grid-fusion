@@ -23,7 +23,6 @@ internal sealed class GridPreview : Control
     private const int ButtonInset = 6;
     private const int ButtonGap = 4;
     private const int HandleSize = 48;
-    private const int MinZoomSliderHeight = 80;
     private const int WheelNotch = 120;
     private const int NotchesPerDoubling = 4;
     private const int WheelEndDelay = 150;
@@ -38,17 +37,6 @@ internal sealed class GridPreview : Control
 
     // Fluorescent green: the bars of the blur show on any image.
     private static readonly Color BarColor = Color.FromArgb(57, 255, 20);
-
-    /// <summary>Buttons of the hover toolbar, in their order along the top of the cell.</summary>
-    private enum Tool
-    {
-        RotateLeft,
-        RotateRight,
-        FlipX,
-        FlipY,
-        Grayscale,
-        Reset,
-    }
 
     private readonly List<SourceImage> _images = [];
     private GridLayout? _layout;
@@ -74,10 +62,7 @@ internal sealed class GridPreview : Control
     private int _sliding = -1;
     private bool _hoveringSlider;
     private bool _locked;
-    private Tool? _hoveredTool;
-    private bool _hoveringZoom;
     private bool _hoveringHandle;
-    private int _zooming = -1;
     private bool _panning;
     private Point _panPoint;
     private readonly PanMagnet _panX = new();
@@ -291,8 +276,6 @@ internal sealed class GridPreview : Control
         _hovered = -1;
         _hoveringClose = false;
         _hoveringSlider = false;
-        _hoveredTool = null;
-        _hoveringZoom = false;
         _hoveringHandle = false;
         _cache?.Dispose();
         _cache = null;
@@ -337,10 +320,7 @@ internal sealed class GridPreview : Control
         Select(-1);
         _hovered = -1;
         _hoveringClose = false;
-        _hoveredTool = null;
-        _hoveringZoom = false;
         _hoveringHandle = false;
-        _zooming = -1;
         EndDrag();
         OnImagesChanged();
     }
@@ -435,13 +415,6 @@ internal sealed class GridPreview : Control
         {
             PaintCloseButton(g, CloseBounds(cells[_hovered]), _hoveringClose);
             PaintHandle(g, HandleBounds(cells[_hovered], _images[_hovered]), _hoveringHandle);
-            PaintToolbar(g, cells[_hovered], _images[_hovered]);
-        }
-
-        int zoom = _zooming >= 0 ? _zooming : _hovered;
-        if (zoom >= 0 && zoom < cells.Length && !_dragging && !_locked)
-        {
-            PaintZoomSlider(g, _images[zoom], ZoomSliderBounds(cells[zoom], _images[zoom]));
         }
 
         int slider = _sliding >= 0 ? _sliding : _hovered;
@@ -490,28 +463,12 @@ internal sealed class GridPreview : Control
             return;
         }
 
-        // Browsing pages, and acting on the image, neither select the cell nor start a swap.
+        // Browsing pages neither selects the cell nor starts a swap.
         if (SliderBounds(CellBounds()[index], _images[index]).Contains(e.Location))
         {
             _sliding = index;
             UpdateHold();
             SlideTo(e.X);
-            return;
-        }
-
-        if (ToolAt(CellBounds()[index], _images[index], e.Location) is { } tool)
-        {
-            Apply(index, tool);
-            UpdateHover(e.Location);
-            return;
-        }
-
-        if (ZoomSliderBounds(CellBounds()[index], _images[index]).Contains(e.Location))
-        {
-            _zooming = index;
-            UpdateHold();
-            BeginLive(index);
-            ZoomTo(e.Y);
             return;
         }
 
@@ -555,12 +512,6 @@ internal sealed class GridPreview : Control
         if (_sliding >= 0)
         {
             SlideTo(e.X);
-            return;
-        }
-
-        if (_zooming >= 0)
-        {
-            ZoomTo(e.Y);
             return;
         }
 
@@ -626,16 +577,6 @@ internal sealed class GridPreview : Control
             return;
         }
 
-        if (_zooming >= 0)
-        {
-            _zooming = -1;
-            EndLive();
-            UpdateHover(e.Location);
-            UpdateHold();
-            Invalidate();
-            return;
-        }
-
         if (_draggedBar is not null)
         {
             _draggedBar = null;
@@ -671,7 +612,7 @@ internal sealed class GridPreview : Control
     {
         base.OnMouseWheel(e);
         int index = CellAt(e.Location);
-        if (index < 0 || _locked || _pressed >= 0 || _sliding >= 0 || _zooming >= 0 || _draggedBar is not null)
+        if (index < 0 || _locked || _pressed >= 0 || _sliding >= 0 || _draggedBar is not null)
         {
             return;
         }
@@ -705,10 +646,9 @@ internal sealed class GridPreview : Control
             EndDrag();
         }
 
-        if (_sliding >= 0 || _zooming >= 0 || _draggedBar is not null)
+        if (_sliding >= 0 || _draggedBar is not null)
         {
             _sliding = -1;
-            _zooming = -1;
             _draggedBar = null;
             EndLive();
             UpdateHold();
@@ -719,14 +659,12 @@ internal sealed class GridPreview : Control
     protected override void OnMouseLeave(EventArgs e)
     {
         base.OnMouseLeave(e);
-        if ((_hovered >= 0 || _hoveringCanvas || _hoveringDropZone) && !_dragging && _sliding < 0 && _zooming < 0 && !_panning && _draggedBar is null)
+        if ((_hovered >= 0 || _hoveringCanvas || _hoveringDropZone) && !_dragging && _sliding < 0 && !_panning && _draggedBar is null)
         {
             _hovered = -1;
             _hoveredBar = null;
             _hoveringClose = false;
             _hoveringSlider = false;
-            _hoveredTool = null;
-            _hoveringZoom = false;
             _hoveringHandle = false;
             _hoveringCanvas = false;
             _hoveringDropZone = false;
@@ -909,11 +847,8 @@ internal sealed class GridPreview : Control
         _hovered = -1;
         _hoveringClose = false;
         _hoveringSlider = false;
-        _hoveredTool = null;
-        _hoveringZoom = false;
         _hoveringHandle = false;
         _sliding = -1;
-        _zooming = -1;
         OnImagesChanged();
     }
 
@@ -963,14 +898,11 @@ internal sealed class GridPreview : Control
         bool onDropZone = DropZoneBounds(CanvasBounds()).Contains(location);
         bool onSlider = hovered >= 0 && SliderBounds(CellBounds()[hovered], _images[hovered]).Contains(location);
         bool actions = hovered >= 0 && !_locked;
-        var onTool = actions ? ToolAt(CellBounds()[hovered], _images[hovered], location) : null;
-        bool onZoom = actions && ZoomSliderBounds(CellBounds()[hovered], _images[hovered]).Contains(location);
         bool onHandle = actions && HandleBounds(CellBounds()[hovered], _images[hovered]).Contains(location);
-        bool onControl = onClose || onDropZone || onSlider || onTool is not null || onZoom;
+        bool onControl = onClose || onDropZone || onSlider;
         var onBar = actions && !onControl && ShownBlur(hovered) is { } blur ? BarAt(CellBounds()[hovered], blur, location) : null;
         if (hovered == _hovered && onClose == _hoveringClose && onCanvas == _hoveringCanvas && onDropZone == _hoveringDropZone
-            && onSlider == _hoveringSlider && onTool == _hoveredTool && onZoom == _hoveringZoom && onHandle == _hoveringHandle
-            && onBar == _hoveredBar)
+            && onSlider == _hoveringSlider && onHandle == _hoveringHandle && onBar == _hoveredBar)
         {
             return;
         }
@@ -980,8 +912,6 @@ internal sealed class GridPreview : Control
         _hoveringCanvas = onCanvas;
         _hoveringDropZone = onDropZone;
         _hoveringSlider = onSlider;
-        _hoveredTool = onTool;
-        _hoveringZoom = onZoom;
         _hoveringHandle = onHandle;
         _hoveredBar = onBar;
         Cursor = onControl ? Cursors.Hand
@@ -995,7 +925,7 @@ internal sealed class GridPreview : Control
     /// <summary>The hovered cell, or the one whose slider is dragged, holds its animation still.</summary>
     private void UpdateHold()
     {
-        int held = _sliding >= 0 ? _sliding : _zooming >= 0 ? _zooming : _hovered;
+        int held = _sliding >= 0 ? _sliding : _hovered;
         _player.Hold(held >= 0 && held < _images.Count ? _images[held] : null);
     }
 
@@ -1230,19 +1160,13 @@ internal sealed class GridPreview : Control
 
     /// <summary>
     /// The drag handle that swaps the image, centered in the cell. It shrinks, still centered, while
-    /// it would come closer than a gap to another control (the ×, every toolbar slot, the sliders);
-    /// below the size of a button it falls back just below the ×, where the toolbar rows stay left of it.
+    /// it would come closer than a gap to another control (the ×, the slider); below the size of a
+    /// button it falls back just below the ×.
     /// </summary>
     private Rectangle HandleBounds(Rectangle cell, SourceImage image)
     {
         int gap = LogicalToDeviceUnits(ButtonGap);
-        Rectangle[] controls =
-        [
-            CloseBounds(cell),
-            .. Enum.GetValues<Tool>().Select(t => ToolSlot(cell, (int)t)),
-            ZoomSliderBounds(cell, image),
-            SliderBounds(cell, image),
-        ];
+        Rectangle[] controls = [CloseBounds(cell), SliderBounds(cell, image)];
 
         var center = new Point(cell.X + cell.Width / 2, cell.Y + cell.Height / 2);
         for (int size = LogicalToDeviceUnits(HandleSize); size >= LogicalToDeviceUnits(ButtonSize); size--)
@@ -1334,58 +1258,6 @@ internal sealed class GridPreview : Control
         }
     }
 
-    /// <summary>
-    /// Buttons along the top of the cell, left of the ×, wrapping onto more rows when the cell is too
-    /// narrow. Reset comes last, and only while the image has an action to undo.
-    /// </summary>
-    private (Tool Tool, Rectangle Bounds)[] ToolBounds(Rectangle cell, SourceImage image)
-    {
-        var tools = Enum.GetValues<Tool>();
-        var shown = image.Look.IsNone ? tools[..^1] : tools;
-        return shown.Select(t => (t, ToolSlot(cell, (int)t))).ToArray();
-    }
-
-    /// <summary>Place of the <paramref name="index"/>-th button, whichever buttons are shown.</summary>
-    private Rectangle ToolSlot(Rectangle cell, int index)
-    {
-        int size = LogicalToDeviceUnits(ButtonSize);
-        int gap = LogicalToDeviceUnits(ButtonGap);
-        int left = cell.X + LogicalToDeviceUnits(ButtonInset);
-        int perRow = Math.Max(1, (CloseBounds(cell).Left - gap - left + gap) / (size + gap));
-        return new Rectangle(
-            left + index % perRow * (size + gap),
-            cell.Y + LogicalToDeviceUnits(ButtonInset) + index / perRow * (size + gap),
-            size,
-            size);
-    }
-
-    private Tool? ToolAt(Rectangle cell, SourceImage image, Point location)
-    {
-        foreach (var (tool, bounds) in ToolBounds(cell, image))
-        {
-            if (bounds.Contains(location))
-            {
-                return tool;
-            }
-        }
-
-        return null;
-    }
-
-    private void Apply(int index, Tool tool)
-    {
-        var look = _images[index].Look;
-        SetLook(index, tool switch
-        {
-            Tool.RotateLeft => look.Rotate(-1),
-            Tool.RotateRight => look.Rotate(1),
-            Tool.FlipX => look.ToggleFlipX(),
-            Tool.FlipY => look.ToggleFlipY(),
-            Tool.Grayscale => look.ToggleGrayscale(),
-            _ => ImageLook.None,
-        });
-    }
-
     /// <summary>Gives an image its new look, and redraws only its cell.</summary>
     private void SetLook(int index, ImageLook look)
     {
@@ -1416,64 +1288,24 @@ internal sealed class GridPreview : Control
     }
 
     /// <summary>
-    /// Vertical pill along the left edge of the cell, from below the button rows (as many as the
-    /// full toolbar takes) down to the page slider or the bottom; empty when the cell is too short.
+    /// Sets the zoom of the selected image, from the options of the zoom effect: shown fast while the
+    /// slider moves, in full once it rests. A zoom always brings the image back within its stops.
     /// </summary>
-    private Rectangle ZoomSliderBounds(Rectangle cell, SourceImage image)
-    {
-        int gap = LogicalToDeviceUnits(ButtonGap);
-        int top = ToolSlot(cell, (int)Tool.Reset).Bottom + gap;
-        var pages = SliderBounds(cell, image);
-        int bottom = pages.IsEmpty ? cell.Bottom - LogicalToDeviceUnits(ButtonInset) : pages.Top - gap;
-        int left = cell.X + LogicalToDeviceUnits(ButtonInset);
-        var bounds = Rectangle.FromLTRB(left, top, left + LogicalToDeviceUnits(ButtonSize), bottom);
-        return bounds.Height >= LogicalToDeviceUnits(MinZoomSliderHeight) ? bounds : Rectangle.Empty;
-    }
-
-    /// <summary>Vertical span of the track; zoom goes up, on a log scale so that 50 % → 100 % and each doubling take the same length.</summary>
-    private static (int Top, int Height) ZoomTrack(Rectangle bounds)
-    {
-        int pad = bounds.Width / 2;
-        return (bounds.Y + pad, Math.Max(1, bounds.Height - 2 * pad));
-    }
-
-    private static double ZoomFraction(double zoom) =>
-        (Math.Log2(zoom) - Math.Log2(ImageLook.MinZoom)) / (Math.Log2(ImageLook.MaxZoom) - Math.Log2(ImageLook.MinZoom));
-
-    private static int ZoomY(Rectangle bounds, double zoom)
-    {
-        var (top, height) = ZoomTrack(bounds);
-        return top + height - (int)Math.Round(height * ZoomFraction(zoom));
-    }
-
-    /// <summary>Sets the zoom under <paramref name="y"/> on the zoom slider being dragged; snaps to 100 % near its mark.</summary>
-    private void ZoomTo(int y)
+    public void ZoomSelected(double zoom)
     {
         var cells = CellBounds();
-        if (_zooming >= cells.Length)
+        if (_selected < 0 || _selected >= cells.Length || _locked)
         {
             return;
         }
 
-        var bounds = ZoomSliderBounds(cells[_zooming], _images[_zooming]);
-        if (bounds.IsEmpty)
-        {
-            return;
-        }
-
-        var (top, height) = ZoomTrack(bounds);
-        double fraction = Math.Clamp((top + height - y) / (double)height, 0, 1);
-        double zoom = Math.Abs(y - ZoomY(bounds, 1)) <= LogicalToDeviceUnits(4)
-            ? 1
-            : Math.Pow(2, Math.Log2(ImageLook.MinZoom) + fraction * (Math.Log2(ImageLook.MaxZoom) - Math.Log2(ImageLook.MinZoom)));
-
-        // A zoom always brings the image back within its stops, even from past them.
-        var image = _images[_zooming];
+        var image = _images[_selected];
         var zoomed = image.Look.WithZoom(zoom);
         var size = zoomed.Oriented(image.Bitmap.Size);
-        SetLook(_zooming, zoomed.WithFocus(FitCalculator.WithinStops(cells[_zooming], size, zoomed.Zoom, zoomed.Focus)));
+        BeginLive(_selected);
+        SetLook(_selected, zoomed.WithFocus(FitCalculator.WithinStops(cells[_selected], size, zoomed.Zoom, zoomed.Focus)));
+        _wheelEnd.Start();
     }
-
     /// <summary>
     /// Zooms by <paramref name="notches"/> of the wheel, <see cref="NotchesPerDoubling"/> of them
     /// doubling the zoom, keeping the point of the image under <paramref name="location"/> in place
@@ -1728,124 +1560,6 @@ internal sealed class GridPreview : Control
         using var pen = new Pen(Color.FromArgb(160, 0, 0, 0), LogicalToDeviceUnits(1));
         g.FillRectangle(brush, bounds);
         g.DrawRectangle(pen, bounds);
-    }
-
-    private void PaintToolbar(Graphics g, Rectangle cell, SourceImage image)
-    {
-        foreach (var (tool, bounds) in ToolBounds(cell, image))
-        {
-            bool on = tool switch
-            {
-                Tool.FlipX => image.Look.FlipX,
-                Tool.FlipY => image.Look.FlipY,
-                Tool.Grayscale => image.Look.Grayscale,
-                _ => false,
-            };
-            PaintToolButton(g, tool, bounds, _hoveredTool == tool, on);
-        }
-    }
-
-    /// <summary>Round button like the ×, filled with the highlight color while its action is on.</summary>
-    private void PaintToolButton(Graphics g, Tool tool, Rectangle bounds, bool hot, bool on)
-    {
-        var fill = on ? Color.FromArgb(hot ? 255 : 210, SystemColors.Highlight) : Color.FromArgb(hot ? 230 : 150, 0, 0, 0);
-        using (var brush = new SolidBrush(fill))
-        {
-            g.FillEllipse(brush, bounds);
-        }
-
-        int pad = bounds.Width * 3 / 10;
-        var glyph = Rectangle.Inflate(bounds, -pad, -pad);
-        using var pen = new Pen(Color.White, LogicalToDeviceUnits(2));
-        using var arrow = new AdjustableArrowCap(2.5f, 2.5f);
-        switch (tool)
-        {
-            case Tool.RotateLeft:
-                pen.CustomEndCap = arrow;
-                g.DrawArc(pen, glyph, 0, -220);
-                break;
-            case Tool.RotateRight:
-                pen.CustomEndCap = arrow;
-                g.DrawArc(pen, glyph, 180, 220);
-                break;
-            case Tool.FlipX:
-                PaintFlipGlyph(g, glyph, vertical: false);
-                break;
-            case Tool.FlipY:
-                PaintFlipGlyph(g, glyph, vertical: true);
-                break;
-            case Tool.Grayscale:
-                g.FillPie(Brushes.White, glyph, 90, 180);
-                g.DrawEllipse(pen, glyph);
-                break;
-            case Tool.Reset:
-                pen.CustomEndCap = arrow;
-                g.DrawArc(pen, glyph, 90, -300);
-                int dot = Math.Max(2, glyph.Width / 4);
-                g.FillEllipse(Brushes.White, glyph.X + (glyph.Width - dot) / 2, glyph.Y + (glyph.Height - dot) / 2, dot, dot);
-                break;
-        }
-    }
-
-    /// <summary>A filled triangle and its outlined mirror image on each side of the flip axis.</summary>
-    private void PaintFlipGlyph(Graphics g, Rectangle glyph, bool vertical)
-    {
-        float mid = glyph.Width / 2f;
-        float gap = LogicalToDeviceUnits(2);
-        PointF[] Mirror(PointF[] points) => points.Select(p => new PointF(glyph.Width - p.X, p.Y)).ToArray();
-        PointF[] Place(PointF[] points) => points
-            .Select(p => vertical ? new PointF(glyph.X + p.Y, glyph.Y + p.X) : new PointF(glyph.X + p.X, glyph.Y + p.Y))
-            .ToArray();
-
-        PointF[] left = [new(0, glyph.Height), new(mid - gap, 0), new(mid - gap, glyph.Height)];
-        using var pen = new Pen(Color.White, LogicalToDeviceUnits(1));
-        g.FillPolygon(Brushes.White, Place(left));
-        g.DrawPolygon(pen, Place(Mirror(left)));
-        var axis = Place([new(mid, 0), new(mid, glyph.Height)]);
-        g.DrawLine(pen, axis[0], axis[1]);
-    }
-
-    /// <summary>Vertical pill with 100 % marked on its track; the percentage shows next to the thumb while hovered or dragged.</summary>
-    private void PaintZoomSlider(Graphics g, SourceImage image, Rectangle bounds)
-    {
-        if (bounds.IsEmpty)
-        {
-            return;
-        }
-
-        bool hot = _zooming >= 0 || _hoveringZoom;
-        using (var brush = new SolidBrush(Color.FromArgb(hot ? 230 : 150, 0, 0, 0)))
-        {
-            g.FillRoundedRectangle(brush, bounds, new Size(bounds.Width, bounds.Width));
-        }
-
-        var (top, height) = ZoomTrack(bounds);
-        int x = bounds.X + bounds.Width / 2;
-        using (var pen = new Pen(Color.FromArgb(160, Color.White), LogicalToDeviceUnits(2)))
-        {
-            g.DrawLine(pen, x, top, x, top + height);
-            int mark = ZoomY(bounds, 1);
-            int half = bounds.Width / 4;
-            g.DrawLine(pen, x - half, mark, x + half, mark);
-        }
-
-        int y = ZoomY(bounds, image.Look.Zoom);
-        int thumb = bounds.Width - LogicalToDeviceUnits(10);
-        g.FillEllipse(Brushes.White, x - thumb / 2, y - thumb / 2, thumb, thumb);
-
-        if (hot)
-        {
-            string text = $"{image.Look.Zoom * 100:0} %";
-            var size = TextRenderer.MeasureText(text, Font, Size.Empty, TextFormatFlags.NoPadding);
-            int pad = LogicalToDeviceUnits(ButtonGap);
-            var label = new Rectangle(bounds.Right + pad, y - bounds.Width / 2, size.Width + bounds.Width / 2 * 2, bounds.Width);
-            using (var brush = new SolidBrush(Color.FromArgb(230, 0, 0, 0)))
-            {
-                g.FillRoundedRectangle(brush, label, new Size(label.Height, label.Height));
-            }
-
-            TextRenderer.DrawText(g, text, Font, label, Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
-        }
     }
 
     private void PaintSlider(Graphics g, SourceImage image, Rectangle bounds)
