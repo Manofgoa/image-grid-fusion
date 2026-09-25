@@ -32,6 +32,7 @@ internal sealed class GridPreview : Control
     private const int BarMinGap = 8;
     private const int BarGripLength = 32;
     private const int BarGripWidth = 8;
+    private const int PanResistance = 24;
 
     private static readonly Color HoverOutlineColor = Color.FromArgb(128, Color.White);
 
@@ -80,6 +81,8 @@ internal sealed class GridPreview : Control
     private int _zooming = -1;
     private bool _panning;
     private Point _panPoint;
+    private readonly PanMagnet _panX = new();
+    private readonly PanMagnet _panY = new();
     private bool _showsBlurBars;
     private BlurSide? _hoveredBar;
     private BlurSide? _draggedBar;
@@ -547,6 +550,8 @@ internal sealed class GridPreview : Control
         _pressPoint = e.Location;
         _panning = !HandleBounds(CellBounds()[index], _images[index]).Contains(e.Location);
         _panPoint = e.Location;
+        _panX.Reset();
+        _panY.Reset();
         Invalidate();
     }
 
@@ -584,10 +589,10 @@ internal sealed class GridPreview : Control
             return;
         }
 
-        // At 100 % or below the image stays centered: the drag moves nothing, and never turns into a swap.
+        // The drag moves the image at every zoom, and never turns into a swap.
         if (_panning)
         {
-            if (_pressed < _images.Count && _images[_pressed].Look.Zoom > 1)
+            if (_pressed < _images.Count)
             {
                 Cursor = Cursors.SizeAll;
                 BeginLive(_pressed);
@@ -824,6 +829,8 @@ internal sealed class GridPreview : Control
     {
         _pressed = -1;
         _panning = false;
+        _panX.Reset();
+        _panY.Reset();
         EndLive();
         _dragging = false;
         _dropTarget = -1;
@@ -1472,13 +1479,18 @@ internal sealed class GridPreview : Control
         double zoom = Math.Abs(y - ZoomY(bounds, 1)) <= LogicalToDeviceUnits(4)
             ? 1
             : Math.Pow(2, Math.Log2(ImageLook.MinZoom) + fraction * (Math.Log2(ImageLook.MaxZoom) - Math.Log2(ImageLook.MinZoom)));
-        SetLook(_zooming, _images[_zooming].Look.WithZoom(zoom));
+
+        // A zoom always brings the image back within its stops, even from past them.
+        var image = _images[_zooming];
+        var zoomed = image.Look.WithZoom(zoom);
+        var size = zoomed.Oriented(image.Bitmap.Size);
+        SetLook(_zooming, zoomed.WithFocus(FitCalculator.WithinStops(cells[_zooming], size, _cropThreshold, zoomed.Zoom, zoomed.Focus)));
     }
 
     /// <summary>
     /// Zooms by <paramref name="notches"/> of the wheel, <see cref="NotchesPerDoubling"/> of them
-    /// doubling the zoom, keeping the point of the image under <paramref name="location"/> in place;
-    /// lands on 100 % when crossing it.
+    /// doubling the zoom, keeping the point of the image under <paramref name="location"/> in place
+    /// as far as the image stays within its stops; lands on 100 % when crossing it.
     /// </summary>
     private void ZoomAt(int index, Point location, int notches)
     {
@@ -1496,28 +1508,23 @@ internal sealed class GridPreview : Control
             zoom = 1;
         }
 
+        // The point under the mouse, where it is actually shown, then the placement that keeps it there.
+        var cell = cells[index];
         var zoomed = look.WithZoom(zoom);
-        if (zoomed.Zoom <= 1)
-        {
-            SetLook(index, zoomed);
-            return;
-        }
-
-        // The point under the mouse, where it is actually shown, then the part that keeps it there.
         var size = look.Oriented(image.Bitmap.Size);
-        var before = FitCalculator.Compute(cells[index], size, _cropThreshold, look.Zoom, look.Focus);
-        var after = FitCalculator.Compute(cells[index], size, _cropThreshold, zoomed.Zoom, zoomed.Focus);
-        double scaleBefore = before.Destination.Width / before.Source.Width;
-        double scaleAfter = after.Destination.Width / after.Source.Width;
-        double x = Math.Clamp(before.Source.X + (location.X - before.Destination.X) / scaleBefore, 0, size.Width);
-        double y = Math.Clamp(before.Source.Y + (location.Y - before.Destination.Y) / scaleBefore, 0, size.Height);
-        var focus = new PointF(
-            (float)((x - (location.X - after.Destination.X) / scaleAfter + after.Source.Width / 2) / size.Width),
-            (float)((y - (location.Y - after.Destination.Y) / scaleAfter + after.Source.Height / 2) / size.Height));
-        SetLook(index, zoomed.WithFocus(focus));
+        var before = FitCalculator.Compute(cell, size, _cropThreshold, look.Zoom, look.Focus).Image;
+        var after = FitCalculator.DrawnSize(cell, size, _cropThreshold, zoomed.Zoom);
+        double x = Math.Clamp((location.X - before.X) / before.Width, 0, 1);
+        double y = Math.Clamp((location.Y - before.Y) / before.Height, 0, 1);
+        var origin = new PointF((float)(location.X - x * after.Width), (float)(location.Y - y * after.Height));
+        var focus = FitCalculator.FocusAt(cell, after, origin);
+        SetLook(index, zoomed.WithFocus(FitCalculator.WithinStops(cell, size, _cropThreshold, zoomed.Zoom, focus)));
     }
 
-    /// <summary>Moves a zoomed-in image by <paramref name="delta"/> within its cell, from where it is actually shown.</summary>
+    /// <summary>
+    /// Moves an image by <paramref name="delta"/> from where it is actually shown, held by the
+    /// magnetic stops unless Shift is down, and never past the share of the cell it keeps covering.
+    /// </summary>
     private void PanBy(int index, Size delta)
     {
         var cells = CellBounds();
@@ -1526,15 +1533,28 @@ internal sealed class GridPreview : Control
             return;
         }
 
+        var cell = cells[index];
         var image = _images[index];
         var look = image.Look;
         var size = look.Oriented(image.Bitmap.Size);
-        var fit = FitCalculator.Compute(cells[index], size, _cropThreshold, look.Zoom, look.Focus);
-        double scale = fit.Destination.Width / fit.Source.Width;
-        var focus = new PointF(
-            (float)((fit.Source.X + fit.Source.Width / 2 - delta.Width / scale) / size.Width),
-            (float)((fit.Source.Y + fit.Source.Height / 2 - delta.Height / scale) / size.Height));
-        SetLook(index, look.WithFocus(focus));
+        var drawn = FitCalculator.DrawnSize(cell, size, _cropThreshold, look.Zoom);
+        var placed = FitCalculator.Place(cell, drawn, look.Focus);
+        var stops = FitCalculator.Stops(cell, drawn);
+        bool free = (ModifierKeys & Keys.Shift) != 0;
+        float resistance = LogicalToDeviceUnits(PanResistance);
+        var (heldX, heldY) = (_panX.Held, _panY.Held);
+        float x = _panX.Move(placed.X, delta.Width, stops.Left, stops.Right, cell.X + (cell.Width - drawn.Width) / 2, resistance, free);
+        float y = _panY.Move(placed.Y, delta.Height, stops.Top, stops.Bottom, cell.Y + (cell.Height - drawn.Height) / 2, resistance, free);
+
+        // Stored where it is drawn, so a drag past the covered share does not pile up out of sight.
+        var moved = FitCalculator.Place(cell, drawn, FitCalculator.FocusAt(cell, drawn, new PointF(x, y)));
+        SetLook(index, look.WithFocus(FitCalculator.FocusAt(cell, drawn, moved.Location)));
+
+        // A guide can appear or go while the image stays put.
+        if (_panX.Held != heldX || _panY.Held != heldY)
+        {
+            Invalidate(cell);
+        }
     }
 
     private void Select(int index)
