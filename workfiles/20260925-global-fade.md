@@ -26,8 +26,10 @@ This workfile also creates the **rule** separating global effects from cell effe
 
 ## UI — Global Effects Row
 
-- A **dedicated row at the bottom** of the window, labelled **Global effects**, always visible,
-  holding one toggle button per global effect — **Fade** only for now.
+- A **dedicated row at the bottom** of the window, **just above the bottom bar** (Clear all /
+  status line / Copy / Save), labelled **Global effects**, always visible, holding one toggle
+  button per global effect — **Fade** only for now.
+- **Clear all** removes the global effects too: back to the initial state.
 - The global effect's options sit **in the same row**, right of its button (no separate options
   row).
 - Fade options: **one duration**, applied to the fade-in and the fade-out alike.
@@ -52,7 +54,11 @@ This workfile also creates the **rule** separating global effects from cell effe
   end; 1 in between.
 - **Export** (MP4): start = the video's time 0, end = the export's length (the longest loop).
   The sound keeps looping inside the export as today — only the export's own start and end fade.
-- **Preview**: the fade is heard at each loop, so the preview sounds like the export.
+- **Preview**: the fade follows the **grid's loop** — the export's length, the longest loop —
+  so the preview sounds exactly like the export: when the sounded video is shorter than another
+  content, its sound loops without fading inside the grid's loop, and fades only at the grid
+  loop's start and end. (Today `PreviewSound.Sync` only knows the sounded video's own loop: the
+  grid's loop length and the position in it must reach it.)
 
 ---
 
@@ -66,6 +72,7 @@ A new section in `RULES.md`, next to § Effects, and a glossary entry. Draft, to
 | UI | The effects toolbar (top), its options in the options toolbar | The **Global effects** row (bottom), its options in the same row |
 | No cell selected | Disabled | Stays enabled; disabled only when it does not apply (e.g. no sound for the Fade) |
 | Image replaced, cell *Reset* | Reset | Untouched |
+| *Clear all* | Reset (no image left) | Reset |
 | Swap, layout change | Kept, follows the image | Kept |
 | Rendering | `Compositor.DrawCell` | At the grid level, in the preview and in every export |
 | Persistence | Not persisted | Not persisted |
@@ -90,28 +97,26 @@ effects row: Fade.
 
 ## Test Impact
 
-No test project exists in the repository. The fade's envelope is a pure function
-(gain at time *t* for a duration *D* and a length *L*) that a test could pin — whether a test
-project is created is an open question.
+**No unit tests** for this workfile (Q&A 8): the repository has no test project, and none is
+created. The fade's envelope stays a pure function, so a later test project can pin it.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| Envelope: 0 at *t* = 0 and *t* = *L*, 1 between *D* and *L* − *D*, linear in between | *(depends on Open Question 9)* | Create |
-| Envelope when 2*D* > *L*: clamped, never above 1, symmetric | *(depends on Open Question 9)* | Create |
+| — | — | — |
 
 ---
 
 ## Open Questions
 
-- [ ] 1. **Clear all** — does it also remove the global effects (back to the initial state), or keep them?
+- [x] ~~1. **Clear all** — does it also remove the global effects (back to the initial state), or keep them?~~ → Removes them, back to the initial state
 - [ ] 2. **Glossary** — does "Effect" keep meaning a cell effect, with "Global effect" as a separate term (as drafted)?
-- [ ] 3. **Row position** — the Global effects row: its own row just above the bottom bar (as drafted), or inside the bottom bar?
+- [x] ~~3. **Row position** — the Global effects row: its own row just above the bottom bar (as drafted), or inside the bottom bar?~~ → Its own row, just above the bottom bar
 - [ ] 4. **No sound** — is the Fade button disabled when the grid has no sound (still images only, all videos silent or frozen)?
 - [ ] 5. **Duration** — range, step and default (proposal: 0.1–5 s by 0.1 s, default 1 s)?
 - [ ] 6. **Short content** — when 2 × D exceeds the length, is D clamped to half the length (fade-in then straight fade-out)?
-- [ ] 7. **Preview loop** — which loop does the preview fade on: the grid's loop (the export's length, faithful to the export), or the sounded video's own loop (differs when another content loops longer)?
+- [x] ~~7. **Preview loop** — which loop does the preview fade on: the grid's loop (the export's length, faithful to the export), or the sounded video's own loop (differs when another content loops longer)?~~ → The grid's loop, faithful to the export
 - [ ] 8. **Curve** — linear gain, or a smoother curve (e.g. squared, closer to perceived loudness)?
-- [ ] 9. **Tests** — create a test project (xUnit) to pin the envelope, or no unit tests for this workfile?
+- [x] ~~9. **Tests** — create a test project (xUnit) to pin the envelope, or no unit tests for this workfile?~~ → No unit tests, no test project
 - [ ] 10. **Toggle behaviour** — click toggles on / off; is the duration slider shown only while Fade is on, or always (disabled when off)?
 - [ ] 11. **Export lock** — is the Global effects row locked while exporting, like the cell effects?
 - [ ] 12. **Status of the rule** — does the new rule go into `RULES.md` as a new § Global Effects next to § Effects, with § Effects renamed "Cell effects"?
@@ -136,6 +141,12 @@ in the order the requests were made.
   driven from the 33 ms animation tick; the export sound is decoded to PCM 16-bit before the AAC
   re-encoding, so the gain is multiplied into the samples. No test project exists.
 
+### Iteration 2 — 2026-09-26
+
+- OQ 1, 3, 7, 9 answered (Q&A 5–8): the preview fades on the **grid's loop**; the Global effects
+  row sits **just above the bottom bar**; **Clear all** removes the global effects; **no unit
+  tests**, no test project.
+
 ---
 
 ## Implementation Log
@@ -146,7 +157,7 @@ says so rather than staying blank.
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
 | Code | | | |
-| Unit tests | | | |
+| Unit tests | 2 | 2026-09-26 | Declined — no test project (Q&A 8) |
 | README | | | |
 | RULES.md / GLOSSARY.md | | | |
 
@@ -162,11 +173,15 @@ Questions asked by the agent during design, with user responses.
 | 2 | Which settings for the sound fade? (fade in + fade out / one duration / checkboxes + one duration) | **One duration** | 2026-09-25 |
 | 3 | Heard in the preview, or only in the MP4 export? | **Preview and export** | 2026-09-25 |
 | 4 | Is the subject expected to be straightforward, or tricky / long? | **Straightforward** — one scout pass | 2026-09-25 |
-| 5 | OQ 7 — Preview loop: the grid's loop or the sounded video's own loop? | | 2026-09-25 |
-| 6 | OQ 3 — Row position: above the bottom bar, or inside it? | | 2026-09-25 |
-| 7 | OQ 1 — Clear all: removes the global effects too? | | 2026-09-25 |
-| 8 | OQ 9 — Tests: create a test project for the envelope? | | 2026-09-25 |
+| 5 | OQ 7 — Preview loop: the grid's loop or the sounded video's own loop? | **The grid's loop** | 2026-09-26 |
+| 6 | OQ 3 — Row position: above the bottom bar, or inside it? | **Above the bottom bar** | 2026-09-26 |
+| 7 | OQ 1 — Clear all: removes the global effects too? | **Yes**, back to the initial state | 2026-09-26 |
+| 8 | OQ 9 — Tests: create a test project for the envelope? | **No tests** | 2026-09-26 |
+| 9 | OQ 4 — No sound: Fade button disabled? | | 2026-09-26 |
+| 10 | OQ 5 — Duration: range, step, default? | | 2026-09-26 |
+| 11 | OQ 6 — Short content: D clamped to half the length? | | 2026-09-26 |
+| 12 | OQ 10 — Duration slider: shown only while Fade is on, or always? | | 2026-09-26 |
 
 ---
 
-*Last updated: 2026-09-25*
+*Last updated: 2026-09-26*
