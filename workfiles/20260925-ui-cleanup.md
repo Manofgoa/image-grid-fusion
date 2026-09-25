@@ -70,14 +70,17 @@ From top to bottom, below the top bar:
 | Click a tab (outside its checkbox) | **Selects** it — shows its options. Activates nothing |
 | Click a tab's checkbox | **Toggles** the effect on / off, **keeping its settings**, and **selects** the tab |
 | **Act on any option** of the selected tab (slider, button, checkbox) | Applies it **and checks the tab's checkbox** if it was not |
-| The effect's own **Reset** (options row) | Brings back that effect's **defaults** — see Open Questions for the checkbox |
-| The tabs row's **Reset** | Every effect of the selected cell back to its defaults — see Open Questions |
+| The effect's own **Reset** (options row) | Brings back that effect's **default state**: its default settings **and** its default on / off — today every effect is off by default, so it gets unchecked |
+| The tabs row's **Reset** | **Every** effect of the selected cell back to its default state (settings and on / off) — today: all defaults, all unchecked |
 
 - Clicking the checkbox over and over only turns the effect on and off: its settings never move.
 - Acting on an option of an unchecked effect starts from its **kept settings**, then applies the
   change.
-- The wheel and drag gestures on a cell activate Zoom as soon as the image is zoomed or moved:
-  see Open Questions for a cell whose Zoom is off with kept settings.
+- The wheel and drag gestures on a cell activate Zoom as soon as the image is zoomed or moved. On a
+  cell whose Zoom is **off with kept settings**, the gesture starts from **what is shown** (100 %
+  centered) and **replaces** the kept zoom and focus — no jump under the mouse.
+- The effect's own Reset is the one control of the options row that does **not** check the effect:
+  it brings back the default state, on / off included.
 
 ### Settings Kept While Off
 
@@ -117,6 +120,15 @@ To add to `RULES.md` § Effects (options toolbar), as requested by the user:
 > Acting on any control of an effect's options **activates** the effect on the selected cell (its
 > checkbox gets checked) before applying the change, starting from the effect's kept settings, so a
 > change never happens without showing.
+
+### Interaction with the Background Effect Workfile
+
+`workfiles/20260925-background-effect.md` (in design, not implemented) adds a **Background** effect
+**on by default**, and proposes that resets bring every effect back to its defaults. Both Reset
+buttons of this workfile follow the same principle — *default state, on / off included* — so the
+Background will come back **checked** after either Reset. That workfile also plans
+`ImageLook.Background` as `null` while inactive, which *Settings Kept While Off* replaces: whichever
+lands second adapts to the other.
 
 ### Documents Updated
 
@@ -176,13 +188,14 @@ not plan. **No unit test is created or updated.**
   when checked.
 - [x] ~~**No cell selected**: how do the two rows look?~~ → Both visible and disabled; the selected tab
   stays highlighted, its options greyed out.
-- [ ] The effect's own **Reset** (options row): does it also uncheck the effect? *(Proposed: yes — back
-  to the untouched state, defaults and off; an exception to "acting on an option activates".)*
-- [ ] The tabs row's **Reset** (all effects): defaults **and** everything unchecked, or only unchecked?
-  *(Proposed: defaults and unchecked, as today — a clean slate.)*
-- [ ] **Wheel / drag on a cell whose Zoom is off** with a kept zoom (e.g. 200 %, shown at 100 %): where
-  does the gesture start? *(Proposed: from what is shown — 100 % centered — replacing the kept zoom;
-  no jump under the mouse.)*
+- [x] ~~The effect's own **Reset** (options row): does it also uncheck the effect?~~ → It brings back
+  the effect's default state, on / off included: unchecked for an effect off by default (all of
+  today's), checked for one on by default (the planned Background).
+- [x] ~~The tabs row's **Reset** (all effects): defaults **and** everything unchecked, or only
+  unchecked?~~ → Defaults and unchecked — read with the answer above as *every effect back to its
+  default state*, so a Background on by default comes back checked.
+- [x] ~~**Wheel / drag on a cell whose Zoom is off** with a kept zoom: where does the gesture start?~~ →
+  From what is shown (100 % centered), replacing the kept zoom.
 
 ---
 
@@ -238,6 +251,16 @@ defaults (new section *Settings Kept While Off*). Acting on an option now starts
 settings instead of the defaults. Three questions emerge (the effect's Reset and the checkbox, the
 tabs row's Reset, cell gestures on a Zoom that is off).
 
+### Iteration 6 — 2026-09-25
+
+Answers: the effect's own **Reset** brings back its **default state, on / off included** — unchecked
+for today's effects, checked for the Background effect planned on by default
+(`workfiles/20260925-background-effect.md`); the tabs row's **Reset** brings every effect back to its
+defaults, all unchecked — applied with the same principle, so a Background on by default comes back
+checked; a wheel / drag gesture on a cell whose Zoom is off starts **from what is shown** and
+replaces the kept zoom. New section *Interaction with the Background Effect Workfile*. No open
+question left.
+
 ---
 
 ## Implementation Log
@@ -268,9 +291,10 @@ Questions asked by the agent during design, with user responses.
 | 6 | Frames tab selected + still image cell: what does the options row show? | Tab selected, options and checkbox disabled, tooltip on the checkbox saying why | 2026-09-25 |
 | 7 | Blur tab selected, blur unchecked: are the bars drawn? | No, only when checked | 2026-09-25 |
 | 8 | No cell selected: how do the rows look? | Visible and disabled, selected tab highlighted, options greyed out | 2026-09-25 |
-| 9 | Does the effect's own Reset also uncheck it? | | |
-| 10 | Tabs row's Reset: defaults and unchecked, or only unchecked? | | |
-| 11 | Wheel / drag on a cell whose Zoom is off with kept settings: where does it start? | | |
+| 9 | Does the effect's own Reset also uncheck it? | Defaults + unchecked when the effect is off by default; the Background (see "Nouvel effet fond") will be on by default | 2026-09-25 |
+| 10 | Tabs row's Reset: defaults and unchecked, or only unchecked? | Defaults + everything unchecked | 2026-09-25 |
+| 11 | Wheel / drag on a cell whose Zoom is off with kept settings: where does it start? | From what is shown | 2026-09-25 |
+| 12 | Go for implementation? | | |
 
 ---
 
