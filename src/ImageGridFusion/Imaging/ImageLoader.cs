@@ -28,6 +28,10 @@ public static class ImageLoader
 
     public static SourceImage FromImage(Image image) => new(Copy(image), filePath: null);
 
+    /// <summary>A text pasted or dropped, rendered like a text file. Null when it is blank.</summary>
+    public static SourceImage? FromText(StyledText text) =>
+        TryPages(null, TextPages.TryCreate(text, new Size(GridLayout.RatioWidth, GridLayout.RatioHeight)));
+
     private static SourceImage? TryDecode(string path)
     {
         try
@@ -44,7 +48,7 @@ public static class ImageLoader
     }
 
     /// <summary>Renders the initial page; a source that fails there is dropped, and the next producer tried.</summary>
-    private static SourceImage? TryPages(string path, PageSource? pages)
+    private static SourceImage? TryPages(string? path, PageSource? pages)
     {
         if (pages is null)
         {

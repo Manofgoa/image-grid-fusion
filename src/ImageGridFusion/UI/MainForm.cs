@@ -424,7 +424,9 @@ internal sealed class MainForm : Form
 
     private static void OnDragEnter(object? sender, DragEventArgs e)
     {
-        e.Effect = e.Data?.GetDataPresent(DataFormats.FileDrop) == true ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Effect = e.Data is { } data && (data.GetDataPresent(DataFormats.FileDrop) || TextData.IsIn(data))
+            ? DragDropEffects.Copy
+            : DragDropEffects.None;
 
         // WinForms hands the drag to the shell helper only when a drop image type is set, and the
         // following DragOver events keep it: that is what keeps Explorer's thumbnail over the window.
@@ -445,11 +447,16 @@ internal sealed class MainForm : Form
     private async void OnDragDrop(object? sender, DragEventArgs e)
     {
         _preview.ShowDropTarget(null);
+
+        // Onto a cell: replaces it. Onto the drop zone or elsewhere in the window: added like a paste.
+        int target = sender == _preview ? DropCell(e) : -1;
         if (e.Data?.GetData(DataFormats.FileDrop) is string[] paths)
         {
-            // Onto a cell: replaces it. Onto the drop zone or elsewhere in the window: added like a paste.
-            int target = sender == _preview ? DropCell(e) : -1;
             await AddFilesAsync(paths, target);
+        }
+        else if (e.Data is not null && TextData.TryGet(e.Data) is { } text)
+        {
+            await AddTextAsync(text, target, "Nothing added: the dropped text is empty.");
         }
     }
 
@@ -500,7 +507,9 @@ internal sealed class MainForm : Form
             return;
         }
 
+        const string Nothing = "Nothing to paste: the clipboard holds no image or text.";
         string[]? files = null;
+        TextData? text = null;
         try
         {
             if (Clipboard.ContainsFileDropList())
@@ -509,12 +518,17 @@ internal sealed class MainForm : Form
             }
             else if (Clipboard.GetImage() is { } image)
             {
+                // An image wins over the text that may come with it: Excel cells paste as a picture.
                 using (image)
                 {
                     _preview.Add([ImageLoader.FromImage(image)]);
                 }
 
                 return;
+            }
+            else if (Clipboard.GetDataObject() is { } data)
+            {
+                text = TextData.TryGet(data);
             }
         }
         catch (ExternalException ex)
@@ -523,13 +537,51 @@ internal sealed class MainForm : Form
             return;
         }
 
-        if (files is null)
+        if (text is not null)
         {
-            ShowStatus("Nothing to paste: the clipboard holds no image.");
+            await AddTextAsync(text, -1, Nothing);
+        }
+        else if (files is null)
+        {
+            ShowStatus(Nothing);
+        }
+        else
+        {
+            await AddFilesAsync(files);
+        }
+    }
+
+    /// <summary>
+    /// Adds a text as an image rendered like a text file, placed like a file: into the target cell,
+    /// else a free slot, else by the replace rule. Parsed and laid out off the UI thread.
+    /// </summary>
+    private async Task AddTextAsync(TextData text, int targetCell, string blankMessage)
+    {
+        if (RefuseWhileExporting())
+        {
             return;
         }
 
-        await AddFilesAsync(files);
+        var (image, length) = await Task.Run(() =>
+        {
+            var styled = text.Parse();
+            return styled is null || styled.Text.Length > StyledText.MaxLength
+                ? ((SourceImage?)null, styled?.Text.Length ?? 0)
+                : (ImageLoader.FromText(styled), styled.Text.Length);
+        });
+
+        if (length > StyledText.MaxLength)
+        {
+            ShowStatus($"Text too long: {length:N0} characters, {StyledText.MaxLength:N0} at most.");
+        }
+        else if (image is null)
+        {
+            ShowStatus(blankMessage);
+        }
+        else
+        {
+            _preview.Add([image], targetCell);
+        }
     }
 
     /// <summary>
