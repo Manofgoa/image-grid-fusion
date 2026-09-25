@@ -28,7 +28,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
   - Drop a file or a text onto a cell to replace it
   - **Clear all** (bottom left) removes every image at once, with no confirmation, back to the initial state
 - Effects per cell, from the effect tabs at the top of the window (see Effects)
-- Copy to clipboard (`Ctrl+C`) or save (`Ctrl+S`): a PNG, or an MP4 video when the grid holds animated content
+- Copy to clipboard (`Ctrl+C`) or save (`Ctrl+S`): a PNG, or an MP4 video when the grid holds content that plays; the ▾ arrow next to each button forces a looping GIF or an MP4 video
 - Lives in the notification area: closing the window only hides it, the tray icon brings it back, and it can start with Windows (see Tray & startup)
 
 ## Adding images
@@ -134,11 +134,12 @@ A single-page PDF, a text that fits its cell, a one-frame GIF and plain images s
 
 - **Live preview**: every cell plays on one clock, so pages and views change together, each from the starting point of its Frames effect. Hovering a cell no longer holds it still: freezing goes through the Frames effect.
 - **Sound**: the sounds of every video with sound are **mixed**, each at its Volume — a frozen or muted video adds nothing. In the preview, each sound plays in step with its own video (held with it, looping with it); the exported video carries the mix, each sound from its video's starting point, looping with it, in one AAC track.
-- **Export**: as soon as the grid holds multiple content, **Save** writes an **MP4 video** (H.264, AAC sound) instead of a PNG, and **Copy** puts an MP4 file on the clipboard (written to `%TEMP%\ImageGridFusion`, cleaned at the next start), pastable in Explorer, chat apps or mail.
-  - Every content starts from the starting point of its Frames effect (its beginning without it), and a frozen one stays on its frame; the video lasts as long as the longest loop, the shorter ones starting over until it ends. 30 fps.
+- **Export**: as soon as a content plays (not frozen), **Save** writes an **MP4 video** (H.264, AAC sound) instead of a PNG, and **Copy** puts an MP4 file on the clipboard (written to `%TEMP%\ImageGridFusion`, cleaned at the next start), pastable in Explorer, chat apps or mail. The buttons name what they produce: **Copy PNG** / **Copy MP4**, **Save PNG…** / **Save MP4…**.
+  - The **▾ arrow** on the right of Copy and of Save opens a menu that forces the format for that export only: **GIF** or **MP4 Video**. It is disabled while nothing plays; for a still of animated content, freeze it with the Frames effect.
+  - A **GIF** loops forever and has no sound; each frame gets its own 256-color palette. Copied, it goes on the clipboard both as a file and in the GIF clipboard format, which some apps paste directly. A large canvas at 30 fps makes heavy GIFs.
+  - Every content starts from the starting point of its Frames effect (its beginning without it), and a frozen one stays on its frame; the video or GIF lasts as long as the longest loop, the shorter ones starting over until it ends. 30 fps (GIF frames last 3 or 4 hundredths of a second, so the length stays exact).
   - The canvas is sized once, from the first frames (see Canvas size), and rounded down to even dimensions; the bands keep the color of the first frame.
   - The status line names the videos whose sound is in the export. A sound Windows cannot re-encode is left out of the mix, with a note in the status line.
-- **Force as image**: this checkbox, next to Copy, appears only while the grid holds multiple content that plays (not frozen). Checked, Copy and Save produce a PNG again, each content showing its **first frame that is not empty** (not a flat black, white or single-color frame, like a video's intro), else its first frame.
 - **While exporting**, the status line shows the progress with a **Cancel** button, and the grid is locked: no adding, removing, swapping, clearing, changing the layout or the effects. The animation keeps playing. Closing the window only hides it and the export goes on; quitting (see Tray & startup) cancels the export first. A cancelled export leaves no file.
 
 ## Layouts
@@ -225,8 +226,8 @@ Output resolution is kept as high as possible so source images aren't needlessly
 
 ## Output
 
-- **Copy** button / `Ctrl+C`: puts the full-resolution result on the clipboard, both as a standard bitmap and in the PNG clipboard format; with animated content, an MP4 file instead (see Animated content).
-- **Save** button / `Ctrl+S`: saves the result as a PNG file; with animated content, as an MP4 video, unless **Force as image** is checked.
+- **Copy** button / `Ctrl+C`: puts the full-resolution result on the clipboard, both as a standard bitmap and in the PNG clipboard format; while a content plays, an MP4 file instead. Its ▾ arrow copies a GIF or an MP4 video (see Animated content).
+- **Save** button / `Ctrl+S`: saves the result as a PNG file; while a content plays, as an MP4 video. Its ▾ arrow saves a GIF or an MP4 video.
 - A status line reports feedback and errors (skipped files with no preview, ignored excess files, removed images, copy/save confirmation or failure).
 
 ## Tray & startup
@@ -247,7 +248,7 @@ Output resolution is kept as high as possible so source images aren't needlessly
 
 ## Tech
 
-C# / WinForms on .NET 10, using `System.Drawing` (GDI+) with high-quality bicubic interpolation. Previews and exports use Windows' own components only, no third-party library: `Windows.Data.Pdf` for PDFs, Media Foundation for videos (`Windows.Media.Editing` for the Frames slider's stills, the Source Reader for frame-by-frame playback, the Sink Writer for the MP4 export), and the Shell's `IShellItemImageFactory` for thumbnails.
+C# / WinForms on .NET 10, using `System.Drawing` (GDI+) with high-quality bicubic interpolation. Previews and exports use Windows' own components only, no third-party library: `Windows.Data.Pdf` for PDFs, Media Foundation for videos (`Windows.Media.Editing` for the Frames slider's stills, the Source Reader for frame-by-frame playback, the Sink Writer for the MP4 export), WIC's GIF encoder for the GIF export, and the Shell's `IShellItemImageFactory` for thumbnails.
 
 ## Planned
 
