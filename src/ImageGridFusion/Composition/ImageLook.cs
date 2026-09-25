@@ -49,7 +49,8 @@ public sealed record ImageLook
     /// <summary>Top↔bottom flip, as the image is seen once rotated.</summary>
     public bool FlipY { get; private init; }
 
-    public bool Grayscale { get; private init; }
+    /// <summary>Share of the way to black &amp; white, from 0 (the colors) to 1; <c>null</c> while the effect is inactive.</summary>
+    public double? Grayscale { get; private init; }
 
     /// <summary>Scale of the fit given by the fitting rule: 1 draws the image as that rule does.</summary>
     public double Zoom { get; private init; } = 1;
@@ -67,7 +68,7 @@ public sealed record ImageLook
 
     public bool IsActive(ImageEffect effect) => effect switch
     {
-        ImageEffect.BlackAndWhite => Grayscale,
+        ImageEffect.BlackAndWhite => Grayscale is not null,
         ImageEffect.Blur => Blur is not null,
         _ => (Activations & Bit(effect)) != 0,
     };
@@ -75,7 +76,7 @@ public sealed record ImageLook
     /// <summary>Activates an effect with its defaults; one already active is left as it is.</summary>
     public ImageLook Activate(ImageEffect effect) => IsActive(effect) ? this : effect switch
     {
-        ImageEffect.BlackAndWhite => this with { Grayscale = true },
+        ImageEffect.BlackAndWhite => this with { Grayscale = 1 },
         ImageEffect.Blur => this with { Blur = BlurEffect.Default },
         _ => Activated(effect),
     };
@@ -88,7 +89,7 @@ public sealed record ImageLook
             ImageEffect.Zoom => this with { Zoom = 1, Focus = Center },
             ImageEffect.Rotate => WithRotation(0),
             ImageEffect.Flip => (FlipX ? ToggleFlipX() : this) is var flipped && flipped.FlipY ? flipped.ToggleFlipY() : flipped,
-            ImageEffect.BlackAndWhite => this with { Grayscale = false },
+            ImageEffect.BlackAndWhite => this with { Grayscale = null },
             _ => this with { Blur = null },
         };
         return look with { Activations = look.Activations & ~Bit(effect) };
@@ -135,6 +136,8 @@ public sealed record ImageLook
 
     /// <summary>Unclamped: how far the image may go depends on its cell, and is applied where the image is placed.</summary>
     public ImageLook WithFocus(PointF focus) => Activated(ImageEffect.Zoom) with { Focus = focus };
+
+    public ImageLook WithGrayscale(double intensity) => this with { Grayscale = Math.Clamp(intensity, 0, 1) };
 
     public ImageLook WithBlur(BlurEffect? blur) => this with { Blur = blur };
 

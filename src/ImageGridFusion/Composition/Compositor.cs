@@ -13,15 +13,24 @@ public readonly record struct Frame(Bitmap Bitmap, BandColor BandColor, ImageLoo
 /// <summary>Draws the images into their cells, at full resolution or at any preview size.</summary>
 public static class Compositor
 {
-    /// <summary>Luminance weights of the black &amp; white action.</summary>
-    private static readonly ColorMatrix GrayscaleMatrix = new(
-    [
-        [0.299f, 0.299f, 0.299f, 0, 0],
-        [0.587f, 0.587f, 0.587f, 0, 0],
-        [0.114f, 0.114f, 0.114f, 0, 0],
-        [0, 0, 0, 1, 0],
-        [0, 0, 0, 0, 1],
-    ]);
+    /// <summary>Luminance weights of the black &amp; white effect.</summary>
+    private static readonly float[] Luminance = [0.299f, 0.587f, 0.114f];
+
+    /// <summary>Each channel moved <paramref name="intensity"/> of the way from itself to the luminance.</summary>
+    private static ColorMatrix GrayscaleMatrix(double intensity)
+    {
+        float t = (float)intensity;
+        var matrix = new ColorMatrix();
+        for (int row = 0; row < 3; row++)
+        {
+            for (int column = 0; column < 3; column++)
+            {
+                matrix[row, column] = t * Luminance[row] + (row == column ? 1 - t : 0);
+            }
+        }
+
+        return matrix;
+    }
 
     /// <summary>Renders the final image at the size given by <see cref="CanvasSizer"/>.</summary>
     public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout layout) =>
@@ -66,9 +75,9 @@ public static class Compositor
         // TileFlipXY avoids the semi-transparent halo GDI+ leaves on the edges of scaled images.
         using var attributes = new ImageAttributes();
         attributes.SetWrapMode(WrapMode.TileFlipXY);
-        if (look.Grayscale)
+        if (look.Grayscale is { } grayscale)
         {
-            attributes.SetColorMatrix(GrayscaleMatrix);
+            attributes.SetColorMatrix(GrayscaleMatrix(grayscale));
         }
 
         var fit = FitCalculator.Compute(cell, frame.Size, look.Zoom, look.Focus);
@@ -79,7 +88,7 @@ public static class Compositor
 
         // Bands, and transparent pixels, show the background of the part shown.
         var bands = frame.BandColor.For(bitmapPart, frame.Bitmap.Size);
-        using (var brush = new SolidBrush(look.Grayscale ? Gray(bands) : bands))
+        using (var brush = new SolidBrush(look.Grayscale is { } gray ? Gray(bands, gray) : bands))
         {
             g.FillRectangle(brush, cell);
         }
@@ -166,9 +175,11 @@ public static class Compositor
         g.DrawImage(bitmap, points, bitmapPart, GraphicsUnit.Pixel, attributes);
     }
 
-    private static Color Gray(Color color)
+    /// <summary>The band color as the black &amp; white effect turns the image: <paramref name="intensity"/> of the way to its luminance.</summary>
+    private static Color Gray(Color color, double intensity)
     {
-        int luminance = (int)Math.Round(0.299 * color.R + 0.587 * color.G + 0.114 * color.B);
-        return Color.FromArgb(color.A, luminance, luminance, luminance);
+        double luminance = Luminance[0] * color.R + Luminance[1] * color.G + Luminance[2] * color.B;
+        int Mix(int channel) => (int)Math.Round(channel + (luminance - channel) * intensity);
+        return Color.FromArgb(color.A, Mix(color.R), Mix(color.G), Mix(color.B));
     }
 }
