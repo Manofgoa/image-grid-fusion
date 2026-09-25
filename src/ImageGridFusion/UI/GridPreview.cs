@@ -442,6 +442,11 @@ internal sealed class GridPreview : Control
             PaintBlurBars(g, cells[ShownCell(_selected)], blur);
         }
 
+        if (_panning && !_dragging && _pressed >= 0 && _pressed < cells.Length)
+        {
+            PaintPanGuides(g, cells[_pressed], _images[_pressed]);
+        }
+
         PaintHoverOutline(g, HoverOutlineBounds(canvas, cells));
 
         if (_hovered >= 0 && !_dragging && !_locked)
@@ -1669,6 +1674,68 @@ internal sealed class GridPreview : Control
         PaintBarGrip(g, BlurSide.Right, new Rectangle(right - width / 2, midY - length / 2, width, length));
         PaintBarGrip(g, BlurSide.Top, new Rectangle(midX - length / 2, top - width / 2, length, width));
         PaintBarGrip(g, BlurSide.Bottom, new Rectangle(midX - length / 2, bottom - width / 2, length, width));
+        g.Restore(state);
+    }
+
+    /// <summary>
+    /// Guides of the magnetic stops holding a moved image, in the green of the blur bars: dashed along
+    /// the cell edge the image edge is aligned on, solid through the center of the cell.
+    /// </summary>
+    private void PaintPanGuides(Graphics g, Rectangle cell, SourceImage image)
+    {
+        if (_panX.Held == PanStop.None && _panY.Held == PanStop.None)
+        {
+            return;
+        }
+
+        var drawn = FitCalculator.DrawnSize(cell, image.Look.Oriented(image.Bitmap.Size), _cropThreshold, image.Look.Zoom);
+        int inset = LogicalToDeviceUnits(2);
+        int left = cell.Left + inset;
+        int right = cell.Right - 1 - inset;
+        int top = cell.Top + inset;
+        int bottom = cell.Bottom - 1 - inset;
+        int midX = cell.X + cell.Width / 2;
+        int midY = cell.Y + cell.Height / 2;
+
+        // The edge guide sits where the image would leave the cell: an image covering the cell uncovers
+        // the side it moves away from, a smaller one crosses the side it moves toward.
+        var lines = new List<(Point From, Point To, bool Dashed)>();
+        if (_panX.Held == PanStop.Center)
+        {
+            lines.Add((new Point(midX, cell.Top), new Point(midX, cell.Bottom), false));
+        }
+        else if (_panX.Held == PanStop.Edge)
+        {
+            int x = (_panX.Outward > 0) == (drawn.Width >= cell.Width - 0.5f) ? left : right;
+            lines.Add((new Point(x, cell.Top), new Point(x, cell.Bottom), true));
+        }
+
+        if (_panY.Held == PanStop.Center)
+        {
+            lines.Add((new Point(cell.Left, midY), new Point(cell.Right, midY), false));
+        }
+        else if (_panY.Held == PanStop.Edge)
+        {
+            int y = (_panY.Outward > 0) == (drawn.Height >= cell.Height - 0.5f) ? top : bottom;
+            lines.Add((new Point(cell.Left, y), new Point(cell.Right, y), true));
+        }
+
+        var state = g.Save();
+        g.SetClip(cell, CombineMode.Intersect);
+        g.SmoothingMode = SmoothingMode.None;
+        using var outline = new Pen(Color.FromArgb(160, 0, 0, 0), LogicalToDeviceUnits(4));
+        using var solid = new Pen(BarColor, LogicalToDeviceUnits(2));
+        using var dashed = new Pen(BarColor, LogicalToDeviceUnits(2)) { DashPattern = [4, 3] };
+        foreach (var (from, to, _) in lines)
+        {
+            g.DrawLine(outline, from, to);
+        }
+
+        foreach (var (from, to, isDashed) in lines)
+        {
+            g.DrawLine(isDashed ? dashed : solid, from, to);
+        }
+
         g.Restore(state);
     }
 
