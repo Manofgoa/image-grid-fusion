@@ -227,7 +227,7 @@ says so rather than staying blank.
 | Unit tests | 3 | 2026-09-25 | Not applicable — no test project |
 | README | 3 | 2026-09-25 | Range and the zoom badge |
 | RULES.md / GLOSSARY.md | 3 | 2026-09-25 | *On-Cell Helper Indicators* rule, *Helper indicator* term |
-| Manual validation | | | Pending — the user tests the app |
+| Manual validation | 4 | 2026-09-26 | Task declared finished by the user, without a guided test run |
 
 ---
 
@@ -249,4 +249,4 @@ Questions asked by the agent during design, with user responses.
 
 ---
 
-*Last updated: 2026-09-25*
+*Last updated: 2026-09-26*
