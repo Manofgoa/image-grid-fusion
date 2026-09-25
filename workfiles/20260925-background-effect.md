@@ -172,6 +172,13 @@ Questions asked by the agent during design, with user responses.
 | 2 | With *Automatic color* checked, how does the color button behave? | Enabled; choosing a color unchecks the automatic mode | 2026-09-25 |
 | 3 | Opacity slider range and default? | 0–100 %, default 100 % | 2026-09-25 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward — single scout pass | 2026-09-25 |
+| 5 | Resets (image replaced, image deleted, cell *Reset*): back to the effects' defaults, RULES.md amended? | | 2026-09-25 |
+| 6 | Exports: which formats keep the transparency, what do the others show? | | 2026-09-25 |
+| 7 | Checkerboard: preview only? Square size? | | 2026-09-25 |
+| 8 | Does the black-and-white effect desaturate a chosen color too? | | 2026-09-25 |
+| 9 | Re-checking *Automatic color*: is the chosen color remembered? | | 2026-09-25 |
+| 10 | Position of the Background toggle in the effects row? | | 2026-09-25 |
+| 11 | Unit tests: stay test-free? | | 2026-09-25 |
 
 ---
 
