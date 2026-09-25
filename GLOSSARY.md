@@ -16,3 +16,4 @@ each.
 | Starting point | Where the Frames effect makes an animated image start playing |
 | Frozen | An animated image the Frames effect holds on one frame, shown and exported as a still |
 | Options toolbar | The row below the effects toolbar, holding the selected effect's options |
+| Helper indicator (*indicateur d'aide*) | A measure or geometry aid drawn over a cell in the preview only — guides, handles, value readouts such as the zoom percentage; always fluorescent green (see RULES.md) |
