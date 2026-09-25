@@ -22,6 +22,7 @@ internal sealed class GridPreview : Control
     private const int ButtonSize = 24;
     private const int ButtonInset = 6;
     private const int ButtonGap = 4;
+    private const int HandleSize = 48;
     private const int MinZoomSliderHeight = 80;
     private const int WheelNotch = 120;
     private const int NotchesPerDoubling = 4;
@@ -399,7 +400,7 @@ internal sealed class GridPreview : Control
         if (_hovered >= 0 && !_dragging && !_locked)
         {
             PaintCloseButton(g, CloseBounds(cells[_hovered]), _hoveringClose);
-            PaintHandle(g, HandleBounds(cells[_hovered]), _hoveringHandle);
+            PaintHandle(g, HandleBounds(cells[_hovered], _images[_hovered]), _hoveringHandle);
             PaintToolbar(g, cells[_hovered], _images[_hovered]);
         }
 
@@ -484,7 +485,7 @@ internal sealed class GridPreview : Control
         _selected = index;
         _pressed = index;
         _pressPoint = e.Location;
-        _panning = !HandleBounds(CellBounds()[index]).Contains(e.Location);
+        _panning = !HandleBounds(CellBounds()[index], _images[index]).Contains(e.Location);
         _panPoint = e.Location;
         Invalidate();
     }
@@ -886,7 +887,7 @@ internal sealed class GridPreview : Control
         bool actions = hovered >= 0 && !_locked;
         var onTool = actions ? ToolAt(CellBounds()[hovered], _images[hovered], location) : null;
         bool onZoom = actions && ZoomSliderBounds(CellBounds()[hovered], _images[hovered]).Contains(location);
-        bool onHandle = actions && HandleBounds(CellBounds()[hovered]).Contains(location);
+        bool onHandle = actions && HandleBounds(CellBounds()[hovered], _images[hovered]).Contains(location);
         if (hovered == _hovered && onClose == _hoveringClose && onCanvas == _hoveringCanvas && onDropZone == _hoveringDropZone
             && onSlider == _hoveringSlider && onTool == _hoveredTool && onZoom == _hoveringZoom && onHandle == _hoveringHandle)
         {
@@ -1144,11 +1145,35 @@ internal sealed class GridPreview : Control
         return new Rectangle(cell.Right - inset - size, cell.Y + inset, size, size);
     }
 
-    /// <summary>The drag handle that swaps the image, just below the ×: the toolbar rows stay left of it.</summary>
-    private Rectangle HandleBounds(Rectangle cell)
+    /// <summary>
+    /// The drag handle that swaps the image, centered in the cell. It shrinks, still centered, while
+    /// it would come closer than a gap to another control (the ×, every toolbar slot, the sliders);
+    /// below the size of a button it falls back just below the ×, where the toolbar rows stay left of it.
+    /// </summary>
+    private Rectangle HandleBounds(Rectangle cell, SourceImage image)
     {
+        int gap = LogicalToDeviceUnits(ButtonGap);
+        Rectangle[] controls =
+        [
+            CloseBounds(cell),
+            .. Enum.GetValues<Tool>().Select(t => ToolSlot(cell, (int)t)),
+            ZoomSliderBounds(cell, image),
+            SliderBounds(cell, image),
+        ];
+
+        var center = new Point(cell.X + cell.Width / 2, cell.Y + cell.Height / 2);
+        for (int size = LogicalToDeviceUnits(HandleSize); size >= LogicalToDeviceUnits(ButtonSize); size--)
+        {
+            var bounds = new Rectangle(center.X - size / 2, center.Y - size / 2, size, size);
+            var clearance = Rectangle.Inflate(bounds, gap, gap);
+            if (cell.Contains(bounds) && !controls.Any(c => !c.IsEmpty && c.IntersectsWith(clearance)))
+            {
+                return bounds;
+            }
+        }
+
         var close = CloseBounds(cell);
-        return close with { Y = close.Bottom + LogicalToDeviceUnits(ButtonGap) };
+        return close with { Y = close.Bottom + gap };
     }
 
     /// <summary>
@@ -1580,7 +1605,7 @@ internal sealed class GridPreview : Control
         g.DrawLine(pen, bounds.Right - pad, bounds.Top + pad, bounds.Left + pad, bounds.Bottom - pad);
     }
 
-    /// <summary>Round button like the ×, with four arrows pointing out of its center (✥).</summary>
+    /// <summary>Round button like the ×, with four arrows pointing out of its center (✥), thicker as it grows.</summary>
     private void PaintHandle(Graphics g, Rectangle bounds, bool hot)
     {
         using (var brush = new SolidBrush(Color.FromArgb(hot ? 230 : 150, 0, 0, 0)))
@@ -1591,7 +1616,7 @@ internal sealed class GridPreview : Control
         int pad = bounds.Width / 5;
         var glyph = Rectangle.Inflate(bounds, -pad, -pad);
         var center = new PointF(glyph.X + glyph.Width / 2f, glyph.Y + glyph.Height / 2f);
-        using var pen = new Pen(Color.White, LogicalToDeviceUnits(2));
+        using var pen = new Pen(Color.White, LogicalToDeviceUnits(2) * bounds.Width / (float)LogicalToDeviceUnits(ButtonSize));
         using var arrow = new AdjustableArrowCap(2f, 2f);
         pen.CustomEndCap = arrow;
         g.DrawLine(pen, center, new PointF(center.X, glyph.Top));
