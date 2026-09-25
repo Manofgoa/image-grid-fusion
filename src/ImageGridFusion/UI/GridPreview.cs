@@ -27,6 +27,11 @@ internal sealed class GridPreview : Control
     private const int WheelNotch = 120;
     private const int NotchesPerDoubling = 4;
     private const int WheelEndDelay = 150;
+    private const int BarReach = 4;
+    private const int BarSnap = 6;
+    private const int BarMinGap = 8;
+    private const int BarGripLength = 20;
+    private const int BarGripWidth = 6;
 
     private static readonly Color HoverOutlineColor = Color.FromArgb(128, Color.White);
 
@@ -72,6 +77,10 @@ internal sealed class GridPreview : Control
     private int _zooming = -1;
     private bool _panning;
     private Point _panPoint;
+    private bool _showsBlurBars;
+    private BlurSide? _hoveredBar;
+    private BlurSide? _draggedBar;
+    private int _barGrab;
 
     // The image panned or zoomed right now: drawn fast and painted at once, drawn again in full at the end.
     private SourceImage? _live;
@@ -108,6 +117,9 @@ internal sealed class GridPreview : Control
 
     public event EventHandler? ImagesChanged;
 
+    /// <summary>Raised when another cell is selected, or none, and when the selected image changes its look.</summary>
+    public event EventHandler? SelectedImageChanged;
+
     /// <summary>Raised when the drop zone right of the canvas is clicked.</summary>
     public event EventHandler? DropZoneClicked;
 
@@ -139,6 +151,28 @@ internal sealed class GridPreview : Control
     public int FreeSlots => GridLayout.MaxImages - _images.Count;
 
     public bool HasSelection => _selected >= 0;
+
+    /// <summary>The image of the selected cell, the one the effects toolbar acts on; <c>null</c> without a selection.</summary>
+    public SourceImage? SelectedImage => _selected >= 0 && _selected < _images.Count ? _images[_selected] : null;
+
+    /// <summary>
+    /// Draws the bars of the blur on the selected cell, and lets them be dragged: set while the blur is
+    /// the selected effect of the effects toolbar.
+    /// </summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool ShowsBlurBars
+    {
+        get => _showsBlurBars;
+        set
+        {
+            if (value != _showsBlurBars)
+            {
+                _showsBlurBars = value;
+                _hoveredBar = null;
+                Invalidate();
+            }
+        }
+    }
 
     /// <summary>
     /// While an export runs: images can be neither removed nor swapped, and the drop zone is inert.
@@ -291,12 +325,14 @@ internal sealed class GridPreview : Control
         }
     }
 
-    public void ClearSelection()
+    public void ClearSelection() => Select(-1);
+
+    /// <summary>Gives the selected image a new look: an effect toggled or tuned from the toolbars.</summary>
+    public void SetSelectedLook(ImageLook look)
     {
-        if (_selected >= 0)
+        if (SelectedImage is not null)
         {
-            _selected = -1;
-            Invalidate();
+            SetLook(_selected, look);
         }
     }
 
@@ -310,7 +346,7 @@ internal sealed class GridPreview : Control
 
         _images.ForEach(i => i.Dispose());
         _images.Clear();
-        _selected = -1;
+        Select(-1);
         _hovered = -1;
         _hoveringClose = false;
         _hoveredTool = null;
@@ -393,6 +429,11 @@ internal sealed class GridPreview : Control
         {
             using var pen = new Pen(SystemColors.Highlight, LogicalToDeviceUnits(SelectionWidth)) { Alignment = PenAlignment.Inset };
             g.DrawRectangle(pen, cells[ShownCell(_selected)]);
+        }
+
+        if (!_dragging && ShownBlur(_selected) is { } blur && ShownCell(_selected) < cells.Length)
+        {
+            PaintBlurBars(g, cells[ShownCell(_selected)], blur);
         }
 
         PaintHoverOutline(g, HoverOutlineBounds(canvas, cells));
@@ -481,8 +522,24 @@ internal sealed class GridPreview : Control
             return;
         }
 
+        // The bars of the blur come before the handle and the pan, on their own reach only.
+        if (ShownBlur(index) is { } blur && BarAt(CellBounds()[index], blur, e.Location) is { } bar)
+        {
+            var area = blur.Area(CellBounds()[index]);
+            _draggedBar = bar;
+            _barGrab = bar switch
+            {
+                BlurSide.Left => area.Left - e.X,
+                BlurSide.Right => area.Right - e.X,
+                BlurSide.Top => area.Top - e.Y,
+                _ => area.Bottom - e.Y,
+            };
+            BeginLive(index);
+            return;
+        }
+
         // Only the handle swaps the image; a drag anywhere else moves it within its cell.
-        _selected = index;
+        Select(index);
         _pressed = index;
         _pressPoint = e.Location;
         _panning = !HandleBounds(CellBounds()[index], _images[index]).Contains(e.Location);
@@ -509,6 +566,12 @@ internal sealed class GridPreview : Control
         if (_zooming >= 0)
         {
             ZoomTo(e.Y);
+            return;
+        }
+
+        if (_draggedBar is { } bar)
+        {
+            DragBar(bar, e.Location);
             return;
         }
 
@@ -578,6 +641,15 @@ internal sealed class GridPreview : Control
             return;
         }
 
+        if (_draggedBar is not null)
+        {
+            _draggedBar = null;
+            EndLive();
+            UpdateHover(e.Location);
+            Invalidate();
+            return;
+        }
+
         if (_pressedDropZone)
         {
             _pressedDropZone = false;
@@ -604,7 +676,7 @@ internal sealed class GridPreview : Control
     {
         base.OnMouseWheel(e);
         int index = CellAt(e.Location);
-        if (index < 0 || _locked || _pressed >= 0 || _sliding >= 0 || _zooming >= 0)
+        if (index < 0 || _locked || _pressed >= 0 || _sliding >= 0 || _zooming >= 0 || _draggedBar is not null)
         {
             return;
         }
@@ -638,10 +710,11 @@ internal sealed class GridPreview : Control
             EndDrag();
         }
 
-        if (_sliding >= 0 || _zooming >= 0)
+        if (_sliding >= 0 || _zooming >= 0 || _draggedBar is not null)
         {
             _sliding = -1;
             _zooming = -1;
+            _draggedBar = null;
             EndLive();
             UpdateHold();
             Invalidate();
@@ -651,9 +724,10 @@ internal sealed class GridPreview : Control
     protected override void OnMouseLeave(EventArgs e)
     {
         base.OnMouseLeave(e);
-        if ((_hovered >= 0 || _hoveringCanvas || _hoveringDropZone) && !_dragging && _sliding < 0 && _zooming < 0 && !_panning)
+        if ((_hovered >= 0 || _hoveringCanvas || _hoveringDropZone) && !_dragging && _sliding < 0 && _zooming < 0 && !_panning && _draggedBar is null)
         {
             _hovered = -1;
+            _hoveredBar = null;
             _hoveringClose = false;
             _hoveringSlider = false;
             _hoveredTool = null;
@@ -827,7 +901,14 @@ internal sealed class GridPreview : Control
     {
         _images[index].Dispose();
         _images.RemoveAt(index);
-        _selected = -1;
+
+        // The images after it move into another cell: effects belong to the cell and its image (RULES.md).
+        for (int i = index; i < _images.Count; i++)
+        {
+            _images[i].Look = _images[i].Look.WithoutEffects();
+        }
+
+        Select(-1);
         _hovered = -1;
         _hoveringClose = false;
         _hoveringSlider = false;
@@ -848,7 +929,7 @@ internal sealed class GridPreview : Control
     private void Swap(int a, int b)
     {
         (_images[a], _images[b]) = (_images[b], _images[a]);
-        _selected = b;
+        Select(b);
         OnImagesChanged();
     }
 
@@ -888,8 +969,11 @@ internal sealed class GridPreview : Control
         var onTool = actions ? ToolAt(CellBounds()[hovered], _images[hovered], location) : null;
         bool onZoom = actions && ZoomSliderBounds(CellBounds()[hovered], _images[hovered]).Contains(location);
         bool onHandle = actions && HandleBounds(CellBounds()[hovered], _images[hovered]).Contains(location);
+        bool onControl = onClose || onDropZone || onSlider || onTool is not null || onZoom;
+        var onBar = actions && !onControl && ShownBlur(hovered) is { } blur ? BarAt(CellBounds()[hovered], blur, location) : null;
         if (hovered == _hovered && onClose == _hoveringClose && onCanvas == _hoveringCanvas && onDropZone == _hoveringDropZone
-            && onSlider == _hoveringSlider && onTool == _hoveredTool && onZoom == _hoveringZoom && onHandle == _hoveringHandle)
+            && onSlider == _hoveringSlider && onTool == _hoveredTool && onZoom == _hoveringZoom && onHandle == _hoveringHandle
+            && onBar == _hoveredBar)
         {
             return;
         }
@@ -902,8 +986,10 @@ internal sealed class GridPreview : Control
         _hoveredTool = onTool;
         _hoveringZoom = onZoom;
         _hoveringHandle = onHandle;
-        Cursor = onHandle ? Cursors.SizeAll
-            : onClose || onDropZone || onSlider || onTool is not null || onZoom ? Cursors.Hand
+        _hoveredBar = onBar;
+        Cursor = onControl ? Cursors.Hand
+            : onBar is { } bar ? BarCursor(bar)
+            : onHandle ? Cursors.SizeAll
             : Cursors.Default;
         UpdateHold();
         Invalidate();
@@ -1326,6 +1412,10 @@ internal sealed class GridPreview : Control
         }
 
         RedrawCell(image);
+        if (index == _selected)
+        {
+            SelectedImageChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     /// <summary>
@@ -1442,6 +1532,129 @@ internal sealed class GridPreview : Control
             (float)((fit.Source.X + fit.Source.Width / 2 - delta.Width / scale) / size.Width),
             (float)((fit.Source.Y + fit.Source.Height / 2 - delta.Height / scale) / size.Height));
         SetLook(index, look.WithFocus(focus));
+    }
+
+    private void Select(int index)
+    {
+        if (index == _selected)
+        {
+            return;
+        }
+
+        _selected = index;
+        _hoveredBar = null;
+        Invalidate();
+        SelectedImageChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>The blur whose bars cell <paramref name="index"/> shows: only the selected one, while the blur is selected and the grid is not locked.</summary>
+    private BlurEffect? ShownBlur(int index) =>
+        _showsBlurBars && !_locked && index >= 0 && index == _selected && index < _images.Count ? _images[index].Look.Blur : null;
+
+    /// <summary>The bar within reach of <paramref name="location"/>, the nearest one when several are.</summary>
+    private BlurSide? BarAt(Rectangle cell, BlurEffect blur, Point location)
+    {
+        if (!cell.Contains(location))
+        {
+            return null;
+        }
+
+        var area = blur.Area(cell);
+        int reach = LogicalToDeviceUnits(BarReach);
+        BlurSide? nearest = null;
+        int best = int.MaxValue;
+        foreach (var (side, distance) in new[]
+        {
+            (BlurSide.Left, Math.Abs(location.X - area.Left)),
+            (BlurSide.Right, Math.Abs(location.X - area.Right)),
+            (BlurSide.Top, Math.Abs(location.Y - area.Top)),
+            (BlurSide.Bottom, Math.Abs(location.Y - area.Bottom)),
+        })
+        {
+            if (distance <= reach && distance < best)
+            {
+                nearest = side;
+                best = distance;
+            }
+        }
+
+        return nearest;
+    }
+
+    private static Cursor BarCursor(BlurSide side) => side is BlurSide.Left or BlurSide.Right ? Cursors.SizeWE : Cursors.SizeNS;
+
+    /// <summary>
+    /// Moves the bar being dragged along its own axis. Within <see cref="BarSnap"/> of its edge of the
+    /// cell it lands exactly on it, so no strip of a pixel or two stays sharp there.
+    /// </summary>
+    private void DragBar(BlurSide side, Point location)
+    {
+        var cells = CellBounds();
+        if (_selected < 0 || _selected >= cells.Length || _images[_selected].Look.Blur is not { } blur)
+        {
+            return;
+        }
+
+        var cell = cells[_selected];
+        bool vertical = side is BlurSide.Left or BlurSide.Right;
+        int length = vertical ? cell.Width : cell.Height;
+        int offset = (vertical ? location.X - cell.X : location.Y - cell.Y) + _barGrab;
+        int snap = LogicalToDeviceUnits(BarSnap);
+        double fraction = side is BlurSide.Left or BlurSide.Top
+            ? (offset <= snap ? 0 : offset / (double)length)
+            : (length - offset <= snap ? 1 : offset / (double)length);
+        double gap = LogicalToDeviceUnits(BarMinGap) / (double)length;
+        Cursor = BarCursor(side);
+        SetLook(_selected, _images[_selected].Look.WithBlur(blur.WithSide(side, fraction, gap)));
+    }
+
+    /// <summary>
+    /// The four bars as guides across the whole cell, outlined so they show on any image, with a grip
+    /// at the middle of each side of the blurred rectangle; the grip is lit while hovered or dragged.
+    /// </summary>
+    private void PaintBlurBars(Graphics g, Rectangle cell, BlurEffect blur)
+    {
+        var area = blur.Area(cell);
+
+        // A bar on the right or bottom side sits on the last blurred pixel, inside the cell.
+        int left = area.Left;
+        int right = Math.Max(area.Left, area.Right - 1);
+        int top = area.Top;
+        int bottom = Math.Max(area.Top, area.Bottom - 1);
+        int midX = (area.Left + area.Right) / 2;
+        int midY = (area.Top + area.Bottom) / 2;
+
+        var state = g.Save();
+        g.SetClip(cell, CombineMode.Intersect);
+        g.SmoothingMode = SmoothingMode.None;
+        using (var outline = new Pen(Color.FromArgb(160, 0, 0, 0), LogicalToDeviceUnits(3)))
+        using (var line = new Pen(Color.White, LogicalToDeviceUnits(1)))
+        {
+            foreach (var pen in new[] { outline, line })
+            {
+                g.DrawLine(pen, left, cell.Top, left, cell.Bottom);
+                g.DrawLine(pen, right, cell.Top, right, cell.Bottom);
+                g.DrawLine(pen, cell.Left, top, cell.Right, top);
+                g.DrawLine(pen, cell.Left, bottom, cell.Right, bottom);
+            }
+        }
+
+        int length = LogicalToDeviceUnits(BarGripLength);
+        int width = LogicalToDeviceUnits(BarGripWidth);
+        PaintBarGrip(g, BlurSide.Left, new Rectangle(left - width / 2, midY - length / 2, width, length));
+        PaintBarGrip(g, BlurSide.Right, new Rectangle(right - width / 2, midY - length / 2, width, length));
+        PaintBarGrip(g, BlurSide.Top, new Rectangle(midX - length / 2, top - width / 2, length, width));
+        PaintBarGrip(g, BlurSide.Bottom, new Rectangle(midX - length / 2, bottom - width / 2, length, width));
+        g.Restore(state);
+    }
+
+    private void PaintBarGrip(Graphics g, BlurSide side, Rectangle bounds)
+    {
+        bool hot = _hoveredBar == side || _draggedBar == side;
+        using var brush = new SolidBrush(hot ? SystemColors.Highlight : Color.White);
+        using var pen = new Pen(Color.FromArgb(160, 0, 0, 0), LogicalToDeviceUnits(1));
+        g.FillRectangle(brush, bounds);
+        g.DrawRectangle(pen, bounds);
     }
 
     private void PaintToolbar(Graphics g, Rectangle cell, SourceImage image)
