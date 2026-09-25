@@ -208,7 +208,7 @@ Questions asked by the agent during design, with user responses.
 | 6 | Badge placement vs the close button? | Just below the close button | 2026-09-25 |
 | 7 | What counts as a helper indicator? | Measure / geometry aids only (guides, handles, readouts) | 2026-09-25 |
 | 8 | Hovered blur grip colour? | Keep the white hover feedback | 2026-09-25 |
-| 9 | Go for implementation? | | 2026-09-25 |
+| 9 | Go for implementation? | No — the gate holds | 2026-09-25 |
 
 ---
 
