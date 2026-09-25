@@ -23,6 +23,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
   - Drag the **✥** handle shown in the middle of a hovered cell onto another cell to swap the two images (in a small cell, it shrinks, or sits below the **×**)
   - Drop a file onto a cell to replace it
   - **Clear all** (bottom left) removes every image at once, with no confirmation, back to the initial state
+- Effects per cell, from the effects row below the top bar (see Effects)
 - Copy to clipboard (`Ctrl+C`) or save (`Ctrl+S`): a PNG, or an MP4 video when the grid holds animated content
 - Lives in the notification area: closing the window only hides it, the tray icon brings it back, and it can start with Windows (see Tray & startup)
 
@@ -31,6 +32,20 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 - While cells are free, new images fill them in order.
 - Once the grid is full, a new image replaces the selected cell, or the last image (image 4) if none is selected.
 - Adding several files at once (paste, drop, the Add images picker, or command-line arguments): free slots are filled first, the first excess file applies the replace rule above, and any further excess is ignored, with a status-line message.
+
+## Effects
+
+- The effects row, below the top bar, acts on the selected cell: a button is pressed when its effect is active on it. With no cell selected, the row is disabled.
+- Click an inactive effect to activate it and show its options in a row below; click an active one to show its options; click it again, while its options show, to remove it.
+- An effect belongs to the cell and its image: replacing the image (drop, `Ctrl+V`, picker) or removing an image clears the effects of the cells whose image changes; swapping two cells or changing the layout keeps them. The cell's reset button removes them too.
+- Effects show in the preview, in every export, and on videos while they play.
+
+### Blur
+
+- Blurs a rectangle of the cell, centered on half of it when activated.
+- Four bars across the cell, two vertical and two horizontal, set each side of the rectangle on its own: drag them while the blur's options show. A bar dragged within 6 px of its edge of the cell snaps onto it, so no thin sharp strip is left there.
+- The rectangle stays in place in the cell when the image is zoomed, moved or turned.
+- Options: **Gaussian** or **Pixelate**, and the intensity, relative to the cell's size so an export looks like the preview.
 
 ## Previews
 
