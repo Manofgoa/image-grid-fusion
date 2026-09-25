@@ -24,7 +24,6 @@ internal sealed class EffectTabs : Control
     private readonly Dictionary<ImageEffect, string?> _unavailable = [];
     private readonly ToolTip _toolTip = new();
     private ImageEffect? _selected;
-    private Color _selectedColor = SystemColors.Window;
     private ImageEffect? _hovered;
     private string? _tip;
 
@@ -59,21 +58,6 @@ internal sealed class EffectTabs : Control
             if (value != _selected)
             {
                 _selected = value;
-                Invalidate();
-            }
-        }
-    }
-
-    /// <summary>The fill of the selected tab: the options row's color, so the two read as one.</summary>
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public Color SelectedColor
-    {
-        get => _selectedColor;
-        set
-        {
-            if (value != _selectedColor)
-            {
-                _selectedColor = value;
                 Invalidate();
             }
         }
@@ -141,7 +125,7 @@ internal sealed class EffectTabs : Control
     {
         bool selected = tab.Effect == _selected;
         var bounds = tab.Bounds;
-        var fill = selected ? _selectedColor : tab.Effect == _hovered && Enabled ? SystemColors.ControlLight : SystemColors.Control;
+        var fill = selected ? SystemColors.Window : tab.Effect == _hovered && Enabled ? SystemColors.ControlLight : SystemColors.Control;
         using (var brush = new SolidBrush(fill))
         {
             g.FillRectangle(brush, bounds.X, selected ? 0 : 1, bounds.Width, bounds.Height - (selected ? 0 : 1));
