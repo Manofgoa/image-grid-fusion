@@ -32,7 +32,7 @@ Relevant components:
   as today: sign, then degrees; `0°` without sign).
 - **No snapping**: the angle moves freely, degree by degree.
 - Keyboard: arrows move by 1° (`SmallChange`); page step: see Open Questions.
-- Width: see Open Questions.
+- Width: **360 px** (1 px per degree with the mouse), instead of the 160 px of the other option sliders.
 - −180° and +180° are the same look. The slider keeps the value the user put it on: when the cell's
   angle is re-read into the slider and the slider's current value is equivalent (mod 360°), the
   slider is left where it is, so dragging to −180° does not make the thumb jump to +180°. On
@@ -85,8 +85,9 @@ MP4).
 ## Open Questions
 
 - [ ] Page step of the slider (click on the track, PageUp / PageDown): 15°, 45° or 90°?
-- [ ] Width of the slider: 361 positions on today's 160 px leave ~0.4 px per degree with the
-      mouse. Keep 160 px (the arrows give the exact degree), or widen it (e.g. 360 px, 1 px per degree)?
+- [x] ~~Width of the slider: 361 positions on today's 160 px leave ~0.4 px per degree with the
+      mouse. Keep 160 px (the arrows give the exact degree), or widen it (e.g. 360 px, 1 px per degree)?~~
+      → 360 px, 1 px per degree
 
 ---
 
@@ -104,6 +105,11 @@ circle"*. Scoping (Q&A #1–4): one slider −180° → +180° replacing the qua
 cover zoom kept at every angle, no snapping, straightforward subject. Code read: the model keeps
 its quarter turn + fine angle decomposition, driven by a new `WithAngle`, so rendering, cover and
 pan stops stay as they are; only the Rotate options and the documentation change.
+
+### Iteration 2 — 2026-09-26
+
+The slider is widened to 360 px (Q&A #6). The page step question (Q&A #5) is asked again: the
+user asked what the slider's track is.
 
 ---
 
@@ -130,8 +136,9 @@ Questions asked by the agent during design, with user responses.
 | 2 | At any angle, does the image keep covering its cell? | Yes, automatic zoom, as the fine angle does | 2026-09-26 |
 | 3 | Should the slider snap onto some angles? | No snapping | 2026-09-26 |
 | 4 | Is the subject straightforward or tricky? | Straightforward | 2026-09-26 |
-| 5 | Page step of the slider: 15°, 45° or 90°? | | |
-| 6 | Width of the slider: keep 160 px or widen it? | | |
+| 5 | Page step of the slider: 15°, 45° or 90°? | Asked what the track is — explained, asked again (#7) | 2026-09-26 |
+| 6 | Width of the slider: keep 160 px or widen it? | Widen to 360 px | 2026-09-26 |
+| 7 | Page step (a click on the slider's bar beside the thumb, PageUp / PageDown): 15°, 45° or 90°? | | |
 
 ---
 
