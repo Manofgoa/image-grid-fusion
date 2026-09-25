@@ -210,6 +210,7 @@ Questions asked by the agent during design, with user responses.
 | 11 | Does the main part of the button show the format it will produce? | Yes | 2026-09-25 |
 | 12 | Design stable — start the implementation? | No — the gate holds | 2026-09-25 |
 | 13 | With the Frames effect's Freeze, is the submenu's Image entry obsolete too? | Yes — removed | 2026-09-26 |
+| 14 | Design stable — start the implementation? | No — the gate holds | 2026-09-26 |
 
 ---
 
