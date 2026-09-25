@@ -82,6 +82,9 @@ zones relative to the cell:
   image does not fill: it places the image rectangle with the focus at the cell center, clamps that
   placement to the hard limit only, and returns the **intersection** of the image with the cell as
   `Destination`, with the matching `Source`. The in-range clamp moves to the gesture (magnetic stop).
+- API: `Fit` gains `Image` (where the whole image lands); `FitCalculator` gains `MinCoveredShare`
+  (0.1), `DrawnSize`, `Place` (focus → placement, hard limit applied), `Stops` (the in-range zone of
+  the image's top-left corner), `FocusAt` (placement → focus) and `WithinStops` (the zoom clamp).
 - `ImageLook.WithFocus` no longer clamps the focus to `[0, 1]` — a focus beyond the image is how an
   image past the edge is stored. The limit depends on the cell size, so it can only be applied where
   the cell is known: in `FitCalculator.Compute` at draw time, and in `PanBy` (which already starts
@@ -104,6 +107,13 @@ zones relative to the cell:
 
 - The resistance is counted **per axis**: a diagonal drag can pass a stop on one axis and stay held
   on the other.
+- An image **resting on an edge stop** is held as soon as it moves outward (the stop of today); one
+  **resting on the center** leaves it freely — the center only holds a move that crosses it.
+- A single quick move that reaches a stop is held by it even when it already goes the resistance
+  past it: the stop shows for one frame, and the next move releases it where the drag is.
+- Code: `UI/PanMagnet.cs` (one instance per axis) drives the stops; `GridPreview.PanBy` feeds it
+  the image's position from `FitCalculator.Place` and the stops from `FitCalculator.Stops`, then
+  stores the focus of the position actually drawn (clamped to the covered share).
 - **Shift held**: no magnetic stop at all — no resistance, no guide — only the hard limit (Q&A #2,
   #7). It is read on every mouse move, so it can be pressed or released during the drag; releasing
   it leaves the image where it is.
@@ -116,13 +126,15 @@ in the preview — never in `Compositor`, so never exported:
 
 | Stop held | Guide |
 |---|---|
-| Edge stop | A **dashed** line along the cell edge the image edge is aligned on |
+| Edge stop | A **dashed** line along the cell edge the image would leave the cell by — the side an image covering the cell uncovers, the side a smaller image crosses |
 | Center stop, horizontal axis | A **vertical** line through the cell center, across the cell |
 | Center stop, vertical axis | A **horizontal** line through the cell center, across the cell |
 
 - Both center stops held at once draw the two lines **crossing** at the cell center.
 - Color: the **fluorescent green** of the blur bars (`GridPreview.BarColor`), so it shows on any image.
 - A guide disappears as soon as its stop is passed, and all of them when the mouse is released.
+- Drawn like the blur bars: a dark 4 px outline under a 2 px green line (dashes 4 on / 3 off), clipped
+  to the cell (`GridPreview.PaintPanGuides`).
 
 ### Zoom
 
@@ -132,7 +144,8 @@ in the preview — never in `Compositor`, so never exported:
   notch, the position is clamped to the *in range* zone on each axis, even if the image had been
   pushed beyond. For an image larger than the cell, it covers the cell; for an image smaller than the
   cell (zoom-out, bands), it lies inside the cell.
-- The wheel's anchor under the cursor now applies at every zoom, then that clamp.
+- The wheel's anchor under the cursor now applies at every zoom, then that clamp. A cursor over the
+  band color anchors on the nearest point of the image.
 
 ### Background
 
@@ -211,6 +224,13 @@ the band color.
       "to cover the cell" works against pushing the image out of it.~~ → Bounding box: stops, margin
       and guides on the turned image's bounding box; automatic zoom only while within the stops;
       uncovered corners in band color
+- [ ] *(found during the run, not implemented)* The draw no longer clamps an image to its stops, so a
+      change of the cell's shape (layout, output ratio) or of the crop threshold can leave an image
+      that was on an edge stop slightly past it, showing a thin band. Clamp to the stops on those
+      changes too, or keep the position as the design says?
+- [ ] *(found during the run, not implemented)* README *Fitting rules* says the bands fall back to
+      "the most frequent color of the whole image"; `BandColor.For` first takes the most frequent
+      color of the sides shown, the whole image's only when those are transparent. Fix the README?
 
 ---
 
@@ -272,6 +292,34 @@ does not exist yet: nothing is coded for it here if this workfile lands first. D
 Go given: "Code, tests and documentation" — code and README, unit tests declined by design (Q&A #9).
 Branch Gate: stays on `main`, the standing choice for this repository.
 
+### Iteration 7 — 2026-09-25 — 🧭 Implementation choices
+
+No project rule broken. Choices the frozen design did not state:
+
+- **Branch Gate not asked**: stayed on `main`, the standing choice recorded for this repository.
+- **Leaving the center freely**: an image resting on the center is not held when the drag starts —
+  the center holds a move that *crosses* it; an image resting on an edge stop is held as soon as it
+  moves outward (today's stop).
+- **Quick moves**: a single mouse move reaching a stop is held by it even when it already goes the
+  24 px past it; the next move releases it. Without that, a fast drag (one move of more than 24 px)
+  would never feel a stop.
+- **Edge guide side**: drawn on the edge the image would leave the cell by, from the direction the
+  stop resists — an image exactly filling an axis has both edges aligned, and only one guide shows.
+- **Guide drawing**: dark 4 px outline under a 2 px green line, dashes 4 on / 3 off, like the blur bars.
+- **Stored focus clamped**: `PanBy` stores the focus of the position actually drawn, so a drag past
+  the covered share does not pile up out of sight.
+- **API shape**: `Fit.Image`, `FitCalculator.MinCoveredShare` / `DrawnSize` / `Place` / `Stops` /
+  `FocusAt` / `WithinStops`; the stops logic in a new `UI/PanMagnet.cs`, one instance per axis.
+- **Wheel anchor over a band**: anchors on the nearest point of the image (as before), then the zoom
+  clamp to the stops.
+
+Found during the run, not implemented (scope freeze), offered as Open Questions: a cell-shape or
+crop-threshold change can leave an image slightly past an edge stop; the README's band-color
+fallback is stale.
+
+Parallel work: the toolbar session committed its workfile on `main` during the run (`1f47ec9`);
+only the files of this run were committed.
+
 ---
 
 ## Implementation Log
@@ -281,9 +329,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 6, 7 | 2026-09-25 | `46d9221` free placement and 10 % margin, `0da8167` drag at every zoom with magnetic stops and zoom clamp, `1492e9b` green guides; builds with 0 warnings |
 | Unit tests | 3 | 2026-09-25 | Declined — solution kept test-free (Q&A #9) |
-| README | | | |
+| README | 6 | 2026-09-25 | `424df06` drag past the edges, stops and guides, Shift, band color of the uncovered area |
 
 ---
 
