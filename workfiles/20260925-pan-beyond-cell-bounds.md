@@ -191,6 +191,10 @@ the band color.
       solution test-free as before?~~ → Stay test-free
 - [x] ~~README: update the pan description and the band-color note as described in *Documentation*?~~
       → Yes
+- [ ] Fine rotation (±45°, planned by `workfiles/20260925-toolbar.md`): how does the pan beyond the
+      edges behave on an image turned by a fine angle? This design assumes an image rectangle
+      aligned on the cell (edge stops, image ∩ cell, 10 % margin), and the toolbar's automatic zoom
+      "to cover the cell" works against pushing the image out of it.
 
 ---
 
@@ -223,6 +227,22 @@ longer recenters at 100 % and below (the recentering option was not chosen).
 
 Last open questions answered (Q&A #9, #10): no unit tests, the solution stays test-free; the README
 gets the new pan description and the band-color note. Design complete, submitted for the go.
+The go was declined ("No"): the gate holds.
+
+### Iteration 4 — 2026-09-25
+
+Coordination with `workfiles/20260925-toolbar.md` (another session, in design, not implemented),
+logged at the user's request:
+
+- **The Crop slider goes away**: the crop threshold becomes a fixed 15 % constant, used by
+  `FitCalculator`, `CanvasSizer` and the exports. No impact on this design; `GridPreview._cropThreshold`
+  becomes that constant. The README's *Crop threshold* section, which this workfile completes with
+  the band-color note, will be rewritten there — whichever lands second adapts to the first.
+- **The cell's hover tools move to the effects toolbar**, the zoom slider included. The wheel and the
+  drag stay on the cell: the pan and its magnetic stops are untouched, and the rule "a zoom clamps
+  the image back within its stops" applies wherever the zoom comes from.
+- **Fine rotation (±45°) with an automatic zoom covering the cell**: conflicts with this design's
+  axis-aligned assumptions — new Open Question. The friction was reported back to that session.
 
 ---
 
