@@ -4,7 +4,8 @@ namespace ImageGridFusion.Composition;
 
 /// <summary>
 /// Actions applied to one image of the grid: a rotation by quarter turns, flips in the screen frame,
-/// black &amp; white, and a zoom around <see cref="Focus"/>. Immutable, so an export can capture it.
+/// black &amp; white, and a zoom around <see cref="Focus"/>; and its effects, toggled from the effects
+/// toolbar (see RULES.md). Immutable, so an export can capture it.
 /// </summary>
 public sealed record ImageLook
 {
@@ -32,6 +33,9 @@ public sealed record ImageLook
 
     /// <summary>Point of the oriented image kept at the center of the cell, in fractions of its width and height.</summary>
     public PointF Focus { get; private init; } = Center;
+
+    /// <summary>The blur effect, <c>null</c> while inactive. Turning or zooming the image leaves it in place.</summary>
+    public BlurEffect? Blur { get; private init; }
 
     public bool IsNone => this == None;
 
@@ -76,6 +80,11 @@ public sealed record ImageLook
     }
 
     public ImageLook WithFocus(PointF focus) => this with { Focus = new PointF(Math.Clamp(focus.X, 0, 1), Math.Clamp(focus.Y, 0, 1)) };
+
+    public ImageLook WithBlur(BlurEffect? blur) => this with { Blur = blur };
+
+    /// <summary>The same actions, every effect removed.</summary>
+    public ImageLook WithoutEffects() => this with { Blur = null };
 
     /// <summary>
     /// Maps the pixels of a bitmap of <paramref name="size"/> to the oriented image: rotated, then
