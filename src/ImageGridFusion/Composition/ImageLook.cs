@@ -2,7 +2,7 @@ using System.Drawing.Drawing2D;
 
 namespace ImageGridFusion.Composition;
 
-/// <summary>Effects of the effects toolbar, in the order of its buttons: geometry first, then rendering.</summary>
+/// <summary>Effects of the effects toolbar, in the order of its buttons: geometry first, then rendering, then sound.</summary>
 public enum ImageEffect
 {
     Zoom,
@@ -11,12 +11,14 @@ public enum ImageEffect
     Frames,
     BlackAndWhite,
     Blur,
+    Volume,
 }
 
 /// <summary>
 /// Effects applied to one image of the grid, toggled from the effects toolbar (see RULES.md): a zoom
 /// around <see cref="Focus"/>, a rotation by quarter turns, flips in the screen frame, black &amp;
-/// white, and the blur; the frames effect for an animated image. An effect turned off keeps its
+/// white, and the blur; the frames effect for an animated image, the volume for a video with sound.
+/// An effect turned off keeps its
 /// settings, drawn as its defaults until it is turned on again (RULES.md). Immutable, so an export can
 /// capture it.
 /// </summary>
@@ -46,6 +48,7 @@ public sealed record ImageLook
     private FramesEffect? KeptFrames { get; init; }
     private double? KeptGrayscale { get; init; }
     private BlurEffect? KeptBlur { get; init; }
+    private VolumeEffect? KeptVolume { get; init; }
 
     /// <summary>Clockwise rotation, in degrees: 0, 90, 180 or 270.</summary>
     public int Rotation { get; private init; }
@@ -80,6 +83,12 @@ public sealed record ImageLook
     /// <summary>The frames effect, <c>null</c> while inactive: the content then plays from its beginning.</summary>
     public FramesEffect? Frames { get; private init; }
 
+    /// <summary>The volume effect, <c>null</c> while inactive: the sound is then mixed as it is, at 100 %.</summary>
+    public VolumeEffect? Volume { get; private init; }
+
+    /// <summary>Scale the image's sound is mixed at: 0 while muted, 1 while the volume effect is off.</summary>
+    public double SoundGain => Volume?.Gain ?? 1;
+
     /// <summary>Every effect at its default: none on, no settings kept.</summary>
     public bool IsNone => this == None;
 
@@ -88,6 +97,7 @@ public sealed record ImageLook
         ImageEffect.Frames => Frames is not null,
         ImageEffect.BlackAndWhite => Grayscale is not null,
         ImageEffect.Blur => Blur is not null,
+        ImageEffect.Volume => Volume is not null,
         _ => (Activations & Bit(effect)) != 0,
     };
 
@@ -118,6 +128,8 @@ public sealed record ImageLook
                 return this with { Grayscale = grayscale, KeptGrayscale = null };
             case ImageEffect.Blur when KeptBlur is { } blur:
                 return this with { Blur = blur, KeptBlur = null };
+            case ImageEffect.Volume when KeptVolume is { } volume:
+                return this with { Volume = volume, KeptVolume = null };
             default:
                 return Activate(effect);
         }
@@ -139,6 +151,7 @@ public sealed record ImageLook
             ImageEffect.Flip => off with { KeptFlip = (FlipX, FlipY) },
             ImageEffect.Frames => off with { KeptFrames = Frames },
             ImageEffect.BlackAndWhite => off with { KeptGrayscale = Grayscale },
+            ImageEffect.Volume => off with { KeptVolume = Volume },
             _ => off with { KeptBlur = Blur },
         };
     }
@@ -154,6 +167,7 @@ public sealed record ImageLook
             ImageEffect.Flip => look with { KeptFlip = null },
             ImageEffect.Frames => look with { KeptFrames = null },
             ImageEffect.BlackAndWhite => look with { KeptGrayscale = null },
+            ImageEffect.Volume => look with { KeptVolume = null },
             _ => look with { KeptBlur = null },
         };
     }
@@ -164,10 +178,11 @@ public sealed record ImageLook
         ImageEffect.Frames => this with { Frames = FramesEffect.Default },
         ImageEffect.BlackAndWhite => this with { Grayscale = 1 },
         ImageEffect.Blur => this with { Blur = BlurEffect.Default },
+        ImageEffect.Volume => this with { Volume = VolumeEffect.Default },
         _ => Activated(effect),
     };
 
-    /// <summary>Deactivates an effect, bringing back its defaults: centered at 100 %, upright, unflipped, playing from the beginning, in color, sharp.</summary>
+    /// <summary>Deactivates an effect, bringing back its defaults: centered at 100 %, upright, unflipped, playing from the beginning, in color, sharp, heard at 100 %.</summary>
     private ImageLook Deactivate(ImageEffect effect)
     {
         var look = effect switch
@@ -177,6 +192,7 @@ public sealed record ImageLook
             ImageEffect.Flip => (FlipX ? ToggleFlipX() : this) is var flipped && flipped.FlipY ? flipped.ToggleFlipY() : flipped,
             ImageEffect.Frames => this with { Frames = null },
             ImageEffect.BlackAndWhite => this with { Grayscale = null },
+            ImageEffect.Volume => this with { Volume = null },
             _ => this with { Blur = null },
         };
         return look with { Activations = look.Activations & ~Bit(effect) };
@@ -247,8 +263,13 @@ public sealed record ImageLook
 
     public ImageLook WithBlur(BlurEffect? blur) => this with { Blur = blur };
 
-    /// <summary>Every effect removed, no settings kept: the look of an image that moves into another cell (RULES.md).</summary>
-    public ImageLook WithoutEffects() => None;
+    public ImageLook WithVolume(VolumeEffect? volume) => this with { Volume = volume };
+
+    /// <summary>
+    /// Every effect removed, no settings kept: the look of an image that moves into another cell
+    /// (RULES.md). The volume stays, so a shift never changes what is heard.
+    /// </summary>
+    public ImageLook WithoutEffects() => None with { Volume = Volume, KeptVolume = KeptVolume };
 
     private static int Bit(ImageEffect effect) => 1 << (int)effect;
 

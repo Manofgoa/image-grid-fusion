@@ -43,6 +43,12 @@ public sealed class SourceImage : IDisposable
     /// <summary>An animated image that plays: in the preview, and as a video when exported.</summary>
     public bool Plays => IsAnimated && !IsFrozen;
 
+    /// <summary>A video with a sound track, read again from its file to be heard.</summary>
+    public bool HasSound => Pages is IHasSound { HasSound: true } && FilePath is not null;
+
+    /// <summary>Its sound is in the grid's mix: a video with sound that plays, not silenced by its volume effect.</summary>
+    public bool IsHeard => HasSound && Plays && Look.SoundGain > 0;
+
     /// <summary>Page the frames effect points at: where the image starts playing, or the one it is frozen on; the first without it.</summary>
     public int StartPage => Pages is { } pages && Look.Frames is { } frames ? frames.PageOf(pages.Count) : 0;
 
