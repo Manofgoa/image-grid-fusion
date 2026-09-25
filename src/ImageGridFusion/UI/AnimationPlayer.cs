@@ -18,43 +18,9 @@ internal sealed class AnimationPlayer : IDisposable
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private readonly Dictionary<SourceImage, Playback> _playbacks = [];
     private readonly PreviewSound _sound = new();
-    private bool _forceStill;
 
     /// <summary>Raised on the UI thread once an image shows a new frame.</summary>
     public event EventHandler<SourceImage>? FrameShown;
-
-    /// <summary>
-    /// Holds every image still, the sound silent; released, each one resumes where it stood, but the
-    /// frozen ones.
-    /// </summary>
-    public bool ForceStill
-    {
-        get => _forceStill;
-        set
-        {
-            if (value == _forceStill)
-            {
-                return;
-            }
-
-            _forceStill = value;
-            foreach (var playback in _playbacks.Values)
-            {
-                if (value)
-                {
-                    // A frozen one already stands on its frame.
-                    if (playback.PausedAt is null)
-                    {
-                        Pause(playback);
-                    }
-                }
-                else if (!playback.Image.IsFrozen)
-                {
-                    Resume(playback);
-                }
-            }
-        }
-    }
 
     /// <summary>Plays the animated images not playing yet, stops the ones gone or shown still, and mixes the sounds of the videos.</summary>
     public void Sync(IReadOnlyList<SourceImage> images)
@@ -80,12 +46,6 @@ internal sealed class AnimationPlayer : IDisposable
                 {
                     StandAtStart(playback);
                 }
-                else if (_forceStill)
-                {
-                    // Stands at the page it shows, so that releasing it resumes from there.
-                    playback.PausedAt = image.Pages!.TimeOf(image.Page);
-                    playback.PausedPage = image.Page;
-                }
 
                 _ = RunAsync(playback);
             }
@@ -95,14 +55,14 @@ internal sealed class AnimationPlayer : IDisposable
     }
 
     /// <summary>
-    /// The frames effect of <paramref name="image"/> changed: frozen, or forced still, it stands on
-    /// the frame the effect points at; else it plays again from that starting point.
+    /// The frames effect of <paramref name="image"/> changed: frozen, it stands on the frame the
+    /// effect points at; else it plays again from that starting point.
     /// </summary>
     public void Update(SourceImage image)
     {
         if (_playbacks.TryGetValue(image, out var playback))
         {
-            if (image.IsFrozen || _forceStill)
+            if (image.IsFrozen)
             {
                 StandAtStart(playback);
             }
@@ -159,31 +119,6 @@ internal sealed class AnimationPlayer : IDisposable
     private static void StandAtStart(Playback playback)
     {
         playback.PausedAt = playback.Image.StartTime;
-        playback.PausedPage = playback.Image.StartPage;
-    }
-
-    private void Pause(Playback playback)
-    {
-        playback.PausedAt = Position(playback);
-        playback.PausedPage = playback.Image.Page;
-    }
-
-    /// <summary>Resumes where the image stands, or at the page its slider moved it to meanwhile.</summary>
-    private void Resume(Playback playback)
-    {
-        if (playback.PausedAt is not { } position)
-        {
-            return;
-        }
-
-        if (!playback.Image.IsDisposed && playback.Image.Page != playback.PausedPage)
-        {
-            position = playback.Image.Pages!.TimeOf(playback.Image.Page);
-            playback.Reader?.Reset();
-        }
-
-        playback.PausedAt = null;
-        playback.Offset = _clock.Elapsed - position;
     }
 
     private async Task RunAsync(Playback playback)
@@ -279,8 +214,6 @@ internal sealed class AnimationPlayer : IDisposable
         public TimeSpan Offset { get; set; } = offset;
 
         public TimeSpan? PausedAt { get; set; }
-
-        public int PausedPage { get; set; }
 
         public Size DisplaySize { get; set; }
 
