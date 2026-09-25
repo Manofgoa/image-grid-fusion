@@ -275,6 +275,7 @@ Questions asked by the agent during design, with user responses.
 | 8 | Zoom and a moved image: recenter at 100 % and below; keep an in-range image within the stops? | Always clamp to the stops | 2026-09-25 |
 | 9 | Unit tests: create a test project, or stay test-free? | Stay test-free | 2026-09-25 |
 | 10 | README: update the pan description and the band-color note? | Yes | 2026-09-25 |
+| 11 | Fine rotation (±45°): how does the pan beyond the edges behave on an image turned by a fine angle? | | |
 
 ---
 
