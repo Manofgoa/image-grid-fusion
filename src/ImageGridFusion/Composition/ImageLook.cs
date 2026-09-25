@@ -16,7 +16,9 @@ public enum ImageEffect
 /// <summary>
 /// Effects applied to one image of the grid, toggled from the effects toolbar (see RULES.md): a zoom
 /// around <see cref="Focus"/>, a rotation by quarter turns, flips in the screen frame, black &amp;
-/// white, and the blur; the frames effect for an animated image. Immutable, so an export can capture it.
+/// white, and the blur; the frames effect for an animated image. An effect turned off keeps its
+/// settings, drawn as its defaults until it is turned on again (RULES.md). Immutable, so an export can
+/// capture it.
 /// </summary>
 public sealed record ImageLook
 {
@@ -34,6 +36,16 @@ public sealed record ImageLook
     // Zoom, Rotate and Flip are active once activated or changed, even at their default values; the
     // other effects are active while their settings are set.
     private int Activations { get; init; }
+
+    // The settings of the effects turned off, brought back when they are turned on again; never drawn.
+    // A zoom or a move of the image replaces the kept zoom, and turning or flipping the image turns or
+    // flips the kept focus and flips with it, so they come back on the same part of the image.
+    private (double Zoom, PointF Focus)? KeptZoom { get; init; }
+    private (int Rotation, int FineAngle)? KeptRotation { get; init; }
+    private (bool X, bool Y)? KeptFlip { get; init; }
+    private FramesEffect? KeptFrames { get; init; }
+    private double? KeptGrayscale { get; init; }
+    private BlurEffect? KeptBlur { get; init; }
 
     /// <summary>Clockwise rotation, in degrees: 0, 90, 180 or 270.</summary>
     public int Rotation { get; private init; }
@@ -68,6 +80,7 @@ public sealed record ImageLook
     /// <summary>The frames effect, <c>null</c> while inactive: the content then plays from its beginning.</summary>
     public FramesEffect? Frames { get; private init; }
 
+    /// <summary>Every effect at its default: none on, no settings kept.</summary>
     public bool IsNone => this == None;
 
     public bool IsActive(ImageEffect effect) => effect switch
@@ -78,8 +91,75 @@ public sealed record ImageLook
         _ => (Activations & Bit(effect)) != 0,
     };
 
+    /// <summary>
+    /// Turns an effect on, with the settings it kept when turned off, else with its defaults; one
+    /// already on is left as it is. Also what the options of an effect that is off show.
+    /// </summary>
+    public ImageLook TurnOn(ImageEffect effect)
+    {
+        if (IsActive(effect))
+        {
+            return this;
+        }
+
+        switch (effect)
+        {
+            case ImageEffect.Zoom when KeptZoom is { } zoom:
+                return Activated(effect) with { Zoom = zoom.Zoom, Focus = zoom.Focus, KeptZoom = null };
+            case ImageEffect.Rotate when KeptRotation is { } rotation:
+                return WithRotation(rotation.Rotation) with { FineAngle = rotation.FineAngle, KeptRotation = null };
+            case ImageEffect.Flip when KeptFlip is { } flip:
+                var flipped = Activated(effect) with { KeptFlip = null };
+                flipped = flip.X ? flipped.ToggleFlipX() : flipped;
+                return flip.Y ? flipped.ToggleFlipY() : flipped;
+            case ImageEffect.Frames when KeptFrames is { } frames:
+                return this with { Frames = frames, KeptFrames = null };
+            case ImageEffect.BlackAndWhite when KeptGrayscale is { } grayscale:
+                return this with { Grayscale = grayscale, KeptGrayscale = null };
+            case ImageEffect.Blur when KeptBlur is { } blur:
+                return this with { Blur = blur, KeptBlur = null };
+            default:
+                return Activate(effect);
+        }
+    }
+
+    /// <summary>Turns an effect off, drawn as its default from now on, its settings kept for <see cref="TurnOn"/>.</summary>
+    public ImageLook TurnOff(ImageEffect effect)
+    {
+        if (!IsActive(effect))
+        {
+            return this;
+        }
+
+        var off = Deactivate(effect);
+        return effect switch
+        {
+            ImageEffect.Zoom => off with { KeptZoom = (Zoom, Focus) },
+            ImageEffect.Rotate => off with { KeptRotation = (Rotation, FineAngle) },
+            ImageEffect.Flip => off with { KeptFlip = (FlipX, FlipY) },
+            ImageEffect.Frames => off with { KeptFrames = Frames },
+            ImageEffect.BlackAndWhite => off with { KeptGrayscale = Grayscale },
+            _ => off with { KeptBlur = Blur },
+        };
+    }
+
+    /// <summary>Brings an effect back to its default state: off, its settings at their defaults, none kept.</summary>
+    public ImageLook Reset(ImageEffect effect)
+    {
+        var look = Deactivate(effect);
+        return effect switch
+        {
+            ImageEffect.Zoom => look with { KeptZoom = null },
+            ImageEffect.Rotate => look with { KeptRotation = null },
+            ImageEffect.Flip => look with { KeptFlip = null },
+            ImageEffect.Frames => look with { KeptFrames = null },
+            ImageEffect.BlackAndWhite => look with { KeptGrayscale = null },
+            _ => look with { KeptBlur = null },
+        };
+    }
+
     /// <summary>Activates an effect with its defaults; one already active is left as it is.</summary>
-    public ImageLook Activate(ImageEffect effect) => IsActive(effect) ? this : effect switch
+    private ImageLook Activate(ImageEffect effect) => IsActive(effect) ? this : effect switch
     {
         ImageEffect.Frames => this with { Frames = FramesEffect.Default },
         ImageEffect.BlackAndWhite => this with { Grayscale = 1 },
@@ -88,7 +168,7 @@ public sealed record ImageLook
     };
 
     /// <summary>Deactivates an effect, bringing back its defaults: centered at 100 %, upright, unflipped, playing from the beginning, in color, sharp.</summary>
-    public ImageLook Deactivate(ImageEffect effect)
+    private ImageLook Deactivate(ImageEffect effect)
     {
         var look = effect switch
         {
@@ -112,11 +192,6 @@ public sealed record ImageLook
     public ImageLook Rotate(int quarterTurns)
     {
         int turns = ((quarterTurns % 4) + 4) % 4;
-        var focus = Focus;
-        for (int i = 0; i < turns; i++)
-        {
-            focus = new PointF(1 - focus.Y, focus.X);
-        }
 
         // The flips are in the screen frame: turning a flipped image a quarter turn swaps which axis is flipped.
         bool swap = turns % 2 == 1;
@@ -125,8 +200,20 @@ public sealed record ImageLook
             Rotation = (Rotation + 90 * turns) % 360,
             FlipX = swap ? FlipY : FlipX,
             FlipY = swap ? FlipX : FlipY,
-            Focus = focus,
+            Focus = Turned(Focus, turns),
+            KeptFlip = swap && KeptFlip is { } flip ? (flip.Y, flip.X) : KeptFlip,
+            KeptZoom = KeptZoom is { } zoom ? (zoom.Zoom, Turned(zoom.Focus, turns)) : null,
         };
+    }
+
+    private static PointF Turned(PointF focus, int quarterTurns)
+    {
+        for (int i = 0; i < quarterTurns; i++)
+        {
+            focus = new PointF(1 - focus.Y, focus.X);
+        }
+
+        return focus;
     }
 
     /// <summary>Turns the image to <paramref name="degrees"/> exactly: 0, 90, 180 or 270, with no fine angle.</summary>
@@ -134,15 +221,25 @@ public sealed record ImageLook
 
     public ImageLook WithFineAngle(int degrees) => Activated(ImageEffect.Rotate) with { FineAngle = Math.Clamp(degrees, -MaxFineAngle, MaxFineAngle) };
 
-    public ImageLook ToggleFlipX() => Activated(ImageEffect.Flip) with { FlipX = !FlipX, Focus = new PointF(1 - Focus.X, Focus.Y) };
+    public ImageLook ToggleFlipX() => Activated(ImageEffect.Flip) with
+    {
+        FlipX = !FlipX,
+        Focus = new PointF(1 - Focus.X, Focus.Y),
+        KeptZoom = KeptZoom is { } zoom ? (zoom.Zoom, new PointF(1 - zoom.Focus.X, zoom.Focus.Y)) : null,
+    };
 
-    public ImageLook ToggleFlipY() => Activated(ImageEffect.Flip) with { FlipY = !FlipY, Focus = new PointF(Focus.X, 1 - Focus.Y) };
+    public ImageLook ToggleFlipY() => Activated(ImageEffect.Flip) with
+    {
+        FlipY = !FlipY,
+        Focus = new PointF(Focus.X, 1 - Focus.Y),
+        KeptZoom = KeptZoom is { } zoom ? (zoom.Zoom, new PointF(zoom.Focus.X, 1 - zoom.Focus.Y)) : null,
+    };
 
     /// <summary>The focus is kept at every zoom; the gesture brings the image back within its stops (see <see cref="FitCalculator.WithinStops"/>).</summary>
-    public ImageLook WithZoom(double zoom) => Activated(ImageEffect.Zoom) with { Zoom = Math.Clamp(zoom, MinZoom, MaxZoom) };
+    public ImageLook WithZoom(double zoom) => Activated(ImageEffect.Zoom) with { Zoom = Math.Clamp(zoom, MinZoom, MaxZoom), KeptZoom = null };
 
     /// <summary>Unclamped: how far the image may go depends on its cell, and is applied where the image is placed.</summary>
-    public ImageLook WithFocus(PointF focus) => Activated(ImageEffect.Zoom) with { Focus = focus };
+    public ImageLook WithFocus(PointF focus) => Activated(ImageEffect.Zoom) with { Focus = focus, KeptZoom = null };
 
     public ImageLook WithFrames(FramesEffect? frames) => this with { Frames = frames };
 
@@ -150,7 +247,7 @@ public sealed record ImageLook
 
     public ImageLook WithBlur(BlurEffect? blur) => this with { Blur = blur };
 
-    /// <summary>Every effect removed: the look of an image that moves into another cell (RULES.md).</summary>
+    /// <summary>Every effect removed, no settings kept: the look of an image that moves into another cell (RULES.md).</summary>
     public ImageLook WithoutEffects() => None;
 
     private static int Bit(ImageEffect effect) => 1 << (int)effect;
