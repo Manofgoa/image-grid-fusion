@@ -323,7 +323,8 @@ only the files of this run were committed.
 ### Iteration 8 — 2026-09-25 — ⚙️ Post-implementation — Dashed center guides
 
 - User request, made in the *Toolbar* session (`workfiles/20260925-toolbar.md`): every guide of the
-  magnetic stops is a **dashed** line — the center ones were solid.
+  magnetic stops is a **dashed** line — the center ones were solid. Done in `51ae090` (code) and
+  `382f791` (README).
 
 ---
 
