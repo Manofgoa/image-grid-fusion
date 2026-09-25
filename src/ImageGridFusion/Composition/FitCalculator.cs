@@ -1,3 +1,5 @@
+using System.Drawing.Drawing2D;
+
 namespace ImageGridFusion.Composition;
 
 /// <summary>Part of the source to draw, where to draw it in the canvas, and where the whole image lands.</summary>
@@ -15,6 +17,9 @@ public static class FitCalculator
 
     /// <summary>Share of the cell's width and height a moved image always keeps covering, so it can be grabbed back.</summary>
     public const double MinCoveredShare = 0.1;
+
+    // A turned image whose center is nearly off its cell would otherwise grow without bound.
+    private const double MaxCoverScale = 8;
 
     public static double Scale(double cellWidth, double cellHeight, Size image)
     {
@@ -88,6 +93,60 @@ public static class FitCalculator
     public static PointF FocusAt(Rectangle cell, SizeF drawn, PointF origin) => new(
         (cell.X + cell.Width / 2f - origin.X) / drawn.Width,
         (cell.Y + cell.Height / 2f - origin.Y) / drawn.Height);
+
+    /// <summary>
+    /// The fine turn of <paramref name="degrees"/> clockwise of an image placed as <paramref name="fit"/>
+    /// says: around the center of the cell, scaled just enough for the image to keep covering the part
+    /// of the cell it covers unturned. Maps the unturned drawing into the cell; <c>null</c> for no turn.
+    /// </summary>
+    public static Matrix? Turn(Rectangle cell, Fit fit, int degrees)
+    {
+        if (degrees == 0 || fit.Destination.Width <= 0 || fit.Destination.Height <= 0)
+        {
+            return null;
+        }
+
+        var center = new PointF(cell.X + cell.Width / 2f, cell.Y + cell.Height / 2f);
+        float scale = CoverScale(fit, center, degrees);
+
+        // Each call prepends: the image is moved to the center, scaled, turned, then moved back.
+        var turn = new Matrix();
+        turn.Translate(center.X, center.Y);
+        turn.Rotate(degrees);
+        turn.Scale(scale, scale);
+        turn.Translate(-center.X, -center.Y);
+        return turn;
+    }
+
+    /// <summary>
+    /// Smallest scale, 1 or more, for which every corner of the part covered, brought back into the
+    /// unturned image, lies within it. A side of the image the center is beyond cannot be reached by
+    /// scaling: it is left out, and the scale capped.
+    /// </summary>
+    private static float CoverScale(Fit fit, PointF center, int degrees)
+    {
+        double angle = degrees * Math.PI / 180;
+        double cos = Math.Cos(angle);
+        double sin = Math.Sin(angle);
+        var image = fit.Image;
+        var shown = fit.Destination;
+        double scale = 1;
+        foreach (var corner in new[] { new PointF(shown.Left, shown.Top), new PointF(shown.Right, shown.Top), new PointF(shown.Left, shown.Bottom), new PointF(shown.Right, shown.Bottom) })
+        {
+            // The corner, turned back around the center.
+            double dx = corner.X - center.X;
+            double dy = corner.Y - center.Y;
+            scale = Math.Max(scale, Needed(dx * cos + dy * sin, image.Left - center.X, image.Right - center.X));
+            scale = Math.Max(scale, Needed(-dx * sin + dy * cos, image.Top - center.Y, image.Bottom - center.Y));
+        }
+
+        return (float)Math.Min(scale, MaxCoverScale);
+
+        static double Needed(double offset, double low, double high) =>
+            offset > high && high > 0 ? offset / high
+            : offset < low && low < 0 ? offset / low
+            : 1;
+    }
 
     /// <summary>The focus, moved just enough for the image to lie between its edge stops; see <see cref="Stops"/>.</summary>
     public static PointF WithinStops(Rectangle cell, Size image, double zoom, PointF focus)

@@ -1333,11 +1333,40 @@ internal sealed class GridPreview : Control
         var size = look.Oriented(image.Bitmap.Size);
         var before = FitCalculator.Compute(cell, size, look.Zoom, look.Focus).Image;
         var after = FitCalculator.DrawnSize(cell, size, zoomed.Zoom);
-        double x = Math.Clamp((location.X - before.X) / before.Width, 0, 1);
-        double y = Math.Clamp((location.Y - before.Y) / before.Height, 0, 1);
-        var origin = new PointF((float)(location.X - x * after.Width), (float)(location.Y - y * after.Height));
+        var under = TurnedBack(cell, image, location, vector: false);
+        double x = Math.Clamp((under.X - before.X) / before.Width, 0, 1);
+        double y = Math.Clamp((under.Y - before.Y) / before.Height, 0, 1);
+        var origin = new PointF((float)(under.X - x * after.Width), (float)(under.Y - y * after.Height));
         var focus = FitCalculator.FocusAt(cell, after, origin);
         SetLook(index, zoomed.WithFocus(FitCalculator.WithinStops(cell, size, zoomed.Zoom, focus)));
+    }
+
+    /// <summary>
+    /// A point of the cell (or, as a <paramref name="vector"/>, a move) brought back into the unturned
+    /// drawing of an image with a fine angle, so gestures follow the mouse; unchanged without one.
+    /// </summary>
+    private static PointF TurnedBack(Rectangle cell, SourceImage image, PointF point, bool vector)
+    {
+        var look = image.Look;
+        var fit = FitCalculator.Compute(cell, look.Oriented(image.Bitmap.Size), look.Zoom, look.Focus);
+        using var turn = FitCalculator.Turn(cell, fit, look.FineAngle);
+        if (turn is null)
+        {
+            return point;
+        }
+
+        turn.Invert();
+        PointF[] points = [point];
+        if (vector)
+        {
+            turn.TransformVectors(points);
+        }
+        else
+        {
+            turn.TransformPoints(points);
+        }
+
+        return points[0];
     }
 
     /// <summary>
@@ -1362,8 +1391,9 @@ internal sealed class GridPreview : Control
         bool free = (ModifierKeys & Keys.Shift) != 0;
         float resistance = LogicalToDeviceUnits(PanResistance);
         var (heldX, heldY) = (_panX.Held, _panY.Held);
-        float x = _panX.Move(placed.X, delta.Width, stops.Left, stops.Right, cell.X + (cell.Width - drawn.Width) / 2, resistance, free);
-        float y = _panY.Move(placed.Y, delta.Height, stops.Top, stops.Bottom, cell.Y + (cell.Height - drawn.Height) / 2, resistance, free);
+        var step = TurnedBack(cell, image, new PointF(delta.Width, delta.Height), vector: true);
+        float x = _panX.Move(placed.X, step.X, stops.Left, stops.Right, cell.X + (cell.Width - drawn.Width) / 2, resistance, free);
+        float y = _panY.Move(placed.Y, step.Y, stops.Top, stops.Bottom, cell.Y + (cell.Height - drawn.Height) / 2, resistance, free);
 
         // Stored where it is drawn, so a drag past the covered share does not pile up out of sight.
         var moved = FitCalculator.Place(cell, drawn, FitCalculator.FocusAt(cell, drawn, new PointF(x, y)));

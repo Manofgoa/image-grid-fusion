@@ -72,8 +72,10 @@ public static class Compositor
         }
 
         var fit = FitCalculator.Compute(cell, frame.Size, look.Zoom, look.Focus);
+        using var turn = FitCalculator.Turn(cell, fit, look.FineAngle);
+        var (source, shown) = turn is null ? (fit.Source, fit.Destination) : TurnedPart(cell, fit, frame.Size, turn);
         bool oriented = look is not { Rotation: 0, FlipX: false, FlipY: false };
-        var bitmapPart = oriented ? BitmapPart(frame.Bitmap.Size, look, fit.Source) : fit.Source;
+        var bitmapPart = oriented ? BitmapPart(frame.Bitmap.Size, look, source) : source;
 
         // Bands, and transparent pixels, show the background of the part shown.
         var bands = frame.BandColor.For(bitmapPart, frame.Bitmap.Size);
@@ -82,26 +84,53 @@ public static class Compositor
             g.FillRectangle(brush, cell);
         }
 
-        var destination = Rectangle.Round(fit.Destination);
+        var destination = Rectangle.Round(shown);
         using var clip = g.Clip;
         g.SetClip(cell, CombineMode.Intersect);
+
+        // The clip stays in the cell: it is not turned with the drawing.
+        using var transform = g.Transform;
+        if (turn is not null)
+        {
+            g.MultiplyTransform(turn);
+        }
+
         if (!oriented)
         {
             g.DrawImage(
                 frame.Bitmap,
                 destination,
-                fit.Source.X, fit.Source.Y, fit.Source.Width, fit.Source.Height,
+                source.X, source.Y, source.Width, source.Height,
                 GraphicsUnit.Pixel,
                 attributes);
         }
         else
         {
-            DrawOriented(g, frame.Bitmap, look, fit.Source, bitmapPart, destination, attributes);
+            DrawOriented(g, frame.Bitmap, look, source, bitmapPart, destination, attributes);
         }
+
+        g.Transform = transform;
 
         // Every effect is drawn here, so the preview, the exports and a playing video all show it.
         BlurRenderer.Draw(g, frame, cell, fast);
         g.Clip = clip;
+    }
+
+    /// <summary>
+    /// Part of the oriented image of <paramref name="size"/> that lands in the cell once turned, and
+    /// where it is drawn before the turn: the image within the cell turned back.
+    /// </summary>
+    private static (RectangleF Source, RectangleF Shown) TurnedPart(Rectangle cell, Fit fit, Size size, Matrix turn)
+    {
+        using var back = turn.Clone();
+        back.Invert();
+        PointF[] corners = [new(cell.Left, cell.Top), new(cell.Right, cell.Top), new(cell.Left, cell.Bottom), new(cell.Right, cell.Bottom)];
+        back.TransformPoints(corners);
+        var reached = RectangleF.FromLTRB(corners.Min(c => c.X), corners.Min(c => c.Y), corners.Max(c => c.X), corners.Max(c => c.Y));
+        var shown = RectangleF.Intersect(fit.Image, reached);
+        float scale = fit.Image.Width / size.Width;
+        var source = new RectangleF((shown.X - fit.Image.X) / scale, (shown.Y - fit.Image.Y) / scale, shown.Width / scale, shown.Height / scale);
+        return (source, shown);
     }
 
     /// <summary>Rectangle of a bitmap of <paramref name="size"/> that the part <paramref name="source"/> of the oriented image comes from.</summary>
