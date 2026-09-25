@@ -6,8 +6,8 @@ namespace ImageGridFusion.Imaging;
 
 /// <summary>
 /// Writes an MP4 file with the Media Foundation Sink Writer: H.264 video from 32-bit RGB frames, and
-/// optionally the sound of a video file, re-encoded to AAC and looped with that video. Used from a
-/// single thread-pool thread.
+/// optionally the sounds of video files, each looped with its video and scaled by its volume, mixed
+/// and re-encoded to one AAC track. Used from a single thread-pool thread.
 /// </summary>
 internal sealed class VideoEncoder : IDisposable
 {
@@ -19,9 +19,9 @@ internal sealed class VideoEncoder : IDisposable
     private readonly IMFSinkWriter _writer;
     private readonly Size _size;
     private readonly int _videoStream;
-    private readonly Sound? _sound;
+    private readonly Mixer? _sound;
 
-    private VideoEncoder(IMFSinkWriter writer, Size size, int videoStream, Sound? sound)
+    private VideoEncoder(IMFSinkWriter writer, Size size, int videoStream, Mixer? sound)
     {
         _writer = writer;
         _size = size;
@@ -29,32 +29,38 @@ internal sealed class VideoEncoder : IDisposable
         _sound = sound;
     }
 
-    /// <summary>Why the sound could not go into the file; <c>null</c> when it did, or none was asked for.</summary>
-    public string? SoundProblem { get; private set; }
+    /// <summary>Files whose sound went into the mix.</summary>
+    public IReadOnlyList<string> MixedSounds { get; private set; } = [];
+
+    /// <summary>Files whose sound was asked for, but Windows cannot re-encode: left out of the mix.</summary>
+    public IReadOnlyList<string> FailedSounds { get; private set; } = [];
 
     /// <summary>
-    /// Creates the file. <paramref name="soundPath"/>, when given, is a video whose sound starts at
-    /// <paramref name="soundStart"/> and loops every <paramref name="soundLoop"/> for the
-    /// <paramref name="length"/> of the video; a sound Windows cannot re-encode leaves the video
-    /// silent, with a <see cref="SoundProblem"/>.
+    /// Creates the file, its sound mixed from <paramref name="sounds"/> for the <paramref name="length"/>
+    /// of the video; a sound Windows cannot re-encode is left out, listed in <see cref="FailedSounds"/>.
     /// </summary>
-    public static VideoEncoder Create(string path, Size size, TimeSpan length, string? soundPath, TimeSpan soundLoop, TimeSpan soundStart)
+    public static VideoEncoder Create(string path, Size size, TimeSpan length, IReadOnlyList<MixedSound> sounds)
     {
-        if (soundPath is not null)
+        var failed = new List<string>();
+        var mixer = Mixer.Create(sounds, length.Ticks, failed);
+        if (mixer is not null)
         {
             try
             {
-                return Open(path, size, new Sound(soundPath, soundLoop.Ticks, length.Ticks, soundStart.Ticks));
+                var encoder = Open(path, size, mixer);
+                encoder.MixedSounds = mixer.Paths;
+                encoder.FailedSounds = failed;
+                return encoder;
             }
             catch (Exception e) when (e is COMException or InvalidOperationException)
             {
-                var encoder = Open(path, size, sound: null);
-                encoder.SoundProblem = $"no sound ({Path.GetFileName(soundPath)}: its sound cannot be re-encoded)";
-                return encoder;
+                failed.AddRange(mixer.Paths);
             }
         }
 
-        return Open(path, size, sound: null);
+        var silent = Open(path, size, sound: null);
+        silent.FailedSounds = failed;
+        return silent;
     }
 
     /// <summary>Writes a frame the size of the video, shown from <paramref name="time"/> for <paramref name="duration"/>.</summary>
@@ -113,7 +119,7 @@ internal sealed class VideoEncoder : IDisposable
         MediaFoundation.Release(_writer);
     }
 
-    private static VideoEncoder Open(string path, Size size, Sound? sound)
+    private static VideoEncoder Open(string path, Size size, Mixer? sound)
     {
         IMFSinkWriter? writer = null;
         try
@@ -184,37 +190,194 @@ internal sealed class VideoEncoder : IDisposable
     }
 
     /// <summary>
-    /// The sound of a video, decoded to 16-bit PCM by a Source Reader and fed to the AAC encoder: from
-    /// its starting point, then from the start again every loop, cut at the end of each loop and of
-    /// the video.
+    /// The sounds of the grid, mixed into one 16-bit stereo PCM stream fed to the AAC encoder: each
+    /// voice scaled by its gain, the sum clipped to full scale, written in steps of a tenth of a second
+    /// until the video ends.
     /// </summary>
-    private sealed class Sound : IDisposable
+    private sealed class Mixer : IDisposable
+    {
+        private readonly List<Voice> _voices;
+        private readonly int _rate;
+        private readonly long _lengthFrames;
+        private readonly int[] _mix;
+        private readonly short[] _clipped;
+        private int _stream;
+        private long _frames;
+
+        private Mixer(List<Voice> voices, int rate, long length)
+        {
+            _voices = voices;
+            _rate = rate;
+            _lengthFrames = length * rate / TimeSpan.TicksPerSecond;
+            _mix = new int[StepFrames * 2];
+            _clipped = new short[StepFrames * 2];
+        }
+
+        public IReadOnlyList<string> Paths => _voices.Select(v => v.Path).ToList();
+
+        private int StepFrames => _rate / 10;
+
+        /// <summary>
+        /// Opens every sound, all decoded at one rate: 44.1 kHz when they all are, else 48 kHz. The ones
+        /// that fail go to <paramref name="failed"/>; <c>null</c> when none is left.
+        /// </summary>
+        public static Mixer? Create(IReadOnlyList<MixedSound> sounds, long length, List<string> failed)
+        {
+            var voices = new List<Voice>();
+            foreach (var sound in sounds)
+            {
+                try
+                {
+                    voices.Add(new Voice(sound));
+                }
+                catch (Exception e) when (e is COMException or InvalidOperationException)
+                {
+                    failed.Add(sound.Path);
+                }
+            }
+
+            int rate = voices.Count > 0 && voices.All(v => v.NativeRate == 44100) ? 44100 : 48000;
+            foreach (var voice in voices.ToList())
+            {
+                try
+                {
+                    voice.Decode(rate);
+                }
+                catch (Exception e) when (e is COMException or InvalidOperationException)
+                {
+                    failed.Add(voice.Path);
+                    voice.Dispose();
+                    voices.Remove(voice);
+                }
+            }
+
+            return voices.Count == 0 ? null : new Mixer(voices, rate, length);
+        }
+
+        /// <summary>Adds the AAC stream, stereo at the mix's rate.</summary>
+        public void AddStream(IMFSinkWriter writer)
+        {
+            var output = MediaFoundation.CreateMediaType();
+            var input = PcmType(2, _rate);
+            try
+            {
+                output.SetGUID(MediaFoundation.Keys.MajorType, MediaFoundation.Formats.Audio);
+                output.SetGUID(MediaFoundation.Keys.Subtype, MediaFoundation.Formats.Aac);
+                output.SetUINT32(MediaFoundation.Keys.AudioBitsPerSample, 16);
+                output.SetUINT32(MediaFoundation.Keys.AudioSamplesPerSecond, _rate);
+                output.SetUINT32(MediaFoundation.Keys.AudioChannels, 2);
+                output.SetUINT32(MediaFoundation.Keys.AudioAverageBytesPerSecond, AacBytesPerSecond);
+                writer.AddStream(output, out _stream);
+                writer.SetInputMediaType(_stream, input, null);
+            }
+            finally
+            {
+                MediaFoundation.Release(input);
+                MediaFoundation.Release(output);
+            }
+        }
+
+        public void WriteUntil(IMFSinkWriter writer, long until)
+        {
+            while (_frames < _lengthFrames && Time(_frames) < until)
+            {
+                int frames = (int)Math.Min(StepFrames, _lengthFrames - _frames);
+                Array.Clear(_mix, 0, frames * 2);
+                foreach (var voice in _voices)
+                {
+                    voice.MixInto(_mix, frames);
+                }
+
+                for (int i = 0; i < frames * 2; i++)
+                {
+                    _clipped[i] = (short)Math.Clamp(_mix[i], short.MinValue, short.MaxValue);
+                }
+
+                Write(writer, frames);
+                _frames += frames;
+            }
+        }
+
+        public void Dispose() => _voices.ForEach(v => v.Dispose());
+
+        private long Time(long frames) => frames * TimeSpan.TicksPerSecond / _rate;
+
+        private void Write(IMFSinkWriter writer, int frames)
+        {
+            int bytes = frames * 4;
+            var buffer = MediaFoundation.CreateMemoryBuffer(bytes);
+            IMFSample? sample = null;
+            try
+            {
+                buffer.Lock(out var destination, out _, out _);
+                try
+                {
+                    Marshal.Copy(_clipped, 0, destination, frames * 2);
+                }
+                finally
+                {
+                    buffer.Unlock();
+                }
+
+                buffer.SetCurrentLength(bytes);
+                sample = MediaFoundation.CreateSample();
+                sample.AddBuffer(buffer);
+                sample.SetSampleTime(Time(_frames));
+                sample.SetSampleDuration(Time(_frames + frames) - Time(_frames));
+                writer.WriteSample(_stream, sample);
+            }
+            finally
+            {
+                MediaFoundation.Release(sample);
+                MediaFoundation.Release(buffer);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The sound of one video, decoded to 16-bit PCM by a Source Reader: from its starting point, then
+    /// from the start again every loop, cut at the end of each loop, silent where the sound is shorter
+    /// than its loop; added to the mix at its gain, as stereo.
+    /// </summary>
+    private sealed class Voice : IDisposable
     {
         private readonly IMFSourceReader _reader;
         private readonly long _loop;
-        private readonly long _length;
-        private int _stream;
-        private int _blockAlign;
-        private int _samplesPerSecond;
-        private long _loopStart;
-        private long _written;
-        private bool _done;
+        private readonly long _start;
+        private readonly double _gain;
+        private int _rate;
+        private int _channels;
+        private long _loopFrames;
 
-        public Sound(string path, long loop, long length, long start)
+        // Decoded frames, as stereo, starting at frame _pendingFrame of the loop.
+        private short[] _pending = [];
+        private int _pendingCount;
+        private long _pendingFrame;
+
+        // Frame of the loop the next mixed frame comes from; _ended once the sound ended before the loop.
+        private long _position;
+        private bool _ended;
+
+        public Voice(MixedSound sound)
         {
-            _loop = loop;
-            _length = length;
-
-            // The first loop is cut short: the video's time 0 is the sound's time start.
-            _loopStart = -start;
-            _reader = MediaFoundation.CreateSourceReader(path, attributes: null);
+            Path = sound.Path;
+            _loop = sound.Loop.Ticks;
+            _start = sound.Start.Ticks;
+            _gain = sound.Gain;
+            _reader = MediaFoundation.CreateSourceReader(sound.Path, attributes: null);
             try
             {
                 _reader.SetStreamSelection(MediaFoundation.AllStreams, false);
                 _reader.SetStreamSelection(MediaFoundation.FirstAudioStream, true);
-                if (start > 0)
+                Marshal.ThrowExceptionForHR(_reader.GetNativeMediaType(MediaFoundation.FirstAudioStream, 0, out var native));
+                try
                 {
-                    _reader.SetCurrentPosition(Guid.Empty, PropVariant.FromLong(start));
+                    NativeRate = MediaFoundation.TryGetInt(native, MediaFoundation.Keys.AudioSamplesPerSecond) ?? 48000;
+                    _channels = Math.Clamp(MediaFoundation.TryGetInt(native, MediaFoundation.Keys.AudioChannels) ?? 2, 1, 2);
+                }
+                finally
+                {
+                    MediaFoundation.Release(native);
                 }
             }
             catch
@@ -224,22 +387,14 @@ internal sealed class VideoEncoder : IDisposable
             }
         }
 
-        /// <summary>Picks a PCM format the AAC encoder takes — 44.1 or 48 kHz, mono or stereo — and adds the AAC stream.</summary>
-        public void AddStream(IMFSinkWriter writer)
-        {
-            Marshal.ThrowExceptionForHR(_reader.GetNativeMediaType(MediaFoundation.FirstAudioStream, 0, out var native));
-            int channels, rate;
-            try
-            {
-                channels = Math.Clamp(MediaFoundation.TryGetInt(native, MediaFoundation.Keys.AudioChannels) ?? 2, 1, 2);
-                rate = MediaFoundation.TryGetInt(native, MediaFoundation.Keys.AudioSamplesPerSecond) is 44100 ? 44100 : 48000;
-            }
-            finally
-            {
-                MediaFoundation.Release(native);
-            }
+        public string Path { get; }
 
-            var pcm = PcmType(channels, rate);
+        public int NativeRate { get; }
+
+        /// <summary>Decodes to PCM at <paramref name="rate"/>, mono or stereo, and seeks to the starting point.</summary>
+        public void Decode(int rate)
+        {
+            var pcm = PcmType(_channels, rate);
             try
             {
                 Marshal.ThrowExceptionForHR(_reader.SetCurrentMediaType(MediaFoundation.FirstAudioStream, IntPtr.Zero, pcm));
@@ -250,122 +405,170 @@ internal sealed class VideoEncoder : IDisposable
             }
 
             _reader.GetCurrentMediaType(MediaFoundation.FirstAudioStream, out var current);
-            var output = MediaFoundation.CreateMediaType();
             try
             {
-                channels = MediaFoundation.TryGetInt(current, MediaFoundation.Keys.AudioChannels) ?? channels;
-                _samplesPerSecond = MediaFoundation.TryGetInt(current, MediaFoundation.Keys.AudioSamplesPerSecond) ?? rate;
-                _blockAlign = MediaFoundation.TryGetInt(current, MediaFoundation.Keys.AudioBlockAlignment) ?? channels * 2;
-                if (_samplesPerSecond is not (44100 or 48000) || channels is not (1 or 2))
+                _channels = MediaFoundation.TryGetInt(current, MediaFoundation.Keys.AudioChannels) ?? _channels;
+                if ((MediaFoundation.TryGetInt(current, MediaFoundation.Keys.AudioSamplesPerSecond) ?? rate) != rate
+                    || (MediaFoundation.TryGetInt(current, MediaFoundation.Keys.AudioBitsPerSample) ?? 16) != 16
+                    || _channels is not (1 or 2))
                 {
                     throw new InvalidOperationException("Unsupported sound format.");
                 }
-
-                output.SetGUID(MediaFoundation.Keys.MajorType, MediaFoundation.Formats.Audio);
-                output.SetGUID(MediaFoundation.Keys.Subtype, MediaFoundation.Formats.Aac);
-                output.SetUINT32(MediaFoundation.Keys.AudioBitsPerSample, 16);
-                output.SetUINT32(MediaFoundation.Keys.AudioSamplesPerSecond, _samplesPerSecond);
-                output.SetUINT32(MediaFoundation.Keys.AudioChannels, channels);
-                output.SetUINT32(MediaFoundation.Keys.AudioAverageBytesPerSecond, AacBytesPerSecond);
-                writer.AddStream(output, out _stream);
-                writer.SetInputMediaType(_stream, current, null);
             }
             finally
             {
-                MediaFoundation.Release(output);
                 MediaFoundation.Release(current);
+            }
+
+            _rate = rate;
+            _loopFrames = _loop * rate / TimeSpan.TicksPerSecond;
+            if (_loopFrames <= 0)
+            {
+                throw new InvalidOperationException("No loop to play the sound in.");
+            }
+
+            // The first loop is cut short: the video's time 0 is the sound's time start.
+            _position = _start * rate / TimeSpan.TicksPerSecond % _loopFrames;
+            if (_start > 0)
+            {
+                _reader.SetCurrentPosition(Guid.Empty, PropVariant.FromLong(_start));
             }
         }
 
-        public void WriteUntil(IMFSinkWriter writer, long until)
+        /// <summary>Adds the next <paramref name="frames"/> frames, at the voice's gain, to <paramref name="mix"/> (stereo, interleaved).</summary>
+        public void MixInto(int[] mix, int frames)
         {
-            while (!_done && _written < until)
+            int done = 0;
+            while (done < frames)
             {
-                _reader.ReadSample(MediaFoundation.FirstAudioStream, 0, out _, out int flags, out long timestamp, out var sample);
-                try
+                if (_position >= _loopFrames)
                 {
-                    bool ended = (flags & MediaFoundation.EndOfStreamFlag) != 0;
-                    if (ended || (sample is not null && timestamp >= _loop))
-                    {
-                        NextLoop();
-                        continue;
-                    }
+                    Rewind();
+                }
 
-                    // A seek lands a little before the starting point: what comes before it is left out.
-                    if (sample is not null && _loopStart + timestamp >= 0)
+                int wanted = (int)Math.Min(frames - done, _loopFrames - _position);
+                int count;
+                if (!Fill())
+                {
+                    // The sound ended before its loop: silent until it starts over.
+                    count = wanted;
+                }
+                else if (_pendingFrame > _position)
+                {
+                    // A gap in the sound.
+                    count = (int)Math.Min(wanted, _pendingFrame - _position);
+                }
+                else
+                {
+                    int offset = (int)(_position - _pendingFrame);
+                    count = Math.Min(wanted, _pendingCount - offset);
+                    for (int i = 0; i < count * 2; i++)
                     {
-                        Write(writer, sample, _loopStart + Math.Max(0, timestamp));
+                        mix[done * 2 + i] += (int)Math.Round(_pending[offset * 2 + i] * _gain);
                     }
                 }
-                finally
-                {
-                    MediaFoundation.Release(sample);
-                }
+
+                done += count;
+                _position += count;
             }
         }
 
         public void Dispose() => MediaFoundation.Release(_reader);
 
-        private void NextLoop()
+        private void Rewind()
         {
-            _loopStart += _loop;
-            if (_loopStart >= _length || _loop <= 0)
-            {
-                _done = true;
-                return;
-            }
-
+            _position = 0;
+            _ended = false;
+            _pendingCount = 0;
+            _pendingFrame = 0;
             _reader.SetCurrentPosition(Guid.Empty, PropVariant.FromLong(0));
         }
 
-        /// <summary>Writes a sample at <paramref name="time"/>, cut where its loop, or the video, ends.</summary>
-        private void Write(IMFSinkWriter writer, IMFSample sample, long time)
+        /// <summary>Decodes until the pending frames reach the position; <c>false</c> once the sound ended in this loop.</summary>
+        private bool Fill()
         {
-            long limit = Math.Min(_loopStart + _loop, _length);
-            if (time >= limit)
+            while (!_ended && _pendingFrame + _pendingCount <= _position)
             {
-                if (limit == _length)
-                {
-                    _done = true;
-                }
-
-                return;
+                ReadNext();
             }
 
-            sample.ConvertToContiguousBuffer(out var buffer);
+            return _pendingFrame + _pendingCount > _position;
+        }
+
+        private void ReadNext()
+        {
+            _reader.ReadSample(MediaFoundation.FirstAudioStream, 0, out _, out int flags, out long timestamp, out var sample);
             try
             {
-                buffer.GetCurrentLength(out int bytes);
-                long duration = (long)bytes / _blockAlign * TimeSpan.TicksPerSecond / _samplesPerSecond;
-                if (time + duration > limit)
+                long frame = timestamp * _rate / TimeSpan.TicksPerSecond;
+                if ((flags & MediaFoundation.EndOfStreamFlag) != 0 || (sample is not null && frame >= _loopFrames))
                 {
-                    long frames = (limit - time) * _samplesPerSecond / TimeSpan.TicksPerSecond;
-                    buffer.SetCurrentLength((int)(frames * _blockAlign));
-                    duration = limit - time;
+                    _ended = true;
+                    return;
                 }
 
-                sample.SetSampleTime(time);
-                sample.SetSampleDuration(duration);
-                writer.WriteSample(_stream, sample);
-                _written = time + duration;
+                if (sample is null)
+                {
+                    return;
+                }
+
+                sample.ConvertToContiguousBuffer(out var buffer);
+                try
+                {
+                    buffer.Lock(out var source, out _, out int bytes);
+                    try
+                    {
+                        int count = bytes / (_channels * 2);
+                        if (_pending.Length < count * 2)
+                        {
+                            _pending = new short[count * 2];
+                        }
+
+                        Marshal.Copy(source, _pending, 0, count * _channels);
+
+                        // A mono sound goes to both sides: spread from the end, so no sample is overwritten before it is read.
+                        if (_channels == 1)
+                        {
+                            for (int i = count - 1; i >= 0; i--)
+                            {
+                                _pending[2 * i + 1] = _pending[i];
+                                _pending[2 * i] = _pending[i];
+                            }
+                        }
+
+                        _pendingCount = count;
+                        _pendingFrame = frame;
+                    }
+                    finally
+                    {
+                        buffer.Unlock();
+                    }
+                }
+                finally
+                {
+                    MediaFoundation.Release(buffer);
+                }
             }
             finally
             {
-                MediaFoundation.Release(buffer);
+                MediaFoundation.Release(sample);
             }
         }
+    }
 
-        private static IMFMediaType PcmType(int channels, int rate)
-        {
-            var type = MediaFoundation.CreateMediaType();
-            type.SetGUID(MediaFoundation.Keys.MajorType, MediaFoundation.Formats.Audio);
-            type.SetGUID(MediaFoundation.Keys.Subtype, MediaFoundation.Formats.Pcm);
-            type.SetUINT32(MediaFoundation.Keys.AudioBitsPerSample, 16);
-            type.SetUINT32(MediaFoundation.Keys.AudioChannels, channels);
-            type.SetUINT32(MediaFoundation.Keys.AudioSamplesPerSecond, rate);
-            type.SetUINT32(MediaFoundation.Keys.AudioBlockAlignment, channels * 2);
-            type.SetUINT32(MediaFoundation.Keys.AudioAverageBytesPerSecond, channels * 2 * rate);
-            return type;
-        }
+    private static IMFMediaType PcmType(int channels, int rate)
+    {
+        var type = MediaFoundation.CreateMediaType();
+        type.SetGUID(MediaFoundation.Keys.MajorType, MediaFoundation.Formats.Audio);
+        type.SetGUID(MediaFoundation.Keys.Subtype, MediaFoundation.Formats.Pcm);
+        type.SetUINT32(MediaFoundation.Keys.AudioBitsPerSample, 16);
+        type.SetUINT32(MediaFoundation.Keys.AudioChannels, channels);
+        type.SetUINT32(MediaFoundation.Keys.AudioSamplesPerSecond, rate);
+        type.SetUINT32(MediaFoundation.Keys.AudioBlockAlignment, channels * 2);
+        type.SetUINT32(MediaFoundation.Keys.AudioAverageBytesPerSecond, channels * 2 * rate);
+        return type;
     }
 }
+
+/// <summary>A sound of an exported video's mix: a video file, looping every <paramref name="Loop"/> from <paramref name="Start"/>, scaled by <paramref name="Gain"/>.</summary>
+internal sealed record MixedSound(string Path, TimeSpan Loop, TimeSpan Start, double Gain);

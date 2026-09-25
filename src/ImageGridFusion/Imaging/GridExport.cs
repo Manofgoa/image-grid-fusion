@@ -16,13 +16,11 @@ internal static class GridExport
     /// </summary>
     public sealed class Job : IDisposable
     {
-        private Job(IReadOnlyList<Item> items, GridLayout layout, SourceImage? sound)
+        private Job(IReadOnlyList<Item> items, GridLayout layout, IReadOnlyList<SourceImage> heard)
         {
             Items = items;
             Layout = layout;
-            SoundPath = sound?.FilePath;
-            SoundLoop = sound?.Pages?.LoopDuration ?? TimeSpan.Zero;
-            SoundStart = sound?.StartTime ?? TimeSpan.Zero;
+            Sounds = heard.Select(i => new MixedSound(i.FilePath!, i.Pages!.LoopDuration, i.StartTime, i.Look.SoundGain)).ToList();
             Length = items.Select(i => i.Loop).DefaultIfEmpty(TimeSpan.Zero).Max();
         }
 
@@ -30,12 +28,8 @@ internal static class GridExport
 
         public GridLayout Layout { get; }
 
-        public string? SoundPath { get; }
-
-        public TimeSpan SoundLoop { get; }
-
-        /// <summary>Where the sound starts in its loop: the starting point of its video.</summary>
-        public TimeSpan SoundStart { get; }
+        /// <summary>The sounds mixed into the video: each from the starting point of its video, at its volume.</summary>
+        public IReadOnlyList<MixedSound> Sounds { get; }
 
         /// <summary>Length of the video: the longest loop.</summary>
         public TimeSpan Length { get; }
@@ -47,7 +41,7 @@ internal static class GridExport
                 ? new Item(null, i.BandColor, i.Pages, TimeSpan.Zero, i.Look, i.StartPage, TimeSpan.Zero)
                 : new Item(new Bitmap(i.Bitmap), i.BandColor, null, TimeSpan.Zero, i.Look, 0, TimeSpan.Zero)).ToList(),
             layout,
-            Animation.SoundSource(images));
+            Animation.Heard(images));
 
         public void Dispose()
         {
@@ -90,8 +84,8 @@ internal static class GridExport
         return new Frame(first, item.BandColor, item.Look);
     }
 
-    /// <summary>What an export produced; <see cref="SoundPath"/> is the source whose sound was written, if any.</summary>
-    public sealed record Result(Size Size, TimeSpan Length, int Frames, string? SoundPath, string? SoundProblem);
+    /// <summary>What an export produced: the files whose sound was mixed in, and the ones left out, their sound not re-encodable.</summary>
+    public sealed record Result(Size Size, TimeSpan Length, int Frames, IReadOnlyList<string> MixedSounds, IReadOnlyList<string> FailedSounds);
 
     /// <summary>
     /// Writes the video to <paramref name="path"/>: 30 fps, as long as the longest loop, the others
@@ -114,7 +108,7 @@ internal static class GridExport
             var canvas = Animation.EvenSize(CanvasSizer.Compute(frames.Select(f => f.Size).ToList(), job.Layout));
             using var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppRgb);
             using var g = Graphics.FromImage(bitmap);
-            encoder = VideoEncoder.Create(path, canvas, job.Length, job.SoundPath, job.SoundLoop, job.SoundStart);
+            encoder = VideoEncoder.Create(path, canvas, job.Length, job.Sounds);
 
             int count = Animation.FrameCount(job.Length);
             for (int k = 0; k < count; k++)
@@ -137,7 +131,7 @@ internal static class GridExport
 
             encoder.Finish();
             finished = true;
-            return new Result(canvas, job.Length, count, encoder.SoundProblem is null ? job.SoundPath : null, encoder.SoundProblem);
+            return new Result(canvas, job.Length, count, encoder.MixedSounds, encoder.FailedSounds);
         }
         finally
         {
