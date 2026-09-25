@@ -80,8 +80,9 @@ public static class Compositor
             attributes.SetColorMatrix(GrayscaleMatrix(grayscale));
         }
 
-        var fit = FitCalculator.Compute(cell, frame.Size, look.Zoom, look.Focus);
-        using var turn = FitCalculator.Turn(cell, fit, look.FineAngle);
+        var turned = FitCalculator.ComputeTurned(cell, frame.Size, look.Zoom, look.Focus, look.FineAngle);
+        var fit = turned.Fit;
+        using var turn = turned.Transform();
         var (source, shown) = turn is null ? (fit.Source, fit.Destination) : TurnedPart(cell, fit, frame.Size, turn);
         bool oriented = look is not { Rotation: 0, FlipX: false, FlipY: false };
         var bitmapPart = oriented ? BitmapPart(frame.Bitmap.Size, look, source) : source;

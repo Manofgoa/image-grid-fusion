@@ -1215,7 +1215,7 @@ internal sealed class GridPreview : Control
         var zoomed = image.Look.WithZoom(zoom);
         var size = zoomed.Oriented(image.Bitmap.Size);
         BeginLive(_selected);
-        SetLook(_selected, zoomed.WithFocus(FitCalculator.WithinStops(cells[_selected], size, zoomed.Zoom, zoomed.Focus)));
+        SetLook(_selected, zoomed.WithFocus(FitCalculator.WithinStops(cells[_selected], size, zoomed.Zoom, zoomed.Focus, zoomed.FineAngle)));
         _wheelEnd.Start();
     }
     /// <summary>
@@ -1243,25 +1243,24 @@ internal sealed class GridPreview : Control
         var cell = cells[index];
         var zoomed = look.WithZoom(zoom);
         var size = look.Oriented(image.Bitmap.Size);
-        var before = FitCalculator.Compute(cell, size, look.Zoom, look.Focus).Image;
+        var before = FitCalculator.ComputeTurned(cell, size, look.Zoom, look.Focus, look.FineAngle).Fit.Image;
         var after = FitCalculator.DrawnSize(cell, size, zoomed.Zoom);
-        var under = TurnedBack(cell, image, location, vector: false);
+        var under = TurnedBack(cell, image, location);
         double x = Math.Clamp((under.X - before.X) / before.Width, 0, 1);
         double y = Math.Clamp((under.Y - before.Y) / before.Height, 0, 1);
         var origin = new PointF((float)(under.X - x * after.Width), (float)(under.Y - y * after.Height));
         var focus = FitCalculator.FocusAt(cell, after, origin);
-        SetLook(index, zoomed.WithFocus(FitCalculator.WithinStops(cell, size, zoomed.Zoom, focus)));
+        SetLook(index, zoomed.WithFocus(FitCalculator.WithinStops(cell, size, zoomed.Zoom, focus, zoomed.FineAngle)));
     }
 
     /// <summary>
-    /// A point of the cell (or, as a <paramref name="vector"/>, a move) brought back into the unturned
-    /// drawing of an image with a fine angle, so gestures follow the mouse; unchanged without one.
+    /// A point of the cell brought back into the unturned drawing of an image with a fine angle, so
+    /// the wheel zooms around the point under the mouse; unchanged without one.
     /// </summary>
-    private static PointF TurnedBack(Rectangle cell, SourceImage image, PointF point, bool vector)
+    private static PointF TurnedBack(Rectangle cell, SourceImage image, PointF point)
     {
         var look = image.Look;
-        var fit = FitCalculator.Compute(cell, look.Oriented(image.Bitmap.Size), look.Zoom, look.Focus);
-        using var turn = FitCalculator.Turn(cell, fit, look.FineAngle);
+        using var turn = FitCalculator.ComputeTurned(cell, look.Oriented(image.Bitmap.Size), look.Zoom, look.Focus, look.FineAngle).Transform();
         if (turn is null)
         {
             return point;
@@ -1269,21 +1268,14 @@ internal sealed class GridPreview : Control
 
         turn.Invert();
         PointF[] points = [point];
-        if (vector)
-        {
-            turn.TransformVectors(points);
-        }
-        else
-        {
-            turn.TransformPoints(points);
-        }
-
+        turn.TransformPoints(points);
         return points[0];
     }
 
     /// <summary>
     /// Moves an image by <paramref name="delta"/> from where it is actually shown, held by the
     /// magnetic stops unless Shift is down, and never past the share of the cell it keeps covering.
+    /// With a fine angle, the stops are those of the turned image's box, which follows the mouse.
     /// </summary>
     private void PanBy(int index, Size delta)
     {
@@ -1297,19 +1289,20 @@ internal sealed class GridPreview : Control
         var image = _images[index];
         var look = image.Look;
         var size = look.Oriented(image.Bitmap.Size);
-        var drawn = FitCalculator.DrawnSize(cell, size, look.Zoom);
-        var placed = FitCalculator.Place(cell, drawn, look.Focus);
-        var stops = FitCalculator.Stops(cell, drawn);
+        var shown = FitCalculator.ComputeTurned(cell, size, look.Zoom, look.Focus, look.FineAngle);
+        var bounds = shown.Bounds;
+        var stops = FitCalculator.Stops(cell, bounds.Size);
         bool free = (ModifierKeys & Keys.Shift) != 0;
         float resistance = LogicalToDeviceUnits(PanResistance);
         var (heldX, heldY) = (_panX.Held, _panY.Held);
-        var step = TurnedBack(cell, image, new PointF(delta.Width, delta.Height), vector: true);
-        float x = _panX.Move(placed.X, step.X, stops.Left, stops.Right, cell.X + (cell.Width - drawn.Width) / 2, resistance, free);
-        float y = _panY.Move(placed.Y, step.Y, stops.Top, stops.Bottom, cell.Y + (cell.Height - drawn.Height) / 2, resistance, free);
+        float x = _panX.Move(bounds.X, delta.Width, stops.Left, stops.Right, cell.X + (cell.Width - bounds.Width) / 2, resistance, free);
+        float y = _panY.Move(bounds.Y, delta.Height, stops.Top, stops.Bottom, cell.Y + (cell.Height - bounds.Height) / 2, resistance, free);
 
         // Stored where it is drawn, so a drag past the covered share does not pile up out of sight.
-        var moved = FitCalculator.Place(cell, drawn, FitCalculator.FocusAt(cell, drawn, new PointF(x, y)));
-        SetLook(index, look.WithFocus(FitCalculator.FocusAt(cell, drawn, moved.Location)));
+        var focus = shown.FocusAt(cell, new PointF(x + bounds.Width / 2, y + bounds.Height / 2));
+        var moved = FitCalculator.ComputeTurned(cell, size, look.Zoom, focus, look.FineAngle);
+        var middle = new PointF(moved.Bounds.X + moved.Bounds.Width / 2, moved.Bounds.Y + moved.Bounds.Height / 2);
+        SetLook(index, look.WithFocus(moved.FocusAt(cell, middle)));
 
         // A guide can appear or go while the image stays put.
         if (_panX.Held != heldX || _panY.Held != heldY)
@@ -1444,7 +1437,8 @@ internal sealed class GridPreview : Control
             return;
         }
 
-        var drawn = FitCalculator.DrawnSize(cell, image.Look.Oriented(image.Bitmap.Size), image.Look.Zoom);
+        var look = image.Look;
+        var drawn = FitCalculator.ComputeTurned(cell, look.Oriented(image.Bitmap.Size), look.Zoom, look.Focus, look.FineAngle).Bounds.Size;
         int inset = LogicalToDeviceUnits(2);
         int left = cell.Left + inset;
         int right = cell.Right - 1 - inset;
