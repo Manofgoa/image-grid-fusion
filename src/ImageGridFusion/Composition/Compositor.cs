@@ -99,6 +99,8 @@ public static class Compositor
             DrawOriented(g, frame.Bitmap, look, fit.Source, bitmapPart, destination, attributes);
         }
 
+        // Every effect is drawn here, so the preview, the exports and a playing video all show it.
+        BlurRenderer.Draw(g, frame, cell, threshold, fast);
         g.Clip = clip;
     }
 
