@@ -47,7 +47,8 @@ went with it — see Iteration 8):
   in the window's grey. Every tab is **as tall as the Reset button** beside them.
 - The tabs are drawn by `UI/EffectTabs.cs` (WinForms has no downward tabs holding a checkbox); they
   take no keyboard focus.
-- The **Effects** label stays at the start of the tabs row.
+- The **Effects** label stays at the start of the tabs row, in **bold** and followed by a
+  **right arrow** (`Effects →`), so it reads as the row's title, not as a clickable tab.
 - Tab order is unchanged: Zoom, Rotate, Flip, Frames, Black & white, Blur.
 - The tabs row's **Reset** (all effects) sits at its **far right**, **as tall as a tab**. It is not
   a tab and has no checkbox.
@@ -304,6 +305,12 @@ Go given for code, tests and documentation (no test project: nothing to create).
   (selecting a cell, a tab, toggling) were **not** run: the synthetic clicks moved the user's real
   mouse and did not reach the window, so they were stopped.
 
+### Iteration 9 — 2026-09-25 — ⚙️ Post-implementation — Effects label in bold with an arrow
+
+User, after testing: "almost perfect", but the **Effects** label is not visible enough and looks
+clickable. The agent explained why (same font and height as the tabs, it reads as a tab without a
+border) and proposed a section-header style; the user chose **bold + a right arrow** instead.
+
 ---
 
 ## Implementation Log
@@ -338,6 +345,7 @@ Questions asked by the agent during design, with user responses.
 | 10 | Tabs row's Reset: defaults and unchecked, or only unchecked? | Defaults + everything unchecked | 2026-09-25 |
 | 11 | Wheel / drag on a cell whose Zoom is off with kept settings: where does it start? | From what is shown | 2026-09-25 |
 | 12 | Go for implementation? | Code, unit tests and documentation | 2026-09-25 |
+| 13 | Style of the "Effects" label (section header, header + separator, bold only)? | Bold + a right arrow | 2026-09-25 |
 
 ---
 
