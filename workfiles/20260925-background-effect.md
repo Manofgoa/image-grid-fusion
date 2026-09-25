@@ -236,6 +236,7 @@ Questions asked by the agent during design, with user responses.
 | 9 | Re-checking *Automatic color*: is the chosen color remembered? | No — unchecking freezes the current automatic color | 2026-09-26 |
 | 10 | Position of the Background toggle in the effects row? | First, before Zoom | 2026-09-26 |
 | 11 | Unit tests: stay test-free? | Yes | 2026-09-26 |
+| 12 | Go for implementation? | No — the gate holds | 2026-09-26 |
 
 ---
 
