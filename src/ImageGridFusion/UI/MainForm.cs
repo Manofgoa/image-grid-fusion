@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
+using Microsoft.Win32;
 using ImageGridFusion.Composition;
 using ImageGridFusion.Imaging;
 
@@ -36,7 +37,6 @@ internal sealed class MainForm : Form
         Dock = DockStyle.Top,
         ColumnCount = 2,
         RowCount = 1,
-        BackColor = SystemColors.Window,
         Padding = new Padding(8, 4, 8, 4),
     };
     private readonly Panel _optionsHost = new() { Dock = DockStyle.Fill, Margin = Padding.Empty };
@@ -208,6 +208,8 @@ internal sealed class MainForm : Form
         _forceImage.CheckedChanged += (_, _) => _preview.ForceStill = _forceImage.Checked;
         UpdateEffectIcons();
         FitEffectRows();
+        TintOptions();
+        SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
 
         // The Reset button sizes itself to its font and DPI: the tabs follow it.
         _resetButton.SizeChanged += (_, _) => FitEffectRows();
@@ -269,6 +271,7 @@ internal sealed class MainForm : Form
     {
         if (disposing)
         {
+            SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
             _settingsMenu.Dispose();
             _toolTip.Dispose();
             _resetButton.Image?.Dispose();
@@ -332,6 +335,27 @@ internal sealed class MainForm : Form
         int options = _options.Values.Max(row => row.GetPreferredSize(Size.Empty).Height);
         int reset = _effectResetButton.GetPreferredSize(Size.Empty).Height + _effectResetButton.Margin.Vertical;
         _optionsRow.Height = Math.Max(options, reset) + _optionsRow.Padding.Vertical;
+    }
+
+    /// <summary>The options row, its sliders and the selected tab share the tint (see <see cref="OptionsTint"/>).</summary>
+    private void TintOptions()
+    {
+        var tint = OptionsTint.Current();
+        _optionsRow.BackColor = tint;
+        _effectTabs.SelectedColor = tint;
+        foreach (var slider in new[] { _zoom, _fineAngle, _frames, _grayscale, _blurIntensity })
+        {
+            slider.BackColor = tint;
+        }
+    }
+
+    /// <summary>A change of the Windows accent recolors the options; raised on the UI thread that subscribed.</summary>
+    private void OnUserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
+    {
+        if (e.Category is UserPreferenceCategory.General or UserPreferenceCategory.Color or UserPreferenceCategory.VisualStyle)
+        {
+            TintOptions();
+        }
     }
 
     /// <summary>The bottom edge of the options row, across the tabs row; the tabs open it under the selected one.</summary>
@@ -960,7 +984,6 @@ internal sealed class MainForm : Form
         SmallChange = 1,
         LargeChange = largeChange,
         TickStyle = TickStyle.None,
-        BackColor = SystemColors.Window,
 
         // Without ticks the thumb sits at the top: a height fitted to it keeps it level with the label.
         AutoSize = false,
