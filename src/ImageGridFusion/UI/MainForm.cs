@@ -45,7 +45,7 @@ internal sealed class MainForm : Form
     };
 
     // One row per effect that has options; only the selected effect's shows.
-    private readonly Dictionary<ImageEffect, FlowLayoutPanel> _options = new[] { ImageEffect.Zoom, ImageEffect.Rotate, ImageEffect.Flip, ImageEffect.Blur }
+    private readonly Dictionary<ImageEffect, FlowLayoutPanel> _options = Enum.GetValues<ImageEffect>()
         .ToDictionary(e => e, _ => new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = false, Padding = new Padding(8, 0, 8, 8), Visible = false });
 
     // A log scale, in hundredths of a doubling: 50 % → 100 % and each doubling take the same length.
@@ -56,6 +56,9 @@ internal sealed class MainForm : Form
     private readonly Label _fineAngleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _flipX = OptionButton("Horizontal");
     private readonly CheckBox _flipY = OptionButton("Vertical");
+    private readonly PictureBox _grayscaleIcon = new() { SizeMode = PictureBoxSizeMode.CenterImage, Anchor = AnchorStyles.Left };
+    private readonly TrackBar _grayscale = OptionSlider(0, 100, 10);
+    private readonly Label _grayscaleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
 
     // The standard look, as the options: the flat one sizes itself without its image, clipping both.
     private readonly RadioButton _gaussian = new()
@@ -149,6 +152,7 @@ internal sealed class MainForm : Form
         _options[ImageEffect.Zoom].Controls.AddRange([_zoom, _zoomLabel]);
         _options[ImageEffect.Rotate].Controls.AddRange([.. _quarterTurns, _fineAngle, _fineAngleLabel]);
         _options[ImageEffect.Flip].Controls.AddRange([_flipX, _flipY]);
+        _options[ImageEffect.BlackAndWhite].Controls.AddRange([_grayscaleIcon, _grayscale, _grayscaleLabel]);
         _options[ImageEffect.Blur].Controls.AddRange([_gaussian, _pixelate, _blurIntensityIcon, _blurIntensity, _blurIntensityLabel]);
 
         // Docked in reverse order of addition: the top bar, the effects row and the options row, then
@@ -193,6 +197,11 @@ internal sealed class MainForm : Form
         _fineAngle.ValueChanged += (_, _) => SetFineAngle();
         _flipX.Click += (_, _) => ChangeLook(look => look.ToggleFlipX());
         _flipY.Click += (_, _) => ChangeLook(look => look.ToggleFlipY());
+        _grayscale.ValueChanged += (_, _) =>
+        {
+            _grayscaleLabel.Text = $"Intensity: {_grayscale.Value}%";
+            ChangeLook(look => look.WithGrayscale(_grayscale.Value / 100.0));
+        };
         _gaussian.CheckedChanged += (_, _) => SetBlurKind(_gaussian, BlurKind.Gaussian);
         _pixelate.CheckedChanged += (_, _) => SetBlurKind(_pixelate, BlurKind.Pixelate);
         _blurIntensity.ValueChanged += (_, _) => SetBlurIntensity();
@@ -232,6 +241,7 @@ internal sealed class MainForm : Form
             }
 
             _resetButton.Image?.Dispose();
+            _grayscaleIcon.Image?.Dispose();
             _gaussian.Image?.Dispose();
             _pixelate.Image?.Dispose();
             _blurIntensityIcon.Image?.Dispose();
@@ -250,7 +260,7 @@ internal sealed class MainForm : Form
     private void UpdateEffectIcons()
     {
         int size = LogicalToDeviceUnits(16);
-        Image?[] previous = [.. _effectButtons.Values.Select(b => b.Image), _resetButton.Image, _gaussian.Image, _pixelate.Image, _blurIntensityIcon.Image];
+        Image?[] previous = [.. _effectButtons.Values.Select(b => b.Image), _resetButton.Image, _grayscaleIcon.Image, _gaussian.Image, _pixelate.Image, _blurIntensityIcon.Image];
         foreach (var (effect, button) in _effectButtons)
         {
             button.Image = effect switch
@@ -264,6 +274,8 @@ internal sealed class MainForm : Form
         }
 
         _resetButton.Image = EffectIcons.Reset(size);
+        _grayscaleIcon.Image = EffectIcons.Intensity(size);
+        _grayscaleIcon.Size = new Size(size, size);
         _gaussian.Image = EffectIcons.Gaussian(size);
         _pixelate.Image = EffectIcons.Pixelate(size);
         _blurIntensityIcon.Image = EffectIcons.Intensity(size);
@@ -1046,6 +1058,11 @@ internal sealed class MainForm : Form
 
             _flipX.Checked = look.FlipX;
             _flipY.Checked = look.FlipY;
+            if (look.Grayscale is { } grayscale)
+            {
+                _grayscale.Value = (int)Math.Round(grayscale * 100);
+            }
+
             if (look.Blur is { } blur)
             {
                 _gaussian.Checked = blur.Kind == BlurKind.Gaussian;
@@ -1056,6 +1073,7 @@ internal sealed class MainForm : Form
 
         _zoomLabel.Text = $"Zoom: {(look?.Zoom ?? 1) * 100:0} %";
         _fineAngleLabel.Text = AngleText(_fineAngle.Value);
+        _grayscaleLabel.Text = $"Intensity: {_grayscale.Value}%";
         _blurIntensityLabel.Text = $"Intensity: {_blurIntensity.Value}%";
         _syncingEffects = false;
 
