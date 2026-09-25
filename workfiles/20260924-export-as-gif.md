@@ -1,7 +1,7 @@
 # Export as GIF
 
 > Working document — replace the "Force as image" checkbox with Copy / Save split buttons whose
-> submenu forces Image / GIF / MP4 Video, and add an infinitely looping animated GIF export.
+> submenu forces GIF / MP4 Video, and add an infinitely looping animated GIF export.
 > This file is the source of truth for the planned work until implemented,
 > then the log of every adjustment made to it afterwards.
 
@@ -10,12 +10,14 @@
 ## Overview
 
 Today, the bottom bar holds a **Force as image** checkbox (`MainForm._forceImage`), next to Copy,
-visible only while the grid holds animated content (`HasAnimation`). Unchecked, Copy and Save
-produce an MP4 video (`GridExport.RenderVideo`); checked, a PNG (`GridExport.RenderStill`), and the
-preview freezes (`GridPreview.ForceStill`).
+visible only while a content plays (`HasAnimation`, i.e. `SourceImage.Plays`: animated and not
+frozen by the **Frames** effect). Unchecked, Copy and Save produce an MP4 video
+(`GridExport.RenderVideo`); checked, a PNG (`GridExport.RenderStill`), and the preview freezes
+(`GridPreview.ForceStill`). The **Frames** effect already covers the still case: a frozen cell
+exports as the frame its slider picks, and a grid where nothing plays exports as a PNG.
 
 The checkbox goes away: **Copy** and **Save** become **split buttons** — the main part exports in
-the adapted format (PNG or MP4), a ▾ submenu forces **Image**, **GIF** or **MP4 Video** — and a
+the adapted format (PNG or MP4), a ▾ submenu forces **GIF** or **MP4 Video** — and a
 new export writes an **animated GIF that loops forever**.
 
 Relevant components:
@@ -23,9 +25,8 @@ Relevant components:
 | Component | Role |
 |---|---|
 | `UI/MainForm.cs` | `_forceImage`, `ExportsVideo`, `CopyToClipboard`, `Save`, `ExportVideoAsync`, `UpdateButtons`, status summaries, temp folder |
-| `UI/GridPreview.cs` | `ForceStill`, `PlaysCarousel`, `ImagesChanged` |
+| `UI/GridPreview.cs` | `ForceStill`, `ImagesChanged` |
 | `Imaging/GridExport.cs` | `Job`, `RenderVideo` (the 30 fps frame loop), `RenderStill` |
-| `Imaging/CarouselExport.cs` | `RenderVideo(job, playContents, …)` — the carousel's MP4 |
 | `Imaging/VideoEncoder.cs` | Media Foundation Sink Writer: `Create`, `WriteFrame(bitmap, time, duration)`, `Finish` |
 | `Composition/Animation.cs` | `FramesPerSecond = 30`, `FrameCount`, `FrameTime` |
 
@@ -36,17 +37,17 @@ The project has **no NuGet dependency**: video goes through Media Foundation by 
 ## Split Buttons (UI)
 
 - **Copy** and **Save** each become a **split button**: a main part, and a narrow **▾ arrow** on
-  its right that opens a submenu with **Image**, **GIF**, **MP4 Video**, in that order.
-- The **Force as image** checkbox (`MainForm._forceImage`) is removed.
-- **Adapted format** — what the main part produces: **MP4** when the content is animatable, else
-  **PNG**. **Animatable** means the grid holds animated content (`HasAnimation`), **or** the
-  carousel is on (`ExportsCarousel`) — the carousel moves even static images.
+  its right that opens a submenu with **GIF** and **MP4 Video**, in that order.
+- The **Force as image** checkbox (`MainForm._forceImage`) is removed, with no replacement: a
+  still of animated content goes through the **Frames** effect's **Freeze**.
+- **Adapted format** — what the main part produces: **MP4** when a content plays
+  (`HasAnimation`), else **PNG** (static images, or every animated content frozen).
 - **Label**: the main part names the format it will produce — `Copy PNG` / `Copy MP4`,
-  `Save PNG…` / `Save MP4…` — and follows the content and the carousel live.
+  `Save PNG…` / `Save MP4…` — and follows the content and the Frames effect live.
 - **Submenu**: a choice **applies once** — it exports right away in that format; nothing is
   remembered, the main part stays on the adapted format.
-- **Nothing animatable**: GIF and MP4 Video are **greyed out** in the submenu (native disabled
-  menu items); Image stays available.
+- **Nothing plays**: GIF and MP4 Video would both be greyed out, so the **▾ arrow is disabled**;
+  the main part stays enabled and produces the PNG.
 - **Shortcuts**: `Ctrl+C` / `Ctrl+S` do what the main part does (adapted format).
 - **While exporting**: both parts are disabled, as the buttons are today.
 - **Preview**: with no remembered format, nothing freezes the preview any more — it always plays.
@@ -76,7 +77,7 @@ The project has **no NuGet dependency**: video goes through Media Foundation by 
 
 ## Encoding Architecture (proposal)
 
-- The frame loop of `GridExport.RenderVideo` (and of `CarouselExport.RenderVideo`) writes frames
+- The frame loop of `GridExport.RenderVideo` writes frames
   to a sink instead of `VideoEncoder` directly: a small interface with
   `WriteFrame(Bitmap, TimeSpan time, TimeSpan duration)` and `Finish()`, implemented by
   `VideoEncoder` and by a new `Imaging/GifEncoder.cs`. The loop itself is not duplicated.
@@ -85,19 +86,6 @@ The project has **no NuGet dependency**: video goes through Media Foundation by 
   WIC computes from it; the frame delay goes in the Graphic Control Extension
   (`/grctlext/Delay`), the infinite loop in the NETSCAPE2.0 application extension
   (`/appext/Application`, `/appext/Data`) on the encoder's metadata.
-
-## Carousel Interplay
-
-With **Carrousel** checked, Copy and Save always produce the carousel's MP4 today, "Force as
-image" only freezing the contents while they move. With the split buttons:
-
-- The carousel counts as **animatable**: GIF and MP4 Video are enabled even with static images,
-  and the main part produces MP4.
-- **Main part / MP4 Video**: the carousel's MP4, contents playing (today's unchecked behaviour).
-- **GIF**: the carousel as an infinitely looping GIF, contents playing, no sound —
-  `CarouselExport` writes to `GifEncoder` through the same frame sink.
-- **Image** (from the submenu): today's "Force as image" behaviour is kept — the carousel's MP4,
-  contents frozen on the page each shows, silent.
 
 ---
 
@@ -115,15 +103,15 @@ The solution holds no unit test project (`ImageGridFusion.slnx` references only
 ## Open Questions
 
 - [x] ~~What resets the dropdown to its default?~~ → Any content change, even when the animatable state stays the same *(revised 2026-09-25, see Iteration 4: a submenu choice applies once, nothing is left to reset)*
-- [x] ~~With nothing animatable, what happens to GIF and Video?~~ → Greyed out, not selectable *(revised 2026-09-25, see Iteration 4: greyed in the split buttons' submenu)*
+- [x] ~~With nothing animatable, what happens to GIF and Video?~~ → Greyed out, not selectable *(revised 2026-09-25, see Iteration 4: greyed in the split buttons' submenu)* *(revised 2026-09-26, see Iteration 6: both entries would be greyed, so the ▾ arrow is disabled)*
 - [x] ~~Which settings does the GIF use?~~ → The video's: length, starting frames, 30 fps
-- [x] ~~With **Carrousel** checked, how does the dropdown behave (enabled choices, what Image means, does toggling the carousel reset the default)?~~ → The carousel counts as animatable (GIF/Video enabled, toggling resets the default); GIF/Video export the carousel in that format; Image keeps today's frozen-contents carousel MP4 *(revised 2026-09-25, see Iteration 4: no default left to reset; the rest holds for the submenu)*
+- [x] ~~With **Carrousel** checked, how does the dropdown behave (enabled choices, what Image means, does toggling the carousel reset the default)?~~ → The carousel counts as animatable (GIF/Video enabled, toggling resets the default); GIF/Video export the carousel in that format; Image keeps today's frozen-contents carousel MP4 *(revised 2026-09-25, see Iteration 4: no default left to reset; the rest holds for the submenu)* *(revised 2026-09-26, see Iteration 6: the carousel was removed from the app, nothing left to decide)*
 - [x] ~~**Copy** as GIF: a `.gif` file on the clipboard (like the video), or the file plus the raw `GIF` clipboard format?~~ → Both: the file and the raw `GIF` format
 - [x] ~~Which **GIF encoder**: Windows' built-in WIC encoder by COM interop, a hand-written encoder, or a NuGet package?~~ → Windows' WIC encoder by COM interop
 - [x] ~~Which buttons become **split buttons**: Copy and Save each, only Save, or a single Export button?~~ → Copy and Save each
 - [x] ~~Does a submenu choice **apply once** (exports right away, nothing remembered), or **stay** as the button's format until the next content change?~~ → Applies once
 - [x] ~~Does the button's main part **show the format** it will produce?~~ → Yes (`Copy MP4`, `Save PNG…`)
-- [ ] With the Frames effect's **Freeze**, is the submenu's **Image** entry obsolete too (and with it the frozen-contents carousel MP4)?
+- [x] ~~With the Frames effect's **Freeze**, is the submenu's **Image** entry obsolete too (and with it the frozen-contents carousel MP4)?~~ → Yes, removed: the submenu holds GIF and MP4 Video; stills go through Freeze
 
 ---
 
@@ -177,6 +165,17 @@ PNG (`HasAnimation` now means *a content plays*, `SourceImage.Plays`). The check
 removed since Iteration 4; the remark raises whether the submenu's **Image** entry is obsolete
 too (Q&A #13).
 
+### Iteration 6 — 2026-09-26
+
+Q&A #13 answered: the submenu's **Image** entry is removed — the submenu holds **GIF** and
+**MP4 Video** only, a still of animated content going through the Frames effect's Freeze. With
+nothing playing, both entries would be greyed, so the ▾ arrow is disabled and the main part
+produces the PNG.
+
+Design re-based on the current code: the **carousel was removed** from the app since Iteration 2
+(`d3041e8`, `CarouselExport.cs` deleted), so the Carousel Interplay section is dropped, and
+"animatable" is now simply `HasAnimation` — a content plays, not frozen by the Frames effect.
+
 ---
 
 ## Implementation Log
@@ -210,8 +209,8 @@ Questions asked by the agent during design, with user responses.
 | 10 | Does a submenu choice apply once, or stay as the button's format until the content changes? | Applies once | 2026-09-25 |
 | 11 | Does the main part of the button show the format it will produce? | Yes | 2026-09-25 |
 | 12 | Design stable — start the implementation? | No — the gate holds | 2026-09-25 |
-| 13 | With the Frames effect's Freeze, is the submenu's Image entry obsolete too? | | |
+| 13 | With the Frames effect's Freeze, is the submenu's Image entry obsolete too? | Yes — removed | 2026-09-26 |
 
 ---
 
-*Last updated: 2026-09-25*
+*Last updated: 2026-09-26*
