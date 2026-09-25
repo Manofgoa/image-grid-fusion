@@ -15,11 +15,12 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
   - Click a cell to select it, `Esc` to deselect; the effects row acts on the selected cell (see Effects)
   - Hover a cell to outline it and show a **×** to remove it, or press `Delete` to remove the selected one
   - Videos, animated GIFs, PDFs of several pages and long texts play live in their cell (see Animated content); the **Frames** effect sets where one starts, or freezes it on a frame
-  - Zoom a cell from 50 % to 400 %: with the **Zoom** effect's slider (it snaps to 100 %), or with the mouse wheel over any cell, around the point under the mouse (4 notches double the zoom; crossing 100 % stops on it)
+  - Zoom a cell from 10 % to 1600 %: with the **Zoom** effect's slider (it snaps to 100 %), or with the mouse wheel over any cell, around the point under the mouse (4 notches double the zoom; crossing 100 % stops on it)
   - Drag an image to move it in its cell, at any zoom — past the cell's edges too, to center a detail lying on the border of the image; the area it uncovers gets the band color (see Fitting rules), and at least 10 % of the cell always stays covered so it can be grabbed back
     - Magnetic stops: the image stops where one of its edges lines up with an edge of the cell, and where it is centered; keep dragging about 24 px to go past a stop (moving back inside over an edge is free). While it is held, a dashed fluorescent green guide shows the stop: along the aligned edge, or through the center (both lines cross when centered both ways)
     - Hold `Shift` while dragging to ignore the stops
     - Zooming keeps the image where it was moved, at any zoom, but always brings it back within its stops
+  - While the zoom changes (wheel or slider), its percentage shows in fluorescent green in the top-right corner of the cell, just below the ×; it stays 1 s after the last change, then fades out. Never in the exports
   - Zooming and moving show live, smoothed once the gesture ends (the wheel: once it stops turning); not while exporting
   - Drag the **✥** handle shown in the middle of a hovered cell onto another cell to swap the two images (in a small cell, it shrinks, or sits below the **×**)
   - Drop a file onto a cell to replace it
@@ -44,7 +45,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 
 ### Zoom
 
-- Options: the zoom, from 50 % to 400 % on a log scale, snapping to 100 %.
+- Options: the zoom, from 10 % to 1600 % on a log scale, snapping to 100 %.
 - The mouse wheel and dragging keep working on every cell, selected or not (see above); the effect is active as soon as the image is zoomed or moved.
 
 ### Rotate
