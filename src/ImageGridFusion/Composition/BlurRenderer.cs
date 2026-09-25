@@ -43,7 +43,7 @@ internal static class BlurRenderer
             // Each call prepends: the cell is moved to the origin, then scaled down.
             sg.ScaleTransform(width / (float)cell.Width, height / (float)cell.Height);
             sg.TranslateTransform(-cell.X, -cell.Y);
-            Compositor.DrawCell(sg, frame with { Look = look.WithoutEffects() }, cell, fast);
+            Compositor.DrawCell(sg, frame with { Look = look.WithBlur(null) }, cell, fast);
         }
 
         bool pixelate = blur.Kind == BlurKind.Pixelate;
