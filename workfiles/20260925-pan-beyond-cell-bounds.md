@@ -267,6 +267,11 @@ the image in the stops, the margin and the guides; the automatic zoom applies on
 within its stops; uncovered corners get the band color. New *Fine Rotation* section. The fine angle
 does not exist yet: nothing is coded for it here if this workfile lands first. Design complete again.
 
+### Iteration 6 — 2026-09-25 — ✅ Implemented
+
+Go given: "Code, tests and documentation" — code and README, unit tests declined by design (Q&A #9).
+Branch Gate: stays on `main`, the standing choice for this repository.
+
 ---
 
 ## Implementation Log
