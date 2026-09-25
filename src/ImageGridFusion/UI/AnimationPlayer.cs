@@ -5,11 +5,11 @@ using ImageGridFusion.Composition;
 namespace ImageGridFusion.UI;
 
 /// <summary>
-/// Plays the animated images of the grid live, on one clock so their steps change together. Frames
-/// are decoded off the UI thread and shown on it; an image held (hovered, or browsed with its slider)
-/// stops where it stands and resumes from there, or from the page the slider left it on; forced
-/// still, every image is held so. Also plays the sound of the grid's sound source in step with it.
-/// Used from the UI thread only.
+/// Plays the animated images of the grid live, on one clock so their steps change together, each
+/// from the starting point of its frames effect. Frames are decoded off the UI thread and shown on
+/// it; a frozen image stands on its frame; forced still, every image stops where it stands and
+/// resumes from there, or from the page it was moved to meanwhile. Also plays the sound of the grid's
+/// sound source in step with it. Used from the UI thread only.
 /// </summary>
 internal sealed class AnimationPlayer : IDisposable
 {
@@ -18,15 +18,15 @@ internal sealed class AnimationPlayer : IDisposable
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private readonly Dictionary<SourceImage, Playback> _playbacks = [];
     private readonly PreviewSound _sound = new();
-    private SourceImage? _held;
+    private IReadOnlyList<SourceImage> _images = [];
     private bool _forceStill;
 
     /// <summary>Raised on the UI thread once an image shows a new frame.</summary>
     public event EventHandler<SourceImage>? FrameShown;
 
     /// <summary>
-    /// Holds every image still, the sound silent; released, each one resumes like a released hold,
-    /// but the one still held.
+    /// Holds every image still, the sound silent; released, each one resumes where it stood, but the
+    /// frozen ones.
     /// </summary>
     public bool ForceStill
     {
@@ -43,13 +43,13 @@ internal sealed class AnimationPlayer : IDisposable
             {
                 if (value)
                 {
-                    // The one held already keeps where it was paused, and the page its slider may have left it on.
+                    // A frozen one already stands on its frame.
                     if (playback.PausedAt is null)
                     {
                         Pause(playback);
                     }
                 }
-                else if (playback.Image != _held)
+                else if (!playback.Image.IsFrozen)
                 {
                     Resume(playback);
                 }
@@ -60,6 +60,7 @@ internal sealed class AnimationPlayer : IDisposable
     /// <summary>Plays the animated images not playing yet, stops the ones gone or shown still, and follows the sound source.</summary>
     public void Sync(IReadOnlyList<SourceImage> images)
     {
+        _images = images;
         foreach (var (image, playback) in _playbacks.ToList())
         {
             if (!images.Contains(image) || !image.IsAnimated)
@@ -74,18 +75,18 @@ internal sealed class AnimationPlayer : IDisposable
             if (image.IsAnimated && !_playbacks.ContainsKey(image))
             {
                 // Started on a whole second of the clock, so steps change together in every cell.
-                var start = TimeSpan.FromSeconds(Math.Floor(_clock.Elapsed.TotalSeconds));
+                var start = TimeSpan.FromSeconds(Math.Floor(_clock.Elapsed.TotalSeconds)) - image.StartTime;
                 var playback = new Playback(image, start);
                 _playbacks[image] = playback;
-                if (_forceStill)
+                if (image.IsFrozen)
+                {
+                    StandAtStart(playback);
+                }
+                else if (_forceStill)
                 {
                     // Stands at the page it shows, so that releasing it resumes from there.
                     playback.PausedAt = image.Pages!.TimeOf(image.Page);
                     playback.PausedPage = image.Page;
-                }
-                else if (image == _held)
-                {
-                    Pause(playback);
                 }
 
                 _ = RunAsync(playback);
@@ -95,25 +96,28 @@ internal sealed class AnimationPlayer : IDisposable
         _sound.Follow(Animation.SoundSource(images));
     }
 
-    /// <summary>Holds <paramref name="image"/> still, and lets the one held before play on; <c>null</c> holds none.</summary>
-    public void Hold(SourceImage? image)
+    /// <summary>
+    /// The frames effect of <paramref name="image"/> changed: frozen, or forced still, it stands on
+    /// the frame the effect points at; else it plays again from that starting point.
+    /// </summary>
+    public void Update(SourceImage image)
     {
-        if (image == _held)
+        if (_playbacks.TryGetValue(image, out var playback))
         {
-            return;
+            if (image.IsFrozen || _forceStill)
+            {
+                StandAtStart(playback);
+            }
+            else
+            {
+                playback.PausedAt = null;
+                playback.Offset = _clock.Elapsed - image.StartTime;
+                playback.Reader?.Reset();
+            }
         }
 
-        // Forced still, every image is held already: releasing one would let it play.
-        if (!_forceStill && _held is not null && _playbacks.TryGetValue(_held, out var released))
-        {
-            Resume(released);
-        }
-
-        _held = image;
-        if (!_forceStill && image is not null && _playbacks.TryGetValue(image, out var held))
-        {
-            Pause(held);
-        }
+        // A frozen video has no sound: another one may take over.
+        _sound.Follow(Animation.SoundSource(_images));
     }
 
     /// <summary>Size the frames of <paramref name="image"/> are shown at: larger frames are scaled down off the UI thread.</summary>
@@ -156,6 +160,12 @@ internal sealed class AnimationPlayer : IDisposable
     }
 
     private TimeSpan Position(Playback playback) => playback.PausedAt ?? _clock.Elapsed - playback.Offset;
+
+    private static void StandAtStart(Playback playback)
+    {
+        playback.PausedAt = playback.Image.StartTime;
+        playback.PausedPage = playback.Image.StartPage;
+    }
 
     private void Pause(Playback playback)
     {

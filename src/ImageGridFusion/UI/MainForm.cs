@@ -56,6 +56,9 @@ internal sealed class MainForm : Form
     private readonly Label _fineAngleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _flipX = OptionButton("Horizontal");
     private readonly CheckBox _flipY = OptionButton("Vertical");
+    private readonly TrackBar _frames = OptionSlider(0, 1, 10);
+    private readonly Label _framesLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _freeze = new() { Text = "Freeze", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly PictureBox _grayscaleIcon = new() { SizeMode = PictureBoxSizeMode.CenterImage, Anchor = AnchorStyles.Left };
     private readonly TrackBar _grayscale = OptionSlider(0, 100, 10);
     private readonly Label _grayscaleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
@@ -152,6 +155,7 @@ internal sealed class MainForm : Form
         _options[ImageEffect.Zoom].Controls.AddRange([_zoom, _zoomLabel]);
         _options[ImageEffect.Rotate].Controls.AddRange([.. _quarterTurns, _fineAngle, _fineAngleLabel]);
         _options[ImageEffect.Flip].Controls.AddRange([_flipX, _flipY]);
+        _options[ImageEffect.Frames].Controls.AddRange([_frames, _framesLabel, _freeze]);
         _options[ImageEffect.BlackAndWhite].Controls.AddRange([_grayscaleIcon, _grayscale, _grayscaleLabel]);
         _options[ImageEffect.Blur].Controls.AddRange([_gaussian, _pixelate, _blurIntensityIcon, _blurIntensity, _blurIntensityLabel]);
 
@@ -197,6 +201,8 @@ internal sealed class MainForm : Form
         _fineAngle.ValueChanged += (_, _) => SetFineAngle();
         _flipX.Click += (_, _) => ChangeLook(look => look.ToggleFlipX());
         _flipY.Click += (_, _) => ChangeLook(look => look.ToggleFlipY());
+        _frames.ValueChanged += (_, _) => ChangeFrames(frames => frames.AtPage(_frames.Value, _frames.Maximum + 1));
+        _freeze.CheckedChanged += (_, _) => ChangeFrames(frames => frames.WithFrozen(_freeze.Checked));
         _grayscale.ValueChanged += (_, _) =>
         {
             _grayscaleLabel.Text = $"Intensity: {_grayscale.Value}%";
@@ -205,7 +211,8 @@ internal sealed class MainForm : Form
         _gaussian.CheckedChanged += (_, _) => SetBlurKind(_gaussian, BlurKind.Gaussian);
         _pixelate.CheckedChanged += (_, _) => SetBlurKind(_pixelate, BlurKind.Pixelate);
         _blurIntensity.ValueChanged += (_, _) => SetBlurIntensity();
-        _preview.SelectedImageChanged += (_, _) => UpdateEffects();
+        // Freezing the last playing content turns the export back into an image.
+        _preview.SelectedImageChanged += (_, _) => UpdateButtons();
         _preview.ImagesChanged += (_, _) => UpdateButtons();
         _preview.LayoutChanged += (_, _) =>
         {
@@ -268,6 +275,7 @@ internal sealed class MainForm : Form
                 ImageEffect.Zoom => EffectIcons.Zoom(size),
                 ImageEffect.Rotate => EffectIcons.Rotate(size),
                 ImageEffect.Flip => EffectIcons.Flip(size),
+                ImageEffect.Frames => EffectIcons.Frames(size),
                 ImageEffect.BlackAndWhite => EffectIcons.BlackAndWhite(size),
                 _ => EffectIcons.Blur(size),
             };
@@ -659,7 +667,8 @@ internal sealed class MainForm : Form
 
     private bool IsExporting => _export is not null;
 
-    private bool HasAnimation => _preview.Images.Any(i => i.IsAnimated);
+    /// <summary>Content that plays: a frozen one is exported as a still.</summary>
+    private bool HasAnimation => _preview.Images.Any(i => i.Plays);
 
     /// <summary>Animated content exports as a video, unless "Force as image" is checked.</summary>
     private bool ExportsVideo => HasAnimation && !_forceImage.Checked;
@@ -668,12 +677,13 @@ internal sealed class MainForm : Form
     private bool ExportsCarousel => _carousel.Checked && Carousel.CanPlay(_preview.Images.Count);
 
     /// <summary>
-    /// Renders the still: the images as shown, or, for animated content, the page each one's slider
-    /// selects, at full size — off the UI thread, the grid locked meanwhile. Returns null on failure.
+    /// Renders the still: the images as shown, or, for animated content, the page each one shows (a
+    /// frozen one, its frame), at full size — off the UI thread, the grid locked meanwhile. Returns
+    /// null on failure.
     /// </summary>
     private async Task<Bitmap?> RenderStillAsync()
     {
-        if (!HasAnimation)
+        if (!_preview.Images.Any(i => i.IsAnimated))
         {
             Cursor.Current = Cursors.WaitCursor;
             return Compositor.Render(_preview.Images, _preview.ActiveLayout!);
@@ -1000,6 +1010,20 @@ internal sealed class MainForm : Form
 
     private static string AngleText(int degrees) => $"Angle: {degrees:+0;-0;0}°";
 
+    /// <summary>Not frozen, the slider sets where the content starts playing; frozen, the frame it shows.</summary>
+    private void ChangeFrames(Func<FramesEffect, FramesEffect> change)
+    {
+        UpdateFramesLabel();
+        ChangeLook(look => look.Frames is { } frames ? look.WithFrames(change(frames)) : look);
+    }
+
+    private void UpdateFramesLabel()
+    {
+        var pages = _preview.SelectedImage?.Pages;
+        string at = pages is null ? "" : pages.Label(Math.Clamp(_frames.Value, 0, pages.Count - 1));
+        _framesLabel.Text = _freeze.Checked ? $"Frozen on: {at}" : $"Starts at: {at}";
+    }
+
     private void SetBlurKind(RadioButton button, BlurKind kind)
     {
         if (button.Checked)
@@ -1030,7 +1054,8 @@ internal sealed class MainForm : Form
     /// </summary>
     private void UpdateEffects()
     {
-        var look = _preview.SelectedImage?.Look;
+        var image = _preview.SelectedImage;
+        var look = image?.Look;
         bool enabled = look is not null && !IsExporting;
         if (!enabled || _selectedEffect is { } selected && !look!.IsActive(selected))
         {
@@ -1040,7 +1065,8 @@ internal sealed class MainForm : Form
         _syncingEffects = true;
         foreach (var (effect, button) in _effectButtons)
         {
-            button.Enabled = enabled;
+            // Only an animated image has frames to start from, or to freeze on.
+            button.Enabled = enabled && (effect != ImageEffect.Frames || image!.IsAnimated);
             button.Checked = look?.IsActive(effect) == true;
         }
 
@@ -1058,6 +1084,13 @@ internal sealed class MainForm : Form
 
             _flipX.Checked = look.FlipX;
             _flipY.Checked = look.FlipY;
+            if (look.Frames is { } frames && image!.Pages is { } pages)
+            {
+                _frames.Maximum = Math.Max(0, pages.Count - 1);
+                _frames.Value = frames.PageOf(pages.Count);
+                _freeze.Checked = frames.Frozen;
+            }
+
             if (look.Grayscale is { } grayscale)
             {
                 _grayscale.Value = (int)Math.Round(grayscale * 100);
@@ -1073,6 +1106,7 @@ internal sealed class MainForm : Form
 
         _zoomLabel.Text = $"Zoom: {(look?.Zoom ?? 1) * 100:0} %";
         _fineAngleLabel.Text = AngleText(_fineAngle.Value);
+        UpdateFramesLabel();
         _grayscaleLabel.Text = $"Intensity: {_grayscale.Value}%";
         _blurIntensityLabel.Text = $"Intensity: {_blurIntensity.Value}%";
         _syncingEffects = false;

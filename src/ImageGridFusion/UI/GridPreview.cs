@@ -59,8 +59,6 @@ internal sealed class GridPreview : Control
     private bool _pressedDropZone;
     private readonly PageLoader _pageLoader = new();
     private readonly AnimationPlayer _player = new();
-    private int _sliding = -1;
-    private bool _hoveringSlider;
     private bool _locked;
     private bool _hoveringHandle;
     private bool _panning;
@@ -164,8 +162,8 @@ internal sealed class GridPreview : Control
     }
 
     /// <summary>
-    /// "Force as image": no animation plays, nor its sound, each cell showing the page its slider
-    /// selects — still browsed live. Released, they resume like a released hover.
+    /// "Force as image": no animation plays, nor its sound, each cell showing the page it stands on.
+    /// Released, they play on from there, but the frozen ones.
     /// </summary>
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public bool ForceStill
@@ -275,7 +273,6 @@ internal sealed class GridPreview : Control
         _layout = layout;
         _hovered = -1;
         _hoveringClose = false;
-        _hoveringSlider = false;
         _hoveringHandle = false;
         _cache?.Dispose();
         _cache = null;
@@ -414,13 +411,7 @@ internal sealed class GridPreview : Control
         if (_hovered >= 0 && !_dragging && !_locked)
         {
             PaintCloseButton(g, CloseBounds(cells[_hovered]), _hoveringClose);
-            PaintHandle(g, HandleBounds(cells[_hovered], _images[_hovered]), _hoveringHandle);
-        }
-
-        int slider = _sliding >= 0 ? _sliding : _hovered;
-        if (slider >= 0 && slider < cells.Length && !_dragging)
-        {
-            PaintSlider(g, _images[slider], SliderBounds(cells[slider], _images[slider]));
+            PaintHandle(g, HandleBounds(cells[_hovered]), _hoveringHandle);
         }
 
         if (_dragging && _ghost is not null)
@@ -438,7 +429,7 @@ internal sealed class GridPreview : Control
         }
 
         // The selection is kept: a full grid replaces the selected cell with the first added image.
-        if (_locked && !IsOnSlider(e.Location))
+        if (_locked)
         {
             return;
         }
@@ -463,15 +454,6 @@ internal sealed class GridPreview : Control
             return;
         }
 
-        // Browsing pages neither selects the cell nor starts a swap.
-        if (SliderBounds(CellBounds()[index], _images[index]).Contains(e.Location))
-        {
-            _sliding = index;
-            UpdateHold();
-            SlideTo(e.X);
-            return;
-        }
-
         // The bars of the blur come before the handle and the pan, on their own reach only.
         if (ShownBlur(index) is { } blur && BarAt(CellBounds()[index], blur, e.Location) is { } bar)
         {
@@ -492,7 +474,7 @@ internal sealed class GridPreview : Control
         Select(index);
         _pressed = index;
         _pressPoint = e.Location;
-        _panning = !HandleBounds(CellBounds()[index], _images[index]).Contains(e.Location);
+        _panning = !HandleBounds(CellBounds()[index]).Contains(e.Location);
         _panPoint = e.Location;
         _panX.Reset();
         _panY.Reset();
@@ -509,12 +491,6 @@ internal sealed class GridPreview : Control
     {
         base.OnMouseMove(e);
         PauseCarousel();
-        if (_sliding >= 0)
-        {
-            SlideTo(e.X);
-            return;
-        }
-
         if (_draggedBar is { } bar)
         {
             DragBar(bar, e.Location);
@@ -569,14 +545,6 @@ internal sealed class GridPreview : Control
     protected override void OnMouseUp(MouseEventArgs e)
     {
         base.OnMouseUp(e);
-        if (_sliding >= 0)
-        {
-            _sliding = -1;
-            UpdateHover(e.Location);
-            Invalidate();
-            return;
-        }
-
         if (_draggedBar is not null)
         {
             _draggedBar = null;
@@ -612,7 +580,7 @@ internal sealed class GridPreview : Control
     {
         base.OnMouseWheel(e);
         int index = CellAt(e.Location);
-        if (index < 0 || _locked || _pressed >= 0 || _sliding >= 0 || _draggedBar is not null)
+        if (index < 0 || _locked || _pressed >= 0 || _draggedBar is not null)
         {
             return;
         }
@@ -646,12 +614,10 @@ internal sealed class GridPreview : Control
             EndDrag();
         }
 
-        if (_sliding >= 0 || _draggedBar is not null)
+        if (_draggedBar is not null)
         {
-            _sliding = -1;
             _draggedBar = null;
             EndLive();
-            UpdateHold();
             Invalidate();
         }
     }
@@ -659,12 +625,11 @@ internal sealed class GridPreview : Control
     protected override void OnMouseLeave(EventArgs e)
     {
         base.OnMouseLeave(e);
-        if ((_hovered >= 0 || _hoveringCanvas || _hoveringDropZone) && !_dragging && _sliding < 0 && !_panning && _draggedBar is null)
+        if ((_hovered >= 0 || _hoveringCanvas || _hoveringDropZone) && !_dragging && !_panning && _draggedBar is null)
         {
             _hovered = -1;
             _hoveredBar = null;
             _hoveringClose = false;
-            _hoveringSlider = false;
             _hoveringHandle = false;
             _hoveringCanvas = false;
             _hoveringDropZone = false;
@@ -672,7 +637,6 @@ internal sealed class GridPreview : Control
             Invalidate();
         }
 
-        UpdateHold();
         ResumeCarousel();
     }
 
@@ -846,9 +810,7 @@ internal sealed class GridPreview : Control
         Select(-1);
         _hovered = -1;
         _hoveringClose = false;
-        _hoveringSlider = false;
         _hoveringHandle = false;
-        _sliding = -1;
         OnImagesChanged();
     }
 
@@ -896,13 +858,12 @@ internal sealed class GridPreview : Control
         bool onClose = hovered >= 0 && CloseBounds(CellBounds()[hovered]).Contains(location);
         bool onCanvas = _images.Count == 0 && CanvasBounds().Contains(location);
         bool onDropZone = DropZoneBounds(CanvasBounds()).Contains(location);
-        bool onSlider = hovered >= 0 && SliderBounds(CellBounds()[hovered], _images[hovered]).Contains(location);
         bool actions = hovered >= 0 && !_locked;
-        bool onHandle = actions && HandleBounds(CellBounds()[hovered], _images[hovered]).Contains(location);
-        bool onControl = onClose || onDropZone || onSlider;
+        bool onHandle = actions && HandleBounds(CellBounds()[hovered]).Contains(location);
+        bool onControl = onClose || onDropZone;
         var onBar = actions && !onControl && ShownBlur(hovered) is { } blur ? BarAt(CellBounds()[hovered], blur, location) : null;
         if (hovered == _hovered && onClose == _hoveringClose && onCanvas == _hoveringCanvas && onDropZone == _hoveringDropZone
-            && onSlider == _hoveringSlider && onHandle == _hoveringHandle && onBar == _hoveredBar)
+            && onHandle == _hoveringHandle && onBar == _hoveredBar)
         {
             return;
         }
@@ -911,33 +872,18 @@ internal sealed class GridPreview : Control
         _hoveringClose = onClose;
         _hoveringCanvas = onCanvas;
         _hoveringDropZone = onDropZone;
-        _hoveringSlider = onSlider;
         _hoveringHandle = onHandle;
         _hoveredBar = onBar;
         Cursor = onControl ? Cursors.Hand
             : onBar is { } bar ? BarCursor(bar)
             : onHandle ? Cursors.SizeAll
             : Cursors.Default;
-        UpdateHold();
         Invalidate();
     }
 
-    /// <summary>The hovered cell, or the one whose slider is dragged, holds its animation still.</summary>
-    private void UpdateHold()
-    {
-        int held = _sliding >= 0 ? _sliding : _hovered;
-        _player.Hold(held >= 0 && held < _images.Count ? _images[held] : null);
-    }
-
-    private bool IsOnSlider(Point location)
-    {
-        int index = CellAt(location);
-        return index >= 0 && SliderBounds(CellBounds()[index], _images[index]).Contains(location);
-    }
-
     /// <summary>
-    /// Plays the animated images, at the size of their cells, and holds the hovered one. Nothing plays
-    /// behind a hidden window: showing it syncs again.
+    /// Plays the animated images, at the size of their cells, and shows the frozen ones on their
+    /// frame. Nothing plays behind a hidden window: showing it syncs again.
     /// </summary>
     private void SyncPlayer()
     {
@@ -948,7 +894,6 @@ internal sealed class GridPreview : Control
 
         _player.Sync(_images);
         UpdateDisplaySizes();
-        UpdateHold();
     }
 
     private void UpdateDisplaySizes()
@@ -1160,78 +1105,24 @@ internal sealed class GridPreview : Control
 
     /// <summary>
     /// The drag handle that swaps the image, centered in the cell. It shrinks, still centered, while
-    /// it would come closer than a gap to another control (the ×, the slider); below the size of a
-    /// button it falls back just below the ×.
+    /// it would come closer than a gap to the ×; below the size of a button it falls back just below it.
     /// </summary>
-    private Rectangle HandleBounds(Rectangle cell, SourceImage image)
+    private Rectangle HandleBounds(Rectangle cell)
     {
         int gap = LogicalToDeviceUnits(ButtonGap);
-        Rectangle[] controls = [CloseBounds(cell), SliderBounds(cell, image)];
-
+        var close = CloseBounds(cell);
         var center = new Point(cell.X + cell.Width / 2, cell.Y + cell.Height / 2);
         for (int size = LogicalToDeviceUnits(HandleSize); size >= LogicalToDeviceUnits(ButtonSize); size--)
         {
             var bounds = new Rectangle(center.X - size / 2, center.Y - size / 2, size, size);
             var clearance = Rectangle.Inflate(bounds, gap, gap);
-            if (cell.Contains(bounds) && !controls.Any(c => !c.IsEmpty && c.IntersectsWith(clearance)))
+            if (cell.Contains(bounds) && !close.IntersectsWith(clearance))
             {
                 return bounds;
             }
         }
 
-        var close = CloseBounds(cell);
         return close with { Y = close.Bottom + gap };
-    }
-
-    /// <summary>
-    /// Pill along the bottom of a cell whose image has several pages; empty for a single page, or
-    /// when the cell is too narrow to slide in.
-    /// </summary>
-    private Rectangle SliderBounds(Rectangle cell, SourceImage image)
-    {
-        if (image.Pages is not { Count: > 1 })
-        {
-            return Rectangle.Empty;
-        }
-
-        int height = LogicalToDeviceUnits(24);
-        int inset = LogicalToDeviceUnits(6);
-        var bounds = new Rectangle(cell.X + inset, cell.Bottom - inset - height, cell.Width - 2 * inset, height);
-        return bounds.Width >= LogicalToDeviceUnits(120) ? bounds : Rectangle.Empty;
-    }
-
-    /// <summary>Horizontal span of the track, left of the label, which is sized for the widest one.</summary>
-    private (int Left, int Width) SliderTrack(Rectangle bounds, SourceImage image)
-    {
-        var pages = image.Pages!;
-        int pad = bounds.Height / 2;
-        int label = TextRenderer.MeasureText(pages.Label(pages.Count - 1), Font, Size.Empty, TextFormatFlags.NoPadding).Width;
-        return (bounds.X + pad, Math.Max(1, bounds.Width - 3 * pad - label));
-    }
-
-    /// <summary>Requests the page under <paramref name="x"/> on the slider being dragged, rendered live.</summary>
-    private void SlideTo(int x)
-    {
-        var cells = CellBounds();
-        if (_sliding >= cells.Length)
-        {
-            return;
-        }
-
-        var image = _images[_sliding];
-        var bounds = SliderBounds(cells[_sliding], image);
-        if (bounds.IsEmpty)
-        {
-            return;
-        }
-
-        var (left, width) = SliderTrack(bounds, image);
-        int page = (int)Math.Round(Math.Clamp((x - left) / (double)width, 0, 1) * (image.Pages!.Count - 1));
-        if (page != _pageLoader.Target(image))
-        {
-            _pageLoader.Request(image, page);
-            Invalidate(bounds);
-        }
     }
 
     /// <summary>
@@ -1252,9 +1143,24 @@ internal sealed class GridPreview : Control
             var shape = _images[i].Look.Oriented(cells[i].Size);
             if (_images[i].Pages is { PageSize: { } size } pages && size != shape)
             {
-                _pageLoader.Request(_images[i], pages.Resize(shape, _pageLoader.Target(_images[i])));
+                // A frozen text stays about where its frames effect points, on the new pages.
+                int page = pages.Resize(shape, _pageLoader.Target(_images[i]));
+                _pageLoader.Request(_images[i], _images[i].IsFrozen ? _images[i].StartPage : page);
                 _player.Refresh(_images[i]);
             }
+        }
+    }
+
+    /// <summary>
+    /// The frames effect of an image changed: the player plays it from its new starting point, and a
+    /// frozen (or forced still) image shows the page the effect points at.
+    /// </summary>
+    private void ShowFrames(SourceImage image)
+    {
+        _player.Update(image);
+        if ((image.IsFrozen || ForceStill) && image.IsAnimated && _pageLoader.Target(image) != image.StartPage)
+        {
+            _pageLoader.Request(image, image.StartPage);
         }
     }
 
@@ -1268,10 +1174,16 @@ internal sealed class GridPreview : Control
         }
 
         bool turned = look.SwapsAxes != image.Look.SwapsAxes;
+        bool frames = look.Frames != image.Look.Frames;
         image.Look = look;
         if (turned)
         {
             FitPagesToCells();
+        }
+
+        if (frames)
+        {
+            ShowFrames(image);
         }
 
         // During a gesture, the frame shown is scaled; decoding it again at each step would only slow it down.
@@ -1590,36 +1502,6 @@ internal sealed class GridPreview : Control
         using var pen = new Pen(Color.FromArgb(160, 0, 0, 0), LogicalToDeviceUnits(1));
         g.FillRectangle(brush, bounds);
         g.DrawRectangle(pen, bounds);
-    }
-
-    private void PaintSlider(Graphics g, SourceImage image, Rectangle bounds)
-    {
-        if (bounds.IsEmpty)
-        {
-            return;
-        }
-
-        bool hot = _sliding >= 0 || _hoveringSlider;
-        using (var brush = new SolidBrush(Color.FromArgb(hot ? 230 : 150, 0, 0, 0)))
-        {
-            g.FillRoundedRectangle(brush, bounds, new Size(bounds.Height, bounds.Height));
-        }
-
-        var pages = image.Pages!;
-        int page = Math.Clamp(_pageLoader.Target(image), 0, pages.Count - 1);
-        var (left, width) = SliderTrack(bounds, image);
-        int y = bounds.Y + bounds.Height / 2;
-        using (var pen = new Pen(Color.FromArgb(160, Color.White), LogicalToDeviceUnits(2)))
-        {
-            g.DrawLine(pen, left, y, left + width, y);
-        }
-
-        int x = left + (int)Math.Round(width * (double)page / (pages.Count - 1));
-        int thumb = bounds.Height - LogicalToDeviceUnits(10);
-        g.FillEllipse(Brushes.White, x - thumb / 2, y - thumb / 2, thumb, thumb);
-
-        var label = Rectangle.FromLTRB(left + width + bounds.Height / 2, bounds.Y, bounds.Right - bounds.Height / 2, bounds.Bottom);
-        TextRenderer.DrawText(g, pages.Label(page), Font, label, Color.White, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
 
     private void PaintCloseButton(Graphics g, Rectangle bounds, bool hot)

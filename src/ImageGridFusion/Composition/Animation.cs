@@ -25,10 +25,11 @@ public static class Animation
 
     /// <summary>
     /// Image whose sound goes into the video, and plays in the preview: image 1 when it is a video with
-    /// sound, else the first video with sound in grid order; <c>null</c> when none has any.
+    /// sound, else the first video with sound in grid order; <c>null</c> when none has any. A frozen
+    /// video has no sound.
     /// </summary>
     public static SourceImage? SoundSource(IReadOnlyList<SourceImage> images) =>
-        images.FirstOrDefault(i => i.Pages is IHasSound { HasSound: true } && i.FilePath is not null);
+        images.FirstOrDefault(i => i.Plays && i.Pages is IHasSound { HasSound: true } && i.FilePath is not null);
 
     /// <summary>H.264 needs even dimensions: rounded down, never under 2.</summary>
     public static Size EvenSize(Size size) => new(Math.Max(2, size.Width & ~1), Math.Max(2, size.Height & ~1));

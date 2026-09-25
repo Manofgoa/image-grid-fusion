@@ -37,6 +37,18 @@ public sealed class SourceImage : IDisposable
     /// <summary>Plays when shown: a video, an animated GIF, a PDF of several pages, a text longer than its cell.</summary>
     public bool IsAnimated => Pages is { LoopDuration: var loop } && loop > TimeSpan.Zero;
 
+    /// <summary>An animated image the frames effect holds on one frame: shown, and exported, as a still.</summary>
+    public bool IsFrozen => IsAnimated && Look.Frames is { Frozen: true };
+
+    /// <summary>An animated image that plays: in the preview, and as a video when exported.</summary>
+    public bool Plays => IsAnimated && !IsFrozen;
+
+    /// <summary>Page the frames effect points at: where the image starts playing, or the one it is frozen on; the first without it.</summary>
+    public int StartPage => Pages is { } pages && Look.Frames is { } frames ? frames.PageOf(pages.Count) : 0;
+
+    /// <summary>Time in the loop where the image starts playing.</summary>
+    public TimeSpan StartTime => Pages?.TimeOf(StartPage) ?? TimeSpan.Zero;
+
     /// <summary>Shows another page: takes ownership of <paramref name="bitmap"/> and disposes the previous one.</summary>
     public void ShowPage(int page, Bitmap bitmap)
     {
