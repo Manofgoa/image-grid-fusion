@@ -124,6 +124,8 @@ public sealed class StyledText
         /// <summary>Last character appended, or <c>'\0'</c> when empty.</summary>
         public char Last => _text.Length > 0 ? _text[^1] : '\0';
 
+        public char CharAt(int index) => _text[index];
+
         public void Append(string text, TextStyle style)
         {
             ushort index = IndexOf(style);
