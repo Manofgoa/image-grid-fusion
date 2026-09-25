@@ -142,6 +142,20 @@ in the preview — never in `Compositor`, so never exported:
   its sides — exactly the bands' rule, following the position live.
 - Grayscale applies to it as to the bands (existing `Gray(bands)`).
 
+### Fine Rotation
+
+The fine angle (±45°) is planned by `workfiles/20260925-toolbar.md` and does not exist yet. Rule
+agreed for it (Q&A #11), to be honoured by whichever workfile lands second:
+
+- On an image turned by a fine angle, the stops, the 10 % margin and the guides are computed on the
+  **axis-aligned bounding box** of the turned image, as if that box were the image.
+- The toolbar's **automatic zoom** covering the cell applies only while the image is **within its
+  stops**; once pushed beyond, the position is kept as is.
+- The corners the turned image uncovers get the **band color**, as any uncovered area.
+
+If this workfile is implemented first, nothing is coded for the fine angle: the rule is recorded
+for the toolbar workfile.
+
 ### Reset and Lifetime
 
 - The cell's *Reset* tool puts the image back to the center, as it does today for the focus.
@@ -191,10 +205,12 @@ the band color.
       solution test-free as before?~~ → Stay test-free
 - [x] ~~README: update the pan description and the band-color note as described in *Documentation*?~~
       → Yes
-- [ ] Fine rotation (±45°, planned by `workfiles/20260925-toolbar.md`): how does the pan beyond the
+- [x] ~~Fine rotation (±45°, planned by `workfiles/20260925-toolbar.md`): how does the pan beyond the
       edges behave on an image turned by a fine angle? This design assumes an image rectangle
       aligned on the cell (edge stops, image ∩ cell, 10 % margin), and the toolbar's automatic zoom
-      "to cover the cell" works against pushing the image out of it.
+      "to cover the cell" works against pushing the image out of it.~~ → Bounding box: stops, margin
+      and guides on the turned image's bounding box; automatic zoom only while within the stops;
+      uncovered corners in band color
 
 ---
 
@@ -244,6 +260,13 @@ logged at the user's request:
 - **Fine rotation (±45°) with an automatic zoom covering the cell**: conflicts with this design's
   axis-aligned assumptions — new Open Question. The friction was reported back to that session.
 
+### Iteration 5 — 2026-09-25
+
+Fine-rotation question answered (Q&A #11): the turned image's axis-aligned bounding box stands for
+the image in the stops, the margin and the guides; the automatic zoom applies only while the image is
+within its stops; uncovered corners get the band color. New *Fine Rotation* section. The fine angle
+does not exist yet: nothing is coded for it here if this workfile lands first. Design complete again.
+
 ---
 
 ## Implementation Log
@@ -275,7 +298,7 @@ Questions asked by the agent during design, with user responses.
 | 8 | Zoom and a moved image: recenter at 100 % and below; keep an in-range image within the stops? | Always clamp to the stops | 2026-09-25 |
 | 9 | Unit tests: create a test project, or stay test-free? | Stay test-free | 2026-09-25 |
 | 10 | README: update the pan description and the band-color note? | Yes | 2026-09-25 |
-| 11 | Fine rotation (±45°): how does the pan beyond the edges behave on an image turned by a fine angle? | | |
+| 11 | Fine rotation (±45°): how does the pan beyond the edges behave on an image turned by a fine angle? | Bounding box — stops, margin and guides on the turned image's bounding box; automatic zoom only while within the stops; uncovered corners in band color | 2026-09-25 |
 
 ---
 
