@@ -166,6 +166,12 @@ All open questions answered:
   through to the plain text.
 - Tests: manual checks, no test project.
 
+### Iteration 3 — 2026-09-26 — ✅ Implemented
+
+Go given ("Go implémente", then *Code, tests and documentation*), after a first "No". Scope
+frozen as the design sections stand in Iteration 2: code, plus the README; no unit tests, as
+agreed. Work stays on `main` — the project's standing choice.
+
 ---
 
 ## Implementation Log
@@ -199,4 +205,4 @@ Questions asked by the agent during design, with user responses.
 
 ---
 
-*Last updated: 2026-09-25*
+*Last updated: 2026-09-26*
