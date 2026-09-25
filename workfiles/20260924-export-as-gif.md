@@ -117,6 +117,9 @@ The solution holds no unit test project (`ImageGridFusion.slnx` references only
 - [x] ~~With **Carrousel** checked, how does the dropdown behave (enabled choices, what Image means, does toggling the carousel reset the default)?~~ → The carousel counts as animatable (GIF/Video enabled, toggling resets the default); GIF/Video export the carousel in that format; Image keeps today's frozen-contents carousel MP4
 - [x] ~~**Copy** as GIF: a `.gif` file on the clipboard (like the video), or the file plus the raw `GIF` clipboard format?~~ → Both: the file and the raw `GIF` format
 - [x] ~~Which **GIF encoder**: Windows' built-in WIC encoder by COM interop, a hand-written encoder, or a NuGet package?~~ → Windows' WIC encoder by COM interop
+- [ ] Which buttons become **split buttons**: Copy and Save each, only Save, or a single Export button?
+- [ ] Does a submenu choice **apply once** (exports right away, nothing remembered), or **stay** as the button's format until the next content change?
+- [ ] Does the button's main part **show the format** it will produce?
 
 ---
 
@@ -141,6 +144,15 @@ enables GIF and Video, toggling it resets the default, GIF exports the carousel 
 Image keeps today's frozen-contents carousel MP4. Copy as GIF puts both the file and the raw
 `GIF` clipboard format. The GIF is encoded with Windows' WIC encoder; the temp cleanup covers
 `.gif` files.
+
+### Iteration 3 — 2026-09-25
+
+User request: the export should not be a dropdown next to the buttons, but a **split button** —
+a main part that exports in the most suitable format (image or video, depending on the content),
+and a **down arrow on its right** opening a submenu that forces **Image / GIF / MP4 Video**.
+The Format Dropdown section is superseded; which buttons get split, whether a forced choice
+lasts or applies once, and the main button's label are asked (Q&A #9–11) before the domain
+sections are rewritten.
 
 ---
 
@@ -171,7 +183,10 @@ Questions asked by the agent during design, with user responses.
 | 6 | Copy as GIF: file only, or file plus the raw GIF clipboard format? | File plus the raw GIF format | 2026-09-24 |
 | 7 | Which GIF encoder? | Windows' WIC encoder (COM interop) | 2026-09-24 |
 | 8 | Design stable — start the implementation? | No — the gate holds | 2026-09-24 |
+| 9 | Which buttons become split buttons (Copy, Save, or a single Export)? | | |
+| 10 | Does a submenu choice apply once, or stay as the button's format until the content changes? | | |
+| 11 | Does the main part of the button show the format it will produce? | | |
 
 ---
 
-*Last updated: 2026-09-24*
+*Last updated: 2026-09-25*
