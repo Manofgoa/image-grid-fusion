@@ -50,10 +50,16 @@ No text input exists in the window, so the global `Ctrl+V` shortcut takes nothin
 In order, the first one present wins:
 
 1. File drop list — unchanged.
-2. Bitmap (`Ctrl+V` only) — unchanged. *(see Open Questions: image vs text)*
-3. Rich text — *(format order and fidelity: see Open Questions)*.
+2. Bitmap (`Ctrl+V` only) — unchanged: **the image wins over text**, so Excel cells, which bring
+   both, still paste as an image.
+3. Rich text: RTF first (Word, WordPad give it faithfully), else HTML (browsers).
 4. Plain text (`UnicodeText`, else `Text`).
 
+- A rich text whose visible text is empty (e.g. an HTML holding only an `<img>`) falls through
+  to the plain text.
+- **Image dragged from a browser** (a virtual file, its URL as text, an HTML `<img>`): no longer
+  refused — it is **rendered as text**, i.e. its URL (the HTML has no visible text, so the
+  plain text wins).
 - Empty or whitespace-only text → nothing is added, status message
   `Nothing to paste: the clipboard holds no image or text.`
 - Same size limit as a text file: at most 1 M characters, else a status message saying the text
@@ -68,7 +74,25 @@ In order, the first one present wins:
 - `TextPages` gets a second entry point taking the text in memory, next to `TryOpen(path, …)`;
   the file entry point keeps its sniffing and decoding, both share the layout.
 - Line endings normalized, tabs expanded, trailing blank lines trimmed — as for a file.
-- **Rich text**: *(to be settled — see Open Questions)*.
+
+### Rich Text
+
+- **Styles kept, in the fixed font**: bold, italic, underline, strikethrough, text color,
+  highlight (background) color. Font family and sizes of the source are **ignored** — the page
+  stays in Consolas and the `.txt` fit rule is untouched (Consolas bold / italic keep the same
+  advance, so the monospace layout holds).
+- The RTF and HTML readers turn the source into **styled runs** (text + style); line breaks come
+  from paragraphs / `<br>` / block elements, as the source shows them. `TextPages` lays out the
+  runs' text exactly like plain text, then draws each run with its style.
+- Plain text is a single run with the default style.
+
+### Background and Contrast
+
+- When the source gives **one background for the whole text** (e.g. VS Code's HTML, a dark
+  theme), the page takes that background as its paper; otherwise, white paper.
+- The default ink follows the paper: a text without its own color is drawn in the default dark
+  ink on a light paper, and in a light ink on a dark paper.
+- Colors of the runs are kept as the source gives them — no correction.
 
 ## README
 
@@ -81,8 +105,8 @@ In order, the first one present wins:
 
 ## Test Impact
 
-**No unit test project exists**; the standing choice of previous workfiles is manual checks
-*(to be confirmed — see Open Questions)*.
+**No unit test changes**: the solution has no test project, and the user chose **not to create
+one** — every behaviour is checked manually. The manual checks to run:
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
@@ -90,7 +114,10 @@ In order, the first one present wins:
 | `Ctrl+V` of text, grid full: replaces the selected cell, its effects reset | — (manual) | — |
 | Text dragged from another app onto a cell replaces it; elsewhere, added | — (manual) | — |
 | Copy cursor + drop highlight while dragging text | — (manual) | — |
-| Rich text from a browser (HTML) and from Word (RTF) keeps its formatting | — (manual) | — |
+| Rich text from a browser (HTML) and from Word (RTF) keeps bold / italic / underline / strike / colors, in Consolas | — (manual) | — |
+| Text copied from VS Code (dark theme) shows on its dark background | — (manual) | — |
+| Excel cells still paste as an image | — (manual) | — |
+| Image dragged from a browser shows its URL as text | — (manual) | — |
 | Long pasted text paginates and auto-scrolls; re-laid out on layout change | — (manual) | — |
 | Whitespace-only clipboard → status message, nothing added | — (manual) | — |
 | Files and images still pasted / dropped as before | — (manual) | — |
@@ -99,11 +126,11 @@ In order, the first one present wins:
 
 ## Open Questions
 
-- [ ] Rich text: which formatting is kept?
-- [ ] Colors that vanish on white paper (text copied from a dark theme, e.g. VS Code): what happens?
-- [ ] `Ctrl+V` when the clipboard holds **both** a bitmap and text (Excel cells, some apps): which wins?
-- [ ] Image dragged from a browser (no real file, only its URL as text + HTML): refused as today, or rendered as text?
-- [ ] Tests: manual checks as in previous workfiles, or create a test project?
+- [x] ~~Rich text: which formatting is kept?~~ → Styles (bold, italic, underline, strike, text and highlight colors) in the fixed font; font family and sizes ignored
+- [x] ~~Colors that vanish on white paper (text copied from a dark theme, e.g. VS Code): what happens?~~ → The page takes the source's background when it gives one for the whole text; else white paper
+- [x] ~~`Ctrl+V` when the clipboard holds **both** a bitmap and text (Excel cells, some apps): which wins?~~ → The image, as today
+- [x] ~~Image dragged from a browser (no real file, only its URL as text + HTML): refused as today, or rendered as text?~~ → Rendered as text (its URL)
+- [x] ~~Tests: manual checks as in previous workfiles, or create a test project?~~ → Manual checks, no test project
 
 ---
 
@@ -125,6 +152,19 @@ Findings: `Paste()` reads only a file drop list or a bitmap; external drop accep
 `FileDrop`; `TextPages` reads a file only but lays out plain strings; no rich-text rendering
 exists anywhere; `FilePath = null` is already handled. Initial design above; rich text fidelity,
 color contrast, bitmap-vs-text priority, browser image drags and tests left open.
+
+### Iteration 2 — 2026-09-25
+
+All open questions answered:
+
+- Rich text keeps **styles in the fixed font** (no source font / size): the `.txt` engine is
+  kept, it draws styled runs. RTF is read before HTML.
+- Dark-theme sources: the page takes the **source's whole-text background**; the default ink
+  follows the paper's lightness.
+- Bitmap and text together: **the image wins**, as today.
+- Browser image drag: **rendered as text** (its URL) — an HTML with no visible text falls
+  through to the plain text.
+- Tests: manual checks, no test project.
 
 ---
 
@@ -151,11 +191,11 @@ Questions asked by the agent during design, with user responses.
 | 2 | Which cell receives the pasted text? | Same rule as `Ctrl+V` of an image | 2026-09-25 |
 | 3 | What is in scope? | Plain `Ctrl+V`, text drag & drop, rich text (HTML / RTF) — not multi-cell | 2026-09-25 |
 | 4 | Straightforward or tricky / long? | Straightforward | 2026-09-25 |
-| 5 | Rich text: which formatting is kept? | | |
-| 6 | Colors that vanish on white paper: what happens? | | |
-| 7 | Bitmap and text both in the clipboard: which wins? | | |
-| 8 | Browser image drag (URL + HTML, no file): refused or rendered as text? | | |
-| 9 | Tests: manual checks or a test project? | | |
+| 5 | Rich text: which formatting is kept? | Styles in the fixed font; font and sizes ignored | 2026-09-25 |
+| 6 | Colors that vanish on white paper: what happens? | The source's background, when it gives one for the whole text | 2026-09-25 |
+| 7 | Bitmap and text both in the clipboard: which wins? | The image | 2026-09-25 |
+| 8 | Browser image drag (URL + HTML, no file): refused or rendered as text? | Rendered as text | 2026-09-25 |
+| 9 | Tests: manual checks or a test project? | Manual checks | 2026-09-25 |
 
 ---
 
