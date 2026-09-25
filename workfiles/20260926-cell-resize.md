@@ -29,15 +29,15 @@ Relevant components:
 | `Composition/CanvasSizer.cs` | Output width from the cell fractions (no image downscaled), clamped to [1200, 4096] |
 | `Composition/Compositor.cs` | Draws every cell from `layout.Cells(canvas)` — preview, exports, playback |
 | `UI/GridPreview.cs` | Holds the active layout (`SetLayout`, `OnImagesChanged`), hit-testing (`CellBounds`, `UpdateHover`), mouse gestures, text pages refit (`FitPagesToCells`) |
-| `UI/MainForm.cs` / `UI/LayoutStrip.cs` | Layout picked in the strip, mirror toggle |
+| `UI/MainForm.cs` / `UI/LayoutStrip.cs` | Layout picked in the strip, mirror toggle, effects toolbar *Reset* button |
 
 ---
 
 ## Separators
 
-A **separator** is a maximal straight segment of boundary shared by cells on both of its sides.
-Dragging it moves **every cell touching it**, on both sides, and **no other cell**. The outer border
-of the canvas is not a separator.
+A **separator** is a straight segment of boundary shared by cells on both of its sides. Dragging it
+moves **every cell touching it**, on both sides, and **no other cell**. The outer border of the
+canvas is not a separator.
 
 | Layout | Separators |
 |---|---|
@@ -46,9 +46,23 @@ of the canvas is not a separator.
 | Three columns / Four columns | one between each pair of neighbour columns |
 | Big left, Featured (3 and 4 images) | the long vertical one (featured cell ↔ the stacked cells, which all follow), plus one horizontal separator between each pair of stacked cells |
 | Big top (3 and 4 images) | the long horizontal one (featured cell ↔ the row below), plus one vertical separator between each pair of cells of that row |
-| Grid (4 images) | the cross — see *Open Questions* |
+| Grid (4 images) | the cross — see below |
 
 Mirroring does not change this list, only where the separators sit.
+
+### Grid (4 images) — the Cross (Q&A #5)
+
+Only one of the two lines can be broken at a time, otherwise the cells would no longer tile the
+canvas. The behaviour is **dynamic**:
+
+| State of the cross | Separators |
+|---|---|
+| **Aligned** (both lines straight — the starting state) | Four arms: top, bottom, left, right. Dragging an arm moves only the two cells it separates, which breaks its line |
+| **Vertical line broken** (top and bottom arms apart) | Top arm and bottom arm each move their row's two cells; the horizontal line is whole and moves all four cells |
+| **Horizontal line broken** (left and right arms apart) | Symmetric: left and right arms each move their column's two cells; the vertical line is whole |
+
+A broken line becomes straight again when its two arms are realigned — the alignment snapping makes
+that exact — and the cross is back to the *Aligned* state.
 
 ---
 
@@ -59,13 +73,32 @@ Mirroring does not change this list, only where the separators sit.
   (`SizeNS`) on a horizontal one.
 - **Drag**: pressing in the band and moving moves the separator along its normal axis; the preview
   is redrawn live.
+- **Double-click** on a separator puts it back at its position in the layout's own proportions
+  (Q&A #8). On the Grid's cross, it applies to the arm (or whole line) under the cursor.
 - **Priority**: on its band, the separator wins over the cell's own gestures (drag / pan, swap
-  handle drag). Against the selected cell's effect handles (blur bars snapped onto a cell edge) —
-  see *Open Questions*.
+  handle drag). The selected cell's **effect handles win over the separator** on their own hit area
+  (Q&A #10), as RULES — *On-Cell Handles* already states: a blur bar snapped onto the edge is dragged,
+  not the separator; the separator stays reachable once the blur effect is no longer selected, or
+  from the neighbour cell.
 - **Locked grid** (during an export): separators are neither highlighted nor draggable, like every
   other grid action.
-- Resizing is a **grid** gesture, not an effect: it has no button in the effects toolbar and does
+- Resizing is a **grid** gesture, not an effect: it has no toggle in the effects toolbar and does
   not depend on the selected cell.
+
+---
+
+## Constraints
+
+- **Minimum cell size** (Q&A #7): every cell keeps at least **10 % of the canvas width** (for a
+  vertical separator) or **height** (for a horizontal one). A separator stops where one of the cells
+  it moves would go below; relative to the canvas, so the preview and every export size agree.
+- **Snapping** (Q&A #9): within **6 logical px** (scaled with `LogicalToDeviceUnits`, like the blur
+  bars), a dragged separator snaps exactly onto:
+  - its **own position** in the layout's proportions;
+  - a **parallel separator it can align with** — in practice the other arm of the Grid's broken
+    line; the other layouts have no parallel separator on the same line to align with.
+
+  Snapping never takes a cell below the minimum size.
 
 ---
 
@@ -76,11 +109,13 @@ The sizes belong to the **grid** (the cell slots), not to the images.
 | Event | Sizes |
 |---|---|
 | Another layout is picked in the strip | Reset to the layout's own proportions |
+| The **active** thumbnail is clicked again (Q&A #12) | Reset to the layout's own proportions, the mirror state kept — today this click does nothing |
 | The number of images changes (add, delete) | Reset — the default layout of the new count applies |
-| The mirror toggle is clicked | See *Open Questions* |
+| The mirror toggle is clicked (Q&A #6) | **Mirrored** with the layout: the big cell stays big, on the other side |
 | A cell's image is replaced (drop, Ctrl+V, browse) | Kept |
 | Two cells are swapped | Kept — the images change slots, the slots keep their sizes |
-| The effects toolbar's *Reset* button | See *Open Questions* |
+| A separator is double-clicked | That separator only is reset |
+| The effects toolbar's *Reset* button (Q&A #8, #14) | **All the separators of the grid** are reset, on top of the selected cell's effects. The button stays disabled with no cell selected; its tooltip mentions the sizes |
 | The app is restarted | Not persisted — every layout starts on its own proportions |
 
 ---
@@ -95,47 +130,50 @@ The sizes belong to the **grid** (the cell slots), not to the images.
   holds a large image may raise the output width. The 1200:628 ratio is unchanged.
 - Effects keep their geometry in fractions of the cell (RULES — *Scope and State*): the blur bars,
   pan, zoom and fine angle follow the new cell shape; the cover zoom is recomputed for it.
-- Text pages take the shape of their cell (`FitPagesToCells`): when they are laid out again during
-  a resize — see *Open Questions*.
-
----
-
-## Constraints
-
-- **Minimum cell size**: see *Open Questions*.
-- **Snapping**: see *Open Questions*.
+- **Text pages** take the shape of their cell (`FitPagesToCells`) and are laid out again **once, on
+  release** of the separator (Q&A #11). During the drag, the current page is drawn into the moving
+  cell like any other image.
+- **Layout strip** (Q&A #12): the thumbnails keep the catalog shapes; the active one does not
+  reflect the resized proportions.
 
 ---
 
 ## Test Impact
 
-See *Open Questions* — every previous workfile kept the solution test-free, and the solution has no
-test project. Behaviours that would be pinned if tests were written:
+No unit test is created or updated: the user chose to keep the solution test-free (Q&A #13), as
+every previous workfile did. The exact tiling of a resized grid, the separators moving only their
+neighbour cells, the Grid's dynamic cross, the 10 % minimum, the snapping, the mirrored sizes and
+`CanvasSizer` fed the resized fractions stay untested by decision, not because nothing testable
+changes. Verification is manual: drag every separator of each layout (mirrored or not), break and
+realign the Grid's cross, push a cell to its minimum, double-click a separator, click the active
+thumbnail, Reset with a cell selected, a text cell resized, then a copy / save (PNG, GIF and MP4).
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| A resized layout still tiles the canvas exactly (no gap, no overlap) at any canvas size | `GridLayoutTests.cs` (new test project) | Create |
-| Moving a separator changes only the cells touching it | `GridLayoutTests.cs` | Create |
-| The minimum cell size clamps a separator drag | `GridLayoutTests.cs` | Create |
-| Mirroring a resized layout (per the decision taken) | `GridLayoutTests.cs` | Create |
-| `CanvasSizer` uses the resized fractions | `CanvasSizerTests.cs` | Create |
+| — (test-free by decision, Q&A #13) | — | — |
 
 ---
 
 ## Open Questions
 
-- [ ] Grid (4 images): at the cross, the two separators cannot both be split in two — only one of
-  the two lines can be broken at a time. Which behaviour?
-- [ ] Mirror toggle on a resized layout: are the sizes mirrored with it, or reset?
-- [ ] Minimum cell size, below which a separator stops?
-- [ ] How are the sizes reset without changing the layout (double-click on a separator, the
-  effects toolbar's *Reset*, nothing)?
-- [ ] Snapping while dragging a separator (its default position, alignment with a neighbour
-  separator, none)?
-- [ ] Separator vs the selected cell's blur bars snapped onto the same edge: which one wins?
-- [ ] Text pages: laid out again live during the drag, or once on release?
-- [ ] Layout strip: does the active thumbnail show the resized proportions?
-- [ ] Unit tests: keep the solution test-free, or create a test project for the geometry?
+- [x] ~~Grid (4 images): at the cross, the two separators cannot both be split in two — only one of
+  the two lines can be broken at a time. Which behaviour?~~ → Dynamic: four arms while aligned; the
+  first arm moved breaks its line, the other line stays whole until realigned
+- [x] ~~Mirror toggle on a resized layout: are the sizes mirrored with it, or reset?~~ → Mirrored
+- [x] ~~Minimum cell size, below which a separator stops?~~ → 10 % of the canvas side
+- [x] ~~How are the sizes reset without changing the layout (double-click on a separator, the
+  effects toolbar's *Reset*, nothing)?~~ → Double-click on a separator (that one), and the effects
+  toolbar's *Reset* (the whole grid)
+- [x] ~~Snapping while dragging a separator (its default position, alignment with a neighbour
+  separator, none)?~~ → Both, within 6 logical px
+- [x] ~~Separator vs the selected cell's blur bars snapped onto the same edge: which one wins?~~ →
+  The blur bar
+- [x] ~~Text pages: laid out again live during the drag, or once on release?~~ → On release
+- [x] ~~Layout strip: does the active thumbnail show the resized proportions?~~ → No, catalog shapes;
+  clicking the active thumbnail resets the sizes
+- [x] ~~Unit tests: keep the solution test-free, or create a test project for the geometry?~~ →
+  Test-free
+- [x] ~~Effects toolbar *Reset*: which sizes does it reset?~~ → The whole grid
 
 ---
 
@@ -153,6 +191,26 @@ separators defined as maximal shared segments, moving only the cells touching th
 band with its own cursor; sizes owned by the grid slots, reset on any layout or image-count change,
 kept on replacement and swap, never persisted; rendering and export untouched beyond the layout's
 cells, `CanvasSizer` fed the resized fractions. Nine questions left open.
+
+### Iteration 2 — 2026-09-26
+
+Geometry answers (Q&A #5–#8): the Grid's cross is dynamic (four arms while aligned, the first arm
+moved breaks its line); the mirror toggle mirrors the sizes; minimum cell size 10 % of the canvas
+side; sizes reset by a double-click on a separator and by the effects toolbar's *Reset*. A new
+question emerged on the scope of that *Reset* (Q&A #14).
+
+### Iteration 3 — 2026-09-26
+
+Interaction answers (Q&A #9–#12): snapping to the separator's own position and to an alignable
+parallel separator, within 6 logical px; the blur bars win over the separator on their hit area;
+text pages laid out again on release; the strip thumbnails keep the catalog shapes. The chosen
+thumbnail answer also makes a click on the **active** thumbnail reset the sizes — a click that does
+nothing today (`LayoutStrip` ignores it) — added to *Sizes Lifetime*.
+
+### Iteration 4 — 2026-09-26
+
+Last answers (Q&A #13–#14): the solution stays test-free; the effects toolbar's *Reset* resets every
+separator of the grid, on top of the selected cell's effects. No question remains open.
 
 ---
 
@@ -179,15 +237,16 @@ Questions asked by the agent during design, with user responses.
 | 2 | When a separator moves, what moves with it? | Only the neighbour cells — the grid may become irregular | 2026-09-25 |
 | 3 | What happens to the sizes when the layout changes? | Reset to the layout's proportions; not persisted | 2026-09-25 |
 | 4 | Is the subject straightforward or tricky / long to explore? | Straightforward — single exploration pass | 2026-09-25 |
-| 5 | Grid (4 images): behaviour at the cross? | | |
-| 6 | Mirror toggle on a resized layout: mirrored or reset? | | |
-| 7 | Minimum cell size? | | |
-| 8 | How are the sizes reset without changing the layout? | | |
-| 9 | Snapping while dragging a separator? | | |
-| 10 | Separator vs blur bars on the same edge: which wins? | | |
-| 11 | Text pages: laid out live during the drag or on release? | | |
-| 12 | Layout strip: does the active thumbnail show the resized proportions? | | |
-| 13 | Unit tests: test-free, or a new test project? | | |
+| 5 | Grid (4 images): behaviour at the cross? | Dynamic — the first arm moved breaks its line; free again once realigned | 2026-09-26 |
+| 6 | Mirror toggle on a resized layout: mirrored or reset? | Mirrored | 2026-09-26 |
+| 7 | Minimum cell size? | 10 % of the canvas side | 2026-09-26 |
+| 8 | How are the sizes reset without changing the layout? | Double-click on a separator, and the effects toolbar's *Reset* | 2026-09-26 |
+| 9 | Snapping while dragging a separator? | Own position + alignment with a parallel separator | 2026-09-26 |
+| 10 | Separator vs blur bars on the same edge: which wins? | The blur bar | 2026-09-26 |
+| 11 | Text pages: laid out live during the drag or on release? | On release | 2026-09-26 |
+| 12 | Layout strip: does the active thumbnail show the resized proportions? | No, catalog shapes; clicking it again resets the sizes | 2026-09-26 |
+| 13 | Unit tests: test-free, or a new test project? | Test-free | 2026-09-26 |
+| 14 | Effects toolbar *Reset*: which sizes does it reset? | The whole grid | 2026-09-26 |
 
 ---
 
