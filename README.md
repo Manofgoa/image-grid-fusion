@@ -18,7 +18,10 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
   - Videos, animated GIFs, PDFs of several pages and long texts play live in their cell (see Animated content)
   - Hover a cell holding a video, a GIF, a PDF or a long text to hold it still and show a slider along its bottom, browsing its frames or pages
   - Zoom a cell from 50 % to 400 %: with the slider shown along its left edge while hovered (it snaps to 100 %), or with the mouse wheel over it, around the point under the mouse (4 notches double the zoom; crossing 100 % stops on it)
-  - Drag a zoomed-in image to move it within its cell
+  - Drag an image to move it in its cell, at any zoom — past the cell's edges too, to center a detail lying on the border of the image; the area it uncovers gets the band color (see Fitting rules), and at least 10 % of the cell always stays covered so it can be grabbed back
+    - Magnetic stops: the image stops where one of its edges lines up with an edge of the cell, and where it is centered; keep dragging about 24 px to go past a stop (moving back inside over an edge is free). While it is held, a fluorescent green guide shows the stop: a dashed line on the aligned edge, a line through the center (both lines cross when centered both ways)
+    - Hold `Shift` while dragging to ignore the stops
+    - Zooming keeps the image where it was moved, at any zoom, but always brings it back within its stops
   - Zooming and moving show live, smoothed once the gesture ends (the wheel: once it stops turning); not while exporting
   - Drag the **✥** handle shown in the middle of a hovered cell onto another cell to swap the two images (in a small cell, it shrinks, or sits below the **×**)
   - Drop a file onto a cell to replace it
@@ -161,6 +164,7 @@ Big left, mirrored
   - the image's own background, when at least three sides of the part the cell shows carry one uniform color (identical or very close, JPEG noise and slight gradients included) — a white product shot gets white bands even if its subject is mostly red. A side where the subject touches the edge, or a mostly transparent side, does not count;
   - otherwise the most frequent color of the whole image.
   The sides are those of the part actually shown, after the crop and any zoom, so the color follows the zoom and the focus. An animation keeps the same color while it plays.
+  The area an image moved past its cell's edges uncovers is filled the same way, from the sides of the part still shown.
 - The threshold is set with the **Crop** slider in the top bar, from 0% (no crop, bands only) to 50%, in steps of 5%. The preview follows it live, and copy / save use the same value. It is not remembered: every launch starts at 15%.
 - The same rule applies whether the source image is too small (upscaled) or too large (downscaled).
 - EXIF orientation is applied on load, so photos from phones appear upright.
