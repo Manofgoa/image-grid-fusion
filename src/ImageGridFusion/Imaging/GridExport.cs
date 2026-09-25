@@ -4,9 +4,9 @@ using ImageGridFusion.Composition;
 namespace ImageGridFusion.Imaging;
 
 /// <summary>
-/// Exports a grid holding animated content: as an MP4 video of every source playing from the
-/// starting point of its frames effect, a frozen one showing its frame; or, forced to a still, as the
-/// page each source shows.
+/// Exports a grid holding animated content: as an MP4 video or a looping GIF of every source playing
+/// from the starting point of its frames effect, a frozen one showing its frame; or, with nothing
+/// playing, as a still of the page each source shows.
 /// </summary>
 internal static class GridExport
 {
@@ -84,19 +84,29 @@ internal static class GridExport
         return new Frame(first, item.BandColor, item.Look);
     }
 
+    /// <summary>The file an animated export writes.</summary>
+    public enum Format
+    {
+        /// <summary>H.264 video with the mixed sounds.</summary>
+        Mp4,
+
+        /// <summary>Animated GIF looping forever, silent.</summary>
+        Gif,
+    }
+
     /// <summary>What an export produced: the files whose sound was mixed in, and the ones left out, their sound not re-encodable.</summary>
     public sealed record Result(Size Size, TimeSpan Length, int Frames, IReadOnlyList<string> MixedSounds, IReadOnlyList<string> FailedSounds);
 
     /// <summary>
-    /// Writes the video to <paramref name="path"/>: 30 fps, as long as the longest loop, the others
-    /// starting over. The canvas is sized once, from the frames at the start. Blocks: meant to run off
-    /// the UI thread. Deletes the incomplete file when cancelled or failing.
+    /// Writes the animation to <paramref name="path"/> in <paramref name="format"/>: 30 fps, as long as
+    /// the longest loop, the others starting over. The canvas is sized once, from the frames at the
+    /// start. Blocks: meant to run off the UI thread. Deletes the incomplete file when cancelled or failing.
     /// </summary>
-    public static Result RenderVideo(Job job, string path, IProgress<double>? progress, CancellationToken cancellation)
+    public static Result RenderAnimation(Job job, Format format, string path, IProgress<double>? progress, CancellationToken cancellation)
     {
         var readers = new AnimationReader?[job.Items.Count];
         var frames = new Frame[job.Items.Count];
-        VideoEncoder? encoder = null;
+        IFrameEncoder? encoder = null;
         bool finished = false;
         try
         {
@@ -108,7 +118,9 @@ internal static class GridExport
             var canvas = Animation.EvenSize(CanvasSizer.Compute(frames.Select(f => f.Size).ToList(), job.Layout));
             using var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppRgb);
             using var g = Graphics.FromImage(bitmap);
-            encoder = VideoEncoder.Create(path, canvas, job.Length, job.Sounds);
+            encoder = format == Format.Gif
+                ? GifEncoder.Create(path, canvas)
+                : VideoEncoder.Create(path, canvas, job.Length, job.Sounds);
 
             int count = Animation.FrameCount(job.Length);
             for (int k = 0; k < count; k++)
@@ -131,7 +143,9 @@ internal static class GridExport
 
             encoder.Finish();
             finished = true;
-            return new Result(canvas, job.Length, count, encoder.MixedSounds, encoder.FailedSounds);
+            return encoder is VideoEncoder video
+                ? new Result(canvas, job.Length, count, video.MixedSounds, video.FailedSounds)
+                : new Result(canvas, job.Length, count, [], []);
         }
         finally
         {

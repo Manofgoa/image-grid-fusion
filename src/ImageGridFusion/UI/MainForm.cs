@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
@@ -16,9 +17,12 @@ internal sealed class MainForm : Form
     private readonly ContextMenuStrip _settingsMenu = new();
     private readonly ToolStripMenuItem _startWithWindows = new("Start with Windows");
     private readonly ToolTip _toolTip = new();
-    private readonly Button _copyButton = new() { Text = "Copy", AutoSize = true };
-    private readonly Button _saveButton = new() { Text = "Save…", AutoSize = true };
-    private readonly CheckBox _forceImage = new() { Text = "Force as image", AutoSize = true, Anchor = AnchorStyles.Left, Visible = false };
+    private readonly Button _copyButton = SplitMain("Copy");
+    private readonly Button _copyArrow = SplitArrow();
+    private readonly ContextMenuStrip _copyMenu = new();
+    private readonly Button _saveButton = SplitMain("Save…");
+    private readonly Button _saveArrow = SplitArrow();
+    private readonly ContextMenuStrip _saveMenu = new();
     private readonly Button _cancelButton = new() { Text = "Cancel", AutoSize = true, Visible = false };
     private readonly Label _status = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly TableLayoutPanel _bottom;
@@ -136,9 +140,10 @@ internal sealed class MainForm : Form
 
         _outputButtons = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = Padding.Empty };
         _outputButtons.Controls.Add(_settingsButton);
-        _outputButtons.Controls.Add(_forceImage);
         _outputButtons.Controls.Add(_copyButton);
+        _outputButtons.Controls.Add(_copyArrow);
         _outputButtons.Controls.Add(_saveButton);
+        _outputButtons.Controls.Add(_saveArrow);
 
         // Clear button on the left, then the status line, output buttons on the right.
         _bottom = new TableLayoutPanel
@@ -211,8 +216,13 @@ internal sealed class MainForm : Form
         _startWithWindows.Click += (_, _) => ToggleStartWithWindows();
         _copyButton.Click += (_, _) => CopyToClipboard();
         _saveButton.Click += (_, _) => Save();
+        _copyMenu.Items.Add("GIF", null, (_, _) => Copy(GridExport.Format.Gif));
+        _copyMenu.Items.Add("MP4 Video", null, (_, _) => Copy(GridExport.Format.Mp4));
+        _saveMenu.Items.Add("GIF", null, (_, _) => SaveAs(GridExport.Format.Gif));
+        _saveMenu.Items.Add("MP4 Video", null, (_, _) => SaveAs(GridExport.Format.Mp4));
+        _copyArrow.Click += (_, _) => _copyMenu.Show(_copyButton, Point.Empty, ToolStripDropDownDirection.AboveRight);
+        _saveArrow.Click += (_, _) => _saveMenu.Show(_saveButton, Point.Empty, ToolStripDropDownDirection.AboveRight);
         _cancelButton.Click += (_, _) => _export?.Cancel();
-        _forceImage.CheckedChanged += (_, _) => _preview.ForceStill = _forceImage.Checked;
         UpdateEffectIcons();
         FitEffectRows();
 
@@ -283,6 +293,8 @@ internal sealed class MainForm : Form
         if (disposing)
         {
             _settingsMenu.Dispose();
+            _copyMenu.Dispose();
+            _saveMenu.Dispose();
             _toolTip.Dispose();
             _resetButton.Image?.Dispose();
             _effectResetButton.Image?.Dispose();
@@ -667,30 +679,41 @@ internal sealed class MainForm : Form
         ShowStatus(count == 1 ? "1 image removed." : $"{count} images removed.");
     }
 
+    /// <summary>Copies the grid in the format its content suits: a PNG, or an MP4 video while a content plays.</summary>
+    private void CopyToClipboard() => Copy(AdaptedFormat);
+
     /// <summary>
-    /// Copies the grid: a still image, or — with animated content, unless forced to an image — an MP4
-    /// video, written to the temp folder and put on the clipboard as a file.
+    /// Copies the grid: a still image, or — <paramref name="format"/> given — an MP4 video or a GIF,
+    /// written to the temp folder and put on the clipboard as a file; a GIF also as its bytes, in the
+    /// clipboard's GIF format that some apps paste directly.
     /// </summary>
-    private async void CopyToClipboard()
+    private async void Copy(GridExport.Format? format)
     {
         if (_preview.Images.Count == 0 || IsExporting)
         {
             return;
         }
 
-        if (ExportsVideo)
+        if (format is { } animated)
         {
-            string path = TempVideoPath();
-            var videoClock = Stopwatch.StartNew();
-            if (await ExportVideoAsync(path) is { } video)
+            string path = TempExportPath(animated);
+            var animationClock = Stopwatch.StartNew();
+            if (await ExportAnimationAsync(path, animated) is { } animation)
             {
-                var encoding = videoClock.Elapsed;
+                var encoding = animationClock.Elapsed;
                 try
                 {
-                    Clipboard.SetFileDropList([path]);
-                    ShowStatus(VideoSummary($"Copied {Path.GetFileName(path)}", path, video, encoding));
+                    var data = new DataObject();
+                    data.SetFileDropList(new StringCollection { path });
+                    if (animated == GridExport.Format.Gif)
+                    {
+                        data.SetData("GIF", new MemoryStream(File.ReadAllBytes(path)));
+                    }
+
+                    Clipboard.SetDataObject(data, copy: true);
+                    ShowStatus(AnimationSummary($"Copied {Path.GetFileName(path)}", path, animated, animation, encoding));
                 }
-                catch (ExternalException ex)
+                catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException)
                 {
                     ShowStatus($"Copy failed: {ex.Message}", error: true);
                 }
@@ -725,19 +748,26 @@ internal sealed class MainForm : Form
         }
     }
 
-    /// <summary>Saves the grid as a PNG, or — with animated content, unless forced to an image — as an MP4 video.</summary>
-    private async void Save()
+    /// <summary>Saves the grid in the format its content suits: a PNG, or an MP4 video while a content plays.</summary>
+    private void Save() => SaveAs(AdaptedFormat);
+
+    /// <summary>Saves the grid as a PNG, or — <paramref name="format"/> given — as an MP4 video or a GIF.</summary>
+    private async void SaveAs(GridExport.Format? format)
     {
         if (_preview.Images.Count == 0 || IsExporting)
         {
             return;
         }
 
-        bool video = ExportsVideo;
-        string extension = video ? "mp4" : "png";
+        string extension = Extension(format);
         using var dialog = new SaveFileDialog
         {
-            Filter = video ? "MP4 video (*.mp4)|*.mp4" : "PNG image (*.png)|*.png",
+            Filter = format switch
+            {
+                GridExport.Format.Mp4 => "MP4 video (*.mp4)|*.mp4",
+                GridExport.Format.Gif => "GIF image (*.gif)|*.gif",
+                _ => "PNG image (*.png)|*.png",
+            },
             DefaultExt = extension,
             FileName = $"fusion-{DateTime.Now:yyyyMMdd-HHmmss}.{extension}",
             InitialDirectory = DefaultSaveFolder(),
@@ -749,11 +779,11 @@ internal sealed class MainForm : Form
 
         string saved = $"Saved {Path.GetFileName(dialog.FileName)}";
         var clock = Stopwatch.StartNew();
-        if (video)
+        if (format is { } animated)
         {
-            if (await ExportVideoAsync(dialog.FileName) is { } result)
+            if (await ExportAnimationAsync(dialog.FileName, animated) is { } result)
             {
-                ShowStatus(VideoSummary(saved, dialog.FileName, result, clock.Elapsed));
+                ShowStatus(AnimationSummary(saved, dialog.FileName, animated, result, clock.Elapsed));
             }
 
             return;
@@ -781,8 +811,15 @@ internal sealed class MainForm : Form
     /// <summary>Content that plays: a frozen one is exported as a still.</summary>
     private bool HasAnimation => _preview.Images.Any(i => i.Plays);
 
-    /// <summary>Animated content exports as a video, unless "Force as image" is checked.</summary>
-    private bool ExportsVideo => HasAnimation && !_forceImage.Checked;
+    /// <summary>What Copy and Save produce without a format picked from their menu: an MP4 video while a content plays, else a PNG (null).</summary>
+    private GridExport.Format? AdaptedFormat => HasAnimation ? GridExport.Format.Mp4 : null;
+
+    private static string Extension(GridExport.Format? format) => format switch
+    {
+        GridExport.Format.Mp4 => "mp4",
+        GridExport.Format.Gif => "gif",
+        _ => "png",
+    };
 
     /// <summary>
     /// Renders the still: the images as shown, or, for animated content, the page each one shows (a
@@ -815,29 +852,30 @@ internal sealed class MainForm : Form
     }
 
     /// <summary>
-    /// Writes the MP4 video to <paramref name="path"/> off the UI thread, with its progress and a
-    /// Cancel button in the status line, the grid locked meanwhile: the contents playing. Returns
-    /// null when cancelled or failing.
+    /// Writes the MP4 video or the GIF to <paramref name="path"/> off the UI thread, with its progress
+    /// and a Cancel button in the status line, the grid locked meanwhile: the contents playing.
+    /// Returns null when cancelled or failing.
     /// </summary>
-    private async Task<GridExport.Result?> ExportVideoAsync(string path)
+    private async Task<GridExport.Result?> ExportAnimationAsync(string path, GridExport.Format format)
     {
         using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!);
-        var cancellation = BeginExport("Exporting the video… 0 %", cancellable: true);
+        string what = format == GridExport.Format.Gif ? "GIF" : "video";
+        var cancellation = BeginExport($"Exporting the {what}… 0 %", cancellable: true);
         var progress = new Progress<double>(done =>
         {
             // Reports still queued when the export ends are dropped: they would hide its outcome.
             if (IsExporting)
             {
-                ShowStatus($"Exporting the video… {done:P0}");
+                ShowStatus($"Exporting the {what}… {done:P0}");
             }
         });
         try
         {
-            return await Task.Run(() => GridExport.RenderVideo(job, path, progress, cancellation));
+            return await Task.Run(() => GridExport.RenderAnimation(job, format, path, progress, cancellation));
         }
         catch (OperationCanceledException)
         {
-            ShowStatus("Video export cancelled.");
+            ShowStatus(format == GridExport.Format.Gif ? "GIF export cancelled." : "Video export cancelled.");
             return null;
         }
         catch (Exception ex) when (ex is ExternalException or InvalidOperationException or IOException or UnauthorizedAccessException)
@@ -880,11 +918,11 @@ internal sealed class MainForm : Form
     private static string StillSummary(string done, Size size, long bytes, TimeSpan encoding) =>
         Summary(done, "PNG", size, bytes, 1, TimeSpan.Zero, sound: null, encoding);
 
-    /// <summary>What a video copy or save produced, for the status line, <paramref name="path"/> being the file written.</summary>
-    private static string VideoSummary(string done, string path, GridExport.Result video, TimeSpan encoding) =>
+    /// <summary>What a video or GIF copy or save produced, for the status line, <paramref name="path"/> being the file written.</summary>
+    private static string AnimationSummary(string done, string path, GridExport.Format format, GridExport.Result video, TimeSpan encoding) =>
         Summary(
             done,
-            "MP4 video",
+            format == GridExport.Format.Gif ? "GIF" : "MP4 video",
             video.Size,
             new FileInfo(path).Length,
             video.Frames,
@@ -934,16 +972,16 @@ internal sealed class MainForm : Form
 
     private static string Seconds(TimeSpan time) => time == TimeSpan.Zero ? "0 s" : $"{time.TotalSeconds:0.0} s";
 
-    /// <summary>Videos copied to the clipboard live here: the clipboard only holds their path.</summary>
+    /// <summary>Videos and GIFs copied to the clipboard live here: the clipboard holds their path.</summary>
     private static string TempVideoFolder => Path.Combine(Path.GetTempPath(), "ImageGridFusion");
 
-    private static string TempVideoPath()
+    private static string TempExportPath(GridExport.Format format)
     {
         Directory.CreateDirectory(TempVideoFolder);
-        return Path.Combine(TempVideoFolder, $"fusion-{DateTime.Now:yyyyMMdd-HHmmss}.mp4");
+        return Path.Combine(TempVideoFolder, $"fusion-{DateTime.Now:yyyyMMdd-HHmmss}.{Extension(format)}");
     }
 
-    /// <summary>Removes the videos copied by previous sessions.</summary>
+    /// <summary>Removes the videos and GIFs copied by previous sessions.</summary>
     private static void CleanTempVideos()
     {
         try
@@ -953,7 +991,7 @@ internal sealed class MainForm : Form
                 return;
             }
 
-            foreach (var file in Directory.EnumerateFiles(TempVideoFolder, "*.mp4"))
+            foreach (var file in Directory.EnumerateFiles(TempVideoFolder, "*.mp4").Concat(Directory.EnumerateFiles(TempVideoFolder, "*.gif")))
             {
                 try
                 {
@@ -1015,10 +1053,33 @@ internal sealed class MainForm : Form
         _clearButton.Enabled = any;
         _copyButton.Enabled = any;
         _saveButton.Enabled = any;
-        _forceImage.Visible = HasAnimation;
-        _forceImage.Enabled = !IsExporting;
+
+        // The main parts name what they produce; the menus force a GIF or a video, pointless when nothing plays.
+        string format = HasAnimation ? "MP4" : "PNG";
+        _copyButton.Text = $"Copy {format}";
+        _saveButton.Text = $"Save {format}…";
+        _copyArrow.Enabled = any && HasAnimation;
+        _saveArrow.Enabled = any && HasAnimation;
         UpdateEffects();
     }
+
+    /// <summary>The main part of a split button: its right edge touches its arrow.</summary>
+    private static Button SplitMain(string text) => new()
+    {
+        Text = text,
+        AutoSize = true,
+        Margin = new Padding(3, 3, 0, 3),
+    };
+
+    /// <summary>The ▾ part of a split button, opening its menu; as tall as the row, as narrow as its glyph.</summary>
+    private static Button SplitArrow() => new()
+    {
+        Text = "▾",
+        AutoSize = true,
+        AutoSizeMode = AutoSizeMode.GrowAndShrink,
+        Anchor = AnchorStyles.Top | AnchorStyles.Bottom,
+        Margin = new Padding(0, 3, 3, 3),
+    };
 
     /// <summary>A toggle of an options row, pressed from the look of the selected image.</summary>
     private static CheckBox OptionButton(string text) => new()
