@@ -27,6 +27,19 @@ Apply to **every effect**, the blur being the first one
 | The effect's own *Reset* button (options toolbar) is clicked | That effect reset |
 | The effects toolbar's *Reset* button is clicked | Every effect reset, all at once |
 
+#### The Volume Exception
+
+The Volume effect's default state depends on the **other cells** (origin:
+`workfiles/20260925-video-mute.md`):
+
+- **Sound on arrival**: a video with sound that enters a cell is **heard** at 100 % (effect off)
+  when no other cell is heard, else **muted** (effect on, Mute checked). *Heard* means actually
+  heard: a video with a sound track, playing (not frozen), not muted, volume above 0.
+- Every *Reset* — the effect's own and the toolbar's — brings back that rule, **recomputed** from
+  the other cells at that moment.
+- An image deleted: the images shifting into another cell **keep their volume**, so a shift never
+  changes what is heard.
+
 ### Effects Toolbar
 
 - An **always-visible row of tabs**, hanging down from the options toolbar above it: an **Effects**
