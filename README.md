@@ -11,13 +11,11 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 - Not only images: videos, PDFs, text files, and any file Windows shows a thumbnail for, are turned into an image (see Previews)
 - An **Add images** drop zone right of the preview: drop files onto it to add them after the current ones, or click it to pick files
 - Several layouts per image count, picked from a strip of thumbnails, plus a mirror toggle (see Layouts)
-- Crop threshold slider in the top bar, from 0% to 50% (see Fitting rules)
 - No image list: the grid preview *is* the interface
-  - Click a cell to select it, `Esc` to deselect
+  - Click a cell to select it, `Esc` to deselect; the effects row acts on the selected cell (see Effects)
   - Hover a cell to outline it and show a **×** to remove it, or press `Delete` to remove the selected one
-  - Videos, animated GIFs, PDFs of several pages and long texts play live in their cell (see Animated content)
-  - Hover a cell holding a video, a GIF, a PDF or a long text to hold it still and show a slider along its bottom, browsing its frames or pages
-  - Zoom a cell from 50 % to 400 %: with the slider shown along its left edge while hovered (it snaps to 100 %), or with the mouse wheel over it, around the point under the mouse (4 notches double the zoom; crossing 100 % stops on it)
+  - Videos, animated GIFs, PDFs of several pages and long texts play live in their cell (see Animated content); the **Frames** effect sets where one starts, or freezes it on a frame
+  - Zoom a cell from 50 % to 400 %: with the **Zoom** effect's slider (it snaps to 100 %), or with the mouse wheel over any cell, around the point under the mouse (4 notches double the zoom; crossing 100 % stops on it)
   - Drag an image to move it in its cell, at any zoom — past the cell's edges too, to center a detail lying on the border of the image; the area it uncovers gets the band color (see Fitting rules), and at least 10 % of the cell always stays covered so it can be grabbed back
     - Magnetic stops: the image stops where one of its edges lines up with an edge of the cell, and where it is centered; keep dragging about 24 px to go past a stop (moving back inside over an edge is free). While it is held, a fluorescent green guide shows the stop: a dashed line on the aligned edge, a line through the center (both lines cross when centered both ways)
     - Hold `Shift` while dragging to ignore the stops
@@ -38,10 +36,36 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 
 ## Effects
 
-- The effects row, below the top bar, acts on the selected cell: a button is pressed when its effect is active on it. With no cell selected, the row is disabled.
-- Click an inactive effect to activate it and show its options in a row below; click an active one to show its options; click it again, while its options show, to remove it.
-- An effect belongs to the cell and its image: replacing the image (drop, `Ctrl+V`, picker) or removing an image clears the effects of the cells whose image changes; swapping two cells or changing the layout keeps them. The cell's reset button removes them too.
+- The effects row, below the top bar, starts with an **Effects** label, then one button per effect — **Zoom**, **Rotate**, **Flip**, **Frames**, **Black & white**, **Blur** — and a **Reset** button. It acts on the selected cell: a button is pressed when its effect is active on it. With no cell selected, the row is disabled.
+- Click an inactive effect to activate it and show its options in a row below; click an active one to show its options; click it again, while its options show, to remove it, bringing back its default (100 % centered, upright, unflipped, playing from the beginning, in color, sharp).
+- **Reset** removes every effect of the selected cell at once.
+- An effect belongs to the cell and its image: replacing the image (drop, `Ctrl+V`, picker) or removing an image clears the effects of the cells whose image changes; swapping two cells or changing the layout keeps them.
 - Effects show in the preview, in every export, and on videos while they play.
+
+### Zoom
+
+- Options: the zoom, from 50 % to 400 % on a log scale, snapping to 100 %.
+- The mouse wheel and dragging keep working on every cell, selected or not (see above); the effect is active as soon as the image is zoomed or moved.
+
+### Rotate
+
+- Options: the four rotations, **0°**, **90°**, **180°** and **270°**, and a fine angle from −45° to +45° by 1°, added to the rotation. A rotation button is pressed only while the angle falls exactly on it; clicking one sets that angle, the fine angle back to 0°.
+- At a fine angle, the image turns around the center of its cell, zoomed just enough to keep covering the part of the cell it covers unturned: no corner of the cell is left empty. Dragging and the wheel follow the mouse on a turned image.
+
+### Flip
+
+- Options: **Horizontal** and **Vertical**, each on its own.
+
+### Frames
+
+- For a video, an animated GIF, a PDF of several pages or a long text only; the button is disabled on other images.
+- Options: a slider along the frames or pages, and **Freeze**.
+- Not frozen, the slider sets where the content **starts playing** — its beginning by default — in the preview and in the exported video, its sound included.
+- Frozen, the content stops on the frame the slider picks, in the preview and in every export: a frozen cell is exported as that still, and a grid whose contents are all frozen is copied and saved as a PNG. A frozen video has no sound.
+
+### Black & white
+
+- Options: the intensity, from 0 (the colors) to 100 %; the bands follow it.
 
 ### Blur
 
@@ -65,7 +89,7 @@ A file that is not an image is turned into one when it can be previewed. The fir
 
 - A file none of them handles is skipped, with a status-line message; the app never draws an icon or a placeholder instead.
 - A video whose codec Windows lacks (HEVC without its Store extension, some mkv / avi) falls back to its Windows thumbnail, if any.
-- The slider appears only while the cell is hovered, and never in the output. The image follows it live while dragging.
+- The slider is the **Frames** effect's (see Effects), never in the output. The image follows it live while dragging.
 - **Text** is recognized from its content: at most 1 MB, UTF-8 or UTF-16 with a byte order mark, and no NUL byte in its first 8 KB. It is rendered on pages shaped like its cell, at the cell's size on a 1200 px canvas, and laid out again when the cell changes (layout, swap, image count), keeping the reading position.
 - **Readable text**: the font is the largest size between 24 and 96 px at which the whole text fits one page; below 24 px, the text is paginated at 24 px instead. Since the canvas is never narrower than the width at which no image is downscaled (see Canvas size), the text is at least that tall in the output. PDFs are rendered whole, so their small print may stay unreadable in a small cell.
 
@@ -82,14 +106,14 @@ A cell holding **multiple content** plays it, live in the preview and in the exp
 
 A single-page PDF, a text that fits its cell, a one-frame GIF and plain images stay still.
 
-- **Live preview**: every cell plays on one clock, so pages and views change together. Hovering a cell holds it still and shows its slider; leaving the cell resumes from where it stands, or from the page the slider was moved to.
-- **Sound**: the sound of image 1 when it is a video with sound, else of the first video with sound in grid order. The preview plays it in step with that video (held with it, looping with it), and the exported video carries it.
+- **Live preview**: every cell plays on one clock, so pages and views change together, each from the starting point of its Frames effect. Hovering a cell no longer holds it still: freezing goes through the Frames effect.
+- **Sound**: the sound of image 1 when it is a video with sound, else of the first video with sound in grid order — a frozen video has none. The preview plays it in step with that video (held with it, looping with it), and the exported video carries it, from the video's starting point.
 - **Export**: as soon as the grid holds multiple content, **Save** writes an **MP4 video** (H.264, AAC sound) instead of a PNG, and **Copy** puts an MP4 file on the clipboard (written to `%TEMP%\ImageGridFusion`, cleaned at the next start), pastable in Explorer, chat apps or mail.
-  - Every content starts from its beginning; the video lasts as long as the longest loop, the shorter ones starting over until it ends. 30 fps.
+  - Every content starts from the starting point of its Frames effect (its beginning without it), and a frozen one stays on its frame; the video lasts as long as the longest loop, the shorter ones starting over until it ends. 30 fps.
   - The canvas is sized once, from the first frames (see Canvas size), and rounded down to even dimensions; the bands keep the color of the first frame.
   - A sound Windows cannot re-encode leaves the video silent, with a note in the status line.
-- **Force as image**: this checkbox, next to Copy, appears only while the grid holds multiple content. Checked, Copy and Save produce a PNG again, each content showing its **first frame that is not empty** (not a flat black, white or single-color frame, like a video's intro), else its first frame.
-- **While exporting**, the status line shows the progress with a **Cancel** button, and the grid is locked: no adding, removing, swapping, clearing or changing the layout. The animation and the sliders keep working. Closing the window only hides it and the export goes on; quitting (see Tray & startup) cancels the export first. A cancelled export leaves no file.
+- **Force as image**: this checkbox, next to Copy, appears only while the grid holds multiple content that plays (not frozen). Checked, Copy and Save produce a PNG again, each content showing its **first frame that is not empty** (not a flat black, white or single-color frame, like a video's intro), else its first frame.
+- **While exporting**, the status line shows the progress with a **Cancel** button, and the grid is locked: no adding, removing, swapping, clearing, changing the layout or the effects. The animation keeps playing. Closing the window only hides it and the export goes on; quitting (see Tray & startup) cancels the export first. A cancelled export leaves no file.
 
 ## Layouts
 
@@ -159,13 +183,13 @@ Big left, mirrored
 ## Fitting rules
 
 - Each image is scaled to fill its cell, with no gap between cells.
-- Up to a threshold of the overflowing axis may be cropped in total, split evenly on both sides — 15% by default (7.5% per side).
+- Up to a threshold of the overflowing axis may be cropped in total, split evenly on both sides — 15% (7.5% per side).
 - Beyond that threshold, the image is cropped exactly to it and centered, and the remaining bands (and transparent pixels) are filled with a background color:
   - the image's own background, when at least three sides of the part the cell shows carry one uniform color (identical or very close, JPEG noise and slight gradients included) — a white product shot gets white bands even if its subject is mostly red. A side where the subject touches the edge, or a mostly transparent side, does not count;
   - otherwise the most frequent color of the whole image.
-  The sides are those of the part actually shown, after the crop and any zoom, so the color follows the zoom and the focus. An animation keeps the same color while it plays.
+  The sides are those of the part actually shown, after the crop and every effect (zoom, focus, rotation and fine angle), so the color follows them. An animation keeps the same color while it plays.
   The area an image moved past its cell's edges uncovers is filled the same way, from the sides of the part still shown.
-- The threshold is set with the **Crop** slider in the top bar, from 0% (no crop, bands only) to 50%, in steps of 5%. The preview follows it live, and copy / save use the same value. It is not remembered: every launch starts at 15%.
+- The threshold is fixed: to crop more, zoom in; to crop less, zoom out; and move the image to choose what the cell shows (see the Zoom effect).
 - The same rule applies whether the source image is too small (upscaled) or too large (downscaled).
 - EXIF orientation is applied on load, so photos from phones appear upright.
 
@@ -197,7 +221,7 @@ Output resolution is kept as high as possible so source images aren't needlessly
 
 ## Tech
 
-C# / WinForms on .NET 10, using `System.Drawing` (GDI+) with high-quality bicubic interpolation. Previews and exports use Windows' own components only, no third-party library: `Windows.Data.Pdf` for PDFs, Media Foundation for videos (`Windows.Media.Editing` for the slider's stills, the Source Reader for frame-by-frame playback, the Sink Writer for the MP4 export), and the Shell's `IShellItemImageFactory` for thumbnails.
+C# / WinForms on .NET 10, using `System.Drawing` (GDI+) with high-quality bicubic interpolation. Previews and exports use Windows' own components only, no third-party library: `Windows.Data.Pdf` for PDFs, Media Foundation for videos (`Windows.Media.Editing` for the Frames slider's stills, the Source Reader for frame-by-frame playback, the Sink Writer for the MP4 export), and the Shell's `IShellItemImageFactory` for thumbnails.
 
 ## Planned
 
