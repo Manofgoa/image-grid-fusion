@@ -50,7 +50,8 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 ### Rotate
 
 - Options: the four rotations, **0°**, **90°**, **180°** and **270°**, and a fine angle from −45° to +45° by 1°, added to the rotation. A rotation button is pressed only while the angle falls exactly on it; clicking one sets that angle, the fine angle back to 0°.
-- At a fine angle, the image turns around the center of its cell, zoomed just enough to keep covering the part of the cell it covers unturned: no corner of the cell is left empty. Dragging and the wheel follow the mouse on a turned image.
+- At a fine angle, the image turns around the center of its cell, zoomed just enough to keep covering the part of the cell it covers unturned: no corner of the cell is left empty.
+- Moving a turned image: the magnetic stops, their guides and the 10 % margin apply to the box around the turned image. Within its stops it keeps covering its cell; pushed beyond them, it keeps its place and zoom, and its uncovered corners get the band color.
 
 ### Flip
 
