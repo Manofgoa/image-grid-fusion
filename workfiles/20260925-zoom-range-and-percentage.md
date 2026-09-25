@@ -178,6 +178,12 @@ badge **just below the close button**; a helper indicator is a **measure / geome
 (interaction feedback keeps its colours); the hovered grip **stays white**. Consequence: no existing
 indicator is recolored — the rule documents what they already do and binds the new badge.
 
+### Iteration 3 — 2026-09-25 — ✅ Implemented
+
+Go given ("GO", after a first "No"), read as **code, unit tests and documentation**: the rule in
+`RULES.md` is part of the request itself. Branch gate: **stay on `main`** — the standing choice for
+this app. Scope frozen as described above.
+
 ---
 
 ## Implementation Log
