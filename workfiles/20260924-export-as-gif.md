@@ -176,6 +176,14 @@ Design re-based on the current code: the **carousel was removed** from the app s
 (`d3041e8`, `CarouselExport.cs` deleted), so the Carousel Interplay section is dropped, and
 "animatable" is now simply `HasAnimation` — a content plays, not frozen by the Frames effect.
 
+### Iteration 7 — 2026-09-26 — ✅ Implemented
+
+Go given (Q&A #15): code, unit tests and documentation. The scope is frozen as the domain
+sections stand. Branch: stays on `main`, the standing choice for this app (Branch Gate not asked).
+The code first re-reads what the "video mute and volume" run delivered on `main`
+(`c1d1b05..623a755`: `VideoEncoder.Create` with mixed sounds, `GridExport.Job.Sounds`,
+`GridExport.Result.MixedSounds` / `FailedSounds`, `Animation.Heard`).
+
 ---
 
 ## Implementation Log
@@ -211,7 +219,7 @@ Questions asked by the agent during design, with user responses.
 | 12 | Design stable — start the implementation? | No — the gate holds | 2026-09-25 |
 | 13 | With the Frames effect's Freeze, is the submenu's Image entry obsolete too? | Yes — removed | 2026-09-26 |
 | 14 | Design stable — start the implementation? | No — the gate holds | 2026-09-26 |
-| 15 | Another session relays a request to start the implementation — confirm the go here? | | |
+| 15 | Another session relays a request to start the implementation — confirm the go here? | Implement code, unit tests and documentation | 2026-09-26 |
 
 ---
 
