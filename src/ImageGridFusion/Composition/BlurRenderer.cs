@@ -5,8 +5,9 @@ using System.Runtime.InteropServices;
 namespace ImageGridFusion.Composition;
 
 /// <summary>
-/// Draws the blur effect of a cell: the blurred rectangle is drawn again into a small bitmap, then
-/// stretched back over it. No loop over the full-size pixels, so a playing video keeps up.
+/// Draws the blur effect of a cell: the cell is drawn again into a small bitmap, then stretched back
+/// over the outer bands around the rectangle that stays sharp. No loop over the full-size pixels, so
+/// a playing video keeps up.
 /// </summary>
 internal static class BlurRenderer
 {
@@ -25,22 +26,23 @@ internal static class BlurRenderer
             return;
         }
 
-        var area = Rectangle.Intersect(blur.Area(cell), cell);
-        if (area.Width < 1 || area.Height < 1)
+        // Every bar snapped to its edge: nothing is left to blur.
+        var sharp = Rectangle.Intersect(blur.Area(cell), cell);
+        if (sharp == cell || cell.Width < 1 || cell.Height < 1)
         {
             return;
         }
 
         double block = Math.Max(1, (LightestBlock + (StrongestBlock - LightestBlock) * blur.Intensity) * Math.Min(cell.Width, cell.Height));
-        int width = Math.Max(1, (int)Math.Ceiling(area.Width / block));
-        int height = Math.Max(1, (int)Math.Ceiling(area.Height / block));
+        int width = Math.Max(1, (int)Math.Ceiling(cell.Width / block));
+        int height = Math.Max(1, (int)Math.Ceiling(cell.Height / block));
 
         using var small = new Bitmap(width, height, PixelFormat.Format32bppArgb);
         using (var sg = Graphics.FromImage(small))
         {
-            // Each call prepends: the area is moved to the origin, then scaled down.
-            sg.ScaleTransform(width / (float)area.Width, height / (float)area.Height);
-            sg.TranslateTransform(-area.X, -area.Y);
+            // Each call prepends: the cell is moved to the origin, then scaled down.
+            sg.ScaleTransform(width / (float)cell.Width, height / (float)cell.Height);
+            sg.TranslateTransform(-cell.X, -cell.Y);
             Compositor.DrawCell(sg, frame with { Look = look.WithoutEffects() }, cell, threshold, fast);
         }
 
@@ -54,7 +56,8 @@ internal static class BlurRenderer
         }
 
         var state = g.Save();
-        g.SetClip(area, CombineMode.Intersect);
+        g.SetClip(cell, CombineMode.Intersect);
+        g.SetClip(sharp, CombineMode.Exclude);
         g.InterpolationMode = pixelate ? InterpolationMode.NearestNeighbor : InterpolationMode.HighQualityBicubic;
         g.PixelOffsetMode = pixelate ? PixelOffsetMode.Half : PixelOffsetMode.HighQuality;
 
@@ -62,7 +65,7 @@ internal static class BlurRenderer
         using (var attributes = new ImageAttributes())
         {
             attributes.SetWrapMode(WrapMode.TileFlipXY);
-            g.DrawImage(small, area, 0, 0, width, height, GraphicsUnit.Pixel, attributes);
+            g.DrawImage(small, cell, 0, 0, width, height, GraphicsUnit.Pixel, attributes);
         }
 
         g.Restore(state);

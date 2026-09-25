@@ -1,13 +1,13 @@
 namespace ImageGridFusion.Composition;
 
-/// <summary>How the blurred rectangle is rendered.</summary>
+/// <summary>How the bands around the sharp rectangle are blurred.</summary>
 public enum BlurKind
 {
     Gaussian,
     Pixelate,
 }
 
-/// <summary>A side of the blurred rectangle, each moved by its own bar.</summary>
+/// <summary>A side of the sharp rectangle, each moved by its own bar.</summary>
 public enum BlurSide
 {
     Left,
@@ -17,9 +17,10 @@ public enum BlurSide
 }
 
 /// <summary>
-/// The blur effect of an image: a rectangle of its cell, blurred with <see cref="Kind"/> at
-/// <see cref="Intensity"/>. The sides are fractions of the cell's width and height, so the rectangle
-/// stays where it is when the image is zoomed, panned or turned, and survives a change of layout.
+/// The blur effect of an image: a rectangle of its cell stays sharp, the bands around it are blurred
+/// with <see cref="Kind"/> at <see cref="Intensity"/>. The sides are fractions of the cell's width and
+/// height, so the rectangle stays where it is when the image is zoomed, panned or turned, and survives
+/// a change of layout.
 /// </summary>
 public sealed record BlurEffect
 {
@@ -65,7 +66,7 @@ public sealed record BlurEffect
 
     public BlurEffect WithIntensity(double intensity) => this with { Intensity = Math.Clamp(intensity, 0, 1) };
 
-    /// <summary>The blurred part of <paramref name="cell"/>: a side on 0 or 1 lands exactly on the cell's edge.</summary>
+    /// <summary>The part of <paramref name="cell"/> that stays sharp: a side on 0 or 1 lands exactly on the cell's edge, leaving no blur there.</summary>
     public Rectangle Area(Rectangle cell) => Rectangle.FromLTRB(
         cell.X + (int)Math.Round(Left * cell.Width),
         cell.Y + (int)Math.Round(Top * cell.Height),
