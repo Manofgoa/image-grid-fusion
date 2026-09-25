@@ -16,6 +16,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
   - Click a cell to select it, `Esc` to deselect; the effect tabs act on the selected cell (see Effects)
   - Hover a cell to outline it and show a **×** to remove it, or press `Delete` to remove the selected one
   - Videos, animated GIFs, PDFs of several pages and long texts play live in their cell (see Animated content); the **Frames** effect sets where one starts, or freezes it on a frame
+  - The sounds of every video are mixed; the **Volume** effect sets each one from 0 to 200 %, or mutes it
   - Zoom a cell from 10 % to 1600 %: with the **Zoom** effect's slider (it snaps to 100 %), or with the mouse wheel over any cell, around the point under the mouse (4 notches double the zoom; crossing 100 % stops on it)
   - Drag an image to move it in its cell, at any zoom — past the cell's edges too, to center a detail lying on the border of the image; the area it uncovers gets the band color (see Fitting rules), and at least 10 % of the cell always stays covered so it can be grabbed back
     - Magnetic stops: the image stops where one of its edges lines up with an edge of the cell, and where it is centered; keep dragging about 24 px to go past a stop (moving back inside over an edge is free). While it is held, a dashed fluorescent green guide shows the stop: along the aligned edge, or through the center (both lines cross when centered both ways)
@@ -39,15 +40,15 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 
 ## Effects
 
-- At the top of the window, the options row, then the tabs hanging below it: an **Effects** label, one tab per effect — **Zoom**, **Rotate**, **Flip**, **Frames**, **Black & white**, **Blur** — and, at the far right, a **Reset** button as tall as the tabs. They act on the selected cell; with no cell selected, both rows are disabled.
+- At the top of the window, the options row, then the tabs hanging below it: an **Effects** label, one tab per effect — **Zoom**, **Rotate**, **Flip**, **Frames**, **Black & white**, **Blur**, **Volume** — and, at the far right, a **Reset** button as tall as the tabs. They act on the selected cell; with no cell selected, both rows are disabled.
 - Each tab holds a checkbox, checked while its effect is on for the selected cell. Clicking it turns the effect on or off, and selects the tab.
 - Clicking a tab elsewhere selects it: its options show in the row above, joined to it. The selected tab stays selected when another cell is selected, or none. The options row is always there, empty until a tab is selected.
-- Turning an effect off keeps its settings: it is drawn as its default (100 % centered, upright, unflipped, playing from the beginning, in color, sharp) until it is turned on again, as it was. An effect that is off shows its kept settings in its options.
+- Turning an effect off keeps its settings: it is drawn as its default (100 % centered, upright, unflipped, playing from the beginning, in color, sharp, heard at 100 %) until it is turned on again, as it was. An effect that is off shows its kept settings in its options.
 - Changing any option of an effect turns it on, from its kept settings.
-- The options row ends with a **Reset** button that brings the selected tab's effect back to its default state: default settings, turned off.
+- The options row ends with a **Reset** button that brings the selected tab's effect back to its default state: default settings, turned off — except the Volume, which gets the sound on arrival again (see Volume).
 - The **Reset** at the far right of the tabs does it for every effect of the selected cell at once.
-- An effect that does not apply to the selected cell (**Frames** on a still image) keeps its tab selectable, but its checkbox and options are disabled; the checkbox's tooltip says why.
-- An effect belongs to the cell and its image: replacing the image (drop, `Ctrl+V`, picker) or removing an image clears the effects of the cells whose image changes; swapping two cells or changing the layout keeps them.
+- An effect that does not apply to the selected cell (**Frames** on a still image, **Volume** on an image without sound) keeps its tab selectable, but its checkbox and options are disabled; the checkbox's tooltip says why.
+- An effect belongs to the cell and its image: replacing the image (drop, `Ctrl+V`, picker) or removing an image clears the effects of the cells whose image changes — but the Volume of the images shifting after a removal, kept so what is heard does not change; swapping two cells or changing the layout keeps them.
 - Effects show in the preview, in every export, and on videos while they play.
 
 ### Zoom
@@ -82,6 +83,13 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 - Four fluorescent green bars across the cell, two vertical and two horizontal, set each side of the sharp rectangle on its own: drag them while the blur's options show and the blur is on. A bar dragged within 6 px of its edge of the cell snaps onto it, so no thin blurred strip is left there.
 - The rectangle stays in place in the cell when the image is zoomed, moved or turned.
 - Options: **Gaussian** or **Pixelate**, and the intensity, relative to the cell's size so an export looks like the preview.
+
+### Volume
+
+- For a video with a sound track only, frozen included (its volume applies again once it plays); disabled on other images.
+- Options: the volume, from 0 to 200 %, and **Mute**. The slider reaching 0 checks Mute. Checking Mute keeps the slider's level, out of reach until Mute is unchecked, which brings it back; unchecking it at 0 brings the volume back to 100 %.
+- **Sound on arrival**: a video added or dropped in (or replacing another) is heard at 100 % when no other cell is heard, else it arrives muted — the effect on, Mute checked. Both Resets give it that sound again, from the other cells at that moment. Turning the effect off makes the video heard at 100 %.
+- Above 100 %, the sound is amplified, clipped where it goes beyond full scale. The preview and the exported video both play it at its volume.
 
 ## Previews
 
@@ -125,11 +133,11 @@ A cell holding **multiple content** plays it, live in the preview and in the exp
 A single-page PDF, a text that fits its cell, a one-frame GIF and plain images stay still.
 
 - **Live preview**: every cell plays on one clock, so pages and views change together, each from the starting point of its Frames effect. Hovering a cell no longer holds it still: freezing goes through the Frames effect.
-- **Sound**: the sound of image 1 when it is a video with sound, else of the first video with sound in grid order — a frozen video has none. The preview plays it in step with that video (held with it, looping with it), and the exported video carries it, from the video's starting point.
+- **Sound**: the sounds of every video with sound are **mixed**, each at its Volume — a frozen or muted video adds nothing. In the preview, each sound plays in step with its own video (held with it, looping with it); the exported video carries the mix, each sound from its video's starting point, looping with it, in one AAC track.
 - **Export**: as soon as the grid holds multiple content, **Save** writes an **MP4 video** (H.264, AAC sound) instead of a PNG, and **Copy** puts an MP4 file on the clipboard (written to `%TEMP%\ImageGridFusion`, cleaned at the next start), pastable in Explorer, chat apps or mail.
   - Every content starts from the starting point of its Frames effect (its beginning without it), and a frozen one stays on its frame; the video lasts as long as the longest loop, the shorter ones starting over until it ends. 30 fps.
   - The canvas is sized once, from the first frames (see Canvas size), and rounded down to even dimensions; the bands keep the color of the first frame.
-  - A sound Windows cannot re-encode leaves the video silent, with a note in the status line.
+  - The status line names the videos whose sound is in the export. A sound Windows cannot re-encode is left out of the mix, with a note in the status line.
 - **Force as image**: this checkbox, next to Copy, appears only while the grid holds multiple content that plays (not frozen). Checked, Copy and Save produce a PNG again, each content showing its **first frame that is not empty** (not a flat black, white or single-color frame, like a video's intro), else its first frame.
 - **While exporting**, the status line shows the progress with a **Cancel** button, and the grid is locked: no adding, removing, swapping, clearing, changing the layout or the effects. The animation keeps playing. Closing the window only hides it and the export goes on; quitting (see Tray & startup) cancels the export first. A cancelled export leaves no file.
 
