@@ -42,8 +42,8 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 
 ### Blur
 
-- Blurs a rectangle of the cell, centered on half of it when activated.
-- Four bars across the cell, two vertical and two horizontal, set each side of the rectangle on its own: drag them while the blur's options show. A bar dragged within 6 px of its edge of the cell snaps onto it, so no thin sharp strip is left there.
+- Blurs the bands around a rectangle of the cell, which stays sharp; the rectangle is centered on half of the cell when activated.
+- Four fluorescent green bars across the cell, two vertical and two horizontal, set each side of the sharp rectangle on its own: drag them while the blur's options show. A bar dragged within 6 px of its edge of the cell snaps onto it, so no thin blurred strip is left there.
 - The rectangle stays in place in the cell when the image is zoomed, moved or turned.
 - Options: **Gaussian** or **Pixelate**, and the intensity, relative to the cell's size so an export looks like the preview.
 
