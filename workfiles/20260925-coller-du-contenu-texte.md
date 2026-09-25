@@ -61,9 +61,12 @@ In order, the first one present wins:
   refused — it is **rendered as text**, i.e. its URL (the HTML has no visible text, so the
   plain text wins).
 - Empty or whitespace-only text → nothing is added, status message
-  `Nothing to paste: the clipboard holds no image or text.`
-- Same size limit as a text file: at most 1 M characters, else a status message saying the text
-  is too long.
+  `Nothing to paste: the clipboard holds no image or text.` (a drop:
+  `Nothing added: the dropped text is empty.`)
+- Same size limit as a text file: at most 1,048,576 characters of **read** text (after RTF / HTML
+  parsing, not of the raw payload), else `Text too long: {n} characters, 1,048,576 at most.`
+- `UI/TextData.cs` reads every form on the UI thread (the data object lives there); parsing,
+  layout and the first render run off it, like a file's loading.
 
 ## Rendering
 
@@ -71,9 +74,11 @@ In order, the first one present wins:
   same fit rule (largest size in [24, 96] px at which the whole text fits one page, else
   paginated at 24 px), the same pages shaped like the cell, the same auto-scroll for long texts,
   the same re-layout on cell changes keeping the reading position.
-- `TextPages` gets a second entry point taking the text in memory, next to `TryOpen(path, …)`;
-  the file entry point keeps its sniffing and decoding, both share the layout.
-- Line endings normalized, tabs expanded, trailing blank lines trimmed — as for a file.
+- `TextPages.TryCreate(StyledText, Size)` takes the text in memory, next to `TryOpen(path, …)`;
+  the file entry point keeps its sniffing and decoding and hands a plain `StyledText` to it, so
+  both share the layout. `ImageLoader.FromText` builds the `SourceImage` (`FilePath = null`).
+- Line endings normalized, tabs expanded, trailing white space trimmed — as for a file, each
+  character keeping its style (`StyledText.Normalize`).
 
 ### Rich Text
 
@@ -81,18 +86,34 @@ In order, the first one present wins:
   highlight (background) color. Font family and sizes of the source are **ignored** — the page
   stays in Consolas and the `.txt` fit rule is untouched (Consolas bold / italic keep the same
   advance, so the monospace layout holds).
-- The RTF and HTML readers turn the source into **styled runs** (text + style); line breaks come
-  from paragraphs / `<br>` / block elements, as the source shows them. `TextPages` lays out the
-  runs' text exactly like plain text, then draws each run with its style.
-- Plain text is a single run with the default style.
+- The RTF and HTML readers (`Imaging/RtfReader.cs`, `Imaging/HtmlReader.cs`) turn the source
+  into a `StyledText`: the text and a style per character. `TextPages` lays the text out exactly
+  like plain text, then draws each run of one style at its column, its highlight behind it.
+- Plain text has no style array: it draws line by line, as before.
+- **RTF**: `\b`, `\i`, every `\ul…` kind, `\strike`, `\cf`, `\highlight` / `\cb` / `\chcbpat`,
+  `\plain`; `\par` / `\line` / `\row` break lines, `\tab` / `\cell` give tabs; `\u` with its
+  fallback skipped, `\'hh` decoded in the `\ansicpg` code page. Font / style tables, pictures,
+  headers, footers, field instructions and every `\*` destination are left out; a field's
+  result (a link's text) is kept.
+- **HTML**: the fragment the clipboard header points to (UTF-8 byte offsets), else the markup
+  between the fragment comments. Styles from `b` / `strong` / `th` / `h1`–`h6` (bold), `i` /
+  `em`…, `u` / `ins`, `s` / `del`, `mark` (yellow), `font color`, `bgcolor`, and the inline CSS
+  `color`, `background(-color)`, `font-weight`, `font-style`, `text-decoration(-line)`,
+  `white-space`, `display`. Blocks break lines; paragraphs, headings, top-level lists and
+  tables are set apart by a blank line; list items get `• ` (numbered in an `ol`, indented when
+  nested); table cells are separated by a tab. White space collapses, except in `pre` and
+  `white-space: pre…`. `head`, `script`, `style`, `svg`… and `display: none` are skipped.
 
 ### Background and Contrast
 
-- When the source gives **one background for the whole text** (e.g. VS Code's HTML, a dark
-  theme), the page takes that background as its paper; otherwise, white paper.
-- The default ink follows the paper: a text without its own color is drawn in the default dark
-  ink on a light paper, and in a light ink on a dark paper.
-- Colors of the runs are kept as the source gives them — no correction.
+- When **every visible character sits on a background** (e.g. VS Code's HTML, a dark theme), the
+  most frequent of those backgrounds becomes the paper, and stops being a highlight where it
+  was one; otherwise, white paper. Whitespace does not count.
+- The default ink follows the paper: a text without its own color is drawn in the dark ink
+  (`#222222`) on a light paper, in a light ink (`#DDDDDD`) on a dark one — dark meaning a
+  perceived lightness under 128 / 255.
+- Colors of the runs are kept as the source gives them — no correction. A translucent CSS color
+  is laid over white; a fully transparent background lets the parent's show.
 
 ## README
 
@@ -172,6 +193,33 @@ Go given ("Go implémente", then *Code, tests and documentation*), after a first
 frozen as the design sections stand in Iteration 2: code, plus the README; no unit tests, as
 agreed. Work stays on `main` — the project's standing choice.
 
+### Iteration 4 — 2026-09-26 — 🧭 Implementation choices
+
+No project rule broken. Choices the frozen design did not state:
+
+- **Paper rule, closest workable variant**: "one background for the whole text" became *every
+  visible character sits on a background → the most frequent one is the paper*. An editor's
+  HTML nests colored spans in a colored block; a strict "one single background" test would
+  fail on the first inner highlight (a selection, a search match) and bring back the white
+  paper under light text.
+- Light default ink `#DDDDDD`, darkness threshold at a perceived lightness of 128.
+- Translucent CSS colors laid over white; `transparent` backgrounds let the parent's show.
+- HTML structure rendering (blank lines around paragraphs / headings / top-level lists /
+  tables, `• ` bullets, numbered `ol`, two-space indent per nesting level, tab between cells,
+  bold headings and `th`, yellow `mark`) — the design only said "as the source shows them".
+- RTF: every `\*` destination and the listed tables skipped; a field's result kept, its
+  instruction dropped; `\cb` and `\chcbpat` read as highlights next to `\highlight`.
+- Drop of a blank text: its own message, `Nothing added: the dropped text is empty.`; the
+  1,048,576-character limit applies to the read text, not to the raw RTF / HTML payload.
+- Names: `Imaging/StyledText.cs` (with `TextStyle` and its `Builder`), `Imaging/RtfReader.cs`,
+  `Imaging/HtmlReader.cs`, `UI/TextData.cs`; `TextPages.TryCreate`, `ImageLoader.FromText`.
+- Build output: the app was running (`ImageGridFusion.exe` locked by another process), so every
+  build went to a scratch output folder; the running instance was left alone.
+- Checks: the readers and the rendering were run on sample RTF (Word-like), VS Code HTML and
+  browser HTML through a throwaway console harness outside the repository — styles, `€` / `é`,
+  bullets, tables, the dark paper all came out right. The manual checks of *Test Impact* in the
+  running app (real clipboard, drags from Word / Chrome / VS Code / Excel) are still to be run.
+
 ---
 
 ## Implementation Log
@@ -181,9 +229,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
+| Code | 3 | 2026-09-26 | Styled text rendering, RTF reader, HTML reader, paste / drop wiring — 4 commits |
+| Unit tests | 3 | 2026-09-26 | None, as agreed (no test project); manual checks listed in *Test Impact*, to be run in the app |
+| README | 3 | 2026-09-26 | Features, Adding images, new *Pasted text* section under Previews |
 
 ---
 
