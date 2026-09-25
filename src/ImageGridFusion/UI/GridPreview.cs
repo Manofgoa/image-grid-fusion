@@ -32,6 +32,10 @@ internal sealed class GridPreview : Control
     private const int BarGripLength = 32;
     private const int BarGripWidth = 8;
     private const int PanResistance = 24;
+    private const int ZoomBadgeHold = 1000;
+    private const int ZoomBadgeFade = 300;
+    private const int ZoomBadgeTick = 30;
+    private const int ZoomBadgeTextSize = 16;
 
     private static readonly Color HoverOutlineColor = Color.FromArgb(128, Color.White);
 
@@ -80,6 +84,12 @@ internal sealed class GridPreview : Control
     private int _wheelCell = -1;
     private int _wheelDelta;
 
+    // The zoom percentage of the image last zoomed, over its cell: held a moment after each change, then faded out.
+    private readonly System.Windows.Forms.Timer _zoomBadgeTimer = new();
+    private SourceImage? _zoomBadgeImage;
+    private long _zoomBadgeChanged;
+    private Rectangle _zoomBadgeBounds;
+
     // Carousel: the step shown, 0 being the user's own arrangement, which the pause shows too.
     private readonly System.Windows.Forms.Timer _carouselTimer = new() { Interval = (int)Carousel.StepDuration.TotalMilliseconds };
     private bool _playsCarousel;
@@ -102,6 +112,7 @@ internal sealed class GridPreview : Control
         };
         _player.FrameShown += (_, image) => RedrawCell(image);
         _wheelEnd.Tick += (_, _) => EndLive();
+        _zoomBadgeTimer.Tick += (_, _) => OnZoomBadgeTick();
         _carouselTimer.Tick += (_, _) => OnCarouselTick();
     }
 
@@ -329,6 +340,7 @@ internal sealed class GridPreview : Control
         if (disposing)
         {
             _wheelEnd.Dispose();
+            _zoomBadgeTimer.Dispose();
             _carouselTimer.Dispose();
             _player.Dispose();
             _images.ForEach(i => i.Dispose());
@@ -415,6 +427,8 @@ internal sealed class GridPreview : Control
             PaintCloseButton(g, CloseBounds(cells[_hovered]), _hoveringClose);
             PaintHandle(g, HandleBounds(cells[_hovered]), _hoveringHandle);
         }
+
+        PaintZoomBadge(g);
 
         if (_dragging && _ghost is not null)
         {
@@ -1218,6 +1232,7 @@ internal sealed class GridPreview : Control
         var size = zoomed.Oriented(image.Bitmap.Size);
         BeginLive(_selected);
         SetLook(_selected, zoomed.WithFocus(FitCalculator.WithinStops(cells[_selected], size, zoomed.Zoom, zoomed.Focus, zoomed.FineAngle)));
+        ShowZoomBadge(image);
         _wheelEnd.Start();
     }
     /// <summary>
@@ -1253,6 +1268,113 @@ internal sealed class GridPreview : Control
         var origin = new PointF((float)(under.X - x * after.Width), (float)(under.Y - y * after.Height));
         var focus = FitCalculator.FocusAt(cell, after, origin);
         SetLook(index, zoomed.WithFocus(FitCalculator.WithinStops(cell, size, zoomed.Zoom, focus, zoomed.FineAngle)));
+        ShowZoomBadge(image);
+    }
+
+    /// <summary>
+    /// Shows the zoom percentage of an image over its cell — at full opacity for <see cref="ZoomBadgeHold"/>
+    /// after each change, then fading out; a bound reached shows too, the zoom staying on it.
+    /// </summary>
+    private void ShowZoomBadge(SourceImage image)
+    {
+        InvalidateZoomBadge();
+        _zoomBadgeImage = image;
+        _zoomBadgeChanged = Environment.TickCount64;
+        _zoomBadgeTimer.Stop();
+        _zoomBadgeTimer.Interval = ZoomBadgeHold;
+        _zoomBadgeTimer.Start();
+        InvalidateZoomBadge();
+    }
+
+    /// <summary>Waits out the hold in one tick, then repaints the badge along its fade, and drops it once transparent.</summary>
+    private void OnZoomBadgeTick()
+    {
+        long elapsed = Environment.TickCount64 - _zoomBadgeChanged;
+        if (elapsed >= ZoomBadgeHold + ZoomBadgeFade)
+        {
+            _zoomBadgeTimer.Stop();
+            InvalidateZoomBadge();
+            _zoomBadgeImage = null;
+            return;
+        }
+
+        _zoomBadgeTimer.Interval = elapsed < ZoomBadgeHold ? (int)(ZoomBadgeHold - elapsed) : ZoomBadgeTick;
+        if (elapsed >= ZoomBadgeHold)
+        {
+            InvalidateZoomBadge();
+        }
+    }
+
+    /// <summary>Repaints where the badge was last painted, and where it is now — its text may have changed width.</summary>
+    private void InvalidateZoomBadge()
+    {
+        if (!_zoomBadgeBounds.IsEmpty)
+        {
+            Invalidate(_zoomBadgeBounds);
+        }
+
+        using var path = ZoomBadgePath(out _);
+        if (path is not null)
+        {
+            Invalidate(ZoomBadgeBounds(path));
+        }
+    }
+
+    /// <summary>
+    /// The text of the zoom badge, right-aligned just below the × of the cell showing its image;
+    /// <c>null</c> when there is none, or its image is no longer shown.
+    /// </summary>
+    private GraphicsPath? ZoomBadgePath(out Rectangle cell)
+    {
+        cell = Rectangle.Empty;
+        var cells = CellBounds();
+        int index = _zoomBadgeImage is null ? -1 : _images.IndexOf(_zoomBadgeImage);
+        if (index < 0 || ShownCell(index) >= cells.Length)
+        {
+            return null;
+        }
+
+        cell = cells[ShownCell(index)];
+        var close = CloseBounds(cell);
+        var origin = new PointF(close.Right, close.Bottom + LogicalToDeviceUnits(ButtonGap));
+        using var format = new StringFormat { Alignment = StringAlignment.Far };
+        var path = new GraphicsPath();
+        path.AddString($"{_zoomBadgeImage!.Look.Zoom * 100:0} %", Font.FontFamily, (int)FontStyle.Bold, LogicalToDeviceUnits(ZoomBadgeTextSize), origin, format);
+        return path;
+    }
+
+    private Rectangle ZoomBadgeBounds(GraphicsPath path)
+    {
+        int halo = LogicalToDeviceUnits(4);
+        return Rectangle.Inflate(Rectangle.Ceiling(path.GetBounds()), halo, halo);
+    }
+
+    /// <summary>The zoom badge, a helper indicator: green over the black halo, faded out after its hold.</summary>
+    private void PaintZoomBadge(Graphics g)
+    {
+        using var path = ZoomBadgePath(out var cell);
+        if (path is null)
+        {
+            _zoomBadgeBounds = Rectangle.Empty;
+            return;
+        }
+
+        _zoomBadgeBounds = ZoomBadgeBounds(path);
+        long elapsed = Environment.TickCount64 - _zoomBadgeChanged;
+        double opacity = Math.Clamp(1 - (elapsed - ZoomBadgeHold) / (double)ZoomBadgeFade, 0, 1);
+        var state = g.Save();
+        g.SetClip(cell, CombineMode.Intersect);
+        using (var outline = new Pen(Color.FromArgb((int)(HelperHalo.A * opacity), HelperHalo), LogicalToDeviceUnits(4)) { LineJoin = LineJoin.Round })
+        {
+            g.DrawPath(outline, path);
+        }
+
+        using (var fill = new SolidBrush(Color.FromArgb((int)(255 * opacity), HelperColor)))
+        {
+            g.FillPath(fill, path);
+        }
+
+        g.Restore(state);
     }
 
     /// <summary>
