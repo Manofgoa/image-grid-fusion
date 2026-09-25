@@ -52,6 +52,11 @@ Agreed:
   - moving the slider above 0 unchecks Mute.
 - Per `RULES.md`, acting on any option turns the effect on; the options row ends with the effect's
   own *Reset*.
+- Turning the effect on with no settings kept (its checkbox, or an option acted on while it is off)
+  starts at **100 %, not muted** — what an effect that is off already sounds like; an effect that is
+  off shows those settings in its options.
+- State: `Composition/VolumeEffect.cs` (`Level` 0…2, `IsMuted`, `Gain`), held by `ImageLook.Volume`,
+  its kept settings in `ImageLook.KeptVolume`; `ImageLook.SoundGain` is 1 while the effect is off.
 
 ### Applicability
 
@@ -81,6 +86,10 @@ replacing one video with sound among several → the new one is muted.
 - **Deletion**: the videos shifting into another cell **keep their volume** — an exception to the
   `RULES.md` reset on deletion, so a shift never changes what is heard. Deleting the only audible
   video does not make the others audible.
+- Code: `SourceImage.HasSound` / `SourceImage.IsHeard`, `Animation.SoundOnArrival`, applied by
+  `GridPreview.Add` to each image in the order it arrives (several videos dropped at once: the first
+  is heard, the others muted), and by both Resets in `MainForm.ResetLook`; each Reset button is
+  enabled only when it would change something. `ImageLook.WithoutEffects` keeps the volume.
 
 ---
 
@@ -92,19 +101,29 @@ nothing. A muted video contributes nothing.
 
 ### Preview
 
-`PreviewSound` today holds one `MediaPlayer`, whose `Volume` is limited to **0…1**. It is replaced
-by one **`Windows.Media.Audio.AudioGraph`**: one input node per video with sound, whose gain is the
-cell's volume (**up to 2**, so 200 % is heard in the preview), all mixed into the default output
-device. Each node is kept in step with its own video's frames — position, pause, loop — as
-`PreviewSound.Sync` does today for the single sound, with the same drift threshold.
+`PreviewSound` held one `MediaPlayer`, whose `Volume` is limited to **0…1**. It is replaced by one
+**`Windows.Media.Audio.AudioGraph`**: one `AudioFileInputNode` per video with sound (looping
+endlessly), whose `OutgoingGain` is the cell's volume (**up to 2**, so 200 % is heard in the
+preview), all mixed into the default output device. Each node is kept in step with its own video's
+frames from `AnimationPlayer`'s loop — position, pause, loop — with the 250 ms drift threshold.
+
+- A muted, frozen or held video keeps its node, **paused**; unmuting resumes it in step at once.
+- The graph is created with the first video with sound, and **stopped** while the grid holds none,
+  so an idle preview holds no audio stream open. A graph or a node Windows cannot create leaves that
+  sound out of the preview; the frames still play.
 
 ### Export
 
-`VideoEncoder.Sound` becomes a mixer: one Source Reader per audible video, each converted to the
-same PCM format (48 kHz or 44.1 kHz, stereo, 16-bit), each looping on its own video's loop from its
-own start, **summed with its gain** and **clamped** to the 16-bit range, then encoded to a single
-AAC track. The export's length stays the longest loop. A sound Windows cannot re-encode is left out
-of the mix, with a note in the status line (as today for the single sound).
+`VideoEncoder.Sound` becomes `VideoEncoder.Mixer`: one `Voice` (Source Reader) per heard video,
+from `GridExport.Job.Sounds` (`MixedSound`: path, loop, start, gain), each looping on its own
+video's loop from its own start, **summed with its gain** and **clamped** to the 16-bit range, then
+encoded to a single AAC track, written in steps of 100 ms. The export's length stays the longest loop.
+
+- Format: **stereo**, 16-bit, at **44.1 kHz when every sound is**, else 48 kHz; a mono sound goes to
+  both sides; a sound shorter than its loop is silent until the loop starts over.
+- A sound Windows cannot decode at that rate or re-encode is left out of the mix. The status line
+  names the mixed files, then the left-out ones: `sound: a.mp4 + b.mp4 (c.mp4: its sound cannot be
+  re-encoded)`, or `no sound (…)` when none is left.
 
 ### Shared with the Soundtrack
 
@@ -207,6 +226,27 @@ Go given by the user ("GO", after a first "No"), read as the full scope: code, R
 unit tests were declined in Iteration 4. Branch Gate: **stays on `main`**, the standing choice of
 this repository. Scope frozen on the design sections as they stand.
 
+### Iteration 6 — 2026-09-26 — 🧭 Implementation choices
+
+No project rule was broken. Choices the frozen design did not state:
+
+- **Turning the effect on with nothing kept** starts at 100 %, not muted, so the options of an effect
+  that is off show what is heard; muting goes through the Mute check box (which turns the effect on).
+- **Export format**: always stereo, 44.1 kHz only when every sound is, else 48 kHz; mono spread to
+  both sides; a sound shorter than its loop is padded with silence (the single-sound export left a
+  gap); a sound whose decoded rate is not the one asked for is left out, like one that cannot be
+  re-encoded.
+- **Status line**: lists every mixed file, then the left-out ones (see § Export).
+- **Preview**: a node per video with sound, a muted or frozen one kept paused rather than removed;
+  the graph stopped while no video with sound is in the grid.
+- **Several videos arriving at once** get the rule in the order they arrive: the first heard (when no
+  other cell is), the others muted.
+- **Reset buttons** are enabled only when the reset would change something, the Volume's rule on
+  arrival included (the global one used to be enabled as soon as any effect was on).
+- **GLOSSARY** gets *Heard* and *Sound on arrival*, next to the RULES exception.
+- **Builds** went to the scratchpad: the app's own `bin` executable was locked by a running
+  instance, left untouched.
+
 ---
 
 ## Implementation Log
@@ -216,10 +256,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 6 | 2026-09-26 | State, export mixer, preview mixer, Volume tab — 4 commits; verified with a scratchpad harness exporting 3 videos (one without sound, one at 200 %) and an all-muted grid |
 | Unit tests | 4 | 2026-09-25 | Declined by the user — no test project, manual verification |
-| README | | | |
-| RULES | | | |
+| README | 6 | 2026-09-26 | Volume section, Effects and Sound bullets |
+| RULES | 6 | 2026-09-26 | § Effects — *The Volume Exception*; GLOSSARY: Volume, Heard, Sound on arrival |
 
 ---
 
