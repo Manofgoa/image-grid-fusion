@@ -8,6 +8,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 - Merges 1 to 4 images into one; a single image fills the whole canvas and is exportable
 - Output ratio locked to 1200:628 (≈1.91:1); the ratio matters, not the resolution (see Canvas size)
 - Drag & drop images onto the `.exe` icon or onto the window, or paste them with `Ctrl+V`
+- Paste or drop a text too, from any app: it becomes an image, rendered like a text file, its bold, italic, underline, strike and colors kept (see Pasted text)
 - Not only images: videos, PDFs, text files, and any file Windows shows a thumbnail for, are turned into an image (see Previews)
 - An **Add images** drop zone right of the preview: drop files onto it to add them after the current ones, or click it to pick files
 - Several layouts per image count, picked from a strip of thumbnails, plus a mirror toggle (see Layouts)
@@ -23,7 +24,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
   - While the zoom changes (wheel or slider), its percentage shows in fluorescent green in the top-right corner of the cell, just below the ×; it stays 1 s after the last change, then fades out. Never in the exports
   - Zooming and moving show live, smoothed once the gesture ends (the wheel: once it stops turning); not while exporting
   - Drag the **✥** handle shown in the middle of a hovered cell onto another cell to swap the two images (in a small cell, it shrinks, or sits below the **×**)
-  - Drop a file onto a cell to replace it
+  - Drop a file or a text onto a cell to replace it
   - **Clear all** (bottom left) removes every image at once, with no confirmation, back to the initial state
 - Effects per cell, from the effect tabs at the top of the window (see Effects)
 - Copy to clipboard (`Ctrl+C`) or save (`Ctrl+S`): a PNG, or an MP4 video when the grid holds animated content
@@ -34,6 +35,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 - While cells are free, new images fill them in order.
 - Once the grid is full, a new image replaces the selected cell, or the last image (image 4) if none is selected.
 - Adding several files at once (paste, drop, the Add images picker, or command-line arguments): free slots are filled first, the first excess file applies the replace rule above, and any further excess is ignored, with a status-line message.
+- A pasted or dropped text is one image, placed by the same rules.
 
 ## Effects
 
@@ -99,6 +101,15 @@ A file that is not an image is turned into one when it can be previewed. The fir
 - The slider is the **Frames** effect's (see Effects), never in the output. The image follows it live while dragging.
 - **Text** is recognized from its content: at most 1 MB, UTF-8 or UTF-16 with a byte order mark, and no NUL byte in its first 8 KB. It is rendered on pages shaped like its cell, at the cell's size on a 1200 px canvas, and laid out again when the cell changes (layout, swap, image count), keeping the reading position.
 - **Readable text**: the font is the largest size between 24 and 96 px at which the whole text fits one page; below 24 px, the text is paginated at 24 px instead. Since the canvas is never narrower than the width at which no image is downscaled (see Canvas size), the text is at least that tall in the output. PDFs are rendered whole, so their small print may stay unreadable in a small cell.
+
+### Pasted text
+
+- `Ctrl+V` with a text on the clipboard, or a text dragged from another app, adds it as an image rendered like a text file (see above): same monospace font, same readable sizes, same pages, same scrolling when it is long. It has no file behind it.
+- What the clipboard or the drag holds is taken in this order, the first one present winning: files, an image (`Ctrl+V` only — so Excel cells still paste as a picture), rich text (RTF, as Word gives it, else HTML, as browsers give it), plain text.
+- A rich text keeps its **bold**, *italic*, underline, strikethrough, text colors and highlights; its fonts and sizes are not kept, the page stays in the monospace font.
+- When the whole text sits on a background — code copied from an editor in a dark theme — the page takes that background, and the text without a color of its own turns light on a dark one.
+- An HTML holding no text, like an image dragged from a browser, gives way to the plain text that comes with it: the image's address shows as a text.
+- An empty text adds nothing; a text longer than 1,048,576 characters is refused. Both say so on the status line.
 
 ## Animated content
 
