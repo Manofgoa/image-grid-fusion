@@ -20,8 +20,8 @@ public enum ImageEffect
 /// </summary>
 public sealed record ImageLook
 {
-    public const double MinZoom = 0.5;
-    public const double MaxZoom = 4;
+    public const double MinZoom = 0.1;
+    public const double MaxZoom = 16;
 
     /// <summary>A fine angle goes this far either way from the quarter turn; beyond, the next quarter turn is nearer.</summary>
     public const int MaxFineAngle = 45;
