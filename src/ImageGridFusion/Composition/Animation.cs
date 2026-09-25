@@ -31,6 +31,22 @@ public static class Animation
     public static SourceImage? SoundSource(IReadOnlyList<SourceImage> images) =>
         images.FirstOrDefault(i => i.Plays && i.Pages is IHasSound { HasSound: true } && i.FilePath is not null);
 
+    /// <summary>
+    /// Images whose sounds are mixed into the video, and in the preview, each at the gain of its volume
+    /// effect: the videos with sound that play and are not muted. A frozen video has no sound.
+    /// </summary>
+    public static IReadOnlyList<SourceImage> Heard(IEnumerable<SourceImage> images) => images.Where(i => i.IsHeard).ToList();
+
+    /// <summary>
+    /// The look of <paramref name="image"/> as it arrives in the grid, or has its volume reset: a video
+    /// with sound is heard at 100 % when no other image is heard, else muted (RULES.md). The look is
+    /// returned as it is for any other image.
+    /// </summary>
+    public static ImageLook SoundOnArrival(SourceImage image, ImageLook look, IEnumerable<SourceImage> grid) =>
+        image.HasSound && grid.Any(i => i != image && i.IsHeard)
+            ? look.WithVolume(VolumeEffect.Muted)
+            : look;
+
     /// <summary>H.264 needs even dimensions: rounded down, never under 2.</summary>
     public static Size EvenSize(Size size) => new(Math.Max(2, size.Width & ~1), Math.Max(2, size.Height & ~1));
 }
