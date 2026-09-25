@@ -239,7 +239,8 @@ Questions asked by the agent during design, with user responses.
 | 14 | Deletion: recompute the shifted videos' sound, or keep it? | Keep their volume | 2026-09-25 |
 | 15 | What counts as an "audible" video for the rule on arrival? | Actually heard: sound track, not frozen, not muted, volume above 0 | 2026-09-25 |
 | 16 | Does this workfile build the mixer the soundtrack will reuse? | Yes, this workfile | 2026-09-25 |
+| 17 | May the implementation begin? | No — the gate holds | 2026-09-26 |
 
 ---
 
-*Last updated: 2026-09-25*
+*Last updated: 2026-09-26*
