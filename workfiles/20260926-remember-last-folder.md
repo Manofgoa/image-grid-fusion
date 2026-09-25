@@ -36,17 +36,23 @@ Agreed:
 - **What updates it**: only a file picked through a **browse dialog** (the dialog closed with *Open*
   / *Save*). A drop from the Explorer and a Ctrl+V of a file **do not** change it. A cancelled
   dialog changes nothing.
-- **One remembered folder per kind of dialog**, not one shared by every dialog.
+- **One remembered folder per dialog**, not one shared by every dialog. Inside a dialog, every
+  kind of content (images, videos, PDF, text) shares its folder. A future picker — e.g. the
+  soundtrack's — gets a folder of its own.
 - **Exports are concerned too**, with a **folder of their own**, separate from the loading one.
+- **Export folder**: today's rule (folder of the first loaded image's file, else *My Pictures*)
+  still applies **until a first export** has been made; from then on, the export dialog always opens
+  on the last export folder.
+- **Storage**: a JSON settings file, `%AppData%\ImageGridFusion\settings.json` — the app's first
+  settings store, open to other settings later.
+- **Written as soon as a dialog closes** with a file picked, so a crash never loses it.
 
 | Dialog | Remembered folder | Updated by |
 |---|---|---|
 | Open — *Add images* (`PickFiles`) | Last loading folder | The folder of the files picked |
 | Save — export PNG / MP4 (`Save`) | Last export folder | The folder of the file saved |
 
-Pending (see Open Questions): what "per kind" means while a single open dialog exists, how the
-export folder combines with today's *first image's folder* rule, where it is stored, when it is
-written, and what happens when the folder no longer exists.
+Pending (see Open Questions): what happens when the folder no longer exists.
 
 ---
 
@@ -62,15 +68,17 @@ only); every previous workfile shipped without unit tests.
 
 ## Open Questions
 
-- [ ] "One folder per kind": the app has a **single** open dialog today, for every kind of cell
+- [x] ~~"One folder per kind": the app has a **single** open dialog today, for every kind of cell
   content. Does it mean one folder for that dialog (a future picker — e.g. the soundtrack's — getting
-  its own), or one per content kind (images / videos / PDF / text) inside it?
-- [ ] Export dialog: does the remembered export folder **replace** today's rule (folder of the first
+  its own), or one per content kind (images / videos / PDF / text) inside it?~~ → One per dialog
+- [x] ~~Export dialog: does the remembered export folder **replace** today's rule (folder of the first
   loaded image, else *My Pictures*), or does that rule still apply until a first export has been
-  made?
-- [ ] Storage: a JSON settings file under `%AppData%\ImageGridFusion\`, or the registry
-  (`HKCU\Software\ImageGridFusion`), next to the *Start with Windows* value?
-- [ ] When is it written: as soon as a dialog closes with a file picked, or when the app closes?
+  made?~~ → Today's rule until a first export, the last export folder afterwards
+- [x] ~~Storage: a JSON settings file under `%AppData%\ImageGridFusion\`, or the registry
+  (`HKCU\Software\ImageGridFusion`), next to the *Start with Windows* value?~~ → JSON file,
+  `%AppData%\ImageGridFusion\settings.json`
+- [x] ~~When is it written: as soon as a dialog closes with a file picked, or when the app
+  closes?~~ → As soon as the dialog closes with a file picked
 - [ ] The remembered folder no longer exists (deleted, USB drive unplugged): nearest existing parent
   folder, or the dialog's default folder?
 - [ ] Unit tests: none, verified by hand like every previous workfile, or a first test project?
@@ -90,6 +98,13 @@ Initial scope from the user's request, settled in the scoping batch (Q&A #1–#4
 update the remembered folder, one folder per kind of dialog, the export dialog remembers its own
 folder, the subject is straightforward (single scout pass). The scout pass found a single open
 dialog, a single save dialog, and no settings store. Six questions remain open.
+
+### Iteration 2 — 2026-09-26
+
+Q&A #5–#8: one folder per dialog (not per content kind); the export dialog keeps today's rule until
+a first export, then opens on the last export folder; stored in `%AppData%\ImageGridFusion\settings.json`;
+written as soon as a dialog closes with a file picked. Two questions remain: missing folder, unit
+tests.
 
 ---
 
@@ -116,10 +131,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | One folder shared by every open dialog, or one per kind? | One per kind | 2026-09-25 |
 | 3 | Are the save (export) dialogs concerned? | Yes, with a folder of their own | 2026-09-25 |
 | 4 | Is the subject straightforward, or tricky / long? | Straightforward | 2026-09-25 |
-| 5 | "One per kind" with a single open dialog: per dialog, or per content kind? | | 2026-09-26 |
-| 6 | Export folder: replaces the *first image's folder* rule, or only after a first export? | | 2026-09-26 |
-| 7 | Storage: JSON file in `%AppData%`, or the registry? | | 2026-09-26 |
-| 8 | Written when a dialog closes, or when the app closes? | | 2026-09-26 |
+| 5 | "One per kind" with a single open dialog: per dialog, or per content kind? | One per dialog | 2026-09-26 |
+| 6 | Export folder: replaces the *first image's folder* rule, or only after a first export? | Today's rule until a first export, then the last export folder | 2026-09-26 |
+| 7 | Storage: JSON file in `%AppData%`, or the registry? | JSON file in `%AppData%` | 2026-09-26 |
+| 8 | Written when a dialog closes, or when the app closes? | When the dialog closes | 2026-09-26 |
 | 9 | Remembered folder missing: nearest existing parent, or default folder? | | 2026-09-26 |
 | 10 | Unit tests: none, or a first test project? | | 2026-09-26 |
 
