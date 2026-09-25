@@ -261,6 +261,11 @@ checked; a wheel / drag gesture on a cell whose Zoom is off starts **from what i
 replaces the kept zoom. New section *Interaction with the Background Effect Workfile*. No open
 question left.
 
+### Iteration 7 — 2026-09-25 — ✅ Implemented
+
+Go given for code, tests and documentation (no test project: nothing to create). The run stays on
+`main`, as recorded for this repository.
+
 ---
 
 ## Implementation Log
@@ -294,7 +299,7 @@ Questions asked by the agent during design, with user responses.
 | 9 | Does the effect's own Reset also uncheck it? | Defaults + unchecked when the effect is off by default; the Background (see "Nouvel effet fond") will be on by default | 2026-09-25 |
 | 10 | Tabs row's Reset: defaults and unchecked, or only unchecked? | Defaults + everything unchecked | 2026-09-25 |
 | 11 | Wheel / drag on a cell whose Zoom is off with kept settings: where does it start? | From what is shown | 2026-09-25 |
-| 12 | Go for implementation? | | |
+| 12 | Go for implementation? | Code, unit tests and documentation | 2026-09-25 |
 
 ---
 
