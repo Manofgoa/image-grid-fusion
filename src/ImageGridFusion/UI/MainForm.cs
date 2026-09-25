@@ -30,21 +30,48 @@ internal sealed class MainForm : Form
     private bool _closeAfterExport;
     private bool _closingForGood;
 
-    // Effects of the selected cell, then the options of the selected effect: see RULES.md.
-    private readonly FlowLayoutPanel _effects = new() { Dock = DockStyle.Top, AutoSize = true, WrapContents = false, Padding = new Padding(8) };
+    // The options of the selected tab, then the tabs of the effects hanging below them: see RULES.md.
+    private readonly TableLayoutPanel _optionsRow = new()
+    {
+        Dock = DockStyle.Top,
+        ColumnCount = 2,
+        RowCount = 1,
+        BackColor = SystemColors.Window,
+        Padding = new Padding(8, 4, 8, 4),
+    };
+    private readonly Panel _optionsHost = new() { Dock = DockStyle.Fill, Margin = Padding.Empty };
+    private readonly Button _effectResetButton = new()
+    {
+        Text = "Reset",
+        AutoSize = true,
+        Anchor = AnchorStyles.Right,
+        TextImageRelation = TextImageRelation.ImageBeforeText,
+        UseVisualStyleBackColor = true,
+    };
+    private readonly TableLayoutPanel _tabsRow = new()
+    {
+        Dock = DockStyle.Top,
+        AutoSize = true,
+        ColumnCount = 4,
+        RowCount = 1,
+        Padding = new Padding(8, 0, 8, 8),
+    };
     private readonly Label _effectsLabel = new() { Text = "Effects", AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly Dictionary<ImageEffect, CheckBox> _effectButtons = Enum.GetValues<ImageEffect>().ToDictionary(e => e, EffectButton);
+    private readonly EffectTabs _effectTabs = new() { Anchor = AnchorStyles.Left | AnchorStyles.Top, Margin = Padding.Empty };
+
+    // Hangs from the options row like the tabs, and as tall as them.
     private readonly Button _resetButton = new()
     {
         Text = "Reset",
         AutoSize = true,
-        Anchor = AnchorStyles.Left,
+        Anchor = AnchorStyles.Right | AnchorStyles.Top,
+        Margin = new Padding(3, 0, 0, 0),
         TextImageRelation = TextImageRelation.ImageBeforeText,
     };
 
-    // One row per effect that has options; only the selected effect's shows.
+    // One row of options per effect, in the options row; only the selected tab's shows.
     private readonly Dictionary<ImageEffect, FlowLayoutPanel> _options = Enum.GetValues<ImageEffect>()
-        .ToDictionary(e => e, _ => new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = false, Padding = new Padding(8, 0, 8, 8), Visible = false });
+        .ToDictionary(e => e, _ => new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, Margin = Padding.Empty, Visible = false });
 
     // A log scale, in hundredths of a doubling: 50 % → 100 % and each doubling take the same length.
     private readonly TrackBar _zoom = OptionSlider((int)Math.Round(Math.Log2(ImageLook.MinZoom) * 100), (int)Math.Round(Math.Log2(ImageLook.MaxZoom) * 100), 10);
@@ -82,7 +109,7 @@ internal sealed class MainForm : Form
     private readonly TrackBar _blurIntensity = OptionSlider(0, 100, 10);
     private readonly Label _blurIntensityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
 
-    // The selected effect belongs to the toolbar: it stays selected on another cell where it is active.
+    // The selected tab belongs to the toolbar: it stays selected on every cell, and with none.
     private ImageEffect? _selectedEffect;
     private bool _syncingEffects;
 
@@ -133,9 +160,20 @@ internal sealed class MainForm : Form
         _bottom.Controls.Add(_statusLine, 1, 0);
         _bottom.Controls.Add(_outputButtons, 2, 0);
 
-        _effects.Controls.Add(_effectsLabel);
-        _effects.Controls.AddRange([.. _effectButtons.Values]);
-        _effects.Controls.Add(_resetButton);
+        _tabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        _tabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        _tabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        _tabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        _tabsRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _tabsRow.Controls.Add(_effectsLabel, 0, 0);
+        _tabsRow.Controls.Add(_effectTabs, 1, 0);
+        _tabsRow.Controls.Add(_resetButton, 3, 0);
+        _optionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        _optionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        _optionsRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        _optionsRow.Controls.Add(_optionsHost, 0, 0);
+        _optionsRow.Controls.Add(_effectResetButton, 1, 0);
+        _optionsHost.Controls.AddRange([.. _options.Values]);
         _options[ImageEffect.Zoom].Controls.AddRange([_zoom, _zoomLabel]);
         _options[ImageEffect.Rotate].Controls.AddRange([.. _quarterTurns, _fineAngle, _fineAngleLabel]);
         _options[ImageEffect.Flip].Controls.AddRange([_flipX, _flipY]);
@@ -143,14 +181,14 @@ internal sealed class MainForm : Form
         _options[ImageEffect.BlackAndWhite].Controls.AddRange([_grayscaleIcon, _grayscale, _grayscaleLabel]);
         _options[ImageEffect.Blur].Controls.AddRange([_gaussian, _pixelate, _blurIntensityIcon, _blurIntensity, _blurIntensityLabel]);
 
-        // Docked in reverse order of addition: the effects row and the options row, then
-        // the bottom bar, span the whole width; the layout strip takes the left of what remains, and the
-        // fill control goes first so it gets the rest.
+        // Docked in reverse order of addition: the options row and the tabs row, then the bottom bar,
+        // span the whole width; the layout strip takes the left of what remains, and the fill control
+        // goes first so it gets the rest.
         Controls.Add(_preview);
         Controls.Add(_layouts);
         Controls.Add(_bottom);
-        Controls.AddRange([.. _options.Values]);
-        Controls.Add(_effects);
+        Controls.Add(_tabsRow);
+        Controls.Add(_optionsRow);
         ResumeLayout(performLayout: true);
 
         // A long message wraps within the space left between the buttons, the bottom bar growing taller.
@@ -167,31 +205,38 @@ internal sealed class MainForm : Form
         _cancelButton.Click += (_, _) => _export?.Cancel();
         _forceImage.CheckedChanged += (_, _) => _preview.ForceStill = _forceImage.Checked;
         UpdateEffectIcons();
-        foreach (var (effect, button) in _effectButtons)
-        {
-            button.Click += (_, _) => ToggleEffect(effect);
-        }
+        FitEffectRows();
 
+        // The Reset button sizes itself to its font and DPI: the tabs follow it.
+        _resetButton.SizeChanged += (_, _) => FitEffectRows();
+        _tabsRow.Paint += (_, e) => PaintOptionsEdge(e.Graphics);
+        _effectTabs.TabClicked += (_, effect) => SelectEffect(effect);
+        _effectTabs.CheckClicked += (_, effect) => ToggleEffect(effect);
+        _toolTip.SetToolTip(_effectResetButton, "Brings this effect back to its defaults");
+        _toolTip.SetToolTip(_resetButton, "Brings every effect of the cell back to its defaults");
+        _effectResetButton.Click += (_, _) => ResetSelectedEffect();
         _resetButton.Click += (_, _) => ResetEffects();
         _zoom.ValueChanged += (_, _) => SetZoom();
         for (int i = 0; i < _quarterTurns.Length; i++)
         {
             int degrees = 90 * i;
-            _quarterTurns[i].Click += (_, _) => ChangeLook(look => look.WithRotation(degrees));
+            _quarterTurns[i].Click += (_, _) => ChangeLook(ImageEffect.Rotate, look => look.WithRotation(degrees));
         }
 
         _fineAngle.ValueChanged += (_, _) => SetFineAngle();
-        _flipX.Click += (_, _) => ChangeLook(look => look.ToggleFlipX());
-        _flipY.Click += (_, _) => ChangeLook(look => look.ToggleFlipY());
+        _flipX.Click += (_, _) => ChangeLook(ImageEffect.Flip, look => look.ToggleFlipX());
+        _flipY.Click += (_, _) => ChangeLook(ImageEffect.Flip, look => look.ToggleFlipY());
         _frames.ValueChanged += (_, _) => ChangeFrames(frames => frames.AtPage(_frames.Value, _frames.Maximum + 1));
         _freeze.CheckedChanged += (_, _) => ChangeFrames(frames => frames.WithFrozen(_freeze.Checked));
         _grayscale.ValueChanged += (_, _) =>
         {
             _grayscaleLabel.Text = $"Intensity: {_grayscale.Value}%";
-            ChangeLook(look => look.WithGrayscale(_grayscale.Value / 100.0));
+            ChangeLook(ImageEffect.BlackAndWhite, look => look.WithGrayscale(_grayscale.Value / 100.0));
         };
-        _gaussian.CheckedChanged += (_, _) => SetBlurKind(_gaussian, BlurKind.Gaussian);
-        _pixelate.CheckedChanged += (_, _) => SetBlurKind(_pixelate, BlurKind.Pixelate);
+
+        // Click rather than CheckedChanged: choosing the kind already shown still turns the blur on.
+        _gaussian.Click += (_, _) => SetBlurKind(BlurKind.Gaussian);
+        _pixelate.Click += (_, _) => SetBlurKind(BlurKind.Pixelate);
         _blurIntensity.ValueChanged += (_, _) => SetBlurIntensity();
         // Freezing the last playing content turns the export back into an image.
         _preview.SelectedImageChanged += (_, _) => UpdateButtons();
@@ -224,12 +269,8 @@ internal sealed class MainForm : Form
         {
             _settingsMenu.Dispose();
             _toolTip.Dispose();
-            foreach (var button in _effectButtons.Values)
-            {
-                button.Image?.Dispose();
-            }
-
             _resetButton.Image?.Dispose();
+            _effectResetButton.Image?.Dispose();
             _grayscaleIcon.Image?.Dispose();
             _gaussian.Image?.Dispose();
             _pixelate.Image?.Dispose();
@@ -244,15 +285,16 @@ internal sealed class MainForm : Form
     {
         base.OnDpiChanged(e);
         UpdateEffectIcons();
+        FitEffectRows();
     }
 
     private void UpdateEffectIcons()
     {
         int size = LogicalToDeviceUnits(16);
-        Image?[] previous = [.. _effectButtons.Values.Select(b => b.Image), _resetButton.Image, _grayscaleIcon.Image, _gaussian.Image, _pixelate.Image, _blurIntensityIcon.Image];
-        foreach (var (effect, button) in _effectButtons)
+        Image?[] previous = [_resetButton.Image, _effectResetButton.Image, _grayscaleIcon.Image, _gaussian.Image, _pixelate.Image, _blurIntensityIcon.Image];
+        foreach (var effect in Enum.GetValues<ImageEffect>())
         {
-            button.Image = effect switch
+            _effectTabs.SetIcon(effect, effect switch
             {
                 ImageEffect.Zoom => EffectIcons.Zoom(size),
                 ImageEffect.Rotate => EffectIcons.Rotate(size),
@@ -260,10 +302,11 @@ internal sealed class MainForm : Form
                 ImageEffect.Frames => EffectIcons.Frames(size),
                 ImageEffect.BlackAndWhite => EffectIcons.BlackAndWhite(size),
                 _ => EffectIcons.Blur(size),
-            };
+            });
         }
 
         _resetButton.Image = EffectIcons.Reset(size);
+        _effectResetButton.Image = EffectIcons.Reset(size);
         _grayscaleIcon.Image = EffectIcons.Intensity(size);
         _grayscaleIcon.Size = new Size(size, size);
         _gaussian.Image = EffectIcons.Gaussian(size);
@@ -274,6 +317,25 @@ internal sealed class MainForm : Form
         {
             image?.Dispose();
         }
+    }
+
+    /// <summary>
+    /// The tabs as tall as the Reset beside them; the options row as tall as the tallest options, so
+    /// nothing below it moves when another tab is selected.
+    /// </summary>
+    private void FitEffectRows()
+    {
+        _effectTabs.Size = new Size(_effectTabs.GetPreferredSize(Size.Empty).Width, _resetButton.GetPreferredSize(Size.Empty).Height);
+        int options = _options.Values.Max(row => row.GetPreferredSize(Size.Empty).Height);
+        int reset = _effectResetButton.GetPreferredSize(Size.Empty).Height + _effectResetButton.Margin.Vertical;
+        _optionsRow.Height = Math.Max(options, reset) + _optionsRow.Padding.Vertical;
+    }
+
+    /// <summary>The bottom edge of the options row, across the tabs row; the tabs open it under the selected one.</summary>
+    private void PaintOptionsEdge(Graphics g)
+    {
+        using var border = new Pen(SystemColors.ControlDark);
+        g.DrawLine(border, 0, 0, _tabsRow.Width, 0);
     }
 
     /// <summary>Closes the window for real, instead of hiding it; the tray's Quit.</summary>
@@ -878,22 +940,6 @@ internal sealed class MainForm : Form
         UpdateEffects();
     }
 
-    /// <summary>A toggle of the effects row: pressed while its effect is active on the selected cell.</summary>
-    private static CheckBox EffectButton(ImageEffect effect) => new()
-    {
-        Text = effect switch
-        {
-            ImageEffect.BlackAndWhite => "Black & white",
-            _ => effect.ToString(),
-        },
-        UseMnemonic = false,
-        AutoSize = true,
-        AutoCheck = false,
-        Appearance = Appearance.Button,
-        Anchor = AnchorStyles.Left,
-        TextImageRelation = TextImageRelation.ImageBeforeText,
-    };
-
     /// <summary>A toggle of an options row, pressed from the look of the selected image.</summary>
     private static CheckBox OptionButton(string text) => new()
     {
@@ -911,6 +957,7 @@ internal sealed class MainForm : Form
         SmallChange = 1,
         LargeChange = largeChange,
         TickStyle = TickStyle.None,
+        BackColor = SystemColors.Window,
 
         // Without ticks the thumb sits at the top: a height fitted to it keeps it level with the label.
         AutoSize = false,
@@ -918,39 +965,37 @@ internal sealed class MainForm : Form
         Anchor = AnchorStyles.Left,
     };
 
-    /// <summary>
-    /// Inactive on the selected image: activates the effect and selects it. Active: selects it, and
-    /// shows its options (and the blur's bars). Active and selected: deactivates it.
-    /// </summary>
+    /// <summary>A click on a tab shows its options, and activates nothing.</summary>
+    private void SelectEffect(ImageEffect effect)
+    {
+        _selectedEffect = effect;
+        UpdateEffects();
+    }
+
+    /// <summary>A click on a tab's checkbox turns its effect on or off, keeping its settings, and selects the tab.</summary>
     private void ToggleEffect(ImageEffect effect)
     {
-        if (_preview.SelectedImage?.Look is not { } look)
+        _selectedEffect = effect;
+        if (_preview.SelectedImage?.Look is { } look)
         {
-            return;
-        }
-
-        if (!look.IsActive(effect))
-        {
-            _selectedEffect = effect;
-            _preview.SetSelectedLook(look.TurnOn(effect));
-        }
-        else if (_selectedEffect != effect)
-        {
-            _selectedEffect = effect;
-        }
-        else
-        {
-            _selectedEffect = null;
-            _preview.SetSelectedLook(look.Reset(effect));
+            _preview.SetSelectedLook(look.IsActive(effect) ? look.TurnOff(effect) : look.TurnOn(effect));
         }
 
         UpdateEffects();
     }
 
-    /// <summary>Removes every effect of the selected image, as it was added.</summary>
+    /// <summary>The options row's Reset: the selected tab's effect back to its default state, off included.</summary>
+    private void ResetSelectedEffect()
+    {
+        if (_selectedEffect is { } effect && _preview.SelectedImage?.Look is { } look)
+        {
+            _preview.SetSelectedLook(look.Reset(effect));
+        }
+    }
+
+    /// <summary>The tabs row's Reset: every effect of the selected image back to its default state; the selected tab stays.</summary>
     private void ResetEffects()
     {
-        _selectedEffect = null;
         _preview.SetSelectedLook(ImageLook.None);
         UpdateEffects();
     }
@@ -960,8 +1005,10 @@ internal sealed class MainForm : Form
     {
         double zoom = Math.Abs(_zoom.Value) <= 4 ? 1 : Math.Pow(2, _zoom.Value / 100.0);
         _zoomLabel.Text = $"Zoom: {zoom * 100:0} %";
-        if (!_syncingEffects)
+        if (!_syncingEffects && _preview.SelectedImage?.Look is { } look)
         {
+            // Acting on an option turns its effect on, from the settings it kept (RULES.md).
+            _preview.SetSelectedLook(look.TurnOn(ImageEffect.Zoom));
             _preview.ZoomSelected(zoom);
         }
     }
@@ -969,7 +1016,7 @@ internal sealed class MainForm : Form
     private void SetFineAngle()
     {
         _fineAngleLabel.Text = AngleText(_fineAngle.Value);
-        ChangeLook(look => look.WithFineAngle(_fineAngle.Value));
+        ChangeLook(ImageEffect.Rotate, look => look.WithFineAngle(_fineAngle.Value));
     }
 
     private static string AngleText(int degrees) => $"Angle: {degrees:+0;-0;0}°";
@@ -978,7 +1025,7 @@ internal sealed class MainForm : Form
     private void ChangeFrames(Func<FramesEffect, FramesEffect> change)
     {
         UpdateFramesLabel();
-        ChangeLook(look => look.Frames is { } frames ? look.WithFrames(change(frames)) : look);
+        ChangeLook(ImageEffect.Frames, look => look.Frames is { } frames ? look.WithFrames(change(frames)) : look);
     }
 
     private void UpdateFramesLabel()
@@ -988,79 +1035,76 @@ internal sealed class MainForm : Form
         _framesLabel.Text = _freeze.Checked ? $"Frozen on: {at}" : $"Starts at: {at}";
     }
 
-    private void SetBlurKind(RadioButton button, BlurKind kind)
-    {
-        if (button.Checked)
-        {
-            ChangeLook(look => look.Blur is { } blur ? look.WithBlur(blur.WithKind(kind)) : look);
-        }
-    }
+    private void SetBlurKind(BlurKind kind) =>
+        ChangeLook(ImageEffect.Blur, look => look.Blur is { } blur ? look.WithBlur(blur.WithKind(kind)) : look);
 
     private void SetBlurIntensity()
     {
         _blurIntensityLabel.Text = $"Intensity: {_blurIntensity.Value}%";
-        ChangeLook(look => look.Blur is { } blur ? look.WithBlur(blur.WithIntensity(_blurIntensity.Value / 100.0)) : look);
+        ChangeLook(ImageEffect.Blur, look => look.Blur is { } blur ? look.WithBlur(blur.WithIntensity(_blurIntensity.Value / 100.0)) : look);
     }
 
-    /// <summary>Applies an option of the options rows to the selected image; not while the rows follow the image.</summary>
-    private void ChangeLook(Func<ImageLook, ImageLook> change)
+    /// <summary>
+    /// Applies an option of <paramref name="effect"/> to the selected image, turning the effect on from
+    /// the settings it kept (RULES.md); not while the options follow the image.
+    /// </summary>
+    private void ChangeLook(ImageEffect effect, Func<ImageLook, ImageLook> change)
     {
         if (!_syncingEffects && _preview.SelectedImage?.Look is { } look)
         {
-            _preview.SetSelectedLook(change(look));
+            _preview.SetSelectedLook(change(look.TurnOn(effect)));
         }
     }
 
     /// <summary>
-    /// Shows the effects of the selected image: a button pressed per active effect, the options (and
-    /// the blur's bars) of the selected one. The selection of an effect is dropped where it is
-    /// inactive; with no cell selected, or during an export, the toolbar is disabled.
+    /// Shows the effects of the selected image: a checkbox checked per effect on, the options of the
+    /// selected tab — the kept settings of an effect that is off — and the blur's bars while it is on.
+    /// With no cell selected, or during an export, both rows are disabled.
     /// </summary>
     private void UpdateEffects()
     {
         var image = _preview.SelectedImage;
         var look = image?.Look;
         bool enabled = look is not null && !IsExporting;
-        if (!enabled || _selectedEffect is { } selected && !look!.IsActive(selected))
-        {
-            _selectedEffect = null;
-        }
 
         _syncingEffects = true;
-        foreach (var (effect, button) in _effectButtons)
+        foreach (var effect in Enum.GetValues<ImageEffect>())
         {
-            // Only an animated image has frames to start from, or to freeze on.
-            button.Enabled = enabled && (effect != ImageEffect.Frames || image!.IsAnimated);
-            button.Checked = look?.IsActive(effect) == true;
+            _effectTabs.SetState(effect, look?.IsActive(effect) == true, Unavailable(effect, image));
         }
 
+        _effectTabs.Selected = _selectedEffect;
+        _effectTabs.Enabled = enabled;
         _resetButton.Enabled = enabled && !look!.IsNone;
         if (look is not null)
         {
-            _zoom.Value = Math.Clamp((int)Math.Round(Math.Log2(look.Zoom) * 100), _zoom.Minimum, _zoom.Maximum);
+            _zoom.Value = Math.Clamp((int)Math.Round(Math.Log2(look.TurnOn(ImageEffect.Zoom).Zoom) * 100), _zoom.Minimum, _zoom.Maximum);
+
             // A quarter turn is pressed only while the angle falls exactly on it.
+            var rotated = look.TurnOn(ImageEffect.Rotate);
             for (int i = 0; i < _quarterTurns.Length; i++)
             {
-                _quarterTurns[i].Checked = look.Rotation == 90 * i && look.FineAngle == 0;
+                _quarterTurns[i].Checked = rotated.Rotation == 90 * i && rotated.FineAngle == 0;
             }
 
-            _fineAngle.Value = look.FineAngle;
+            _fineAngle.Value = rotated.FineAngle;
 
-            _flipX.Checked = look.FlipX;
-            _flipY.Checked = look.FlipY;
-            if (look.Frames is { } frames && image!.Pages is { } pages)
+            var flipped = look.TurnOn(ImageEffect.Flip);
+            _flipX.Checked = flipped.FlipX;
+            _flipY.Checked = flipped.FlipY;
+            if (look.TurnOn(ImageEffect.Frames).Frames is { } frames && image!.Pages is { } pages)
             {
                 _frames.Maximum = Math.Max(0, pages.Count - 1);
                 _frames.Value = frames.PageOf(pages.Count);
                 _freeze.Checked = frames.Frozen;
             }
 
-            if (look.Grayscale is { } grayscale)
+            if (look.TurnOn(ImageEffect.BlackAndWhite).Grayscale is { } grayscale)
             {
                 _grayscale.Value = (int)Math.Round(grayscale * 100);
             }
 
-            if (look.Blur is { } blur)
+            if (look.TurnOn(ImageEffect.Blur).Blur is { } blur)
             {
                 _gaussian.Checked = blur.Kind == BlurKind.Gaussian;
                 _pixelate.Checked = blur.Kind == BlurKind.Pixelate;
@@ -1068,20 +1112,31 @@ internal sealed class MainForm : Form
             }
         }
 
-        _zoomLabel.Text = $"Zoom: {(look?.Zoom ?? 1) * 100:0} %";
+        _zoomLabel.Text = $"Zoom: {(look?.TurnOn(ImageEffect.Zoom).Zoom ?? 1) * 100:0} %";
         _fineAngleLabel.Text = AngleText(_fineAngle.Value);
         UpdateFramesLabel();
         _grayscaleLabel.Text = $"Intensity: {_grayscale.Value}%";
         _blurIntensityLabel.Text = $"Intensity: {_blurIntensity.Value}%";
         _syncingEffects = false;
 
+        // An effect that does not apply to the image keeps its tab selectable, its options disabled.
+        bool usable = enabled && _selectedEffect is { } selected && Unavailable(selected, image) is null;
         foreach (var (effect, row) in _options)
         {
             row.Visible = _selectedEffect == effect;
+            row.Enabled = usable;
         }
 
-        _preview.ShowsBlurBars = _selectedEffect == ImageEffect.Blur;
+        _effectResetButton.Visible = _selectedEffect is not null;
+        _effectResetButton.Enabled = usable && look!.Reset(_selectedEffect!.Value) != look;
+        _preview.ShowsBlurBars = _selectedEffect == ImageEffect.Blur && look?.IsActive(ImageEffect.Blur) == true;
     }
+
+    /// <summary>Why <paramref name="effect"/> does not apply to <paramref name="image"/>; <c>null</c> when it does.</summary>
+    private static string? Unavailable(ImageEffect effect, SourceImage? image) =>
+        effect == ImageEffect.Frames && image is { IsAnimated: false }
+            ? "Frames only applies to videos, animated GIFs and content of several pages"
+            : null;
 
     /// <summary>Shows a message that stays until the next one replaces it; errors in red.</summary>
     private void ShowStatus(string message, bool error = false)
