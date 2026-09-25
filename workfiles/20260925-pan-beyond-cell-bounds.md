@@ -127,14 +127,14 @@ in the preview — never in `Compositor`, so never exported:
 | Stop held | Guide |
 |---|---|
 | Edge stop | A **dashed** line along the cell edge the image would leave the cell by — the side an image covering the cell uncovers, the side a smaller image crosses |
-| Center stop, horizontal axis | A **vertical** line through the cell center, across the cell |
-| Center stop, vertical axis | A **horizontal** line through the cell center, across the cell |
+| Center stop, horizontal axis | A **dashed vertical** line through the cell center, across the cell |
+| Center stop, vertical axis | A **dashed horizontal** line through the cell center, across the cell |
 
 - Both center stops held at once draw the two lines **crossing** at the cell center.
 - Color: the **fluorescent green** of the blur bars (`GridPreview.BarColor`), so it shows on any image.
 - A guide disappears as soon as its stop is passed, and all of them when the mouse is released.
-- Drawn like the blur bars: a dark 4 px outline under a 2 px green line (dashes 4 on / 3 off), clipped
-  to the cell (`GridPreview.PaintPanGuides`).
+- Every guide is **dashed**, the center ones too (Iteration 8): a dark 4 px outline under a 2 px green
+  line, dashes 4 on / 3 off, clipped to the cell (`GridPreview.PaintPanGuides`).
 
 ### Zoom
 
@@ -319,6 +319,11 @@ fallback is stale.
 
 Parallel work: the toolbar session committed its workfile on `main` during the run (`1f47ec9`);
 only the files of this run were committed.
+
+### Iteration 8 — 2026-09-25 — ⚙️ Post-implementation — Dashed center guides
+
+- User request, made in the *Toolbar* session (`workfiles/20260925-toolbar.md`): every guide of the
+  magnetic stops is a **dashed** line — the center ones were solid.
 
 ---
 
