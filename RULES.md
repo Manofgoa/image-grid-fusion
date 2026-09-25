@@ -19,7 +19,7 @@ Apply to **every effect**, the blur being the first one
 | An image is deleted | Reset for the images that shift into another cell |
 | Two cells are swapped | Kept — they follow the image, like rotation and zoom |
 | The layout changes | Kept |
-| The cell's *Reset* tool is clicked | Removed, together with the other actions |
+| The effects toolbar's *Reset* button is clicked | Removed, all at once |
 
 ### Effects Toolbar
 
@@ -33,7 +33,7 @@ Apply to **every effect**, the blur being the first one
   |---|---|
   | Inactive | Activates it with its defaults and selects it |
   | Active, not selected | Selects it |
-  | Active and selected | Deactivates it |
+  | Active and selected | Deactivates it, restoring its defaults |
 
 - The **selected effect** belongs to the toolbar, not to the cell: when another cell is selected
   and the effect is active on it, it stays selected; otherwise its button is released.
