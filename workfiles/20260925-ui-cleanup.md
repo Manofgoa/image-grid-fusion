@@ -339,6 +339,7 @@ says so rather than staying blank.
 | Unit tests | 8 | 2026-09-25 | Not applicable — no test project |
 | README | 8 | 2026-09-25 | § Effects, Zoom, Blur |
 | RULES.md / GLOSSARY.md | 8 | 2026-09-25 | § Scope and State, Effects Toolbar, Options Toolbar, On-Cell Handles; new terms |
+| Manual validation | 11 | 2026-09-26 | Tested by the user in the running app — validated |
 
 ---
 
@@ -366,4 +367,4 @@ Questions asked by the agent during design, with user responses.
 
 ---
 
-*Last updated: 2026-09-25*
+*Last updated: 2026-09-26*
