@@ -30,10 +30,8 @@ internal sealed class MainForm : Form
     private bool _closeAfterExport;
     private bool _closingForGood;
 
-    private readonly CheckBox _carousel = new() { Text = "Carrousel", AutoSize = true, Anchor = AnchorStyles.Right };
-
     // Effects of the selected cell, then the options of the selected effect: see RULES.md.
-    private readonly FlowLayoutPanel _effects = new() { Dock = DockStyle.Top, AutoSize = true, WrapContents = false, Padding = new Padding(8, 0, 8, 8) };
+    private readonly FlowLayoutPanel _effects = new() { Dock = DockStyle.Top, AutoSize = true, WrapContents = false, Padding = new Padding(8) };
     private readonly Label _effectsLabel = new() { Text = "Effects", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly Dictionary<ImageEffect, CheckBox> _effectButtons = Enum.GetValues<ImageEffect>().ToDictionary(e => e, EffectButton);
     private readonly Button _resetButton = new()
@@ -135,20 +133,6 @@ internal sealed class MainForm : Form
         _bottom.Controls.Add(_statusLine, 1, 0);
         _bottom.Controls.Add(_outputButtons, 2, 0);
 
-        // Modes on the right.
-        var top = new TableLayoutPanel
-        {
-            Dock = DockStyle.Top,
-            AutoSize = true,
-            ColumnCount = 2,
-            RowCount = 1,
-            Padding = new Padding(8),
-        };
-        top.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        top.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        top.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        top.Controls.Add(_carousel, 1, 0);
-
         _effects.Controls.Add(_effectsLabel);
         _effects.Controls.AddRange([.. _effectButtons.Values]);
         _effects.Controls.Add(_resetButton);
@@ -159,7 +143,7 @@ internal sealed class MainForm : Form
         _options[ImageEffect.BlackAndWhite].Controls.AddRange([_grayscaleIcon, _grayscale, _grayscaleLabel]);
         _options[ImageEffect.Blur].Controls.AddRange([_gaussian, _pixelate, _blurIntensityIcon, _blurIntensity, _blurIntensityLabel]);
 
-        // Docked in reverse order of addition: the top bar, the effects row and the options row, then
+        // Docked in reverse order of addition: the effects row and the options row, then
         // the bottom bar, span the whole width; the layout strip takes the left of what remains, and the
         // fill control goes first so it gets the rest.
         Controls.Add(_preview);
@@ -167,7 +151,6 @@ internal sealed class MainForm : Form
         Controls.Add(_bottom);
         Controls.AddRange([.. _options.Values]);
         Controls.Add(_effects);
-        Controls.Add(top);
         ResumeLayout(performLayout: true);
 
         // A long message wraps within the space left between the buttons, the bottom bar growing taller.
@@ -183,7 +166,6 @@ internal sealed class MainForm : Form
         _saveButton.Click += (_, _) => Save();
         _cancelButton.Click += (_, _) => _export?.Cancel();
         _forceImage.CheckedChanged += (_, _) => _preview.ForceStill = _forceImage.Checked;
-        _carousel.CheckedChanged += (_, _) => _preview.PlaysCarousel = _carousel.Checked;
         UpdateEffectIcons();
         foreach (var (effect, button) in _effectButtons)
         {
@@ -565,12 +547,11 @@ internal sealed class MainForm : Form
             return;
         }
 
-        bool carousel = ExportsCarousel;
-        if (carousel || ExportsVideo)
+        if (ExportsVideo)
         {
             string path = TempVideoPath();
             var videoClock = Stopwatch.StartNew();
-            if (await ExportVideoAsync(path, carousel) is { } video)
+            if (await ExportVideoAsync(path) is { } video)
             {
                 var encoding = videoClock.Elapsed;
                 try
@@ -621,8 +602,7 @@ internal sealed class MainForm : Form
             return;
         }
 
-        bool carousel = ExportsCarousel;
-        bool video = carousel || ExportsVideo;
+        bool video = ExportsVideo;
         string extension = video ? "mp4" : "png";
         using var dialog = new SaveFileDialog
         {
@@ -640,7 +620,7 @@ internal sealed class MainForm : Form
         var clock = Stopwatch.StartNew();
         if (video)
         {
-            if (await ExportVideoAsync(dialog.FileName, carousel) is { } result)
+            if (await ExportVideoAsync(dialog.FileName) is { } result)
             {
                 ShowStatus(VideoSummary(saved, dialog.FileName, result, clock.Elapsed));
             }
@@ -672,9 +652,6 @@ internal sealed class MainForm : Form
 
     /// <summary>Animated content exports as a video, unless "Force as image" is checked.</summary>
     private bool ExportsVideo => HasAnimation && !_forceImage.Checked;
-
-    /// <summary>While "Carrousel" is checked, Copy and Save produce the carousel's video.</summary>
-    private bool ExportsCarousel => _carousel.Checked && Carousel.CanPlay(_preview.Images.Count);
 
     /// <summary>
     /// Renders the still: the images as shown, or, for animated content, the page each one shows (a
@@ -708,14 +685,12 @@ internal sealed class MainForm : Form
 
     /// <summary>
     /// Writes the MP4 video to <paramref name="path"/> off the UI thread, with its progress and a
-    /// Cancel button in the status line, the grid locked meanwhile: the contents playing, or the
-    /// <paramref name="carousel"/> of the images, its contents playing unless forced to images.
-    /// Returns null when cancelled or failing.
+    /// Cancel button in the status line, the grid locked meanwhile: the contents playing. Returns
+    /// null when cancelled or failing.
     /// </summary>
-    private async Task<GridExport.Result?> ExportVideoAsync(string path, bool carousel = false)
+    private async Task<GridExport.Result?> ExportVideoAsync(string path)
     {
         using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!);
-        bool playContents = !_forceImage.Checked;
         var cancellation = BeginExport("Exporting the video… 0 %", cancellable: true);
         var progress = new Progress<double>(done =>
         {
@@ -727,9 +702,7 @@ internal sealed class MainForm : Form
         });
         try
         {
-            return await Task.Run(() => carousel
-                ? CarouselExport.RenderVideo(job, playContents, path, progress, cancellation)
-                : GridExport.RenderVideo(job, path, progress, cancellation));
+            return await Task.Run(() => GridExport.RenderVideo(job, path, progress, cancellation));
         }
         catch (OperationCanceledException)
         {
@@ -902,15 +875,6 @@ internal sealed class MainForm : Form
         _saveButton.Enabled = any;
         _forceImage.Visible = HasAnimation;
         _forceImage.Enabled = !IsExporting;
-
-        // A single image has nowhere to move: the mode turns off with it.
-        bool carousel = Carousel.CanPlay(_preview.Images.Count);
-        _carousel.Enabled = carousel;
-        if (!carousel)
-        {
-            _carousel.Checked = false;
-        }
-
         UpdateEffects();
     }
 
