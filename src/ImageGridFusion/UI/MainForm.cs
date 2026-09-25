@@ -56,7 +56,8 @@ internal sealed class MainForm : Form
         RowCount = 1,
         Padding = new Padding(8, 0, 8, 8),
     };
-    private readonly Label _effectsLabel = new() { Text = "Effects", AutoSize = true, Anchor = AnchorStyles.Left };
+    // The row's title, in bold and pointing at the tabs, so it does not read as one of them.
+    private readonly Label _effectsLabel = new() { Text = "Effects →", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly EffectTabs _effectTabs = new() { Anchor = AnchorStyles.Left | AnchorStyles.Top, Margin = Padding.Empty };
 
     // Hangs from the options row like the tabs, and as tall as them.
@@ -165,6 +166,7 @@ internal sealed class MainForm : Form
         _tabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _tabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _tabsRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _effectsLabel.Font = new Font(Font, FontStyle.Bold);
         _tabsRow.Controls.Add(_effectsLabel, 0, 0);
         _tabsRow.Controls.Add(_effectTabs, 1, 0);
         _tabsRow.Controls.Add(_resetButton, 3, 0);
@@ -271,6 +273,7 @@ internal sealed class MainForm : Form
             _toolTip.Dispose();
             _resetButton.Image?.Dispose();
             _effectResetButton.Image?.Dispose();
+            _effectsLabel.Font.Dispose();
             _grayscaleIcon.Image?.Dispose();
             _gaussian.Image?.Dispose();
             _pixelate.Image?.Dispose();
