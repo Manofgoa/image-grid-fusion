@@ -46,6 +46,7 @@ internal sealed class MainForm : Form
         AutoSize = true,
         Anchor = AnchorStyles.Right,
         TextImageRelation = TextImageRelation.ImageBeforeText,
+        BackColor = SystemColors.Control,
         UseVisualStyleBackColor = true,
     };
     private readonly TableLayoutPanel _tabsRow = new()
@@ -95,6 +96,7 @@ internal sealed class MainForm : Form
         Text = "Gaussian",
         AutoSize = true,
         Appearance = Appearance.Button,
+        BackColor = SystemColors.Control,
         Anchor = AnchorStyles.Left,
         TextImageRelation = TextImageRelation.ImageBeforeText,
     };
@@ -103,6 +105,7 @@ internal sealed class MainForm : Form
         Text = "Pixelate",
         AutoSize = true,
         Appearance = Appearance.Button,
+        BackColor = SystemColors.Control,
         Anchor = AnchorStyles.Left,
         TextImageRelation = TextImageRelation.ImageBeforeText,
     };
@@ -950,6 +953,9 @@ internal sealed class MainForm : Form
         AutoSize = true,
         AutoCheck = false,
         Appearance = Appearance.Button,
+
+        // The normal grey of buttons, not the white of the options row they sit on.
+        BackColor = SystemColors.Control,
         Anchor = AnchorStyles.Left,
     };
 
