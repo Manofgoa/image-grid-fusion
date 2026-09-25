@@ -9,7 +9,7 @@ namespace ImageGridFusion.Imaging;
 /// optionally the sounds of video files, each looped with its video and scaled by its volume, mixed
 /// and re-encoded to one AAC track. Used from a single thread-pool thread.
 /// </summary>
-internal sealed class VideoEncoder : IDisposable
+internal sealed class VideoEncoder : IFrameEncoder
 {
     private const int AacBytesPerSecond = 24000;
 
