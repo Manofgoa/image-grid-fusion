@@ -932,7 +932,7 @@ internal sealed class MainForm : Form
         if (!look.IsActive(effect))
         {
             _selectedEffect = effect;
-            _preview.SetSelectedLook(look.Activate(effect));
+            _preview.SetSelectedLook(look.TurnOn(effect));
         }
         else if (_selectedEffect != effect)
         {
@@ -941,7 +941,7 @@ internal sealed class MainForm : Form
         else
         {
             _selectedEffect = null;
-            _preview.SetSelectedLook(look.Deactivate(effect));
+            _preview.SetSelectedLook(look.Reset(effect));
         }
 
         UpdateEffects();
