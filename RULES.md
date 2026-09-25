@@ -12,45 +12,61 @@ Apply to **every effect**, the blur being the first one
 - An effect belongs to a **cell + image** pair. Its state lives on the image's immutable state,
   next to `ImageLook`, and is **not persisted**.
 - Its geometry is stored in **fractions of the cell**, so it survives resizing and layout changes.
+- Its **settings** and its **on / off** state are independent: turning an effect off **keeps its
+  settings**, and it is drawn as its **defaults** — preview, exports, canvas sizing, guides — until
+  it is turned on again, as it was (origin: `workfiles/20260925-ui-cleanup.md`).
+- Its **default state** is its default settings and its default on / off: every *Reset* brings it
+  back to that state, on / off included.
 
 | Event | Effects of the cells concerned |
 |---|---|
-| The cell's image is replaced (drop, Ctrl+V, browse) | Reset — none active |
+| The cell's image is replaced (drop, Ctrl+V, browse) | Reset — default state, nothing kept |
 | An image is deleted | Reset for the images that shift into another cell |
 | Two cells are swapped | Kept — they follow the image, like rotation and zoom |
 | The layout changes | Kept |
-| The effects toolbar's *Reset* button is clicked | Removed, all at once |
+| The effect's own *Reset* button (options toolbar) is clicked | That effect reset |
+| The effects toolbar's *Reset* button is clicked | Every effect reset, all at once |
 
 ### Effects Toolbar
 
-- An **always-visible row below the top bar**: an **Effects** label, one toggle button per effect,
-  then a **Reset** button (not an effect). Every action on the image is an effect: the cell itself
-  only keeps the **×**, the **✥** swap handle, and the wheel and drag gestures (origin:
-  `workfiles/20260925-toolbar.md`).
-- An effect that does not apply to the selected image (e.g. Frames on a still image) has its button
-  **disabled**.
-- A button is **pressed** when its effect is active on the **selected cell**. With no cell
-  selected, the toolbar stays visible but **disabled**.
+- An **always-visible row of tabs**, hanging down from the options toolbar above it: an **Effects**
+  label, one **effect tab** per effect, then, at the far right, a **Reset** button (not an effect)
+  **as tall as the tabs**. Every action on the image is an effect: the cell itself only keeps the
+  **×**, the **✥** swap handle, and the wheel and drag gestures (origin:
+  `workfiles/20260925-toolbar.md`, `workfiles/20260925-ui-cleanup.md`).
+- Each tab holds an **activation checkbox**, checked while its effect is **on** for the **selected
+  cell**. The **selected tab** is the one whose options show; it is drawn joined to the options
+  toolbar. The two states are never carried by one control.
+- With no cell selected, the toolbar stays visible but **disabled**; the selected tab stays
+  highlighted.
 - Clicks:
 
-  | Effect state on the selected cell | Click does |
+  | Click on | Does |
   |---|---|
-  | Inactive | Activates it with its defaults and selects it |
-  | Active, not selected | Selects it |
-  | Active and selected | Deactivates it, restoring its defaults |
+  | A tab, outside its checkbox | Selects it. Activates nothing |
+  | A tab's checkbox | Turns the effect on or off, **keeping its settings**, and selects the tab |
 
-- The **selected effect** belongs to the toolbar, not to the cell: when another cell is selected
-  and the effect is active on it, it stays selected; otherwise its button is released.
+- An effect that does not apply to the selected image (e.g. Frames on a still image) keeps its tab
+  **selectable**; its **checkbox is disabled**, with a **tooltip saying why**, and its options are
+  disabled.
+- The **selected tab** belongs to the toolbar, not to the cell: it **stays selected** when another
+  cell is selected, or none. No tab is selected at startup.
 
 ### Options Toolbar
 
-- A row below the effects row, holding the **selected effect's options only**; hidden when no
-  effect is selected or no cell is selected.
+- A row **above** the effects toolbar, **always visible**, at the height of the tallest options, so
+  nothing moves when another tab is selected. It holds the **selected tab's options only**, and is
+  **empty** while no tab is selected.
+- An effect that is off shows its **kept settings** in its options.
+- **Acting on any option activates the effect**: changing any control of an effect's options turns
+  the effect on (its checkbox gets checked) before applying the change, starting from its kept
+  settings, so a change never happens without showing. The only exception is the effect's own
+  **Reset** button, ending the row, which brings the effect back to its default state.
 
 ### On-Cell Handles
 
 - An effect's handles (e.g. the blur bars) are drawn on the **selected cell** only, while that
-  effect is selected.
+  effect's tab is selected **and the effect is on**.
 - They take priority over the cell's other gestures on their own hit area only.
 - A handle positioned relative to a cell edge **snaps exactly onto it** within 6 logical px
   (scaled with `LogicalToDeviceUnits`), so no 1–2 px strip is left along the edge.
