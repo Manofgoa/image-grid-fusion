@@ -157,17 +157,19 @@ in the preview — never in `Compositor`, so never exported:
 
 ### Fine Rotation
 
-The fine angle (±45°) is planned by `workfiles/20260925-toolbar.md` and does not exist yet. Rule
-agreed for it (Q&A #11), to be honoured by whichever workfile lands second:
+The fine angle (±45°) was delivered by `workfiles/20260925-toolbar.md` (`ab137b1`), on top of this
+workfile. Kept as implemented there (Q&A #12, replacing the bounding-box rule of Q&A #11):
 
-- On an image turned by a fine angle, the stops, the 10 % margin and the guides are computed on the
-  **axis-aligned bounding box** of the turned image, as if that box were the image.
-- The toolbar's **automatic zoom** covering the cell applies only while the image is **within its
-  stops**; once pushed beyond, the position is kept as is.
-- The corners the turned image uncovers get the **band color**, as any uncovered area.
-
-If this workfile is implemented first, nothing is coded for the fine angle: the rule is recorded
-for the toolbar workfile.
+- **The pan stays in the unturned frame**: `FitCalculator.Compute` (image ∩ cell, 10 % margin), the
+  stops and `WithinStops` work on the unturned image, unchanged.
+- **The turn and its cover zoom are added at draw time**, around the cell center: the cover zoom
+  (`FitCalculator.Turn`) covers only the part of the cell the image covered before turning, so an
+  image pushed past the edges, or zoomed out, keeps its uncovered area, in the band color.
+- **Limit case**: when the cell center leaves the image, the side concerned is ignored and the scale
+  is capped at 8.
+- **Gestures**: `PanBy` and `ZoomAt` bring the mouse move and the point under the mouse back into
+  the unturned frame — the image follows the mouse, the stops act on the move in the image's frame.
+  The guides stay drawn along the cell's edges and through its center.
 
 ### Reset and Lifetime
 
@@ -223,7 +225,7 @@ the band color.
       aligned on the cell (edge stops, image ∩ cell, 10 % margin), and the toolbar's automatic zoom
       "to cover the cell" works against pushing the image out of it.~~ → Bounding box: stops, margin
       and guides on the turned image's bounding box; automatic zoom only while within the stops;
-      uncovered corners in band color
+      uncovered corners in band color *(revised 2026-09-26, see Iteration 9)*
 - [ ] *(found during the run, not implemented)* The draw no longer clamps an image to its stops, so a
       change of the cell's shape (layout, output ratio) or of the crop threshold can leave an image
       that was on an edge stop slightly past it, showing a thin band. Clamp to the stops on those
@@ -326,6 +328,13 @@ only the files of this run were committed.
   magnetic stops is a **dashed** line — the center ones were solid. Done in `51ae090` (code) and
   `382f791` (README).
 
+### Iteration 9 — 2026-09-26 — ⚙️ Post-implementation — Fine rotation kept as implemented
+
+The toolbar session delivered the fine angle (`ab137b1`) with a rule other than Q&A #11: the pan,
+its stops and the 10 % margin stay in the unturned image's frame, and the cover zoom only covers
+what the image covered before turning. The user keeps it as implemented (Q&A #12): *Fine Rotation*
+rewritten to describe the delivered code; Q&A #11 annotated as revised. No code change.
+
 ---
 
 ## Implementation Log
@@ -358,7 +367,8 @@ Questions asked by the agent during design, with user responses.
 | 9 | Unit tests: create a test project, or stay test-free? | Stay test-free | 2026-09-25 |
 | 10 | README: update the pan description and the band-color note? | Yes | 2026-09-25 |
 | 11 | Fine rotation (±45°): how does the pan beyond the edges behave on an image turned by a fine angle? | Bounding box — stops, margin and guides on the turned image's bounding box; automatic zoom only while within the stops; uncovered corners in band color | 2026-09-25 |
+| 12 | Fine rotation was delivered in the unturned frame, not on the bounding box of Q&A #11: keep it, go back to the bounding box, or leave the workfile as is? | Keep as implemented | 2026-09-26 |
 
 ---
 
-*Last updated: 2026-09-25*
+*Last updated: 2026-09-26*
