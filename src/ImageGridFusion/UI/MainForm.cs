@@ -54,6 +54,7 @@ internal sealed class MainForm : Form
     // Effects of the selected cell, then the options of the selected effect: see RULES.md.
     private readonly FlowLayoutPanel _effects = new() { Dock = DockStyle.Top, AutoSize = true, WrapContents = false, Padding = new Padding(8, 0, 8, 8) };
     private readonly FlowLayoutPanel _blurOptions = new() { Dock = DockStyle.Top, AutoSize = true, WrapContents = false, Padding = new Padding(8, 0, 8, 8), Visible = false };
+    // The padding leaves room for the selection's thicker border, which would clip the text otherwise.
     private readonly CheckBox _blurButton = new()
     {
         Text = "Blur",
@@ -61,9 +62,26 @@ internal sealed class MainForm : Form
         AutoCheck = false,
         Appearance = Appearance.Button,
         FlatStyle = FlatStyle.Flat,
+        Padding = new Padding(3, 1, 3, 1),
+        TextImageRelation = TextImageRelation.ImageBeforeText,
     };
-    private readonly RadioButton _gaussian = new() { Text = "Gaussian", AutoSize = true, Appearance = Appearance.Button, Anchor = AnchorStyles.Left };
-    private readonly RadioButton _pixelate = new() { Text = "Pixelate", AutoSize = true, Appearance = Appearance.Button, Anchor = AnchorStyles.Left };
+    private readonly RadioButton _gaussian = new()
+    {
+        Text = "Gaussian",
+        AutoSize = true,
+        Appearance = Appearance.Button,
+        Anchor = AnchorStyles.Left,
+        TextImageRelation = TextImageRelation.ImageBeforeText,
+    };
+    private readonly RadioButton _pixelate = new()
+    {
+        Text = "Pixelate",
+        AutoSize = true,
+        Appearance = Appearance.Button,
+        Anchor = AnchorStyles.Left,
+        TextImageRelation = TextImageRelation.ImageBeforeText,
+    };
+    private readonly PictureBox _blurIntensityIcon = new() { SizeMode = PictureBoxSizeMode.CenterImage, Anchor = AnchorStyles.Left };
     private readonly TrackBar _blurIntensity = new()
     {
         Minimum = 0,
@@ -148,6 +166,7 @@ internal sealed class MainForm : Form
         _effects.Controls.Add(_blurButton);
         _blurOptions.Controls.Add(_gaussian);
         _blurOptions.Controls.Add(_pixelate);
+        _blurOptions.Controls.Add(_blurIntensityIcon);
         _blurOptions.Controls.Add(_blurIntensity);
         _blurOptions.Controls.Add(_blurIntensityLabel);
 
@@ -178,6 +197,7 @@ internal sealed class MainForm : Form
         _forceImage.CheckedChanged += (_, _) => _preview.ForceStill = _forceImage.Checked;
         _carousel.CheckedChanged += (_, _) => _preview.PlaysCarousel = _carousel.Checked;
         _blurButton.FlatAppearance.CheckedBackColor = ControlPaint.LightLight(SystemColors.Highlight);
+        UpdateEffectIcons();
         _blurButton.Click += (_, _) => ToggleBlur();
         _gaussian.CheckedChanged += (_, _) => SetBlurKind(_gaussian, BlurKind.Gaussian);
         _pixelate.CheckedChanged += (_, _) => SetBlurKind(_pixelate, BlurKind.Pixelate);
@@ -213,9 +233,35 @@ internal sealed class MainForm : Form
         {
             _settingsMenu.Dispose();
             _toolTip.Dispose();
+            _blurButton.Image?.Dispose();
+            _gaussian.Image?.Dispose();
+            _pixelate.Image?.Dispose();
+            _blurIntensityIcon.Image?.Dispose();
         }
 
         base.Dispose(disposing);
+    }
+
+    /// <summary>The icons are drawn at the monitor's DPI: again when the window moves to another one.</summary>
+    protected override void OnDpiChanged(DpiChangedEventArgs e)
+    {
+        base.OnDpiChanged(e);
+        UpdateEffectIcons();
+    }
+
+    private void UpdateEffectIcons()
+    {
+        int size = LogicalToDeviceUnits(16);
+        Image?[] previous = [_blurButton.Image, _gaussian.Image, _pixelate.Image, _blurIntensityIcon.Image];
+        _blurButton.Image = EffectIcons.Blur(size);
+        _gaussian.Image = EffectIcons.Gaussian(size);
+        _pixelate.Image = EffectIcons.Pixelate(size);
+        _blurIntensityIcon.Image = EffectIcons.Intensity(size);
+        _blurIntensityIcon.Size = new Size(size, size);
+        foreach (var image in previous)
+        {
+            image?.Dispose();
+        }
     }
 
     /// <summary>Closes the window for real, instead of hiding it; the tray's Quit.</summary>
