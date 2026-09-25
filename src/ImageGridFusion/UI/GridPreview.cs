@@ -35,8 +35,10 @@ internal sealed class GridPreview : Control
 
     private static readonly Color HoverOutlineColor = Color.FromArgb(128, Color.White);
 
-    // Fluorescent green: the bars of the blur show on any image.
-    private static readonly Color BarColor = Color.FromArgb(57, 255, 20);
+    // Helper indicators drawn over a cell (see RULES.md): fluorescent green over a black halo, so they
+    // show on any image.
+    private static readonly Color HelperColor = Color.FromArgb(57, 255, 20);
+    private static readonly Color HelperHalo = Color.FromArgb(160, 0, 0, 0);
 
     private readonly List<SourceImage> _images = [];
     private GridLayout? _layout;
@@ -1405,8 +1407,8 @@ internal sealed class GridPreview : Control
         var state = g.Save();
         g.SetClip(cell, CombineMode.Intersect);
         g.SmoothingMode = SmoothingMode.None;
-        using (var outline = new Pen(Color.FromArgb(160, 0, 0, 0), LogicalToDeviceUnits(4)))
-        using (var line = new Pen(BarColor, LogicalToDeviceUnits(2)))
+        using (var outline = new Pen(HelperHalo, LogicalToDeviceUnits(4)))
+        using (var line = new Pen(HelperColor, LogicalToDeviceUnits(2)))
         {
             foreach (var pen in new[] { outline, line })
             {
@@ -1427,7 +1429,7 @@ internal sealed class GridPreview : Control
     }
 
     /// <summary>
-    /// Guides of the magnetic stops holding a moved image, dashed, in the green of the blur bars: along
+    /// Guides of the magnetic stops holding a moved image, dashed, in the green of the helper indicators: along
     /// the cell edge the image edge is aligned on, or through the center of the cell.
     /// </summary>
     private void PaintPanGuides(Graphics g, Rectangle cell, SourceImage image)
@@ -1473,8 +1475,8 @@ internal sealed class GridPreview : Control
         var state = g.Save();
         g.SetClip(cell, CombineMode.Intersect);
         g.SmoothingMode = SmoothingMode.None;
-        using var outline = new Pen(Color.FromArgb(160, 0, 0, 0), LogicalToDeviceUnits(4));
-        using var dashed = new Pen(BarColor, LogicalToDeviceUnits(2)) { DashPattern = [4, 3] };
+        using var outline = new Pen(HelperHalo, LogicalToDeviceUnits(4));
+        using var dashed = new Pen(HelperColor, LogicalToDeviceUnits(2)) { DashPattern = [4, 3] };
         foreach (var (from, to) in lines)
         {
             g.DrawLine(outline, from, to);
@@ -1491,8 +1493,8 @@ internal sealed class GridPreview : Control
     private void PaintBarGrip(Graphics g, BlurSide side, Rectangle bounds)
     {
         bool hot = _hoveredBar == side || _draggedBar == side;
-        using var brush = new SolidBrush(hot ? Color.White : BarColor);
-        using var pen = new Pen(Color.FromArgb(160, 0, 0, 0), LogicalToDeviceUnits(1));
+        using var brush = new SolidBrush(hot ? Color.White : HelperColor);
+        using var pen = new Pen(HelperHalo, LogicalToDeviceUnits(1));
         g.FillRectangle(brush, bounds);
         g.DrawRectangle(pen, bounds);
     }
