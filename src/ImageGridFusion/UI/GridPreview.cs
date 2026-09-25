@@ -27,13 +27,16 @@ internal sealed class GridPreview : Control
     private const int WheelNotch = 120;
     private const int NotchesPerDoubling = 4;
     private const int WheelEndDelay = 150;
-    private const int BarReach = 4;
+    private const int BarReach = 12;
     private const int BarSnap = 6;
     private const int BarMinGap = 8;
-    private const int BarGripLength = 20;
-    private const int BarGripWidth = 6;
+    private const int BarGripLength = 32;
+    private const int BarGripWidth = 8;
 
     private static readonly Color HoverOutlineColor = Color.FromArgb(128, Color.White);
+
+    // Fluorescent green: the bars of the blur show on any image.
+    private static readonly Color BarColor = Color.FromArgb(57, 255, 20);
 
     /// <summary>Buttons of the hover toolbar, in their order along the top of the cell.</summary>
     private enum Tool
@@ -1609,14 +1612,15 @@ internal sealed class GridPreview : Control
     }
 
     /// <summary>
-    /// The four bars as guides across the whole cell, outlined so they show on any image, with a grip
-    /// at the middle of each side of the blurred rectangle; the grip is lit while hovered or dragged.
+    /// The four bars as guides across the whole cell, fluorescent green and outlined so they show on
+    /// any image, with a grip at the middle of each side of the sharp rectangle; the grip turns white
+    /// while hovered or dragged.
     /// </summary>
     private void PaintBlurBars(Graphics g, Rectangle cell, BlurEffect blur)
     {
         var area = blur.Area(cell);
 
-        // A bar on the right or bottom side sits on the last blurred pixel, inside the cell.
+        // A bar on the right or bottom side sits on the last sharp pixel, inside the cell.
         int left = area.Left;
         int right = Math.Max(area.Left, area.Right - 1);
         int top = area.Top;
@@ -1627,8 +1631,8 @@ internal sealed class GridPreview : Control
         var state = g.Save();
         g.SetClip(cell, CombineMode.Intersect);
         g.SmoothingMode = SmoothingMode.None;
-        using (var outline = new Pen(Color.FromArgb(160, 0, 0, 0), LogicalToDeviceUnits(3)))
-        using (var line = new Pen(Color.White, LogicalToDeviceUnits(1)))
+        using (var outline = new Pen(Color.FromArgb(160, 0, 0, 0), LogicalToDeviceUnits(4)))
+        using (var line = new Pen(BarColor, LogicalToDeviceUnits(2)))
         {
             foreach (var pen in new[] { outline, line })
             {
@@ -1651,7 +1655,7 @@ internal sealed class GridPreview : Control
     private void PaintBarGrip(Graphics g, BlurSide side, Rectangle bounds)
     {
         bool hot = _hoveredBar == side || _draggedBar == side;
-        using var brush = new SolidBrush(hot ? SystemColors.Highlight : Color.White);
+        using var brush = new SolidBrush(hot ? Color.White : BarColor);
         using var pen = new Pen(Color.FromArgb(160, 0, 0, 0), LogicalToDeviceUnits(1));
         g.FillRectangle(brush, bounds);
         g.DrawRectangle(pen, bounds);
