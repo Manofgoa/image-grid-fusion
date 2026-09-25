@@ -158,6 +158,7 @@ says so rather than staying blank.
 | Code | 4 | 2026-09-25 | `GridPreview.HandleBounds` / `PaintHandle`; build clean, 0 warning |
 | Unit tests | 4 | 2026-09-25 | Not applicable: no test project, UI only |
 | README | 4 | 2026-09-25 | Swap line describes the central handle; stale `Ctrl` + drag removed |
+| Manual validation | 4 | 2026-09-25 | Tested in the running app, validated by the user — task finished |
 
 ---
 
