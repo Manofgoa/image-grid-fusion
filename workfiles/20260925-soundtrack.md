@@ -80,10 +80,10 @@ Questions asked by the agent during design, with user responses.
 
 | # | Question | Answer | Date |
 |---|---|---|---|
-| 1 | Where is the soundtrack heard: preview, exports, or both? | | 2026-09-25 |
-| 2 | When the soundtrack and the grid's duration differ, what happens? | | 2026-09-25 |
-| 3 | Which volume controls does the mix offer? | | 2026-09-25 |
-| 4 | Is the subject expected to be straightforward, or tricky / long? | | 2026-09-25 |
+| 1 | Where is the soundtrack heard: preview, exports, or both? | Preview and video exports; GIF and still exports stay silent | 2026-09-25 |
+| 2 | When the soundtrack and the grid's duration differ, what happens? | The grid's duration rules: a shorter soundtrack loops, a longer one is cut | 2026-09-25 |
+| 3 | Which volume controls does the mix offer? | One soundtrack volume slider in the effect's options; videos keep their level, each one can be muted | 2026-09-25 |
+| 4 | Is the subject expected to be straightforward, or tricky / long? | Straightforward — a single scout pass | 2026-09-25 |
 
 ---
 
