@@ -167,6 +167,24 @@ internal static class EffectIcons
         }
     });
 
+    /// <summary>A dark blue loudspeaker sending two green sound waves to the right.</summary>
+    public static Bitmap Volume(int size) => Draw(size, (g, s) =>
+    {
+        PointF[] speaker =
+        [
+            new(s * 0.08f, s * 0.36f), new(s * 0.28f, s * 0.36f), new(s * 0.52f, s * 0.12f),
+            new(s * 0.52f, s * 0.88f), new(s * 0.28f, s * 0.64f), new(s * 0.08f, s * 0.64f),
+        ];
+        using (var body = new SolidBrush(Color.FromArgb(40, 70, 150)))
+        {
+            g.FillPolygon(body, speaker);
+        }
+
+        using var wave = new Pen(Color.FromArgb(30, 190, 90), Math.Max(1, s * 0.09f)) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+        g.DrawArc(wave, s * 0.42f, s * 0.3f, s * 0.3f, s * 0.4f, -50, 100);
+        g.DrawArc(wave, s * 0.4f, s * 0.14f, s * 0.52f, s * 0.72f, -50, 100);
+    });
+
     /// <summary>A wedge growing to the right, yellow to red.</summary>
     public static Bitmap Intensity(int size) => Draw(size, (g, s) =>
     {
