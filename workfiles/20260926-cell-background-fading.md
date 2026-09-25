@@ -23,7 +23,9 @@ Scope agreed with the user (scoping batch, 2026-09-26):
 - It is a **grid-level setting**, not an effect: one setting for every seam, not a cell + image
   pair, so the effect rules of RULES.md do not apply to it.
 - Band colors are a **fixed (solid) color** today: the fade starts as a **linear gradient** between
-  two colors, alpha taken into account.
+  two colors, alpha taken into account. It applies to every band as it exists now; a future
+  non-solid background (e.g. a blurred extension of the image) would get its own fade later, out of
+  this scope.
 
 ---
 
@@ -47,9 +49,12 @@ Scope agreed with the user (scoping batch, 2026-09-26):
 - For each edge a cell shares with a neighbour, a **strip** inside the cell, along that edge.
 - Its depth is **resolution-independent**: a share of the canvas (or of the smaller cell), so the
   preview and an export at another size look the same.
-- Cells drawn one at a time (the preview's per-cell redraw) require that each cell draws **its own
-  half** of the transition, from its own color to the **seam color**, and meets the neighbour's half
-  on the seam without a step.
+- Each cell draws **its own half** of the transition, from its own color to the **seam color** —
+  the **50 / 50 mix** of the two band colors — and meets the neighbour's half on the seam without a
+  step. This also keeps the preview's per-cell redraw exact.
+- A seam fades **even when the neighbour shows no band there** (its image covers that side): the
+  gradient goes toward its band color, which is computed from the sides of its image, so the
+  transition stays consistent with what it shows.
 - The outer border of the grid has no neighbour: no fade there.
 - Where an edge is shared with several neighbours (a tall cell next to two stacked cells), the strip
   is split into one segment per neighbour — see Open Questions.
@@ -61,6 +66,7 @@ Scope agreed with the user (scoping batch, 2026-09-26):
   if one ever is not.
 - The colors blended are the band colors **as shown**, the black & white effect applied.
 - Transparent pixels of the image already show the band fill: they show the gradient where it lies.
+- The image itself is never faded: its edges stay opaque.
 
 ## Rendering
 
@@ -90,23 +96,18 @@ No test project exists — whether to create one is an Open Question.
 
 ## Open Questions
 
-- [ ] "If fixed color": what is the other case? Today bands are always one solid color — is it
-  (a) a first stage, a future non-solid background (e.g. a blurred extension of the image) getting
-  its own fade later, or (b) a fade only when the band color is the image's real uniform background,
-  not a fallback color?
-- [ ] "Take alpha into account": interpolation with alpha (premultiplied) and the gradient showing
-  through the image's transparent pixels — or something else (e.g. the image's own edges fading
-  into the neighbour)?
-- [ ] Seam color: each cell fades from its color to the **50 / 50 mix** at the seam (continuous,
-  symmetric, works with per-cell redraw) — or another rule?
-- [ ] A neighbour whose image covers its side of the seam shows no band there: fade toward its band
-  color anyway, or no fade on that seam?
-- [ ] Edge shared with several neighbours: one segment per neighbour, with a step between segments
-  along the edge — or blend the segments into each other too?
+- [x] ~~"If fixed color": what is the other case?~~ → A first stage: the gradient applies to every
+  band as it is today; a future non-solid background gets its own fade later
+- [x] ~~"Take alpha into account": what does it cover?~~ → Interpolation with alpha (premultiplied),
+  and the gradient showing through the image's transparent pixels; the image's edges are not faded
+- [x] ~~Seam color?~~ → The 50 / 50 mix: each cell fades from its color to it
+- [x] ~~A neighbour whose image covers its side of the seam?~~ → Fade toward its band color anyway
+- [ ] Corners and edges shared with several neighbours: one segment per neighbour with a step
+  between segments, and strips simply overlapping in the corners — or everything blended
+  continuously (seam color interpolated where segments meet, corners mixing both strips)?
 - [ ] Strip depth: fixed, or adjustable (slider)? Default depth?
-- [ ] Where does the setting live (layout strip, bottom bar next to the export buttons, ⚙ menu), and
-  is it on by default?
-- [ ] Is the setting remembered across launches?
+- [ ] Where does the setting live (layout strip, bottom bar next to the export buttons, ⚙ menu)?
+- [ ] On or off at startup, and is it remembered across launches?
 - [ ] No test project: create one for this work, or ship without unit tests?
 
 ---
@@ -125,6 +126,14 @@ start with a gradient, alpha taken into account") and the scoping batch: bands o
 shared edges, one grid-level setting. Scout pass on the codebase: band color per cell, cells drawn
 independently (so each cell draws its half of the fade toward a seam color), no grid-level settings
 row, no test project.
+
+### Iteration 2 — 2026-09-26
+
+Answers to Q5–Q8: the gradient is a first stage covering every band as it is today; alpha means
+premultiplied interpolation plus the gradient showing through transparent pixels (the image's edges
+are not faded); the seam color is the 50 / 50 mix; a seam fades even when the neighbour's image
+covers its side. The corner question is reworded to cover the multi-neighbour case too, and
+placement and startup state are split.
 
 ---
 
@@ -151,10 +160,14 @@ Questions asked by the agent during design, with user responses.
 | 2 | Where does the fade happen? | A strip along the edges shared by neighbour cells | 2026-09-26 |
 | 3 | At what level is it set? | One grid-level setting | 2026-09-26 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward — a single scout pass | 2026-09-26 |
-| 5 | "If fixed color": what is the other case? | | 2026-09-26 |
-| 6 | "Take alpha into account": what does it cover? | | 2026-09-26 |
-| 7 | Seam color rule? | | 2026-09-26 |
-| 8 | Neighbour whose image covers its side of the seam? | | 2026-09-26 |
+| 5 | "If fixed color": what is the other case? | A first stage; a future non-solid background gets its own fade later | 2026-09-26 |
+| 6 | "Take alpha into account": what does it cover? | Premultiplied interpolation + gradient through transparent pixels | 2026-09-26 |
+| 7 | Seam color rule? | The 50 / 50 mix | 2026-09-26 |
+| 8 | Neighbour whose image covers its side of the seam? | Fade toward its band color anyway | 2026-09-26 |
+| 9 | Corners and edges shared with several neighbours? | | 2026-09-26 |
+| 10 | Strip depth: fixed or adjustable, default? | | 2026-09-26 |
+| 11 | Where does the setting live? | | 2026-09-26 |
+| 12 | On or off at startup, remembered across launches? | | 2026-09-26 |
 
 ---
 
