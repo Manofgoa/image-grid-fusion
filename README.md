@@ -12,7 +12,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 - An **Add images** drop zone right of the preview: drop files onto it to add them after the current ones, or click it to pick files
 - Several layouts per image count, picked from a strip of thumbnails, plus a mirror toggle (see Layouts)
 - No image list: the grid preview *is* the interface
-  - Click a cell to select it, `Esc` to deselect; the effects row acts on the selected cell (see Effects)
+  - Click a cell to select it, `Esc` to deselect; the effect tabs act on the selected cell (see Effects)
   - Hover a cell to outline it and show a **×** to remove it, or press `Delete` to remove the selected one
   - Videos, animated GIFs, PDFs of several pages and long texts play live in their cell (see Animated content); the **Frames** effect sets where one starts, or freezes it on a frame
   - Zoom a cell from 10 % to 1600 %: with the **Zoom** effect's slider (it snaps to 100 %), or with the mouse wheel over any cell, around the point under the mouse (4 notches double the zoom; crossing 100 % stops on it)
@@ -25,7 +25,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
   - Drag the **✥** handle shown in the middle of a hovered cell onto another cell to swap the two images (in a small cell, it shrinks, or sits below the **×**)
   - Drop a file onto a cell to replace it
   - **Clear all** (bottom left) removes every image at once, with no confirmation, back to the initial state
-- Effects per cell, from the effects row below the top bar (see Effects)
+- Effects per cell, from the effect tabs at the top of the window (see Effects)
 - Copy to clipboard (`Ctrl+C`) or save (`Ctrl+S`): a PNG, or an MP4 video when the grid holds animated content
 - Lives in the notification area: closing the window only hides it, the tray icon brings it back, and it can start with Windows (see Tray & startup)
 
@@ -37,16 +37,21 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 
 ## Effects
 
-- The effects row, below the top bar, starts with an **Effects** label, then one button per effect — **Zoom**, **Rotate**, **Flip**, **Frames**, **Black & white**, **Blur** — and a **Reset** button. It acts on the selected cell: a button is pressed when its effect is active on it. With no cell selected, the row is disabled.
-- Click an inactive effect to activate it and show its options in a row below; click an active one to show its options; click it again, while its options show, to remove it, bringing back its default (100 % centered, upright, unflipped, playing from the beginning, in color, sharp).
-- **Reset** removes every effect of the selected cell at once.
+- At the top of the window, the options row, then the tabs hanging below it: an **Effects** label, one tab per effect — **Zoom**, **Rotate**, **Flip**, **Frames**, **Black & white**, **Blur** — and, at the far right, a **Reset** button as tall as the tabs. They act on the selected cell; with no cell selected, both rows are disabled.
+- Each tab holds a checkbox, checked while its effect is on for the selected cell. Clicking it turns the effect on or off, and selects the tab.
+- Clicking a tab elsewhere selects it: its options show in the row above, joined to it. The selected tab stays selected when another cell is selected, or none. The options row is always there, empty until a tab is selected.
+- Turning an effect off keeps its settings: it is drawn as its default (100 % centered, upright, unflipped, playing from the beginning, in color, sharp) until it is turned on again, as it was. An effect that is off shows its kept settings in its options.
+- Changing any option of an effect turns it on, from its kept settings.
+- The options row ends with a **Reset** button that brings the selected tab's effect back to its default state: default settings, turned off.
+- The **Reset** at the far right of the tabs does it for every effect of the selected cell at once.
+- An effect that does not apply to the selected cell (**Frames** on a still image) keeps its tab selectable, but its checkbox and options are disabled; the checkbox's tooltip says why.
 - An effect belongs to the cell and its image: replacing the image (drop, `Ctrl+V`, picker) or removing an image clears the effects of the cells whose image changes; swapping two cells or changing the layout keeps them.
 - Effects show in the preview, in every export, and on videos while they play.
 
 ### Zoom
 
 - Options: the zoom, from 10 % to 1600 % on a log scale, snapping to 100 %.
-- The mouse wheel and dragging keep working on every cell, selected or not (see above); the effect is active as soon as the image is zoomed or moved.
+- The mouse wheel and dragging keep working on every cell, selected or not (see above); the effect is on as soon as the image is zoomed or moved. On a cell whose zoom is off, they start from the image as shown, replacing the kept zoom.
 
 ### Rotate
 
@@ -72,7 +77,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 ### Blur
 
 - Blurs the bands around a rectangle of the cell, which stays sharp; the rectangle is centered on half of the cell when activated.
-- Four fluorescent green bars across the cell, two vertical and two horizontal, set each side of the sharp rectangle on its own: drag them while the blur's options show. A bar dragged within 6 px of its edge of the cell snaps onto it, so no thin blurred strip is left there.
+- Four fluorescent green bars across the cell, two vertical and two horizontal, set each side of the sharp rectangle on its own: drag them while the blur's options show and the blur is on. A bar dragged within 6 px of its edge of the cell snaps onto it, so no thin blurred strip is left there.
 - The rectangle stays in place in the cell when the image is zoomed, moved or turned.
 - Options: **Gaussian** or **Pixelate**, and the intensity, relative to the cell's size so an export looks like the preview.
 
