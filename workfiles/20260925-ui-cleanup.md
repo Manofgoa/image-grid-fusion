@@ -330,7 +330,7 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 8, 9 | 2026-09-25 | Carousel removed; `ImageLook` settings kept while off; `EffectTabs` + `MainForm` rewired; Effects label in bold with an arrow |
+| Code | 8, 9, 10 | 2026-09-25 | Carousel removed; `ImageLook` settings kept while off; `EffectTabs` + `MainForm` rewired; Effects label in bold with an arrow; options tint (`OptionsTint`) |
 | Unit tests | 8 | 2026-09-25 | Not applicable — no test project |
 | README | 8 | 2026-09-25 | § Effects, Zoom, Blur |
 | RULES.md / GLOSSARY.md | 8 | 2026-09-25 | § Scope and State, Effects Toolbar, Options Toolbar, On-Cell Handles; new terms |
