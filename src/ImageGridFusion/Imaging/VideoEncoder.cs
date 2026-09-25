@@ -33,17 +33,18 @@ internal sealed class VideoEncoder : IDisposable
     public string? SoundProblem { get; private set; }
 
     /// <summary>
-    /// Creates the file. <paramref name="soundPath"/>, when given, is a video whose sound loops every
-    /// <paramref name="soundLoop"/> for the <paramref name="length"/> of the video; a sound Windows
-    /// cannot re-encode leaves the video silent, with a <see cref="SoundProblem"/>.
+    /// Creates the file. <paramref name="soundPath"/>, when given, is a video whose sound starts at
+    /// <paramref name="soundStart"/> and loops every <paramref name="soundLoop"/> for the
+    /// <paramref name="length"/> of the video; a sound Windows cannot re-encode leaves the video
+    /// silent, with a <see cref="SoundProblem"/>.
     /// </summary>
-    public static VideoEncoder Create(string path, Size size, TimeSpan length, string? soundPath, TimeSpan soundLoop)
+    public static VideoEncoder Create(string path, Size size, TimeSpan length, string? soundPath, TimeSpan soundLoop, TimeSpan soundStart)
     {
         if (soundPath is not null)
         {
             try
             {
-                return Open(path, size, new Sound(soundPath, soundLoop.Ticks, length.Ticks));
+                return Open(path, size, new Sound(soundPath, soundLoop.Ticks, length.Ticks, soundStart.Ticks));
             }
             catch (Exception e) when (e is COMException or InvalidOperationException)
             {
@@ -183,8 +184,9 @@ internal sealed class VideoEncoder : IDisposable
     }
 
     /// <summary>
-    /// The sound of a video, decoded to 16-bit PCM by a Source Reader and fed to the AAC encoder, from
-    /// the start again every loop, and cut at the end of each loop and of the video.
+    /// The sound of a video, decoded to 16-bit PCM by a Source Reader and fed to the AAC encoder: from
+    /// its starting point, then from the start again every loop, cut at the end of each loop and of
+    /// the video.
     /// </summary>
     private sealed class Sound : IDisposable
     {
@@ -198,15 +200,22 @@ internal sealed class VideoEncoder : IDisposable
         private long _written;
         private bool _done;
 
-        public Sound(string path, long loop, long length)
+        public Sound(string path, long loop, long length, long start)
         {
             _loop = loop;
             _length = length;
+
+            // The first loop is cut short: the video's time 0 is the sound's time start.
+            _loopStart = -start;
             _reader = MediaFoundation.CreateSourceReader(path, attributes: null);
             try
             {
                 _reader.SetStreamSelection(MediaFoundation.AllStreams, false);
                 _reader.SetStreamSelection(MediaFoundation.FirstAudioStream, true);
+                if (start > 0)
+                {
+                    _reader.SetCurrentPosition(Guid.Empty, PropVariant.FromLong(start));
+                }
             }
             catch
             {
@@ -282,7 +291,8 @@ internal sealed class VideoEncoder : IDisposable
                         continue;
                     }
 
-                    if (sample is not null)
+                    // A seek lands a little before the starting point: what comes before it is left out.
+                    if (sample is not null && _loopStart + timestamp >= 0)
                     {
                         Write(writer, sample, _loopStart + Math.Max(0, timestamp));
                     }

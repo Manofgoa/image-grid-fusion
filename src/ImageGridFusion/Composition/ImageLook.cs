@@ -8,6 +8,7 @@ public enum ImageEffect
     Zoom,
     Rotate,
     Flip,
+    Frames,
     BlackAndWhite,
     Blur,
 }
@@ -15,7 +16,7 @@ public enum ImageEffect
 /// <summary>
 /// Effects applied to one image of the grid, toggled from the effects toolbar (see RULES.md): a zoom
 /// around <see cref="Focus"/>, a rotation by quarter turns, flips in the screen frame, black &amp;
-/// white, and the blur. Immutable, so an export can capture it.
+/// white, and the blur; the frames effect for an animated image. Immutable, so an export can capture it.
 /// </summary>
 public sealed record ImageLook
 {
@@ -64,10 +65,14 @@ public sealed record ImageLook
     /// <summary>The blur effect, <c>null</c> while inactive. Turning or zooming the image leaves it in place.</summary>
     public BlurEffect? Blur { get; private init; }
 
+    /// <summary>The frames effect, <c>null</c> while inactive: the content then plays from its beginning.</summary>
+    public FramesEffect? Frames { get; private init; }
+
     public bool IsNone => this == None;
 
     public bool IsActive(ImageEffect effect) => effect switch
     {
+        ImageEffect.Frames => Frames is not null,
         ImageEffect.BlackAndWhite => Grayscale is not null,
         ImageEffect.Blur => Blur is not null,
         _ => (Activations & Bit(effect)) != 0,
@@ -76,12 +81,13 @@ public sealed record ImageLook
     /// <summary>Activates an effect with its defaults; one already active is left as it is.</summary>
     public ImageLook Activate(ImageEffect effect) => IsActive(effect) ? this : effect switch
     {
+        ImageEffect.Frames => this with { Frames = FramesEffect.Default },
         ImageEffect.BlackAndWhite => this with { Grayscale = 1 },
         ImageEffect.Blur => this with { Blur = BlurEffect.Default },
         _ => Activated(effect),
     };
 
-    /// <summary>Deactivates an effect, bringing back its defaults: centered at 100 %, upright, unflipped, in color, sharp.</summary>
+    /// <summary>Deactivates an effect, bringing back its defaults: centered at 100 %, upright, unflipped, playing from the beginning, in color, sharp.</summary>
     public ImageLook Deactivate(ImageEffect effect)
     {
         var look = effect switch
@@ -89,6 +95,7 @@ public sealed record ImageLook
             ImageEffect.Zoom => this with { Zoom = 1, Focus = Center },
             ImageEffect.Rotate => WithRotation(0),
             ImageEffect.Flip => (FlipX ? ToggleFlipX() : this) is var flipped && flipped.FlipY ? flipped.ToggleFlipY() : flipped,
+            ImageEffect.Frames => this with { Frames = null },
             ImageEffect.BlackAndWhite => this with { Grayscale = null },
             _ => this with { Blur = null },
         };
@@ -136,6 +143,8 @@ public sealed record ImageLook
 
     /// <summary>Unclamped: how far the image may go depends on its cell, and is applied where the image is placed.</summary>
     public ImageLook WithFocus(PointF focus) => Activated(ImageEffect.Zoom) with { Focus = focus };
+
+    public ImageLook WithFrames(FramesEffect? frames) => this with { Frames = frames };
 
     public ImageLook WithGrayscale(double intensity) => this with { Grayscale = Math.Clamp(intensity, 0, 1) };
 

@@ -5,8 +5,9 @@ namespace ImageGridFusion.Imaging;
 
 /// <summary>
 /// Exports the carousel as an MP4 video: whole loops, each arrangement shown for a second (see
-/// <see cref="Carousel"/>). Animated contents play while they move, as in the animated export, or,
-/// forced to images, stay still on the page each shows, the video then silent.
+/// <see cref="Carousel"/>). Animated contents play while they move, as in the animated export (a
+/// frozen one on its frame), or, forced to images, stay still on the page each shows, the video
+/// then silent.
 /// </summary>
 internal static class CarouselExport
 {
@@ -21,33 +22,13 @@ internal static class CarouselExport
     {
         var readers = new AnimationReader?[job.Items.Count];
         var frames = new Frame[job.Items.Count];
-        var owned = new bool[job.Items.Count];
         VideoEncoder? encoder = null;
         bool finished = false;
         try
         {
             for (int i = 0; i < job.Items.Count; i++)
             {
-                var item = job.Items[i];
-                if (item.Source is null)
-                {
-                    frames[i] = new Frame(item.Still!, item.BandColor, item.Look);
-                    continue;
-                }
-
-                Bitmap first;
-                if (playContents)
-                {
-                    readers[i] = item.Source.OpenAnimation();
-                    first = readers[i]!.FrameAt(TimeSpan.Zero) ?? throw new InvalidOperationException("A source has no frame to show.");
-                }
-                else
-                {
-                    first = item.Source.Render(item.Page);
-                }
-
-                owned[i] = true;
-                frames[i] = new Frame(first, item.BandColor, item.Look);
+                frames[i] = GridExport.FirstFrame(job.Items[i], playContents, out readers[i]);
             }
 
             int steps = frames.Length;
@@ -56,8 +37,8 @@ internal static class CarouselExport
             using var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppRgb);
             using var g = Graphics.FromImage(bitmap);
             encoder = playContents
-                ? VideoEncoder.Create(path, canvas, length, job.SoundPath, job.SoundLoop)
-                : VideoEncoder.Create(path, canvas, length, soundPath: null, TimeSpan.Zero);
+                ? VideoEncoder.Create(path, canvas, length, job.SoundPath, job.SoundLoop, job.SoundStart)
+                : VideoEncoder.Create(path, canvas, length, soundPath: null, TimeSpan.Zero, TimeSpan.Zero);
 
             // The grid is drawn again only when the arrangement, or a frame shown, changes.
             int count = Animation.FrameCount(length);
@@ -69,7 +50,7 @@ internal static class CarouselExport
                 bool changed = false;
                 for (int i = 0; k > 0 && i < readers.Length; i++)
                 {
-                    if (readers[i]?.FrameAt(Animation.LoopTime(time, job.Items[i].Loop)) is { } next)
+                    if (readers[i]?.FrameAt(Animation.LoopTime(job.Items[i].Start + time, job.Items[i].Loop)) is { } next)
                     {
                         frames[i].Bitmap.Dispose();
                         frames[i] = frames[i] with { Bitmap = next };
@@ -99,7 +80,7 @@ internal static class CarouselExport
             for (int i = 0; i < frames.Length; i++)
             {
                 readers[i]?.Dispose();
-                if (owned[i])
+                if (job.Items[i].Source is not null)
                 {
                     frames[i].Bitmap?.Dispose();
                 }

@@ -61,6 +61,35 @@ internal static class EffectIcons
         g.DrawLine(axis, mid, 0, mid, s);
     });
 
+    /// <summary>A strip of film: a dark band with sprocket holes, and two frames, blue and amber.</summary>
+    public static Bitmap Frames(int size) => Draw(size, (g, s) =>
+    {
+        var strip = new RectangleF(s * 0.05f, s * 0.15f, s * 0.9f, s * 0.7f);
+        using (var film = new SolidBrush(Color.FromArgb(50, 50, 60)))
+        {
+            g.FillRectangle(film, strip);
+        }
+
+        float hole = Math.Max(1, s * 0.09f);
+        for (int i = 0; i < 4; i++)
+        {
+            float x = strip.X + strip.Width * (i + 0.5f) / 4 - hole / 2;
+            g.FillRectangle(Brushes.White, x, strip.Top + hole * 0.5f, hole, hole);
+            g.FillRectangle(Brushes.White, x, strip.Bottom - hole * 1.5f, hole, hole);
+        }
+
+        float top = strip.Top + hole * 2;
+        float height = strip.Height - hole * 4;
+        float width = strip.Width / 2 - s * 0.08f;
+        using (var blue = new SolidBrush(Color.FromArgb(0, 170, 255)))
+        {
+            g.FillRectangle(blue, strip.X + s * 0.04f, top, width, height);
+        }
+
+        using var amber = new SolidBrush(Color.FromArgb(255, 180, 0));
+        g.FillRectangle(amber, strip.X + strip.Width / 2 + s * 0.04f, top, width, height);
+    });
+
     /// <summary>A disc, half black and half white, in a gray ring.</summary>
     public static Bitmap BlackAndWhite(int size) => Draw(size, (g, s) =>
     {
