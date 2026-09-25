@@ -878,8 +878,19 @@ internal sealed class MainForm : Form
             new FileInfo(path).Length,
             video.Frames,
             video.Length,
-            video.SoundProblem ?? (video.SoundPath is null ? "no sound" : $"sound: {Path.GetFileName(video.SoundPath)}"),
+            SoundSummary(video),
             encoding);
+
+    /// <summary>The files whose sound is in the video, then the ones Windows could not re-encode.</summary>
+    private static string SoundSummary(GridExport.Result video)
+    {
+        static string Names(IEnumerable<string> paths) => string.Join(" + ", paths.Select(Path.GetFileName));
+        string failed = video.FailedSounds.Count == 0 ? ""
+            : $"{Names(video.FailedSounds)}: {(video.FailedSounds.Count == 1 ? "its sound" : "their sounds")} cannot be re-encoded";
+        return video.MixedSounds.Count == 0
+            ? failed.Length == 0 ? "no sound" : $"no sound ({failed})"
+            : $"sound: {Names(video.MixedSounds)}{(failed.Length == 0 ? "" : $" ({failed})")}";
+    }
 
     private static string Summary(string done, string format, Size size, long bytes, int frames, TimeSpan length, string? sound, TimeSpan encoding)
     {
