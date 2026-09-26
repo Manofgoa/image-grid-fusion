@@ -148,6 +148,11 @@ Open questions answered:
 - The light copy follows it: the JPEG and its downscaled bitmap are **flattened on white**
   (`Compositor.Flattened`) before encoding.
 
+### Iteration 4 — 2026-09-26 — ✅ Implemented
+
+Go given: code, unit tests and documentation (no test project — only code and README apply).
+Work lands on `main` (standing user preference).
+
 ---
 
 ## Implementation Log
@@ -178,6 +183,7 @@ Questions asked by the agent during design, with user responses.
 | 7 | Clipboard content: JPEG file only, or file + downscaled bitmap? | JPEG file + downscaled bitmap | 2026-09-26 |
 | 8 | Same option in Save? | No, Copy only | 2026-09-26 |
 | 9 | Go for implementation? | No — the gate holds | 2026-09-26 |
+| 10 | Go for implementation? (asked again) | Code, unit tests and documentation | 2026-09-26 |
 
 ---
 
