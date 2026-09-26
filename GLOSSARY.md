@@ -9,6 +9,8 @@ each.
 | Cell (*cellule*) | One slot of the grid |
 | Image | The content of a cell, **whatever its source** — still image, video, animated GIF, preview of a text / PDF or other file. "Image" never means "still image only" |
 | Layout (*disposition*) | The arrangement of cells chosen in the layout strip |
+| Separator (*séparateur*) | A stretch of boundary between cells, dragged to resize them: it moves every cell on both of its sides, and no other |
+| Arm (*bras*) | One of the four separators of the Grid's cross while both of its lines are straight |
 | Selected cell | The cell the effects toolbar acts on |
 | Effect (*effet*) | A transformation of a cell + image pair, turned on or off from the effects toolbar: Zoom, Rotate, Flip, Frames, Black & white, Blur, Volume. Turned off, it keeps its settings |
 | Effects toolbar | The always-visible row of effect tabs, hanging below the options toolbar: the "Effects" label, the effect tabs, the Reset button at the far right |
