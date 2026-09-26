@@ -1588,7 +1588,7 @@ internal sealed class MainForm : Form
         _startWithWindows.Checked = StartupRegistration.IsEnabled;
         _twitterCornersDefault.Checked = _roundedByDefault;
 
-        // Locked like the Global effects row: an export keeps the borders it started with.
+        // Locked like the global effects toolbar: an export keeps the borders it started with.
         _borderColor.Enabled = !IsExporting;
         _settingsMenu.Show(_settingsButton, Point.Empty, ToolStripDropDownDirection.AboveRight);
     }
