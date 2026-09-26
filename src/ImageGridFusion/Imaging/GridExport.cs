@@ -144,6 +144,9 @@ internal static class GridExport
                     }
                 }
 
+                // Neither format keeps an alpha channel: a cell without background is flattened on white,
+                // cleared at each frame so the previous one does not show through.
+                g.Clear(Color.White);
                 Compositor.Draw(g, frames, job.Layout, canvas);
                 encoder.WriteFrame(bitmap, time, Animation.FrameTime(k + 1) - time);
                 progress?.Report((k + 1) / (double)count);
