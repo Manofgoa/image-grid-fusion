@@ -120,6 +120,14 @@ The GLOSSARY's *Effect* entry lists the Background with the other effects.
     is unchecked**. **Cancel** → nothing changes.
 - While the Background is off, its options show its **kept settings**, and acting on any of them
   **turns it on** first (RULES.md) — a color picked, the opacity moved or the checkbox clicked.
+- As implemented (Iteration 6): the button reads **Color…**, its face shows the color **opaque**
+  (a WinForms control takes no translucent back color), its text black or white by luminance; the
+  face is refreshed only while the Background tab is selected. The automatic color it shows and
+  that unchecking freezes is computed for the selected cell as the preview draws it
+  (`GridPreview.SelectedAutomaticBackground` → `Compositor.AutomaticBackground`). One
+  `ColorDialog` serves the whole session, so its custom colors stay. The opacity has its own icon
+  (`EffectIcons.Opacity`), the label reads `Opacity: n %`; the checkbox and the color button have
+  tooltips.
 
 ## Rendering
 
@@ -144,6 +152,9 @@ The GLOSSARY's *Effect* entry lists the Background with the other effects.
   part of the image.
 - **Preview only**: drawn by the preview under the composed grid, never by the `Compositor`,
   so it never reaches an export.
+- As implemented: a texture brush (white and grey 204) anchored on the canvas, painted under the
+  whole grid at every paint; a cell drawn again into the preview cache is **cleared to
+  transparent first**, else its previous frame would show through where it has no background.
 
 ### Exports
 
@@ -154,8 +165,9 @@ The GLOSSARY's *Effect* entry lists the Background with the other effects.
 | Copy (clipboard), `PNG` stream | **Transparency kept** |
 | Copy (clipboard), bitmap flavour (`SetImage`) | Flattened on **white** |
 
-- Today `Compositor.Render` is 24 bpp and the export bitmap 32 bpp RGB: the PNG paths switch
-  to ARGB, the others composite the result over white before encoding.
+- `Compositor.Render` (every still: Save PNG, Copy) is now 32 bpp **ARGB**; the MP4 / GIF frame
+  loop clears its canvas to **white** before each frame; the copied bitmap is
+  `Compositor.Flattened` (24 bpp, on white), the `PNG` stream is saved from the ARGB render.
 
 ---
 
@@ -202,6 +214,11 @@ blocking ones.
   no fill, the default state is on (Q&A #13)
 - [x] ~~**Copy (clipboard)** — does the copied image keep the transparency?~~ → The `PNG` stream
   keeps the alpha, the bitmap flavour is flattened on white (Q&A #14)
+- [ ] **Blur over a transparent background** *(found during the run, not implemented)* — the blur
+  draws its blurred copy of the cell **over** the sharp image; where the cell has no background,
+  that copy is partly transparent near the image's edges, so the sharp image shows through the
+  blurred bands there. Fix: replace the bands instead of drawing over them — which needs the
+  blur to know what lies under the cell (transparent in the preview, white in MP4 / GIF).
 
 ---
 
@@ -267,6 +284,36 @@ Go given for code, tests and documentation (Q&A #16), after a go relayed by anot
 set aside until the user confirmed it here. Branch Gate: stays on `main`, the standing choice for
 this repository. Scope frozen on the design sections as they stand.
 
+### Iteration 6 — 2026-09-26 — 🧭 Implementation choices
+
+No project rule broken. Choices the frozen design did not state:
+- `ImageLook.Background` defaults to `BackgroundEffect.Default` in its initializer, so
+  `ImageLook.None` — the default state every path starts from — has it on; `Reset(Background)`
+  returns it on; `ImageEffect.Background` is the enum's first case (tab order, activation bit).
+- The automatic color shown on the button and frozen by unchecking is computed on the preview's
+  cell by a new `Compositor.AutomaticBackground`, the same computation as `DrawCell`; the button
+  face is refreshed only while the Background tab is selected, as it changes at every zoom or move.
+- The button reads **Color…**, its face opaque (WinForms refuses a translucent back color), its
+  text black or white by luminance. One `ColorDialog` for the session keeps its custom colors.
+  New icons `EffectIcons.Background` (tab) and `EffectIcons.Opacity` (slider); label
+  `Opacity: n %`; tooltips on the checkbox and the color button.
+- Preview: cells drawn again into the cache are cleared to transparent first, and the
+  checkerboard is a texture brush painted under the whole canvas.
+- Exports: `Compositor.Render` became ARGB for every still; the MP4 / GIF loop clears to white at
+  each frame (it drew each frame over the previous one, which a transparent cell would reveal);
+  `Compositor.Flattened` gives the copied bitmap.
+- Found, not implemented (scope freeze): the blur over a transparent background lets the sharp
+  image show through its bands near the image's edges — added to *Open Questions*.
+- Verified with a throwaway harness in the scratchpad (not committed): off → alpha 0 in the PNG
+  render and white once flattened; 50 % → alpha 127; a chosen color kept while off and back when
+  turned on; `Reset` and `WithoutEffects` → on, automatic; black & white grays a chosen color.
+- Commits: two of this run's changes were swept into another session's commit `eaa76f5`
+  (*remember last folder*): `UI/EffectIcons.cs` whole and part of `UI/MainForm.cs`; the rest is in
+  `e1ebfb7`. History left as is, `main` being shared; that session was asked to commit its own
+  paths only. The same had happened to Iteration 3 of this workfile (`cc23c85`).
+- RULES.md and GLOSSARY.md changed: the 21 running sessions of the workspace were messaged to
+  re-read them; no session title needed correcting.
+
 ---
 
 ## Implementation Log
@@ -276,9 +323,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
+| Code | 6 | 2026-09-26 | `bfba764` state, `8ff3ea0` rendering, `6a10ec4` preview, `eaa76f5` (icons, swept by another session) + `e1ebfb7` Background tab and copy |
+| Unit tests | 6 | 2026-09-26 | None, by decision (Q&A #11); scratch harness run, not committed |
+| RULES.md / GLOSSARY.md | 6 | 2026-09-26 | `77775e7` — the Background exception, Background among the cell effects |
+| README | 6 | 2026-09-26 | `5ac670a` — Background section, effects list, fitting rules, Copy |
 
 ---
 
