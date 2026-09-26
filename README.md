@@ -12,7 +12,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 - Not only images: videos, PDFs, text files, and any file Windows shows a thumbnail for, are turned into an image (see Previews)
 - An **Add images** drop zone right of the preview: drop files onto it to add them after the current ones, or click it to pick files
   - With no image, the empty grid does the same: click it to pick files (a **+** and a hand cursor show it is clickable), drop files onto it, or paste them
-- Several layouts per image count, picked from a strip of thumbnails, plus a mirror toggle; drag the separator between two cells to resize them (see Layouts)
+- Several layouts per image count, picked from a strip of thumbnails — more of them under its **More** group — plus a mirror toggle; drag the separator between two cells to resize them (see Layouts)
 - No image list: the grid preview *is* the interface
   - Click a cell to select it, `Esc` to deselect; the effect tabs act on the selected cell (see Effects)
   - Hover a cell to outline it and show a **×** to remove it, or press `Delete` to remove the selected one
@@ -170,6 +170,8 @@ A single-page PDF, a text that fits its cell, a one-frame GIF and plain images s
 
 Each image count offers several layouts, picked by clicking a thumbnail in the strip on the left of the preview. The strip is always shown, so the preview keeps its size: with a single image it holds that count's only layout, and with no image the same thumbnail greyed out. The first layout of each count is the default; the app starts on it, and goes back to it whenever the number of images changes.
 
+From the top, the strip holds the mirror toggle (see Mirror), the layouts below, then a **More ▸** header: click it to show that count's extra layouts (see More layouts), click **More ▾** to hide them again. It starts collapsed, and collapses again whenever the number of images changes; collapsed while one of the extra layouts is active, it keeps that one's thumbnail shown. A strip taller than the window scrolls, with the mouse wheel or its scrollbar; the thumbnails keep their size.
+
 Image **1** always takes the featured (big) cell; the other images follow in reading order (left→right, top→bottom). Cell ratios are given for a 1.91:1 canvas: below 1 suits portraits and phone screenshots, around 1.9 landscapes, above 3 panoramas.
 
 **1 image** - fills the whole canvas
@@ -218,9 +220,68 @@ Grid (default)         Four columns           Featured               Big left   
 1.91 each              0.48 each              1.27 · 1.91 ×3         0.95 · 2.87 ×3         3.82 · 1.27 ×3
 ```
 
+### More layouts
+
+Under the strip's **More** group, from 2 to 4 images. Several of them are an ordinary layout at other proportions — *Bricks* is the *Grid* with its vertical line broken — offered here with exact proportions in one click.
+
+**2 images**
+
+```
+Two thirds + one third, stacked   Three quarters + one quarter
++-------------------+             +--------------+----+
+|                   |             |              |    |
+|         1         |             |      1       | 2  |
++-------------------+             |              |    |
+|         2         |             +--------------+----+
++-------------------+
+2.87 · 5.73                       1.43 · 0.48
+```
+
+**3 images**
+
+```
+Three rows             Big centre             Big top, uneven        Corner
++-------------------+  +----+---------+----+  +-------------------+  +------------+------+
+|         1         |  |    |         |    |  |         1         |  |            |      |
++-------------------+  | 2  |    1    | 3  |  +------------+------+  |     1      |      |
+|         2         |  |    |         |    |  |     2      |  3   |  |            |  2   |
++-------------------+  +----+---------+----+  +------------+------+  +------------+      |
+|         3         |                                                |     3      |      |
++-------------------+                                                +------------+------+
+5.73 each              0.95 · 0.48 ×2         3.82 · 2.55 · 1.27     1.91 · 0.64 · 3.82
+```
+
+**4 images**
+
+```
+Four rows              Big centre             Tall left, mixed
++-------------------+  +----+---------+----+  +------+-------------+
+|         1         |  |    |         | 3  |  |      |      2      |
++-------------------+  | 2  |    1    +----+  |  1   +------+------+
+|         2         |  |    |         | 4  |  |      |  3   |  4   |
++-------------------+  +----+---------+----+  +------+------+------+
+|         3         |  0.95 · 0.48 · 0.95 ×2  0.64 · 2.55 · 1.27 ×2
++-------------------+
+|         4         |
++-------------------+
+7.64 each
+
+Uneven grid            Bricks                 Corner
++------------+------+  +------------+------+  +------------+------+
+|     1      |  2   |  |     1      |  2   |  |            |      |
++------------+------+  +------+-----+------+  |     1      |  2   |
+|     3      |  4   |  |  3   |     4      |  |            |      |
++------------+------+  +------+------------+  +------------+------+
+2.55 · 1.27 ×2 · 2.55  2.55 · 1.27 ×2 · 2.55  |     3      |  4   |
+                                              +------------+------+
+                                              1.91 · 0.95 · 3.82 · 1.91
+```
+
+In *Big centre* the featured cell is in the middle: image 2 goes left of it, and with 3 images image 3 right of it.
+
 ### Mirror
 
-The toggle below the thumbnails flips the active layout along its asymmetric axis: left↔right for the layouts whose featured cell is on the left (*Two thirds + one third*, *Big left*, *Featured*), top↔bottom for *Big top*. It is disabled on symmetric layouts, where flipping would only reorder the images, and it turns off whenever the layout or the number of images changes. The images keep their cells: image 1 moves with the featured cell.
+The toggle at the top of the strip flips the active layout along its asymmetric axis: top↔bottom for *Big top* and *Two thirds + one third, stacked*, left↔right for the other asymmetric layouts (*Two thirds + one third*, *Big left*, *Featured*, and among the extra ones *Three quarters + one quarter*, *Big top, uneven*, *Corner*, *Big centre* with 4 images, *Tall left, mixed*, *Uneven grid*, *Bricks*). It is disabled on symmetric layouts, where flipping would only reorder the images, and it turns off whenever the layout or the number of images changes. The images keep their cells: image 1 moves with the featured cell.
 
 ```
 Big left, mirrored
@@ -237,9 +298,9 @@ A resized layout flips with its sizes: the big cell stays big, on the other side
 
 Drag the **separator** between two cells to give one of them more room: the cursor turns into ↔ or ↕ within 4 px of it. A separator moves only the cells on both of its sides — the long one of *Big left* moves the big cell and every cell stacked next to it, the short one between two stacked cells only those two — so the grid may become irregular. The preview follows live, smoothed once the separator is released.
 
-- **Grid** (4 images): while both lines of the cross are straight, each of its four arms moves on its own, between two cells; moving one breaks its line, and the other line then moves in one piece, all four cells with it, until the broken line is straight again.
+- **Grid** (4 images), and the extra layouts whose four cells meet in a cross (*Uneven grid*, *Bricks*, *Corner* with 4 images): while both lines of the cross are straight, each of its four arms moves on its own, between two cells; moving one breaks its line, and the other line then moves in one piece, all four cells with it, until the broken line is straight again. *Bricks* starts with its vertical line broken.
 - **Minimum**: a separator stops where a cell it moves would get below 10 % of the canvas width (or height).
-- **Magnetic**: within 6 px, it lands exactly back on its place in the layout, or in line with a parallel separator — the other arm of the Grid's broken line.
+- **Magnetic**: within 6 px, it lands exactly back on its place in the layout, or in line with a parallel separator — such as the other arm of a broken line.
 - **Back to the layout's sizes**: double-click a separator to put it back; click the active thumbnail again, or the effects **Reset**, to put all of them back. The active thumbnail keeps the layout's own shape.
 - The sizes belong to the grid, not to the images: swapping two cells or replacing an image keeps them; picking another layout or changing the number of images starts again on the layout's own sizes. They are not kept between two launches.
 - On the selected cell, a blur bar lying on its edge is grabbed before the separator; the separator stays reachable from the neighbour cell, or once the Blur tab is unselected or the blur is off.
