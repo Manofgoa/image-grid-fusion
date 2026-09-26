@@ -78,11 +78,11 @@ that exact — and the cross is back to the *Aligned* state.
 - **Priority**: on its band, the separator wins over the cell's own gestures (drag / pan, swap
   handle drag). The selected cell's **effect handles win over the separator** on their own hit area
   (Q&A #10), as RULES — *On-Cell Handles* already states: a blur bar snapped onto the edge is dragged,
-  not the separator; the separator stays reachable once the blur effect is no longer selected, or
-  from the neighbour cell.
+  not the separator; the separator stays reachable once the blur tab is no longer selected or the blur is off,
+  or from the neighbour cell.
 - **Locked grid** (during an export): separators are neither highlighted nor draggable, like every
   other grid action.
-- Resizing is a **grid** gesture, not an effect: it has no toggle in the effects toolbar and does
+- Resizing is a **grid** gesture, not an effect: it has no tab in the effects toolbar and does
   not depend on the selected cell.
 
 ---
@@ -211,6 +211,13 @@ nothing today (`LayoutStrip` ignores it) — added to *Sizes Lifetime*.
 
 Last answers (Q&A #13–#14): the solution stays test-free; the effects toolbar's *Reset* resets every
 separator of the grid, on top of the selected cell's effects. No question remains open.
+
+### Iteration 5 — 2026-09-26
+
+Wording aligned with the updated RULES (effect tabs with an activation checkbox; blur bars shown
+while the tab is selected and the effect is on): the resize has no *tab* in the effects toolbar, and
+the separator is reachable again once the blur tab is unselected or the blur is off. No behaviour
+change.
 
 ---
 
