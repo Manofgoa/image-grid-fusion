@@ -67,15 +67,20 @@ Agreed:
   | Caption | *Favorites (12)* while the box is empty; *57 results — first 10* / *3 results* / *No result* during a search; *Waiting for the index…* while no index exists yet |
   | List | The rows (favorites, or the results), filling the rest of the height |
 
-- **A row** = the heart (`♡` grey, `♥` red when a favorite), then a **thumbnail** of the file in a
-  160 × 120 logical px box (the image fitted, centered), then the **file name**, secondary, to its
-  right; the full path in a tooltip. Owner-drawn list, rows 128 px tall; the heart's hit zone is
-  the first 22 logical px. *(Iteration 5; heart + name only before.)*
+- **The list is a grid of tiles, two columns** (`ThumbnailGrid`, an owner-drawn scrollable
+  control): a **tile** = a 165 × 124 logical px box holding the file's **thumbnail** (fitted,
+  centered), the **heart in a medallion** at its top-left corner (`♡` grey, `♥` red when a
+  favorite), and the **file name** below, small and secondary, cut with an ellipsis; the full path
+  in a tooltip. 8 px between tiles; the grid scrolls vertically. The selected tile has a
+  highlighted border; the hovered one a lighter border. *(Iteration 6; a heart + name row before
+  Iteration 5, a row with a thumbnail planned by Iteration 5.)*
 - **Thumbnails** come from the Shell's thumbnail cache (`ShellThumbnail`, the same source as the
-  cells' previews of non-image files), **loaded in the background** one at a time: a row whose
-  thumbnail is not ready yet shows an empty box and is repainted when it arrives; a file the Shell
-  cannot thumbnail keeps the empty box. Thumbnails are cached in memory for the session, the
-  oldest dropped past 200, and a request is skipped when its row is no longer shown.
+  cells' previews of non-image files), **loaded in the background** one at a time, the most
+  recently painted tile first, and scaled to the box: a tile whose thumbnail is not ready yet shows
+  an empty box and is repainted when it arrives; a file the Shell cannot thumbnail keeps the empty
+  box. Thumbnails are cached in memory for the session, the oldest dropped past 200; pending
+  requests are dropped when the tiles change.
+- **Keys in the grid**: the arrows move the selection, `Enter` activates it, `Home` / `End` jump.
 - **Box empty (or blanks only)**: the list shows **every favorite** — no 10-limit — the **most
   recently added first**. **Box with text**: the 10 best matches (§ Search), the favorites among
   them marked with `♥` and **not promoted**.
@@ -341,6 +346,16 @@ only) is revised: the row becomes heart + thumbnail + name, the thumbnails loade
 background from the Shell's thumbnail cache (the app's `ShellThumbnail`), so the list still answers
 as the user types. § Panel updated.
 
+### Iteration 6 — 2026-09-26 — ⚙️ Post-implementation — Tile grid
+
+Before coding Iteration 5, four dispositions were drawn and offered (Q&A #17): A, a row with the
+heart, a 160 × 120 thumbnail and the name at its right; B, a full-width photo with the heart in a
+medallion and the name overlaid on a dark strip; C, a two-column grid of 165 × 124 tiles with the
+heart in a medallion and the name below; D, a 112 × 112 square with the name and the subfolder on
+two lines. **C chosen.** The list becomes a scrollable grid control of its own, `ThumbnailGrid`,
+the panel keeping the search, the favorites, the index and the status. § Panel updated; Iteration
+5's row is superseded.
+
 ---
 
 ## Implementation Log
@@ -378,6 +393,7 @@ Questions asked by the agent during design, with user responses.
 | 14 | Hidden and system files and folders: skipped, or indexed like the others? | Skipped | 2026-09-26 |
 | 15 | The collapse control: the panel's `»` / `«` buttons, a bottom-bar button, or both? | The panel's buttons | 2026-09-26 |
 | 16 | The favorites list: sorted by name, in the order added, or the most recent first? | The most recently added first | 2026-09-26 |
+| 17 | Which disposition for the heart, the thumbnail and the text: A row, B full-width photo, C two-column grid, D square thumbnail with two lines? | C — two-column grid | 2026-09-26 |
 
 ---
 
