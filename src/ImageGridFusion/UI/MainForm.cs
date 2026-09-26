@@ -151,28 +151,68 @@ internal sealed class MainForm : Form
     private ImageEffect? _selectedEffect;
     private bool _syncingEffects;
 
-    // The Global effects row, just above the bottom bar, each global effect's options beside its toggle,
-    // shown while it is on: see RULES.md. A file dropped anywhere on it becomes the soundtrack.
-    private readonly FlowLayoutPanel _globalRow = new()
+    // The global effects, the mirror of the cell effects: their tabs standing on their options row, just
+    // above the bottom bar (see RULES.md). A file dropped anywhere on either row becomes the soundtrack.
+    private readonly TableLayoutPanel _globalTabsRow = new()
     {
         Dock = DockStyle.Bottom,
-        WrapContents = false,
-        Padding = new Padding(8, 4, 8, 0),
+        AutoSize = true,
+        ColumnCount = 4,
+        RowCount = 1,
+        Padding = new Padding(8, 8, 8, 0),
         AllowDrop = true,
     };
     private readonly Label _globalLabel = new() { Text = "Global effects →", AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly CheckBox _soundtrackToggle = OptionButton("♪ Soundtrack");
+    private readonly EffectTabs<GlobalEffect> _globalTabs = new(effect => effect.ToString(), standing: true) { Anchor = AnchorStyles.Left | AnchorStyles.Bottom, Margin = Padding.Empty };
+
+    // Stands on the options row like the tabs, and as tall as them.
+    private readonly Button _globalResetButton = new()
+    {
+        Text = "Reset",
+        AutoSize = true,
+        Anchor = AnchorStyles.Right | AnchorStyles.Bottom,
+        Margin = new Padding(3, 0, 0, 0),
+        TextImageRelation = TextImageRelation.ImageBeforeText,
+    };
+    private readonly TableLayoutPanel _globalOptionsRow = new()
+    {
+        Dock = DockStyle.Bottom,
+        ColumnCount = 2,
+        RowCount = 1,
+        BackColor = SystemColors.Window,
+        Padding = new Padding(8, 4, 8, 4),
+        AllowDrop = true,
+    };
+    private readonly Panel _globalOptionsHost = new() { Dock = DockStyle.Fill, Margin = Padding.Empty };
+    private readonly Button _globalEffectResetButton = new()
+    {
+        Text = "Reset",
+        AutoSize = true,
+        Anchor = AnchorStyles.Right,
+        TextImageRelation = TextImageRelation.ImageBeforeText,
+        BackColor = SystemColors.Control,
+        UseVisualStyleBackColor = true,
+    };
+
+    // One row of options per global effect, in the global options row; only the selected tab's shows.
+    private readonly Dictionary<GlobalEffect, FlowLayoutPanel> _globalOptions = Enum.GetValues<GlobalEffect>()
+        .ToDictionary(e => e, _ => new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, Margin = Padding.Empty, Visible = false });
+
+    // The selected global tab belongs to its own toolbar, not to the cell effects' one; none at startup.
+    private GlobalEffect? _selectedGlobalEffect;
     private readonly Button _soundtrackBrowse = new() { Text = "Browse…", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly Label _soundtrackFile = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly TrackBar _soundtrackVolume = OptionSlider(0, (int)(Soundtrack.MaxLevel * 100), 10);
     private readonly Label _soundtrackVolumeLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
 
-    // The soundtrack's file and level, kept while it is off; cleared by Clear all only.
+    // The soundtrack's file and level, kept while it is off; cleared by its Resets and Clear all.
     private Soundtrack? _soundtrack;
     private bool _soundtrackOn;
 
-    // The borders' toggle and options; their color is a setting of the ⚙ menu, remembered between sessions.
-    private readonly CheckBox _bordersToggle = OptionButton("▦ Borders");
+    // The level set before any file is chosen, given to the first one.
+    private double _soundtrackLevel = 1;
+
+    // The borders' options; their color is a setting of the ⚙ menu, remembered between sessions.
     private readonly ComboBox _bordersStyle = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 90, Anchor = AnchorStyles.Left };
     private readonly TrackBar _bordersThickness = OptionSlider((int)Math.Round(GridBorders.MinThickness * 1000), (int)Math.Round(GridBorders.MaxThickness * 1000), 5);
     private readonly Label _bordersThicknessLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
@@ -262,26 +302,37 @@ internal sealed class MainForm : Form
         _options[ImageEffect.BlackAndWhite].Controls.AddRange([_grayscaleIcon, _grayscale, _grayscaleLabel]);
         _options[ImageEffect.Blur].Controls.AddRange([_gaussian, _pixelate, _blurIntensityIcon, _blurIntensity, _blurIntensityLabel]);
         _options[ImageEffect.Volume].Controls.AddRange([_mute, _volume, _volumeLabel]);
+        _globalTabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        _globalTabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        _globalTabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        _globalTabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        _globalTabsRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _globalLabel.Font = new Font(Font, FontStyle.Bold);
-        _soundtrackVolume.BackColor = SystemColors.Control;
-        _bordersThickness.BackColor = SystemColors.Control;
-        _bordersOpacity.BackColor = SystemColors.Control;
+        _globalTabsRow.Controls.Add(_globalLabel, 0, 0);
+        _globalTabsRow.Controls.Add(_globalTabs, 1, 0);
+        _globalTabsRow.Controls.Add(_globalResetButton, 3, 0);
+        _globalOptionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        _globalOptionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        _globalOptionsRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        _globalOptionsRow.Controls.Add(_globalOptionsHost, 0, 0);
+        _globalOptionsRow.Controls.Add(_globalEffectResetButton, 1, 0);
+        _globalOptionsHost.Controls.AddRange([.. _globalOptions.Values]);
         _bordersStyle.Items.AddRange(Enum.GetNames<BorderPattern>());
-        _globalRow.Controls.AddRange(
-        [
-            _globalLabel, _soundtrackToggle, _soundtrackBrowse, _soundtrackFile, _soundtrackVolume, _soundtrackVolumeLabel,
-            _bordersToggle, _bordersStyle, _bordersThickness, _bordersThicknessLabel, _bordersOpacity, _bordersOpacityLabel, _bordersOuterFrame, _bordersRounded,
-        ]);
+        _globalOptions[GlobalEffect.Soundtrack].Controls.AddRange([_soundtrackBrowse, _soundtrackFile, _soundtrackVolume, _soundtrackVolumeLabel]);
+        _globalOptions[GlobalEffect.Borders].Controls.AddRange(
+            [_bordersStyle, _bordersThickness, _bordersThicknessLabel, _bordersOpacity, _bordersOpacityLabel, _bordersOuterFrame, _bordersRounded]);
 
-        // Docked in reverse order of addition: the options row and the tabs row, then the bottom bar
-        // and the Global effects row above it, span the whole width; the layout strip takes the left
-        // of what remains, the file explorer the right, and the fill control goes first so it gets the rest.
+        // Docked in reverse order of addition: the options row and the tabs row, then the bottom bar,
+        // the global options row above it and the global tabs row above that, span the whole width; the
+        // layout strip takes the left of what remains, the file explorer the right, and the fill control
+        // goes first so it gets the rest.
         _explorer.Open = AppSettings.ExplorerPanelOpen;
         _explorer.Columns = AppSettings.ExplorerColumns;
         Controls.Add(_preview);
         Controls.Add(_explorer);
         Controls.Add(_layouts);
-        Controls.Add(_globalRow);
+        Controls.Add(_globalTabsRow);
+        Controls.Add(_globalOptionsRow);
         Controls.Add(_bottom);
         Controls.Add(_tabsRow);
         Controls.Add(_optionsRow);
@@ -339,7 +390,7 @@ internal sealed class MainForm : Form
 
         // The Reset button sizes itself to its font and DPI: the tabs follow it.
         _resetButton.SizeChanged += (_, _) => FitEffectRows();
-        _tabsRow.Paint += (_, e) => PaintOptionsEdge(e.Graphics);
+        _tabsRow.Paint += (_, e) => PaintOptionsEdge(e.Graphics, _tabsRow, standing: false);
         _effectTabs.TabClicked += (_, effect) => SelectEffect(effect);
         _effectTabs.CheckClicked += (_, effect) => ToggleEffect(effect);
         _toolTip.SetToolTip(_effectResetButton, "Brings this effect back to its defaults");
@@ -383,15 +434,26 @@ internal sealed class MainForm : Form
             ChangeLook(ImageEffect.Background, look => look.WithBackground(look.Background!.WithOpacity(_backgroundOpacity.Value / 100.0)));
         };
         _backgroundColor.Click += (_, _) => PickBackgroundColor();
-        _toolTip.SetToolTip(_soundtrackToggle, "Mixes the sound of an audio or video file over the videos, in the preview and the MP4 export");
-        _toolTip.SetToolTip(_soundtrackBrowse, "Chooses another audio or video file; one can also be dropped on this row");
-        _soundtrackToggle.Click += (_, _) => ToggleSoundtrack();
+        _globalResetButton.SizeChanged += (_, _) => FitEffectRows();
+        _globalTabsRow.Paint += (_, e) => PaintOptionsEdge(e.Graphics, _globalTabsRow, standing: true);
+        _globalTabs.TabClicked += (_, effect) => SelectGlobalEffect(effect);
+        _globalTabs.CheckClicked += (_, effect) => ToggleGlobalEffect(effect);
+        _toolTip.SetToolTip(_globalEffectResetButton, "Brings this global effect back to its initial state");
+        _toolTip.SetToolTip(_globalResetButton, "Brings every global effect back to its initial state; the cells are left alone");
+        _globalEffectResetButton.Click += (_, _) =>
+        {
+            if (_selectedGlobalEffect is { } effect)
+            {
+                ResetGlobalEffects(effect);
+            }
+        };
+        _globalResetButton.Click += (_, _) => ResetGlobalEffects();
+        _toolTip.SetToolTip(_soundtrackBrowse, "Mixes the sound of an audio or video file over the videos, in the preview and the MP4 export; a file can also be dropped on these rows");
         _soundtrackBrowse.Click += (_, _) => BrowseSoundtrack();
         _soundtrackVolume.ValueChanged += (_, _) => SetSoundtrackVolume();
-        _toolTip.SetToolTip(_bordersToggle, "Borders on the grid: brackets at its corners, or a gap between the cells; their color is in the ⚙ settings");
+        _toolTip.SetToolTip(_bordersStyle, "Brackets at the grid's corners, or a gap between the cells; the borders' color is in the ⚙ settings");
         _toolTip.SetToolTip(_bordersThickness, "Width of the borders, as a share of the grid's shorter side");
         _toolTip.SetToolTip(_bordersOuterFrame, "Also draws the borders around the grid; the corner brackets already are its frame");
-        _bordersToggle.Click += (_, _) => ToggleBorders();
         _bordersStyle.SelectedIndexChanged += (_, _) => ChangeBorders(borders => borders with { Pattern = (BorderPattern)_bordersStyle.SelectedIndex });
         _bordersThickness.ValueChanged += (_, _) =>
         {
@@ -407,14 +469,17 @@ internal sealed class MainForm : Form
         _bordersOuterFrame.CheckedChanged += (_, _) => ChangeBorders(borders => borders with { OuterFrame = _bordersOuterFrame.Checked });
         _toolTip.SetToolTip(_bordersRounded, "Rounds the grid's corners like Twitter / X shows images; the borders follow the curve");
         _bordersRounded.CheckedChanged += (_, _) => ChangeBorders(borders => borders with { Rounded = _bordersRounded.Checked });
-        _globalRow.DragEnter += (_, e) => e.Effect = e.Data?.GetDataPresent(DataFormats.FileDrop) == true ? DragDropEffects.Copy : DragDropEffects.None;
-        _globalRow.DragDrop += async (_, e) =>
+        foreach (var row in new Control[] { _globalTabsRow, _globalOptionsRow })
         {
-            if (e.Data?.GetData(DataFormats.FileDrop) is string[] { Length: > 0 } paths)
+            row.DragEnter += (_, e) => e.Effect = e.Data?.GetDataPresent(DataFormats.FileDrop) == true ? DragDropEffects.Copy : DragDropEffects.None;
+            row.DragDrop += async (_, e) =>
             {
-                await LoadSoundtrackAsync(paths[0]);
-            }
-        };
+                if (e.Data?.GetData(DataFormats.FileDrop) is string[] { Length: > 0 } paths)
+                {
+                    await LoadSoundtrackAsync(paths[0]);
+                }
+            };
+        }
         // Freezing the last playing content turns the export back into an image.
         _preview.SelectedImageChanged += (_, _) => UpdateButtons();
         _preview.ImagesChanged += (_, _) => UpdateButtons();
@@ -453,6 +518,8 @@ internal sealed class MainForm : Form
             _toolTip.Dispose();
             _resetButton.Image?.Dispose();
             _effectResetButton.Image?.Dispose();
+            _globalResetButton.Image?.Dispose();
+            _globalEffectResetButton.Image?.Dispose();
             _effectsLabel.Font.Dispose();
             _globalLabel.Font.Dispose();
             _grayscaleIcon.Image?.Dispose();
@@ -478,7 +545,7 @@ internal sealed class MainForm : Form
     private void UpdateEffectIcons()
     {
         int size = LogicalToDeviceUnits(16);
-        Image?[] previous = [_resetButton.Image, _effectResetButton.Image, _grayscaleIcon.Image, _gaussian.Image, _pixelate.Image, _blurIntensityIcon.Image, _backgroundOpacityIcon.Image];
+        Image?[] previous = [_resetButton.Image, _effectResetButton.Image, _globalResetButton.Image, _globalEffectResetButton.Image, _grayscaleIcon.Image, _gaussian.Image, _pixelate.Image, _blurIntensityIcon.Image, _backgroundOpacityIcon.Image];
         foreach (var effect in Enum.GetValues<ImageEffect>())
         {
             _effectTabs.SetIcon(effect, effect switch
@@ -494,8 +561,12 @@ internal sealed class MainForm : Form
             });
         }
 
+        _globalTabs.SetIcon(GlobalEffect.Soundtrack, EffectIcons.Soundtrack(size));
+        _globalTabs.SetIcon(GlobalEffect.Borders, EffectIcons.Borders(size));
         _resetButton.Image = EffectIcons.Reset(size);
         _effectResetButton.Image = EffectIcons.Reset(size);
+        _globalResetButton.Image = EffectIcons.Reset(size);
+        _globalEffectResetButton.Image = EffectIcons.Reset(size);
         _grayscaleIcon.Image = EffectIcons.Intensity(size);
         _grayscaleIcon.Size = new Size(size, size);
         _gaussian.Image = EffectIcons.Gaussian(size);
@@ -530,24 +601,30 @@ internal sealed class MainForm : Form
     }
 
     /// <summary>
-    /// The tabs as tall as the Reset beside them; the options row as tall as the tallest options, so
-    /// nothing below it moves when another tab is selected; the Global effects row as tall as its
-    /// tallest control, so the preview does not move when a global effect's options show.
+    /// The tabs as tall as the Reset beside them; each options row as tall as its tallest options, so
+    /// nothing beyond it moves when another tab is selected — the cell effects' and the global effects'.
     /// </summary>
     private void FitEffectRows()
     {
-        _globalRow.Height = _globalRow.Controls.Cast<Control>().Max(c => c.GetPreferredSize(Size.Empty).Height + c.Margin.Vertical) + _globalRow.Padding.Vertical;
         _effectTabs.Size = new Size(_effectTabs.GetPreferredSize(Size.Empty).Width, _resetButton.GetPreferredSize(Size.Empty).Height);
         int options = _options.Values.Max(row => row.GetPreferredSize(Size.Empty).Height);
         int reset = _effectResetButton.GetPreferredSize(Size.Empty).Height + _effectResetButton.Margin.Vertical;
         _optionsRow.Height = Math.Max(options, reset) + _optionsRow.Padding.Vertical;
+        _globalTabs.Size = new Size(_globalTabs.GetPreferredSize(Size.Empty).Width, _globalResetButton.GetPreferredSize(Size.Empty).Height);
+        int globalOptions = _globalOptions.Values.Max(row => row.GetPreferredSize(Size.Empty).Height);
+        int globalReset = _globalEffectResetButton.GetPreferredSize(Size.Empty).Height + _globalEffectResetButton.Margin.Vertical;
+        _globalOptionsRow.Height = Math.Max(globalOptions, globalReset) + _globalOptionsRow.Padding.Vertical;
     }
 
-    /// <summary>The bottom edge of the options row, across the tabs row; the tabs open it under the selected one.</summary>
-    private void PaintOptionsEdge(Graphics g)
+    /// <summary>
+    /// The edge of the options row across a tabs row: along its top when the tabs hang from the row
+    /// above, along its bottom when they stand on the row below; the tabs open it at the selected one.
+    /// </summary>
+    private static void PaintOptionsEdge(Graphics g, Control tabsRow, bool standing)
     {
         using var border = new Pen(SystemColors.ControlDark);
-        g.DrawLine(border, 0, 0, _tabsRow.Width, 0);
+        int y = standing ? tabsRow.Height - 1 : 0;
+        g.DrawLine(border, 0, y, tabsRow.Width, y);
     }
 
     /// <summary>Closes the window for real, instead of hiding it; the tray's Quit.</summary>
@@ -870,18 +947,13 @@ internal sealed class MainForm : Form
         int count = _preview.Images.Count;
         bool soundtrack = _soundtrack is not null;
         bool borders = !BordersInitial;
-        if (count == 0 && !soundtrack && !borders)
+        if (count == 0 && SoundtrackInitial && !borders)
         {
             return;
         }
 
         _preview.Clear();
-        _soundtrack = null;
-        _soundtrackOn = false;
-        ApplySoundtrack();
-        _borders = GridBorders.Initial(_borders.Color, _roundedByDefault);
-        _bordersOn = false;
-        ApplyBorders();
+        ResetGlobalEffects();
 
         var removed = new List<string>();
         if (count > 0)
@@ -1186,6 +1258,9 @@ internal sealed class MainForm : Form
 
     /// <summary>Whether the borders are as the app starts: off, with their initial settings.</summary>
     private bool BordersInitial => !_bordersOn && _borders == GridBorders.Initial(_borders.Color, _roundedByDefault);
+
+    /// <summary>Whether the soundtrack is in its initial state: no file, off, the level at 100 %.</summary>
+    private bool SoundtrackInitial => _soundtrack is null && _soundtrackLevel == 1;
 
     /// <summary>A video to export: content that plays, or a soundtrack over stills.</summary>
     private bool ProducesVideo => HasAnimation || ActiveSoundtrack is not null;
@@ -1524,7 +1599,7 @@ internal sealed class MainForm : Form
     private void UpdateButtons()
     {
         bool any = _preview.Images.Count > 0 && !IsExporting;
-        _clearButton.Enabled = (_preview.Images.Count > 0 || _soundtrack is not null || !BordersInitial) && !IsExporting;
+        _clearButton.Enabled = (_preview.Images.Count > 0 || !SoundtrackInitial || !BordersInitial) && !IsExporting;
         _copyButton.Enabled = any;
         _saveButton.Enabled = any;
 
@@ -1855,8 +1930,63 @@ internal sealed class MainForm : Form
         _preview.ShowsBlurBars = _selectedEffect == ImageEffect.Blur && look?.IsActive(ImageEffect.Blur) == true;
     }
 
+    /// <summary>A click on a global tab shows its options, and activates nothing.</summary>
+    private void SelectGlobalEffect(GlobalEffect effect)
+    {
+        _selectedGlobalEffect = effect;
+        UpdateGlobalEffects();
+    }
+
     /// <summary>
-    /// The soundtrack's toggle: on or off, its file and level kept; with no file yet, it opens the
+    /// A click on a global tab's checkbox turns its effect on or off, keeping its settings, and selects
+    /// the tab — shown first, since the soundtrack's may open the file picker.
+    /// </summary>
+    private void ToggleGlobalEffect(GlobalEffect effect)
+    {
+        _selectedGlobalEffect = effect;
+        UpdateGlobalEffects();
+        if (effect == GlobalEffect.Soundtrack)
+        {
+            ToggleSoundtrack();
+        }
+        else
+        {
+            ToggleBorders();
+        }
+    }
+
+    /// <summary>
+    /// <paramref name="effect"/> back to its initial state, the one Clear all restores — every global
+    /// effect when <c>null</c>: the soundtrack off, with no file, at 100 %; the borders off, their initial
+    /// settings keeping the color and the Twitter corners default of the ⚙ menu. The cells are left alone.
+    /// </summary>
+    private void ResetGlobalEffects(GlobalEffect? effect = null)
+    {
+        if (IsExporting)
+        {
+            return;
+        }
+
+        if (effect is null or GlobalEffect.Soundtrack)
+        {
+            _soundtrack = null;
+            _soundtrackOn = false;
+            _soundtrackLevel = 1;
+            _preview.Soundtrack = ActiveSoundtrack;
+        }
+
+        if (effect is null or GlobalEffect.Borders)
+        {
+            _borders = GridBorders.Initial(_borders.Color, _roundedByDefault);
+            _bordersOn = false;
+            _preview.Borders = ActiveBorders;
+        }
+
+        UpdateButtons();
+    }
+
+    /// <summary>
+    /// The soundtrack's checkbox: on or off, its file and level kept; with no file yet, it opens the
     /// picker, turned on once a file is chosen.
     /// </summary>
     private void ToggleSoundtrack()
@@ -1912,20 +2042,35 @@ internal sealed class MainForm : Form
             return;
         }
 
-        _soundtrack = soundtrack.WithLevel(_soundtrack?.Level ?? 1);
+        _soundtrack = soundtrack.WithLevel(_soundtrack?.Level ?? _soundtrackLevel);
         _soundtrackOn = true;
         ApplySoundtrack();
         ShowStatus($"Soundtrack: {Path.GetFileName(path)} · {Seconds(soundtrack.Duration)}.");
     }
 
+    /// <summary>
+    /// The soundtrack's level; acting on it turns the soundtrack on (RULES.md) — with no file yet, the
+    /// level waits for the first one, there being nothing to hear before it.
+    /// </summary>
     private void SetSoundtrackVolume()
     {
         _soundtrackVolumeLabel.Text = VolumeText(_soundtrackVolume.Value);
-        if (!_syncingEffects && _soundtrack is not null)
+        if (_syncingEffects || IsExporting)
         {
-            _soundtrack = _soundtrack.WithLevel(_soundtrackVolume.Value / 100.0);
-            ApplySoundtrack();
+            return;
         }
+
+        double level = _soundtrackVolume.Value / 100.0;
+        if (_soundtrack is null)
+        {
+            _soundtrackLevel = level;
+            UpdateButtons();
+            return;
+        }
+
+        _soundtrack = _soundtrack.WithLevel(level);
+        _soundtrackOn = true;
+        ApplySoundtrack();
     }
 
     /// <summary>The soundtrack as it stands, to the preview, then to the row and the output buttons.</summary>
@@ -1936,39 +2081,49 @@ internal sealed class MainForm : Form
     }
 
     /// <summary>
-    /// Shows the global effects: the toggle pressed while the soundtrack is on, its options — file and
-    /// level — only then, kept while it is off. The row stays enabled with no cell selected, and is
-    /// locked while exporting.
+    /// Shows the global effects: a checkbox checked per global effect on, the options of the selected
+    /// tab — the kept settings of an effect that is off — and the Resets enabled while there is
+    /// something to reset. Both rows stay enabled with no cell selected, and are locked while exporting.
     /// </summary>
     private void UpdateGlobalEffects()
     {
-        _globalRow.Enabled = !IsExporting;
+        bool enabled = !IsExporting;
+        _globalTabs.SetState(GlobalEffect.Soundtrack, ActiveSoundtrack is not null, unavailable: null);
+        _globalTabs.SetState(GlobalEffect.Borders, ActiveBorders is not null, unavailable: null);
+        _globalTabs.Selected = _selectedGlobalEffect;
+        _globalTabs.Enabled = enabled;
+        _globalResetButton.Enabled = enabled && !(SoundtrackInitial && BordersInitial);
+        foreach (var (effect, row) in _globalOptions)
+        {
+            row.Visible = _selectedGlobalEffect == effect;
+            row.Enabled = enabled;
+        }
+
+        _globalEffectResetButton.Visible = _selectedGlobalEffect is not null;
+        _globalEffectResetButton.Enabled = enabled && _selectedGlobalEffect switch
+        {
+            GlobalEffect.Soundtrack => !SoundtrackInitial,
+            GlobalEffect.Borders => !BordersInitial,
+            _ => false,
+        };
         UpdateBorders();
-        var soundtrack = ActiveSoundtrack;
-        _soundtrackToggle.Checked = soundtrack is not null;
-        foreach (var option in new Control[] { _soundtrackBrowse, _soundtrackFile, _soundtrackVolume, _soundtrackVolumeLabel })
-        {
-            option.Visible = soundtrack is not null;
-        }
 
-        if (soundtrack is null)
-        {
-            return;
-        }
-
-        // A long name is cut, the whole path in its tooltip.
+        // A long name is cut, the whole path in its tooltip; the file is kept while the soundtrack is off.
         const int MaxName = 32;
-        string name = Path.GetFileName(soundtrack.Path);
+        string? path = _soundtrack?.Path;
+        string name = path is null ? "No file" : Path.GetFileName(path);
         _soundtrackFile.Text = name.Length <= MaxName ? name : name[..(MaxName - 1)] + "…";
-        _toolTip.SetToolTip(_soundtrackFile, soundtrack.Path);
+        _soundtrackFile.ForeColor = path is null ? SystemColors.GrayText : SystemColors.ControlText;
+        _toolTip.SetToolTip(_soundtrackFile, path);
 
+        bool syncing = _syncingEffects;
         _syncingEffects = true;
-        _soundtrackVolume.Value = (int)Math.Round(soundtrack.Level * 100);
-        _syncingEffects = false;
+        _soundtrackVolume.Value = (int)Math.Round((_soundtrack?.Level ?? _soundtrackLevel) * 100);
+        _syncingEffects = syncing;
         _soundtrackVolumeLabel.Text = VolumeText(_soundtrackVolume.Value);
     }
 
-    /// <summary>The borders' toggle: on or off, their settings kept.</summary>
+    /// <summary>The borders' checkbox: on or off, their settings kept.</summary>
     private void ToggleBorders()
     {
         if (IsExporting)
@@ -1980,7 +2135,10 @@ internal sealed class MainForm : Form
         ApplyBorders();
     }
 
-    /// <summary>An option of the borders changed: applied to their settings, unless the row is being synced.</summary>
+    /// <summary>
+    /// An option of the borders changed: applied to their settings, turning them on from the settings
+    /// they kept (RULES.md), unless the row is being synced.
+    /// </summary>
     private void ChangeBorders(Func<GridBorders, GridBorders> change)
     {
         if (_syncingEffects || IsExporting)
@@ -1989,6 +2147,7 @@ internal sealed class MainForm : Form
         }
 
         _borders = change(_borders);
+        _bordersOn = true;
         ApplyBorders();
     }
 
@@ -2130,18 +2289,11 @@ internal sealed class MainForm : Form
     }
 
     /// <summary>
-    /// Shows the borders in the Global effects row: the toggle pressed while they are on, their options
-    /// only then, kept while they are off; the outer frame disabled for the corner brackets.
+    /// Shows the borders' options, their kept settings while they are off; the outer frame disabled for
+    /// the corner brackets.
     /// </summary>
     private void UpdateBorders()
     {
-        bool on = ActiveBorders is not null;
-        _bordersToggle.Checked = on;
-        foreach (var option in new Control[] { _bordersStyle, _bordersThickness, _bordersThicknessLabel, _bordersOpacity, _bordersOpacityLabel, _bordersOuterFrame, _bordersRounded })
-        {
-            option.Visible = on;
-        }
-
         bool syncing = _syncingEffects;
         _syncingEffects = true;
         _bordersStyle.SelectedIndex = (int)_borders.Pattern;
