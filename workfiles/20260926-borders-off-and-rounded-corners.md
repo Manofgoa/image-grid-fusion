@@ -206,6 +206,12 @@ Documentation planned with the code: README (§ Borders: off at start-up, the Tw
 option, the ⚙ item; the feature list), GLOSSARY (*Borders* no longer "on at start-up", a *Twitter
 corners* entry).
 
+### Iteration 6 — 2026-09-26 — ✅ Implemented
+
+Go given: "Implement code, unit tests and documentation" (unit tests: none, by Q&A #8). Branch
+gate: stays on `main`, the standing choice for this repository. Scope frozen as the domain sections
+stand at Iteration 5.
+
 ---
 
 ## Implementation Log
