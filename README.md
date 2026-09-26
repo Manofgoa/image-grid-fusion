@@ -30,7 +30,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
   - Drop a file or a text onto a cell to replace it
   - **Clear all** (bottom left) removes every image and the global effects at once, with no confirmation, back to the initial state
 - Effects per cell, from the effect tabs at the top of the window (see Effects), and global effects for the whole grid, from the row above the bottom bar (see Global effects)
-- Copy to clipboard (`Ctrl+C`) or save (`Ctrl+S`): a PNG, or an MP4 video when the grid holds content that plays or a soundtrack is on; the ▾ arrow next to each button forces a looping GIF or an MP4 video
+- Copy to clipboard (`Ctrl+C`) or save (`Ctrl+S`): a PNG, or an MP4 video when the grid holds content that plays or a soundtrack is on; the ▾ arrow next to each button forces a looping GIF or an MP4 video; Copy's also offers a light JPEG for sharing in chat apps that cap image size (WhatsApp: 16 MB)
 - Lives in the notification area: closing the window only hides it, the tray icon brings it back, and it can start with Windows (see Tray & startup)
 
 ## Adding images
@@ -159,7 +159,7 @@ A single-page PDF, a text that fits its cell, a one-frame GIF and plain images s
 - **Live preview**: every cell plays on one clock, so pages and views change together, each from the starting point of its Frames effect. Hovering a cell no longer holds it still: freezing goes through the Frames effect.
 - **Sound**: the sounds of every video with sound are **mixed**, each at its Volume — a frozen or muted video adds nothing — and the soundtrack over them when it is on (see Soundtrack). In the preview, each sound plays in step with its own video (held with it, looping with it); the exported video carries the mix, each sound from its video's starting point, looping with it, in one AAC track.
 - **Export**: as soon as a content plays (not frozen), or a soundtrack is on, **Save** writes an **MP4 video** (H.264, AAC sound) instead of a PNG, and **Copy** puts an MP4 file on the clipboard (written to `%TEMP%\ImageGridFusion`, cleaned at the next start), pastable in Explorer, chat apps or mail. The buttons name what they produce: **Copy PNG** / **Copy MP4**, **Save PNG…** / **Save MP4…**.
-  - The **▾ arrow** on the right of Copy and of Save opens a menu that forces the format for that export only: **GIF** or **MP4 Video**. It is disabled while nothing plays; for a still of animated content, freeze it with the Frames effect.
+  - The **▾ arrow** on the right of Copy and of Save opens a menu that forces the format for that export only: **GIF** or **MP4 Video**. They are disabled while nothing plays — Save's arrow with them, Copy's staying enabled for its **JPEG for sharing** (see Output); for a still of animated content, freeze it with the Frames effect.
   - A **GIF** loops forever and has no sound; each frame gets its own 256-color palette. Copied, it goes on the clipboard both as a file and in the GIF clipboard format, which some apps paste directly. A large canvas at 30 fps makes heavy GIFs.
   - Every content starts from the starting point of its Frames effect (its beginning without it), and a frozen one stays on its frame; the video or GIF lasts as long as the longest loop, the shorter ones starting over until it ends. 30 fps (GIF frames last 3 or 4 hundredths of a second, so the length stays exact).
   - The canvas is sized once, from the first frames (see Canvas size), and rounded down to even dimensions; the bands keep the color of the first frame.
@@ -264,7 +264,8 @@ Output resolution is kept as high as possible so source images aren't needlessly
 
 ## Output
 
-- **Copy** button / `Ctrl+C`: puts the full-resolution result on the clipboard, both as a standard bitmap (transparent cells on white) and in the PNG clipboard format (transparency kept); while a content plays, an MP4 file instead. Its ▾ arrow copies a GIF or an MP4 video (see Animated content).
+- **Copy** button / `Ctrl+C`: puts the full-resolution result on the clipboard, both as a standard bitmap (transparent cells on white) and in the PNG clipboard format (transparency kept); while a content plays, an MP4 file instead. Its ▾ arrow copies a GIF or an MP4 video (see Animated content), or a **JPEG for sharing**.
+  - **JPEG for sharing**, always available: a light copy for chat apps that cap image size (WhatsApp: 16 MB), where the full-resolution PNG can be too heavy. The still, its long edge reduced to 2560 px at most (never enlarged), transparent cells on white, JPEG quality 90 — usually 1–2 MB. It goes on the clipboard as a `.jpg` file (written to `%TEMP%\ImageGridFusion`, cleaned at the next start), pasted as is by chat apps, Explorer or mail, plus the same image as a bitmap for Paint or Word. `Ctrl+C` stays the full copy.
 - **Save** button / `Ctrl+S`: saves the result as a PNG file; while a content plays, as an MP4 video. Its ▾ arrow saves a GIF or an MP4 video.
 - A status line reports feedback and errors (skipped files with no preview, ignored excess files, removed images, copy/save confirmation or failure).
 
