@@ -68,32 +68,32 @@ The checkbox is enabled for **every video with a sound track**, a frozen one inc
 take effect again once it plays). For any other image — still, animated GIF, video without a sound
 track, preview of a text / PDF — the checkbox and the options are disabled, with a tooltip saying why.
 
-### Sound on Arrival
+### Default State and Arrival
 
-The volume a video gets when it enters a cell depends on the **other cells**:
+The Volume effect's default state is the general one of `RULES.md` § Effects — default settings,
+**off**: a video with sound is **heard at 100 %**, whatever the other cells play.
 
 | Situation when the video arrives (drop, Ctrl+V, browse, replacement) | Its volume |
 |---|---|
-| No other cell holds an audible video | **100 %**, audible |
-| Another cell holds an audible video | **Muted** (0 %) |
+| Whatever the other cells hold | **100 %**, heard — the effect off |
 
-Examples given by the user: replacing the only video with sound → the new one is at 100 %;
-replacing one video with sound among several → the new one is muted.
+Several videos arriving at once are all heard: the grid's mix is heard from the start, and each
+one is muted or lowered from its Volume tab afterwards.
 
-- **Audible** means actually heard: a video with a sound track, playing (not frozen), whose Volume
-  effect does not silence it (not muted, volume above 0).
-- **On / off**: a video muted on arrival has the Volume effect **on**, Mute checked (slider at
-  100 %, kept); an audible one has it **off**, drawn as its defaults — 100 %. Turning the effect off
-  makes the video audible at 100 %.
-- **Reset** (the effect's own and the global one) brings back the **rule on arrival, recomputed**
-  from the other cells at that moment, as if the video had just arrived.
+- **Heard** means actually heard: a video with a sound track, playing (not frozen), whose Volume
+  effect does not silence it (not muted, volume above 0). The mix, the soundtrack and the fade
+  read it (`SourceImage.IsHeard`, `Animation.Heard`).
+- **On / off**: a video arrives with the Volume effect **off**, drawn as its defaults — 100 %.
+  Turning the effect off makes the video heard at 100 %.
+- **Reset** (the effect's own and the global one) brings back that default state: heard at
+  100 %, the effect off.
 - **Deletion**: the videos shifting into another cell **keep their volume** — an exception to the
-  `RULES.md` reset on deletion, so a shift never changes what is heard. Deleting the only audible
-  video does not make the others audible.
-- Code: `SourceImage.HasSound` / `SourceImage.IsHeard`, `Animation.SoundOnArrival`, applied by
-  `GridPreview.Add` to each image in the order it arrives (several videos dropped at once: the first
-  is heard, the others muted), and by both Resets in `MainForm.ResetLook`; each Reset button is
-  enabled only when it would change something. `ImageLook.WithoutEffects` keeps the volume.
+  `RULES.md` reset on deletion, so a shift never changes what is heard. Deleting a heard video
+  changes nothing for the others.
+- Code: `SourceImage.HasSound` / `SourceImage.IsHeard`; `GridPreview.Add` and `MainForm.ResetLook`
+  treat the Volume like every other effect (no `Animation.SoundOnArrival`, no
+  `VolumeEffect.Muted`); each Reset button is enabled only when it would change something.
+  `ImageLook.WithoutEffects` keeps the volume.
 
 ---
 
@@ -139,13 +139,13 @@ plugs its global soundtrack into it as one more source.
 ## README
 
 Rewrite the *Sound* bullet (mixed sounds instead of the elected one) and document the Volume effect:
-slider, Mute, the sound on arrival, preview and exports.
+slider, Mute, every video heard on arrival, the volume kept on a deletion shift, preview and exports.
 
 ## RULES
 
-Record in `RULES.md` § Effects, next to the event table: the Volume effect's default state depends
-on the other cells (the rule on arrival, recomputed by every *Reset*), and a deletion keeps the
-volume of the shifted videos.
+Record in `RULES.md` § Effects, next to the event table (*The Volume Exception*): a deletion keeps
+the volume of the shifted videos. The Volume's default state is the general one — off, heard at
+100 % — so nothing else is recorded there. `GLOSSARY.md` keeps *Heard* and loses *Sound on arrival*.
 
 ---
 
@@ -163,13 +163,13 @@ chose to ship this work **without unit tests**: it is verified manually in the a
 ## Open Questions
 
 - [x] ~~What is the effect called — "Volume", "Sound", or "Mute"?~~ → **Volume**
-- [x] ~~What does activating the effect do: mute directly, or leave the volume at 100 % unmuted?~~ → Superseded: the volume is set **on arrival**, from the other cells (see § Sound on Arrival); how it maps onto on / off is asked below
+- [x] ~~What does activating the effect do: mute directly, or leave the volume at 100 % unmuted?~~ → Superseded: the volume is set **on arrival**, from the other cells (see § Sound on Arrival); how it maps onto on / off is asked below *(revised 2026-09-27, see Iteration 10: every video arrives heard at 100 %, the effect off)*
 - [x] ~~How do the Mute check box and the slider interact beyond "slider at 0 checks Mute"?~~ → **Independent** check box (see § Options)
 - [x] ~~When the grid's sound source is muted, does the grid go silent, or does the sound move to the next video with sound?~~ → Neither: the sounds of all videos are **mixed**, each with its cell's volume
-- [x] ~~How does the sound on arrival map onto the effect's on / off: muted on arrival = effect **on** with Mute checked, audible = effect **off** (100 %)?~~ → Yes: muted = on with Mute checked, audible = off
-- [x] ~~What does the Volume effect's *Reset* (and the global *Reset*) bring back: the rule on arrival, recomputed from the other cells, or plainly 100 %?~~ → The rule on arrival, recomputed
-- [x] ~~Deleting an image: the videos shifting into another cell are reset per `RULES.md` — recompute their sound on arrival, or keep their volume?~~ → Keep their volume (exception to the rule)
-- [x] ~~"Audible video" for the rule on arrival: a video with a sound track, playing (not frozen), not muted — does a volume at 0 % count as muted, and a video with no sound track count as silent?~~ → Actually heard: sound track, not frozen, not muted, volume above 0
+- [x] ~~How does the sound on arrival map onto the effect's on / off: muted on arrival = effect **on** with Mute checked, audible = effect **off** (100 %)?~~ → Yes: muted = on with Mute checked, audible = off *(revised 2026-09-27, see Iteration 10: no video is muted on arrival any more)*
+- [x] ~~What does the Volume effect's *Reset* (and the global *Reset*) bring back: the rule on arrival, recomputed from the other cells, or plainly 100 %?~~ → The rule on arrival, recomputed *(revised 2026-09-27, see Iteration 10: plainly 100 %, the effect off)*
+- [x] ~~Deleting an image: the videos shifting into another cell are reset per `RULES.md` — recompute their sound on arrival, or keep their volume?~~ → Keep their volume (exception to the rule) *(confirmed 2026-09-27, see Iteration 10)*
+- [x] ~~"Audible video" for the rule on arrival: a video with a sound track, playing (not frozen), not muted — does a volume at 0 % count as muted, and a video with no sound track count as silent?~~ → Actually heard: sound track, not frozen, not muted, volume above 0 *(the rule on arrival dropped 2026-09-27, see Iteration 10; the meaning of heard stays, for the mix)*
 - [x] ~~Which images enable the effect's checkbox: videos with a sound track only — and a frozen video?~~ → Every video with a sound track, a frozen one included
 - [x] ~~Preview mixing and 200 %: one `AudioGraph` (gain up to 2, one mix), or several `MediaPlayer`s (native, capped at 100 % in the preview)?~~ → `AudioGraph`
 - [x] ~~The soundtrack workfile also needs the mixer: does this workfile build the mixer (preview + export), the soundtrack building on it?~~ → Yes, this workfile builds it
@@ -266,6 +266,20 @@ then the slider and its label. § Options updated; README follows.
 
 Validated by the user after testing in the app (Iterations 7 and 8 included): the task is finished.
 
+### Iteration 10 — 2026-09-27 — ⚙️ Post-implementation — every video arrives heard
+
+The sound on arrival surprised the user twice: on the evening of 2026-09-26 (a video dropped beside
+a heard one had no sound — session *Pas de son sur la vidéo*, answered as the rule, not a bug), and
+on 2026-09-27 ("the sound of several videos is not mixed"). Asked what to do with the rule — keep
+it, every video heard on arrival, a ⚙ setting, or test first — the user chose **every video heard
+on arrival**: a video with sound arrives heard at 100 %, the Volume effect off, whatever the other
+cells play, so the grid's mix is heard at once; both Resets bring back that state. The volume of
+the videos shifting after a deletion stays **kept** (Q&A 23), the reason of 2026-09-25 still
+holding. `Animation.SoundOnArrival` and `VolumeEffect.Muted` go; `RULES.md`'s *Volume Exception*
+keeps its deletion line only; `GLOSSARY.md` loses *Sound on arrival*; the README follows.
+§ Sound on Arrival becomes § Default State and Arrival; § README and § RULES updated; the revised
+Open Questions annotated. Go given for code and documentation (Q&A 24), on `main`.
+
 ---
 
 ## Implementation Log
@@ -310,8 +324,8 @@ Questions asked by the agent during design, with user responses.
 | 20 | Is the task finished? | Dismissed — then asks for Mute left of the slider | 2026-09-26 |
 | 21 | Is the task finished? | Yes — validated by the user after testing in the app | 2026-09-26 |
 | 22 | The sound on arrival surprised you twice (26/09 evening, 27/09): keep the rule, every video heard on arrival, a ⚙ setting, or test first? | Every video heard on arrival: 100 %, the effect off — the mix heard at once | 2026-09-27 |
-| 23 | An image deleted: the shifted videos keep their volume (exception kept), or are reset like the other effects? | | 2026-09-27 |
-| 24 | May the adjustment be implemented? | | 2026-09-27 |
+| 23 | An image deleted: the shifted videos keep their volume (exception kept), or are reset like the other effects? | Kept — the exception stays, a shift never changes what is heard | 2026-09-27 |
+| 24 | May the adjustment be implemented? | GO — code and documentation (README, RULES, GLOSSARY); unit tests stay declined | 2026-09-27 |
 
 ---
 
