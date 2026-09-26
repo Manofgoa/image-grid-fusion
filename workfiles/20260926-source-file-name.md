@@ -42,9 +42,15 @@ Components concerned:
   `HelperHalo` outline, same font style as the zoom badge.
 - **Preview only**: drawn in `GridPreview.OnPaint`, never in `Compositor` — exports, the clipboard
   copy and video playback are untouched.
-- **No source file**: a label naming the source in place of the name, no icon, no tooltip:
-  `Pasted image` for a clipboard image (`ImageLoader.FromImage`); the label of a text image
-  (`ImageLoader.FromText`, pasted **or dropped**): see Open Questions.
+- **No source file**: a label naming the source in place of the name, no icon, no tooltip. The
+  image **remembers how it arrived** (set where `MainForm` creates it, since `FilePath` alone cannot
+  tell a pasted text from a dropped one):
+
+  | Arrived as | Label |
+  |---|---|
+  | A clipboard image (Ctrl+V, `ImageLoader.FromImage`) | `Pasted image` |
+  | A pasted text (Ctrl+V, `ImageLoader.FromText`) | `Pasted text` |
+  | A dropped text (drag and drop, `ImageLoader.FromText`) | `Dropped text` |
 - **Blur handles**: the name stays shown while the Blur bars are drawn; the bars are painted
   **over** it and keep the click priority on their own hit area (RULES.md § *On-Cell Handles*).
 - **Hidden while a cell is being dragged** (swap), like the cell buttons.
@@ -84,7 +90,7 @@ by hand in the launched app.
 - [x] ~~Wording of the label shown without a source file (the app's UI is in English)?~~ → Depends on the source: `Pasted image`, and a text label (Q&A #7)
 - [x] ~~A tooltip with the full path when hovering the name or the icon?~~ → Yes, on both (Q&A #8)
 - [x] ~~The source file no longer exists when the icon is clicked: what happens?~~ → Explorer opens the folder if it still exists, and the status bar says the file was not found (Q&A #9)
-- [ ] A text image can be pasted **or dropped** (`MainForm` drop handler, line ~553): which label does it show?
+- [x] ~~A text image can be pasted **or dropped** (`MainForm` drop handler, line ~553): which label does it show?~~ → The image remembers its origin: `Pasted image`, `Pasted text`, `Dropped text` (Q&A #10)
 
 ---
 
@@ -108,6 +114,11 @@ Answers to the five front-loaded questions (Q&A #5–#9): middle ellipsis, the n
 Blur bars, a label depending on the source, a full-path tooltip on the name and the icon, a missing
 file opening its folder with a status message. A new question emerged: a text image is not only
 pasted but also dropped, so `Pasted text` would be wrong for a dropped one (Q&A #10).
+
+### Iteration 3 — 2026-09-26
+
+The label of a file-less image follows its origin (Q&A #10): the image remembers whether it was
+pasted or dropped — `Pasted image`, `Pasted text`, `Dropped text`. No question left open.
 
 ---
 
@@ -139,7 +150,7 @@ Questions asked by the agent during design, with user responses.
 | 7 | Wording of the label without a source file? | Depends on the source (e.g. `Pasted image`, `Pasted text`) | 2026-09-26 |
 | 8 | A tooltip with the full path on the name or the icon? | Yes, on both | 2026-09-26 |
 | 9 | The source file no longer exists when the icon is clicked? | Explorer opens the folder if it still exists, and the status bar says the file was not found | 2026-09-26 |
-| 10 | A text image can be pasted or dropped: which label does it show? | | |
+| 10 | A text image can be pasted or dropped: which label does it show? | The image remembers its origin: `Pasted text` or `Dropped text` (`Pasted image` for a clipboard image) | 2026-09-26 |
 
 ---
 
