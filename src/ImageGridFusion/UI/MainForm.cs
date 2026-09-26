@@ -157,6 +157,18 @@ internal sealed class MainForm : Form
     private Soundtrack? _soundtrack;
     private bool _soundtrackOn;
 
+    // The borders' toggle and options; their color is a setting of the ⚙ menu, remembered between sessions.
+    private readonly CheckBox _bordersToggle = OptionButton("▦ Borders");
+    private readonly ComboBox _bordersStyle = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 90, Anchor = AnchorStyles.Left };
+    private readonly TrackBar _bordersThickness = OptionSlider((int)Math.Round(GridBorders.MinThickness * 1000), (int)Math.Round(GridBorders.MaxThickness * 1000), 5);
+    private readonly Label _bordersThicknessLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _bordersOuterFrame = new() { Text = "Outer frame", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly ToolStripMenuItem _borderColor = new("Border color…");
+
+    // The borders' settings, kept while they are off; back to their initial state, on, with Clear all.
+    private GridBorders _borders = GridBorders.Initial(AppSettings.BorderColor);
+    private bool _bordersOn = true;
+
     public MainForm(string[] args)
     {
         _startupFiles = args;
@@ -230,7 +242,13 @@ internal sealed class MainForm : Form
         _options[ImageEffect.Volume].Controls.AddRange([_mute, _volume, _volumeLabel]);
         _globalLabel.Font = new Font(Font, FontStyle.Bold);
         _soundtrackVolume.BackColor = SystemColors.Control;
-        _globalRow.Controls.AddRange([_globalLabel, _soundtrackToggle, _soundtrackBrowse, _soundtrackFile, _soundtrackVolume, _soundtrackVolumeLabel]);
+        _bordersThickness.BackColor = SystemColors.Control;
+        _bordersStyle.Items.AddRange(Enum.GetNames<BorderPattern>());
+        _globalRow.Controls.AddRange(
+        [
+            _globalLabel, _soundtrackToggle, _soundtrackBrowse, _soundtrackFile, _soundtrackVolume, _soundtrackVolumeLabel,
+            _bordersToggle, _bordersStyle, _bordersThickness, _bordersThicknessLabel, _bordersOuterFrame,
+        ]);
 
         // Docked in reverse order of addition: the options row and the tabs row, then the bottom bar
         // and the Global effects row above it, span the whole width; the layout strip takes the left
@@ -248,10 +266,12 @@ internal sealed class MainForm : Form
         _outputButtons.SizeChanged += (_, _) => FitStatusWidth();
         _cancelButton.VisibleChanged += (_, _) => FitStatusWidth();
         _clearButton.Click += (_, _) => ClearAll();
-        _settingsMenu.Items.Add(_startWithWindows);
+        _settingsMenu.Items.AddRange([_startWithWindows, _borderColor]);
         _toolTip.SetToolTip(_settingsButton, "Settings");
         _settingsButton.Click += (_, _) => ShowSettings();
         _startWithWindows.Click += (_, _) => ToggleStartWithWindows();
+        _borderColor.ToolTipText = "The color of the borders, remembered between sessions";
+        _borderColor.Click += (_, _) => PickBorderColor();
         _copyButton.Click += (_, _) => CopyToClipboard();
         _saveButton.Click += (_, _) => Save();
         _copyGif.Click += (_, _) => Copy(GridExport.Format.Gif);
@@ -317,6 +337,17 @@ internal sealed class MainForm : Form
         _soundtrackToggle.Click += (_, _) => ToggleSoundtrack();
         _soundtrackBrowse.Click += (_, _) => BrowseSoundtrack();
         _soundtrackVolume.ValueChanged += (_, _) => SetSoundtrackVolume();
+        _toolTip.SetToolTip(_bordersToggle, "Borders on the grid: brackets at its corners, or a gap between the cells; their color is in the ⚙ settings");
+        _toolTip.SetToolTip(_bordersThickness, "Width of the borders, as a share of the grid's shorter side");
+        _toolTip.SetToolTip(_bordersOuterFrame, "Also draws the borders around the grid; the corner brackets already are its frame");
+        _bordersToggle.Click += (_, _) => ToggleBorders();
+        _bordersStyle.SelectedIndexChanged += (_, _) => ChangeBorders(borders => borders with { Pattern = (BorderPattern)_bordersStyle.SelectedIndex });
+        _bordersThickness.ValueChanged += (_, _) =>
+        {
+            _bordersThicknessLabel.Text = ThicknessText(_bordersThickness.Value);
+            ChangeBorders(borders => borders with { Thickness = _bordersThickness.Value / 1000.0 });
+        };
+        _bordersOuterFrame.CheckedChanged += (_, _) => ChangeBorders(borders => borders with { OuterFrame = _bordersOuterFrame.Checked });
         _globalRow.DragEnter += (_, e) => e.Effect = e.Data?.GetDataPresent(DataFormats.FileDrop) == true ? DragDropEffects.Copy : DragDropEffects.None;
         _globalRow.DragDrop += async (_, e) =>
         {
@@ -348,6 +379,7 @@ internal sealed class MainForm : Form
         _preview.ShowInExplorerClicked += (_, path) => ShowInExplorer(path);
         _layouts.DragEnter += OnDragEnter;
         _layouts.DragDrop += OnDragDrop;
+        _preview.Borders = ActiveBorders;
         UpdateButtons();
         FitStatusWidth();
     }
@@ -369,6 +401,7 @@ internal sealed class MainForm : Form
             _pixelate.Image?.Dispose();
             _blurIntensityIcon.Image?.Dispose();
             _backgroundOpacityIcon.Image?.Dispose();
+            _borderColor.Image?.Dispose();
             _colorDialog.Dispose();
         }
 
@@ -416,6 +449,25 @@ internal sealed class MainForm : Form
         {
             image?.Dispose();
         }
+
+        UpdateBorderColorSwatch();
+    }
+
+    /// <summary>The ⚙ menu's Border color item shows the color as a swatch, drawn at the monitor's DPI.</summary>
+    private void UpdateBorderColorSwatch()
+    {
+        int size = LogicalToDeviceUnits(16);
+        var swatch = new Bitmap(size, size);
+        using (var g = Graphics.FromImage(swatch))
+        using (var fill = new SolidBrush(_borders.Color))
+        {
+            g.FillRectangle(fill, 0, 0, size, size);
+            g.DrawRectangle(SystemPens.ControlDark, 0, 0, size - 1, size - 1);
+        }
+
+        var previous = _borderColor.Image;
+        _borderColor.Image = swatch;
+        previous?.Dispose();
     }
 
     /// <summary>
@@ -749,7 +801,8 @@ internal sealed class MainForm : Form
 
         int count = _preview.Images.Count;
         bool soundtrack = _soundtrack is not null;
-        if (count == 0 && !soundtrack)
+        bool borders = !BordersInitial;
+        if (count == 0 && !soundtrack && !borders)
         {
             return;
         }
@@ -758,6 +811,9 @@ internal sealed class MainForm : Form
         _soundtrack = null;
         _soundtrackOn = false;
         ApplySoundtrack();
+        _borders = GridBorders.Initial(_borders.Color);
+        _bordersOn = true;
+        ApplyBorders();
 
         var removed = new List<string>();
         if (count > 0)
@@ -770,7 +826,7 @@ internal sealed class MainForm : Form
             removed.Add(count > 0 ? "the soundtrack" : "The soundtrack");
         }
 
-        ShowStatus($"{string.Join(" and ", removed)} removed.");
+        ShowStatus(removed.Count > 0 ? $"{string.Join(" and ", removed)} removed." : "Borders back to their initial state.");
     }
 
     /// <summary>Copies the grid in the format its content suits: a PNG, or an MP4 video while a content plays or a soundtrack is on.</summary>
@@ -958,6 +1014,12 @@ internal sealed class MainForm : Form
     /// <summary>The soundtrack mixed into the preview and the MP4 export; <c>null</c> while off.</summary>
     private Soundtrack? ActiveSoundtrack => _soundtrackOn ? _soundtrack : null;
 
+    /// <summary>The borders drawn on the preview and the exports; <c>null</c> while off.</summary>
+    private GridBorders? ActiveBorders => _bordersOn ? _borders : null;
+
+    /// <summary>Whether the borders are as the app starts: on, with their initial settings.</summary>
+    private bool BordersInitial => _bordersOn && _borders == GridBorders.Initial(_borders.Color);
+
     /// <summary>A video to export: content that plays, or a soundtrack over stills.</summary>
     private bool ProducesVideo => HasAnimation || ActiveSoundtrack is not null;
 
@@ -981,10 +1043,10 @@ internal sealed class MainForm : Form
         if (!_preview.Images.Any(i => i.IsAnimated))
         {
             Cursor.Current = Cursors.WaitCursor;
-            return Compositor.Render(_preview.Images, _preview.ActiveLayout!);
+            return Compositor.Render(_preview.Images, _preview.ActiveLayout!, ActiveBorders);
         }
 
-        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!);
+        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, ActiveBorders);
         BeginExport("Rendering the image…", cancellable: false);
         try
         {
@@ -1008,7 +1070,7 @@ internal sealed class MainForm : Form
     /// </summary>
     private async Task<GridExport.Result?> ExportAnimationAsync(string path, GridExport.Format format)
     {
-        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, ActiveSoundtrack);
+        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, ActiveBorders, ActiveSoundtrack);
         string what = format == GridExport.Format.Gif ? "GIF" : "video";
         var cancellation = BeginExport($"Exporting the {what}… 0 %", cancellable: true);
         var progress = new Progress<double>(done =>
@@ -1180,6 +1242,9 @@ internal sealed class MainForm : Form
     private void ShowSettings()
     {
         _startWithWindows.Checked = StartupRegistration.IsEnabled;
+
+        // Locked like the Global effects row: an export keeps the borders it started with.
+        _borderColor.Enabled = !IsExporting;
         _settingsMenu.Show(_settingsButton, Point.Empty, ToolStripDropDownDirection.AboveRight);
     }
 
@@ -1200,7 +1265,7 @@ internal sealed class MainForm : Form
     private void UpdateButtons()
     {
         bool any = _preview.Images.Count > 0 && !IsExporting;
-        _clearButton.Enabled = (_preview.Images.Count > 0 || _soundtrack is not null) && !IsExporting;
+        _clearButton.Enabled = (_preview.Images.Count > 0 || _soundtrack is not null || !BordersInitial) && !IsExporting;
         _copyButton.Enabled = any;
         _saveButton.Enabled = any;
 
@@ -1600,6 +1665,7 @@ internal sealed class MainForm : Form
     private void UpdateGlobalEffects()
     {
         _globalRow.Enabled = !IsExporting;
+        UpdateBorders();
         var soundtrack = ActiveSoundtrack;
         _soundtrackToggle.Checked = soundtrack is not null;
         foreach (var option in new Control[] { _soundtrackBrowse, _soundtrackFile, _soundtrackVolume, _soundtrackVolumeLabel })
@@ -1623,6 +1689,93 @@ internal sealed class MainForm : Form
         _syncingEffects = false;
         _soundtrackVolumeLabel.Text = VolumeText(_soundtrackVolume.Value);
     }
+
+    /// <summary>The borders' toggle: on or off, their settings kept.</summary>
+    private void ToggleBorders()
+    {
+        if (IsExporting)
+        {
+            return;
+        }
+
+        _bordersOn = !_bordersOn;
+        ApplyBorders();
+    }
+
+    /// <summary>An option of the borders changed: applied to their settings, unless the row is being synced.</summary>
+    private void ChangeBorders(Func<GridBorders, GridBorders> change)
+    {
+        if (_syncingEffects || IsExporting)
+        {
+            return;
+        }
+
+        _borders = change(_borders);
+        ApplyBorders();
+    }
+
+    /// <summary>
+    /// The ⚙ menu's Border color: the color dialog, preselected on the current color; the one chosen is
+    /// applied at once and remembered between sessions.
+    /// </summary>
+    private void PickBorderColor()
+    {
+        if (IsExporting)
+        {
+            return;
+        }
+
+        _colorDialog.Color = _borders.Color;
+        if (_colorDialog.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        _borders = _borders with { Color = _colorDialog.Color };
+        UpdateBorderColorSwatch();
+        ApplyBorders();
+        try
+        {
+            AppSettings.SaveBorderColor(_borders.Color);
+        }
+        catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+        {
+            ShowStatus($"Border color not remembered: {ex.Message}", error: true);
+        }
+    }
+
+    /// <summary>The borders as they stand, to the preview, then to the row and the output buttons.</summary>
+    private void ApplyBorders()
+    {
+        _preview.Borders = ActiveBorders;
+        UpdateButtons();
+    }
+
+    /// <summary>
+    /// Shows the borders in the Global effects row: the toggle pressed while they are on, their options
+    /// only then, kept while they are off; the outer frame disabled for the corner brackets.
+    /// </summary>
+    private void UpdateBorders()
+    {
+        bool on = ActiveBorders is not null;
+        _bordersToggle.Checked = on;
+        foreach (var option in new Control[] { _bordersStyle, _bordersThickness, _bordersThicknessLabel, _bordersOuterFrame })
+        {
+            option.Visible = on;
+        }
+
+        bool syncing = _syncingEffects;
+        _syncingEffects = true;
+        _bordersStyle.SelectedIndex = (int)_borders.Pattern;
+        _bordersThickness.Value = (int)Math.Round(_borders.Thickness * 1000);
+        _bordersOuterFrame.Checked = _borders.OuterFrame;
+        _syncingEffects = syncing;
+        _bordersThicknessLabel.Text = ThicknessText(_bordersThickness.Value);
+        _bordersOuterFrame.Enabled = _borders.HasGap;
+    }
+
+    /// <summary>The borders' width, from thousandths of the grid's shorter side.</summary>
+    private static string ThicknessText(int thousandths) => $"Thickness: {thousandths / 10.0:0.0} %";
 
     /// <summary>Why <paramref name="effect"/> does not apply to <paramref name="image"/>; <c>null</c> when it does.</summary>
     private static string? Unavailable(ImageEffect effect, SourceImage? image) => effect switch
