@@ -18,6 +18,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
   - Hover a cell to outline it and show a **×** to remove it, or press `Delete` to remove the selected one
   - Videos, animated GIFs, PDFs of several pages and long texts play live in their cell (see Animated content); the **Frames** effect sets where one starts, or freezes it on a frame
   - The sounds of every video are mixed; the **Volume** effect sets each one from 0 to 200 %, or mutes it
+  - A **soundtrack** — the sound of an audio or video file — can be mixed over them, for the whole grid (see Global effects)
   - Zoom a cell from 10 % to 1600 %: with the **Zoom** effect's slider (it snaps to 100 %), or with the mouse wheel over any cell, around the point under the mouse (4 notches double the zoom; crossing 100 % stops on it)
   - Drag an image to move it in its cell, at any zoom — past the cell's edges too, to center a detail lying on the border of the image; the area it uncovers gets the band color (see Fitting rules), and at least 10 % of the cell always stays covered so it can be grabbed back
     - Magnetic stops: the image stops where one of its edges lines up with an edge of the cell, and where it is centered; keep dragging about 24 px to go past a stop (moving back inside over an edge is free). While it is held, a dashed fluorescent green guide shows the stop: along the aligned edge, or through the center (both lines cross when centered both ways)
@@ -27,9 +28,9 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
   - Zooming and moving show live, smoothed once the gesture ends (the wheel: once it stops turning); not while exporting
   - Drag the **✥** handle shown in the middle of a hovered cell onto another cell to swap the two images (in a small cell, it shrinks, or sits below the **×**)
   - Drop a file or a text onto a cell to replace it
-  - **Clear all** (bottom left) removes every image at once, with no confirmation, back to the initial state
-- Effects per cell, from the effect tabs at the top of the window (see Effects)
-- Copy to clipboard (`Ctrl+C`) or save (`Ctrl+S`): a PNG, or an MP4 video when the grid holds content that plays; the ▾ arrow next to each button forces a looping GIF or an MP4 video
+  - **Clear all** (bottom left) removes every image and the global effects at once, with no confirmation, back to the initial state
+- Effects per cell, from the effect tabs at the top of the window (see Effects), and global effects for the whole grid, from the row above the bottom bar (see Global effects)
+- Copy to clipboard (`Ctrl+C`) or save (`Ctrl+S`): a PNG, or an MP4 video when the grid holds content that plays or a soundtrack is on; the ▾ arrow next to each button forces a looping GIF or an MP4 video
 - Lives in the notification area: closing the window only hides it, the tray icon brings it back, and it can start with Windows (see Tray & startup)
 
 ## Adding images
@@ -92,6 +93,18 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 - **Sound on arrival**: a video added or dropped in (or replacing another) is heard at 100 % when no other cell is heard, else it arrives muted — the effect on, Mute checked. Both Resets give it that sound again, from the other cells at that moment. Turning the effect off makes the video heard at 100 %.
 - Above 100 %, the sound is amplified, clipped where it goes beyond full scale. The preview and the exported video both play it at its volume.
 
+## Global effects
+
+- A **Global effects** row, just above the bottom bar, holds the effects of the whole grid — not of a cell: one toggle per global effect, its options beside it, shown while it is on. It works with no cell selected; the cells' **Reset** buttons leave it alone, and **Clear all** turns it back to its initial state. It is locked while exporting.
+
+### Soundtrack
+
+- The sound of an **audio file** (mp3, wav, m4a, aac, wma, flac…) or of a **video** is mixed **over** the sounds of the videos, which keep playing at their own Volume — in the preview and in the exported MP4 video; a GIF has no sound.
+- Click **♪ Soundtrack**: with no file yet, it opens a picker; with one, it turns the soundtrack on or off, keeping its file and volume. A file **dropped on the row** becomes the soundtrack and turns it on; so does one picked with **Browse…**. A file Windows reads no sound track from is refused, with a status-line message.
+- Options, while it is on: **Browse…**, the file's name (its whole path in a tooltip), and the volume, from 0 to 200 % — above 100 %, amplified and clipped like a video's.
+- It follows the grid's duration, the longest loop: a shorter soundtrack **loops**, a longer one is **cut**. A grid of stills has no duration of its own: with the soundtrack on, it lasts as long as the soundtrack — **Copy** and **Save** then produce an MP4 video of the stills and the sound instead of a PNG.
+- The preview plays it while the grid holds an image, from its start when turned on, looping on the grid's duration.
+
 ## Previews
 
 A file that is not an image is turned into one when it can be previewed. The first match wins:
@@ -134,13 +147,13 @@ A cell holding **multiple content** plays it, live in the preview and in the exp
 A single-page PDF, a text that fits its cell, a one-frame GIF and plain images stay still.
 
 - **Live preview**: every cell plays on one clock, so pages and views change together, each from the starting point of its Frames effect. Hovering a cell no longer holds it still: freezing goes through the Frames effect.
-- **Sound**: the sounds of every video with sound are **mixed**, each at its Volume — a frozen or muted video adds nothing. In the preview, each sound plays in step with its own video (held with it, looping with it); the exported video carries the mix, each sound from its video's starting point, looping with it, in one AAC track.
-- **Export**: as soon as a content plays (not frozen), **Save** writes an **MP4 video** (H.264, AAC sound) instead of a PNG, and **Copy** puts an MP4 file on the clipboard (written to `%TEMP%\ImageGridFusion`, cleaned at the next start), pastable in Explorer, chat apps or mail. The buttons name what they produce: **Copy PNG** / **Copy MP4**, **Save PNG…** / **Save MP4…**.
+- **Sound**: the sounds of every video with sound are **mixed**, each at its Volume — a frozen or muted video adds nothing — and the soundtrack over them when it is on (see Soundtrack). In the preview, each sound plays in step with its own video (held with it, looping with it); the exported video carries the mix, each sound from its video's starting point, looping with it, in one AAC track.
+- **Export**: as soon as a content plays (not frozen), or a soundtrack is on, **Save** writes an **MP4 video** (H.264, AAC sound) instead of a PNG, and **Copy** puts an MP4 file on the clipboard (written to `%TEMP%\ImageGridFusion`, cleaned at the next start), pastable in Explorer, chat apps or mail. The buttons name what they produce: **Copy PNG** / **Copy MP4**, **Save PNG…** / **Save MP4…**.
   - The **▾ arrow** on the right of Copy and of Save opens a menu that forces the format for that export only: **GIF** or **MP4 Video**. It is disabled while nothing plays; for a still of animated content, freeze it with the Frames effect.
   - A **GIF** loops forever and has no sound; each frame gets its own 256-color palette. Copied, it goes on the clipboard both as a file and in the GIF clipboard format, which some apps paste directly. A large canvas at 30 fps makes heavy GIFs.
   - Every content starts from the starting point of its Frames effect (its beginning without it), and a frozen one stays on its frame; the video or GIF lasts as long as the longest loop, the shorter ones starting over until it ends. 30 fps (GIF frames last 3 or 4 hundredths of a second, so the length stays exact).
   - The canvas is sized once, from the first frames (see Canvas size), and rounded down to even dimensions; the bands keep the color of the first frame.
-  - The status line names the videos whose sound is in the export. A sound Windows cannot re-encode is left out of the mix, with a note in the status line.
+  - The status line names the files whose sound is in the export, the soundtrack's included. A sound Windows cannot re-encode is left out of the mix, with a note in the status line.
 - **While exporting**, the status line shows the progress with a **Cancel** button, and the grid is locked: no adding, removing, swapping, clearing, changing the layout or the effects. The animation keeps playing. Closing the window only hides it and the export goes on; quitting (see Tray & startup) cancels the export first. A cancelled export leaves no file.
 
 ## Layouts
