@@ -11,7 +11,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 - Paste or drop a text too, from any app: it becomes an image, rendered like a text file, its bold, italic, underline, strike and colors kept (see Pasted text)
 - Not only images: videos, PDFs, text files, and any file Windows shows a thumbnail for, are turned into an image (see Previews)
 - An **Add images** drop zone right of the preview: drop files onto it to add them after the current ones, or click it to pick files
-- Several layouts per image count, picked from a strip of thumbnails, plus a mirror toggle (see Layouts)
+- Several layouts per image count, picked from a strip of thumbnails, plus a mirror toggle; drag the separator between two cells to resize them (see Layouts)
 - No image list: the grid preview *is* the interface
   - Click a cell to select it, `Esc` to deselect; the effect tabs act on the selected cell (see Effects)
   - Hover a cell to outline it and show a **×** to remove it, or press `Delete` to remove the selected one
@@ -46,7 +46,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 - Turning an effect off keeps its settings: it is drawn as its default (100 % centered, upright, unflipped, playing from the beginning, in color, sharp, heard at 100 %) until it is turned on again, as it was. An effect that is off shows its kept settings in its options.
 - Changing any option of an effect turns it on, from its kept settings.
 - The options row ends with a **Reset** button that brings the selected tab's effect back to its default state: default settings, turned off — except the Volume, which gets the sound on arrival again (see Volume).
-- The **Reset** at the far right of the tabs does it for every effect of the selected cell at once.
+- The **Reset** at the far right of the tabs does it for every effect of the selected cell at once, and also puts every separator of the grid back where its layout places it (see Resizing the cells).
 - An effect that does not apply to the selected cell (**Frames** on a still image, **Volume** on an image without sound) keeps its tab selectable, but its checkbox and options are disabled; the checkbox's tooltip says why.
 - An effect belongs to the cell and its image: replacing the image (drop, `Ctrl+V`, picker) or removing an image clears the effects of the cells whose image changes — but the Volume of the images shifting after a removal, kept so what is heard does not change; swapping two cells or changing the layout keeps them.
 - Effects show in the preview, in every export, and on videos while they play.
@@ -107,7 +107,7 @@ A file that is not an image is turned into one when it can be previewed. The fir
 - A file none of them handles is skipped, with a status-line message; the app never draws an icon or a placeholder instead.
 - A video whose codec Windows lacks (HEVC without its Store extension, some mkv / avi) falls back to its Windows thumbnail, if any.
 - The slider is the **Frames** effect's (see Effects), never in the output. The image follows it live while dragging.
-- **Text** is recognized from its content: at most 1 MB, UTF-8 or UTF-16 with a byte order mark, and no NUL byte in its first 8 KB. It is rendered on pages shaped like its cell, at the cell's size on a 1200 px canvas, and laid out again when the cell changes (layout, swap, image count), keeping the reading position.
+- **Text** is recognized from its content: at most 1 MB, UTF-8 or UTF-16 with a byte order mark, and no NUL byte in its first 8 KB. It is rendered on pages shaped like its cell, at the cell's size on a 1200 px canvas, and laid out again when the cell changes (layout, swap, image count, a separator released), keeping the reading position.
 - **Readable text**: the font is the largest size between 24 and 96 px at which the whole text fits one page; below 24 px, the text is paginated at 24 px instead. Since the canvas is never narrower than the width at which no image is downscaled (see Canvas size), the text is at least that tall in the output. PDFs are rendered whole, so their small print may stay unreadable in a small cell.
 
 ### Pasted text
@@ -207,6 +207,20 @@ Big left, mirrored
 +---------+---------+
 ```
 
+A resized layout flips with its sizes: the big cell stays big, on the other side.
+
+### Resizing the cells
+
+Drag the **separator** between two cells to give one of them more room: the cursor turns into ↔ or ↕ within 4 px of it. A separator moves only the cells on both of its sides — the long one of *Big left* moves the big cell and every cell stacked next to it, the short one between two stacked cells only those two — so the grid may become irregular. The preview follows live, smoothed once the separator is released.
+
+- **Grid** (4 images): while both lines of the cross are straight, each of its four arms moves on its own, between two cells; moving one breaks its line, and the other line then moves in one piece, all four cells with it, until the broken line is straight again.
+- **Minimum**: a separator stops where a cell it moves would get below 10 % of the canvas width (or height).
+- **Magnetic**: within 6 px, it lands exactly back on its place in the layout, or in line with a parallel separator — the other arm of the Grid's broken line.
+- **Back to the layout's sizes**: double-click a separator to put it back; click the active thumbnail again, or the effects **Reset**, to put all of them back. The active thumbnail keeps the layout's own shape.
+- The sizes belong to the grid, not to the images: swapping two cells or replacing an image keeps them; picking another layout or changing the number of images starts again on the layout's own sizes. They are not kept between two launches.
+- On the selected cell, a blur bar lying on its edge is grabbed before the separator; the separator stays reachable from the neighbour cell, or once the Blur tab is unselected or the blur is off.
+- A text is laid out again for its new cell once the separator is released. Not while exporting.
+
 ## Fitting rules
 
 - Each image is scaled to fill its cell, with no gap between cells.
@@ -222,7 +236,7 @@ Big left, mirrored
 
 ## Canvas size
 
-Output resolution is kept as high as possible so source images aren't needlessly downscaled: the canvas width is the width at which no image is downscaled in the active layout, clamped between 1200 and 4096 px; height follows from the 1200:628 ratio.
+Output resolution is kept as high as possible so source images aren't needlessly downscaled: the canvas width is the width at which no image is downscaled in the active layout, with its cells as resized, clamped between 1200 and 4096 px; height follows from the 1200:628 ratio.
 
 ## Output
 
