@@ -17,10 +17,11 @@ internal static class GridExport
     /// </summary>
     public sealed class Job : IDisposable
     {
-        private Job(IReadOnlyList<Item> items, GridLayout layout, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack)
+        private Job(IReadOnlyList<Item> items, GridLayout layout, GridBorders? borders, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack)
         {
             Items = items;
             Layout = layout;
+            Borders = borders;
             var grid = items.Select(i => i.Loop).DefaultIfEmpty(TimeSpan.Zero).Max();
             Length = soundtrack?.LoopIn(grid) ?? grid;
 
@@ -33,20 +34,24 @@ internal static class GridExport
 
         public GridLayout Layout { get; }
 
+        /// <summary>The borders drawn on the grid; <c>null</c> while they are off.</summary>
+        public GridBorders? Borders { get; }
+
         /// <summary>The sounds mixed into the video: each from the starting point of its video, at its volume; the soundtrack last.</summary>
         public IReadOnlyList<MixedSound> Sounds { get; }
 
         /// <summary>Length of the video: the longest loop; with a soundtrack and no loop, the soundtrack's.</summary>
         public TimeSpan Length { get; }
 
-        /// <summary>The grid as it stands, with <paramref name="soundtrack"/> mixed over its sounds when one is on.</summary>
-        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout, Soundtrack? soundtrack = null) => new(
+        /// <summary>The grid as it stands, with its <paramref name="borders"/>, and <paramref name="soundtrack"/> mixed over its sounds when one is on.</summary>
+        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout, GridBorders? borders, Soundtrack? soundtrack = null) => new(
             images.Select(i => i.Plays
                 ? new Item(null, i.BandColor, i.Pages, i.Pages!.LoopDuration, i.Look, i.Page, i.StartTime)
                 : i.IsAnimated
                 ? new Item(null, i.BandColor, i.Pages, TimeSpan.Zero, i.Look, i.StartPage, TimeSpan.Zero)
                 : new Item(new Bitmap(i.Bitmap), i.BandColor, null, TimeSpan.Zero, i.Look, 0, TimeSpan.Zero)).ToList(),
             layout,
+            borders,
             Animation.Heard(images),
             soundtrack);
 
@@ -147,7 +152,7 @@ internal static class GridExport
                 // Neither format keeps an alpha channel: a cell without background is flattened on white,
                 // cleared at each frame so the previous one does not show through.
                 g.Clear(Color.White);
-                Compositor.Draw(g, frames, job.Layout, canvas);
+                Compositor.Draw(g, frames, job.Layout, canvas, job.Borders);
                 encoder.WriteFrame(bitmap, time, Animation.FrameTime(k + 1) - time);
                 progress?.Report((k + 1) / (double)count);
             }
@@ -201,7 +206,7 @@ internal static class GridExport
                 frames[i] = new Frame(frame, BandColor.Of(frame), item.Look);
             }
 
-            return Compositor.Render(frames, job.Layout);
+            return Compositor.Render(frames, job.Layout, job.Borders);
         }
         finally
         {
