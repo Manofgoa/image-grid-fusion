@@ -99,8 +99,11 @@ Agreed at scoping (Q&A #3): drag + wheel, but an emoji must be **selected first*
 - The wheel acts on the selected emoji **only while the pointer is over it** (Q&A #9); elsewhere
   it zooms the cell under the pointer, as today — also while an emoji is selected.
 - A moved emoji keeps its **centre inside the grid**; the part outside is clipped at the grid edge.
-- Still open: how the emoji selection lives with the cell selection, the stacking order — see
-  *Open Questions*.
+- **Exclusive selections** (Q&A #11): selecting an emoji clears the cell selection (the effects
+  toolbar gets disabled), selecting a cell clears the emoji selection. Delete removes whichever is
+  selected — the emoji, or the cell's image as today.
+- **Brought to the front** (Q&A #12): selecting an emoji moves it above every other emoji, and it
+  stays there once deselected.
 
 ### Selection Indicator
 
@@ -128,12 +131,12 @@ Agreed at scoping (Q&A #3): drag + wheel, but an emoji must be **selected first*
 
 ## Test Impact
 
-To be decided (open question): the solution has no test project, and previous workfiles stayed
-test-free by the user's decision.
+None, by the user's decision (Q&A #13): the solution has no test project, and every previous
+workfile stayed test-free.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| — (pending the decision) | — | — |
+| — (no unit tests) | — | — |
 
 ---
 
@@ -146,10 +149,10 @@ test-free by the user's decision.
 - [x] ~~Where does the picker sit: inline in the Global effects row, or in a popup opened from a button in the row?~~ → Popup from a button in the row (Q&A #7)
 - [x] ~~A drag started on an **unselected** emoji: selects it only, or selects and moves it at once?~~ → Selects it only (Q&A #8)
 - [x] ~~Where does the wheel act while an emoji is selected: over that emoji only, or anywhere on the grid?~~ → Over that emoji only (Q&A #9)
-- [ ] Are the 20 recent emojis remembered between sessions (registry), or for the session only?
-- [ ] Emoji selection and cell selection: exclusive (selecting one clears the other), or both kept at once?
-- [ ] Stacking: does selecting an emoji bring it to the front?
-- [ ] Unit tests: none, as in the previous workfiles, or a test project for this feature?
+- [ ] Are the 20 recent emojis remembered between sessions (in the registry, where every app setting lives — the app has no settings `.json`), or for the session only?
+- [x] ~~Emoji selection and cell selection: exclusive (selecting one clears the other), or both kept at once?~~ → Exclusive (Q&A #11)
+- [x] ~~Stacking: does selecting an emoji bring it to the front?~~ → Yes, and it stays there (Q&A #12)
+- [x] ~~Unit tests: none, as in the previous workfiles, or a test project for this feature?~~ → None (Q&A #13)
 
 ---
 
@@ -181,6 +184,13 @@ picker is a popup opened from a "😀 ▾" button in the row; a drag on an unsel
 selects it; the wheel acts on the selected emoji only while the pointer is over it, the cell zoom
 staying everywhere else.
 
+### Iteration 3 — 2026-09-27
+
+Second batch answered: emoji and cell selections are exclusive; a selected emoji comes to the
+front and stays there; no unit tests. The recent emojis' persistence stays open — the user asked
+why the registry rather than a settings `.json`: the app has none, every remembered setting lives
+in the registry.
+
 ---
 
 ## Implementation Log
@@ -207,14 +217,15 @@ Questions asked by the agent during design, with user responses.
 | 3 | How is a placed emoji handled? | Drag + wheel OK, but the emoji must be **selected first** to act on it | 2026-09-27 |
 | 4 | Is the subject straightforward, or tricky / long? | Straightforward | 2026-09-27 |
 | 5 | *(request, not a question)* | Also show the 20 most recently used emojis | 2026-09-27 |
-| 6 | Which color glyph renderer? | WPF (`UseWPF`, no package) | |
-| 7 | Where does the picker sit? | A popup opened from a button in the row | |
-| 8 | What does a drag on an unselected emoji do? | Selects it only | |
-| 9 | Where does the wheel act while an emoji is selected? | Over that emoji only | |
-| 10 | Are the recent emojis remembered between sessions? | | |
-| 11 | Are the emoji selection and the cell selection exclusive? | | |
-| 12 | Does selecting an emoji bring it to the front? | | |
-| 13 | Unit tests for this feature? | | |
+| 6 | Which color glyph renderer? | WPF (`UseWPF`, no package) | 2026-09-27 | |
+| 7 | Where does the picker sit? | A popup opened from a button in the row | 2026-09-27 | |
+| 8 | What does a drag on an unselected emoji do? | Selects it only | 2026-09-27 | |
+| 9 | Where does the wheel act while an emoji is selected? | Over that emoji only | 2026-09-27 | |
+| 10 | Are the recent emojis remembered between sessions (registry)? | Asked back: why the registry, aren't the project's settings `.json` enough? → the app has no settings `.json`; every remembered setting is in the registry (`UI/AppSettings.cs`) | 2026-09-27 |
+| 14 | Are the recent emojis remembered between sessions, in the registry with the other settings? | | |
+| 11 | Are the emoji selection and the cell selection exclusive? | Exclusive | 2026-09-27 | |
+| 12 | Does selecting an emoji bring it to the front? | Yes | 2026-09-27 | |
+| 13 | Unit tests for this feature? | None | 2026-09-27 | |
 
 ---
 
