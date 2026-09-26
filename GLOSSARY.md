@@ -18,8 +18,9 @@ each.
 | Global effect (*effet global*) | A transformation of the whole grid, toggled from the Global effects row: Soundtrack, Borders |
 | Global effects row | The always-visible row just above the bottom bar: the "Global effects" label, the global effect toggles and, while one is on, its options |
 | Soundtrack (*bande son*) | The global effect mixing the sound of an audio or video file over the heard videos, at its own volume; it loops or is cut to the grid's duration, and gives a grid of stills its length |
-| Borders (*bordures*) | The global effect drawing borders on the grid, on at start-up: the Corners style, or a gap between the cells filled by a line style, with an optional outer frame; its color is an app setting of the ⚙ menu |
+| Borders (*bordures*) | The global effect drawing borders on the grid, off at start-up: the Corners style, or a gap between the cells filled by a line style, with an optional outer frame and the Twitter corners; its color is an app setting of the ⚙ menu |
 | Corners style (*style Coins*) | The Borders' default style, the app's signature: an L-bracket over the images at each of the grid's four corners, each arm covering 10 % of its edge; no gap between the cells |
+| Twitter corners (*coins Twitter*) | The Borders' option rounding the grid's four outer corners as Twitter / X rounds a posted image (3 % of the grid's longer side), the brackets and the outer frame following the curve; transparent in the preview and the PNG, left for Twitter to round in the other outputs; on by default, that default an app setting of the ⚙ menu |
 | Gap (*espace*) | The space the Borders leave between the cells (every style but Corners), the cells shrinking for it; hit-testing still gives it to the cells beside it |
 | Effects toolbar | The always-visible row of effect tabs, hanging below the options toolbar: the "Effects" label, the effect tabs, the Reset button at the far right |
 | Effect tab (*onglet*) | One effect's tab in the effects toolbar, holding its activation checkbox; the selected tab is the one whose options show |
