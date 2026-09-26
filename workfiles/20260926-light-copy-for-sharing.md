@@ -153,6 +153,22 @@ Open questions answered:
 Go given: code, unit tests and documentation (no test project — only code and README apply).
 Work lands on `main` (standing user preference).
 
+### Iteration 5 — 2026-09-26 — 🧭 Implementation choices
+
+- **Branch**: the branch gate was not asked — the user's standing preference for this app is to
+  work on `main`; stayed on `main`.
+- **Downscaling** lives in a new overload `Compositor.Flattened(Bitmap, int maxEdge)`: white fill,
+  high-quality bicubic, edge pixels mirrored (`WrapMode.TileFlipXY`) so the borders do not darken;
+  below the cap it is the plain `Flattened`.
+- **Menu**: GIF, MP4 Video, JPEG for sharing now are fields (`_copyGif`, `_copyMp4`,
+  `_copyForSharing`) so `UpdateButtons` can grey the first two; they keep the arrow's former rule
+  (`HasAnimation`), unchanged when only a soundtrack is on.
+- **Temp file**: `TempExportPath` takes the extension; the JPEG is `fusion-{timestamp}.jpg`, so two
+  light copies within the same second overwrite each other, as the MP4 / GIF copies already did.
+- **Errors**: a failed write or clipboard access shows `Copy failed: …` in the status line, like the
+  other copies.
+- No rule broken.
+
 ---
 
 ## Implementation Log
@@ -162,9 +178,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable — the app has no test project |
-| README | | | |
+| Code | 4 | 2026-09-26 | Copy ▾ menu item, `CopyForSharing`, `Compositor.Flattened(image, maxEdge)`, `*.jpg` cleanup |
+| Unit tests | 4 | 2026-09-26 | Not applicable — the app has no test project |
+| README | 4 | 2026-09-26 | Feature list, Animated content (▾ arrow), Output (Copy) |
 
 ---
 
