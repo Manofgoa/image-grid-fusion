@@ -9,6 +9,7 @@ each.
 | Cell (*cellule*) | One slot of the grid |
 | Image | The content of a cell, **whatever its source** — still image, video, animated GIF, preview of a text / PDF or other file. "Image" never means "still image only" |
 | Layout (*disposition*) | The arrangement of cells chosen in the layout strip |
+| Advanced layout (*disposition avancée*) | A layout offered under the layout strip's **More** group, hidden until the group is expanded (`GridLayout.IsAdvanced`); the others are the **basic** layouts |
 | Separator (*séparateur*) | A stretch of boundary between cells, dragged to resize them: it moves every cell on both of its sides, and no other |
 | Arm (*bras*) | One of the four separators of the Grid's cross while both of its lines are straight |
 | Selected cell | The cell the effects toolbar acts on |
