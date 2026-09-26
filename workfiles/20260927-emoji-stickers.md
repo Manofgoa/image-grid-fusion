@@ -217,10 +217,10 @@ Questions asked by the agent during design, with user responses.
 | 3 | How is a placed emoji handled? | Drag + wheel OK, but the emoji must be **selected first** to act on it | 2026-09-27 |
 | 4 | Is the subject straightforward, or tricky / long? | Straightforward | 2026-09-27 |
 | 5 | *(request, not a question)* | Also show the 20 most recently used emojis | 2026-09-27 |
-| 6 | Which color glyph renderer? | WPF (`UseWPF`, no package) | 2026-09-27 | |
-| 7 | Where does the picker sit? | A popup opened from a button in the row | 2026-09-27 | |
-| 8 | What does a drag on an unselected emoji do? | Selects it only | 2026-09-27 | |
-| 9 | Where does the wheel act while an emoji is selected? | Over that emoji only | 2026-09-27 | |
+| 6 | Which color glyph renderer? | WPF (`UseWPF`, no package) | 2026-09-27 |
+| 7 | Where does the picker sit? | A popup opened from a button in the row | 2026-09-27 |
+| 8 | What does a drag on an unselected emoji do? | Selects it only | 2026-09-27 |
+| 9 | Where does the wheel act while an emoji is selected? | Over that emoji only | 2026-09-27 |
 | 10 | Are the recent emojis remembered between sessions (registry)? | Asked back: why the registry, aren't the project's settings `.json` enough? → the app has no settings `.json`; every remembered setting is in the registry (`UI/AppSettings.cs`) | 2026-09-27 |
 | 14 | Are the recent emojis remembered between sessions, in the registry with the other settings? | | |
 | 11 | Are the emoji selection and the cell selection exclusive? | Exclusive | 2026-09-27 | |
