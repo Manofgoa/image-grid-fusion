@@ -169,6 +169,10 @@ Work lands on `main` (standing user preference).
   other copies.
 - No rule broken.
 
+### Iteration 6 — 2026-09-26
+
+Validated by the user: the light copy pastes in WhatsApp — task finished.
+
 ---
 
 ## Implementation Log
@@ -200,6 +204,7 @@ Questions asked by the agent during design, with user responses.
 | 8 | Same option in Save? | No, Copy only | 2026-09-26 |
 | 9 | Go for implementation? | No — the gate holds | 2026-09-26 |
 | 10 | Go for implementation? (asked again) | Code, unit tests and documentation | 2026-09-26 |
+| 11 | Does the light copy work in WhatsApp, is the task finished? | Yes, finished | 2026-09-26 |
 
 ---
 
