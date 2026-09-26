@@ -17,6 +17,10 @@ public static class Animation
     public static TimeSpan VideoLength(IEnumerable<SourceImage> images) =>
         images.Where(i => i.IsAnimated).Select(i => i.Pages!.LoopDuration).DefaultIfEmpty(TimeSpan.Zero).Max();
 
+    /// <summary>Length of the grid's loop: the longest playing content; a frozen one plays nothing.</summary>
+    public static TimeSpan GridLength(IEnumerable<SourceImage> images) =>
+        images.Where(i => i.Plays).Select(i => i.Pages!.LoopDuration).DefaultIfEmpty(TimeSpan.Zero).Max();
+
     /// <summary>Number of frames of a video of <paramref name="length"/>, the last one possibly shown shorter.</summary>
     public static int FrameCount(TimeSpan length) => Math.Max(1, (int)Math.Ceiling(length.TotalSeconds * FramesPerSecond - 1e-6));
 
