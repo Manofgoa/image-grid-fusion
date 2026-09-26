@@ -44,6 +44,8 @@ Agreed:
 
 ### Options
 
+From left to right: the **Mute** check box, then the volume slider and its label.
+
 - A **volume slider**, **0 %** to **200 %**, with its percentage label.
 - A **Mute** check box, **independent** of the slider:
   - the slider reaching **0** checks Mute;
@@ -255,6 +257,11 @@ User feedback while testing: reaching 0 must not grey the volume slider, otherwi
 sound back is awkward. The slider now stays enabled whatever the mute — muted from the check box or
 at 0 — and moving it above 0 unmutes, as the design already said. § Options updated; README follows.
 
+### Iteration 8 — 2026-09-26 — ⚙️ Post-implementation — Mute left of the slider
+
+User request while testing: put "Mute" to the left of the slider. The options row now reads Mute,
+then the slider and its label. § Options updated; README follows.
+
 ---
 
 ## Implementation Log
@@ -264,9 +271,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 6, 7 | 2026-09-26 | State, export mixer, preview mixer, Volume tab — 4 commits; verified with a scratchpad harness exporting 3 videos (one without sound, one at 200 %) and an all-muted grid |
+| Code | 6, 7, 8 | 2026-09-26 | State, export mixer, preview mixer, Volume tab — 4 commits; verified with a scratchpad harness exporting 3 videos (one without sound, one at 200 %) and an all-muted grid |
 | Unit tests | 4 | 2026-09-25 | Declined by the user — no test project, manual verification |
-| README | 6, 7 | 2026-09-26 | Volume section, Effects and Sound bullets; the slider never disabled |
+| README | 6, 7, 8 | 2026-09-26 | Volume section, Effects and Sound bullets; the slider never disabled; Mute first |
 | RULES | 6 | 2026-09-26 | § Effects — *The Volume Exception*; GLOSSARY: Volume, Heard, Sound on arrival |
 
 ---
@@ -296,6 +303,7 @@ Questions asked by the agent during design, with user responses.
 | 17 | May the implementation begin? | No — the gate holds | 2026-09-26 |
 | 18 | May the implementation begin? | GO — full scope (code, README, RULES) | 2026-09-26 |
 | 19 | Is the task finished? | Dismissed; the user tests first — then asks that reaching 0 does not grey the slider | 2026-09-26 |
+| 20 | Is the task finished? | Dismissed — then asks for Mute left of the slider | 2026-09-26 |
 
 ---
 
