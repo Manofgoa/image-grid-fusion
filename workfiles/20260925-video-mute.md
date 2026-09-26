@@ -309,7 +309,10 @@ Questions asked by the agent during design, with user responses.
 | 19 | Is the task finished? | Dismissed; the user tests first — then asks that reaching 0 does not grey the slider | 2026-09-26 |
 | 20 | Is the task finished? | Dismissed — then asks for Mute left of the slider | 2026-09-26 |
 | 21 | Is the task finished? | Yes — validated by the user after testing in the app | 2026-09-26 |
+| 22 | The sound on arrival surprised you twice (26/09 evening, 27/09): keep the rule, every video heard on arrival, a ⚙ setting, or test first? | Every video heard on arrival: 100 %, the effect off — the mix heard at once | 2026-09-27 |
+| 23 | An image deleted: the shifted videos keep their volume (exception kept), or are reset like the other effects? | | 2026-09-27 |
+| 24 | May the adjustment be implemented? | | 2026-09-27 |
 
 ---
 
-*Last updated: 2026-09-26*
+*Last updated: 2026-09-27*
