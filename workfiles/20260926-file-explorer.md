@@ -395,6 +395,12 @@ adjustments left open:
 - **Keyboard in the grid**: `↑` stays in its column at the top row; `↓` past the last tile lands
   on it; `Home` / `End`; `Enter` activates.
 
+### Iteration 9 — 2026-09-26 — ✅ Task finished
+
+Tested by hand on the launched app; the user confirmed the task finished. Two follow-ups stay
+pre-created, their design not started: `workfiles/20260926-ocr-search.md` and
+`workfiles/20260926-explorer-window.md`.
+
 ---
 
 ## Implementation Log
