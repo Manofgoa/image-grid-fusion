@@ -51,8 +51,9 @@ Agreed:
 - A panel **at the right of the preview**, between the toolbars above and the Global effects row
   below (the band `_preview` and `_layouts` share), **collapsible, open at start-up**; its open /
   closed state is **remembered between sessions** (§ Settings).
-- **Fixed width**: 280 logical px open (`LogicalToDeviceUnits`), a **20 px strip** when collapsed.
-  The preview (`Dock = Fill`) shrinks by that width; nothing else moves.
+- **Fixed width**: 380 logical px open (`LogicalToDeviceUnits`; 280 before Iteration 5), a
+  **20 px strip** when collapsed. The preview (`Dock = Fill`) shrinks by that width; nothing else
+  moves.
 - **Collapse / expand**: a `»` button in the panel's header hides it; the strip left in its place
   carries a `«` button (tooltip *Show the file explorer*) that brings it back and focuses the
   search box. Collapsed, the panel keeps its search text, results and state.
@@ -66,8 +67,15 @@ Agreed:
   | Caption | *Favorites (12)* while the box is empty; *57 results — first 10* / *3 results* / *No result* during a search; *Waiting for the index…* while no index exists yet |
   | List | The rows (favorites, or the results), filling the rest of the height |
 
-- **A row** = the heart (`♡` grey, `♥` red when a favorite) in front of the **file name only**;
-  the full path in a tooltip. Owner-drawn list; the heart's hit zone is the first 22 logical px.
+- **A row** = the heart (`♡` grey, `♥` red when a favorite), then a **thumbnail** of the file in a
+  160 × 120 logical px box (the image fitted, centered), then the **file name**, secondary, to its
+  right; the full path in a tooltip. Owner-drawn list, rows 128 px tall; the heart's hit zone is
+  the first 22 logical px. *(Iteration 5; heart + name only before.)*
+- **Thumbnails** come from the Shell's thumbnail cache (`ShellThumbnail`, the same source as the
+  cells' previews of non-image files), **loaded in the background** one at a time: a row whose
+  thumbnail is not ready yet shows an empty box and is repainted when it arrives; a file the Shell
+  cannot thumbnail keeps the empty box. Thumbnails are cached in memory for the session, the
+  oldest dropped past 200, and a request is skipped when its row is no longer shown.
 - **Box empty (or blanks only)**: the list shows **every favorite** — no 10-limit — the **most
   recently added first**. **Box with text**: the 10 best matches (§ Search), the favorites among
   them marked with `♥` and **not promoted**.
@@ -325,6 +333,14 @@ wiring; README and Glossary; this workfile). No rule broken. The choices the des
 - **Ranking, criterion 2** reads as written: the position of the *first* typed word in the file
   name; a later word's position does not count.
 
+### Iteration 5 — 2026-09-26 — ⚙️ Post-implementation — Thumbnails in the rows
+
+After a first try ("pas mal du tout"): every row shows a **preview of the file, not a tiny one**;
+the panel may be **wider**; the **file name matters less than the preview**. Q&A #4 (heart + name
+only) is revised: the row becomes heart + thumbnail + name, the thumbnails loaded in the
+background from the Shell's thumbnail cache (the app's `ShellThumbnail`), so the list still answers
+as the user types. § Panel updated.
+
 ---
 
 ## Implementation Log
@@ -349,7 +365,7 @@ Questions asked by the agent during design, with user responses.
 | 1 | The panel at the right: collapsible and open at start-up, always visible, or collapsible and closed at start-up? | Collapsible, open at start-up | 2026-09-26 |
 | 2 | When does the search run: at each keystroke, or on Enter / a button? | At each keystroke | 2026-09-26 |
 | 3 | What "matches the name": every word in the file name, the text as typed, starts with, or every word in the relative path? | Every word in the relative path (subfolders count) — and accents ignored too, like the case | 2026-09-26 |
-| 4 | A result row: heart + name + subfolder, heart + name only, or heart + thumbnail + name? | Heart + name only | 2026-09-26 |
+| 4 | A result row: heart + name + subfolder, heart + name only, or heart + thumbnail + name? | Heart + name only *(revised 2026-09-26, see Iteration 5: heart + thumbnail + name, the thumbnail first in importance)* | 2026-09-26 |
 | 5 | Files indexed: only the types the app opens, or every file? | Every file | 2026-09-26 |
 | 6 | When is the index rebuilt: at start-up in the background + `↻`, manually only, or a live watcher? | At start-up in the background + `↻` | 2026-09-26 |
 | 7 | Order of the 10 results: favorites first then best match, best match only, alphabetical, or most recent? | Best match; favorites not promoted; favorites stored in a dedicated file next to the exe. First asked as a separate always-visible favorites list, then withdrawn: one list, favorites shown while the box is empty, no 10-limit | 2026-09-26 |
