@@ -39,7 +39,10 @@ Components concerned:
   (`vacances-ete-2…plage.jpg`); the icon always stays visible after it.
 - **Tooltip**: hovering the name **or** the icon shows the file's **full path**.
 - **Look**: a helper indicator (RULES.md § *On-Cell Helper Indicators*): `HelperColor` text over the
-  `HelperHalo` outline, same font style as the zoom badge.
+  `HelperHalo` outline (4 logical px), bold like the zoom badge but smaller — **12 logical px**
+  (`SourceNameTextSize`; the badge is 16). Placed on the font's line height, not on the glyphs, so
+  the name never jumps with its letters.
+- **Too narrow**: a cell with no room left for the icon and its gap shows nothing.
 - **Preview only**: drawn in `GridPreview.OnPaint`, never in `Compositor` — exports, the clipboard
   copy and video playback are untouched.
 - **No source file**: a label naming the source in place of the name, no icon, no tooltip. The
@@ -51,20 +54,28 @@ Components concerned:
   | A clipboard image (Ctrl+V, `ImageLoader.FromImage`) | `Pasted image` |
   | A pasted text (Ctrl+V, `ImageLoader.FromText`) | `Pasted text` |
   | A dropped text (drag and drop, `ImageLoader.FromText`) | `Dropped text` |
+
+  The flag is `SourceImage.Dropped`, set by `MainForm.AddTextAsync(…, dropped)`; a text image is
+  recognised by `Pages is TextPages`.
 - **Blur handles**: the name stays shown while the Blur bars are drawn; the bars are painted
   **over** it and keep the click priority on their own hit area (RULES.md § *On-Cell Handles*).
 - **Hidden while a cell is being dragged** (swap), like the cell buttons.
+- The fitted name is measured once per image, width and DPI (`_fittedName`), not at every paint.
 
 ## Folder Icon
 
-- A small **folder glyph**, drawn right after the name, in the helper colours; it turns **white**
-  while hovered (the hover feedback the rule allows for a handle).
+- A small **folder glyph** (a silhouette with its tab up left, **16 logical px**,
+  `SourceIconSize`), drawn right after the — possibly shortened — name, `ButtonGap` apart, in the
+  helper colours; it turns **white** while hovered (the hover feedback the rule allows for a handle).
 - **Click**: `explorer.exe /select,"<FilePath>"` — Explorer opens on the folder, the file selected.
+  `GridPreview` raises `ShowInExplorerClicked` with the path; `MainForm.ShowInExplorer` checks the
+  file and runs Explorer. Explorer failing to start shows its error in the status bar.
+- It works **during an export** too: opening Explorer changes nothing in the grid.
 - Its hit area takes **priority over the cell's gestures on that area only** (no selection change,
   no drag, no pan starts from it); the cursor is `Cursors.Hand` over it.
 - **The file no longer exists** (moved or deleted since it was loaded): if its **folder still
-  exists**, Explorer opens on it with nothing selected; in every case the **status bar** says the
-  file was not found.
+  exists**, Explorer opens on it with nothing selected; in every case the **status bar** says
+  `File not found: <path>`, as an error.
 
 ---
 
@@ -125,6 +136,25 @@ pasted or dropped — `Pasted image`, `Pasted text`, `Dropped text`. No question
 Go given for the code, the unit tests and the documentation. The run stays on `main` (standing
 choice for this repository). Unit tests do not apply: there is no test project.
 
+### Iteration 5 — 2026-09-26 — 🧭 Implementation choices
+
+Choices the frozen design left open, taken during the run:
+
+- **Text size** 12 logical px bold, smaller than the zoom badge's 16: a file name is long and sits
+  permanently on the cell.
+- **Folder icon**: a filled silhouette, 16 logical px, right after the shortened name.
+- **Cell too narrow** for the icon and its gap: nothing is drawn.
+- **During an export**: the icon still opens Explorer (it changes nothing in the grid).
+- **Wiring**: `GridPreview.ShowInExplorerClicked` event → `MainForm.ShowInExplorer`, which owns the
+  file check, the Explorer call and the status messages (`File not found: <path>`, or Explorer's
+  own error if it cannot start).
+- **Origin flag**: a settable `SourceImage.Dropped`, set by `MainForm.AddTextAsync`.
+- **Build**: the first build could not copy `ImageGridFusion.exe` (locked by another running
+  instance), so it was checked in a scratchpad output folder; that instance was gone by the
+  launch, and the app was rebuilt into its normal `bin` folder for it.
+
+No project rule was broken. The run stayed on `main`.
+
 ---
 
 ## Implementation Log
@@ -134,9 +164,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable — no test project |
-| README | | | |
+| Code | 4 | 2026-09-26 | `SourceImage.Dropped`, `MainForm` (origin flag, `ShowInExplorer`), `GridPreview` (name, icon, tooltip, hit testing) |
+| Unit tests | 4 | 2026-09-26 | Not applicable — no test project |
+| README | 4 | 2026-09-26 | *Features*, under the cell selection |
 
 ---
 
