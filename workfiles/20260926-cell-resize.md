@@ -276,6 +276,7 @@ says so rather than staying blank.
 | Code | 6, 7 | 2026-09-26 | `GridLayout` + `Separator`, `GridPreview` gesture, Reset / active thumbnail wiring — three commits |
 | Unit tests | 6 | 2026-09-26 | Not applicable — test-free by decision (Q&A #13); geometry checked once with a throwaway script (tiling at 4 canvas sizes, cross states, mirror) |
 | README | 6, 7 | 2026-09-26 | *Resizing the cells* section; RULES and GLOSSARY updated in their own commit |
+| Manual validation | 7 | 2026-09-26 | Tested by the user in the app, task confirmed finished |
 
 ---
 
