@@ -80,7 +80,7 @@ internal sealed class MainForm : Form
     };
     // The row's title, in bold and pointing at the tabs, so it does not read as one of them.
     private readonly Label _effectsLabel = new() { Text = "Effects →", AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly EffectTabs _effectTabs = new() { Anchor = AnchorStyles.Left | AnchorStyles.Top, Margin = Padding.Empty };
+    private readonly EffectTabs<ImageEffect> _effectTabs = new(EffectTitle) { Anchor = AnchorStyles.Left | AnchorStyles.Top, Margin = Padding.Empty };
 
     // Hangs from the options row like the tabs, and as tall as them.
     private readonly Button _resetButton = new()
@@ -1598,6 +1598,12 @@ internal sealed class MainForm : Form
         AutoSize = false,
         Size = new Size(160, 26),
         Anchor = AnchorStyles.Left,
+    };
+
+    private static string EffectTitle(ImageEffect effect) => effect switch
+    {
+        ImageEffect.BlackAndWhite => "Black & white",
+        _ => effect.ToString(),
     };
 
     /// <summary>A click on a tab shows its options, and activates nothing.</summary>
