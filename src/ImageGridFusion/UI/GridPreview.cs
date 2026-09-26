@@ -38,8 +38,10 @@ internal sealed class GridPreview : Control
     private const int ZoomBadgeFade = 300;
     private const int ZoomBadgeTick = 30;
     private const int ZoomBadgeTextSize = 16;
+    private const int CheckerSquare = 8;
 
     private static readonly Color HoverOutlineColor = Color.FromArgb(128, Color.White);
+    private static readonly Color CheckerGrey = Color.FromArgb(204, 204, 204);
 
     // Helper indicators drawn over a cell (see RULES.md): fluorescent green over a black halo, so they
     // show on any image.
@@ -49,6 +51,11 @@ internal sealed class GridPreview : Control
     private readonly List<SourceImage> _images = [];
     private GridLayout? _layout;
     private Bitmap? _cache;
+
+    // The grey and white squares under the grid, at the DPI they were made for: the transparency of a
+    // cell without background, in the preview only.
+    private Bitmap? _checkerTile;
+    private TextureBrush? _checkerboard;
     private int _selected = -1;
     private int _hovered = -1;
     private bool _hoveringClose;
@@ -326,6 +333,8 @@ internal sealed class GridPreview : Control
             _images.Clear();
             _cache?.Dispose();
             _ghost?.Dispose();
+            _checkerboard?.Dispose();
+            _checkerTile?.Dispose();
         }
 
         base.Dispose(disposing);
@@ -360,6 +369,7 @@ internal sealed class GridPreview : Control
             Compositor.Draw(cacheGraphics, _images, _layout!, canvas.Size);
         }
 
+        PaintCheckerboard(g, canvas);
         g.DrawImageUnscaled(_cache, canvas.Location);
 
         var cells = CellBounds();
@@ -978,6 +988,7 @@ internal sealed class GridPreview : Control
         var cell = _layout.Cells(canvas.Size)[index];
         using (var g = Graphics.FromImage(_cache))
         {
+            ClearCell(g, cell);
             Compositor.DrawCell(g, new Frame(image.Bitmap, image.BandColor, image.Look), cell, fast: live);
         }
 
@@ -986,6 +997,62 @@ internal sealed class GridPreview : Control
         if (live)
         {
             Update();
+        }
+    }
+
+    /// <summary>A cell drawn again into the cache starts transparent: without background, its previous frame would show through.</summary>
+    private static void ClearCell(Graphics g, Rectangle cell)
+    {
+        g.SetClip(cell);
+        g.Clear(Color.Transparent);
+        g.ResetClip();
+    }
+
+    /// <summary>
+    /// The grey and white squares of drawing apps under the whole grid, 8 logical px each: they show
+    /// through wherever a cell has no background, or a partly transparent one. Never exported.
+    /// </summary>
+    private void PaintCheckerboard(Graphics g, Rectangle canvas)
+    {
+        int square = LogicalToDeviceUnits(CheckerSquare);
+        if (_checkerboard is null || _checkerTile?.Width != 2 * square)
+        {
+            _checkerboard?.Dispose();
+            _checkerTile?.Dispose();
+            _checkerTile = new Bitmap(2 * square, 2 * square);
+            using (var tile = Graphics.FromImage(_checkerTile))
+            {
+                using var grey = new SolidBrush(CheckerGrey);
+                tile.Clear(Color.White);
+                tile.FillRectangle(grey, square, 0, square, square);
+                tile.FillRectangle(grey, 0, square, square, square);
+            }
+
+            _checkerboard = new TextureBrush(_checkerTile);
+        }
+
+        // Anchored on the canvas, so the squares do not slide when the window is resized.
+        _checkerboard.ResetTransform();
+        _checkerboard.TranslateTransform(canvas.X, canvas.Y);
+        g.FillRectangle(_checkerboard, canvas);
+    }
+
+    /// <summary>
+    /// The automatic background color of the selected image in its cell, as the preview draws it: what
+    /// the Background's color button shows while <i>Automatic color</i> is checked, and what unchecking
+    /// it freezes. <c>null</c> with no cell selected.
+    /// </summary>
+    public Color? SelectedAutomaticBackground
+    {
+        get
+        {
+            var cells = CellBounds();
+            if (SelectedImage is not { } image || _selected >= cells.Length)
+            {
+                return null;
+            }
+
+            return Compositor.AutomaticBackground(new Frame(image.Bitmap, image.BandColor, image.Look), cells[_selected]);
         }
     }
 
@@ -1578,6 +1645,7 @@ internal sealed class GridPreview : Control
             foreach (int i in indices.Where(i => i < _images.Count))
             {
                 var image = _images[i];
+                ClearCell(g, cells[i]);
                 Compositor.DrawCell(g, new Frame(image.Bitmap, image.BandColor, image.Look), cells[i], fast: true);
                 area = area.IsEmpty ? cells[i] : Rectangle.Union(area, cells[i]);
             }
