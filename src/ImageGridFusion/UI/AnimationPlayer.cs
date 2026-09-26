@@ -9,7 +9,8 @@ namespace ImageGridFusion.UI;
 /// from the starting point of its frames effect. Frames are decoded off the UI thread and shown on
 /// it; a frozen image stands on its frame; forced still, every image stops where it stands and
 /// resumes from there, or from the page it was moved to meanwhile. Also mixes the sounds of its videos,
-/// each in step with its frames. Used from the UI thread only.
+/// each in step with its frames, and the soundtrack, looping on the grid's duration while the grid
+/// holds an image. Used from the UI thread only.
 /// </summary>
 internal sealed class AnimationPlayer : IDisposable
 {
@@ -18,6 +19,18 @@ internal sealed class AnimationPlayer : IDisposable
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private readonly Dictionary<SourceImage, Playback> _playbacks = [];
     private readonly PreviewSound _sound = new();
+    private readonly System.Windows.Forms.Timer _soundtrackTimer = new() { Interval = 100 };
+
+    // The images last synced, empty once stopped; the soundtrack and the clock time it started at,
+    // null while it does not play.
+    private IReadOnlyList<SourceImage> _images = [];
+    private Soundtrack? _soundtrack;
+    private TimeSpan? _soundtrackStart;
+
+    public AnimationPlayer()
+    {
+        _soundtrackTimer.Tick += (_, _) => SyncSoundtrack();
+    }
 
     /// <summary>Raised on the UI thread once an image shows a new frame.</summary>
     public event EventHandler<SourceImage>? FrameShown;
@@ -52,6 +65,23 @@ internal sealed class AnimationPlayer : IDisposable
         }
 
         _sound.Follow(images);
+        _images = images;
+        UpdateSoundtrack();
+    }
+
+    /// <summary>
+    /// Mixes <paramref name="soundtrack"/> over the videos, or stops it when <c>null</c>; another file
+    /// plays from its start, a new level applies where it plays.
+    /// </summary>
+    public void SetSoundtrack(Soundtrack? soundtrack)
+    {
+        if (soundtrack?.Path != _soundtrack?.Path)
+        {
+            _soundtrackStart = null;
+        }
+
+        _soundtrack = soundtrack;
+        UpdateSoundtrack();
     }
 
     /// <summary>
@@ -106,12 +136,48 @@ internal sealed class AnimationPlayer : IDisposable
 
         _playbacks.Clear();
         _sound.Follow([]);
+        _images = [];
+        UpdateSoundtrack();
     }
 
     public void Dispose()
     {
         Stop();
+        _soundtrackTimer.Dispose();
         _sound.Dispose();
+    }
+
+    /// <summary>The soundtrack plays while the grid holds an image; stopped, it starts again on a whole second of the clock.</summary>
+    private void UpdateSoundtrack()
+    {
+        bool plays = _soundtrack is not null && _images.Count > 0;
+        _sound.FollowSoundtrack(plays ? _soundtrack!.Path : null);
+        if (!plays)
+        {
+            _soundtrackStart = null;
+            _soundtrackTimer.Stop();
+            return;
+        }
+
+        _soundtrackStart ??= TimeSpan.FromSeconds(Math.Floor(_clock.Elapsed.TotalSeconds));
+        _soundtrackTimer.Start();
+        SyncSoundtrack();
+    }
+
+    /// <summary>
+    /// Keeps the soundtrack on the grid's loop — the longest playing content, else its own length —
+    /// looping within it when shorter, cut at its end when longer.
+    /// </summary>
+    private void SyncSoundtrack()
+    {
+        if (_soundtrack is not { } soundtrack || _soundtrackStart is not { } start)
+        {
+            return;
+        }
+
+        var loop = soundtrack.LoopIn(Animation.GridLength(_images));
+        var time = Animation.LoopTime(Animation.LoopTime(_clock.Elapsed - start, loop), soundtrack.Duration);
+        _sound.SyncSoundtrack(time, soundtrack.Level);
     }
 
     private TimeSpan Position(Playback playback) => playback.PausedAt ?? _clock.Elapsed - playback.Offset;

@@ -7,8 +7,9 @@ namespace ImageGridFusion.UI;
 
 /// <summary>
 /// Mixes the sounds of the grid's videos with a Windows audio graph: one node per video with sound,
-/// at the gain of its volume effect (up to 200 %), each kept in step with the frames its video shows.
-/// Used from the UI thread only.
+/// at the gain of its volume effect (up to 200 %), each kept in step with the frames its video shows;
+/// and one for the soundtrack, at its level, kept in step with the grid's clock. Used from the UI
+/// thread only.
 /// </summary>
 internal sealed class PreviewSound : IDisposable
 {
@@ -16,6 +17,10 @@ internal sealed class PreviewSound : IDisposable
     private static readonly TimeSpan Drift = TimeSpan.FromMilliseconds(250);
 
     private readonly Dictionary<SourceImage, Voice> _voices = [];
+
+    // The soundtrack's node and its file; null while no soundtrack plays.
+    private Voice? _soundtrack;
+    private string? _soundtrackPath;
 
     // Created with the first video with sound, kept until disposed; null when Windows gives none.
     private Task<AudioGraph?>? _graph;
@@ -42,8 +47,28 @@ internal sealed class PreviewSound : IDisposable
             {
                 var voice = new Voice();
                 _voices[image] = voice;
-                OpenAsync(image, voice);
+                OpenAsync(image.FilePath!, voice);
             }
+        }
+
+        UpdateGraph();
+    }
+
+    /// <summary>Mixes the sound track of the file at <paramref name="path"/> as the soundtrack; <c>null</c> stops it.</summary>
+    public void FollowSoundtrack(string? path)
+    {
+        if (path == _soundtrackPath)
+        {
+            return;
+        }
+
+        _soundtrack?.Dispose();
+        _soundtrack = null;
+        _soundtrackPath = path;
+        if (path is not null)
+        {
+            _soundtrack = new Voice();
+            OpenAsync(path, _soundtrack);
         }
 
         UpdateGraph();
@@ -55,12 +80,45 @@ internal sealed class PreviewSound : IDisposable
     /// </summary>
     public void Sync(SourceImage image, TimeSpan position, bool playing)
     {
-        if (!_voices.TryGetValue(image, out var voice) || voice.Node is not { } node)
+        if (_voices.TryGetValue(image, out var voice))
+        {
+            Sync(voice, position, image.Look.SoundGain, playing);
+        }
+    }
+
+    /// <summary>Plays the soundtrack from <paramref name="position"/> at <paramref name="gain"/>.</summary>
+    public void SyncSoundtrack(TimeSpan position, double gain)
+    {
+        if (_soundtrack is { } voice)
+        {
+            Sync(voice, position, gain, playing: true);
+        }
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        foreach (var voice in _voices.Values)
+        {
+            voice.Dispose();
+        }
+
+        _voices.Clear();
+        _soundtrack?.Dispose();
+        _soundtrack = null;
+        if (_graph is { IsCompletedSuccessfully: true, Result: { } graph })
+        {
+            graph.Dispose();
+        }
+    }
+
+    private static void Sync(Voice voice, TimeSpan position, double gain, bool playing)
+    {
+        if (voice.Node is not { } node)
         {
             return;
         }
 
-        double gain = image.Look.SoundGain;
         node.OutgoingGain = gain;
         if (!playing || gain <= 0)
         {
@@ -85,22 +143,7 @@ internal sealed class PreviewSound : IDisposable
         }
     }
 
-    public void Dispose()
-    {
-        _disposed = true;
-        foreach (var voice in _voices.Values)
-        {
-            voice.Dispose();
-        }
-
-        _voices.Clear();
-        if (_graph is { IsCompletedSuccessfully: true, Result: { } graph })
-        {
-            graph.Dispose();
-        }
-    }
-
-    private async void OpenAsync(SourceImage image, Voice voice)
+    private async void OpenAsync(string path, Voice voice)
     {
         try
         {
@@ -110,7 +153,7 @@ internal sealed class PreviewSound : IDisposable
                 return;
             }
 
-            var file = await StorageFile.GetFileFromPathAsync(Path.GetFullPath(image.FilePath!));
+            var file = await StorageFile.GetFileFromPathAsync(Path.GetFullPath(path));
             if (voice.IsDisposed)
             {
                 return;
@@ -129,7 +172,7 @@ internal sealed class PreviewSound : IDisposable
                 return;
             }
 
-            // Silent until the frames play; looping with its video.
+            // Silent until the frames play; looping with its video, or on its own length.
             node.Stop();
             node.LoopCount = null;
             node.AddOutgoingConnection(_output);
@@ -138,7 +181,7 @@ internal sealed class PreviewSound : IDisposable
         }
         catch (Exception)
         {
-            // No sound for this video in the preview; its frames still play.
+            // No sound for this video, or no soundtrack, in the preview; the frames still play.
         }
     }
 
@@ -162,7 +205,7 @@ internal sealed class PreviewSound : IDisposable
         return graph;
     }
 
-    /// <summary>The graph runs while it has a video to mix, so an idle preview holds no audio stream open.</summary>
+    /// <summary>The graph runs while it has a video or a soundtrack to mix, so an idle preview holds no audio stream open.</summary>
     private void UpdateGraph()
     {
         if (_disposed || _graph is not { IsCompletedSuccessfully: true, Result: { } graph })
@@ -170,7 +213,7 @@ internal sealed class PreviewSound : IDisposable
             return;
         }
 
-        bool needed = _voices.Count > 0;
+        bool needed = _voices.Count > 0 || _soundtrack is not null;
         if (needed && !_running)
         {
             graph.Start();

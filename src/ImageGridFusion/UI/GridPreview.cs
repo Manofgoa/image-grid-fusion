@@ -67,6 +67,7 @@ internal sealed class GridPreview : Control
     private Rectangle _pressedPicker;
     private readonly PageLoader _pageLoader = new();
     private readonly AnimationPlayer _player = new();
+    private Soundtrack? _soundtrack;
     private bool _locked;
     private bool _hoveringHandle;
     private bool _panning;
@@ -127,6 +128,18 @@ internal sealed class GridPreview : Control
     public event EventHandler? LayoutChanged;
 
     public IReadOnlyList<SourceImage> Images => _images;
+
+    /// <summary>The soundtrack mixed over the videos while the grid holds an image; <c>null</c> when it is off.</summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Soundtrack? Soundtrack
+    {
+        get => _soundtrack;
+        set
+        {
+            _soundtrack = value;
+            _player.SetSoundtrack(value);
+        }
+    }
 
     /// <summary>Layout the images are shown and exported with; <c>null</c> while there is no image.</summary>
     public GridLayout? ActiveLayout => _layout;
