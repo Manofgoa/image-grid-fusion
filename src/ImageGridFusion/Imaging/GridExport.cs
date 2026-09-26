@@ -6,7 +6,8 @@ namespace ImageGridFusion.Imaging;
 /// <summary>
 /// Exports a grid holding animated content: as an MP4 video or a looping GIF of every source playing
 /// from the starting point of its frames effect, a frozen one showing its frame; or, with nothing
-/// playing, as a still of the page each source shows.
+/// playing, as a still of the page each source shows. With a soundtrack, a grid of stills is exported
+/// as an MP4 video as long as it.
 /// </summary>
 internal static class GridExport
 {
@@ -16,32 +17,38 @@ internal static class GridExport
     /// </summary>
     public sealed class Job : IDisposable
     {
-        private Job(IReadOnlyList<Item> items, GridLayout layout, IReadOnlyList<SourceImage> heard)
+        private Job(IReadOnlyList<Item> items, GridLayout layout, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack)
         {
             Items = items;
             Layout = layout;
-            Sounds = heard.Select(i => new MixedSound(i.FilePath!, i.Pages!.LoopDuration, i.StartTime, i.Look.SoundGain)).ToList();
-            Length = items.Select(i => i.Loop).DefaultIfEmpty(TimeSpan.Zero).Max();
+            var grid = items.Select(i => i.Loop).DefaultIfEmpty(TimeSpan.Zero).Max();
+            Length = soundtrack?.LoopIn(grid) ?? grid;
+
+            // The soundtrack loops on its own length, cut where the video ends.
+            var sounds = heard.Select(i => new MixedSound(i.FilePath!, i.Pages!.LoopDuration, i.StartTime, i.Look.SoundGain));
+            Sounds = (soundtrack is null ? sounds : sounds.Append(new MixedSound(soundtrack.Path, soundtrack.Duration, TimeSpan.Zero, soundtrack.Level))).ToList();
         }
 
         public IReadOnlyList<Item> Items { get; }
 
         public GridLayout Layout { get; }
 
-        /// <summary>The sounds mixed into the video: each from the starting point of its video, at its volume.</summary>
+        /// <summary>The sounds mixed into the video: each from the starting point of its video, at its volume; the soundtrack last.</summary>
         public IReadOnlyList<MixedSound> Sounds { get; }
 
-        /// <summary>Length of the video: the longest loop.</summary>
+        /// <summary>Length of the video: the longest loop; with a soundtrack and no loop, the soundtrack's.</summary>
         public TimeSpan Length { get; }
 
-        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout) => new(
+        /// <summary>The grid as it stands, with <paramref name="soundtrack"/> mixed over its sounds when one is on.</summary>
+        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout, Soundtrack? soundtrack = null) => new(
             images.Select(i => i.Plays
                 ? new Item(null, i.BandColor, i.Pages, i.Pages!.LoopDuration, i.Look, i.Page, i.StartTime)
                 : i.IsAnimated
                 ? new Item(null, i.BandColor, i.Pages, TimeSpan.Zero, i.Look, i.StartPage, TimeSpan.Zero)
                 : new Item(new Bitmap(i.Bitmap), i.BandColor, null, TimeSpan.Zero, i.Look, 0, TimeSpan.Zero)).ToList(),
             layout,
-            Animation.Heard(images));
+            Animation.Heard(images),
+            soundtrack);
 
         public void Dispose()
         {
@@ -99,7 +106,8 @@ internal static class GridExport
 
     /// <summary>
     /// Writes the animation to <paramref name="path"/> in <paramref name="format"/>: 30 fps, as long as
-    /// the longest loop, the others starting over. The canvas is sized once, from the frames at the
+    /// the longest loop, the others starting over — or, for a grid of stills with a soundtrack, as long
+    /// as the soundtrack. The canvas is sized once, from the frames at the
     /// start. Blocks: meant to run off the UI thread. Deletes the incomplete file when cancelled or failing.
     /// </summary>
     public static Result RenderAnimation(Job job, Format format, string path, IProgress<double>? progress, CancellationToken cancellation)
