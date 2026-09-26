@@ -41,6 +41,14 @@ Questions the design depends on, split by who answers them cheapest.
 
 Findings, inputs to the design — not decisions.
 
+> **Superseded on 2026-09-26** (see Iteration 3): `video-mute.md` has since been delivered — the
+> Volume cell effect (0–200 %, Mute) and the **mix of every heard video**, in the preview (an audio
+> graph, each video at its volume up to 200 %, in step with its frames) and in the export
+> (`VideoEncoder.Mixer`, every heard video looped with its video at its volume, clipped, one AAC
+> track; `Animation.Heard`). `global-fade.md` has settled the Global effects row: just above the
+> bottom bar, options inline, locked while exporting, **Clear all** removes the global effects,
+> `RULES.md` gains a § Global Effects. The bullets below describe the code as it was before.
+
 - **One sound per grid, no mixing.** `Animation.SoundSource` (`Composition/Animation.cs:31`) elects a
   single image: image 1 when it is a playing video with sound, else the first one in grid order; a
   frozen video has no sound. Every other video of the grid is silent, in the preview and in the
@@ -70,25 +78,23 @@ Agreed design (scoping answers, Q&A 1–3); the points still open are listed in 
 | Aspect | Behaviour |
 |---|---|
 | Kind | **Global effect** — belongs to the grid, not to a cell + image pair |
-| Toggle | A button of the **Global effects row** at the bottom of the window (planned by `global-fade.md`, created here if it does not exist yet); its options inline in the same row |
+| Toggle | A button of the **Global effects row**, just above the bottom bar (designed by `global-fade.md`, created here if it has not landed yet); its options inline in the same row; locked while exporting |
+| Removal | **Clear all** removes it, like every global effect (`global-fade.md`). The effects toolbar's *Reset* acts on cell effects only |
 | File | A *Browse…* button in the options (audio and video files), and a file **dropped on the row**; the file's name is shown |
 | Source | One file, **audio or video** (a video contributes its sound track only) |
 | Where it is heard | **Preview and video exports**. GIF and still exports stay silent |
-| Mix | Played **over** the sound of **every video with sound** in the grid, mixed together — never replacing it. A frozen video has no sound |
+| Mix | One more source in the **existing mix of every heard video** (`Animation.Heard`) — played over them, never replacing them. The mix itself is unchanged |
 | Duration | The **grid's duration rules**: a shorter soundtrack **loops**, a longer one is **cut** |
 | Volume | **One slider**, the soundtrack's volume, in the effect's options. The videos keep their own level |
-| Per-video sound | Each video's own sound can be turned off individually — delivered by `workfiles/20260925-video-mute.md`, **out of this scope** |
+| Per-video sound | Each video's own sound is turned off or leveled by the **Volume** cell effect, already delivered (`video-mute.md`) — out of this scope |
 | Persistence | Not persisted, like every effect |
 
 ### Mixing
 
-- **Preview**: one `MediaPlayer` **per video with sound**, plus one for the soundtrack, each kept in
-  step with the grid's position (each video looping with its own frames, the soundtrack looping on
-  the grid's duration) with the drift correction of `PreviewSound`.
-- **Exports**: `VideoEncoder` gains a mixing step — every source (each video's sound, the
-  soundtrack) decoded to PCM at one common format, summed sample by sample (the soundtrack with its
-  gain), clamped to the 16-bit range, then encoded to AAC as today. `Animation.SoundSource`'s single
-  elected image becomes a list of sound sources.
+- **Preview**: the soundtrack becomes **one more input of the existing audio graph**, at its
+  volume, looping on the grid's duration and kept in step with the grid's position.
+- **Exports**: the soundtrack becomes **one more source of `VideoEncoder.Mixer`**, looped on the
+  grid's duration, at its gain, clipped with the rest.
 
 ---
 
@@ -98,7 +104,7 @@ The solution has no test project (see Open Questions). Behaviours worth pinning,
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| PCM mix: sum with the soundtrack's gain, clamped to the 16-bit range | `ImageGridFusion.Tests/SoundMixTests.cs` | Create |
+| The soundtrack joins the mix at its gain, clipped with the heard videos | `ImageGridFusion.Tests/SoundMixTests.cs` | Create |
 | Soundtrack shorter than the grid loops; longer is cut at the grid's duration | `ImageGridFusion.Tests/SoundMixTests.cs` | Create |
 | Mix with only one side present (soundtrack only / video sound only) | `ImageGridFusion.Tests/SoundMixTests.cs` | Create |
 
@@ -118,11 +124,16 @@ The solution has no test project (see Open Questions). Behaviours worth pinning,
       → Both; the file name is shown
 - [ ] A grid with **no animated content** (stills only) has no duration: is the effect disabled
       there, or does the export become a video lasting the soundtrack?
-- [ ] Soundtrack volume range: 0–100 %, or 0–200 % like the planned per-video volume?
-- [ ] Does the effects toolbar's *Reset* remove the soundtrack too, or only the cell effects?
-- [ ] Tests: create a test project for the mixing logic, or verify manually only?
-- [ ] Is every video with sound mixed **always** (the grid's sound rule changes for good), or only
-      while the Soundtrack effect is active (today's single elected sound otherwise)?
+- [ ] Soundtrack volume range: 0–100 %, or 0–200 % like the Volume cell effect (the preview's audio
+      graph now supports it)?
+- [x] ~~Does the effects toolbar's *Reset* remove the soundtrack too, or only the cell effects?~~
+      → Neither asked nor needed: `global-fade.md`'s agreed rule applies — *Reset* acts on cell
+      effects, **Clear all** removes the global effects
+- [ ] Tests: create a test project for the mixing logic, or verify manually only (the choice made
+      by `video-mute.md` and `global-fade.md`)?
+- [x] ~~Is every video with sound mixed **always** (the grid's sound rule changes for good), or only
+      while the Soundtrack effect is active (today's single elected sound otherwise)?~~
+      → Moot: `video-mute.md` has delivered the mix of every heard video, always
 
 ---
 
@@ -148,6 +159,15 @@ today's single elected one — preview and export mixing widened to N sources; p
 in `video-mute.md`, out of scope; the toggle lives in the Global effects row, created here if
 needed; the file is picked with *Browse…* or dropped on the row. New open question: whether the
 all-videos mix applies always or only while the soundtrack is active.
+
+### Iteration 3 — 2026-09-26
+
+The second question batch was dismissed; meanwhile the codebase moved. `video-mute.md` is delivered:
+every heard video is already mixed in the preview (audio graph, up to 200 %) and in the export
+(`VideoEncoder.Mixer`). The soundtrack therefore becomes **one more source of the existing mix**
+rather than a new mixing step; OQ on the always-on mix is moot. `global-fade.md` has settled the
+Global effects row (above the bottom bar, locked while exporting, removed by Clear all), which
+also settles the *Reset* question. Still open: stills-only grid, volume range, tests.
 
 ---
 
@@ -180,9 +200,9 @@ Questions asked by the agent during design, with user responses.
 | 8 | How is the file picked? | A *Browse…* button in the options, and a file dropped on the row; the file name shown | 2026-09-25 |
 | 9 | Grid with no animated content: disabled, or video lasting the soundtrack? | | 2026-09-25 |
 | 10 | Soundtrack volume range? | | 2026-09-25 |
-| 11 | Does *Reset* remove the soundtrack too? | | 2026-09-25 |
+| 11 | Does *Reset* remove the soundtrack too? | Not asked — settled by `global-fade.md` (Clear all removes global effects; *Reset* is cell-only) | 2026-09-25 |
 | 12 | Tests: create a test project, or manual verification only? | | 2026-09-25 |
-| 13 | Is every video mixed always, or only while the soundtrack is active? | | 2026-09-26 |
+| 13 | Is every video mixed always, or only while the soundtrack is active? | Not asked — moot, `video-mute.md` delivered the always-on mix | 2026-09-26 |
 
 ---
 
