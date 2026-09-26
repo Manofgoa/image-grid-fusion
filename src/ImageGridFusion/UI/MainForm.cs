@@ -124,12 +124,11 @@ internal sealed class MainForm : Form
     private ImageEffect? _selectedEffect;
     private bool _syncingEffects;
 
-    // The Global effects row, just above the bottom bar, each global effect's options beside its toggle:
-    // see RULES.md. A file dropped anywhere on it becomes the soundtrack.
+    // The Global effects row, just above the bottom bar, each global effect's options beside its toggle,
+    // shown while it is on: see RULES.md. A file dropped anywhere on it becomes the soundtrack.
     private readonly FlowLayoutPanel _globalRow = new()
     {
         Dock = DockStyle.Bottom,
-        AutoSize = true,
         WrapContents = false,
         Padding = new Padding(8, 4, 8, 0),
         AllowDrop = true,
@@ -289,7 +288,7 @@ internal sealed class MainForm : Form
         };
         _mute.CheckedChanged += (_, _) => ChangeLook(ImageEffect.Volume, look => look.WithVolume(look.Volume!.WithMuted(_mute.Checked)));
         _toolTip.SetToolTip(_soundtrackToggle, "Mixes the sound of an audio or video file over the videos, in the preview and the MP4 export");
-        _toolTip.SetToolTip(_soundtrackBrowse, "Chooses the soundtrack's audio or video file; one can also be dropped on this row");
+        _toolTip.SetToolTip(_soundtrackBrowse, "Chooses another audio or video file; one can also be dropped on this row");
         _soundtrackToggle.Click += (_, _) => ToggleSoundtrack();
         _soundtrackBrowse.Click += (_, _) => BrowseSoundtrack();
         _soundtrackVolume.ValueChanged += (_, _) => SetSoundtrackVolume();
@@ -390,10 +389,12 @@ internal sealed class MainForm : Form
 
     /// <summary>
     /// The tabs as tall as the Reset beside them; the options row as tall as the tallest options, so
-    /// nothing below it moves when another tab is selected.
+    /// nothing below it moves when another tab is selected; the Global effects row as tall as its
+    /// tallest control, so the preview does not move when a global effect's options show.
     /// </summary>
     private void FitEffectRows()
     {
+        _globalRow.Height = _globalRow.Controls.Cast<Control>().Max(c => c.GetPreferredSize(Size.Empty).Height + c.Margin.Vertical) + _globalRow.Padding.Vertical;
         _effectTabs.Size = new Size(_effectTabs.GetPreferredSize(Size.Empty).Width, _resetButton.GetPreferredSize(Size.Empty).Height);
         int options = _options.Values.Max(row => row.GetPreferredSize(Size.Empty).Height);
         int reset = _effectResetButton.GetPreferredSize(Size.Empty).Height + _effectResetButton.Margin.Vertical;
@@ -1417,8 +1418,8 @@ internal sealed class MainForm : Form
     }
 
     /// <summary>
-    /// Makes the sound track of <paramref name="path"/> the soundtrack, turned on at the level the
-    /// slider shows; opened off the UI thread. A file without a readable sound track changes nothing.
+    /// Makes the sound track of <paramref name="path"/> the soundtrack, turned on at the level it
+    /// kept; opened off the UI thread. A file without a readable sound track changes nothing.
     /// </summary>
     private async Task LoadSoundtrackAsync(string path)
     {
@@ -1440,14 +1441,12 @@ internal sealed class MainForm : Form
         ShowStatus($"Soundtrack: {Path.GetFileName(path)} · {Seconds(soundtrack.Duration)}.");
     }
 
-    /// <summary>Acting on the volume turns the soundtrack on (RULES.md).</summary>
     private void SetSoundtrackVolume()
     {
         _soundtrackVolumeLabel.Text = VolumeText(_soundtrackVolume.Value);
         if (!_syncingEffects && _soundtrack is not null)
         {
             _soundtrack = _soundtrack.WithLevel(_soundtrackVolume.Value / 100.0);
-            _soundtrackOn = true;
             ApplySoundtrack();
         }
     }
@@ -1460,25 +1459,34 @@ internal sealed class MainForm : Form
     }
 
     /// <summary>
-    /// Shows the global effects: the toggle pressed while the soundtrack is on, its file and level —
-    /// kept while it is off. The row stays enabled with no cell selected, and is locked while exporting.
+    /// Shows the global effects: the toggle pressed while the soundtrack is on, its options — file and
+    /// level — only then, kept while it is off. The row stays enabled with no cell selected, and is
+    /// locked while exporting.
     /// </summary>
     private void UpdateGlobalEffects()
     {
         _globalRow.Enabled = !IsExporting;
-        _soundtrackToggle.Checked = ActiveSoundtrack is not null;
+        var soundtrack = ActiveSoundtrack;
+        _soundtrackToggle.Checked = soundtrack is not null;
+        foreach (var option in new Control[] { _soundtrackBrowse, _soundtrackFile, _soundtrackVolume, _soundtrackVolumeLabel })
+        {
+            option.Visible = soundtrack is not null;
+        }
+
+        if (soundtrack is null)
+        {
+            return;
+        }
 
         // A long name is cut, the whole path in its tooltip.
         const int MaxName = 32;
-        string? name = _soundtrack is null ? null : Path.GetFileName(_soundtrack.Path);
-        _soundtrackFile.Text = name is null ? "No file" : name.Length <= MaxName ? name : name[..(MaxName - 1)] + "…";
-        _soundtrackFile.ForeColor = name is null ? SystemColors.GrayText : SystemColors.ControlText;
-        _toolTip.SetToolTip(_soundtrackFile, _soundtrack?.Path);
+        string name = Path.GetFileName(soundtrack.Path);
+        _soundtrackFile.Text = name.Length <= MaxName ? name : name[..(MaxName - 1)] + "…";
+        _toolTip.SetToolTip(_soundtrackFile, soundtrack.Path);
 
         _syncingEffects = true;
-        _soundtrackVolume.Value = (int)Math.Round((_soundtrack?.Level ?? 1) * 100);
+        _soundtrackVolume.Value = (int)Math.Round(soundtrack.Level * 100);
         _syncingEffects = false;
-        _soundtrackVolume.Enabled = _soundtrack is not null;
         _soundtrackVolumeLabel.Text = VolumeText(_soundtrackVolume.Value);
     }
 
