@@ -30,7 +30,6 @@ each.
 | Starting point | Where the Frames effect makes an animated image start playing |
 | Frozen | An animated image the Frames effect holds on one frame, shown and exported as a still |
 | Heard | A video whose sound is in the grid's mix: it has a sound track, plays (not frozen), and its Volume effect does not mute it |
-| Sound on arrival | The Volume a video gets when it enters a cell, or has its Volume reset: heard at 100 % when no other cell is heard, else muted |
 | Options toolbar | The always-visible row above the effects toolbar, holding the selected tab's options and the effect's own Reset button |
 | Helper indicator (*indicateur d'aide*) | A measure or geometry aid drawn over a cell in the preview only — guides, handles, value readouts such as the zoom percentage; always fluorescent green (see RULES.md) |
 | File explorer (*explorateur de fichiers*) | The collapsible panel at the right of the preview: a search box over the base folder's index, the favorites while the box is empty, shown as tiles in 1 to 5 columns; its tiles are dragged into the cells like files from the Explorer |
