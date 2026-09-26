@@ -40,6 +40,16 @@ The Volume effect's default state depends on the **other cells** (origin:
 - An image deleted: the images shifting into another cell **keep their volume**, so a shift never
   changes what is heard.
 
+#### The Background Exception
+
+The Background effect is **on by default**, and **off does not draw its defaults** (origin:
+`workfiles/20260925-background-effect.md`):
+
+- **Off draws no fill**: the cell is transparent behind its image (the preview's checkerboard, a
+  PNG's alpha, white in the outputs without alpha), its settings kept.
+- Its **default state is on** — automatic color, 100 % opacity: a new image, a replaced one, an
+  image shifting after a deletion, and every *Reset* — its own and the toolbar's — bring it back on.
+
 ### Effects Toolbar
 
 - An **always-visible row of tabs**, hanging down from the options toolbar above it: an **Effects**
