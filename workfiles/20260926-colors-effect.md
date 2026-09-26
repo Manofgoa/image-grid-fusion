@@ -39,8 +39,8 @@ Every setting is stored as a value in [−1, 1] (hue in degrees), the default 0 
 |---|---|---|---|---|
 | Saturation | −100 … +100 % | 0 | Black & white (the luminance, as today's 100 %) | Saturation doubled |
 | Hue | −180 … +180° | 0° | Hue turned by −180° | Hue turned by +180° (same as −180°) |
-| Brightness | −100 … +100 % | 0 | See *Open Questions* — proposed: offset of −50 % (strongly darkened, not flat black) | Proposed: offset of +50 % |
-| Contrast | −100 … +100 % | 0 | Flat mid-gray (factor 0 around 50 %) | Proposed: factor ×3 around 50 % |
+| Brightness | −100 … +100 % | 0 | Offset of −50 % (strongly darkened, not flat black) | Offset of +50 % (strongly lightened, not flat white) |
+| Contrast | −100 … +100 % | 0 | Flat mid-gray (factor 0 around 50 %) | Factor ×3 around 50 % |
 
 - **Default state** (RULES.md, *Scope and State*): the four settings at 0, the effect off. Every
   *Reset* brings it back there.
@@ -81,16 +81,17 @@ Every setting is stored as a value in [−1, 1] (hue in degrees), the default 0 
 - Labels, signed like the Rotate effect's angle: `Saturation: +25 %`, `Hue: −30°`,
   `Brightness: 0 %`, `Contrast: +10 %`.
 - Today's *Intensity* icon next to the slider goes (four labelled sliders do not need it).
-- Layout: see *Open Questions* — four 160 px sliders with their labels (≈ 1,050 px) do not fit the
-  default 960 px window width.
+- Layout: **one row of narrower sliders**, ≈ 90 px each (≈ 750 px in all with the labels), so the
+  row fits the default 960 px window and the options toolbar keeps its height. The other effects'
+  sliders keep their 160 px.
 - Acting on any slider turns the effect on first, starting from its kept settings (RULES.md).
 
 ---
 
 ## Tab Icon
 
-The half black / half white disc no longer describes the effect. Proposed: a **color wheel** — a
-disc of hue sectors in a gray ring, keeping the ring of today's icon (see *Open Questions*).
+The half black / half white disc no longer describes the effect. It becomes a **color wheel** — a
+disc of hue sectors in a gray ring, keeping the ring of today's icon.
 
 ---
 
@@ -106,12 +107,10 @@ Reset and the toolbar's Reset (all back to 0, off); a copy / save (PNG and MP4) 
 
 ## Open Questions
 
-- [ ] Layout of the four sliders in the options row: one row of narrower sliders (≈ 90 px, ≈ 750 px
-  in all, fits 960 px), or another arrangement?
-- [ ] Strength at the ends: Brightness ±100 % = offset ±50 % (not flat black / white), Contrast
-  +100 % = ×3 — accepted, or other ends?
-- [ ] Tab icon: a color wheel in a gray ring, or another drawing?
-- [ ] Checking the checkbox with the defaults at 0 shows nothing until a slider moves — accepted?
+- [x] ~~Layout of the four sliders in the options row?~~ → One row of narrower sliders (≈ 90 px, ≈ 750 px in all)
+- [x] ~~Strength at the ends?~~ → Moderate: Brightness ±100 % = offset ±50 %, Contrast −100 % = flat gray, +100 % = ×3
+- [x] ~~Tab icon?~~ → A color wheel in a gray ring
+- [x] ~~Checking the checkbox with the defaults at 0 shows nothing until a slider moves — accepted?~~ → Accepted
 
 ---
 
@@ -124,6 +123,12 @@ Hue, Brightness, Contrast; every slider centered on 0 (±100 %, hue ±180°), de
 black & white becomes Saturation −100 %. Rendering through one composed `ColorMatrix` in
 `Compositor.DrawCell`, the bands following. Four questions left open: slider layout, strength at the
 ends, tab icon, the invisible activation at the defaults.
+
+### Iteration 2 — 2026-09-26
+
+The four open questions answered: the sliders on **one row, ≈ 90 px each**; **moderate** ends
+(Brightness ±50 % offset, Contrast flat gray … ×3); a **color wheel** icon; the checkbox turning the
+effect on at its all-0 defaults without visible change is **accepted**. No question left open.
 
 ---
 
@@ -145,10 +150,10 @@ ends, tab icon, the invisible activation at the defaults.
 | 2 | Which settings? | **Saturation, Hue, Brightness, Contrast** | 2026-09-26 |
 | 3 | Range and default model of the sliders? | **Centered on 0**: −100 … +100 % (hue in degrees), default 0 = unchanged | 2026-09-26 |
 | 4 | Straightforward or tricky / long? | **Straightforward** — a single scout pass | 2026-09-26 |
-| 5 | Layout of the four sliders? | | |
-| 6 | Strength at the ends (Brightness, Contrast)? | | |
-| 7 | Tab icon? | | |
-| 8 | Checkbox at the defaults showing nothing — accepted? | | |
+| 5 | Layout of the four sliders? | **One row of narrower sliders** (≈ 90 px) | 2026-09-26 |
+| 6 | Strength at the ends (Brightness, Contrast)? | **Moderate**: Brightness ±50 % offset, Contrast flat gray … ×3 | 2026-09-26 |
+| 7 | Tab icon? | **Color wheel** in a gray ring | 2026-09-26 |
+| 8 | Checkbox at the defaults showing nothing — accepted? | **Accepted** | 2026-09-26 |
 
 ---
 
