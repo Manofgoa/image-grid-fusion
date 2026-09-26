@@ -224,7 +224,7 @@ internal sealed class MainForm : Form
         _options[ImageEffect.Frames].Controls.AddRange([_frames, _framesLabel, _freeze]);
         _options[ImageEffect.BlackAndWhite].Controls.AddRange([_grayscaleIcon, _grayscale, _grayscaleLabel]);
         _options[ImageEffect.Blur].Controls.AddRange([_gaussian, _pixelate, _blurIntensityIcon, _blurIntensity, _blurIntensityLabel]);
-        _options[ImageEffect.Volume].Controls.AddRange([_volume, _volumeLabel, _mute]);
+        _options[ImageEffect.Volume].Controls.AddRange([_mute, _volume, _volumeLabel]);
         _globalLabel.Font = new Font(Font, FontStyle.Bold);
         _soundtrackVolume.BackColor = SystemColors.Control;
         _globalRow.Controls.AddRange([_globalLabel, _soundtrackToggle, _soundtrackBrowse, _soundtrackFile, _soundtrackVolume, _soundtrackVolumeLabel]);
