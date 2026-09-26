@@ -33,20 +33,27 @@ public static class Compositor
     }
 
     /// <summary>Renders the final image at the size given by <see cref="CanvasSizer"/>.</summary>
-    public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout layout) =>
-        Render(images.Select(i => new Frame(i.Bitmap, i.BandColor, i.Look)).ToList(), layout);
+    public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout layout, GridBorders? borders = null) =>
+        Render(images.Select(i => new Frame(i.Bitmap, i.BandColor, i.Look)).ToList(), layout, borders);
 
     /// <summary>
     /// Renders frames at the size given by <see cref="CanvasSizer"/>; frame i goes into cell i. With an
-    /// alpha channel, transparent where a cell has no background: a PNG keeps it.
+    /// alpha channel, transparent where a cell, or the gap between the cells, has no fill: a PNG keeps it.
     /// </summary>
-    public static Bitmap Render(IReadOnlyList<Frame> frames, GridLayout layout)
+    public static Bitmap Render(IReadOnlyList<Frame> frames, GridLayout layout, GridBorders? borders = null)
     {
         var canvas = CanvasSizer.Compute(frames.Select(f => f.Size).ToList(), layout);
         var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppArgb);
         using var g = Graphics.FromImage(bitmap);
-        Draw(g, frames, layout, canvas);
+        Draw(g, frames, layout, canvas, borders);
         return bitmap;
+    }
+
+    /// <summary>The cells as drawn on <paramref name="canvas"/>: the layout's, shrunk by the gap of <paramref name="borders"/>.</summary>
+    public static Rectangle[] Cells(GridLayout layout, Size canvas, GridBorders? borders)
+    {
+        var slots = layout.Cells(canvas);
+        return borders?.Inset(slots, canvas) ?? slots;
     }
 
     /// <summary>What an output without alpha shows of <paramref name="image"/>: its transparency flattened on white.</summary>
@@ -101,17 +108,23 @@ public static class Compositor
     }
 
     /// <summary>Draws the grid in the rectangle (0, 0, canvas) of <paramref name="g"/>; image i goes into cell i of the layout.</summary>
-    public static void Draw(Graphics g, IReadOnlyList<SourceImage> images, GridLayout layout, Size canvas) =>
-        Draw(g, images.Select(i => new Frame(i.Bitmap, i.BandColor, i.Look)).ToList(), layout, canvas);
+    public static void Draw(Graphics g, IReadOnlyList<SourceImage> images, GridLayout layout, Size canvas, GridBorders? borders = null) =>
+        Draw(g, images.Select(i => new Frame(i.Bitmap, i.BandColor, i.Look)).ToList(), layout, canvas, borders);
 
-    /// <summary>Draws the grid in the rectangle (0, 0, canvas) of <paramref name="g"/>; frame i goes into cell i of the layout.</summary>
-    public static void Draw(Graphics g, IReadOnlyList<Frame> frames, GridLayout layout, Size canvas)
+    /// <summary>
+    /// Draws the grid in the rectangle (0, 0, canvas) of <paramref name="g"/>; frame i goes into cell i of
+    /// the layout. The borders, a global effect, are drawn here too, at the grid level.
+    /// </summary>
+    public static void Draw(Graphics g, IReadOnlyList<Frame> frames, GridLayout layout, Size canvas, GridBorders? borders = null)
     {
-        var cells = layout.Cells(canvas);
+        var slots = layout.Cells(canvas);
+        var cells = borders?.Inset(slots, canvas) ?? slots;
         for (int i = 0; i < frames.Count; i++)
         {
             DrawCell(g, frames[i], cells[i]);
         }
+
+        borders?.Draw(g, slots, canvas);
     }
 
     /// <summary>
