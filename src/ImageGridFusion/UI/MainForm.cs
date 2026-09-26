@@ -1423,11 +1423,10 @@ internal sealed class MainForm : Form
                 _blurIntensity.Value = (int)Math.Round(blur.Intensity * 100);
             }
 
-            // Muted, the slider keeps its level, out of reach until the sound is back.
+            // Muted, the slider keeps its level and stays usable: moving it above 0 brings the sound back.
             if (look.TurnOn(ImageEffect.Volume).Volume is { } volume)
             {
                 _volume.Value = (int)Math.Round(volume.Level * 100);
-                _volume.Enabled = !volume.IsMuted;
                 _mute.Checked = volume.IsMuted;
             }
         }
