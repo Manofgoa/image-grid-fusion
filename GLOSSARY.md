@@ -37,3 +37,4 @@ each.
 | Base folder (*dossier de base*) | The folder the file explorer indexes, with its subfolders; an app setting of the ⚙ menu |
 | Index (*index*) | The list of every file under the base folder, cached in `files.index` next to the exe, loaded at start-up and rescanned in the background or with ↻; what the search reads, never the disk |
 | Favorite (*favori*) | A file hearted in the file explorer; kept in `favorites.txt` next to the exe, shown — all of them, the newest first — while the search box is empty |
+| Last video (*dernière vidéo*) | The MP4 or GIF the last animated Copy generated in the session, its file kept in the temp folder: put back on the clipboard by **Copy last MP4 / GIF**, saved elsewhere by **Save last…**, whatever the grid has become; replaced by the next animated Copy, forgotten at exit. App state, not an effect |
