@@ -229,6 +229,7 @@ says so rather than staying blank.
 | Code | 7, 8 | 2026-09-26 | `c035411` GIF encoder, `cfe4a7c` split buttons, `31c63ba` preview cleanup |
 | Unit tests | 7 | 2026-09-26 | Not applicable: no test project in the repository; the GIF encoder checked by a scratchpad harness |
 | README | 7 | 2026-09-26 | `418ee83` |
+| Manual validation | 8 | 2026-09-26 | Tested in the app by the user — task confirmed finished |
 
 ---
 
