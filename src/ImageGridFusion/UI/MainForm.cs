@@ -162,6 +162,8 @@ internal sealed class MainForm : Form
     private readonly ComboBox _bordersStyle = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 90, Anchor = AnchorStyles.Left };
     private readonly TrackBar _bordersThickness = OptionSlider((int)Math.Round(GridBorders.MinThickness * 1000), (int)Math.Round(GridBorders.MaxThickness * 1000), 5);
     private readonly Label _bordersThicknessLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly TrackBar _bordersOpacity = OptionSlider((int)Math.Round(GridBorders.MinOpacity * 100), 100, 10);
+    private readonly Label _bordersOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _bordersOuterFrame = new() { Text = "Outer frame", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _bordersRounded = new() { Text = "Twitter corners", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly ToolStripMenuItem _borderColor = new("Border color…");
@@ -248,11 +250,12 @@ internal sealed class MainForm : Form
         _globalLabel.Font = new Font(Font, FontStyle.Bold);
         _soundtrackVolume.BackColor = SystemColors.Control;
         _bordersThickness.BackColor = SystemColors.Control;
+        _bordersOpacity.BackColor = SystemColors.Control;
         _bordersStyle.Items.AddRange(Enum.GetNames<BorderPattern>());
         _globalRow.Controls.AddRange(
         [
             _globalLabel, _soundtrackToggle, _soundtrackBrowse, _soundtrackFile, _soundtrackVolume, _soundtrackVolumeLabel,
-            _bordersToggle, _bordersStyle, _bordersThickness, _bordersThicknessLabel, _bordersOuterFrame, _bordersRounded,
+            _bordersToggle, _bordersStyle, _bordersThickness, _bordersThicknessLabel, _bordersOpacity, _bordersOpacityLabel, _bordersOuterFrame, _bordersRounded,
         ]);
 
         // Docked in reverse order of addition: the options row and the tabs row, then the bottom bar
@@ -353,6 +356,12 @@ internal sealed class MainForm : Form
         {
             _bordersThicknessLabel.Text = ThicknessText(_bordersThickness.Value);
             ChangeBorders(borders => borders with { Thickness = _bordersThickness.Value / 1000.0 });
+        };
+        _toolTip.SetToolTip(_bordersOpacity, "Opacity of the corner brackets, drawn over the images");
+        _bordersOpacity.ValueChanged += (_, _) =>
+        {
+            _bordersOpacityLabel.Text = OpacityText(_bordersOpacity.Value);
+            ChangeBorders(borders => borders with { Opacity = _bordersOpacity.Value / 100.0 });
         };
         _bordersOuterFrame.CheckedChanged += (_, _) => ChangeBorders(borders => borders with { OuterFrame = _bordersOuterFrame.Checked });
         _toolTip.SetToolTip(_bordersRounded, "Rounds the grid's corners like Twitter / X shows images; the borders follow the curve");
@@ -1791,7 +1800,7 @@ internal sealed class MainForm : Form
     {
         bool on = ActiveBorders is not null;
         _bordersToggle.Checked = on;
-        foreach (var option in new Control[] { _bordersStyle, _bordersThickness, _bordersThicknessLabel, _bordersOuterFrame, _bordersRounded })
+        foreach (var option in new Control[] { _bordersStyle, _bordersThickness, _bordersThicknessLabel, _bordersOpacity, _bordersOpacityLabel, _bordersOuterFrame, _bordersRounded })
         {
             option.Visible = on;
         }
@@ -1800,11 +1809,17 @@ internal sealed class MainForm : Form
         _syncingEffects = true;
         _bordersStyle.SelectedIndex = (int)_borders.Pattern;
         _bordersThickness.Value = (int)Math.Round(_borders.Thickness * 1000);
+        _bordersOpacity.Value = (int)Math.Round(_borders.Opacity * 100);
         _bordersOuterFrame.Checked = _borders.OuterFrame;
         _bordersRounded.Checked = _borders.Rounded;
         _syncingEffects = syncing;
         _bordersThicknessLabel.Text = ThicknessText(_bordersThickness.Value);
+        _bordersOpacityLabel.Text = OpacityText(_bordersOpacity.Value);
         _bordersOuterFrame.Enabled = _borders.HasGap;
+
+        // Only the corner brackets lie over the images.
+        _bordersOpacity.Enabled = !_borders.HasGap;
+        _bordersOpacityLabel.Enabled = !_borders.HasGap;
     }
 
     /// <summary>The borders' width, from thousandths of the grid's shorter side.</summary>

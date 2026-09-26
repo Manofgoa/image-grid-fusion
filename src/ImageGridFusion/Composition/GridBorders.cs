@@ -18,14 +18,16 @@ public enum BorderPattern
 /// The Borders global effect: a gap between the cells filled by a line style, with an optional outer
 /// frame, or brackets over the images at the grid's four corners; with <paramref name="Rounded"/>, the
 /// grid's outer corners rounded the way Twitter / X shows a posted image, the brackets and the frame
-/// following the curve. Its width is a fraction of the canvas's shorter side, so the preview and every
-/// export size look the same.
+/// following the curve; the corner brackets, drawn over the images, at <paramref name="Opacity"/>. Its
+/// width is a fraction of the canvas's shorter side, so the preview and every export size look the same.
 /// </summary>
-public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool OuterFrame, Color Color, bool Rounded)
+public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool OuterFrame, Color Color, bool Rounded, double Opacity)
 {
     public const double MinThickness = 0.001;
     public const double MaxThickness = 0.06;
     public const double DefaultThickness = 0.006;
+
+    public const double MinOpacity = 0.1;
 
     /// <summary>Share of the grid edge each arm of a corner bracket covers.</summary>
     public const double CornerArm = 0.1;
@@ -37,7 +39,7 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool O
     public const double CornerRadiusShare = 0.03;
 
     /// <summary>The borders as the app starts and as Clear all leaves them, in <paramref name="color"/>, their corners <paramref name="rounded"/> or not.</summary>
-    public static GridBorders Initial(Color color, bool rounded) => new(BorderPattern.Corners, DefaultThickness, false, color, rounded);
+    public static GridBorders Initial(Color color, bool rounded) => new(BorderPattern.Corners, DefaultThickness, false, color, rounded, 1.0);
 
     /// <summary>Whether the cells shrink to leave a gap between them: every style but the corners.</summary>
     public bool HasGap => Pattern != BorderPattern.Corners;
@@ -152,6 +154,9 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool O
             return;
         }
 
+        // The brackets lie over the images, at their opacity.
+        brush.Color = Color.FromArgb((int)Math.Round(255 * Math.Clamp(Opacity, 0, 1)), Color);
+
         // An arm is at least as long as the radius, so the curve always fits in its bracket.
         int reach = (int)Math.Ceiling(radius);
         int armX = Math.Max(Math.Max(width, reach), (int)Math.Round(canvas.Width * CornerArm));
@@ -159,12 +164,13 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool O
         int right = canvas.Width - width, bottom = canvas.Height - width;
         if (radius <= 0)
         {
+            // The upright arms start past the flat ones, so no pixel is painted twice, darker, when translucent.
             g.FillRectangles(brush,
             [
-                new(0, 0, armX, width), new(0, 0, width, armY),
-                new(canvas.Width - armX, 0, armX, width), new(right, 0, width, armY),
-                new(0, bottom, armX, width), new(0, canvas.Height - armY, width, armY),
-                new(canvas.Width - armX, bottom, armX, width), new(right, canvas.Height - armY, width, armY),
+                new(0, 0, armX, width), new(0, width, width, armY - width),
+                new(canvas.Width - armX, 0, armX, width), new(right, width, width, armY - width),
+                new(0, bottom, armX, width), new(0, canvas.Height - armY, width, armY - width),
+                new(canvas.Width - armX, bottom, armX, width), new(right, canvas.Height - armY, width, armY - width),
             ]);
             return;
         }
