@@ -169,9 +169,11 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool O
             return;
         }
 
-        // Each bracket is the ring along the rounded outline, a width deep, kept within the reach of its arms.
-        using var ring = Ring(canvas, radius, 0, width);
-        FillWithin(g, brush, ring,
+        // Each bracket runs from the square corner to the rounded outline inset by its width, kept within
+        // the reach of its arms: it fills the rounded-off corner, so Twitter's own cut, whatever its
+        // radius at the size shown, never uncovers a sliver.
+        using var bracket = ToCorner(canvas, radius, width);
+        FillWithin(g, brush, bracket,
         [
             new(0, 0, armX, armY), new(canvas.Width - armX, 0, armX, armY),
             new(0, canvas.Height - armY, armX, armY), new(canvas.Width - armX, canvas.Height - armY, armX, armY),
@@ -180,8 +182,9 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool O
 
     /// <summary>
     /// Makes the grid's rounded-off corners transparent on <paramref name="bitmap"/>, the whole canvas,
-    /// with an anti-aliased edge: for the outputs keeping alpha, and the preview. Outputs without alpha
-    /// keep their corners, Twitter / X rounding them itself. Nothing happens with square corners.
+    /// with an anti-aliased edge: for the preview only, which shows what Twitter / X shows. The exports
+    /// keep their corners — filled by the brackets or the frame — for Twitter to round with its own
+    /// radius. Nothing happens with square corners.
     /// </summary>
     public void CutCorners(Bitmap bitmap) => CutCorners(bitmap, new Rectangle(Point.Empty, bitmap.Size));
 
@@ -243,8 +246,9 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool O
     }
 
     /// <summary>
-    /// The corners of the outer frame along the rounded outline, over the corner cells: the solid ring,
-    /// or the double style's two lines.
+    /// The corners of the outer frame along the rounded outline, over the corner cells, filled out to
+    /// the square corner: in one piece, or the double style's outer line out to the corner and its
+    /// inner line along the curve.
     /// </summary>
     private void DrawFrameCorners(Graphics g, Brush brush, Size canvas, int width, float radius)
     {
@@ -257,15 +261,29 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool O
         if (Pattern == BorderPattern.Double)
         {
             float line = Math.Max(1f, width / 3f);
-            using var outer = Ring(canvas, radius, 0, line);
+            using var outer = ToCorner(canvas, radius, line);
             using var inner = Ring(canvas, radius, width - line, width);
             FillWithin(g, brush, outer, squares);
             FillWithin(g, brush, inner, squares);
             return;
         }
 
-        using var ring = Ring(canvas, radius, 0, width);
-        FillWithin(g, brush, ring, squares);
+        using var corner = ToCorner(canvas, radius, width);
+        FillWithin(g, brush, corner, squares);
+    }
+
+    /// <summary>
+    /// What lies between the canvas's square outline and its outline rounded by <paramref name="radius"/>
+    /// and inset by <paramref name="to"/>: a band along the edges that fills the rounded-off corners.
+    /// </summary>
+    private static GraphicsPath ToCorner(Size canvas, float radius, float to)
+    {
+        var bounds = new RectangleF(PointF.Empty, canvas);
+        using var inner = RoundedRectangle(RectangleF.Inflate(bounds, -to, -to), radius - to);
+        var band = new GraphicsPath(FillMode.Alternate);
+        band.AddRectangle(bounds);
+        band.AddPath(inner, connect: false);
+        return band;
     }
 
     /// <summary>

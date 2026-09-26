@@ -882,7 +882,6 @@ internal sealed class MainForm : Form
         }
 
         var clock = Stopwatch.StartNew();
-        var borders = ActiveBorders;
         using var result = await RenderStillAsync();
         if (result is null)
         {
@@ -891,14 +890,13 @@ internal sealed class MainForm : Form
 
         try
         {
-            // Standard bitmap for most apps, flattened on white as it carries no transparency — its
-            // corners kept, Twitter / X rounding them itself —, plus the PNG format that browsers paste
-            // more reliably, which keeps it, the Twitter corners cut out.
-            using var flat = Compositor.Flattened(result);
-            borders?.CutCorners(result);
             using var png = new MemoryStream();
             result.Save(png, ImageFormat.Png);
             var encoding = clock.Elapsed;
+
+            // Standard bitmap for most apps, flattened on white as it carries no transparency, plus the
+            // PNG format that browsers paste more reliably, which keeps it.
+            using var flat = Compositor.Flattened(result);
             var data = new DataObject();
             data.SetImage(flat);
             data.SetData("PNG", png);
@@ -1000,7 +998,6 @@ internal sealed class MainForm : Form
             return;
         }
 
-        var borders = ActiveBorders;
         using var still = await RenderStillAsync();
         if (still is null)
         {
@@ -1009,8 +1006,6 @@ internal sealed class MainForm : Form
 
         try
         {
-            // A PNG keeps alpha: the Twitter corners cut out.
-            borders?.CutCorners(still);
             still.Save(dialog.FileName, ImageFormat.Png);
             ShowStatus(StillSummary(saved, "PNG", still.Size, new FileInfo(dialog.FileName).Length, clock.Elapsed));
         }
