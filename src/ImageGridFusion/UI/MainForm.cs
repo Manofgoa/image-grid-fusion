@@ -12,6 +12,10 @@ internal sealed class MainForm : Form
     private readonly string[] _startupFiles;
     private readonly GridPreview _preview = new() { Dock = DockStyle.Fill, AllowDrop = true };
     private readonly LayoutStrip _layouts = new() { Dock = DockStyle.Left, Width = 80, AllowDrop = true };
+
+    // The file explorer, right of the preview; its base folder is a setting of the ⚙ menu.
+    private readonly FileExplorerPanel _explorer = new() { Dock = DockStyle.Right };
+    private readonly ToolStripMenuItem _explorerFolder = new("File explorer folder…");
     private readonly Button _clearButton = new() { Text = "Clear all", AutoSize = true };
     private readonly Button _settingsButton = new() { Text = "⚙", Size = new Size(32, 23), AutoSize = true };
     private readonly ContextMenuStrip _settingsMenu = new();
@@ -260,8 +264,10 @@ internal sealed class MainForm : Form
 
         // Docked in reverse order of addition: the options row and the tabs row, then the bottom bar
         // and the Global effects row above it, span the whole width; the layout strip takes the left
-        // of what remains, and the fill control goes first so it gets the rest.
+        // of what remains, the file explorer the right, and the fill control goes first so it gets the rest.
+        _explorer.Open = AppSettings.ExplorerPanelOpen;
         Controls.Add(_preview);
+        Controls.Add(_explorer);
         Controls.Add(_layouts);
         Controls.Add(_globalRow);
         Controls.Add(_bottom);
@@ -274,7 +280,7 @@ internal sealed class MainForm : Form
         _outputButtons.SizeChanged += (_, _) => FitStatusWidth();
         _cancelButton.VisibleChanged += (_, _) => FitStatusWidth();
         _clearButton.Click += (_, _) => ClearAll();
-        _settingsMenu.Items.AddRange([_startWithWindows, _borderColor, _twitterCornersDefault]);
+        _settingsMenu.Items.AddRange([_startWithWindows, _borderColor, _twitterCornersDefault, _explorerFolder]);
         _toolTip.SetToolTip(_settingsButton, "Settings");
         _settingsButton.Click += (_, _) => ShowSettings();
         _startWithWindows.Click += (_, _) => ToggleStartWithWindows();
@@ -282,6 +288,13 @@ internal sealed class MainForm : Form
         _borderColor.Click += (_, _) => PickBorderColor();
         _twitterCornersDefault.ToolTipText = "Whether the borders start with their Twitter corners, at start-up and after Clear all; remembered between sessions";
         _twitterCornersDefault.Click += (_, _) => ToggleTwitterCornersDefault();
+        _explorerFolder.ToolTipText = "The folder the file explorer searches, with its subfolders; remembered between sessions";
+        _explorerFolder.Click += (_, _) => PickExplorerFolder();
+        _explorer.OpenChanged += (_, _) => SaveExplorerPanelOpen();
+        _explorer.ChooseFolderRequested += (_, _) => PickExplorerFolder();
+
+        // A double-clicked row is added like a file from the Add images picker.
+        _explorer.FileActivated += async (_, path) => await AddFilesAsync([path]);
         _copyButton.Click += (_, _) => CopyToClipboard();
         _saveButton.Click += (_, _) => Save();
         _copyGif.Click += (_, _) => Copy(GridExport.Format.Gif);
@@ -524,6 +537,9 @@ internal sealed class MainForm : Form
         // Copy and Save start disabled, so the slider would take the focus and move with unaimed keys or wheel.
         _preview.Focus();
 
+        // The cached index first, then the folder rescanned in the background: the window is up already.
+        _explorer.Start(AppSettings.ExplorerFolder);
+
         // Files dropped on the .exe icon; loaded once the window is visible so startup stays fast.
         if (_startupFiles.Length > 0)
         {
@@ -565,6 +581,12 @@ internal sealed class MainForm : Form
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
+        // Typed in the file explorer's search box, these keys edit its text, not the grid.
+        if (_explorer.IsEditingText && keyData is (Keys.Control | Keys.V) or (Keys.Control | Keys.C) or Keys.Delete or Keys.Escape)
+        {
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+
         switch (keyData)
         {
             case Keys.Control | Keys.V:
@@ -1783,6 +1805,54 @@ internal sealed class MainForm : Form
 
         // The initial state moved: Clear all may now have something to reset, or nothing.
         UpdateButtons();
+    }
+
+    /// <summary>
+    /// The ⚙ menu's File explorer folder, also the explorer's own Choose folder button: the folder
+    /// dialog, preselected on the current folder; the one chosen is indexed at once and remembered
+    /// between sessions.
+    /// </summary>
+    private void PickExplorerFolder()
+    {
+        using var dialog = new FolderBrowserDialog
+        {
+            Description = "The folder the file explorer searches, with its subfolders",
+            UseDescriptionForTitle = true,
+            ShowNewFolderButton = false,
+        };
+        if (AppSettings.ExplorerFolder is { } current && Directory.Exists(current))
+        {
+            dialog.SelectedPath = current;
+        }
+
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        try
+        {
+            AppSettings.SaveExplorerFolder(dialog.SelectedPath);
+        }
+        catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+        {
+            ShowStatus($"File explorer folder not remembered: {ex.Message}", error: true);
+        }
+
+        _explorer.SetBaseFolder(dialog.SelectedPath);
+    }
+
+    /// <summary>The file explorer's panel was opened or collapsed by the user: remembered between sessions.</summary>
+    private void SaveExplorerPanelOpen()
+    {
+        try
+        {
+            AppSettings.SaveExplorerPanelOpen(_explorer.Open);
+        }
+        catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+        {
+            ShowStatus($"File explorer panel state not remembered: {ex.Message}", error: true);
+        }
     }
 
     /// <summary>The borders as they stand, to the preview, then to the row and the output buttons.</summary>
