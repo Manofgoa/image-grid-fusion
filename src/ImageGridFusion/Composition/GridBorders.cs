@@ -329,10 +329,12 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool O
 
         if (OuterFrame)
         {
-            yield return new Band(true, 0, 0, canvas.Height);
-            yield return new Band(true, canvas.Width - width, 0, canvas.Height);
-            yield return new Band(false, 0, 0, canvas.Width);
-            yield return new Band(false, canvas.Height - width, 0, canvas.Width);
+            // Rounded, the frame's corners are drawn over the cells along the curve (DrawFrameCorners).
+            int reach = Radius(canvas) > 0 ? Math.Max(width, (int)Math.Ceiling(Radius(canvas))) : 0;
+            yield return new Band(true, 0, reach, canvas.Height - reach);
+            yield return new Band(true, canvas.Width - width, reach, canvas.Height - reach);
+            yield return new Band(false, 0, reach, canvas.Width - reach);
+            yield return new Band(false, canvas.Height - width, reach, canvas.Width - reach);
         }
     }
 
