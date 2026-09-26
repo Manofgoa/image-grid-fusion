@@ -24,8 +24,8 @@ the exports.
 | `UI/GridPreview.cs` | Paints the line in `OnPaint`, repaints it from a ~60 fps timer |
 | `README.md`, `GLOSSARY.md` | Documentation |
 
-Scoping answers (Q&A #1–4): the edge is chosen once the edge map below is read (see Open Questions),
-a frozen content shows **no line**, the line is paced by the **clock and a ~60 fps repaint**, the
+Scoping answers (Q&A #1–4): the edge was chosen on the edge map below (Q&A #5: the bottom edge), a
+frozen content shows **no line**, the line is paced by the **clock and a ~60 fps repaint**, the
 exploration was a single scout pass.
 
 ---
@@ -50,6 +50,8 @@ exploration was a single scout pass.
   dragged keeps it, dimmed with the cell: the line is painted under the drag dim and the drop-target
   highlight.
 - **Preview only**: painted in `GridPreview.OnPaint`, never in `Compositor` (RULES.md).
+- **Not the soundtrack**: a grid of stills with a soundtrack shows no line — nothing moves in its
+  cells; the soundtrack's own progress is out of scope (Q&A #7).
 - **Frames speed** (`workfiles/20260926-frames-speed.md`, designed, not shipped): its formula lands in
   the same `Position` / `LoopTime` computation, so the line follows it with no change of its own.
 
@@ -57,8 +59,8 @@ exploration was a single scout pass.
 
 ## Placement
 
-> Proposed: the edge is an Open Question (the user asked for the edge map first). The map is what the
-> exploration found; the design below describes the recommended edge.
+> The edge was chosen on the edge map below, once the exploration had drawn it (Q&A #1, #5): the
+> bottom edge, just inside the selection outline.
 
 ### Edge map
 
@@ -81,11 +83,11 @@ Verdict per edge: **left** is the freest (outlines and bars only); **top** carri
 badge at its right end, **right** their column; **bottom** carries the file name of the selected cell
 and, on the grid's two lower cells, the Corners brackets and the Twitter rounding.
 
-### Recommended: the bottom edge, just inside the selection outline
+### The bottom edge, just inside the selection outline
 
 - A horizontal line along the **bottom edge**, from the cell's **left edge** to the fraction of its
-  width played — the reading every video player taught. No track for the remaining part (see Open
-  Questions).
+  width played — the reading every video player taught. No track for the remaining part (Q&A #8):
+  the line grows from the left edge, the rest of the edge is left as it is.
 - **Just inside the selection outline**: a 2 logical px line over a 4 px halo, like the blur bars,
   the halo's lower edge on the inner edge of the outline — 3 px from the cell's bottom, every size
   scaled with `LogicalToDeviceUnits`. So the selection outline (3 px) and the hover band (1 px) never
@@ -97,7 +99,8 @@ and, on the grid's two lower cells, the Corners brackets and the Twitter roundin
   like the selection outline and the blur bars: it crosses the rounded-off corner over a few pixels
   on the grid's two lower cells.
 - The **blur bars** use the same green on the same edge: on the selected cell while they show, the
-  line is **hidden** (see Open Questions).
+  line is **hidden** — the bars replace it for as long as they show, the other cells keep theirs
+  (Q&A #6).
 - Colours: `HelperColor` / `HelperHalo`, shared (RULES.md).
 
 ---
@@ -154,7 +157,7 @@ Manual checks after the run:
 | Frames starting point at 50 % | The line starts mid-cell, reaches the right edge, restarts from the left edge |
 | Freeze, then unfreeze | The line disappears; it comes back from the starting point |
 | Select the cell | The outline does not cover the line; the file name sits above it |
-| Blur tab, blur on | Per the Open Question: hidden on that cell, or both drawn |
+| Blur tab, blur on | The line disappears from the selected cell while its bars show; the other cells keep theirs |
 | Borders: Corners, Twitter corners | Drawn over the bracket arms at the lower corners; crosses the rounded-off corner like the selection outline |
 | Hide the window (tray), show it again | The line stops with the playback and resumes with it |
 | Export MP4 / GIF / PNG | No line in the output; the preview's line keeps moving during the export |
@@ -168,10 +171,10 @@ Manual checks after the run:
 Every question the design cannot settle on its own, listed before Iteration 1 —
 not only the blocking ones.
 
-- [ ] Edge: the bottom edge just inside the selection outline (recommended), the top edge, or a vertical line on the left or right edge?
-- [ ] The selected cell while its blur bars show, same green on the same edge: line hidden (recommended), or both drawn side by side?
-- [ ] A grid of stills with a soundtrack shows no line, nothing moving in the cells: show the soundtrack's own progress somewhere (Global effects row)? Recommended: out of scope.
-- [ ] The remaining part of the loop: nothing (recommended, the line grows from the left edge), or a dim full-width track under it?
+- [x] ~~Edge: the bottom edge just inside the selection outline (recommended), the top edge, or a vertical line on the left or right edge?~~ → The bottom edge, just inside the selection outline (Q&A #5)
+- [x] ~~The selected cell while its blur bars show, same green on the same edge: line hidden (recommended), or both drawn side by side?~~ → Hidden on that cell while the bars show (Q&A #6)
+- [x] ~~A grid of stills with a soundtrack shows no line, nothing moving in the cells: show the soundtrack's own progress somewhere (Global effects row)? Recommended: out of scope.~~ → Out of scope (Q&A #7)
+- [x] ~~The remaining part of the loop: nothing (recommended, the line grows from the left edge), or a dim full-width track under it?~~ → No track, the line grows from the left edge (Q&A #8)
 
 ---
 
@@ -193,6 +196,13 @@ tick), hidden on a frozen content. The exploration (single scout pass) gave the 
 playback seam (`AnimationPlayer.Position` on one `Stopwatch`, frozen = `PausedAt`), the absence of a
 test project and the README spots. The bottom edge just inside the selection outline is proposed;
 the edge, the blur bars overlap, the soundtrack and a track are Open Questions.
+
+### Iteration 2 — 2026-09-26
+
+The four Open Questions answered as recommended (Q&A #5–8): the bottom edge just inside the
+selection outline, the line hidden on the selected cell while its blur bars show, no indicator for
+the soundtrack, no track for the remaining part. The design sections describe the agreed solution;
+no question remains open, the go is asked.
 
 ---
 
@@ -219,10 +229,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | A content frozen by the Frames effect: what does the line do? | Line hidden | 2026-09-26 |
 | 3 | What cadence moves the line? | Clock-driven position, repaint at ~60 fps | 2026-09-26 |
 | 4 | Is the exploration straightforward, or tricky / long? | Straightforward: a single scout pass | 2026-09-26 |
-| 5 | Which edge, now that the edge map is known? | | 2026-09-26 |
-| 6 | The selected cell while its blur bars show: line hidden, or both drawn? | | 2026-09-26 |
-| 7 | Show the soundtrack's own progress somewhere, or out of scope? | | 2026-09-26 |
-| 8 | A dim track for the remaining part, or nothing? | | 2026-09-26 |
+| 5 | Which edge, now that the edge map is known? | The bottom edge, just inside the selection outline | 2026-09-26 |
+| 6 | The selected cell while its blur bars show: line hidden, or both drawn? | Line hidden on that cell | 2026-09-26 |
+| 7 | Show the soundtrack's own progress somewhere, or out of scope? | Out of scope | 2026-09-26 |
+| 8 | A dim track for the remaining part, or nothing? | No track | 2026-09-26 |
 
 ---
 
