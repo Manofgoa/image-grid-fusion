@@ -122,6 +122,14 @@ drafted by `workfiles/20260925-global-fade.md`). § Effects above covers the cel
 | Rendering | `Compositor.DrawCell` | At the grid level, in the preview and in every export it concerns |
 | Persistence | Not persisted | Not persisted |
 
+- A global effect may read an **app setting** kept outside its state and remembered between
+  sessions — the Borders' color, set from the ⚙ menu and stored in the registry
+  (`UI/AppSettings.cs`). The effect's own state stays not persisted (origin:
+  `workfiles/20260926-cell-borders.md`).
+- A global effect that changes the cells' geometry (the Borders' gap) does it in
+  `Compositor.Cells` / `Compositor.Draw`, so the preview and every export shrink the cells alike;
+  hit-testing keeps the **unshrunk slots**, so no dead zone appears between the cells.
+
 ### Global Effects Row
 
 - An **always-visible row just above the bottom bar**: a **Global effects** label, then one
