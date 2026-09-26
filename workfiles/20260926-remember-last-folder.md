@@ -46,23 +46,23 @@ Agreed:
 - **Storage**: a JSON settings file, `%AppData%\ImageGridFusion\settings.json` — the app's first
   settings store, open to other settings later.
 - **Written as soon as a dialog closes** with a file picked, so a crash never loses it.
+- **Missing folder** (deleted, USB drive unplugged): the dialog opens on the **nearest existing
+  parent** of the remembered folder; when none exists, on the dialog's default folder (Windows'
+  choice for the open dialog, today's rule for the export dialog).
 
 | Dialog | Remembered folder | Updated by |
 |---|---|---|
 | Open — *Add images* (`PickFiles`) | Last loading folder | The folder of the files picked |
 | Save — export PNG / MP4 (`Save`) | Last export folder | The folder of the file saved |
 
-Pending (see Open Questions): what happens when the folder no longer exists.
-
 ---
 
 ## Test Impact
 
-Pending — see Open Questions. The repository has no test project (`src/` holds `ImageGridFusion`
-only); every previous workfile shipped without unit tests.
-
-| Behaviour to pin | Test file | Create / Update |
-|---|---|---|
+**None.** The repository has no test project (`src/` holds `ImageGridFusion` only), and the user
+chose to ship this work **without unit tests**, like every previous workfile (Q&A #10): it is
+verified by hand in the app — pick files, restart, reopen the dialog; same for an export; rename
+the remembered folder and check the parent is used.
 
 ---
 
@@ -79,9 +79,10 @@ only); every previous workfile shipped without unit tests.
   `%AppData%\ImageGridFusion\settings.json`
 - [x] ~~When is it written: as soon as a dialog closes with a file picked, or when the app
   closes?~~ → As soon as the dialog closes with a file picked
-- [ ] The remembered folder no longer exists (deleted, USB drive unplugged): nearest existing parent
-  folder, or the dialog's default folder?
-- [ ] Unit tests: none, verified by hand like every previous workfile, or a first test project?
+- [x] ~~The remembered folder no longer exists (deleted, USB drive unplugged): nearest existing parent
+  folder, or the dialog's default folder?~~ → Nearest existing parent, else the dialog's default
+- [x] ~~Unit tests: none, verified by hand like every previous workfile, or a first test
+  project?~~ → None, verified by hand
 
 ---
 
@@ -106,6 +107,11 @@ a first export, then opens on the last export folder; stored in `%AppData%\Image
 written as soon as a dialog closes with a file picked. Two questions remain: missing folder, unit
 tests.
 
+### Iteration 3 — 2026-09-26
+
+Q&A #9–#10: a missing remembered folder falls back to its nearest existing parent, else to the
+dialog's default folder; no unit tests, verified by hand. No open question remains.
+
 ---
 
 ## Implementation Log
@@ -116,7 +122,7 @@ says so rather than staying blank.
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
 | Code | | | |
-| Unit tests | | | |
+| Unit tests | 3 | 2026-09-26 | Declined — no test project, verified by hand (Q&A #10) |
 | README | | | |
 
 ---
@@ -135,8 +141,8 @@ Questions asked by the agent during design, with user responses.
 | 6 | Export folder: replaces the *first image's folder* rule, or only after a first export? | Today's rule until a first export, then the last export folder | 2026-09-26 |
 | 7 | Storage: JSON file in `%AppData%`, or the registry? | JSON file in `%AppData%` | 2026-09-26 |
 | 8 | Written when a dialog closes, or when the app closes? | When the dialog closes | 2026-09-26 |
-| 9 | Remembered folder missing: nearest existing parent, or default folder? | | 2026-09-26 |
-| 10 | Unit tests: none, or a first test project? | | 2026-09-26 |
+| 9 | Remembered folder missing: nearest existing parent, or default folder? | Nearest existing parent | 2026-09-26 |
+| 10 | Unit tests: none, or a first test project? | None, verified by hand | 2026-09-26 |
 
 ---
 

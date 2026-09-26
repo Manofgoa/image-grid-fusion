@@ -119,6 +119,16 @@ internal sealed class MainForm : Form
     private readonly TrackBar _volume = OptionSlider(0, (int)(VolumeEffect.MaxLevel * 100), 10);
     private readonly Label _volumeLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _mute = new() { Text = "Mute", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _backgroundAutomatic = new() { Text = "Automatic color", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly PictureBox _backgroundOpacityIcon = new() { SizeMode = PictureBoxSizeMode.CenterImage, Anchor = AnchorStyles.Left };
+    private readonly TrackBar _backgroundOpacity = OptionSlider(0, 100, 10);
+    private readonly Label _backgroundOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+
+    // Its face is the swatch: painted with the background color in use, opaque.
+    private readonly Button _backgroundColor = new() { Text = "Color…", AutoSize = true, Anchor = AnchorStyles.Left, UseVisualStyleBackColor = false };
+
+    // One dialog for the whole session, so its custom colors stay from one pick to the next.
+    private readonly ColorDialog _colorDialog = new() { AnyColor = true };
 
     // The selected tab belongs to the toolbar: it stays selected on every cell, and with none.
     private ImageEffect? _selectedEffect;
@@ -207,6 +217,7 @@ internal sealed class MainForm : Form
         _optionsRow.Controls.Add(_optionsHost, 0, 0);
         _optionsRow.Controls.Add(_effectResetButton, 1, 0);
         _optionsHost.Controls.AddRange([.. _options.Values]);
+        _options[ImageEffect.Background].Controls.AddRange([_backgroundAutomatic, _backgroundOpacityIcon, _backgroundOpacity, _backgroundOpacityLabel, _backgroundColor]);
         _options[ImageEffect.Zoom].Controls.AddRange([_zoom, _zoomLabel]);
         _options[ImageEffect.Rotate].Controls.AddRange([.. _quarterTurns, _fineAngle, _fineAngleLabel]);
         _options[ImageEffect.Flip].Controls.AddRange([_flipX, _flipY]);
@@ -287,6 +298,15 @@ internal sealed class MainForm : Form
             ChangeLook(ImageEffect.Volume, look => look.WithVolume(look.Volume!.WithLevel(_volume.Value / 100.0)));
         };
         _mute.CheckedChanged += (_, _) => ChangeLook(ImageEffect.Volume, look => look.WithVolume(look.Volume!.WithMuted(_mute.Checked)));
+        _toolTip.SetToolTip(_backgroundAutomatic, "The color computed from the edges of the part of the image shown");
+        _toolTip.SetToolTip(_backgroundColor, "Chooses the background color; Automatic color is then unchecked");
+        _backgroundAutomatic.CheckedChanged += (_, _) => SetBackgroundAutomatic();
+        _backgroundOpacity.ValueChanged += (_, _) =>
+        {
+            _backgroundOpacityLabel.Text = OpacityText(_backgroundOpacity.Value);
+            ChangeLook(ImageEffect.Background, look => look.WithBackground(look.Background!.WithOpacity(_backgroundOpacity.Value / 100.0)));
+        };
+        _backgroundColor.Click += (_, _) => PickBackgroundColor();
         _toolTip.SetToolTip(_soundtrackToggle, "Mixes the sound of an audio or video file over the videos, in the preview and the MP4 export");
         _toolTip.SetToolTip(_soundtrackBrowse, "Chooses another audio or video file; one can also be dropped on this row");
         _soundtrackToggle.Click += (_, _) => ToggleSoundtrack();
@@ -342,6 +362,8 @@ internal sealed class MainForm : Form
             _gaussian.Image?.Dispose();
             _pixelate.Image?.Dispose();
             _blurIntensityIcon.Image?.Dispose();
+            _backgroundOpacityIcon.Image?.Dispose();
+            _colorDialog.Dispose();
         }
 
         base.Dispose(disposing);
@@ -358,11 +380,12 @@ internal sealed class MainForm : Form
     private void UpdateEffectIcons()
     {
         int size = LogicalToDeviceUnits(16);
-        Image?[] previous = [_resetButton.Image, _effectResetButton.Image, _grayscaleIcon.Image, _gaussian.Image, _pixelate.Image, _blurIntensityIcon.Image];
+        Image?[] previous = [_resetButton.Image, _effectResetButton.Image, _grayscaleIcon.Image, _gaussian.Image, _pixelate.Image, _blurIntensityIcon.Image, _backgroundOpacityIcon.Image];
         foreach (var effect in Enum.GetValues<ImageEffect>())
         {
             _effectTabs.SetIcon(effect, effect switch
             {
+                ImageEffect.Background => EffectIcons.Background(size),
                 ImageEffect.Zoom => EffectIcons.Zoom(size),
                 ImageEffect.Rotate => EffectIcons.Rotate(size),
                 ImageEffect.Flip => EffectIcons.Flip(size),
@@ -381,6 +404,8 @@ internal sealed class MainForm : Form
         _pixelate.Image = EffectIcons.Pixelate(size);
         _blurIntensityIcon.Image = EffectIcons.Intensity(size);
         _blurIntensityIcon.Size = new Size(size, size);
+        _backgroundOpacityIcon.Image = EffectIcons.Opacity(size);
+        _backgroundOpacityIcon.Size = new Size(size, size);
         foreach (var image in previous)
         {
             image?.Dispose();
