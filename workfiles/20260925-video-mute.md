@@ -262,6 +262,10 @@ at 0 — and moving it above 0 unmutes, as the design already said. § Options u
 User request while testing: put "Mute" to the left of the slider. The options row now reads Mute,
 then the slider and its label. § Options updated; README follows.
 
+### Iteration 9 — 2026-09-26 — ⚙️ Post-implementation — task closed
+
+Validated by the user after testing in the app (Iterations 7 and 8 included): the task is finished.
+
 ---
 
 ## Implementation Log
@@ -304,6 +308,7 @@ Questions asked by the agent during design, with user responses.
 | 18 | May the implementation begin? | GO — full scope (code, README, RULES) | 2026-09-26 |
 | 19 | Is the task finished? | Dismissed; the user tests first — then asks that reaching 0 does not grey the slider | 2026-09-26 |
 | 20 | Is the task finished? | Dismissed — then asks for Mute left of the slider | 2026-09-26 |
+| 21 | Is the task finished? | Yes — validated by the user after testing in the app | 2026-09-26 |
 
 ---
 
