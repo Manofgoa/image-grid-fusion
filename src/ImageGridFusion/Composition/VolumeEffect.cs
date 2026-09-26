@@ -13,9 +13,6 @@ public sealed record VolumeEffect
     /// <summary>At 100 %, heard.</summary>
     public static readonly VolumeEffect Default = new();
 
-    /// <summary>Silenced, the slider kept at 100 %: a video that arrives while another one is heard (RULES.md).</summary>
-    public static readonly VolumeEffect Muted = new() { IsMuted = true };
-
     /// <summary>Scale of the sound, from 0 (silent) to <see cref="MaxLevel"/>; 1 plays it as it is.</summary>
     public double Level { get; private init; } = 1;
 
