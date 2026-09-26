@@ -34,7 +34,8 @@ the multiplier scales it like it scales a GIF's delays or a video's frame rate.
 - `FramesEffect` gains a `Speed` (double, default **1**), next to `Position` and `Frozen`, with a
   `WithSpeed` builder. Like every effect setting, it is kept while the effect is off, reset by every
   *Reset*, and follows the image on a swap (RULES.md § Scope and State).
-- Range and step: see Open Questions.
+- Range: **×0.25 to ×4**, in steps of **0.25** (16 notches, ×1 on the fourth). Constants
+  `MinSpeed`, `MaxSpeed`, `SpeedStep` on `FramesEffect`; `WithSpeed` clamps to the range.
 
 ---
 
@@ -57,7 +58,14 @@ One clock for the whole grid, as today; the speed maps the grid's time to the im
 
 ## Sound
 
-A video with sound whose speed is not ×1: see Open Questions.
+A video with sound **follows its speed, its pitch with it** (higher when faster, lower when slower —
+no time-stretching):
+
+- **Preview**: the video's node in the audio graph (`PreviewSound`) plays at the speed as its
+  playback speed factor; its drift check compares positions in source time, as today.
+- **Export**: `MixedSound` carries the speed; the mixer (`VideoEncoder`'s `Voice`) reads the source
+  samples `speed` times faster (resampled), its loop and start in source time.
+- It stays *heard* at any speed (RULES.md § The Volume Exception is unchanged).
 
 ---
 
@@ -66,7 +74,9 @@ A video with sound whose speed is not ×1: see Open Questions.
 - In the Frames options, after **Freeze**: a speed slider (`OptionSlider`, like Volume) and its
   value label.
 - Acting on it turns the effect on, starting from its kept settings (RULES.md § Options Toolbar).
-- Label format, and whether the slider is disabled while Freeze is checked: see Open Questions.
+- Its label reads **`Speed: ×1.5`** (invariant culture, `×1`, `×0.25`, `×1.75`…).
+- While **Freeze** is checked, the speed slider is **disabled** (a frozen image plays nothing); the
+  speed is kept for when it is unfrozen.
 - README § Frames and § Animated content: the speed setting, and "1 s per page / view" becomes the
   ×1 pace.
 
@@ -89,10 +99,10 @@ go choice.
 - [x] ~~How is the speed expressed?~~ → A multiplier of the image's own pace, ×1 by default
 - [x] ~~Which images does it apply to?~~ → Videos, animated GIFs, and scrolling content: PDFs of several pages, long texts
 - [x] ~~Which control?~~ → A slider with its value shown next to it, like the Volume slider
-- [ ] Range and step of the multiplier?
-- [ ] Label format of the value?
-- [ ] A video with sound at a speed other than ×1: what happens to its sound?
-- [ ] While **Freeze** is checked, is the speed slider disabled?
+- [x] ~~Range and step of the multiplier?~~ → ×0.25 to ×4, step 0.25
+- [x] ~~Label format of the value?~~ → `Speed: ×1.5`
+- [x] ~~A video with sound at a speed other than ×1: what happens to its sound?~~ → It follows the speed, its pitch changing with it, in the preview and the export
+- [x] ~~While **Freeze** is checked, is the speed slider disabled?~~ → Yes, disabled; the speed is kept
 
 ---
 
@@ -111,6 +121,13 @@ slider and its value. Exploration (single pass, straightforward subject): the 1 
 `Animation.StepDuration`, the pace of PDFs and texts only; GIFs and videos follow their own timing.
 Design: `FramesEffect.Speed`, source time = start + grid time × speed, loop in grid time =
 loop / speed, used by the preview, the exports and the grid's length. Four questions left open.
+
+### Iteration 2 — 2026-09-26
+
+Second batch answered: range ×0.25–×4 in steps of 0.25; label `Speed: ×1.5`; a video's sound
+follows its speed with its pitch (preview audio graph speed factor, export mixer resampling); the
+speed slider is disabled while Freeze is checked. § Settings, § Sound and § UI updated. No open
+question remains.
 
 ---
 
@@ -137,10 +154,11 @@ Questions asked by the agent during design, with user responses.
 | 2 | Which images does the speed apply to? | GIFs, videos, and also scrolling content such as PDFs and texts | 2026-09-26 |
 | 3 | Which control in the Frames options? | Slider + value | 2026-09-26 |
 | 4 | Straightforward or tricky / long subject? | Straightforward | 2026-09-26 |
-| 5 | Range and step of the multiplier? | | |
-| 6 | Label format of the value? | | |
-| 7 | Sound of a video at a speed other than ×1? | | |
-| 8 | Speed slider disabled while Freeze is checked? | | |
+| 5 | Range and step of the multiplier? | ×0.25 → ×4, step 0.25 | 2026-09-26 |
+| 6 | Label format of the value? | `Speed: ×1.5` | 2026-09-26 |
+| 7 | Sound of a video at a speed other than ×1? | Follows the speed, higher / lower pitch | 2026-09-26 |
+| 8 | Speed slider disabled while Freeze is checked? | Yes, disabled | 2026-09-26 |
+| 9 | Go for implementation? | | |
 
 ---
 
