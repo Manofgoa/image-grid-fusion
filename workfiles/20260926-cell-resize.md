@@ -64,17 +64,27 @@ canvas. The behaviour is **dynamic**:
 A broken line becomes straight again when its two arms are realigned — the alignment snapping makes
 that exact — and the cross is back to the *Aligned* state.
 
+This needs no special case: `GridLayout.Separators()` groups the cells along a boundary line by
+the cells they **face over a stretch** of it; cells meeting at a single point do not face each other.
+The cross's four arms, its whole line once the other is broken, and the separators of every other
+layout all follow from that one definition.
+
 ---
 
 ## Gesture
 
 - **Hit area**: a band of ±4 logical px (scaled with `LogicalToDeviceUnits`) centred on the
-  separator, along its length. The cursor becomes ↔ (`SizeWE`) on a vertical separator and ↕
-  (`SizeNS`) on a horizontal one.
+  separator, along its length; where several bands overlap (the cross's centre), the nearest
+  separator wins. The cursor becomes ↔ (`SizeWE`) on a vertical separator and ↕ (`SizeNS`) on a
+  horizontal one.
 - **Drag**: pressing in the band and moving moves the separator along its normal axis; the preview
-  is redrawn live.
+  is redrawn live — only the cells it moves, drawn fast into the cached preview (they keep covering
+  the same area) — then in full, smoothed, on release. Pressing a separator does not change the
+  selected cell.
 - **Double-click** on a separator puts it back at its position in the layout's own proportions
-  (Q&A #8). On the Grid's cross, it applies to the arm (or whole line) under the cursor.
+  (Q&A #8). On the Grid's cross, it applies to the arm (or whole line) under the cursor. When its
+  neighbours moved so far that its own position would take a cell below the minimum, it stops at the
+  minimum instead.
 - **Priority**: on its band, the separator wins over the cell's own gestures (drag / pan, swap
   handle drag). The selected cell's **effect handles win over the separator** on their own hit area
   (Q&A #10), as RULES — *On-Cell Handles* already states: a blur bar snapped onto the edge is dragged,
@@ -95,10 +105,10 @@ that exact — and the cross is back to the *Aligned* state.
 - **Snapping** (Q&A #9): within **6 logical px** (scaled with `LogicalToDeviceUnits`, like the blur
   bars), a dragged separator snaps exactly onto:
   - its **own position** in the layout's proportions;
-  - a **parallel separator it can align with** — in practice the other arm of the Grid's broken
-    line; the other layouts have no parallel separator on the same line to align with.
+  - a **parallel separator it can align with** — every other separator of the same axis is a
+    target, but the minimum size makes only the other arm of the Grid's broken line reachable.
 
-  Snapping never takes a cell below the minimum size.
+  The nearest target wins. Snapping never takes a cell below the minimum size.
 
 ---
 
@@ -109,13 +119,13 @@ The sizes belong to the **grid** (the cell slots), not to the images.
 | Event | Sizes |
 |---|---|
 | Another layout is picked in the strip | Reset to the layout's own proportions |
-| The **active** thumbnail is clicked again (Q&A #12) | Reset to the layout's own proportions, the mirror state kept — today this click does nothing |
+| The **active** thumbnail is clicked again (Q&A #12) | Reset to the layout's own proportions, the mirror state kept (`LayoutStrip.ActiveLayoutClicked`) |
 | The number of images changes (add, delete) | Reset — the default layout of the new count applies |
 | The mirror toggle is clicked (Q&A #6) | **Mirrored** with the layout: the big cell stays big, on the other side |
 | A cell's image is replaced (drop, Ctrl+V, browse) | Kept |
 | Two cells are swapped | Kept — the images change slots, the slots keep their sizes |
 | A separator is double-clicked | That separator only is reset |
-| The effects toolbar's *Reset* button (Q&A #8, #14) | **All the separators of the grid** are reset, on top of the selected cell's effects. The button stays disabled with no cell selected; its tooltip mentions the sizes |
+| The effects toolbar's *Reset* button (Q&A #8, #14) | **All the separators of the grid** are reset, on top of the selected cell's effects. The button stays disabled with no cell selected, and is enabled whenever the grid is resized, even when the cell's effects are all at their defaults; its tooltip mentions the sizes |
 | The app is restarted | Not persisted — every layout starts on its own proportions |
 
 ---
@@ -124,8 +134,13 @@ The sizes belong to the **grid** (the cell slots), not to the images.
 
 - `Compositor` already draws from the layout's cells: a resized grid shows the same way in the
   preview, the PNG / GIF / MP4 exports and video playback, with no dedicated code.
-- The tiling stays exact: neighbour cells share each boundary, computed as `floor(size × fraction)`,
-  so no pixel is lost or covered twice at any canvas size.
+- The tiling stays exact: neighbour cells share each boundary — the very same fraction — computed
+  as `floor(size × fraction + 1e-9)` (`GridLayout.Boundary`), so no pixel is lost or covered twice at
+  any canvas size, and an unresized layout falls on the same pixels as before.
+- The layout raises `LayoutChanged` once a separator is **released** (or reset), not at each step
+  of the drag: the strip and the toolbar buttons follow then.
+- Mirroring a resized layout flips its fractions; an unresized one starts on its mirrored units
+  again, so it stays exactly unresized.
 - `CanvasSizer` computes the output width from the **resized** cell fractions: widening a cell that
   holds a large image may raise the output width. The 1200:628 ratio is unchanged.
 - Effects keep their geometry in fractions of the cell (RULES — *Scope and State*): the blur bars,
@@ -224,6 +239,31 @@ change.
 Go given for code, unit tests and documentation (unit tests: none, test-free by decision,
 Q&A #13). The run stays on `main`, the repository's standing choice.
 
+### Iteration 7 — 2026-09-26 — 🧭 Implementation choices
+
+No project rule was broken. Choices the frozen design did not state, now in the domain sections:
+
+- **Branch**: `main`, without asking — the standing choice recorded for this repository.
+- **One definition for every separator**: cells facing each other over a stretch of a boundary line
+  (`GridLayout.Separators()`); the Grid's dynamic cross follows from it, with no special case.
+- **Hit test**: the nearest separator wins where bands overlap; pressing one keeps the selection.
+- **Live drag**: only the moved cells are drawn again, fast, into the cached preview; the grid is
+  drawn in full, smoothed, on release, when the frames are decoded at the new size and the text
+  pages laid out again. `LayoutChanged` is raised on release, not at each step.
+- **Snapping targets**: the separator's own position plus every parallel separator, nearest first;
+  the 10 % minimum leaves only the Grid's other arm reachable.
+- **Double-click** on a separator whose own position would break the minimum stops at the minimum.
+- **Reset button** enabled whenever the grid is resized, even with the cell's effects at defaults.
+- **Active thumbnail**: a new `LayoutStrip.ActiveLayoutClicked` event; the active thumbnail is
+  painted from `WithDefaultSizes()`, mirror kept.
+- **Pixels**: `GridLayout.Boundary` = `floor(size × fraction + 1e-9)`, so unresized layouts keep
+  their former pixels; mirroring an unresized layout starts again on its mirrored units.
+- **Documentation**: a *Resizing the cells* section in the README (plus the Reset, canvas size, text
+  and mirror mentions); a RULES bullet saying separators resize the grid and are no effect; GLOSSARY
+  entries *Separator* and *Arm*.
+- **Build**: `bin\Debug` was locked by an app instance not started by this run; the compile was
+  checked, and the delivery build goes to a separate output folder rather than killing that instance.
+
 ---
 
 ## Implementation Log
@@ -233,9 +273,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
+| Code | 6, 7 | 2026-09-26 | `GridLayout` + `Separator`, `GridPreview` gesture, Reset / active thumbnail wiring — three commits |
+| Unit tests | 6 | 2026-09-26 | Not applicable — test-free by decision (Q&A #13); geometry checked once with a throwaway script (tiling at 4 canvas sizes, cross states, mirror) |
+| README | 6, 7 | 2026-09-26 | *Resizing the cells* section; RULES and GLOSSARY updated in their own commit |
 
 ---
 
