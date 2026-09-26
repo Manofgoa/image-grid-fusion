@@ -37,6 +37,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
   - **Borders** on the grid, off at start-up: hotpink brackets at its four corners, or a gap between the cells drawn as a solid, dashed, dotted or double line, with an optional outer frame; the grid's corners rounded the way Twitter / X shows images; their color is set from the **⚙** menu and remembered (see Borders)
 - Copy to clipboard (`Ctrl+C`) or save (`Ctrl+S`): a PNG, or an MP4 video when the grid holds content that plays or a soundtrack is on; the ▾ arrow next to each button forces a looping GIF or an MP4 video; Copy's also offers a light JPEG for sharing in chat apps that cap image size (WhatsApp: 16 MB)
 - Lives in the notification area: closing the window only hides it, the tray icon brings it back, and it can start with Windows (see Tray & startup)
+- The window remembers its size between launches — never its maximized state: it opens un-maximized, centered, at the size it last had, shrunk to fit a smaller screen (see Tray & startup)
 
 ## Adding images
 
@@ -384,7 +385,8 @@ Output resolution is kept as high as possible so source images aren't needlessly
 - The same menu holds **Border color** and **Twitter corners by default** (see Borders), and **File explorer folder…** (see File explorer).
   - If the exe is moved, the registration follows it the next time it is launched from its new place (any copy of the exe launched takes the registration over).
   - Disabling the app in Windows *Settings → Apps → Startup* is not reflected by the option.
-- Several instances can run side by side, each with its own window and tray icon.
+- **Window size**: the size the window had when it was last closed or hidden is remembered per user, in `HKCU\Software\ImageGridFusion`, and used at the next launch, whatever the screen's scale. A window closed maximized or minimized reopens at its normal size, un-maximized; a size larger than the screen it opens on is shrunk to its working area. With nothing remembered, the window opens at its default size.
+- Several instances can run side by side, each with its own window and tray icon; the last window closed sets the size remembered.
 
 ## Build & run
 
