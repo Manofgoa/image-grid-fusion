@@ -1,0 +1,177 @@
+using System.Globalization;
+using System.Text;
+
+namespace ImageGridFusion.Explorer;
+
+/// <summary>
+/// The file explorer's index: every file under the base folder and its subfolders, cached in a text
+/// file next to the exe so the search never reads the disk. Three header lines — a version, the base
+/// folder, the scan's time — then one relative path per line; extra tab-separated columns are
+/// tolerated, for the text a later task may add. See workfiles/20260926-file-explorer.md § Index File.
+/// </summary>
+internal sealed class FileIndex
+{
+    public const string FileName = "files.index";
+    private const string Header = "ImageGridFusion index 1";
+    private const int ProgressInterval = 100;
+
+    private readonly List<IndexEntry> _entries;
+
+    private FileIndex(string baseFolder, DateTime scannedAt, List<IndexEntry> entries)
+    {
+        BaseFolder = baseFolder;
+        ScannedAt = scannedAt;
+        _entries = entries;
+    }
+
+    /// <summary>The folder scanned, normalized by <see cref="NormalizeFolder"/>.</summary>
+    public string BaseFolder { get; }
+
+    public DateTime ScannedAt { get; }
+
+    public IReadOnlyList<IndexEntry> Entries => _entries;
+
+    public int Count => _entries.Count;
+
+    /// <summary>Where the index of this exe lives: next to it.</summary>
+    public static string DefaultPath => Path.Combine(AppContext.BaseDirectory, FileName);
+
+    /// <summary>A base folder as compared and stored: its full path, without a trailing separator.</summary>
+    public static string NormalizeFolder(string folder) => Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder));
+
+    public string FullPath(IndexEntry entry) => Path.Combine(BaseFolder, entry.RelativePath);
+
+    /// <summary>
+    /// Reads the cached index of <paramref name="baseFolder"/>; null when there is none, it cannot be
+    /// read, or it was scanned for another folder.
+    /// </summary>
+    public static FileIndex? Load(string path, string baseFolder)
+    {
+        string[] lines;
+        try
+        {
+            lines = File.ReadAllLines(path);
+        }
+        catch (Exception ex) when (IsFileError(ex))
+        {
+            return null;
+        }
+
+        string root = NormalizeFolder(baseFolder);
+        if (lines.Length < 3 || lines[0] != Header || !SameFolder(lines[1], root)
+            || !DateTime.TryParse(lines[2], CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var scannedAt))
+        {
+            return null;
+        }
+
+        var entries = new List<IndexEntry>(lines.Length - 3);
+        for (int i = 3; i < lines.Length; i++)
+        {
+            string line = lines[i];
+            int tab = line.IndexOf('\t');
+            string relative = tab < 0 ? line : line[..tab];
+            if (relative.Length > 0)
+            {
+                entries.Add(new IndexEntry(relative));
+            }
+        }
+
+        return new FileIndex(root, scannedAt, entries);
+    }
+
+    /// <summary>Writes the index to a temp file, moved over the previous one: a crash keeps that one.</summary>
+    public void Save(string path)
+    {
+        string temp = path + ".tmp";
+        using (var writer = new StreamWriter(temp, append: false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
+        {
+            writer.WriteLine(Header);
+            writer.WriteLine(BaseFolder);
+            writer.WriteLine(ScannedAt.ToString("o", CultureInfo.InvariantCulture));
+            foreach (var entry in _entries)
+            {
+                writer.WriteLine(entry.RelativePath);
+            }
+        }
+
+        File.Move(temp, path, overwrite: true);
+    }
+
+    /// <summary>Drops the entry of <paramref name="fullPath"/>; false when it has none.</summary>
+    public bool Remove(string fullPath)
+    {
+        string relative = Path.GetRelativePath(BaseFolder, fullPath);
+        int at = _entries.FindIndex(e => string.Equals(e.RelativePath, relative, StringComparison.OrdinalIgnoreCase));
+        if (at < 0)
+        {
+            return false;
+        }
+
+        _entries.RemoveAt(at);
+        return true;
+    }
+
+    /// <summary>
+    /// Scans <paramref name="baseFolder"/> and its subfolders, on the calling thread: a first pass counts
+    /// the files, so the second, which records them, reports an exact ratio. Hidden and system entries
+    /// are skipped with their content, inaccessible folders too. Throws like the enumeration does when
+    /// the folder itself cannot be read.
+    /// </summary>
+    public static FileIndex Scan(string baseFolder, IProgress<ScanProgress>? progress, CancellationToken cancellation)
+    {
+        string root = NormalizeFolder(baseFolder);
+        var options = new EnumerationOptions
+        {
+            RecurseSubdirectories = true,
+            IgnoreInaccessible = true,
+            AttributesToSkip = FileAttributes.Hidden | FileAttributes.System,
+        };
+
+        long reported = long.MinValue;
+        void Report(ScanPhase phase, int done, int total, bool force = false)
+        {
+            long now = Environment.TickCount64;
+            if (force || now - reported >= ProgressInterval)
+            {
+                reported = now;
+                progress?.Report(new ScanProgress(phase, done, total));
+            }
+        }
+
+        int count = 0;
+        foreach (var _ in Directory.EnumerateFiles(root, "*", options))
+        {
+            cancellation.ThrowIfCancellationRequested();
+            count++;
+            Report(ScanPhase.Counting, count, 0);
+        }
+
+        // The enumeration prefixes each path with the root as given; a drive root already ends with its separator.
+        int prefix = root.EndsWith(Path.DirectorySeparatorChar) ? root.Length : root.Length + 1;
+        var entries = new List<IndexEntry>(count);
+        foreach (var file in Directory.EnumerateFiles(root, "*", options))
+        {
+            cancellation.ThrowIfCancellationRequested();
+            string relative = file.Length > prefix && file.StartsWith(root, StringComparison.OrdinalIgnoreCase)
+                ? file[prefix..]
+                : Path.GetRelativePath(root, file);
+            entries.Add(new IndexEntry(relative));
+            Report(ScanPhase.Indexing, entries.Count, count, force: entries.Count == count);
+        }
+
+        return new FileIndex(root, DateTime.Now, entries);
+    }
+
+    public static bool IsFileError(Exception ex) => ex is IOException or UnauthorizedAccessException or System.Security.SecurityException;
+
+    private static bool SameFolder(string a, string b) => string.Equals(Path.TrimEndingDirectorySeparator(a), b, StringComparison.OrdinalIgnoreCase);
+}
+
+internal enum ScanPhase
+{
+    Counting,
+    Indexing,
+}
+
+/// <summary>Where a scan stands: the files counted so far, or the files recorded out of the count.</summary>
+internal readonly record struct ScanProgress(ScanPhase Phase, int Done, int Total);
