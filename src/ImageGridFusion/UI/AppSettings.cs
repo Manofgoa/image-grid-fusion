@@ -14,6 +14,7 @@ internal static class AppSettings
     private const string TwitterCornersName = "TwitterCornersByDefault";
     private const string ExplorerFolderName = "ExplorerFolder";
     private const string ExplorerPanelOpenName = "ExplorerPanelOpen";
+    private const string ExplorerColumnsName = "ExplorerColumns";
 
     /// <summary>The border color before one is chosen.</summary>
     public static readonly Color DefaultBorderColor = Color.HotPink;
@@ -112,5 +113,29 @@ internal static class AppSettings
     {
         using var key = Registry.CurrentUser.CreateSubKey(Key);
         key.SetValue(ExplorerPanelOpenName, open ? 1 : 0, RegistryValueKind.DWord);
+    }
+
+    /// <summary>How many columns of tiles the file explorer shows, 1 to 5; one when nothing was saved or the key cannot be read.</summary>
+    public static int ExplorerColumns
+    {
+        get
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey(Key);
+                return key?.GetValue(ExplorerColumnsName) is int value ? Math.Clamp(value, ThumbnailGrid.MinColumns, ThumbnailGrid.MaxColumns) : ThumbnailGrid.MinColumns;
+            }
+            catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+            {
+                return ThumbnailGrid.MinColumns;
+            }
+        }
+    }
+
+    /// <summary>Saves the file explorer's column count; throws an <see cref="StartupRegistration.IsRegistryError"/> exception on failure.</summary>
+    public static void SaveExplorerColumns(int columns)
+    {
+        using var key = Registry.CurrentUser.CreateSubKey(Key);
+        key.SetValue(ExplorerColumnsName, columns, RegistryValueKind.DWord);
     }
 }
