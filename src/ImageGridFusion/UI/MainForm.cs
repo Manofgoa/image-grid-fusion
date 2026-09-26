@@ -550,7 +550,7 @@ internal sealed class MainForm : Form
         }
         else if (e.Data is not null && TextData.TryGet(e.Data) is { } text)
         {
-            await AddTextAsync(text, target, "Nothing added: the dropped text is empty.");
+            await AddTextAsync(text, target, "Nothing added: the dropped text is empty.", dropped: true);
         }
     }
 
@@ -636,7 +636,7 @@ internal sealed class MainForm : Form
 
         if (text is not null)
         {
-            await AddTextAsync(text, -1, Nothing);
+            await AddTextAsync(text, -1, Nothing, dropped: false);
         }
         else if (files is null)
         {
@@ -651,8 +651,9 @@ internal sealed class MainForm : Form
     /// <summary>
     /// Adds a text as an image rendered like a text file, placed like a file: into the target cell,
     /// else a free slot, else by the replace rule. Parsed and laid out off the UI thread.
+    /// <paramref name="dropped"/> tells a dropped text from a pasted one, the name the preview gives it.
     /// </summary>
-    private async Task AddTextAsync(TextData text, int targetCell, string blankMessage)
+    private async Task AddTextAsync(TextData text, int targetCell, string blankMessage, bool dropped)
     {
         if (RefuseWhileExporting())
         {
@@ -677,6 +678,7 @@ internal sealed class MainForm : Form
         }
         else
         {
+            image.Dropped = dropped;
             _preview.Add([image], targetCell);
         }
     }
