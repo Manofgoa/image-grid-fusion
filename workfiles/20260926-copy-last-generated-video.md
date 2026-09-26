@@ -40,8 +40,9 @@ Components: `UI/MainForm.cs` (the bottom bar, `Copy`, `SaveAs`, the status line,
 - The **last video** is the file of the last **successful animated Copy** — MP4 or GIF, from the
   main Copy button when it produces a video, or from the ▾ menu's *GIF* / *MP4 Video*. Kept with
   it: its path in `%TEMP%\ImageGridFusion`, its format, the time it was generated, its export result
-  (size, frames, length, sounds), its encoding time, and the grid's content version at that moment
-  (see § The Grid Has Changed Since). A small record, `LastVideo`, held by `MainForm`.
+  (size, frames, length, sounds), its file size (read once, so a summary never reads a file that may
+  be gone), its encoding time, and the grid's content version at that moment (see § The Grid Has
+  Changed Since). A small record, `LastVideo` (`UI/LastVideo.cs`), held by `MainForm`.
 - It is set as soon as the export succeeds, **before** the clipboard is written: a copy that fails
   at the clipboard step (`ExternalException`) still leaves the file available, and *Copy last* is
   the retry.
@@ -137,11 +138,12 @@ Components: `UI/MainForm.cs` (the bottom bar, `Copy`, `SaveAs`, the status line,
   message, as today.
 - **Window hidden** in the tray (closed with ×): a **notification from the tray icon**
   (`NotifyIcon.ShowBalloonTip`, a toast on Windows 10 / 11). Title: *MP4 copied* / *GIF copied* /
-  *MP4 saved* / *GIF saved* / *Video export failed* / *GIF export failed*. Text: the file name, then
-  for a copy *If the clipboard gets overwritten, Copy last MP4 brings it back*, for a failure the
-  error. Clicking it opens the window. `MainForm` raises an `ExportEnded(title, text, error)`
-  event; `TrayApplicationContext`, which owns the icon, shows the balloon and wires
-  `BalloonTipClicked` to `ShowForm()`.
+  *MP4 saved* / *GIF saved* / *MP4 export failed* / *GIF export failed* / *Copy failed* (the export
+  done, the clipboard refused). Text: the file name, then for a copy *If the clipboard gets
+  overwritten, Copy last MP4 brings it back*, for a failure the error (and, the clipboard refused,
+  that *Copy last* puts the file on it again). Clicking it opens the window. `MainForm` raises
+  `ExportEndedHidden` with an `ExportNotice(Title, Text, Error)`; `TrayApplicationContext`, which
+  owns the icon, shows the balloon and wires `BalloonTipClicked` to `ShowForm()`.
 - **App in the foreground**: as today, the status line only.
 
 ---
@@ -218,6 +220,26 @@ Go given for code, unit tests (not applicable) and documentation. Branch: `main`
 choice of this app (no branch question asked). The run's own choices are logged in the next
 iteration.
 
+### Iteration 3 — 2026-09-27 — 🧭 Implementation choices
+
+Delivered as designed; no rule broken. The choices the design left open, or stated otherwise:
+
+- the failure notification is titled *MP4 export failed* / *GIF export failed* (the format's name,
+  as every other title), not *Video export failed*; a copy whose export succeeded but whose
+  clipboard step failed also notifies, as *Copy failed*, its text saying *Copy last* retries it;
+- the *Save last* notification's text is the saved file's name only;
+- the record keeps the file's size, so the tooltips and the *Copied again* / *Saved* summaries are
+  built from what was kept and never read the file (it may be gone);
+- the notification event is `MainForm.ExportEndedHidden`, carrying an `ExportNotice` record nested
+  in `MainForm`; the P/Invoke of `FlashWindowEx` is inline in `MainForm`, no count nor timeout
+  (Windows flashes until the window comes to the front);
+- the tooltips are also refreshed by `UpdateButtons`, so they follow the last video's state, not
+  only the mouse entering the button or a menu opening;
+- Save's *GIF* / *MP4 Video* entries became fields (`_saveGif`, `_saveMp4`) to get their own
+  enabled rule once the arrow opens for *Save last*;
+- the build ran while two instances of the app were running and locking the exe: the copy was
+  retried and went through once they ended on their own — nothing was killed by the run.
+
 ---
 
 ## Implementation Log
@@ -227,10 +249,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 3 | 2026-09-27 | `21c15cd` (content version), `c98fb63` (last video, attention, unique temp names) |
 | Unit tests | — | — | Does not apply: no test project, by decision (see Test Impact) |
-| README | | | |
-| Glossary | | | |
+| README | 3 | 2026-09-27 | Output, Animated content › export |
+| Glossary | 3 | 2026-09-27 | *Last video* |
 
 ---
 
@@ -248,4 +270,4 @@ Questions asked by the agent during design, with user responses.
 
 ---
 
-*Last updated: 2026-09-26*
+*Last updated: 2026-09-27*
