@@ -124,6 +124,27 @@ internal sealed class MainForm : Form
     private ImageEffect? _selectedEffect;
     private bool _syncingEffects;
 
+    // The Global effects row, just above the bottom bar, each global effect's options beside its toggle:
+    // see RULES.md. A file dropped anywhere on it becomes the soundtrack.
+    private readonly FlowLayoutPanel _globalRow = new()
+    {
+        Dock = DockStyle.Bottom,
+        AutoSize = true,
+        WrapContents = false,
+        Padding = new Padding(8, 4, 8, 0),
+        AllowDrop = true,
+    };
+    private readonly Label _globalLabel = new() { Text = "Global effects →", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _soundtrackToggle = OptionButton("♪ Soundtrack");
+    private readonly Button _soundtrackBrowse = new() { Text = "Browse…", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly Label _soundtrackFile = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly TrackBar _soundtrackVolume = OptionSlider(0, (int)(Soundtrack.MaxLevel * 100), 10);
+    private readonly Label _soundtrackVolumeLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+
+    // The soundtrack's file and level, kept while it is off; cleared by Clear all only.
+    private Soundtrack? _soundtrack;
+    private bool _soundtrackOn;
+
     public MainForm(string[] args)
     {
         _startupFiles = args;
@@ -194,12 +215,16 @@ internal sealed class MainForm : Form
         _options[ImageEffect.BlackAndWhite].Controls.AddRange([_grayscaleIcon, _grayscale, _grayscaleLabel]);
         _options[ImageEffect.Blur].Controls.AddRange([_gaussian, _pixelate, _blurIntensityIcon, _blurIntensity, _blurIntensityLabel]);
         _options[ImageEffect.Volume].Controls.AddRange([_volume, _volumeLabel, _mute]);
+        _globalLabel.Font = new Font(Font, FontStyle.Bold);
+        _soundtrackVolume.BackColor = SystemColors.Control;
+        _globalRow.Controls.AddRange([_globalLabel, _soundtrackToggle, _soundtrackBrowse, _soundtrackFile, _soundtrackVolume, _soundtrackVolumeLabel]);
 
-        // Docked in reverse order of addition: the options row and the tabs row, then the bottom bar,
-        // span the whole width; the layout strip takes the left of what remains, and the fill control
-        // goes first so it gets the rest.
+        // Docked in reverse order of addition: the options row and the tabs row, then the bottom bar
+        // and the Global effects row above it, span the whole width; the layout strip takes the left
+        // of what remains, and the fill control goes first so it gets the rest.
         Controls.Add(_preview);
         Controls.Add(_layouts);
+        Controls.Add(_globalRow);
         Controls.Add(_bottom);
         Controls.Add(_tabsRow);
         Controls.Add(_optionsRow);
@@ -263,6 +288,19 @@ internal sealed class MainForm : Form
             ChangeLook(ImageEffect.Volume, look => look.WithVolume(look.Volume!.WithLevel(_volume.Value / 100.0)));
         };
         _mute.CheckedChanged += (_, _) => ChangeLook(ImageEffect.Volume, look => look.WithVolume(look.Volume!.WithMuted(_mute.Checked)));
+        _toolTip.SetToolTip(_soundtrackToggle, "Mixes the sound of an audio or video file over the videos, in the preview and the MP4 export");
+        _toolTip.SetToolTip(_soundtrackBrowse, "Chooses the soundtrack's audio or video file; one can also be dropped on this row");
+        _soundtrackToggle.Click += (_, _) => ToggleSoundtrack();
+        _soundtrackBrowse.Click += (_, _) => BrowseSoundtrack();
+        _soundtrackVolume.ValueChanged += (_, _) => SetSoundtrackVolume();
+        _globalRow.DragEnter += (_, e) => e.Effect = e.Data?.GetDataPresent(DataFormats.FileDrop) == true ? DragDropEffects.Copy : DragDropEffects.None;
+        _globalRow.DragDrop += async (_, e) =>
+        {
+            if (e.Data?.GetData(DataFormats.FileDrop) is string[] { Length: > 0 } paths)
+            {
+                await LoadSoundtrackAsync(paths[0]);
+            }
+        };
         // Freezing the last playing content turns the export back into an image.
         _preview.SelectedImageChanged += (_, _) => UpdateButtons();
         _preview.ImagesChanged += (_, _) => UpdateButtons();
@@ -300,6 +338,7 @@ internal sealed class MainForm : Form
             _resetButton.Image?.Dispose();
             _effectResetButton.Image?.Dispose();
             _effectsLabel.Font.Dispose();
+            _globalLabel.Font.Dispose();
             _grayscaleIcon.Image?.Dispose();
             _gaussian.Image?.Dispose();
             _pixelate.Image?.Dispose();
@@ -501,6 +540,11 @@ internal sealed class MainForm : Form
         }
     }
 
+    /// <summary>Videos the pickers offer, mirroring <see cref="VideoFrames"/>.</summary>
+    private static readonly string[] VideoExtensions = ["mp4", "m4v", "mov", "avi", "wmv", "asf", "mkv", "webm", "3gp", "3g2", "mpg", "mpeg", "ts", "m2ts", "mts"];
+
+    private static string Patterns(IEnumerable<string> extensions) => string.Join(";", extensions.Select(e => $"*.{e}"));
+
     /// <summary>
     /// Every supported type at once, then one filter per type, then all files. Videos mirror
     /// <see cref="VideoFrames"/>; text is detected by content, so only its common extensions are listed.
@@ -510,12 +554,10 @@ internal sealed class MainForm : Form
         (string Name, string[] Extensions)[] types =
         [
             ("Images", new[] { "png", "jpg", "jpeg", "bmp", "gif", "tif", "tiff", "webp" }),
-            ("Videos", new[] { "mp4", "m4v", "mov", "avi", "wmv", "asf", "mkv", "webm", "3gp", "3g2", "mpg", "mpeg", "ts", "m2ts", "mts" }),
+            ("Videos", VideoExtensions),
             ("PDF", new[] { "pdf" }),
             ("Text", new[] { "txt", "md", "log", "csv", "json", "xml" }),
         ];
-
-        static string Patterns(IEnumerable<string> extensions) => string.Join(";", extensions.Select(e => $"*.{e}"));
 
         return string.Join(
             "|",
@@ -663,6 +705,7 @@ internal sealed class MainForm : Form
         }
     }
 
+    /// <summary>Removes every image and the global effects: back to the initial state.</summary>
     private void ClearAll()
     {
         if (IsExporting)
@@ -671,16 +714,32 @@ internal sealed class MainForm : Form
         }
 
         int count = _preview.Images.Count;
-        if (count == 0)
+        bool soundtrack = _soundtrack is not null;
+        if (count == 0 && !soundtrack)
         {
             return;
         }
 
         _preview.Clear();
-        ShowStatus(count == 1 ? "1 image removed." : $"{count} images removed.");
+        _soundtrack = null;
+        _soundtrackOn = false;
+        ApplySoundtrack();
+
+        var removed = new List<string>();
+        if (count > 0)
+        {
+            removed.Add(count == 1 ? "1 image" : $"{count} images");
+        }
+
+        if (soundtrack)
+        {
+            removed.Add(count > 0 ? "the soundtrack" : "The soundtrack");
+        }
+
+        ShowStatus($"{string.Join(" and ", removed)} removed.");
     }
 
-    /// <summary>Copies the grid in the format its content suits: a PNG, or an MP4 video while a content plays.</summary>
+    /// <summary>Copies the grid in the format its content suits: a PNG, or an MP4 video while a content plays or a soundtrack is on.</summary>
     private void CopyToClipboard() => Copy(AdaptedFormat);
 
     /// <summary>
@@ -749,7 +808,7 @@ internal sealed class MainForm : Form
         }
     }
 
-    /// <summary>Saves the grid in the format its content suits: a PNG, or an MP4 video while a content plays.</summary>
+    /// <summary>Saves the grid in the format its content suits: a PNG, or an MP4 video while a content plays or a soundtrack is on.</summary>
     private void Save() => SaveAs(AdaptedFormat);
 
     /// <summary>Saves the grid as a PNG, or — <paramref name="format"/> given — as an MP4 video or a GIF.</summary>
@@ -812,8 +871,14 @@ internal sealed class MainForm : Form
     /// <summary>Content that plays: a frozen one is exported as a still.</summary>
     private bool HasAnimation => _preview.Images.Any(i => i.Plays);
 
-    /// <summary>What Copy and Save produce without a format picked from their menu: an MP4 video while a content plays, else a PNG (null).</summary>
-    private GridExport.Format? AdaptedFormat => HasAnimation ? GridExport.Format.Mp4 : null;
+    /// <summary>The soundtrack mixed into the preview and the MP4 export; <c>null</c> while off.</summary>
+    private Soundtrack? ActiveSoundtrack => _soundtrackOn ? _soundtrack : null;
+
+    /// <summary>A video to export: content that plays, or a soundtrack over stills.</summary>
+    private bool ProducesVideo => HasAnimation || ActiveSoundtrack is not null;
+
+    /// <summary>What Copy and Save produce without a format picked from their menu: an MP4 video while a content plays or a soundtrack is on, else a PNG (null).</summary>
+    private GridExport.Format? AdaptedFormat => ProducesVideo ? GridExport.Format.Mp4 : null;
 
     private static string Extension(GridExport.Format? format) => format switch
     {
@@ -859,7 +924,7 @@ internal sealed class MainForm : Form
     /// </summary>
     private async Task<GridExport.Result?> ExportAnimationAsync(string path, GridExport.Format format)
     {
-        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!);
+        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, ActiveSoundtrack);
         string what = format == GridExport.Format.Gif ? "GIF" : "video";
         var cancellation = BeginExport($"Exporting the {what}… 0 %", cancellable: true);
         var progress = new Progress<double>(done =>
@@ -1051,17 +1116,18 @@ internal sealed class MainForm : Form
     private void UpdateButtons()
     {
         bool any = _preview.Images.Count > 0 && !IsExporting;
-        _clearButton.Enabled = any;
+        _clearButton.Enabled = (_preview.Images.Count > 0 || _soundtrack is not null) && !IsExporting;
         _copyButton.Enabled = any;
         _saveButton.Enabled = any;
 
         // The main parts name what they produce; the menus force a GIF or a video, pointless when nothing plays.
-        string format = HasAnimation ? "MP4" : "PNG";
+        string format = ProducesVideo ? "MP4" : "PNG";
         _copyButton.Text = $"Copy {format}";
         _saveButton.Text = $"Save {format}…";
         _copyArrow.Enabled = any && HasAnimation;
         _saveArrow.Enabled = any && HasAnimation;
         UpdateEffects();
+        UpdateGlobalEffects();
     }
 
     /// <summary>The main part of a split button: its right edge touches its arrow.</summary>
@@ -1309,6 +1375,111 @@ internal sealed class MainForm : Form
         _effectResetButton.Visible = _selectedEffect is not null;
         _effectResetButton.Enabled = usable && ResetLook(_selectedEffect) != look;
         _preview.ShowsBlurBars = _selectedEffect == ImageEffect.Blur && look?.IsActive(ImageEffect.Blur) == true;
+    }
+
+    /// <summary>
+    /// The soundtrack's toggle: on or off, its file and level kept; with no file yet, it opens the
+    /// picker, turned on once a file is chosen.
+    /// </summary>
+    private void ToggleSoundtrack()
+    {
+        if (IsExporting)
+        {
+            return;
+        }
+
+        if (_soundtrack is null)
+        {
+            BrowseSoundtrack();
+            return;
+        }
+
+        _soundtrackOn = !_soundtrackOn;
+        ApplySoundtrack();
+    }
+
+    private async void BrowseSoundtrack()
+    {
+        using var dialog = new OpenFileDialog
+        {
+            Title = "Choose a soundtrack",
+            Filter = string.Join(
+                "|",
+                $"Audio and video files|{Patterns(SoundtrackFile.AudioExtensions.Concat(VideoExtensions))}",
+                $"Audio|{Patterns(SoundtrackFile.AudioExtensions)}",
+                $"Videos|{Patterns(VideoExtensions)}",
+                "All files (*.*)|*.*"),
+        };
+        if (dialog.ShowDialog(this) == DialogResult.OK)
+        {
+            await LoadSoundtrackAsync(dialog.FileName);
+        }
+    }
+
+    /// <summary>
+    /// Makes the sound track of <paramref name="path"/> the soundtrack, turned on at the level the
+    /// slider shows; opened off the UI thread. A file without a readable sound track changes nothing.
+    /// </summary>
+    private async Task LoadSoundtrackAsync(string path)
+    {
+        if (RefuseWhileExporting())
+        {
+            return;
+        }
+
+        var soundtrack = await Task.Run(() => SoundtrackFile.TryOpen(path));
+        if (soundtrack is null)
+        {
+            ShowStatus($"{Path.GetFileName(path)}: no sound track Windows can read.", error: true);
+            return;
+        }
+
+        _soundtrack = soundtrack.WithLevel(_soundtrack?.Level ?? 1);
+        _soundtrackOn = true;
+        ApplySoundtrack();
+        ShowStatus($"Soundtrack: {Path.GetFileName(path)} · {Seconds(soundtrack.Duration)}.");
+    }
+
+    /// <summary>Acting on the volume turns the soundtrack on (RULES.md).</summary>
+    private void SetSoundtrackVolume()
+    {
+        _soundtrackVolumeLabel.Text = VolumeText(_soundtrackVolume.Value);
+        if (!_syncingEffects && _soundtrack is not null)
+        {
+            _soundtrack = _soundtrack.WithLevel(_soundtrackVolume.Value / 100.0);
+            _soundtrackOn = true;
+            ApplySoundtrack();
+        }
+    }
+
+    /// <summary>The soundtrack as it stands, to the preview, then to the row and the output buttons.</summary>
+    private void ApplySoundtrack()
+    {
+        _preview.Soundtrack = ActiveSoundtrack;
+        UpdateButtons();
+    }
+
+    /// <summary>
+    /// Shows the global effects: the toggle pressed while the soundtrack is on, its file and level —
+    /// kept while it is off. The row stays enabled with no cell selected, and is locked while exporting.
+    /// </summary>
+    private void UpdateGlobalEffects()
+    {
+        _globalRow.Enabled = !IsExporting;
+        _soundtrackToggle.Checked = ActiveSoundtrack is not null;
+
+        // A long name is cut, the whole path in its tooltip.
+        const int MaxName = 32;
+        string? name = _soundtrack is null ? null : Path.GetFileName(_soundtrack.Path);
+        _soundtrackFile.Text = name is null ? "No file" : name.Length <= MaxName ? name : name[..(MaxName - 1)] + "…";
+        _soundtrackFile.ForeColor = name is null ? SystemColors.GrayText : SystemColors.ControlText;
+        _toolTip.SetToolTip(_soundtrackFile, _soundtrack?.Path);
+
+        _syncingEffects = true;
+        _soundtrackVolume.Value = (int)Math.Round((_soundtrack?.Level ?? 1) * 100);
+        _syncingEffects = false;
+        _soundtrackVolume.Enabled = _soundtrack is not null;
+        _soundtrackVolumeLabel.Text = VolumeText(_soundtrackVolume.Value);
     }
 
     /// <summary>Why <paramref name="effect"/> does not apply to <paramref name="image"/>; <c>null</c> when it does.</summary>
