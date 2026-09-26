@@ -352,6 +352,7 @@ Questions asked by the agent during design, with user responses.
 | 14 | Copy (clipboard): does the copied image keep the transparency? | `PNG` stream keeps the alpha, bitmap flavour on white | 2026-09-26 |
 | 15 | Go for implementation? | No — the gate holds | 2026-09-26 |
 | 16 | Go for implementation (confirming a go relayed by another session)? | Code, tests and documentation | 2026-09-26 |
+| 17 | After testing in the app, is the task finished? | Yes — validated by the user | 2026-09-26 |
 
 ---
 
