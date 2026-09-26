@@ -145,6 +145,7 @@ Questions asked by the agent during design, with user responses.
 | 5 | Page step of the slider: 15°, 45° or 90°? | Asked what the track is — explained, asked again (#7) | 2026-09-26 |
 | 6 | Width of the slider: keep 160 px or widen it? | Widen to 360 px | 2026-09-26 |
 | 7 | Page step (a click on the slider's bar beside the thumb, PageUp / PageDown): 15°, 45° or 90°? | 15° | 2026-09-26 |
+| 8 | Go for the implementation? | No — the gate holds | 2026-09-26 |
 
 ---
 
