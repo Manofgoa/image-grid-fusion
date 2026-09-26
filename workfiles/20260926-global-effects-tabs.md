@@ -255,7 +255,7 @@ Questions asked by the agent during design, with user responses.
 | 8 | The preview loses one tabs row of height: accepted? | "Didn't get it — at worst, raise the initial window height?" → the initial window grows by the tabs row's height | 2026-09-26 |
 | 9 | Start implementing? | No — the gate holds | 2026-09-26 |
 | 10 | (user) Do the recent changes endanger the task? Then GO | Analysis in Iteration 3: no blocker; GO read as code + documentation, on `main` | 2026-09-27 |
-| 11 | Is the task finished? | | |
+| 11 | Is the task finished? | Yes, finished | 2026-09-27 |
 
 ---
 
