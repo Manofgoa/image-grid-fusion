@@ -48,6 +48,10 @@ Relevant components: `UI/MainForm.cs` — `Copy`, `CopyToClipboard`, `RenderStil
   2560 × 1340 grid lands around 1–2 MB).
 - **Content**: the same still as the normal copy — `RenderStillAsync()`, so every effect shows
   (`Compositor.DrawCell`), and animated content gives the page each image shows.
+- **Transparency**: JPEG carries no alpha, so the still is **flattened on white**
+  (`Compositor.Flattened`) — a cell whose Background effect is off comes out white, as RULES.md's
+  *Background Exception* requires for outputs without alpha. The downscaled bitmap put on the
+  clipboard is the same flattened image.
 
 ### Clipboard Content
 
@@ -135,6 +139,14 @@ Open questions answered:
 - Clipboard: the JPEG **file** (file drop list) **plus the downscaled bitmap**.
 - Save unchanged — the scope stays on Copy.
 - README changes listed.
+
+### Iteration 3 — 2026-09-26
+
+- New rule (RULES.md, *Background Exception*, commit 77775e7): a cell whose Background effect is
+  off is transparent, drawn white in the outputs without alpha. The normal copy now flattens its
+  bitmap on white (commit e1ebfb7).
+- The light copy follows it: the JPEG and its downscaled bitmap are **flattened on white**
+  (`Compositor.Flattened`) before encoding.
 
 ---
 
