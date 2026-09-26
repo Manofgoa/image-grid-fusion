@@ -60,8 +60,9 @@ Explored on 2026-09-26, before the Global effects row landed; line numbers may h
   | `Thickness` | `0.006` (0.6 %) | Fraction of the grid's shorter side, 0.1–6 % — resolution-independent |
   | `OuterFrame` | `false` | Also draw along the outer edge of the grid (not used by Corners) |
 
-- The color is **not** part of the effect state: it is read from the app setting (see *Settings
-  Menu*) when drawing.
+- The color is **not** an option of the effect: it comes from the app setting (see *Settings
+  Menu*). The record carries it (`Color` field) so rendering needs nothing else; *Clear all* resets
+  every field but the color.
 - A toggle flag next to it, as for the Soundtrack: **on** at start-up. Turned off, the settings are
   kept; turned on again, they apply as they were.
 - Per RULES.md § Global Effects: untouched by an image replaced, by the cell *Reset* buttons, by a
@@ -70,15 +71,17 @@ Explored on 2026-09-26, before the Global effects row landed; line numbers may h
 
 ## Global Effects Row
 
-- After the Soundtrack's controls: a **Borders** toggle, then, **only while it is on**, its options
+- After the Soundtrack's controls: a **▦ Borders** toggle, then, **only while it is on**, its options
   beside it:
-  1. **Style** — five choices, *Corners* first.
+  1. **Style** — a drop-down list of the five choices, *Corners* first.
   2. **Thickness** slider, **0.1 – 6.0 %** by steps of 0.1, default **0.6 %**, with its value
      label (`0.6 %`).
   3. **Outer frame** checkbox — **disabled in the Corners style** (the brackets already are the
      frame), its value kept for the other styles.
 - Enabled with no cell selected; locked while exporting, like the rest of the row.
 - The row keeps its single height (tallest control).
+- *Clear all* is enabled as soon as the borders differ from their initial state; used on borders
+  alone, its status line says *Borders back to their initial state.*
 
 ## Settings Menu
 
@@ -87,8 +90,10 @@ Explored on 2026-09-26, before the Global effects row landed; line numbers may h
   `Color.HotPink`).
 - A click opens the standard `ColorDialog`, preselected on the current color. **OK** → new color,
   applied at once to the grid and **persisted**; **Cancel** → nothing changes.
-- Persisted per user in the registry (`HKCU\Software\ImageGridFusion`), following the
-  *Start with Windows* precedent — no settings file.
+- Persisted per user in the registry (`HKCU\Software\ImageGridFusion`, DWORD `BorderColor`, ARGB),
+  following the *Start with Windows* precedent — no settings file (`UI/AppSettings.cs`).
+- A registry write failure keeps the color for the session and says so in the status line.
+- The item is disabled while exporting, like the Global effects row.
 - It is the **only** border color: no color control in the Borders options.
 
 ## Rendering
@@ -110,9 +115,13 @@ the preview, the still export and the GIF / video frames get it from one place.
   | Style | Gap fill |
   |---|---|
   | Solid | Filled with the border color |
-  | Dashed | Dashes across the gap, length and spacing scaled with `t` |
-  | Dotted | Round dots of diameter `t`, spacing scaled with `t` |
-  | Double | Two parallel lines, each ⅓ of `t`, ⅓ of `t` apart |
+  | Dashed | Dashes `3t` long, `2t` apart |
+  | Dotted | Round dots of diameter `t`, one every `2t` |
+  | Double | Two parallel lines, each ⅓ of `t` (at least 1 px), along both edges of the gap |
+
+- Each stretch of line runs **along the drawn cells**: it stops where a crossing gap begins, so
+  T-junctions stay clean; where four cells meet, the crossing square is left to the Solid fill only
+  (transparent for the other styles).
 
 - Where the style leaves the gap unpainted (between dashes, dots, the Double's middle), it is
   **transparent**, like a cell whose Background is off: the preview's checkerboard, a PNG's alpha,
@@ -132,15 +141,18 @@ the preview, the still export and the GIF / video frames get it from one place.
 - Hit-testing (selection, hover, drop target, swap) keeps using the **unshrunk cell slots**: a point
   in a gap belongs to the cell whose slot contains it, so no dead zone appears between cells.
 - Outlines and on-cell handles follow the **shrunk** rectangle, where the image is drawn.
-- The live-drag fast path repaints with the same shrunk rectangle.
+- The live-drag fast path repaints with the same shrunk rectangle, then repaints the corner
+  brackets within it.
+- Text pages are laid out again for the shrunk cells, as when a separator moves.
 
 ## Rules and Glossary
 
-To record with the README step:
+Recorded with the documentation step:
 
 - RULES.md § Global Effects: a global effect may read an **app setting** persisted outside its
-  state (the Borders color) — the effect state itself stays not persisted.
-- GLOSSARY: *Global effect* lists Borders; new entry *Corners style*.
+  state (the Borders color) — the effect state itself stays not persisted; a global effect's gap
+  shrinks the cells in `Compositor`, hit-testing keeping the unshrunk slots.
+- GLOSSARY: *Global effect* lists Borders; new entries *Borders*, *Corners style*, *Gap*.
 
 ---
 
@@ -242,6 +254,29 @@ Go given: *code, tests and documentation* (Q&A #21) — no unit tests by decisio
 documentation step covers README, RULES.md and GLOSSARY.md. Branch: `main`, the repository's
 standing choice.
 
+### Iteration 6 — 2026-09-26 — 🧭 Implementation choices
+
+No project rule broken. Choices the frozen design left open:
+
+- **Color carried by the record**: `GridBorders` holds a `Color` field filled from the app setting,
+  so the compositor and the export job need nothing else; it is still no option of the effect, and
+  *Clear all* keeps it.
+- **Style selector**: a drop-down list; toggle labelled **▦ Borders** (the Soundtrack uses a glyph
+  too).
+- **Patterns**: dashes `3t` long `2t` apart; dots of diameter `t` every `2t`; Double lines ⅓ of `t`
+  each, at least 1 px. Width at least 1 px; a corner arm at least as long as the width.
+- **Junctions**: a line stretch runs along the drawn cells, not the slots — the first render showed
+  stubs crossing the T-junctions; the crossing square where four cells meet stays unpainted for
+  every style but Solid.
+- **Text pages** are laid out again for the shrunk cells (as for a moved separator), so a text keeps
+  filling its cell.
+- **Clear all** is enabled while the borders differ from their initial state; alone, it reports
+  *Borders back to their initial state.*
+- **⚙ Border color** disabled while exporting; a registry write failure keeps the color for the
+  session and shows an error in the status line.
+- **Verification**: every style rendered to PNG through `Compositor.Render` from a throwaway harness
+  (scratchpad, not committed) on the *Featured* and *Grid* layouts, with and without the outer frame.
+
 ---
 
 ## Implementation Log
@@ -251,9 +286,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
+| Code | Iterations 5, 6 | 2026-09-26 | Model + compositor, preview, Global effects row + ⚙ setting + exports — three commits |
+| Unit tests | — | 2026-09-26 | None, by decision (Q&A #20): no test project |
+| README | Iteration 5 | 2026-09-26 | *Borders* section, Features, Fitting rules, Tray & startup; RULES.md and GLOSSARY.md updated too |
 
 ---
 
