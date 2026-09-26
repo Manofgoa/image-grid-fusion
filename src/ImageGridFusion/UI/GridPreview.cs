@@ -403,8 +403,13 @@ internal sealed class GridPreview : Control
         {
             _cache?.Dispose();
             _cache = new Bitmap(canvas.Width, canvas.Height);
-            using var cacheGraphics = Graphics.FromImage(_cache);
-            Compositor.Draw(cacheGraphics, _images, _layout!, canvas.Size, _borders);
+            using (var cacheGraphics = Graphics.FromImage(_cache))
+            {
+                Compositor.Draw(cacheGraphics, _images, _layout!, canvas.Size, _borders);
+            }
+
+            // The Twitter corners cut as a PNG is: the preview shows what Twitter / X shows.
+            _borders?.CutCorners(_cache);
         }
 
         PaintCheckerboard(g, canvas);
@@ -1047,6 +1052,7 @@ internal sealed class GridPreview : Control
             DrawBordersOver(g, cell, canvas.Size);
         }
 
+        _borders?.CutCorners(_cache, cell);
         cell.Offset(canvas.Location);
         Invalidate(cell);
         if (live)
@@ -1102,7 +1108,20 @@ internal sealed class GridPreview : Control
         // Anchored on the canvas, so the squares do not slide when the window is resized.
         _checkerboard.ResetTransform();
         _checkerboard.TranslateTransform(canvas.X, canvas.Y);
-        g.FillRectangle(_checkerboard, canvas);
+
+        // Within the Twitter corners, so the rounded-off corners show the background, as on Twitter / X.
+        float radius = _borders?.Radius(canvas.Size) ?? 0f;
+        if (radius <= 0)
+        {
+            g.FillRectangle(_checkerboard, canvas);
+            return;
+        }
+
+        using var outline = GridBorders.RoundedRectangle(canvas, radius);
+        var smoothing = g.SmoothingMode;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.FillPath(_checkerboard, outline);
+        g.SmoothingMode = smoothing;
     }
 
     /// <summary>
@@ -1724,6 +1743,12 @@ internal sealed class GridPreview : Control
                 DrawBordersOver(g, cells[i], canvas.Size);
                 area = area.IsEmpty ? cells[i] : Rectangle.Union(area, cells[i]);
             }
+        }
+
+        // Each cell cut on its own: the union may cover cells not drawn again, already cut.
+        foreach (int i in indices.Where(i => i < _images.Count))
+        {
+            _borders?.CutCorners(_cache, cells[i]);
         }
 
         area.Offset(canvas.Location);
