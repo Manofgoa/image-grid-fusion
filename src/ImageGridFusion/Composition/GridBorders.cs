@@ -1,3 +1,7 @@
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
+
 namespace ImageGridFusion.Composition;
 
 /// <summary>How the borders are drawn: brackets at the grid's corners, or a line style filling the gap between the cells.</summary>
@@ -12,10 +16,12 @@ public enum BorderPattern
 
 /// <summary>
 /// The Borders global effect: a gap between the cells filled by a line style, with an optional outer
-/// frame, or brackets over the images at the grid's four corners. Its width is a fraction of the
-/// canvas's shorter side, so the preview and every export size look the same.
+/// frame, or brackets over the images at the grid's four corners; with <paramref name="Rounded"/>, the
+/// grid's outer corners rounded the way Twitter / X shows a posted image, the brackets and the frame
+/// following the curve. Its width is a fraction of the canvas's shorter side, so the preview and every
+/// export size look the same.
 /// </summary>
-public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool OuterFrame, Color Color)
+public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool OuterFrame, Color Color, bool Rounded)
 {
     public const double MinThickness = 0.001;
     public const double MaxThickness = 0.06;
@@ -24,14 +30,42 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool O
     /// <summary>Share of the grid edge each arm of a corner bracket covers.</summary>
     public const double CornerArm = 0.1;
 
-    /// <summary>The borders as the app starts and as Clear all leaves them, in <paramref name="color"/>.</summary>
-    public static GridBorders Initial(Color color) => new(BorderPattern.Corners, DefaultThickness, false, color);
+    /// <summary>
+    /// Share of the grid's longer side the radius of the Twitter corners takes: Twitter / X rounds a
+    /// posted image by 16 CSS px, and shows it about 540 px across its longer side.
+    /// </summary>
+    public const double CornerRadiusShare = 0.03;
+
+    /// <summary>The borders as the app starts and as Clear all leaves them, in <paramref name="color"/>, their corners <paramref name="rounded"/> or not.</summary>
+    public static GridBorders Initial(Color color, bool rounded) => new(BorderPattern.Corners, DefaultThickness, false, color, rounded);
 
     /// <summary>Whether the cells shrink to leave a gap between them: every style but the corners.</summary>
     public bool HasGap => Pattern != BorderPattern.Corners;
 
     /// <summary>The border width on <paramref name="canvas"/>, in pixels, at least one.</summary>
     public int Width(Size canvas) => Math.Max(1, (int)Math.Round(Thickness * Math.Min(canvas.Width, canvas.Height)));
+
+    /// <summary>The radius of the grid's rounded corners on <paramref name="canvas"/>, in pixels; 0 when they are square.</summary>
+    public float Radius(Size canvas) => Rounded ? (float)(CornerRadiusShare * Math.Max(canvas.Width, canvas.Height)) : 0f;
+
+    /// <summary><paramref name="bounds"/> with its corners rounded by <paramref name="radius"/>; a plain rectangle when it is 0 or less.</summary>
+    public static GraphicsPath RoundedRectangle(RectangleF bounds, float radius)
+    {
+        var path = new GraphicsPath();
+        float diameter = Math.Min(2 * radius, Math.Min(bounds.Width, bounds.Height));
+        if (diameter <= 0)
+        {
+            path.AddRectangle(bounds);
+            return path;
+        }
+
+        path.AddArc(bounds.Left, bounds.Top, diameter, diameter, 180, 90);
+        path.AddArc(bounds.Right - diameter, bounds.Top, diameter, diameter, 270, 90);
+        path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
+        path.AddArc(bounds.Left, bounds.Bottom - diameter, diameter, diameter, 90, 90);
+        path.CloseFigure();
+        return path;
+    }
 
     /// <summary>
     /// The cells as drawn: each shrinks by half the width on every edge it shares with a neighbour, and,
@@ -79,7 +113,7 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool O
             gap.Exclude(cell);
         }
 
-        g.SetClip(gap, System.Drawing.Drawing2D.CombineMode.Intersect);
+        g.SetClip(gap, CombineMode.Intersect);
         using var brush = new SolidBrush(Color);
         if (Pattern == BorderPattern.Solid)
         {
@@ -95,31 +129,176 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool O
         }
 
         g.Clip = clip;
+        DrawOver(g, canvas);
     }
 
     /// <summary>
-    /// Draws what lies over the images — the corner brackets, nothing for the other styles: what a cell
-    /// drawn again must repaint over itself.
+    /// Draws what lies over the images — the corner brackets; with rounded corners, the corners of the
+    /// outer frame, which follow the curve over the corner cells; nothing else: what a cell drawn again
+    /// must repaint over itself.
     /// </summary>
     public void DrawOver(Graphics g, Size canvas)
     {
+        int width = Width(canvas);
+        float radius = Radius(canvas);
+        using var brush = new SolidBrush(Color);
         if (HasGap)
+        {
+            if (OuterFrame && radius > 0)
+            {
+                DrawFrameCorners(g, brush, canvas, width, radius);
+            }
+
+            return;
+        }
+
+        // An arm is at least as long as the radius, so the curve always fits in its bracket.
+        int reach = (int)Math.Ceiling(radius);
+        int armX = Math.Max(Math.Max(width, reach), (int)Math.Round(canvas.Width * CornerArm));
+        int armY = Math.Max(Math.Max(width, reach), (int)Math.Round(canvas.Height * CornerArm));
+        int right = canvas.Width - width, bottom = canvas.Height - width;
+        if (radius <= 0)
+        {
+            g.FillRectangles(brush,
+            [
+                new(0, 0, armX, width), new(0, 0, width, armY),
+                new(canvas.Width - armX, 0, armX, width), new(right, 0, width, armY),
+                new(0, bottom, armX, width), new(0, canvas.Height - armY, width, armY),
+                new(canvas.Width - armX, bottom, armX, width), new(right, canvas.Height - armY, width, armY),
+            ]);
+            return;
+        }
+
+        // Each bracket is the ring along the rounded outline, a width deep, kept within the reach of its arms.
+        using var ring = Ring(canvas, radius, 0, width);
+        FillWithin(g, brush, ring,
+        [
+            new(0, 0, armX, armY), new(canvas.Width - armX, 0, armX, armY),
+            new(0, canvas.Height - armY, armX, armY), new(canvas.Width - armX, canvas.Height - armY, armX, armY),
+        ]);
+    }
+
+    /// <summary>
+    /// Makes the grid's rounded-off corners transparent on <paramref name="bitmap"/>, the whole canvas,
+    /// with an anti-aliased edge: for the outputs keeping alpha, and the preview. Outputs without alpha
+    /// keep their corners, Twitter / X rounding them itself. Nothing happens with square corners.
+    /// </summary>
+    public void CutCorners(Bitmap bitmap) => CutCorners(bitmap, new Rectangle(Point.Empty, bitmap.Size));
+
+    /// <summary>
+    /// <see cref="CutCorners(Bitmap)"/> within <paramref name="area"/> only: a cell drawn again is cut
+    /// once, the pixels around it, already cut, left alone.
+    /// </summary>
+    public void CutCorners(Bitmap bitmap, Rectangle area)
+    {
+        float radius = Radius(bitmap.Size);
+        if (radius <= 0)
         {
             return;
         }
 
-        int width = Width(canvas);
-        int armX = Math.Max(width, (int)Math.Round(canvas.Width * CornerArm));
-        int armY = Math.Max(width, (int)Math.Round(canvas.Height * CornerArm));
-        int right = canvas.Width - width, bottom = canvas.Height - width;
-        using var brush = new SolidBrush(Color);
-        g.FillRectangles(brush,
+        int reach = (int)Math.Ceiling(radius);
+        int w = bitmap.Width, h = bitmap.Height;
+        var corners = new[]
+        {
+            (Square: new Rectangle(0, 0, reach, reach), X: radius, Y: radius, SignX: -1, SignY: -1),
+            (Square: new Rectangle(w - reach, 0, reach, reach), X: w - radius, Y: radius, SignX: 1, SignY: -1),
+            (Square: new Rectangle(0, h - reach, reach, reach), X: radius, Y: h - radius, SignX: -1, SignY: 1),
+            (Square: new Rectangle(w - reach, h - reach, reach, reach), X: w - radius, Y: h - radius, SignX: 1, SignY: 1),
+        };
+        var bounds = Rectangle.Intersect(area, new Rectangle(0, 0, w, h));
+        foreach (var corner in corners)
+        {
+            var part = Rectangle.Intersect(corner.Square, bounds);
+            if (part.Width <= 0 || part.Height <= 0)
+            {
+                continue;
+            }
+
+            var data = bitmap.LockBits(part, ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
+            try
+            {
+                var row = new byte[part.Width * 4];
+                for (int y = 0; y < part.Height; y++)
+                {
+                    var line = data.Scan0 + y * data.Stride;
+                    Marshal.Copy(line, row, 0, row.Length);
+                    float dy = Math.Max(0f, corner.SignY * (part.Y + y + 0.5f - corner.Y));
+                    for (int x = 0; x < part.Width; x++)
+                    {
+                        // How much of the pixel lies inside the curve, from its center's distance to it.
+                        float dx = Math.Max(0f, corner.SignX * (part.X + x + 0.5f - corner.X));
+                        float coverage = Math.Clamp(radius - MathF.Sqrt(dx * dx + dy * dy) + 0.5f, 0f, 1f);
+                        row[4 * x + 3] = (byte)Math.Round(row[4 * x + 3] * coverage);
+                    }
+
+                    Marshal.Copy(row, 0, line, row.Length);
+                }
+            }
+            finally
+            {
+                bitmap.UnlockBits(data);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The corners of the outer frame along the rounded outline, over the corner cells: the solid ring,
+    /// or the double style's two lines.
+    /// </summary>
+    private void DrawFrameCorners(Graphics g, Brush brush, Size canvas, int width, float radius)
+    {
+        int reach = Math.Max(width, (int)Math.Ceiling(radius));
+        Rectangle[] squares =
         [
-            new(0, 0, armX, width), new(0, 0, width, armY),
-            new(canvas.Width - armX, 0, armX, width), new(right, 0, width, armY),
-            new(0, bottom, armX, width), new(0, canvas.Height - armY, width, armY),
-            new(canvas.Width - armX, bottom, armX, width), new(right, canvas.Height - armY, width, armY),
-        ]);
+            new(0, 0, reach, reach), new(canvas.Width - reach, 0, reach, reach),
+            new(0, canvas.Height - reach, reach, reach), new(canvas.Width - reach, canvas.Height - reach, reach, reach),
+        ];
+        if (Pattern == BorderPattern.Double)
+        {
+            float line = Math.Max(1f, width / 3f);
+            using var outer = Ring(canvas, radius, 0, line);
+            using var inner = Ring(canvas, radius, width - line, width);
+            FillWithin(g, brush, outer, squares);
+            FillWithin(g, brush, inner, squares);
+            return;
+        }
+
+        using var ring = Ring(canvas, radius, 0, width);
+        FillWithin(g, brush, ring, squares);
+    }
+
+    /// <summary>
+    /// The band between the canvas's outline rounded by <paramref name="radius"/> and inset by
+    /// <paramref name="from"/>, and the same inset by <paramref name="to"/>: every outline keeps the
+    /// same centers of curvature, its radius shrinking with the inset.
+    /// </summary>
+    private static GraphicsPath Ring(Size canvas, float radius, float from, float to)
+    {
+        var bounds = new RectangleF(PointF.Empty, canvas);
+        using var outer = RoundedRectangle(RectangleF.Inflate(bounds, -from, -from), radius - from);
+        using var inner = RoundedRectangle(RectangleF.Inflate(bounds, -to, -to), radius - to);
+        var ring = new GraphicsPath(FillMode.Alternate);
+        ring.AddPath(outer, connect: false);
+        ring.AddPath(inner, connect: false);
+        return ring;
+    }
+
+    /// <summary>Fills <paramref name="path"/>, anti-aliased, only within <paramref name="areas"/> and the clip already set.</summary>
+    private static void FillWithin(Graphics g, Brush brush, GraphicsPath path, Rectangle[] areas)
+    {
+        var state = g.Save();
+        using var within = new Region();
+        within.MakeEmpty();
+        foreach (var area in areas)
+        {
+            within.Union(area);
+        }
+
+        g.SetClip(within, CombineMode.Intersect);
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.FillPath(brush, path);
+        g.Restore(state);
     }
 
     /// <summary>
@@ -202,7 +381,7 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool O
                 break;
             case BorderPattern.Dotted:
                 var smoothing = g.SmoothingMode;
-                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
                 for (float a = band.From; a + width <= band.To; a += 2f * width)
                 {
                     g.FillEllipse(brush, Part(a, a + width, 0, width));
