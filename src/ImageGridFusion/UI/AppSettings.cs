@@ -5,7 +5,7 @@ namespace ImageGridFusion.UI;
 /// <summary>
 /// The app's settings remembered between sessions, per user, in the registry — no settings file: the
 /// border color, whether the borders' Twitter corners are on by default, the file explorer's base
-/// folder and whether its panel is open.
+/// folder, whether its panel is open and its column count, and the window's size.
 /// </summary>
 internal static class AppSettings
 {
@@ -15,6 +15,8 @@ internal static class AppSettings
     private const string ExplorerFolderName = "ExplorerFolder";
     private const string ExplorerPanelOpenName = "ExplorerPanelOpen";
     private const string ExplorerColumnsName = "ExplorerColumns";
+    private const string WindowWidthName = "WindowWidth";
+    private const string WindowHeightName = "WindowHeight";
 
     /// <summary>The border color before one is chosen.</summary>
     public static readonly Color DefaultBorderColor = Color.HotPink;
@@ -137,5 +139,37 @@ internal static class AppSettings
     {
         using var key = Registry.CurrentUser.CreateSubKey(Key);
         key.SetValue(ExplorerColumnsName, columns, RegistryValueKind.DWord);
+    }
+
+    /// <summary>
+    /// The client size the window had at its last use, in logical (96 DPI) pixels; null when none was
+    /// saved, a value is missing or not positive, or the key cannot be read.
+    /// </summary>
+    public static Size? WindowClientSize
+    {
+        get
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey(Key);
+                return key is not null
+                    && key.GetValue(WindowWidthName) is int width && width > 0
+                    && key.GetValue(WindowHeightName) is int height && height > 0
+                    ? new Size(width, height)
+                    : null;
+            }
+            catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+            {
+                return null;
+            }
+        }
+    }
+
+    /// <summary>Saves the window's client size, in logical pixels; throws an <see cref="StartupRegistration.IsRegistryError"/> exception on failure.</summary>
+    public static void SaveWindowClientSize(Size size)
+    {
+        using var key = Registry.CurrentUser.CreateSubKey(Key);
+        key.SetValue(WindowWidthName, size.Width, RegistryValueKind.DWord);
+        key.SetValue(WindowHeightName, size.Height, RegistryValueKind.DWord);
     }
 }
