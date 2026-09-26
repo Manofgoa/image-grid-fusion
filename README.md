@@ -15,8 +15,8 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 - Several layouts per image count, picked from a strip of thumbnails — more of them under its **More** group — plus a mirror toggle; drag the separator between two cells to resize them (see Layouts)
 - No image list: the grid preview *is* the interface
   - Click a cell to select it, `Esc` to deselect; the effect tabs act on the selected cell (see Effects)
-    - The selected cell shows, in fluorescent green at its bottom left, the name of the file its image came from — shortened in the middle when too wide, the extension kept; hover it for the full path. Never in the exports
-    - The folder icon after the name opens Explorer on the file's folder, the file selected (a file moved or deleted since: its folder opens, if still there, and the status bar says so)
+    - The selected cell shows, in fluorescent green at its bottom left, after a folder icon, the name of the file its image came from — shortened in the middle when too wide, the extension kept; hover it for the full path. Never in the exports
+    - The folder icon left of the name opens Explorer on the file's folder, the file selected (a file moved or deleted since: its folder opens, if still there, and the status bar says so)
     - An image without a file shows how it arrived instead, with no icon: *Pasted image*, *Pasted text* or *Dropped text*
   - Hover a cell to outline it and show a **×** to remove it, or press `Delete` to remove the selected one
   - Videos, animated GIFs, PDFs of several pages and long texts play live in their cell (see Animated content); the **Frames** effect sets where one starts, or freezes it on a frame
