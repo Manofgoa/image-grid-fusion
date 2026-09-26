@@ -178,6 +178,11 @@ default 100 %; no unit tests, manual verification. No open question left. Docume
 if the go covers it: README, and `GLOSSARY.md` gains *Soundtrack* (plus the § Global Effects of
 `RULES.md` if `global-fade.md` has not landed it yet).
 
+### Iteration 5 — 2026-09-26 — ✅ Implemented
+
+Go given for code, tests and documentation (Q&A 14). Branch gate: stays on `main`, the repo's
+standing choice (no worktree requested).
+
 ---
 
 ## Implementation Log
@@ -212,6 +217,7 @@ Questions asked by the agent during design, with user responses.
 | 11 | Does *Reset* remove the soundtrack too? | Not asked — settled by `global-fade.md` (Clear all removes global effects; *Reset* is cell-only) | 2026-09-25 |
 | 12 | Tests: create a test project, or manual verification only? | Manual verification only | 2026-09-25 |
 | 13 | Is every video mixed always, or only while the soundtrack is active? | Not asked — moot, `video-mute.md` delivered the always-on mix | 2026-09-26 |
+| 14 | Start the implementation? | Code, tests and documentation | 2026-09-26 |
 
 ---
 
