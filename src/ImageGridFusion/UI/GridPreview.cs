@@ -149,6 +149,13 @@ internal sealed class GridPreview : Control
 
     public IReadOnlyList<SourceImage> Images => _images;
 
+    /// <summary>
+    /// Counts the changes of the rendered result — images, layout, cell sizes, looks, borders,
+    /// soundtrack — so a caller can tell whether the grid is still what it exported (the last video).
+    /// A selection change is not one.
+    /// </summary>
+    public int ContentVersion { get; private set; }
+
     /// <summary>The soundtrack mixed over the videos while the grid holds an image; <c>null</c> when it is off.</summary>
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public Soundtrack? Soundtrack
@@ -156,8 +163,14 @@ internal sealed class GridPreview : Control
         get => _soundtrack;
         set
         {
+            if (value == _soundtrack)
+            {
+                return;
+            }
+
             _soundtrack = value;
             _player.SetSoundtrack(value);
+            ContentVersion++;
         }
     }
 
@@ -181,6 +194,7 @@ internal sealed class GridPreview : Control
             FitPagesToCells();
             UpdateDisplaySizes();
             Invalidate();
+            ContentVersion++;
         }
     }
 
@@ -307,6 +321,7 @@ internal sealed class GridPreview : Control
         FitPagesToCells();
         SyncPlayer();
         Invalidate();
+        ContentVersion++;
         LayoutChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -913,6 +928,7 @@ internal sealed class GridPreview : Control
         _cache?.Dispose();
         _cache = null;
         Invalidate();
+        ContentVersion++;
 
         // A new image count starts on its default layout, mirror off.
         int? count = _images.Count == 0 ? null : _images.Count;
@@ -1277,6 +1293,7 @@ internal sealed class GridPreview : Control
         bool turned = look.SwapsAxes != image.Look.SwapsAxes;
         bool frames = look.Frames != image.Look.Frames;
         image.Look = look;
+        ContentVersion++;
         if (turned)
         {
             FitPagesToCells();
@@ -1718,6 +1735,7 @@ internal sealed class GridPreview : Control
         FitPagesToCells();
         UpdateDisplaySizes();
         Invalidate();
+        ContentVersion++;
         LayoutChanged?.Invoke(this, EventArgs.Empty);
     }
 
