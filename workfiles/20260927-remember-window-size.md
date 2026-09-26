@@ -26,6 +26,7 @@ Components concerned:
 | `MainForm.OnFormClosing` (l.590) | The **×**, `Alt+F4` and the taskbar's *Close* only hide the window (`Hide()`); a real close — *Quit*, logoff, shutdown — goes through, delayed while an export stops |
 | `MainForm.OnShown` (l.560), `OnVisibleChanged` (l.579), `OnDpiChanged` (l.471) | First-show work; hidden / shown; icons redrawn when the window moves to another monitor |
 | `MainForm.FollowExplorerWidth` (l.2106) | Already resizes the window programmatically — when not maximized, clamped to the screen's working area — as the file explorer widens |
+| `MainForm.OnLoad` — **in progress**, uncommitted in the working tree (`workfiles/20260926-global-effects-tabs.md`) | Grows the window by the global effects' tabs row at start-up, capped at the working area's height, then re-centers it — designed for the default size |
 | `src/ImageGridFusion/UI/AppSettings.cs` | The per-user registry store, `HKCU\Software\ImageGridFusion`: a getter per setting, returning its default when the value is missing or the registry cannot be read; a `SaveX` per setting, throwing on failure; the form wraps each save in a try / catch and reports "… not remembered" in the status line |
 | `src/ImageGridFusion/UI/TrayApplicationContext.cs` | Owns the app's lifetime: shows the window at start (not with `--tray`), hides it on close, quits from the tray through `MainForm.CloseForGood` (l.554) |
 | `README.md` | *Features* and *Tray & startup* list what is remembered between sessions |
@@ -90,6 +91,13 @@ other settings — "Window size not remembered: …" in the status line, read wh
    the floor — the clamp `FollowExplorerWidth` already uses — then **re-centered**
    (`CenterToScreen`).
 
+**Interaction — the global effects' tabs row.** The `OnLoad` override that
+`workfiles/20260926-global-effects-tabs.md` is adding grows the window by the tabs row's height at
+start-up, so the preview keeps the size it had when the global effects sat in one row. That growth
+is meant for the **default** size: applied to a remembered size, the window would grow by a row at
+each launch — opened at the remembered size, grown, saved grown. The two land in one `OnLoad`: grow
+**only when no size was remembered**, then clamp to the working area, then re-center.
+
 > Note — the load clamp applies to whatever size the window opens with, the remembered size **or
 > the default**: today, at 150 % on a 1080p screen, the default's 860 logical px of height become
 > 1290 device px, more than the screen's working area, and the window overflows; after this work it
@@ -153,7 +161,9 @@ exploration straightforward. A single scout pass, made directly (no subagent: th
 by `RULES.md`, three greps answered everything). Design proposed: the logical client size in two
 registry DWORDs of the existing `AppSettings` store, saved when the window closes or hides (once
 opened in the session), applied in the constructor like the default, clamped to the working area at
-load — the default included.
+load — the default included. Found in the working tree, uncommitted: an `OnLoad` override from
+`workfiles/20260926-global-effects-tabs.md` growing the window at start-up — the design confines
+that growth to the default size.
 
 ---
 
