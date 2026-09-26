@@ -37,16 +37,20 @@ GLOSSARY.
 - **Pressed**: an empty box shows **all the files of the index**.
 - **Typing** a search replaces either list with the search results, whatever the toggle; the toggle
   keeps its state, and **clearing the box** brings back the list the toggle chooses.
-- Clicking the toggle while a search is typed changes nothing visible until the box is cleared —
-  it only chooses what the empty box shows. *(See Open Questions: whether clicking it should also
-  clear the box.)*
-- Disabled while there is no index (no base folder, index not loaded yet): the caption says why, as
-  the search does today.
+- Clicking the toggle while a search is typed **also clears the box**, so the chosen list shows at
+  once: a click always has a visible effect.
+- Its state is **remembered between sessions**, in the registry next to the columns count
+  (`AppSettings.ExplorerShowAll`, saved on every click); the app reopens on the same list.
+- With no index yet (no base folder, index not loaded), the toggle stays clickable; pressed, the
+  caption says *Waiting for the index…* (or shows nothing and the invitation, without a base
+  folder), as the search does today.
 
 ## Order of All Files
 
 - **The most recent first**, by the file's date stored in the index (§ Index File), then by
   relative path for equal dates.
+- The date is the file's **creation date** — when it arrived in the folder: a copy or a download
+  made yesterday comes first, however old the photo.
 - The date is read **from the index only** — the explorer never reads the disk to sort, like the
   search.
 
@@ -59,8 +63,8 @@ GLOSSARY.
   it with the dates — nothing else to migrate.
 - The scan takes the date from the enumeration itself (`FileSystemEnumerable` over
   `FileSystemEntry`, no extra disk access per file).
-- `IndexEntry` carries it as a `DateTime` (UTC).
-- Which date — creation or last write — see Open Questions.
+- The date is the **creation time** (`FileSystemEntry.CreationTimeUtc`); `IndexEntry` carries it as
+  a `DateTime` (UTC), written in ISO 8601.
 
 ## Loading as You Scroll
 
@@ -110,14 +114,16 @@ Applies to the three lists: all files, search results, favorites.
 
 ## Test Impact
 
-The app has **no test project**; every previous workfile shipped verified by hand.
+**None** — the app has no test project, and the user chose to ship this work verified by hand,
+like every previous workfile (Q&A #8). The behaviours to check by hand at delivery:
 
-| Behaviour to pin | Test file | Create / Update |
+| Behaviour to check | Test file | Create / Update |
 |---|---|---|
-| Index v2 round-trip: the date column written then read back; a v1 index rejected | — | Pending Open Question (unit tests) |
-| All files sorted newest first, ties by path | — | Pending Open Question (unit tests) |
-| Search returns every match, ranked, no 10-limit | — | Pending Open Question (unit tests) |
-| Paging: batches of 60, append keeps the order | — | Pending Open Question (unit tests) |
+| Index v2 round-trip: the date column written then read back; a v1 index rejected, then rewritten by the launch scan | — (by hand) | — |
+| All files sorted by creation date, newest first, ties by path | — (by hand) | — |
+| Search returns every match, ranked, no 10-limit | — (by hand) | — |
+| Paging: batches of 60, appended without moving the scroll | — (by hand) | — |
+| Toggle remembered between sessions; a click during a search clears the box | — (by hand) | — |
 
 ---
 
@@ -129,14 +135,13 @@ The app has **no test project**; every previous workfile shipped verified by han
 - [x] ~~Order of all files?~~ → The most recent first (Q&A #2)
 - [x] ~~Does loading as you scroll apply only to all files?~~ → Everywhere: all files, search
   results, favorites (Q&A #3)
-- [ ] Which date means "most recent": the **creation date** (when the file arrived in the folder —
-  a copy gets a new one) or the **last write date** (what Explorer shows as *Date modified*)?
-- [ ] Is the toggle's state **remembered between sessions** (registry, like the columns count), or
-  released at every launch?
-- [ ] Clicking the toggle while a search is typed: only choose what the empty box shows, or also
-  **clear the box** to show the chosen list at once?
-- [ ] Unit tests: none, verified by hand like every previous workfile, or a first test project for
-  the index format, the sort and the paging?
+- [x] ~~Which date means "most recent": the creation date or the last write date?~~ → The
+  creation date (Q&A #5)
+- [x] ~~Is the toggle's state remembered between sessions?~~ → Yes, in the registry like the
+  columns count (Q&A #6)
+- [x] ~~Clicking the toggle while a search is typed: only choose, or also clear the box?~~ → Also
+  clear the box (Q&A #7)
+- [x] ~~Unit tests: none, or a first test project?~~ → None, verified by hand (Q&A #8)
 
 ---
 
@@ -153,6 +158,13 @@ its own path; thumbnails are already loaded for painted tiles only. First design
 § Order of All Files, § Index File, § Loading as You Scroll, § Caption, § Refreshes That Keep the
 Place. Four questions left open.
 
+### Iteration 2 — 2026-09-27
+
+Open questions answered (Q&A #5–#8): the **creation date** orders all files; the toggle is
+**remembered** in the registry; clicking it during a search **clears the box**; **no unit tests**,
+verified by hand. § Toggle, § Order of All Files, § Index File and § Test Impact updated. No open
+question left.
+
 ---
 
 ## Implementation Log
@@ -160,7 +172,7 @@ Place. Four questions left open.
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
 | Code | | | |
-| Unit tests | | | |
+| Unit tests | 2 | 2026-09-27 | Declined — no test project, verified by hand (Q&A #8) |
 | README | | | |
 
 ---
@@ -173,10 +185,10 @@ Place. Four questions left open.
 | 2 | Order of the whole index? | The most recent first | 2026-09-27 |
 | 3 | Does loading as you scroll apply only to "show all"? | Everywhere: all files, search results, favorites | 2026-09-27 |
 | 4 | Is the subject straightforward, or tricky / long? | Straightforward | 2026-09-27 |
-| 5 | Which date means "most recent": creation or last write? | | |
-| 6 | Toggle state remembered between sessions? | | |
-| 7 | Clicking the toggle during a search: only choose the empty box's list, or also clear the box? | | |
-| 8 | Unit tests: none, or a first test project? | | |
+| 5 | Which date means "most recent": creation or last write? | Creation date | 2026-09-27 |
+| 6 | Toggle state remembered between sessions? | Yes, remembered | 2026-09-27 |
+| 7 | Clicking the toggle during a search: only choose the empty box's list, or also clear the box? | Also clear the box | 2026-09-27 |
+| 8 | Unit tests: none, or a first test project? | None, verified by hand | 2026-09-27 |
 
 ---
 
