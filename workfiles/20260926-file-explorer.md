@@ -62,12 +62,12 @@ Agreed:
   |---|---|
   | Header | *Files* label, the `»` button at the right |
   | Search | The search box (placeholder *Search files…*), the `↻` button beside it (tooltip *Rescan the folder*; disabled while a scan runs) |
-  | Status | One line: the scan progress, else the index summary — *346 files · indexed 21:03*, *No base folder*, or an error |
-  | Caption | *Favorites (12)* while the box is empty; *57 results — first 10* / *3 results* / *No result* during a search |
+  | Status | One line: the scan progress, else the index summary — *346 files · indexed 21:03*, *No base folder*, *Loading the index…*, or an error in red; a transient message (a missing file, a save failure) gives way to the summary after 5 s; its full text in a tooltip |
+  | Caption | *Favorites (12)* while the box is empty; *57 results — first 10* / *3 results* / *No result* during a search; *Waiting for the index…* while no index exists yet |
   | List | The rows (favorites, or the results), filling the rest of the height |
 
 - **A row** = the heart (`♡` grey, `♥` red when a favorite) in front of the **file name only**;
-  the full path in a tooltip. Owner-drawn list; the heart's hit zone is the first 20 logical px.
+  the full path in a tooltip. Owner-drawn list; the heart's hit zone is the first 22 logical px.
 - **Box empty (or blanks only)**: the list shows **every favorite** — no 10-limit — the **most
   recently added first**. **Box with text**: the 10 best matches (§ Search), the favorites among
   them marked with `♥` and **not promoted**.
@@ -115,7 +115,10 @@ Agreed:
 
 - **Location**: `files.index`, in the exe's folder (`AppContext.BaseDirectory`), next to
   `favorites.txt`. If the folder is not writable, the index stays in memory for the session and
-  the status line says *Index not saved: <error>* — no fallback location.
+  the status line says *346 files · indexed 21:03 · not saved: <error>*, in red — no fallback
+  location.
+- **An invalid folder value** (illegal characters in the setting): treated as no base folder, the
+  status line saying *Invalid folder: <value>*.
 - **Format**, UTF-8 text: three header lines — `ImageGridFusion index 1`, the base folder
   (absolute), the scan's date and time (ISO 8601) — then **one relative path per line**. Extra
   **tab-separated columns** after the path are tolerated and ignored by this version, so a later
@@ -191,6 +194,9 @@ Agreed:
 - **Tooltip**: the full path of the row under the mouse.
 - **Missing file**: the checks of § Index File run before the drag, the activation or the menu
   action; none of them starts on a missing file.
+- **Keys in the search box**: while it has the focus, `Ctrl+V`, `Ctrl+C`, `Delete` and `Escape`
+  edit its text instead of pasting into the grid, copying it, removing the selected cell or
+  deselecting it (`MainForm.ProcessCmdKey` steps aside); `Ctrl+S` still saves.
 
 ---
 
@@ -296,6 +302,29 @@ Go given for the code and the documentation (*Implement code, unit tests and doc
 unit tests being declined at Q&A #13). The run stays on `main`, the standing choice of this
 repository — no worktree asked.
 
+### Iteration 4 — 2026-09-26 — 🧭 Implementation choices
+
+Delivered as designed, in five commits (settings; index, search and favorites; the panel and its
+wiring; README and Glossary; this workfile). No rule broken. The choices the design left open:
+
+- **The window's shortcuts step aside for the search box**: `Ctrl+V`, `Ctrl+C`, `Delete` and
+  `Escape` typed while it has the focus edit its text (`MainForm.ProcessCmdKey`); without that
+  guard, `Delete` in the box removed the selected cell.
+- **Status line texts** the design did not name: *Loading the index…* while the cached index is
+  read (off the UI thread too), *Waiting for the index…* as the caption of a search typed before
+  any index exists, *Invalid folder: …* for an unusable setting; a failed save shows the summary
+  and the error together (*346 files · indexed 21:03 · not saved: …*), in red.
+- **Transient messages** — a missing file, a save failure, the Explorer not opening — give way to
+  the summary after 5 s; the status line's full text is in its tooltip, its width being small.
+- **The heart**: drawn with *Segoe UI Symbol* (♡ grey, ♥ crimson), its hit zone 22 logical px;
+  in the favorites list, un-hearting removes the row once the list is done with the click.
+- **The right click selects the row** under the mouse before the menu opens; the menu does not
+  open outside the rows. `↻` is also disabled while no base folder is set.
+- **The collapse keeps the DPI scaling**: the width is derived from the current one by the
+  280 : 20 ratio, so a panel scaled by the form stays scaled.
+- **Ranking, criterion 2** reads as written: the position of the *first* typed word in the file
+  name; a later word's position does not count.
+
 ---
 
 ## Implementation Log
@@ -305,9 +334,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 3–4 | 2026-09-26 | `bcbd951` settings, `d76767e` index / search / favorites, `afd1c14` panel and wiring |
 | Unit tests | 2 | 2026-09-26 | Declined — no test project, verified by hand (Q&A #13) |
-| README | | | Section *File explorer*, the ⚙ item under *Tray & startup*, the OCR follow-up under *Planned*; GLOSSARY: *File explorer*, *Base folder*, *Index*, *Favorite* |
+| README | 4 | 2026-09-26 | Features bullet, section *File explorer*, the ⚙ item under *Tray & startup*, the OCR follow-up under *Planned*; GLOSSARY: *File explorer*, *Base folder*, *Index*, *Favorite* |
 
 ---
 
