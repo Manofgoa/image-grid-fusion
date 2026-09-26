@@ -219,6 +219,11 @@ while the tab is selected and the effect is on): the resize has no *tab* in the 
 the separator is reachable again once the blur tab is unselected or the blur is off. No behaviour
 change.
 
+### Iteration 6 — 2026-09-26 — ✅ Implemented
+
+Go given for code, unit tests and documentation (unit tests: none, test-free by decision,
+Q&A #13). The run stays on `main`, the repository's standing choice.
+
 ---
 
 ## Implementation Log
