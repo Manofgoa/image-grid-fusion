@@ -292,10 +292,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | Iterations 6, 7 | 2026-09-26 | Borders off by default; Twitter corners model + drawing; preview; PNG cut; checkbox + ⚙ setting; frame-band fix — six commits |
+| Code | Iterations 6, 7, 8, 9 | 2026-09-26 | Borders off by default; Twitter corners model + drawing; preview; PNG cut; checkbox + ⚙ setting; frame-band fix — six commits. Then: exports no longer cut, corners filled by the borders (8); brackets' opacity (9) |
 | Unit tests | — | 2026-09-26 | None, by decision (Q&A #8): no test project |
-| README | Iteration 6 | 2026-09-26 | § Borders, feature list, ⚙ menu |
-| Glossary | Iteration 6 | 2026-09-26 | *Borders* off at start-up; *Twitter corners* |
+| README | Iterations 6, 8, 9 | 2026-09-26 | § Borders, feature list, ⚙ menu; exports filled, not cut; opacity |
+| Glossary | Iterations 6, 8, 9 | 2026-09-26 | *Borders* off at start-up; *Twitter corners*; cut in the preview only; opacity |
 
 ---
 
