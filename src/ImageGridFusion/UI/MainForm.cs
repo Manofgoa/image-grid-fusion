@@ -821,9 +821,11 @@ internal sealed class MainForm : Form
             result.Save(png, ImageFormat.Png);
             var encoding = clock.Elapsed;
 
-            // Standard bitmap for most apps, plus the PNG format that browsers paste more reliably.
+            // Standard bitmap for most apps, flattened on white as it carries no transparency, plus the
+            // PNG format that browsers paste more reliably, which keeps it.
+            using var flat = Compositor.Flattened(result);
             var data = new DataObject();
-            data.SetImage(result);
+            data.SetImage(flat);
             data.SetData("PNG", png);
             Clipboard.SetDataObject(data, copy: true);
             ShowStatus(StillSummary("Copied to the clipboard", result.Size, png.Length, encoding));
@@ -1306,6 +1308,43 @@ internal sealed class MainForm : Form
         ChangeLook(ImageEffect.Blur, look => look.Blur is { } blur ? look.WithBlur(blur.WithIntensity(_blurIntensity.Value / 100.0)) : look);
     }
 
+    private static string OpacityText(int percent) => $"Opacity: {percent} %";
+
+    /// <summary>
+    /// Checked, the automatic color again, the chosen one dropped; unchecked, the automatic color of the
+    /// moment frozen as the chosen one.
+    /// </summary>
+    private void SetBackgroundAutomatic() =>
+        ChangeLook(ImageEffect.Background, look => look.WithBackground(_backgroundAutomatic.Checked
+            ? look.Background!.WithAutomatic()
+            : look.Background!.WithColor(_preview.SelectedAutomaticBackground ?? Color.White)));
+
+    /// <summary>The standard color dialog, on the color in use: a color chosen leaves the automatic mode.</summary>
+    private void PickBackgroundColor()
+    {
+        if (IsExporting || _preview.SelectedImage?.Look.TurnOn(ImageEffect.Background).Background is not { } background)
+        {
+            return;
+        }
+
+        _colorDialog.Color = BackgroundShown(background);
+        if (_colorDialog.ShowDialog(this) == DialogResult.OK)
+        {
+            ChangeLook(ImageEffect.Background, look => look.WithBackground(look.Background!.WithColor(_colorDialog.Color)));
+        }
+    }
+
+    /// <summary>The color in use: the automatic one of the selected cell, or the chosen one.</summary>
+    private Color BackgroundShown(BackgroundEffect background) =>
+        background.Automatic ? _preview.SelectedAutomaticBackground ?? Color.White : background.Color;
+
+    /// <summary>The color button's face, its text black or white, whichever reads on it.</summary>
+    private void ShowBackgroundColor(Color color)
+    {
+        _backgroundColor.BackColor = Color.FromArgb(255, color);
+        _backgroundColor.ForeColor = 0.299 * color.R + 0.587 * color.G + 0.114 * color.B > 140 ? Color.Black : Color.White;
+    }
+
     /// <summary>
     /// Applies an option of <paramref name="effect"/> to the selected image, turning the effect on from
     /// the settings it kept (RULES.md); not while the options follow the image.
@@ -1340,6 +1379,17 @@ internal sealed class MainForm : Form
         _resetButton.Enabled = enabled && (ResetLook(effect: null) != look || _preview.ActiveLayout?.IsResized == true);
         if (look is not null)
         {
+            // The automatic color is computed only while the tab shows: it changes with every zoom or move.
+            if (look.TurnOn(ImageEffect.Background).Background is { } background)
+            {
+                _backgroundAutomatic.Checked = background.Automatic;
+                _backgroundOpacity.Value = (int)Math.Round(background.Opacity * 100);
+                if (_selectedEffect == ImageEffect.Background)
+                {
+                    ShowBackgroundColor(BackgroundShown(background));
+                }
+            }
+
             _zoom.Value = Math.Clamp((int)Math.Round(Math.Log2(look.TurnOn(ImageEffect.Zoom).Zoom) * 100), _zoom.Minimum, _zoom.Maximum);
 
             // A quarter turn is pressed only while the angle falls exactly on it.
@@ -1388,6 +1438,7 @@ internal sealed class MainForm : Form
         _grayscaleLabel.Text = $"Intensity: {_grayscale.Value}%";
         _blurIntensityLabel.Text = $"Intensity: {_blurIntensity.Value}%";
         _volumeLabel.Text = VolumeText(_volume.Value);
+        _backgroundOpacityLabel.Text = OpacityText(_backgroundOpacity.Value);
         _syncingEffects = false;
 
         // An effect that does not apply to the image keeps its tab selectable, its options disabled.
