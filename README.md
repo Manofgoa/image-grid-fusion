@@ -33,7 +33,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
   - Drag the **✥** handle shown in the middle of a hovered cell onto another cell to swap the two images (in a small cell, it shrinks, or sits below the **×**)
   - Drop a file or a text onto a cell to replace it
   - **Clear all** (bottom left) removes every image and the global effects at once, with no confirmation, back to the initial state
-- Effects per cell, from the effect tabs at the top of the window (see Effects), and global effects for the whole grid, from the row above the bottom bar (see Global effects)
+- Effects per cell, from the effect tabs at the top of the window (see Effects), and global effects for the whole grid, from their tabs at the bottom, above the bottom bar (see Global effects)
   - **Borders** on the grid, off at start-up: hotpink brackets at its four corners, or a gap between the cells drawn as a solid, dashed, dotted or double line, with an optional outer frame; the grid's corners rounded the way Twitter / X shows images; their color is set from the **⚙** menu and remembered (see Borders)
 - Copy to clipboard (`Ctrl+C`) or save (`Ctrl+S`): a PNG, or an MP4 video when the grid holds content that plays or a soundtrack is on; the ▾ arrow next to each button forces a looping GIF or an MP4 video; Copy's also offers a light JPEG for sharing in chat apps that cap image size (WhatsApp: 16 MB)
 - Lives in the notification area: closing the window only hides it, the tray icon brings it back, and it can start with Windows (see Tray & startup)
@@ -123,20 +123,25 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 
 ## Global effects
 
-- A **Global effects** row, just above the bottom bar, holds the effects of the whole grid — not of a cell: one toggle per global effect, its options beside it, shown while it is on. It works with no cell selected; the cells' **Reset** buttons leave it alone, and **Clear all** turns it back to its initial state. It is locked while exporting.
+- The effects of the whole grid — not of a cell — sit at the bottom of the window, the mirror of the cell effects at the top: the tabs, then the options row below them, just above the bottom bar. The tabs row holds a **Global effects** label, one tab per global effect — **Soundtrack**, **Borders** — and, at the far right, a **Reset** button as tall as the tabs.
+- Each tab holds a checkbox, checked while its global effect is on. Clicking it turns the effect on or off, keeping its settings, and selects the tab. Clicking a tab elsewhere selects it: its options show in the row below, joined to it. No tab is selected at start-up; the options row is always there, empty until one is.
+- An effect that is off shows its kept settings in its options, and changing any of them turns it on.
+- The options row ends with a **Reset** button that brings the selected tab's global effect back to its initial state — the one **Clear all** restores; the **Reset** at the far right of the tabs does it for both at once. The cells' **Reset** buttons leave the global effects alone, and theirs leave the cells alone.
+- They work with no cell selected, and are locked while exporting.
 
 ### Soundtrack
 
 - The sound of an **audio file** (mp3, wav, m4a, aac, wma, flac…) or of a **video** is mixed **over** the sounds of the videos, which keep playing at their own Volume — in the preview and in the exported MP4 video; a GIF has no sound.
-- Click **♪ Soundtrack**: with no file yet, it opens a picker; with one, it turns the soundtrack on or off, keeping its file and volume. A file **dropped on the row** becomes the soundtrack and turns it on; so does one picked with **Browse…**. A file Windows reads no sound track from is refused, with a status-line message.
-- Options, while it is on: **Browse…**, the file's name (its whole path in a tooltip), and the volume, from 0 to 200 % — above 100 %, amplified and clipped like a video's.
+- Check the **Soundtrack** tab: with no file yet, it opens a picker, and the soundtrack stays off if it is cancelled; with one, it turns the soundtrack on or off, keeping its file and volume. A file **dropped on the global effects' tabs or options** becomes the soundtrack and turns it on; so does one picked with **Browse…**. A file Windows reads no sound track from is refused, with a status-line message.
+- Options: **Browse…**, the file's name (its whole path in a tooltip; *No file* until one is chosen), and the volume, from 0 to 200 % — above 100 %, amplified and clipped like a video's. Set before any file, the volume waits for the first one.
+- Its **Reset** forgets the file: the soundtrack off, the volume back to 100 %.
 - It follows the grid's duration, the longest loop: a shorter soundtrack **loops**, a longer one is **cut**. A grid of stills has no duration of its own: with the soundtrack on, it lasts as long as the soundtrack — **Copy** and **Save** then produce an MP4 video of the stills and the sound instead of a PNG.
 - The preview plays it while the grid holds an image, from its start when turned on, looping on the grid's duration.
 
 ### Borders
 
-- **Off at start-up**, and back to that state with **Clear all**. Click **▦ Borders** to turn them on — in the **Corners** style the first time — or off, their settings kept.
-- Options, while they are on:
+- **Off at start-up**, and back to that state with **Clear all** and the Resets. Check the **Borders** tab to turn them on — in the **Corners** style the first time — or off, their settings kept.
+- Options:
   - the **style**: **Corners** (the app's signature, the default), **Solid**, **Dashed**, **Dotted** or **Double**;
   - the **thickness**, from 0.1 to 6 % of the grid's shorter side (default 0.6 %), so the preview and every export size look the same;
   - **Opacity**, from 10 to 100 % (full by default): the corner brackets' opacity, as they lie over the images. Enabled in the Corners style only;
