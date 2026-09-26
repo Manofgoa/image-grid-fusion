@@ -138,7 +138,7 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 3 | 2026-09-26 | `d8f259e` click, cursor and painting of the empty canvas; builds with 0 warnings |
+| Code | 3 | 2026-09-26 | `d8f259e` click, cursor and painting of the empty canvas; builds with 0 warnings. Validated by hand by the user on 2026-09-26, task confirmed finished |
 | Unit tests | 3 | 2026-09-26 | Not applicable: no test project, UI-only change |
 | README | 3 | 2026-09-26 | `db09851` the empty grid opens the picker |
 
