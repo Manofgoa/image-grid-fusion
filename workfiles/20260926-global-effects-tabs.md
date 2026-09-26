@@ -51,8 +51,12 @@ Bottom of the window, top to bottom:
   selected tab is drawn **joined** to it (no line between them), the others resting on it.
 - Both rows keep **one height each**, the options row at its tallest options' height, so nothing
   moves when another tab is selected or an effect is turned on or off.
-- The preview gives up the height of one tabs row compared with today (the options were inline
-  with the toggles).
+- The new tabs row would take its height from the preview (today the options sit inline with the
+  toggles). To compensate, the **initial window height grows by the global tabs row's height**
+  (`ClientSize`, today 960 × 860 in the `MainForm` constructor), so the preview keeps its current
+  size at startup. `MinimumSize` is unchanged.
+- Each global tab carries an **icon**, drawn in `EffectIcons` like the cell effect tabs, same size
+  and style: a music note for Soundtrack, a corner bracket for Borders.
 
 ## Behaviour
 
@@ -84,10 +88,16 @@ differences global effects already have (RULES.md § Global Effects):
 - The cell toolbars' *Reset* buttons still leave the global effects alone, and the global *Reset*
   buttons leave the cells alone.
 
+- The Soundtrack's own *Reset* is **complete**: the file is forgotten, the effect off, the volume
+  back to its default — the *Clear all* state.
+
 ### Soundtrack Without a File
 
-- Today, turning the Soundtrack toggle on with no file chosen opens the file dialog
-  (`ToggleSoundtrack`). *(see Open Questions)*
+- Checking the Soundtrack's box with **no file chosen opens the file dialog**, as the toggle does
+  today (`ToggleSoundtrack`): a chosen file turns the effect on, a cancelled dialog leaves it off.
+- The options' *Browse* button does the same.
+- The volume stays adjustable with no file; it turns the effect on only once a file is chosen (an
+  effect with no sound to play has nothing to show).
 
 ## Implementation Direction
 
@@ -119,11 +129,14 @@ so nothing testable outside the UI changes, and no test is created.
 
 ## Open Questions
 
-- [ ] Do the global tabs carry an icon, like the cell effect tabs (drawn in `EffectIcons`)?
-- [ ] Soundtrack with no file: what does checking its box, or acting on its options, do?
-- [ ] Soundtrack's own *Reset*: back to "no file, off" (the Clear all state), or keep the file and
-      reset only its volume?
-- [ ] The preview loses one tabs row of height: accepted as is?
+- [x] ~~Do the global tabs carry an icon, like the cell effect tabs (drawn in `EffectIcons`)?~~
+      → Yes, drawn like the others: a music note (Soundtrack), a corner bracket (Borders)
+- [x] ~~Soundtrack with no file: what does checking its box, or acting on its options, do?~~
+      → The checkbox (and *Browse*) opens the file dialog, as today; cancelling leaves it off
+- [x] ~~Soundtrack's own *Reset*: back to "no file, off" (the Clear all state), or keep the file
+      and reset only its volume?~~ → Complete: no file, off, default volume
+- [x] ~~The preview loses one tabs row of height: accepted as is?~~ → The initial window height
+      grows by the global tabs row's height, so the preview keeps its startup size
 
 ---
 
@@ -142,6 +155,13 @@ selected tab joined at its bottom edge), behaviour aligned on the cell effects t
 (checkbox per tab, options shown while off, acting on an option turns it on, no tab selected at
 startup), both *Reset* buttons. Direction: generalize `EffectTabs` (generic key + edge) instead
 of duplicating it. No unit tests exist, none planned.
+
+### Iteration 2 — 2026-09-26
+
+Open questions answered: the global tabs get icons drawn like the cell tabs; checking the
+Soundtrack with no file opens the file dialog, as today; the Soundtrack's own *Reset* is complete
+(no file, off); the lost preview height is compensated by a taller initial window, as the user
+proposed.
 
 ---
 
@@ -169,10 +189,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | Is the global tabs' behaviour aligned on the cell effects toolbar? | Yes: checkbox per tab, options shown while off, acting on an option turns it on, no tab selected at startup, fixed-height options row | 2026-09-26 |
 | 3 | Which *Reset* buttons for the global effects? | Both, like the effects: one at the far right of the tabs row (all global effects), one ending each effect's options | 2026-09-26 |
 | 4 | Expected depth of the subject? | Straightforward — single scout pass | 2026-09-26 |
-| 5 | Do the global tabs carry an icon? | | |
-| 6 | Soundtrack with no file: what do its checkbox and options do? | | |
-| 7 | Soundtrack's own *Reset*: remove the file, or keep it? | | |
-| 8 | The preview loses one tabs row of height: accepted? | | |
+| 5 | Do the global tabs carry an icon? | Yes, drawn like the others | 2026-09-26 |
+| 6 | Soundtrack with no file: what do its checkbox and options do? | The checkbox opens the file dialog, as today | 2026-09-26 |
+| 7 | Soundtrack's own *Reset*: remove the file, or keep it? | Complete: no file, off | 2026-09-26 |
+| 8 | The preview loses one tabs row of height: accepted? | "Didn't get it — at worst, raise the initial window height?" → the initial window grows by the tabs row's height | 2026-09-26 |
 
 ---
 
