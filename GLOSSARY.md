@@ -32,7 +32,8 @@ each.
 | Sound on arrival | The Volume a video gets when it enters a cell, or has its Volume reset: heard at 100 % when no other cell is heard, else muted |
 | Options toolbar | The always-visible row above the effects toolbar, holding the selected tab's options and the effect's own Reset button |
 | Helper indicator (*indicateur d'aide*) | A measure or geometry aid drawn over a cell in the preview only — guides, handles, value readouts such as the zoom percentage; always fluorescent green (see RULES.md) |
-| File explorer (*explorateur de fichiers*) | The collapsible panel at the right of the preview: a search box over the base folder's index, the favorites while the box is empty; its rows are dragged into the cells like files from the Explorer |
+| File explorer (*explorateur de fichiers*) | The collapsible panel at the right of the preview: a search box over the base folder's index, the favorites while the box is empty, shown as tiles in 1 to 5 columns; its tiles are dragged into the cells like files from the Explorer |
+| Tile (*tuile*) | One file in the file explorer's grid: its thumbnail in a 200 × 150 box, the heart in a medallion at its corner, its name below |
 | Base folder (*dossier de base*) | The folder the file explorer indexes, with its subfolders; an app setting of the ⚙ menu |
 | Index (*index*) | The list of every file under the base folder, cached in `files.index` next to the exe, loaded at start-up and rescanned in the background or with ↻; what the search reads, never the disk |
 | Favorite (*favori*) | A file hearted in the file explorer; kept in `favorites.txt` next to the exe, shown — all of them, the newest first — while the search box is empty |

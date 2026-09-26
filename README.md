@@ -12,7 +12,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 - Not only images: videos, PDFs, text files, and any file Windows shows a thumbnail for, are turned into an image (see Previews)
 - An **Add images** drop zone right of the preview: drop files onto it to add them after the current ones, or click it to pick files
   - With no image, the empty grid does the same: click it to pick files (a **+** and a hand cursor show it is clickable), drop files onto it, or paste them
-- A **file explorer** panel at the right of the preview: type a few letters to find a file in a base folder and its subfolders — from an index cached next to the exe, so it answers as you type — heart it as a favorite, and drag it into a cell (see File explorer)
+- A **file explorer** panel at the right of the preview: type a few letters to find a file in a base folder and its subfolders — from an index cached next to the exe, so it answers as you type — see it as a thumbnail tile, heart it as a favorite, and drag it into a cell (see File explorer)
 - Several layouts per image count, picked from a strip of thumbnails — more of them under its **More** group — plus a mirror toggle; drag the separator between two cells to resize them (see Layouts)
 - No image list: the grid preview *is* the interface
   - Click a cell to select it, `Esc` to deselect; the effect tabs act on the selected cell (see Effects)
@@ -47,13 +47,14 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 
 ## File explorer
 
-A collapsible panel at the right of the preview, open at start-up: a search box over a **base folder** and its subfolders, and the files it finds, dragged into the cells.
+A collapsible panel at the right of the preview, open at start-up: a search box over a **base folder** and its subfolders, and the files it finds as thumbnail tiles, dragged into the cells.
 
+- **Tiles**: each file is a 200 × 150 tile showing its thumbnail — the one Windows shows in Explorer, loaded in the background and kept for the session — with the heart in a medallion at its corner and the file name below. The **−** / **+** buttons in the header show **1 to 5 columns** of tiles; the panel widens with them, and so does the window when it is not maximized and the screen has the room, so the preview keeps its size. The count is remembered between sessions. The arrows move between tiles, `Enter` adds the selected one.
 - **Base folder**: chosen from the **⚙** menu (**File explorer folder…**) and remembered between sessions. The first search made without one shows, instead of the list, an invitation with a **Choose folder…** button that does the same.
 - **Index**: every file under the base folder — hidden and system entries skipped — is listed in `files.index`, next to the exe. It is loaded at start-up, so the search works at once; then the folder is **rescanned in the background**, at every launch and with the **↻** button, and the panel's status line follows: *Counting… 1 234*, then *Indexing… 5/346*, then *346 files · indexed 21:03*. The search never reads the disk.
 - **Search**: as you type, the **10 best matches**. Every word typed must appear in the file's name or its subfolders, accents and case ignored: *ete* finds *Été.jpg*, *vacances chat* finds `Vacances 2025\chat.jpg`. Ranked by the words found in the file name itself, then a name starting with the first word before one containing it, then the shorter name. The caption says how many matched in all.
-- **Favorites**: click the heart in front of a row (♡ → ♥). They are kept in `favorites.txt` next to the exe, as absolute paths. While the search box is empty, the list shows every favorite, the newest first; during a search they are only marked, not promoted.
-- **Into the grid**: drag a row onto a cell to replace its image, or onto the **Add images** zone to add it — exactly like a file from the Explorer; double-click a row, or press `Enter` on it, to add it like the Add images picker; `Enter` in the search box takes the first result. Right-click a row for **Open file location**; hover it for its full path.
+- **Favorites**: click the heart at the corner of a tile (♡ → ♥). They are kept in `favorites.txt` next to the exe, as absolute paths. While the search box is empty, the grid shows every favorite, the newest first; during a search they are only marked, not promoted.
+- **Into the grid**: drag a tile onto a cell to replace its image, or onto the **Add images** zone to add it — exactly like a file from the Explorer; double-click a tile, or press `Enter` on it, to add it like the Add images picker; `Enter` in the search box takes the first result. Right-click a tile for **Open file location**; hover it for its full path.
 - A file deleted since the last scan leaves the index (and the favorites) the moment it is dragged, double-clicked or opened, with a message on the status line; a file created since appears at the next launch or **↻**.
 - The **»** button collapses the panel to a thin strip, its **«** brings it back; the state is remembered between sessions.
 
@@ -390,3 +391,4 @@ C# / WinForms on .NET 10, using `System.Drawing` (GDI+) with high-quality bicubi
 
 - A dedicated frame design for the single-image case.
 - OCR over the indexed images, so the file explorer's search also finds the words shown inside them.
+- The file explorer's list detached into a window of its own, to sit beside the main window or on another screen.
