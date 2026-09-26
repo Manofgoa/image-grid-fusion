@@ -36,14 +36,41 @@ public static class Compositor
     public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout layout) =>
         Render(images.Select(i => new Frame(i.Bitmap, i.BandColor, i.Look)).ToList(), layout);
 
-    /// <summary>Renders frames at the size given by <see cref="CanvasSizer"/>; frame i goes into cell i.</summary>
+    /// <summary>
+    /// Renders frames at the size given by <see cref="CanvasSizer"/>; frame i goes into cell i. With an
+    /// alpha channel, transparent where a cell has no background: a PNG keeps it.
+    /// </summary>
     public static Bitmap Render(IReadOnlyList<Frame> frames, GridLayout layout)
     {
         var canvas = CanvasSizer.Compute(frames.Select(f => f.Size).ToList(), layout);
-        var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format24bppRgb);
+        var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppArgb);
         using var g = Graphics.FromImage(bitmap);
         Draw(g, frames, layout, canvas);
         return bitmap;
+    }
+
+    /// <summary>What an output without alpha shows of <paramref name="image"/>: its transparency flattened on white.</summary>
+    public static Bitmap Flattened(Bitmap image)
+    {
+        var flat = new Bitmap(image.Width, image.Height, PixelFormat.Format24bppRgb);
+        using var g = Graphics.FromImage(flat);
+        g.Clear(Color.White);
+        g.DrawImageUnscaled(image, 0, 0);
+        return flat;
+    }
+
+    /// <summary>
+    /// The automatic background color of <paramref name="frame"/> in <paramref name="cell"/>: the band
+    /// color of the part of the image shown, as <see cref="DrawCell"/> computes it, before black &amp; white.
+    /// </summary>
+    public static Color AutomaticBackground(Frame frame, Rectangle cell)
+    {
+        var look = frame.Look ?? ImageLook.None;
+        var turned = FitCalculator.ComputeTurned(cell, frame.Size, look.Zoom, look.Focus, look.FineAngle);
+        using var turn = turned.Transform();
+        var source = turn is null ? turned.Fit.Source : TurnedPart(cell, turned.Fit, frame.Size, turn).Source;
+        bool oriented = look is not { Rotation: 0, FlipX: false, FlipY: false };
+        return frame.BandColor.For(oriented ? BitmapPart(frame.Bitmap.Size, look, source) : source, frame.Bitmap.Size);
     }
 
     /// <summary>Draws the grid in the rectangle (0, 0, canvas) of <paramref name="g"/>; image i goes into cell i of the layout.</summary>
@@ -87,10 +114,12 @@ public static class Compositor
         bool oriented = look is not { Rotation: 0, FlipX: false, FlipY: false };
         var bitmapPart = oriented ? BitmapPart(frame.Bitmap.Size, look, source) : source;
 
-        // Bands, and transparent pixels, show the background of the part shown.
-        var bands = frame.BandColor.For(bitmapPart, frame.Bitmap.Size);
-        using (var brush = new SolidBrush(look.Grayscale is { } gray ? Gray(bands, gray) : bands))
+        // Bands, and transparent pixels, show the background: the band color of the part shown, or the
+        // chosen one, at its opacity; none while the effect is off, the cell left transparent.
+        if (look.Background is { } background)
         {
+            var fill = background.Fill(background.Automatic ? frame.BandColor.For(bitmapPart, frame.Bitmap.Size) : background.Color);
+            using var brush = new SolidBrush(look.Grayscale is { } gray ? Gray(fill, gray) : fill);
             g.FillRectangle(brush, cell);
         }
 
