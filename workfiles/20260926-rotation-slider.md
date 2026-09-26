@@ -31,7 +31,8 @@ Relevant components:
 - One slider, **−180° → +180°**, by 1°, centered on 0°; its label reads `Angle: +37°` (same format
   as today: sign, then degrees; `0°` without sign).
 - **No snapping**: the angle moves freely, degree by degree.
-- Keyboard: arrows move by 1° (`SmallChange`); page step: see Open Questions.
+- Keyboard: arrows move by 1° (`SmallChange`); a click on the slider's bar beside the thumb, and
+  PageUp / PageDown, jump by **15°** (`LargeChange`).
 - Width: **360 px** (1 px per degree with the mouse), instead of the 160 px of the other option sliders.
 - −180° and +180° are the same look. The slider keeps the value the user put it on: when the cell's
   angle is re-read into the slider and the slider's current value is equivalent (mod 360°), the
@@ -84,7 +85,7 @@ MP4).
 
 ## Open Questions
 
-- [ ] Page step of the slider (click on the track, PageUp / PageDown): 15°, 45° or 90°?
+- [x] ~~Page step of the slider (click on the track, PageUp / PageDown): 15°, 45° or 90°?~~ → 15°
 - [x] ~~Width of the slider: 361 positions on today's 160 px leave ~0.4 px per degree with the
       mouse. Keep 160 px (the arrows give the exact degree), or widen it (e.g. 360 px, 1 px per degree)?~~
       → 360 px, 1 px per degree
@@ -110,6 +111,11 @@ pan stops stay as they are; only the Rotate options and the documentation change
 
 The slider is widened to 360 px (Q&A #6). The page step question (Q&A #5) is asked again: the
 user asked what the slider's track is.
+
+### Iteration 3 — 2026-09-26
+
+The page step is 15° (Q&A #7): a click on the bar beside the thumb, and PageUp / PageDown, jump by
+15°. No open question remains.
 
 ---
 
@@ -138,7 +144,7 @@ Questions asked by the agent during design, with user responses.
 | 4 | Is the subject straightforward or tricky? | Straightforward | 2026-09-26 |
 | 5 | Page step of the slider: 15°, 45° or 90°? | Asked what the track is — explained, asked again (#7) | 2026-09-26 |
 | 6 | Width of the slider: keep 160 px or widen it? | Widen to 360 px | 2026-09-26 |
-| 7 | Page step (a click on the slider's bar beside the thumb, PageUp / PageDown): 15°, 45° or 90°? | | |
+| 7 | Page step (a click on the slider's bar beside the thumb, PageUp / PageDown): 15°, 45° or 90°? | 15° | 2026-09-26 |
 
 ---
 
