@@ -9,7 +9,7 @@
 
 ## Overview
 
-Today the global effects (Soundtrack, Borders) live in one flat **Global effects row** just above
+Before this task, the global effects (Soundtrack, Borders) lived in one flat **Global effects row** just above
 the bottom bar: a label, one toggle per global effect, its options beside it, shown only while it
 is on (`MainForm._globalRow`, a `FlowLayoutPanel`).
 
@@ -98,23 +98,33 @@ differences global effects already have (RULES.md § Global Effects):
   today (`ToggleSoundtrack`): a chosen file turns the effect on, a cancelled dialog leaves it off.
 - The options' *Browse* button does the same.
 - The volume stays adjustable with no file; it turns the effect on only once a file is chosen (an
-  effect with no sound to play has nothing to show).
-- A sound file **dropped** on the global rows sets the soundtrack, as a drop on today's row does
-  (`_globalRow.DragDrop`): both new rows accept it.
+  effect with no sound to play has nothing to show). The level set meanwhile (`_soundtrackLevel`)
+  is given to the first file, and is part of the initial state: moved away from 100 %, it enables
+  the Resets and *Clear all*.
+- With no file, the file label reads **No file**, greyed.
+- A sound file **dropped** on either global row sets the soundtrack (`_globalTabsRow`,
+  `_globalOptionsRow`), as a drop on the old row did.
 
-## Implementation Direction
+## Implementation
 
-- **`EffectTabs` generalized** rather than duplicated: made generic over its tab key
-  (`ImageEffect` for the cells, a new `GlobalEffect` enum — `Soundtrack`, `Borders` — for the
-  grid), and given an **edge** setting: seam at the top with tabs hanging down (today), or seam at
-  the bottom with tabs standing up. The edge flips the seam's y, the tab fill origin and which
-  border segment the selected tab omits.
-- `MainForm.PaintOptionsEdge` (the seam across the rest of the tabs row) takes the same edge.
-- `_globalRow` is replaced by a global tabs row + a global options row (one options panel per
-  global effect, like `_options`), docked at the bottom above `_bottom`, sized by `FitEffectRows`.
-- The existing mutators (`ToggleSoundtrack`, `BrowseSoundtrack`, `SetSoundtrackVolume`,
-  `ToggleBorders`, `ChangeBorders`) are kept; option changes go through a "turn on first" step,
-  like the cell options.
+- **`EffectTabs<TEffect>`** (`UI/EffectTabs.cs`), generic over an enum of effects, rather than
+  duplicated: its titles come from the owner (`MainForm.EffectTitle` for the cells, `ToString()`
+  for the grid), and `standing: true` puts the options row's edge along its bottom — the seam's y,
+  the fill of the non-selected tabs stopping short of it, and the tab side drawn closed flip with it.
+- **`GlobalEffect`** (`Composition/GlobalEffect.cs`): `Soundtrack`, `Borders`, in tab order.
+- **Icons** (`EffectIcons.Soundtrack`, `EffectIcons.Borders`): two beamed eighth notes, violet to
+  blue; a hot pink L-bracket over the corner of a grey picture.
+- **`MainForm`**: `_globalRow` replaced by `_globalTabsRow` (label, `_globalTabs`,
+  `_globalResetButton`) and `_globalOptionsRow` (`_globalOptions` panels, `_globalEffectResetButton`),
+  docked above `_bottom`; `FitEffectRows` sizes them like the cell rows; `PaintOptionsEdge` takes the
+  row and its orientation. The *Soundtrack* / *Borders* toggle buttons are gone, the tabs' checkboxes
+  replace them.
+- New handlers: `SelectGlobalEffect`, `ToggleGlobalEffect`, `ResetGlobalEffects(effect?)` — the
+  latter also used by `ClearAll`. `ChangeBorders` and `SetSoundtrackVolume` turn their effect on.
+- **Taller window**: `OnLoad` adds the global tabs row's height to the window (capped at the screen's
+  working area) and centers it again.
+- The descriptive tooltips of the removed toggles moved to an option: the Soundtrack's to *Browse…*,
+  the Borders' to the style list. The tabs show no tooltip of their own.
 
 ---
 
@@ -187,6 +197,32 @@ commits since Iteration 2 (file explorer, copy last video, progress line) plus
   beside it" becomes a tab), `ctrl-wheel-5-percent-step` (sliders of the row, unaffected),
   `colors-effect` (renames a cell tab title, unaffected by the generalization).
 
+### Iteration 4 — 2026-09-27 — 🧭 Implementation choices
+
+No project rule broken. Choices the frozen design did not state:
+
+- **"GO" read as the third option** (code, tests and documentation), the one every earlier
+  workfile of this app got; tests not applicable.
+- **Stayed on `main`**, the standing choice of this repository, no Branch Gate question.
+- **`EffectTabs<TEffect>`**, generic over the enum, the titles given by the owner: the static
+  `EffectTabs.Title` moved to `MainForm.EffectTitle`. `colors-effect` planned its tab rename in
+  `EffectTabs.cs`; it now lands in `MainForm.EffectTitle`.
+- **`GlobalEffect`** placed in `Composition/`, next to `ImageEffect`.
+- **Volume before a file**: kept in `_soundtrackLevel`, given to the first file, and counted in the
+  initial state (Resets and *Clear all* enabled once it moved).
+- **"No file"**, greyed, in the file label while none is chosen — the options now show without one.
+- **Tooltips** of the removed toggles moved to *Browse…* and to the Borders' style list.
+- **Taller window** done in `OnLoad` (after DPI scaling): + the global tabs row's height, capped at
+  the screen's working area, then centered again.
+- **Sliders** of the global options take the options row's white, as in the top options row (they
+  were grey on the old grey row).
+- Docs: RULES.md § *Global Effects Row* renamed *Global Effects Toolbar*; the glossary's *Global
+  effects row* replaced by *Global effects toolbar* and *Global options toolbar*. The pending
+  workfiles still saying *Global effects row* (`forced-background`, `global-fade`,
+  `ctrl-wheel-5-percent-step`) were left untouched — out of scope.
+- Found out of scope, not fixed: GLOSSARY.md's *Borders* row still says "on at start-up", stale
+  since `borders-off-and-rounded-corners`.
+
 ---
 
 ## Implementation Log
@@ -196,10 +232,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project; UI-only change |
-| README | | | § Global effects (l. 110-132) and l. 35 to rewrite |
-| Rules & glossary | | | RULES.md § Global Effects / Global Effects Row, GLOSSARY.md rows |
+| Code | Iteration 3 | 2026-09-27 | Generic `EffectTabs`; `GlobalEffect` + icons; the two global rows in `MainForm`; the taller window; a comment — five commits |
+| Unit tests | Iteration 3 | 2026-09-27 | Not applicable: no test project, UI-only change |
+| README | Iteration 3 | 2026-09-27 | § Global effects, Soundtrack, Borders; the overview line |
+| Rules & glossary | Iteration 3 | 2026-09-27 | RULES.md § Global Effects table + § Global Effects Toolbar (was Row); GLOSSARY.md: global effects toolbar, global options toolbar |
 
 ---
 
@@ -219,6 +255,7 @@ Questions asked by the agent during design, with user responses.
 | 8 | The preview loses one tabs row of height: accepted? | "Didn't get it — at worst, raise the initial window height?" → the initial window grows by the tabs row's height | 2026-09-26 |
 | 9 | Start implementing? | No — the gate holds | 2026-09-26 |
 | 10 | (user) Do the recent changes endanger the task? Then GO | Analysis in Iteration 3: no blocker; GO read as code + documentation, on `main` | 2026-09-27 |
+| 11 | Is the task finished? | | |
 
 ---
 
