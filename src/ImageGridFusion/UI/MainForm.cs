@@ -232,7 +232,7 @@ internal sealed class MainForm : Form
         _effectTabs.TabClicked += (_, effect) => SelectEffect(effect);
         _effectTabs.CheckClicked += (_, effect) => ToggleEffect(effect);
         _toolTip.SetToolTip(_effectResetButton, "Brings this effect back to its defaults");
-        _toolTip.SetToolTip(_resetButton, "Brings every effect of the cell back to its defaults");
+        _toolTip.SetToolTip(_resetButton, "Brings every effect of the cell back to its defaults, and the cells to their layout's sizes");
         _effectResetButton.Click += (_, _) => ResetSelectedEffect();
         _resetButton.Click += (_, _) => ResetEffects();
         _zoom.ValueChanged += (_, _) => SetZoom();
@@ -275,6 +275,7 @@ internal sealed class MainForm : Form
         };
         _layouts.LayoutPicked += (_, layout) => _preview.SetLayout(layout);
         _layouts.MirrorToggled += (_, _) => _preview.SetLayout(_preview.ActiveLayout!.Mirrored());
+        _layouts.ActiveLayoutClicked += (_, _) => _preview.ResetCellSizes();
         DragEnter += OnDragEnter;
         DragDrop += OnDragDrop;
         _preview.DragEnter += OnDragEnter;
@@ -1137,7 +1138,10 @@ internal sealed class MainForm : Form
         }
     }
 
-    /// <summary>The tabs row's Reset: every effect of the selected image back to its default state; the selected tab stays.</summary>
+    /// <summary>
+    /// The tabs row's Reset: every effect of the selected image back to its default state, and every
+    /// separator of the grid back to its place in the layout; the selected tab stays.
+    /// </summary>
     private void ResetEffects()
     {
         if (ResetLook(effect: null) is { } look)
@@ -1145,6 +1149,7 @@ internal sealed class MainForm : Form
             _preview.SetSelectedLook(look);
         }
 
+        _preview.ResetCellSizes();
         UpdateEffects();
     }
 
@@ -1240,7 +1245,7 @@ internal sealed class MainForm : Form
 
         _effectTabs.Selected = _selectedEffect;
         _effectTabs.Enabled = enabled;
-        _resetButton.Enabled = enabled && ResetLook(effect: null) != look;
+        _resetButton.Enabled = enabled && (ResetLook(effect: null) != look || _preview.ActiveLayout?.IsResized == true);
         if (look is not null)
         {
             _zoom.Value = Math.Clamp((int)Math.Round(Math.Log2(look.TurnOn(ImageEffect.Zoom).Zoom) * 100), _zoom.Minimum, _zoom.Maximum);

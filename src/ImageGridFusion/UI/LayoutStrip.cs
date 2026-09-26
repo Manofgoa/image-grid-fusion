@@ -33,6 +33,9 @@ internal sealed class LayoutStrip : Control
     /// <summary>Raised with the catalog layout clicked, unmirrored.</summary>
     public event EventHandler<GridLayout>? LayoutPicked;
 
+    /// <summary>Raised when the thumbnail of the active layout is clicked again.</summary>
+    public event EventHandler? ActiveLayoutClicked;
+
     public event EventHandler? MirrorToggled;
 
     /// <summary>Layout shown as active; its image count decides which thumbnails are offered.</summary>
@@ -70,12 +73,12 @@ internal sealed class LayoutStrip : Control
         g.Clear(BackColor);
         for (int i = 0; i < _layouts.Count; i++)
         {
-            // The active thumbnail shows the layout as applied, mirror included.
+            // The active thumbnail shows the layout as applied, mirror included, on its own proportions.
             bool active = _layouts[i].Id == _active?.Id;
             var bounds = ItemBounds(i);
             PaintButton(g, bounds, active, i == _hovered);
             var cellsColor = _active is null ? DisabledColor : active ? ForeColor : Color.Gray;
-            PaintCells(g, active ? _active! : _layouts[i], Rectangle.Inflate(bounds, -LogicalToDeviceUnits(4), -LogicalToDeviceUnits(4)), cellsColor);
+            PaintCells(g, active ? _active!.WithDefaultSizes() : _layouts[i], Rectangle.Inflate(bounds, -LogicalToDeviceUnits(4), -LogicalToDeviceUnits(4)), cellsColor);
         }
 
         var mirror = ItemBounds(MirrorIndex);
@@ -114,6 +117,10 @@ internal sealed class LayoutStrip : Control
         else if (index >= 0 && _layouts[index].Id != _active.Id)
         {
             LayoutPicked?.Invoke(this, _layouts[index]);
+        }
+        else if (index >= 0)
+        {
+            ActiveLayoutClicked?.Invoke(this, EventArgs.Empty);
         }
     }
 
