@@ -60,6 +60,33 @@ public static class Compositor
     }
 
     /// <summary>
+    /// <see cref="Flattened(Bitmap)"/>, downscaled so that its long edge is at most
+    /// <paramref name="maxEdge"/> px, aspect ratio kept; never upscaled.
+    /// </summary>
+    public static Bitmap Flattened(Bitmap image, int maxEdge)
+    {
+        double scale = Math.Min(1.0, (double)maxEdge / Math.Max(image.Width, image.Height));
+        if (scale >= 1.0)
+        {
+            return Flattened(image);
+        }
+
+        var size = new Size(Math.Max(1, (int)Math.Round(image.Width * scale)), Math.Max(1, (int)Math.Round(image.Height * scale)));
+        var flat = new Bitmap(size.Width, size.Height, PixelFormat.Format24bppRgb);
+        using var g = Graphics.FromImage(flat);
+        g.Clear(Color.White);
+        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+        g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+        g.CompositingQuality = CompositingQuality.HighQuality;
+
+        // Edge pixels mirrored rather than blended with the outside, which would darken the borders.
+        using var attributes = new ImageAttributes();
+        attributes.SetWrapMode(WrapMode.TileFlipXY);
+        g.DrawImage(image, new Rectangle(Point.Empty, size), 0, 0, image.Width, image.Height, GraphicsUnit.Pixel, attributes);
+        return flat;
+    }
+
+    /// <summary>
     /// The automatic background color of <paramref name="frame"/> in <paramref name="cell"/>: the band
     /// color of the part of the image shown, as <see cref="DrawCell"/> computes it, before black &amp; white.
     /// </summary>

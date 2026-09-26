@@ -20,6 +20,9 @@ internal sealed class MainForm : Form
     private readonly Button _copyButton = SplitMain("Copy");
     private readonly Button _copyArrow = SplitArrow();
     private readonly ContextMenuStrip _copyMenu = new();
+    private readonly ToolStripMenuItem _copyGif = new("GIF");
+    private readonly ToolStripMenuItem _copyMp4 = new("MP4 Video");
+    private readonly ToolStripMenuItem _copyForSharing = new("JPEG for sharing");
     private readonly Button _saveButton = SplitMain("Save…");
     private readonly Button _saveArrow = SplitArrow();
     private readonly ContextMenuStrip _saveMenu = new();
@@ -251,8 +254,10 @@ internal sealed class MainForm : Form
         _startWithWindows.Click += (_, _) => ToggleStartWithWindows();
         _copyButton.Click += (_, _) => CopyToClipboard();
         _saveButton.Click += (_, _) => Save();
-        _copyMenu.Items.Add("GIF", null, (_, _) => Copy(GridExport.Format.Gif));
-        _copyMenu.Items.Add("MP4 Video", null, (_, _) => Copy(GridExport.Format.Mp4));
+        _copyGif.Click += (_, _) => Copy(GridExport.Format.Gif);
+        _copyMp4.Click += (_, _) => Copy(GridExport.Format.Mp4);
+        _copyForSharing.Click += (_, _) => CopyForSharing();
+        _copyMenu.Items.AddRange([_copyGif, _copyMp4, _copyForSharing]);
         _saveMenu.Items.Add("GIF", null, (_, _) => SaveAs(GridExport.Format.Gif));
         _saveMenu.Items.Add("MP4 Video", null, (_, _) => SaveAs(GridExport.Format.Mp4));
         _copyArrow.Click += (_, _) => _copyMenu.Show(_copyButton, Point.Empty, ToolStripDropDownDirection.AboveRight);
@@ -782,7 +787,7 @@ internal sealed class MainForm : Form
 
         if (format is { } animated)
         {
-            string path = TempExportPath(animated);
+            string path = TempExportPath(Extension(animated));
             var animationClock = Stopwatch.StartNew();
             if (await ExportAnimationAsync(path, animated) is { } animation)
             {
@@ -828,9 +833,57 @@ internal sealed class MainForm : Form
             data.SetImage(flat);
             data.SetData("PNG", png);
             Clipboard.SetDataObject(data, copy: true);
-            ShowStatus(StillSummary("Copied to the clipboard", result.Size, png.Length, encoding));
+            ShowStatus(StillSummary("Copied to the clipboard", "PNG", result.Size, png.Length, encoding));
         }
         catch (ExternalException ex)
+        {
+            ShowStatus($"Copy failed: {ex.Message}", error: true);
+        }
+    }
+
+    /// <summary>Long edge of the light copy: chat apps recompress to about 1600 px anyway.</summary>
+    private const int SharingMaxEdge = 2560;
+
+    private const long SharingJpegQuality = 90;
+
+    /// <summary>
+    /// Copies a light JPEG of the still, for chat apps capping image size (WhatsApp: 16 MB): its long
+    /// edge at most <see cref="SharingMaxEdge"/> px, flattened on white. Written to the temp folder and
+    /// put on the clipboard as a file, plus the same image as a bitmap for apps pasting bitmaps only.
+    /// </summary>
+    private async void CopyForSharing()
+    {
+        if (_preview.Images.Count == 0 || IsExporting)
+        {
+            return;
+        }
+
+        var clock = Stopwatch.StartNew();
+        using var result = await RenderStillAsync();
+        if (result is null)
+        {
+            return;
+        }
+
+        try
+        {
+            using var light = Compositor.Flattened(result, SharingMaxEdge);
+            string path = TempExportPath("jpg");
+            var jpeg = ImageCodecInfo.GetImageEncoders().First(c => c.FormatID == ImageFormat.Jpeg.Guid);
+            using (var parameters = new EncoderParameters(1))
+            {
+                parameters.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, SharingJpegQuality);
+                light.Save(path, jpeg, parameters);
+            }
+
+            var encoding = clock.Elapsed;
+            var data = new DataObject();
+            data.SetFileDropList(new StringCollection { path });
+            data.SetImage(light);
+            Clipboard.SetDataObject(data, copy: true);
+            ShowStatus(StillSummary("Copied for sharing", "JPEG", light.Size, new FileInfo(path).Length, encoding));
+        }
+        catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException)
         {
             ShowStatus($"Copy failed: {ex.Message}", error: true);
         }
@@ -886,7 +939,7 @@ internal sealed class MainForm : Form
         try
         {
             still.Save(dialog.FileName, ImageFormat.Png);
-            ShowStatus(StillSummary(saved, still.Size, new FileInfo(dialog.FileName).Length, clock.Elapsed));
+            ShowStatus(StillSummary(saved, "PNG", still.Size, new FileInfo(dialog.FileName).Length, clock.Elapsed));
         }
         catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException)
         {
@@ -1009,8 +1062,8 @@ internal sealed class MainForm : Form
     }
 
     /// <summary>What a still copy or save produced, for the status line: one frame, no duration, no sound.</summary>
-    private static string StillSummary(string done, Size size, long bytes, TimeSpan encoding) =>
-        Summary(done, "PNG", size, bytes, 1, TimeSpan.Zero, sound: null, encoding);
+    private static string StillSummary(string done, string format, Size size, long bytes, TimeSpan encoding) =>
+        Summary(done, format, size, bytes, 1, TimeSpan.Zero, sound: null, encoding);
 
     /// <summary>What a video or GIF copy or save produced, for the status line, <paramref name="path"/> being the file written.</summary>
     private static string AnimationSummary(string done, string path, GridExport.Format format, GridExport.Result video, TimeSpan encoding) =>
@@ -1066,16 +1119,16 @@ internal sealed class MainForm : Form
 
     private static string Seconds(TimeSpan time) => time == TimeSpan.Zero ? "0 s" : $"{time.TotalSeconds:0.0} s";
 
-    /// <summary>Videos and GIFs copied to the clipboard live here: the clipboard holds their path.</summary>
+    /// <summary>Videos, GIFs and light JPEGs copied to the clipboard live here: the clipboard holds their path.</summary>
     private static string TempVideoFolder => Path.Combine(Path.GetTempPath(), "ImageGridFusion");
 
-    private static string TempExportPath(GridExport.Format format)
+    private static string TempExportPath(string extension)
     {
         Directory.CreateDirectory(TempVideoFolder);
-        return Path.Combine(TempVideoFolder, $"fusion-{DateTime.Now:yyyyMMdd-HHmmss}.{Extension(format)}");
+        return Path.Combine(TempVideoFolder, $"fusion-{DateTime.Now:yyyyMMdd-HHmmss}.{extension}");
     }
 
-    /// <summary>Removes the videos and GIFs copied by previous sessions.</summary>
+    /// <summary>Removes the videos, GIFs and light JPEGs copied by previous sessions.</summary>
     private static void CleanTempVideos()
     {
         try
@@ -1085,7 +1138,7 @@ internal sealed class MainForm : Form
                 return;
             }
 
-            foreach (var file in Directory.EnumerateFiles(TempVideoFolder, "*.mp4").Concat(Directory.EnumerateFiles(TempVideoFolder, "*.gif")))
+            foreach (var file in new[] { "*.mp4", "*.gif", "*.jpg" }.SelectMany(pattern => Directory.EnumerateFiles(TempVideoFolder, pattern)))
             {
                 try
                 {
@@ -1148,11 +1201,14 @@ internal sealed class MainForm : Form
         _copyButton.Enabled = any;
         _saveButton.Enabled = any;
 
-        // The main parts name what they produce; the menus force a GIF or a video, pointless when nothing plays.
+        // The main parts name what they produce; the menus force a GIF or a video, pointless when nothing
+        // plays — Copy's menu stays open for its light JPEG.
         string format = ProducesVideo ? "MP4" : "PNG";
         _copyButton.Text = $"Copy {format}";
         _saveButton.Text = $"Save {format}…";
-        _copyArrow.Enabled = any && HasAnimation;
+        _copyArrow.Enabled = any;
+        _copyGif.Enabled = HasAnimation;
+        _copyMp4.Enabled = HasAnimation;
         _saveArrow.Enabled = any && HasAnimation;
         UpdateEffects();
         UpdateGlobalEffects();
