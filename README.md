@@ -99,7 +99,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 ### Volume
 
 - For a video with a sound track only, frozen included (its volume applies again once it plays); disabled on other images.
-- Options: the volume, from 0 to 200 %, and **Mute**. The slider reaching 0 checks Mute. Checking Mute keeps the slider's level, out of reach until Mute is unchecked, which brings it back; unchecking it at 0 brings the volume back to 100 %.
+- Options: the volume, from 0 to 200 %, and **Mute**. The slider reaching 0 checks Mute. Checking Mute keeps the slider's level, and unchecking it brings it back; unchecking it at 0 brings the volume back to 100 %. The slider always stays usable: moving it above 0 unmutes.
 - **Sound on arrival**: a video added or dropped in (or replacing another) is heard at 100 % when no other cell is heard, else it arrives muted — the effect on, Mute checked. Both Resets give it that sound again, from the other cells at that moment. Turning the effect off makes the video heard at 100 %.
 - Above 100 %, the sound is amplified, clipped where it goes beyond full scale. The preview and the exported video both play it at its volume.
 
