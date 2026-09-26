@@ -48,7 +48,9 @@ Components: `UI/GridPreview.cs` (mouse handling, hover, empty-state painting),
 - The existing hover outline of the empty canvas stays.
 - **No fluorescent green**: the empty canvas is not a helper indicator (Q&A #6); the
   *On-Cell Helper Indicators* rule does not apply and is not extended (Q&A #7).
-- Text / icon (Q&A #3 asked for one): see Open Questions.
+- A **"+"** above the text, drawn like the drop zone's (`PaintDropZone`), and the text becoming
+  *"Click to pick 1 to 4 images, drop them here, or paste them with Ctrl+V"* (Q&A #3, #8).
+- Colours as the drop zone: `ForeColor` (grey), **white while the mouse is over the empty canvas**.
 
 ---
 
@@ -66,13 +68,12 @@ WinForms harness. Validated by hand.
 
 ## Open Questions
 
-- [ ] **Hint text and icon**: what the empty canvas shows to say it is clickable — proposal: a
-  **"+"** above the text, like the drop zone's, and the text becoming
-  *"Click to pick 1 to 4 images, drop them here, or paste them with Ctrl+V"*; both in the usual
-  grey, white on hover, like the drop zone.
-- [ ] **Green remark**: the message *"If suggestion: use fluorescent green, remember? If not explicit
-  enough, add it to the rules"* was read as "every visual hint is fluorescent green" — the answers
-  (Q&A #6, #7) say otherwise. What does it ask for?
+- [x] ~~**Hint text and icon**: what the empty canvas shows to say it is clickable?~~ → A "+" above
+  the text, like the drop zone's, and the text *"Click to pick 1 to 4 images, drop them here, or
+  paste them with Ctrl+V"*; grey, white on hover (the proposal, the clarification question having
+  been dismissed — Q&A #8)
+- [x] ~~**Green remark**: what does it ask for?~~ → Dropped: no green on the empty canvas and no
+  rule change (Q&A #6, #7, #9)
 
 ---
 
@@ -97,6 +98,12 @@ pass (the questions chained: the Add images action → its fill logic → the cl
   keeps its style. No rule change.
 - Design: a single click on the empty canvas opens the Add images picker; hand cursor. Hint text
   and icon, and the meaning of the green remark, left open.
+
+### Iteration 2 — 2026-09-26
+
+The clarification batch (Q&A #8, #9) was dismissed, and the user asked whether the design was
+ready. The two open points close on the proposal: a "+" and a reworded text on the empty canvas,
+in the drop zone's colours; the green remark is dropped, with no rule change.
 
 ---
 
@@ -126,8 +133,8 @@ Questions asked by the agent during design, with user responses.
 | 5 | What is the "empty thumbnail" — the empty canvas, the greyed layout thumbnail, or both? | The empty canvas (no image) | 2026-09-26 |
 | 6 | Which fluorescent-green hint shows the empty canvas is clickable? | No green here (the question was not understood) | 2026-09-26 |
 | 7 | Does the widened green rule cover the existing Add images drop zone? | No — no rule widening | 2026-09-26 |
-| 8 | Hint text and icon on the empty canvas? | | |
-| 9 | What does the green remark ask for? | | |
+| 8 | Hint text and icon on the empty canvas? | Question dismissed — the proposal ("+" and reworded text, grey / white on hover) is kept | 2026-09-26 |
+| 9 | What does the green remark ask for? | Question dismissed — dropped, no rule change | 2026-09-26 |
 
 ---
 
