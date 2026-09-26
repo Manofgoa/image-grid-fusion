@@ -68,9 +68,9 @@ Agreed:
 
 - **A row** = the heart (`♡` grey, `♥` red when a favorite) in front of the **file name only**;
   the full path in a tooltip. Owner-drawn list; the heart's hit zone is the first 20 logical px.
-- **Box empty (or blanks only)**: the list shows **every favorite** — no 10-limit — sorted per
-  Open Question #16. **Box with text**: the 10 best matches (§ Search), the favorites among them
-  marked with `♥` and **not promoted**.
+- **Box empty (or blanks only)**: the list shows **every favorite** — no 10-limit — the **most
+  recently added first**. **Box with text**: the 10 best matches (§ Search), the favorites among
+  them marked with `♥` and **not promoted**.
 - **No base folder yet**: the panel opens normally (its list empty, favorites aside), the status
   line saying *No base folder*. **At the first keystroke**, the list area is replaced by an
   invitation that explains why: *The search looks through one folder and its subfolders. Choose it
@@ -122,8 +122,10 @@ Agreed:
   task (`workfiles/20260926-ocr-search.md`) can add the text found in each file without breaking
   the format.
 - **What is indexed**: **every file** under the base folder and its subfolders, whatever its
-  extension. Hidden and system entries: Open Question #14. Inaccessible subfolders are skipped
-  (`EnumerationOptions.IgnoreInaccessible`), never fatal.
+  extension — except the **hidden and system** files and folders (`Thumbs.db`, `desktop.ini`,
+  `.git`, `$RECYCLE.BIN`…), skipped with their whole content
+  (`EnumerationOptions.AttributesToSkip = Hidden | System`). Inaccessible subfolders are skipped
+  too (`IgnoreInaccessible`), never fatal.
 - **Load at start-up** (`OnShown`): the file is read if its header carries the version and the
   **same base folder as the setting** (full path, case-insensitive); else it is ignored. The panel
   is usable as soon as it is loaded — before any disk scan.
@@ -157,13 +159,14 @@ Agreed:
 
 Agreed:
 
-- **Stored in `favorites.txt`**, next to `files.index`: one **absolute** path per line, UTF-8.
-  Absolute, so a favorite survives a rescan and a change of base folder. Written at once on every
-  toggle (temp file + move); loaded at start-up.
+- **Stored in `favorites.txt`**, next to `files.index`: one **absolute** path per line, UTF-8, in
+  the **order they were added** (a new favorite appended at the end). Absolute, so a favorite
+  survives a rescan and a change of base folder. Written at once on every toggle (temp file +
+  move); loaded at start-up.
 - **Toggled by clicking the heart** in front of a row — in the results as in the favorites list.
   Clicking the row elsewhere selects it (and starts a drag, § Interactions).
-- **Shown** while the search box is empty, all of them, sorted per Open Question #16; during a
-  search, only marked (`♥`), never promoted.
+- **Shown** while the search box is empty, all of them, the **most recently added first** (the
+  file's order reversed); during a search, only marked (`♥`), never promoted.
 - **Removed** when its file turns out missing (§ Index File). A favorite outside the current base
   folder stays a favorite.
 
@@ -214,26 +217,23 @@ Agreed:
 
 ## Test Impact
 
-The repository has **no test project** (`src/` holds `ImageGridFusion` only; every previous
-workfile shipped without unit tests). Open Question #13 decides between the hand checks below and
-a first xUnit project, `test/ImageGridFusion.Tests/` (one test class per production class,
-`Method_Scenario_Expected` names, a temp-folder fixture). The rows apply in the second case:
+**None.** The repository has **no test project** (`src/` holds `ImageGridFusion` only), and the
+user chose to ship this work **without unit tests**, like every previous workfile (Q&A #13): it is
+verified by hand in the app. The checks, run at delivery:
 
-| Behaviour to pin | Test file | Create / Update |
-|---|---|---|
-| Folding drops accents and case: *ete* matches *Été.jpg* | `test/ImageGridFusion.Tests/Explorer/FileSearchTests.cs` | Create |
-| Every word must match, anywhere in the relative path (name or subfolder) | same | Create |
-| Ranking: name hits before folder-only hits, starts-with before contains, shorter name first, then A → Z | same | Create |
-| At most 10 results returned; the total count reported | same | Create |
-| Index file round trip: header, base folder, relative paths; extra tab columns ignored | `test/ImageGridFusion.Tests/Explorer/FileIndexTests.cs` | Create |
-| An index whose base folder differs from the setting is ignored | same | Create |
-| Scan of a temp tree: every file found, inaccessible or skipped entries per Open Question #14 | same | Create |
-| Removing a missing entry rewrites the file without it | same | Create |
-| Favorites round trip: absolute paths, toggle on / off, removal | `test/ImageGridFusion.Tests/Explorer/FavoritesTests.cs` | Create |
-
-Verified by hand in every case: the panel's layout and collapse, the drag onto a cell and onto the
-*Add images* zone, the double-click, the context menu, the progress texts, the invitation without
-a base folder, the ⚙ item.
+| Behaviour | Check |
+|---|---|
+| Folding | *ete* finds *Été.jpg*; *CHAT* finds *chat.jpg* |
+| Words in the relative path | *vacances chat* finds `Vacances 2025\chat.jpg`; *chat noir* finds `Photo_Chat-Noir.jpg` |
+| Ranking | A name starting with the word above one containing it; a name hit above a folder-only hit |
+| 10-limit and caption | *57 results — first 10*; the favorites list shows them all, most recent first |
+| Index file | `files.index` next to the exe: header, base folder, relative paths; hidden / system entries absent; ignored after a change of base folder |
+| Progress | *Counting… n*, then *Indexing… 5/346*, then *346 files · indexed hh:mm* |
+| Missing file | A row whose file was deleted disappears on drag / double-click / menu, with the status text; also gone from the favorites |
+| Favorites | `favorites.txt`: toggled at once, absolute paths, order of addition |
+| Panel | Collapse with `»`, the strip's `«`, state remembered after a restart; the preview shrinks |
+| Interactions | Drag onto a cell (replaced) and onto *Add images* (appended); double-click / Enter; *Open file location* |
+| No base folder | The invitation at the first keystroke, its button and the ⚙ item both start the scan |
 
 ---
 
@@ -242,13 +242,14 @@ a base folder, the ⚙ item.
 Every question the design cannot settle on its own, listed before Iteration 1 —
 not only the blocking ones.
 
-- [ ] Unit tests: none, verified by hand like every previous workfile, or a first xUnit project for
-  the pure logic (search, index file, favorites)?
-- [ ] Hidden and system files and folders (`Thumbs.db`, `desktop.ini`, `.git`, `$RECYCLE.BIN`…):
-  skipped by the scan, or indexed like the others?
-- [ ] The collapse control: the `»` / `«` buttons of the panel and its strip (§ Panel), a button in
-  the bottom bar, or both?
-- [ ] The favorites list (box empty): sorted by file name, or in the order they were added?
+- [x] ~~Unit tests: none, verified by hand like every previous workfile, or a first xUnit project for
+  the pure logic (search, index file, favorites)?~~ → None, verified by hand
+- [x] ~~Hidden and system files and folders (`Thumbs.db`, `desktop.ini`, `.git`, `$RECYCLE.BIN`…):
+  skipped by the scan, or indexed like the others?~~ → Skipped
+- [x] ~~The collapse control: the `»` / `«` buttons of the panel and its strip (§ Panel), a button in
+  the bottom bar, or both?~~ → The panel's `»` / `«` buttons
+- [x] ~~The favorites list (box empty): sorted by file name, or in the order they were added?~~ →
+  The most recently added first
 
 ---
 
@@ -282,6 +283,13 @@ without any check on its source; the registry-backed `AppSettings` with its ⚙ 
 `Task.Run` + `Progress<T>` pattern of the export for the background scan; no test project.
 Four questions remain open.
 
+### Iteration 2 — 2026-09-26
+
+Q&A #13–#16: no unit tests, verified by hand (the Test Impact table becomes the delivery
+checklist); hidden and system files and folders skipped by the scan; the panel collapses with its
+own `»` / `«` buttons, nothing added to the bottom bar; the favorites list shows the most recently
+added first. No open question remains.
+
 ---
 
 ## Implementation Log
@@ -292,7 +300,7 @@ says so rather than staying blank.
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
 | Code | | | |
-| Unit tests | | | Open Question #13 |
+| Unit tests | 2 | 2026-09-26 | Declined — no test project, verified by hand (Q&A #13) |
 | README | | | Section *File explorer*, the ⚙ item under *Tray & startup*, the OCR follow-up under *Planned*; GLOSSARY: *File explorer*, *Base folder*, *Index*, *Favorite* |
 
 ---
@@ -315,6 +323,10 @@ Questions asked by the agent during design, with user responses.
 | 10 | No base folder configured: a message with a button, a message only, or the panel hidden? | At the first search, invite the user to set the folder, explaining why | 2026-09-26 |
 | 11 | Progress *5/346*: which denominator — the previous index's count, a count pass first, or folders? | A count pass first | 2026-09-26 |
 | 12 | Is the subject straightforward, or tricky / long? | Straightforward | 2026-09-26 |
+| 13 | Unit tests: none, verified by hand, or a first xUnit project for the pure logic? | None, verified by hand | 2026-09-26 |
+| 14 | Hidden and system files and folders: skipped, or indexed like the others? | Skipped | 2026-09-26 |
+| 15 | The collapse control: the panel's `»` / `«` buttons, a bottom-bar button, or both? | The panel's buttons | 2026-09-26 |
+| 16 | The favorites list: sorted by name, in the order added, or the most recent first? | The most recently added first | 2026-09-26 |
 
 ---
 
