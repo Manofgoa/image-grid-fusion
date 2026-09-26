@@ -373,6 +373,28 @@ single column is not a small one. A second follow-up is pre-created at the same 
 `workfiles/20260926-explorer-window.md`, the list detached into a window of its own, on another
 screen if wanted. § Panel and § Settings updated.
 
+### Iteration 8 — 2026-09-26 — 🧭 Implementation choices of Iterations 5–7
+
+Delivered in four commits (the columns setting; the tile grid with the panel, the window and the
+Shell thumbnail's size; README and Glossary; this workfile). No rule broken. The choices the
+adjustments left open:
+
+- **Thumbnails**: `ShellThumbnail.TryLoad` takes the size asked for — 256 px (or the tile's width
+  at a high DPI) for the tiles, the 1 024 px of the cells' previews unchanged. One worker loads
+  them in the order the tiles were painted, fits each to the box with high-quality bicubic
+  scaling, and hands it back on the UI thread; 200 are kept, the least recently used dropped.
+- **Tile drawing**: a light grey box with a 1 px border, 2 px in the highlight color when
+  selected, the hot-track color when hovered; the heart in a white 24 px medallion; the name in
+  a font one point smaller, grey, highlight-colored when selected.
+- **Width**: 39 + columns × 200 + (columns − 1) × 8 logical px — the paddings, the list's border,
+  the grid's insets and a scrollbar around the tiles — set in logical units before the window
+  scales its controls, in device units afterwards (`IsHandleCreated`). `−` is disabled at one
+  column, `+` at five.
+- **The window follows** (`MainForm.FollowExplorerWidth`): not when maximized, clamped to the
+  screen's working area, moved left when it would overflow the right edge.
+- **Keyboard in the grid**: `↑` stays in its column at the top row; `↓` past the last tile lands
+  on it; `Home` / `End`; `Enter` activates.
+
 ---
 
 ## Implementation Log
@@ -382,9 +404,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 3–4 | 2026-09-26 | `bcbd951` settings, `d76767e` index / search / favorites, `afd1c14` panel and wiring |
+| Code | 3–4, 5–8 | 2026-09-26 | `bcbd951` settings, `d76767e` index / search / favorites, `afd1c14` panel and wiring; `7600b0b` columns setting, `cb2f3f4` tile grid |
 | Unit tests | 2 | 2026-09-26 | Declined — no test project, verified by hand (Q&A #13) |
-| README | 4 | 2026-09-26 | Features bullet, section *File explorer*, the ⚙ item under *Tray & startup*, the OCR follow-up under *Planned*; GLOSSARY: *File explorer*, *Base folder*, *Index*, *Favorite* |
+| README | 4, 8 | 2026-09-26 | Features bullet, section *File explorer* (tiles and columns added), the ⚙ item under *Tray & startup*, the OCR and explorer-window follow-ups under *Planned*; GLOSSARY: *File explorer*, *Base folder*, *Index*, *Favorite*, *Tile* |
 
 ---
 
