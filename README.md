@@ -12,6 +12,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 - Not only images: videos, PDFs, text files, and any file Windows shows a thumbnail for, are turned into an image (see Previews)
 - An **Add images** drop zone right of the preview: drop files onto it to add them after the current ones, or click it to pick files
   - With no image, the empty grid does the same: click it to pick files (a **+** and a hand cursor show it is clickable), drop files onto it, or paste them
+- A **file explorer** panel at the right of the preview: type a few letters to find a file in a base folder and its subfolders — from an index cached next to the exe, so it answers as you type — heart it as a favorite, and drag it into a cell (see File explorer)
 - Several layouts per image count, picked from a strip of thumbnails — more of them under its **More** group — plus a mirror toggle; drag the separator between two cells to resize them (see Layouts)
 - No image list: the grid preview *is* the interface
   - Click a cell to select it, `Esc` to deselect; the effect tabs act on the selected cell (see Effects)
@@ -43,6 +44,18 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 - Once the grid is full, a new image replaces the selected cell, or the last image (image 4) if none is selected.
 - Adding several files at once (paste, drop, the Add images picker, or command-line arguments): free slots are filled first, the first excess file applies the replace rule above, and any further excess is ignored, with a status-line message.
 - A pasted or dropped text is one image, placed by the same rules.
+
+## File explorer
+
+A collapsible panel at the right of the preview, open at start-up: a search box over a **base folder** and its subfolders, and the files it finds, dragged into the cells.
+
+- **Base folder**: chosen from the **⚙** menu (**File explorer folder…**) and remembered between sessions. The first search made without one shows, instead of the list, an invitation with a **Choose folder…** button that does the same.
+- **Index**: every file under the base folder — hidden and system entries skipped — is listed in `files.index`, next to the exe. It is loaded at start-up, so the search works at once; then the folder is **rescanned in the background**, at every launch and with the **↻** button, and the panel's status line follows: *Counting… 1 234*, then *Indexing… 5/346*, then *346 files · indexed 21:03*. The search never reads the disk.
+- **Search**: as you type, the **10 best matches**. Every word typed must appear in the file's name or its subfolders, accents and case ignored: *ete* finds *Été.jpg*, *vacances chat* finds `Vacances 2025\chat.jpg`. Ranked by the words found in the file name itself, then a name starting with the first word before one containing it, then the shorter name. The caption says how many matched in all.
+- **Favorites**: click the heart in front of a row (♡ → ♥). They are kept in `favorites.txt` next to the exe, as absolute paths. While the search box is empty, the list shows every favorite, the newest first; during a search they are only marked, not promoted.
+- **Into the grid**: drag a row onto a cell to replace its image, or onto the **Add images** zone to add it — exactly like a file from the Explorer; double-click a row, or press `Enter` on it, to add it like the Add images picker; `Enter` in the search box takes the first result. Right-click a row for **Open file location**; hover it for its full path.
+- A file deleted since the last scan leaves the index (and the favorites) the moment it is dragged, double-clicked or opened, with a message on the status line; a file created since appears at the next launch or **↻**.
+- The **»** button collapses the panel to a thin strip, its **«** brings it back; the state is remembered between sessions.
 
 ## Effects
 
@@ -359,7 +372,7 @@ Output resolution is kept as high as possible so source images aren't needlessly
 - **Click** the tray icon to bring the window back. **Right-click** it for a menu: **Open**, or **Quit** to close the app completely. Quitting is the only way to exit; logging off or shutting down Windows closes it too.
 - **Start with Windows**: the **⚙** button in the bottom bar opens a menu with this checkable option, off by default. Ticked, the app is launched at session start, hidden: only the tray icon appears.
   - It is stored as a per-user `ImageGridFusion` value in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, running the exe with `--tray`. No settings file, no admin rights.
-- The same menu holds **Border color** and **Twitter corners by default** (see Borders).
+- The same menu holds **Border color** and **Twitter corners by default** (see Borders), and **File explorer folder…** (see File explorer).
   - If the exe is moved, the registration follows it the next time it is launched from its new place (any copy of the exe launched takes the registration over).
   - Disabling the app in Windows *Settings → Apps → Startup* is not reflected by the option.
 - Several instances can run side by side, each with its own window and tray icon.
@@ -376,3 +389,4 @@ C# / WinForms on .NET 10, using `System.Drawing` (GDI+) with high-quality bicubi
 ## Planned
 
 - A dedicated frame design for the single-image case.
+- OCR over the indexed images, so the file explorer's search also finds the words shown inside them.
