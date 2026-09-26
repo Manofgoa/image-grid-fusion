@@ -261,6 +261,12 @@ Both open questions answered (Q&A #13–#14):
 - Copy: the clipboard's `PNG` stream keeps the transparency, its bitmap flavour is flattened on
   white — *Exports* table.
 
+### Iteration 5 — 2026-09-26 — ✅ Implemented
+
+Go given for code, tests and documentation (Q&A #16), after a go relayed by another session was
+set aside until the user confirmed it here. Branch Gate: stays on `main`, the standing choice for
+this repository. Scope frozen on the design sections as they stand.
+
 ---
 
 ## Implementation Log
@@ -297,6 +303,7 @@ Questions asked by the agent during design, with user responses.
 | 13 | RULES.md draws an effect off as its defaults: Background exception, off = no fill? | Yes — Background exception in RULES.md | 2026-09-26 |
 | 14 | Copy (clipboard): does the copied image keep the transparency? | `PNG` stream keeps the alpha, bitmap flavour on white | 2026-09-26 |
 | 15 | Go for implementation? | No — the gate holds | 2026-09-26 |
+| 16 | Go for implementation (confirming a go relayed by another session)? | Code, tests and documentation | 2026-09-26 |
 
 ---
 
