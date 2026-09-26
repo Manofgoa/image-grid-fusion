@@ -48,6 +48,10 @@ internal sealed class MainForm : Form
     private bool _closeAfterExport;
     private bool _closingForGood;
 
+    // Whether a size was remembered from the last use, and whether the window was opened this session — its size is remembered only then.
+    private readonly bool _sizeRemembered;
+    private bool _opened;
+
     /// <summary>The last MP4 or GIF Copy generated in this session; null until one was. Nothing that happens to the grid touches it.</summary>
     private LastVideo? _lastVideo;
 
@@ -240,7 +244,11 @@ internal sealed class MainForm : Form
         Text = "Image Grid Fusion";
         Icon = AppIcon.Load();
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(960, 860);
+
+        // The size it had at its last use, else the default — logical pixels, scaled with the rest.
+        var remembered = AppSettings.WindowClientSize;
+        _sizeRemembered = remembered is not null;
+        ClientSize = remembered ?? new Size(960, 860);
         MinimumSize = new Size(480, 320);
         AllowDrop = true;
 
@@ -628,13 +636,20 @@ internal sealed class MainForm : Form
     }
 
     /// <summary>
-    /// The window opens taller by the global effects' tabs row, so the preview keeps the size it had
-    /// when the global effects sat in a single row; centered again on its screen.
+    /// The window opens at the size it had at its last use, else at its default size made taller by
+    /// the global effects' tabs row, so the preview keeps the size it had when the global effects
+    /// sat in a single row; either way within the working area of its screen, and centered again on it.
     /// </summary>
     protected override void OnLoad(EventArgs e)
     {
         base.OnLoad(e);
-        Height = Math.Min(Height + _globalTabsRow.Height, Screen.FromControl(this).WorkingArea.Height);
+        _opened = true;
+
+        var area = Screen.FromControl(this).WorkingArea;
+        int height = _sizeRemembered ? Height : Height + _globalTabsRow.Height;
+        Size = new Size(
+            Math.Max(MinimumSize.Width, Math.Min(Width, area.Width)),
+            Math.Max(MinimumSize.Height, Math.Min(height, area.Height)));
         CenterToScreen();
     }
 
@@ -673,10 +688,12 @@ internal sealed class MainForm : Form
     /// <summary>
     /// The ×, Alt+F4 and the taskbar's Close window only hide it: the app keeps running in the tray,
     /// grid unchanged. A real close (Quit, logoff, shutdown) during an export cancels it first; the
-    /// window closes once it has stopped.
+    /// window closes once it has stopped. Either way, its size is remembered first.
     /// </summary>
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
+        SaveWindowSize();
+
         if (e.CloseReason == CloseReason.UserClosing && !_closingForGood)
         {
             e.Cancel = true;
@@ -2273,6 +2290,33 @@ internal sealed class MainForm : Form
             ShowStatus($"File explorer columns not remembered: {ex.Message}", error: true);
         }
     }
+
+    /// <summary>
+    /// The window closes or hides: its normal size — the one before it was maximized or minimized — is
+    /// remembered between sessions, in logical pixels, once it was opened in this session (a hidden
+    /// start quit from the tray is not a use).
+    /// </summary>
+    private void SaveWindowSize()
+    {
+        if (!_opened)
+        {
+            return;
+        }
+
+        // Maximized or minimized, the normal bounds minus the frame give the normal client size.
+        var client = WindowState == FormWindowState.Normal ? ClientSize : RestoreBounds.Size - SizeFromClientSize(Size.Empty);
+        try
+        {
+            AppSettings.SaveWindowClientSize(new Size(DeviceToLogicalUnits(client.Width), DeviceToLogicalUnits(client.Height)));
+        }
+        catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+        {
+            ShowStatus($"Window size not remembered: {ex.Message}", error: true);
+        }
+    }
+
+    /// <summary>The reverse of <see cref="Control.LogicalToDeviceUnits(int)"/>: device pixels to 96 DPI ones.</summary>
+    private int DeviceToLogicalUnits(int value) => (int)Math.Round(value * 96.0 / DeviceDpi);
 
     /// <summary>
     /// The explorer grew or shrank by <paramref name="delta"/> px: the window follows when it is not
