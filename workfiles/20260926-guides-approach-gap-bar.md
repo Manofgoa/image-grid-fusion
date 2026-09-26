@@ -53,7 +53,10 @@ Components:
   **fraction of the cell** (scoping answer) on the axis concerned: of the cell's **width** for the
   horizontal axis, of its **height** for the vertical axis. It thus survives resizing and layout
   changes, like the effects' geometry.
-- Value: see *Open Questions*.
+- Value: **10 %** of the cell (Q&A #5), the order of the pan's 10 % margin.
+- **Position only** (Q&A #6): the guide shows while the stop is within reach, whatever the direction
+  of the drag — moving away from it inside the reach keeps it shown, so micro-moves never make it
+  flicker.
 - Gap measured, in device px, between:
 
   | Stop | From | To |
@@ -70,6 +73,14 @@ Components:
 - The approach is shown **during the drag only**, like the guides today; everything goes when the
   mouse is released.
 
+### Progressive Opacity
+
+- While approaching, the guide's **opacity grows with the closeness** (Q&A #7): faint at the edge of
+  the reach, full once the stop holds the image. The held guide is drawn exactly as today.
+- The halo fades with the line, so a faint guide does not leave a dark dashed trace.
+- Curve: **linear** in the gap, from a minimum opacity at the approach distance to 100 % at the stop.
+  Minimum value: see *Open Questions*.
+
 ---
 
 ## Gap Bar
@@ -83,7 +94,9 @@ Components:
 - Drawing: a **helper indicator** (RULES.md) — fluorescent green `HelperColor` over the black
   `HelperHalo`, in `GridPreview.OnPaint` only, never in `Compositor`; **solid** (the guide is the
   dashed one), with a short tick across each end so a short gap still reads as a measure.
-- Position along the guide: see *Open Questions*.
+- Position along the guide: **at the mouse** (Q&A #8) — at the cursor's height for a vertical guide,
+  at its abscissa for a horizontal one, kept inside the cell (the bar and its ticks fully visible).
+- Opacity of the bar: see *Open Questions*.
 
 ---
 
@@ -107,15 +120,17 @@ The repository has **no test project** today. See *Open Questions*.
 
 ## Open Questions
 
-- [ ] Approach distance: which fraction of the cell?
-- [ ] Is the approach shown by **position only** (the stop within reach, whatever the drag's
-      direction), or only when the image **moves toward** the stop?
-- [ ] While approaching, is the guide drawn **like the held guide**, or **distinguished** (e.g. dimmer)
-      so the moment the stop holds stays visible?
-- [ ] Where along the guide is the gap bar drawn: at the **mouse position**, or in the **middle of the
-      cell**?
+- [x] ~~Approach distance: which fraction of the cell?~~ → 10 %
+- [x] ~~Is the approach shown by **position only** (the stop within reach, whatever the drag's
+      direction), or only when the image **moves toward** the stop?~~ → Position only
+- [x] ~~While approaching, is the guide drawn **like the held guide**, or **distinguished** (e.g. dimmer)
+      so the moment the stop holds stays visible?~~ → Opacity growing progressively with the closeness
+- [x] ~~Where along the guide is the gap bar drawn: at the **mouse position**, or in the **middle of the
+      cell**?~~ → At the mouse
 - [ ] Unit tests: with no test project in the repository, create one for the approach logic of
       `PanMagnet`, or no unit tests?
+- [ ] Progressive opacity: which **minimum** opacity at the edge of the reach?
+- [ ] Does the **gap bar** fade with the guide, or stay at full opacity?
 
 ---
 
@@ -135,6 +150,15 @@ in the order the requests were made.
   `GridPreview.PaintPanGuides`); the blur bars are handles always shown, left out.
 - Proposed: per-axis approach state in `PanMagnet`, nearest stop per axis, solid gap bar with end
   ticks, disappearing on hold; rule added to RULES.md.
+
+### Iteration 2 — 2026-09-26
+
+- Answers (Q&A #5–#8): approach distance 10 % of the cell; approach by position only; gap bar at
+  the mouse, kept inside the cell.
+- Request (Q&A #7): instead of choosing between a guide drawn like the held one and a dimmer one,
+  make its **opacity grow progressively** as the image gets closer. Added *Progressive Opacity*:
+  linear in the gap, halo fading with the line, full opacity once held.
+- New open questions: the minimum opacity, and whether the gap bar fades too.
 
 ---
 
@@ -162,11 +186,13 @@ Questions asked by the agent during design, with user responses.
 | 2 | What does "earlier" mean? | A fraction of the cell | 2026-09-25 |
 | 3 | What does the "bar at 90°" look like? | A segment perpendicular to the guide, its length the gap left, shrinking to nothing when the stop holds | 2026-09-25 |
 | 4 | Is the exploration straightforward or tricky? | Straightforward | 2026-09-25 |
-| 5 | Approach distance: which fraction of the cell? | | |
-| 6 | Approach by position only, or only when moving toward the stop? | | |
-| 7 | Approaching guide drawn like the held one, or distinguished? | | |
-| 8 | Gap bar at the mouse position or in the middle of the cell? | | |
+| 5 | Approach distance: which fraction of the cell? | 10 % | 2026-09-26 |
+| 6 | Approach by position only, or only when moving toward the stop? | Position only | 2026-09-26 |
+| 7 | Approaching guide drawn like the held one, or distinguished? | "Can the opacity increase progressively during the approach?" — yes, adopted | 2026-09-26 |
+| 8 | Gap bar at the mouse position or in the middle of the cell? | At the mouse | 2026-09-26 |
 | 9 | Unit tests: create a test project for `PanMagnet`, or none? | | |
+| 10 | Progressive opacity: which minimum opacity at the edge of the reach? | | |
+| 11 | Does the gap bar fade with the guide, or stay at full opacity? | | |
 
 ---
 
