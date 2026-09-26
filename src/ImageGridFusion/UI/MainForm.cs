@@ -167,7 +167,7 @@ internal sealed class MainForm : Form
         Text = "Image Grid Fusion";
         Icon = AppIcon.Load();
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(960, 580);
+        ClientSize = new Size(960, 860);
         MinimumSize = new Size(480, 320);
         AllowDrop = true;
 
