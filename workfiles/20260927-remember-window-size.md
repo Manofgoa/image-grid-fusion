@@ -165,6 +165,12 @@ load — the default included. Found in the working tree, uncommitted: an `OnLoa
 `workfiles/20260926-global-effects-tabs.md` growing the window at start-up — the design confines
 that growth to the default size.
 
+### Iteration 2 — 2026-09-27 — ✅ Implemented
+
+Go given for the code, the unit tests (not applicable) and the documentation. Branch: stays on
+`main`, the repository's standing choice (no worktree asked). At the go, the working tree was
+clean: the concurrent `OnLoad` change had left it.
+
 ---
 
 ## Implementation Log
