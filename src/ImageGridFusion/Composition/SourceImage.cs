@@ -19,6 +19,9 @@ public sealed class SourceImage : IDisposable
 
     public string? FilePath { get; }
 
+    /// <summary>An image without a file that was dropped (a text dragged from another app), not pasted: named so in the preview.</summary>
+    public bool Dropped { get; set; }
+
     public PageSource? Pages { get; }
 
     /// <summary>Index of the page <see cref="Bitmap"/> shows, in <see cref="Pages"/>.</summary>
