@@ -282,7 +282,7 @@ internal sealed class MainForm : Form
         _preview.DragOver += OnPreviewDragOver;
         _preview.DragLeave += (_, _) => _preview.ShowDropTarget(null);
         _preview.DragDrop += OnDragDrop;
-        _preview.DropZoneClicked += (_, _) => PickFiles();
+        _preview.AddImagesClicked += (_, _) => PickFiles();
         _layouts.DragEnter += OnDragEnter;
         _layouts.DragDrop += OnDragDrop;
         UpdateButtons();
@@ -486,7 +486,7 @@ internal sealed class MainForm : Form
 
     private int DropCell(DragEventArgs e) => _preview.CellAt(_preview.PointToClient(new Point(e.X, e.Y)));
 
-    /// <summary>Files chosen from the drop zone's picker are added like a drop onto it.</summary>
+    /// <summary>Files chosen from the picker (drop zone or empty canvas) are added like a drop onto the drop zone.</summary>
     private async void PickFiles()
     {
         using var dialog = new OpenFileDialog

@@ -64,7 +64,7 @@ internal sealed class GridPreview : Control
     private bool _externalDrag;
     private Rectangle _externalHover;
     private bool _hoveringDropZone;
-    private bool _pressedDropZone;
+    private Rectangle _pressedPicker;
     private readonly PageLoader _pageLoader = new();
     private readonly AnimationPlayer _player = new();
     private bool _locked;
@@ -120,8 +120,8 @@ internal sealed class GridPreview : Control
     /// <summary>Raised when another cell is selected, or none, and when the selected image changes its look.</summary>
     public event EventHandler? SelectedImageChanged;
 
-    /// <summary>Raised when the drop zone right of the canvas is clicked.</summary>
-    public event EventHandler? DropZoneClicked;
+    /// <summary>Raised when the drop zone right of the canvas, or the empty canvas, is clicked.</summary>
+    public event EventHandler? AddImagesClicked;
 
     /// <summary>Raised when the active layout changes, picked by the user or reset with the image count, or when its cells are resized.</summary>
     public event EventHandler? LayoutChanged;
@@ -415,9 +415,10 @@ internal sealed class GridPreview : Control
             return;
         }
 
-        if (DropZoneBounds(CanvasBounds()).Contains(e.Location))
+        var picker = PickerAt(e.Location);
+        if (!picker.IsEmpty)
         {
-            _pressedDropZone = true;
+            _pressedPicker = picker;
             return;
         }
 
@@ -559,12 +560,13 @@ internal sealed class GridPreview : Control
             return;
         }
 
-        if (_pressedDropZone)
+        if (!_pressedPicker.IsEmpty)
         {
-            _pressedDropZone = false;
-            if (DropZoneBounds(CanvasBounds()).Contains(e.Location))
+            bool released = PickerAt(e.Location) == _pressedPicker;
+            _pressedPicker = Rectangle.Empty;
+            if (released)
             {
-                DropZoneClicked?.Invoke(this, EventArgs.Empty);
+                AddImagesClicked?.Invoke(this, EventArgs.Empty);
             }
 
             return;
@@ -741,6 +743,16 @@ internal sealed class GridPreview : Control
         return _images.Count < GridLayout.MaxImages ? CanvasBounds() : cells[ExcessTarget()];
     }
 
+    /// <summary>Surface under <paramref name="location"/> a click opens the Add images picker from: the drop zone, the empty canvas, else none.</summary>
+    private Rectangle PickerAt(Point location)
+    {
+        var canvas = CanvasBounds();
+        var zone = DropZoneBounds(canvas);
+        return zone.Contains(location) ? zone
+            : _images.Count == 0 && canvas.Contains(location) ? canvas
+            : Rectangle.Empty;
+    }
+
     /// <summary>Surface under <paramref name="location"/>: the drop zone, its cell, else the empty canvas, else none.</summary>
     private Rectangle SurfaceAt(Point location)
     {
@@ -850,7 +862,7 @@ internal sealed class GridPreview : Control
         bool onDropZone = DropZoneBounds(CanvasBounds()).Contains(location);
         bool actions = hovered >= 0 && !_locked;
         bool onHandle = actions && HandleBounds(CellBounds()[hovered]).Contains(location);
-        bool onControl = onClose || onDropZone;
+        bool onControl = onClose || onDropZone || onCanvas;
         var onBar = actions && !onControl && ShownBlur(hovered) is { } blur ? BarAt(CellBounds()[hovered], blur, location) : null;
         var onSeparator = actions && !onControl && onBar is null ? SeparatorAt(location) : null;
         if (hovered == _hovered && onClose == _hoveringClose && onCanvas == _hoveringCanvas && onDropZone == _hoveringDropZone
@@ -1738,45 +1750,39 @@ internal sealed class GridPreview : Control
     /// <summary>Dashed strip with a "+" above its label; brighter while the mouse is over it.</summary>
     private void PaintDropZone(Graphics g, Rectangle zone)
     {
-        var color = _hoveringDropZone ? Color.White : ForeColor;
+        PaintAddPrompt(g, zone, "Add images", _hoveringDropZone, TextFormatFlags.EndEllipsis);
+    }
+
+    /// <summary>The empty canvas opens the picker too, so it is drawn like the drop zone.</summary>
+    private void PaintEmptyState(Graphics g, Rectangle canvas) =>
+        PaintAddPrompt(
+            g,
+            canvas,
+            "Click to pick 1 to 4 images, drop them here, or paste them with Ctrl+V",
+            _hoveringCanvas,
+            TextFormatFlags.WordBreak);
+
+    /// <summary>Dashed border, then a "+" above the label, centered; white while hovered.</summary>
+    private void PaintAddPrompt(Graphics g, Rectangle bounds, string label, bool hovered, TextFormatFlags wrap)
+    {
+        var color = hovered ? Color.White : ForeColor;
         using (var pen = new Pen(color, LogicalToDeviceUnits(EmptyBorderWidth)) { DashStyle = DashStyle.Dash })
         {
-            g.DrawRectangle(pen, zone);
+            g.DrawRectangle(pen, bounds);
         }
 
-        int plus = Math.Min(zone.Width * 2 / 5, LogicalToDeviceUnits(32));
-        int labelHeight = TextRenderer.MeasureText("Add images", Font).Height;
+        var flags = TextFormatFlags.HorizontalCenter | TextFormatFlags.Top | wrap;
+        int plus = Math.Min(bounds.Width * 2 / 5, LogicalToDeviceUnits(32));
+        int labelHeight = TextRenderer.MeasureText(label, Font, new Size(bounds.Width, 0), flags).Height;
         int gap = LogicalToDeviceUnits(8);
-        int top = zone.Y + (zone.Height - plus - gap - labelHeight) / 2;
-        int centerX = zone.X + zone.Width / 2;
+        int top = bounds.Y + (bounds.Height - plus - gap - labelHeight) / 2;
+        int centerX = bounds.X + bounds.Width / 2;
         using (var pen = new Pen(color, LogicalToDeviceUnits(3)))
         {
             g.DrawLine(pen, centerX, top, centerX, top + plus);
             g.DrawLine(pen, centerX - plus / 2, top + plus / 2, centerX + plus / 2, top + plus / 2);
         }
 
-        TextRenderer.DrawText(
-            g,
-            "Add images",
-            Font,
-            new Rectangle(zone.X, top + plus + gap, zone.Width, labelHeight),
-            color,
-            TextFormatFlags.HorizontalCenter | TextFormatFlags.Top | TextFormatFlags.EndEllipsis);
-    }
-
-    private void PaintEmptyState(Graphics g, Rectangle canvas)
-    {
-        using (var pen = new Pen(ForeColor, LogicalToDeviceUnits(EmptyBorderWidth)) { DashStyle = DashStyle.Dash })
-        {
-            g.DrawRectangle(pen, canvas);
-        }
-
-        TextRenderer.DrawText(
-            g,
-            "Drop 1 to 4 images here, or paste them with Ctrl+V",
-            Font,
-            canvas,
-            ForeColor,
-            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.WordBreak);
+        TextRenderer.DrawText(g, label, Font, new Rectangle(bounds.X, top + plus + gap, bounds.Width, labelHeight), color, flags);
     }
 }
