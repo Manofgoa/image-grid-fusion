@@ -242,6 +242,14 @@ stand at Iteration 5.
   instead.
 - No rule broken.
 
+### Iteration 8 — 2026-09-26 — ⚙️ Post-implementation — Fill the rounded-off corners in the exports
+
+The user, after testing, with a screenshot of an export posted on Twitter / X: "in Twitter corner
+mode the preview is perfect, but the space between the rounding and the outside must be filled —
+top left, top right, bottom right, bottom left". Twitter's own rounding, smaller than ours at that
+display size, leaves the transparent corners of the PNG showing as white slivers outside our curve.
+To settle before the code (Q&A #16–#17): what fills them, and in which outputs.
+
 ---
 
 ## Implementation Log
@@ -279,6 +287,8 @@ Questions asked by the agent during design, with user responses.
 | 13 | The ⚙ start-up setting: dropped, or kept as the checkbox's default? | Kept, it sets the checkbox's default | 2026-09-26 |
 | 14 | Borders off: square corners, or still rounded? | Square (recommended) | 2026-09-26 |
 | 15 | The checkbox's label? | "Twitter corners" (recommended) | 2026-09-26 |
+| 16 | Exports: what fills the rounded-off corners, and in which outputs? | | 2026-09-26 |
+| 17 | Gap styles without outer frame: what fills the rounded-off corners in the exports? | | 2026-09-26 |
 
 ---
 
