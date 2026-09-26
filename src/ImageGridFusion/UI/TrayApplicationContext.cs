@@ -39,6 +39,10 @@ internal sealed class TrayApplicationContext : ApplicationContext
             }
         };
 
+        // An export that ended while the window was hidden: the tray icon says so; clicked, it opens the window.
+        _form.ExportEndedHidden += (_, notice) => _tray.ShowBalloonTip(5000, notice.Title, notice.Text, notice.Error ? ToolTipIcon.Error : ToolTipIcon.Info);
+        _tray.BalloonTipClicked += (_, _) => ShowForm();
+
         if (!hidden)
         {
             _form.Show();

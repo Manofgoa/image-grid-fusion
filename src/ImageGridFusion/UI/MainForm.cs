@@ -30,6 +30,13 @@ internal sealed class MainForm : Form
     private readonly Button _saveButton = SplitMain("Save…");
     private readonly Button _saveArrow = SplitArrow();
     private readonly ContextMenuStrip _saveMenu = new();
+    private readonly ToolStripMenuItem _saveGif = new("GIF");
+    private readonly ToolStripMenuItem _saveMp4 = new("MP4 Video");
+
+    // The last video Copy generated, offered back without generating it again (see LastVideo).
+    private readonly Button _copyLastButton = new() { Text = "Copy last video", AutoSize = true, Enabled = false };
+    private readonly ToolStripMenuItem _copyLast = new("Copy last video") { Enabled = false };
+    private readonly ToolStripMenuItem _saveLast = new("Save last video…") { Enabled = false };
     private readonly Button _cancelButton = new() { Text = "Cancel", AutoSize = true, Visible = false };
     private readonly Label _status = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly TableLayoutPanel _bottom;
@@ -40,6 +47,9 @@ internal sealed class MainForm : Form
     private CancellationTokenSource? _export;
     private bool _closeAfterExport;
     private bool _closingForGood;
+
+    /// <summary>The last MP4 or GIF Copy generated in this session; null until one was. Nothing that happens to the grid touches it.</summary>
+    private LastVideo? _lastVideo;
 
     // The options of the selected tab, then the tabs of the effects hanging below them: see RULES.md.
     private readonly TableLayoutPanel _optionsRow = new()
@@ -198,6 +208,7 @@ internal sealed class MainForm : Form
         _outputButtons.Controls.Add(_settingsButton);
         _outputButtons.Controls.Add(_copyButton);
         _outputButtons.Controls.Add(_copyArrow);
+        _outputButtons.Controls.Add(_copyLastButton);
         _outputButtons.Controls.Add(_saveButton);
         _outputButtons.Controls.Add(_saveArrow);
 
@@ -306,9 +317,20 @@ internal sealed class MainForm : Form
         _copyGif.Click += (_, _) => Copy(GridExport.Format.Gif);
         _copyMp4.Click += (_, _) => Copy(GridExport.Format.Mp4);
         _copyForSharing.Click += (_, _) => CopyForSharing();
-        _copyMenu.Items.AddRange([_copyGif, _copyMp4, _copyForSharing]);
-        _saveMenu.Items.Add("GIF", null, (_, _) => SaveAs(GridExport.Format.Gif));
-        _saveMenu.Items.Add("MP4 Video", null, (_, _) => SaveAs(GridExport.Format.Mp4));
+        _copyMenu.Items.AddRange([_copyGif, _copyMp4, _copyForSharing, new ToolStripSeparator(), _copyLast]);
+        _saveGif.Click += (_, _) => SaveAs(GridExport.Format.Gif);
+        _saveMp4.Click += (_, _) => SaveAs(GridExport.Format.Mp4);
+        _saveMenu.Items.AddRange([_saveGif, _saveMp4, new ToolStripSeparator(), _saveLast]);
+
+        // The last video's tooltips say whether the grid has changed since: refreshed as they are about to show.
+        _copyLastButton.Click += (_, _) => CopyLastVideo();
+        _copyLast.Click += (_, _) => CopyLastVideo();
+        _saveLast.Click += (_, _) => SaveLastVideo();
+        _copyMenu.ShowItemToolTips = true;
+        _saveMenu.ShowItemToolTips = true;
+        _copyLastButton.MouseEnter += (_, _) => RefreshLastVideoTooltips();
+        _copyMenu.Opening += (_, _) => RefreshLastVideoTooltips();
+        _saveMenu.Opening += (_, _) => RefreshLastVideoTooltips();
         _copyArrow.Click += (_, _) => _copyMenu.Show(_copyButton, Point.Empty, ToolStripDropDownDirection.AboveRight);
         _saveArrow.Click += (_, _) => _saveMenu.Show(_saveButton, Point.Empty, ToolStripDropDownDirection.AboveRight);
         _cancelButton.Click += (_, _) => _export?.Cancel();
@@ -881,7 +903,8 @@ internal sealed class MainForm : Form
     /// <summary>
     /// Copies the grid: a still image, or — <paramref name="format"/> given — an MP4 video or a GIF,
     /// written to the temp folder and put on the clipboard as a file; a GIF also as its bytes, in the
-    /// clipboard's GIF format that some apps paste directly.
+    /// clipboard's GIF format that some apps paste directly. The video or GIF becomes the last video,
+    /// offered back by Copy last and Save last.
     /// </summary>
     private async void Copy(GridExport.Format? format)
     {
@@ -893,25 +916,26 @@ internal sealed class MainForm : Form
         if (format is { } animated)
         {
             string path = TempExportPath(Extension(animated));
+            int gridVersion = _preview.ContentVersion;
             var animationClock = Stopwatch.StartNew();
             if (await ExportAnimationAsync(path, animated) is { } animation)
             {
                 var encoding = animationClock.Elapsed;
+                LastVideo? last = null;
                 try
                 {
-                    var data = new DataObject();
-                    data.SetFileDropList(new StringCollection { path });
-                    if (animated == GridExport.Format.Gif)
-                    {
-                        data.SetData("GIF", new MemoryStream(File.ReadAllBytes(path)));
-                    }
-
-                    Clipboard.SetDataObject(data, copy: true);
-                    ShowStatus(AnimationSummary($"Copied {Path.GetFileName(path)}", path, animated, animation, encoding));
+                    // Kept before the clipboard step: a copy failing there is retried with Copy last.
+                    last = new LastVideo(path, animated, DateTime.Now, animation, new FileInfo(path).Length, encoding, gridVersion);
+                    _lastVideo = last;
+                    UpdateButtons();
+                    PutOnClipboard(last);
+                    ShowStatus(AnimationSummary($"Copied {last.FileName}", last));
+                    NotifyIfAway($"{FormatName(animated)} copied", $"{last.FileName} is on the clipboard. If it gets overwritten, Copy last {FormatName(animated)} brings it back.", error: false);
                 }
                 catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException)
                 {
                     ShowStatus($"Copy failed: {ex.Message}", error: true);
+                    NotifyIfAway("Copy failed", last is null ? ex.Message : $"{ex.Message} Copy last {FormatName(animated)} puts {last.FileName} on the clipboard again.", error: true);
                 }
             }
 
@@ -947,6 +971,107 @@ internal sealed class MainForm : Form
     }
 
     /// <summary>Long edge of the light copy: chat apps recompress to about 1600 px anyway.</summary>
+    /// <summary>Puts a generated MP4 or GIF on the clipboard: its file, plus its bytes in the clipboard's GIF format for a GIF.</summary>
+    private static void PutOnClipboard(LastVideo video)
+    {
+        var data = new DataObject();
+        data.SetFileDropList(new StringCollection { video.FilePath });
+        if (video.Format == GridExport.Format.Gif)
+        {
+            data.SetData("GIF", new MemoryStream(File.ReadAllBytes(video.FilePath)));
+        }
+
+        Clipboard.SetDataObject(data, copy: true);
+    }
+
+    /// <summary>
+    /// Puts the last video back on the clipboard, as its copy did — nothing generated: the clipboard
+    /// was overwritten before it was pasted. The grid may have changed since, or be empty.
+    /// </summary>
+    private void CopyLastVideo()
+    {
+        if (_lastVideo is not { } last || RefuseWhileExporting() || !LastVideoStillThere(last))
+        {
+            return;
+        }
+
+        try
+        {
+            PutOnClipboard(last);
+            ShowStatus(AnimationSummary($"Copied again {last.FileName} (generated at {last.GeneratedAt:HH:mm})", last));
+        }
+        catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException)
+        {
+            ShowStatus($"Copy failed: {ex.Message}", error: true);
+        }
+    }
+
+    /// <summary>Saves the last video where the user chooses: its file copied there, nothing generated.</summary>
+    private void SaveLastVideo()
+    {
+        if (_lastVideo is not { } last || RefuseWhileExporting() || !LastVideoStillThere(last))
+        {
+            return;
+        }
+
+        using var dialog = new SaveFileDialog
+        {
+            Filter = SaveFilter(last.Format),
+            DefaultExt = Extension(last.Format),
+            FileName = last.FileName,
+            InitialDirectory = DefaultSaveFolder(),
+        };
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        try
+        {
+            File.Copy(last.FilePath, dialog.FileName, overwrite: true);
+            ShowStatus(AnimationSummary($"Saved {Path.GetFileName(dialog.FileName)} (the last generated {FormatName(last.Format)}, from {last.GeneratedAt:HH:mm})", last));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            ShowStatus($"Save failed: {ex.Message}", error: true);
+        }
+    }
+
+    /// <summary>
+    /// Whether the last video's file is still in the temp folder. Gone — a temp cleaner, a deletion by
+    /// hand — it is forgotten, the status line saying so, and the actions go back to their disabled state.
+    /// </summary>
+    private bool LastVideoStillThere(LastVideo last)
+    {
+        if (File.Exists(last.FilePath))
+        {
+            return true;
+        }
+
+        ShowStatus($"The last generated {FormatName(last.Format)}, {last.FileName}, is gone from the temp folder.", error: true);
+        _lastVideo = null;
+        UpdateButtons();
+        return false;
+    }
+
+    /// <summary>The tooltips of Copy last and Save last: what the last video holds, and whether the grid has changed since it was generated.</summary>
+    private void RefreshLastVideoTooltips()
+    {
+        string text = "";
+        if (_lastVideo is { } last)
+        {
+            text = AnimationSummary($"Generated at {last.GeneratedAt:HH:mm}", last);
+            if (last.GridVersion != _preview.ContentVersion)
+            {
+                text += " — the grid has changed since";
+            }
+        }
+
+        _toolTip.SetToolTip(_copyLastButton, text);
+        _copyLast.ToolTipText = text;
+        _saveLast.ToolTipText = text;
+    }
+
     private const int SharingMaxEdge = 2560;
 
     private const long SharingJpegQuality = 90;
@@ -1008,12 +1133,7 @@ internal sealed class MainForm : Form
         string extension = Extension(format);
         using var dialog = new SaveFileDialog
         {
-            Filter = format switch
-            {
-                GridExport.Format.Mp4 => "MP4 video (*.mp4)|*.mp4",
-                GridExport.Format.Gif => "GIF image (*.gif)|*.gif",
-                _ => "PNG image (*.png)|*.png",
-            },
+            Filter = SaveFilter(format),
             DefaultExt = extension,
             FileName = $"fusion-{DateTime.Now:yyyyMMdd-HHmmss}.{extension}",
             InitialDirectory = DefaultSaveFolder(),
@@ -1030,6 +1150,7 @@ internal sealed class MainForm : Form
             if (await ExportAnimationAsync(dialog.FileName, animated) is { } result)
             {
                 ShowStatus(AnimationSummary(saved, dialog.FileName, animated, result, clock.Elapsed));
+                NotifyIfAway($"{FormatName(animated)} saved", Path.GetFileName(dialog.FileName), error: false);
             }
 
             return;
@@ -1078,6 +1199,16 @@ internal sealed class MainForm : Form
         GridExport.Format.Gif => "gif",
         _ => "png",
     };
+
+    private static string SaveFilter(GridExport.Format? format) => format switch
+    {
+        GridExport.Format.Mp4 => "MP4 video (*.mp4)|*.mp4",
+        GridExport.Format.Gif => "GIF image (*.gif)|*.gif",
+        _ => "PNG image (*.png)|*.png",
+    };
+
+    /// <summary>"MP4" or "GIF", as the buttons and the notifications name the format.</summary>
+    private static string FormatName(GridExport.Format format) => format == GridExport.Format.Gif ? "GIF" : "MP4";
 
     /// <summary>
     /// Renders the still: the images as shown, or, for animated content, the page each one shows (a
@@ -1139,6 +1270,7 @@ internal sealed class MainForm : Form
         catch (Exception ex) when (ex is ExternalException or InvalidOperationException or IOException or UnauthorizedAccessException)
         {
             ShowStatus($"Export failed: {ex.Message}", error: true);
+            NotifyIfAway($"{FormatName(format)} export failed", ex.Message, error: true);
             return null;
         }
         finally
@@ -1172,6 +1304,65 @@ internal sealed class MainForm : Form
         }
     }
 
+    /// <summary>
+    /// Raised when an animated export ends — in success or failure — while the window is hidden in the
+    /// tray and no window of the app is active: what a notification should say.
+    /// </summary>
+    public event EventHandler<ExportNotice>? ExportEndedHidden;
+
+    /// <summary>What a notification says of an export that ended while the window was hidden.</summary>
+    public sealed record ExportNotice(string Title, string Text, bool Error);
+
+    /// <summary>
+    /// Draws attention to an animated export that ended while the user was elsewhere: the taskbar
+    /// button flashes until the window comes to the front, or, the window hidden in the tray, the tray
+    /// icon notifies. Nothing while a window of the app is active, or when the app is quitting.
+    /// </summary>
+    private void NotifyIfAway(string title, string text, bool error)
+    {
+        if (Form.ActiveForm is not null || _closingForGood || _closeAfterExport)
+        {
+            return;
+        }
+
+        if (Visible)
+        {
+            FlashTaskbar();
+        }
+        else
+        {
+            ExportEndedHidden?.Invoke(this, new ExportNotice(title, text, error));
+        }
+    }
+
+    /// <summary>Flashes the taskbar button until the window comes to the foreground.</summary>
+    private void FlashTaskbar()
+    {
+        var flash = new FlashInfo
+        {
+            Size = (uint)Marshal.SizeOf<FlashInfo>(),
+            Window = Handle,
+            Flags = FlashTray | FlashUntilForeground,
+        };
+        FlashWindowEx(ref flash);
+    }
+
+    private const uint FlashTray = 0x2;
+    private const uint FlashUntilForeground = 0xC;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct FlashInfo
+    {
+        public uint Size;
+        public IntPtr Window;
+        public uint Flags;
+        public uint Count;
+        public uint Timeout;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool FlashWindowEx(ref FlashInfo info);
+
     /// <summary>What a still copy or save produced, for the status line: one frame, no duration, no sound.</summary>
     private static string StillSummary(string done, string format, Size size, long bytes, TimeSpan encoding) =>
         Summary(done, format, size, bytes, 1, TimeSpan.Zero, sound: null, encoding);
@@ -1187,6 +1378,18 @@ internal sealed class MainForm : Form
             video.Length,
             SoundSummary(video),
             encoding);
+
+    /// <summary>What the last video holds, for the status line and the tooltips — from what was kept, its file not read again.</summary>
+    private static string AnimationSummary(string done, LastVideo last) =>
+        Summary(
+            done,
+            last.Format == GridExport.Format.Gif ? "GIF" : "MP4 video",
+            last.Video.Size,
+            last.Bytes,
+            last.Video.Frames,
+            last.Video.Length,
+            SoundSummary(last.Video),
+            last.Encoding);
 
     /// <summary>The files whose sound is in the video, then the ones Windows could not re-encode.</summary>
     private static string SoundSummary(GridExport.Result video)
@@ -1236,7 +1439,16 @@ internal sealed class MainForm : Form
     private static string TempExportPath(string extension)
     {
         Directory.CreateDirectory(TempVideoFolder);
-        return Path.Combine(TempVideoFolder, $"fusion-{DateTime.Now:yyyyMMdd-HHmmss}.{extension}");
+        string stamp = $"fusion-{DateTime.Now:yyyyMMdd-HHmmss}";
+        string path = Path.Combine(TempVideoFolder, $"{stamp}.{extension}");
+
+        // Two exports within a second get distinct files: the clipboard, and the last video, hold the earlier one.
+        for (int n = 2; File.Exists(path); n++)
+        {
+            path = Path.Combine(TempVideoFolder, $"{stamp}-{n}.{extension}");
+        }
+
+        return path;
     }
 
     /// <summary>Removes the videos, GIFs and light JPEGs copied by previous sessions.</summary>
@@ -1321,10 +1533,23 @@ internal sealed class MainForm : Form
         string format = ProducesVideo ? "MP4" : "PNG";
         _copyButton.Text = $"Copy {format}";
         _saveButton.Text = $"Save {format}…";
-        _copyArrow.Enabled = any;
+        // The last video is offered back whatever the grid, an empty one included: the arrows open for it.
+        bool last = _lastVideo is not null && !IsExporting;
+        _copyArrow.Enabled = any || last;
         _copyGif.Enabled = HasAnimation;
         _copyMp4.Enabled = HasAnimation;
-        _saveArrow.Enabled = any && HasAnimation;
+        _copyForSharing.Enabled = any;
+        _saveArrow.Enabled = (any && HasAnimation) || last;
+        _saveGif.Enabled = HasAnimation;
+        _saveMp4.Enabled = HasAnimation;
+        string lastName = _lastVideo is { } video ? FormatName(video.Format) : "video";
+        _copyLastButton.Enabled = last;
+        _copyLastButton.Text = $"Copy last {lastName}";
+        _copyLast.Enabled = last;
+        _copyLast.Text = _lastVideo is { } kept ? $"Copy last {lastName} ({kept.GeneratedAt:HH:mm})" : "Copy last video";
+        _saveLast.Enabled = last;
+        _saveLast.Text = $"Save last {lastName}…";
+        RefreshLastVideoTooltips();
         UpdateEffects();
         UpdateGlobalEffects();
     }
