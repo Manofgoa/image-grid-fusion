@@ -12,9 +12,9 @@
 Every effect today belongs to a **cell + image** pair (see [RULES.md](../RULES.md) § Effects).
 The **Fade** is the first effect that belongs to the **grid**: it is a **global effect**.
 
-It starts with the **sound** — the single sound track of the grid (image 1's sound, else the
-first video with sound in grid order): the sound rises from silence over a duration at the
-start and falls back to silence over the same duration at the end. A visual fade (to / from
+It starts with the **sound** — the grid's **mix** (every heard video, each at its Volume
+effect, since `video-mute.md`): the mix rises from silence over a duration at the start and
+falls back to silence over the same duration at the end. A visual fade (to / from
 black) may join it later; it is out of this workfile's scope.
 
 It is heard **in the preview and in the MP4 export**.
@@ -107,12 +107,19 @@ effect*"); new terms:
 
 | Topic | Where | What it does today |
 |---|---|---|
-| Preview sound | `UI/PreviewSound.cs:23-91` | A WinRT `MediaPlayer` (`IsLoopingEnabled = true`) on the sounded video's file; `Sync(position, playing)` plays / pauses it and re-seeks when it drifts by more than 250 ms. `Volume` (0–1) can be set at any time |
-| Preview clock | `UI/AnimationPlayer.cs:194-254` | Per-image loop ticking every 33 ms; computes `loop` (the image's loop duration) and `time` (the position in it), then calls `_sound.Sync(time, playing)` for the sounded image — `loop` is not passed |
-| Export sound | `Imaging/VideoEncoder.cs:191-370` (`Sound`) | The Source Reader decodes to **PCM 16-bit interleaved**, mono / stereo, 44.1 / 48 kHz; the Sink Writer re-encodes to AAC. The sound loops from its starting point and is cut exactly at the export length (`_length`) |
-| Export seam | `VideoEncoder.cs:335-349` (`Sound.Write`) | Each buffer's `time` is already relative to the export start: the natural place to multiply a gain into the PCM before `WriteSample` |
-| Export length | `Imaging/CarouselExport.cs:35-40` | `Carousel.Length(...)` → `VideoEncoder.Create(path, canvas, length, soundPath, soundLoop, soundStart)` |
+Re-explored 2026-09-26, after `video-mute.md` was delivered (the first pass described a single
+elected sound, now gone).
+
+| Topic | Where | What it does today |
+|---|---|---|
+| Preview sound | `UI/PreviewSound.cs` | A Windows **`AudioGraph`**: one input node per video with sound, at its Volume gain (`OutgoingGain`), kept in step with its frames by `Sync(image, position, playing)`; one **device output node** (`_output`) — its `OutgoingGain` can carry the fade for the whole mix |
+| Preview clock | `UI/AnimationPlayer.cs:26-170` | Calls `_sound.Sync(image, time, playing)` per video every tick; the grid loop's length and position are not passed to the sound yet |
+| Export sound | `Imaging/VideoEncoder.cs:197-330` (`Mixer`) | Every voice decoded to PCM 16-bit, **summed** into a mix buffer, clamped to 16-bit (`_clipped`), then encoded to AAC; `_frames` / `_lengthFrames` give each step's position against the export length |
+| Export seam | `VideoEncoder.cs:280-296` (`Mixer.WriteUntil`) | Multiply the summed mix by the fade gain **before the clamp**: one place, for every voice at once |
+| Export length | `VideoEncoder.cs:45` | `Mixer.Create(sounds, length.Ticks, failed)` — the export length already reaches the mixer |
+| Soundtrack | `workfiles/20260925-soundtrack.md` (design) | A second global effect, a forced sound track, planned in **this** Global effects row, created by whichever lands first |
 | Tests | — | **No test project** in the repository |
+| Cell-effect UI | `RULES.md` § Effects (revised) | Effect **tabs** with an activation checkbox; settings **kept when off**; options always shown; **acting on an option turns the effect on**; a per-effect *Reset* ends the options row; a non-applicable effect has its checkbox disabled with a tooltip saying why |
 
 ---
 
@@ -140,6 +147,10 @@ created. The fade's envelope stays a pure function, so a later test project can 
 - [x] ~~9. **Tests** — create a test project (xUnit) to pin the envelope, or no unit tests for this workfile?~~ → No unit tests, no test project
 - [x] ~~10. **Toggle behaviour** — click toggles on / off; is the duration slider shown only while Fade is on, or always (disabled when off)?~~ → Shown only while Fade is on
 - [x] ~~11. **Export lock** — is the Global effects row locked while exporting, like the cell effects?~~ → Locked
+- [ ] 13. **Control model** — does the Global effects row follow the revised cell-effect model (activation checkbox, settings kept when off, options always shown, acting on an option turns it on), replacing the toggle with options shown only while on (OQ 10)?
+- [ ] 14. **What fades** — the whole mix (every heard video, and the soundtrack once it exists), or the videos only?
+- [ ] 15. **Not applicable** — Fade disabled when **nothing is heard** (every video muted, frozen or silent), or only when no video has a sound track?
+- [ ] 16. **Reset** — a *Reset* button for the Fade in the row, like the options row's per-effect Reset, or none (Clear all only)?
 - [x] ~~12. **Status of the rule** — does the new rule go into `RULES.md` as a new § Global Effects next to § Effects, with § Effects renamed "Cell effects"?~~ → Yes: new § Global Effects, § Effects renamed § Cell Effects
 
 ---
@@ -182,6 +193,15 @@ in the order the requests were made.
 - Default curve set to **Squared** (the answer made the curve a choice without naming a default).
 - No open question left.
 
+### Iteration 5 — 2026-09-26
+
+- The context moved under the design: `video-mute.md` was delivered (the grid's sound is now a
+  **mix** of the heard videos, previewed through an `AudioGraph`, exported through a `Mixer`), and
+  `RULES.md` § Effects was revised (tabs, activation checkbox, settings kept when off, acting on
+  an option turns the effect on). `soundtrack.md` counts on this Global effects row.
+- Current State re-explored directly (a single question); the fade applies to the **mix**.
+- The go question was dismissed; new open questions 13–16 raised by these changes.
+
 ---
 
 ## Implementation Log
@@ -220,6 +240,11 @@ Questions asked by the agent during design, with user responses.
 | 14 | OQ 11 — Export lock: Global effects row locked while exporting? | **Locked** | 2026-09-26 |
 | 15 | OQ 12 — Rule placement: new § Global Effects, § Effects renamed "Cell effects"? | **Yes, both** | 2026-09-26 |
 | 16 | OQ 2 — Glossary: "Effect" stays the cell effect, "Global effect" a separate term? | **Yes** | 2026-09-26 |
+| 17 | Go for implementation? | Dismissed — asked to re-ask the questions as MCQ | 2026-09-26 |
+| 18 | OQ 13 — Control model: follow the revised cell-effect model? | | 2026-09-26 |
+| 19 | OQ 14 — What fades: the whole mix, or the videos only? | | 2026-09-26 |
+| 20 | OQ 15 — Not applicable: when nothing is heard, or when no sound track? | | 2026-09-26 |
+| 21 | OQ 16 — Reset button for the Fade in the row? | | 2026-09-26 |
 
 ---
 
