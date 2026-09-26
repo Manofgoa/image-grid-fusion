@@ -241,6 +241,7 @@ Questions asked by the agent during design, with user responses.
 | 2 | What starts over, and where is the "first frame" when the Frames effect is on? | Every animated image (videos and GIFs), at its starting point; a frozen one stays frozen | 2026-09-27 |
 | 3 | Does the soundtrack start over from its beginning at the same time? | Yes, with the videos | 2026-09-27 |
 | 4 | Straightforward, or tricky / long? | Straightforward — one scouting pass | 2026-09-27 |
+| 5 | The design is complete and no open question remains: implement? (No / the code / code, unit tests and documentation) | No — the gate holds | 2026-09-27 |
 
 ---
 
