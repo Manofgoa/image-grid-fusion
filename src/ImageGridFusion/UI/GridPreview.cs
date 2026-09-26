@@ -78,6 +78,7 @@ internal sealed class GridPreview : Control
     private readonly PageLoader _pageLoader = new();
     private readonly AnimationPlayer _player = new();
     private Soundtrack? _soundtrack;
+    private GridBorders? _borders;
     private bool _locked;
     private bool _hoveringHandle;
     private bool _panning;
@@ -157,6 +158,29 @@ internal sealed class GridPreview : Control
         {
             _soundtrack = value;
             _player.SetSoundtrack(value);
+        }
+    }
+
+    /// <summary>The borders drawn on the grid, shrinking its cells for their gap; <c>null</c> when they are off.</summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public GridBorders? Borders
+    {
+        get => _borders;
+        set
+        {
+            if (value == _borders)
+            {
+                return;
+            }
+
+            _borders = value;
+            _cache?.Dispose();
+            _cache = null;
+
+            // The gap resizes the cells, like a moved separator.
+            FitPagesToCells();
+            UpdateDisplaySizes();
+            Invalidate();
         }
     }
 
@@ -286,7 +310,8 @@ internal sealed class GridPreview : Control
         LayoutChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public int CellAt(Point location) => Array.FindIndex(CellBounds(), c => c.Contains(location));
+    /// <summary>The cell under <paramref name="location"/>, by its slot: a point in the gap between two cells belongs to one of them.</summary>
+    public int CellAt(Point location) => Array.FindIndex(SlotBounds(), c => c.Contains(location));
 
     public void RemoveSelected()
     {
@@ -379,7 +404,7 @@ internal sealed class GridPreview : Control
             _cache?.Dispose();
             _cache = new Bitmap(canvas.Width, canvas.Height);
             using var cacheGraphics = Graphics.FromImage(_cache);
-            Compositor.Draw(cacheGraphics, _images, _layout!, canvas.Size);
+            Compositor.Draw(cacheGraphics, _images, _layout!, canvas.Size, _borders);
         }
 
         PaintCheckerboard(g, canvas);
@@ -781,7 +806,7 @@ internal sealed class GridPreview : Control
         }
 
         var cells = CellBounds();
-        int cell = Array.FindIndex(cells, c => c.Contains(location));
+        int cell = CellAt(location);
         if (cell >= 0)
         {
             return cells[cell];
@@ -811,7 +836,8 @@ internal sealed class GridPreview : Control
 
         if (_images.Count > 0)
         {
-            return Array.Find(CellBounds(), c => c.Contains(location));
+            int cell = CellAt(location);
+            return cell >= 0 ? CellBounds()[cell] : Rectangle.Empty;
         }
 
         var canvas = CanvasBounds();
@@ -1013,11 +1039,12 @@ internal sealed class GridPreview : Control
         }
 
         bool live = image == _live;
-        var cell = _layout.Cells(canvas.Size)[index];
+        var cell = Compositor.Cells(_layout, canvas.Size, _borders)[index];
         using (var g = Graphics.FromImage(_cache))
         {
             ClearCell(g, cell);
             Compositor.DrawCell(g, new Frame(image.Bitmap, image.BandColor, image.Look), cell, fast: live);
+            DrawBordersOver(g, cell, canvas.Size);
         }
 
         cell.Offset(canvas.Location);
@@ -1026,6 +1053,19 @@ internal sealed class GridPreview : Control
         {
             Update();
         }
+    }
+
+    /// <summary>What the borders draw over the images (the corner brackets), repainted within a cell just drawn again.</summary>
+    private void DrawBordersOver(Graphics g, Rectangle cell, Size canvas)
+    {
+        if (_borders is null)
+        {
+            return;
+        }
+
+        g.SetClip(cell);
+        _borders.DrawOver(g, canvas);
+        g.ResetClip();
     }
 
     /// <summary>A cell drawn again into the cache starts transparent: without background, its previous frame would show through.</summary>
@@ -1115,7 +1155,13 @@ internal sealed class GridPreview : Control
             ? Rectangle.Empty
             : new Rectangle(canvas.Right + LogicalToDeviceUnits(CanvasMargin), canvas.Y, LogicalToDeviceUnits(DropZoneWidth), canvas.Height);
 
-    private Rectangle[] CellBounds()
+    /// <summary>The cells as drawn, shrunk by the gap of the borders: where the images, outlines and handles go.</summary>
+    private Rectangle[] CellBounds() => OnCanvas(canvas => Compositor.Cells(_layout!, canvas, _borders));
+
+    /// <summary>The cells as the layout tiles the canvas, gap included: what hit-testing uses, so a gap is never a dead zone.</summary>
+    private Rectangle[] SlotBounds() => OnCanvas(canvas => _layout!.Cells(canvas));
+
+    private Rectangle[] OnCanvas(Func<Size, Rectangle[]> cellsOf)
     {
         var canvas = CanvasBounds();
         if (_layout is null || canvas.IsEmpty)
@@ -1123,7 +1169,7 @@ internal sealed class GridPreview : Control
             return [];
         }
 
-        var cells = _layout.Cells(canvas.Size);
+        var cells = cellsOf(canvas.Size);
         for (int i = 0; i < cells.Length; i++)
         {
             cells[i].Offset(canvas.Location);
@@ -1173,7 +1219,7 @@ internal sealed class GridPreview : Control
             return;
         }
 
-        var cells = _layout.Cells(new Size(GridLayout.RatioWidth, GridLayout.RatioHeight));
+        var cells = Compositor.Cells(_layout, new Size(GridLayout.RatioWidth, GridLayout.RatioHeight), _borders);
         for (int i = 0; i < _images.Count; i++)
         {
             var shape = _images[i].Look.Oriented(cells[i].Size);
@@ -1666,7 +1712,7 @@ internal sealed class GridPreview : Control
             return;
         }
 
-        var cells = _layout.Cells(canvas.Size);
+        var cells = Compositor.Cells(_layout, canvas.Size, _borders);
         var area = Rectangle.Empty;
         using (var g = Graphics.FromImage(_cache))
         {
@@ -1675,6 +1721,7 @@ internal sealed class GridPreview : Control
                 var image = _images[i];
                 ClearCell(g, cells[i]);
                 Compositor.DrawCell(g, new Frame(image.Bitmap, image.BandColor, image.Look), cells[i], fast: true);
+                DrawBordersOver(g, cells[i], canvas.Size);
                 area = area.IsEmpty ? cells[i] : Rectangle.Union(area, cells[i]);
             }
         }
