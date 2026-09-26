@@ -120,6 +120,11 @@ pasted but also dropped, so `Pasted text` would be wrong for a dropped one (Q&A 
 The label of a file-less image follows its origin (Q&A #10): the image remembers whether it was
 pasted or dropped — `Pasted image`, `Pasted text`, `Dropped text`. No question left open.
 
+### Iteration 4 — 2026-09-26 — ✅ Implemented
+
+Go given for the code, the unit tests and the documentation. The run stays on `main` (standing
+choice for this repository). Unit tests do not apply: there is no test project.
+
 ---
 
 ## Implementation Log
