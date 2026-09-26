@@ -65,7 +65,7 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 - Clicking a tab elsewhere selects it: its options show in the row above, joined to it. The selected tab stays selected when another cell is selected, or none. The options row is always there, empty until a tab is selected.
 - Turning an effect off keeps its settings: it is drawn as its default (no background, 100 % centered, upright, unflipped, playing from the beginning, in color, sharp, heard at 100 %) until it is turned on again, as it was. An effect that is off shows its kept settings in its options.
 - Changing any option of an effect turns it on, from its kept settings.
-- The options row ends with a **Reset** button that brings the selected tab's effect back to its default state: default settings, turned off — except the Background, turned back on (see Background), and the Volume, which gets the sound on arrival again (see Volume).
+- The options row ends with a **Reset** button that brings the selected tab's effect back to its default state: default settings, turned off — except the Background, turned back on (see Background).
 - The **Reset** at the far right of the tabs does it for every effect of the selected cell at once, and also puts every separator of the grid back where its layout places it (see Resizing the cells).
 - An effect that does not apply to the selected cell (**Frames** on a still image, **Volume** on an image without sound) keeps its tab selectable, but its checkbox and options are disabled; the checkbox's tooltip says why.
 - An effect belongs to the cell and its image: replacing the image (drop, `Ctrl+V`, picker) or removing an image clears the effects of the cells whose image changes — but the Volume of the images shifting after a removal, kept so what is heard does not change; swapping two cells or changing the layout keeps them.
@@ -118,7 +118,7 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 
 - For a video with a sound track only, frozen included (its volume applies again once it plays); disabled on other images.
 - Options: **Mute**, then the volume, from 0 to 200 %. The slider reaching 0 checks Mute. Checking Mute keeps the slider's level, and unchecking it brings it back; unchecking it at 0 brings the volume back to 100 %. The slider always stays usable: moving it above 0 unmutes.
-- **Sound on arrival**: a video added or dropped in (or replacing another) is heard at 100 % when no other cell is heard, else it arrives muted — the effect on, Mute checked. Both Resets give it that sound again, from the other cells at that moment. Turning the effect off makes the video heard at 100 %.
+- A video added or dropped in (or replacing another) is **heard at 100 %**, the effect off, whatever the other cells play: the sounds of every video are mixed at once. Both Resets bring it back there. Turning the effect off makes the video heard at 100 %.
 - Above 100 %, the sound is amplified, clipped where it goes beyond full scale. The preview and the exported video both play it at its volume.
 
 ## Global effects
