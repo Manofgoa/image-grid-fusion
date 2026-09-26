@@ -95,6 +95,33 @@ The Volume effect's default state depends on the **other cells** (origin:
 - Its strength is **resolution-independent** (relative to the cell size), so the preview and an
   export at another size look the same.
 
+## Global Effects
+
+Apply to every **global effect** — a transformation of the whole grid rather than of a cell + image
+pair, the soundtrack being the first one (origin: `workfiles/20260925-soundtrack.md`, the rule
+drafted by `workfiles/20260925-global-fade.md`). § Effects above covers the cell effects.
+
+| | **Effect** (cell effect) | **Global effect** |
+|---|---|---|
+| Belongs to | A cell + image pair | The grid |
+| UI | The effects toolbar, its options in the options toolbar | The **Global effects row**, its options in the same row |
+| No cell selected | Disabled | Stays enabled; disabled only when it does not apply |
+| Image replaced, cell *Reset* buttons | Reset | Untouched |
+| *Clear all* | Reset (no image left) | Reset — back to the initial state |
+| Swap, layout change | Kept, follows the image | Kept |
+| Rendering | `Compositor.DrawCell` | At the grid level, in the preview and in every export it concerns |
+| Persistence | Not persisted | Not persisted |
+
+### Global Effects Row
+
+- An **always-visible row just above the bottom bar**: a **Global effects** label, then one
+  **toggle** per global effect, its **options beside it**, shown **only while it is on**.
+- The row keeps **one height**, its tallest control's, so the preview never moves when options
+  show or hide.
+- A toggle turned off **keeps the effect's settings**; turned on again, it applies them as they were.
+- The row is **locked while exporting**, like the cell effects: the export keeps the settings it
+  started with.
+
 ## On-Cell Helper Indicators
 
 Apply to every **helper indicator** — a measure or geometry aid drawn over a cell: guides, handles,

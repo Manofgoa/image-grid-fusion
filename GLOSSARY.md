@@ -12,7 +12,10 @@ each.
 | Separator (*séparateur*) | A stretch of boundary between cells, dragged to resize them: it moves every cell on both of its sides, and no other |
 | Arm (*bras*) | One of the four separators of the Grid's cross while both of its lines are straight |
 | Selected cell | The cell the effects toolbar acts on |
-| Effect (*effet*) | A transformation of a cell + image pair, turned on or off from the effects toolbar: Zoom, Rotate, Flip, Frames, Black & white, Blur, Volume. Turned off, it keeps its settings |
+| Effect (*effet*), also *cell effect* | A transformation of a cell + image pair, turned on or off from the effects toolbar: Zoom, Rotate, Flip, Frames, Black & white, Blur, Volume. Turned off, it keeps its settings |
+| Global effect (*effet global*) | A transformation of the whole grid, toggled from the Global effects row: Soundtrack |
+| Global effects row | The always-visible row just above the bottom bar: the "Global effects" label, the global effect toggles and, while one is on, its options |
+| Soundtrack (*bande son*) | The global effect mixing the sound of an audio or video file over the heard videos, at its own volume; it loops or is cut to the grid's duration, and gives a grid of stills its length |
 | Effects toolbar | The always-visible row of effect tabs, hanging below the options toolbar: the "Effects" label, the effect tabs, the Reset button at the far right |
 | Effect tab (*onglet*) | One effect's tab in the effects toolbar, holding its activation checkbox; the selected tab is the one whose options show |
 | Activation checkbox | The checkbox in an effect tab: checked while the effect is on for the selected cell |
