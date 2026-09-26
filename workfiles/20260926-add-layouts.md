@@ -23,7 +23,8 @@ Components:
 | Component | Change |
 |---|---|
 | `Composition/GridLayout.cs` | New catalog entries, flagged advanced |
-| `UI/LayoutStrip.cs` | Mirror toggle on top, Advanced group header, expand / collapse, vertical scrolling |
+| `UI/LayoutStrip.cs` | Mirror toggle on top, advanced group header, expand / collapse, vertical scrolling |
+| `UI/MainForm.cs` | Default client height 860 logical px |
 | `README.md` | *Layouts* section: the advanced group and its layouts; *Mirror*: the toggle now above the thumbnails |
 | `GLOSSARY.md` | New term: *Advanced layout* |
 
@@ -183,7 +184,11 @@ Iteration 7). What this work builds on:
   collapses, as the count's default (basic) layout comes back. Never persisted.
 - The header is **hidden when the image count has no advanced layout** (1 image, no image).
 - **Vertical scrollbar**: appears only when the content is taller than the strip; the mouse wheel
-  scrolls it; the thumbnails narrow by the scrollbar's width while it is shown.
+  scrolls it. The thumbnails **keep their normal size** while it is shown: they slide left into
+  the strip's margin to make room for it (Iteration 9).
+- **Default window height** raised so the whole strip of 4 images, group expanded, fits without
+  scrolling: the main window's client area goes from 960 × 580 to **960 × 860** (logical px,
+  Iteration 9).
 - Picking an advanced layout behaves like any layout: the mirror toggle turns off, the images keep
   their order, the effects are kept (RULES.md, *Scope and State*).
 - The number of images changing still brings back the count's default layout, which is basic.
@@ -288,6 +293,15 @@ Go given: code, tests and documentation (unit tests declined by decision, Q&A #9
 Requested during the run, once the strip was seen working: the group's header reads **More** instead
 of **Advanced** (`More ▸` / `More ▾`). Only the visible label and its tooltips change; the layouts
 keep being called *advanced* in the code (`IsAdvanced`) and the documentation.
+
+### Iteration 9 — 2026-09-26 — ⚙️ Post-implementation — Fixed-size thumbnails, taller window
+
+Seen during the run: a scrollbar showed with nothing to scroll. Cause: the scrollable height was
+measured with full-width thumbnails (so the scrollbar narrowing them could never make it vanish
+again), leaving a band where it showed for a few pixels. Requested: the thumbnails **never shrink**
+— they keep their normal size and slide into the left margin when the scrollbar shows, which also
+makes the scrollable height exact — and the window's **default height** becomes the one of the
+user's capture (whole expanded strip visible): client area 960 × 860 logical px instead of 960 × 580.
 
 ---
 
