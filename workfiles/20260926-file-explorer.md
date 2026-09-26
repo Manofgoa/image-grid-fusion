@@ -51,9 +51,13 @@ Agreed:
 - A panel **at the right of the preview**, between the toolbars above and the Global effects row
   below (the band `_preview` and `_layouts` share), **collapsible, open at start-up**; its open /
   closed state is **remembered between sessions** (§ Settings).
-- **Fixed width**: 380 logical px open (`LogicalToDeviceUnits`; 280 before Iteration 5), a
-  **20 px strip** when collapsed. The preview (`Dock = Fill`) shrinks by that width; nothing else
-  moves.
+- **Width set by the columns**: the grid shows **1 to 5 columns** of tiles, chosen with the
+  header's `−` / `+` buttons (the count between them) and remembered between sessions (§ Settings);
+  open, the panel is as wide as its columns — 239 logical px for one, 208 more per extra column
+  (1 071 for five) — and a **20 px strip** when collapsed. Adding or removing a column **widens or
+  narrows the window by the same amount** when it is not maximized and the screen allows, so the
+  preview keeps its size; else the preview (`Dock = Fill`) absorbs the change. *(Iteration 7; a
+  fixed 280 px before Iteration 5, 380 px in Iteration 5.)*
 - **Collapse / expand**: a `»` button in the panel's header hides it; the strip left in its place
   carries a `«` button (tooltip *Show the file explorer*) that brings it back and focuses the
   search box. Collapsed, the panel keeps its search text, results and state.
@@ -61,19 +65,20 @@ Agreed:
 
   | Row | Content |
   |---|---|
-  | Header | *Files* label, the `»` button at the right |
+  | Header | *Files* label, then the `−` / `+` column buttons around the column count, and the `»` button at the right |
   | Search | The search box (placeholder *Search files…*), the `↻` button beside it (tooltip *Rescan the folder*; disabled while a scan runs) |
   | Status | One line: the scan progress, else the index summary — *346 files · indexed 21:03*, *No base folder*, *Loading the index…*, or an error in red; a transient message (a missing file, a save failure) gives way to the summary after 5 s; its full text in a tooltip |
   | Caption | *Favorites (12)* while the box is empty; *57 results — first 10* / *3 results* / *No result* during a search; *Waiting for the index…* while no index exists yet |
   | List | The rows (favorites, or the results), filling the rest of the height |
 
-- **The list is a grid of tiles, two columns** (`ThumbnailGrid`, an owner-drawn scrollable
-  control): a **tile** = a 165 × 124 logical px box holding the file's **thumbnail** (fitted,
+- **The list is a grid of tiles, 1 to 5 columns** (`ThumbnailGrid`, an owner-drawn scrollable
+  control): a **tile** = a 200 × 150 logical px box holding the file's **thumbnail** (fitted,
   centered), the **heart in a medallion** at its top-left corner (`♡` grey, `♥` red when a
   favorite), and the **file name** below, small and secondary, cut with an ellipsis; the full path
   in a tooltip. 8 px between tiles; the grid scrolls vertically. The selected tile has a
-  highlighted border; the hovered one a lighter border. *(Iteration 6; a heart + name row before
-  Iteration 5, a row with a thumbnail planned by Iteration 5.)*
+  highlighted border; the hovered one a lighter border. *(Iterations 6–7; a heart + name row
+  before Iteration 5, a row with a thumbnail planned by Iteration 5, 165 × 124 tiles in two
+  columns by Iteration 6.)*
 - **Thumbnails** come from the Shell's thumbnail cache (`ShellThumbnail`, the same source as the
   cells' previews of non-image files), **loaded in the background** one at a time, the most
   recently painted tile first, and scaled to the box: a tile whose thumbnail is not ready yet shows
@@ -226,6 +231,7 @@ Agreed:
   |---|---|---|---|---|
   | `ExplorerFolder` | string, absolute path | none (*No base folder*) | At start-up | By the ⚙ item and the panel's *Choose folder…* button |
   | `ExplorerPanelOpen` | bool | true | At start-up | On every collapse / expand |
+  | `ExplorerColumns` | int, 1 to 5 | 1 | At start-up | On every `−` / `+` click *(Iteration 7)* |
 
 - **⚙ menu item** *File explorer folder…*, tooltip *The folder the file explorer searches, with
   its subfolders; remembered between sessions*: opens a `FolderBrowserDialog` preselected on the
@@ -253,6 +259,7 @@ verified by hand in the app. The checks, run at delivery:
 | Panel | Collapse with `»`, the strip's `«`, state remembered after a restart; the preview shrinks |
 | Interactions | Drag onto a cell (replaced) and onto *Add images* (appended); double-click / Enter; *Open file location* |
 | No base folder | The invitation at the first keystroke, its button and the ⚙ item both start the scan |
+| Tiles and columns | Thumbnails appear as they load, the heart in its medallion, the name below; `−` / `+` go from 1 to 5 columns, the panel and the window widening; the count remembered after a restart *(Iterations 5–7)* |
 
 ---
 
@@ -355,6 +362,16 @@ heart in a medallion and the name below; D, a 112 × 112 square with the name an
 two lines. **C chosen.** The list becomes a scrollable grid control of its own, `ThumbnailGrid`,
 the panel keeping the search, the favorites, the index and the status. § Panel updated; Iteration
 5's row is superseded.
+
+### Iteration 7 — 2026-09-26 — ⚙️ Post-implementation — 1 to 5 columns
+
+Right after: C, but with **a single column** — or a much wider panel. Asked: **buttons to enlarge
+the file area, from 1 to 5 columns.** So the column count is the user's, from `−` / `+` buttons in
+the header, one column by default and remembered between sessions; the panel is as wide as its
+columns, and the window grows or shrinks with it when it can. The tiles grow to 200 × 150, so a
+single column is not a small one. A second follow-up is pre-created at the same time:
+`workfiles/20260926-explorer-window.md`, the list detached into a window of its own, on another
+screen if wanted. § Panel and § Settings updated.
 
 ---
 
