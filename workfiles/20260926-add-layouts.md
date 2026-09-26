@@ -334,6 +334,11 @@ No project rule broken. Choices the design did not state:
 Out of scope, offered as Open Questions: the dead `ClockwiseLoop()`, and the default window size not
 clamped to small screens.
 
+### Iteration 11 — 2026-09-26 — ✅ Validated
+
+Tested by hand by the user (mouse wheel included) and confirmed finished. The two out-of-scope Open
+Questions stay open for a later task.
+
 ---
 
 ## Implementation Log
