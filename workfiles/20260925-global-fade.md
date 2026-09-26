@@ -27,22 +27,25 @@ This workfile also creates the **rule** separating global effects from cell effe
 ## UI — Global Effects Row
 
 - A **dedicated row at the bottom** of the window, **just above the bottom bar** (Clear all /
-  status line / Copy / Save), labelled **Global effects**, always visible, holding one toggle
-  button per global effect — **Fade** only for now.
-- **Clear all** removes the global effects too: back to the initial state.
-- The global effect's options sit **in the same row**, right of its button (no separate options
-  row).
+  status line / Copy / Save), labelled **Global effects**, always visible.
+- It follows the **cell-effect model** of `RULES.md` (tabs aside): each global effect has an
+  **activation checkbox** — **☑ Fade** only for now — followed by its options, **always shown**,
+  in the same row (no separate options row).
+  - Its **settings and its on / off state are independent**: unchecked, it keeps its settings and
+    shows them in its options; it is heard as its default (no fade) until checked again.
+  - **Acting on any option turns it on** (the checkbox gets checked) before applying the change.
+  - A **Reset** button ends the row: it brings the Fade back to its **default state** — 1 s,
+    Squared, **off**.
 - Fade options: **one duration**, applied to the fade-in and the fade-out alike — a slider from
   **0.1 s to 5 s by 0.1 s**, **1 s** by default, with its value shown (`1.0 s`).
-- A **curve** choice, two exclusive buttons after the slider: **Squared** (default — gain t²,
+- A **curve** choice, two exclusive buttons after the slider: **Squared** (default — gain x²,
   heard as a steady rise) and **Linear**.
-- The duration slider and the curve buttons show **only while Fade is on**, like a cell effect's
-  options.
+- **Not applicable** when **nothing is heard** (no video, or every video muted, frozen or without
+  a sound track): its checkbox and options are disabled, the checkbox's tooltip saying why. Its
+  state is kept and applies again as soon as a sound is heard.
 - The row is **locked while exporting**, like the cell effects: the export keeps the setting it
   started with.
-- Click on **Fade**: toggles it on (with its defaults) / off.
-- The Fade button is **disabled when the grid has no sound** (still images only, silent or frozen
-  videos). A Fade already on keeps its setting and applies again as soon as a sound comes back.
+- **Clear all** removes the global effects too: back to their default state.
 
 ```
 ┌─ top bar ────────────────────────────────────────────────────────────────┐
@@ -51,7 +54,7 @@ This workfile also creates the **rule** separating global effects from cell effe
 │                                                                            │
 │                              grid preview                                  │
 │                                                                            │
-│ Global effects  [Fade]  Duration [──●──────] 1.0 s  [Squared][Linear]      │
+│ Global effects  [☑ Fade]  Duration [──●────] 1.0 s  [Squared][Linear] [Reset] │
 │ [Clear all]  status line …        [☐ Force as image] [Copy] [Save] [⚙]    │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -65,13 +68,15 @@ This workfile also creates the **rule** separating global effects from cell effe
   (Squared) or *x* (Linear).
 - **Short content**: when 2 × D exceeds the length, the effective D is **half the length** — the
   sound rises then falls straight away, never above its normal volume.
+- **What fades**: the **whole mix** — every heard video, and the soundtrack
+  (`soundtrack.md`) once it exists — at the mix's output, after the voices are summed.
 - **Export** (MP4): start = the video's time 0, end = the export's length (the longest loop).
-  The sound keeps looping inside the export as today — only the export's own start and end fade.
+  The sounds keep looping inside the export as today — only the export's own start and end fade.
 - **Preview**: the fade follows the **grid's loop** — the export's length, the longest loop —
-  so the preview sounds exactly like the export: when the sounded video is shorter than another
-  content, its sound loops without fading inside the grid's loop, and fades only at the grid
-  loop's start and end. (Today `PreviewSound.Sync` only knows the sounded video's own loop: the
-  grid's loop length and the position in it must reach it.)
+  so the preview sounds exactly like the export: a sound shorter than the grid's loop keeps
+  looping without fading inside it, and the mix fades only at the grid loop's start and end.
+  (Today `PreviewSound` only knows each video's own position: the grid's loop length and the
+  position in it must reach it.)
 
 ---
 
@@ -79,15 +84,17 @@ This workfile also creates the **rule** separating global effects from cell effe
 
 In `RULES.md`: the current § Effects is **renamed § Cell Effects**, and a new **§ Global Effects**
 follows it, holding this table and the Global effects row's rules (row above the bottom bar,
-toggle, options inline and shown only while on, disabled when not applicable, locked while
-exporting):
+activation checkbox, options inline and always shown, settings kept when off, acting on an
+option turns it on, Reset at the end of the row, disabled with a tooltip when not applicable,
+locked while exporting):
 
 | | **Effect** (cell effect) | **Global effect** |
 |---|---|---|
 | Belongs to | A cell + image pair | The grid |
 | UI | The effects toolbar (top), its options in the options toolbar | The **Global effects** row (bottom), its options in the same row |
-| No cell selected | Disabled | Stays enabled; disabled only when it does not apply (e.g. no sound for the Fade) |
-| Image replaced, cell *Reset* | Reset | Untouched |
+| No cell selected | Disabled | Stays enabled; disabled only when it does not apply (e.g. nothing heard for the Fade) |
+| Image replaced, cell *Reset* (both) | Reset | Untouched |
+| Its own *Reset* | The options row's Reset | The Reset ending the Global effects row |
 | *Clear all* | Reset (no image left) | Reset |
 | Swap, layout change | Kept, follows the image | Kept |
 | Rendering | `Compositor.DrawCell` | At the grid level, in the preview and in every export |
@@ -96,17 +103,15 @@ exporting):
 Glossary (`GLOSSARY.md`): **Effect** keeps meaning the cell effect (noted "also *cell
 effect*"); new terms:
 
-- **Global effect** — a transformation of the whole grid, toggled from the Global effects row:
-  Fade.
+- **Global effect** — a transformation of the whole grid, turned on or off from the Global
+  effects row: Fade. Turned off, it keeps its settings.
 - **Global effects row** — the always-visible row just above the bottom bar: the "Global
-  effects" label, the global effect toggles and their options.
+  effects" label, each global effect's activation checkbox and options, the Reset button.
 
 ---
 
 ## Current State (explored)
 
-| Topic | Where | What it does today |
-|---|---|---|
 Re-explored 2026-09-26, after `video-mute.md` was delivered (the first pass described a single
 elected sound, now gone).
 
@@ -139,18 +144,18 @@ created. The fade's envelope stays a pure function, so a later test project can 
 - [x] ~~1. **Clear all** — does it also remove the global effects (back to the initial state), or keep them?~~ → Removes them, back to the initial state
 - [x] ~~2. **Glossary** — does "Effect" keep meaning a cell effect, with "Global effect" as a separate term (as drafted)?~~ → Yes, "Effect" stays the cell effect; "Global effect" is a separate term
 - [x] ~~3. **Row position** — the Global effects row: its own row just above the bottom bar (as drafted), or inside the bottom bar?~~ → Its own row, just above the bottom bar
-- [x] ~~4. **No sound** — is the Fade button disabled when the grid has no sound (still images only, all videos silent or frozen)?~~ → Disabled; a Fade already on keeps its setting
+- [x] ~~4. **No sound** — is the Fade button disabled when the grid has no sound (still images only, all videos silent or frozen)?~~ → Disabled; a Fade already on keeps its setting *(refined 2026-09-26, see Iteration 6: when nothing is heard)*
 - [x] ~~5. **Duration** — range, step and default (proposal: 0.1–5 s by 0.1 s, default 1 s)?~~ → 0.1–5 s by 0.1 s, default 1 s
 - [x] ~~6. **Short content** — when 2 × D exceeds the length, is D clamped to half the length (fade-in then straight fade-out)?~~ → Clamped to half the length
 - [x] ~~7. **Preview loop** — which loop does the preview fade on: the grid's loop (the export's length, faithful to the export), or the sounded video's own loop (differs when another content loops longer)?~~ → The grid's loop, faithful to the export
 - [x] ~~8. **Curve** — linear gain, or a smoother curve (e.g. squared, closer to perceived loudness)?~~ → A UI choice: Squared / Linear buttons in the row
 - [x] ~~9. **Tests** — create a test project (xUnit) to pin the envelope, or no unit tests for this workfile?~~ → No unit tests, no test project
-- [x] ~~10. **Toggle behaviour** — click toggles on / off; is the duration slider shown only while Fade is on, or always (disabled when off)?~~ → Shown only while Fade is on
+- [x] ~~10. **Toggle behaviour** — click toggles on / off; is the duration slider shown only while Fade is on, or always (disabled when off)?~~ → Shown only while Fade is on *(revised 2026-09-26, see Iteration 6: options always shown, cell-effect model)*
 - [x] ~~11. **Export lock** — is the Global effects row locked while exporting, like the cell effects?~~ → Locked
-- [ ] 13. **Control model** — does the Global effects row follow the revised cell-effect model (activation checkbox, settings kept when off, options always shown, acting on an option turns it on), replacing the toggle with options shown only while on (OQ 10)?
-- [ ] 14. **What fades** — the whole mix (every heard video, and the soundtrack once it exists), or the videos only?
-- [ ] 15. **Not applicable** — Fade disabled when **nothing is heard** (every video muted, frozen or silent), or only when no video has a sound track?
-- [ ] 16. **Reset** — a *Reset* button for the Fade in the row, like the options row's per-effect Reset, or none (Clear all only)?
+- [x] ~~13. **Control model** — does the Global effects row follow the revised cell-effect model (activation checkbox, settings kept when off, options always shown, acting on an option turns it on), replacing the toggle with options shown only while on (OQ 10)?~~ → Yes, the cell-effect model
+- [x] ~~14. **What fades** — the whole mix (every heard video, and the soundtrack once it exists), or the videos only?~~ → The whole mix
+- [x] ~~15. **Not applicable** — Fade disabled when **nothing is heard** (every video muted, frozen or silent), or only when no video has a sound track?~~ → When nothing is heard
+- [x] ~~16. **Reset** — a *Reset* button for the Fade in the row, like the options row's per-effect Reset, or none (Clear all only)?~~ → Yes, ending the row
 - [x] ~~12. **Status of the rule** — does the new rule go into `RULES.md` as a new § Global Effects next to § Effects, with § Effects renamed "Cell effects"?~~ → Yes: new § Global Effects, § Effects renamed § Cell Effects
 
 ---
@@ -202,6 +207,14 @@ in the order the requests were made.
 - Current State re-explored directly (a single question); the fade applies to the **mix**.
 - The go question was dismissed; new open questions 13–16 raised by these changes.
 
+### Iteration 6 — 2026-09-26
+
+- OQ 13–16 answered (Q&A 18–21): the Global effects row follows the **cell-effect model**
+  (activation checkbox, settings kept when off, options always shown, acting on an option turns
+  it on) — this revises OQ 10; the **whole mix** fades; **not applicable when nothing is heard**,
+  checkbox disabled with a tooltip; a **Reset** ends the row.
+- No open question left.
+
 ---
 
 ## Implementation Log
@@ -241,10 +254,10 @@ Questions asked by the agent during design, with user responses.
 | 15 | OQ 12 — Rule placement: new § Global Effects, § Effects renamed "Cell effects"? | **Yes, both** | 2026-09-26 |
 | 16 | OQ 2 — Glossary: "Effect" stays the cell effect, "Global effect" a separate term? | **Yes** | 2026-09-26 |
 | 17 | Go for implementation? | Dismissed — asked to re-ask the questions as MCQ | 2026-09-26 |
-| 18 | OQ 13 — Control model: follow the revised cell-effect model? | | 2026-09-26 |
-| 19 | OQ 14 — What fades: the whole mix, or the videos only? | | 2026-09-26 |
-| 20 | OQ 15 — Not applicable: when nothing is heard, or when no sound track? | | 2026-09-26 |
-| 21 | OQ 16 — Reset button for the Fade in the row? | | 2026-09-26 |
+| 18 | OQ 13 — Control model: follow the revised cell-effect model? | **Yes** | 2026-09-26 |
+| 19 | OQ 14 — What fades: the whole mix, or the videos only? | **The whole mix** | 2026-09-26 |
+| 20 | OQ 15 — Not applicable: when nothing is heard, or when no sound track? | **Nothing heard** | 2026-09-26 |
+| 21 | OQ 16 — Reset button for the Fade in the row? | **Yes, ending the row** | 2026-09-26 |
 
 ---
 
