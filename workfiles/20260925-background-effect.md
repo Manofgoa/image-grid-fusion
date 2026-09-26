@@ -296,6 +296,7 @@ Questions asked by the agent during design, with user responses.
 | 12 | Go for implementation? | No — the gate holds | 2026-09-26 |
 | 13 | RULES.md draws an effect off as its defaults: Background exception, off = no fill? | Yes — Background exception in RULES.md | 2026-09-26 |
 | 14 | Copy (clipboard): does the copied image keep the transparency? | `PNG` stream keeps the alpha, bitmap flavour on white | 2026-09-26 |
+| 15 | Go for implementation? | No — the gate holds | 2026-09-26 |
 
 ---
 
