@@ -46,20 +46,34 @@ Components touched: `Composition/GridBorders.cs`, a new `Composition/` record fo
 ### Behaviour
 
 - A **global effect**, per RULES.md § Global Effects: a toggle in the **Global effects** row, after
-  the Borders, its options beside it only while it is on, the row keeping one height.
+  the Borders. It has **no options**: the toggle alone, so the row's height does not change.
 - It rounds the **grid's four outer corners only** — not each cell, not the gap between the cells.
-- Its state: a **radius**, the one setting, as a fraction of the canvas (see Open Questions for the
-  unit and the default). Off keeps the radius; on applies it as it was.
-- Not persisted; *Clear all* brings it back to its initial state; swap, layout change, image
-  replaced and the cells' *Reset* buttons leave it alone; locked while exporting.
+- **Radius: Twitter's own**, fixed, no slider. Measured on the user's screenshot: a radius of
+  ~24 px on an image displayed 810 px wide — Twitter's 16 CSS px on a ~540 px wide display at
+  150 % — that is **3 % of the displayed width**. Twitter shows a landscape grid by its width and a
+  portrait one by its height, so the radius is **3 % of the grid's longer side**
+  (`RoundedCorners.RadiusShare = 0.03`).
+- Its state is on / off only. Not persisted; *Clear all* brings it back to its **start-up state**
+  (see Start-Up Setting); swap, layout change, image replaced and the cells' *Reset* buttons leave
+  it alone; locked while exporting.
 - Hit-testing is unchanged: a rounded-off corner still belongs to its cell.
+
+### Start-Up Setting
+
+- A setting in the **⚙ menu** chooses whether the effect is **on or off at start-up**, remembered
+  between sessions in the registry, like the Border color (`UI/AppSettings.cs`) — an app setting
+  read by a global effect, per RULES.md § Global Effects. See Open Questions for its scope, its
+  value at first launch and when it applies.
 
 ### Rendering
 
-- At the grid level, in `Compositor.Draw`, **after** the cells and the Borders: everything outside
-  the rounded rectangle of the canvas becomes **transparent**, with an **anti-aliased** edge.
-- Outputs with alpha (PNG, the clipboard's PNG) keep the transparent corners; outputs without alpha
-  flatten them like any transparency — see Open Questions for the color.
+- At the grid level, in `Compositor.Draw`, **after** the cells and the Borders.
+- **Outputs with alpha** (PNG, the clipboard's PNG): everything outside the rounded rectangle of
+  the canvas becomes **transparent**, with an **anti-aliased** edge.
+- **Outputs without alpha** (JPEG for sharing, MP4, GIF, the clipboard's bitmap): the corners are
+  **not cut** — they keep the image's pixels, and Twitter rounds them itself, so no white or black
+  sliver ever shows in its light or dark mode. The Borders still **follow the curve** there.
+- So `Compositor.Draw` takes whether the output keeps alpha: the mask is applied only when it does.
 - Resolution-independent: the radius is a fraction of the canvas, so the preview and every export
   size look the same.
 
@@ -88,12 +102,12 @@ Components touched: `Composition/GridBorders.cs`, a new `Composition/` record fo
 
 ## Test Impact
 
-To confirm (see Open Questions): the solution has no test project, and every previous workfile
-stayed test-free by the user's decision (`workfiles/20260926-cell-borders.md`, Q&A #20).
+None, by the user's decision (Q&A #8): the solution has no test project, and every previous
+workfile stayed test-free.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| — (no unit tests, pending confirmation) | — | — |
+| — (no unit tests) | — | — |
 
 ---
 
@@ -104,15 +118,18 @@ stayed test-free by the user's decision (`workfiles/20260926-cell-borders.md`, Q
 - [x] ~~How to handle Twitter's rounding?~~ → A new global effect rounding the grid's corners,
   the Borders following the curve (Q&A #2)
 - [x] ~~Round what?~~ → The grid's four outer corners only (Q&A #3)
-- [ ] Radius: unit, default and range? Proposal: a fraction of the canvas's **shorter side**, like
-  the Borders' thickness, default **4 %**, slider **1–15 %**, shown as a percentage.
-- [ ] Outputs without alpha (JPEG for sharing — the one pasted into Twitter —, MP4, GIF, the
-  clipboard's bitmap): what color do the rounded-off corners get? White, like today's flattening,
-  shows as white slivers in Twitter's dark mode wherever our radius exceeds Twitter's.
-- [ ] The effect at start-up: off (like the Soundtrack and now the Borders) or on?
+- [x] ~~Radius: unit, default and range?~~ → Twitter's own, computed by the agent: 3 % of the
+  grid's longer side, fixed, no slider (Q&A #5)
+- [x] ~~Outputs without alpha: what do the rounded-off corners get?~~ → Not cut, Twitter rounds
+  them; the Borders still follow the curve (Q&A #6)
+- [x] ~~The effect at start-up: off or on?~~ → A ⚙ setting switches it (Q&A #7)
+- [x] ~~Unit tests?~~ → None, as before (Q&A #8)
 - [ ] Name and toggle label: *Rounded corners* ("◜ Rounded corners"), distinct from the Borders'
-  *Corners style*?
-- [ ] Unit tests: none again, as in every previous workfile?
+  *Corners style*? (left unanswered in Q&A #7)
+- [ ] Start-up setting: for the Rounded corners only, or for the Borders too?
+- [ ] Start-up setting: its value at first launch, before it is ever changed — on or off?
+- [ ] Start-up setting: changed from the ⚙ menu, does it also switch the effect right away, or only
+  at the next start-up and *Clear all*?
 
 ---
 
@@ -131,6 +148,19 @@ default settings; a new *Rounded corners* global effect rounding the grid's oute
 preview and every export, the Corners brackets and the outer frame following the curve. Explored
 directly (depth: straightforward): `GridBorders`, `Compositor.Draw`, `GridExport`, the preview's
 cell redraws and checkerboard, `MainForm`'s Borders toggle and *Clear all*.
+
+### Iteration 2 — 2026-09-26
+
+Answers to Q&A #5–#8:
+- **Radius**: "must be like Twitter's rounding, up to you to compute it" — measured on the user's
+  screenshot (~24 px on 810 px, i.e. 16 CSS px on ~540 px): fixed at 3 % of the grid's longer side;
+  the effect loses its slider and has no options at all.
+- **Outputs without alpha**: corners not cut, Twitter rounds them; the Borders follow the curve in
+  every output; `Compositor.Draw` masks only outputs with alpha.
+- **Start-up state**: instead of choosing, "add a setting to switch the default value" — a new ⚙
+  setting, remembered in the registry. Its scope, first-launch value and timing become Open
+  Questions; the name, left unanswered, stays open.
+- **Unit tests**: none.
 
 ---
 
@@ -157,10 +187,14 @@ Questions asked by the agent during design, with user responses.
 | 2 | What to do about Twitter's rounding? (global effect / option of the Borders / preview-only indicator / brackets moved inward) | A new *Rounded corners* global effect, in the preview and the exports, the Borders following the curve | 2026-09-26 |
 | 3 | Round where? (grid's outer corners / every cell) | The grid's outer corners only (recommended) | 2026-09-26 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward | 2026-09-26 |
-| 5 | Radius: unit, default and range? | | 2026-09-26 |
-| 6 | Outputs without alpha: what do the rounded-off corners get? | | 2026-09-26 |
-| 7 | Name, label and state at start-up of the new effect? | | 2026-09-26 |
-| 8 | Unit tests: none again? | | 2026-09-26 |
+| 5 | Radius: unit, default and range? | "Must be like Twitter's rounding, up to you to compute it" → 3 % of the longer side, measured on the screenshot | 2026-09-26 |
+| 6 | Outputs without alpha: what do the rounded-off corners get? | Not cut, the Borders follow the curve (recommended) | 2026-09-26 |
+| 7 | Name, label and state at start-up of the new effect? | "Add a setting to switch the default value" — name not answered | 2026-09-26 |
+| 8 | Unit tests: none again? | None, as before (recommended) | 2026-09-26 |
+| 9 | Name and toggle label of the new effect? | | 2026-09-26 |
+| 10 | Start-up setting: Rounded corners only, or the Borders too? | | 2026-09-26 |
+| 11 | Start-up setting: value at first launch? | | 2026-09-26 |
+| 12 | Start-up setting: applies right away, or at the next start-up and *Clear all* only? | | 2026-09-26 |
 
 ---
 
