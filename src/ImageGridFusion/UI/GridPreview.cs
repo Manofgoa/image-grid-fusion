@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using ImageGridFusion.Composition;
+using ImageGridFusion.Imaging;
 
 namespace ImageGridFusion.UI;
 
@@ -38,6 +39,8 @@ internal sealed class GridPreview : Control
     private const int ZoomBadgeFade = 300;
     private const int ZoomBadgeTick = 30;
     private const int ZoomBadgeTextSize = 16;
+    private const int SourceNameTextSize = 12;
+    private const int SourceIconSize = 16;
     private const int CheckerSquare = 8;
 
     private static readonly Color HoverOutlineColor = Color.FromArgb(128, Color.White);
@@ -104,6 +107,12 @@ internal sealed class GridPreview : Control
     private long _zoomBadgeChanged;
     private Rectangle _zoomBadgeBounds;
 
+    // The file name at the bottom of the selected cell, shortened to its width, and its folder icon.
+    private (SourceImage Image, int Width, float Size, string Text)? _fittedName;
+    private bool _hoveringSourceName;
+    private bool _hoveringSourceIcon;
+    private readonly ToolTip _toolTip = new();
+
     public GridPreview()
     {
         SetStyle(
@@ -130,6 +139,9 @@ internal sealed class GridPreview : Control
 
     /// <summary>Raised when the drop zone right of the canvas, or the empty canvas, is clicked.</summary>
     public event EventHandler? AddImagesClicked;
+
+    /// <summary>Raised with the file's path when the folder icon after the selected cell's file name is clicked.</summary>
+    public event EventHandler<string>? ShowInExplorerClicked;
 
     /// <summary>Raised when the active layout changes, picked by the user or reset with the image count, or when its cells are resized.</summary>
     public event EventHandler? LayoutChanged;
@@ -328,6 +340,7 @@ internal sealed class GridPreview : Control
         {
             _wheelEnd.Dispose();
             _zoomBadgeTimer.Dispose();
+            _toolTip.Dispose();
             _player.Dispose();
             _images.ForEach(i => i.Dispose());
             _images.Clear();
@@ -398,6 +411,9 @@ internal sealed class GridPreview : Control
             g.DrawRectangle(pen, cells[_selected]);
         }
 
+        // Under the blur bars, which keep their click priority over it.
+        PaintSourceName(g);
+
         if (!_dragging && ShownBlur(_selected) is { } blur && _selected < cells.Length)
         {
             PaintBlurBars(g, cells[_selected], blur);
@@ -429,6 +445,13 @@ internal sealed class GridPreview : Control
         base.OnMouseDown(e);
         if (e.Button != MouseButtons.Left)
         {
+            return;
+        }
+
+        // Opening Explorer changes nothing in the grid: it works during an export too.
+        if (SourceHitAt(e.Location).Icon)
+        {
+            ShowInExplorerClicked?.Invoke(this, SelectedImage!.FilePath!);
             return;
         }
 
@@ -666,6 +689,7 @@ internal sealed class GridPreview : Control
             _hoveringHandle = false;
             _hoveringCanvas = false;
             _hoveringDropZone = false;
+            SetSourceHover((false, false));
             Cursor = Cursors.Default;
             Invalidate();
         }
@@ -885,14 +909,18 @@ internal sealed class GridPreview : Control
         bool onDropZone = DropZoneBounds(CanvasBounds()).Contains(location);
         bool actions = hovered >= 0 && !_locked;
         bool onHandle = actions && HandleBounds(CellBounds()[hovered]).Contains(location);
-        bool onControl = onClose || onDropZone || onCanvas;
+        var onSource = SourceHitAt(location);
+        bool onControl = onClose || onDropZone || onCanvas || onSource.Icon;
         var onBar = actions && !onControl && ShownBlur(hovered) is { } blur ? BarAt(CellBounds()[hovered], blur, location) : null;
         var onSeparator = actions && !onControl && onBar is null ? SeparatorAt(location) : null;
         if (hovered == _hovered && onClose == _hoveringClose && onCanvas == _hoveringCanvas && onDropZone == _hoveringDropZone
-            && onHandle == _hoveringHandle && onBar == _hoveredBar && onSeparator?.Vertical == _hoveredSeparator?.Vertical)
+            && onHandle == _hoveringHandle && onBar == _hoveredBar && onSeparator?.Vertical == _hoveredSeparator?.Vertical
+            && onSource == (_hoveringSourceName, _hoveringSourceIcon))
         {
             return;
         }
+
+        SetSourceHover(onSource);
 
         _hovered = hovered;
         _hoveringClose = onClose;
@@ -1766,6 +1794,188 @@ internal sealed class GridPreview : Control
         using var pen = new Pen(HelperHalo, LogicalToDeviceUnits(1));
         g.FillRectangle(brush, bounds);
         g.DrawRectangle(pen, bounds);
+    }
+
+    /// <summary>
+    /// The file name of the selected cell's image at the bottom left of the cell, and the folder
+    /// icon after it (none without a file): the text as a path, its bounds and the icon's. <c>null</c>
+    /// without a selected image, during a swap, and in a cell too narrow for it.
+    /// </summary>
+    private GraphicsPath? SourceNamePath(out Rectangle cell, out Rectangle textBounds, out Rectangle icon)
+    {
+        cell = textBounds = icon = Rectangle.Empty;
+        var cells = CellBounds();
+        if (_dragging || SelectedImage is not { } image || _selected >= cells.Length)
+        {
+            return null;
+        }
+
+        cell = cells[_selected];
+        int inset = LogicalToDeviceUnits(ButtonInset);
+        int gap = LogicalToDeviceUnits(ButtonGap);
+        int iconSize = image.FilePath is null ? 0 : LogicalToDeviceUnits(SourceIconSize);
+        float width = cell.Width - 2 * inset - (iconSize > 0 ? iconSize + gap : 0);
+        if (width <= 0)
+        {
+            return null;
+        }
+
+        // Placed on the line of the font, not on the glyphs, so that a name never moves with its letters.
+        float size = LogicalToDeviceUnits(SourceNameTextSize);
+        var family = Font.FontFamily;
+        float line = size * family.GetLineSpacing(FontStyle.Bold) / family.GetEmHeight(FontStyle.Bold);
+        var origin = new PointF(cell.X + inset, cell.Bottom - inset - line);
+        var path = new GraphicsPath();
+        path.AddString(FittedSourceName(image, width, size), family, (int)FontStyle.Bold, size, origin, StringFormat.GenericTypographic);
+        textBounds = Rectangle.Ceiling(path.GetBounds());
+        if (iconSize > 0)
+        {
+            icon = new Rectangle(textBounds.Right + gap, (int)(origin.Y + (line - iconSize) / 2), iconSize, iconSize);
+        }
+
+        return path;
+    }
+
+    /// <summary>The name the selected cell shows: its file's, else how it arrived.</summary>
+    private static string SourceName(SourceImage image) =>
+        image.FilePath is { } path ? Path.GetFileName(path)
+        : image.Pages is TextPages ? (image.Dropped ? "Dropped text" : "Pasted text")
+        : "Pasted image";
+
+    /// <summary>The source name within <paramref name="width"/>, measured once per image and width.</summary>
+    private string FittedSourceName(SourceImage image, float width, float size)
+    {
+        if (_fittedName is { } fitted && fitted.Image == image && fitted.Width == (int)width && fitted.Size == size)
+        {
+            return fitted.Text;
+        }
+
+        string text = FitMiddle(SourceName(image), t => TextWidth(t, size), width);
+        _fittedName = (image, (int)width, size, text);
+        return text;
+    }
+
+    private float TextWidth(string text, float size)
+    {
+        using var path = new GraphicsPath();
+        path.AddString(text, Font.FontFamily, (int)FontStyle.Bold, size, PointF.Empty, StringFormat.GenericTypographic);
+        return path.GetBounds().Width;
+    }
+
+    /// <summary>
+    /// A name too wide shortened by an ellipsis in its middle, its start and its extension kept
+    /// (<c>vacances-ete-2…plage.jpg</c>); only the ellipsis and the extension when nothing more fits.
+    /// </summary>
+    private static string FitMiddle(string name, Func<string, float> width, float max)
+    {
+        if (width(name) <= max)
+        {
+            return name;
+        }
+
+        string extension = Path.GetExtension(name);
+        string stem = name[..^extension.Length];
+        string best = "…" + extension;
+        int low = 1;
+        int high = stem.Length - 1;
+        while (low <= high)
+        {
+            int keep = (low + high) / 2;
+            string candidate = stem[..(keep - keep / 2)] + "…" + stem[^(keep / 2)..] + extension;
+            if (width(candidate) <= max)
+            {
+                best = candidate;
+                low = keep + 1;
+            }
+            else
+            {
+                high = keep - 1;
+            }
+        }
+
+        return best;
+    }
+
+    /// <summary>
+    /// The source name, a helper indicator: green over the black halo, clipped to its cell; the
+    /// folder icon after it turns white while hovered.
+    /// </summary>
+    private void PaintSourceName(Graphics g)
+    {
+        using var path = SourceNamePath(out var cell, out _, out var icon);
+        if (path is null)
+        {
+            return;
+        }
+
+        var state = g.Save();
+        g.SetClip(cell, CombineMode.Intersect);
+        using var outline = new Pen(HelperHalo, LogicalToDeviceUnits(4)) { LineJoin = LineJoin.Round };
+        using var fill = new SolidBrush(HelperColor);
+        g.DrawPath(outline, path);
+        g.FillPath(fill, path);
+        if (!icon.IsEmpty)
+        {
+            using var folder = FolderPath(icon);
+            using var iconFill = new SolidBrush(_hoveringSourceIcon ? Color.White : HelperColor);
+            g.DrawPath(outline, folder);
+            g.FillPath(iconFill, folder);
+        }
+
+        g.Restore(state);
+    }
+
+    /// <summary>A folder, its tab up left, filling the lower part of <paramref name="bounds"/>.</summary>
+    private static GraphicsPath FolderPath(Rectangle bounds)
+    {
+        float x = bounds.X;
+        float w = bounds.Width;
+        float top = bounds.Y + bounds.Height * 0.15f;
+        float body = bounds.Y + bounds.Height * 0.3f;
+        float bottom = bounds.Y + bounds.Height * 0.9f;
+        var path = new GraphicsPath();
+        path.AddPolygon(
+        [
+            new PointF(x, top), new PointF(x + w * 0.4f, top), new PointF(x + w * 0.5f, body),
+            new PointF(x + w, body), new PointF(x + w, bottom), new PointF(x, bottom),
+        ]);
+        return path;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="location"/> is on the selected cell's file name (its tooltip) or on its
+    /// folder icon (opens Explorer). Neither without a file, nor where a blur bar can be grabbed.
+    /// </summary>
+    private (bool Name, bool Icon) SourceHitAt(Point location)
+    {
+        using var path = SourceNamePath(out var cell, out var text, out var icon);
+        if (path is null || SelectedImage?.FilePath is null || !cell.Contains(location)
+            || ShownBlur(_selected) is { } blur && BarAt(cell, blur, location) is not null)
+        {
+            return (false, false);
+        }
+
+        int halo = LogicalToDeviceUnits(4);
+        return icon.Contains(location) ? (false, true) : (Rectangle.Inflate(text, halo, halo).Contains(location), false);
+    }
+
+    /// <summary>The hover of the file name and its icon; the full path shows in a tooltip over either.</summary>
+    private void SetSourceHover((bool Name, bool Icon) hover)
+    {
+        bool shown = _hoveringSourceName || _hoveringSourceIcon;
+        _hoveringSourceName = hover.Name;
+        _hoveringSourceIcon = hover.Icon;
+        if (hover.Name || hover.Icon)
+        {
+            if (!shown)
+            {
+                _toolTip.SetToolTip(this, SelectedImage?.FilePath);
+            }
+        }
+        else if (shown)
+        {
+            _toolTip.SetToolTip(this, null);
+        }
     }
 
     private void PaintCloseButton(Graphics g, Rectangle bounds, bool hot)

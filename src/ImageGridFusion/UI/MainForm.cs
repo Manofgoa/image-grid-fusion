@@ -345,6 +345,7 @@ internal sealed class MainForm : Form
         _preview.DragLeave += (_, _) => _preview.ShowDropTarget(null);
         _preview.DragDrop += OnDragDrop;
         _preview.AddImagesClicked += (_, _) => PickFiles();
+        _preview.ShowInExplorerClicked += (_, path) => ShowInExplorer(path);
         _layouts.DragEnter += OnDragEnter;
         _layouts.DragDrop += OnDragDrop;
         UpdateButtons();
@@ -1636,6 +1637,37 @@ internal sealed class MainForm : Form
     {
         _status.ForeColor = error ? Color.Firebrick : SystemColors.ControlText;
         _status.Text = message;
+    }
+
+    /// <summary>
+    /// Opens Explorer on the folder of an image's file, the file selected. A file moved or deleted
+    /// since it was loaded opens its folder, if still there, and says so.
+    /// </summary>
+    private void ShowInExplorer(string path)
+    {
+        bool exists = File.Exists(path);
+        string? folder = Path.GetDirectoryName(path);
+        string? arguments = exists ? $"/select,\"{path}\""
+            : Directory.Exists(folder) ? $"\"{folder}\""
+            : null;
+        if (!exists)
+        {
+            ShowStatus($"File not found: {path}", error: true);
+        }
+
+        if (arguments is null)
+        {
+            return;
+        }
+
+        try
+        {
+            Process.Start("explorer.exe", arguments)?.Dispose();
+        }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            ShowStatus($"Explorer could not be opened: {ex.Message}", error: true);
+        }
     }
 
     /// <summary>
