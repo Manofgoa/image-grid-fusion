@@ -250,6 +250,7 @@ Questions asked by the agent during design, with user responses.
 | 12 | Tests: create a test project, or manual verification only? | Manual verification only | 2026-09-25 |
 | 13 | Is every video mixed always, or only while the soundtrack is active? | Not asked — moot, `video-mute.md` delivered the always-on mix | 2026-09-26 |
 | 14 | Start the implementation? | Code, tests and documentation | 2026-09-26 |
+| 15 | Is the soundtrack finished, after testing? | Yes, finished | 2026-09-26 |
 
 ---
 
