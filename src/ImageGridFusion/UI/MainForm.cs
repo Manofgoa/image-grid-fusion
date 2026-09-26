@@ -266,6 +266,7 @@ internal sealed class MainForm : Form
         // and the Global effects row above it, span the whole width; the layout strip takes the left
         // of what remains, the file explorer the right, and the fill control goes first so it gets the rest.
         _explorer.Open = AppSettings.ExplorerPanelOpen;
+        _explorer.Columns = AppSettings.ExplorerColumns;
         Controls.Add(_preview);
         Controls.Add(_explorer);
         Controls.Add(_layouts);
@@ -291,6 +292,11 @@ internal sealed class MainForm : Form
         _explorerFolder.ToolTipText = "The folder the file explorer searches, with its subfolders; remembered between sessions";
         _explorerFolder.Click += (_, _) => PickExplorerFolder();
         _explorer.OpenChanged += (_, _) => SaveExplorerPanelOpen();
+        _explorer.ColumnsChanged += (_, delta) =>
+        {
+            SaveExplorerColumns();
+            FollowExplorerWidth(delta);
+        };
         _explorer.ChooseFolderRequested += (_, _) => PickExplorerFolder();
 
         // A double-clicked row is added like a file from the Add images picker.
@@ -1853,6 +1859,36 @@ internal sealed class MainForm : Form
         {
             ShowStatus($"File explorer panel state not remembered: {ex.Message}", error: true);
         }
+    }
+
+    /// <summary>The file explorer's columns were changed by the user: remembered between sessions.</summary>
+    private void SaveExplorerColumns()
+    {
+        try
+        {
+            AppSettings.SaveExplorerColumns(_explorer.Columns);
+        }
+        catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+        {
+            ShowStatus($"File explorer columns not remembered: {ex.Message}", error: true);
+        }
+    }
+
+    /// <summary>
+    /// The explorer grew or shrank by <paramref name="delta"/> px: the window follows when it is not
+    /// maximized and the screen has the room, so the preview keeps its size; else the preview absorbs it.
+    /// </summary>
+    private void FollowExplorerWidth(int delta)
+    {
+        if (WindowState != FormWindowState.Normal || delta == 0)
+        {
+            return;
+        }
+
+        var area = Screen.FromControl(this).WorkingArea;
+        int width = Math.Clamp(Width + delta, MinimumSize.Width, area.Width);
+        int left = Math.Max(area.Left, Math.Min(Left, area.Right - width));
+        SetBounds(left, Top, width, Height);
     }
 
     /// <summary>The borders as they stand, to the preview, then to the row and the output buttons.</summary>
