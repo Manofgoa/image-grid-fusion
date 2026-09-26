@@ -185,6 +185,39 @@ internal static class EffectIcons
         g.DrawArc(wave, s * 0.4f, s * 0.14f, s * 0.52f, s * 0.72f, -50, 100);
     });
 
+    /// <summary>Two beamed eighth notes, violet to blue.</summary>
+    public static Bitmap Soundtrack(int size) => Draw(size, (g, s) =>
+    {
+        using var brush = new LinearGradientBrush(new RectangleF(0, 0, s, s), Color.FromArgb(170, 70, 255), Color.FromArgb(30, 110, 230), 45f);
+        float stem = Math.Max(1.5f, s * 0.1f);
+        float headWidth = s * 0.34f;
+        float headHeight = s * 0.26f;
+        float left = s * 0.3f;
+        float right = s * 0.86f;
+
+        // The stems rise from the heads' right side to the beam, which slants up to the right.
+        g.FillRectangle(brush, left - stem, s * 0.2f, stem, s * 0.56f);
+        g.FillRectangle(brush, right - stem, s * 0.08f, stem, s * 0.58f);
+        g.FillPolygon(brush, [new PointF(left - stem, s * 0.2f), new PointF(right, s * 0.08f), new PointF(right, s * 0.08f + s * 0.18f), new PointF(left - stem, s * 0.38f)]);
+        g.FillEllipse(brush, left - headWidth, s * 0.7f, headWidth, headHeight);
+        g.FillEllipse(brush, right - headWidth, s * 0.58f, headWidth, headHeight);
+    });
+
+    /// <summary>A hot pink L-bracket over the corner of a grey picture, the signature of the corner borders.</summary>
+    public static Bitmap Borders(int size) => Draw(size, (g, s) =>
+    {
+        var picture = new RectangleF(s * 0.12f, s * 0.12f, s * 0.76f, s * 0.76f);
+        using (var fill = new SolidBrush(Color.FromArgb(200, 205, 215)))
+        {
+            g.FillRectangle(fill, picture);
+        }
+
+        float arm = Math.Max(2, s * 0.18f);
+        using var bracket = new SolidBrush(Color.FromArgb(255, 60, 170));
+        g.FillRectangle(bracket, picture.X, picture.Y, picture.Width * 0.6f, arm);
+        g.FillRectangle(bracket, picture.X, picture.Y, arm, picture.Height * 0.6f);
+    });
+
     /// <summary>A wedge growing to the right, yellow to red.</summary>
     public static Bitmap Intensity(int size) => Draw(size, (g, s) =>
     {
