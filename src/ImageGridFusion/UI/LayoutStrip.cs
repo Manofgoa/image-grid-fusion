@@ -5,19 +5,22 @@ using ImageGridFusion.Composition;
 namespace ImageGridFusion.UI;
 
 /// <summary>
-/// Vertical strip of schematic thumbnails, one per layout of the current image count, with the
-/// mirror toggle below them. Always shown, so the preview keeps its size: with no image, it shows
-/// the single-image thumbnail greyed out and does not react to the mouse.
+/// Vertical strip holding the mirror toggle, then one schematic thumbnail per basic layout of the
+/// current image count, then a "More" header over the advanced ones, collapsed by default.
+/// Scrolls vertically when taller than the window. Always shown, so the preview keeps its size: with
+/// no image, it shows the single-image thumbnail greyed out and does not react to the mouse.
 /// </summary>
-internal sealed class LayoutStrip : Control
+internal sealed class LayoutStrip : ScrollableControl
 {
     private static readonly Color DisabledColor = Color.FromArgb(96, 96, 96);
 
     private readonly ToolTip _toolTip = new();
     private GridLayout? _active;
     private IReadOnlyList<GridLayout> _layouts = GridLayout.For(1);
+    private bool _expanded;
+    private List<Item> _items = [];
 
-    // Index in _layouts, or _layouts.Count for the mirror toggle.
+    // Index in _items.
     private int _hovered = -1;
 
     public LayoutStrip()
@@ -28,6 +31,7 @@ internal sealed class LayoutStrip : Control
             true);
         BackColor = Color.FromArgb(48, 48, 48);
         ForeColor = Color.Gainsboro;
+        AutoScroll = true;
     }
 
     /// <summary>Raised with the catalog layout clicked, unmirrored.</summary>
@@ -38,7 +42,17 @@ internal sealed class LayoutStrip : Control
 
     public event EventHandler? MirrorToggled;
 
-    /// <summary>Layout shown as active; its image count decides which thumbnails are offered.</summary>
+    private enum ItemKind
+    {
+        Mirror,
+        Layout,
+        AdvancedHeader,
+    }
+
+    /// <summary>
+    /// Layout shown as active; its image count decides which thumbnails are offered. A new image count
+    /// collapses the advanced group.
+    /// </summary>
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public GridLayout? ActiveLayout
@@ -46,14 +60,16 @@ internal sealed class LayoutStrip : Control
         get => _active;
         set
         {
+            if ((value?.Count ?? 1) != _layouts[0].Count)
+            {
+                _expanded = false;
+            }
+
             _active = value;
             _layouts = GridLayout.For(value?.Count ?? 1);
-            SetHovered(-1);
-            Invalidate();
+            Arrange();
         }
     }
-
-    private int MirrorIndex => _layouts.Count;
 
     private bool MirrorEnabled => _active is { MirrorAxis: not MirrorAxis.None };
 
@@ -67,23 +83,53 @@ internal sealed class LayoutStrip : Control
         base.Dispose(disposing);
     }
 
+    // Also raised when the scrollbar shows or hides, which the items make room for.
+    protected override void OnClientSizeChanged(EventArgs e)
+    {
+        base.OnClientSizeChanged(e);
+        Arrange();
+    }
+
     protected override void OnPaint(PaintEventArgs e)
     {
         var g = e.Graphics;
         g.Clear(BackColor);
-        for (int i = 0; i < _layouts.Count; i++)
+        g.TranslateTransform(AutoScrollPosition.X, AutoScrollPosition.Y);
+        for (int i = 0; i < _items.Count; i++)
         {
-            // The active thumbnail shows the layout as applied, mirror included, on its own proportions.
-            bool active = _layouts[i].Id == _active?.Id;
-            var bounds = ItemBounds(i);
-            PaintButton(g, bounds, active, i == _hovered);
-            var cellsColor = _active is null ? DisabledColor : active ? ForeColor : Color.Gray;
-            PaintCells(g, active ? _active!.WithDefaultSizes() : _layouts[i], Rectangle.Inflate(bounds, -LogicalToDeviceUnits(4), -LogicalToDeviceUnits(4)), cellsColor);
+            var item = _items[i];
+            switch (item.Kind)
+            {
+                case ItemKind.Mirror:
+                    PaintButton(g, item.Bounds, _active?.IsMirrored == true, MirrorEnabled && i == _hovered);
+                    PaintMirrorIcon(g, item.Bounds);
+                    break;
+                case ItemKind.AdvancedHeader:
+                    PaintButton(g, item.Bounds, false, i == _hovered);
+                    PaintHeader(g, item.Bounds);
+                    break;
+                default:
+                    // The active thumbnail shows the layout as applied, mirror included, on its own proportions.
+                    var layout = item.Layout!;
+                    bool active = layout.Id == _active?.Id;
+                    PaintButton(g, item.Bounds, active, i == _hovered);
+                    var cellsColor = _active is null ? DisabledColor : active ? ForeColor : Color.Gray;
+                    PaintCells(g, active ? _active!.WithDefaultSizes() : layout, Rectangle.Inflate(item.Bounds, -LogicalToDeviceUnits(4), -LogicalToDeviceUnits(4)), cellsColor);
+                    break;
+            }
         }
+    }
 
-        var mirror = ItemBounds(MirrorIndex);
-        PaintButton(g, mirror, _active?.IsMirrored == true, MirrorEnabled && _hovered == MirrorIndex);
-        PaintMirrorIcon(g, mirror);
+    protected override void OnScroll(ScrollEventArgs se)
+    {
+        base.OnScroll(se);
+        FollowMouse();
+    }
+
+    protected override void OnMouseWheel(MouseEventArgs e)
+    {
+        base.OnMouseWheel(e);
+        FollowMouse();
     }
 
     protected override void OnMouseMove(MouseEventArgs e)
@@ -107,21 +153,96 @@ internal sealed class LayoutStrip : Control
         }
 
         int index = ItemAt(e.Location);
-        if (index == MirrorIndex)
+        if (index < 0)
+        {
+            return;
+        }
+
+        var item = _items[index];
+        if (item.Kind == ItemKind.Mirror)
         {
             if (MirrorEnabled)
             {
                 MirrorToggled?.Invoke(this, EventArgs.Empty);
             }
         }
-        else if (index >= 0 && _layouts[index].Id != _active.Id)
+        else if (item.Kind == ItemKind.AdvancedHeader)
         {
-            LayoutPicked?.Invoke(this, _layouts[index]);
+            _expanded = !_expanded;
+            Arrange();
         }
-        else if (index >= 0)
+        else if (item.Layout!.Id != _active.Id)
+        {
+            LayoutPicked?.Invoke(this, item.Layout);
+        }
+        else
         {
             ActiveLayoutClicked?.Invoke(this, EventArgs.Empty);
         }
+    }
+
+    /// <summary>Lays the items out again and sizes the scrollable area to them.</summary>
+    private void Arrange()
+    {
+        _items = LayOut(out int height);
+        AutoScrollMinSize = new Size(0, height);
+        SetHovered(-1);
+        FollowMouse();
+    }
+
+    /// <summary>
+    /// Items stacked from the top: the mirror toggle, the basic thumbnails at the output ratio, then
+    /// the "More" header over the advanced thumbnails — all of them expanded, only the active one
+    /// collapsed. No header when the image count has no advanced layout. The items keep the size the
+    /// whole strip gives them: a scrollbar only pushes them left into the margin.
+    /// </summary>
+    private List<Item> LayOut(out int height)
+    {
+        int margin = LogicalToDeviceUnits(12);
+        int spacing = LogicalToDeviceUnits(6);
+        int width = Math.Max(1, Width - 2 * margin);
+        int left = Math.Max(0, Math.Min(margin, ClientSize.Width - width - LogicalToDeviceUnits(3)));
+        int thumbnailHeight = GridLayout.HeightFor(width - 2 * LogicalToDeviceUnits(4)) + 2 * LogicalToDeviceUnits(4);
+        int y = LogicalToDeviceUnits(16);
+        var items = new List<Item>();
+
+        void Add(ItemKind kind, GridLayout? layout, int itemHeight, int gapAfter)
+        {
+            items.Add(new Item(kind, layout, new Rectangle(left, y, width, itemHeight)));
+            y += itemHeight + gapAfter;
+        }
+
+        Add(ItemKind.Mirror, null, LogicalToDeviceUnits(28), spacing + LogicalToDeviceUnits(6));
+        foreach (var layout in _layouts.Where(l => !l.IsAdvanced))
+        {
+            Add(ItemKind.Layout, layout, thumbnailHeight, spacing);
+        }
+
+        var advanced = _layouts.Where(l => l.IsAdvanced).ToList();
+        if (advanced.Count > 0)
+        {
+            y += LogicalToDeviceUnits(6);
+            Add(ItemKind.AdvancedHeader, null, LogicalToDeviceUnits(22), spacing);
+            foreach (var layout in advanced.Where(l => _expanded || l.Id == _active?.Id))
+            {
+                Add(ItemKind.Layout, layout, thumbnailHeight, spacing);
+            }
+        }
+
+        height = y - spacing + LogicalToDeviceUnits(16);
+        return items;
+    }
+
+    /// <summary>Hover follows the items under the mouse once they moved beneath it.</summary>
+    private void FollowMouse()
+    {
+        if (IsHandleCreated)
+        {
+            var mouse = PointToClient(MousePosition);
+            SetHovered(ClientRectangle.Contains(mouse) ? ItemAt(mouse) : -1);
+        }
+
+        Invalidate();
     }
 
     private void SetHovered(int index)
@@ -132,9 +253,14 @@ internal sealed class LayoutStrip : Control
         }
 
         _hovered = index;
-        bool clickable = index >= 0 && (index != MirrorIndex || MirrorEnabled);
+        bool clickable = index >= 0 && (_items[index].Kind != ItemKind.Mirror || MirrorEnabled);
         Cursor = clickable ? Cursors.Hand : Cursors.Default;
-        _toolTip.SetToolTip(this, index < 0 ? null : index == MirrorIndex ? MirrorTip() : _layouts[index].Name);
+        _toolTip.SetToolTip(this, index < 0 ? null : _items[index].Kind switch
+        {
+            ItemKind.Mirror => MirrorTip(),
+            ItemKind.AdvancedHeader => _expanded ? "Hide the extra layouts" : "Show more layouts",
+            _ => _items[index].Layout!.Name,
+        });
         Invalidate();
     }
 
@@ -152,33 +278,9 @@ internal sealed class LayoutStrip : Control
             return -1;
         }
 
-        for (int i = 0; i <= MirrorIndex; i++)
-        {
-            if (ItemBounds(i).Contains(location))
-            {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
-    /// <summary>Thumbnails stacked from the top, at the output ratio; the mirror toggle below them.</summary>
-    private Rectangle ItemBounds(int index)
-    {
-        int margin = LogicalToDeviceUnits(12);
-        int top = LogicalToDeviceUnits(16);
-        int spacing = LogicalToDeviceUnits(6);
-        int width = Math.Max(1, ClientSize.Width - 2 * margin);
-        int height = GridLayout.HeightFor(width - 2 * LogicalToDeviceUnits(4)) + 2 * LogicalToDeviceUnits(4);
-
-        if (index < _layouts.Count)
-        {
-            return new Rectangle(margin, top + index * (height + spacing), width, height);
-        }
-
-        int mirrorTop = top + _layouts.Count * (height + spacing) + LogicalToDeviceUnits(6);
-        return new Rectangle(margin, mirrorTop, width, LogicalToDeviceUnits(28));
+        // The items are laid out on the whole strip; the view shows it scrolled.
+        location.Offset(-AutoScrollPosition.X, -AutoScrollPosition.Y);
+        return _items.FindIndex(item => item.Bounds.Contains(location));
     }
 
     private void PaintButton(Graphics g, Rectangle bounds, bool on, bool hot)
@@ -209,6 +311,15 @@ internal sealed class LayoutStrip : Control
         }
     }
 
+    /// <summary>"More" with a chevron telling whether the advanced group is open.</summary>
+    private void PaintHeader(Graphics g, Rectangle bounds)
+    {
+        TextRenderer.DrawText(
+            g, _expanded ? "More ▾" : "More ▸", Font, bounds, _active is null ? DisabledColor : ForeColor,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding |
+            TextFormatFlags.SingleLine | TextFormatFlags.PreserveGraphicsTranslateTransform);
+    }
+
     /// <summary>Two triangles facing away from a dashed axis, turned upright for a vertical mirror.</summary>
     private void PaintMirrorIcon(Graphics g, Rectangle bounds)
     {
@@ -234,4 +345,7 @@ internal sealed class LayoutStrip : Control
         g.FillPolygon(brush, new PointF[] { new(gap, -half), new(gap, half), new(gap + depth, 0) });
         g.Restore(state);
     }
+
+    /// <summary>One clickable row of the strip, in the coordinates of the whole (unscrolled) strip.</summary>
+    private readonly record struct Item(ItemKind Kind, GridLayout? Layout, Rectangle Bounds);
 }
