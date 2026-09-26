@@ -105,7 +105,9 @@ each launch — opened at the remembered size, grown, saved grown. The two land 
 
 **Limits, accepted.** A window straddling two monitors of different scales at closing is measured
 with the DPI Windows gives it. The size is remembered per user, shared by every instance running
-side by side: the last one closed wins.
+side by side: the last one closed wins. At a fractional scale, the round trip through logical
+pixels may lose 1 px on the first relaunch (measured at 125 %: a 982 × 753 client reopens at
+982 × 752), then stays put.
 
 ---
 
@@ -171,6 +173,19 @@ Go given for the code, the unit tests (not applicable) and the documentation. Br
 `main`, the repository's standing choice (no worktree asked). At the go, the working tree was
 clean: the concurrent `OnLoad` change had left it.
 
+### Iteration 3 — 2026-09-27 — 🧭 Implementation choices
+
+No divergence from the frozen design, no rule broken. Names: `AppSettings.WindowClientSize` /
+`SaveWindowClientSize`; in `MainForm`, `_sizeRemembered` (set in the constructor), `_opened` (set at
+load), `SaveWindowSize` and `DeviceToLogicalUnits`, the reverse of `LogicalToDeviceUnits`. The tabs
+row growth of `OnLoad` (commit 39e4a5a, landed during the design) applies only when no size was
+remembered, as designed; the clamp and the re-centering follow in both cases. Checked by script on
+the built exe, with SC_CLOSE (the real ×): maximized then closed → the normal client size saved;
+minimized then closed → the same; reopened at that size, un-maximized; 9000 × 9000 remembered → the
+window fits the working area (3840 × 2100). A raw WM_CLOSE (`Process.CloseMainWindow`) is classed
+*TaskManagerClosing* by WinForms and closes the app for real: the size is saved on that path too.
+Finding: 1 px of rounding at fractional scales on the first relaunch, then stable (see the limits).
+
 ---
 
 ## Implementation Log
@@ -180,9 +195,9 @@ than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 2 | 2026-09-27 | `AppSettings.WindowClientSize` / `SaveWindowClientSize`; `MainForm`: constructor, `OnLoad`, `OnFormClosing`, `SaveWindowSize`. Checked by script: ×, maximized, minimized, 9000 × 9000 clamped |
 | Unit tests | 1 | 2026-09-27 | Not applicable — no test project (see Test Impact) |
-| README | | | |
+| README | 2 | 2026-09-27 | *Features* bullet, *Tray & startup* bullet |
 
 ---
 
