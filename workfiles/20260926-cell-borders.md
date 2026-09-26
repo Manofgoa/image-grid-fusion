@@ -18,9 +18,10 @@ borders on the grid.
 - Its toggle and its options sit in the **Global effects row**, next to the Soundtrack.
 - Styles: **Corners** (signature style of the app, the default), **Solid**, **Dashed**,
   **Dotted**, **Double**.
-- **Corners** style: an L-bracket at each of the **four corners of the grid**, its arms covering
-  10 % of the edges — nothing between the cells.
-- Other styles: lines **between the cells**, plus an optional **outer frame**.
+- **Corners** style: an L-bracket at each of the **four corners of the grid**, painted over the
+  images, its arms covering 10 % of the edge they lie on — nothing between the cells.
+- Other styles: a real **gap between the cells**, the cells shrinking to make room, filled by the
+  border; plus an optional **outer frame** (a margin of the same thickness around the grid).
 - **On at start-up**, in the Corners style.
 - The border color is an **app setting** set from the **⚙ settings menu** (an item with a color
   swatch opening the color dialog), **hotpink** by default, **remembered between sessions**.
@@ -56,7 +57,7 @@ Explored on 2026-09-26, before the Global effects row landed; line numbers may h
   | Field | Initial value | Meaning |
   |---|---|---|
   | `Style` | `Corners` | `Corners`, `Solid`, `Dashed`, `Dotted`, `Double` |
-  | `Thickness` | *see Open Questions* | Fraction of the grid's shorter side — resolution-independent |
+  | `Thickness` | `0.006` (0.6 %) | Fraction of the grid's shorter side, 0.1–6 % — resolution-independent |
   | `OuterFrame` | `false` | Also draw along the outer edge of the grid (not used by Corners) |
 
 - The color is **not** part of the effect state: it is read from the app setting (see *Settings
@@ -72,8 +73,10 @@ Explored on 2026-09-26, before the Global effects row landed; line numbers may h
 - After the Soundtrack's controls: a **Borders** toggle, then, **only while it is on**, its options
   beside it:
   1. **Style** — five choices, *Corners* first.
-  2. **Thickness** slider with its value label.
-  3. **Outer frame** checkbox — *see Open Questions* for its state in the Corners style.
+  2. **Thickness** slider, **0.1 – 6.0 %** by steps of 0.1, default **0.6 %**, with its value
+     label (`0.6 %`).
+  3. **Outer frame** checkbox — **disabled in the Corners style** (the brackets already are the
+     frame), its value kept for the other styles.
 - Enabled with no cell selected; locked while exporting, like the rest of the row.
 - The row keeps its single height (tallest control).
 
@@ -90,25 +93,46 @@ Explored on 2026-09-26, before the Global effects row landed; line numbers may h
 
 ## Rendering
 
-- A **border pass** at the end of `Compositor.Draw`, after the `DrawCell` loop, from the cells
-  already computed: every output gets it from one place (RULES.md: global effects render at the
-  grid level).
-- The live-drag fast path redraws the borders over the cell it repaints.
-- Styles:
+Everything happens in `Compositor.Draw` (RULES.md: global effects render at the grid level), so
+the preview, the still export and the GIF / video frames get it from one place.
 
-  | Style | Drawing |
+### Gap Between the Cells (Solid, Dashed, Dotted, Double)
+
+- Gap width `t` = thickness × the canvas's shorter side, in pixels of the canvas being drawn —
+  the same look at every size.
+- The canvas size does not change (`CanvasSizer` untouched): each **cell shrinks** by `t / 2` on
+  every edge it shares with a neighbour. With the outer frame, it also shrinks by `t` on every edge
+  lying on the canvas edge; without it, those edges stay on the canvas edge.
+- The shrunk rectangles are what `DrawCell` receives: image, fit, crop and every cell effect work
+  on them, as on any cell size (effect geometry is in fractions of the cell).
+- The gap is then filled by the style:
+
+  | Style | Gap fill |
   |---|---|
-  | Corners | An L-bracket at each of the four corners of the grid, drawn inside the canvas; each arm covers 10 % of the grid edge it lies on |
-  | Solid | Continuous line |
-  | Dashed | GDI+ dash pattern, scaled with the thickness |
-  | Dotted | Round dots, spacing scaled with the thickness |
-  | Double | Two parallel lines, each ⅓ of the thickness, ⅓ gap between them |
+  | Solid | Filled with the border color |
+  | Dashed | Dashes across the gap, length and spacing scaled with `t` |
+  | Dotted | Round dots of diameter `t`, spacing scaled with `t` |
+  | Double | Two parallel lines, each ⅓ of `t`, ⅓ of `t` apart |
 
-- Lines between the cells (all styles but Corners) are **centred on the cell boundaries**; shared
-  edges between neighbours are drawn **once** (deduplicated), so dash patterns stay regular on
+- Where the style leaves the gap unpainted (between dashes, dots, the Double's middle), it is
+  **transparent**, like a cell whose Background is off: the preview's checkerboard, a PNG's alpha,
+  white in the outputs without alpha.
+- Shared gap segments are drawn **once** (deduplicated), so dash patterns stay regular on
   irregular layouts.
-- Outer frame: drawn **inside** the canvas along its edge, with the same visible thickness as an
-  inner border.
+
+### Corners Style
+
+- No gap, cells unchanged: an L-bracket **painted over the images** at each of the four corners of
+  the canvas, inside it.
+- Stroke width = `t`; each arm covers **10 % of the edge it lies on** (horizontal arm = 10 % of the
+  width, vertical arm = 10 % of the height).
+
+### Preview
+
+- Hit-testing (selection, hover, drop target, swap) keeps using the **unshrunk cell slots**: a point
+  in a gap belongs to the cell whose slot contains it, so no dead zone appears between cells.
+- Outlines and on-cell handles follow the **shrunk** rectangle, where the image is drawn.
+- The live-drag fast path repaints with the same shrunk rectangle.
 
 ## Rules and Glossary
 
@@ -122,12 +146,12 @@ To record with the README step:
 
 ## Test Impact
 
-To be settled with the user (see *Open Questions*): the solution has no test project, and every
-previous workfile stayed test-free.
+None, by the user's decision (Q&A #20): the solution has no test project, and every previous
+workfile stayed test-free.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| — | — | — |
+| — (no unit tests) | — | — |
 
 ---
 
@@ -140,21 +164,21 @@ blocking ones.
   Global effects row, next to the Soundtrack *(revised 2026-09-26, see Iteration 3)*
 - [x] ~~**Corners geometry** — every cell, or the four corners of the grid?~~ → the four corners
   of the grid only
-- [ ] **Corners arm length** — 10 % of the edge the arm lies on (unequal arms on a non-square
-  grid), or 10 % of the grid's shorter side (equal arms)?
-- [ ] **Outer frame in the Corners style** — the checkbox disabled (the brackets already are the
-  frame), or does it add the full frame around the brackets?
+- [x] ~~**Corners arm length** — 10 % of the edge the arm lies on, or of the grid's shorter
+  side?~~ → 10 % of the edge the arm lies on
+- [x] ~~**Outer frame in the Corners style** — checkbox disabled, or full frame added?~~ →
+  checkbox disabled
 - [x] ~~**Color model** — the settings color is the border color, or a default?~~ → **the** border
   color, no color control in the options
 - [x] ~~**Start-up state and persistence**~~ → on at start-up in the Corners style; only the color
   is remembered
-- [ ] **Overlay or gap** — do the borders cover the edges of the images (cells unchanged), or
-  shrink the cells to leave room for them?
-- [ ] **Thickness** — range and default?
+- [x] ~~**Overlay or gap** — do the borders cover the edges of the images, or shrink the cells?~~
+  → a real gap, the cells shrink (Corners excepted: brackets over the images)
+- [x] ~~**Thickness** — range and default?~~ → 0.1–6.0 % of the grid's shorter side, default 0.6 %
 - [x] ~~**Default color**~~ → hotpink (`#FF69B4`)
 - [x] ~~**Effects *Reset* button** — does it leave the borders alone?~~ → yes, settled by RULES.md
   § Global Effects
-- [ ] **Unit tests** — stay test-free like every previous workfile?
+- [x] ~~**Unit tests** — stay test-free like every previous workfile?~~ → yes, no tests
 
 ---
 
@@ -196,6 +220,22 @@ first). The design is aligned on it:
   only the color remembered (Q&A #16).
 - *Current State* refreshed for the Global effects row.
 
+### Iteration 4 — 2026-09-26
+
+Last answers (Q&A #17–#20):
+
+- **Gap between the cells** for every style but Corners: the canvas keeps its size, the cells shrink
+  by half the gap on shared edges (and by the full gap on outer edges with the outer frame); the
+  style fills the gap. Corners stays painted over the images.
+- Thickness **0.1–6.0 %** of the grid's shorter side, default **0.6 %**.
+- Corners arms = 10 % of the edge they lie on; the *Outer frame* checkbox is disabled in the
+  Corners style.
+- No unit tests.
+
+Derived by the agent, to confirm with the go: what a style leaves unpainted in the gap is
+**transparent** (same rendering as a Background turned off); hit-testing keeps the unshrunk slots
+so a gap is never a dead zone, while outlines and handles follow the shrunk rectangle.
+
 ---
 
 ## Implementation Log
@@ -233,10 +273,11 @@ Questions asked by the agent during design, with user responses.
 | 14 | Corners: every cell, equal arms, or the grid's four corners? | The grid's four corners only | 2026-09-26 |
 | 15 | Is the ⚙ color **the** border color, or a default? | **The** border color | 2026-09-26 |
 | 16 | Borders on at start-up (and after *Clear all*)? | On, Corners style | 2026-09-26 |
-| 17 | Borders over the images, or cells shrunk to make room? | | 2026-09-26 |
-| 18 | Thickness range and default? | | 2026-09-26 |
-| 19 | Corners arm length basis; Outer frame checkbox in the Corners style? | | 2026-09-26 |
-| 20 | Unit tests: stay test-free? | | 2026-09-26 |
+| 17 | Borders over the images, or cells shrunk to make room? | A gap between the cells | 2026-09-26 |
+| 18 | Thickness range and default? | 0.1–6.0 %, default 0.6 % | 2026-09-26 |
+| 19 | Corners arm length basis; Outer frame checkbox in the Corners style? | 10 % of their edge; checkbox disabled | 2026-09-26 |
+| 20 | Unit tests: stay test-free? | No tests | 2026-09-26 |
+| 21 | Implementation go? | | 2026-09-26 |
 
 ---
 
