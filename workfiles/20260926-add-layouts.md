@@ -146,10 +146,23 @@ existing layout, at other proportions** — reachable by dragging, though withou
 
 Consequences for the order of delivery:
 
-**Cell resize is delivered first** (Q&A #11): this work only adds catalog entries and the strip's
-Advanced group; the new layouts' separators come from cell resize's generic definition, and its
-*Grid* cross (dynamic arms) must also apply to the other 2 × 2 topologies — *Uneven grid*, *Bricks*,
-*Corner* (4 images) — if they are kept.
+**Cell resize is delivered first** (Q&A #11) — done on `main` (last code commit `24901c4`, see its
+Iteration 7). What this work builds on:
+
+- **Separators are generic**: `GridLayout.Separators()` groups, on each shared boundary line, the
+  cells facing each other along a segment of it. Every new layout gets its separators from its
+  units, with no special case; a 2 × 2 topology (*Uneven grid*, *Bricks*, *Corner*) gets the *Grid*'s
+  dynamic cross for free.
+- **Minimum cell size** `GridLayout.MinCellFraction = 0.1`: every proposed cell is at least 25 % of
+  the canvas side, so every new layout starts within it.
+- **Constructor carries the resized edges** (`Edges[]? edges`): the new `IsAdvanced` flag must be
+  passed through every instance built from another — `Mirrored()`, `WithDefaultSizes()`,
+  `WithSeparator()`.
+- **Strip**: the active thumbnail is drawn from `WithDefaultSizes()`, and a click on it raises
+  `ActiveLayoutClicked` (sizes reset). Advanced thumbnails behave the same way. Layouts are compared
+  by `Id`: the new ids are unique.
+- **Snapping** targets every parallel separator: some new geometries may offer more alignments
+  (e.g. *Bricks*' two vertical arms at 1/3 and 2/3) — no change needed.
 
 ---
 
@@ -233,6 +246,15 @@ Order of delivery settled (Q&A #11): **after cell resize**. The cell resize sess
 notify this one once its implementation is delivered; the go for this workfile is proposed then.
 Delivering second, this work only adds catalog entries and the strip's Advanced group; the new
 layouts' separators must follow cell resize's generic definition, the 2 × 2 cross caveat included.
+
+### Iteration 4 — 2026-09-26
+
+Cell resize delivered and validated on `main` (notified by its session: last commit `4c89287`, code
+`24901c4`). Checked in `GridLayout` and `LayoutStrip`: separators are generic, so the 2 × 2 cross
+caveat is gone — every new layout gets its separators, the dynamic cross included, from its units.
+*Interplay with Cell Resize* now lists what this work builds on: `IsAdvanced` carried through the
+constructors that rebuild a layout, `ActiveLayoutClicked` and `WithDefaultSizes()` on the advanced
+thumbnails too, unique ids.
 
 ---
 
