@@ -2,9 +2,10 @@ using System.Drawing.Drawing2D;
 
 namespace ImageGridFusion.Composition;
 
-/// <summary>Effects of the effects toolbar, in the order of its buttons: geometry first, then rendering, then sound.</summary>
+/// <summary>Effects of the effects toolbar, in the order of its buttons: the background, the lowest layer, then geometry, then rendering, then sound.</summary>
 public enum ImageEffect
 {
+    Background,
     Zoom,
     Rotate,
     Flip,
@@ -15,12 +16,12 @@ public enum ImageEffect
 }
 
 /// <summary>
-/// Effects applied to one image of the grid, toggled from the effects toolbar (see RULES.md): a zoom
-/// around <see cref="Focus"/>, a rotation by quarter turns, flips in the screen frame, black &amp;
-/// white, and the blur; the frames effect for an animated image, the volume for a video with sound.
-/// An effect turned off keeps its
-/// settings, drawn as its defaults until it is turned on again (RULES.md). Immutable, so an export can
-/// capture it.
+/// Effects applied to one image of the grid, toggled from the effects toolbar (see RULES.md): the
+/// background behind it, a zoom around <see cref="Focus"/>, a rotation by quarter turns, flips in the
+/// screen frame, black &amp; white, and the blur; the frames effect for an animated image, the volume
+/// for a video with sound. An effect turned off keeps its settings, drawn as its defaults until it is
+/// turned on again — but the background, on by default, draws no fill while off (RULES.md).
+/// Immutable, so an export can capture it.
 /// </summary>
 public sealed record ImageLook
 {
@@ -49,6 +50,7 @@ public sealed record ImageLook
     private double? KeptGrayscale { get; init; }
     private BlurEffect? KeptBlur { get; init; }
     private VolumeEffect? KeptVolume { get; init; }
+    private BackgroundEffect? KeptBackground { get; init; }
 
     /// <summary>Clockwise rotation, in degrees: 0, 90, 180 or 270.</summary>
     public int Rotation { get; private init; }
@@ -86,14 +88,18 @@ public sealed record ImageLook
     /// <summary>The volume effect, <c>null</c> while inactive: the sound is then mixed as it is, at 100 %.</summary>
     public VolumeEffect? Volume { get; private init; }
 
+    /// <summary>The background effect, on by default; <c>null</c> while off: nothing is then painted behind the image.</summary>
+    public BackgroundEffect? Background { get; private init; } = BackgroundEffect.Default;
+
     /// <summary>Scale the image's sound is mixed at: 0 while muted, 1 while the volume effect is off.</summary>
     public double SoundGain => Volume?.Gain ?? 1;
 
-    /// <summary>Every effect at its default: none on, no settings kept.</summary>
+    /// <summary>Every effect at its default: none on but the background, no settings kept.</summary>
     public bool IsNone => this == None;
 
     public bool IsActive(ImageEffect effect) => effect switch
     {
+        ImageEffect.Background => Background is not null,
         ImageEffect.Frames => Frames is not null,
         ImageEffect.BlackAndWhite => Grayscale is not null,
         ImageEffect.Blur => Blur is not null,
@@ -130,6 +136,8 @@ public sealed record ImageLook
                 return this with { Blur = blur, KeptBlur = null };
             case ImageEffect.Volume when KeptVolume is { } volume:
                 return this with { Volume = volume, KeptVolume = null };
+            case ImageEffect.Background when KeptBackground is { } background:
+                return this with { Background = background, KeptBackground = null };
             default:
                 return Activate(effect);
         }
@@ -152,16 +160,21 @@ public sealed record ImageLook
             ImageEffect.Frames => off with { KeptFrames = Frames },
             ImageEffect.BlackAndWhite => off with { KeptGrayscale = Grayscale },
             ImageEffect.Volume => off with { KeptVolume = Volume },
+            ImageEffect.Background => off with { KeptBackground = Background },
             _ => off with { KeptBlur = Blur },
         };
     }
 
-    /// <summary>Brings an effect back to its default state: off, its settings at their defaults, none kept.</summary>
+    /// <summary>
+    /// Brings an effect back to its default state: off, its settings at their defaults, none kept — the
+    /// background on, its default state (RULES.md).
+    /// </summary>
     public ImageLook Reset(ImageEffect effect)
     {
         var look = Deactivate(effect);
         return effect switch
         {
+            ImageEffect.Background => look with { Background = BackgroundEffect.Default, KeptBackground = null },
             ImageEffect.Zoom => look with { KeptZoom = null },
             ImageEffect.Rotate => look with { KeptRotation = null },
             ImageEffect.Flip => look with { KeptFlip = null },
@@ -175,6 +188,7 @@ public sealed record ImageLook
     /// <summary>Activates an effect with its defaults; one already active is left as it is.</summary>
     private ImageLook Activate(ImageEffect effect) => IsActive(effect) ? this : effect switch
     {
+        ImageEffect.Background => this with { Background = BackgroundEffect.Default },
         ImageEffect.Frames => this with { Frames = FramesEffect.Default },
         ImageEffect.BlackAndWhite => this with { Grayscale = 1 },
         ImageEffect.Blur => this with { Blur = BlurEffect.Default },
@@ -182,11 +196,12 @@ public sealed record ImageLook
         _ => Activated(effect),
     };
 
-    /// <summary>Deactivates an effect, bringing back its defaults: centered at 100 %, upright, unflipped, playing from the beginning, in color, sharp, heard at 100 %.</summary>
+    /// <summary>Deactivates an effect, bringing back its defaults: no background, centered at 100 %, upright, unflipped, playing from the beginning, in color, sharp, heard at 100 %.</summary>
     private ImageLook Deactivate(ImageEffect effect)
     {
         var look = effect switch
         {
+            ImageEffect.Background => this with { Background = null },
             ImageEffect.Zoom => this with { Zoom = 1, Focus = Center },
             ImageEffect.Rotate => WithRotation(0),
             ImageEffect.Flip => (FlipX ? ToggleFlipX() : this) is var flipped && flipped.FlipY ? flipped.ToggleFlipY() : flipped,
@@ -265,9 +280,12 @@ public sealed record ImageLook
 
     public ImageLook WithVolume(VolumeEffect? volume) => this with { Volume = volume };
 
+    public ImageLook WithBackground(BackgroundEffect? background) => this with { Background = background };
+
     /// <summary>
-    /// Every effect removed, no settings kept: the look of an image that moves into another cell
-    /// (RULES.md). The volume stays, so a shift never changes what is heard.
+    /// Every effect back to its default state, no settings kept — the background on: the look of an
+    /// image that moves into another cell (RULES.md). The volume stays, so a shift never changes what is
+    /// heard.
     /// </summary>
     public ImageLook WithoutEffects() => None with { Volume = Volume, KeptVolume = KeptVolume };
 
