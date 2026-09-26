@@ -43,37 +43,42 @@ Components concerned (from the scout pass):
 
 ### Agreed
 
-- **Zoom in** on a document: it is **re-rendered at the zoomed scale**, so the text stays sharp —
-  no magnified bitmap. The zoom keeps its geometry: the same part of the page shows, at the same
-  size, as today.
-- **Zoom out** on a document: the cell shows **more of the document** (more lines, a wider page)
-  instead of the same content shrunk inside a Background margin.
+- **Zoom in** on a document: it is **re-rendered**, so the text stays sharp — no magnified bitmap.
+- **Zoom out** on a text: the cell shows **more of the text** (more lines, more columns) instead of
+  the same content shrunk inside a Background margin.
 - **Frames recomputed**: a long document is split into frames (pages); their **number and content
   are recomputed** from what fits in the cell at the current zoom and cell size — as they already
   are for a text when its cell's shape changes.
-- **Sources**: every document preview — text files (and pasted text), PDF, other files.
+- **Sources**: every document preview — text files (and pasted text), PDF, other files — each as far
+  as its source allows (below).
 
 ### Text (text files, pasted text)
 
-- **Zoom out (< 100 %)**: the page is laid out on a **larger page** — the cell's shape divided by
-  the zoom — **keeping the font size chosen at 100 %**. More lines and columns fit on each page, so
-  there are **fewer pages**; the page is drawn **filling its cell**, the text smaller on screen.
-  - A text that already fits one page at 100 % shows the same text smaller, surrounded by more of its
-    paper.
-  - While zoomed out, the text **always fills its cell**: there is nothing to pan, the focus does not
-    move it.
-- **Zoom in (> 100 %)**: the page keeps its **100 % layout** (same line breaks, same pages) and is
-  rendered **at the zoom's scale** — font, margins and page size multiplied — then drawn exactly as
-  today's zoom draws it: same size, same focus, same crop. Only the sharpness changes.
-- **Frames**: at zoom out, the page count and the scroll steps come from the larger page. The
-  starting point (a fraction) and the reading position are kept, as on a cell resize today.
-  Zoom-in pages: see Open Questions.
+The zoom changes **how much text the cell shows**, and the pages follow. Changing page is the
+Frames effect's job (it already exists), not a pan.
+
+- **Layout**: at any zoom, the text is laid out on a page of the cell's shape **divided by the
+  zoom**, at the **font size chosen at 100 %** (the largest in [24, 96] px at which the whole text
+  fits one page, else 24 px). The line breaks are **recomputed** for that page. The page is then
+  rendered **at its cell's size**, so the font shows at *its 100 % size × the zoom*, always sharp.
+  - **Zoom out (< 100 %)**: a larger page — more lines and columns per page, **fewer pages**, the
+    text smaller on screen. A text that already fits one page at 100 % shows the same text smaller,
+    surrounded by more of its paper.
+  - **Zoom in (> 100 %)**: a smaller page — fewer lines and columns per page, **more pages**, the
+    text larger on screen, re-wrapped: no line is cut by the cell's edge.
+- **Filling**: the text **always fills its cell**, at every zoom. The focus has no effect on it —
+  there is nothing to pan; what shows is chosen through the pages.
+- **Frames**: the page count and the scroll steps come from the zoomed page. The starting point (a
+  fraction) and the reading position are kept on every re-layout, as on a cell resize today; a
+  frozen text stays about where its Frames effect points.
 
 ### PDF
 
 - **Zoom in**: the page is re-rendered at the resolution the zoomed draw needs (instead of the fixed
-  1600 px long side), so it stays sharp.
-- **Zoom out**: see Open Questions.
+  1600 px long side), so it stays sharp. Its geometry does not change: the same part of the page
+  shows, at the same size, as today.
+- **Zoom out**: **unchanged** — the page shrinks inside its cell, the Background around it.
+- **Frames**: unchanged — one PDF page per frame.
 
 ### Other Files (Explorer thumbnail)
 
@@ -90,8 +95,9 @@ Components concerned (from the scout pass):
   Exports keep drawing from the same bitmap, as today.
 - During a zoom **gesture** (wheel, drag), the current bitmap is scaled as today; the document is
   re-rendered once the zoom **stops changing**, so the gesture stays fluid.
-- A zoomed-in render is **capped at 4096 px on its long side**, so a 1600 % zoom does not allocate
-  hundreds of megabytes: past that cap the page is magnified again, slightly soft.
+- A zoomed-in PDF page or thumbnail is **capped at 4096 px on its long side**, so a 1600 % zoom
+  does not allocate hundreds of megabytes: past that cap it is magnified again, slightly soft.
+  A text needs no cap: it is always rendered at its cell's size.
 - Only the static **Zoom** effect drives the re-render. The *Animated Zoom* effect
   (`workfiles/20260926-animated-zoom.md`) stays a scaled draw.
 
@@ -110,13 +116,16 @@ Components concerned (from the scout pass):
 
 ## Open Questions
 
-- [ ] At zoom in, do a text's frames stay the 100 % pages (the zoom shows a crop of each page, the
+- [x] ~~At zoom in, do a text's frames stay the 100 % pages (the zoom shows a crop of each page, the
   scroll moving half a page per step), or do they follow the **visible window** (the scroll moving
-  by the visible height, so every line passes through the view)?
-- [ ] At zoom out, does a PDF show **several pages at once** (tiled to fill the cell, each frame a
-  group of pages), or does its page **shrink as today**, only zoom-in sharpness changing?
-- [ ] Other files: is "sharper at zoom in, unchanged at zoom out, no frames" acceptable, given the
-  app only gets a thumbnail picture from Windows?
+  by the visible height, so every line passes through the view)?~~ → Neither: the zoom changes how
+  much text shows and recomputes the pages; changing page is the Frames effect's job. The text is
+  re-wrapped for the zoomed page and always fills its cell (Iteration 2)
+- [x] ~~At zoom out, does a PDF show **several pages at once** (tiled to fill the cell, each frame a
+  group of pages), or does its page **shrink as today**, only zoom-in sharpness changing?~~ → Shrinks
+  as today; only zoom-in sharpness changes
+- [x] ~~Other files: is "sharper at zoom in, unchanged at zoom out, no frames" acceptable, given the
+  app only gets a thumbnail picture from Windows?~~ → Yes
 
 ---
 
@@ -134,6 +143,15 @@ Zoom in re-renders a document at the zoomed scale; zoom out lays a text out on a
 100 % font; frames recomputed from the page. Decided by the agent, open to review: the re-render
 after the gesture settles, the 4096 px cap, the Animated Zoom left out, a zoomed-out text always
 filling its cell. Three questions open: text frames at zoom in, PDF at zoom out, other files.
+
+### Iteration 2 — 2026-09-26
+
+Answers Q5–Q7. **Text**: the zoom no longer keeps the 100 % layout when zooming in — at every zoom
+the text is laid out on the cell's shape divided by the zoom, at its 100 % font, re-wrapped, and
+rendered at the cell's size: zoom in shows less text on more pages, zoom out more text on fewer
+pages, the text always filling its cell, the focus without effect; pages are changed through the
+Frames effect. **PDF**: zoom out unchanged, zoom in sharper only. **Other files**: confirmed as
+designed. The 4096 px cap now concerns PDF pages and thumbnails only. No open question left.
 
 ---
 
@@ -160,9 +178,9 @@ Questions asked by the agent during design, with user responses.
 | 2 | "Refresh the frames according to what is displayable": what is it about? | Recomputed pages: a long text is split into frames (pages); their number and content are recomputed from what fits in the cell at the current zoom and size | 2026-09-26 |
 | 3 | Which sources are concerned? | Text files, PDF, other files | 2026-09-26 |
 | 4 | Is the exploration straightforward or tricky / long? | Straightforward — a single scout pass | 2026-09-26 |
-| 5 | At zoom in, do a text's frames stay the 100 % pages or follow the visible window? | | |
-| 6 | At zoom out, does a PDF show several pages at once or shrink as today? | | |
-| 7 | Other files: sharper at zoom in, unchanged at zoom out, no frames — acceptable? | | |
+| 5 | At zoom in, do a text's frames stay the 100 % pages or follow the visible window? | "The zoom changes the amount of text shown and recomputes the number of pages. Changing page is in Frames now (it already exists)" | 2026-09-26 |
+| 6 | At zoom out, does a PDF show several pages at once or shrink as today? | Shrinks as today | 2026-09-26 |
+| 7 | Other files: sharper at zoom in, unchanged at zoom out, no frames — acceptable? | Yes | 2026-09-26 |
 
 ---
 
