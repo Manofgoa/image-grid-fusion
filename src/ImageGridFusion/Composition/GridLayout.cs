@@ -12,7 +12,8 @@ public enum MirrorAxis
 /// A layout of 1 to 4 cells, described on a grid of units. Cell 0 is the featured cell and takes
 /// image 1; the other cells follow in reading order. Its cells can be resized by moving the
 /// separators between them: the edges of each cell are kept as fractions of the canvas, starting on
-/// the units. Also holds the output ratio and the catalog of layouts per image count.
+/// the units. Also holds the output ratio and the catalog of layouts per image count, the basic ones
+/// first, then the advanced ones the layout strip keeps in a collapsible group.
 /// </summary>
 public sealed class GridLayout
 {
@@ -23,7 +24,7 @@ public sealed class GridLayout
     /// <summary>Smallest share of the canvas width (or height) a separator leaves to each cell it moves.</summary>
     public const double MinCellFraction = 0.1;
 
-    // Per image count, the default layout first.
+    // Per image count, the default layout first, the advanced ones last.
     private static readonly GridLayout[][] Catalog =
     [
         [
@@ -33,12 +34,18 @@ public sealed class GridLayout
             new("2-columns", "Two columns", 2, 1, MirrorAxis.None, [new(0, 0, 1, 1), new(1, 0, 1, 1)]),
             new("2-rows", "Two rows", 1, 2, MirrorAxis.None, [new(0, 0, 1, 1), new(0, 1, 1, 1)]),
             new("2-split", "Two thirds + one third", 3, 1, MirrorAxis.Horizontal, [new(0, 0, 2, 1), new(2, 0, 1, 1)]),
+            new("2-split-rows", "Two thirds + one third, stacked", 1, 3, MirrorAxis.Vertical, [new(0, 0, 1, 2), new(0, 2, 1, 1)], isAdvanced: true),
+            new("2-quarter", "Three quarters + one quarter", 4, 1, MirrorAxis.Horizontal, [new(0, 0, 3, 1), new(3, 0, 1, 1)], isAdvanced: true),
         ],
         [
             new("3-big-left", "Big left", 2, 2, MirrorAxis.Horizontal, [new(0, 0, 1, 2), new(1, 0, 1, 1), new(1, 1, 1, 1)]),
             new("3-columns", "Three columns", 3, 1, MirrorAxis.None, [new(0, 0, 1, 1), new(1, 0, 1, 1), new(2, 0, 1, 1)]),
             new("3-featured", "Featured", 3, 2, MirrorAxis.Horizontal, [new(0, 0, 2, 2), new(2, 0, 1, 1), new(2, 1, 1, 1)]),
             new("3-big-top", "Big top", 2, 2, MirrorAxis.Vertical, [new(0, 0, 2, 1), new(0, 1, 1, 1), new(1, 1, 1, 1)]),
+            new("3-rows", "Three rows", 1, 3, MirrorAxis.None, [new(0, 0, 1, 1), new(0, 1, 1, 1), new(0, 2, 1, 1)], isAdvanced: true),
+            new("3-big-centre", "Big centre", 4, 1, MirrorAxis.None, [new(1, 0, 2, 1), new(0, 0, 1, 1), new(3, 0, 1, 1)], isAdvanced: true),
+            new("3-big-top-uneven", "Big top, uneven", 3, 2, MirrorAxis.Horizontal, [new(0, 0, 3, 1), new(0, 1, 2, 1), new(2, 1, 1, 1)], isAdvanced: true),
+            new("3-corner", "Corner", 3, 3, MirrorAxis.Horizontal, [new(0, 0, 2, 2), new(2, 0, 1, 3), new(0, 2, 2, 1)], isAdvanced: true),
         ],
         [
             new("4-grid", "Grid", 2, 2, MirrorAxis.None, [new(0, 0, 1, 1), new(1, 0, 1, 1), new(0, 1, 1, 1), new(1, 1, 1, 1)]),
@@ -46,6 +53,12 @@ public sealed class GridLayout
             new("4-featured", "Featured", 3, 3, MirrorAxis.Horizontal, [new(0, 0, 2, 3), new(2, 0, 1, 1), new(2, 1, 1, 1), new(2, 2, 1, 1)]),
             new("4-big-left", "Big left", 2, 3, MirrorAxis.Horizontal, [new(0, 0, 1, 3), new(1, 0, 1, 1), new(1, 1, 1, 1), new(1, 2, 1, 1)]),
             new("4-big-top", "Big top", 3, 2, MirrorAxis.Vertical, [new(0, 0, 3, 1), new(0, 1, 1, 1), new(1, 1, 1, 1), new(2, 1, 1, 1)]),
+            new("4-rows", "Four rows", 1, 4, MirrorAxis.None, [new(0, 0, 1, 1), new(0, 1, 1, 1), new(0, 2, 1, 1), new(0, 3, 1, 1)], isAdvanced: true),
+            new("4-big-centre", "Big centre", 4, 2, MirrorAxis.Horizontal, [new(1, 0, 2, 2), new(0, 0, 1, 2), new(3, 0, 1, 1), new(3, 1, 1, 1)], isAdvanced: true),
+            new("4-tall-left-mixed", "Tall left, mixed", 3, 2, MirrorAxis.Horizontal, [new(0, 0, 1, 2), new(1, 0, 2, 1), new(1, 1, 1, 1), new(2, 1, 1, 1)], isAdvanced: true),
+            new("4-uneven-grid", "Uneven grid", 3, 2, MirrorAxis.Horizontal, [new(0, 0, 2, 1), new(2, 0, 1, 1), new(0, 1, 2, 1), new(2, 1, 1, 1)], isAdvanced: true),
+            new("4-bricks", "Bricks", 3, 2, MirrorAxis.Horizontal, [new(0, 0, 2, 1), new(2, 0, 1, 1), new(0, 1, 1, 1), new(1, 1, 2, 1)], isAdvanced: true),
+            new("4-corner", "Corner", 3, 3, MirrorAxis.Horizontal, [new(0, 0, 2, 2), new(2, 0, 1, 2), new(0, 2, 2, 1), new(2, 2, 1, 1)], isAdvanced: true),
         ],
     ];
 
@@ -58,7 +71,7 @@ public sealed class GridLayout
     private readonly Edges[] _defaults;
     private readonly Edges[] _edges;
 
-    private GridLayout(string id, string name, int columns, int rows, MirrorAxis mirrorAxis, Rectangle[] units, bool isMirrored = false, Edges[]? edges = null)
+    private GridLayout(string id, string name, int columns, int rows, MirrorAxis mirrorAxis, Rectangle[] units, bool isMirrored = false, Edges[]? edges = null, bool isAdvanced = false)
     {
         Id = id;
         Name = name;
@@ -67,6 +80,7 @@ public sealed class GridLayout
         MirrorAxis = mirrorAxis;
         _units = units;
         IsMirrored = isMirrored;
+        IsAdvanced = isAdvanced;
         _defaults = units.Select(u => new Edges((double)u.Left / columns, (double)u.Top / rows, (double)u.Right / columns, (double)u.Bottom / rows)).ToArray();
         _edges = edges ?? _defaults;
     }
@@ -79,6 +93,9 @@ public sealed class GridLayout
 
     public bool IsMirrored { get; }
 
+    /// <summary>Whether the layout belongs to the advanced group of the strip, hidden until expanded.</summary>
+    public bool IsAdvanced { get; }
+
     public int Count => _units.Length;
 
     /// <summary>Whether a separator was moved away from the layout's own proportions.</summary>
@@ -86,7 +103,7 @@ public sealed class GridLayout
 
     public static int HeightFor(int width) => (int)Math.Round(width * (double)RatioHeight / RatioWidth);
 
-    /// <summary>Layouts available for <paramref name="count"/> images, the default one first.</summary>
+    /// <summary>Layouts available for <paramref name="count"/> images, the default one first and the advanced ones last.</summary>
     public static IReadOnlyList<GridLayout> For(int count) =>
         count is >= 1 and <= MaxImages
             ? Catalog[count - 1]
@@ -117,12 +134,12 @@ public sealed class GridLayout
         Edges[]? edges = !IsResized ? null
             : MirrorAxis == MirrorAxis.Horizontal ? _edges.Select(e => e with { Left = 1 - e.Right, Right = 1 - e.Left }).ToArray()
             : _edges.Select(e => e with { Top = 1 - e.Bottom, Bottom = 1 - e.Top }).ToArray();
-        return new GridLayout(Id, Name, _columns, _rows, MirrorAxis, units, !IsMirrored, edges);
+        return new GridLayout(Id, Name, _columns, _rows, MirrorAxis, units, !IsMirrored, edges, IsAdvanced);
     }
 
     /// <summary>The same layout back on its own proportions, mirror kept.</summary>
     public GridLayout WithDefaultSizes() =>
-        IsResized ? new GridLayout(Id, Name, _columns, _rows, MirrorAxis, _units, IsMirrored) : this;
+        IsResized ? new GridLayout(Id, Name, _columns, _rows, MirrorAxis, _units, IsMirrored, isAdvanced: IsAdvanced) : this;
 
     /// <summary>
     /// Cells tiling the canvas exactly: a boundary at a fraction of the canvas falls at
@@ -193,7 +210,7 @@ public sealed class GridLayout
         }
 
         return edges.SequenceEqual(_edges) ? this
-            : new GridLayout(Id, Name, _columns, _rows, MirrorAxis, _units, IsMirrored, edges.SequenceEqual(_defaults) ? null : edges);
+            : new GridLayout(Id, Name, _columns, _rows, MirrorAxis, _units, IsMirrored, edges.SequenceEqual(_defaults) ? null : edges, IsAdvanced);
     }
 
     /// <summary>
