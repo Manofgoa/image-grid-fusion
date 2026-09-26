@@ -34,9 +34,17 @@ Components concerned (from the scout pass):
 ### Agreed
 
 - **Its own effect**, with its own tab, activation checkbox, options and Reset, independent of the
-  static Zoom effect.
+  static Zoom effect. The tab is named **Animations**.
 - **Continuous back-and-forth**: zooms in, then back out, in a loop, with no jump.
-- **Speed slider** in its options.
+- **Smooth**: a sine wave, slowing down at both ends before turning back.
+- **Fixed amplitude**: the zoom goes from the starting state to **+20 %** and back; only the speed
+  is set.
+- **Speed slider** = the **duration of one back-and-forth**, from **1 s to 30 s**, **6 s** by
+  default, shown next to it (`6 s`); the slider's right end is the fastest (shortest cycle).
+- **Centre**: the zoom multiplies the static Zoom, so it keeps the static Zoom's pan point
+  (`Focus`) at the cell's centre, as the static Zoom does — "around the pan point" and "around the
+  cell's centre" are the same thing here, except where the cover clamp shifts the image near an
+  edge, exactly as for the static Zoom.
 - **Exports**: the animated exports (MP4, GIF) show the motion; still exports show the **starting
   state**.
 - **Starting state** = the bottom of the oscillation: the image as the other effects place it (the
@@ -51,15 +59,15 @@ Components concerned (from the scout pass):
 
 ### To Settle
 
-See *Open Questions*: the tab's name, the range of the zoom, the unit of the speed slider, the
-easing, the centre of the zoom, the export length, the preview's phase, tests.
+See *Open Questions*: what the Animations tab holds, the export length, the preview's phase, tests.
 
 ---
 
 ## Rendering
 
-- **Zoom factor at time *t***: `extra(t) = 1 + amplitude × wave(t / cycle)`, where `wave` goes
-  0 → 1 → 0 over one cycle (shape: see *Open Questions*). It **multiplies** the static Zoom, before
+- **Zoom factor at time *t***: `extra(t) = 1 + 0.2 × wave(t / cycle)`, where
+  `wave(p) = (1 − cos 2πp) / 2` goes 0 → 1 → 0 over one cycle, smoothly. It **multiplies** the
+  static Zoom, before
   the fine angle's cover zoom — `FitCalculator.ComputeTurned(cell, size, look.Zoom × extra(t), …)`.
 - **Time reaches `DrawCell`** through the `Frame` it draws (a new field, `TimeSpan`), so the effect
   stays in one place (RULES.md § *Rendering*):
@@ -84,8 +92,8 @@ easing, the centre of the zoom, the export length, the preview's phase, tests.
 ## UI
 
 - **Effect tab**: after the Zoom tab (geometry group), with its own icon in `EffectIcons`.
-- **Options**: the speed slider with its value label (`OptionSlider`, like Zoom's), then the other
-  options this design settles, then the effect's Reset button.
+- **Options**: the speed slider (cycle duration) with its value label (`OptionSlider`, like
+  Zoom's), then the effect's Reset button.
 
 ---
 
@@ -105,13 +113,21 @@ previous workfile stayed test-free — whether to create one is an Open Question
 Every question the design cannot settle on its own, listed before Iteration 1 —
 not only the blocking ones.
 
-- [ ] **Tab name** — what is the effect called in the UI (English, like the other tabs)?
-- [ ] **Range** — how far does it zoom in: a fixed amplitude, an amplitude slider, or two bounds?
-- [ ] **Speed slider unit** — cycle duration in seconds, or an abstract speed; range and default?
-- [ ] **Easing** — smooth (sine, slows at both ends) or constant speed (triangle)?
-- [ ] **Centre** — around the static Zoom's pan point (`Focus`), or always the cell's centre?
-- [ ] **Export length** — how the zoom cycle combines with the longest video loop (and alone, on a
-  grid of stills)?
+- [x] ~~**Tab name** — what is the effect called in the UI (English, like the other tabs)?~~ →
+  **Animations**
+- [x] ~~**Range** — how far does it zoom in: a fixed amplitude, an amplitude slider, or two
+  bounds?~~ → **Fixed amplitude**, +20 %
+- [x] ~~**Speed slider unit** — cycle duration in seconds, or an abstract speed; range and
+  default?~~ → **Duration of one back-and-forth**, 1–30 s, 6 s by default
+- [x] ~~**Easing** — smooth (sine, slows at both ends) or constant speed (triangle)?~~ → **Smooth
+  (sine)**
+- [x] ~~**Centre** — around the static Zoom's pan point (`Focus`), or always the cell's centre?~~ →
+  **Not a choice**: the zoom multiplies the static Zoom, which already centres its pan point in the
+  cell — both options coincide (see Iteration 2). Not asked.
+- [ ] **Animations tab** — the name is plural: does the tab hold only this zoom motion, or a choice
+  of animation kind (Zoom for now) leaving room for others?
+- [ ] **Export length** — how the zoom cycle combines with the grid's length (longest video loop, or
+  the Soundtrack's on a grid of stills), and what it gives alone on a grid of stills?
 - [ ] **Preview phase** — one shared clock for every cell, or the motion restarting from its starting
   state when the effect is turned on / its speed changes?
 - [ ] **Unit tests** — stay test-free like every previous workfile?
@@ -134,6 +150,16 @@ exports and at its starting state in the still ones. Single scout pass (depth: s
 two angles — the existing Zoom effect as a template, and how time flows through the preview and the
 exports. It found that `DrawCell` receives no time and that still images never repaint, hence the
 `Frame` time field and the preview timer. Eight questions left open.
+
+### Iteration 2 — 2026-09-26
+
+First batch answered (Q&A 5–8): the tab is named **Animations**; a **fixed amplitude** (+20 %,
+the example value of the chosen option); the speed slider sets the **duration of one
+back-and-forth** (1–30 s, 6 s by default); a **smooth sine** motion. The *Centre* question is
+dropped unasked: multiplying the static Zoom keeps its pan point at the cell's centre, so its two
+options were the same behaviour. The plural tab name raises a new question (does the tab offer a
+choice of animation kind?). The Soundtrack global effect, which now gives a grid of stills its
+length (GLOSSARY), is folded into the export-length question.
 
 ---
 
@@ -160,14 +186,15 @@ Questions asked by the agent during design, with user responses.
 | 2 | Which motion: continuous back-and-forth, direction chosen in the options, or one way looping? | Continuous back-and-forth | 2026-09-26 |
 | 3 | Exports: animated in the animated exports (stills take the starting state), or preview only? | Animated in the animated exports | 2026-09-26 |
 | 4 | Exploration depth: straightforward, or tricky / long? | Straightforward | 2026-09-26 |
-| 5 | Tab name? | | 2026-09-26 |
-| 6 | Range of the zoom? | | 2026-09-26 |
-| 7 | Speed slider unit, range and default? | | 2026-09-26 |
-| 8 | Easing: smooth or constant speed? | | 2026-09-26 |
-| 9 | Centre: the static Zoom's pan point, or the cell's centre? | | 2026-09-26 |
-| 10 | Export length with videos, and on a grid of stills? | | 2026-09-26 |
+| 5 | Tab name (Zoom motion, Pulse, Breathe, Ken Burns)? | Animations (typed by the user) | 2026-09-26 |
+| 6 | Range: amplitude slider, fixed amplitude, or two bounds? | Fixed amplitude | 2026-09-26 |
+| 7 | Speed slider: duration of one back-and-forth (1–30 s, 6 s), or abstract speed 1–10? | Duration of one back-and-forth | 2026-09-26 |
+| 8 | Easing: smooth (sine) or constant speed? | Smooth (sine) | 2026-09-26 |
+| 9 | Centre: the static Zoom's pan point, or the cell's centre? | Not asked — both options coincide (Iteration 2) | 2026-09-26 |
+| 10 | Export length with videos / Soundtrack, and on a grid of stills? | | 2026-09-26 |
 | 11 | Preview phase: shared clock, or restart on activation / speed change? | | 2026-09-26 |
 | 12 | Unit tests: stay test-free? | | 2026-09-26 |
+| 13 | Animations tab: only the zoom motion, or a choice of animation kind? | | 2026-09-26 |
 
 ---
 
