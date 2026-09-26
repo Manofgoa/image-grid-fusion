@@ -29,8 +29,9 @@ Components: `UI/GridPreview.cs` (mouse handling, hover, empty-state painting),
 - A **single left click** on the empty canvas opens the same picker as the drop zone
   (`MainForm.PickFiles`: multi-select, same filter), and the chosen files are added the same way
   (`AddFilesAsync`, no target cell).
-- Same click semantics as the drop zone: the press arms it, the release **inside the canvas** fires
-  it; a release outside does nothing.
+- Same click semantics as the drop zone: the press arms it, the release **on the same surface**
+  fires it; a release elsewhere does nothing. Both surfaces go through `GridPreview.PickerAt` and
+  raise `AddImagesClicked` (formerly `DropZoneClicked`), wired to `MainForm.PickFiles`.
 - Only while the grid is empty (`_images.Count == 0`). Once an image is there, a click on the canvas
   keeps today's behaviour (select the cell, or clear the selection outside the cells).
 - Not while the grid is locked (export running) — moot with no image, kept for consistency with
@@ -50,7 +51,9 @@ Components: `UI/GridPreview.cs` (mouse handling, hover, empty-state painting),
   *On-Cell Helper Indicators* rule does not apply and is not extended (Q&A #7).
 - A **"+"** above the text, drawn like the drop zone's (`PaintDropZone`), and the text becoming
   *"Click to pick 1 to 4 images, drop them here, or paste them with Ctrl+V"* (Q&A #3, #8).
-- Colours as the drop zone: `ForeColor` (grey), **white while the mouse is over the empty canvas**.
+- Colours as the drop zone: `ForeColor` (grey), **white while the mouse is over the empty canvas** —
+  the dashed border, the "+" and the text. Both are drawn by one helper,
+  `GridPreview.PaintAddPrompt`; the canvas text wraps, the drop zone's label keeps its ellipsis.
 
 ---
 
@@ -110,6 +113,22 @@ in the drop zone's colours; the green remark is dropped, with no rule change.
 Go given ("Go implémente"), after a first "No". Scope frozen on the sections above; code and
 README, on `main`.
 
+### Iteration 4 — 2026-09-26 — 🧭 Implementation choices
+
+No rule broken.
+
+- **Scope of the go**: "Go implémente" named no option; taken as code + README (the Implementation
+  Log's steps), no unit test being possible.
+- **Branch**: stayed on `main`, per the *work on main only* memory; no branch question.
+- **Event renamed**: `DropZoneClicked` → `AddImagesClicked`, since the empty canvas raises it too.
+- **Click**: the pressed surface is kept (`_pressedPicker`, a rectangle) and the click fires only
+  when the release lands on that same surface — a press on the drop zone released on the empty
+  canvas does nothing.
+- **Hover colour**: the dashed border of the empty canvas turns white with the "+" and the text,
+  like the drop zone's border.
+- **Shared painting**: the drop zone and the empty canvas are drawn by one helper
+  (`PaintAddPrompt`); the drop zone looks unchanged.
+
 ---
 
 ## Implementation Log
@@ -119,9 +138,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable: no test project, UI-only change |
-| README | | | |
+| Code | 3 | 2026-09-26 | `d8f259e` click, cursor and painting of the empty canvas; builds with 0 warnings |
+| Unit tests | 3 | 2026-09-26 | Not applicable: no test project, UI-only change |
+| README | 3 | 2026-09-26 | `db09851` the empty grid opens the picker |
 
 ---
 
