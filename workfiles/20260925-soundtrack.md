@@ -73,29 +73,36 @@ Findings, inputs to the design — not decisions.
 
 ## Soundtrack Effect
 
-Agreed design (scoping answers, Q&A 1–3); the points still open are listed in `## Open Questions`.
+Agreed design (Q&A 1–12), as implemented (Iteration 6 lists the choices the run took).
 
 | Aspect | Behaviour |
 |---|---|
 | Kind | **Global effect** — belongs to the grid, not to a cell + image pair |
-| Toggle | A button of the **Global effects row**, just above the bottom bar (designed by `global-fade.md`, created here if it has not landed yet); its options inline in the same row; locked while exporting |
+| Toggle | **♪ Soundtrack**, a toggle button of the **Global effects row**, just above the bottom bar (designed by `global-fade.md`, created here: `MainForm._globalRow`); locked while exporting. With no file yet, a click opens the picker; with one, it turns the soundtrack on or off, **keeping its file and level** |
+| Options | Beside the toggle, **shown only while it is on** (global-fade's row rule): *Browse…*, the file's name (cut at 32 characters, the whole path in a tooltip), the volume slider and its value. The row keeps one height, its tallest control's, so the preview does not move |
 | Removal | **Clear all** removes it, like every global effect (`global-fade.md`). The effects toolbar's *Reset* acts on cell effects only |
-| File | A *Browse…* button in the options (audio and video files), and a file **dropped on the row**; the file's name is shown |
+| File | *Browse…* (filter: mp3, wav, m4a, aac, wma, flac, and the videos the app reads), or a file **dropped anywhere on the row** — either turns the soundtrack on, at the level it kept. A file Windows reads no sound track or length from is refused, with a red status-line message; a loaded one shows its name and length on the status line. Read by `Imaging/SoundtrackFile` (Media Foundation source reader, first audio stream, `MF_PD_DURATION`) |
 | Source | One file, **audio or video** (a video contributes its sound track only) |
 | Where it is heard | **Preview and video exports**. GIF and still exports stay silent |
 | Mix | One more source in the **existing mix of every heard video** (`Animation.Heard`) — played over them, never replacing them. The mix itself is unchanged |
 | Duration | The **grid's duration rules**: a shorter soundtrack **loops**, a longer one is **cut** |
-| Stills-only grid | With no animated content the grid has no duration of its own: the **soundtrack's length** becomes it. The preview loops the soundtrack; the export becomes an **MP4 video** as long as the soundtrack (the stills + the sound), where it would otherwise be a PNG |
+| Stills-only grid | With no playing content (frozen ones included) the grid has no duration of its own: the **soundtrack's length** becomes it (`Soundtrack.LoopIn`). The preview loops the soundtrack; Copy and Save produce an **MP4 video** as long as the soundtrack (the stills + the sound), their buttons reading *Copy MP4* / *Save MP4…*. The ▾ menus stay disabled while nothing plays |
+| Preview playback | While the grid holds **at least one image** and the window is shown; it starts from its beginning when turned on or when another file is chosen, on a whole second of the animation clock, then follows the grid's loop (`Animation.GridLength`) |
 | Volume | **One slider, 0–200 %**, default 100 %, the soundtrack's volume, in the effect's options — like the Volume cell effect. The videos keep their own level |
 | Per-video sound | Each video's own sound is turned off or leveled by the **Volume** cell effect, already delivered (`video-mute.md`) — out of this scope |
 | Persistence | Not persisted, like every effect |
+| Rules | `RULES.md` gains a **§ Global Effects** (the cell / global table of `global-fade.md`, the row's rules); `GLOSSARY.md` gains *Global effect*, *Global effects row*, *Soundtrack*, and *Effect* is noted "also *cell effect*". § Effects is not renamed (left to `global-fade.md`) |
 
 ### Mixing
 
-- **Preview**: the soundtrack becomes **one more input of the existing audio graph**, at its
-  volume, looping on the grid's duration and kept in step with the grid's position.
-- **Exports**: the soundtrack becomes **one more source of `VideoEncoder.Mixer`**, looped on the
-  grid's duration, at its gain, clipped with the rest.
+- **Preview**: the soundtrack is **one more node of the existing audio graph**
+  (`PreviewSound.FollowSoundtrack` / `SyncSoundtrack`), at its level, looping natively; a 100 ms
+  timer of `AnimationPlayer` keeps it on the grid's loop with the same drift correction as the
+  videos (a seek beyond 250 ms), so a longer soundtrack is cut where the grid's loop starts over.
+- **Exports**: the soundtrack is **one more `MixedSound` of `VideoEncoder.Mixer`**
+  (`GridExport.Job.Capture(images, layout, soundtrack)`), looping on its own length from 0, at its
+  level, clipped with the rest, cut where the video ends. The status line lists it with the other
+  mixed files.
 
 ---
 
@@ -183,6 +190,31 @@ if the go covers it: README, and `GLOSSARY.md` gains *Soundtrack* (plus the § G
 Go given for code, tests and documentation (Q&A 14). Branch gate: stays on `main`, the repo's
 standing choice (no worktree requested).
 
+### Iteration 6 — 2026-09-26 — 🧭 Implementation choices
+
+No rule broken. Choices the frozen design did not state:
+
+- **Global effects row created here** (`global-fade.md` has not landed): label, ♪ Soundtrack toggle,
+  then its options. **Options shown only while on**, following global-fade's agreed row rule —
+  a first version showed them always, changed within the run (commit 7e435f5). The row keeps a
+  fixed height so the preview never moves.
+- **Toggle with no file** opens the picker; turning it off keeps the file and the level; choosing
+  another file keeps the level.
+- **Preview plays the soundtrack only while the grid holds an image** (an empty grid has nothing
+  to export), from its start when turned on, aligned on a whole second of the clock like the
+  videos; a 100 ms timer keeps it on the grid's loop.
+- **The ▾ GIF / MP4 menus stay disabled** on a stills-only grid with a soundtrack: the main button
+  already produces the MP4, and a GIF would be silent stills.
+- **Unreadable file** (no audio stream or no length): refused, red status-line message; the
+  current soundtrack is kept.
+- **`RULES.md` § Global Effects added, § Effects not renamed** § Cell Effects — the rename belongs
+  to `global-fade.md`'s scope; the new section says § Effects covers the cell effects.
+- **`Animation.GridLength`** added (longest *playing* loop) for the preview; the export keeps its
+  own computation from the captured items.
+- Self-check: `SoundtrackFile.TryOpen` read a 3 s WAV (and refused a fake one); a still grid with
+  that soundtrack at 150 % exported a 3 s MP4 whose audio track reads back; the running app showed
+  the row, the options once the file was picked, *Copy MP4* / *Save MP4…* and the status line.
+
 ---
 
 ## Implementation Log
@@ -192,9 +224,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 6 | 2026-09-26 | Model + file reader, export, preview, Global effects row, visibility adjustment — 5 commits |
 | Unit tests | 4 | 2026-09-26 | Declined by the user — no test project, manual verification (Q&A 12) |
-| README | | | |
+| README | 6 | 2026-09-26 | New § Global effects / Soundtrack; Features, Sound and Export bullets updated. `RULES.md` § Global Effects and `GLOSSARY.md` terms in their own commit |
 
 ---
 
