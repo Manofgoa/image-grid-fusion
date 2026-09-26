@@ -282,6 +282,10 @@ Open Questions annotated. Go given for code and documentation (Q&A 24), on `main
 same day: the code, then README / RULES / GLOSSARY, in two commits, built clean — no divergent
 choice; the app launched with two videos with sound, both heard at once.
 
+### Iteration 11 — 2026-09-27 — ⚙️ Post-implementation — task closed
+
+Validated by the user after testing in the app (Iteration 10): the task is finished.
+
 ---
 
 ## Implementation Log
@@ -328,6 +332,7 @@ Questions asked by the agent during design, with user responses.
 | 22 | The sound on arrival surprised you twice (26/09 evening, 27/09): keep the rule, every video heard on arrival, a ⚙ setting, or test first? | Every video heard on arrival: 100 %, the effect off — the mix heard at once | 2026-09-27 |
 | 23 | An image deleted: the shifted videos keep their volume (exception kept), or are reset like the other effects? | Kept — the exception stays, a shift never changes what is heard | 2026-09-27 |
 | 24 | May the adjustment be implemented? | GO — code and documentation (README, RULES, GLOSSARY); unit tests stay declined | 2026-09-27 |
+| 25 | Is the task finished? | Yes — validated by the user after testing in the app | 2026-09-27 |
 
 ---
 
