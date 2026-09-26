@@ -236,6 +236,12 @@ Derived by the agent, to confirm with the go: what a style leaves unpainted in t
 **transparent** (same rendering as a Background turned off); hit-testing keeps the unshrunk slots
 so a gap is never a dead zone, while outlines and handles follow the shrunk rectangle.
 
+### Iteration 5 — 2026-09-26 — ✅ Implemented
+
+Go given: *code, tests and documentation* (Q&A #21) — no unit tests by decision (Q&A #20), so the
+documentation step covers README, RULES.md and GLOSSARY.md. Branch: `main`, the repository's
+standing choice.
+
 ---
 
 ## Implementation Log
@@ -277,7 +283,7 @@ Questions asked by the agent during design, with user responses.
 | 18 | Thickness range and default? | 0.1–6.0 %, default 0.6 % | 2026-09-26 |
 | 19 | Corners arm length basis; Outer frame checkbox in the Corners style? | 10 % of their edge; checkbox disabled | 2026-09-26 |
 | 20 | Unit tests: stay test-free? | No tests | 2026-09-26 |
-| 21 | Implementation go? | | 2026-09-26 |
+| 21 | Implementation go? | Code, tests and documentation | 2026-09-26 |
 
 ---
 
