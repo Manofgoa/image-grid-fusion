@@ -212,6 +212,12 @@ Initial design, from the scoping batch (Q&A #1–5) and one scout pass over the 
   notification when hidden, success and failure, Copy and Save;
 - temp names made unique within a second.
 
+### Iteration 2 — 2026-09-26 — ✅ Implemented
+
+Go given for code, unit tests (not applicable) and documentation. Branch: `main`, the standing
+choice of this app (no branch question asked). The run's own choices are logged in the next
+iteration.
+
 ---
 
 ## Implementation Log
