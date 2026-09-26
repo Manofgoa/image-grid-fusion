@@ -82,9 +82,10 @@ differences global effects already have (RULES.md § Global Effects):
 | The global effect's own *Reset* (end of the global options row) | That global effect back to its initial state |
 | The global tabs row's *Reset* (far right) | Every global effect back to its initial state, all at once |
 
-- **Initial state** = the state *Clear all* already restores: Soundtrack **off, no file**;
-  Borders **on**, Corners style, default thickness and outer frame — the **color is kept**, it is
-  an app setting of the ⚙ menu, not part of the effect.
+- **Initial state** = the state *Clear all* already restores (`ClearAll`): Soundtrack **off, no
+  file**; Borders **off**, `GridBorders.Initial(color, Twitter corners by default)` — the **color**
+  and the **Twitter corners default** are kept, they are app settings of the ⚙ menu, not part of
+  the effect.
 - The cell toolbars' *Reset* buttons still leave the global effects alone, and the global *Reset*
   buttons leave the cells alone.
 
@@ -98,6 +99,8 @@ differences global effects already have (RULES.md § Global Effects):
 - The options' *Browse* button does the same.
 - The volume stays adjustable with no file; it turns the effect on only once a file is chosen (an
   effect with no sound to play has nothing to show).
+- A sound file **dropped** on the global rows sets the soundtrack, as a drop on today's row does
+  (`_globalRow.DragDrop`): both new rows accept it.
 
 ## Implementation Direction
 
@@ -163,6 +166,27 @@ Soundtrack with no file opens the file dialog, as today; the Soundtrack's own *R
 (no file, off); the lost preview height is compensated by a taller initial window, as the user
 proposed.
 
+### Iteration 3 — 2026-09-27 — ✅ Implemented
+
+Go given ("GO", read as *code, tests and documentation*, the choice every earlier workfile of this
+app got; no test project exists, so documentation = README, RULES.md, GLOSSARY.md), on `main`
+(standing choice). Before it, the user asked whether the recent changes endanger the task — 22
+commits since Iteration 2 (file explorer, copy last video, progress line) plus
+`borders-off-and-rounded-corners`, implemented meanwhile:
+
+- **No blocker.** The file explorer docks right, between the top toolbars and the global row; the
+  *Copy last* button lives in the bottom bar; the content version counts borders / soundtrack
+  changes through the existing mutators, which this task keeps. No worktree or unmerged branch.
+- **Borders' initial state changed**: off by default, with an opacity slider and a *Twitter
+  corners* checkbox whose default is an app setting. The design already defined the *Reset* state
+  as the *Clear all* one; its outdated detail (on, Corners) is corrected.
+- **Drop on the row**: a sound file dropped on today's row sets the soundtrack; kept on both new
+  rows.
+- Pending workfiles that will land on the new rows later: `global-fade` (already designed on the
+  cell-effect model, consistent), `forced-background` (drafted on the old row: its "toggle, options
+  beside it" becomes a tab), `ctrl-wheel-5-percent-step` (sliders of the row, unaffected),
+  `colors-effect` (renames a cell tab title, unaffected by the generalization).
+
 ---
 
 ## Implementation Log
@@ -194,7 +218,8 @@ Questions asked by the agent during design, with user responses.
 | 7 | Soundtrack's own *Reset*: remove the file, or keep it? | Complete: no file, off | 2026-09-26 |
 | 8 | The preview loses one tabs row of height: accepted? | "Didn't get it — at worst, raise the initial window height?" → the initial window grows by the tabs row's height | 2026-09-26 |
 | 9 | Start implementing? | No — the gate holds | 2026-09-26 |
+| 10 | (user) Do the recent changes endanger the task? Then GO | Analysis in Iteration 3: no blocker; GO read as code + documentation, on `main` | 2026-09-27 |
 
 ---
 
-*Last updated: 2026-09-26*
+*Last updated: 2026-09-27*
