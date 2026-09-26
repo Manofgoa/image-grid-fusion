@@ -42,16 +42,26 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 
 ## Effects
 
-- At the top of the window, the options row, then the tabs hanging below it: an **Effects** label, one tab per effect — **Zoom**, **Rotate**, **Flip**, **Frames**, **Black & white**, **Blur**, **Volume** — and, at the far right, a **Reset** button as tall as the tabs. They act on the selected cell; with no cell selected, both rows are disabled.
+- At the top of the window, the options row, then the tabs hanging below it: an **Effects** label, one tab per effect — **Background**, **Zoom**, **Rotate**, **Flip**, **Frames**, **Black & white**, **Blur**, **Volume** — and, at the far right, a **Reset** button as tall as the tabs. They act on the selected cell; with no cell selected, both rows are disabled.
 - Each tab holds a checkbox, checked while its effect is on for the selected cell. Clicking it turns the effect on or off, and selects the tab.
 - Clicking a tab elsewhere selects it: its options show in the row above, joined to it. The selected tab stays selected when another cell is selected, or none. The options row is always there, empty until a tab is selected.
-- Turning an effect off keeps its settings: it is drawn as its default (100 % centered, upright, unflipped, playing from the beginning, in color, sharp, heard at 100 %) until it is turned on again, as it was. An effect that is off shows its kept settings in its options.
+- Turning an effect off keeps its settings: it is drawn as its default (no background, 100 % centered, upright, unflipped, playing from the beginning, in color, sharp, heard at 100 %) until it is turned on again, as it was. An effect that is off shows its kept settings in its options.
 - Changing any option of an effect turns it on, from its kept settings.
-- The options row ends with a **Reset** button that brings the selected tab's effect back to its default state: default settings, turned off — except the Volume, which gets the sound on arrival again (see Volume).
+- The options row ends with a **Reset** button that brings the selected tab's effect back to its default state: default settings, turned off — except the Background, turned back on (see Background), and the Volume, which gets the sound on arrival again (see Volume).
 - The **Reset** at the far right of the tabs does it for every effect of the selected cell at once, and also puts every separator of the grid back where its layout places it (see Resizing the cells).
 - An effect that does not apply to the selected cell (**Frames** on a still image, **Volume** on an image without sound) keeps its tab selectable, but its checkbox and options are disabled; the checkbox's tooltip says why.
 - An effect belongs to the cell and its image: replacing the image (drop, `Ctrl+V`, picker) or removing an image clears the effects of the cells whose image changes — but the Volume of the images shifting after a removal, kept so what is heard does not change; swapping two cells or changing the layout keeps them.
 - Effects show in the preview, in every export, and on videos while they play.
+
+### Background
+
+- The fill painted behind the image, over its whole cell: the bands around it and its transparent pixels show it. **On by default**, for every image placed in a cell, with the automatic color at 100 %.
+- **Automatic color** (checked by default): the color the fitting rules compute from the part of the image shown (see Fitting rules).
+- **Opacity**: from 0 to 100 % (default 100 %).
+- The **color button** is painted with the color in use. Clicking it opens the standard color dialog, on that color; choosing a color unchecks *Automatic color*. Checking it again drops the chosen color; unchecking it keeps the automatic color of the moment as the chosen one.
+- **Black & white** turns the background gray too, whatever its color.
+- **Off**, or below 100 %, the cell is transparent behind its image: the preview shows grey and white squares there, as drawing apps do. A PNG — saved, or the PNG format of a copy — keeps the transparency; the copied bitmap, the MP4 video and the GIF show white instead.
+- Replacing the image, the Background's own Reset and the tabs' Reset bring it back on, automatic, at 100 %.
 
 ### Zoom
 
@@ -239,7 +249,7 @@ Drag the **separator** between two cells to give one of them more room: the curs
 
 - Each image is scaled to fill its cell, with no gap between cells.
 - Up to a threshold of the overflowing axis may be cropped in total, split evenly on both sides — 15% (7.5% per side).
-- Beyond that threshold, the image is cropped exactly to it and centered, and the remaining bands (and transparent pixels) are filled with a background color:
+- Beyond that threshold, the image is cropped exactly to it and centered, and the remaining bands (and transparent pixels) are filled with a background color — automatically chosen as below, unless the Background effect sets another one or none (see Background):
   - the image's own background, when at least three sides of the part the cell shows carry one uniform color (identical or very close, JPEG noise and slight gradients included) — a white product shot gets white bands even if its subject is mostly red. A side where the subject touches the edge, or a mostly transparent side, does not count;
   - otherwise the most frequent color of the whole image.
   The sides are those of the part actually shown, after the crop and every effect (zoom, focus, rotation and fine angle), so the color follows them. An animation keeps the same color while it plays.
@@ -254,7 +264,7 @@ Output resolution is kept as high as possible so source images aren't needlessly
 
 ## Output
 
-- **Copy** button / `Ctrl+C`: puts the full-resolution result on the clipboard, both as a standard bitmap and in the PNG clipboard format; while a content plays, an MP4 file instead. Its ▾ arrow copies a GIF or an MP4 video (see Animated content).
+- **Copy** button / `Ctrl+C`: puts the full-resolution result on the clipboard, both as a standard bitmap (transparent cells on white) and in the PNG clipboard format (transparency kept); while a content plays, an MP4 file instead. Its ▾ arrow copies a GIF or an MP4 video (see Animated content).
 - **Save** button / `Ctrl+S`: saves the result as a PNG file; while a content plays, as an MP4 video. Its ▾ arrow saves a GIF or an MP4 video.
 - A status line reports feedback and errors (skipped files with no preview, ignored excess files, removed images, copy/save confirmation or failure).
 
