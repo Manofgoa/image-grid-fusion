@@ -113,6 +113,18 @@ Components touched: `Composition/GridBorders.cs`, `Composition/Compositor.cs`,
 
 ---
 
+## Corner Brackets Opacity
+
+- An **Opacity** slider among the Borders' options, after the thickness: **10–100 %**, default
+  **100 %**, its value shown as "Opacity: 100 %". **Enabled in the Corners style only** — the one
+  drawn over the images —, disabled for the gap styles; kept when the style changes.
+- `GridBorders.Opacity` (1.0 in `GridBorders.Initial`): reset by *Clear all*, not persisted.
+- The brackets are drawn in the borders' color at that alpha, the filled rounded-off corners
+  included, in the preview and every export; each bracket in **one pass**, so its two arms never
+  overlap into a darker square.
+
+---
+
 ## Test Impact
 
 None, by the user's decision (Q&A #8): the solution has no test project, and every previous
@@ -257,6 +269,19 @@ outer frame fill their corner **out to the square angle** (straight outer edge, 
 so whatever radius Twitter cuts with, it never uncovers a transparent or white sliver. Gap styles
 without an outer frame keep the image's pixels there. The **preview keeps its cut**, as it shows
 what Twitter shows.
+
+### Iteration 9 — 2026-09-26 — ⚙️ Post-implementation — Opacity of the corner brackets
+
+The user, while Iteration 8 was being coded: "and on this border mode (the one over the image's
+pixels), allow changing the opacity" — the **Corners** style, the only one drawn over the images.
+Settled by the agent, reported rather than asked:
+- An **Opacity** slider among the Borders' options, **10–100 %**, default **100 %**, its value shown
+  as "Opacity: 100 %" like the thickness; **enabled in the Corners style only** (disabled for the
+  gap styles, as *Outer frame* is disabled for Corners), kept when the style changes.
+- A setting of the Borders, `GridBorders.Opacity` (1.0 in `GridBorders.Initial`), reset by *Clear
+  all*, not persisted; the brackets drawn in the color at that alpha — the filled rounded-off corners
+  included —, in the preview and every export.
+- Each bracket is filled in **one pass**, so its two arms never overlap into a darker square.
 
 ---
 
