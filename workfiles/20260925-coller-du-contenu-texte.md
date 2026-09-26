@@ -220,6 +220,11 @@ No project rule broken. Choices the frozen design did not state:
   bullets, tables, the dark paper all came out right. The manual checks of *Test Impact* in the
   running app (real clipboard, drags from Word / Chrome / VS Code / Excel) are still to be run.
 
+### Iteration 5 — 2026-09-26 — Closed
+
+The app was relaunched from the rebuilt `main` for the manual checks of *Test Impact*; the user
+tested it and confirmed the task is finished. No adjustment requested.
+
 ---
 
 ## Implementation Log
@@ -230,7 +235,7 @@ says so rather than staying blank.
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
 | Code | 3 | 2026-09-26 | Styled text rendering, RTF reader, HTML reader, paste / drop wiring — 4 commits |
-| Unit tests | 3 | 2026-09-26 | None, as agreed (no test project); manual checks listed in *Test Impact*, to be run in the app |
+| Unit tests | 3, 5 | 2026-09-26 | None, as agreed (no test project); manual checks of *Test Impact* run by the user in the app, task confirmed finished |
 | README | 3 | 2026-09-26 | Features, Adding images, new *Pasted text* section under Previews |
 
 ---
