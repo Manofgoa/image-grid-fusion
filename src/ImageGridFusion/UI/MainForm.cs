@@ -1737,7 +1737,7 @@ internal sealed class MainForm : Form
 
     /// <summary>
     /// The look of the selected image once <paramref name="effect"/> is reset, or every effect when
-    /// <c>null</c>: the volume's default state is the sound on arrival, from the other cells (RULES.md).
+    /// <c>null</c>: the default state of each, the Volume's included — heard at 100 %, the effect off.
     /// </summary>
     private ImageLook? ResetLook(ImageEffect? effect)
     {
@@ -1746,8 +1746,7 @@ internal sealed class MainForm : Form
             return null;
         }
 
-        var look = effect is { } one ? image.Look.Reset(one) : ImageLook.None;
-        return effect is null or ImageEffect.Volume ? Animation.SoundOnArrival(image, look, _preview.Images) : look;
+        return effect is { } one ? image.Look.Reset(one) : ImageLook.None;
     }
 
     /// <summary>The slider snaps to 100 % near its mark.</summary>
