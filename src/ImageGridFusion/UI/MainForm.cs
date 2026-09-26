@@ -165,9 +165,9 @@ internal sealed class MainForm : Form
     private readonly CheckBox _bordersOuterFrame = new() { Text = "Outer frame", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly ToolStripMenuItem _borderColor = new("Border color…");
 
-    // The borders' settings, kept while they are off; back to their initial state, on, with Clear all.
+    // The borders' settings, kept while they are off; back to their initial state, off, with Clear all.
     private GridBorders _borders = GridBorders.Initial(AppSettings.BorderColor);
-    private bool _bordersOn = true;
+    private bool _bordersOn;
 
     public MainForm(string[] args)
     {
@@ -812,7 +812,7 @@ internal sealed class MainForm : Form
         _soundtrackOn = false;
         ApplySoundtrack();
         _borders = GridBorders.Initial(_borders.Color);
-        _bordersOn = true;
+        _bordersOn = false;
         ApplyBorders();
 
         var removed = new List<string>();
@@ -1017,8 +1017,8 @@ internal sealed class MainForm : Form
     /// <summary>The borders drawn on the preview and the exports; <c>null</c> while off.</summary>
     private GridBorders? ActiveBorders => _bordersOn ? _borders : null;
 
-    /// <summary>Whether the borders are as the app starts: on, with their initial settings.</summary>
-    private bool BordersInitial => _bordersOn && _borders == GridBorders.Initial(_borders.Color);
+    /// <summary>Whether the borders are as the app starts: off, with their initial settings.</summary>
+    private bool BordersInitial => !_bordersOn && _borders == GridBorders.Initial(_borders.Color);
 
     /// <summary>A video to export: content that plays, or a soundtrack over stills.</summary>
     private bool ProducesVideo => HasAnimation || ActiveSoundtrack is not null;
