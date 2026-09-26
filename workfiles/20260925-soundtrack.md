@@ -85,7 +85,8 @@ Agreed design (scoping answers, Q&A 1–3); the points still open are listed in 
 | Where it is heard | **Preview and video exports**. GIF and still exports stay silent |
 | Mix | One more source in the **existing mix of every heard video** (`Animation.Heard`) — played over them, never replacing them. The mix itself is unchanged |
 | Duration | The **grid's duration rules**: a shorter soundtrack **loops**, a longer one is **cut** |
-| Volume | **One slider**, the soundtrack's volume, in the effect's options. The videos keep their own level |
+| Stills-only grid | With no animated content the grid has no duration of its own: the **soundtrack's length** becomes it. The preview loops the soundtrack; the export becomes an **MP4 video** as long as the soundtrack (the stills + the sound), where it would otherwise be a PNG |
+| Volume | **One slider, 0–200 %**, default 100 %, the soundtrack's volume, in the effect's options — like the Volume cell effect. The videos keep their own level |
 | Per-video sound | Each video's own sound is turned off or leveled by the **Volume** cell effect, already delivered (`video-mute.md`) — out of this scope |
 | Persistence | Not persisted, like every effect |
 
@@ -100,13 +101,12 @@ Agreed design (scoping answers, Q&A 1–3); the points still open are listed in 
 
 ## Test Impact
 
-The solution has no test project (see Open Questions). Behaviours worth pinning, if one is created:
+**No unit test** — declined by the user (Q&A 12): the solution has no test project, and the work is
+verified manually, like `video-mute.md` and `global-fade.md`.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| The soundtrack joins the mix at its gain, clipped with the heard videos | `ImageGridFusion.Tests/SoundMixTests.cs` | Create |
-| Soundtrack shorter than the grid loops; longer is cut at the grid's duration | `ImageGridFusion.Tests/SoundMixTests.cs` | Create |
-| Mix with only one side present (soundtrack only / video sound only) | `ImageGridFusion.Tests/SoundMixTests.cs` | Create |
+| — (manual verification: soundtrack heard over the videos in the preview and the MP4 export, looped / cut, volume 0–200 %, stills-only grid exported as a video) | — | — |
 
 ---
 
@@ -122,15 +122,16 @@ The solution has no test project (see Open Questions). Behaviours worth pinning,
       the top bar?~~ → The Global effects row, created here if it does not exist yet
 - [x] ~~How is the file picked — a *Browse* button in the options, and/or a file dropped on the row?~~
       → Both; the file name is shown
-- [ ] A grid with **no animated content** (stills only) has no duration: is the effect disabled
-      there, or does the export become a video lasting the soundtrack?
-- [ ] Soundtrack volume range: 0–100 %, or 0–200 % like the Volume cell effect (the preview's audio
-      graph now supports it)?
+- [x] ~~A grid with **no animated content** (stills only) has no duration: is the effect disabled
+      there, or does the export become a video lasting the soundtrack?~~ → The export becomes an MP4
+      as long as the soundtrack; the preview loops it
+- [x] ~~Soundtrack volume range: 0–100 %, or 0–200 % like the Volume cell effect (the preview's audio
+      graph now supports it)?~~ → 0–200 %, default 100 %
 - [x] ~~Does the effects toolbar's *Reset* remove the soundtrack too, or only the cell effects?~~
       → Neither asked nor needed: `global-fade.md`'s agreed rule applies — *Reset* acts on cell
       effects, **Clear all** removes the global effects
-- [ ] Tests: create a test project for the mixing logic, or verify manually only (the choice made
-      by `video-mute.md` and `global-fade.md`)?
+- [x] ~~Tests: create a test project for the mixing logic, or verify manually only (the choice made
+      by `video-mute.md` and `global-fade.md`)?~~ → Manual verification only, no test project
 - [x] ~~Is every video with sound mixed **always** (the grid's sound rule changes for good), or only
       while the Soundtrack effect is active (today's single elected sound otherwise)?~~
       → Moot: `video-mute.md` has delivered the mix of every heard video, always
@@ -169,6 +170,14 @@ rather than a new mixing step; OQ on the always-on mix is moot. `global-fade.md`
 Global effects row (above the bottom bar, locked while exporting, removed by Clear all), which
 also settles the *Reset* question. Still open: stills-only grid, volume range, tests.
 
+### Iteration 4 — 2026-09-26
+
+Last answers (Q&A 9, 10, 12): a stills-only grid takes the soundtrack's length — the preview loops
+it and the export becomes an MP4 of that length instead of a PNG; the volume slider runs 0–200 %,
+default 100 %; no unit tests, manual verification. No open question left. Documentation in scope
+if the go covers it: README, and `GLOSSARY.md` gains *Soundtrack* (plus the § Global Effects of
+`RULES.md` if `global-fade.md` has not landed it yet).
+
 ---
 
 ## Implementation Log
@@ -179,7 +188,7 @@ says so rather than staying blank.
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
 | Code | | | |
-| Unit tests | | | |
+| Unit tests | 4 | 2026-09-26 | Declined by the user — no test project, manual verification (Q&A 12) |
 | README | | | |
 
 ---
@@ -198,10 +207,10 @@ Questions asked by the agent during design, with user responses.
 | 6 | Per-video mute: here or in the video-mute workfile? | Left to `video-mute.md` | 2026-09-25 |
 | 7 | Where does the soundtrack's toggle live? | The Global effects row planned by `global-fade.md`, created here if it does not exist yet | 2026-09-25 |
 | 8 | How is the file picked? | A *Browse…* button in the options, and a file dropped on the row; the file name shown | 2026-09-25 |
-| 9 | Grid with no animated content: disabled, or video lasting the soundtrack? | | 2026-09-25 |
-| 10 | Soundtrack volume range? | | 2026-09-25 |
+| 9 | Grid with no animated content: disabled, or video lasting the soundtrack? | An MP4 as long as the soundtrack; the preview loops it | 2026-09-25 |
+| 10 | Soundtrack volume range? | 0–200 %, default 100 % | 2026-09-25 |
 | 11 | Does *Reset* remove the soundtrack too? | Not asked — settled by `global-fade.md` (Clear all removes global effects; *Reset* is cell-only) | 2026-09-25 |
-| 12 | Tests: create a test project, or manual verification only? | | 2026-09-25 |
+| 12 | Tests: create a test project, or manual verification only? | Manual verification only | 2026-09-25 |
 | 13 | Is every video mixed always, or only while the soundtrack is active? | Not asked — moot, `video-mute.md` delivered the always-on mix | 2026-09-26 |
 
 ---
