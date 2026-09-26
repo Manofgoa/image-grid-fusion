@@ -31,6 +31,8 @@ internal sealed class GridPreview : Control
     private const int BarMinGap = 8;
     private const int BarGripLength = 32;
     private const int BarGripWidth = 8;
+    private const int SeparatorReach = 4;
+    private const int SeparatorSnap = 6;
     private const int PanResistance = 24;
     private const int ZoomBadgeHold = 1000;
     private const int ZoomBadgeFade = 300;
@@ -75,6 +77,10 @@ internal sealed class GridPreview : Control
     private BlurSide? _hoveredBar;
     private BlurSide? _draggedBar;
     private int _barGrab;
+    private Separator? _hoveredSeparator;
+    private Separator? _draggedSeparator;
+    private int _separatorGrab;
+    private bool _separatorMoved;
 
     // The image panned or zoomed right now: drawn fast and painted at once, drawn again in full at the end.
     private SourceImage? _live;
@@ -117,7 +123,7 @@ internal sealed class GridPreview : Control
     /// <summary>Raised when the drop zone right of the canvas is clicked.</summary>
     public event EventHandler? DropZoneClicked;
 
-    /// <summary>Raised when the active layout changes, picked by the user or reset with the image count.</summary>
+    /// <summary>Raised when the active layout changes, picked by the user or reset with the image count, or when its cells are resized.</summary>
     public event EventHandler? LayoutChanged;
 
     public IReadOnlyList<SourceImage> Images => _images;
@@ -163,6 +169,7 @@ internal sealed class GridPreview : Control
         {
             _locked = value;
             _pressed = -1;
+            EndSeparatorDrag();
             EndDrag();
         }
     }
@@ -238,6 +245,7 @@ internal sealed class GridPreview : Control
         _hovered = -1;
         _hoveringClose = false;
         _hoveringHandle = false;
+        _hoveredSeparator = null;
         _cache?.Dispose();
         _cache = null;
         FitPagesToCells();
@@ -257,6 +265,15 @@ internal sealed class GridPreview : Control
     }
 
     public void ClearSelection() => Select(-1);
+
+    /// <summary>Puts every separator back where the layout's own proportions place it; the mirror stays.</summary>
+    public void ResetCellSizes()
+    {
+        if (_layout is { IsResized: true } layout && !_locked)
+        {
+            ApplySizes(layout.WithDefaultSizes());
+        }
+    }
 
     /// <summary>Gives the selected image a new look: an effect toggled or tuned from the toolbars.</summary>
     public void SetSelectedLook(ImageLook look)
@@ -434,6 +451,24 @@ internal sealed class GridPreview : Control
             return;
         }
 
+        // A separator comes after the blur bars, before the handle and the pan, on its own band only.
+        // It resizes the grid, not the cell: the selection stays.
+        if (SeparatorAt(e.Location) is { } separator)
+        {
+            if (e.Clicks == 2)
+            {
+                ApplySizes(_layout!.WithSeparator(separator, _layout.DefaultPosition(separator)));
+                return;
+            }
+
+            var canvas = CanvasBounds();
+            _draggedSeparator = separator;
+            _separatorGrab = separator.Vertical
+                ? canvas.X + GridLayout.Boundary(canvas.Width, separator.Position) - e.X
+                : canvas.Y + GridLayout.Boundary(canvas.Height, separator.Position) - e.Y;
+            return;
+        }
+
         // Only the handle swaps the image; a drag anywhere else moves it within its cell.
         Select(index);
         _pressed = index;
@@ -448,6 +483,12 @@ internal sealed class GridPreview : Control
     protected override void OnMouseMove(MouseEventArgs e)
     {
         base.OnMouseMove(e);
+        if (_draggedSeparator is { } separator)
+        {
+            DragSeparator(separator, e.Location);
+            return;
+        }
+
         if (_draggedBar is { } bar)
         {
             DragBar(bar, e.Location);
@@ -502,6 +543,13 @@ internal sealed class GridPreview : Control
     protected override void OnMouseUp(MouseEventArgs e)
     {
         base.OnMouseUp(e);
+        if (_draggedSeparator is not null)
+        {
+            EndSeparatorDrag();
+            UpdateHover(e.Location);
+            return;
+        }
+
         if (_draggedBar is not null)
         {
             _draggedBar = null;
@@ -537,7 +585,7 @@ internal sealed class GridPreview : Control
     {
         base.OnMouseWheel(e);
         int index = CellAt(e.Location);
-        if (index < 0 || _locked || _pressed >= 0 || _draggedBar is not null)
+        if (index < 0 || _locked || _pressed >= 0 || _draggedBar is not null || _draggedSeparator is not null)
         {
             return;
         }
@@ -577,15 +625,18 @@ internal sealed class GridPreview : Control
             EndLive();
             Invalidate();
         }
+
+        EndSeparatorDrag();
     }
 
     protected override void OnMouseLeave(EventArgs e)
     {
         base.OnMouseLeave(e);
-        if ((_hovered >= 0 || _hoveringCanvas || _hoveringDropZone) && !_dragging && !_panning && _draggedBar is null)
+        if ((_hovered >= 0 || _hoveringCanvas || _hoveringDropZone) && !_dragging && !_panning && _draggedBar is null && _draggedSeparator is null)
         {
             _hovered = -1;
             _hoveredBar = null;
+            _hoveredSeparator = null;
             _hoveringClose = false;
             _hoveringHandle = false;
             _hoveringCanvas = false;
@@ -801,8 +852,9 @@ internal sealed class GridPreview : Control
         bool onHandle = actions && HandleBounds(CellBounds()[hovered]).Contains(location);
         bool onControl = onClose || onDropZone;
         var onBar = actions && !onControl && ShownBlur(hovered) is { } blur ? BarAt(CellBounds()[hovered], blur, location) : null;
+        var onSeparator = actions && !onControl && onBar is null ? SeparatorAt(location) : null;
         if (hovered == _hovered && onClose == _hoveringClose && onCanvas == _hoveringCanvas && onDropZone == _hoveringDropZone
-            && onHandle == _hoveringHandle && onBar == _hoveredBar)
+            && onHandle == _hoveringHandle && onBar == _hoveredBar && onSeparator?.Vertical == _hoveredSeparator?.Vertical)
         {
             return;
         }
@@ -813,8 +865,10 @@ internal sealed class GridPreview : Control
         _hoveringDropZone = onDropZone;
         _hoveringHandle = onHandle;
         _hoveredBar = onBar;
+        _hoveredSeparator = onSeparator;
         Cursor = onControl ? Cursors.Hand
             : onBar is { } bar ? BarCursor(bar)
+            : onSeparator is { } separator ? SeparatorCursor(separator)
             : onHandle ? Cursors.SizeAll
             : Cursors.Default;
         Invalidate();
@@ -1353,6 +1407,160 @@ internal sealed class GridPreview : Control
         double gap = LogicalToDeviceUnits(BarMinGap) / (double)length;
         Cursor = BarCursor(side);
         SetLook(_selected, _images[_selected].Look.WithBlur(blur.WithSide(side, fraction, gap)));
+    }
+
+    /// <summary>
+    /// The separator whose band, <see cref="SeparatorReach"/> on each side of it, holds
+    /// <paramref name="location"/> — the nearest one when several do; none while the grid is locked.
+    /// </summary>
+    private Separator? SeparatorAt(Point location)
+    {
+        var canvas = CanvasBounds();
+        if (_layout is null || _locked || canvas.IsEmpty || _images.Count == 0)
+        {
+            return null;
+        }
+
+        int reach = LogicalToDeviceUnits(SeparatorReach);
+        Separator? nearest = null;
+        int best = int.MaxValue;
+        foreach (var separator in _layout.Separators())
+        {
+            int line, across, from, to, along;
+            if (separator.Vertical)
+            {
+                (line, across, along) = (canvas.X + GridLayout.Boundary(canvas.Width, separator.Position), location.X, location.Y);
+                (from, to) = (canvas.Y + GridLayout.Boundary(canvas.Height, separator.Start), canvas.Y + GridLayout.Boundary(canvas.Height, separator.End));
+            }
+            else
+            {
+                (line, across, along) = (canvas.Y + GridLayout.Boundary(canvas.Height, separator.Position), location.Y, location.X);
+                (from, to) = (canvas.X + GridLayout.Boundary(canvas.Width, separator.Start), canvas.X + GridLayout.Boundary(canvas.Width, separator.End));
+            }
+
+            int distance = Math.Abs(across - line);
+            if (along >= from && along < to && distance <= reach && distance < best)
+            {
+                nearest = separator;
+                best = distance;
+            }
+        }
+
+        return nearest;
+    }
+
+    private static Cursor SeparatorCursor(Separator separator) => separator.Vertical ? Cursors.SizeWE : Cursors.SizeNS;
+
+    /// <summary>
+    /// Moves the separator being dragged along its axis, the cells on both of its sides following it.
+    /// Within <see cref="SeparatorSnap"/> of its place in the layout's own proportions, or of a
+    /// parallel separator, it lands exactly on it. The cells it moves keep covering the same area:
+    /// only they are drawn again, fast, until it is released.
+    /// </summary>
+    private void DragSeparator(Separator separator, Point location)
+    {
+        var canvas = CanvasBounds();
+        if (_layout is null || canvas.IsEmpty)
+        {
+            return;
+        }
+
+        bool vertical = separator.Vertical;
+        int length = vertical ? canvas.Width : canvas.Height;
+        int offset = (vertical ? location.X - canvas.X : location.Y - canvas.Y) + _separatorGrab;
+        double position = offset / (double)length;
+        int best = LogicalToDeviceUnits(SeparatorSnap) + 1;
+        var targets = _layout.Separators()
+            .Where(s => s.Vertical == vertical && !s.Before.Intersect(separator.Before).Any())
+            .Select(s => s.Position)
+            .Prepend(_layout.DefaultPosition(separator));
+        foreach (double target in targets)
+        {
+            int distance = Math.Abs(offset - GridLayout.Boundary(length, target));
+            if (distance < best)
+            {
+                best = distance;
+                position = target;
+            }
+        }
+
+        Cursor = SeparatorCursor(separator);
+        var layout = _layout.WithSeparator(separator, position);
+        if (layout == _layout)
+        {
+            return;
+        }
+
+        _layout = layout;
+        _separatorMoved = true;
+        RedrawCells([.. separator.Before, .. separator.After]);
+    }
+
+    /// <summary>The separator is released: once it moved, the grid is laid out again for its new cells.</summary>
+    private void EndSeparatorDrag()
+    {
+        if (_draggedSeparator is null)
+        {
+            return;
+        }
+
+        _draggedSeparator = null;
+        if (_separatorMoved)
+        {
+            _separatorMoved = false;
+            OnSizesChanged();
+        }
+    }
+
+    /// <summary>Gives the grid new cell sizes, from the same layout.</summary>
+    private void ApplySizes(GridLayout layout)
+    {
+        if (layout != _layout)
+        {
+            _layout = layout;
+            OnSizesChanged();
+        }
+    }
+
+    /// <summary>
+    /// The cells changed size: the grid is drawn again in full, the text pages take the shape of their
+    /// new cell, and the frames are decoded at its size.
+    /// </summary>
+    private void OnSizesChanged()
+    {
+        _cache?.Dispose();
+        _cache = null;
+        FitPagesToCells();
+        UpdateDisplaySizes();
+        Invalidate();
+        LayoutChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Draws some cells again into the cached preview, fast, and paints them at once.</summary>
+    private void RedrawCells(int[] indices)
+    {
+        var canvas = CanvasBounds();
+        if (_layout is null || _cache is null || _cache.Size != canvas.Size)
+        {
+            Invalidate();
+            return;
+        }
+
+        var cells = _layout.Cells(canvas.Size);
+        var area = Rectangle.Empty;
+        using (var g = Graphics.FromImage(_cache))
+        {
+            foreach (int i in indices.Where(i => i < _images.Count))
+            {
+                var image = _images[i];
+                Compositor.DrawCell(g, new Frame(image.Bitmap, image.BandColor, image.Look), cells[i], fast: true);
+                area = area.IsEmpty ? cells[i] : Rectangle.Union(area, cells[i]);
+            }
+        }
+
+        area.Offset(canvas.Location);
+        Invalidate(area);
+        Update();
     }
 
     /// <summary>
