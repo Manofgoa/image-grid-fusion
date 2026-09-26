@@ -193,6 +193,7 @@ Questions asked by the agent during design, with user responses.
 | 6 | Soundtrack with no file: what do its checkbox and options do? | The checkbox opens the file dialog, as today | 2026-09-26 |
 | 7 | Soundtrack's own *Reset*: remove the file, or keep it? | Complete: no file, off | 2026-09-26 |
 | 8 | The preview loses one tabs row of height: accepted? | "Didn't get it — at worst, raise the initial window height?" → the initial window grows by the tabs row's height | 2026-09-26 |
+| 9 | Start implementing? | No — the gate holds | 2026-09-26 |
 
 ---
 
