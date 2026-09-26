@@ -47,8 +47,8 @@ Scope agreed with the user (scoping batch, 2026-09-26):
 ## Fade Geometry
 
 - For each edge a cell shares with a neighbour, a **strip** inside the cell, along that edge.
-- Its depth is **resolution-independent**: a share of the canvas (or of the smaller cell), so the
-  preview and an export at another size look the same.
+- Its depth is **resolution-independent**: a share of the **smallest cell's** smaller dimension,
+  set by the user (see Setting), so the preview and an export at another size look the same.
 - Each cell draws **its own half** of the transition, from its own color to the **seam color** —
   the **50 / 50 mix** of the two band colors — and meets the neighbour's half on the seam without a
   step. This also keeps the preview's per-cell redraw exact.
@@ -57,7 +57,12 @@ Scope agreed with the user (scoping batch, 2026-09-26):
   transition stays consistent with what it shows.
 - The outer border of the grid has no neighbour: no fade there.
 - Where an edge is shared with several neighbours (a tall cell next to two stacked cells), the strip
-  is split into one segment per neighbour — see Open Questions.
+  is split into one segment per neighbour, and **everything stays continuous**: where two segments
+  meet, the seam color is interpolated between theirs over the strip depth, so no step shows along
+  the edge.
+- In a **corner** where two strips of a cell cross (e.g. the centre of a 2×2 grid), the two
+  gradients are **mixed**, and the corner point reaches the mix of every cell meeting there, the same
+  value from each cell — no step across either seam.
 
 ## Colors and Alpha
 
@@ -79,18 +84,24 @@ Scope agreed with the user (scoping batch, 2026-09-26):
 
 ## Setting
 
-- One grid-level setting: fade on / off, and possibly its depth — placement, default and
-  persistence in Open Questions.
+- One grid-level setting, in the **bottom bar**, next to the export buttons and *Force as image*,
+  always visible:
+  - an on / off **checkbox** (*Fade seams*);
+  - a **depth slider**, in % of the smallest cell's smaller dimension, **10 %** by default.
+- **Remembered across launches** (on / off and depth); **off at the very first launch**.
+- Not an effect: no tab, not tied to a cell, unaffected by the effects' *Reset*.
+- Moving the slider while the fade is off turns it on, like acting on an effect's option.
 
 ---
 
 ## Test Impact
 
-No test project exists — whether to create one is an Open Question.
+No test project exists; the user chose to ship this work **without unit tests**: it is verified
+manually in the app.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| *(pending the test-project decision)* | | |
+| — (no unit tests, by decision) | — | — |
 
 ---
 
@@ -102,13 +113,14 @@ No test project exists — whether to create one is an Open Question.
   and the gradient showing through the image's transparent pixels; the image's edges are not faded
 - [x] ~~Seam color?~~ → The 50 / 50 mix: each cell fades from its color to it
 - [x] ~~A neighbour whose image covers its side of the seam?~~ → Fade toward its band color anyway
-- [ ] Corners and edges shared with several neighbours: one segment per neighbour with a step
-  between segments, and strips simply overlapping in the corners — or everything blended
-  continuously (seam color interpolated where segments meet, corners mixing both strips)?
-- [ ] Strip depth: fixed, or adjustable (slider)? Default depth?
-- [ ] Where does the setting live (layout strip, bottom bar next to the export buttons, ⚙ menu)?
-- [ ] On or off at startup, and is it remembered across launches?
-- [ ] No test project: create one for this work, or ship without unit tests?
+- [x] ~~Corners and edges shared with several neighbours?~~ → Everything continuous: seam color
+  interpolated where segments meet, corners mixing both strips
+- [x] ~~Strip depth: fixed or adjustable, default?~~ → Adjustable slider, % of the smallest cell,
+  10 % by default
+- [x] ~~Where does the setting live?~~ → Bottom bar, next to the export buttons and *Force as image*
+- [x] ~~On or off at startup, remembered across launches?~~ → Remembered (on / off and depth); off at
+  the very first launch
+- [x] ~~No test project: create one, or ship without unit tests?~~ → No unit tests
 
 ---
 
@@ -134,6 +146,13 @@ premultiplied interpolation plus the gradient showing through transparent pixels
 are not faded); the seam color is the 50 / 50 mix; a seam fades even when the neighbour's image
 covers its side. The corner question is reworded to cover the multi-neighbour case too, and
 placement and startup state are split.
+
+### Iteration 3 — 2026-09-26
+
+The Q9–Q12 batch was dismissed; the agent's recommendations were re-asked in one question (Q13) and
+accepted: continuous corners and multi-neighbour seams, an adjustable depth slider (10 % of the
+smallest cell by default), the setting in the bottom bar, remembered across launches and off at the
+first launch, no unit tests. The design is complete.
 
 ---
 
@@ -164,10 +183,11 @@ Questions asked by the agent during design, with user responses.
 | 6 | "Take alpha into account": what does it cover? | Premultiplied interpolation + gradient through transparent pixels | 2026-09-26 |
 | 7 | Seam color rule? | The 50 / 50 mix | 2026-09-26 |
 | 8 | Neighbour whose image covers its side of the seam? | Fade toward its band color anyway | 2026-09-26 |
-| 9 | Corners and edges shared with several neighbours? | | 2026-09-26 |
-| 10 | Strip depth: fixed or adjustable, default? | | 2026-09-26 |
-| 11 | Where does the setting live? | | 2026-09-26 |
-| 12 | On or off at startup, remembered across launches? | | 2026-09-26 |
+| 9 | Corners and edges shared with several neighbours? | Dismissed — re-asked as Q13 | 2026-09-26 |
+| 10 | Strip depth: fixed or adjustable, default? | Dismissed — re-asked as Q13 | 2026-09-26 |
+| 11 | Where does the setting live? | Dismissed — re-asked as Q13 | 2026-09-26 |
+| 12 | On or off at startup, remembered across launches? | Dismissed — re-asked as Q13 | 2026-09-26 |
+| 13 | Accept the five recommendations (continuous corners, 10 % slider, bottom bar, remembered, no unit tests)? | Yes, all five | 2026-09-26 |
 
 ---
 
