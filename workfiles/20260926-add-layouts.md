@@ -228,6 +228,11 @@ count, scroll a strip taller than the window, then a copy / save.
 - [x] ~~How long does the expanded state last: the whole session, or until the image count
       changes?~~ → Until the image count changes
 - [x] ~~Tests: create a test project for the catalog, or no unit test for this work?~~ → Test-free
+- [ ] *(found during the run, out of scope)* `GridLayout.ClockwiseLoop()` and `BorderPosition()`
+      have had no caller since the carousel was removed: delete them?
+- [ ] *(found during the run, out of scope)* The 960 × 860 default client area is not clamped to
+      the screen's working area: on a small screen (e.g. 1366 × 768, or 1080p at 150 %) the window
+      opens taller than the screen. Clamp it?
 
 ---
 
@@ -303,6 +308,32 @@ again), leaving a band where it showed for a few pixels. Requested: the thumbnai
 makes the scrollable height exact — and the window's **default height** becomes the one of the
 user's capture (whole expanded strip visible): client area 960 × 860 logical px instead of 960 × 580.
 
+### Iteration 10 — 2026-09-26 — 🧭 Implementation choices
+
+No project rule broken. Choices the design did not state:
+
+- **`IsAdvanced` as a constructor parameter** (last, defaulted), passed by `Mirrored()`,
+  `WithDefaultSizes()` and `WithSeparator()`; the catalog entries set it with `isAdvanced: true`.
+- **The strip derives from `ScrollableControl`** with `AutoScroll`: the scrollable height is the
+  items' exact height, the wheel scrolls through the base class, and the items are laid out in
+  unscrolled coordinates (painting translated, hit-testing offset). Its layout runs again on every
+  client-size change, which covers the scrollbar showing or hiding.
+- **Beside the scrollbar**, the items keep the width the whole strip gives them and their left margin
+  shrinks (down to 0), leaving 3 logical px before the scrollbar.
+- **Header**: 22 logical px tall, 6 px more space above it than between thumbnails, the control's
+  own font; tooltips *Show more layouts* / *Hide the extra layouts*.
+- **Mirror toggle**: same size and look as before, first item of the strip.
+- **Delivery launch from the scratchpad build**: `bin\Debug` stays locked by an instance the user
+  had open, so the build for the delivery is output to the session's scratchpad and launched from
+  there, rather than closing the user's instance.
+- **Verification** done on the built app with four test images: collapsed and expanded group, an
+  advanced layout picked (*Bricks*) and kept visible once collapsed, the *More* label, the scrollbar
+  appearing in a short window. The mouse wheel was not verified — the injected wheel event landed in
+  another window — and stays to be checked by hand.
+
+Out of scope, offered as Open Questions: the dead `ClockwiseLoop()`, and the default window size not
+clamped to small screens.
+
 ---
 
 ## Implementation Log
@@ -312,9 +343,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 7, 8, 9 | 2026-09-26 | Catalog `0a1a0ba`; strip `49424e8` (More label and fixed-size thumbnails included); window height `962794f` |
 | Unit tests | 6 | 2026-09-26 | Declined — test-free by decision (Q&A #9) |
-| README | | | |
+| README | 7, 8, 9 | 2026-09-26 | *Layouts* (More group, *More layouts*), *Mirror*, *Resizing the cells* `456157d`; GLOSSARY *Advanced layout* `f68e517` |
 
 ---
 
