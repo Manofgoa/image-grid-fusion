@@ -105,6 +105,11 @@ The clarification batch (Q&A #8, #9) was dismissed, and the user asked whether t
 ready. The two open points close on the proposal: a "+" and a reworded text on the empty canvas,
 in the drop zone's colours; the green remark is dropped, with no rule change.
 
+### Iteration 3 — 2026-09-26 — ✅ Implemented
+
+Go given ("Go implémente"), after a first "No". Scope frozen on the sections above; code and
+README, on `main`.
+
 ---
 
 ## Implementation Log
