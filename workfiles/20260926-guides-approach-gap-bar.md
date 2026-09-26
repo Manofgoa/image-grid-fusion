@@ -79,7 +79,8 @@ Components:
   the reach, full once the stop holds the image. The held guide is drawn exactly as today.
 - The halo fades with the line, so a faint guide does not leave a dark dashed trace.
 - Curve: **linear** in the gap, from a minimum opacity at the approach distance to 100 % at the stop.
-  Minimum value: see *Open Questions*.
+  Minimum: **20 %** (Q&A #10), so the guide is visible as soon as it appears yet clearly fainter
+  than the held one.
 
 ---
 
@@ -96,7 +97,8 @@ Components:
   dashed one), with a short tick across each end so a short gap still reads as a measure.
 - Position along the guide: **at the mouse** (Q&A #8) — at the cursor's height for a vertical guide,
   at its abscissa for a horizontal one, kept inside the cell (the bar and its ticks fully visible).
-- Opacity of the bar: see *Open Questions*.
+- The bar stays at **full opacity** (Q&A #11): it is the measure, always legible; its length tells
+  the closeness, the guide's opacity only echoes it.
 
 ---
 
@@ -110,11 +112,13 @@ Components:
 
 ## Test Impact
 
-The repository has **no test project** today. See *Open Questions*.
+**No unit tests** (Q&A #9): the repository has no test project and none is created for this task.
+The behaviour is validated by hand in the app — reach at 10 %, nearest stop, opacity ramp, gap bar
+at the mouse, disappearing on hold, Shift, fine angle.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| *(pending the test question)* | | |
+| — none, by decision (Q&A #9) | — | — |
 
 ---
 
@@ -127,10 +131,10 @@ The repository has **no test project** today. See *Open Questions*.
       so the moment the stop holds stays visible?~~ → Opacity growing progressively with the closeness
 - [x] ~~Where along the guide is the gap bar drawn: at the **mouse position**, or in the **middle of the
       cell**?~~ → At the mouse
-- [ ] Unit tests: with no test project in the repository, create one for the approach logic of
-      `PanMagnet`, or no unit tests?
-- [ ] Progressive opacity: which **minimum** opacity at the edge of the reach?
-- [ ] Does the **gap bar** fade with the guide, or stay at full opacity?
+- [x] ~~Unit tests: with no test project in the repository, create one for the approach logic of
+      `PanMagnet`, or no unit tests?~~ → No unit tests
+- [x] ~~Progressive opacity: which **minimum** opacity at the edge of the reach?~~ → 20 %
+- [x] ~~Does the **gap bar** fade with the guide, or stay at full opacity?~~ → Full opacity
 
 ---
 
@@ -160,6 +164,11 @@ in the order the requests were made.
   linear in the gap, halo fading with the line, full opacity once held.
 - New open questions: the minimum opacity, and whether the gap bar fades too.
 
+### Iteration 3 — 2026-09-26
+
+- Answers (Q&A #9–#11): no unit tests; minimum opacity 20 %; the gap bar stays at full opacity.
+- No open question left: the design is ready for the go.
+
 ---
 
 ## Implementation Log
@@ -170,7 +179,7 @@ says so rather than staying blank.
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
 | Code | | | |
-| Unit tests | | | |
+| Unit tests | 3 | 2026-09-26 | Not applicable — no test project, declined (Q&A #9) |
 | README | | | |
 | RULES.md | | | |
 
@@ -190,9 +199,9 @@ Questions asked by the agent during design, with user responses.
 | 6 | Approach by position only, or only when moving toward the stop? | Position only | 2026-09-26 |
 | 7 | Approaching guide drawn like the held one, or distinguished? | "Can the opacity increase progressively during the approach?" — yes, adopted | 2026-09-26 |
 | 8 | Gap bar at the mouse position or in the middle of the cell? | At the mouse | 2026-09-26 |
-| 9 | Unit tests: create a test project for `PanMagnet`, or none? | | |
-| 10 | Progressive opacity: which minimum opacity at the edge of the reach? | | |
-| 11 | Does the gap bar fade with the guide, or stay at full opacity? | | |
+| 9 | Unit tests: create a test project for `PanMagnet`, or none? | No unit tests | 2026-09-26 |
+| 10 | Progressive opacity: which minimum opacity at the edge of the reach? | 20 % | 2026-09-26 |
+| 11 | Does the gap bar fade with the guide, or stay at full opacity? | Full opacity | 2026-09-26 |
 
 ---
 
