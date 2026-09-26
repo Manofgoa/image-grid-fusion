@@ -51,11 +51,18 @@ Relevant components: `UI/MainForm.cs` — `Copy`, `CopyToClipboard`, `RenderStil
 
 ### Clipboard Content
 
-*Open — see Open Questions.*
+- The **JPEG file**, written to `%TEMP%\ImageGridFusion`, as a **file drop list** — what WhatsApp,
+  Explorer and mail clients paste as is, like the MP4 copy.
+- The **downscaled bitmap** (`SetImage`), for apps that paste bitmaps only (Paint, Word). Even if a
+  browser converts it to PNG, at 2560 px it stays well under 16 MB.
 
 ### Access
 
-*Open — see Open Questions.*
+- A **"JPEG for sharing"** item in the **Copy ▾ menu**, after GIF and MP4 Video.
+- The Copy ▾ arrow becomes **enabled whenever the grid holds an image** (and no export runs);
+  **GIF** and **MP4 Video** items are **disabled while nothing plays**, as the whole arrow was.
+- **No keyboard shortcut**: `Ctrl+C` stays the full copy.
+- **Save is unchanged**: its ▾ menu gets no JPEG item, and its arrow keeps its current rule.
 
 ### Status Line
 
@@ -64,8 +71,14 @@ takes the format name instead of hard-coding `PNG`.
 
 ### Temp Files
 
-When the JPEG is written as a file, it goes to `%TEMP%\ImageGridFusion` like the MP4 and GIF
-copies, and `CleanTempVideos` also removes `*.jpg` at the next start.
+The JPEG goes to `%TEMP%\ImageGridFusion` like the MP4 and GIF copies (`fusion-{timestamp}.jpg`),
+and `CleanTempVideos` also removes `*.jpg` at the next start.
+
+### README
+
+- *Output* (Copy button bullet) and *Animated content* (▾ arrow bullet): the ▾ menu of Copy gains
+  **JPEG for sharing**, enabled even when nothing plays; GIF / MP4 stay disabled while nothing plays.
+- The feature list line on Copy mentions the light JPEG for chat apps capping image size.
 
 ---
 
@@ -85,12 +98,14 @@ verified by hand (paste into WhatsApp Web, Paint, Explorer).
 - [x] ~~Where does the copy come from?~~ → The app's own copy (`Ctrl+C` / Copy button).
 - [x] ~~Which approach?~~ → A separate light copy; the normal copy is unchanged.
 - [x] ~~What is acceptable for the light version?~~ → JPEG, long edge capped at 2560 px.
-- [ ] Where is the light copy reached: an item of the Copy ▾ menu (the arrow then always enabled,
-      GIF / MP4 greyed while nothing plays), a separate button, or both?
-- [ ] Does it get a keyboard shortcut (`Ctrl+Shift+C`)?
-- [ ] What goes on the clipboard: the JPEG as a file only, or the file plus the downscaled bitmap
-      (for apps that paste bitmaps only — Paint, Word)?
-- [ ] Does Save get the same option (a JPEG in the Save ▾ menu), or does the scope stay on Copy?
+- [x] ~~Where is the light copy reached: an item of the Copy ▾ menu (the arrow then always enabled,
+      GIF / MP4 greyed while nothing plays), a separate button, or both?~~ → An item of the Copy ▾
+      menu.
+- [x] ~~Does it get a keyboard shortcut (`Ctrl+Shift+C`)?~~ → No shortcut.
+- [x] ~~What goes on the clipboard: the JPEG as a file only, or the file plus the downscaled bitmap
+      (for apps that paste bitmaps only — Paint, Word)?~~ → The JPEG file plus the downscaled bitmap.
+- [x] ~~Does Save get the same option (a JPEG in the Save ▾ menu), or does the scope stay on Copy?~~
+      → Copy only.
 
 ---
 
@@ -110,6 +125,16 @@ in the order the requests were made.
 - Light copy: JPEG, quality 90, long edge ≤ 2560 px, never upscaled, same rendered still as the
   normal copy; status line naming JPEG; temp file cleaned at the next start.
 - Access, shortcut, clipboard formats and Save counterpart left open.
+
+### Iteration 2 — 2026-09-26
+
+Open questions answered:
+- Access: a **"JPEG for sharing"** item in the Copy ▾ menu; the arrow is enabled whenever the grid
+  holds an image, GIF / MP4 greyed while nothing plays.
+- No keyboard shortcut.
+- Clipboard: the JPEG **file** (file drop list) **plus the downscaled bitmap**.
+- Save unchanged — the scope stays on Copy.
+- README changes listed.
 
 ---
 
@@ -136,10 +161,11 @@ Questions asked by the agent during design, with user responses.
 | 2 | Which approach: several formats, a separate light copy, automatic reduction? | A separate light copy | 2026-09-26 |
 | 3 | What is acceptable for the light version? | JPEG, max 2560 px | 2026-09-26 |
 | 4 | Is the subject straightforward or tricky? | Straightforward — a single scout pass | 2026-09-26 |
-| 5 | Where is the light copy reached (Copy ▾ menu, separate button, both)? | | |
-| 6 | Keyboard shortcut `Ctrl+Shift+C`? | | |
-| 7 | Clipboard content: JPEG file only, or file + downscaled bitmap? | | |
-| 8 | Same option in Save? | | |
+| 5 | Where is the light copy reached (Copy ▾ menu, separate button, both)? | Copy ▾ menu | 2026-09-26 |
+| 6 | Keyboard shortcut `Ctrl+Shift+C`? | No shortcut | 2026-09-26 |
+| 7 | Clipboard content: JPEG file only, or file + downscaled bitmap? | JPEG file + downscaled bitmap | 2026-09-26 |
+| 8 | Same option in Save? | No, Copy only | 2026-09-26 |
+| 9 | Go for implementation? | | |
 
 ---
 
