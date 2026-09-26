@@ -77,26 +77,27 @@ Components touched: `Composition/GridBorders.cs`, `Composition/Compositor.cs`,
 
 - The curved brackets and frame corners are drawn in `Compositor.Draw` (`GridBorders.Draw` /
   `DrawOver`), so every output has them.
-- **The cut** is a separate step, `GridBorders.CutCorners(bitmap[, area])`, applied to the rendered
-  bitmap where alpha is kept — the PNG saved or copied (`MainForm.SaveAs`, `MainForm.Copy`, after
-  the clipboard's flattened bitmap is taken) and the preview's cache: everything outside the rounded
-  rectangle becomes **transparent**, with an **anti-aliased** edge (per-pixel coverage from the
-  distance to the curve).
-- **Outputs without alpha** (JPEG for sharing, MP4, GIF, the clipboard's bitmap): the corners are
-  **not cut** — they keep the image's pixels, and Twitter rounds them itself, so no white or black
-  sliver ever shows in its light or dark mode. The Borders still **follow the curve** there.
+- **Exports — every one, PNG included — are never cut**: the brackets and the frame corners fill
+  their corner out to the square angle (see Borders Following the Curve), so Twitter's own rounding,
+  whatever its radius at the size shown, never uncovers a sliver; gap styles without an outer frame
+  keep the image's pixels in the corners, for Twitter to round.
+- **The cut is the preview's only**: `GridBorders.CutCorners(bitmap[, area])` on the preview's
+  cache makes everything outside the rounded rectangle **transparent**, with an **anti-aliased**
+  edge (per-pixel coverage from the distance to the curve) — the preview shows what Twitter shows.
 - Resolution-independent: the radius is a fraction of the canvas, so the preview and every export
   size look the same.
 
 ### Borders Following the Curve
 
-- **Corners style**: each bracket follows the rounded corner — its outer edge on the curve, its
-  inner edge a concentric curve of radius `radius − width` (square when the width exceeds the
-  radius) — then runs straight along each edge to the end of its arm. An arm is at least as long as
+- **Corners style**: each bracket follows the rounded corner — its inner edge a curve of radius
+  `radius − width` (square when the width exceeds the radius), its outer edge the grid's **square
+  corner**, so the bracket fills the rounded-off corner (cut in the preview only) — then runs
+  straight along each edge to the end of its arm. An arm is at least as long as
   the radius, so the curve always fits in the bracket.
 - **Outer frame** (gap styles): its corners are drawn over the corner cells along the rounded
-  outline (a solid ring for Solid, Dashed and Dotted; two concentric lines for Double), its straight
-  sides stopping where the curved corners begin.
+  outline, filled out to the square corner (Solid, Dashed and Dotted: one piece; Double: its outer
+  line filled out to the corner, its inner line a concentric curve), its straight sides stopping
+  where the curved corners begin.
 - Gap styles without an outer frame: nothing to follow; the corner cells are simply rounded by the
   mask.
 
@@ -133,7 +134,8 @@ workfile stayed test-free.
 - [x] ~~Radius: unit, default and range?~~ → Twitter's own, computed by the agent: 3 % of the
   grid's longer side, fixed, no slider (Q&A #5)
 - [x] ~~Outputs without alpha: what do the rounded-off corners get?~~ → Not cut, Twitter rounds
-  them; the Borders still follow the curve (Q&A #6)
+  them; the Borders still follow the curve (Q&A #6) *(revised 2026-09-26, see Iteration 8: no
+  export is cut, the PNG included; the borders fill the corners out to the square angle)*
 - [x] ~~The effect at start-up: off or on?~~ → A ⚙ setting switches it (Q&A #7) *(revised 2026-09-26, see Iteration 4)*
 - [x] ~~Unit tests?~~ → None, as before (Q&A #8)
 - [x] ~~Name and toggle label?~~ → *Rounded corners*, "◜ Rounded corners" (Q&A #9) *(revised 2026-09-26, see Iteration 4)*
@@ -250,6 +252,12 @@ top left, top right, bottom right, bottom left". Twitter's own rounding, smaller
 display size, leaves the transparent corners of the PNG showing as white slivers outside our curve.
 To settle before the code (Q&A #16–#17): what fills them, and in which outputs.
 
+Decided: in **every export**, PNG included, nothing is cut any more — the corner brackets and the
+outer frame fill their corner **out to the square angle** (straight outer edge, curved inner edge),
+so whatever radius Twitter cuts with, it never uncovers a transparent or white sliver. Gap styles
+without an outer frame keep the image's pixels there. The **preview keeps its cut**, as it shows
+what Twitter shows.
+
 ---
 
 ## Implementation Log
@@ -287,8 +295,8 @@ Questions asked by the agent during design, with user responses.
 | 13 | The ⚙ start-up setting: dropped, or kept as the checkbox's default? | Kept, it sets the checkbox's default | 2026-09-26 |
 | 14 | Borders off: square corners, or still rounded? | Square (recommended) | 2026-09-26 |
 | 15 | The checkbox's label? | "Twitter corners" (recommended) | 2026-09-26 |
-| 16 | Exports: what fills the rounded-off corners, and in which outputs? | | 2026-09-26 |
-| 17 | Gap styles without outer frame: what fills the rounded-off corners in the exports? | | 2026-09-26 |
+| 16 | Exports: what fills the rounded-off corners, and in which outputs? | The borders' color, in every export (recommended) | 2026-09-26 |
+| 17 | Gap styles without outer frame: what fills the rounded-off corners in the exports? | The image's pixels (recommended) | 2026-09-26 |
 
 ---
 
