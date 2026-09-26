@@ -114,9 +114,10 @@ drafted by `workfiles/20260925-global-fade.md`). § Effects above covers the cel
 | | **Effect** (cell effect) | **Global effect** |
 |---|---|---|
 | Belongs to | A cell + image pair | The grid |
-| UI | The effects toolbar, its options in the options toolbar | The **Global effects row**, its options in the same row |
+| UI | The effects toolbar, its options in the options toolbar | The **global effects toolbar**, its options in the global options toolbar below it |
 | No cell selected | Disabled | Stays enabled; disabled only when it does not apply |
 | Image replaced, cell *Reset* buttons | Reset | Untouched |
+| The global *Reset* buttons | Untouched | Reset — back to the initial state |
 | *Clear all* | Reset (no image left) | Reset — back to the initial state |
 | Swap, layout change | Kept, follows the image | Kept |
 | Rendering | `Compositor.DrawCell` | At the grid level, in the preview and in every export it concerns |
@@ -130,15 +131,27 @@ drafted by `workfiles/20260925-global-fade.md`). § Effects above covers the cel
   `Compositor.Cells` / `Compositor.Draw`, so the preview and every export shrink the cells alike;
   hit-testing keeps the **unshrunk slots**, so no dead zone appears between the cells.
 
-### Global Effects Row
+### Global Effects Toolbar
 
-- An **always-visible row just above the bottom bar**: a **Global effects** label, then one
-  **toggle** per global effect, its **options beside it**, shown **only while it is on**.
-- The row keeps **one height**, its tallest control's, so the preview never moves when options
-  show or hide.
-- A toggle turned off **keeps the effect's settings**; turned on again, it applies them as they were.
-- The row is **locked while exporting**, like the cell effects: the export keeps the settings it
-  started with.
+The **mirror of the cell effects' toolbars** at the bottom of the window (origin:
+`workfiles/20260926-global-effects-tabs.md`):
+
+- A **global effects toolbar** of tabs **standing on** a **global options toolbar**, both always
+  visible, just above the bottom bar: a **Global effects** label, one **tab** per global effect,
+  then, at the far right, a **Reset** button as tall as the tabs. The selected tab is drawn joined
+  to the options toolbar **below** it.
+- Everything § Effects Toolbar and § Options Toolbar say holds, the cells aside: an **activation
+  checkbox** per tab, the same clicks, the selected tab belonging to the toolbar (independent of
+  the cell effects' one, none at startup), the options toolbar at **one height** and **empty** while
+  no tab is selected, the **kept settings** shown while an effect is off, and **acting on any
+  option activates the effect**.
+- The options toolbar ends with the effect's own **Reset**; the tabs' **Reset** resets every
+  global effect at once. Both bring back the **initial state** — the one *Clear all* restores — and
+  leave the cells alone.
+- It **stays enabled with no cell selected**, and is **locked while exporting**, like the cell
+  effects: the export keeps the settings it started with.
+- An effect that needs a file before it can be on (the Soundtrack) opens the file picker when its
+  checkbox is checked without one; the effect stays off if it is cancelled.
 
 ## On-Cell Helper Indicators
 

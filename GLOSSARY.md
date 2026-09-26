@@ -15,8 +15,9 @@ each.
 | Selected cell | The cell the effects toolbar acts on |
 | Effect (*effet*), also *cell effect* | A transformation of a cell + image pair, turned on or off from the effects toolbar: Background, Zoom, Rotate, Flip, Frames, Black & white, Blur, Volume. Turned off, it keeps its settings |
 | Background (*fond*) | The cell effect painting the fill behind an image — the automatic band color or a chosen one, at an opacity; on by default, off leaves the cell transparent |
-| Global effect (*effet global*) | A transformation of the whole grid, toggled from the Global effects row: Soundtrack, Borders |
-| Global effects row | The always-visible row just above the bottom bar: the "Global effects" label, the global effect toggles and, while one is on, its options |
+| Global effect (*effet global*) | A transformation of the whole grid, turned on or off from the global effects toolbar: Soundtrack, Borders |
+| Global effects toolbar | The mirror of the effects toolbar at the bottom of the window: the "Global effects" label, one tab per global effect and the Reset button, standing on the global options toolbar |
+| Global options toolbar | The always-visible row just above the bottom bar, below the global effects toolbar, holding the selected global tab's options and the effect's own Reset button |
 | Soundtrack (*bande son*) | The global effect mixing the sound of an audio or video file over the heard videos, at its own volume; it loops or is cut to the grid's duration, and gives a grid of stills its length |
 | Borders (*bordures*) | The global effect drawing borders on the grid, off at start-up: the Corners style, or a gap between the cells filled by a line style, with an optional outer frame and the Twitter corners, the brackets at an opacity; its color is an app setting of the ⚙ menu |
 | Corners style (*style Coins*) | The Borders' default style, the app's signature: an L-bracket over the images at each of the grid's four corners, each arm covering 10 % of its edge; no gap between the cells |
