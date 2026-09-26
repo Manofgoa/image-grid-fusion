@@ -168,20 +168,24 @@ Iteration 7). What this work builds on:
 
 ## Layout Strip
 
-- **Basic thumbnails** first, as today (the existing layouts, in their current order).
+- The **mirror toggle moves to the top** of the strip, above every thumbnail (Q&A #6): its place no
+  longer depends on how many thumbnails follow.
+- Then the **basic thumbnails**, as today (the existing layouts, in their current order).
 - Then an **Advanced** header, a clickable row labelled `Advanced ▸` when collapsed, `Advanced ▾`
   when expanded. **Collapsed by default.**
 - Expanded, the count's **advanced thumbnails** follow the header, drawn like the basic ones
-  (hover, active highlight, tooltip with the layout name).
+  (hover, active highlight, tooltip with the layout name, click on the active one resetting the
+  cell sizes).
+- **Collapsed while an advanced layout is active** (Q&A #7): only the **active** advanced thumbnail
+  stays shown below the header; the others hide.
+- **Expanded state lifetime** (Q&A #8): it lasts **until the image count changes** — the group then
+  collapses, as the count's default (basic) layout comes back. Never persisted.
 - The header is **hidden when the image count has no advanced layout** (1 image, no image).
 - **Vertical scrollbar**: appears only when the content is taller than the strip; the mouse wheel
   scrolls it; the thumbnails narrow by the scrollbar's width while it is shown.
 - Picking an advanced layout behaves like any layout: the mirror toggle turns off, the images keep
   their order, the effects are kept (RULES.md, *Scope and State*).
 - The number of images changing still brings back the count's default layout, which is basic.
-
-Pending (see Open Questions): where the mirror toggle goes, what collapsing does while an advanced
-layout is active, and how long the expanded state lasts.
 
 ---
 
@@ -201,17 +205,20 @@ test can be updated. Whether to create one is an Open Question; until it is sett
 
 ## Open Questions
 
-- [ ] Is the proposed list kept as is, or are some layouts dropped (e.g. *Three rows* at 5.73 and
-      *Four rows* at 7.64 give very thin bands)?
-- [ ] The proposals reachable through cell resize (see *Interplay with Cell Resize*): kept as exact
-      presets, or dropped in favour of dragging?
+- [x] ~~Is the proposed list kept as is, or are some layouts dropped (e.g. *Three rows* at 5.73 and
+      *Four rows* at 7.64 give very thin bands)?~~ → All 12 kept
+- [x] ~~The proposals reachable through cell resize (see *Interplay with Cell Resize*): kept as exact
+      presets, or dropped in favour of dragging?~~ → Kept, as exact one-click presets
 - [x] ~~Order of delivery against cell resize: this work before or after it?~~ → After: the cell
       resize session notifies this one once implemented, then the go is asked here
-- [ ] Where does the mirror toggle go: right after the basic thumbnails (fixed place, above the
-      Advanced header), or at the very end of the strip (after the advanced thumbnails)?
-- [ ] Collapsing the group while an advanced layout is active: the active thumbnail stays visible
-      below the header, collapsing is refused, or it hides like the others?
-- [ ] How long does the expanded state last: the whole session, or until the image count changes?
+- [x] ~~Where does the mirror toggle go: right after the basic thumbnails (fixed place, above the
+      Advanced header), or at the very end of the strip (after the advanced thumbnails)?~~ → At the
+      top of the strip, above every thumbnail
+- [x] ~~Collapsing the group while an advanced layout is active: the active thumbnail stays visible
+      below the header, collapsing is refused, or it hides like the others?~~ → The active one stays
+      visible
+- [x] ~~How long does the expanded state last: the whole session, or until the image count
+      changes?~~ → Until the image count changes
 - [ ] Tests: create a test project for the catalog, or no unit test for this work?
 
 ---
@@ -256,6 +263,13 @@ caveat is gone — every new layout gets its separators, the dynamic cross inclu
 constructors that rebuild a layout, `ActiveLayoutClicked` and `WithDefaultSizes()` on the advanced
 thumbnails too, unique ids.
 
+### Iteration 5 — 2026-09-26
+
+Strip answers (Q&A #5–#8, #10): all 12 layouts kept, the ones reachable through cell resize as exact
+one-click presets; the mirror toggle moves to the **top** of the strip (an answer outside the two
+options offered); collapsing keeps the active advanced thumbnail visible; the group collapses when
+the image count changes. Only the tests question remains.
+
 ---
 
 ## Implementation Log
@@ -281,12 +295,12 @@ Questions asked by the agent during design, with user responses.
 | 2 | Up to how many cells? | Out of scope: 4 cells at most for now | 2026-09-26 |
 | 3 | What if the strip gets too long? | A scrollbar | 2026-09-26 |
 | 4 | Straightforward or tricky / long? | Straightforward | 2026-09-26 |
-| 5 | Keep the proposed list, or drop some? | | |
-| 6 | Where does the mirror toggle go? | | |
-| 7 | Collapsing while an advanced layout is active? | | |
-| 8 | Lifetime of the expanded state? | | |
+| 5 | Keep the proposed list, or drop some? | All 12 kept (merged with #10) | 2026-09-26 |
+| 6 | Where does the mirror toggle go? | At the top of the strip | 2026-09-26 |
+| 7 | Collapsing while an advanced layout is active? | The active thumbnail stays visible | 2026-09-26 |
+| 8 | Lifetime of the expanded state? | Until the image count changes | 2026-09-26 |
 | 9 | Tests: create a test project, or none? | | |
-| 10 | Proposals reachable through cell resize: exact presets, or dropped? | | |
+| 10 | Proposals reachable through cell resize: exact presets, or dropped? | Kept — all 12, as exact presets | 2026-09-26 |
 | 11 | Order of delivery against cell resize? | After it: the cell resize session notifies this one once implemented, then the go is proposed here | 2026-09-26 |
 
 ---
