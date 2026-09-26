@@ -240,6 +240,11 @@ Delivered as designed; no rule broken. The choices the design left open, or stat
 - the build ran while two instances of the app were running and locking the exe: the copy was
   retried and went through once they ended on their own — nothing was killed by the run.
 
+### Iteration 4 — 2026-09-27 — ✅ Finished
+
+The user confirmed the task is finished, the app launched for the test having exited cleanly
+(exit code 0). The workfile stays the log of any later adjustment.
+
 ---
 
 ## Implementation Log
