@@ -140,7 +140,7 @@ internal sealed class GridPreview : Control
     /// <summary>Raised when the drop zone right of the canvas, or the empty canvas, is clicked.</summary>
     public event EventHandler? AddImagesClicked;
 
-    /// <summary>Raised with the file's path when the folder icon after the selected cell's file name is clicked.</summary>
+    /// <summary>Raised with the file's path when the folder icon before the selected cell's file name is clicked.</summary>
     public event EventHandler<string>? ShowInExplorerClicked;
 
     /// <summary>Raised when the active layout changes, picked by the user or reset with the image count, or when its cells are resized.</summary>
@@ -1798,7 +1798,7 @@ internal sealed class GridPreview : Control
 
     /// <summary>
     /// The file name of the selected cell's image at the bottom left of the cell, and the folder
-    /// icon after it (none without a file): the text as a path, its bounds and the icon's. <c>null</c>
+    /// icon before it (none without a file): the text as a path, its bounds and the icon's. <c>null</c>
     /// without a selected image, during a swap, and in a cell too narrow for it.
     /// </summary>
     private GraphicsPath? SourceNamePath(out Rectangle cell, out Rectangle textBounds, out Rectangle icon)
@@ -1824,15 +1824,16 @@ internal sealed class GridPreview : Control
         float size = LogicalToDeviceUnits(SourceNameTextSize);
         var family = Font.FontFamily;
         float line = size * family.GetLineSpacing(FontStyle.Bold) / family.GetEmHeight(FontStyle.Bold);
-        var origin = new PointF(cell.X + inset, cell.Bottom - inset - line);
+        float top = cell.Bottom - inset - line;
+        if (iconSize > 0)
+        {
+            icon = new Rectangle(cell.X + inset, (int)(top + (line - iconSize) / 2), iconSize, iconSize);
+        }
+
+        var origin = new PointF(iconSize > 0 ? icon.Right + gap : cell.X + inset, top);
         var path = new GraphicsPath();
         path.AddString(FittedSourceName(image, width, size), family, (int)FontStyle.Bold, size, origin, StringFormat.GenericTypographic);
         textBounds = Rectangle.Ceiling(path.GetBounds());
-        if (iconSize > 0)
-        {
-            icon = new Rectangle(textBounds.Right + gap, (int)(origin.Y + (line - iconSize) / 2), iconSize, iconSize);
-        }
-
         return path;
     }
 
@@ -1898,7 +1899,7 @@ internal sealed class GridPreview : Control
 
     /// <summary>
     /// The source name, a helper indicator: green over the black halo, clipped to its cell; the
-    /// folder icon after it turns white while hovered.
+    /// folder icon before it turns white while hovered.
     /// </summary>
     private void PaintSourceName(Graphics g)
     {
