@@ -75,13 +75,16 @@ Components touched: `Composition/GridBorders.cs`, `Composition/Compositor.cs`,
 
 ### Rendering
 
-- At the grid level, in `Compositor.Draw`, **after** the cells and the Borders' lines.
-- **Outputs with alpha** (PNG, the clipboard's PNG): everything outside the rounded rectangle of
-  the canvas becomes **transparent**, with an **anti-aliased** edge.
+- The curved brackets and frame corners are drawn in `Compositor.Draw` (`GridBorders.Draw` /
+  `DrawOver`), so every output has them.
+- **The cut** is a separate step, `GridBorders.CutCorners(bitmap[, area])`, applied to the rendered
+  bitmap where alpha is kept — the PNG saved or copied (`MainForm.SaveAs`, `MainForm.Copy`, after
+  the clipboard's flattened bitmap is taken) and the preview's cache: everything outside the rounded
+  rectangle becomes **transparent**, with an **anti-aliased** edge (per-pixel coverage from the
+  distance to the curve).
 - **Outputs without alpha** (JPEG for sharing, MP4, GIF, the clipboard's bitmap): the corners are
   **not cut** — they keep the image's pixels, and Twitter rounds them itself, so no white or black
   sliver ever shows in its light or dark mode. The Borders still **follow the curve** there.
-- So `Compositor.Draw` takes whether the output keeps alpha: the mask is applied only when it does.
 - Resolution-independent: the radius is a fraction of the canvas, so the preview and every export
   size look the same.
 
@@ -91,7 +94,9 @@ Components touched: `Composition/GridBorders.cs`, `Composition/Compositor.cs`,
   inner edge a concentric curve of radius `radius − width` (square when the width exceeds the
   radius) — then runs straight along each edge to the end of its arm. An arm is at least as long as
   the radius, so the curve always fits in the bracket.
-- **Outer frame** (gap styles): drawn along the rounded rectangle, same principle.
+- **Outer frame** (gap styles): its corners are drawn over the corner cells along the rounded
+  outline (a solid ring for Solid, Dashed and Dotted; two concentric lines for Double), its straight
+  sides stopping where the curved corners begin.
 - Gap styles without an outer frame: nothing to follow; the corner cells are simply rounded by the
   mask.
 
@@ -212,6 +217,31 @@ Go given: "Implement code, unit tests and documentation" (unit tests: none, by Q
 gate: stays on `main`, the standing choice for this repository. Scope frozen as the domain sections
 stand at Iteration 5.
 
+### Iteration 7 — 2026-09-26 — 🧭 Implementation choices
+
+- **The cut is not in `Compositor.Draw`** (the design said `Compositor.Draw` takes whether the
+  output keeps alpha): `Compositor.Render` feeds both the PNG and its flattened copies (clipboard
+  bitmap, JPEG for sharing) from one bitmap, so the cut became its own step,
+  `GridBorders.CutCorners`, applied only where alpha is kept. Same result, one render.
+- **Outer frame corners**: Solid, Dashed and Dotted get a solid curved corner; Double gets two
+  concentric curved lines. The frame's straight sides are shortened by the corner's reach so a
+  double or dashed line never runs into the curve (found on a render check, fixed in its own commit).
+- **Corners style arms**: at least as long as the radius (`max(width, radius, 10 % of the edge)`),
+  so a very elongated grid's short arms still hold the whole curve.
+- **Preview**: the cut is re-applied per redrawn cell (`RedrawCell`, `RedrawCells`), on that cell's
+  rectangle only, so pixels already cut are never cut twice; the checkerboard is filled through the
+  same anti-aliased rounded rectangle.
+- **Registry value**: `HKCU\Software\ImageGridFusion\TwitterCornersByDefault` (DWORD, 1 / 0);
+  missing or unreadable means on. The ⚙ item is not locked while exporting: it never touches the
+  open grid.
+- **Global effects row**: the checkbox is added after *Outer frame*; the row does not wrap, so with
+  the Soundtrack and the Borders both on, a narrow window may clip its end (as it already could).
+- **Branch**: `main`, the repository's standing choice.
+- **Delivery launch**: the `bin` executable was locked by an instance started before this session
+  (not closed by the agent); the app was built into and launched from the session's scratchpad
+  instead.
+- No rule broken.
+
 ---
 
 ## Implementation Log
@@ -221,9 +251,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
+| Code | Iterations 6, 7 | 2026-09-26 | Borders off by default; Twitter corners model + drawing; preview; PNG cut; checkbox + ⚙ setting; frame-band fix — six commits |
+| Unit tests | — | 2026-09-26 | None, by decision (Q&A #8): no test project |
+| README | Iteration 6 | 2026-09-26 | § Borders, feature list, ⚙ menu |
+| Glossary | Iteration 6 | 2026-09-26 | *Borders* off at start-up; *Twitter corners* |
 
 ---
 
