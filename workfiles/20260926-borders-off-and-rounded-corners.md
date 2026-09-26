@@ -48,17 +48,30 @@ Components touched: `Composition/GridBorders.cs`, `Composition/Compositor.cs`,
 
 - A **checkbox among the Borders' options** in the Global effects row, next to *Outer frame*,
   enabled for **every style** (Corners included), shown only while the Borders are on, like the
-  other options. Label: see Open Questions.
-- A setting of the Borders: `GridBorders.Rounded` (`bool`), **true** in `GridBorders.Initial`; kept
-  while the Borders are off, reset by *Clear all* with the other settings; not persisted.
+  other options. Label **Twitter corners**, tooltip "Rounds the grid's corners like Twitter / X
+  shows images; the borders follow the curve".
+- A setting of the Borders: `GridBorders.Rounded` (`bool`); kept while the Borders are off, put back
+  to its default by *Clear all* with the other settings; not persisted itself.
+- **Its default** comes from the ⚙ setting below: `GridBorders.Initial(color, rounded)`.
 - It rounds the **grid's four outer corners only** — not each cell, not the gap between the cells.
 - **Radius: Twitter's own**, fixed, no slider. Measured on the user's screenshot: a radius of
   ~24 px on an image displayed 810 px wide — Twitter's 16 CSS px on a ~540 px wide display at
   150 % — that is **3 % of the displayed width**. Twitter shows a landscape grid by its width and a
   portrait one by its height, so the radius is **3 % of the grid's longer side**
   (`GridBorders.CornerRadiusShare = 0.03`).
-- Borders off: see Open Questions (square corners, as the option belongs to the Borders?).
+- **Borders off: square corners** — the rounding is a Borders option, so the grid, which now
+  starts with the Borders off, starts square.
 - Hit-testing is unchanged: a rounded-off corner still belongs to its cell.
+
+### Default Setting (⚙ Menu)
+
+- A checkable item of the **⚙ menu**, **Twitter corners by default**, sets whether the checkbox is
+  checked in the Borders' initial state. It concerns this option only.
+- Remembered between sessions per user in `HKCU\Software\ImageGridFusion`, like the Border color
+  (`UI/AppSettings.cs`) — an app setting read by a global effect, per RULES.md § Global Effects.
+  **Checked** until it is ever changed.
+- It sets the **default** only: read at start-up and by *Clear all*. Changing it does **not**
+  touch the checkbox of the open grid.
 
 ### Rendering
 
@@ -124,11 +137,10 @@ workfile stayed test-free.
 - [x] ~~Start-up setting: its value at first launch?~~ → On (Q&A #11) *(revised 2026-09-26, see Iteration 4)*
 - [x] ~~Start-up setting: applies right away?~~ → No: at the next start-up and *Clear all* only
   (Q&A #12) *(revised 2026-09-26, see Iteration 4)*
-- [ ] The ⚙ start-up setting of Iteration 3: dropped, now that the checkbox is checked by default
-  and *Clear all* checks it again — or kept, to choose the checkbox's default?
-- [ ] Borders off: are the corners square (the rounding is a Borders option), or still rounded
-  while the checkbox stays checked?
-- [ ] The checkbox's label?
+- [x] ~~The ⚙ start-up setting: dropped, or kept as the checkbox's default?~~ → Kept: "Twitter
+  corners by default", checked until changed, read at start-up and by *Clear all* (Q&A #13)
+- [x] ~~Borders off: square corners, or still rounded?~~ → Square (Q&A #14)
+- [x] ~~The checkbox's label?~~ → "Twitter corners" (Q&A #15)
 
 ---
 
@@ -183,6 +195,17 @@ preview re-applying the rounding to redrawn cells. The *Rounded corners* toggle,
 start-up setting go with the global effect; whether the setting survives as the checkbox's
 default, what happens with the Borders off, and the label become Open Questions.
 
+### Iteration 5 — 2026-09-26
+
+Answers to Q&A #13–#15: the ⚙ setting survives as **Twitter corners by default** — it sets the
+checkbox's default (checked until changed), read at start-up and by *Clear all*, never touching the
+open grid (Q&A #12 carried over); with the Borders off the grid is square; the checkbox is labelled
+**Twitter corners**. No Open Question left.
+
+Documentation planned with the code: README (§ Borders: off at start-up, the Twitter corners
+option, the ⚙ item; the feature list), GLOSSARY (*Borders* no longer "on at start-up", a *Twitter
+corners* entry).
+
 ---
 
 ## Implementation Log
@@ -216,9 +239,9 @@ Questions asked by the agent during design, with user responses.
 | 10 | Start-up setting: Rounded corners only, or the Borders too? | "It belongs to this feature in particular" → Rounded corners only | 2026-09-26 |
 | 11 | Start-up setting: value at first launch? | On | 2026-09-26 |
 | 12 | Start-up setting: applies right away, or at the next start-up and *Clear all* only? | At the next start-up and *Clear all* (recommended) | 2026-09-26 |
-| 13 | The ⚙ start-up setting: dropped, or kept as the checkbox's default? | | 2026-09-26 |
-| 14 | Borders off: square corners, or still rounded? | | 2026-09-26 |
-| 15 | The checkbox's label? | | 2026-09-26 |
+| 13 | The ⚙ start-up setting: dropped, or kept as the checkbox's default? | Kept, it sets the checkbox's default | 2026-09-26 |
+| 14 | Borders off: square corners, or still rounded? | Square (recommended) | 2026-09-26 |
+| 15 | The checkbox's label? | "Twitter corners" (recommended) | 2026-09-26 |
 
 ---
 
