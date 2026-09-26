@@ -290,6 +290,12 @@ checklist); hidden and system files and folders skipped by the scan; the panel c
 own `»` / `«` buttons, nothing added to the bottom bar; the favorites list shows the most recently
 added first. No open question remains.
 
+### Iteration 3 — 2026-09-26 — ✅ Implemented
+
+Go given for the code and the documentation (*Implement code, unit tests and documentation*, the
+unit tests being declined at Q&A #13). The run stays on `main`, the standing choice of this
+repository — no worktree asked.
+
 ---
 
 ## Implementation Log
