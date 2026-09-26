@@ -33,7 +33,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
   - Drop a file or a text onto a cell to replace it
   - **Clear all** (bottom left) removes every image and the global effects at once, with no confirmation, back to the initial state
 - Effects per cell, from the effect tabs at the top of the window (see Effects), and global effects for the whole grid, from the row above the bottom bar (see Global effects)
-  - **Borders** on the grid, on from the start: hotpink brackets at its four corners, or a gap between the cells drawn as a solid, dashed, dotted or double line, with an optional outer frame; their color is set from the **⚙** menu and remembered (see Borders)
+  - **Borders** on the grid, off at start-up: hotpink brackets at its four corners, or a gap between the cells drawn as a solid, dashed, dotted or double line, with an optional outer frame; the grid's corners rounded the way Twitter / X shows images; their color is set from the **⚙** menu and remembered (see Borders)
 - Copy to clipboard (`Ctrl+C`) or save (`Ctrl+S`): a PNG, or an MP4 video when the grid holds content that plays or a soundtrack is on; the ▾ arrow next to each button forces a looping GIF or an MP4 video; Copy's also offers a light JPEG for sharing in chat apps that cap image size (WhatsApp: 16 MB)
 - Lives in the notification area: closing the window only hides it, the tray icon brings it back, and it can start with Windows (see Tray & startup)
 
@@ -121,13 +121,18 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
 
 ### Borders
 
-- **On at start-up**, in the **Corners** style, and back to that state with **Clear all**. Click **▦ Borders** to turn them off or on, their settings kept.
+- **Off at start-up**, and back to that state with **Clear all**. Click **▦ Borders** to turn them on — in the **Corners** style the first time — or off, their settings kept.
 - Options, while they are on:
   - the **style**: **Corners** (the app's signature, the default), **Solid**, **Dashed**, **Dotted** or **Double**;
   - the **thickness**, from 0.1 to 6 % of the grid's shorter side (default 0.6 %), so the preview and every export size look the same;
-  - **Outer frame**, off by default: also borders the grid itself. Disabled in the Corners style, whose brackets already are its frame.
+  - **Outer frame**, off by default: also borders the grid itself. Disabled in the Corners style, whose brackets already are its frame;
+  - **Twitter corners**, for every style, on by default (see below).
 - **Corners**: an L-shaped bracket over the images at each of the grid's four corners, each arm covering 10 % of the edge it lies on — the cells are left as they are.
 - The other styles leave a real **gap** between the cells: the grid keeps its size and the cells shrink to make room — and, with the outer frame, leave a margin as wide around the grid. The style fills the gap; what it leaves unpainted (between dashes or dots, inside the double line) is transparent, like a cell without background (see Background). Clicking in a gap acts on one of the two cells beside it; a separator is still dragged from the gap (see Resizing the cells).
+- **Twitter corners**: Twitter / X shows a posted image with rounded corners, which would cut into the corner brackets. With this option, the grid's **four outer corners** are rounded as Twitter rounds them — a radius of 3 % of the grid's longer side, its 16 px on an image shown about 540 px across — and the corner brackets and the outer frame follow the curve, so the preview shows what Twitter will.
+  - The **preview** and the **PNG** (saved or copied) have the rounded-off corners **transparent**. The outputs without transparency — **JPEG for sharing**, **GIF**, **MP4 video** and the clipboard's plain bitmap — keep their corners, Twitter rounding them itself: no white sliver shows in its dark mode; the brackets and the frame still follow the curve there.
+  - With the Borders off, the corners are square.
+  - **Twitter corners by default**, a checkable item of the **⚙** menu, on until changed and remembered between sessions, sets whether the option is on at start-up and after **Clear all**. Changing it leaves the open grid as it is.
 - **Color**: the **⚙** menu's **Border color** item, with a swatch of the current color, opens the standard color dialog; the color chosen applies at once and is remembered between sessions, per user, in `HKCU\Software\ImageGridFusion`. Hotpink until one is chosen.
 - The borders show in the preview and in every export: PNG, JPEG for sharing, GIF and MP4 video.
 
@@ -353,7 +358,7 @@ Output resolution is kept as high as possible so source images aren't needlessly
 - **Click** the tray icon to bring the window back. **Right-click** it for a menu: **Open**, or **Quit** to close the app completely. Quitting is the only way to exit; logging off or shutting down Windows closes it too.
 - **Start with Windows**: the **⚙** button in the bottom bar opens a menu with this checkable option, off by default. Ticked, the app is launched at session start, hidden: only the tray icon appears.
   - It is stored as a per-user `ImageGridFusion` value in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, running the exe with `--tray`. No settings file, no admin rights.
-- The same menu holds **Border color** (see Borders).
+- The same menu holds **Border color** and **Twitter corners by default** (see Borders).
   - If the exe is moved, the registration follows it the next time it is launched from its new place (any copy of the exe launched takes the registration over).
   - Disabling the app in Windows *Settings → Apps → Startup* is not reflected by the option.
 - Several instances can run side by side, each with its own window and tray icon.
