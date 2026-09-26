@@ -171,8 +171,9 @@ Iteration 7). What this work builds on:
 - The **mirror toggle moves to the top** of the strip, above every thumbnail (Q&A #6): its place no
   longer depends on how many thumbnails follow.
 - Then the **basic thumbnails**, as today (the existing layouts, in their current order).
-- Then an **Advanced** header, a clickable row labelled `Advanced ▸` when collapsed, `Advanced ▾`
-  when expanded. **Collapsed by default.**
+- Then the **advanced group's header**, a clickable row labelled `More ▸` when collapsed, `More ▾`
+  when expanded (Iteration 8). **Collapsed by default.** The layouts it holds are still called
+  *advanced* in the code and the documentation (`IsAdvanced`).
 - Expanded, the count's **advanced thumbnails** follow the header, drawn like the basic ones
   (hover, active highlight, tooltip with the layout name, click on the active one resetting the
   cell sizes).
@@ -281,6 +282,12 @@ instead. No question remains open.
 
 Go given: code, tests and documentation (unit tests declined by decision, Q&A #9). Implemented on
 `main`, the repository's standing choice at the Branch Gate.
+
+### Iteration 8 — 2026-09-26 — ⚙️ Post-implementation — Header labelled "More"
+
+Requested during the run, once the strip was seen working: the group's header reads **More** instead
+of **Advanced** (`More ▸` / `More ▾`). Only the visible label and its tooltips change; the layouts
+keep being called *advanced* in the code (`IsAdvanced`) and the documentation.
 
 ---
 
