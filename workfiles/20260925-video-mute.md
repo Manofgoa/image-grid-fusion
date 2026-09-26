@@ -278,7 +278,9 @@ the videos shifting after a deletion stays **kept** (Q&A 23), the reason of 2026
 holding. `Animation.SoundOnArrival` and `VolumeEffect.Muted` go; `RULES.md`'s *Volume Exception*
 keeps its deletion line only; `GLOSSARY.md` loses *Sound on arrival*; the README follows.
 § Sound on Arrival becomes § Default State and Arrival; § README and § RULES updated; the revised
-Open Questions annotated. Go given for code and documentation (Q&A 24), on `main`.
+Open Questions annotated. Go given for code and documentation (Q&A 24), on `main`. Delivered the
+same day: the code, then README / RULES / GLOSSARY, in two commits, built clean — no divergent
+choice; the app launched with two videos with sound, both heard at once.
 
 ---
 
@@ -289,10 +291,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 6, 7, 8 | 2026-09-26 | State, export mixer, preview mixer, Volume tab — 4 commits; verified with a scratchpad harness exporting 3 videos (one without sound, one at 200 %) and an all-muted grid |
+| Code | 6, 7, 8, 10 | 2026-09-27 | State, export mixer, preview mixer, Volume tab — 4 commits; verified with a scratchpad harness exporting 3 videos (one without sound, one at 200 %) and an all-muted grid. Iteration 10: the sound on arrival dropped — `Animation.SoundOnArrival` and `VolumeEffect.Muted` removed, `GridPreview.Add` and `MainForm.ResetLook` general — 1 commit, built clean |
 | Unit tests | 4 | 2026-09-25 | Declined by the user — no test project, manual verification |
-| README | 6, 7, 8 | 2026-09-26 | Volume section, Effects and Sound bullets; the slider never disabled; Mute first |
-| RULES | 6 | 2026-09-26 | § Effects — *The Volume Exception*; GLOSSARY: Volume, Heard, Sound on arrival |
+| README | 6, 7, 8, 10 | 2026-09-27 | Volume section, Effects and Sound bullets; the slider never disabled; Mute first. Iteration 10: a video arrives heard at 100 %, the Reset sentence without its Volume case |
+| RULES | 6, 10 | 2026-09-27 | § Effects — *The Volume Exception*; GLOSSARY: Volume, Heard, Sound on arrival. Iteration 10: the exception reduced to the deletion shift; GLOSSARY loses *Sound on arrival* |
 
 ---
 
