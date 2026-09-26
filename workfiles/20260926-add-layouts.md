@@ -124,6 +124,35 @@ Uneven grid            Bricks                 Corner
 
 ---
 
+## Interplay with Cell Resize
+
+`workfiles/20260926-cell-resize.md` (designed, go pending) lets the user drag the separators
+between cells. It does **not** block any proposed layout: each one is a plain unit tiling that the
+current engine renders as is. But once it ships, several proposals become **the same topology as an
+existing layout, at other proportions** — reachable by dragging, though without exact proportions
+(its snapping only targets the layout's own positions and alignable separators).
+
+| Proposal | With cell resize |
+|---|---|
+| Two thirds + one third, stacked | *Two rows*, separator dragged to 2/3 |
+| Three quarters + one quarter | *Two columns* (or *Two thirds + one third*), separator dragged to 3/4 |
+| Big top, uneven | *Big top* (3 images), bottom separator dragged to 2/3 |
+| Uneven grid | *Grid*, both vertical arms dragged to 2/3 and realigned |
+| Bricks | *Grid*, vertical line broken: top arm at 2/3, bottom arm at 1/3 |
+| Corner (4 images) | *Grid*, cross moved to (2/3, 2/3) |
+| Big centre (3 images) | *Three columns* resized — but image 1 then sits left, not centre (a swap fixes it) |
+| Corner (3 images) | *Big left* mirrored and resized — but image 1 then takes the tall column (a swap fixes it) |
+| Three rows, Four rows, Big centre (4 images), Tall left, mixed | **New topologies**, not reachable |
+
+Consequences for the order of delivery:
+
+**Cell resize is delivered first** (Q&A #11): this work only adds catalog entries and the strip's
+Advanced group; the new layouts' separators come from cell resize's generic definition, and its
+*Grid* cross (dynamic arms) must also apply to the other 2 × 2 topologies — *Uneven grid*, *Bricks*,
+*Corner* (4 images) — if they are kept.
+
+---
+
 ## Layout Strip
 
 - **Basic thumbnails** first, as today (the existing layouts, in their current order).
@@ -161,6 +190,10 @@ test can be updated. Whether to create one is an Open Question; until it is sett
 
 - [ ] Is the proposed list kept as is, or are some layouts dropped (e.g. *Three rows* at 5.73 and
       *Four rows* at 7.64 give very thin bands)?
+- [ ] The proposals reachable through cell resize (see *Interplay with Cell Resize*): kept as exact
+      presets, or dropped in favour of dragging?
+- [x] ~~Order of delivery against cell resize: this work before or after it?~~ → After: the cell
+      resize session notifies this one once implemented, then the go is asked here
 - [ ] Where does the mirror toggle go: right after the basic thumbnails (fixed place, above the
       Advanced header), or at the very end of the strip (after the advanced thumbnails)?
 - [ ] Collapsing the group while an advanced layout is active: the active thumbnail stays visible
@@ -185,6 +218,21 @@ revealed on click, 4 cells at most, a scrollbar when the strip overflows, a stra
 Initial proposal: 12 advanced layouts built from rectangles on the existing unit grid (2 for
 2 images, 4 for 3, 6 for 4), an `IsAdvanced` flag on `GridLayout`, an `Advanced ▸ / ▾` header in the
 strip, hidden when the count has no advanced layout, and a vertical scrollbar shown on overflow.
+
+### Iteration 2 — 2026-09-26
+
+User remark: *Bricks* seems to need the cell resize task first. Checked against
+`workfiles/20260926-cell-resize.md`: it renders with the current engine, so no dependency — but
+*Bricks* is the *Grid* with its vertical line broken, and five other proposals are also existing
+topologies at other proportions. Added *Interplay with Cell Resize*, and two questions: keep those
+proposals as exact presets or drop them, and the order of delivery against cell resize.
+
+### Iteration 3 — 2026-09-26
+
+Order of delivery settled (Q&A #11): **after cell resize**. The cell resize session is asked to
+notify this one once its implementation is delivered; the go for this workfile is proposed then.
+Delivering second, this work only adds catalog entries and the strip's Advanced group; the new
+layouts' separators must follow cell resize's generic definition, the 2 × 2 cross caveat included.
 
 ---
 
@@ -216,6 +264,8 @@ Questions asked by the agent during design, with user responses.
 | 7 | Collapsing while an advanced layout is active? | | |
 | 8 | Lifetime of the expanded state? | | |
 | 9 | Tests: create a test project, or none? | | |
+| 10 | Proposals reachable through cell resize: exact presets, or dropped? | | |
+| 11 | Order of delivery against cell resize? | After it: the cell resize session notifies this one once implemented, then the go is proposed here | 2026-09-26 |
 
 ---
 
