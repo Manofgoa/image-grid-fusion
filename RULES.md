@@ -47,6 +47,10 @@ The Volume effect's default state depends on the **other cells** (origin:
   **as tall as the tabs**. Every action on the image is an effect: the cell itself only keeps the
   **×**, the **✥** swap handle, and the wheel and drag gestures (origin:
   `workfiles/20260925-toolbar.md`, `workfiles/20260925-ui-cleanup.md`).
+- The **separators** between cells resize the **grid**, not an image: they are no effect and have
+  no tab. Their sizes belong to the cell slots — kept on a swap or a replaced image, reset with the
+  layout or the image count — and the toolbar's **Reset** also puts them all back (origin:
+  `workfiles/20260926-cell-resize.md`).
 - Each tab holds an **activation checkbox**, checked while its effect is **on** for the **selected
   cell**. The **selected tab** is the one whose options show; it is drawn joined to the options
   toolbar. The two states are never carried by one control.
