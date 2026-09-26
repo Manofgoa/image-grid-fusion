@@ -163,10 +163,15 @@ internal sealed class MainForm : Form
     private readonly TrackBar _bordersThickness = OptionSlider((int)Math.Round(GridBorders.MinThickness * 1000), (int)Math.Round(GridBorders.MaxThickness * 1000), 5);
     private readonly Label _bordersThicknessLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _bordersOuterFrame = new() { Text = "Outer frame", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _bordersRounded = new() { Text = "Twitter corners", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly ToolStripMenuItem _borderColor = new("Border color…");
+    private readonly ToolStripMenuItem _twitterCornersDefault = new("Twitter corners by default");
+
+    // Whether the borders' initial state has its Twitter corners: a setting of the ⚙ menu, remembered between sessions.
+    private bool _roundedByDefault = AppSettings.TwitterCornersByDefault;
 
     // The borders' settings, kept while they are off; back to their initial state, off, with Clear all.
-    private GridBorders _borders = GridBorders.Initial(AppSettings.BorderColor, rounded: true);
+    private GridBorders _borders = GridBorders.Initial(AppSettings.BorderColor, AppSettings.TwitterCornersByDefault);
     private bool _bordersOn;
 
     public MainForm(string[] args)
@@ -247,7 +252,7 @@ internal sealed class MainForm : Form
         _globalRow.Controls.AddRange(
         [
             _globalLabel, _soundtrackToggle, _soundtrackBrowse, _soundtrackFile, _soundtrackVolume, _soundtrackVolumeLabel,
-            _bordersToggle, _bordersStyle, _bordersThickness, _bordersThicknessLabel, _bordersOuterFrame,
+            _bordersToggle, _bordersStyle, _bordersThickness, _bordersThicknessLabel, _bordersOuterFrame, _bordersRounded,
         ]);
 
         // Docked in reverse order of addition: the options row and the tabs row, then the bottom bar
@@ -266,12 +271,14 @@ internal sealed class MainForm : Form
         _outputButtons.SizeChanged += (_, _) => FitStatusWidth();
         _cancelButton.VisibleChanged += (_, _) => FitStatusWidth();
         _clearButton.Click += (_, _) => ClearAll();
-        _settingsMenu.Items.AddRange([_startWithWindows, _borderColor]);
+        _settingsMenu.Items.AddRange([_startWithWindows, _borderColor, _twitterCornersDefault]);
         _toolTip.SetToolTip(_settingsButton, "Settings");
         _settingsButton.Click += (_, _) => ShowSettings();
         _startWithWindows.Click += (_, _) => ToggleStartWithWindows();
         _borderColor.ToolTipText = "The color of the borders, remembered between sessions";
         _borderColor.Click += (_, _) => PickBorderColor();
+        _twitterCornersDefault.ToolTipText = "Whether the borders start with their Twitter corners, at start-up and after Clear all; remembered between sessions";
+        _twitterCornersDefault.Click += (_, _) => ToggleTwitterCornersDefault();
         _copyButton.Click += (_, _) => CopyToClipboard();
         _saveButton.Click += (_, _) => Save();
         _copyGif.Click += (_, _) => Copy(GridExport.Format.Gif);
@@ -348,6 +355,8 @@ internal sealed class MainForm : Form
             ChangeBorders(borders => borders with { Thickness = _bordersThickness.Value / 1000.0 });
         };
         _bordersOuterFrame.CheckedChanged += (_, _) => ChangeBorders(borders => borders with { OuterFrame = _bordersOuterFrame.Checked });
+        _toolTip.SetToolTip(_bordersRounded, "Rounds the grid's corners like Twitter / X shows images; the borders follow the curve");
+        _bordersRounded.CheckedChanged += (_, _) => ChangeBorders(borders => borders with { Rounded = _bordersRounded.Checked });
         _globalRow.DragEnter += (_, e) => e.Effect = e.Data?.GetDataPresent(DataFormats.FileDrop) == true ? DragDropEffects.Copy : DragDropEffects.None;
         _globalRow.DragDrop += async (_, e) =>
         {
@@ -811,7 +820,7 @@ internal sealed class MainForm : Form
         _soundtrack = null;
         _soundtrackOn = false;
         ApplySoundtrack();
-        _borders = GridBorders.Initial(_borders.Color, rounded: true);
+        _borders = GridBorders.Initial(_borders.Color, _roundedByDefault);
         _bordersOn = false;
         ApplyBorders();
 
@@ -1023,7 +1032,7 @@ internal sealed class MainForm : Form
     private GridBorders? ActiveBorders => _bordersOn ? _borders : null;
 
     /// <summary>Whether the borders are as the app starts: off, with their initial settings.</summary>
-    private bool BordersInitial => !_bordersOn && _borders == GridBorders.Initial(_borders.Color, rounded: true);
+    private bool BordersInitial => !_bordersOn && _borders == GridBorders.Initial(_borders.Color, _roundedByDefault);
 
     /// <summary>A video to export: content that plays, or a soundtrack over stills.</summary>
     private bool ProducesVideo => HasAnimation || ActiveSoundtrack is not null;
@@ -1247,6 +1256,7 @@ internal sealed class MainForm : Form
     private void ShowSettings()
     {
         _startWithWindows.Checked = StartupRegistration.IsEnabled;
+        _twitterCornersDefault.Checked = _roundedByDefault;
 
         // Locked like the Global effects row: an export keeps the borders it started with.
         _borderColor.Enabled = !IsExporting;
@@ -1749,6 +1759,28 @@ internal sealed class MainForm : Form
         }
     }
 
+    /// <summary>
+    /// The ⚙ menu's Twitter corners by default: whether the borders' initial state has them, at the next
+    /// start-up and after Clear all — the borders of the open grid left as they are. Remembered between sessions.
+    /// </summary>
+    private void ToggleTwitterCornersDefault()
+    {
+        bool enable = !_twitterCornersDefault.Checked;
+        try
+        {
+            AppSettings.SaveTwitterCornersByDefault(enable);
+            _roundedByDefault = enable;
+            _twitterCornersDefault.Checked = enable;
+        }
+        catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+        {
+            ShowStatus($"Twitter corners by default not remembered: {ex.Message}", error: true);
+        }
+
+        // The initial state moved: Clear all may now have something to reset, or nothing.
+        UpdateButtons();
+    }
+
     /// <summary>The borders as they stand, to the preview, then to the row and the output buttons.</summary>
     private void ApplyBorders()
     {
@@ -1764,7 +1796,7 @@ internal sealed class MainForm : Form
     {
         bool on = ActiveBorders is not null;
         _bordersToggle.Checked = on;
-        foreach (var option in new Control[] { _bordersStyle, _bordersThickness, _bordersThicknessLabel, _bordersOuterFrame })
+        foreach (var option in new Control[] { _bordersStyle, _bordersThickness, _bordersThicknessLabel, _bordersOuterFrame, _bordersRounded })
         {
             option.Visible = on;
         }
@@ -1774,6 +1806,7 @@ internal sealed class MainForm : Form
         _bordersStyle.SelectedIndex = (int)_borders.Pattern;
         _bordersThickness.Value = (int)Math.Round(_borders.Thickness * 1000);
         _bordersOuterFrame.Checked = _borders.OuterFrame;
+        _bordersRounded.Checked = _borders.Rounded;
         _syncingEffects = syncing;
         _bordersThicknessLabel.Text = ThicknessText(_bordersThickness.Value);
         _bordersOuterFrame.Enabled = _borders.HasGap;
