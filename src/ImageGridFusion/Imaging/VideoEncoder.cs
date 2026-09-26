@@ -6,8 +6,8 @@ namespace ImageGridFusion.Imaging;
 
 /// <summary>
 /// Writes an MP4 file with the Media Foundation Sink Writer: H.264 video from 32-bit RGB frames, and
-/// optionally the sounds of video files, each looped with its video and scaled by its volume, mixed
-/// and re-encoded to one AAC track. Used from a single thread-pool thread.
+/// optionally the sounds of video files, each looped with its video and scaled by its volume, and of
+/// the soundtrack, looped on its own length, mixed and re-encoded to one AAC track. Used from a single thread-pool thread.
 /// </summary>
 internal sealed class VideoEncoder : IFrameEncoder
 {
@@ -570,5 +570,5 @@ internal sealed class VideoEncoder : IFrameEncoder
     }
 }
 
-/// <summary>A sound of an exported video's mix: a video file, looping every <paramref name="Loop"/> from <paramref name="Start"/>, scaled by <paramref name="Gain"/>.</summary>
+/// <summary>A sound of an exported video's mix: a video or audio file, looping every <paramref name="Loop"/> from <paramref name="Start"/>, scaled by <paramref name="Gain"/>.</summary>
 internal sealed record MixedSound(string Path, TimeSpan Loop, TimeSpan Start, double Gain);
