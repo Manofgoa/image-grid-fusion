@@ -11,8 +11,12 @@ public static class ShellThumbnail
 {
     private const int RequestedSide = 1024;
 
-    /// <summary>Returns null when Windows has no thumbnail for the file.</summary>
-    public static Bitmap? TryLoad(string path)
+    /// <summary>
+    /// Returns null when Windows has no thumbnail for the file. <paramref name="side"/> is the size
+    /// asked for, a bigger one accepted: the cells' previews take the largest, the file explorer's
+    /// tiles a small one.
+    /// </summary>
+    public static Bitmap? TryLoad(string path, int side = RequestedSide)
     {
         IntPtr hbitmap = IntPtr.Zero;
         try
@@ -21,7 +25,7 @@ public static class ShellThumbnail
             SHCreateItemFromParsingName(Path.GetFullPath(path), IntPtr.Zero, ref iid, out var factory);
             try
             {
-                int hr = factory.GetImage(new NativeSize(RequestedSide, RequestedSide), ThumbnailOnly | BiggerSizeOk, out hbitmap);
+                int hr = factory.GetImage(new NativeSize(side, side), ThumbnailOnly | BiggerSizeOk, out hbitmap);
                 return hr == 0 && hbitmap != IntPtr.Zero ? ToBitmap(hbitmap) : null;
             }
             finally
