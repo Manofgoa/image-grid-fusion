@@ -627,6 +627,17 @@ internal sealed class MainForm : Form
         g.DrawLine(border, 0, y, tabsRow.Width, y);
     }
 
+    /// <summary>
+    /// The window opens taller by the global effects' tabs row, so the preview keeps the size it had
+    /// when the global effects sat in a single row; centered again on its screen.
+    /// </summary>
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+        Height = Math.Min(Height + _globalTabsRow.Height, Screen.FromControl(this).WorkingArea.Height);
+        CenterToScreen();
+    }
+
     /// <summary>Closes the window for real, instead of hiding it; the tray's Quit.</summary>
     public void CloseForGood()
     {
