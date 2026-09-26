@@ -11,8 +11,8 @@
 
 When a cell is selected, the preview shows, **at the bottom left of that cell**, the **file name**
 (name + extension) its image came from, drawn as a **helper indicator** (fluorescent green over
-the black halo, preview only, never exported). Right after the name, a small **folder icon** opens
-**Windows Explorer on the file's folder, the file already selected**.
+the black halo, preview only, never exported). Just **before** the name, on its left, a small
+**folder icon** opens **Windows Explorer on the file's folder, the file already selected**.
 
 An image without a source file (pasted from the clipboard, or a dropped text) shows a **label
 naming its source instead of the name**, with **no icon**.
@@ -33,10 +33,11 @@ Components concerned:
 - **When**: a cell is selected (`_selected >= 0`) and holds an image. Only the selected cell shows
   it — hovering another cell shows nothing.
 - **Where**: bottom left of the cell, inset like the cell buttons (`ButtonInset`, 6 logical px),
-  clipped to the cell.
+  clipped to the cell: the folder icon first, then the name, `ButtonGap` apart. Without a file (no
+  icon), the label starts at the inset.
 - **What**: `Path.GetFileName(FilePath)` — name + extension, no folder.
 - **Too wide**: shortened with an **ellipsis in the middle**, the start and the extension kept
-  (`vacances-ete-2…plage.jpg`); the icon always stays visible after it.
+  (`vacances-ete-2…plage.jpg`); the icon always stays visible before it.
 - **Tooltip**: hovering the name **or** the icon shows the file's **full path**.
 - **Look**: a helper indicator (RULES.md § *On-Cell Helper Indicators*): `HelperColor` text over the
   `HelperHalo` outline (4 logical px), bold like the zoom badge but smaller — **12 logical px**
@@ -65,8 +66,8 @@ Components concerned:
 ## Folder Icon
 
 - A small **folder glyph** (a silhouette with its tab up left, **16 logical px**,
-  `SourceIconSize`), drawn right after the — possibly shortened — name, `ButtonGap` apart, in the
-  helper colours; it turns **white** while hovered (the hover feedback the rule allows for a handle).
+  `SourceIconSize`), drawn at the bottom left of the cell, **left of the name**, `ButtonGap`
+  apart, in the helper colours; it turns **white** while hovered (the hover feedback the rule allows for a handle).
 - **Click**: `explorer.exe /select,"<FilePath>"` — Explorer opens on the folder, the file selected.
   `GridPreview` raises `ShowInExplorerClicked` with the path; `MainForm.ShowInExplorer` checks the
   file and runs Explorer. Explorer failing to start shows its error in the status bar.
@@ -155,6 +156,12 @@ Choices the frozen design left open, taken during the run:
 
 No project rule was broken. The run stayed on `main`.
 
+### Iteration 6 — 2026-09-26 — ⚙️ Post-implementation — Icon left of the name
+
+The user asked for the folder icon **on the left of the file name** instead of after it: the icon
+now sits at the bottom-left inset, the name follows it. A file-less label, which has no icon,
+still starts at the inset.
+
 ---
 
 ## Implementation Log
@@ -164,7 +171,7 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 4 | 2026-09-26 | `SourceImage.Dropped`, `MainForm` (origin flag, `ShowInExplorer`), `GridPreview` (name, icon, tooltip, hit testing) |
+| Code | 4, 6 | 2026-09-26 | `SourceImage.Dropped`, `MainForm` (origin flag, `ShowInExplorer`), `GridPreview` (name, icon, tooltip, hit testing) |
 | Unit tests | 4 | 2026-09-26 | Not applicable — no test project |
 | README | 4 | 2026-09-26 | *Features*, under the cell selection |
 
