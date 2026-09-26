@@ -193,6 +193,48 @@ internal static class EffectIcons
         g.FillPolygon(brush, wedge);
     });
 
+    /// <summary>A framed picture, its upper-left half filled in blue, the other half the grey and white squares of transparency.</summary>
+    public static Bitmap Background(int size) => Draw(size, (g, s) =>
+    {
+        var frame = new RectangleF(s * 0.08f, s * 0.16f, s * 0.84f, s * 0.68f);
+        Checker(g, frame, s);
+        using (var fill = new LinearGradientBrush(frame, Color.FromArgb(120, 200, 255), Color.FromArgb(30, 100, 220), 45f))
+        {
+            g.FillPolygon(fill, [new PointF(frame.Left, frame.Top), new PointF(frame.Right, frame.Top), new PointF(frame.Left, frame.Bottom)]);
+        }
+
+        using var rim = new Pen(Color.FromArgb(60, 60, 60), Math.Max(1, s / 16f));
+        g.DrawRectangle(rim, frame.X, frame.Y, frame.Width, frame.Height);
+    });
+
+    /// <summary>The squares of transparency fading into a solid blue, left to right.</summary>
+    public static Bitmap Opacity(int size) => Draw(size, (g, s) =>
+    {
+        var bar = new RectangleF(0, s * 0.2f, s - 1, s * 0.6f);
+        Checker(g, bar, s);
+        using var fill = new LinearGradientBrush(bar, Color.FromArgb(0, 30, 100, 220), Color.FromArgb(255, 30, 100, 220), 0f);
+        g.FillRectangle(fill, bar);
+    });
+
+    /// <summary>Grey and white squares over <paramref name="area"/>, four to the icon's width.</summary>
+    private static void Checker(Graphics g, RectangleF area, int size)
+    {
+        float square = Math.Max(2, size / 4f);
+        var state = g.Save();
+        g.SetClip(area);
+        g.FillRectangle(Brushes.White, area);
+        using var grey = new SolidBrush(Color.FromArgb(190, 190, 190));
+        for (int row = 0; row * square < area.Height; row++)
+        {
+            for (int column = (row + 1) % 2; column * square < area.Width; column += 2)
+            {
+                g.FillRectangle(grey, area.X + column * square, area.Y + row * square, square, square);
+            }
+        }
+
+        g.Restore(state);
+    }
+
     private static Bitmap Draw(int size, Action<Graphics, int> paint)
     {
         size = Math.Max(8, size);
