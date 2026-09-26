@@ -23,8 +23,8 @@ Components:
 | Component | Change |
 |---|---|
 | `Composition/GridLayout.cs` | New catalog entries, flagged advanced |
-| `UI/LayoutStrip.cs` | Advanced group header, expand / collapse, vertical scrolling |
-| `README.md` | *Layouts* section: the advanced group and its layouts |
+| `UI/LayoutStrip.cs` | Mirror toggle on top, Advanced group header, expand / collapse, vertical scrolling |
+| `README.md` | *Layouts* section: the advanced group and its layouts; *Mirror*: the toggle now above the thumbnails |
 | `GLOSSARY.md` | New term: *Advanced layout* |
 
 ---
@@ -191,15 +191,17 @@ Iteration 7). What this work builds on:
 
 ## Test Impact
 
-The solution holds **no test project** (`ImageGridFusion.slnx` lists the app only), so no existing
-test can be updated. Whether to create one is an Open Question; until it is settled:
+No unit test is created or updated: the solution holds no test project and stays test-free by
+decision (Q&A #9), as every previous workfile did. The exact tiling of each new layout, `Default(count)`
+unchanged, the advanced layouts after the basic ones, and their mirror stay untested by decision, not
+because nothing testable changes. Verification is manual: pick every advanced layout of each count,
+mirror the asymmetric ones, drag their separators (the 2 × 2 cross on *Uneven grid*, *Bricks*,
+*Corner*), collapse / expand the group with a basic then an advanced layout active, change the image
+count, scroll a strip taller than the window, then a copy / save.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| Every layout tiles its units exactly, without overlap, with `Count` between 1 and 4 | *(pending)* | *(pending)* |
-| `Default(count)` is still the first basic layout | *(pending)* | *(pending)* |
-| Advanced layouts come after the basic ones in `For(count)` | *(pending)* | *(pending)* |
-| `Mirrored()` of each asymmetric advanced layout still tiles exactly, and twice gives back the original | *(pending)* | *(pending)* |
+| — (test-free by decision, Q&A #9) | — | — |
 
 ---
 
@@ -219,7 +221,7 @@ test can be updated. Whether to create one is an Open Question; until it is sett
       visible
 - [x] ~~How long does the expanded state last: the whole session, or until the image count
       changes?~~ → Until the image count changes
-- [ ] Tests: create a test project for the catalog, or no unit test for this work?
+- [x] ~~Tests: create a test project for the catalog, or no unit test for this work?~~ → Test-free
 
 ---
 
@@ -270,6 +272,11 @@ one-click presets; the mirror toggle moves to the **top** of the strip (an answe
 options offered); collapsing keeps the active advanced thumbnail visible; the group collapses when
 the image count changes. Only the tests question remains.
 
+### Iteration 6 — 2026-09-26
+
+Tests (Q&A #9): the solution stays test-free; *Test Impact* describes the manual verification
+instead. No question remains open.
+
 ---
 
 ## Implementation Log
@@ -280,7 +287,7 @@ says so rather than staying blank.
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
 | Code | | | |
-| Unit tests | | | |
+| Unit tests | 6 | 2026-09-26 | Declined — test-free by decision (Q&A #9) |
 | README | | | |
 
 ---
@@ -299,7 +306,7 @@ Questions asked by the agent during design, with user responses.
 | 6 | Where does the mirror toggle go? | At the top of the strip | 2026-09-26 |
 | 7 | Collapsing while an advanced layout is active? | The active thumbnail stays visible | 2026-09-26 |
 | 8 | Lifetime of the expanded state? | Until the image count changes | 2026-09-26 |
-| 9 | Tests: create a test project, or none? | | |
+| 9 | Tests: create a test project, or none? | Test-free | 2026-09-26 |
 | 10 | Proposals reachable through cell resize: exact presets, or dropped? | Kept — all 12, as exact presets | 2026-09-26 |
 | 11 | Order of delivery against cell resize? | After it: the cell resize session notifies this one once implemented, then the go is proposed here | 2026-09-26 |
 
