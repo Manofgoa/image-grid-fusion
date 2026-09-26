@@ -165,7 +165,7 @@ Questions asked by the agent during design, with user responses.
 | 6 | Keyboard shortcut `Ctrl+Shift+C`? | No shortcut | 2026-09-26 |
 | 7 | Clipboard content: JPEG file only, or file + downscaled bitmap? | JPEG file + downscaled bitmap | 2026-09-26 |
 | 8 | Same option in Save? | No, Copy only | 2026-09-26 |
-| 9 | Go for implementation? | | |
+| 9 | Go for implementation? | No — the gate holds | 2026-09-26 |
 
 ---
 
