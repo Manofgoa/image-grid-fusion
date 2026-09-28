@@ -38,11 +38,13 @@ Components: `UI/FileExplorerPanel.cs` (the header, the rows, the width), `UI/Thu
 - **Where**: a **sixth row** of the panel's table (`_content`), **under the list** — the bottom of
   the panel. Disposition B of the mockup shown on 2026-09-26: a **small tile glyph** at the left,
   the **slider** across the width, a **large tile glyph** at the right; **no value readout** — the
-  ticks and the thumb say it. The row is about 30 logical px tall, sized in `ApplyMetrics()` like
-  the status and caption rows; it hides with the content when the panel is collapsed, and it adds
-  nothing to the width (`ApplyWidth()` and `Surround` untouched).
-- **Control**: a WinForms `TrackBar`, horizontal, `AutoSize = false`, `TickStyle.BottomRight`, one
-  tick per position (`TickFrequency = 1`), `SmallChange = LargeChange = 1`. Its positions are the
+  ticks and the thumb say it. The row is 34 logical px tall, sized in `ApplyMetrics()` like the
+  status and caption rows, the inner table's single row taking all of it (Iteration 4); it hides
+  with the content when the panel is collapsed, and it adds nothing to the width (`ApplyWidth()`
+  and `Surround` untouched).
+- **Control**: a WinForms `TrackBar`, horizontal, `AutoSize = false`, `TickStyle.Both` — the thumb
+  then sits on the row's centre line, level with the glyphs at any DPI (Iteration 4) — one tick per
+  position (`TickFrequency = 1`), `SmallChange = LargeChange = 1`. Its positions are the
   **divisors of N** in ascending order — `Minimum = 0`, `Maximum = divisors.Count − 1`, the value
   an index into them; left = 1 column (small tiles), right = N (one tile across the panel):
 
@@ -54,8 +56,9 @@ Components: `UI/FileExplorerPanel.cs` (the header, the rows, the width), `UI/Thu
   | 4 | 1, 2, 4 |
   | 5 | 1, 5 |
 
-- **Glyphs**: two labels showing `▭` (U+25AD) from *Segoe UI Symbol*, the left one small, the right
-  one larger; tooltips *Smaller tiles* / *Larger tiles*. They are indicators, not buttons.
+- **Glyphs**: two labels showing `▭` (U+25AD) from *Segoe UI Symbol*, the left one at the panel's
+  font size, the right one 6 pt larger; tooltips *Smaller tiles* / *Larger tiles*. They are
+  indicators, not buttons.
 - **Tooltips**: the slider's says *Tile size, in columns*; disabled at N = 1, it says *One column:
   a single tile size*.
 - **Acting on it**: dragging the thumb, clicking the track, the arrow keys when it has the focus,
@@ -178,6 +181,15 @@ Q&A #13 — the standing choice, kept here). The checks, run at delivery:
 | Start-up | 4 columns at size 2 remembered after a restart; `ExplorerSpan` = 3 with 4 columns → 1 |
 | Width | The panel and the window width unchanged by the slider; collapse / expand hide and show it |
 
+Run at delivery — 2026-09-29, by a UI Automation script (`checks.ps1`, in the session's scratchpad,
+not in the repository) driving the built app twice, with screenshots of the window: **Positions**,
+**`+`**, **`−`**, **Wheel** (up, at the end, down, with one column), **Start-up** (4 columns at
+size 2 restored; `ExplorerSpan` 3 with 4 columns → 1) and **Width** (the panel's width identical at
+sizes 1, 2 and 4) — 13 checks, all passed, on both builds (Iteration 4). **Geometry** checked on the
+screenshots: one favorite, its tile on 2 columns, on 4, on 1, the heart and the name in place. Not
+run: **Thumbnails** under the budget with 100 favorites, **Keyboard** by row at every size (one
+favorite only on this machine), collapse / expand — the mechanisms are the existing ones.
+
 ---
 
 ## Open Questions
@@ -244,6 +256,29 @@ Go given for the code and the documentation (*Implémenter code et documentation
 not applying (no test project, § Test Impact). The run stays on `main`, the standing choice of
 this app — no branch question. The scope is the sections above as they stand at the go.
 
+### Iteration 4 — 2026-09-29 — 🧭 Implementation choices
+
+Delivered in three code commits (the `ExplorerSpan` setting; the slider, the grid and the wiring;
+the slider row's fix), one for the README and the glossary, and the workfile's own. **No rule
+broken.** The choices the design left open, or that the run took:
+
+- **Ticks on both sides** (`TickStyle.Both`) instead of `TickStyle.BottomRight`: with the ticks
+  below only, the trackbar draws its thumb in its upper part, and the glyphs — centred in the row —
+  sat lower; with ticks on both sides the thumb is a rectangle on the row's centre line, level with
+  the glyphs at any DPI. Found on the first screenshots, with a second cause fixed at the same
+  time: the row's inner table had no row style, so its single row took the trackbar's preferred
+  height (70 px at 150 %) and overflowed the cell — it now takes the cell's height.
+- **Row height** 34 logical px (the design said *about 30*), the ticks needing the room.
+- **Glyphs**: `▭` from *Segoe UI Symbol* at the panel's font size on the left, 6 pt larger on the
+  right.
+- **Tile height** `TileW × 3 / 4` as designed: at 125 % or 150 % DPI a one-column tile is 1 px
+  shorter than before (187 instead of 188 px at 125 %), the 4:3 kept.
+- **Wheel**: several notches in one message give as many steps, raised one by one, the slider
+  saturating at its ends; the wheel over the slider itself is the `TrackBar`'s own.
+- **Checks by script** rather than by hand (§ Test Impact), the registry values the script touches
+  restored afterwards; the UI Automation tree exposes the WinForms `TrackBar` without its range
+  pattern, so the script reads its position and range from the control itself.
+
 ---
 
 ## Implementation Log
@@ -253,9 +288,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | — | — | Does not apply — no test project, verified by hand (§ Test Impact) |
-| README | | | |
+| Code | 3, 4 | 2026-09-29 | `73747c2` the `ExplorerSpan` setting; `2357997` the slider, `ThumbnailGrid.Span`, the wheel, the cache budget, the wiring; `1b5784a` the slider row's fix (Iteration 4). Checked by script, 13 checks, screenshots (§ Test Impact) |
+| Unit tests | — | — | Does not apply — no test project, checked by script and screenshots (§ Test Impact) |
+| README | 3 | 2026-09-29 | `1515917` — § *File explorer*: the *Tiles* bullet revised, a *Tile size* bullet added; GLOSSARY: *File explorer* and *Tile* revised, *Tile size* added |
 
 ---
 
@@ -275,4 +310,4 @@ Questions asked by the agent during design, with user responses.
 
 ---
 
-*Last updated: 2026-09-28*
+*Last updated: 2026-09-29*
