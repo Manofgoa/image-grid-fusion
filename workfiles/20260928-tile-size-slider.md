@@ -71,8 +71,8 @@ Components: `UI/FileExplorerPanel.cs` (the header, the rows, the width), `UI/Thu
   no half-empty row of 2-column tiles in 3 columns (the user's rule: 3 columns → 1 or 3; 4 → 1, 2
   or 4).
 - **`+` (one column more)**: the size goes back to **1** — one tile per column (the user's rule).
-- **`−` (one column fewer)**: **open question** (§ Open Questions); the proposal is back to **1** as
-  well, so both buttons behave alike.
+- **`−` (one column fewer)**: the size goes back to **1** as well — both buttons behave alike
+  (Q&A #7).
 - **Start-up**: the column count and the tile size come from the registry (§ Settings); a size that
   does not divide the count (values edited by hand, an older version) falls back to 1.
 - **Programmatic column changes** (the start-up value) do not reset the size: only the buttons do.
@@ -123,11 +123,12 @@ In `ThumbnailGrid`:
 - Over the tiles (the cursor in the grid), the wheel **moves the slider**: one position per notch
   (120 units, the deltas of a free-spinning wheel accumulated), **up = larger tiles**, down =
   smaller — the direction of the cells' zoom. At the ends, nothing happens.
-- **Modifier**: **open question** (§ Open Questions) — the wheel alone (the list then scrolls with
-  its scrollbar only), or `Ctrl` + wheel, the wheel alone scrolling the list as today.
-- Mechanism: `ThumbnailGrid` overrides `OnMouseWheel`; the gesture raises a `SizeStepRequested`
-  event with the direction, the panel moves the slider one position, which applies the size like
-  any other change. Without the gesture's modifier, the base class scrolls as today.
+- **No modifier**: the wheel **alone** does it (Q&A #6) — the app's convention, the wheel zooming
+  the cells. The list then scrolls with its **scrollbar** and the **keyboard**, no longer with the
+  wheel.
+- Mechanism: `ThumbnailGrid` overrides `OnMouseWheel` without calling the base class; the gesture
+  raises a `SizeStepRequested` event with the direction, the panel moves the slider one position,
+  which applies the size like any other change.
 - The wheel reaches the control **under the cursor** through Windows' *Scroll inactive windows when
   I hover over them* (on by default since Windows 10); with it off, the wheel goes to the focused
   control, like the rest of the app.
@@ -152,8 +153,8 @@ In `ThumbnailGrid`:
 ## Documentation
 
 - **README** § *File explorer*, the *Tiles* bullet: the size slider at the bottom of the panel (1 to
-  N columns, a divisor, `+` back to one per column, the wheel over the tiles), the size remembered
-  with the count.
+  N columns, a divisor, `+` / `−` back to one per column, the wheel over the tiles), the size
+  remembered with the count.
 - **GLOSSARY**: *Tile* revised (its thumbnail in a box of one or more columns, 200 × 150 per
   column), a new *Tile size* entry.
 
@@ -170,8 +171,8 @@ Q&A #13 — the standing choice, kept here). The checks, run at delivery:
 | Positions | 1 column: slider disabled; 2 → 1, 2; 3 → 1, 3; 4 → 1, 2, 4; 5 → 1, 5 |
 | Geometry | 4 columns at size 2: two 408 × 306 tiles per row, the gap between the columns covered; size 4: one 824 × 618 tile per row; the names and hearts in place |
 | `+` | 2 columns at size 2 → `+` → 3 columns, size 1 |
-| `−` | Per the answer to the open question |
-| Wheel | Over the tiles: one position per notch, up = larger; at the ends nothing; the list still scrolls (per the modifier chosen) |
+| `−` | 4 columns at size 2 → `−` → 3 columns, size 1 |
+| Wheel | Over the tiles: one position per notch, up = larger; at the ends nothing; the list scrolls with its scrollbar and the keyboard, not with the wheel |
 | Thumbnails | A size change shows the thumbnails again, sharp at the new size; the memory stays under the budget (Task Manager, 5 columns at size 5, scrolling through 100 favorites) |
 | Keyboard | `↑` / `↓` move by row at every size; `←` / `→` by tile |
 | Start-up | 4 columns at size 2 remembered after a restart; `ExplorerSpan` = 3 with 4 columns → 1 |
@@ -184,13 +185,14 @@ Q&A #13 — the standing choice, kept here). The checks, run at delivery:
 Every question the design cannot settle on its own, listed before Iteration 1 —
 not only the blocking ones.
 
-- [ ] The wheel over the tiles moves the slider: the wheel **alone** (the list scrolling with its
+- [x] ~~The wheel over the tiles moves the slider: the wheel **alone** (the list scrolling with its
   scrollbar only), or **`Ctrl` + wheel** (the wheel alone keeping the list's scroll, Explorer's
-  convention)? *(Asked on 2026-09-26, the question cancelled by the app's quit; asked again.)*
-- [ ] `−` (one column fewer): the tile size back to **1** like `+`, **kept when it still divides**
+  convention)?~~ → The wheel **alone**; the list scrolls with its scrollbar and the keyboard
+  (Q&A #6, Iteration 2)
+- [x] ~~`−` (one column fewer): the tile size back to **1** like `+`, **kept when it still divides**
   the new count (4 columns at size 2 → 2 columns: kept; 3 at size 3 → 2: back to 1), or the
   **full width kept** (a size equal to the count stays equal to the new count, the others back
-  to 1)?
+  to 1)?~~ → Back to **1**, like `+` (Q&A #7, Iteration 2)
 
 ---
 
@@ -228,6 +230,14 @@ and their gaps at 4:3, slots = N / s for the layout and the keyboard, the thumbn
 the new size under a byte budget, the wheel as one position per notch, `ExplorerSpan` saved on
 every change. Two points stay open: the wheel's modifier and what `−` does to the size.
 
+### Iteration 2 — 2026-09-28 — Open questions settled
+
+The two questions, asked twice through the multiple-choice tool (both asks cancelled), answered in
+the chat: the wheel **alone** moves the slider over the tiles (« Oui M », then « Oui » on the
+reading *oui, molette seule*), and `−` brings the size back to **1** like `+` (the proposal,
+accepted with the same « Oui »). § Tile Size Rules, § Mouse Wheel, § Documentation and the checks
+of § Test Impact updated; no open question left.
+
 ---
 
 ## Implementation Log
@@ -254,8 +264,8 @@ Questions asked by the agent during design, with user responses.
 | 3 | Which size range, 4:3 kept: 100 × 75 – 400 × 300, 80 × 60 – 320 × 240, or 150 × 113 – 600 × 450? | 100 × 75 – 400 × 300 — superseded by the size in columns, 1 to N (Iteration 1) | 2026-09-26 |
 | 4 | Is the chosen size remembered between sessions? | Yes, in the registry — the count and the size together (the user) | 2026-09-26 |
 | 5 | Exploration depth: straightforward, or tricky / long? | Straightforward | 2026-09-26 |
-| 6 | The wheel over the tiles: alone, or `Ctrl` + wheel? | *(pending — the first ask cancelled by the app's quit)* | 2026-09-28 |
-| 7 | `−`: the size back to 1, kept if it still divides, or the full width kept? | *(pending)* | 2026-09-28 |
+| 6 | The wheel over the tiles: alone, or `Ctrl` + wheel? | The wheel **alone** — « Oui M », confirmed by « Oui » (Iteration 2) | 2026-09-28 |
+| 7 | `−`: the size back to 1, kept if it still divides, or the full width kept? | Back to **1**, like `+` — the proposal, accepted (Iteration 2) | 2026-09-28 |
 
 ---
 
