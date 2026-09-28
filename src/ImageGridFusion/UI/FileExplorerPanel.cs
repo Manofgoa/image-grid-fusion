@@ -38,7 +38,8 @@ internal sealed class FileExplorerPanel : Panel
     private readonly ThumbnailGrid _grid = new() { Dock = DockStyle.Fill };
     private readonly TableLayoutPanel _sizeRow = new() { ColumnCount = 3, RowCount = 1, Dock = DockStyle.Fill, Margin = Padding.Empty };
     private readonly Label _smallerGlyph = new() { Text = "▭", AutoSize = true, Anchor = AnchorStyles.Left, TextAlign = ContentAlignment.MiddleCenter, Margin = new Padding(0, 0, 4, 0) };
-    private readonly TrackBar _size = new() { AutoSize = false, Dock = DockStyle.Fill, Margin = Padding.Empty, Minimum = 0, Maximum = 0, TickStyle = TickStyle.BottomRight, TickFrequency = 1, SmallChange = 1, LargeChange = 1, Enabled = false };
+    // Ticks on both sides: the thumb then sits on the row's centre line, level with the glyphs at any DPI.
+    private readonly TrackBar _size = new() { AutoSize = false, Dock = DockStyle.Fill, Margin = Padding.Empty, Minimum = 0, Maximum = 0, TickStyle = TickStyle.Both, TickFrequency = 1, SmallChange = 1, LargeChange = 1, Enabled = false };
     private readonly Label _largerGlyph = new() { Text = "▭", AutoSize = true, Anchor = AnchorStyles.Right, TextAlign = ContentAlignment.MiddleCenter, Margin = new Padding(4, 0, 0, 0) };
     private readonly Panel _invite = new() { Dock = DockStyle.Fill, Visible = false };
     private readonly Label _inviteText = new()
@@ -97,6 +98,7 @@ internal sealed class FileExplorerPanel : Panel
         _sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        _sizeRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         _sizeRow.Controls.Add(_smallerGlyph, 0, 0);
         _sizeRow.Controls.Add(_size, 1, 0);
         _sizeRow.Controls.Add(_largerGlyph, 2, 0);
