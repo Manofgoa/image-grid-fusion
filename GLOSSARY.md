@@ -32,8 +32,9 @@ each.
 | Heard | A video whose sound is in the grid's mix: it has a sound track, plays (not frozen), and its Volume effect does not mute it |
 | Options toolbar | The always-visible row above the effects toolbar, holding the selected tab's options and the effect's own Reset button |
 | Helper indicator (*indicateur d'aide*) | A measure or geometry aid drawn over a cell in the preview only — guides, handles, value readouts such as the zoom percentage; always fluorescent green (see RULES.md) |
-| File explorer (*explorateur de fichiers*) | The collapsible panel at the right of the preview: a search box over the base folder's index, the favorites while the box is empty, shown as tiles in 1 to 5 columns; its tiles are dragged into the cells like files from the Explorer |
-| Tile (*tuile*) | One file in the file explorer's grid: its thumbnail in a 200 × 150 box, the heart in a medallion at its corner, its name below |
+| File explorer (*explorateur de fichiers*) | The collapsible panel at the right of the preview: a search box over the base folder's index, the favorites while the box is empty, shown as tiles in 1 to 5 columns, a tile spanning one or more of them; its tiles are dragged into the cells like files from the Explorer |
+| Tile (*tuile*) | One file in the file explorer's grid: its thumbnail in a box of one or more columns (200 × 150 per column, the gaps between covered, at 4:3), the heart in a medallion at its corner, its name below |
+| Tile size (*taille des tuiles*) | How many columns a tile of the file explorer spans — a divisor of the column count, so every row is full — set by the slider at the bottom of the panel or the wheel over the tiles; back to one when a column is added or removed; remembered between sessions with the column count |
 | Base folder (*dossier de base*) | The folder the file explorer indexes, with its subfolders; an app setting of the ⚙ menu |
 | Index (*index*) | The list of every file under the base folder, cached in `files.index` next to the exe, loaded at start-up and rescanned in the background or with ↻; what the search reads, never the disk |
 | Favorite (*favori*) | A file hearted in the file explorer; kept in `favorites.txt` next to the exe, shown — all of them, the newest first — while the search box is empty |
