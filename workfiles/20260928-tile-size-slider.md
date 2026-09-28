@@ -238,6 +238,12 @@ reading *oui, molette seule*), and `−` brings the size back to **1** like `+` 
 accepted with the same « Oui »). § Tile Size Rules, § Mouse Wheel, § Documentation and the checks
 of § Test Impact updated; no open question left.
 
+### Iteration 3 — 2026-09-28 — ✅ Implemented
+
+Go given for the code and the documentation (*Implémenter code et documentation*), the unit tests
+not applying (no test project, § Test Impact). The run stays on `main`, the standing choice of
+this app — no branch question. The scope is the sections above as they stand at the go.
+
 ---
 
 ## Implementation Log
