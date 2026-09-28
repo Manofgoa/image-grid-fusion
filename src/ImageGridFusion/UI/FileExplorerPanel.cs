@@ -21,7 +21,7 @@ internal sealed class FileExplorerPanel : Panel
 
     private const int TransientDuration = 5000;
 
-    private readonly TableLayoutPanel _content = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 5, Padding = new Padding(6, 4, 6, 6) };
+    private readonly TableLayoutPanel _content = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 6, Padding = new Padding(6, 4, 6, 6) };
     private readonly TableLayoutPanel _header = new() { ColumnCount = 5, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
     private readonly Label _title = new() { Text = "Files", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly Button _fewer = new() { Text = "−", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right, Enabled = false };
@@ -36,6 +36,10 @@ internal sealed class FileExplorerPanel : Panel
     private readonly Label _caption = new() { Dock = DockStyle.Fill, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, Margin = Padding.Empty };
     private readonly Panel _listHost = new() { Dock = DockStyle.Fill, Margin = Padding.Empty, BorderStyle = BorderStyle.FixedSingle };
     private readonly ThumbnailGrid _grid = new() { Dock = DockStyle.Fill };
+    private readonly TableLayoutPanel _sizeRow = new() { ColumnCount = 3, RowCount = 1, Dock = DockStyle.Fill, Margin = Padding.Empty };
+    private readonly Label _smallerGlyph = new() { Text = "▭", AutoSize = true, Anchor = AnchorStyles.Left, TextAlign = ContentAlignment.MiddleCenter, Margin = new Padding(0, 0, 4, 0) };
+    private readonly TrackBar _size = new() { AutoSize = false, Dock = DockStyle.Fill, Margin = Padding.Empty, Minimum = 0, Maximum = 0, TickStyle = TickStyle.BottomRight, TickFrequency = 1, SmallChange = 1, LargeChange = 1, Enabled = false };
+    private readonly Label _largerGlyph = new() { Text = "▭", AutoSize = true, Anchor = AnchorStyles.Right, TextAlign = ContentAlignment.MiddleCenter, Margin = new Padding(4, 0, 0, 0) };
     private readonly Panel _invite = new() { Dock = DockStyle.Fill, Visible = false };
     private readonly Label _inviteText = new()
     {
@@ -52,6 +56,8 @@ internal sealed class FileExplorerPanel : Panel
 
     private bool _open = true;
     private int _columns = ThumbnailGrid.MinColumns;
+    private int _span = 1;
+    private bool _syncingSize;
     private string? _baseFolder;
     private FileIndex? _index;
     private CancellationTokenSource? _scan;
@@ -62,6 +68,8 @@ internal sealed class FileExplorerPanel : Panel
     public FileExplorerPanel()
     {
         _title.Font = new Font(Font, FontStyle.Bold);
+        _smallerGlyph.Font = new Font("Segoe UI Symbol", Font.SizeInPoints);
+        _largerGlyph.Font = new Font("Segoe UI Symbol", Font.SizeInPoints + 6f);
         ApplyWidth();
 
         _content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -70,6 +78,7 @@ internal sealed class FileExplorerPanel : Panel
         _content.RowStyles.Add(new RowStyle(SizeType.Absolute, 20));
         _content.RowStyles.Add(new RowStyle(SizeType.Absolute, 20));
         _content.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        _content.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
         _header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         for (int i = 0; i < 4; i++)
         {
@@ -85,6 +94,12 @@ internal sealed class FileExplorerPanel : Panel
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _searchRow.Controls.Add(_search, 0, 0);
         _searchRow.Controls.Add(_rescan, 1, 0);
+        _sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        _sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        _sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        _sizeRow.Controls.Add(_smallerGlyph, 0, 0);
+        _sizeRow.Controls.Add(_size, 1, 0);
+        _sizeRow.Controls.Add(_largerGlyph, 2, 0);
 
         // Docked to the top in reverse order of addition: the text above the button.
         _invite.Controls.Add(_chooseFolder);
@@ -96,6 +111,7 @@ internal sealed class FileExplorerPanel : Panel
         _content.Controls.Add(_status, 0, 2);
         _content.Controls.Add(_caption, 0, 3);
         _content.Controls.Add(_listHost, 0, 4);
+        _content.Controls.Add(_sizeRow, 0, 5);
         Controls.Add(_content);
         Controls.Add(_expand);
         _menu.Items.Add(_openLocation);
@@ -108,10 +124,14 @@ internal sealed class FileExplorerPanel : Panel
         _toolTip.SetToolTip(_more, "One column more");
         _toolTip.SetToolTip(_columnsLabel, "Columns of tiles");
         _toolTip.SetToolTip(_rescan, "Rescan the folder");
+        _toolTip.SetToolTip(_smallerGlyph, "Smaller tiles");
+        _toolTip.SetToolTip(_largerGlyph, "Larger tiles");
         _collapse.Click += (_, _) => SetOpen(false);
         _expand.Click += (_, _) => SetOpen(true);
         _fewer.Click += (_, _) => ChangeColumns(-1);
         _more.Click += (_, _) => ChangeColumns(1);
+        _size.ValueChanged += (_, _) => OnSizeChanged();
+        _grid.SizeStepRequested += (_, direction) => StepSize(direction);
         _rescan.Click += (_, _) => Rescan();
         _chooseFolder.Click += (_, _) => ChooseFolderRequested?.Invoke(this, EventArgs.Empty);
         _search.TextChanged += (_, _) => RefreshRows();
@@ -123,6 +143,7 @@ internal sealed class FileExplorerPanel : Panel
         _openLocation.Click += (_, _) => OpenLocation();
         _transient.Tick += (_, _) => ShowSummary();
         ApplyMetrics();
+        SyncSize();
         RefreshRows();
     }
 
@@ -131,6 +152,9 @@ internal sealed class FileExplorerPanel : Panel
 
     /// <summary>The user added or removed a column: the panel's width changed by that many pixels.</summary>
     public event EventHandler<int>? ColumnsChanged;
+
+    /// <summary>The user changed the tile size — the slider, the wheel over the tiles, or a column button bringing it back to one.</summary>
+    public event EventHandler? SpanChanged;
 
     /// <summary>A tile was double-clicked or entered: its file, to be added like Add images.</summary>
     public event EventHandler<string>? FileActivated;
@@ -175,10 +199,34 @@ internal sealed class FileExplorerPanel : Panel
 
             _columns = value;
             _grid.Columns = value;
+            _span = _grid.Span;
             _columnsLabel.Text = value.ToString();
             _fewer.Enabled = value > ThumbnailGrid.MinColumns;
             _more.Enabled = value < ThumbnailGrid.MaxColumns;
+            SyncSize();
             ApplyWidth();
+        }
+    }
+
+    /// <summary>
+    /// How many columns a tile spans, a divisor of <see cref="Columns"/>: one tile per column, or a
+    /// few large ones. Setting it raises nothing; a value that does not divide the count falls back
+    /// to one.
+    /// </summary>
+    [DefaultValue(1)]
+    public int Span
+    {
+        get => _span;
+        set
+        {
+            _grid.Span = value;
+            if (_grid.Span == _span)
+            {
+                return;
+            }
+
+            _span = _grid.Span;
+            SyncSize();
         }
     }
 
@@ -232,6 +280,8 @@ internal sealed class FileExplorerPanel : Panel
             _toolTip.Dispose();
             _menu.Dispose();
             _title.Font.Dispose();
+            _smallerGlyph.Font.Dispose();
+            _largerGlyph.Font.Dispose();
         }
 
         base.Dispose(disposing);
@@ -262,6 +312,7 @@ internal sealed class FileExplorerPanel : Panel
         int line = Font.Height + LogicalToDeviceUnits(4);
         _content.RowStyles[2].Height = line;
         _content.RowStyles[3].Height = line;
+        _content.RowStyles[5].Height = LogicalToDeviceUnits(34);
         _inviteText.Height = Font.Height * 4 + LogicalToDeviceUnits(8);
     }
 
@@ -275,14 +326,86 @@ internal sealed class FileExplorerPanel : Panel
         }
     }
 
+    /// <summary>A column button: the count changes, and the tile size comes back to one per column (the user's rule, for + and − alike).</summary>
     private void ChangeColumns(int delta)
     {
         int before = Width;
+        int span = _span;
         Columns = _columns + delta;
+        Span = 1;
         if (Width != before)
         {
             ColumnsChanged?.Invoke(this, Width - before);
         }
+
+        if (_span != span)
+        {
+            SpanChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>The slider's positions are the divisors of the column count, ascending, its thumb on the current size; a single position disables it.</summary>
+    private void SyncSize()
+    {
+        var positions = Divisors(_columns);
+        _syncingSize = true;
+        try
+        {
+            _size.Maximum = positions.Count - 1;
+            _size.Value = positions.IndexOf(_span);
+        }
+        finally
+        {
+            _syncingSize = false;
+        }
+
+        _size.Enabled = positions.Count > 1;
+        _toolTip.SetToolTip(_size, positions.Count > 1 ? "Tile size, in columns" : "One column: a single tile size");
+    }
+
+    /// <summary>The slider moved: the size it points at, applied and reported.</summary>
+    private void OnSizeChanged()
+    {
+        if (_syncingSize)
+        {
+            return;
+        }
+
+        int before = _span;
+        Span = Divisors(_columns)[_size.Value];
+        if (_span != before)
+        {
+            SpanChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>The wheel over the tiles: the slider one position up or down, which applies the size.</summary>
+    private void StepSize(int direction)
+    {
+        if (!_size.Enabled)
+        {
+            return;
+        }
+
+        int target = Math.Clamp(_size.Value + direction, _size.Minimum, _size.Maximum);
+        if (target != _size.Value)
+        {
+            _size.Value = target;
+        }
+    }
+
+    private static List<int> Divisors(int n)
+    {
+        var divisors = new List<int>();
+        for (int d = 1; d <= n; d++)
+        {
+            if (n % d == 0)
+            {
+                divisors.Add(d);
+            }
+        }
+
+        return divisors;
     }
 
     private CancellationToken Restart()
