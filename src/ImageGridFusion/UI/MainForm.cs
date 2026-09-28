@@ -336,6 +336,7 @@ internal sealed class MainForm : Form
         // goes first so it gets the rest.
         _explorer.Open = AppSettings.ExplorerPanelOpen;
         _explorer.Columns = AppSettings.ExplorerColumns;
+        _explorer.Span = AppSettings.ExplorerSpan;
         Controls.Add(_preview);
         Controls.Add(_explorer);
         Controls.Add(_layouts);
@@ -367,6 +368,7 @@ internal sealed class MainForm : Form
             SaveExplorerColumns();
             FollowExplorerWidth(delta);
         };
+        _explorer.SpanChanged += (_, _) => SaveExplorerSpan();
         _explorer.ChooseFolderRequested += (_, _) => PickExplorerFolder();
 
         // A double-clicked row is added like a file from the Add images picker.
@@ -2288,6 +2290,19 @@ internal sealed class MainForm : Form
         catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
         {
             ShowStatus($"File explorer columns not remembered: {ex.Message}", error: true);
+        }
+    }
+
+    /// <summary>The file explorer's tile size was changed by the user: remembered between sessions.</summary>
+    private void SaveExplorerSpan()
+    {
+        try
+        {
+            AppSettings.SaveExplorerSpan(_explorer.Span);
+        }
+        catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+        {
+            ShowStatus($"File explorer tile size not remembered: {ex.Message}", error: true);
         }
     }
 

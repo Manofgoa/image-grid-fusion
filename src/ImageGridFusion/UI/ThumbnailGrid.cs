@@ -12,7 +12,8 @@ internal sealed record ExplorerRow(string FullPath, string Name);
 /// <summary>
 /// The file explorer's list: a grid of tiles, one per file — its thumbnail from the Shell's cache,
 /// loaded in the background, the heart in a medallion at its corner, the name below — in 1 to 5
-/// columns, scrolling vertically. See workfiles/20260926-file-explorer.md § Panel.
+/// columns, a tile spanning one or more of them, scrolling vertically. See
+/// workfiles/20260926-file-explorer.md § Panel and workfiles/20260928-tile-size-slider.md.
 /// </summary>
 internal sealed class ThumbnailGrid : ScrollableControl
 {
@@ -32,6 +33,8 @@ internal sealed class ThumbnailGrid : ScrollableControl
     private Font _nameFont;
     private IReadOnlyList<ExplorerRow> _rows = [];
     private int _columns = MinColumns;
+    private int _span = 1;
+    private int _wheelRest;
     private int _selected = -1;
     private int _hovered = -1;
     private int _pressed = -1;
@@ -61,6 +64,9 @@ internal sealed class ThumbnailGrid : ScrollableControl
     /// <summary>A pressed tile was moved past the drag threshold: the owner may start a drag.</summary>
     public event EventHandler<ExplorerRow>? DragRequested;
 
+    /// <summary>The wheel turned over the tiles: larger tiles asked for (+1) or smaller ones (−1), one step per notch.</summary>
+    public event EventHandler<int>? SizeStepRequested;
+
     /// <summary>Whether a file is a favorite: its heart is drawn full.</summary>
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -84,7 +90,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         }
     }
 
-    /// <summary>How many tiles per row, <see cref="MinColumns"/> to <see cref="MaxColumns"/>.</summary>
+    /// <summary>How many columns, <see cref="MinColumns"/> to <see cref="MaxColumns"/>; a <see cref="Span"/> that no longer divides them falls back to one.</summary>
     [DefaultValue(MinColumns)]
     public int Columns
     {
@@ -92,11 +98,41 @@ internal sealed class ThumbnailGrid : ScrollableControl
         set
         {
             value = Math.Clamp(value, MinColumns, MaxColumns);
-            if (value != _columns)
+            if (value == _columns)
             {
-                _columns = value;
-                UpdateExtent();
+                return;
             }
+
+            int top = TopIndex();
+            _columns = value;
+            if (_columns % _span != 0)
+            {
+                _span = 1;
+            }
+
+            Relayout(top);
+        }
+    }
+
+    /// <summary>
+    /// How many columns a tile spans, 1 to <see cref="Columns"/> and dividing it — one tile per column,
+    /// or a few large ones covering their columns and the gaps between; another value falls back to one.
+    /// </summary>
+    [DefaultValue(1)]
+    public int Span
+    {
+        get => _span;
+        set
+        {
+            value = value >= 1 && value <= _columns && _columns % value == 0 ? value : 1;
+            if (value == _span)
+            {
+                return;
+            }
+
+            int top = TopIndex();
+            _span = value;
+            Relayout(top);
         }
     }
 
@@ -162,7 +198,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
     protected override bool IsInputKey(Keys keyData) =>
         keyData is Keys.Up or Keys.Down or Keys.Left or Keys.Right or Keys.Enter or Keys.Home or Keys.End || base.IsInputKey(keyData);
 
-    /// <summary>The arrows move the selection, staying in the column at the top; Enter activates it.</summary>
+    /// <summary>The arrows move the selection — up and down by a row of tiles, staying in its column at the top; Enter activates it.</summary>
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
@@ -182,10 +218,10 @@ internal sealed class ThumbnailGrid : ScrollableControl
                 target = Math.Min(last, _selected + 1);
                 break;
             case Keys.Up:
-                target = _selected < 0 ? 0 : Math.Max(_selected % _columns, _selected - _columns);
+                target = _selected < 0 ? 0 : Math.Max(_selected % Slots, _selected - Slots);
                 break;
             case Keys.Down:
-                target = _selected < 0 ? 0 : Math.Min(last, _selected + _columns);
+                target = _selected < 0 ? 0 : Math.Min(last, _selected + Slots);
                 break;
             case Keys.Home:
                 target = 0;
@@ -281,6 +317,28 @@ internal sealed class ThumbnailGrid : ScrollableControl
         }
     }
 
+    /// <summary>
+    /// The wheel over the tiles asks for larger (up) or smaller (down) tiles, one step per notch — the
+    /// deltas of a free-spinning wheel accumulated — and never scrolls the list: the base class is not
+    /// called, and the message goes no further.
+    /// </summary>
+    protected override void OnMouseWheel(MouseEventArgs e)
+    {
+        if (e is HandledMouseEventArgs handled)
+        {
+            handled.Handled = true;
+        }
+
+        int notch = SystemInformation.MouseWheelScrollDelta;
+        _wheelRest += e.Delta;
+        int steps = _wheelRest / notch;
+        _wheelRest -= steps * notch;
+        for (int i = 0; i < Math.Abs(steps); i++)
+        {
+            SizeStepRequested?.Invoke(this, Math.Sign(steps));
+        }
+    }
+
     protected override void OnPaint(PaintEventArgs e)
     {
         base.OnPaint(e);
@@ -347,9 +405,13 @@ internal sealed class ThumbnailGrid : ScrollableControl
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
     }
 
-    private int TileW => LogicalToDeviceUnits(TileWidth);
+    /// <summary>The tiles per row.</summary>
+    private int Slots => _columns / _span;
 
-    private int TileH => LogicalToDeviceUnits(TileHeight);
+    // A tile covers its columns and the gaps between them, at 4:3.
+    private int TileW => LogicalToDeviceUnits(TileWidth) * _span + GapPx * (_span - 1);
+
+    private int TileH => TileW * 3 / 4;
 
     private int GapPx => LogicalToDeviceUnits(Gap);
 
@@ -362,7 +424,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
     private int CellH => TileH + NameH + GapPx;
 
     // Content coordinates: unscrolled.
-    private Rectangle TileBounds(int index) => new(InsetPx + index % _columns * CellW, InsetPx + index / _columns * CellH, TileW, TileH);
+    private Rectangle TileBounds(int index) => new(InsetPx + index % Slots * CellW, InsetPx + index / Slots * CellH, TileW, TileH);
 
     private Rectangle NameBounds(int index)
     {
@@ -404,12 +466,12 @@ internal sealed class ThumbnailGrid : ScrollableControl
         }
 
         int column = x / CellW;
-        if (column >= _columns || x % CellW >= TileW || y % CellH >= TileH + NameH)
+        if (column >= Slots || x % CellW >= TileW || y % CellH >= TileH + NameH)
         {
             return -1;
         }
 
-        int index = y / CellH * _columns + column;
+        int index = y / CellH * Slots + column;
         return index < _rows.Count ? index : -1;
     }
 
@@ -439,12 +501,36 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
     private void UpdateExtent()
     {
-        int rows = (_rows.Count + _columns - 1) / _columns;
+        int rows = (_rows.Count + Slots - 1) / Slots;
         AutoScrollMinSize = new Size(0, rows == 0 ? 0 : InsetPx * 2 + rows * CellH - GapPx);
         Invalidate();
     }
 
+    /// <summary>The box the thumbnails are fitted to — the tile — and the size asked from the Shell: the tile's width, 256 px at least.</summary>
     private void UpdateBox() => _thumbnails.SetBox(new Size(TileW, TileH), Math.Max(256, TileW));
+
+    /// <summary>The first tile of the row at the top of the view; -1 with no tile.</summary>
+    private int TopIndex()
+    {
+        if (_rows.Count == 0)
+        {
+            return -1;
+        }
+
+        int row = Math.Max(0, (-AutoScrollPosition.Y - InsetPx) / CellH);
+        return Math.Min(_rows.Count - 1, row * Slots);
+    }
+
+    /// <summary>The columns or the span changed: the box and the extent follow, the tile that topped the view (<paramref name="top"/>) still in view.</summary>
+    private void Relayout(int top)
+    {
+        UpdateBox();
+        UpdateExtent();
+        if (top > 0)
+        {
+            AutoScrollPosition = new Point(0, Math.Max(0, TileBounds(top).Y - InsetPx));
+        }
+    }
 
     private (Font Heart, Font Name) MakeFonts() =>
         (new Font("Segoe UI Symbol", Font.SizeInPoints + 1f), new Font(Font.FontFamily, Math.Max(6f, Font.SizeInPoints - 1f), Font.Style));
@@ -509,11 +595,14 @@ internal sealed class ThumbnailGrid : ScrollableControl
     /// <summary>
     /// The thumbnails, keyed by path: loaded one at a time on a worker, from the Shell's cache, scaled
     /// to the tile's box and handed back on the UI thread; the least recently used dropped past a
-    /// cap. A thumbnail is asked for by painting a tile that has none yet.
+    /// cap — 200, fewer for large boxes, within a byte budget. A thumbnail is asked for by painting a
+    /// tile that has none yet.
     /// </summary>
     private sealed class ThumbnailCache : IDisposable
     {
         private const int MaxCached = 200;
+        private const int MinCached = 16;
+        private const long Budget = 64L << 20;
 
         private readonly Control _owner;
         private readonly Dictionary<string, LinkedListNode<Entry>> _entries = new(StringComparer.OrdinalIgnoreCase);
@@ -523,6 +612,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         private readonly object _lock = new();
         private Size _box;
         private int _side;
+        private int _capacity = MaxCached;
         private bool _working;
         private volatile bool _disposed;
 
@@ -534,7 +624,10 @@ internal sealed class ThumbnailGrid : ScrollableControl
         /// <summary>A thumbnail arrived (or none exists) for the path; on the UI thread.</summary>
         public event Action<string>? Loaded;
 
-        /// <summary>The box the thumbnails are scaled to, and the size asked from the Shell; changing it drops them all.</summary>
+        /// <summary>
+        /// The box the thumbnails are scaled to, and the size asked from the Shell; changing it drops
+        /// them all, and sets the cap: as many 32-bit bitmaps of the box as the budget holds, within bounds.
+        /// </summary>
         public void SetBox(Size box, int side)
         {
             if (box == _box && side == _side)
@@ -544,6 +637,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
             _box = box;
             _side = side;
+            _capacity = (int)Math.Clamp(Budget / Math.Max(1L, (long)box.Width * box.Height * 4), MinCached, MaxCached);
             Clear();
         }
 
@@ -683,7 +777,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
             }
 
             _entries[path] = _order.AddLast(new Entry(path, image));
-            while (_order.Count > MaxCached)
+            while (_order.Count > _capacity)
             {
                 var oldest = _order.First!.Value;
                 _order.RemoveFirst();
