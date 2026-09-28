@@ -5,7 +5,7 @@ namespace ImageGridFusion.UI;
 /// <summary>
 /// The app's settings remembered between sessions, per user, in the registry — no settings file: the
 /// border color, whether the borders' Twitter corners are on by default, the file explorer's base
-/// folder, whether its panel is open and its column count, and the window's size.
+/// folder, whether its panel is open, its column count and its tile size, and the window's size.
 /// </summary>
 internal static class AppSettings
 {
@@ -15,6 +15,7 @@ internal static class AppSettings
     private const string ExplorerFolderName = "ExplorerFolder";
     private const string ExplorerPanelOpenName = "ExplorerPanelOpen";
     private const string ExplorerColumnsName = "ExplorerColumns";
+    private const string ExplorerSpanName = "ExplorerSpan";
     private const string WindowWidthName = "WindowWidth";
     private const string WindowHeightName = "WindowHeight";
 
@@ -139,6 +140,33 @@ internal static class AppSettings
     {
         using var key = Registry.CurrentUser.CreateSubKey(Key);
         key.SetValue(ExplorerColumnsName, columns, RegistryValueKind.DWord);
+    }
+
+    /// <summary>
+    /// How many columns a tile of the file explorer spans, 1 to 5; one when nothing was saved or the
+    /// key cannot be read. The panel brings a value that does not divide its column count back to one.
+    /// </summary>
+    public static int ExplorerSpan
+    {
+        get
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey(Key);
+                return key?.GetValue(ExplorerSpanName) is int value ? Math.Clamp(value, 1, ThumbnailGrid.MaxColumns) : 1;
+            }
+            catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+            {
+                return 1;
+            }
+        }
+    }
+
+    /// <summary>Saves the file explorer's tile size, in columns; throws an <see cref="StartupRegistration.IsRegistryError"/> exception on failure.</summary>
+    public static void SaveExplorerSpan(int span)
+    {
+        using var key = Registry.CurrentUser.CreateSubKey(Key);
+        key.SetValue(ExplorerSpanName, span, RegistryValueKind.DWord);
     }
 
     /// <summary>
