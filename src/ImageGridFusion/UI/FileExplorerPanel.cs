@@ -177,8 +177,8 @@ internal sealed class FileExplorerPanel : Panel
 
     /// <summary>
     /// The panel's width while open, in logical pixels — the user's, dragged from the panel's edge:
-    /// taken from the actual width when it changes, applied again when the panel reopens. Setting it
-    /// raises nothing; <see cref="MinOpenWidth"/> at least.
+    /// the window sets it when the splitter stops, and it is applied again when the panel reopens or
+    /// the DPI changes. Setting it raises nothing; <see cref="MinOpenWidth"/> at least.
     /// </summary>
     [DefaultValue(DefaultOpenWidth)]
     public int OpenWidth
@@ -283,20 +283,12 @@ internal sealed class FileExplorerPanel : Panel
         ApplyMetrics();
     }
 
+    /// <summary>The DPI changed: the rows follow the font, and the width is set again from its logical value, so no rounding drifts.</summary>
     protected override void OnDpiChangedAfterParent(EventArgs e)
     {
         base.OnDpiChangedAfterParent(e);
         ApplyMetrics();
-    }
-
-    /// <summary>The open panel was resized — the splitter, or the DPI: its open width follows, in logical pixels.</summary>
-    protected override void OnSizeChanged(EventArgs e)
-    {
-        base.OnSizeChanged(e);
-        if (_open && IsHandleCreated)
-        {
-            _openWidth = Math.Max(MinOpenWidth, (int)Math.Round(Width * 96.0 / DeviceDpi));
-        }
+        ApplyWidth();
     }
 
     /// <summary>The panel's width, from its state: logical before the window scales its controls, device units after.</summary>
