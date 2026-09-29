@@ -32,8 +32,10 @@ explorer, GLOSSARY.
 
 ## The `*` Search
 
-- The search box holding **`*`** (blanks around it ignored) shows **all the files of the index**.
-  *(Whether `*` combined with words means something — see Open Questions.)*
+- The search box holding **`*` alone** (blanks around it ignored) shows **all the files of the
+  index**.
+- `*` **with words** (`* chat`) is a normal search on the words, the star ignored: ranked by
+  relevance, not by date.
 - The empty box still shows the favorites; any other text, the search results.
 - Without a base folder, `*` shows the invitation, like any typed search; with the index not loaded
   yet, *Waiting for the index…*.
@@ -73,7 +75,9 @@ Applies to the three lists: `*`, search results, favorites.
     — a tile-sized box with the text *Loading…* centred, no thumbnail, no heart, no name;
   - when the placeholder comes **into view** (scrolled down to it, or the view enlarged until it
     shows), the next N pages load: the **first new tile takes the placeholder's slot**, and a new
-    placeholder ends the new load, N pages further;
+    placeholder ends the new load, N pages further. The new tiles are appended **at once** (the
+    list is already in memory), their thumbnails arriving one by one as today: the placeholder is
+    barely seen;
   - when the rest of the list fits in the load, it is shown whole and **no placeholder** is left.
 - Appending a load **keeps the scroll position and the selection**; only a new list (another
   search, a cleared box) brings the grid back to the top with a first load.
@@ -92,7 +96,9 @@ Applies to the three lists: `*`, search results, favorites.
 - **Pages loaded at a time**: how many pages a load holds — **2 by default** — set from the
   **⚙** menu and **remembered between sessions** in the registry (`AppSettings.ExplorerPages`),
   like the tile size. Changing it applies from the next load.
-- *(Its control and its range — see Open Questions.)*
+- The ⚙ menu gets an item **File explorer pages per load**, opening a submenu of exclusive
+  choices **1 to 10**, the current one checked (2 by default). A registry value outside 1–10 falls
+  back to 2.
 
 ## Caption
 
@@ -157,12 +163,12 @@ like every previous workfile (Q&A #8). The behaviours to check by hand at delive
 - [x] ~~Clicking the toggle while a search is typed: only choose, or also clear the box?~~ → Also
   clear the box (Q&A #7) *(revised 2026-09-29, see Iteration 3: no toggle left)*
 - [x] ~~Unit tests: none, or a first test project?~~ → None, verified by hand (Q&A #8)
-- [ ] `*` with words (`* chat`): only `*` alone means "all", the rest a normal search — or `*`
-  plus words filters by the words and orders the matches newest first?
-- [ ] When is the *Loading…* slot replaced: at once, the new tiles' thumbnails then arriving one by
-  one as today (the slot barely seen) — or once the thumbnails of the new tiles in view are
-  loaded?
-- [ ] The pages setting's control in the ⚙ menu, and its range?
+- [x] ~~`*` with words (`* chat`): only `*` alone means "all", or `*` plus words filters and orders
+  newest first?~~ → `*` alone only; with words, a normal search, the star ignored (Q&A #10)
+- [x] ~~When is the *Loading…* slot replaced?~~ → At once, the thumbnails arriving one by one
+  (Q&A #11)
+- [x] ~~The pages setting's control in the ⚙ menu, and its range?~~ → A submenu of exclusive
+  choices 1 to 10 (Q&A #12)
 
 ---
 
@@ -203,6 +209,13 @@ size of 100–1 000 px, the panel as wide as its splitter): "1 to 5 columns" ref
 page measured from the current layout. Three questions opened: `*` with words, when the Loading…
 slot is replaced, the setting's control and range.
 
+### Iteration 4 — 2026-09-29
+
+Open questions answered (Q&A #10–#12): **`*` alone** means all, `* chat` being a normal search;
+the Loading… slot is replaced **at once**, the thumbnails arriving one by one; the pages setting is
+a ⚙ **submenu of choices 1 to 10** (the user widened the proposed 1–5). § The `*` Search,
+§ Loading as You Scroll and § Pages Setting updated. No open question left.
+
 ---
 
 ## Implementation Log
@@ -228,9 +241,9 @@ slot is replaced, the setting's control and range.
 | 7 | Clicking the toggle during a search: only choose the empty box's list, or also clear the box? | Also clear the box | 2026-09-27 |
 | 8 | Unit tests: none, or a first test project? | None, verified by hand | 2026-09-27 |
 | 9 | Go: no, code only, or code + tests + documentation? | Feedback instead: no button, `*` searches everything; instead of 10, load 2 pages of the current view minus 1 tile, the last slot a "Loading…" placeholder that, reached at the bottom of the scroll, loads 2 pages more and is replaced by the first new thumbnail; the number of pages (2 by default) configurable in the settings and remembered | 2026-09-29 |
-| 10 | `*` with words: only `*` alone means all, or `*` + words filters and orders newest first? | | |
-| 11 | When is the Loading… slot replaced: at once, or once the new tiles' thumbnails in view are loaded? | | |
-| 12 | The pages setting's control in the ⚙ menu, and its range? | | |
+| 10 | `*` with words: only `*` alone means all, or `*` + words filters and orders newest first? | `*` alone only; with words, a normal search | 2026-09-29 |
+| 11 | When is the Loading… slot replaced: at once, or once the new tiles' thumbnails in view are loaded? | At once | 2026-09-29 |
+| 12 | The pages setting's control in the ⚙ menu, and its range? | A submenu of choices 1 to 10 (proposed 1 to 5) | 2026-09-29 |
 
 ---
 
