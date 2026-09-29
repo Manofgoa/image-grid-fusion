@@ -46,7 +46,8 @@ registry), `UI/MainForm.cs` (the splitter, the start-up values, the saving).
 
 - A **splitter** on the panel's left edge: a WinForms `Splitter` docked right in `MainForm`, added
   to the controls just before the panel so it docks against its edge, 6 logical px wide, the
-  `VSplit` cursor. Dragging it resizes the panel, the **preview giving way**; the window does not
+  system's `SizeWE` cursor — Windows' own horizontal resize arrow, not WinForms' `VSplit` bitmap
+  (Iteration 7). Dragging it resizes the panel, the **preview giving way**; the window does not
   move. Bounds: the panel at least **140** logical px (a 100 px tile and its surround), the preview
   at least **320** (`MinSize` / `MinExtra`, in device px).
 - The panel keeps its **open width** in logical px (`OpenWidth`): taken from its actual width when
@@ -332,6 +333,13 @@ it would have in a full row. The model already does so (n never depends on the n
 
 Go given on 2026-09-29 for the code and the documentation (*Implémenter code et documentation*),
 the run staying on `main`; the scope is the sections above as they stand.
+
+### Iteration 7 — 2026-09-29 — ⚙️ Post-implementation — The standard resize cursor on the splitter
+
+Seen on the redesign, tried by hand on the run's own test instance: the splitter's cursor is
+WinForms' `VSplit` bitmap — big and black, not Windows' own. Asked: the standard Windows cursor.
+The splitter takes `Cursors.SizeWE`, the system's horizontal resize arrow, which follows the theme
+and the DPI. § The Panel's Width updated.
 
 ---
 
