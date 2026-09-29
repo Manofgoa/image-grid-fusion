@@ -6,9 +6,11 @@ namespace ImageGridFusion.UI;
 
 /// <summary>
 /// The file explorer, at the right of the preview (see workfiles/20260926-file-explorer.md and
-/// workfiles/20260928-tile-size-slider.md): a search box over the index of the base folder, its 10
-/// best matches as the user types, and the favorites — all of them, the newest first — while the box
-/// is empty, as a grid of thumbnail tiles filling their rows at the size of the slider below them;
+/// workfiles/20260928-tile-size-slider.md): a search box over the index of the base folder, its
+/// matches as the user types — every file, the most recently created first, for <c>*</c> — and the
+/// favorites — all of them, the newest first — while the box is empty, as a grid of thumbnail tiles
+/// filling their rows at the size of the slider below them, loaded a few pages at a time as the list
+/// scrolls (workfiles/20260927-file-explorer-show-all.md);
 /// the panel's width is the user's, dragged from its edge. A tile is dragged onto a cell like a file
 /// from the Explorer, double-clicked to be added like Add images, hearted to become a favorite.
 /// Collapses to a strip. The cached index is loaded, then rescanned in the background, at every start.
@@ -26,6 +28,11 @@ internal sealed class FileExplorerPanel : Panel
     /// <summary>The open width before the user drags it, in logical pixels: one 200 px tile.</summary>
     public const int DefaultOpenWidth = 240;
 
+    /// <summary>How many pages of tiles a load holds: the ⚙ menu's choices, and its default.</summary>
+    public const int MinPagesPerLoad = 1;
+    public const int MaxPagesPerLoad = 10;
+    public const int DefaultPagesPerLoad = 2;
+
     private const int TransientDuration = 5000;
 
     private readonly TableLayoutPanel _content = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 6, Padding = new Padding(6, 4, 6, 6) };
@@ -34,7 +41,7 @@ internal sealed class FileExplorerPanel : Panel
     private readonly Button _collapse = new() { Text = "»", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right };
     private readonly Button _expand = new() { Text = "«", Dock = DockStyle.Fill, Visible = false, Margin = Padding.Empty };
     private readonly TableLayoutPanel _searchRow = new() { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
-    private readonly TextBox _search = new() { PlaceholderText = "Search files…", Anchor = AnchorStyles.Left | AnchorStyles.Right };
+    private readonly TextBox _search = new() { PlaceholderText = "Search files… (* for all)", Anchor = AnchorStyles.Left | AnchorStyles.Right };
     private readonly Button _rescan = new() { Text = "↻", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right, Enabled = false };
     private readonly Label _status = new() { Dock = DockStyle.Fill, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, Margin = Padding.Empty };
     private readonly Label _caption = new() { Dock = DockStyle.Fill, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, Margin = Padding.Empty };
@@ -68,7 +75,11 @@ internal sealed class FileExplorerPanel : Panel
     private CancellationTokenSource? _scan;
     private string _summary = "No base folder";
     private bool _summaryError;
-    private IReadOnlyList<ExplorerRow> _rows = [];
+    private int _pagesPerLoad = DefaultPagesPerLoad;
+
+    // The whole list the search box asks for, computed once, and how many of its tiles are loaded.
+    private IReadOnlyList<ExplorerRow> _list = [];
+    private int _loaded;
 
     public FileExplorerPanel()
     {
@@ -133,6 +144,7 @@ internal sealed class FileExplorerPanel : Panel
         _grid.HeartClicked += (_, row) => ToggleFavorite(row);
         _grid.RowActivated += (_, row) => Activate(row);
         _grid.DragRequested += (_, row) => StartDrag(row);
+        _grid.MoreRequested += (_, _) => LoadMore();
         _menu.Opening += (_, e) => e.Cancel = _grid.RowAt(_grid.PointToClient(MousePosition)) is null;
         _openLocation.Click += (_, _) => OpenLocation();
         _transient.Tick += (_, _) => ShowSummary();
@@ -218,6 +230,18 @@ internal sealed class FileExplorerPanel : Panel
             _grid.TileSize = value;
             SyncSize();
         }
+    }
+
+    /// <summary>
+    /// How many pages of tiles a load holds, <see cref="MinPagesPerLoad"/> to
+    /// <see cref="MaxPagesPerLoad"/> — a page being what the list shows at once. Applies from the next
+    /// load. Setting it raises nothing.
+    /// </summary>
+    [DefaultValue(DefaultPagesPerLoad)]
+    public int PagesPerLoad
+    {
+        get => _pagesPerLoad;
+        set => _pagesPerLoad = Math.Clamp(value, MinPagesPerLoad, MaxPagesPerLoad);
     }
 
     /// <summary>The search box has the focus: its keys are its own, not the window's shortcuts.</summary>
@@ -379,7 +403,7 @@ internal sealed class FileExplorerPanel : Panel
 
         _index = loaded;
         SetSummary(loaded is null ? "No index yet" : Summary(loaded));
-        RefreshRows();
+        RefreshRows(keepPlace: true);
         await ScanAsync(folder, cancellation);
     }
 
@@ -438,7 +462,7 @@ internal sealed class FileExplorerPanel : Panel
 
             _index = index;
             SetSummary(saveError is null ? Summary(index) : $"{Summary(index)} · not saved: {saveError}", error: saveError is not null);
-            RefreshRows();
+            RefreshRows(keepPlace: true);
         }
         catch (OperationCanceledException)
         {
@@ -504,11 +528,15 @@ internal sealed class FileExplorerPanel : Panel
     }
 
     /// <summary>
-    /// The tiles as the search box stands: every favorite while it is blank, else the best matches of
-    /// its words; without a base folder, a typed search shows the invitation instead.
+    /// The list as the search box stands: every favorite while it is blank, every file for <c>*</c>,
+    /// else the matches of its words; without a base folder, a typed search shows the invitation
+    /// instead. A new list shows its first load from the top; a refreshed one
+    /// (<paramref name="keepPlace"/>: a rescan, a favorite or a missing file gone) keeps as many tiles
+    /// loaded as before, the scroll and the selection.
     /// </summary>
-    private void RefreshRows()
+    private void RefreshRows(bool keepPlace = false)
     {
+        bool everything = FileSearch.IsEverything(_search.Text);
         string[] words = FileSearch.Words(_search.Text);
         bool inviting = words.Length > 0 && _baseFolder is null;
         _invite.Visible = inviting;
@@ -529,24 +557,58 @@ internal sealed class FileExplorerPanel : Panel
         }
         else
         {
-            var (best, total) = FileSearch.Search(_index.Entries, words);
-            foreach (var entry in best)
+            var found = everything ? FileSearch.All(_index.Entries) : FileSearch.Search(_index.Entries, words);
+            foreach (var entry in found)
             {
                 rows.Add(new ExplorerRow(_index.FullPath(entry), entry.Name));
             }
 
-            _caption.Text = total switch
-            {
-                0 => "No result",
-                1 => "1 result",
-                <= FileSearch.Limit => $"{total} results",
-                _ => $"{total:N0} results — first {FileSearch.Limit}",
-            };
+            _caption.Text = everything
+                ? $"All files ({found.Count:N0})"
+                : found.Count switch
+                {
+                    0 => "No result",
+                    1 => "1 result",
+                    _ => $"{found.Count:N0} results",
+                };
         }
 
-        _rows = rows;
-        _grid.Rows = rows;
+        _list = rows;
+        ShowLoaded(keepPlace ? Math.Max(_loaded, FirstLoad()) : FirstLoad(), keepPlace);
     }
+
+    /// <summary>A load's slots: the pages per load times what the list shows at once.</summary>
+    private int LoadSize() => _pagesPerLoad * _grid.PageSize;
+
+    /// <summary>The first load's tiles: its slots but the last, left to the Loading… slot.</summary>
+    private int FirstLoad() => LoadSize() - 1;
+
+    /// <summary>
+    /// The Loading… slot came into view: the next load, the first new tile in its slot, a new slot
+    /// ending the load a load further.
+    /// </summary>
+    private void LoadMore()
+    {
+        if (_loaded < _list.Count)
+        {
+            ShowLoaded(_loaded + LoadSize(), keepPlace: true);
+        }
+    }
+
+    /// <summary>
+    /// Shows the first <paramref name="count"/> tiles of the list and the Loading… slot after them —
+    /// or the whole list, without the slot, when the rest would fit in it.
+    /// </summary>
+    private void ShowLoaded(int count, bool keepPlace)
+    {
+        _loaded = count + 1 >= _list.Count ? _list.Count : Math.Max(1, count);
+        bool hasMore = _loaded < _list.Count;
+        var rows = hasMore ? _list.Take(_loaded).ToArray() : _list;
+        _grid.SetRows(rows, hasMore, keepPlace);
+    }
+
+    /// <summary>The tiles loaded, the Loading… slot aside.</summary>
+    private IReadOnlyList<ExplorerRow> LoadedRows => _grid.Rows;
 
     /// <summary>Enter activates the first tile; ↓ moves to the grid.</summary>
     private void OnSearchKeyDown(object? sender, KeyEventArgs e)
@@ -556,13 +618,13 @@ internal sealed class FileExplorerPanel : Panel
             case Keys.Enter:
                 e.Handled = true;
                 e.SuppressKeyPress = true;
-                if (_grid.Visible && _rows.Count > 0)
+                if (_grid.Visible && LoadedRows.Count > 0)
                 {
-                    Activate(_rows[0]);
+                    Activate(LoadedRows[0]);
                 }
 
                 break;
-            case Keys.Down when _grid.Visible && _rows.Count > 0:
+            case Keys.Down when _grid.Visible && LoadedRows.Count > 0:
                 e.Handled = true;
                 if (_grid.SelectedRow is null)
                 {
@@ -604,8 +666,8 @@ internal sealed class FileExplorerPanel : Panel
 
         if (FileSearch.Words(_search.Text).Length == 0)
         {
-            // The favorites list: the tile leaves it — once the grid is done with the click.
-            BeginInvoke(RefreshRows);
+            // The favorites list: the tile leaves it, the place kept — once the grid is done with the click.
+            BeginInvoke(() => RefreshRows(keepPlace: true));
         }
         else
         {
@@ -663,7 +725,7 @@ internal sealed class FileExplorerPanel : Panel
             error ??= ex.Message;
         }
 
-        RefreshRows();
+        RefreshRows(keepPlace: true);
         ShowTransient(error is null ? "File not found — removed from the index" : $"File not found — removed from the index, not saved: {error}", error: error is not null);
         return false;
     }
