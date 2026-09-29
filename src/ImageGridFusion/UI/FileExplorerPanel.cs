@@ -283,12 +283,12 @@ internal sealed class FileExplorerPanel : Panel
         ApplyMetrics();
     }
 
-    /// <summary>The DPI changed: the rows follow the font, and the width is set again from its logical value, so no rounding drifts.</summary>
+    // The width is left to the window's own scaling: inside this handler the panel's DeviceDpi still
+    // reads the old value, so setting it again here would scale it twice.
     protected override void OnDpiChangedAfterParent(EventArgs e)
     {
         base.OnDpiChangedAfterParent(e);
         ApplyMetrics();
-        ApplyWidth();
     }
 
     /// <summary>The panel's width, from its state: logical before the window scales its controls, device units after.</summary>
@@ -298,13 +298,13 @@ internal sealed class FileExplorerPanel : Panel
         Width = IsHandleCreated ? LogicalToDeviceUnits(logical) : logical;
     }
 
-    /// <summary>The rows sized to the font: the status and caption lines, the invitation.</summary>
+    /// <summary>The rows sized to the font: the status and caption lines, the slider's row, the invitation.</summary>
     private void ApplyMetrics()
     {
         int line = Font.Height + LogicalToDeviceUnits(4);
         _content.RowStyles[2].Height = line;
         _content.RowStyles[3].Height = line;
-        _content.RowStyles[5].Height = LogicalToDeviceUnits(34);
+        _content.RowStyles[5].Height = Font.Height * 2 + LogicalToDeviceUnits(4);
         _inviteText.Height = Font.Height * 4 + LogicalToDeviceUnits(8);
     }
 
