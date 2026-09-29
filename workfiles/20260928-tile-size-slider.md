@@ -139,10 +139,11 @@ In `ThumbnailGrid`, a `TileSize` property (logical px, clamped to 100..1000) rep
   120 units.
 - Explorer's convention, chosen on 2026-09-29 (Q&A #6 revised, Iteration 9) after a first choice
   of the wheel alone: a list of results is long, and the wheel is its natural scroll.
-- Mechanism: `ThumbnailGrid` overrides `OnMouseWheel`: with `Control` held (`ModifierKeys`), the
-  gesture raises a `SizeStepRequested` event with the direction and is marked handled, so nothing
-  scrolls; the panel sets the new size on the slider, which applies it like any other change.
-  Without `Control`, the base class scrolls.
+- Mechanism: `ThumbnailGrid` reads `Control` from the wheel message itself — the `MK_CONTROL` flag
+  Windows sets in `WM_MOUSEWHEEL` when the key is held, kept from `WndProc` — and in `OnMouseWheel`,
+  with it, raises a `SizeStepRequested` event with the direction and marks the message handled, so
+  nothing scrolls; the panel sets the new size on the slider, which applies it like any other
+  change. Without the flag, the base class scrolls.
 - The wheel reaches the control **under the cursor** through Windows' *Scroll inactive windows when
   I hover over them* (on by default since Windows 10); with it off, the wheel goes to the focused
   control, like the rest of the app.
@@ -198,17 +199,17 @@ Q&A #13 — the standing choice, kept here). The checks of the redesign, run at 
 
 Run at delivery — 2026-09-29, `checks2.ps1` (in the session's scratchpad, not in the repository),
 its keys, wheel and drag sent as Windows messages to the app's own controls after checking the
-window under the point is the app's: **Start-up** 300 px and the slider at 100, then two
-collapse / expand cycles after the start-up monitor change, still 300; **Slider** End → 1000 and
-Home + 5 Right → 200, both saved; **Wheel** 200 → 230 → 264 → 230, held at 1000 and at 100;
-**Splitter** dragged 150 px: 450 and saved, dragged far: 139 and saved; **Collapse** 20 px and
-**expand** back; **Start-up clamped** 50 → 139 and 5000 → 1000 — 14 checks, passed over the last
-two runs (the wheel and splitter ones skipped by the very last run, another window covering the
-app; they had passed the run before on the same code). On the screenshots: **Rows full** and
-**Enlarged** — 10 `jpg` results at size 200 in a 300 px panel, one tile per row across the row's
-width, the thumbnails filling their tiles; at size 100 in a 926 px panel, 8 per row. Not run:
-**Threshold** and **Single file** as such (the model gives them by construction: n never reads the
-number of files), **Buckets**, **Keyboard** by row.
+window under the point is the app's, the widths measured in the app's own logical pixels
+(calibrated on the 20 px strip, so the monitor the window is created on does not matter):
+**Start-up** 300 px and the slider at 100, then two collapse / expand cycles, still 300;
+**Slider** End → 1000 and Home + 5 Right → 200, both saved; **Wheel** alone: the size stays;
+`Ctrl` + wheel: 200 → 230 → 264 → 230, held at 1000 and at 100; **Splitter** dragged 150 px: 450
+and saved, dragged far: 139 and saved; **Collapse** 20 px and **expand** back; **Start-up
+clamped** 50 → 139 and 5000 → 1000 — 15 checks, all passed in one run (Iteration 10). On the
+screenshots: **Rows full** and **Enlarged** — 10 `jpg` results at size 200 in a 300 px panel, one
+tile per row across the row's width, the thumbnails filling their tiles; at size 100 in a 926 px
+panel, 8 per row. Not run: **Threshold** and **Single file** as such (the model gives them by
+construction: n never reads the number of files), **Buckets**, **Keyboard** by row.
 
 The first delivery (the size in columns) was checked on 2026-09-29 by a UI Automation script
 (`checks.ps1`, in the session's scratchpad, not in the repository) driving the built app twice,
@@ -405,10 +406,13 @@ annotated; § Mouse Wheel, § The Size Slider, § Documentation and § Test Impa
 
 ### Iteration 10 — 2026-09-29 — 🧭 Implementation choices — the wheel
 
-Delivered in `caa8669` (the code) and `1e8d4dd` (README, glossary). **No rule broken.** The
-`Control` key is read from `ModifierKeys`, the real key state, as the preview reads `Shift` for its
-own wheel; without it the base class scrolls, with it the message is handled and goes no further.
-The checks' wheel messages hold `Control` for the few milliseconds of their synchronous send. One
+Delivered in `caa8669` (the code) and `1e8d4dd` (README, glossary), then `cbdba78` for the key's
+reading. **No rule broken.** The `Control` key is read from the wheel message's own
+`MK_CONTROL` flag rather than from `ModifierKeys` (the thread's key state, which the preview uses
+for `Shift`): the flag travels with the event, so it holds for a message reaching a window that is
+not in the foreground — the checks' case, where a key state set from outside never reached the
+app's thread — as much as for the user's real wheel. Without it the base class scrolls, with it
+the message is handled and goes no further. One
 finding outside the scope, listed under § Open Questions: the window created on a monitor whose
 DPI differs from the primary's keeps the primary's scale until it changes monitor — which had made
 a start-up check read 174 px for a 139 px panel; the check now measures in the app's own logical
@@ -423,7 +427,7 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 3, 4, 6–10 | 2026-09-29 | The size in columns: `73747c2`, `2357997`, `1b5784a` (Iterations 3–4). The redesign: `4515678` the model, `34b2c9c` the cursor, `e8e582b` and `c40a364` the width and DPI fixes (Iterations 6–8); `caa8669` the wheel scrolling, `Ctrl` + wheel sizing (Iterations 9–10). Checked by script, 13 then 15 checks, screenshots (§ Test Impact) |
+| Code | 3, 4, 6–10 | 2026-09-29 | The size in columns: `73747c2`, `2357997`, `1b5784a` (Iterations 3–4). The redesign: `4515678` the model, `34b2c9c` the cursor, `e8e582b` and `c40a364` the width and DPI fixes (Iterations 6–8); `caa8669` and `cbdba78` the wheel scrolling, `Ctrl` + wheel sizing (Iterations 9–10). Checked by script, 13 then 15 checks, screenshots (§ Test Impact) |
 | Unit tests | — | — | Does not apply — no test project, checked by script and screenshots (§ Test Impact) |
 | README | 3, 6, 9 | 2026-09-29 | `1515917`, `0c69eb3`, then `1e8d4dd` — § *File explorer*: the *Tiles* bullet (the width dragged from the edge) and the *Tile size* bullet (rows always full, thumbnails enlarged, `Ctrl` + wheel); GLOSSARY: *File explorer*, *Tile*, *Tile size* revised |
 
