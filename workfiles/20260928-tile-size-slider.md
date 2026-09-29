@@ -418,6 +418,8 @@ DPI differs from the primary's keeps the primary's scale until it changes monito
 a start-up check read 174 px for a 139 px panel; the check now measures in the app's own logical
 pixels, against the 20 px strip.
 
+**Task finished**, confirmed by the user on 2026-09-29 after trying the delivered build.
+
 ---
 
 ## Implementation Log
