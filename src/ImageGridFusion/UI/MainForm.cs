@@ -20,6 +20,8 @@ internal sealed class MainForm : Form
     // explorer is collapsed. The system's resize arrow, not WinForms' own VSplit bitmap.
     private readonly Splitter _explorerSplitter = new() { Dock = DockStyle.Right, Width = 6, Cursor = Cursors.SizeWE };
     private readonly ToolStripMenuItem _explorerFolder = new("File explorer folder…");
+    // How many pages of tiles the explorer loads at a time: a submenu of exclusive choices, remembered between sessions.
+    private readonly ToolStripMenuItem _explorerPages = new("File explorer pages per load");
     private readonly Button _clearButton = new() { Text = "Clear all", AutoSize = true };
     private readonly Button _settingsButton = new() { Text = "⚙", Size = new Size(32, 23), AutoSize = true };
     private readonly ContextMenuStrip _settingsMenu = new();
@@ -341,6 +343,7 @@ internal sealed class MainForm : Form
         _explorer.Open = AppSettings.ExplorerPanelOpen;
         _explorer.OpenWidth = AppSettings.ExplorerWidth;
         _explorer.TileSize = AppSettings.ExplorerTileSize;
+        _explorer.PagesPerLoad = AppSettings.ExplorerPagesPerLoad;
         _explorerSplitter.Visible = _explorer.Open;
         ApplyExplorerSplitterBounds();
         Controls.Add(_preview);
@@ -359,7 +362,15 @@ internal sealed class MainForm : Form
         _outputButtons.SizeChanged += (_, _) => FitStatusWidth();
         _cancelButton.VisibleChanged += (_, _) => FitStatusWidth();
         _clearButton.Click += (_, _) => ClearAll();
-        _settingsMenu.Items.AddRange([_startWithWindows, _borderColor, _twitterCornersDefault, _explorerFolder]);
+        _settingsMenu.Items.AddRange([_startWithWindows, _borderColor, _twitterCornersDefault, _explorerFolder, _explorerPages]);
+        for (int pages = FileExplorerPanel.MinPagesPerLoad; pages <= FileExplorerPanel.MaxPagesPerLoad; pages++)
+        {
+            int choice = pages;
+            var item = new ToolStripMenuItem(choice.ToString()) { Tag = choice };
+            item.Click += (_, _) => SetExplorerPagesPerLoad(choice);
+            _explorerPages.DropDownItems.Add(item);
+        }
+
         _toolTip.SetToolTip(_settingsButton, "Settings");
         _settingsButton.Click += (_, _) => ShowSettings();
         _startWithWindows.Click += (_, _) => ToggleStartWithWindows();
@@ -369,6 +380,7 @@ internal sealed class MainForm : Form
         _twitterCornersDefault.Click += (_, _) => ToggleTwitterCornersDefault();
         _explorerFolder.ToolTipText = "The folder the file explorer searches, with its subfolders; remembered between sessions";
         _explorerFolder.Click += (_, _) => PickExplorerFolder();
+        _explorerPages.ToolTipText = "How many screens of tiles the file explorer loads at a time, the next ones as the list scrolls; remembered between sessions";
         _explorer.OpenChanged += (_, _) =>
         {
             _explorerSplitter.Visible = _explorer.Open;
@@ -1619,6 +1631,10 @@ internal sealed class MainForm : Form
     {
         _startWithWindows.Checked = StartupRegistration.IsEnabled;
         _twitterCornersDefault.Checked = _roundedByDefault;
+        foreach (ToolStripMenuItem item in _explorerPages.DropDownItems)
+        {
+            item.Checked = (int)item.Tag! == _explorer.PagesPerLoad;
+        }
 
         // Locked like the global effects toolbar: an export keeps the borders it started with.
         _borderColor.Enabled = !IsExporting;
@@ -2303,6 +2319,20 @@ internal sealed class MainForm : Form
         catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
         {
             ShowStatus($"File explorer width not remembered: {ex.Message}", error: true);
+        }
+    }
+
+    /// <summary>The ⚙ menu's File explorer pages per load: applied from the explorer's next load, remembered between sessions.</summary>
+    private void SetExplorerPagesPerLoad(int pages)
+    {
+        _explorer.PagesPerLoad = pages;
+        try
+        {
+            AppSettings.SaveExplorerPagesPerLoad(pages);
+        }
+        catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+        {
+            ShowStatus($"File explorer pages per load not remembered: {ex.Message}", error: true);
         }
     }
 

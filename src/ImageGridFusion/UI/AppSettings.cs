@@ -16,6 +16,7 @@ internal static class AppSettings
     private const string ExplorerPanelOpenName = "ExplorerPanelOpen";
     private const string ExplorerWidthName = "ExplorerWidth";
     private const string ExplorerTileSizeName = "ExplorerTileSize";
+    private const string ExplorerPagesPerLoadName = "ExplorerPagesPerLoad";
     private const string WindowWidthName = "WindowWidth";
     private const string WindowHeightName = "WindowHeight";
 
@@ -171,6 +172,37 @@ internal static class AppSettings
     {
         using var key = Registry.CurrentUser.CreateSubKey(Key);
         key.SetValue(ExplorerTileSizeName, size, RegistryValueKind.DWord);
+    }
+
+    /// <summary>
+    /// How many pages of tiles the file explorer loads at a time, <see cref="FileExplorerPanel.MinPagesPerLoad"/>
+    /// to <see cref="FileExplorerPanel.MaxPagesPerLoad"/>; the default when nothing was saved, the value
+    /// is out of range, or the key cannot be read.
+    /// </summary>
+    public static int ExplorerPagesPerLoad
+    {
+        get
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey(Key);
+                return key?.GetValue(ExplorerPagesPerLoadName) is int value
+                    && value is >= FileExplorerPanel.MinPagesPerLoad and <= FileExplorerPanel.MaxPagesPerLoad
+                    ? value
+                    : FileExplorerPanel.DefaultPagesPerLoad;
+            }
+            catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+            {
+                return FileExplorerPanel.DefaultPagesPerLoad;
+            }
+        }
+    }
+
+    /// <summary>Saves the file explorer's pages per load; throws an <see cref="StartupRegistration.IsRegistryError"/> exception on failure.</summary>
+    public static void SaveExplorerPagesPerLoad(int pages)
+    {
+        using var key = Registry.CurrentUser.CreateSubKey(Key);
+        key.SetValue(ExplorerPagesPerLoadName, pages, RegistryValueKind.DWord);
     }
 
     /// <summary>
