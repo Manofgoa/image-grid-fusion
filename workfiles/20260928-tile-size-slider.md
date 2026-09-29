@@ -206,6 +206,18 @@ not only the blocking ones.
   **full width kept** (a size equal to the count stays equal to the new count, the others back
   to 1)?~~ → Back to **1**, like `+` (Q&A #7, Iteration 2)
 
+Added by Iteration 5 (the post-implementation redesign):
+
+- [ ] The panel's width: `−` / `+` kept (in steps, the window following), a **splitter** on the
+  panel's edge (continuous, the preview giving way), or a **width slider** in the header
+  (continuous, the window following)?
+- [ ] The row model: the number per row is **what fits** — ⌊width / nominal size⌋, the tiles
+  stretched to fill the row, the bottom slider setting the nominal size — or the slider sets the
+  **number per row** directly, the tiles filling the row?
+- [ ] A thumbnail smaller than its box: **enlarged to fit** (bands on the other axis) or enlarged
+  to **cover** the box (cropped)?
+- [ ] The smallest tile size (so the most per row): 100 px, 150 px, or an explicit cap of 5 per row?
+
 ---
 
 ## Design Iterations
@@ -279,6 +291,17 @@ broken.** The choices the design left open, or that the run took:
   restored afterwards; the UI Automation tree exposes the WinForms `TrackBar` without its range
   pattern, so the script reads its position and range from the control itself.
 
+### Iteration 5 — 2026-09-29 — ⚙️ Post-implementation — Tiles filling the row, a continuous size, the thumbnails enlarged
+
+Asked right after the delivery, with a screenshot of 5 columns at size 5: a video's Shell thumbnail
+(about 640 px wide) lost in the middle of a 1032 × 774 box. The request: smaller tile sizes and
+more columns at most — or a slider for the side area's width in place of `−` / `+` — and, above
+all, **1 to 5 (or more) tiles per row without wasted space**: the tile size varying continuously
+as the area grows, then shrinking at once when one more tile fits on the row, as Windows' thumbnail
+view roughly does; and the thumbnail **enlarged to fill its box** when the box is larger than what
+the Shell gives. The design is being redrawn from these; the width control, the row-filling model,
+the enlargement and the smallest size are asked (Q&A #8–#11); the code is untouched until the go.
+
 ---
 
 ## Implementation Log
@@ -307,6 +330,10 @@ Questions asked by the agent during design, with user responses.
 | 5 | Exploration depth: straightforward, or tricky / long? | Straightforward | 2026-09-26 |
 | 6 | The wheel over the tiles: alone, or `Ctrl` + wheel? | The wheel **alone** — « Oui M », confirmed by « Oui » (Iteration 2) | 2026-09-28 |
 | 7 | `−`: the size back to 1, kept if it still divides, or the full width kept? | Back to **1**, like `+` — the proposal, accepted (Iteration 2) | 2026-09-28 |
+| 8 | The panel's width control: `−` / `+` in steps, a splitter on the panel's edge, or a width slider in the header (mockup)? | | 2026-09-29 |
+| 9 | The row model: the number per row is what fits at the nominal size set by the slider, the tiles stretched to fill — or the slider sets the number per row? | | 2026-09-29 |
+| 10 | A thumbnail smaller than its box: enlarged to fit, or to cover (cropped)? | | 2026-09-29 |
+| 11 | The smallest tile size: 100 px, 150 px, or a cap of 5 per row? | | 2026-09-29 |
 
 ---
 
