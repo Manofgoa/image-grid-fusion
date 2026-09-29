@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO.Enumeration;
 using System.Text;
 
 namespace ImageGridFusion.Explorer;
@@ -6,13 +7,15 @@ namespace ImageGridFusion.Explorer;
 /// <summary>
 /// The file explorer's index: every file under the base folder and its subfolders, cached in a text
 /// file next to the exe so the search never reads the disk. Three header lines — a version, the base
-/// folder, the scan's time — then one relative path per line; extra tab-separated columns are
-/// tolerated, for the text a later task may add. See workfiles/20260926-file-explorer.md § Index File.
+/// folder, the scan's time — then one line per file: its relative path and, after a tab, its creation
+/// time (UTC, ISO 8601); further tab-separated columns are tolerated, for the text a later task may
+/// add. See workfiles/20260926-file-explorer.md § Index File and
+/// workfiles/20260927-file-explorer-show-all.md § Index File.
 /// </summary>
 internal sealed class FileIndex
 {
     public const string FileName = "files.index";
-    private const string Header = "ImageGridFusion index 1";
+    private const string Header = "ImageGridFusion index 2";
     private const int ProgressInterval = 100;
 
     private readonly List<IndexEntry> _entries;
@@ -43,7 +46,8 @@ internal sealed class FileIndex
 
     /// <summary>
     /// Reads the cached index of <paramref name="baseFolder"/>; null when there is none, it cannot be
-    /// read, or it was scanned for another folder.
+    /// read, it was scanned for another folder, or by an older version (without the dates) — the scan
+    /// run at every start writes it again.
     /// </summary>
     public static FileIndex? Load(string path, string baseFolder)
     {
@@ -67,12 +71,14 @@ internal sealed class FileIndex
         var entries = new List<IndexEntry>(lines.Length - 3);
         for (int i = 3; i < lines.Length; i++)
         {
-            string line = lines[i];
-            int tab = line.IndexOf('\t');
-            string relative = tab < 0 ? line : line[..tab];
-            if (relative.Length > 0)
+            string[] columns = lines[i].Split('\t');
+            if (columns[0].Length > 0)
             {
-                entries.Add(new IndexEntry(relative));
+                var created = columns.Length > 1
+                    && DateTime.TryParse(columns[1], CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var date)
+                    ? date
+                    : DateTime.MinValue;
+                entries.Add(new IndexEntry(columns[0], created));
             }
         }
 
@@ -90,7 +96,9 @@ internal sealed class FileIndex
             writer.WriteLine(ScannedAt.ToString("o", CultureInfo.InvariantCulture));
             foreach (var entry in _entries)
             {
-                writer.WriteLine(entry.RelativePath);
+                writer.Write(entry.RelativePath);
+                writer.Write('\t');
+                writer.WriteLine(entry.Created.ToString("o", CultureInfo.InvariantCulture));
             }
         }
 
@@ -114,8 +122,9 @@ internal sealed class FileIndex
     /// <summary>
     /// Scans <paramref name="baseFolder"/> and its subfolders, on the calling thread: a first pass counts
     /// the files, so the second, which records them, reports an exact ratio. Hidden and system entries
-    /// are skipped with their content, inaccessible folders too. Throws like the enumeration does when
-    /// the folder itself cannot be read.
+    /// are skipped with their content, inaccessible folders too. Each file's creation time comes with
+    /// the enumeration, without another disk access. Throws like the enumeration does when the folder
+    /// itself cannot be read.
     /// </summary>
     public static FileIndex Scan(string baseFolder, IProgress<ScanProgress>? progress, CancellationToken cancellation)
     {
@@ -149,13 +158,20 @@ internal sealed class FileIndex
         // The enumeration prefixes each path with the root as given; a drive root already ends with its separator.
         int prefix = root.EndsWith(Path.DirectorySeparatorChar) ? root.Length : root.Length + 1;
         var entries = new List<IndexEntry>(count);
-        foreach (var file in Directory.EnumerateFiles(root, "*", options))
+        var files = new FileSystemEnumerable<(string Path, DateTime Created)>(
+            root,
+            (ref FileSystemEntry entry) => (entry.ToFullPath(), entry.CreationTimeUtc.UtcDateTime),
+            options)
+        {
+            ShouldIncludePredicate = (ref FileSystemEntry entry) => !entry.IsDirectory,
+        };
+        foreach (var (file, created) in files)
         {
             cancellation.ThrowIfCancellationRequested();
             string relative = file.Length > prefix && file.StartsWith(root, StringComparison.OrdinalIgnoreCase)
                 ? file[prefix..]
                 : Path.GetRelativePath(root, file);
-            entries.Add(new IndexEntry(relative));
+            entries.Add(new IndexEntry(relative, created));
             Report(ScanPhase.Indexing, entries.Count, count, force: entries.Count == count);
         }
 
