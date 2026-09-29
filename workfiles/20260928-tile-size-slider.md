@@ -132,15 +132,17 @@ In `ThumbnailGrid`, a `TileSize` property (logical px, clamped to 100..1000) rep
 
 ## Mouse Wheel
 
-- Over the tiles (the cursor in the grid), the wheel **moves the slider**: one notch **multiplies
-  the tile size by 1.15** (up = larger tiles) or divides it (down), rounded, clamped to 100..1000
-  — about 17 notches from end to end, the same feel at every size. The deltas of a free-spinning
-  wheel are accumulated, a notch being 120 units.
-- **No modifier**: the wheel **alone** does it (Q&A #6) — the app's convention, the wheel zooming
-  the cells. The list scrolls with its **scrollbar** and the **keyboard**, not with the wheel.
-- Mechanism: `ThumbnailGrid` overrides `OnMouseWheel` without calling the base class; the gesture
-  raises a `SizeStepRequested` event with the direction, the panel sets the new size on the
-  slider, which applies it like any other change.
+- Over the tiles (the cursor in the grid), the wheel **scrolls the list**, as any list does;
+  **`Ctrl` + wheel moves the slider**: one notch **multiplies the tile size by 1.15** (up = larger
+  tiles) or divides it (down), rounded, clamped to 100..1000 — about 17 notches from end to end,
+  the same feel at every size. The deltas of a free-spinning wheel are accumulated, a notch being
+  120 units.
+- Explorer's convention, chosen on 2026-09-29 (Q&A #6 revised, Iteration 9) after a first choice
+  of the wheel alone: a list of results is long, and the wheel is its natural scroll.
+- Mechanism: `ThumbnailGrid` overrides `OnMouseWheel`: with `Control` held (`ModifierKeys`), the
+  gesture raises a `SizeStepRequested` event with the direction and is marked handled, so nothing
+  scrolls; the panel sets the new size on the slider, which applies it like any other change.
+  Without `Control`, the base class scrolls.
 - The wheel reaches the control **under the cursor** through Windows' *Scroll inactive windows when
   I hover over them* (on by default since Windows 10); with it off, the wheel goes to the focused
   control, like the rest of the app.
@@ -243,6 +245,13 @@ Added by Iteration 5 (the post-implementation redesign):
   to **cover** the box (cropped)?~~ → **Enlarged to fit** (Q&A #10, Iteration 6)
 - [x] ~~The smallest tile size (so the most per row): 100 px, 150 px, or an explicit cap of 5 per
   row?~~ → **100 px**, the slider from 100 to 1000 (Q&A #11, Iteration 6)
+
+Seen during the checks, outside this workfile's scope (Iteration 10):
+
+- [ ] The window created on a monitor whose DPI differs from the primary's stays scaled for the
+  primary's DPI until it changes monitor (WinForms scales the form for the system DPI at creation
+  and only rescales on a DPI *change*): on this machine, an app landing on the 96 DPI monitor
+  shows everything 25 % too big there. Pre-existing, app-wide; a workfile of its own if wanted.
 
 ---
 
@@ -394,6 +403,17 @@ scroll: the wheel over the tiles scrolls the list, `Ctrl` + wheel changes the ti
 Explorer's convention, which the first choice (Q&A #6, the wheel alone) had set aside. Q&A #6
 annotated; § Mouse Wheel, § The Size Slider, § Documentation and § Test Impact updated.
 
+### Iteration 10 — 2026-09-29 — 🧭 Implementation choices — the wheel
+
+Delivered in `caa8669` (the code) and `1e8d4dd` (README, glossary). **No rule broken.** The
+`Control` key is read from `ModifierKeys`, the real key state, as the preview reads `Shift` for its
+own wheel; without it the base class scrolls, with it the message is handled and goes no further.
+The checks' wheel messages hold `Control` for the few milliseconds of their synchronous send. One
+finding outside the scope, listed under § Open Questions: the window created on a monitor whose
+DPI differs from the primary's keeps the primary's scale until it changes monitor — which had made
+a start-up check read 174 px for a 139 px panel; the check now measures in the app's own logical
+pixels, against the 20 px strip.
+
 ---
 
 ## Implementation Log
@@ -403,9 +423,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 3, 4, 6–8 | 2026-09-29 | The size in columns: `73747c2`, `2357997`, `1b5784a` (Iterations 3–4). The redesign: `4515678` the model, `34b2c9c` the cursor, `e8e582b` and `c40a364` the width and DPI fixes (Iterations 6–8). Checked by script, 13 then 14 checks, screenshots (§ Test Impact) |
+| Code | 3, 4, 6–10 | 2026-09-29 | The size in columns: `73747c2`, `2357997`, `1b5784a` (Iterations 3–4). The redesign: `4515678` the model, `34b2c9c` the cursor, `e8e582b` and `c40a364` the width and DPI fixes (Iterations 6–8); `caa8669` the wheel scrolling, `Ctrl` + wheel sizing (Iterations 9–10). Checked by script, 13 then 15 checks, screenshots (§ Test Impact) |
 | Unit tests | — | — | Does not apply — no test project, checked by script and screenshots (§ Test Impact) |
-| README | 3, 6 | 2026-09-29 | `1515917` then `0c69eb3` — § *File explorer*: the *Tiles* bullet (the width dragged from the edge) and the *Tile size* bullet (rows always full, thumbnails enlarged, the wheel); GLOSSARY: *File explorer*, *Tile*, *Tile size* revised |
+| README | 3, 6, 9 | 2026-09-29 | `1515917`, `0c69eb3`, then `1e8d4dd` — § *File explorer*: the *Tiles* bullet (the width dragged from the edge) and the *Tile size* bullet (rows always full, thumbnails enlarged, `Ctrl` + wheel); GLOSSARY: *File explorer*, *Tile*, *Tile size* revised |
 
 ---
 
