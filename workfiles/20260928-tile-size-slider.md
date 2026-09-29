@@ -330,6 +330,9 @@ Right after, the user's precision: a single result must not get the whole row �
 it would have in a full row. The model already does so (n never depends on the number of files);
 § Filling the Rows says it, and § Test Impact checks it.
 
+Go given on 2026-09-29 for the code and the documentation (*Implémenter code et documentation*),
+the run staying on `main`; the scope is the sections above as they stand.
+
 ---
 
 ## Implementation Log
