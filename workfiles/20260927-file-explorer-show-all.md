@@ -269,6 +269,7 @@ No rule broken. Choices the frozen design did not state:
 |---|---|---|---|
 | Code | 5 | 2026-09-29 | Index format 2, `*` and every match, the loads behind the Loading… slot, the pages setting |
 | Unit tests | 2 | 2026-09-27 | Declined — no test project, verified by hand (Q&A #8) |
+| Manual validation | 6 | 2026-09-29 | Tested by the user on the Debug build; task confirmed finished (Q&A #14) |
 | README | 5 | 2026-09-29 | § File explorer (Search, Everything, Loading as you scroll, Index), features line, ⚙ menu line; GLOSSARY: File explorer, Index, Load |
 
 ---
@@ -290,6 +291,7 @@ No rule broken. Choices the frozen design did not state:
 | 11 | When is the Loading… slot replaced: at once, or once the new tiles' thumbnails in view are loaded? | At once | 2026-09-29 |
 | 12 | The pages setting's control in the ⚙ menu, and its range? | A submenu of choices 1 to 10 (proposed 1 to 5) | 2026-09-29 |
 | 13 | Go: no, code only, or code + tests + documentation? | Code, tests and documentation (tests declined at Q&A #8) | 2026-09-29 |
+| 14 | The app launched for manual testing: is the task finished? | Yes, finished — validated by hand; the app closed cleanly (exit code 0) | 2026-09-29 |
 
 ---
 
