@@ -39,6 +39,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
     private int _tileW = 1;
     private int _tileH = 1;
     private int _wheelRest;
+    private bool _wheelWithControl;
     private int _selected = -1;
     private int _hovered = -1;
     private int _pressed = -1;
@@ -309,6 +310,19 @@ internal sealed class ThumbnailGrid : ScrollableControl
         }
     }
 
+    /// <summary>Remembers whether a wheel message came with Control held: the message's own flag, set by Windows with the event.</summary>
+    protected override void WndProc(ref Message m)
+    {
+        const int WM_MOUSEWHEEL = 0x020A;
+        const int MK_CONTROL = 0x0008;
+        if (m.Msg == WM_MOUSEWHEEL)
+        {
+            _wheelWithControl = ((int)(long)m.WParam & MK_CONTROL) != 0;
+        }
+
+        base.WndProc(ref m);
+    }
+
     /// <summary>
     /// The wheel over the tiles scrolls the list; with Control held it asks for larger (up) or smaller
     /// (down) tiles instead, one step per notch — the deltas of a free-spinning wheel accumulated —
@@ -316,7 +330,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
     /// </summary>
     protected override void OnMouseWheel(MouseEventArgs e)
     {
-        if ((ModifierKeys & Keys.Control) == 0)
+        if (!_wheelWithControl)
         {
             base.OnMouseWheel(e);
             return;
