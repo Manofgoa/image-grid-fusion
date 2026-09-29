@@ -16,8 +16,9 @@ internal sealed class MainForm : Form
     // The file explorer, right of the preview; its base folder is a setting of the ⚙ menu.
     private readonly FileExplorerPanel _explorer = new() { Dock = DockStyle.Right };
 
-    // Between the preview and the explorer: drags the explorer's width, the preview giving way; hidden while the explorer is collapsed.
-    private readonly Splitter _explorerSplitter = new() { Dock = DockStyle.Right, Width = 6 };
+    // Between the preview and the explorer: drags the explorer's width, the preview giving way; hidden while the
+    // explorer is collapsed. The system's resize arrow, not WinForms' own VSplit bitmap.
+    private readonly Splitter _explorerSplitter = new() { Dock = DockStyle.Right, Width = 6, Cursor = Cursors.SizeWE };
     private readonly ToolStripMenuItem _explorerFolder = new("File explorer folder…");
     private readonly Button _clearButton = new() { Text = "Clear all", AutoSize = true };
     private readonly Button _settingsButton = new() { Text = "⚙", Size = new Size(32, 23), AutoSize = true };
