@@ -12,8 +12,10 @@ internal sealed record ExplorerRow(string FullPath, string Name);
 /// <summary>
 /// The file explorer's list: a grid of tiles, one per file — its thumbnail from the Shell's cache,
 /// loaded in the background, the heart in a medallion at its corner, the name below — as many per
-/// row as fit at the tile size, stretched to fill the row, scrolling vertically. See
-/// workfiles/20260926-file-explorer.md § Panel and workfiles/20260928-tile-size-slider.md.
+/// row as fit at the tile size, stretched to fill the row, scrolling vertically. The owner loads the
+/// tiles part by part: while more remain, a Loading… slot ends them, and its coming into view asks
+/// for the next part. See workfiles/20260926-file-explorer.md § Panel,
+/// workfiles/20260928-tile-size-slider.md and workfiles/20260927-file-explorer-show-all.md.
 /// </summary>
 internal sealed class ThumbnailGrid : ScrollableControl
 {
@@ -34,6 +36,8 @@ internal sealed class ThumbnailGrid : ScrollableControl
     private Font _heartFont;
     private Font _nameFont;
     private IReadOnlyList<ExplorerRow> _rows = [];
+    private bool _hasMore;
+    private bool _moreAsked;
     private int _tileSize = DefaultTileSize;
     private int _perRow = 1;
     private int _tileW = 1;
@@ -72,27 +76,55 @@ internal sealed class ThumbnailGrid : ScrollableControl
     /// <summary>The wheel turned over the tiles: larger tiles asked for (+1) or smaller ones (−1), one step per notch.</summary>
     public event EventHandler<int>? SizeStepRequested;
 
+    /// <summary>The Loading… slot came into view: the owner is to give the next tiles, once per <see cref="SetRows"/>.</summary>
+    public event EventHandler? MoreRequested;
+
     /// <summary>Whether a file is a favorite: its heart is drawn full.</summary>
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public Func<string, bool> IsFavorite { get; set; } = _ => false;
 
-    /// <summary>The tiles, top-left first; setting them scrolls back to the top and drops the thumbnails still to load.</summary>
+    /// <summary>The tiles loaded, top-left first; the Loading… slot, when shown, comes after them.</summary>
     [Browsable(false)]
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public IReadOnlyList<ExplorerRow> Rows
+    public IReadOnlyList<ExplorerRow> Rows => _rows;
+
+    /// <summary>
+    /// How many tiles the view shows at once: the tiles per row times the rows its height holds, a
+    /// partly visible one counted — at the current width and tile size.
+    /// </summary>
+    [Browsable(false)]
+    public int PageSize => _perRow * Math.Max(1, (ClientSize.Height - InsetPx + CellH - 1) / CellH);
+
+    /// <summary>
+    /// Shows <paramref name="rows"/>, followed by the Loading… slot when <paramref name="hasMore"/>.
+    /// A new list scrolls back to the top, the selection and the thumbnails still to load dropped; a
+    /// list that grew or was refreshed (<paramref name="keepPlace"/>) keeps the scroll and the
+    /// selected file.
+    /// </summary>
+    public void SetRows(IReadOnlyList<ExplorerRow> rows, bool hasMore, bool keepPlace)
     {
-        get => _rows;
-        set
+        string? selected = SelectedRow?.FullPath;
+        int scroll = -AutoScrollPosition.Y;
+        _rows = rows;
+        _hasMore = hasMore;
+        _moreAsked = false;
+        _pressed = -1;
+        _hovered = -1;
+        if (keepPlace)
         {
-            _rows = value;
+            _selected = selected is null ? -1 : IndexOf(selected);
+            UpdateExtent();
+            AutoScrollPosition = new Point(0, scroll);
+        }
+        else
+        {
             _selected = -1;
-            _pressed = -1;
             _thumbnails.DropPending();
             AutoScrollPosition = Point.Empty;
             UpdateExtent();
-            Hover(-1);
         }
+
+        _toolTip.SetToolTip(this, null);
     }
 
     /// <summary>
@@ -189,9 +221,14 @@ internal sealed class ThumbnailGrid : ScrollableControl
     }
 
     protected override bool IsInputKey(Keys keyData) =>
-        keyData is Keys.Up or Keys.Down or Keys.Left or Keys.Right or Keys.Enter or Keys.Home or Keys.End || base.IsInputKey(keyData);
+        keyData is Keys.Up or Keys.Down or Keys.Left or Keys.Right or Keys.Enter or Keys.Home or Keys.End or Keys.PageUp or Keys.PageDown
+        || base.IsInputKey(keyData);
 
-    /// <summary>The arrows move the selection — up and down by a row of tiles, staying in its column at the top; Enter activates it.</summary>
+    /// <summary>
+    /// The arrows move the selection — up and down by a row of tiles, staying in its column at the
+    /// top — the page keys by a view of tiles; Enter activates it. Moving past the last tile loaded
+    /// brings the Loading… slot into view, which loads the next ones.
+    /// </summary>
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
@@ -201,26 +238,32 @@ internal sealed class ThumbnailGrid : ScrollableControl
         }
 
         int last = _rows.Count - 1;
-        int target;
+        int wanted;
         switch (e.KeyCode)
         {
             case Keys.Left:
-                target = Math.Max(0, _selected - 1);
+                wanted = Math.Max(0, _selected - 1);
                 break;
             case Keys.Right:
-                target = Math.Min(last, _selected + 1);
+                wanted = _selected + 1;
                 break;
             case Keys.Up:
-                target = _selected < 0 ? 0 : Math.Max(_selected % _perRow, _selected - _perRow);
+                wanted = _selected < 0 ? 0 : Math.Max(_selected % _perRow, _selected - _perRow);
                 break;
             case Keys.Down:
-                target = _selected < 0 ? 0 : Math.Min(last, _selected + _perRow);
+                wanted = _selected < 0 ? 0 : _selected + _perRow;
+                break;
+            case Keys.PageUp:
+                wanted = _selected < 0 ? 0 : Math.Max(_selected % _perRow, _selected - PageSize);
+                break;
+            case Keys.PageDown:
+                wanted = _selected < 0 ? 0 : _selected + PageSize;
                 break;
             case Keys.Home:
-                target = 0;
+                wanted = 0;
                 break;
             case Keys.End:
-                target = last;
+                wanted = int.MaxValue;
                 break;
             case Keys.Enter:
                 if (SelectedRow is { } row)
@@ -236,7 +279,11 @@ internal sealed class ThumbnailGrid : ScrollableControl
         }
 
         e.Handled = true;
-        Select(target);
+        Select(Math.Min(last, wanted));
+        if (_hasMore && wanted > last)
+        {
+            EnsureVisible(_rows.Count);
+        }
     }
 
     /// <summary>On the heart: the owner is told. Elsewhere on a tile: selected, a left press arming a drag.</summary>
@@ -359,7 +406,10 @@ internal sealed class ThumbnailGrid : ScrollableControl
         g.InterpolationMode = InterpolationMode.HighQualityBicubic;
         g.PixelOffsetMode = PixelOffsetMode.HighQuality;
         var clip = e.ClipRectangle;
-        for (int i = 0; i < _rows.Count; i++)
+
+        // From the row the clip starts in: a long list loaded far down is not walked from its top.
+        int first = Math.Max(0, (clip.Top - AutoScrollPosition.Y - InsetPx) / CellH) * _perRow;
+        for (int i = first; i < _rows.Count; i++)
         {
             var cell = Scrolled(CellBounds(i));
             if (cell.Top > clip.Bottom)
@@ -372,6 +422,40 @@ internal sealed class ThumbnailGrid : ScrollableControl
                 PaintTile(g, i);
             }
         }
+
+        if (_hasMore)
+        {
+            var slot = Scrolled(TileBounds(_rows.Count));
+            if (slot.IntersectsWith(clip))
+            {
+                PaintLoading(g, slot);
+            }
+
+            // Painted in view: the next tiles are asked for, out of the paint.
+            if (slot.IntersectsWith(ClientRectangle) && !_moreAsked)
+            {
+                _moreAsked = true;
+                BeginInvoke(() => MoreRequested?.Invoke(this, EventArgs.Empty));
+            }
+        }
+    }
+
+    /// <summary>The Loading… slot: a tile's box with the text alone — no thumbnail, heart nor name.</summary>
+    private void PaintLoading(Graphics g, Rectangle slot)
+    {
+        using (var fill = new SolidBrush(SystemColors.ControlLight))
+        {
+            g.FillRectangle(fill, slot);
+        }
+
+        g.DrawRectangle(SystemPens.ControlDark, new Rectangle(slot.X, slot.Y, slot.Width - 1, slot.Height - 1));
+        TextRenderer.DrawText(
+            g,
+            "Loading…",
+            Font,
+            slot,
+            SystemColors.GrayText,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
     }
 
     private void PaintTile(Graphics g, int index)
@@ -516,7 +600,8 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
     private void UpdateExtent()
     {
-        int rows = (_rows.Count + _perRow - 1) / _perRow;
+        int slots = _rows.Count + (_hasMore ? 1 : 0);
+        int rows = (slots + _perRow - 1) / _perRow;
         AutoScrollMinSize = new Size(0, rows == 0 ? 0 : InsetPx * 2 + rows * CellH - GapPx);
         Invalidate();
     }

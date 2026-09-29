@@ -6,12 +6,28 @@ namespace ImageGridFusion.Explorer;
 /// <summary>
 /// The file explorer's search over the index, from memory only: every word typed must appear in the
 /// folded relative path of a file — its name or its subfolders, accents and case ignored — and the
-/// best matches come first. See workfiles/20260926-file-explorer.md § Search.
+/// best matches come first; <c>*</c> alone lists every file, the most recently created first. See
+/// workfiles/20260926-file-explorer.md § Search and workfiles/20260927-file-explorer-show-all.md.
 /// </summary>
 internal static class FileSearch
 {
-    /// <summary>How many results a search returns.</summary>
-    public const int Limit = 10;
+    /// <summary>The query listing every file of the index.</summary>
+    public const string Everything = "*";
+
+    /// <summary>Whether the query is <see cref="Everything"/> alone, blanks around it ignored.</summary>
+    public static bool IsEverything(string query) => query.Trim() == Everything;
+
+    /// <summary>Every entry, the most recently created first, then by relative path.</summary>
+    public static IReadOnlyList<IndexEntry> All(IReadOnlyList<IndexEntry> entries)
+    {
+        var all = entries.ToArray();
+        Array.Sort(all, (a, b) =>
+        {
+            int order = b.Created.CompareTo(a.Created);
+            return order != 0 ? order : string.Compare(a.RelativePath, b.RelativePath, StringComparison.OrdinalIgnoreCase);
+        });
+        return all;
+    }
 
     /// <summary>Folds a text for matching: the accents dropped, then lower case.</summary>
     public static string Fold(string text)
@@ -33,46 +49,28 @@ internal static class FileSearch
     public static string[] Words(string query) => Fold(query).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     /// <summary>
-    /// The <see cref="Limit"/> best entries matching every word, best first, and how many matched in
-    /// all. Ranked by the words found in the file name itself, then the position of the first word in
-    /// the name, then the shorter name, then the relative path.
+    /// Every entry matching every word, best first — the explorer shows them load by load. Ranked by
+    /// the words found in the file name itself, then the position of the first word in the name, then
+    /// the shorter name, then the relative path.
     /// </summary>
-    public static (IReadOnlyList<IndexEntry> Best, int Total) Search(IReadOnlyList<IndexEntry> entries, string[] words)
+    public static IReadOnlyList<IndexEntry> Search(IReadOnlyList<IndexEntry> entries, string[] words)
     {
         if (words.Length == 0)
         {
-            return ([], 0);
+            return [];
         }
 
-        // Only the best Limit are kept, sorted: a bounded insertion, so a query matching most of a
-        // large index never sorts it whole.
-        var best = new List<(IndexEntry Entry, Rank Rank)>(Limit + 1);
-        int total = 0;
+        var matches = new List<(IndexEntry Entry, Rank Rank)>();
         foreach (var entry in entries)
         {
-            if (Rank.Of(entry, words) is not { } rank)
+            if (Rank.Of(entry, words) is { } rank)
             {
-                continue;
-            }
-
-            total++;
-            int at = best.Count;
-            while (at > 0 && rank.CompareTo(best[at - 1].Rank) < 0)
-            {
-                at--;
-            }
-
-            if (at < Limit)
-            {
-                best.Insert(at, (entry, rank));
-                if (best.Count > Limit)
-                {
-                    best.RemoveAt(Limit);
-                }
+                matches.Add((entry, rank));
             }
         }
 
-        return (best.Select(b => b.Entry).ToArray(), total);
+        matches.Sort((a, b) => a.Rank.CompareTo(b.Rank));
+        return matches.Select(m => m.Entry).ToArray();
     }
 
     /// <summary>How well an entry matches; lower compares first.</summary>
