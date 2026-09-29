@@ -310,12 +310,18 @@ internal sealed class ThumbnailGrid : ScrollableControl
     }
 
     /// <summary>
-    /// The wheel over the tiles asks for larger (up) or smaller (down) tiles, one step per notch — the
-    /// deltas of a free-spinning wheel accumulated — and never scrolls the list: the base class is not
-    /// called, and the message goes no further.
+    /// The wheel over the tiles scrolls the list; with Control held it asks for larger (up) or smaller
+    /// (down) tiles instead, one step per notch — the deltas of a free-spinning wheel accumulated —
+    /// and the message goes no further.
     /// </summary>
     protected override void OnMouseWheel(MouseEventArgs e)
     {
+        if ((ModifierKeys & Keys.Control) == 0)
+        {
+            base.OnMouseWheel(e);
+            return;
+        }
+
         if (e is HandledMouseEventArgs handled)
         {
             handled.Handled = true;
