@@ -216,6 +216,12 @@ the Loading… slot is replaced **at once**, the thumbnails arriving one by one;
 a ⚙ **submenu of choices 1 to 10** (the user widened the proposed 1–5). § The `*` Search,
 § Loading as You Scroll and § Pages Setting updated. No open question left.
 
+### Iteration 5 — 2026-09-29 — ✅ Implemented
+
+Go given for the code and the documentation (*Code, tests and documentation*, Q&A #13; the unit
+tests declined at Q&A #8). The run stays on `main`, the standing choice of this app. Scope frozen
+on the design sections as of Iteration 4.
+
 ---
 
 ## Implementation Log
@@ -244,7 +250,7 @@ a ⚙ **submenu of choices 1 to 10** (the user widened the proposed 1–5). § T
 | 10 | `*` with words: only `*` alone means all, or `*` + words filters and orders newest first? | `*` alone only; with words, a normal search | 2026-09-29 |
 | 11 | When is the Loading… slot replaced: at once, or once the new tiles' thumbnails in view are loaded? | At once | 2026-09-29 |
 | 12 | The pages setting's control in the ⚙ menu, and its range? | A submenu of choices 1 to 10 (proposed 1 to 5) | 2026-09-29 |
-| 13 | Go: no, code only, or code + tests + documentation? | | |
+| 13 | Go: no, code only, or code + tests + documentation? | Code, tests and documentation (tests declined at Q&A #8) | 2026-09-29 |
 
 ---
 
