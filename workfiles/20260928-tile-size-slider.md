@@ -48,10 +48,13 @@ registry), `UI/MainForm.cs` (the splitter, the start-up values, the saving).
   to the controls just before the panel so it docks against its edge, 6 logical px wide, the
   system's `SizeWE` cursor — Windows' own horizontal resize arrow, not WinForms' `VSplit` bitmap
   (Iteration 7). Dragging it resizes the panel, the **preview giving way**; the window does not
-  move. Bounds: the panel at least **140** logical px (a 100 px tile and its surround), the preview
-  at least **320** (`MinSize` / `MinExtra`, in device px).
-- The panel keeps its **open width** in logical px (`OpenWidth`): taken from its actual width when
-  the splitter moves — and when the DPI scales it — and applied again when the panel reopens.
+  move. Bounds: the panel at least **139** logical px (`MinOpenWidth`: the 100 px tile and the
+  39 px surround), the preview at least **320** (`MinSize` / `MinExtra`, in device px, set at
+  construction and again on the window's `OnDpiChanged`).
+- The panel keeps its **open width** in logical px (`OpenWidth`): `MainForm` sets it from the
+  panel's width when the splitter **stops** (the window's DPI being current then — the panel's own
+  `DeviceDpi` lags while a DPI change scales it, which had made a width read there drift by the
+  DPI ratio at each collapse), and the panel applies it again when it reopens or the DPI changes.
   Collapsed, the panel is its 20 px strip and the splitter is **hidden**. Default: 240 px — one
   200 px tile, the look of the first version's single column.
 - The header loses the `−` / `+` buttons and the count: *Files* and `»` only. `ColumnsChanged` and
@@ -146,8 +149,9 @@ In `ThumbnailGrid`, a `TileSize` property (logical px, clamped to 100..1000) rep
 
 ## Settings
 
-- `AppSettings.ExplorerWidth` (registry `HKCU\Software\ImageGridFusion`, DWORD, logical px, 140 at
-  least, default 240) and `SaveExplorerWidth(int)`: saved when the splitter stops (`WidthChanged`).
+- `AppSettings.ExplorerWidth` (registry `HKCU\Software\ImageGridFusion`, DWORD, logical px, 139 at
+  least, default 240) and `SaveExplorerWidth(int)`: saved by `MainForm` when the splitter stops
+  (its `SplitterMoved`), which also sets the panel's `OpenWidth` then.
 - `AppSettings.ExplorerTileSize` (DWORD, 100 to 1000, default 200) and `SaveExplorerTileSize(int)`:
   saved on **every change** — the slider, the wheel (`TileSizeChanged`).
 - Both on the `ExplorerColumns` pattern: read at start-up, clamped, the registry errors swallowed
@@ -182,13 +186,27 @@ Q&A #13 — the standing choice, kept here). The checks of the redesign, run at 
 | Rows full | Panel 300 px wide, size 100: 2 per row of about 146 px; size 200: 1 per row of 300 px; the tiles reach the row's right edge |
 | Threshold | Size 200, the panel dragged from 300 to 420 px: one 300 → 400 px tile per row, then two of about 206 px at once |
 | Single file | One favorite only, size 100 in a 300 px panel: its tile is about 146 px (the width of a full row of two), not 300 |
-| Splitter | The panel resizes from its left edge, the preview giving way; not below 140 px, the preview keeping 320; the width remembered after a restart; hidden while the panel is collapsed |
+| Splitter | The panel resizes from its left edge, the preview giving way; not below 139 px, the preview keeping 320; the width remembered after a restart; hidden while the panel is collapsed |
 | Slider | 100 to 1000 live; the wheel over the tiles: ×1.15 per notch up, ÷1.15 down, 100 and 1000 the ends; the list scrolling with its scrollbar only |
 | Enlarged | A video's small Shell thumbnail fills its 1000 px tile, bands above and below, sharp enough |
 | Buckets | Tile 300 px → the Shell asked for 512; 700 → 1024; the cache cleared at a bucket change only (no reload while dragging within one) |
 | Keyboard | `↑` / `↓` move by row at every size; `←` / `→` by tile |
-| Start-up | Width 420 and size 150 remembered; `ExplorerWidth` 50 → 140, `ExplorerTileSize` 5000 → 1000 |
+| Start-up | Width 420 and size 150 remembered; `ExplorerWidth` 50 → 139, `ExplorerTileSize` 5000 → 1000 |
 | Collapse | `»` gives the 20 px strip and hides the splitter; `«` restores the open width |
+
+Run at delivery — 2026-09-29, `checks2.ps1` (in the session's scratchpad, not in the repository),
+its keys, wheel and drag sent as Windows messages to the app's own controls after checking the
+window under the point is the app's: **Start-up** 300 px and the slider at 100, then two
+collapse / expand cycles after the start-up monitor change, still 300; **Slider** End → 1000 and
+Home + 5 Right → 200, both saved; **Wheel** 200 → 230 → 264 → 230, held at 1000 and at 100;
+**Splitter** dragged 150 px: 450 and saved, dragged far: 139 and saved; **Collapse** 20 px and
+**expand** back; **Start-up clamped** 50 → 139 and 5000 → 1000 — 14 checks, passed over the last
+two runs (the wheel and splitter ones skipped by the very last run, another window covering the
+app; they had passed the run before on the same code). On the screenshots: **Rows full** and
+**Enlarged** — 10 `jpg` results at size 200 in a 300 px panel, one tile per row across the row's
+width, the thumbnails filling their tiles; at size 100 in a 926 px panel, 8 per row. Not run:
+**Threshold** and **Single file** as such (the model gives them by construction: n never reads the
+number of files), **Buckets**, **Keyboard** by row.
 
 The first delivery (the size in columns) was checked on 2026-09-29 by a UI Automation script
 (`checks.ps1`, in the session's scratchpad, not in the repository) driving the built app twice,
@@ -341,6 +359,32 @@ WinForms' `VSplit` bitmap — big and black, not Windows' own. Asked: the standa
 The splitter takes `Cursors.SizeWE`, the system's horizontal resize arrow, which follows the theme
 and the DPI. § The Panel's Width updated.
 
+### Iteration 8 — 2026-09-29 — 🧭 Implementation choices — the redesign
+
+Delivered in one code commit for the model (`4515678` — the settings, the grid, the panel and the
+window being one buildable unit), the cursor (`34b2c9c`), two fixes found by the checks (`e8e582b`,
+`c40a364`), one for the README and the glossary (`0c69eb3`), and the workfile's own. **No rule
+broken.** The choices the design left open, or that the run took:
+
+- **The open width comes from the splitter's own event**: `MainForm` sets `OpenWidth` from the
+  panel's width when `SplitterMoved` fires, then saves it; the panel has no `WidthChanged` event.
+  A first version read the width in the panel's `OnSizeChanged` and drifted by the DPI ratio at
+  every collapse once the window had changed monitor — the panel's `DeviceDpi` lags while the
+  window scales it. Same lesson inside `OnDpiChangedAfterParent`: `LogicalToDeviceUnits` still
+  uses the old DPI there, so the width is left to the window's scaling, and the slider's row is
+  sized from the font like the other rows.
+- **Narrowest panel 139 px**, not 140: the 100 px tile plus the 39 px surround, as `MinOpenWidth`
+  reads.
+- **Splitter**: hidden while the panel is collapsed; `MinSize` / `MinExtra` set in device px at
+  construction and again on the window's `OnDpiChanged`; the `SizeWE` cursor (Iteration 7).
+- **Buckets** 256 / 512 / 1024 chosen by the drawn width; the paint scales with bicubic
+  interpolation and a high-quality pixel offset; the cache's `Fit` unchanged.
+- **The wheel** rounds `size × 1.15` and `size / 1.15` with `Math.Round`: 200 → 230 → 264 → 230.
+- **`ExplorerColumns` and `ExplorerSpan`** left in the registry, unread.
+- **Checks by script** again (§ Test Impact), the values the script sets in the registry restored
+  afterwards. A 775 px width seen mid-run, saved by the app, was the user dragging the splitter of
+  the run's test instance by hand — the moment the cursor was noticed — not a drift.
+
 ---
 
 ## Implementation Log
@@ -350,9 +394,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 3, 4 | 2026-09-29 | `73747c2` the `ExplorerSpan` setting; `2357997` the slider, `ThumbnailGrid.Span`, the wheel, the cache budget, the wiring; `1b5784a` the slider row's fix (Iteration 4). Checked by script, 13 checks, screenshots. The redesign of Iteration 6: pending its go |
+| Code | 3, 4, 6–8 | 2026-09-29 | The size in columns: `73747c2`, `2357997`, `1b5784a` (Iterations 3–4). The redesign: `4515678` the model, `34b2c9c` the cursor, `e8e582b` and `c40a364` the width and DPI fixes (Iterations 6–8). Checked by script, 13 then 14 checks, screenshots (§ Test Impact) |
 | Unit tests | — | — | Does not apply — no test project, checked by script and screenshots (§ Test Impact) |
-| README | 3 | 2026-09-29 | `1515917` — § *File explorer*: the *Tiles* bullet revised, a *Tile size* bullet added; GLOSSARY: *File explorer* and *Tile* revised, *Tile size* added. To revise with the redesign |
+| README | 3, 6 | 2026-09-29 | `1515917` then `0c69eb3` — § *File explorer*: the *Tiles* bullet (the width dragged from the edge) and the *Tile size* bullet (rows always full, thumbnails enlarged, the wheel); GLOSSARY: *File explorer*, *Tile*, *Tile size* revised |
 
 ---
 
