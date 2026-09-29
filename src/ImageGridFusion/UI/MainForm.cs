@@ -374,7 +374,12 @@ internal sealed class MainForm : Form
             _explorerSplitter.Visible = _explorer.Open;
             SaveExplorerPanelOpen();
         };
-        _explorerSplitter.SplitterMoved += (_, _) => SaveExplorerWidth();
+        _explorerSplitter.SplitterMoved += (_, _) =>
+        {
+            // The dragged width, in logical pixels — read here, where the DPI is the window's current one.
+            _explorer.OpenWidth = DeviceToLogicalUnits(_explorer.Width);
+            SaveExplorerWidth();
+        };
         _explorer.TileSizeChanged += (_, _) => SaveExplorerTileSize();
         _explorer.ChooseFolderRequested += (_, _) => PickExplorerFolder();
 
