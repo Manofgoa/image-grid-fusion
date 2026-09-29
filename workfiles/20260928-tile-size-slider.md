@@ -80,9 +80,9 @@ registry), `UI/MainForm.cs` (the splitter, the start-up values, the saving).
   indicators, not buttons.
 - **Tooltip**: the slider's says *Tile size: 200 px*, kept up to date.
 - **Acting on it**: dragging the thumb, clicking the track, the arrow keys when it has the focus,
-  the wheel over it (the `TrackBar`'s own), and the wheel over the tiles (§ Mouse Wheel) — every
-  change applies **live**: the grid re-lays its tiles at once; the thumbnails are not reloaded
-  unless the bucket changes (§ Thumbnails).
+  the wheel over it (the `TrackBar`'s own), and `Ctrl` + wheel over the tiles (§ Mouse Wheel) —
+  every change applies **live**: the grid re-lays its tiles at once; the thumbnails are not
+  reloaded unless the bucket changes (§ Thumbnails).
 
 ---
 
@@ -168,7 +168,7 @@ In `ThumbnailGrid`, a `TileSize` property (logical px, clamped to 100..1000) rep
 - **README** § *File explorer*: the *Tiles* bullet — the panel's width dragged from its left edge,
   the preview giving way, the width remembered; the *Tile size* bullet — the slider from 100 to
   1000 px, the rows always full (as many tiles as fit, stretched to the row), the thumbnails
-  enlarged to fit, the wheel over the tiles.
+  enlarged to fit, `Ctrl` + wheel over the tiles (the wheel alone scrolling).
 - **GLOSSARY**: *File explorer* (as many tiles per row as fit at the tile size), *Tile* (its
   thumbnail enlarged or reduced to its box), *Tile size* (the nominal width from the slider, the
   threshold at which one more tile fits) revised; the columns wording gone.
@@ -187,7 +187,7 @@ Q&A #13 — the standing choice, kept here). The checks of the redesign, run at 
 | Threshold | Size 200, the panel dragged from 300 to 420 px: one 300 → 400 px tile per row, then two of about 206 px at once |
 | Single file | One favorite only, size 100 in a 300 px panel: its tile is about 146 px (the width of a full row of two), not 300 |
 | Splitter | The panel resizes from its left edge, the preview giving way; not below 139 px, the preview keeping 320; the width remembered after a restart; hidden while the panel is collapsed |
-| Slider | 100 to 1000 live; the wheel over the tiles: ×1.15 per notch up, ÷1.15 down, 100 and 1000 the ends; the list scrolling with its scrollbar only |
+| Slider | 100 to 1000 live; `Ctrl` + wheel over the tiles: ×1.15 per notch up, ÷1.15 down, 100 and 1000 the ends; the wheel alone scrolls the list and leaves the size alone |
 | Enlarged | A video's small Shell thumbnail fills its 1000 px tile, bands above and below, sharp enough |
 | Buckets | Tile 300 px → the Shell asked for 512; 700 → 1024; the cache cleared at a bucket change only (no reload while dragging within one) |
 | Keyboard | `↑` / `↓` move by row at every size; `←` / `→` by tile |
@@ -223,7 +223,8 @@ not only the blocking ones.
 - [x] ~~The wheel over the tiles moves the slider: the wheel **alone** (the list scrolling with its
   scrollbar only), or **`Ctrl` + wheel** (the wheel alone keeping the list's scroll, Explorer's
   convention)?~~ → The wheel **alone**; the list scrolls with its scrollbar and the keyboard
-  (Q&A #6, Iteration 2)
+  (Q&A #6, Iteration 2) *(revised 2026-09-29, see Iteration 9: `Ctrl` + wheel sizes, the wheel
+  alone scrolls)*
 - [x] ~~`−` (one column fewer): the tile size back to **1** like `+`, **kept when it still divides**
   the new count (4 columns at size 2 → 2 columns: kept; 3 at size 3 → 2: back to 1), or the
   **full width kept** (a size equal to the count stays equal to the new count, the others back
@@ -384,6 +385,14 @@ broken.** The choices the design left open, or that the run took:
 - **Checks by script** again (§ Test Impact), the values the script sets in the registry restored
   afterwards. A 775 px width seen mid-run, saved by the app, was the user dragging the splitter of
   the run's test instance by hand — the moment the cursor was noticed — not a drift.
+
+### Iteration 9 — 2026-09-29 — ⚙️ Post-implementation — The wheel scrolls, Ctrl + wheel sizes
+
+Tried on the delivered redesign: « la molette dans l'aperçu doit scroller haut / bas, pas zoomer ;
+Ctrl + molette doit zoomer » — read as the explorer's tile list, the grid's preview having no
+scroll: the wheel over the tiles scrolls the list, `Ctrl` + wheel changes the tile size —
+Explorer's convention, which the first choice (Q&A #6, the wheel alone) had set aside. Q&A #6
+annotated; § Mouse Wheel, § The Size Slider, § Documentation and § Test Impact updated.
 
 ---
 
