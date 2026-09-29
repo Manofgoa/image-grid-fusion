@@ -15,6 +15,9 @@ internal sealed class MainForm : Form
 
     // The file explorer, right of the preview; its base folder is a setting of the ⚙ menu.
     private readonly FileExplorerPanel _explorer = new() { Dock = DockStyle.Right };
+
+    // Between the preview and the explorer: drags the explorer's width, the preview giving way; hidden while the explorer is collapsed.
+    private readonly Splitter _explorerSplitter = new() { Dock = DockStyle.Right, Width = 6 };
     private readonly ToolStripMenuItem _explorerFolder = new("File explorer folder…");
     private readonly Button _clearButton = new() { Text = "Clear all", AutoSize = true };
     private readonly Button _settingsButton = new() { Text = "⚙", Size = new Size(32, 23), AutoSize = true };
@@ -332,12 +335,15 @@ internal sealed class MainForm : Form
 
         // Docked in reverse order of addition: the options row and the tabs row, then the bottom bar,
         // the global options row above it and the global tabs row above that, span the whole width; the
-        // layout strip takes the left of what remains, the file explorer the right, and the fill control
-        // goes first so it gets the rest.
+        // layout strip takes the left of what remains, the file explorer the right — its splitter docked
+        // against it — and the fill control goes first so it gets the rest.
         _explorer.Open = AppSettings.ExplorerPanelOpen;
-        _explorer.Columns = AppSettings.ExplorerColumns;
-        _explorer.Span = AppSettings.ExplorerSpan;
+        _explorer.OpenWidth = AppSettings.ExplorerWidth;
+        _explorer.TileSize = AppSettings.ExplorerTileSize;
+        _explorerSplitter.Visible = _explorer.Open;
+        ApplyExplorerSplitterBounds();
         Controls.Add(_preview);
+        Controls.Add(_explorerSplitter);
         Controls.Add(_explorer);
         Controls.Add(_layouts);
         Controls.Add(_globalTabsRow);
@@ -362,13 +368,13 @@ internal sealed class MainForm : Form
         _twitterCornersDefault.Click += (_, _) => ToggleTwitterCornersDefault();
         _explorerFolder.ToolTipText = "The folder the file explorer searches, with its subfolders; remembered between sessions";
         _explorerFolder.Click += (_, _) => PickExplorerFolder();
-        _explorer.OpenChanged += (_, _) => SaveExplorerPanelOpen();
-        _explorer.ColumnsChanged += (_, delta) =>
+        _explorer.OpenChanged += (_, _) =>
         {
-            SaveExplorerColumns();
-            FollowExplorerWidth(delta);
+            _explorerSplitter.Visible = _explorer.Open;
+            SaveExplorerPanelOpen();
         };
-        _explorer.SpanChanged += (_, _) => SaveExplorerSpan();
+        _explorerSplitter.SplitterMoved += (_, _) => SaveExplorerWidth();
+        _explorer.TileSizeChanged += (_, _) => SaveExplorerTileSize();
         _explorer.ChooseFolderRequested += (_, _) => PickExplorerFolder();
 
         // A double-clicked row is added like a file from the Add images picker.
@@ -548,6 +554,7 @@ internal sealed class MainForm : Form
     protected override void OnDpiChanged(DpiChangedEventArgs e)
     {
         base.OnDpiChanged(e);
+        ApplyExplorerSplitterBounds();
         UpdateEffectIcons();
         FitEffectRows();
     }
@@ -2280,30 +2287,37 @@ internal sealed class MainForm : Form
         }
     }
 
-    /// <summary>The file explorer's columns were changed by the user: remembered between sessions.</summary>
-    private void SaveExplorerColumns()
+    /// <summary>The file explorer's width was dragged by the user: remembered between sessions.</summary>
+    private void SaveExplorerWidth()
     {
         try
         {
-            AppSettings.SaveExplorerColumns(_explorer.Columns);
+            AppSettings.SaveExplorerWidth(_explorer.OpenWidth);
         }
         catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
         {
-            ShowStatus($"File explorer columns not remembered: {ex.Message}", error: true);
+            ShowStatus($"File explorer width not remembered: {ex.Message}", error: true);
         }
     }
 
     /// <summary>The file explorer's tile size was changed by the user: remembered between sessions.</summary>
-    private void SaveExplorerSpan()
+    private void SaveExplorerTileSize()
     {
         try
         {
-            AppSettings.SaveExplorerSpan(_explorer.Span);
+            AppSettings.SaveExplorerTileSize(_explorer.TileSize);
         }
         catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
         {
             ShowStatus($"File explorer tile size not remembered: {ex.Message}", error: true);
         }
+    }
+
+    /// <summary>The splitter's bounds in device pixels: the explorer's narrowest, and the room the preview keeps.</summary>
+    private void ApplyExplorerSplitterBounds()
+    {
+        _explorerSplitter.MinSize = LogicalToDeviceUnits(FileExplorerPanel.MinOpenWidth);
+        _explorerSplitter.MinExtra = LogicalToDeviceUnits(320);
     }
 
     /// <summary>
@@ -2332,23 +2346,6 @@ internal sealed class MainForm : Form
 
     /// <summary>The reverse of <see cref="Control.LogicalToDeviceUnits(int)"/>: device pixels to 96 DPI ones.</summary>
     private int DeviceToLogicalUnits(int value) => (int)Math.Round(value * 96.0 / DeviceDpi);
-
-    /// <summary>
-    /// The explorer grew or shrank by <paramref name="delta"/> px: the window follows when it is not
-    /// maximized and the screen has the room, so the preview keeps its size; else the preview absorbs it.
-    /// </summary>
-    private void FollowExplorerWidth(int delta)
-    {
-        if (WindowState != FormWindowState.Normal || delta == 0)
-        {
-            return;
-        }
-
-        var area = Screen.FromControl(this).WorkingArea;
-        int width = Math.Clamp(Width + delta, MinimumSize.Width, area.Width);
-        int left = Math.Max(area.Left, Math.Min(Left, area.Right - width));
-        SetBounds(left, Top, width, Height);
-    }
 
     /// <summary>The borders as they stand, to the preview, then to the row and the output buttons.</summary>
     private void ApplyBorders()

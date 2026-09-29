@@ -11,29 +11,33 @@ internal sealed record ExplorerRow(string FullPath, string Name);
 
 /// <summary>
 /// The file explorer's list: a grid of tiles, one per file — its thumbnail from the Shell's cache,
-/// loaded in the background, the heart in a medallion at its corner, the name below — in 1 to 5
-/// columns, a tile spanning one or more of them, scrolling vertically. See
+/// loaded in the background, the heart in a medallion at its corner, the name below — as many per
+/// row as fit at the tile size, stretched to fill the row, scrolling vertically. See
 /// workfiles/20260926-file-explorer.md § Panel and workfiles/20260928-tile-size-slider.md.
 /// </summary>
 internal sealed class ThumbnailGrid : ScrollableControl
 {
-    // In logical pixels.
-    public const int TileWidth = 200;
-    public const int TileHeight = 150;
+    // In logical pixels: the tile size is the width at which one more tile fits on a row.
+    public const int MinTileSize = 100;
+    public const int MaxTileSize = 1000;
+    public const int DefaultTileSize = 200;
     public const int Gap = 8;
     public const int Inset = 4;
-    public const int MinColumns = 1;
-    public const int MaxColumns = 5;
     private const int Medallion = 24;
     private const int MedallionInset = 4;
+
+    // The sizes the thumbnails are asked from the Shell at: the smallest not below the drawn tile width.
+    private static readonly int[] Buckets = [256, 512, 1024];
 
     private readonly ToolTip _toolTip = new();
     private readonly ThumbnailCache _thumbnails;
     private Font _heartFont;
     private Font _nameFont;
     private IReadOnlyList<ExplorerRow> _rows = [];
-    private int _columns = MinColumns;
-    private int _span = 1;
+    private int _tileSize = DefaultTileSize;
+    private int _perRow = 1;
+    private int _tileW = 1;
+    private int _tileH = 1;
     private int _wheelRest;
     private int _selected = -1;
     private int _hovered = -1;
@@ -90,48 +94,25 @@ internal sealed class ThumbnailGrid : ScrollableControl
         }
     }
 
-    /// <summary>How many columns, <see cref="MinColumns"/> to <see cref="MaxColumns"/>; a <see cref="Span"/> that no longer divides them falls back to one.</summary>
-    [DefaultValue(MinColumns)]
-    public int Columns
-    {
-        get => _columns;
-        set
-        {
-            value = Math.Clamp(value, MinColumns, MaxColumns);
-            if (value == _columns)
-            {
-                return;
-            }
-
-            int top = TopIndex();
-            _columns = value;
-            if (_columns % _span != 0)
-            {
-                _span = 1;
-            }
-
-            Relayout(top);
-        }
-    }
-
     /// <summary>
-    /// How many columns a tile spans, 1 to <see cref="Columns"/> and dividing it — one tile per column,
-    /// or a few large ones covering their columns and the gaps between; another value falls back to one.
+    /// The tile size in logical pixels, <see cref="MinTileSize"/> to <see cref="MaxTileSize"/>: the
+    /// width at which one more tile fits on a row — the rows hold as many as fit, stretched to fill
+    /// the row, never from the number of files.
     /// </summary>
-    [DefaultValue(1)]
-    public int Span
+    [DefaultValue(DefaultTileSize)]
+    public int TileSize
     {
-        get => _span;
+        get => _tileSize;
         set
         {
-            value = value >= 1 && value <= _columns && _columns % value == 0 ? value : 1;
-            if (value == _span)
+            value = Math.Clamp(value, MinTileSize, MaxTileSize);
+            if (value == _tileSize)
             {
                 return;
             }
 
             int top = TopIndex();
-            _span = value;
+            _tileSize = value;
             Relayout(top);
         }
     }
@@ -175,14 +156,25 @@ internal sealed class ThumbnailGrid : ScrollableControl
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
-        UpdateBox();
+        Relayout(-1);
     }
 
     protected override void OnDpiChangedAfterParent(EventArgs e)
     {
         base.OnDpiChangedAfterParent(e);
-        UpdateBox();
-        UpdateExtent();
+        int top = TopIndex();
+        Relayout(top);
+    }
+
+    /// <summary>The width changed — the splitter, the scrollbar coming or going, the DPI: the rows are laid out again.</summary>
+    protected override void OnClientSizeChanged(EventArgs e)
+    {
+        base.OnClientSizeChanged(e);
+        if (IsHandleCreated)
+        {
+            int top = TopIndex();
+            Relayout(top);
+        }
     }
 
     protected override void OnFontChanged(EventArgs e)
@@ -218,10 +210,10 @@ internal sealed class ThumbnailGrid : ScrollableControl
                 target = Math.Min(last, _selected + 1);
                 break;
             case Keys.Up:
-                target = _selected < 0 ? 0 : Math.Max(_selected % Slots, _selected - Slots);
+                target = _selected < 0 ? 0 : Math.Max(_selected % _perRow, _selected - _perRow);
                 break;
             case Keys.Down:
-                target = _selected < 0 ? 0 : Math.Min(last, _selected + Slots);
+                target = _selected < 0 ? 0 : Math.Min(last, _selected + _perRow);
                 break;
             case Keys.Home:
                 target = 0;
@@ -344,6 +336,8 @@ internal sealed class ThumbnailGrid : ScrollableControl
         base.OnPaint(e);
         var g = e.Graphics;
         g.Clear(BackColor);
+        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+        g.PixelOffsetMode = PixelOffsetMode.HighQuality;
         var clip = e.ClipRectangle;
         for (int i = 0; i < _rows.Count; i++)
         {
@@ -370,10 +364,14 @@ internal sealed class ThumbnailGrid : ScrollableControl
             g.FillRectangle(fill, tile);
         }
 
-        // Already fitted to the box by the loader: drawn at its size, centered.
+        // Loaded at its bucket's size: scaled to the tile — enlarged when smaller — its proportions kept, centered.
         if (_thumbnails.TryGet(row.FullPath, out var image) && image is not null)
         {
-            g.DrawImage(image, new Rectangle(tile.X + (tile.Width - image.Width) / 2, tile.Y + (tile.Height - image.Height) / 2, image.Width, image.Height));
+            double scale = Math.Min((double)tile.Width / image.Width, (double)tile.Height / image.Height);
+            int width = Math.Max(1, (int)Math.Round(image.Width * scale));
+            int height = Math.Max(1, (int)Math.Round(image.Height * scale));
+            var target = new Rectangle(tile.X + (tile.Width - width) / 2, tile.Y + (tile.Height - height) / 2, width, height);
+            g.DrawImage(image, target, new Rectangle(0, 0, image.Width, image.Height), GraphicsUnit.Pixel);
         }
 
         var border = selected ? SystemColors.Highlight : index == _hovered ? SystemColors.HotTrack : SystemColors.ControlDark;
@@ -405,13 +403,10 @@ internal sealed class ThumbnailGrid : ScrollableControl
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
     }
 
-    /// <summary>The tiles per row.</summary>
-    private int Slots => _columns / _span;
+    // The drawn tile, from LayoutRows(): the row's width shared by as many tiles as fit at the tile size, at 4:3.
+    private int TileW => _tileW;
 
-    // A tile covers its columns and the gaps between them, at 4:3.
-    private int TileW => LogicalToDeviceUnits(TileWidth) * _span + GapPx * (_span - 1);
-
-    private int TileH => TileW * 3 / 4;
+    private int TileH => _tileH;
 
     private int GapPx => LogicalToDeviceUnits(Gap);
 
@@ -424,7 +419,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
     private int CellH => TileH + NameH + GapPx;
 
     // Content coordinates: unscrolled.
-    private Rectangle TileBounds(int index) => new(InsetPx + index % Slots * CellW, InsetPx + index / Slots * CellH, TileW, TileH);
+    private Rectangle TileBounds(int index) => new(InsetPx + index % _perRow * CellW, InsetPx + index / _perRow * CellH, TileW, TileH);
 
     private Rectangle NameBounds(int index)
     {
@@ -466,12 +461,12 @@ internal sealed class ThumbnailGrid : ScrollableControl
         }
 
         int column = x / CellW;
-        if (column >= Slots || x % CellW >= TileW || y % CellH >= TileH + NameH)
+        if (column >= _perRow || x % CellW >= TileW || y % CellH >= TileH + NameH)
         {
             return -1;
         }
 
-        int index = y / CellH * Slots + column;
+        int index = y / CellH * _perRow + column;
         return index < _rows.Count ? index : -1;
     }
 
@@ -501,13 +496,43 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
     private void UpdateExtent()
     {
-        int rows = (_rows.Count + Slots - 1) / Slots;
+        int rows = (_rows.Count + _perRow - 1) / _perRow;
         AutoScrollMinSize = new Size(0, rows == 0 ? 0 : InsetPx * 2 + rows * CellH - GapPx);
         Invalidate();
     }
 
-    /// <summary>The box the thumbnails are fitted to — the tile — and the size asked from the Shell: the tile's width, 256 px at least.</summary>
-    private void UpdateBox() => _thumbnails.SetBox(new Size(TileW, TileH), Math.Max(256, TileW));
+    /// <summary>
+    /// The rows from the client width and the tile size: as many tiles per row as fit, the row's width
+    /// shared between them — one at least, and never from the number of files, so a lone tile gets
+    /// the width it would have in a full row.
+    /// </summary>
+    private void LayoutRows()
+    {
+        int available = ClientSize.Width - InsetPx * 2;
+        int size = LogicalToDeviceUnits(_tileSize);
+        _perRow = Math.Max(1, (available + GapPx) / (size + GapPx));
+        _tileW = Math.Max(1, (available - (_perRow - 1) * GapPx) / _perRow);
+        _tileH = _tileW * 3 / 4;
+    }
+
+    /// <summary>
+    /// The box the thumbnails are fitted to and the size asked from the Shell: the tile's bucket, the
+    /// smallest not below its width, so a drag reloads nothing within one.
+    /// </summary>
+    private void UpdateBox()
+    {
+        int side = Buckets[^1];
+        foreach (int bucket in Buckets)
+        {
+            if (_tileW <= bucket)
+            {
+                side = bucket;
+                break;
+            }
+        }
+
+        _thumbnails.SetBox(new Size(side, side * 3 / 4), side);
+    }
 
     /// <summary>The first tile of the row at the top of the view; -1 with no tile.</summary>
     private int TopIndex()
@@ -518,12 +543,13 @@ internal sealed class ThumbnailGrid : ScrollableControl
         }
 
         int row = Math.Max(0, (-AutoScrollPosition.Y - InsetPx) / CellH);
-        return Math.Min(_rows.Count - 1, row * Slots);
+        return Math.Min(_rows.Count - 1, row * _perRow);
     }
 
-    /// <summary>The columns or the span changed: the box and the extent follow, the tile that topped the view (<paramref name="top"/>) still in view.</summary>
+    /// <summary>The size or the width changed: the rows, the box and the extent follow, the tile that topped the view (<paramref name="top"/>) still in view.</summary>
     private void Relayout(int top)
     {
+        LayoutRows();
         UpdateBox();
         UpdateExtent();
         if (top > 0)

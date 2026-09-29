@@ -5,12 +5,13 @@ using ImageGridFusion.Explorer;
 namespace ImageGridFusion.UI;
 
 /// <summary>
-/// The file explorer, at the right of the preview (see workfiles/20260926-file-explorer.md): a search
-/// box over the index of the base folder, its 10 best matches as the user types, and the favorites —
-/// all of them, the newest first — while the box is empty, as a grid of thumbnail tiles 1 to 5
-/// columns wide, the panel as wide as its columns. A tile is dragged onto a cell like a file from the
-/// Explorer, double-clicked to be added like Add images, hearted to become a favorite. Collapses to a
-/// strip. The cached index is loaded, then rescanned in the background, at every start.
+/// The file explorer, at the right of the preview (see workfiles/20260926-file-explorer.md and
+/// workfiles/20260928-tile-size-slider.md): a search box over the index of the base folder, its 10
+/// best matches as the user types, and the favorites — all of them, the newest first — while the box
+/// is empty, as a grid of thumbnail tiles filling their rows at the size of the slider below them;
+/// the panel's width is the user's, dragged from its edge. A tile is dragged onto a cell like a file
+/// from the Explorer, double-clicked to be added like Add images, hearted to become a favorite.
+/// Collapses to a strip. The cached index is loaded, then rescanned in the background, at every start.
 /// </summary>
 internal sealed class FileExplorerPanel : Panel
 {
@@ -19,14 +20,17 @@ internal sealed class FileExplorerPanel : Panel
     private const int StripWidth = 20;
     private const int Surround = 39;
 
+    /// <summary>The narrowest open panel, in logical pixels: the smallest tile and the surround.</summary>
+    public const int MinOpenWidth = ThumbnailGrid.MinTileSize + Surround;
+
+    /// <summary>The open width before the user drags it, in logical pixels: one 200 px tile.</summary>
+    public const int DefaultOpenWidth = 240;
+
     private const int TransientDuration = 5000;
 
     private readonly TableLayoutPanel _content = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 6, Padding = new Padding(6, 4, 6, 6) };
-    private readonly TableLayoutPanel _header = new() { ColumnCount = 5, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
+    private readonly TableLayoutPanel _header = new() { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
     private readonly Label _title = new() { Text = "Files", AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly Button _fewer = new() { Text = "−", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right, Enabled = false };
-    private readonly Label _columnsLabel = new() { Text = "1", AutoSize = true, Anchor = AnchorStyles.Right, TextAlign = ContentAlignment.MiddleCenter };
-    private readonly Button _more = new() { Text = "+", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right };
     private readonly Button _collapse = new() { Text = "»", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right };
     private readonly Button _expand = new() { Text = "«", Dock = DockStyle.Fill, Visible = false, Margin = Padding.Empty };
     private readonly TableLayoutPanel _searchRow = new() { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
@@ -38,8 +42,8 @@ internal sealed class FileExplorerPanel : Panel
     private readonly ThumbnailGrid _grid = new() { Dock = DockStyle.Fill };
     private readonly TableLayoutPanel _sizeRow = new() { ColumnCount = 3, RowCount = 1, Dock = DockStyle.Fill, Margin = Padding.Empty };
     private readonly Label _smallerGlyph = new() { Text = "▭", AutoSize = true, Anchor = AnchorStyles.Left, TextAlign = ContentAlignment.MiddleCenter, Margin = new Padding(0, 0, 4, 0) };
-    // Ticks on both sides: the thumb then sits on the row's centre line, level with the glyphs at any DPI.
-    private readonly TrackBar _size = new() { AutoSize = false, Dock = DockStyle.Fill, Margin = Padding.Empty, Minimum = 0, Maximum = 0, TickStyle = TickStyle.Both, TickFrequency = 1, SmallChange = 1, LargeChange = 1, Enabled = false };
+    // No ticks: the thumb then sits on the row's centre line, level with the glyphs at any DPI.
+    private readonly TrackBar _size = new() { AutoSize = false, Dock = DockStyle.Fill, Margin = Padding.Empty, Minimum = ThumbnailGrid.MinTileSize, Maximum = ThumbnailGrid.MaxTileSize, TickStyle = TickStyle.None, SmallChange = 20, LargeChange = 100 };
     private readonly Label _largerGlyph = new() { Text = "▭", AutoSize = true, Anchor = AnchorStyles.Right, TextAlign = ContentAlignment.MiddleCenter, Margin = new Padding(4, 0, 0, 0) };
     private readonly Panel _invite = new() { Dock = DockStyle.Fill, Visible = false };
     private readonly Label _inviteText = new()
@@ -56,8 +60,8 @@ internal sealed class FileExplorerPanel : Panel
     private readonly Favorites _favorites = new(Favorites.DefaultPath);
 
     private bool _open = true;
-    private int _columns = ThumbnailGrid.MinColumns;
-    private int _span = 1;
+    private int _openWidth = DefaultOpenWidth;
+    private int _tileSize = ThumbnailGrid.DefaultTileSize;
     private bool _syncingSize;
     private string? _baseFolder;
     private FileIndex? _index;
@@ -81,16 +85,9 @@ internal sealed class FileExplorerPanel : Panel
         _content.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         _content.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
         _header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        for (int i = 0; i < 4; i++)
-        {
-            _header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        }
-
+        _header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _header.Controls.Add(_title, 0, 0);
-        _header.Controls.Add(_fewer, 1, 0);
-        _header.Controls.Add(_columnsLabel, 2, 0);
-        _header.Controls.Add(_more, 3, 0);
-        _header.Controls.Add(_collapse, 4, 0);
+        _header.Controls.Add(_collapse, 1, 0);
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _searchRow.Controls.Add(_search, 0, 0);
@@ -122,17 +119,12 @@ internal sealed class FileExplorerPanel : Panel
 
         _toolTip.SetToolTip(_collapse, "Hide the file explorer");
         _toolTip.SetToolTip(_expand, "Show the file explorer");
-        _toolTip.SetToolTip(_fewer, "One column fewer");
-        _toolTip.SetToolTip(_more, "One column more");
-        _toolTip.SetToolTip(_columnsLabel, "Columns of tiles");
         _toolTip.SetToolTip(_rescan, "Rescan the folder");
         _toolTip.SetToolTip(_smallerGlyph, "Smaller tiles");
         _toolTip.SetToolTip(_largerGlyph, "Larger tiles");
         _collapse.Click += (_, _) => SetOpen(false);
         _expand.Click += (_, _) => SetOpen(true);
-        _fewer.Click += (_, _) => ChangeColumns(-1);
-        _more.Click += (_, _) => ChangeColumns(1);
-        _size.ValueChanged += (_, _) => OnSizeChanged();
+        _size.ValueChanged += (_, _) => OnSliderChanged();
         _grid.SizeStepRequested += (_, direction) => StepSize(direction);
         _rescan.Click += (_, _) => Rescan();
         _chooseFolder.Click += (_, _) => ChooseFolderRequested?.Invoke(this, EventArgs.Empty);
@@ -152,11 +144,8 @@ internal sealed class FileExplorerPanel : Panel
     /// <summary>The user opened or collapsed the panel.</summary>
     public event EventHandler? OpenChanged;
 
-    /// <summary>The user added or removed a column: the panel's width changed by that many pixels.</summary>
-    public event EventHandler<int>? ColumnsChanged;
-
-    /// <summary>The user changed the tile size — the slider, the wheel over the tiles, or a column button bringing it back to one.</summary>
-    public event EventHandler? SpanChanged;
+    /// <summary>The user changed the tile size — the slider, or the wheel over the tiles.</summary>
+    public event EventHandler? TileSizeChanged;
 
     /// <summary>A tile was double-clicked or entered: its file, to be added like Add images.</summary>
     public event EventHandler<string>? FileActivated;
@@ -186,48 +175,47 @@ internal sealed class FileExplorerPanel : Panel
         }
     }
 
-    /// <summary>How many columns of tiles, 1 to 5: the panel is as wide as them. Setting it raises nothing.</summary>
-    [DefaultValue(ThumbnailGrid.MinColumns)]
-    public int Columns
+    /// <summary>
+    /// The panel's width while open, in logical pixels — the user's, dragged from the panel's edge:
+    /// taken from the actual width when it changes, applied again when the panel reopens. Setting it
+    /// raises nothing; <see cref="MinOpenWidth"/> at least.
+    /// </summary>
+    [DefaultValue(DefaultOpenWidth)]
+    public int OpenWidth
     {
-        get => _columns;
+        get => _openWidth;
         set
         {
-            value = Math.Clamp(value, ThumbnailGrid.MinColumns, ThumbnailGrid.MaxColumns);
-            if (value == _columns)
+            value = Math.Max(MinOpenWidth, value);
+            if (value == _openWidth)
             {
                 return;
             }
 
-            _columns = value;
-            _grid.Columns = value;
-            _span = _grid.Span;
-            _columnsLabel.Text = value.ToString();
-            _fewer.Enabled = value > ThumbnailGrid.MinColumns;
-            _more.Enabled = value < ThumbnailGrid.MaxColumns;
-            SyncSize();
+            _openWidth = value;
             ApplyWidth();
         }
     }
 
     /// <summary>
-    /// How many columns a tile spans, a divisor of <see cref="Columns"/>: one tile per column, or a
-    /// few large ones. Setting it raises nothing; a value that does not divide the count falls back
-    /// to one.
+    /// The tile size in logical pixels, <see cref="ThumbnailGrid.MinTileSize"/> to
+    /// <see cref="ThumbnailGrid.MaxTileSize"/>: the width at which one more tile fits on a row, the
+    /// tiles stretched to fill it. Setting it raises nothing.
     /// </summary>
-    [DefaultValue(1)]
-    public int Span
+    [DefaultValue(ThumbnailGrid.DefaultTileSize)]
+    public int TileSize
     {
-        get => _span;
+        get => _tileSize;
         set
         {
-            _grid.Span = value;
-            if (_grid.Span == _span)
+            value = Math.Clamp(value, ThumbnailGrid.MinTileSize, ThumbnailGrid.MaxTileSize);
+            if (value == _tileSize)
             {
                 return;
             }
 
-            _span = _grid.Span;
+            _tileSize = value;
+            _grid.TileSize = value;
             SyncSize();
         }
     }
@@ -301,10 +289,20 @@ internal sealed class FileExplorerPanel : Panel
         ApplyMetrics();
     }
 
+    /// <summary>The open panel was resized — the splitter, or the DPI: its open width follows, in logical pixels.</summary>
+    protected override void OnSizeChanged(EventArgs e)
+    {
+        base.OnSizeChanged(e);
+        if (_open && IsHandleCreated)
+        {
+            _openWidth = Math.Max(MinOpenWidth, (int)Math.Round(Width * 96.0 / DeviceDpi));
+        }
+    }
+
     /// <summary>The panel's width, from its state: logical before the window scales its controls, device units after.</summary>
     private void ApplyWidth()
     {
-        int logical = _open ? Surround + _columns * ThumbnailGrid.TileWidth + (_columns - 1) * ThumbnailGrid.Gap : StripWidth;
+        int logical = _open ? _openWidth : StripWidth;
         Width = IsHandleCreated ? LogicalToDeviceUnits(logical) : logical;
     }
 
@@ -328,86 +326,47 @@ internal sealed class FileExplorerPanel : Panel
         }
     }
 
-    /// <summary>A column button: the count changes, and the tile size comes back to one per column (the user's rule, for + and − alike).</summary>
-    private void ChangeColumns(int delta)
-    {
-        int before = Width;
-        int span = _span;
-        Columns = _columns + delta;
-        Span = 1;
-        if (Width != before)
-        {
-            ColumnsChanged?.Invoke(this, Width - before);
-        }
-
-        if (_span != span)
-        {
-            SpanChanged?.Invoke(this, EventArgs.Empty);
-        }
-    }
-
-    /// <summary>The slider's positions are the divisors of the column count, ascending, its thumb on the current size; a single position disables it.</summary>
+    /// <summary>The slider on the tile size, its tooltip saying it.</summary>
     private void SyncSize()
     {
-        var positions = Divisors(_columns);
         _syncingSize = true;
         try
         {
-            _size.Maximum = positions.Count - 1;
-            _size.Value = positions.IndexOf(_span);
+            _size.Value = _tileSize;
         }
         finally
         {
             _syncingSize = false;
         }
 
-        _size.Enabled = positions.Count > 1;
-        _toolTip.SetToolTip(_size, positions.Count > 1 ? "Tile size, in columns" : "One column: a single tile size");
+        _toolTip.SetToolTip(_size, $"Tile size: {_tileSize} px");
     }
 
-    /// <summary>The slider moved: the size it points at, applied and reported.</summary>
-    private void OnSizeChanged()
+    /// <summary>The slider moved: its size applied and reported.</summary>
+    private void OnSliderChanged()
     {
-        if (_syncingSize)
+        if (!_syncingSize)
         {
-            return;
-        }
-
-        int before = _span;
-        Span = Divisors(_columns)[_size.Value];
-        if (_span != before)
-        {
-            SpanChanged?.Invoke(this, EventArgs.Empty);
+            ChangeTileSize(_size.Value);
         }
     }
 
-    /// <summary>The wheel over the tiles: the slider one position up or down, which applies the size.</summary>
+    /// <summary>The wheel over the tiles: 15 % larger or smaller per notch, the same feel at every size.</summary>
     private void StepSize(int direction)
     {
-        if (!_size.Enabled)
-        {
-            return;
-        }
-
-        int target = Math.Clamp(_size.Value + direction, _size.Minimum, _size.Maximum);
-        if (target != _size.Value)
-        {
-            _size.Value = target;
-        }
+        double factor = direction > 0 ? 1.15 : 1 / 1.15;
+        ChangeTileSize((int)Math.Round(_tileSize * factor));
     }
 
-    private static List<int> Divisors(int n)
+    /// <summary>A size chosen by the user: applied, and reported when it changed.</summary>
+    private void ChangeTileSize(int size)
     {
-        var divisors = new List<int>();
-        for (int d = 1; d <= n; d++)
+        int before = _tileSize;
+        TileSize = size;
+        if (_tileSize != before)
         {
-            if (n % d == 0)
-            {
-                divisors.Add(d);
-            }
+            TileSizeChanged?.Invoke(this, EventArgs.Empty);
         }
-
-        return divisors;
     }
 
     private CancellationToken Restart()

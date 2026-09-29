@@ -5,7 +5,7 @@ namespace ImageGridFusion.UI;
 /// <summary>
 /// The app's settings remembered between sessions, per user, in the registry — no settings file: the
 /// border color, whether the borders' Twitter corners are on by default, the file explorer's base
-/// folder, whether its panel is open, its column count and its tile size, and the window's size.
+/// folder, whether its panel is open, its width and its tile size, and the window's size.
 /// </summary>
 internal static class AppSettings
 {
@@ -14,8 +14,8 @@ internal static class AppSettings
     private const string TwitterCornersName = "TwitterCornersByDefault";
     private const string ExplorerFolderName = "ExplorerFolder";
     private const string ExplorerPanelOpenName = "ExplorerPanelOpen";
-    private const string ExplorerColumnsName = "ExplorerColumns";
-    private const string ExplorerSpanName = "ExplorerSpan";
+    private const string ExplorerWidthName = "ExplorerWidth";
+    private const string ExplorerTileSizeName = "ExplorerTileSize";
     private const string WindowWidthName = "WindowWidth";
     private const string WindowHeightName = "WindowHeight";
 
@@ -118,55 +118,59 @@ internal static class AppSettings
         key.SetValue(ExplorerPanelOpenName, open ? 1 : 0, RegistryValueKind.DWord);
     }
 
-    /// <summary>How many columns of tiles the file explorer shows, 1 to 5; one when nothing was saved or the key cannot be read.</summary>
-    public static int ExplorerColumns
+    /// <summary>
+    /// The file explorer panel's open width in logical pixels, <see cref="FileExplorerPanel.MinOpenWidth"/>
+    /// at least; the default width when nothing was saved or the key cannot be read.
+    /// </summary>
+    public static int ExplorerWidth
     {
         get
         {
             try
             {
                 using var key = Registry.CurrentUser.OpenSubKey(Key);
-                return key?.GetValue(ExplorerColumnsName) is int value ? Math.Clamp(value, ThumbnailGrid.MinColumns, ThumbnailGrid.MaxColumns) : ThumbnailGrid.MinColumns;
+                return key?.GetValue(ExplorerWidthName) is int value ? Math.Clamp(value, FileExplorerPanel.MinOpenWidth, 10000) : FileExplorerPanel.DefaultOpenWidth;
             }
             catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
             {
-                return ThumbnailGrid.MinColumns;
+                return FileExplorerPanel.DefaultOpenWidth;
             }
         }
     }
 
-    /// <summary>Saves the file explorer's column count; throws an <see cref="StartupRegistration.IsRegistryError"/> exception on failure.</summary>
-    public static void SaveExplorerColumns(int columns)
+    /// <summary>Saves the file explorer panel's open width; throws an <see cref="StartupRegistration.IsRegistryError"/> exception on failure.</summary>
+    public static void SaveExplorerWidth(int width)
     {
         using var key = Registry.CurrentUser.CreateSubKey(Key);
-        key.SetValue(ExplorerColumnsName, columns, RegistryValueKind.DWord);
+        key.SetValue(ExplorerWidthName, width, RegistryValueKind.DWord);
     }
 
     /// <summary>
-    /// How many columns a tile of the file explorer spans, 1 to 5; one when nothing was saved or the
-    /// key cannot be read. The panel brings a value that does not divide its column count back to one.
+    /// The file explorer's tile size in logical pixels, <see cref="ThumbnailGrid.MinTileSize"/> to
+    /// <see cref="ThumbnailGrid.MaxTileSize"/>; the default size when nothing was saved or the key
+    /// cannot be read.
     /// </summary>
-    public static int ExplorerSpan
+    public static int ExplorerTileSize
     {
         get
         {
             try
             {
                 using var key = Registry.CurrentUser.OpenSubKey(Key);
-                return key?.GetValue(ExplorerSpanName) is int value ? Math.Clamp(value, 1, ThumbnailGrid.MaxColumns) : 1;
+                return key?.GetValue(ExplorerTileSizeName) is int value ? Math.Clamp(value, ThumbnailGrid.MinTileSize, ThumbnailGrid.MaxTileSize) : ThumbnailGrid.DefaultTileSize;
             }
             catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
             {
-                return 1;
+                return ThumbnailGrid.DefaultTileSize;
             }
         }
     }
 
-    /// <summary>Saves the file explorer's tile size, in columns; throws an <see cref="StartupRegistration.IsRegistryError"/> exception on failure.</summary>
-    public static void SaveExplorerSpan(int span)
+    /// <summary>Saves the file explorer's tile size; throws an <see cref="StartupRegistration.IsRegistryError"/> exception on failure.</summary>
+    public static void SaveExplorerTileSize(int size)
     {
         using var key = Registry.CurrentUser.CreateSubKey(Key);
-        key.SetValue(ExplorerSpanName, span, RegistryValueKind.DWord);
+        key.SetValue(ExplorerTileSizeName, size, RegistryValueKind.DWord);
     }
 
     /// <summary>
