@@ -90,15 +90,25 @@ Applies to the three lists: `*`, search results, favorites.
 - **Search results**: every match, best first (the current ranking), loaded the same way — the
   10-limit is removed. The ranked list is sorted once per query.
 - **Favorites**: loaded the same way, for uniformity (they are few, so usually one load).
+- **Implementation**: `ThumbnailGrid.SetRows(rows, hasMore, keepPlace)` replaces the `Rows`
+  setter; `ThumbnailGrid.PageSize` measures the page; the grid raises `MoreRequested` once per
+  `SetRows` when a paint finds the Loading… slot inside its client area — so a scroll, a resize or
+  a larger tile size all trigger it alike, and a first load measured too small (before the layout
+  settles) fills the view by itself. The panel keeps the whole list (`_list`) and how many tiles are
+  loaded (`_loaded`). `PageUp` / `PageDown` move the selection by a page, which the grid did not
+  handle before. The paint starts from the first row in the clip instead of the list's top, so a
+  list loaded far down is not walked from its first tile.
 
 ## Pages Setting
 
 - **Pages loaded at a time**: how many pages a load holds — **2 by default** — set from the
   **⚙** menu and **remembered between sessions** in the registry (`AppSettings.ExplorerPages`),
   like the tile size. Changing it applies from the next load.
-- The ⚙ menu gets an item **File explorer pages per load**, opening a submenu of exclusive
-  choices **1 to 10**, the current one checked (2 by default). A registry value outside 1–10 falls
-  back to 2.
+- The ⚙ menu gets an item **File explorer pages per load**, last of the menu, opening a submenu of
+  exclusive choices **1 to 10**, the current one checked (2 by default). A registry value outside
+  1–10 falls back to 2. Registry value: `ExplorerPagesPerLoad`; the panel's
+  `FileExplorerPanel.PagesPerLoad`, bounds `MinPagesPerLoad` / `MaxPagesPerLoad` /
+  `DefaultPagesPerLoad`.
 
 ## Caption
 
@@ -222,15 +232,44 @@ Go given for the code and the documentation (*Code, tests and documentation*, Q&
 tests declined at Q&A #8). The run stays on `main`, the standing choice of this app. Scope frozen
 on the design sections as of Iteration 4.
 
+### Iteration 6 — 2026-09-29 — 🧭 Implementation choices
+
+No rule broken. Choices the frozen design did not state:
+
+- **Trigger**: the Loading… slot asks for the next load when a **paint** finds it in the client
+  area (`MoreRequested`, raised once per `SetRows`, out of the paint through `BeginInvoke`) — one
+  path for the scroll, the wheel, a resize and a tile size change, where scroll events would miss
+  the wheel and the resizes.
+- **A first load too small** — measured while the layout is not settled — corrects itself: the
+  slot still in view asks for the next load until it leaves the view.
+- **Load arithmetic**: a load is `pages × PageSize` slots; `_loaded += load` on each load, so the
+  slot always ends a load; when `_loaded + 1 ≥ count` the whole list is shown without the slot. At
+  1 page of 1 tile, the first load keeps one tile (never zero) before the slot.
+- **`PageUp` / `PageDown`** added to the grid's keys (by a page), the design listing `PageDown`
+  among the keys that reach the slot while the grid did not handle it.
+- **The paint starts from the clip's first row**: a list loaded far down (thousands of tiles) is
+  not walked from its top on every paint.
+- **Search**: every match collected, then sorted once (`List.Sort`), the bounded insertion of the
+  10-limit removed. `*` sorts the whole index by creation date on every refresh (a new `*`, a
+  rescan ending, a missing file) — not on scroll.
+- **Rows built whole**: the list's `ExplorerRow`s are built for the whole list at once, the grid
+  receiving a slice.
+- **Menu**: the item is labelled *File explorer pages per load*, last of the ⚙ menu, tooltip
+  *How many screens of tiles the file explorer loads at a time…*; registry value
+  `ExplorerPagesPerLoad`.
+- **Search box placeholder**: *Search files… (* for all)*.
+- **Commits**: the index format first (it builds on its own), then the search and the loads (the
+  grid's API change ties them), then the setting, then the documentation.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 5 | 2026-09-29 | Index format 2, `*` and every match, the loads behind the Loading… slot, the pages setting |
 | Unit tests | 2 | 2026-09-27 | Declined — no test project, verified by hand (Q&A #8) |
-| README | | | |
+| README | 5 | 2026-09-29 | § File explorer (Search, Everything, Loading as you scroll, Index), features line, ⚙ menu line; GLOSSARY: File explorer, Index, Load |
 
 ---
 
