@@ -123,19 +123,23 @@ internal static class FileSearch
     }
 }
 
-/// <summary>A file of the index: its path relative to the base folder, and the folded form the search matches.</summary>
+/// <summary>A file of the index: its path relative to the base folder, its creation time, and the folded form the search matches.</summary>
 internal sealed class IndexEntry
 {
     private static readonly char[] Separators = ['\\', '/'];
 
-    public IndexEntry(string relativePath)
+    public IndexEntry(string relativePath, DateTime created)
     {
         RelativePath = relativePath;
+        Created = created;
         Folded = FileSearch.Fold(relativePath);
         NameStart = Folded.LastIndexOfAny(Separators) + 1;
     }
 
     public string RelativePath { get; }
+
+    /// <summary>When the file was created — arrived in the folder — in UTC; <see cref="DateTime.MinValue"/> when unknown.</summary>
+    public DateTime Created { get; }
 
     /// <summary>The relative path, folded once for every search.</summary>
     public string Folded { get; }
