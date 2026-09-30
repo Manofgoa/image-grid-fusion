@@ -186,6 +186,12 @@ window fits the working area (3840 × 2100). A raw WM_CLOSE (`Process.CloseMainW
 *TaskManagerClosing* by WinForms and closes the app for real: the size is saved on that path too.
 Finding: 1 px of rounding at fractional scales on the first relaunch, then stable (see the limits).
 
+### Iteration 4 — 2026-09-30 — ✅ Finished
+
+Confirmed finished by the user (Q&A #5), after three days of use: the remembered size followed the
+window's real uses meanwhile (2240 × 990 → 2034 × 990 → 2438 × 1075 logical), the app quit and
+reopened by hand each time.
+
 ---
 
 ## Implementation Log
@@ -211,7 +217,8 @@ Questions asked by the agent during design, with user responses.
 | 2 | Closed maximized (or full screen): what is kept? | The normal size it had before — it reopens un-maximized, at that size | 2026-09-27 |
 | 3 | Remembered size larger than the current screen (other screen, resolution changed)? | Shrunk to the screen's working area, not below the minimum size | 2026-09-27 |
 | 4 | Straightforward, or tricky / long to explore? | Straightforward — a single scout pass | 2026-09-27 |
+| 5 | Is the task finished? (asked at the end of the run, cut twice by the app closing) | Yes, finished | 2026-09-30 |
 
 ---
 
-*Last updated: 2026-09-27*
+*Last updated: 2026-09-30*
