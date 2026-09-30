@@ -6,8 +6,11 @@ using ImageGridFusion.Imaging;
 
 namespace ImageGridFusion.UI;
 
-/// <summary>A file shown by the explorer's grid: a favorite, or a search result.</summary>
-internal sealed record ExplorerRow(string FullPath, string Name);
+/// <summary>
+/// A tile of the explorer's grid: a file — a favorite, a search result, a file of the open folder — or,
+/// in the folder view, a folder (<paramref name="IsFolder"/>), its name then carrying its file count.
+/// </summary>
+internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false);
 
 /// <summary>
 /// The file explorer's list: a grid of tiles, one per file — its thumbnail from the Shell's cache,
@@ -78,6 +81,9 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
     /// <summary>The Loading… slot came into view: the owner is to give the next tiles, once per <see cref="SetRows"/>.</summary>
     public event EventHandler? MoreRequested;
+
+    /// <summary>Backspace or Alt+↑: the parent folder is asked for.</summary>
+    public event EventHandler? UpRequested;
 
     /// <summary>Whether a file is a favorite: its heart is drawn full.</summary>
     [Browsable(false)]
@@ -170,6 +176,16 @@ internal sealed class ThumbnailGrid : ScrollableControl
         }
     }
 
+    /// <summary>Selects the tile of a path, scrolled into view; nothing when it is not loaded.</summary>
+    public void SelectPath(string path)
+    {
+        int index = IndexOf(path);
+        if (index >= 0)
+        {
+            Select(index);
+        }
+    }
+
     /// <summary>Repaints a tile, e.g. when its heart changed.</summary>
     public void InvalidateRow(ExplorerRow row) => InvalidateTileOf(row.FullPath);
 
@@ -222,6 +238,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
     protected override bool IsInputKey(Keys keyData) =>
         keyData is Keys.Up or Keys.Down or Keys.Left or Keys.Right or Keys.Enter or Keys.Home or Keys.End or Keys.PageUp or Keys.PageDown
+            or Keys.Back or (Keys.Alt | Keys.Up)
         || base.IsInputKey(keyData);
 
     /// <summary>
@@ -232,6 +249,14 @@ internal sealed class ThumbnailGrid : ScrollableControl
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
+        if (e.KeyData is Keys.Back or (Keys.Alt | Keys.Up))
+        {
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+            UpRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
         if (_rows.Count == 0)
         {
             return;
@@ -468,8 +493,14 @@ internal sealed class ThumbnailGrid : ScrollableControl
             g.FillRectangle(fill, tile);
         }
 
-        // Loaded at its bucket's size: scaled to the tile — enlarged when smaller — its proportions kept, centered.
-        if (_thumbnails.TryGet(row.FullPath, out var image) && image is not null)
+        // Loaded at its bucket's size: scaled to the tile — enlarged when smaller — its proportions kept,
+        // centered. A folder Windows has no thumbnail for gets a drawn folder.
+        bool known = _thumbnails.TryGet(row.FullPath, out var image);
+        if (known && image is null && row.IsFolder)
+        {
+            PaintFolderGlyph(g, tile);
+        }
+        else if (image is not null)
         {
             double scale = Math.Min((double)tile.Width / image.Width, (double)tile.Height / image.Height);
             int width = Math.Max(1, (int)Math.Round(image.Width * scale));
@@ -484,20 +515,24 @@ internal sealed class ThumbnailGrid : ScrollableControl
             g.DrawRectangle(pen, selected ? Rectangle.Inflate(tile, -1, -1) : new Rectangle(tile.X, tile.Y, tile.Width - 1, tile.Height - 1));
         }
 
-        var heart = Scrolled(HeartBounds(index));
-        bool favorite = IsFavorite(row.FullPath);
-        var smoothing = g.SmoothingMode;
-        g.SmoothingMode = SmoothingMode.AntiAlias;
-        g.FillEllipse(Brushes.White, heart);
-        g.DrawEllipse(SystemPens.ControlDark, heart);
-        g.SmoothingMode = smoothing;
-        TextRenderer.DrawText(
-            g,
-            favorite ? "♥" : "♡",
-            _heartFont,
-            heart,
-            favorite ? Color.Crimson : SystemColors.GrayText,
-            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        // Favorites never hold folders: a folder tile has no heart.
+        if (!row.IsFolder)
+        {
+            var heart = Scrolled(HeartBounds(index));
+            bool favorite = IsFavorite(row.FullPath);
+            var smoothing = g.SmoothingMode;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.FillEllipse(Brushes.White, heart);
+            g.DrawEllipse(SystemPens.ControlDark, heart);
+            g.SmoothingMode = smoothing;
+            TextRenderer.DrawText(
+                g,
+                favorite ? "♥" : "♡",
+                _heartFont,
+                heart,
+                favorite ? Color.Crimson : SystemColors.GrayText,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        }
         TextRenderer.DrawText(
             g,
             row.Name,
@@ -505,6 +540,29 @@ internal sealed class ThumbnailGrid : ScrollableControl
             Scrolled(NameBounds(index)),
             selected ? SystemColors.Highlight : SystemColors.GrayText,
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+    }
+
+    /// <summary>A manila folder centered in the tile, its tab at the top left, half the tile's height.</summary>
+    private static void PaintFolderGlyph(Graphics g, Rectangle tile)
+    {
+        int height = Math.Max(8, tile.Height / 2);
+        int width = height * 4 / 3;
+        var body = new Rectangle(tile.X + (tile.Width - width) / 2, tile.Y + (tile.Height - height) / 2 + height / 10, width, height - height / 10);
+        var tab = new Rectangle(body.X, body.Y - height / 8, width * 2 / 5, height / 8 + 2);
+        var smoothing = g.SmoothingMode;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        using (var back = new SolidBrush(Color.FromArgb(222, 170, 60)))
+        {
+            g.FillRectangle(back, tab);
+            g.FillRectangle(back, body);
+        }
+
+        using (var front = new SolidBrush(Color.FromArgb(247, 205, 95)))
+        {
+            g.FillRectangle(front, new Rectangle(body.X, body.Y + body.Height / 5, body.Width, body.Height - body.Height / 5));
+        }
+
+        g.SmoothingMode = smoothing;
     }
 
     // The drawn tile, from LayoutRows(): the row's width shared by as many tiles as fit at the tile size, at 4:3.
@@ -574,7 +632,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         return index < _rows.Count ? index : -1;
     }
 
-    private bool OnHeart(int index, Point client) => index >= 0 && HeartBounds(index).Contains(Unscrolled(client));
+    private bool OnHeart(int index, Point client) => index >= 0 && !_rows[index].IsFolder && HeartBounds(index).Contains(Unscrolled(client));
 
     private int IndexOf(string path)
     {
