@@ -67,10 +67,10 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 
 ## Effects
 
-- At the top of the window, the options row, then the tabs hanging below it: an **Effects** label, one tab per effect — **Background**, **Zoom**, **Rotate**, **Flip**, **Frames**, **Black & white**, **Blur**, **Volume** — and, at the far right, a **Reset** button as tall as the tabs. They act on the selected cell; with no cell selected, both rows are disabled.
+- At the top of the window, the options row, then the tabs hanging below it: an **Effects** label, one tab per effect — **Background**, **Crop**, **Zoom**, **Rotate**, **Flip**, **Frames**, **Black & white**, **Blur**, **Volume** — and, at the far right, a **Reset** button as tall as the tabs. They act on the selected cell; with no cell selected, both rows are disabled.
 - Each tab holds a checkbox, checked while its effect is on for the selected cell. Clicking it turns the effect on or off, and selects the tab.
 - Clicking a tab elsewhere selects it: its options show in the row above, joined to it. The selected tab stays selected when another cell is selected, or none. The options row is always there, empty until a tab is selected.
-- Turning an effect off keeps its settings: it is drawn as its default (no background, 100 % centered, upright, unflipped, playing from the beginning, in color, sharp, heard at 100 %) until it is turned on again, as it was. An effect that is off shows its kept settings in its options.
+- Turning an effect off keeps its settings: it is drawn as its default (no background, the whole image, 100 % centered, upright, unflipped, playing from the beginning, in color, sharp, heard at 100 %) until it is turned on again, as it was. An effect that is off shows its kept settings in its options.
 - Changing any option of an effect turns it on, from its kept settings.
 - **Ctrl + wheel** on an option's slider — here and in the global effects' options — moves it by 5 %, onto the multiples of 5 (103 % → 105 %), instead of one unit per notch: 5° for the fine angle, 0.5 % for the borders' thickness, the zoom slider on the same percentages as the wheel over the cell, and the Frames slider by 5 % of the frames or pages. The slider takes the wheel as it does without Ctrl.
 - The options row ends with a **Reset** button that brings the selected tab's effect back to its default state: default settings, turned off — except the Background, turned back on (see Background).
@@ -88,6 +88,14 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 - **Black & white** turns the background gray too, whatever its color.
 - **Off**, or below 100 %, the cell is transparent behind its image: the preview shows grey and white squares there, as drawing apps do. A PNG — saved, or the PNG format of a copy — keeps the transparency; the copied bitmap, the MP4 video and the GIF show white instead.
 - Replacing the image, the Background's own Reset and the tabs' Reset bring it back on, automatic, at 100 %.
+
+### Crop
+
+- Keeps a part of the image, which then **becomes the image**: the kept part fills the cell by the fitting rules, as a whole image would (up to 15 % cropped, bands beyond); its automatic background is computed on it, the color following the bars live; and the canvas is sized so it is not downscaled (see Canvas size). **10 % cut off each edge** when activated.
+- **Edit view**: while the Crop tab is selected and the crop is on, the selected cell shows the **whole image** — rotated and flipped, but neither zoomed nor turned by a fine angle — fitted whole, the part cut off dimmed, on the background the cropped image gets. The other cells, the other tabs and every export show the cropped image.
+- Four fluorescent green bars across the image set each side of the kept part on its own; a bar dragged within 6 px of the image's edge snaps onto it. A drag **inside the kept part moves it whole**, its size kept, stopped at the image's edges.
+- The crop **follows the image**: turning or flipping it keeps the same part. Zoom, fine angle and Blur apply to the cropped image.
+- Options: the ratio buttons **Free**, **1:1**, **4:3**, **16:9** and **9:16**, each drawing its format. Picking one reshapes the kept part to the largest rectangle at that ratio inside it, around its center; under a ratio, a dragged bar takes the two across along, around the center, so the ratio holds. The ratio is in pixels, so 1:1 is square whatever the image. A quarter turn turns it along — 16:9 becomes 9:16 — and frees a 4:3, which has no 3:4 button.
 
 ### Zoom
 
@@ -206,7 +214,7 @@ A cell holding **multiple content** plays it, live in the preview and in the exp
 A single-page PDF, a text that fits its cell, a one-frame GIF and plain images stay still.
 
 - **Live preview**: every cell plays on one clock, so pages and views change together, each from the starting point of its Frames effect. An image arriving in a cell — by any route, in an empty cell or replacing another — and an image removed **start the grid over**: every animated image from its starting point, at the same instant, the soundtrack from its beginning, so the preview plays what the export gives; a frozen image stays on its frame; a swap or a layout change changes nothing. Hovering a cell no longer holds it still: freezing goes through the Frames effect.
-- **Progress line**: every playing cell shows, along its bottom edge just inside the selection outline, a fluorescent green line growing from the left edge as its loop plays — read from the clock at each repaint, so it glides even for a PDF or a text that only changes every second — and starting over at each loop. None on a frozen content; on the selected cell, the Blur's bars take its place while they show. In the preview only, never in the exports.
+- **Progress line**: every playing cell shows, along its bottom edge just inside the selection outline, a fluorescent green line growing from the left edge as its loop plays — read from the clock at each repaint, so it glides even for a PDF or a text that only changes every second — and starting over at each loop. None on a frozen content; on the selected cell, the Blur's or the Crop's bars take its place while they show. In the preview only, never in the exports.
 - **Sound**: the sounds of every video with sound are **mixed**, each at its Volume — a frozen or muted video adds nothing — and the soundtrack over them when it is on (see Soundtrack). In the preview, each sound plays in step with its own video (held with it, looping with it); the exported video carries the mix, each sound from its video's starting point, looping with it, in one AAC track.
 - **Export**: as soon as a content plays (not frozen), or a soundtrack is on, **Save** writes an **MP4 video** (H.264, AAC sound) instead of a PNG, and **Copy** puts an MP4 file on the clipboard (written to `%TEMP%\ImageGridFusion`, one file per export, cleaned at the next start), pastable in Explorer, chat apps or mail. The buttons name what they produce: **Copy PNG** / **Copy MP4**, **Save PNG…** / **Save MP4…**.
   - The **▾ arrow** on the right of Copy and of Save opens a menu that forces the format for that export only: **GIF** or **MP4 Video**. They are disabled while nothing plays — Save's arrow with them, Copy's staying enabled for its **JPEG for sharing** (see Output); for a still of animated content, freeze it with the Frames effect. Both arrows open again as soon as a last video exists, for **Copy last** and **Save last** (see Output).
@@ -354,7 +362,7 @@ Drag the **separator** between two cells to give one of them more room: the curs
 - **Magnetic**: within 6 px, it lands exactly back on its place in the layout, or in line with a parallel separator — such as the other arm of a broken line.
 - **Back to the layout's sizes**: double-click a separator to put it back; click the active thumbnail again, or the effects **Reset**, to put all of them back. The active thumbnail keeps the layout's own shape.
 - The sizes belong to the grid, not to the images: swapping two cells or replacing an image keeps them; picking another layout or changing the number of images starts again on the layout's own sizes. They are not kept between two launches.
-- On the selected cell, a blur bar lying on its edge is grabbed before the separator; the separator stays reachable from the neighbour cell, or once the Blur tab is unselected or the blur is off.
+- On the selected cell, a Blur or Crop bar lying on its edge is grabbed before the separator; the separator stays reachable from the neighbour cell, or once that tab is unselected or its effect is off.
 - A text is laid out again for its new cell once the separator is released. Not while exporting.
 
 ## Fitting rules
@@ -366,13 +374,14 @@ Drag the **separator** between two cells to give one of them more room: the curs
   - otherwise the most frequent color of the whole image.
   The sides are those of the part actually shown, after the crop and every effect (zoom, focus, rotation and fine angle), so the color follows them. An animation keeps the same color while it plays.
   The area an image moved past its cell's edges uncovers is filled the same way, from the sides of the part still shown.
+- With the **Crop** effect, the kept part stands for the whole image: the rule, and the automatic color, apply to it.
 - The threshold is fixed: to crop more, zoom in; to crop less, zoom out; and move the image to choose what the cell shows (see the Zoom effect).
 - The same rule applies whether the source image is too small (upscaled) or too large (downscaled).
 - EXIF orientation is applied on load, so photos from phones appear upright.
 
 ## Canvas size
 
-Output resolution is kept as high as possible so source images aren't needlessly downscaled: the canvas width is the width at which no image is downscaled in the active layout, with its cells as resized, clamped between 1200 and 4096 px; height follows from the 1200:628 ratio.
+Output resolution is kept as high as possible so source images aren't needlessly downscaled: the canvas width is the width at which no image — the kept part of a cropped one — is downscaled in the active layout, with its cells as resized, clamped between 1200 and 4096 px; height follows from the 1200:628 ratio.
 
 ## Output
 
