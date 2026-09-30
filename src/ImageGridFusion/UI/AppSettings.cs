@@ -68,9 +68,13 @@ internal static class AppSettings
     /// <summary>Whether a value is saved under <paramref name="name"/>.</summary>
     public static bool Has(string name) => Values.ContainsKey(name);
 
-    /// <summary>Sets the values and writes the file; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    /// <summary>
+    /// Sets the values and writes the file; throws an <see cref="IsSaveError"/> exception on failure. The file
+    /// is read again first, so what another instance saved in the meantime is kept.
+    /// </summary>
     public static void Save(params (string Name, JsonNode? Value)[] values)
     {
+        _values = Load();
         foreach (var (name, value) in values)
         {
             Values[name] = value;
