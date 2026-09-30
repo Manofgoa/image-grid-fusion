@@ -256,9 +256,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 4, 5 | 2026-09-30 | `95d418f` the model and rendering; `df0bd34` the edit view and bars; `8526dc4` the tab and ratio options; `2ce7d17` the move (Iteration 5). Each commit builds; checked by a scripted checker, 38 checks (§ Test Impact) |
+| Code | 4, 5, 7 | 2026-09-30 | `95d418f` the model and rendering; `df0bd34` the edit view and bars; `8526dc4` the tab and ratio options; `2ce7d17` the move (Iteration 5); `7a5feb6` the edit view ignoring the pan and the wheel (Iteration 7). Each commit builds; checked by a scripted checker, 38 checks (§ Test Impact) |
 | Unit tests | — | — | Does not apply — no test project; scripted checker in the scratchpad, 38 checks, all passed |
-| README | 4 | 2026-09-30 | `8b3dec7` — § Effects: the Crop section, the tab list, the defaults; § Fitting rules, § Canvas size, § Resizing the cells, the progress line |
+| README | 4, 7 | 2026-09-30 | `8b3dec7`, `7d96e97` — § Effects: the Crop section, the tab list, the defaults; § Fitting rules, § Canvas size, § Resizing the cells, the progress line |
 | Rules, Glossary | 4 | 2026-09-30 | `72d53d4` — RULES.md § *The Crop Exception*; GLOSSARY: *Crop*, *Crop edit view*, *Effect* and *Progress line* updated |
 
 ---
