@@ -59,7 +59,8 @@ Settled at scoping (Q&A #1–#5):
 - A **tile of the panel** dragged and released on the panel itself does **nothing** (the tiles are not
   a source): the panel knows the drag is its own (a flag held during its `DoDragDrop`) and shows the
   *none* effect, no frame.
-- A **text** dropped on the panel (`TextData`, from another app) is not a file: see Open Questions.
+- A **text** dropped on the panel (`TextData`, from another app) is not a file: **ignored** — no
+  frame, the *none* effect.
 
 ## Drop From a Cell (✥ Handle)
 
@@ -90,7 +91,17 @@ Settled at scoping (Q&A #1–#5):
 - What is saved is the **original pasted bitmap** (`SourceImage.Bitmap`), **without the cell's
   effects** (they live on `ImageLook`, applied by `Compositor.DrawCell`): a source file any cell can
   reuse.
-- The texts, and what the cell becomes afterwards: see Open Questions.
+- **Texts** (pasted or dropped) are saved as **the text itself**, not a picture:
+  `pasted-yyyyMMdd-HHmmss.txt` for a plain text, `.rtf` for a styled one — kept from the
+  `TextData` the text arrived with (its RTF, else its HTML turned into RTF, else its plain text),
+  so it reads back with every page. How a styled text reads back: see Open Questions.
+- The cell **adopts the saved file**: `SourceImage.FilePath` becomes the saved path, so the cell
+  shows the file's name instead of *Pasted image* / *Pasted text* / *Dropped text*, *Show in
+  Explorer* works, and a second ✥ drop reuses the file instead of saving a duplicate; its effects are
+  kept (nothing is reloaded).
+- A favorite **inside `favorites-from-pasted/`** that is **un-hearted** is **deleted**, sent to the
+  **Recycle Bin**: the app created it for the favorite. Anywhere else, un-hearting leaves the file
+  alone, as today. A cell that adopted the file keeps its image (loaded in memory).
 - A save that fails (disk full, rights) adds nothing and says why in the panel's status line.
 
 ## Adding a Favorite
@@ -137,6 +148,10 @@ previous workfile, the delivery is checked by hand or by a script driving the bu
 | Folder | A folder and a file dropped together: the file added, the folder skipped and counted in the message |
 | Own tile | A tile dragged and released on its own panel: no frame, nothing added, nothing in the grid |
 | Frame | Shown while hovering (both drags), gone on leave, drop, or Escape / capture lost |
+| Pasted text | A pasted plain text, ✥ onto the panel: `pasted-….txt`, the cell now named after it |
+| Adopted file | The same pasted image dropped twice by ✥: one file only, the cell named `pasted-….png` |
+| Un-hearted | The heart of a `favorites-from-pasted/` favorite unchecked: the file in the Recycle Bin; a favorite elsewhere un-hearted: the file untouched |
+| Dropped text on the panel | A text dragged from a browser onto the panel: no frame, nothing added |
 | Write error | `favorites.txt` read-only: the red status line, the favorite kept for the session |
 
 ---
@@ -159,13 +174,21 @@ previous workfile, the delivery is checked by hand or by a script driving the bu
   `pasted-20260930-184512.png`)?~~ → PNG, `pasted-yyyyMMdd-HHmmss.png`, `-2`, `-3`… when taken
 - [x] ~~What is saved: the **original pasted bitmap**, or the cell **as drawn** with its effects?~~ →
   The original pasted bitmap, without the cell's effects
-- [ ] After the save, does the **cell adopt the saved file** (its name shown instead of *Pasted image*,
-  *Show in Explorer* available, a second ✥ drop reusing the file instead of saving a duplicate)?
-- [ ] **Pasted and dropped texts** (no file either): saved too — as the rendered page (PNG) or as the
-  text itself (`.txt` / `.rtf`) — or refused with a message?
-- [ ] A favorite from `favorites-from-pasted/` **un-hearted**: its file kept, or deleted?
-- [ ] A **text** (not a file) dropped from another app onto the panel: ignored, or saved like a
-  pasted text?
+- [x] ~~After the save, does the **cell adopt the saved file** (its name shown instead of *Pasted image*,
+  *Show in Explorer* available, a second ✥ drop reusing the file instead of saving a duplicate)?~~ →
+  Yes, its effects kept
+- [x] ~~**Pasted and dropped texts** (no file either): saved too — as the rendered page (PNG) or as the
+  text itself (`.txt` / `.rtf`) — or refused with a message?~~ → Saved as the text itself: `.rtf`
+  when styled, else `.txt`, read back like a text file, every page *(see the question below: an
+  `.rtf` file is read back as plain text today)*
+- [x] ~~A favorite from `favorites-from-pasted/` **un-hearted**: its file kept, or deleted?~~ → Deleted,
+  to the Recycle Bin
+- [x] ~~A **text** (not a file) dropped from another app onto the panel: ignored, or saved like a
+  pasted text?~~ → Ignored: no frame, the *none* effect
+- [ ] A **styled text** saved as `.rtf` is read back **as plain text**: the app opens every text file
+  with `TextPages.TryOpen` → `StyledText.Plain`, whatever its extension — the favorite would show the
+  RTF markup. Save it as `.txt` (the words kept, the styles lost), teach the loader to read `.rtf` /
+  `.html` files with `RtfReader` / `HtmlReader`, or save the styled text as a PNG?
 - [ ] A drop onto the panel **during an export**: accepted (the favorites do not touch the grid), or
   refused like the grid's drops?
 
@@ -205,6 +228,17 @@ Second batch answered (Q&A #10–#13): a folder is ignored; every file type is a
 image is saved as a timestamped PNG; the original pasted bitmap is saved, without the cell's
 effects. § Drop From the Windows Explorer, § Images Without a File and § Test Impact updated.
 
+### Iteration 4 — 2026-09-30
+
+Third batch answered (Q&A #14–#17): the cell adopts the saved file; texts are saved as the text
+itself (`.rtf` when styled, else `.txt`); a `favorites-from-pasted/` favorite un-hearted is sent to
+the Recycle Bin; a text dropped onto the panel is ignored. § Images Without a File and § Test Impact
+updated.
+
+Checking the text answer: every text file is opened as plain text (`TextPages.TryOpen` →
+`StyledText.Plain`), whatever its extension, so a saved `.rtf` would read back as its markup. New
+open question (Q&A #19).
+
 ---
 
 ## Implementation Log
@@ -239,11 +273,12 @@ Questions asked by the agent during design, with user responses.
 | 11 | Every file type, or only what the cells can show? | Every file type | 2026-09-30 |
 | 12 | The pasted image's format and name? | PNG, timestamped: `pasted-20260930-184512.png` | 2026-09-30 |
 | 13 | Saved: the original pasted bitmap, or the cell as drawn? | The original pasted bitmap | 2026-09-30 |
-| 14 | After the save, does the cell adopt the saved file? | | |
-| 15 | Pasted and dropped texts: saved (PNG render, or the text), or refused? | | |
-| 16 | A favorite from `favorites-from-pasted/` un-hearted: file kept, or deleted? | | |
-| 17 | A text (not a file) dropped from another app onto the panel? | | |
+| 14 | After the save, does the cell adopt the saved file? | Yes | 2026-09-30 |
+| 15 | Pasted and dropped texts: saved (PNG render, or the text), or refused? | Saved as the text itself: `.rtf` when styled, else `.txt` | 2026-09-30 |
+| 16 | A favorite from `favorites-from-pasted/` un-hearted: file kept, or deleted? | Deleted, to the Recycle Bin | 2026-09-30 |
+| 17 | A text (not a file) dropped from another app onto the panel? | Ignored | 2026-09-30 |
 | 18 | A drop onto the panel during an export: accepted, or refused? | | |
+| 19 | A styled text saved as `.rtf` reads back as plain text: `.txt`, an RTF / HTML loader, or PNG? | | |
 
 ---
 
