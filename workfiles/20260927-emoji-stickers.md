@@ -161,6 +161,7 @@ workfile stayed test-free.
 - [x] ~~Emoji selection and cell selection: exclusive (selecting one clears the other), or both kept at once?~~ → Exclusive (Q&A #11)
 - [x] ~~Stacking: does selecting an emoji bring it to the front?~~ → Yes, and it stays there (Q&A #12)
 - [x] ~~Unit tests: none, as in the previous workfiles, or a test project for this feature?~~ → None (Q&A #13)
+- [ ] When can the emojis be selected on the grid: only while the Emojis tab is selected (like the cell effects' handles), or whenever the effect is on?
 
 ---
 
@@ -244,6 +245,7 @@ Questions asked by the agent during design, with user responses.
 | 12 | Does selecting an emoji bring it to the front? | Yes | 2026-09-27 |
 | 13 | Unit tests for this feature? | None | 2026-09-27 |
 | 14 | Where are the recent emojis remembered: a file next to the exe (like `favorites.txt`), the registry, or the session only? | A file next to the exe | 2026-09-30 |
+| 15 | When can the emojis be selected on the grid: only while the Emojis tab is selected, or whenever the effect is on? | | |
 
 ---
 
