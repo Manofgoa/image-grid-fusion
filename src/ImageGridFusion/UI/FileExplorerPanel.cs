@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Drawing.Drawing2D;
 using ImageGridFusion.Explorer;
 
 namespace ImageGridFusion.UI;
@@ -77,6 +78,10 @@ internal sealed class FileExplorerPanel : Panel
     private bool _summaryError;
     private int _pagesPerLoad = DefaultPagesPerLoad;
 
+    // A tile of this panel being dragged: not a source of favorites, so the panel refuses it.
+    private bool _draggingOwnTile;
+    private bool _dropFrame;
+
     // The whole list the search box asks for, computed once, and how many of its tiles are loaded.
     private IReadOnlyList<ExplorerRow> _list = [];
     private int _loaded;
@@ -148,6 +153,11 @@ internal sealed class FileExplorerPanel : Panel
         _menu.Opening += (_, e) => e.Cancel = _grid.RowAt(_grid.PointToClient(MousePosition)) is null;
         _openLocation.Click += (_, _) => OpenLocation();
         _transient.Tick += (_, _) => ShowSummary();
+
+        // Files dropped anywhere on the panel, open or collapsed, become favorites (see
+        // workfiles/20260930-favorites-drag-drop.md); none of its children is a drop target of its own.
+        AllowDrop = true;
+        _content.Paint += (_, e) => PaintDropFrame(e.Graphics);
         ApplyMetrics();
         SyncSize();
         RefreshRows();
@@ -164,6 +174,9 @@ internal sealed class FileExplorerPanel : Panel
 
     /// <summary>The invitation's button: the base folder is to be chosen, as from the ⚙ menu.</summary>
     public event EventHandler? ChooseFolderRequested;
+
+    /// <summary>A message the collapsed panel cannot show, its status line hidden: for the window's status line.</summary>
+    public event EventHandler<(string Text, bool Error)>? MessageWhileCollapsed;
 
     /// <summary>Whether the panel is open, or collapsed to its strip. Setting it raises nothing.</summary>
     [Browsable(false)]
@@ -244,6 +257,77 @@ internal sealed class FileExplorerPanel : Panel
         set => _pagesPerLoad = Math.Clamp(value, MinPagesPerLoad, MaxPagesPerLoad);
     }
 
+    /// <summary>Whether <paramref name="screenPoint"/> is over the panel, open or collapsed.</summary>
+    public bool ContainsScreenPoint(Point screenPoint) => Visible && RectangleToScreen(ClientRectangle).Contains(screenPoint);
+
+    /// <summary>
+    /// Frames the panel while a drop of favorites hovers it — a drag over the panel, or a cell's ✥
+    /// handle driven by the window. The preview's drop-target highlight, not a helper indicator.
+    /// </summary>
+    public void ShowDropFrame(bool shown)
+    {
+        if (shown == _dropFrame)
+        {
+            return;
+        }
+
+        _dropFrame = shown;
+        _content.Invalidate();
+        _expand.UseVisualStyleBackColor = !shown;
+        _expand.BackColor = shown ? SystemColors.Highlight : SystemColors.Control;
+        _expand.ForeColor = shown ? SystemColors.HighlightText : SystemColors.ControlText;
+    }
+
+    /// <summary>
+    /// Adds dropped files to the favorites, in their order, the last one the newest; a folder is
+    /// skipped. The favorites list keeps its place, a search stays; the status line says what was added.
+    /// </summary>
+    public void AddFavorites(IReadOnlyList<string> paths)
+    {
+        var files = new List<string>();
+        int folders = 0;
+        foreach (string path in paths)
+        {
+            if (Directory.Exists(path))
+            {
+                folders++;
+            }
+            else if (File.Exists(path))
+            {
+                files.Add(Path.GetFullPath(path));
+            }
+        }
+
+        if (files.Count == 0)
+        {
+            Report(folders > 0 ? "Nothing added: folders do not become favorites" : "Nothing added: no file to add", error: false);
+            return;
+        }
+
+        string? error = null;
+        try
+        {
+            _favorites.Add(files);
+        }
+        catch (Exception ex) when (FileIndex.IsFileError(ex))
+        {
+            error = ex.Message;
+        }
+
+        if (FileSearch.Words(_search.Text).Length == 0)
+        {
+            RefreshRows(keepPlace: true);
+        }
+        else
+        {
+            _grid.Invalidate();
+        }
+
+        string added = files.Count == 1 ? Path.GetFileName(files[0]) : $"{files.Count} files";
+        string skipped = folders switch { 0 => "", 1 => " — 1 folder skipped", _ => $" — {folders} folders skipped" };
+        Report(error is null ? $"Added to favorites: {added}{skipped}" : $"Added to favorites: {added}, not saved: {error}", error is not null);
+    }
+
     /// <summary>The search box has the focus: its keys are its own, not the window's shortcuts.</summary>
     public bool IsEditingText => _search.Focused;
 
@@ -301,6 +385,44 @@ internal sealed class FileExplorerPanel : Panel
         base.Dispose(disposing);
     }
 
+    protected override void OnDragEnter(DragEventArgs e)
+    {
+        base.OnDragEnter(e);
+        OnDragOver(e);
+
+        // As the window does: the shell helper keeps Explorer's thumbnail over the panel.
+        if (e.Effect == DragDropEffects.Copy)
+        {
+            e.DropImageType = DropImageType.Copy;
+            e.Message = "Add to %1";
+            e.MessageReplacementToken = "Favorites";
+        }
+    }
+
+    protected override void OnDragOver(DragEventArgs e)
+    {
+        base.OnDragOver(e);
+        bool files = !_draggingOwnTile && e.Data?.GetDataPresent(DataFormats.FileDrop) == true;
+        e.Effect = files ? DragDropEffects.Copy : DragDropEffects.None;
+        ShowDropFrame(files);
+    }
+
+    protected override void OnDragLeave(EventArgs e)
+    {
+        base.OnDragLeave(e);
+        ShowDropFrame(false);
+    }
+
+    protected override void OnDragDrop(DragEventArgs e)
+    {
+        base.OnDragDrop(e);
+        ShowDropFrame(false);
+        if (!_draggingOwnTile && e.Data?.GetData(DataFormats.FileDrop) is string[] paths)
+        {
+            AddFavorites(paths);
+        }
+    }
+
     protected override void OnFontChanged(EventArgs e)
     {
         base.OnFontChanged(e);
@@ -330,6 +452,31 @@ internal sealed class FileExplorerPanel : Panel
         _content.RowStyles[3].Height = line;
         _content.RowStyles[5].Height = Font.Height * 2 + LogicalToDeviceUnits(4);
         _inviteText.Height = Font.Height * 4 + LogicalToDeviceUnits(8);
+    }
+
+    /// <summary>The frame in the content's padding, around everything the open panel shows.</summary>
+    private void PaintDropFrame(Graphics g)
+    {
+        if (!_dropFrame)
+        {
+            return;
+        }
+
+        using var pen = new Pen(SystemColors.Highlight, LogicalToDeviceUnits(3)) { Alignment = PenAlignment.Inset };
+        g.DrawRectangle(pen, new Rectangle(Point.Empty, _content.ClientSize));
+    }
+
+    /// <summary>A message on the status line, else on the window's while the panel is collapsed.</summary>
+    private void Report(string message, bool error)
+    {
+        if (_open)
+        {
+            ShowTransient(message, error);
+        }
+        else
+        {
+            MessageWhileCollapsed?.Invoke(this, (message, error));
+        }
     }
 
     private void SetOpen(bool open)
@@ -649,19 +796,45 @@ internal sealed class FileExplorerPanel : Panel
     {
         if (Exists(row))
         {
-            _grid.DoDragDrop(new DataObject(DataFormats.FileDrop, new[] { row.FullPath }), DragDropEffects.Copy);
+            _draggingOwnTile = true;
+            try
+            {
+                _grid.DoDragDrop(new DataObject(DataFormats.FileDrop, new[] { row.FullPath }), DragDropEffects.Copy);
+            }
+            finally
+            {
+                _draggingOwnTile = false;
+            }
         }
     }
 
+    /// <summary>
+    /// The heart of a tile. A favorite of <see cref="PastedFavorites.Folder"/> un-hearted goes to the
+    /// Recycle Bin: the app made that file for the favorite.
+    /// </summary>
     private void ToggleFavorite(ExplorerRow row)
     {
+        bool added = true;
         try
         {
-            _favorites.Toggle(row.FullPath);
+            added = _favorites.Toggle(row.FullPath);
         }
         catch (Exception ex) when (FileIndex.IsFileError(ex))
         {
             ShowTransient($"Favorites not saved: {ex.Message}", error: true);
+        }
+
+        if (!added && PastedFavorites.Holds(row.FullPath))
+        {
+            try
+            {
+                PastedFavorites.Recycle(row.FullPath);
+                ShowTransient($"{Path.GetFileName(row.FullPath)} sent to the Recycle Bin");
+            }
+            catch (Exception ex) when (FileIndex.IsFileError(ex))
+            {
+                ShowTransient($"{Path.GetFileName(row.FullPath)} not sent to the Recycle Bin: {ex.Message}", error: true);
+            }
         }
 
         if (FileSearch.Words(_search.Text).Length == 0)
