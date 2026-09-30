@@ -109,14 +109,14 @@ internal sealed class MainForm : Form
         .ToDictionary(e => e, _ => new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, Margin = Padding.Empty, Visible = false });
 
     // A log scale, in hundredths of a doubling: 50 % → 100 % and each doubling take the same length.
-    private readonly TrackBar _zoom = OptionSlider((int)Math.Round(Math.Log2(ImageLook.MinZoom) * 100), (int)Math.Round(Math.Log2(ImageLook.MaxZoom) * 100), 10);
+    private readonly StepSlider _zoom = OptionSlider((int)Math.Round(Math.Log2(ImageLook.MinZoom) * 100), (int)Math.Round(Math.Log2(ImageLook.MaxZoom) * 100), 10);
     private readonly Label _zoomLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox[] _quarterTurns = [OptionButton("0°"), OptionButton("90°"), OptionButton("180°"), OptionButton("270°")];
     private readonly TrackBar _fineAngle = OptionSlider(-ImageLook.MaxFineAngle, ImageLook.MaxFineAngle, 5);
     private readonly Label _fineAngleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _flipX = OptionButton("Horizontal");
     private readonly CheckBox _flipY = OptionButton("Vertical");
-    private readonly TrackBar _frames = OptionSlider(0, 1, 10);
+    private readonly StepSlider _frames = OptionSlider(0, 1, 10);
     private readonly Label _framesLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _freeze = new() { Text = "Freeze", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly PictureBox _grayscaleIcon = new() { SizeMode = PictureBoxSizeMode.CenterImage, Anchor = AnchorStyles.Left };
@@ -226,7 +226,8 @@ internal sealed class MainForm : Form
 
     // The borders' options; their color is a setting of the ⚙ menu, remembered between sessions.
     private readonly ComboBox _bordersStyle = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 90, Anchor = AnchorStyles.Left };
-    private readonly TrackBar _bordersThickness = OptionSlider((int)Math.Round(GridBorders.MinThickness * 1000), (int)Math.Round(GridBorders.MaxThickness * 1000), 5);
+    // In thousandths of the grid's shorter side: Control + wheel steps by 0.5 %.
+    private readonly TrackBar _bordersThickness = OptionSlider((int)Math.Round(GridBorders.MinThickness * 1000), (int)Math.Round(GridBorders.MaxThickness * 1000), 5, controlStep: 5);
     private readonly Label _bordersThicknessLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly TrackBar _bordersOpacity = OptionSlider((int)Math.Round(GridBorders.MinOpacity * 100), 100, 10);
     private readonly Label _bordersOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
@@ -436,6 +437,7 @@ internal sealed class MainForm : Form
         _effectResetButton.Click += (_, _) => ResetSelectedEffect();
         _resetButton.Click += (_, _) => ResetEffects();
         _zoom.ValueChanged += (_, _) => SetZoom();
+        _zoom.ControlWheel = StepZoom;
         for (int i = 0; i < _quarterTurns.Length; i++)
         {
             int degrees = 90 * i;
@@ -446,6 +448,7 @@ internal sealed class MainForm : Form
         _flipX.Click += (_, _) => ChangeLook(ImageEffect.Flip, look => look.ToggleFlipX());
         _flipY.Click += (_, _) => ChangeLook(ImageEffect.Flip, look => look.ToggleFlipY());
         _frames.ValueChanged += (_, _) => ChangeFrames(frames => frames.AtPage(_frames.Value, _frames.Maximum + 1));
+        _frames.ControlWheel = StepFrames;
         _freeze.CheckedChanged += (_, _) => ChangeFrames(frames => frames.WithFrozen(_freeze.Checked));
         _grayscale.ValueChanged += (_, _) =>
         {
@@ -1798,12 +1801,14 @@ internal sealed class MainForm : Form
         Anchor = AnchorStyles.Left,
     };
 
-    private static TrackBar OptionSlider(int minimum, int maximum, int largeChange) => new()
+    /// <summary>A slider of the options; Control + wheel moves it by <paramref name="controlStep"/>, snapped (5 % for a percentage, 5° for an angle).</summary>
+    private static StepSlider OptionSlider(int minimum, int maximum, int largeChange, int controlStep = (int)WheelSteps.Percent) => new()
     {
         Minimum = minimum,
         Maximum = maximum,
         SmallChange = 1,
         LargeChange = largeChange,
+        ControlStep = controlStep,
         TickStyle = TickStyle.None,
         BackColor = SystemColors.Window,
 
@@ -1877,9 +1882,29 @@ internal sealed class MainForm : Form
     }
 
     /// <summary>The slider snaps to 100 % near its mark.</summary>
-    private void SetZoom()
+    private void SetZoom() => ApplyZoom(Math.Abs(_zoom.Value) <= 4 ? 1 : Math.Pow(2, _zoom.Value / 100.0));
+
+    /// <summary>
+    /// Control + wheel on the zoom slider: the zoom shown moves onto the next multiple of 5 %, as on
+    /// the cell — applied exactly, the log scale of the slider being too coarse for it at high zooms.
+    /// </summary>
+    private void StepZoom(int notches)
     {
-        double zoom = Math.Abs(_zoom.Value) <= 4 ? 1 : Math.Pow(2, _zoom.Value / 100.0);
+        if (_preview.SelectedImage?.Look is not { } look)
+        {
+            return;
+        }
+
+        double current = look.TurnOn(ImageEffect.Zoom).Zoom;
+        double zoom = Math.Clamp(WheelSteps.Snap(current * 100, WheelSteps.Percent, notches) / 100, ImageLook.MinZoom, ImageLook.MaxZoom);
+        _syncingEffects = true;
+        _zoom.Value = Math.Clamp((int)Math.Round(Math.Log2(zoom) * 100), _zoom.Minimum, _zoom.Maximum);
+        _syncingEffects = false;
+        ApplyZoom(zoom);
+    }
+
+    private void ApplyZoom(double zoom)
+    {
         _zoomLabel.Text = $"Zoom: {zoom * 100:0} %";
         if (!_syncingEffects && _preview.SelectedImage?.Look is { } look)
         {
@@ -1887,6 +1912,17 @@ internal sealed class MainForm : Form
             _preview.SetSelectedLook(look.TurnOn(ImageEffect.Zoom));
             _preview.ZoomSelected(zoom);
         }
+    }
+
+    /// <summary>
+    /// Control + wheel on the frames slider: the starting point moves by 5 % of the frame count,
+    /// snapped onto the multiples of 5 % of the animation, at least one frame per notch.
+    /// </summary>
+    private void StepFrames(int notches)
+    {
+        int count = _frames.Maximum + 1;
+        double at = WheelSteps.Snap(_frames.Value * 100.0 / count, WheelSteps.Percent, notches);
+        _frames.Value = WheelSteps.Within(_frames.Value, (int)Math.Round(at * count / 100), notches, _frames.Minimum, _frames.Maximum);
     }
 
     private void SetFineAngle()
