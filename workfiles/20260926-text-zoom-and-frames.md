@@ -181,6 +181,10 @@ Questions asked by the agent during design, with user responses.
 | 5 | At zoom in, do a text's frames stay the 100 % pages or follow the visible window? | "The zoom changes the amount of text shown and recomputes the number of pages. Changing page is in Frames now (it already exists)" | 2026-09-26 |
 | 6 | At zoom out, does a PDF show several pages at once or shrink as today? | Shrinks as today | 2026-09-26 |
 | 7 | Other files: sharper at zoom in, unchanged at zoom out, no frames — acceptable? | Yes | 2026-09-26 |
+| 8 | Does the zoom re-wrap the text (line breaks recomputed, no line cut) or crop it? | | |
+| 9 | When is a document re-rendered during a zoom gesture? | | |
+| 10 | How far does a zoomed-in PDF page / thumbnail stay sharp (render cap)? | | |
+| 11 | Does the Animated Zoom effect also re-render a text? | | |
 
 ---
 
