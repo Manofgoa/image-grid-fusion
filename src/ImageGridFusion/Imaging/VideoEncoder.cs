@@ -7,7 +7,8 @@ namespace ImageGridFusion.Imaging;
 /// <summary>
 /// Writes an MP4 file with the Media Foundation Sink Writer: H.264 video from 32-bit RGB frames, and
 /// optionally the sounds of video files, each looped with its video and scaled by its volume, and of
-/// the soundtrack, looped on its own length, mixed and re-encoded to one AAC track. Used from a single thread-pool thread.
+/// the soundtrack, looped on its own length, mixed — faded in and out with the fade global effect — and
+/// re-encoded to one AAC track. Used from a single thread-pool thread.
 /// </summary>
 internal sealed class VideoEncoder : IFrameEncoder
 {
@@ -37,12 +38,13 @@ internal sealed class VideoEncoder : IFrameEncoder
 
     /// <summary>
     /// Creates the file, its sound mixed from <paramref name="sounds"/> for the <paramref name="length"/>
-    /// of the video; a sound Windows cannot re-encode is left out, listed in <see cref="FailedSounds"/>.
+    /// of the video, faded in and out by <paramref name="fade"/> when one is on; a sound Windows cannot
+    /// re-encode is left out, listed in <see cref="FailedSounds"/>.
     /// </summary>
-    public static VideoEncoder Create(string path, Size size, TimeSpan length, IReadOnlyList<MixedSound> sounds)
+    public static VideoEncoder Create(string path, Size size, TimeSpan length, IReadOnlyList<MixedSound> sounds, SoundFade? fade = null)
     {
         var failed = new List<string>();
-        var mixer = Mixer.Create(sounds, length.Ticks, failed);
+        var mixer = Mixer.Create(sounds, length.Ticks, fade, failed);
         if (mixer is not null)
         {
             try
@@ -191,24 +193,26 @@ internal sealed class VideoEncoder : IFrameEncoder
 
     /// <summary>
     /// The sounds of the grid, mixed into one 16-bit stereo PCM stream fed to the AAC encoder: each
-    /// voice scaled by its gain, the sum clipped to full scale, written in steps of a tenth of a second
-    /// until the video ends.
+    /// voice scaled by its gain, the sum scaled by the fade and clipped to full scale, written in steps of
+    /// a tenth of a second until the video ends.
     /// </summary>
     private sealed class Mixer : IDisposable
     {
         private readonly List<Voice> _voices;
         private readonly int _rate;
         private readonly long _lengthFrames;
+        private readonly SoundFade? _fade;
         private readonly int[] _mix;
         private readonly short[] _clipped;
         private int _stream;
         private long _frames;
 
-        private Mixer(List<Voice> voices, int rate, long length)
+        private Mixer(List<Voice> voices, int rate, long length, SoundFade? fade)
         {
             _voices = voices;
             _rate = rate;
             _lengthFrames = length * rate / TimeSpan.TicksPerSecond;
+            _fade = fade;
             _mix = new int[StepFrames * 2];
             _clipped = new short[StepFrames * 2];
         }
@@ -221,7 +225,7 @@ internal sealed class VideoEncoder : IFrameEncoder
         /// Opens every sound, all decoded at one rate: 44.1 kHz when they all are, else 48 kHz. The ones
         /// that fail go to <paramref name="failed"/>; <c>null</c> when none is left.
         /// </summary>
-        public static Mixer? Create(IReadOnlyList<MixedSound> sounds, long length, List<string> failed)
+        public static Mixer? Create(IReadOnlyList<MixedSound> sounds, long length, SoundFade? fade, List<string> failed)
         {
             var voices = new List<Voice>();
             foreach (var sound in sounds)
@@ -251,7 +255,7 @@ internal sealed class VideoEncoder : IFrameEncoder
                 }
             }
 
-            return voices.Count == 0 ? null : new Mixer(voices, rate, length);
+            return voices.Count == 0 ? null : new Mixer(voices, rate, length, fade);
         }
 
         /// <summary>Adds the AAC stream, stereo at the mix's rate.</summary>
@@ -288,9 +292,17 @@ internal sealed class VideoEncoder : IFrameEncoder
                     voice.MixInto(_mix, frames);
                 }
 
+                // The fade scales the whole mix, soundtrack included, before it is clipped.
+                double length = (double)_lengthFrames / _rate;
                 for (int i = 0; i < frames * 2; i++)
                 {
-                    _clipped[i] = (short)Math.Clamp(_mix[i], short.MinValue, short.MaxValue);
+                    double sample = _mix[i];
+                    if (_fade is { } fade)
+                    {
+                        sample *= fade.GainAt((double)(_frames + i / 2) / _rate, length);
+                    }
+
+                    _clipped[i] = (short)Math.Clamp(Math.Round(sample), short.MinValue, short.MaxValue);
                 }
 
                 Write(writer, frames);

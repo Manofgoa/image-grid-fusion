@@ -17,11 +17,12 @@ internal static class GridExport
     /// </summary>
     public sealed class Job : IDisposable
     {
-        private Job(IReadOnlyList<Item> items, GridLayout layout, GridBorders? borders, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack)
+        private Job(IReadOnlyList<Item> items, GridLayout layout, GridBorders? borders, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack, SoundFade? fade)
         {
             Items = items;
             Layout = layout;
             Borders = borders;
+            Fade = fade;
             Length = Animation.VideoLength(items.Select(i => i.Loop).DefaultIfEmpty(TimeSpan.Zero).Max(), soundtrack);
 
             // The soundtrack loops on its own length, cut where the video ends.
@@ -36,14 +37,20 @@ internal static class GridExport
         /// <summary>The borders drawn on the grid; <c>null</c> while they are off.</summary>
         public GridBorders? Borders { get; }
 
+        /// <summary>The fade of the mixed sounds, in at the start of the video and out at its end; <c>null</c> while it is off.</summary>
+        public SoundFade? Fade { get; }
+
         /// <summary>The sounds mixed into the video: each from the starting point of its video, at its volume; the soundtrack last.</summary>
         public IReadOnlyList<MixedSound> Sounds { get; }
 
         /// <summary>Length of the video (<see cref="Animation.VideoLength(TimeSpan, Soundtrack?)"/>): the longest loop; with a soundtrack and no loop, the soundtrack's.</summary>
         public TimeSpan Length { get; }
 
-        /// <summary>The grid as it stands, with its <paramref name="borders"/>, and <paramref name="soundtrack"/> mixed over its sounds when one is on.</summary>
-        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout, GridBorders? borders, Soundtrack? soundtrack = null) => new(
+        /// <summary>
+        /// The grid as it stands, with its <paramref name="borders"/>, <paramref name="soundtrack"/> mixed
+        /// over its sounds when one is on, and the mix faded by <paramref name="fade"/> when it is on.
+        /// </summary>
+        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout, GridBorders? borders, Soundtrack? soundtrack = null, SoundFade? fade = null) => new(
             images.Select(i => i.Plays
                 ? new Item(null, i.BandColor, i.Pages, i.Pages!.LoopDuration, i.Look, i.Page, i.StartTime)
                 : i.IsAnimated
@@ -52,7 +59,8 @@ internal static class GridExport
             layout,
             borders,
             Animation.Heard(images),
-            soundtrack);
+            soundtrack,
+            fade);
 
         public void Dispose()
         {
@@ -132,7 +140,7 @@ internal static class GridExport
             using var g = Graphics.FromImage(bitmap);
             encoder = format == Format.Gif
                 ? GifEncoder.Create(path, canvas)
-                : VideoEncoder.Create(path, canvas, job.Length, job.Sounds);
+                : VideoEncoder.Create(path, canvas, job.Length, job.Sounds, job.Fade);
 
             int count = Animation.FrameCount(job.Length);
             for (int k = 0; k < count; k++)
