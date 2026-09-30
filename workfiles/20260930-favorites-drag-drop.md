@@ -266,6 +266,12 @@ saved in the form it arrived in (RTF, else HTML, else plain) and reads back with
 § Reading Styled Text Files; § Images Without a File, § Documentation and § Test Impact updated. No
 open question left.
 
+### Iteration 6 — 2026-09-30 — ✅ Implemented
+
+Go given: code, tests and documentation (no test project: checked by script, § Test Impact). Scope
+frozen on the design sections as they stand. Stays on `main` (the app's standing rule, memory
+*Work on main only*).
+
 ---
 
 ## Implementation Log
