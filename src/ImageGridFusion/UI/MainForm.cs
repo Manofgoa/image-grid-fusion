@@ -1757,7 +1757,7 @@ internal sealed class MainForm : Form
         return Path.GetDirectoryName(file) ?? Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
     }
 
-    /// <summary>Opens the settings menu above the ⚙ button, ticked from the registry as it is now.</summary>
+    /// <summary>Opens the settings menu above the ⚙ button, ticked from the settings as they are now.</summary>
     private void ShowSettings()
     {
         _startWithWindows.Checked = StartupRegistration.IsEnabled;
@@ -1780,7 +1780,7 @@ internal sealed class MainForm : Form
             StartupRegistration.SetEnabled(enable);
             _startWithWindows.Checked = enable;
         }
-        catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+        catch (Exception ex) when (StartupRegistration.IsStartupError(ex))
         {
             ShowStatus($"Start with Windows failed: {ex.Message}", error: true);
         }
@@ -2398,7 +2398,7 @@ internal sealed class MainForm : Form
         {
             AppSettings.SaveBorderColor(_borders.Color);
         }
-        catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
             ShowStatus($"Border color not remembered: {ex.Message}", error: true);
         }
@@ -2417,7 +2417,7 @@ internal sealed class MainForm : Form
             _roundedByDefault = enable;
             _twitterCornersDefault.Checked = enable;
         }
-        catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
             ShowStatus($"Twitter corners by default not remembered: {ex.Message}", error: true);
         }
@@ -2453,7 +2453,7 @@ internal sealed class MainForm : Form
         {
             AppSettings.SaveExplorerFolder(dialog.SelectedPath);
         }
-        catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
             ShowStatus($"File explorer folder not remembered: {ex.Message}", error: true);
         }
@@ -2468,7 +2468,7 @@ internal sealed class MainForm : Form
         {
             AppSettings.SaveExplorerPanelOpen(_explorer.Open);
         }
-        catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
             ShowStatus($"File explorer panel state not remembered: {ex.Message}", error: true);
         }
@@ -2481,7 +2481,7 @@ internal sealed class MainForm : Form
         {
             AppSettings.SaveExplorerWidth(_explorer.OpenWidth);
         }
-        catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
             ShowStatus($"File explorer width not remembered: {ex.Message}", error: true);
         }
@@ -2495,7 +2495,7 @@ internal sealed class MainForm : Form
         {
             AppSettings.SaveExplorerPagesPerLoad(pages);
         }
-        catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
             ShowStatus($"File explorer pages per load not remembered: {ex.Message}", error: true);
         }
@@ -2508,7 +2508,7 @@ internal sealed class MainForm : Form
         {
             AppSettings.SaveExplorerTileSize(_explorer.TileSize);
         }
-        catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
             ShowStatus($"File explorer tile size not remembered: {ex.Message}", error: true);
         }
@@ -2539,7 +2539,7 @@ internal sealed class MainForm : Form
         {
             AppSettings.SaveWindowClientSize(new Size(DeviceToLogicalUnits(client.Width), DeviceToLogicalUnits(client.Height)));
         }
-        catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
             ShowStatus($"Window size not remembered: {ex.Message}", error: true);
         }
