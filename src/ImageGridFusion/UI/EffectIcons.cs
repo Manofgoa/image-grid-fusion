@@ -114,6 +114,41 @@ internal static class EffectIcons
         g.FillEllipse(brush, (s - dot) / 2, (s - dot) / 2, dot, dot);
     });
 
+    /// <summary>The two orange crop marks, crossing at opposite corners of the part kept.</summary>
+    public static Bitmap Crop(int size) => Draw(size, (g, s) =>
+    {
+        float w = Math.Max(1.5f, s * 0.14f);
+        float a = s * 0.25f;
+        float b = s * 0.75f;
+        using var pen = new Pen(Color.FromArgb(255, 140, 0), w) { StartCap = LineCap.Flat, EndCap = LineCap.Flat, LineJoin = LineJoin.Miter };
+        g.DrawLines(pen, [new PointF(a, s * 0.04f), new PointF(a, b), new PointF(s * 0.96f, b)]);
+        g.DrawLines(pen, [new PointF(s * 0.04f, a), new PointF(b, a), new PointF(b, s * 0.96f)]);
+    });
+
+    /// <summary>
+    /// The format of a ratio button: a rectangle at <paramref name="ratio"/> (width : height), as large
+    /// as the icon allows, filled in orange; free, a dashed square.
+    /// </summary>
+    public static Bitmap Ratio(int size, double? ratio) => Draw(size, (g, s) =>
+    {
+        float inset = s * 0.08f;
+        float room = s - 2 * inset;
+        float width = ratio is { } r && r < 1 ? (float)(room * r) : room;
+        float height = ratio is { } q && q > 1 ? (float)(room / q) : room;
+        var box = new RectangleF((s - width) / 2, (s - height) / 2, width, height);
+        using var pen = new Pen(Color.FromArgb(180, 90, 0), Math.Max(1f, s * 0.08f));
+        if (ratio is null)
+        {
+            pen.DashStyle = DashStyle.Dash;
+            g.DrawRectangle(pen, box.X, box.Y, box.Width, box.Height);
+            return;
+        }
+
+        using var fill = new SolidBrush(Color.FromArgb(255, 170, 60));
+        g.FillRectangle(fill, box);
+        g.DrawRectangle(pen, box.X, box.Y, box.Width, box.Height);
+    });
+
     /// <summary>A drop, blue to cyan, with a light reflection.</summary>
     public static Bitmap Blur(int size) => Draw(size, (g, s) =>
     {
