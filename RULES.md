@@ -165,6 +165,18 @@ Applies to whatever changes the grid's content (origin: `workfiles/20260927-vide
   every route into a cell goes through `GridPreview.Add`, so a new one starts the grid over by
   itself.
 
+## Video Length
+
+The length of the exported video has **one definition**, `Animation.VideoLength` (origin:
+`workfiles/20260930-exported-video-length.md`): the grid's loop — the longest **playing** content,
+a frozen one being a still — or the soundtrack's length for a grid of stills; none for a PNG.
+
+- The **export** (`GridExport.Job.Length`), the **preview's soundtrack loop**
+  (`AnimationPlayer.SyncSoundtrack`) and the bottom bar's **length readout** read it there. A new
+  consumer reads it there too, never re-derives it.
+- The readout is refreshed **with the Copy / Save captions** (`MainForm.UpdateButtons`): what the
+  buttons say they produce and the length shown never disagree.
+
 ## On-Cell Helper Indicators
 
 Apply to every **helper indicator** — a measure or geometry aid drawn over a cell: guides, handles,

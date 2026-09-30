@@ -30,6 +30,8 @@ each.
 | Starting point | Where the Frames effect makes an animated image start playing |
 | Frozen | An animated image the Frames effect holds on one frame, shown and exported as a still |
 | Heard | A video whose sound is in the grid's mix: it has a sound track, plays (not frozen), and its Volume effect does not mute it |
+| Video length (*durée de la vidéo*) | What the exported MP4 or GIF lasts: the longest playing loop, the shorter contents starting over until it ends; the soundtrack's length for a grid of stills with it on; none while the export is a PNG. One rule, `Animation.VideoLength`, read by the export, the preview's soundtrack loop and the length readout |
+| Length readout (*durée affichée*) | The `⏱ 12.5 s` label of the bottom bar, left of Copy, always shown: the video length as the grid stands, `⏱ —` without one, the detail in its tooltip. A readout, not a control |
 | Start over (*repartir de zéro*) | Every animated image playing again from its starting point at one instant, the soundtrack from its beginning: what an image arriving in a cell, or one removed, does to the grid |
 | Options toolbar | The always-visible row above the effects toolbar, holding the selected tab's options and the effect's own Reset button |
 | Helper indicator (*indicateur d'aide*) | A measure or geometry aid drawn over a cell in the preview only — guides, handles, value readouts such as the zoom percentage; always fluorescent green (see RULES.md) |
