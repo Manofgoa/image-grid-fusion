@@ -20,12 +20,12 @@ Components concerned:
 
 | Component | Role today |
 |---|---|
-| `src/ImageGridFusion/UI/MainForm.cs` — constructor (l.252–258) | `StartPosition = CenterScreen`, the remembered (or default) logical `ClientSize`, `MinimumSize` |
-| `MainForm.OnLoad` (l.670) | Sets `_opened`; grows the default size by the global tabs row; clamps the size to `Screen.FromControl(this).WorkingArea`; `CenterToScreen()` — which WinForms centers on the screen **under the mouse** (no owner) |
-| `MainForm.OnFormClosing` (l.720) → `SaveWindowSize` (l.2364) | Saves the normal logical client size, once the window was opened in the session; a registry error reported in the status line |
-| `src/ImageGridFusion/UI/AppSettings.cs` | The `HKCU\Software\ImageGridFusion` store; `WindowClientSize` / `SaveWindowClientSize` |
+| `src/ImageGridFusion/UI/MainForm.cs` — constructor (l.262–268) | `StartPosition = CenterScreen`, the remembered (or default) logical `ClientSize`, `MinimumSize` |
+| `MainForm.OnLoad` (l.711) | Sets `_opened`; grows the default size by the global tabs row; clamps the size to `Screen.FromControl(this).WorkingArea`; `CenterToScreen()` — which WinForms centers on the screen **under the mouse** (no owner) |
+| `MainForm.OnFormClosing` (l.763) → `SaveWindowSize` (l.2627) | Saves the normal logical client size, once the window was opened in the session; a save error reported in the status line |
+| `src/ImageGridFusion/UI/AppSettings.cs` | The `settings.json` store next to the exe (RULES.md § App Settings — never the registry); `WindowClientSize` / `SaveWindowClientSize` |
 | `src/ImageGridFusion/ImageGridFusion.csproj` | `PerMonitorV2`: every monitor has its own DPI, the window rescaled when it changes monitor |
-| `README.md` | *Features* (l.40) and *Tray & startup* (l.391) describe the remembered size |
+| `README.md` | *Features* (l.41) and *Tray & startup* (l.406) describe the remembered size |
 
 ---
 
@@ -53,12 +53,14 @@ its name disappear from `Screen.AllScreens` — "not available". Considered and 
 (the window's center) or the monitor's bounds — both break on a resolution change or when the
 monitors are rearranged, landing on a wrong monitor rather than falling back.
 
-**Storage.** One string value `WindowScreen` in `HKCU\Software\ImageGridFusion`. In `AppSettings`:
+**Storage.** One string value `WindowScreen` in `settings.json`, through `AppSettings` only
+(RULES.md § App Settings). A new setting, never in the registry: not added to `RegistryNames`, nothing
+for `RegistryMigration` to move. In `AppSettings`:
 
 | Member | Behaviour |
 |---|---|
-| `string? WindowScreen` | The saved device name; `null` when none was saved, the value is empty, or the registry cannot be read |
-| `SaveWindowScreen(string deviceName)` | Writes it; throws on a registry error, like the other `SaveX` |
+| `string? WindowScreen` | The saved device name (`Text`); `null` when none was saved, the value is empty, or the file cannot be read |
+| `SaveWindowPlacement(Size size, string deviceName)` | Replaces `SaveWindowClientSize`: the size and the screen in **one** `Save`, one rewrite of the file; throws an `IsSaveError` exception on failure, like the other `SaveX` |
 
 The class summary gains the window's screen.
 
@@ -66,7 +68,7 @@ The class summary gains the window's screen.
 `SaveWindowSize` (renamed `SaveWindowPlacement`), on every close or hide, once the window was
 opened in the session. The monitor saved is `Screen.FromControl(this)` — the one holding the largest
 part of the window; for a minimized window, Windows answers with the monitor of its normal position.
-A registry error: "Window placement not remembered: …" in the status line, one message for both.
+A save error: "Window placement not remembered: …" in the status line, one message for both.
 
 **When it is applied.**
 
@@ -86,9 +88,9 @@ remembered per user, shared by every instance: the last one closed wins — as t
 
 ## Documentation
 
-- `README.md` — *Features* (l.40): the window reopens on the monitor it was last used on — the
+- `README.md` — *Features* (l.41): the window reopens on the monitor it was last used on — the
   primary screen when that one is gone — centered, at the size it last had.
-- `README.md` — *Tray & startup* (l.391): the **Window size** bullet becomes **Window size and
+- `README.md` — *Tray & startup* (l.406): the **Window size** bullet becomes **Window size and
   screen**: the monitor is remembered with the size; unplugged, the primary screen takes its place.
 - `GLOSSARY.md`, `RULES.md`: nothing — no effect, no new term.
 
@@ -110,7 +112,7 @@ Manual checks after the run:
 | Monitors at different scales | Same apparent size, relative to the UI, on the remembered monitor |
 | Lower monitor 2's resolution below the remembered size | Fits its working area, never below 480 × 320 logical |
 | `--tray` launch, *Quit* without opening the window | Remembered screen untouched |
-| Delete `WindowScreen` in the registry, mouse on monitor 2, relaunch | Opens on the primary screen, centered |
+| Delete `WindowScreen` from `settings.json`, mouse on monitor 2, relaunch | Opens on the primary screen, centered |
 
 ---
 
@@ -142,6 +144,14 @@ is remembered.
 Q&A #5: with nothing remembered, the window opens on the **primary screen**, not under the mouse.
 The target screen is therefore always resolved, `StartPosition = Manual` always, and
 `CenterToScreen()` leaves `OnLoad`. No open question left.
+
+### Iteration 3 — 2026-09-30
+
+`main` moved on meanwhile: the settings left the registry for `settings.json` next to the exe, and
+RULES.md § App Settings now forbids the registry. The storage follows: `WindowScreen` in
+`settings.json` through `AppSettings`, saved with the size in a single `Save`
+(`SaveWindowPlacement`), not in `RegistryNames`. Line references refreshed. The behaviour agreed is
+unchanged.
 
 ---
 
