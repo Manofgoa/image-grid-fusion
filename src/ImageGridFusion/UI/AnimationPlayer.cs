@@ -210,7 +210,7 @@ internal sealed class AnimationPlayer : IDisposable
             return;
         }
 
-        var loop = soundtrack.LoopIn(Animation.GridLength(_images));
+        var loop = Animation.VideoLength(_images, soundtrack);
         var time = Animation.LoopTime(Animation.LoopTime(_clock.Elapsed - start, loop), soundtrack.Duration);
         _sound.SyncSoundtrack(time, soundtrack.Level);
     }
