@@ -13,8 +13,8 @@ Two keyboard shortcuts drive the **Rotate** effect without going through its opt
 - **Ctrl+R** turns the image a quarter turn **clockwise**;
 - **Ctrl+Shift+R** turns it a quarter turn **counter-clockwise**.
 
-They act on the **hovered cell**, else on the **selected cell**, and select the **Rotate** tab of
-the effects toolbar.
+They act on the **hovered cell**, else on the **selected cell**, select that cell and the **Rotate**
+tab of the effects toolbar, and put the fine angle back to 0°.
 
 Relevant components:
 
@@ -42,12 +42,17 @@ Relevant components:
 - The **hovered cell** when the mouse is over a cell holding an image.
 - Otherwise the **selected cell**.
 - Neither → the shortcut does nothing.
+- The target cell **becomes the selected cell**, so the Rotate tab shows the options of the image
+  that just turned.
 
 ### Effect State
 
 - The shortcut is an action on the Rotate effect's option: like any option, it **turns the effect
   on first, from its kept settings** (RULES.md § Options Toolbar), then turns it. A Rotate effect
   that was off at 90° comes back on at 90°, then turns to 180°.
+- The **fine angle goes back to 0°**, like the options' rotation buttons: 90° + 10° turns to 180°
+  exactly (Ctrl+R) or 0° exactly (Ctrl+Shift+R). The quarter turn is counted from the rotation
+  without its fine angle.
 - It **selects the Rotate tab** of the effects toolbar, so the rotation options show after the
   shortcut.
 - It is **ignored while exporting**, like the effects toolbar (the export keeps the settings it
@@ -68,10 +73,11 @@ The behaviour is checked by hand in the launched app.
 
 ## Open Questions
 
-- [ ] Fine angle: does the quarter turn **keep** the fine angle (90° + 10° → 180° + 10°), or put it
-  back to 0° like the options' rotation buttons?
-- [ ] Hovered cell other than the selected one: does the shortcut also **select** the hovered cell,
-  so the Rotate tab shows the options of the image that just turned?
+- [x] ~~Fine angle: does the quarter turn **keep** the fine angle (90° + 10° → 180° + 10°), or put it
+  back to 0° like the options' rotation buttons?~~ → Put back to 0°, like the rotation buttons
+- [x] ~~Hovered cell other than the selected one: does the shortcut also **select** the hovered cell,
+  so the Rotate tab shows the options of the image that just turned?~~ → Yes, the target cell
+  becomes the selected cell
 
 ---
 
@@ -87,6 +93,12 @@ in the order the requests were made.
 Initial design, from the scoping answers: Ctrl+R clockwise, Ctrl+Shift+R counter-clockwise, on the
 hovered cell else the selected one, selecting the Rotate tab. Exploration: Ctrl+R is unused;
 `ImageLook.Rotate(±1)` already provides the relative quarter turn; no test project exists.
+
+### Iteration 2 — 2026-09-30
+
+Both open questions answered: the quarter turn puts the fine angle back to 0°, like the options'
+rotation buttons; the target cell becomes the selected cell, so the Rotate tab shows the image that
+just turned.
 
 ---
 
@@ -113,8 +125,8 @@ Questions asked by the agent during design, with user responses.
 | 2 | Which cell does Ctrl+R act on? | The hovered cell, else the selected one | 2026-09-30 |
 | 3 | Does Ctrl+R also select the Rotate tab? | Yes | 2026-09-30 |
 | 4 | Straightforward or tricky / long subject? | Straightforward | 2026-09-30 |
-| 5 | Fine angle kept or put back to 0° by the quarter turn? | | |
-| 6 | Hovered cell other than the selected one: selected by the shortcut? | | |
+| 5 | Fine angle kept or put back to 0° by the quarter turn? | Put back to 0° | 2026-09-30 |
+| 6 | Hovered cell other than the selected one: selected by the shortcut? | Yes | 2026-09-30 |
 
 ---
 
