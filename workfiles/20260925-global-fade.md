@@ -50,7 +50,7 @@ toolbar, with its **activation checkbox**, its options in the **global options t
 - Everything else comes from the rule: settings **kept when off** and shown in the options,
   **acting on an option turns it on**, the tabs' **Reset** and **Clear all** bring back the
   initial state (off, 1 s, Squared), enabled with no cell selected, **locked while exporting**.
-- **Not applicable** when **nothing is heard** — no heard video and no soundtrack on (or at 0 %):
+- **Not applicable** when **nothing is heard** — no heard video and no soundtrack on above 0 %:
   its checkbox and options are disabled, the checkbox's tooltip saying why. Its state is kept and
   applies again as soon as a sound is heard.
 
@@ -74,8 +74,16 @@ toolbar, with its **activation checkbox**, its options in the **global options t
   The sounds keep looping inside the export as today — only the export's own start and end fade.
 - **Preview**: the fade follows the **grid's loop** — the export's length, the longest loop —
   so the preview sounds exactly like the export: a sound shorter than the grid's loop keeps
-  looping without fading inside it, and the mix fades only at the grid loop's start and end. The
-  grid's clock already reaches `PreviewSound` for the soundtrack (`SyncSoundtrack`).
+  looping without fading inside it, and the mix fades only at the grid loop's start and end.
+  - The grid's time is the player's clock from its origin — where the grid last started over —
+    or, over a grid of stills, from the soundtrack's start, the soundtrack alone giving it a length.
+  - The gain is set on the audio graph's **device output node** (`PreviewSound.MasterGain`), so it
+    scales the whole mix at once, every 30 ms (`AnimationPlayer._fadeTimer`) while the fade is on
+    and the grid holds an image.
+- **Code**: `Composition/SoundFade.cs` (settings, `GainAt`), `Imaging/VideoEncoder.cs` (`Mixer`
+  scales the summed mix before the clip), `Imaging/GridExport.cs` (`Job.Fade`),
+  `UI/AnimationPlayer.cs` / `UI/PreviewSound.cs` / `UI/GridPreview.cs` (`Fade`), `UI/MainForm.cs`
+  (tab, options, Resets, Clear all, not applicable), `UI/EffectIcons.cs` (`Fade`, `Curve`).
 
 ---
 
@@ -233,6 +241,27 @@ in the order the requests were made.
   `GLOSSARY.md`. Branch Gate: **stays on `main`**, the standing choice of this repository.
 - Scope frozen: the design sections as of Iteration 9.
 
+### Iteration 11 — 2026-09-30 — 🧭 Implementation choices
+
+No rule broken. Choices the frozen design did not state:
+
+- **Preview timing**: the fade's time in the preview is the player's clock from its origin (where
+  the grid last started over, RULES.md § Preview Playback), or from the soundtrack's start over a
+  grid of stills — the soundtrack then being what gives the grid its length.
+- **Preview gain**: set on the audio graph's device output node, the whole mix at once, refreshed
+  every **30 ms** by a dedicated timer (the soundtrack's own timer ticks every 100 ms, too coarse
+  for a 0.1 s ramp).
+- **Export gain**: computed per sample frame on the summed mix, before the 16-bit clip, the sample
+  rounded instead of truncated (identical without a fade, the mix being whole numbers).
+- **Icons**: the tab's icon is a sea-green hill (the squared fade's shape); the curve buttons carry
+  a bitmap twice as wide as tall, the shape drawn in dark blue over a light fill, no text.
+- **Tooltips**: the duration slider and both curve buttons get one; the Fade's disabled checkbox
+  says "Nothing is heard: no video plays with its sound, and no soundtrack is on".
+- **Clear all** with only the fade to reset says "Fade back to its initial state." (and "Borders and
+  fade back to their initial state." with the borders).
+- **Ctrl + wheel** on the duration slider steps by 0.1 s.
+- **Not applicable** also when the soundtrack is on at 0 %.
+
 ---
 
 ## Implementation Log
@@ -242,10 +271,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | 2 | 2026-09-26 | Declined — no test project (Q&A 8) |
-| README | | | |
-| GLOSSARY.md | | | Fade in the *Global effect* list, a Fade entry; `RULES.md` unchanged (the rule landed, rename dropped) |
+| Code | 10 | 2026-09-30 | 4 commits: `SoundFade` model, MP4 export mixer, preview output gain, Fade tab |
+| Unit tests | 2 | 2026-09-26 | Declined — no test project (Q&A 8); build only |
+| README | 10 | 2026-09-30 | Fade section, the global effects' tab list, Features and Sound bullets |
+| GLOSSARY.md | 10 | 2026-09-30 | Fade in the *Global effect* list, a Fade entry; `RULES.md` unchanged (the rule landed, rename dropped) |
 
 ---
 
