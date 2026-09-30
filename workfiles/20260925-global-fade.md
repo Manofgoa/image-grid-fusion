@@ -273,6 +273,7 @@ says so rather than staying blank.
 |---|---|---|---|
 | Code | 10 | 2026-09-30 | 4 commits: `SoundFade` model, MP4 export mixer, preview output gain, Fade tab |
 | Unit tests | 2 | 2026-09-26 | Declined — no test project (Q&A 8); build only |
+| Manual validation | 10 | 2026-10-01 | Tested by the user in the app, confirmed finished (Q&A 29); the app closed cleanly |
 | README | 10 | 2026-09-30 | Fade section, the global effects' tab list, Features and Sound bullets |
 | GLOSSARY.md | 10 | 2026-09-30 | Fade in the *Global effect* list, a Fade entry; `RULES.md` unchanged (the rule landed, rename dropped) |
 
@@ -312,7 +313,8 @@ Questions asked by the agent during design, with user responses.
 | 26 | OQ 20 — Options layout in the global options toolbar? | **C — curve icon buttons** | 2026-09-30 |
 | 27 | Go for implementation? | Dismissed — asked for the current state | 2026-09-30 |
 | 28 | Go for implementation? | **Code, tests and documentation** | 2026-09-30 |
+| 29 | Is the global fade task finished, after the test? | **Yes, finished** | 2026-10-01 |
 
 ---
 
-*Last updated: 2026-09-30*
+*Last updated: 2026-10-01*
