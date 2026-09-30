@@ -131,6 +131,9 @@ not only the blocking ones.
 - [ ] **Preview phase** — one shared clock for every cell, or the motion restarting from its starting
   state when the effect is turned on / its speed changes?
 - [ ] **Unit tests** — stay test-free like every previous workfile?
+- [ ] **Progress line** — the helper indicator now drawn under every playing cell (GLOSSARY): does
+  a still image carrying the effect show one, following the zoom cycle; and on a video, whose loop
+  does it follow?
 
 ---
 
@@ -160,6 +163,12 @@ dropped unasked: multiplying the static Zoom keeps its pan point at the cell's c
 options were the same behaviour. The plural tab name raises a new question (does the tab offer a
 choice of animation kind?). The Soundtrack global effect, which now gives a grid of stills its
 length (GLOSSARY), is folded into the export-length question.
+
+### Iteration 3 — 2026-09-30
+
+The second batch was dismissed and asked again. Meanwhile, the rules gained the **progress line**
+(a helper indicator under every playing cell, following its loop): a new question, whether a still
+carrying the effect shows one.
 
 ---
 
@@ -195,7 +204,8 @@ Questions asked by the agent during design, with user responses.
 | 11 | Preview phase: shared clock, or restart on activation / speed change? | | 2026-09-26 |
 | 12 | Unit tests: stay test-free? | | 2026-09-26 |
 | 13 | Animations tab: only the zoom motion, or a choice of animation kind? | | 2026-09-26 |
+| 14 | Progress line: shown on a still carrying the effect (zoom cycle)? Which loop on a video? | | 2026-09-30 |
 
 ---
 
-*Last updated: 2026-09-26*
+*Last updated: 2026-09-30*
