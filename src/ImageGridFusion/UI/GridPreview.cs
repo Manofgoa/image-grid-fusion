@@ -42,6 +42,9 @@ internal sealed class GridPreview : Control
     private const int SourceNameTextSize = 12;
     private const int SourceIconSize = 16;
     private const int CheckerSquare = 8;
+    private const int ProgressLineWidth = 2;
+    private const int ProgressHaloWidth = 4;
+    private const int ProgressTick = 16;
 
     private static readonly Color HoverOutlineColor = Color.FromArgb(128, Color.White);
     private static readonly Color CheckerGrey = Color.FromArgb(204, 204, 204);
@@ -108,6 +111,11 @@ internal sealed class GridPreview : Control
     private long _zoomBadgeChanged;
     private Rectangle _zoomBadgeBounds;
 
+    // The progress line of every playing cell, along its bottom edge: its strip repainted about 60 times
+    // a second while something plays, the strips of the last tick too, so a line that vanished is erased.
+    private readonly System.Windows.Forms.Timer _progressTimer = new() { Interval = ProgressTick };
+    private readonly List<Rectangle> _progressStrips = [];
+
     // The file name at the bottom of the selected cell, shortened to its width, and its folder icon.
     private (SourceImage Image, int Width, float Size, string Text)? _fittedName;
     private bool _hoveringSourceName;
@@ -131,6 +139,7 @@ internal sealed class GridPreview : Control
         _player.FrameShown += (_, image) => RedrawCell(image);
         _wheelEnd.Tick += (_, _) => EndLive();
         _zoomBadgeTimer.Tick += (_, _) => OnZoomBadgeTick();
+        _progressTimer.Tick += (_, _) => OnProgressTick();
     }
 
     public event EventHandler? ImagesChanged;
@@ -377,6 +386,7 @@ internal sealed class GridPreview : Control
         {
             _wheelEnd.Dispose();
             _zoomBadgeTimer.Dispose();
+            _progressTimer.Dispose();
             _toolTip.Dispose();
             _player.Dispose();
             _images.ForEach(i => i.Dispose());
@@ -429,6 +439,10 @@ internal sealed class GridPreview : Control
 
         var cells = CellBounds();
         g.SmoothingMode = SmoothingMode.AntiAlias;
+
+        // Under the interaction feedback, like the grid itself: a dragged cell dims its line too.
+        PaintProgressLines(g, cells);
+
         if (_dragging && _pressed < cells.Length)
         {
             using var dim = new SolidBrush(Color.FromArgb(120, 0, 0, 0));
@@ -994,6 +1008,7 @@ internal sealed class GridPreview : Control
 
         _player.Sync(_images);
         UpdateDisplaySizes();
+        _progressTimer.Start();
     }
 
     private void UpdateDisplaySizes()
@@ -1272,6 +1287,7 @@ internal sealed class GridPreview : Control
     private void ShowFrames(SourceImage image)
     {
         _player.Update(image);
+        _progressTimer.Start();
         if (image.IsFrozen && image.IsAnimated && _pageLoader.Target(image) != image.StartPage)
         {
             _pageLoader.Request(image, image.StartPage);
@@ -1417,6 +1433,48 @@ internal sealed class GridPreview : Control
         {
             Invalidate(ZoomBadgeBounds(path));
         }
+    }
+
+    /// <summary>
+    /// Repaints the progress line of every playing cell — its strip only, and the strips of the last
+    /// tick, so a line that just vanished is erased — and stops once nothing plays; the next sync of
+    /// the player, or a frames effect changed, starts it again.
+    /// </summary>
+    private void OnProgressTick()
+    {
+        foreach (var strip in _progressStrips)
+        {
+            Invalidate(strip);
+        }
+
+        _progressStrips.Clear();
+        var cells = CellBounds();
+        for (int i = 0; i < cells.Length && i < _images.Count; i++)
+        {
+            if (_player.ProgressOf(_images[i]) is not null)
+            {
+                var strip = ProgressStrip(cells[i]);
+                Invalidate(strip);
+                _progressStrips.Add(strip);
+            }
+        }
+
+        if (_progressStrips.Count == 0)
+        {
+            _progressTimer.Stop();
+        }
+    }
+
+    /// <summary>
+    /// The band a cell's progress line is drawn in: the halo's height, across the cell, its lower edge
+    /// on the inner edge of the selection outline, so neither the outline nor the hover band covers it,
+    /// and the file name of the selected cell, ending 6 px above the edge, sits right on top of it.
+    /// </summary>
+    private Rectangle ProgressStrip(Rectangle cell)
+    {
+        int halo = LogicalToDeviceUnits(ProgressHaloWidth);
+        int bottom = cell.Bottom - LogicalToDeviceUnits(SelectionWidth);
+        return new Rectangle(cell.Left, bottom - halo, cell.Width, halo);
     }
 
     /// <summary>
@@ -1809,6 +1867,45 @@ internal sealed class GridPreview : Control
         PaintBarGrip(g, BlurSide.Right, new Rectangle(right - width / 2, midY - length / 2, width, length));
         PaintBarGrip(g, BlurSide.Top, new Rectangle(midX - length / 2, top - width / 2, length, width));
         PaintBarGrip(g, BlurSide.Bottom, new Rectangle(midX - length / 2, bottom - width / 2, length, width));
+        g.Restore(state);
+    }
+
+    /// <summary>
+    /// The progress line of every playing cell, a helper indicator: green over the black halo along the
+    /// bottom edge, just inside the selection outline, from the left edge to the share of the loop
+    /// played — read from the player's clock at each paint, so it glides whatever the content's step.
+    /// None on a still, a frozen image, or the cell whose blur bars show, which take its place.
+    /// </summary>
+    private void PaintProgressLines(Graphics g, Rectangle[] cells)
+    {
+        var state = g.Save();
+        g.SmoothingMode = SmoothingMode.None;
+        using var outline = new Pen(HelperHalo, LogicalToDeviceUnits(ProgressHaloWidth));
+        using var line = new Pen(HelperColor, LogicalToDeviceUnits(ProgressLineWidth));
+        for (int i = 0; i < cells.Length && i < _images.Count; i++)
+        {
+            if (!_dragging && ShownBlur(i) is not null)
+            {
+                continue;
+            }
+
+            if (_player.ProgressOf(_images[i]) is not { } progress)
+            {
+                continue;
+            }
+
+            var strip = ProgressStrip(cells[i]);
+            int end = strip.Left + (int)Math.Round(progress * strip.Width);
+            if (end <= strip.Left)
+            {
+                continue;
+            }
+
+            float y = strip.Top + strip.Height / 2f;
+            g.DrawLine(outline, strip.Left, y, end, y);
+            g.DrawLine(line, strip.Left, y, end, y);
+        }
+
         g.Restore(state);
     }
 

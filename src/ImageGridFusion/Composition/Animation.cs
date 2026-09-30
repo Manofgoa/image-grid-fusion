@@ -13,6 +13,10 @@ public static class Animation
     public static TimeSpan LoopTime(TimeSpan time, TimeSpan loop) =>
         loop <= TimeSpan.Zero ? TimeSpan.Zero : TimeSpan.FromTicks(((time.Ticks % loop.Ticks) + loop.Ticks) % loop.Ticks);
 
+    /// <summary>Share of a loop of <paramref name="loop"/> played at <paramref name="time"/>, from 0 up to 1 excluded; 0 without a loop.</summary>
+    public static double Progress(TimeSpan time, TimeSpan loop) =>
+        loop <= TimeSpan.Zero ? 0 : LoopTime(time, loop).Ticks / (double)loop.Ticks;
+
     /// <summary>Length of the video: the longest loop; the others loop until it ends.</summary>
     public static TimeSpan VideoLength(IEnumerable<SourceImage> images) =>
         images.Where(i => i.IsAnimated).Select(i => i.Pages!.LoopDuration).DefaultIfEmpty(TimeSpan.Zero).Max();
