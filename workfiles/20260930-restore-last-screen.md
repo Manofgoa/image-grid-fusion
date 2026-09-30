@@ -41,6 +41,9 @@ Components concerned:
 - **The remembered size no longer fits that monitor** (resolution changed, smaller scale): the window
   is **brought within its working area** — shrunk, never below the minimum size — the clamp
   `OnLoad` already applies. With the window centered, nothing straddles a monitor edge.
+- **Nothing remembered** (the first launch after this change, or `WindowScreen` deleted): the
+  **primary screen**, the same fallback as a monitor gone (Q&A #5). The screen under the mouse no
+  longer matters at start-up.
 
 ### Design
 
@@ -68,13 +71,12 @@ A registry error: "Window placement not remembered: …" in the status line, one
 **When it is applied.**
 
 1. **Constructor**: the **target screen** is resolved — the remembered monitor when it is in
-   `Screen.AllScreens`, else the primary screen when a monitor was remembered, else none (see Open
-   Questions). With a target, `StartPosition = Manual` and `Location` = the top-left of its working
-   area, so the window's handle is **created on that monitor** and gets its DPI from the start — the
+   `Screen.AllScreens`, else the primary screen (a monitor gone, or none remembered).
+   `StartPosition = Manual` and `Location` = the top-left of its working area, so the window's handle is **created on that monitor** and gets its DPI from the start — the
    logical size scaled once, as the default is today, no rescale after a move between monitors.
 2. **Load**: the size clamp is unchanged, against `Screen.FromControl(this).WorkingArea` — the
    target's. The window is then centered on that working area **by hand**: `CenterToScreen()`
-   would bring it back under the mouse. Without a target, today's `CenterToScreen()` stays.
+   would bring it back under the mouse, so it is no longer called.
 
 **Limits, accepted.** Windows may renumber the outputs (`DISPLAY1` ↔ `DISPLAY2`) after a driver
 update or a dock change: the window then opens on the monitor now bearing that name. The screen is
@@ -108,14 +110,14 @@ Manual checks after the run:
 | Monitors at different scales | Same apparent size, relative to the UI, on the remembered monitor |
 | Lower monitor 2's resolution below the remembered size | Fits its working area, never below 480 × 320 logical |
 | `--tray` launch, *Quit* without opening the window | Remembered screen untouched |
-| Delete `WindowScreen` in the registry | See Open Questions |
+| Delete `WindowScreen` in the registry, mouse on monitor 2, relaunch | Opens on the primary screen, centered |
 
 ---
 
 ## Open Questions
 
-- [ ] Nothing remembered yet — the first launch after this change, or `WindowScreen` deleted: open
-  under the mouse as today, or on the primary screen?
+- [x] ~~Nothing remembered yet — the first launch after this change, or `WindowScreen` deleted: open
+  under the mouse as today, or on the primary screen?~~ → The primary screen (Q&A #5)
 
 ---
 
@@ -134,6 +136,12 @@ straightforward. A single scout pass, made directly (no subagent: one question, 
 registry string, saved with the size, resolved in the constructor so the window is created on that
 monitor with its DPI, centered on it by hand at load. One question left: the placement when nothing
 is remembered.
+
+### Iteration 2 — 2026-09-30
+
+Q&A #5: with nothing remembered, the window opens on the **primary screen**, not under the mouse.
+The target screen is therefore always resolved, `StartPosition = Manual` always, and
+`CenterToScreen()` leaves `OnLoad`. No open question left.
 
 ---
 
@@ -160,7 +168,7 @@ Questions asked by the agent during design, with user responses.
 | 2 | That monitor no longer connected at launch: where does the window open — primary screen with the size kept, or today's behaviour? | Primary screen, size kept | 2026-09-30 |
 | 3 | The monitor is there but the remembered placement no longer fits it: bring it within the screen, center it, or keep it as is? | Bring it within the screen | 2026-09-30 |
 | 4 | Exploration depth: straightforward or tricky / long? | Straightforward | 2026-09-30 |
-| 5 | Nothing remembered yet: open under the mouse as today, or on the primary screen? | | |
+| 5 | Nothing remembered yet: open under the mouse as today, or on the primary screen? | Primary screen | 2026-09-30 |
 
 ---
 
