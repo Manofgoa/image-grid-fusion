@@ -104,10 +104,21 @@ public sealed class TextPages : PageSource
 
     /// <summary>
     /// Returns null unless the file is text: at most 1 MB, not empty, UTF-16 with a byte order mark,
-    /// or valid UTF-8 with no NUL byte in its first 8 KB. The extension plays no part.
+    /// or valid UTF-8 with no NUL byte in its first 8 KB. The extension decides only how it reads:
+    /// an <c>.rtf</c> or an <c>.htm</c> / <c>.html</c> file with its styles, like a paste, falling back
+    /// to plain text when that reader finds nothing; any other file as plain text.
     /// </summary>
     public static TextPages? TryOpen(string path, Size pageSize) =>
-        TryReadText(path) is { } text ? TryCreate(StyledText.Plain(text), pageSize) : null;
+        TryReadText(path) is { } text ? TryCreate(Styled(path, text), pageSize) : null;
+
+    private static StyledText Styled(string path, string text)
+    {
+        string extension = Path.GetExtension(path);
+        var styled = extension.Equals(".rtf", StringComparison.OrdinalIgnoreCase) ? RtfReader.TryRead(text)
+            : extension.Equals(".htm", StringComparison.OrdinalIgnoreCase) || extension.Equals(".html", StringComparison.OrdinalIgnoreCase) ? HtmlReader.TryRead(text)
+            : null;
+        return styled is { IsBlank: false } ? styled : StyledText.Plain(text);
+    }
 
     /// <summary>Returns null when the text is empty or white space only.</summary>
     public static TextPages? TryCreate(StyledText text, Size pageSize)
