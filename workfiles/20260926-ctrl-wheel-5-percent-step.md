@@ -184,6 +184,10 @@ to finish in the same checkout, then started on `main` (the repository's working
   **`main`**, the repository's working branch — no branch question.
 - No project rule broken.
 
+### Iteration 6 — 2026-09-30
+
+The user tested the delivery by hand and confirmed the task is finished.
+
 ---
 
 ## Implementation Log
