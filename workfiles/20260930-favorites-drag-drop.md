@@ -71,7 +71,9 @@ Settled at scoping (Q&A #1–#5):
 - Released over the panel: no swap; the preview raises an event with the dragged cell's image;
   `MainForm` resolves the file (below) and hands it to the panel, which adds it to the favorites.
 - Released anywhere else outside the grid: nothing, as today.
-- Locked while exporting like every other gesture on the cells (the ✥ handle is inert then).
+- Locked while exporting like every other gesture on the cells (the ✥ handle is inert then). A drop
+  **from the Windows Explorer** onto the panel is **accepted during an export**: the favorites do not
+  touch the grid.
 
 ## Images Without a File
 
@@ -91,10 +93,11 @@ Settled at scoping (Q&A #1–#5):
 - What is saved is the **original pasted bitmap** (`SourceImage.Bitmap`), **without the cell's
   effects** (they live on `ImageLook`, applied by `Compositor.DrawCell`): a source file any cell can
   reuse.
-- **Texts** (pasted or dropped) are saved as **the text itself**, not a picture:
-  `pasted-yyyyMMdd-HHmmss.txt` for a plain text, `.rtf` for a styled one — kept from the
-  `TextData` the text arrived with (its RTF, else its HTML turned into RTF, else its plain text),
-  so it reads back with every page. How a styled text reads back: see Open Questions.
+- **Texts** (pasted or dropped) are saved as **the text itself**, not a picture, in the form
+  `TextData.Parse` read it from — kept on the `SourceImage` when the text arrives: its RTF →
+  `pasted-yyyyMMdd-HHmmss.rtf`, else its HTML → `.html` (the fragment the clipboard header points
+  to), else its plain text → `.txt`, UTF-8. It reads back with every page and its styles (§ Reading
+  Styled Text Files).
 - The cell **adopts the saved file**: `SourceImage.FilePath` becomes the saved path, so the cell
   shows the file's name instead of *Pasted image* / *Pasted text* / *Dropped text*, *Show in
   Explorer* works, and a second ✥ drop reuses the file instead of saving a duplicate; its effects are
@@ -103,6 +106,17 @@ Settled at scoping (Q&A #1–#5):
   **Recycle Bin**: the app created it for the favorite. Anywhere else, un-hearting leaves the file
   alone, as today. A cell that adopted the file keeps its image (loaded in memory).
 - A save that fails (disk full, rights) adds nothing and says why in the panel's status line.
+
+## Reading Styled Text Files
+
+- Today every text file opens as **plain text** (`TextPages.TryOpen` → `StyledText.Plain`, the
+  extension playing no part): an `.rtf` shows its markup.
+- With this task, a file ending in **`.rtf`** is read with `RtfReader`, one ending in **`.htm`** or
+  **`.html`** with `HtmlReader` (it takes a whole document as HTML), the same readers as a paste; the
+  1 MB limit and the text checks unchanged. A file they cannot read (blank, not parsable) falls back
+  to plain text, as today. Every other extension is unchanged.
+- It holds wherever a file is loaded — a drop, Ctrl+V of files, the picker, the explorer's tiles —
+  not only for the saved favorites.
 
 ## Adding a Favorite
 
@@ -126,6 +140,7 @@ Settled at scoping (Q&A #1–#5):
 
 - `README.md` § File explorer: the favorites bullet gains the two drops and the pasted image's
   folder.
+- `README.md`, the text files: `.rtf` and `.html` files shown with their styles.
 - `GLOSSARY.md` *Favorite*: a file hearted in the file explorer **or dropped onto it** — from the
   Explorer, or a cell by its ✥ handle —, a pasted image saved into `favorites-from-pasted/`.
 
@@ -152,6 +167,9 @@ previous workfile, the delivery is checked by hand or by a script driving the bu
 | Adopted file | The same pasted image dropped twice by ✥: one file only, the cell named `pasted-….png` |
 | Un-hearted | The heart of a `favorites-from-pasted/` favorite unchecked: the file in the Recycle Bin; a favorite elsewhere un-hearted: the file untouched |
 | Dropped text on the panel | A text dragged from a browser onto the panel: no frame, nothing added |
+| Styled file | An `.rtf` and an `.html` dropped into cells: shown with their bold and colors, not their markup; a `.txt` unchanged |
+| Pasted styled text | A text copied from Word, ✥ onto the panel: `pasted-….rtf`, reloaded from the favorites with its styles |
+| During an export | A file dropped from the Explorer onto the panel while exporting: added |
 | Write error | `favorites.txt` read-only: the red status line, the favorite kept for the session |
 
 ---
@@ -185,12 +203,13 @@ previous workfile, the delivery is checked by hand or by a script driving the bu
   to the Recycle Bin
 - [x] ~~A **text** (not a file) dropped from another app onto the panel: ignored, or saved like a
   pasted text?~~ → Ignored: no frame, the *none* effect
-- [ ] A **styled text** saved as `.rtf` is read back **as plain text**: the app opens every text file
+- [x] ~~A **styled text** saved as `.rtf` is read back **as plain text**: the app opens every text file
   with `TextPages.TryOpen` → `StyledText.Plain`, whatever its extension — the favorite would show the
   RTF markup. Save it as `.txt` (the words kept, the styles lost), teach the loader to read `.rtf` /
-  `.html` files with `RtfReader` / `HtmlReader`, or save the styled text as a PNG?
-- [ ] A drop onto the panel **during an export**: accepted (the favorites do not touch the grid), or
-  refused like the grid's drops?
+  `.html` files with `RtfReader` / `HtmlReader`, or save the styled text as a PNG?~~ → The loader
+  reads `.rtf` / `.htm` / `.html` files with `RtfReader` / `HtmlReader`
+- [x] ~~A drop onto the panel **during an export**: accepted (the favorites do not touch the grid), or
+  refused like the grid's drops?~~ → Accepted
 
 ---
 
@@ -239,6 +258,14 @@ Checking the text answer: every text file is opened as plain text (`TextPages.Tr
 `StyledText.Plain`), whatever its extension, so a saved `.rtf` would read back as its markup. New
 open question (Q&A #19).
 
+### Iteration 5 — 2026-09-30
+
+Last batch answered (Q&A #18–#19): a drop onto the panel is accepted during an export; the loader
+learns to read `.rtf` / `.htm` / `.html` files with `RtfReader` / `HtmlReader`, so a styled text is
+saved in the form it arrived in (RTF, else HTML, else plain) and reads back with its styles. New
+§ Reading Styled Text Files; § Images Without a File, § Documentation and § Test Impact updated. No
+open question left.
+
 ---
 
 ## Implementation Log
@@ -277,8 +304,8 @@ Questions asked by the agent during design, with user responses.
 | 15 | Pasted and dropped texts: saved (PNG render, or the text), or refused? | Saved as the text itself: `.rtf` when styled, else `.txt` | 2026-09-30 |
 | 16 | A favorite from `favorites-from-pasted/` un-hearted: file kept, or deleted? | Deleted, to the Recycle Bin | 2026-09-30 |
 | 17 | A text (not a file) dropped from another app onto the panel? | Ignored | 2026-09-30 |
-| 18 | A drop onto the panel during an export: accepted, or refused? | | |
-| 19 | A styled text saved as `.rtf` reads back as plain text: `.txt`, an RTF / HTML loader, or PNG? | | |
+| 18 | A drop onto the panel during an export: accepted, or refused? | Accepted | 2026-09-30 |
+| 19 | A styled text saved as `.rtf` reads back as plain text: `.txt`, an RTF / HTML loader, or PNG? | The loader reads `.rtf` / `.html` files with `RtfReader` / `HtmlReader` | 2026-09-30 |
 
 ---
 
