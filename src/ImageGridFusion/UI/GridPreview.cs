@@ -256,7 +256,9 @@ internal sealed class GridPreview : Control
     /// <summary>
     /// Adds images: the first one replaces <paramref name="targetCell"/> when given (a drop onto a
     /// cell); the others fill the free slots; the first excess image replaces the selected cell, else
-    /// the last one; any further excess is disposed. Returns the number of images ignored.
+    /// the last one; any further excess is disposed. Returns the number of images ignored. An
+    /// arrival starts the grid over: every animated image from its starting point, the soundtrack
+    /// from its beginning (RULES.md).
     /// </summary>
     public int Add(IReadOnlyList<SourceImage> images, int targetCell = -1)
     {
@@ -287,6 +289,11 @@ internal sealed class GridPreview : Control
         }
 
         OnImagesChanged();
+        if (ignored < images.Count)
+        {
+            _player.Restart();
+        }
+
         return ignored;
     }
 
@@ -919,6 +926,9 @@ internal sealed class GridPreview : Control
         _hoveringClose = false;
         _hoveringHandle = false;
         OnImagesChanged();
+
+        // A deletion starts the grid over, like an arrival (RULES.md).
+        _player.Restart();
     }
 
     private void Replace(int index, SourceImage image)
