@@ -619,6 +619,12 @@ internal sealed class GridPreview : Control
             return;
         }
 
+        // The crop's edit view shows the whole image: a drag off its kept part would pan the cropped one unseen.
+        if (EditsCrop(index) && !HandleBounds(CellBounds()[index]).Contains(e.Location))
+        {
+            return;
+        }
+
         // Only the handle swaps the image; a drag anywhere else moves it within its cell.
         Select(index);
         _pressed = index;
@@ -761,7 +767,8 @@ internal sealed class GridPreview : Control
     {
         base.OnMouseWheel(e);
         int index = CellAt(e.Location);
-        if (index < 0 || _locked || _pressed >= 0 || _draggedBar is not null || _draggedSeparator is not null)
+        if (index < 0 || _locked || _pressed >= 0 || _draggedBar is not null || _draggedSeparator is not null || _movedCrop is not null
+            || EditsCrop(index))
         {
             return;
         }
@@ -1792,6 +1799,9 @@ internal sealed class GridPreview : Control
             SetLook(_selected, look.WithBlur(blur.WithSide(side, fraction, gap)));
         }
     }
+
+    /// <summary>Whether cell <paramref name="index"/> shows the crop's edit view: its pan and wheel then do nothing.</summary>
+    private bool EditsCrop(int index) => _barsEffect == ImageEffect.Crop && ShownBars(index) is not null;
 
     /// <summary>Whether <paramref name="location"/> is inside the crop's kept part, in its edit view on cell <paramref name="index"/>, off its handle.</summary>
     private bool KeptPartAt(int index, Point location) =>
