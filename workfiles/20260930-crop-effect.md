@@ -45,23 +45,25 @@ Relevant components:
   own, kept apart by a minimum gap so they never cross, snapping exactly onto the edge within
   6 logical px (RULES.md § On-Cell Handles), drawn as helper indicators (fluorescent green).
 
+- **Edit view** (Q&A 6): while the Crop tab is selected and the effect is on, the selected cell
+  shows the **whole oriented image**, fitted whole (contain, no zoom, no fine angle) so every edge
+  is reachable, the discarded part dimmed, the four bars on the kept part's edges; the cell's
+  background already takes the kept part's color, live. Everywhere else — other cells, another
+  tab, the exports — the cropped result is drawn.
+- **Follows the image** (Q&A 7): the sides are stored in **fractions of the image**, so the crop
+  keeps the same content when the image is turned or flipped, and survives resizing and layout
+  changes. A Crop exception to RULES.md § Scope and State (*geometry in fractions of the cell*).
+- **The canvas follows the kept part** (Q&A 8), as it follows a rotation: `Frame.Size` becomes the
+  cropped part's oriented size, so the canvas sizing — preview and exports — treats the kept part
+  as the image. The grid's proportions change live while a bar is dragged.
+- **Default zone** (Q&A 9): **10 % cut off each edge** — the effect shows as soon as it is turned
+  on, the bars easy to grab. Turned off, it is drawn as the whole image.
+
 ### Proposed — pending the Open Questions
 
 - **Pipeline**: source image → orientation (rotate / flip) → **crop** → fitting rule, zoom, focus
   and fine angle → background → black & white, blur on the cell. Zoom, Rotate's fine angle and
   Blur thus apply to the cropped image; the Blur's bars stay in the cell's frame, unchanged.
-- **Edit view** (Open Question 1): while the Crop tab is selected and the effect is on, the selected
-  cell shows the **whole oriented image**, fitted whole (contain, no zoom, no fine angle) so every
-  edge is reachable, the discarded part dimmed, the four bars on the kept part's edges; the cell's
-  background already takes the kept part's color, live. Everywhere else — other cells, another tab,
-  the exports — the cropped result is drawn.
-- **Frame of reference** (Open Question 2): the sides stored in **fractions of the image**, so the
-  crop follows the image's content when it is turned or flipped, and survives resizing and layout
-  changes. This departs from RULES.md § Scope and State (*geometry in fractions of the cell*),
-  which would get a Crop exception.
-- **Canvas sizing** (Open Question 3): `Frame.Size` becomes the cropped part's oriented size, so the
-  canvas sizing treats the kept part as the image, as it already does with rotation.
-- **Default settings** (Open Question 4).
 - **Options toolbar** (Open Question 5): at least the effect's own **Reset**.
 - **Tab position**: between Background and Zoom — the first geometry step, in the enum's order
   *background, geometry, rendering, sound*.
@@ -83,8 +85,9 @@ The general effect rules apply (RULES.md § Effects), nothing special:
 
 ## Rules and Documentation to Update
 
-- **RULES.md** — § Scope and State: a Crop exception to *geometry in fractions of the cell*, if
-  Open Question 2 goes that way.
+- **RULES.md** — § Scope and State: a *Crop Exception* subsection — its sides in fractions of the
+  image, following it when turned or flipped; the kept part treated as the image by the fitting
+  rule, the automatic background and the canvas sizing; the edit view.
 - **GLOSSARY.md** — *Effect*: Crop added to the list; a *Crop* entry.
 - **README.md** — the effects section: the Crop effect.
 
@@ -104,13 +107,12 @@ if the run needs one).
 
 ## Open Questions
 
-- [ ] 1. While the bars are being adjusted, what does the cell show — the whole image with the
-  discarded part dimmed (edit view), or something else?
-- [ ] 2. Does the crop follow the image's content when it is turned or flipped (sides in fractions
-  of the image), or stay fixed in the cell?
-- [ ] 3. Does the canvas sizing (and so the exported grid's proportions) follow the cropped part,
-  as it follows a rotation, or keep the whole image's proportions?
-- [ ] 4. What zone does the crop start with when it is turned on?
+- [x] ~~1. While the bars are being adjusted, what does the cell show?~~ → The edit view: the whole
+  image, the discarded part dimmed, the background already in the kept part's color
+- [x] ~~2. Does the crop follow the image's content when it is turned or flipped?~~ → Yes, sides in
+  fractions of the image (a Crop exception in RULES.md)
+- [x] ~~3. Does the canvas sizing follow the cropped part?~~ → Yes, like a rotation, live
+- [x] ~~4. What zone does the crop start with when it is turned on?~~ → 10 % cut off each edge
 - [ ] 5. What does the options toolbar hold besides the Reset button?
 
 ---
@@ -131,6 +133,13 @@ is treated **as a complete image** — the fitting rule and the automatic backgr
 the color following the bars live. From that, the pipeline (crop right after orientation, before
 the fitting rule), the edit view, the image-fraction frame of reference, the canvas sizing and the
 tab position are proposed, pending Open Questions 1–5.
+
+### Iteration 2 — 2026-09-30
+
+Open Questions 1–4 answered, each on the recommended or first option: the **edit view** while the
+tab is selected and the effect on; the crop **follows the image** (fractions of the image, a
+RULES.md exception); the **canvas follows the kept part**, live, like a rotation; the default zone
+**10 % in from each edge**. Open Question 5 (the options toolbar's content) remains.
 
 ---
 
@@ -158,10 +167,11 @@ Questions asked by the agent during design, with user responses.
 | 3 | Which groupings did you have in mind? | No preference (moot, see 2) | 2026-09-30 |
 | 4 | Straightforward or tricky / long? | Straightforward | 2026-09-30 |
 | 5 | *(user's precision, unprompted)* | The background is computed after the crop, with the same rules as for a complete image, on the kept part; its color changes live as the crop's limits move | 2026-09-30 |
-| 6 | While the bars are adjusted, what does the cell show? | | |
-| 7 | Does the crop follow the image when turned / flipped, or stay fixed in the cell? | | |
-| 8 | Does the canvas sizing follow the cropped part? | | |
-| 9 | What zone does the crop start with? | | |
+| 6 | While the bars are adjusted, what does the cell show? | The edit view (recommended) | 2026-09-30 |
+| 7 | Does the crop follow the image when turned / flipped, or stay fixed in the cell? | Follows the image (recommended) | 2026-09-30 |
+| 8 | Does the canvas sizing follow the cropped part? | Yes, like the rotation — live | 2026-09-30 |
+| 9 | What zone does the crop start with? | 10 % cut off each edge | 2026-09-30 |
+| 10 | What does the options toolbar hold besides Reset? | | |
 
 ---
 
