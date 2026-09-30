@@ -121,8 +121,8 @@ drafted by `workfiles/20260925-global-fade.md`). § Effects above covers the cel
 | Persistence | Not persisted | Not persisted |
 
 - A global effect may read an **app setting** kept outside its state and remembered between
-  sessions — the Borders' color, set from the ⚙ menu and stored in the registry
-  (`UI/AppSettings.cs`). The effect's own state stays not persisted (origin:
+  sessions — the Borders' color, set from the ⚙ menu and stored in the settings file
+  (`UI/AppSettings.cs`, see § App Settings). The effect's own state stays not persisted (origin:
   `workfiles/20260926-cell-borders.md`).
 - A global effect that changes the cells' geometry (the Borders' gap) does it in
   `Compositor.Cells` / `Compositor.Draw`, so the preview and every export shrink the cells alike;
@@ -176,6 +176,20 @@ a frozen one being a still — or the soundtrack's length for a grid of stills; 
   consumer reads it there too, never re-derives it.
 - The readout is refreshed **with the Copy / Save captions** (`MainForm.UpdateButtons`): what the
   buttons say they produce and the length shown never disagree.
+
+## App Settings
+
+Apply to every setting remembered between sessions (origin:
+`workfiles/20260926-remember-last-folder.md`):
+
+- It is kept in **`settings.json`, next to the `.exe`** (`AppContext.BaseDirectory`), read and
+  written through `UI/AppSettings.cs` only — like `files.index` and `favorites.txt`, the app's data
+  lives beside it.
+- The app **never uses the registry**. *Start with Windows* is a shortcut in the user's *Startup*
+  folder (`UI/StartupRegistration.cs`). The only registry code left is `UI/RegistryMigration.cs`,
+  moving an older version's values into the file once, then deleting them.
+- A setting that cannot be saved says so in the status line; one that cannot be read falls back to
+  its default.
 
 ## On-Cell Helper Indicators
 
