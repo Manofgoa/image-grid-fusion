@@ -46,6 +46,9 @@ Settled at scoping (Q&A #1–#5):
 - The panel accepts a `FileDrop` (`DataFormats.FileDrop`), shows the **copy** effect and its hover
   frame (§ Feedback), and on the drop adds every file to the favorites, **in the order given**, the
   last one ending at the top (the list is *the newest first*).
+- **Every file type** is accepted, as the cells show anything (the Shell thumbnail as a last resort).
+- A **folder** is **ignored**, the files dropped with it added; the message says how many folders
+  were skipped. A drop of folders only adds nothing and says so.
 - Favorites hold absolute paths and are listed straight from `favorites.txt`, not from the index
   (`FileExplorerPanel.RefreshRows`): a file **outside the base folder** is a favorite like any other,
   shown with its Shell thumbnail.
@@ -82,8 +85,12 @@ Settled at scoping (Q&A #1–#5):
 - A pasted image is saved into **`favorites-from-pasted/`** next to the exe
   (`AppContext.BaseDirectory`), the folder created when missing; the saved file then goes through
   the same path as a file.
-- Format, name, what is saved (the original bitmap or the cell as drawn), the texts, and what the
-  cell becomes afterwards: see Open Questions.
+- Saved as **PNG** (lossless, alpha kept), named **`pasted-yyyyMMdd-HHmmss.png`** from the local time
+  of the drop, `-2`, `-3`… appended when the name is taken.
+- What is saved is the **original pasted bitmap** (`SourceImage.Bitmap`), **without the cell's
+  effects** (they live on `ImageLook`, applied by `Compositor.DrawCell`): a source file any cell can
+  reuse.
+- The texts, and what the cell becomes afterwards: see Open Questions.
 - A save that fails (disk full, rights) adds nothing and says why in the panel's status line.
 
 ## Adding a Favorite
@@ -126,7 +133,9 @@ previous workfile, the delivery is checked by hand or by a script driving the bu
 | No longer into the grid | A file dropped onto the panel does not reach the grid |
 | ✥ onto the panel | A cell with a file dragged by ✥ onto the panel: its file a favorite, no swap, the cell unchanged |
 | ✥ elsewhere | Released outside both the grid and the panel: nothing |
-| Pasted image | Ctrl+V of a bitmap, ✥ onto the panel: a file in `favorites-from-pasted/`, now a favorite |
+| Pasted image | Ctrl+V of a bitmap, ✥ onto the panel: `favorites-from-pasted/pasted-….png`, the pasted bitmap without the cell's effects, now a favorite |
+| Folder | A folder and a file dropped together: the file added, the folder skipped and counted in the message |
+| Own tile | A tile dragged and released on its own panel: no frame, nothing added, nothing in the grid |
 | Frame | Shown while hovering (both drags), gone on leave, drop, or Escape / capture lost |
 | Write error | `favorites.txt` read-only: the red status line, the favorite kept for the session |
 
@@ -142,12 +151,14 @@ previous workfile, the delivery is checked by hand or by a script driving the bu
   hovered; the message goes to the window's status line
 - [x] ~~A **tile dragged from the panel** and released on the panel (tiles are not a source): nothing,
   or a favorite anyway? (Today it falls through to the window and lands in the grid.)~~ → Nothing
-- [ ] A **folder** dropped from the Explorer: ignored, or its files added?
-- [ ] Every file type, or only what the cells can show? (The cells show anything, through the Shell
-  thumbnail as a last resort.)
-- [ ] The pasted image's **format and name** in `favorites-from-pasted/` (e.g. PNG,
-  `pasted-20260930-184512.png`)?
-- [ ] What is saved: the **original pasted bitmap**, or the cell **as drawn** with its effects?
+- [x] ~~A **folder** dropped from the Explorer: ignored, or its files added?~~ → Ignored, the files
+  dropped with it added
+- [x] ~~Every file type, or only what the cells can show? (The cells show anything, through the Shell
+  thumbnail as a last resort.)~~ → Every file type
+- [x] ~~The pasted image's **format and name** in `favorites-from-pasted/` (e.g. PNG,
+  `pasted-20260930-184512.png`)?~~ → PNG, `pasted-yyyyMMdd-HHmmss.png`, `-2`, `-3`… when taken
+- [x] ~~What is saved: the **original pasted bitmap**, or the cell **as drawn** with its effects?~~ →
+  The original pasted bitmap, without the cell's effects
 - [ ] After the save, does the **cell adopt the saved file** (its name shown instead of *Pasted image*,
   *Show in Explorer* available, a second ✥ drop reusing the file instead of saving a duplicate)?
 - [ ] **Pasted and dropped texts** (no file either): saved too — as the rendered page (PNG) or as the
@@ -188,6 +199,12 @@ search showing stays; the collapsed panel accepts the drop, its message on the w
 a tile released on its own panel does nothing. § Drop From the Windows Explorer, § Adding a
 Favorite and § Feedback updated.
 
+### Iteration 3 — 2026-09-30
+
+Second batch answered (Q&A #10–#13): a folder is ignored; every file type is accepted; the pasted
+image is saved as a timestamped PNG; the original pasted bitmap is saved, without the cell's
+effects. § Drop From the Windows Explorer, § Images Without a File and § Test Impact updated.
+
 ---
 
 ## Implementation Log
@@ -218,10 +235,10 @@ Questions asked by the agent during design, with user responses.
 | 7 | A drop while a search shows: the search stays, or the panel switches to the favorites? | The search stays | 2026-09-30 |
 | 8 | Does the collapsed panel (the strip) accept the drop? | Yes | 2026-09-30 |
 | 9 | A tile dragged from the panel and released on it: nothing, or a favorite? | Nothing | 2026-09-30 |
-| 10 | A folder dropped from the Explorer: ignored, or its files added? | | |
-| 11 | Every file type, or only what the cells can show? | | |
-| 12 | The pasted image's format and name? | | |
-| 13 | Saved: the original pasted bitmap, or the cell as drawn? | | |
+| 10 | A folder dropped from the Explorer: ignored, or its files added? | Ignored | 2026-09-30 |
+| 11 | Every file type, or only what the cells can show? | Every file type | 2026-09-30 |
+| 12 | The pasted image's format and name? | PNG, timestamped: `pasted-20260930-184512.png` | 2026-09-30 |
+| 13 | Saved: the original pasted bitmap, or the cell as drawn? | The original pasted bitmap | 2026-09-30 |
 | 14 | After the save, does the cell adopt the saved file? | | |
 | 15 | Pasted and dropped texts: saved (PNG render, or the text), or refused? | | |
 | 16 | A favorite from `favorites-from-pasted/` un-hearted: file kept, or deleted? | | |
