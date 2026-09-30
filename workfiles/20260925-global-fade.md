@@ -227,6 +227,12 @@ in the order the requests were made.
   The fade's length *L* reads it, in the export and in the preview. The sound code (preview graph,
   export mixer) has not moved since Iteration 7. No open question left.
 
+### Iteration 10 — 2026-09-30 — ✅ Implemented
+
+- Go given: **code, tests and documentation** (Q&A 28) — no unit tests (Q&A 8), README and
+  `GLOSSARY.md`. Branch Gate: **stays on `main`**, the standing choice of this repository.
+- Scope frozen: the design sections as of Iteration 9.
+
 ---
 
 ## Implementation Log
@@ -276,6 +282,7 @@ Questions asked by the agent during design, with user responses.
 | 25 | OQ 19 — Tab name: "Fade" or "Sound fade"? | **Fade** | 2026-09-30 |
 | 26 | OQ 20 — Options layout in the global options toolbar? | **C — curve icon buttons** | 2026-09-30 |
 | 27 | Go for implementation? | Dismissed — asked for the current state | 2026-09-30 |
+| 28 | Go for implementation? | **Code, tests and documentation** | 2026-09-30 |
 
 ---
 
