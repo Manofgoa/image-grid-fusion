@@ -24,6 +24,8 @@ internal sealed class MainForm : Form
     private readonly ToolStripMenuItem _explorerPages = new("File explorer pages per load");
     private readonly Button _clearButton = new() { Text = "Clear all", AutoSize = true };
     private readonly Button _settingsButton = new() { Text = "⚙", Size = new Size(32, 23), AutoSize = true };
+    // The length readout: what the exported video would last, always shown, its detail in its tooltip (see RefreshLength).
+    private readonly Label _lengthReadout = new() { AutoSize = true, Anchor = AnchorStyles.Left, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(3, 3, 6, 3) };
     private readonly ContextMenuStrip _settingsMenu = new();
     private readonly ToolStripMenuItem _startWithWindows = new("Start with Windows");
     private readonly ToolTip _toolTip = new();
@@ -260,6 +262,8 @@ internal sealed class MainForm : Form
 
         _outputButtons = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = Padding.Empty };
         _outputButtons.Controls.Add(_settingsButton);
+        // Between the gear and Copy: a wider text only moves the gear, the buttons keep their place against the right edge.
+        _outputButtons.Controls.Add(_lengthReadout);
         _outputButtons.Controls.Add(_copyButton);
         _outputButtons.Controls.Add(_copyArrow);
         _outputButtons.Controls.Add(_copyLastButton);
@@ -1199,6 +1203,80 @@ internal sealed class MainForm : Form
         _saveLast.ToolTipText = text;
     }
 
+    /// <summary>
+    /// The length readout: what the MP4 video Copy and Save would produce lasts — the longest playing
+    /// loop, or the soundtrack's length over stills (Animation.VideoLength) — "—" while they produce
+    /// a PNG. Refreshed with the captions, so the two never disagree; its tooltip names what sets the
+    /// length and how many times every other animated content plays.
+    /// </summary>
+    private void RefreshLength()
+    {
+        var images = _preview.Images;
+        var soundtrack = ActiveSoundtrack;
+        var length = images.Count == 0 ? TimeSpan.Zero : Animation.VideoLength(images, soundtrack);
+        _lengthReadout.Text = length > TimeSpan.Zero ? $"⏱ {Seconds(length)}" : "⏱ —";
+        // As wide as a length under 1000 s: the digits change without moving the gear.
+        _lengthReadout.MinimumSize = new Size(TextRenderer.MeasureText("⏱ 000.0 s", _lengthReadout.Font).Width, 0);
+        _toolTip.SetToolTip(_lengthReadout, LengthDetail(images, soundtrack, length));
+    }
+
+    /// <summary>
+    /// The length readout's tooltip: what sets the length, then every other animated content with its
+    /// loop and how many times it plays (a frozen one is a still), in cell order, and the soundtrack,
+    /// cut or looping, when one is on over playing contents.
+    /// </summary>
+    private static string LengthDetail(IReadOnlyList<SourceImage> images, Soundtrack? soundtrack, TimeSpan length)
+    {
+        if (images.Count == 0)
+        {
+            return "No image";
+        }
+
+        string Name(SourceImage image) => image.FilePath is { } path
+            ? Path.GetFileName(path)
+            : $"cell {Enumerable.Range(0, images.Count).First(n => images[n] == image) + 1}";
+
+        var lines = new List<string>();
+        var longest = images.Where(i => i.Plays).OrderByDescending(i => i.Pages!.LoopDuration).FirstOrDefault();
+        if (longest is not null)
+        {
+            lines.Add($"MP4 video of {Seconds(length)}: the longest loop, {Name(longest)}'s");
+        }
+        else if (soundtrack is not null)
+        {
+            lines.Add($"MP4 video of {Seconds(length)}: the soundtrack's length, {Path.GetFileName(soundtrack.Path)}'s; the images are stills");
+        }
+        else
+        {
+            lines.Add("A PNG: no content plays and the soundtrack is off");
+        }
+
+        foreach (var image in images.Where(i => i.IsAnimated && i != longest))
+        {
+            var loop = image.Pages!.LoopDuration;
+            lines.Add(image.IsFrozen
+                ? $"{Name(image)} — frozen, a still"
+                : $"{Name(image)} — {Seconds(loop)}, plays {Times(length, loop)}");
+        }
+
+        if (soundtrack is not null && longest is not null)
+        {
+            string name = Path.GetFileName(soundtrack.Path);
+            lines.Add(soundtrack.Duration > length
+                ? $"Soundtrack {name} — {Seconds(soundtrack.Duration)}, cut at {Seconds(length)}"
+                : $"Soundtrack {name} — {Seconds(soundtrack.Duration)}, plays {Times(length, soundtrack.Duration)}");
+        }
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    /// <summary>How many times a loop of <paramref name="loop"/> plays within <paramref name="length"/>: "once", "3.1 times".</summary>
+    private static string Times(TimeSpan length, TimeSpan loop)
+    {
+        double times = loop > TimeSpan.Zero ? Math.Round(length.Ticks / (double)loop.Ticks, 1) : 0;
+        return times == 1 ? "once" : $"{times:0.#} times";
+    }
+
     private const int SharingMaxEdge = 2560;
 
     private const long SharingJpegQuality = 90;
@@ -1683,6 +1761,7 @@ internal sealed class MainForm : Form
         _copyLast.Text = _lastVideo is { } kept ? $"Copy last {lastName} ({kept.GeneratedAt:HH:mm})" : "Copy last video";
         _saveLast.Enabled = last;
         _saveLast.Text = $"Save last {lastName}…";
+        RefreshLength();
         RefreshLastVideoTooltips();
         UpdateEffects();
         UpdateGlobalEffects();
