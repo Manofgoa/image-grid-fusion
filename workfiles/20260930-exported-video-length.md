@@ -209,6 +209,11 @@ Delivered as designed, with these choices the design left open:
 - Self-check on the launched app: `⏱ 31,0 s` shown between ⚙ and *Copy MP4* with two videos in
   the grid; build clean, 0 warning.
 
+### Iteration 5 — 2026-09-30 — ✅ Task finished
+
+Confirmed finished by the user, after testing on the launched app (two videos dropped into the
+grid); the app then quit cleanly (exit code 0). Session title set to ✅.
+
 ---
 
 ## Implementation Log
