@@ -35,7 +35,8 @@ Components concerned:
 - A **view** of the file explorer, next to the current one — called the **search view** from now on
   (favorites / `*` / matches).
 - **The toggle** (Q&A #6): a 📁 push button at the **start of the search row**, left of the search
-  box; pressed while the folder view shows. Its tooltip names the view it switches to.
+  box; pressed while the folder view shows. Its tooltip names the view it switches to, and the
+  search box's hint becomes *Search this folder… (\* for all)*.
 - In the folder view, the list shows the **open folder** — the base folder itself at first.
 - The view and the open folder are **remembered between sessions** (Q&A #4), in `settings.json`
   through `UI/AppSettings.cs` (RULES.md § App Settings).
@@ -62,7 +63,8 @@ Components concerned:
   the **↑** button, then the base folder's name and every folder down to the open one, each segment
   but the last clickable and opening that folder; the counts the caption gave follow at its end. Too
   long for the panel, it drops its first segments behind an ellipsis, the open folder always shown.
-  **↑** opens the parent folder; it is disabled at the base folder. The search view keeps its caption.
+  **↑** opens the parent folder; it is greyed and inert at the base folder. The ↑ and the folders are
+  drawn by one control (`UI/Breadcrumb.cs`), each with its tooltip. The search view keeps its caption.
 
 ---
 
@@ -78,8 +80,10 @@ once, without ↻. The index serves the search, `*` and the folder tiles' counts
 - Its **files**: the files directly in it, as on the disk, hidden and system ones skipped; their
   creation dates come with the enumeration, like the scan's.
 - **Order** (Q&A #3): the folders first, **A→Z** by name; then the files, **the most recently
-  created first**, then by name — the order of `*`.
-- The listing is read **off the UI thread**; the status line says so while it takes time.
+  created first**, then by name — the order of `*`. A→Z is the user's culture, case ignored
+  (`FolderListing.NameOrder`).
+- The listing is read **off the UI thread**; past 150 ms the status line says *Reading the folder…*.
+  A newer list asked for meanwhile wins: the older read is dropped.
 - The breadcrumb's end says what the list holds, e.g. `2 folders, 38 files`.
 
 ---
@@ -96,7 +100,11 @@ once, without ↻. The index serves the search, `*` and the folder tiles' counts
 | **Alt+↑** in the search box | Same; Backspace there still erases the text |
 
 - Double-click / Enter on a **file tile** still adds the file, like Add images.
-- Going back up **selects the folder just left** and scrolls it into view, as Explorer does.
+- Going back up **selects the folder just left** and scrolls it into view, as Explorer does — the
+  breadcrumb too, selecting the folder below the one clicked on the way to the open one.
+- `Enter` in the search box takes the first tile, as before: in the folder view, a folder opens.
+- A folder tile whose folder is gone when opened: the list is read again, *Folder not found* on the
+  status line.
 
 ---
 
@@ -109,18 +117,19 @@ Q&A #2: the search is **limited to the open folder and its subfolders**, from th
 - **Words typed** (Q&A #13): the **folders** under the open folder whose name matches come **first**,
   then the matching **files**, each part in `FileSearch.Search`'s ranking; the words match the path
   **relative to the base folder**, as today. The folders are those of the index — the ones holding
-  files; a double-click on one opens it (the search box cleared).
+  files; a double-click on one opens it (the search box cleared). A folder found shows its name, not
+  its path — hovering gives the path.
 - **`*`** (Q&A #16): **every folder** under the open folder first, **A→Z** by their path relative to
   the open folder (so a folder's subfolders follow it), then **every file** under it, the most recently
   created first. The folders are those of the index, as for words typed.
-- The breadcrumb stays; its end says `12 results`.
+- The breadcrumb stays; its end says `12 results`, or `All: 3 folders, 120 files` for `*`.
 
 ---
 
 ## Folder Tiles
 
 - **Look** (Q&A #8): the thumbnail **Windows gives the folder** (`ShellThumbnail`, often a preview of
-  its content), a **drawn folder glyph** when it has none. The name is followed by the folder's
+  its content), a **drawn folder glyph** when it has none — a manila folder, half the tile's height. The name is followed by the folder's
   **file count**, e.g. `Plage (42)` (Q&A #15): **every file below it**, its subfolders' included,
   counted from the index — instant, no disk read; a folder the index does not hold (empty, or created
   since the scan) shows `(0)` until the next scan.
@@ -135,8 +144,12 @@ Q&A #2: the search is **limited to the open folder and its subfolders**, from th
   the place.
 - The open folder **gone from the disk** (deleted, renamed) — at a refresh or at start-up from the
   remembered one (Q&A #11): the view goes up to the **nearest parent still there**, the base folder
-  at worst, and the status line says so for a few seconds.
-- The **base folder changed** from the ⚙ menu: the folder view opens at its root.
+  at worst, and the status line says *Folder not found: X — back to Y* for a few seconds.
+- The **base folder changed** from the ⚙ menu: the folder view opens at its root, remembered at once.
+- The folder counts are derived from the index off the UI thread, with each load and scan
+  (`FolderTree`); a missing file dropped from the index has them derived again when next needed.
+- Remembered as `ExplorerFolderView` and `ExplorerOpenFolder` in `settings.json`, saved together at
+  each switch of view and each folder opened.
 
 ---
 
@@ -228,6 +241,28 @@ question remains.
 Go given for code, tests and documentation (no test project: manual verification). Branch Gate:
 **stay on `main`**, the standing choice for this repository.
 
+### Iteration 5 — 2026-10-01 — 🧭 Implementation choices
+
+No project rule broken. Choices the frozen design did not state:
+
+- **Branch Gate not asked**: stayed on `main`, the standing choice recorded for this repository
+  (memory *work-on-main-only*), rather than asking again.
+- **Toggle**: a `CheckBox` in button appearance showing 📁; in the folder view the search box's hint
+  reads *Search this folder… (\* for all)*.
+- **Breadcrumb**: one owner-drawn control holding the ↑ and the path; ↑ greyed at the base folder;
+  a tooltip per folder (*Open X*) and on ↑; a breadcrumb click selects the folder below the one
+  clicked, as going up does.
+- **Order**: A→Z in the user's culture, case ignored; `*`'s folders compared folder by folder, so each
+  one's subfolders follow it.
+- **Reading notice**: *Reading the folder…* only past 150 ms; a newer list drops an older read.
+- **Messages**: *Folder not found: X — back to Y* when the open folder vanished; *Folder not found*
+  when a folder tile's folder is gone as it is opened.
+- **Folder results**: a folder found by a search shows its name and count, not its path.
+- **`*` caption**: `All: N folders, M files`.
+- **Without a base folder**, the folder view shows the invitation even with the box empty.
+- **Settings**: `ExplorerFolderView` and `ExplorerOpenFolder`, saved together.
+- **Folder glyph**: a manila folder drawn at half the tile's height when Windows gives no thumbnail.
+
 ---
 
 ## Implementation Log
@@ -237,9 +272,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project — manual verification (see *Test Impact*) |
-| README | | | |
+| Code | 4 | 2026-10-01 | `FolderTree` / `FolderListing`, folder tiles in `ThumbnailGrid`, `Breadcrumb`, folder view in `FileExplorerPanel`, settings in `AppSettings` / `MainForm`; built, 0 warning |
+| Unit tests | 4 | 2026-10-01 | Not applicable — no test project; manual verification (see *Test Impact*) |
+| README | 4 | 2026-10-01 | § File explorer *Folder view*, Features line, settings file; GLOSSARY: *Search view*, *Folder view*, *Open folder*, *Folder tile*, *Breadcrumb* |
 
 ---
 
