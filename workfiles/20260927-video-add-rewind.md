@@ -21,7 +21,7 @@ The user's request: **when a video is added, every video goes back to its first 
 plays as its export would, every content from its start, together. Scoped with the user (Q&A #1–3)
 to every arrival and every deletion, every animated image, the soundtrack with them.
 
-Components concerned (line numbers as read on 2026-09-27):
+Components concerned (line numbers as read on 2026-09-30):
 
 | Component | Role today |
 |---|---|
@@ -33,19 +33,18 @@ Components concerned (line numbers as read on 2026-09-27):
 | `src/ImageGridFusion/UI/PreviewSound.cs` — `Sync` (l.115), `Drift` (l.17) | The AudioGraph node of a sound (a video's, the soundtrack's) is **seeked** to the time asked for whenever it drifts by more than 250 ms, so a jump back in time on the clock is followed by the sound by itself |
 | `src/ImageGridFusion/Composition/SourceImage.cs` — `IsAnimated` (l.41), `IsFrozen` (l.44), `Plays` (l.47), `StartPage` / `StartTime` (l.56–59) | An animated image: a video, an animated GIF, a PDF of several pages, a text longer than its cell; its starting point, the page the Frames effect points at (the first without it), as a time in its loop |
 | `src/ImageGridFusion/Composition/AnimationReader.cs`, `Imaging/VideoReader.cs` | The frame decoders, asked for a time: `StepReader` renders the step at that time (nothing when unchanged); `VideoReader.Read` **seeks by itself** when asked for an earlier time than the last one shown |
-| `src/ImageGridFusion/UI/GridPreview.cs` — `Add` (l.252) | **Every arrival route converges here**: a file dropped (on a cell or the canvas, from the Explorer or a tile of the file explorer), Ctrl+V (files, an image, a text), *Browse…* — all through `MainForm.AddFilesAsync` (l.899), `Paste` (l.830) or `AddTextAsync` (l.891). Replaces the target cell or fills the free slots, sets the sound on arrival (l.280), then `OnImagesChanged()` |
-| `GridPreview.RemoveAt` (l.892) | **Every deletion**: the cell's **×** (l.522) and the selected cell's deletion (l.332). Disposes the image, resets the effects of the images that shift, then `OnImagesChanged()` |
-| `GridPreview.Clear` (l.360), `Swap`, `OnImagesChanged` (l.921), `SyncPlayer` (l.991) | *Clear all* disposes everything; a swap only reorders; `OnImagesChanged` refits the pages, **syncs the player** (l.942, synchronously) and raises `ImagesChanged`; `SyncPlayer` does nothing while the window is hidden |
-| `GridPreview.WindowVisibleChanged` (l.755), `ShowFrames` (l.1275) | Hidden in the tray, the player stops; shown again, `Sync` plays everything from the start on one whole second. A Frames effect change goes to `AnimationPlayer.Update` |
+| `src/ImageGridFusion/UI/GridPreview.cs` — `Add` (l.252) | **Every arrival route converges here**: a file dropped (on a cell or the canvas, from the Explorer or a tile of the file explorer), Ctrl+V (files, an image, a text), *Browse…* — all through `MainForm.AddFilesAsync` (l.943), `Paste` (l.874) or `AddTextAsync` (l.935). Replaces the target cell or fills the free slots, then `OnImagesChanged()` (l.280) |
+| `GridPreview.RemoveAt` (l.892) | **Every deletion**: the cell's **×** (l.522) and the selected cell's deletion (l.332). Disposes the image, resets the effects of the images that shift (their volume kept), then `OnImagesChanged()` (l.907) |
+| `GridPreview.Clear` (l.357), `Swap`, `OnImagesChanged` (l.923), `SyncPlayer` (l.988) | *Clear all* disposes everything; a swap only reorders; `OnImagesChanged` refits the pages, **syncs the player** (l.939, synchronously) and raises `ImagesChanged`; `SyncPlayer` does nothing while the window is hidden |
+| `GridPreview.WindowVisibleChanged` (l.751), `ShowFrames` (l.1272) | Hidden in the tray, the player stops; shown again, `Sync` plays everything from the start on one whole second. A Frames effect change goes to `AnimationPlayer.Update` |
 | `src/ImageGridFusion/Composition/Animation.cs` — `LoopTime` (l.13), `GridLength` (l.21) | The loop arithmetic shared by the preview and the exports; the exports render every content from its starting point at their time 0 already |
-| `README.md` — *Animated content* (l.200–201), *Soundtrack* (l.139) | Describe the one clock, the starting points, and the soundtrack playing "from its start when turned on" |
-| `RULES.md`, `GLOSSARY.md` | No rule about the preview's playback yet; *Heard*, *Sound on arrival*, *Starting point*, *Frozen* are defined |
+| `README.md` — *Animated content* (l.204–205), *Soundtrack* (l.143) | Describe the one clock, the starting points, and the soundtrack playing "from its start when turned on" |
+| `RULES.md`, `GLOSSARY.md` | No rule about the preview's playback yet; *Heard*, *Starting point*, *Frozen* are defined |
 
-**Concurrent work on `main`** (noted at the time of writing): `workfiles/20260925-video-mute.md`
-iteration 10 (the sound on arrival dropped, the volume kept on a deletion shift) is being
-implemented by another session in `GridPreview.Add` and `RemoveAt` — the very methods this work
-hooks into, on other lines. The state of those methods is re-read when the go is given; the hook
-lands after `OnImagesChanged()`, whatever the sound-on-arrival line becomes.
+**Concurrent work, landed**: `workfiles/20260925-video-mute.md` iteration 10 was implemented on
+`main` on 2026-09-27 (2a8ab2d): every video arrives heard at 100 %, the sound-on-arrival line gone
+from `Add`, the images that shift on a deletion keeping their volume in `RemoveAt`. `AnimationPlayer`
+and `PreviewSound` are untouched since 2026-09-26.
 
 ---
 
@@ -111,8 +110,8 @@ player: the arriving image's playback exists, the removed image's is gone.
 
 | Method | After `OnImagesChanged()` |
 |---|---|
-| `Add` (l.283) | `_player.Restart()` — once per call, whatever the number of images added (a multi-file drop restarts once) |
-| `RemoveAt` (l.892) | `_player.Restart()` — the remaining images start over; with none animated left, only the soundtrack does |
+| `Add` (l.280) | `_player.Restart()` — once per call, whatever the number of images added (a multi-file drop restarts once) |
+| `RemoveAt` (l.907) | `_player.Restart()` — the remaining images start over; with none animated left, only the soundtrack does |
 
 Not called from `Clear` (nothing is left; `UpdateSoundtrack` drops the soundtrack's start when no
 image remains, and *Clear all* resets the soundtrack anyway), `Swap`, the layout setter, `SetLook`
@@ -140,8 +139,8 @@ deletion), so nothing starts over during an export — the export keeps the prev
 
 | File | Change |
 |---|---|
-| `README.md` — *Animated content*, the **Live preview** bullet (l.200) | Adds: an image arriving in a cell, or one removed, **starts the grid over** — every animated image from its starting point, at the same instant, the soundtrack from its beginning — so the preview plays what the export gives; a frozen image stays on its frame; a swap or a layout change changes nothing |
-| `README.md` — *Soundtrack*, the preview bullet (l.139) | "from its start when turned on" gains "and again, with the images, whenever one arrives or is removed" |
+| `README.md` — *Animated content*, the **Live preview** bullet (l.204) | Adds: an image arriving in a cell, or one removed, **starts the grid over** — every animated image from its starting point, at the same instant, the soundtrack from its beginning — so the preview plays what the export gives; a frozen image stays on its frame; a swap or a layout change changes nothing |
+| `README.md` — *Soundtrack*, the preview bullet (l.143) | "from its start when turned on" gains "and again, with the images, whenever one arrives or is removed" |
 | `RULES.md` — new section **## Preview Playback**, after *Global Effects* | The rule below, so every future route into a cell keeps it |
 | `GLOSSARY.md` | New row **Start over** (*repartir de zéro*): every animated image playing again from its starting point at one instant, the soundtrack from its beginning — what an image arriving in a cell, or one removed, does to the grid |
 
@@ -216,6 +215,17 @@ image re-anchored on its starting point, the soundtrack's start at zero and seek
 after `OnImagesChanged()` in `Add` and `RemoveAt`. Documentation: README, a *Preview Playback* rule,
 a glossary row. No open question.
 
+### Iteration 2 — 2026-09-30 — main moved, design unchanged
+
+Three days after the go was declined, `main` moved: `workfiles/20260925-video-mute.md` iteration 10
+landed (2a8ab2d, 2026-09-27) — every video arrives heard at 100 %, the sound-on-arrival line gone
+from `GridPreview.Add`, the images that shift on a deletion keeping their volume in `RemoveAt` —
+then the file explorer and window size work. `AnimationPlayer`, `PreviewSound`, `SourceImage` and
+the loop helpers are untouched since 2026-09-26. The concerned members were re-read: the two hooks
+still land right after `OnImagesChanged()` in `Add` (l.280) and `RemoveAt` (l.907), and nothing
+else in the design changes. The line numbers of § Overview, § Design and § Documentation were
+refreshed; the concurrent-work note became a landed one. No open question.
+
 ---
 
 ## Implementation Log
@@ -245,4 +255,4 @@ Questions asked by the agent during design, with user responses.
 
 ---
 
-*Last updated: 2026-09-27*
+*Last updated: 2026-09-30*
