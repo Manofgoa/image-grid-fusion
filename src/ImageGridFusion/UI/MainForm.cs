@@ -368,6 +368,8 @@ internal sealed class MainForm : Form
         _explorer.OpenWidth = AppSettings.ExplorerWidth;
         _explorer.TileSize = AppSettings.ExplorerTileSize;
         _explorer.PagesPerLoad = AppSettings.ExplorerPagesPerLoad;
+        _explorer.OpenFolder = AppSettings.ExplorerOpenFolder;
+        _explorer.FolderView = AppSettings.ExplorerFolderView;
         _explorerSplitter.Visible = _explorer.Open;
         ApplyExplorerSplitterBounds();
         Controls.Add(_preview);
@@ -417,6 +419,7 @@ internal sealed class MainForm : Form
             SaveExplorerWidth();
         };
         _explorer.TileSizeChanged += (_, _) => SaveExplorerTileSize();
+        _explorer.FolderViewChanged += (_, _) => SaveExplorerFolderView();
         _explorer.ChooseFolderRequested += (_, _) => PickExplorerFolder();
 
         // A double-clicked row is added like a file from the Add images picker.
@@ -2713,6 +2716,19 @@ internal sealed class MainForm : Form
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
             ShowStatus($"File explorer pages per load not remembered: {ex.Message}", error: true);
+        }
+    }
+
+    /// <summary>The file explorer's view was switched or another folder opened: both remembered between sessions.</summary>
+    private void SaveExplorerFolderView()
+    {
+        try
+        {
+            AppSettings.SaveExplorerFolderView(_explorer.FolderView, _explorer.OpenFolder);
+        }
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
+        {
+            ShowStatus($"File explorer folder view not remembered: {ex.Message}", error: true);
         }
     }
 
