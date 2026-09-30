@@ -263,6 +263,7 @@ Questions asked by the agent during design, with user responses.
 | 13 | Unit tests for this feature? | None | 2026-09-27 |
 | 14 | Where are the recent emojis remembered: a file next to the exe (like `favorites.txt`), the registry, or the session only? | A file next to the exe | 2026-09-30 |
 | 15 | When can the emojis be selected on the grid: only while the Emojis tab is selected, or whenever the effect is on? | Only while the Emojis tab is selected | 2026-09-30 |
+| 16 | Go for implementation: no, code only, or code + unit tests + documentation? | | |
 
 ---
 
