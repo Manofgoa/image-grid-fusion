@@ -161,7 +161,7 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
   - The **preview** shows the rounded-off corners **cut out**, as Twitter will show them. The **exports** — PNG, JPEG for sharing, GIF, MP4 video — are never cut: the corner brackets and the outer frame fill the rounded-off corners out to the square angle, their inner edge following the curve, so Twitter's own rounding, whatever its radius at the size it shows the image, never uncovers a white or transparent sliver. The gap styles without an outer frame keep the image there, for Twitter to round.
   - With the Borders off, the corners are square.
   - **Twitter corners by default**, a checkable item of the **⚙** menu, on until changed and remembered between sessions, sets whether the option is on at start-up and after **Clear all**. Changing it leaves the open grid as it is.
-- **Color**: the **⚙** menu's **Border color** item, with a swatch of the current color, opens the standard color dialog; the color chosen applies at once and is remembered between sessions, per user, in `HKCU\Software\ImageGridFusion`. Hotpink until one is chosen.
+- **Color**: the **⚙** menu's **Border color** item, with a swatch of the current color, opens the standard color dialog; the color chosen applies at once and is remembered between sessions, in the settings file (see Tray & startup). Hotpink until one is chosen.
 - The borders show in the preview and in every export: PNG, JPEG for sharing, GIF and MP4 video.
 
 ## Previews
@@ -390,12 +390,14 @@ Output resolution is kept as high as possible so source images aren't needlessly
 - **Closing the window** (its **×**, `Alt+F4`, or *Close window* in the taskbar) only hides it: the app keeps running, with its grid unchanged.
 - **Click** the tray icon to bring the window back. **Right-click** it for a menu: **Open**, or **Quit** to close the app completely. Quitting is the only way to exit; logging off or shutting down Windows closes it too.
 - **Start with Windows**: the **⚙** button in the bottom bar opens a menu with this checkable option, off by default. Ticked, the app is launched at session start, hidden: only the tray icon appears.
-  - It is stored as a per-user `ImageGridFusion` value in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, running the exe with `--tray`. No settings file, no admin rights.
+  - It is stored as an `ImageGridFusion.lnk` shortcut in your Startup folder (`shell:startup`), running the exe with `--tray`. No registry, no admin rights.
 - The same menu holds **Border color** and **Twitter corners by default** (see Borders), and **File explorer folder…** and **File explorer pages per load** (see File explorer).
-  - If the exe is moved, the registration follows it the next time it is launched from its new place (any copy of the exe launched takes the registration over).
+  - If the exe is moved, the shortcut follows it the next time it is launched from its new place (any copy of the exe launched takes the registration over).
   - Disabling the app in Windows *Settings → Apps → Startup* is not reflected by the option.
-- **Window size**: the size the window had when it was last closed or hidden is remembered per user, in `HKCU\Software\ImageGridFusion`, and used at the next launch, whatever the screen's scale. A window closed maximized or minimized reopens at its normal size, un-maximized; a size larger than the screen it opens on is shrunk to its working area. With nothing remembered, the window opens at its default size.
+- **Window size**: the size the window had when it was last closed or hidden is remembered in the settings file and used at the next launch, whatever the screen's scale. A window closed maximized or minimized reopens at its normal size, un-maximized; a size larger than the screen it opens on is shrunk to its working area. With nothing remembered, the window opens at its default size.
 - Several instances can run side by side, each with its own window and tray icon; the last window closed sets the size remembered.
+- **Last folders**: the **Add images** picker, **Choose a soundtrack** and the Save dialogs open on the folder they last used, remembered between sessions — one for Add images, one for the soundtrack, one shared by the exports and **Save last…**. Only a file picked in the dialog updates it: a drop or a paste does not. A folder gone since (deleted, drive unplugged) gives way to its nearest parent still there. Until a first save, the Save dialogs open on the folder of the first image's file, else *Pictures*.
+- **Settings file**: every setting above — border color, Twitter corners by default, the file explorer's folder, panel, width, tile size and pages per load, the window size, the last folders — is kept in `settings.json`, next to the exe, like `files.index` and `favorites.txt`; each copy of the exe has its own. The app never uses the registry: the settings an older version kept in `HKCU\Software\ImageGridFusion` are moved into the file at the first launch, then that key is deleted, and an older Start with Windows registration (`HKCU\…\Run`) becomes the Startup folder shortcut.
 
 ## Build & run
 
