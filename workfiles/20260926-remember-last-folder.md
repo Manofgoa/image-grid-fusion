@@ -184,6 +184,12 @@ the registry values are migrated once, then the key deleted; *Start with Windows
 *Startup* folder shortcut (an existing `Run` value migrated the same way); the rule goes into
 `RULES.md`. New § Settings File. No open question remains.
 
+### Iteration 7 — 2026-09-30 — ✅ Implemented
+
+Go given by the user through the session *Drag-drop images dans Favoris* ("attends le go de…",
+then "lancer les dévs"): code, README and `RULES.md` (no unit tests, Q&A #10). Stays on `main`, the
+standing choice for this app. The Debug build is left alone while that session's instance runs.
+
 ---
 
 ## Implementation Log
