@@ -1,15 +1,19 @@
-using Microsoft.Win32;
+using System.Security;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace ImageGridFusion.UI;
 
 /// <summary>
-/// The app's settings remembered between sessions, per user, in the registry — no settings file: the
-/// border color, whether the borders' Twitter corners are on by default, the file explorer's base
-/// folder, whether its panel is open, its width and its tile size, and the window's size.
+/// The app's settings remembered between sessions, in <see cref="FileName"/> next to the exe — never the
+/// registry: the border color, whether the borders' Twitter corners are on by default, the file explorer's
+/// base folder, whether its panel is open, its width, its tile size and its pages per load, and the window's
+/// size. Each save rewrites the whole file at once.
 /// </summary>
 internal static class AppSettings
 {
-    private const string Key = @"Software\ImageGridFusion";
+    public const string FileName = "settings.json";
+
     private const string BorderColorName = "BorderColor";
     private const string TwitterCornersName = "TwitterCornersByDefault";
     private const string ExplorerFolderName = "ExplorerFolder";
@@ -20,220 +24,128 @@ internal static class AppSettings
     private const string WindowWidthName = "WindowWidth";
     private const string WindowHeightName = "WindowHeight";
 
+    /// <summary>
+    /// The names the settings had as registry values, in the same types (DWORD → int, string → string):
+    /// what <see cref="RegistryMigration"/> copies across.
+    /// </summary>
+    public static readonly string[] RegistryNames =
+    [
+        BorderColorName, TwitterCornersName, ExplorerFolderName, ExplorerPanelOpenName, ExplorerWidthName,
+        ExplorerTileSizeName, ExplorerPagesPerLoadName, WindowWidthName, WindowHeightName,
+    ];
+
+    private static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true };
+
+    private static JsonObject? _values;
+
+    public static string FilePath => Path.Combine(AppContext.BaseDirectory, FileName);
+
+    /// <summary>The settings read from the file once; empty when it is missing or cannot be read or parsed.</summary>
+    private static JsonObject Values => _values ??= Load();
+
+    private static JsonObject Load()
+    {
+        try
+        {
+            return File.Exists(FilePath) && JsonNode.Parse(File.ReadAllText(FilePath)) is JsonObject values ? values : [];
+        }
+        catch (Exception ex) when (IsSaveError(ex) || ex is JsonException)
+        {
+            return [];
+        }
+    }
+
+    /// <summary>Whether a save failed on the file: the exceptions the Save methods throw.</summary>
+    public static bool IsSaveError(Exception ex) => ex is IOException or UnauthorizedAccessException or SecurityException;
+
+    private static int? Int(string name) => Values[name] is JsonValue value && value.TryGetValue(out int result) ? result : null;
+
+    private static string? Text(string name) => Values[name] is JsonValue value && value.TryGetValue(out string? result) && result is { Length: > 0 } ? result : null;
+
+    /// <summary>Whether a value is saved under <paramref name="name"/>.</summary>
+    public static bool Has(string name) => Values.ContainsKey(name);
+
+    /// <summary>Sets the values and writes the file; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void Save(params (string Name, JsonNode? Value)[] values)
+    {
+        foreach (var (name, value) in values)
+        {
+            Values[name] = value;
+        }
+
+        // Written beside, then moved over: a failure never leaves a half-written file.
+        string temporary = FilePath + ".tmp";
+        File.WriteAllText(temporary, Values.ToJsonString(WriteOptions));
+        File.Move(temporary, FilePath, overwrite: true);
+    }
+
     /// <summary>The border color before one is chosen.</summary>
     public static readonly Color DefaultBorderColor = Color.HotPink;
 
-    /// <summary>The color of the borders; <see cref="DefaultBorderColor"/> when none was saved or the key cannot be read.</summary>
-    public static Color BorderColor
-    {
-        get
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey(Key);
-                return key?.GetValue(BorderColorName) is int argb ? Color.FromArgb(argb) : DefaultBorderColor;
-            }
-            catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
-            {
-                return DefaultBorderColor;
-            }
-        }
-    }
+    /// <summary>The color of the borders; <see cref="DefaultBorderColor"/> when none was saved.</summary>
+    public static Color BorderColor => Int(BorderColorName) is int argb ? Color.FromArgb(argb) : DefaultBorderColor;
 
-    /// <summary>Saves the border color; throws an <see cref="StartupRegistration.IsRegistryError"/> exception on failure.</summary>
-    public static void SaveBorderColor(Color color)
-    {
-        using var key = Registry.CurrentUser.CreateSubKey(Key);
-        key.SetValue(BorderColorName, color.ToArgb(), RegistryValueKind.DWord);
-    }
+    /// <summary>Saves the border color; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveBorderColor(Color color) => Save((BorderColorName, color.ToArgb()));
 
-    /// <summary>Whether the borders start with their Twitter corners; true when nothing was saved or the key cannot be read.</summary>
-    public static bool TwitterCornersByDefault
-    {
-        get
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey(Key);
-                return key?.GetValue(TwitterCornersName) is not int value || value != 0;
-            }
-            catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
-            {
-                return true;
-            }
-        }
-    }
+    /// <summary>Whether the borders start with their Twitter corners; true when nothing was saved.</summary>
+    public static bool TwitterCornersByDefault => Int(TwitterCornersName) is not int value || value != 0;
 
-    /// <summary>Saves whether the borders start with their Twitter corners; throws an <see cref="StartupRegistration.IsRegistryError"/> exception on failure.</summary>
-    public static void SaveTwitterCornersByDefault(bool on)
-    {
-        using var key = Registry.CurrentUser.CreateSubKey(Key);
-        key.SetValue(TwitterCornersName, on ? 1 : 0, RegistryValueKind.DWord);
-    }
+    /// <summary>Saves whether the borders start with their Twitter corners; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveTwitterCornersByDefault(bool on) => Save((TwitterCornersName, on ? 1 : 0));
 
-    /// <summary>The folder the file explorer indexes, with its subfolders; null when none was saved or the key cannot be read.</summary>
-    public static string? ExplorerFolder
-    {
-        get
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey(Key);
-                return key?.GetValue(ExplorerFolderName) is string { Length: > 0 } folder ? folder : null;
-            }
-            catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
-            {
-                return null;
-            }
-        }
-    }
+    /// <summary>The folder the file explorer indexes, with its subfolders; null when none was saved.</summary>
+    public static string? ExplorerFolder => Text(ExplorerFolderName);
 
-    /// <summary>Saves the file explorer's folder; throws an <see cref="StartupRegistration.IsRegistryError"/> exception on failure.</summary>
-    public static void SaveExplorerFolder(string folder)
-    {
-        using var key = Registry.CurrentUser.CreateSubKey(Key);
-        key.SetValue(ExplorerFolderName, folder, RegistryValueKind.String);
-    }
+    /// <summary>Saves the file explorer's folder; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveExplorerFolder(string folder) => Save((ExplorerFolderName, folder));
 
-    /// <summary>Whether the file explorer's panel is open; true when nothing was saved or the key cannot be read.</summary>
-    public static bool ExplorerPanelOpen
-    {
-        get
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey(Key);
-                return key?.GetValue(ExplorerPanelOpenName) is not int value || value != 0;
-            }
-            catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
-            {
-                return true;
-            }
-        }
-    }
+    /// <summary>Whether the file explorer's panel is open; true when nothing was saved.</summary>
+    public static bool ExplorerPanelOpen => Int(ExplorerPanelOpenName) is not int value || value != 0;
 
-    /// <summary>Saves whether the file explorer's panel is open; throws an <see cref="StartupRegistration.IsRegistryError"/> exception on failure.</summary>
-    public static void SaveExplorerPanelOpen(bool open)
-    {
-        using var key = Registry.CurrentUser.CreateSubKey(Key);
-        key.SetValue(ExplorerPanelOpenName, open ? 1 : 0, RegistryValueKind.DWord);
-    }
+    /// <summary>Saves whether the file explorer's panel is open; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveExplorerPanelOpen(bool open) => Save((ExplorerPanelOpenName, open ? 1 : 0));
 
     /// <summary>
     /// The file explorer panel's open width in logical pixels, <see cref="FileExplorerPanel.MinOpenWidth"/>
-    /// at least; the default width when nothing was saved or the key cannot be read.
+    /// at least; the default width when nothing was saved.
     /// </summary>
-    public static int ExplorerWidth
-    {
-        get
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey(Key);
-                return key?.GetValue(ExplorerWidthName) is int value ? Math.Clamp(value, FileExplorerPanel.MinOpenWidth, 10000) : FileExplorerPanel.DefaultOpenWidth;
-            }
-            catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
-            {
-                return FileExplorerPanel.DefaultOpenWidth;
-            }
-        }
-    }
+    public static int ExplorerWidth => Int(ExplorerWidthName) is int value ? Math.Clamp(value, FileExplorerPanel.MinOpenWidth, 10000) : FileExplorerPanel.DefaultOpenWidth;
 
-    /// <summary>Saves the file explorer panel's open width; throws an <see cref="StartupRegistration.IsRegistryError"/> exception on failure.</summary>
-    public static void SaveExplorerWidth(int width)
-    {
-        using var key = Registry.CurrentUser.CreateSubKey(Key);
-        key.SetValue(ExplorerWidthName, width, RegistryValueKind.DWord);
-    }
+    /// <summary>Saves the file explorer panel's open width; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveExplorerWidth(int width) => Save((ExplorerWidthName, width));
 
     /// <summary>
     /// The file explorer's tile size in logical pixels, <see cref="ThumbnailGrid.MinTileSize"/> to
-    /// <see cref="ThumbnailGrid.MaxTileSize"/>; the default size when nothing was saved or the key
-    /// cannot be read.
+    /// <see cref="ThumbnailGrid.MaxTileSize"/>; the default size when nothing was saved.
     /// </summary>
-    public static int ExplorerTileSize
-    {
-        get
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey(Key);
-                return key?.GetValue(ExplorerTileSizeName) is int value ? Math.Clamp(value, ThumbnailGrid.MinTileSize, ThumbnailGrid.MaxTileSize) : ThumbnailGrid.DefaultTileSize;
-            }
-            catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
-            {
-                return ThumbnailGrid.DefaultTileSize;
-            }
-        }
-    }
+    public static int ExplorerTileSize => Int(ExplorerTileSizeName) is int value ? Math.Clamp(value, ThumbnailGrid.MinTileSize, ThumbnailGrid.MaxTileSize) : ThumbnailGrid.DefaultTileSize;
 
-    /// <summary>Saves the file explorer's tile size; throws an <see cref="StartupRegistration.IsRegistryError"/> exception on failure.</summary>
-    public static void SaveExplorerTileSize(int size)
-    {
-        using var key = Registry.CurrentUser.CreateSubKey(Key);
-        key.SetValue(ExplorerTileSizeName, size, RegistryValueKind.DWord);
-    }
+    /// <summary>Saves the file explorer's tile size; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveExplorerTileSize(int size) => Save((ExplorerTileSizeName, size));
 
     /// <summary>
     /// How many pages of tiles the file explorer loads at a time, <see cref="FileExplorerPanel.MinPagesPerLoad"/>
-    /// to <see cref="FileExplorerPanel.MaxPagesPerLoad"/>; the default when nothing was saved, the value
-    /// is out of range, or the key cannot be read.
+    /// to <see cref="FileExplorerPanel.MaxPagesPerLoad"/>; the default when nothing was saved or the value
+    /// is out of range.
     /// </summary>
-    public static int ExplorerPagesPerLoad
-    {
-        get
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey(Key);
-                return key?.GetValue(ExplorerPagesPerLoadName) is int value
-                    && value is >= FileExplorerPanel.MinPagesPerLoad and <= FileExplorerPanel.MaxPagesPerLoad
-                    ? value
-                    : FileExplorerPanel.DefaultPagesPerLoad;
-            }
-            catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
-            {
-                return FileExplorerPanel.DefaultPagesPerLoad;
-            }
-        }
-    }
+    public static int ExplorerPagesPerLoad =>
+        Int(ExplorerPagesPerLoadName) is int value && value is >= FileExplorerPanel.MinPagesPerLoad and <= FileExplorerPanel.MaxPagesPerLoad
+            ? value
+            : FileExplorerPanel.DefaultPagesPerLoad;
 
-    /// <summary>Saves the file explorer's pages per load; throws an <see cref="StartupRegistration.IsRegistryError"/> exception on failure.</summary>
-    public static void SaveExplorerPagesPerLoad(int pages)
-    {
-        using var key = Registry.CurrentUser.CreateSubKey(Key);
-        key.SetValue(ExplorerPagesPerLoadName, pages, RegistryValueKind.DWord);
-    }
+    /// <summary>Saves the file explorer's pages per load; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveExplorerPagesPerLoad(int pages) => Save((ExplorerPagesPerLoadName, pages));
 
     /// <summary>
     /// The client size the window had at its last use, in logical (96 DPI) pixels; null when none was
-    /// saved, a value is missing or not positive, or the key cannot be read.
+    /// saved, or a value is missing or not positive.
     /// </summary>
-    public static Size? WindowClientSize
-    {
-        get
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey(Key);
-                return key is not null
-                    && key.GetValue(WindowWidthName) is int width && width > 0
-                    && key.GetValue(WindowHeightName) is int height && height > 0
-                    ? new Size(width, height)
-                    : null;
-            }
-            catch (Exception ex) when (StartupRegistration.IsRegistryError(ex))
-            {
-                return null;
-            }
-        }
-    }
+    public static Size? WindowClientSize =>
+        Int(WindowWidthName) is int width && width > 0 && Int(WindowHeightName) is int height && height > 0
+            ? new Size(width, height)
+            : null;
 
-    /// <summary>Saves the window's client size, in logical pixels; throws an <see cref="StartupRegistration.IsRegistryError"/> exception on failure.</summary>
-    public static void SaveWindowClientSize(Size size)
-    {
-        using var key = Registry.CurrentUser.CreateSubKey(Key);
-        key.SetValue(WindowWidthName, size.Width, RegistryValueKind.DWord);
-        key.SetValue(WindowHeightName, size.Height, RegistryValueKind.DWord);
-    }
+    /// <summary>Saves the window's client size, in logical pixels; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveWindowClientSize(Size size) => Save((WindowWidthName, size.Width), (WindowHeightName, size.Height));
 }

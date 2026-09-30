@@ -8,6 +8,7 @@ internal static class Program
     private static void Main(string[] args)
     {
         ApplicationConfiguration.Initialize();
+        RegistryMigration.Run();
         StartupRegistration.Refresh();
 
         // The hidden-start argument is not a file to load.
