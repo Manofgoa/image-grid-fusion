@@ -61,6 +61,10 @@ toolbar, with its **activation checkbox**, its options in the **global options t
 - **Envelope**: gain 0 → 1 over the duration **D** from the start, 1 → 0 over **D** before the
   end; 1 in between. Along the ramp, with *x* the ramp's progress from 0 to 1: gain = *x*²
   (Squared) or *x* (Linear).
+- **Length**: the length *L* the fade ends on is the **video length**, `Animation.VideoLength`
+  (RULES.md § Video Length) — in the export (`GridExport.Job.Length`, already handed to the
+  mixer) and in the preview (the loop `AnimationPlayer` already computes for the soundtrack) — never
+  re-derived.
 - **Short content**: when 2 × D exceeds the length, the effective D is **half the length** — the
   sound rises then falls straight away, never above its normal volume.
 - **What fades**: the **whole mix** — every heard video and the soundtrack — at the mix's
@@ -217,6 +221,12 @@ in the order the requests were made.
   tooltips), then Reset; the **§ Cell Effects rename is dropped** (revises OQ 12).
 - No open question left.
 
+### Iteration 9 — 2026-09-30
+
+- `RULES.md` gained § Video Length: one definition, `Animation.VideoLength`, for every consumer.
+  The fade's length *L* reads it, in the export and in the preview. The sound code (preview graph,
+  export mixer) has not moved since Iteration 7. No open question left.
+
 ---
 
 ## Implementation Log
@@ -265,6 +275,7 @@ Questions asked by the agent during design, with user responses.
 | 24 | OQ 18 — Rename § Effects to § Cell Effects, or drop it? | **Dropped** | 2026-09-30 |
 | 25 | OQ 19 — Tab name: "Fade" or "Sound fade"? | **Fade** | 2026-09-30 |
 | 26 | OQ 20 — Options layout in the global options toolbar? | **C — curve icon buttons** | 2026-09-30 |
+| 27 | Go for implementation? | Dismissed — asked for the current state | 2026-09-30 |
 
 ---
 
