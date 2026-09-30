@@ -68,13 +68,15 @@ Components concerned:
 
 ## Folder Content
 
-Q&A #12: the folder view **reads the disk**, so every subfolder shows, an empty one included — the
-index holds files only, a folder without any file below it would be missing from it. The search still
-reads the index alone. Whether the files are read from the disk too: see Open Questions.
+Q&A #12, #14: the open folder is **listed from the disk**, as Explorer lists it — its subfolders and
+its files. Every subfolder shows, an empty one included (the index holds files only, so a folder
+without any file below it would be missing from it), and a file added since the last scan shows at
+once, without ↻. The index serves the search, `*` and the folder tiles' counts only.
 
 - The **subfolders** of the open folder, as on the disk; hidden and system ones skipped, as the scan
   skips them.
-- Its **files**: the files directly in it.
+- Its **files**: the files directly in it, as on the disk, hidden and system ones skipped; their
+  creation dates come with the enumeration, like the scan's.
 - **Order** (Q&A #3): the folders first, **A→Z** by name; then the files, **the most recently
   created first**, then by name — the order of `*`.
 - The listing is read **off the UI thread**; the status line says so while it takes time.
@@ -108,8 +110,9 @@ Q&A #2: the search is **limited to the open folder and its subfolders**, from th
   then the matching **files**, each part in `FileSearch.Search`'s ranking; the words match the path
   **relative to the base folder**, as today. The folders are those of the index — the ones holding
   files; a double-click on one opens it (the search box cleared).
-- **`*`**: every file under the open folder, the most recently created first; whether folders come
-  with them: see Open Questions.
+- **`*`** (Q&A #16): **every folder** under the open folder first, **A→Z** by their path relative to
+  the open folder (so a folder's subfolders follow it), then **every file** under it, the most recently
+  created first. The folders are those of the index, as for words typed.
 - The breadcrumb stays; its end says `12 results`.
 
 ---
@@ -118,7 +121,9 @@ Q&A #2: the search is **limited to the open folder and its subfolders**, from th
 
 - **Look** (Q&A #8): the thumbnail **Windows gives the folder** (`ShellThumbnail`, often a preview of
   its content), a **drawn folder glyph** when it has none. The name is followed by the folder's
-  **file count**, e.g. `Plage (42)` — which files it counts: see Open Questions.
+  **file count**, e.g. `Plage (42)` (Q&A #15): **every file below it**, its subfolders' included,
+  counted from the index — instant, no disk read; a folder the index does not hold (empty, or created
+  since the scan) shows `(0)` until the next scan.
 - **Actions** (Q&A #9): **no heart** (favorites never hold folders), **not draggable**. Its context
   menu offers **Open in Explorer**, opening the folder itself in Windows Explorer.
 
@@ -156,7 +161,9 @@ the running app.
 | A folder lists its subfolders A→Z — empty ones included — then its files newest first | — (manual) | — |
 | A folder tile shows Windows' thumbnail or the glyph, its count, no heart, no drag; *Open in Explorer* | — (manual) | — |
 | Double-click / Enter opens a folder; ↑, Backspace, Alt+↑ and the breadcrumb go up, the folder left selected | — (manual) | — |
-| The search returns the matching folders, then files, under the open folder only; `*` too | — (manual) | — |
+| The search returns the matching folders, then files, under the open folder only | — (manual) | — |
+| `*` lists every folder below the open one A→Z, then every file below it newest first | — (manual) | — |
+| A file created since the last scan shows in its folder without ↻; its folder's count lags until the scan | — (manual) | — |
 | The open folder deleted: the view goes up to the nearest parent | — (manual) | — |
 | The view and the open folder come back after a restart | — (manual) | — |
 | A rescan keeps the open folder and the place | — (manual) | — |
@@ -173,9 +180,9 @@ the running app.
 - [x] ~~The open folder no longer in the index: back to the nearest parent still there, or to the base folder?~~ → The nearest parent still there
 - [x] ~~Folders without any file below them are invisible (the index holds files only): acceptable, or should the view read the disk?~~ → The folder view reads the disk
 - [x] ~~A search in the folder view: files only, or matching folders too?~~ → Matching folders too, first
-- [ ] The folder view reads the disk for the folders: its files too, or from the index?
-- [ ] A folder tile's count: the files directly in it, or every file below it?
-- [ ] `*` in the folder view: files only, or every folder below the open one too?
+- [x] ~~The folder view reads the disk for the folders: its files too, or from the index?~~ → Its files too: the open folder is listed from the disk
+- [x] ~~A folder tile's count: the files directly in it, or every file below it?~~ → Every file below it, from the index
+- [x] ~~`*` in the folder view: files only, or every folder below the open one too?~~ → Every folder below it first, then every file
 
 ---
 
@@ -206,6 +213,15 @@ Backspace and Alt+↑ go up; a vanished open folder falls back to its nearest pa
 **reads the disk** so empty folders show; a search in the folder view returns matching folders first.
 Reading the disk raises three new questions (what is read from the disk, what the count counts, `*`
 with folders), listed as open.
+
+### Iteration 3 — 2026-10-01
+
+The last three questions answered (Q&A #14–16): the open folder is listed **entirely from the disk**
+— folders and files — the index serving the search, `*` and the counts; a folder tile counts **every
+file below it**, from the index; `*` lists **every folder** below the open one before the files.
+Agent's proposal on the latter, open to the user's reading before the go: the folders of `*` are
+sorted by their path relative to the open folder, so each one's subfolders follow it. No open
+question remains.
 
 ---
 
@@ -241,9 +257,9 @@ Questions asked by the agent during design, with user responses.
 | 11 | The open folder no longer in the index: where does the view go? | The nearest parent still there | 2026-10-01 |
 | 12 | Folders without files below them: invisible, or read from the disk? | Read the disk | 2026-10-01 |
 | 13 | A search in the folder view: files only, or folders too? | Folders too | 2026-10-01 |
-| 14 | The folder view reads the disk: its files too, or from the index? | | 2026-10-01 |
-| 15 | A folder tile's count: direct files, or every file below? | | 2026-10-01 |
-| 16 | `*` in the folder view: files only, or folders too? | | 2026-10-01 |
+| 14 | The folder view reads the disk: its files too, or from the index? | The disk too | 2026-10-01 |
+| 15 | A folder tile's count: direct files, or every file below? | Every file below, from the index | 2026-10-01 |
+| 16 | `*` in the folder view: files only, or folders too? | Folders too | 2026-10-01 |
 
 ---
 
