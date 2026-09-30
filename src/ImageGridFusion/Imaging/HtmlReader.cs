@@ -35,7 +35,8 @@ public static class HtmlReader
     /// </summary>
     public static StyledText? TryRead(string clipboardHtml) => new Parser(Fragment(clipboardHtml)).Parse();
 
-    private static string Fragment(string html)
+    /// <summary>The markup of the clipboard's "HTML Format", as <see cref="TryRead"/> reads it.</summary>
+    public static string Fragment(string html)
     {
         if (html.StartsWith("Version:", StringComparison.Ordinal)
             && Offset(html, "StartFragment:") is { } start && Offset(html, "EndFragment:") is { } end)

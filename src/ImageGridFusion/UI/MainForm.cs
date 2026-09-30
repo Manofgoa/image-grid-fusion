@@ -922,10 +922,15 @@ internal sealed class MainForm : Form
 
         var (image, length) = await Task.Run(() =>
         {
-            var styled = text.Parse();
-            return styled is null || styled.Text.Length > StyledText.MaxLength
-                ? ((SourceImage?)null, styled?.Text.Length ?? 0)
-                : (ImageLoader.FromText(styled), styled.Text.Length);
+            var parsed = text.Parse();
+            if (parsed is not { Text: var styled, Origin: var origin } || styled.Text.Length > StyledText.MaxLength)
+            {
+                return ((SourceImage?)null, parsed?.Text.Text.Length ?? 0);
+            }
+
+            var loaded = ImageLoader.FromText(styled);
+            loaded?.TextOrigin = origin;
+            return (loaded, styled.Text.Length);
         });
 
         if (length > StyledText.MaxLength)
