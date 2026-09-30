@@ -81,6 +81,7 @@ internal sealed class GridPreview : Control
     private readonly PageLoader _pageLoader = new();
     private readonly AnimationPlayer _player = new();
     private Soundtrack? _soundtrack;
+    private SoundFade? _fade;
     private GridBorders? _borders;
     private bool _locked;
     private bool _hoveringHandle;
@@ -178,7 +179,7 @@ internal sealed class GridPreview : Control
 
     /// <summary>
     /// Counts the changes of the rendered result — images, layout, cell sizes, looks, borders,
-    /// soundtrack — so a caller can tell whether the grid is still what it exported (the last video).
+    /// soundtrack, fade — so a caller can tell whether the grid is still what it exported (the last video).
     /// A selection change is not one.
     /// </summary>
     public int ContentVersion { get; private set; }
@@ -197,6 +198,24 @@ internal sealed class GridPreview : Control
 
             _soundtrack = value;
             _player.SetSoundtrack(value);
+            ContentVersion++;
+        }
+    }
+
+    /// <summary>The fade of the grid's sound mix, in and out on every loop; <c>null</c> when it is off.</summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public SoundFade? Fade
+    {
+        get => _fade;
+        set
+        {
+            if (value == _fade)
+            {
+                return;
+            }
+
+            _fade = value;
+            _player.SetFade(value);
             ContentVersion++;
         }
     }

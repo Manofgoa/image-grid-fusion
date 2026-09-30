@@ -10,8 +10,9 @@ namespace ImageGridFusion.UI;
 /// it; a frozen image stands on its frame; forced still, every image stops where it stands and
 /// resumes from there, or from the page it was moved to meanwhile. Also mixes the sounds of its videos,
 /// each in step with its frames, and the soundtrack, looping on the grid's duration while the grid
-/// holds an image. The grid can be started over: every image from its starting point at once, the
-/// soundtrack from its beginning. Used from the UI thread only.
+/// holds an image, the whole mix faded in and out on every loop of the grid while the fade is on. The
+/// grid can be started over: every image from its starting point at once, the soundtrack from its
+/// beginning. Used from the UI thread only.
 /// </summary>
 internal sealed class AnimationPlayer : IDisposable
 {
@@ -22,15 +23,20 @@ internal sealed class AnimationPlayer : IDisposable
     private readonly PreviewSound _sound = new();
     private readonly System.Windows.Forms.Timer _soundtrackTimer = new() { Interval = 100 };
 
+    // Short enough for the fade's gain to ramp without audible steps.
+    private readonly System.Windows.Forms.Timer _fadeTimer = new() { Interval = 30 };
+
     // The images last synced, empty once stopped; the soundtrack and the clock time it started at,
     // null while it does not play.
     private IReadOnlyList<SourceImage> _images = [];
     private Soundtrack? _soundtrack;
     private TimeSpan? _soundtrackStart;
+    private SoundFade? _fade;
 
     public AnimationPlayer()
     {
         _soundtrackTimer.Tick += (_, _) => SyncSoundtrack();
+        _fadeTimer.Tick += (_, _) => SyncFade();
     }
 
     /// <summary>Raised on the UI thread once an image shows a new frame.</summary>
@@ -68,6 +74,14 @@ internal sealed class AnimationPlayer : IDisposable
         _sound.Follow(images);
         _images = images;
         UpdateSoundtrack();
+        UpdateFade();
+    }
+
+    /// <summary>Fades the whole mix in and out on every loop of the grid with <paramref name="fade"/>, or no more when <c>null</c>.</summary>
+    public void SetFade(SoundFade? fade)
+    {
+        _fade = fade;
+        UpdateFade();
     }
 
     /// <summary>
@@ -83,6 +97,7 @@ internal sealed class AnimationPlayer : IDisposable
 
         _soundtrack = soundtrack;
         UpdateSoundtrack();
+        SyncFade();
     }
 
     /// <summary>
@@ -128,6 +143,8 @@ internal sealed class AnimationPlayer : IDisposable
             _soundtrackStart = TimeSpan.Zero;
             SyncSoundtrack();
         }
+
+        SyncFade();
     }
 
     /// <summary>
@@ -173,12 +190,14 @@ internal sealed class AnimationPlayer : IDisposable
         _sound.Follow([]);
         _images = [];
         UpdateSoundtrack();
+        UpdateFade();
     }
 
     public void Dispose()
     {
         Stop();
         _soundtrackTimer.Dispose();
+        _fadeTimer.Dispose();
         _sound.Dispose();
     }
 
@@ -213,6 +232,37 @@ internal sealed class AnimationPlayer : IDisposable
         var loop = Animation.VideoLength(_images, soundtrack);
         var time = Animation.LoopTime(Animation.LoopTime(_clock.Elapsed - start, loop), soundtrack.Duration);
         _sound.SyncSoundtrack(time, soundtrack.Level);
+    }
+
+    /// <summary>The fade follows the grid while it holds an image; without it, the mix plays as it is.</summary>
+    private void UpdateFade()
+    {
+        if (_fade is null || _images.Count == 0)
+        {
+            _fadeTimer.Stop();
+            _sound.MasterGain = 1;
+            return;
+        }
+
+        _fadeTimer.Start();
+        SyncFade();
+    }
+
+    /// <summary>
+    /// The fade's gain at the grid's time within its loop — the video length (RULES.md § Video Length),
+    /// so the preview sounds like the export: timed from the clock's origin, where the grid started
+    /// over, or from the soundtrack's start over a grid of stills, the soundtrack alone giving it a length.
+    /// </summary>
+    private void SyncFade()
+    {
+        if (_fade is not { } fade || _images.Count == 0)
+        {
+            return;
+        }
+
+        var loop = Animation.VideoLength(_images, _soundtrack);
+        var origin = Animation.GridLength(_images) > TimeSpan.Zero ? TimeSpan.Zero : _soundtrackStart ?? TimeSpan.Zero;
+        _sound.MasterGain = fade.GainAt(Animation.LoopTime(_clock.Elapsed - origin, loop), loop);
     }
 
     private TimeSpan Position(Playback playback) => playback.PausedAt ?? _clock.Elapsed - playback.Offset;

@@ -8,8 +8,8 @@ namespace ImageGridFusion.UI;
 /// <summary>
 /// Mixes the sounds of the grid's videos with a Windows audio graph: one node per video with sound,
 /// at the gain of its volume effect (up to 200 %), each kept in step with the frames its video shows;
-/// and one for the soundtrack, at its level, kept in step with the grid's clock. Used from the UI
-/// thread only.
+/// and one for the soundtrack, at its level, kept in step with the grid's clock; the whole mix scaled
+/// by <see cref="MasterGain"/>, the fade's. Used from the UI thread only.
 /// </summary>
 internal sealed class PreviewSound : IDisposable
 {
@@ -25,8 +25,23 @@ internal sealed class PreviewSound : IDisposable
     // Created with the first video with sound, kept until disposed; null when Windows gives none.
     private Task<AudioGraph?>? _graph;
     private AudioDeviceOutputNode? _output;
+    private double _masterGain = 1;
     private bool _running;
     private bool _disposed;
+
+    /// <summary>Scale of the whole mix, from 0 (silent) to 1 (as mixed): the fade global effect's gain.</summary>
+    public double MasterGain
+    {
+        get => _masterGain;
+        set
+        {
+            _masterGain = Math.Clamp(value, 0, 1);
+            if (_output is { } output)
+            {
+                output.OutgoingGain = _masterGain;
+            }
+        }
+    }
 
     /// <summary>Mixes the sounds of the videos with sound among <paramref name="images"/>; the others stop.</summary>
     public void Follow(IEnumerable<SourceImage> images)
@@ -202,6 +217,7 @@ internal sealed class PreviewSound : IDisposable
         }
 
         _output = output.DeviceOutputNode;
+        _output.OutgoingGain = _masterGain;
         return graph;
     }
 
