@@ -223,6 +223,11 @@ Agent's proposal on the latter, open to the user's reading before the go: the fo
 sorted by their path relative to the open folder, so each one's subfolders follow it. No open
 question remains.
 
+### Iteration 4 — 2026-10-01 — ✅ Implemented
+
+Go given for code, tests and documentation (no test project: manual verification). Branch Gate:
+**stay on `main`**, the standing choice for this repository.
+
 ---
 
 ## Implementation Log
