@@ -33,8 +33,9 @@ Components concerned:
 ## The Folder View
 
 - A **view** of the file explorer, next to the current one — called the **search view** from now on
-  (favorites / `*` / matches). The user switches between the two with a toggle (placement: see
-  Open Questions).
+  (favorites / `*` / matches).
+- **The toggle** (Q&A #6): a 📁 push button at the **start of the search row**, left of the search
+  box; pressed while the folder view shows. Its tooltip names the view it switches to.
 - In the folder view, the list shows the **open folder** — the base folder itself at first.
 - The view and the open folder are **remembered between sessions** (Q&A #4), in `settings.json`
   through `UI/AppSettings.cs` (RULES.md § App Settings).
@@ -44,37 +45,40 @@ Components concerned:
 ### Layout (disposition A — Q&A #1)
 
 ```
-┌ Files                        » ┐
-│ [📁] [Search files…      ] [↻] │   ← the view toggle (placement open)
-│ [↑] Base › Vacances › 2025     │   ← breadcrumb row (placement open)
-│ 1 234 files · indexed 14:02    │   ← status line
-│ ┌────────┐┌────────┐┌────────┐ │
-│ │ folder ││ folder ││  file  │ │   ← folder tiles first, then files
-│ └Plage───┘└Montagne┘└img01───┘ │
-│ ▭ ─────────○────────────── ▭   │   ← tile size slider, unchanged
-└────────────────────────────────┘
+┌ Files                          » ┐
+│ [📁] [Search files…        ] [↻] │   ← the view toggle, pressed
+│ 1 234 files · indexed 14:02      │   ← status line, unchanged
+│ [↑] Base › Vacances › 2025  (40) │   ← breadcrumb, in place of the caption line
+│ ┌────────┐┌────────┐┌────────┐   │
+│ │ folder ││ folder ││  file  │   │   ← folder tiles first, then files
+│ └Plage (42)Montagne (7)img01─┘   │
+│ ▭ ─────────○────────────── ▭     │   ← tile size slider, unchanged
+└──────────────────────────────────┘
 ```
 
 - **One grid**: the folder tiles and the file tiles share it, at the same size, loaded load by load
   like any list (§ Load, GLOSSARY).
-- The **breadcrumb** names the base folder, then every folder down to the open one; each segment
-  but the last is clickable and opens that folder. The **↑** button opens the parent folder; it is
-  disabled at the base folder.
+- **The breadcrumb** (Q&A #7) takes the **caption line's place** in the folder view — no row added:
+  the **↑** button, then the base folder's name and every folder down to the open one, each segment
+  but the last clickable and opening that folder; the counts the caption gave follow at its end. Too
+  long for the panel, it drops its first segments behind an ellipsis, the open folder always shown.
+  **↑** opens the parent folder; it is disabled at the base folder. The search view keeps its caption.
 
 ---
 
 ## Folder Content
 
-Read **from the index only**, never the disk (GLOSSARY § Index): the folders are the path segments of
-the index's entries.
+Q&A #12: the folder view **reads the disk**, so every subfolder shows, an empty one included — the
+index holds files only, a folder without any file below it would be missing from it. The search still
+reads the index alone. Whether the files are read from the disk too: see Open Questions.
 
-- The **subfolders** of the open folder: the distinct next segments of the entries under it.
-- Its **files**: the entries directly in it.
+- The **subfolders** of the open folder, as on the disk; hidden and system ones skipped, as the scan
+  skips them.
+- Its **files**: the files directly in it.
 - **Order** (Q&A #3): the folders first, **A→Z** by name; then the files, **the most recently
   created first**, then by name — the order of `*`.
-- A folder holding no file anywhere below it is **not in the index**, so it does not appear (see
-  Open Questions).
-- The caption line says what the list holds, e.g. `2025 — 2 folders, 38 files`.
+- The listing is read **off the UI thread**; the status line says so while it takes time.
+- The breadcrumb's end says what the list holds, e.g. `2 folders, 38 files`.
 
 ---
 
@@ -86,7 +90,8 @@ the index's entries.
 | Enter on a selected folder tile | Same |
 | A breadcrumb segment clicked | Opens that folder |
 | **↑** clicked | Opens the parent folder |
-| Keyboard way up | See Open Questions |
+| **Backspace** or **Alt+↑** in the grid (Q&A #10) | Opens the parent folder |
+| **Alt+↑** in the search box | Same; Backspace there still erases the text |
 
 - Double-click / Enter on a **file tile** still adds the file, like Add images.
 - Going back up **selects the folder just left** and scrolls it into view, as Explorer does.
@@ -95,24 +100,27 @@ the index's entries.
 
 ## Search in the Folder View
 
-Q&A #2: the search is **limited to the open folder and its subfolders**.
+Q&A #2: the search is **limited to the open folder and its subfolders**, from the index.
 
 - **Box empty**: the open folder's content (§ Folder Content) — not the favorites; the favorites are
   the search view's.
-- **Words typed**: the matches of `FileSearch.Search` among the entries under the open folder, in
-  its ranking; the words match the path **relative to the base folder**, as today.
-- **`*`**: every file under the open folder, the most recently created first.
-- The breadcrumb stays; the caption says `12 results in 2025`.
-- Whether folders are among the results: see Open Questions.
+- **Words typed** (Q&A #13): the **folders** under the open folder whose name matches come **first**,
+  then the matching **files**, each part in `FileSearch.Search`'s ranking; the words match the path
+  **relative to the base folder**, as today. The folders are those of the index — the ones holding
+  files; a double-click on one opens it (the search box cleared).
+- **`*`**: every file under the open folder, the most recently created first; whether folders come
+  with them: see Open Questions.
+- The breadcrumb stays; its end says `12 results`.
 
 ---
 
 ## Folder Tiles
 
-- A folder tile has the tile's box and its name below; its look is open (see Open Questions).
-- Favorites never hold folders (`AddFavorites` skips them): whether a folder tile gets a heart, and
-  what dragging it does, are open (see Open Questions).
-- The context menu's *Open file location* on a folder tile: see Open Questions.
+- **Look** (Q&A #8): the thumbnail **Windows gives the folder** (`ShellThumbnail`, often a preview of
+  its content), a **drawn folder glyph** when it has none. The name is followed by the folder's
+  **file count**, e.g. `Plage (42)` — which files it counts: see Open Questions.
+- **Actions** (Q&A #9): **no heart** (favorites never hold folders), **not draggable**. Its context
+  menu offers **Open in Explorer**, opening the folder itself in Windows Explorer.
 
 ---
 
@@ -120,8 +128,9 @@ Q&A #2: the search is **limited to the open folder and its subfolders**.
 
 - A **rescan** (at start-up or ↻) keeps the open folder and the place, like any refresh that keeps
   the place.
-- The open folder **no longer in the index** (deleted, renamed, emptied) — at a rescan or at
-  start-up from the remembered one: see Open Questions.
+- The open folder **gone from the disk** (deleted, renamed) — at a refresh or at start-up from the
+  remembered one (Q&A #11): the view goes up to the **nearest parent still there**, the base folder
+  at worst, and the status line says so for a few seconds.
 - The **base folder changed** from the ⚙ menu: the folder view opens at its root.
 
 ---
@@ -144,9 +153,11 @@ the running app.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| A folder lists its subfolders A→Z, then its files newest first | — (manual) | — |
-| Double-click / Enter opens a folder; ↑ and the breadcrumb go up, the folder left selected | — (manual) | — |
-| The search and `*` only return files under the open folder | — (manual) | — |
+| A folder lists its subfolders A→Z — empty ones included — then its files newest first | — (manual) | — |
+| A folder tile shows Windows' thumbnail or the glyph, its count, no heart, no drag; *Open in Explorer* | — (manual) | — |
+| Double-click / Enter opens a folder; ↑, Backspace, Alt+↑ and the breadcrumb go up, the folder left selected | — (manual) | — |
+| The search returns the matching folders, then files, under the open folder only; `*` too | — (manual) | — |
+| The open folder deleted: the view goes up to the nearest parent | — (manual) | — |
 | The view and the open folder come back after a restart | — (manual) | — |
 | A rescan keeps the open folder and the place | — (manual) | — |
 
@@ -154,14 +165,17 @@ the running app.
 
 ## Open Questions
 
-- [ ] Where does the view toggle go — a button left of the search box, or in the header next to *Files*?
-- [ ] Where does the breadcrumb go — a row of its own under the search box, or in place of the caption line?
-- [ ] What does a folder tile look like — Windows' folder thumbnail, a drawn folder glyph, or a mosaic of its first images? With its file count?
-- [ ] A folder tile: a heart? Draggable onto a cell (and then what)? What does its context menu offer?
-- [ ] Which key goes up — Backspace, Alt+↑, both?
-- [ ] The open folder no longer in the index: back to the nearest parent still there, or to the base folder?
-- [ ] Folders without any file below them are invisible (the index holds files only): acceptable, or should the view read the disk?
-- [ ] A search in the folder view: files only, or matching folders too?
+- [x] ~~Where does the view toggle go — a button left of the search box, or in the header next to *Files*?~~ → A 📁 push button at the start of the search row
+- [x] ~~Where does the breadcrumb go — a row of its own under the search box, or in place of the caption line?~~ → In place of the caption line, the counts at its end
+- [x] ~~What does a folder tile look like — Windows' folder thumbnail, a drawn folder glyph, or a mosaic of its first images? With its file count?~~ → Windows' thumbnail, a drawn glyph without one; the file count after the name
+- [x] ~~A folder tile: a heart? Draggable onto a cell (and then what)? What does its context menu offer?~~ → No heart, no drag; the menu offers *Open in Explorer*
+- [x] ~~Which key goes up — Backspace, Alt+↑, both?~~ → Both in the grid; Alt+↑ in the search box too
+- [x] ~~The open folder no longer in the index: back to the nearest parent still there, or to the base folder?~~ → The nearest parent still there
+- [x] ~~Folders without any file below them are invisible (the index holds files only): acceptable, or should the view read the disk?~~ → The folder view reads the disk
+- [x] ~~A search in the folder view: files only, or matching folders too?~~ → Matching folders too, first
+- [ ] The folder view reads the disk for the folders: its files too, or from the index?
+- [ ] A folder tile's count: the files directly in it, or every file below it?
+- [ ] `*` in the folder view: files only, or every folder below the open one too?
 
 ---
 
@@ -182,6 +196,16 @@ one scout pass over `FileExplorerPanel`, `ThumbnailGrid`, `FileIndex`, `FileSear
 `ShellThumbnail` and `AppSettings`. Findings: the index holds files only (folders are derived from
 paths), the grid knows one kind of row (`ExplorerRow`), and there is no test project. Eight open
 questions listed.
+
+### Iteration 2 — 2026-10-01
+
+The eight open questions answered (Q&A #6–13): the toggle is a 📁 push button at the start of the
+search row; the breadcrumb takes the caption line's place; a folder tile shows Windows' thumbnail (a
+glyph without one) and its file count, has no heart, is not draggable and offers *Open in Explorer*;
+Backspace and Alt+↑ go up; a vanished open folder falls back to its nearest parent; the folder view
+**reads the disk** so empty folders show; a search in the folder view returns matching folders first.
+Reading the disk raises three new questions (what is read from the disk, what the count counts, `*`
+with folders), listed as open.
 
 ---
 
@@ -209,15 +233,18 @@ Questions asked by the agent during design, with user responses.
 | 3 | In which order is a folder's content shown? | Folders A→Z, then files newest first | 2026-09-30 |
 | 4 | What is remembered between sessions? | The view and the open folder | 2026-09-30 |
 | 5 | Is the subject straightforward or tricky / long? | Straightforward — one scout pass | 2026-09-30 |
-| 6 | Where does the view toggle go? | | 2026-09-30 |
-| 7 | Where does the breadcrumb go? | | 2026-09-30 |
-| 8 | What does a folder tile look like? | | 2026-09-30 |
-| 9 | A folder tile: heart, drag, context menu? | | 2026-09-30 |
-| 10 | Which key goes up? | | 2026-09-30 |
-| 11 | The open folder no longer in the index: where does the view go? | | 2026-09-30 |
-| 12 | Folders without files below them: invisible, or read from the disk? | | 2026-09-30 |
-| 13 | A search in the folder view: files only, or folders too? | | 2026-09-30 |
+| 6 | Where does the view toggle go? | A 📁 button left of the search box | 2026-09-30 |
+| 7 | Where does the breadcrumb go? | In place of the caption line | 2026-09-30 |
+| 8 | What does a folder tile look like? | Windows' folder thumbnail (a glyph without one) + file count | 2026-09-30 |
+| 9 | A folder tile: heart, drag, context menu? | Context menu only (*Open in Explorer*); no heart, no drag | 2026-09-30 |
+| 10 | Which key goes up? | Backspace and Alt+↑ | 2026-10-01 |
+| 11 | The open folder no longer in the index: where does the view go? | The nearest parent still there | 2026-10-01 |
+| 12 | Folders without files below them: invisible, or read from the disk? | Read the disk | 2026-10-01 |
+| 13 | A search in the folder view: files only, or folders too? | Folders too | 2026-10-01 |
+| 14 | The folder view reads the disk: its files too, or from the index? | | 2026-10-01 |
+| 15 | A folder tile's count: direct files, or every file below? | | 2026-10-01 |
+| 16 | `*` in the folder view: files only, or folders too? | | 2026-10-01 |
 
 ---
 
-*Last updated: 2026-09-30*
+*Last updated: 2026-10-01*
