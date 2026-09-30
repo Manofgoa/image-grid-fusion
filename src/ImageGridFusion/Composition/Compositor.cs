@@ -6,8 +6,8 @@ namespace ImageGridFusion.Composition;
 /// <summary>What a cell shows: a bitmap, what colors its bands, and the actions on the image, if any.</summary>
 public readonly record struct Frame(Bitmap Bitmap, BandColor BandColor, ImageLook? Look = null)
 {
-    /// <summary>Size of the image as drawn: once rotated by its look.</summary>
-    public Size Size => (Look ?? ImageLook.None).Oriented(Bitmap.Size);
+    /// <summary>Size of the image as drawn: its crop's kept part, rotated by its look — what the fitting rule and the canvas sizing read.</summary>
+    public Size Size => (Look ?? ImageLook.None).Shown(Bitmap.Size);
 }
 
 /// <summary>Draws the images into their cells, at full resolution or at any preview size.</summary>
@@ -102,7 +102,7 @@ public static class Compositor
         var look = frame.Look ?? ImageLook.None;
         var turned = FitCalculator.ComputeTurned(cell, frame.Size, look.Zoom, look.Focus, look.FineAngle);
         using var turn = turned.Transform();
-        var source = turn is null ? turned.Fit.Source : TurnedPart(cell, turned.Fit, frame.Size, turn).Source;
+        var source = Uncropped(turn is null ? turned.Fit.Source : TurnedPart(cell, turned.Fit, frame.Size, turn).Source, frame.Bitmap.Size, look);
         bool oriented = look is not { Rotation: 0, FlipX: false, FlipY: false };
         return frame.BandColor.For(oriented ? BitmapPart(frame.Bitmap.Size, look, source) : source, frame.Bitmap.Size);
     }
@@ -151,6 +151,7 @@ public static class Compositor
         var fit = turned.Fit;
         using var turn = turned.Transform();
         var (source, shown) = turn is null ? (fit.Source, fit.Destination) : TurnedPart(cell, fit, frame.Size, turn);
+        source = Uncropped(source, frame.Bitmap.Size, look);
         bool oriented = look is not { Rotation: 0, FlipX: false, FlipY: false };
         var bitmapPart = oriented ? BitmapPart(frame.Bitmap.Size, look, source) : source;
 
@@ -210,6 +211,70 @@ public static class Compositor
         float scale = fit.Image.Width / size.Width;
         var source = new RectangleF((shown.X - fit.Image.X) / scale, (shown.Y - fit.Image.Y) / scale, shown.Width / scale, shown.Height / scale);
         return (source, shown);
+    }
+
+    /// <summary>
+    /// The crop's edit view of <paramref name="frame"/> in <paramref name="cell"/>, for the preview: the
+    /// whole image, rotated and flipped but neither zoomed nor turned by a fine angle, fitted whole into
+    /// the cell so every edge can be reached, over the background the cropped image gets there. Returns
+    /// where the image lands.
+    /// </summary>
+    public static RectangleF DrawUncropped(Graphics g, Frame frame, Rectangle cell)
+    {
+        var look = frame.Look ?? ImageLook.None;
+        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+        g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+        g.CompositingQuality = CompositingQuality.HighQuality;
+        if (look.Background is { } background)
+        {
+            var fill = background.Fill(background.Automatic ? AutomaticBackground(frame, cell) : background.Color);
+            using var brush = new SolidBrush(look.Grayscale is { } gray ? Gray(fill, gray) : fill);
+            g.FillRectangle(brush, cell);
+        }
+
+        var size = look.Oriented(frame.Bitmap.Size);
+        var image = UncroppedBounds(size, cell);
+
+        using var attributes = new ImageAttributes();
+        attributes.SetWrapMode(WrapMode.TileFlipXY);
+        if (look.Grayscale is { } grayscale)
+        {
+            attributes.SetColorMatrix(GrayscaleMatrix(grayscale));
+        }
+
+        var state = g.Save();
+        g.SetClip(cell, CombineMode.Intersect);
+        DrawOriented(g, frame.Bitmap, look, new RectangleF(PointF.Empty, size), new RectangleF(PointF.Empty, frame.Bitmap.Size), Rectangle.Round(image), attributes);
+        g.Restore(state);
+        return image;
+    }
+
+    /// <summary>Where <see cref="DrawUncropped"/> draws an oriented image of <paramref name="size"/>: fitted whole into <paramref name="cell"/>, centered.</summary>
+    public static RectangleF UncroppedBounds(Size size, Rectangle cell)
+    {
+        double scale = Math.Min(cell.Width / (double)size.Width, cell.Height / (double)size.Height);
+        float width = (float)(size.Width * scale);
+        float height = (float)(size.Height * scale);
+        return new RectangleF(cell.X + (cell.Width - width) / 2, cell.Y + (cell.Height - height) / 2, width, height);
+    }
+
+    /// <summary>
+    /// The part <paramref name="source"/> of the cropped image, as the fitting rule gives it, in the
+    /// oriented whole image of a bitmap of <paramref name="size"/>: moved by where the kept part lies in it.
+    /// </summary>
+    private static RectangleF Uncropped(RectangleF source, Size size, ImageLook look)
+    {
+        if (look.Crop is null)
+        {
+            return source;
+        }
+
+        var kept = look.Cropped(size);
+        using var orientation = look.Orientation(size);
+        PointF[] corners = [new(kept.Left, kept.Top), new(kept.Right, kept.Bottom)];
+        orientation.TransformPoints(corners);
+        source.Offset(Math.Min(corners[0].X, corners[1].X), Math.Min(corners[0].Y, corners[1].Y));
+        return source;
     }
 
     /// <summary>Rectangle of a bitmap of <paramref name="size"/> that the part <paramref name="source"/> of the oriented image comes from.</summary>

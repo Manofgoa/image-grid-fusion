@@ -6,6 +6,7 @@ namespace ImageGridFusion.Composition;
 public enum ImageEffect
 {
     Background,
+    Crop,
     Zoom,
     Rotate,
     Flip,
@@ -17,7 +18,7 @@ public enum ImageEffect
 
 /// <summary>
 /// Effects applied to one image of the grid, toggled from the effects toolbar (see RULES.md): the
-/// background behind it, a zoom around <see cref="Focus"/>, a rotation by quarter turns, flips in the
+/// background behind it, the crop keeping a part of it that then stands for the whole image, a zoom around <see cref="Focus"/>, a rotation by quarter turns, flips in the
 /// screen frame, black &amp; white, and the blur; the frames effect for an animated image, the volume
 /// for a video with sound. An effect turned off keeps its settings, drawn as its defaults until it is
 /// turned on again — but the background, on by default, draws no fill while off (RULES.md).
@@ -49,6 +50,7 @@ public sealed record ImageLook
     private FramesEffect? KeptFrames { get; init; }
     private double? KeptGrayscale { get; init; }
     private BlurEffect? KeptBlur { get; init; }
+    private CropEffect? KeptCrop { get; init; }
     private VolumeEffect? KeptVolume { get; init; }
     private BackgroundEffect? KeptBackground { get; init; }
 
@@ -79,6 +81,12 @@ public sealed record ImageLook
     /// </summary>
     public PointF Focus { get; private init; } = Center;
 
+    /// <summary>
+    /// The crop effect, <c>null</c> while inactive: the part of the image kept, which every other effect
+    /// then treats as the whole image. Turning or flipping the image turns or flips it along.
+    /// </summary>
+    public CropEffect? Crop { get; private init; }
+
     /// <summary>The blur effect, <c>null</c> while inactive. Turning or zooming the image leaves it in place.</summary>
     public BlurEffect? Blur { get; private init; }
 
@@ -100,6 +108,7 @@ public sealed record ImageLook
     public bool IsActive(ImageEffect effect) => effect switch
     {
         ImageEffect.Background => Background is not null,
+        ImageEffect.Crop => Crop is not null,
         ImageEffect.Frames => Frames is not null,
         ImageEffect.BlackAndWhite => Grayscale is not null,
         ImageEffect.Blur => Blur is not null,
@@ -132,6 +141,8 @@ public sealed record ImageLook
                 return this with { Frames = frames, KeptFrames = null };
             case ImageEffect.BlackAndWhite when KeptGrayscale is { } grayscale:
                 return this with { Grayscale = grayscale, KeptGrayscale = null };
+            case ImageEffect.Crop when KeptCrop is { } crop:
+                return this with { Crop = crop, KeptCrop = null };
             case ImageEffect.Blur when KeptBlur is { } blur:
                 return this with { Blur = blur, KeptBlur = null };
             case ImageEffect.Volume when KeptVolume is { } volume:
@@ -161,6 +172,7 @@ public sealed record ImageLook
             ImageEffect.BlackAndWhite => off with { KeptGrayscale = Grayscale },
             ImageEffect.Volume => off with { KeptVolume = Volume },
             ImageEffect.Background => off with { KeptBackground = Background },
+            ImageEffect.Crop => off with { KeptCrop = Crop },
             _ => off with { KeptBlur = Blur },
         };
     }
@@ -181,6 +193,7 @@ public sealed record ImageLook
             ImageEffect.Frames => look with { KeptFrames = null },
             ImageEffect.BlackAndWhite => look with { KeptGrayscale = null },
             ImageEffect.Volume => look with { KeptVolume = null },
+            ImageEffect.Crop => look with { KeptCrop = null },
             _ => look with { KeptBlur = null },
         };
     }
@@ -189,6 +202,7 @@ public sealed record ImageLook
     private ImageLook Activate(ImageEffect effect) => IsActive(effect) ? this : effect switch
     {
         ImageEffect.Background => this with { Background = BackgroundEffect.Default },
+        ImageEffect.Crop => this with { Crop = CropEffect.Default },
         ImageEffect.Frames => this with { Frames = FramesEffect.Default },
         ImageEffect.BlackAndWhite => this with { Grayscale = 1 },
         ImageEffect.Blur => this with { Blur = BlurEffect.Default },
@@ -196,12 +210,13 @@ public sealed record ImageLook
         _ => Activated(effect),
     };
 
-    /// <summary>Deactivates an effect, bringing back its defaults: no background, centered at 100 %, upright, unflipped, playing from the beginning, in color, sharp, heard at 100 %.</summary>
+    /// <summary>Deactivates an effect, bringing back its defaults: no background, the whole image, centered at 100 %, upright, unflipped, playing from the beginning, in color, sharp, heard at 100 %.</summary>
     private ImageLook Deactivate(ImageEffect effect)
     {
         var look = effect switch
         {
             ImageEffect.Background => this with { Background = null },
+            ImageEffect.Crop => this with { Crop = null },
             ImageEffect.Zoom => this with { Zoom = 1, Focus = Center },
             ImageEffect.Rotate => WithRotation(0),
             ImageEffect.Flip => (FlipX ? ToggleFlipX() : this) is var flipped && flipped.FlipY ? flipped.ToggleFlipY() : flipped,
@@ -219,6 +234,12 @@ public sealed record ImageLook
     /// <summary>Size of an image of <paramref name="size"/> once rotated.</summary>
     public Size Oriented(Size size) => SwapsAxes ? new Size(size.Height, size.Width) : size;
 
+    /// <summary>The part of a bitmap of <paramref name="size"/> the image is drawn from: the crop's kept part, else the whole bitmap.</summary>
+    public Rectangle Cropped(Size size) => Crop?.Pixels(size) ?? new Rectangle(Point.Empty, size);
+
+    /// <summary>Size of the image as drawn from a bitmap of <paramref name="size"/>: cropped, then rotated.</summary>
+    public Size Shown(Size size) => Oriented(Cropped(size).Size);
+
     /// <summary>Turns the image by <paramref name="quarterTurns"/> clockwise (negative: counter-clockwise); the focus turns with it.</summary>
     public ImageLook Rotate(int quarterTurns)
     {
@@ -234,6 +255,8 @@ public sealed record ImageLook
             Focus = Turned(Focus, turns),
             KeptFlip = swap && KeptFlip is { } flip ? (flip.Y, flip.X) : KeptFlip,
             KeptZoom = KeptZoom is { } zoom ? (zoom.Zoom, Turned(zoom.Focus, turns)) : null,
+            Crop = swap ? Crop?.QuarterTurned() : Crop,
+            KeptCrop = swap ? KeptCrop?.QuarterTurned() : KeptCrop,
         };
     }
 
@@ -277,6 +300,8 @@ public sealed record ImageLook
     public ImageLook WithGrayscale(double intensity) => this with { Grayscale = Math.Clamp(intensity, 0, 1) };
 
     public ImageLook WithBlur(BlurEffect? blur) => this with { Blur = blur };
+
+    public ImageLook WithCrop(CropEffect? crop) => this with { Crop = crop };
 
     public ImageLook WithVolume(VolumeEffect? volume) => this with { Volume = volume };
 
