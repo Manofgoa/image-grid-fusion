@@ -59,14 +59,41 @@ Relevant components:
 - **Default zone** (Q&A 9): **10 % cut off each edge** — the effect shows as soon as it is turned
   on, the bars easy to grab. Turned off, it is drawn as the whole image.
 
-### Proposed — pending the Open Questions
+- **Pipeline** (Q&A 11): source image → orientation (rotate / flip) → **crop** → fitting rule,
+  zoom, focus and fine angle → background → black & white, blur on the cell. Zoom, Rotate's fine
+  angle and Blur thus apply to the cropped image; the Blur's bars stay in the cell's frame,
+  unchanged.
+- **Tab position** (Q&A 12): **between Background and Zoom** — the first geometry step, in the
+  enum's order *background, geometry, rendering, sound*.
 
-- **Pipeline**: source image → orientation (rotate / flip) → **crop** → fitting rule, zoom, focus
-  and fine angle → background → black & white, blur on the cell. Zoom, Rotate's fine angle and
-  Blur thus apply to the cropped image; the Blur's bars stay in the cell's frame, unchanged.
-- **Options toolbar** (Open Question 5): at least the effect's own **Reset**.
-- **Tab position**: between Background and Zoom — the first geometry step, in the enum's order
-  *background, geometry, rendering, sound*.
+### Options Toolbar
+
+Agreed (Q&A 10): **aspect-ratio buttons**, each showing a **preview of its format** — a small
+rectangle drawn at that ratio in the button — then the effect's own **Reset**, ending the row.
+
+| Button | Ratio kept (width : height, as the image is seen) |
+|---|---|
+| Free | None — each bar moves on its own (the default) |
+| 1:1 | 1 : 1 |
+| 4:3 | 4 : 3 |
+| 16:9 | 16 : 9 |
+| 9:16 | 9 : 16 |
+
+The buttons are exclusive, like the Blur's Gaussian / Pixelate pair. Proposed details, to be taken
+by the run if nothing is said:
+
+- **Picking a ratio** reshapes the current zone to the **largest rectangle at that ratio** that
+  fits inside it, **around its center** — it never grows past the zone nor the image.
+- **Dragging a bar under a ratio** moves that bar; the two bars across follow **around the zone's
+  center on the other axis**, so the ratio holds. The drag stops where the other axis would leave
+  the image.
+- The ratio is measured in **pixels of the image as seen** (not in fractions), so a 1:1 crop is
+  square whatever the image's shape.
+- The ratio is part of the effect's **settings**: kept while off, back to *Free* on every Reset.
+  Picking one is *acting on an option*, so it turns the effect on (RULES.md § Options Toolbar).
+- A **quarter turn** of the image turns the kept part with it (it follows the image), so a 16:9
+  crop becomes 9:16 as seen, and the selected button follows (16:9 ↔ 9:16; 4:3 has no 3:4 button,
+  so it becomes *Free* with the zone unchanged).
 
 ### State and Lifecycle
 
@@ -113,7 +140,8 @@ if the run needs one).
   fractions of the image (a Crop exception in RULES.md)
 - [x] ~~3. Does the canvas sizing follow the cropped part?~~ → Yes, like a rotation, live
 - [x] ~~4. What zone does the crop start with when it is turned on?~~ → 10 % cut off each edge
-- [ ] 5. What does the options toolbar hold besides the Reset button?
+- [x] ~~5. What does the options toolbar hold besides the Reset button?~~ → Aspect-ratio buttons
+  (Free, 1:1, 4:3, 16:9, 9:16), each previewing its format
 
 ---
 
@@ -140,6 +168,14 @@ Open Questions 1–4 answered, each on the recommended or first option: the **ed
 tab is selected and the effect on; the crop **follows the image** (fractions of the image, a
 RULES.md exception); the **canvas follows the kept part**, live, like a rotation; the default zone
 **10 % in from each edge**. Open Question 5 (the options toolbar's content) remains.
+
+### Iteration 3 — 2026-09-30
+
+Open Question 5 answered: the options toolbar holds **aspect-ratio buttons**, each drawing a
+preview of its format, before the Reset. The proposed pipeline (crop before the fitting rule,
+zoom, fine angle and blur) and the tab position (between Background and Zoom) confirmed. The
+ratios' behaviour — picking one, dragging under one, the pixel measure, a quarter turn — written
+as proposed details. No Open Question remains.
 
 ---
 
@@ -171,7 +207,9 @@ Questions asked by the agent during design, with user responses.
 | 7 | Does the crop follow the image when turned / flipped, or stay fixed in the cell? | Follows the image (recommended) | 2026-09-30 |
 | 8 | Does the canvas sizing follow the cropped part? | Yes, like the rotation — live | 2026-09-30 |
 | 9 | What zone does the crop start with? | 10 % cut off each edge | 2026-09-30 |
-| 10 | What does the options toolbar hold besides Reset? | | |
+| 10 | What does the options toolbar hold besides Reset? | Aspect ratios imposed, with a preview of the format in each button | 2026-09-30 |
+| 11 | Do zoom, fine angle and blur apply to the already cropped image? | Yes, after the crop (recommended) | 2026-09-30 |
+| 12 | Where does the Crop tab go? | Between Background and Zoom | 2026-09-30 |
 
 ---
 
