@@ -157,6 +157,18 @@ internal sealed class GridPreview : Control
     /// <summary>Raised when the active layout changes, picked by the user or reset with the image count, or when its cells are resized.</summary>
     public event EventHandler? LayoutChanged;
 
+    /// <summary>
+    /// Raised as a cell dragged by its ✥ handle moves, with the mouse in screen coordinates — the
+    /// drag may leave the preview, the capture keeping it — and with null when the drag ends.
+    /// </summary>
+    public event EventHandler<Point?>? SwapDragMoved;
+
+    /// <summary>
+    /// Raised when a cell dragged by its ✥ handle is released on no cell, with its image and the
+    /// mouse in screen coordinates: nothing is swapped; the window may take it, as a favorite.
+    /// </summary>
+    public event EventHandler<(SourceImage Image, Point ScreenPoint)>? ReleasedOffGrid;
+
     public IReadOnlyList<SourceImage> Images => _images;
 
     /// <summary>
@@ -315,6 +327,13 @@ internal sealed class GridPreview : Control
             _externalHover = hover;
             Invalidate();
         }
+    }
+
+    /// <summary>The image of a cell adopted a file: the name it shows is measured again.</summary>
+    public void RefreshSourceName()
+    {
+        _fittedName = null;
+        Invalidate();
     }
 
     /// <summary>Applies a layout for the current image count; the images keep their order.</summary>
@@ -642,6 +661,7 @@ internal sealed class GridPreview : Control
         Invalidate(GhostBounds());
         _dragPoint = e.Location;
         Invalidate(GhostBounds());
+        SwapDragMoved?.Invoke(this, PointToScreen(e.Location));
 
         int target = CellAt(e.Location);
         if (target != _dropTarget)
@@ -685,6 +705,10 @@ internal sealed class GridPreview : Control
         if (_dragging && _dropTarget >= 0 && _dropTarget != _pressed)
         {
             Swap(_pressed, _dropTarget);
+        }
+        else if (_dragging && _dropTarget < 0 && _pressed < _images.Count)
+        {
+            ReleasedOffGrid?.Invoke(this, (_images[_pressed], PointToScreen(e.Location)));
         }
 
         EndDrag();
@@ -833,6 +857,7 @@ internal sealed class GridPreview : Control
 
     private void EndDrag()
     {
+        bool dragging = _dragging;
         _pressed = -1;
         _panning = false;
         _panX.Reset();
@@ -844,6 +869,10 @@ internal sealed class GridPreview : Control
         _ghost = null;
         Cursor = Cursors.Default;
         Invalidate();
+        if (dragging)
+        {
+            SwapDragMoved?.Invoke(this, null);
+        }
     }
 
     /// <summary>Cell the first excess image replaces when the grid is full: the selected one, else the last.</summary>
