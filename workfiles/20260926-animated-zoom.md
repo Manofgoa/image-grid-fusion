@@ -56,10 +56,19 @@ Components concerned (from the scout pass):
   never disabled.
 - A cell carrying the effect (on) **counts as animation**: it enables the GIF / MP4 export arrows
   (`HasAnimation`) and makes MP4 the adapted default format, like a playing video.
-
-### To Settle
-
-See *Open Questions*: what the Animations tab holds, the export length, the preview's phase, tests.
+- **A choice of animation kind**: the Animations options start with a **Type** drop-down holding
+  **Zoom** only for now, so other kinds can be added later; the settings record carries the kind
+  and the cycle duration.
+- **The cycle is a playing loop**: a still carrying the effect (on) — a frozen image included —
+  *plays* a loop as long as its cycle. It counts in `Animation.VideoLength` like a video's loop: the
+  video length is the longest loop, zoom cycles included; with a soundtrack over a grid of stills,
+  the zoom cycle gives the length (the soundtrack looped or cut to it). A shorter cycle starts over
+  until the video ends, like any shorter content.
+- **One clock**: the zoom follows the grid's clock (`AnimationPlayer`), the one the grid's start
+  over resets. Turning the effect on or changing its duration takes the motion where that clock
+  stands (a small jump); the preview always shows what the export gives.
+- **Progress line**: a still carrying the effect shows it, following the zoom cycle; a video (or
+  GIF) carrying it keeps its own loop's line.
 
 ---
 
@@ -85,23 +94,28 @@ See *Open Questions*: what the Animations tab holds, the export length, the prev
   between two video frames.
 - The zoom's time is read from `AnimationPlayer`'s clock, so the grid's **start over** (RULES.md
   § *Preview Playback*: an image arriving or deleted) also brings every zoom back to its starting
-  state, at the same instant as the videos — the preview plays what an export gives. What turning
-  the effect on or changing its duration does to the phase: see *Open Questions*.
+  state, at the same instant as the videos — the preview plays what an export gives. Turning the
+  effect on or changing its duration does not restart anything: the motion is taken where the clock
+  stands.
 
 ## Exports
 
 - `HasAnimation` also counts the effect.
 - **Length**: decided in `Animation.VideoLength` only (RULES.md § *Video Length*), so the export,
-  the preview's soundtrack loop and the length readout follow at once. How the zoom cycle enters it:
-  see *Open Questions*.
+  the preview's soundtrack loop and the length readout follow at once. The zoom cycle of a still
+  carrying the effect enters it as a playing loop (see *Behaviour*).
 - **Crop**: the zoom applies to the cropped image, like the static Zoom (RULES.md § *The Crop
   Exception*) — nothing to add, it multiplies the static Zoom after the crop.
 
 ## UI
 
-- **Effect tab**: after the Zoom tab (geometry group), with its own icon in `EffectIcons`.
-- **Options**: the speed slider (cycle duration) with its value label (`OptionSlider`, like
-  Zoom's), then the effect's Reset button.
+- **Effect tab**: **Animations**, after the Zoom tab (its only kind is a zoom), with its own icon in
+  `EffectIcons`.
+- **Options**: the **Type** drop-down (`Zoom`), the speed slider (cycle duration) with its value
+  label (`OptionSlider`, like Zoom's), then the effect's Reset button. Changing the type or the
+  duration turns the effect on (RULES.md § *Options Toolbar*).
+- **Progress line** (`GridPreview`): drawn for a still carrying the effect, its fraction read from
+  the clock over the zoom cycle.
 
 ---
 
@@ -132,16 +146,21 @@ not only the blocking ones.
 - [x] ~~**Centre** — around the static Zoom's pan point (`Focus`), or always the cell's centre?~~ →
   **Not a choice**: the zoom multiplies the static Zoom, which already centres its pan point in the
   cell — both options coincide (see Iteration 2). Not asked.
-- [ ] **Animations tab** — the name is plural: does the tab hold only this zoom motion, or a choice
-  of animation kind (Zoom for now) leaving room for others?
-- [ ] **Export length** — how the zoom cycle combines with the grid's length (longest video loop, or
-  the Soundtrack's on a grid of stills), and what it gives alone on a grid of stills?
-- [ ] **Preview phase** — one shared clock for every cell, or the motion restarting from its starting
-  state when the effect is turned on / its speed changes?
+- [x] ~~**Animations tab** — the name is plural: does the tab hold only this zoom motion, or a
+  choice of animation kind (Zoom for now) leaving room for others?~~ → **A Type drop-down**, Zoom
+  its only entry for now
+- [x] ~~**Export length** — how the zoom cycle combines with the grid's length (longest video loop,
+  or the Soundtrack's on a grid of stills), and what it gives alone on a grid of stills?~~ → **The
+  cycle is a playing loop** in `Animation.VideoLength`: the longest loop wins, and it gives the
+  length over a soundtrack on a grid of stills
+- [x] ~~**Preview phase** — one shared clock for every cell, or the motion restarting from its
+  starting state when the effect is turned on / its speed changes?~~ → **The grid's clock**; turning
+  it on takes the motion where the clock stands
 - [ ] **Unit tests** — stay test-free like every previous workfile?
-- [ ] **Progress line** — the helper indicator now drawn under every playing cell (GLOSSARY): does
-  a still image carrying the effect show one, following the zoom cycle; and on a video, whose loop
-  does it follow?
+- [x] ~~**Progress line** — the helper indicator now drawn under every playing cell (GLOSSARY):
+  does a still image carrying the effect show one, following the zoom cycle; and on a video, whose
+  loop does it follow?~~ → **Shown on a still**, over the zoom cycle; a video keeps its own loop's
+  line
 
 ---
 
@@ -188,6 +207,15 @@ Playback** (an image arriving or deleted starts the grid over; an effect change 
 covers it; the export-length question is reframed on `VideoLength` (does a zoom cycle count as a
 playing loop, even against a soundtrack?).
 
+### Iteration 5 — 2026-09-30
+
+Second batch answered (Q&A 10, 11, 13, 14): the Animations options start with a **Type** drop-down
+(Zoom only, for now); a zoom cycle is a **playing loop** in `Animation.VideoLength` — the longest
+loop wins, and it gives the length over a soundtrack on a grid of stills; the motion follows the
+**grid's clock**, so turning the effect on catches it mid-cycle but the preview matches the export;
+a still carrying the effect shows the **progress line** over its cycle. Placement decided with it:
+the Animations tab right after Zoom. Only the unit-test question remains.
+
 ---
 
 ## Implementation Log
@@ -218,11 +246,11 @@ Questions asked by the agent during design, with user responses.
 | 7 | Speed slider: duration of one back-and-forth (1–30 s, 6 s), or abstract speed 1–10? | Duration of one back-and-forth | 2026-09-26 |
 | 8 | Easing: smooth (sine) or constant speed? | Smooth (sine) | 2026-09-26 |
 | 9 | Centre: the static Zoom's pan point, or the cell's centre? | Not asked — both options coincide (Iteration 2) | 2026-09-26 |
-| 10 | Export length with videos / Soundtrack, and on a grid of stills? | | 2026-09-26 |
-| 11 | Preview phase: shared clock, or restart on activation / speed change? | | 2026-09-26 |
+| 10 | Export length with videos / Soundtrack, and on a grid of stills? | The cycle counts as a playing loop | 2026-09-26 |
+| 11 | Preview phase: shared clock, or restart on activation / speed change? | The grid's clock | 2026-09-26 |
 | 12 | Unit tests: stay test-free? | | 2026-09-26 |
-| 13 | Animations tab: only the zoom motion, or a choice of animation kind? | | 2026-09-26 |
-| 14 | Progress line: shown on a still carrying the effect (zoom cycle)? Which loop on a video? | | 2026-09-30 |
+| 13 | Animations tab: only the zoom motion, or a choice of animation kind? | A choice of kind (Zoom for now) | 2026-09-26 |
+| 14 | Progress line: shown on a still carrying the effect (zoom cycle)? Which loop on a video? | Shown on a still, over the zoom cycle; a video keeps its own loop | 2026-09-30 |
 
 ---
 
