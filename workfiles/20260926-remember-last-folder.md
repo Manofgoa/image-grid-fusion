@@ -22,6 +22,8 @@ Components concerned:
 | `UI/MainForm.cs` — `SaveAs()` | Save dialog of the exports — PNG, MP4 or GIF. Opens on `DefaultSaveFolder()`: the folder of the first loaded image's file, else *My Pictures* |
 | `UI/MainForm.cs` — `SaveLastVideo()` | Save dialog of **Save last…** — copies the last generated MP4 / GIF. Opens on `DefaultSaveFolder()` too |
 | `UI/MainForm.cs` — `PickExplorerFolder()` | Folder dialog of the file explorer's base folder — already remembered, as that setting itself. Not concerned |
+| `UI/StartupRegistration.cs` | *Start with Windows*: a per-user value in the `HKCU\…\Run` key launching the exe hidden in the tray (`TrayApplicationContext.HiddenArgument`); also hosts `IsRegistryError`, used by `AppSettings` |
+| `RULES.md` § Global Effects | Says the Borders' color is "stored in the registry (`UI/AppSettings.cs`)" |
 | `UI/AppSettings.cs` | The app settings remembered between sessions, per user, in the **registry** (`HKCU\Software\ImageGridFusion`) — *no settings file*: border color, Twitter corners, explorer folder / panel / width / tile size / pages per load, window size. `RULES.md` § Global Effects names it as the app settings' store |
 | `README.md` | Documents the features |
 
@@ -43,9 +45,7 @@ Agreed:
 - **Export folder**: today's rule (folder of the first loaded image's file, else *My Pictures*)
   still applies **until a first export** has been made; from then on, the export dialog always opens
   on the last export folder.
-- **Storage**: a **settings file next to the `.exe`** (`AppContext.BaseDirectory`, like
-  `files.index` and `favorites.txt`), **never the registry**. Scope of the move away from the
-  registry: see Open Questions.
+- **Storage**: the app's settings file, `settings.json` next to the `.exe` — see § Settings File.
 - **Written as soon as a dialog closes** with a file picked, so a crash never loses it.
 - ***Choose a soundtrack*** has a **folder of its own**, separate from *Add images*.
 - **Save last…** **shares the exports' folder**: it opens on it and updates it.
@@ -59,6 +59,29 @@ Agreed:
 | Open — *Choose a soundtrack* (`BrowseSoundtrack`) | Last soundtrack folder | The folder of the file picked |
 | Save — export PNG / MP4 / GIF (`SaveAs`) | Last export folder | The folder of the file saved |
 | Save — **Save last…** (`SaveLastVideo`) | Last export folder (shared) | The folder of the file saved |
+
+---
+
+## Settings File
+
+Agreed — the registry in `AppSettings` was never wanted:
+
+- **Every app setting** lives in **`settings.json`** (JSON), **next to the `.exe`**
+  (`AppContext.BaseDirectory`, like `files.index` and `favorites.txt`). The app **never uses the
+  registry**.
+- **In this workfile**, `AppSettings` moves off the registry into that file — border color, Twitter
+  corners by default, explorer folder / panel open / width / tile size / pages per load, window
+  size — with the remembered folders added to it. Its readers keep their defaults and clamps; a
+  missing or unreadable file gives the defaults.
+- **Migration, once**: at the first launch without `settings.json`, the values found under
+  `HKCU\Software\ImageGridFusion` are copied into the file, then that key is deleted. This is the
+  registry's last use.
+- ***Start with Windows***: the `Run` value is replaced by a **shortcut in the user's *Startup*
+  folder** (`shell:startup`), launching the exe with the same hidden argument. The migration turns an
+  existing `Run` value into that shortcut, then deletes the value.
+- **Rule**: "settings in `settings.json` next to the `.exe`, never the registry" is written into
+  `RULES.md` at implementation, and its registry mention (§ Global Effects) is fixed; the other
+  running sessions are told.
 
 ---
 
@@ -94,15 +117,15 @@ the remembered folder and check the parent is used.
   concerned?~~ → A folder of its own
 - [x] ~~**Save last…**: shares the exports' folder, a folder of its own, or not concerned?~~ → Shares
   the exports' folder
-- [ ] The existing `AppSettings` values (border color, Twitter corners, explorer settings, window
-  size): moved to the file in this workfile, or in a workfile of their own?
-- [ ] Values already saved in the registry: migrated once into the file (then the key deleted), or
-  left behind (defaults on first launch)?
-- [ ] *Start with Windows* needs the `HKCU\…\Run` value: replaced by a shortcut in the user's
-  *Startup* folder, kept as the one exception, or removed?
-- [ ] "Never the registry" and "settings in a file next to the `.exe`": written into `RULES.md` (and
-  its registry mention fixed)?
-- [ ] File format and name: `settings.json` (JSON) next to the `.exe`?
+- [x] ~~The existing `AppSettings` values (border color, Twitter corners, explorer settings, window
+  size): moved to the file in this workfile, or in a workfile of their own?~~ → In this workfile
+- [x] ~~Values already saved in the registry: migrated once into the file (then the key deleted), or
+  left behind (defaults on first launch)?~~ → Migrated once, then the key deleted
+- [x] ~~*Start with Windows* needs the `HKCU\…\Run` value: replaced by a shortcut in the user's
+  *Startup* folder, kept as the one exception, or removed?~~ → A shortcut in the *Startup* folder
+- [x] ~~"Never the registry" and "settings in a file next to the `.exe`": written into `RULES.md` (and
+  its registry mention fixed)?~~ → Yes, at implementation
+- [x] ~~File format and name: `settings.json` (JSON) next to the `.exe`?~~ → `settings.json`
 
 ---
 
@@ -154,6 +177,13 @@ its own; **Save last…** shares the exports' folder. The move away from the reg
 scope questions: the existing `AppSettings` values, *Start with Windows* (`StartupRegistration`,
 `HKCU\…\Run`), migrating the values already saved, and recording the rule.
 
+### Iteration 6 — 2026-09-30
+
+Q&A #14–#18: every `AppSettings` value moves to `settings.json` next to the `.exe` in this workfile;
+the registry values are migrated once, then the key deleted; *Start with Windows* becomes a
+*Startup* folder shortcut (an existing `Run` value migrated the same way); the rule goes into
+`RULES.md`. New § Settings File. No open question remains.
+
 ---
 
 ## Implementation Log
@@ -166,6 +196,7 @@ says so rather than staying blank.
 | Code | | | |
 | Unit tests | 3 | 2026-09-26 | Declined — no test project, verified by hand (Q&A #10) |
 | README | | | |
+| RULES.md | | | |
 
 ---
 
@@ -188,11 +219,11 @@ Questions asked by the agent during design, with user responses.
 | 11 | Storage: the registry via `AppSettings`, or the JSON file of Q&A #7? | JSON file kept — then corrected: a file next to the `.exe`, never the registry, the registry in `AppSettings` was a mistake | 2026-09-30 |
 | 12 | *Choose a soundtrack*: own folder, shared with *Add images*, or not concerned? | Own folder | 2026-09-30 |
 | 13 | **Save last…**: exports' folder, own folder, or not concerned? | Exports' folder | 2026-09-30 |
-| 14 | Existing `AppSettings` values: moved here, or a workfile of their own? | | 2026-09-30 |
-| 15 | Registry values already saved: migrated once, or left behind? | | 2026-09-30 |
-| 16 | *Start with Windows*: *Startup* folder shortcut, registry exception, or removed? | | 2026-09-30 |
-| 17 | Rule written into `RULES.md`? | | 2026-09-30 |
-| 18 | File: `settings.json` next to the `.exe`? | | 2026-09-30 |
+| 14 | Existing `AppSettings` values: moved here, or a workfile of their own? | In this workfile | 2026-09-30 |
+| 15 | Registry values already saved: migrated once, or left behind? | Migrated once, key deleted | 2026-09-30 |
+| 16 | *Start with Windows*: *Startup* folder shortcut, registry exception, or removed? | *Startup* folder shortcut | 2026-09-30 |
+| 17 | Rule written into `RULES.md`? | Yes, `RULES.md` | 2026-09-30 |
+| 18 | File: `settings.json` next to the `.exe`? | Yes, `settings.json` | 2026-09-30 |
 
 ---
 
