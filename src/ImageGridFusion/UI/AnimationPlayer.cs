@@ -10,7 +10,8 @@ namespace ImageGridFusion.UI;
 /// it; a frozen image stands on its frame; forced still, every image stops where it stands and
 /// resumes from there, or from the page it was moved to meanwhile. Also mixes the sounds of its videos,
 /// each in step with its frames, and the soundtrack, looping on the grid's duration while the grid
-/// holds an image. Used from the UI thread only.
+/// holds an image. The grid can be started over: every image from its starting point at once, the
+/// soundtrack from its beginning. Used from the UI thread only.
 /// </summary>
 internal sealed class AnimationPlayer : IDisposable
 {
@@ -102,6 +103,30 @@ internal sealed class AnimationPlayer : IDisposable
                 playback.Offset = _clock.Elapsed - image.StartTime;
                 playback.Reader?.Reset();
             }
+        }
+    }
+
+    /// <summary>
+    /// Plays every animated image again from its starting point, all at this instant, and the
+    /// soundtrack from its beginning (RULES.md). The clock starts over, so its origin stays a whole
+    /// second for the images <see cref="Sync"/> starts later; a frozen image stays where it stands, and
+    /// the sounds follow their frames by themselves.
+    /// </summary>
+    public void Restart()
+    {
+        _clock.Restart();
+        foreach (var playback in _playbacks.Values)
+        {
+            if (playback.PausedAt is null)
+            {
+                playback.Offset = -playback.Image.StartTime;
+            }
+        }
+
+        if (_soundtrackStart is not null)
+        {
+            _soundtrackStart = TimeSpan.Zero;
+            SyncSoundtrack();
         }
     }
 
