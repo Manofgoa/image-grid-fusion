@@ -175,6 +175,7 @@ not only the blocking ones.
 - [x] ~~The selected cell while its blur bars show, same green on the same edge: line hidden (recommended), or both drawn side by side?~~ → Hidden on that cell while the bars show (Q&A #6)
 - [x] ~~A grid of stills with a soundtrack shows no line, nothing moving in the cells: show the soundtrack's own progress somewhere (Global effects row)? Recommended: out of scope.~~ → Out of scope (Q&A #7)
 - [x] ~~The remaining part of the loop: nothing (recommended, the line grows from the left edge), or a dim full-width track under it?~~ → No track, the line grows from the left edge (Q&A #8)
+- [ ] *(raised by the run, 2026-09-30)* A content whose decoding fails keeps its playback entry (`AnimationPlayer.RunAsync` swallows the error and the cell keeps its frame): its line keeps gliding over a still frame. Hide it — stand the playback where it failed — or leave it?
 
 ---
 
@@ -210,6 +211,31 @@ Go given for the code, the unit tests (not applicable, see Test Impact) and the 
 (Q&A #9). Branch: the run stays on `main`, the standing choice of this app — no worktree was
 requested.
 
+### Iteration 4 — 2026-09-30 — 🧭 Implementation choices
+
+Delivered as designed: `Animation.Progress` (pure, 0 ≤ p < 1, 0 without a loop),
+`AnimationPlayer.ProgressOf` (`null` without a playback or with `PausedAt` set), and in `GridPreview`
+the 16 ms timer, the strip invalidation, `PaintProgressLines` right after the cached grid, the line
+skipped on the cell whose blur bars show. The choices the design left open:
+
+- **Erasing a vanished line**: each tick also invalidates the strips it invalidated at the previous
+  tick (`_progressStrips`), so the line of a content just frozen, or of a stopped player, is wiped by
+  the next tick — the design only said what to invalidate for a playing cell.
+- **Timer life**: started from `SyncPlayer` and from the Frames change (`ShowFrames`), stopped by a
+  tick that finds nothing to repaint — as designed; nothing else touches it.
+- **Constants**: `ProgressLineWidth` 2, `ProgressHaloWidth` 4, `ProgressTick` 16, next to the other
+  `GridPreview` constants; the strip is the halo's band, its lower edge `SelectionWidth` above the
+  cell's bottom (`ProgressStrip`).
+- **Nothing at 0**: a line whose end rounds onto the left edge is not drawn.
+- **Checks**: the app launched with two screen recordings of the user's Videos folder and a generated
+  75-line text, its window captured twice 2 s apart with `PrintWindow`: the three lines glide (about
+  50 px in 2 s on a 640 px cell), the short video's line had started over between the two captures,
+  every line sits inside the bottom edge. The first check instance exited on its own (code 0) before
+  the capture — quit from outside the run; a second one served the captures, then was stopped.
+- **Gap found, not implemented** (scope freeze): a content whose decoding fails keeps its playback,
+  so its line keeps gliding over the frame it kept — raised as an Open Question.
+- No rule broken.
+
 ---
 
 ## Implementation Log
@@ -219,9 +245,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 3 | 2026-09-30 | `fc632ba` on `main`: `Animation.Progress`, `AnimationPlayer.ProgressOf`, the `GridPreview` timer, strips and `PaintProgressLines` |
 | Unit tests | — | 2026-09-26 | Not applicable: no test project, manual checks (Test Impact) |
-| README | | | `README.md` § Animated content and § Features, `GLOSSARY.md` (Documentation) |
+| README | 3 | 2026-09-30 | `832e96d`: README § Features sub-bullet and § Animated content *Progress line* bullet, GLOSSARY *Progress line* row |
 
 ---
 
