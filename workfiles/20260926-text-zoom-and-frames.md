@@ -71,6 +71,9 @@ Frames effect's job (it already exists), not a pan.
 - **Frames**: the page count and the scroll steps come from the zoomed page. The starting point (a
   fraction) and the reading position are kept on every re-layout, as on a cell resize today; a
   frozen text stays about where its Frames effect points.
+- **With the Crop effect on**: the zoom does **not** re-lay the text out — the kept part must keep
+  showing the same text. The text keeps its 100 % layout and zooms like an image (the focus moving
+  it again), but **sharp**: its page is rendered at the zoom's scale, like a PDF page (below).
 
 ### PDF
 
@@ -95,9 +98,9 @@ Frames effect's job (it already exists), not a pan.
   Exports keep drawing from the same bitmap, as today.
 - During a zoom **gesture** (wheel, drag), the current bitmap is scaled as today; the document is
   re-rendered once the zoom **stops changing**, so the gesture stays fluid.
-- A zoomed-in PDF page or thumbnail is **capped at 4096 px on its long side**, so a 1600 % zoom
-  does not allocate hundreds of megabytes: past that cap it is magnified again, slightly soft.
-  A text needs no cap: it is always rendered at its cell's size.
+- A zoomed-in PDF page, thumbnail, or cropped text page is **capped at 4096 px on its long side**,
+  so a 1600 % zoom does not allocate hundreds of megabytes: past that cap it is magnified again,
+  slightly soft. A re-laid-out text needs no cap: it is always rendered at its cell's size.
 - Only the static **Zoom** effect drives the re-render. The *Animated Zoom* effect
   (`workfiles/20260926-animated-zoom.md`) stays a scaled draw.
 
@@ -153,6 +156,14 @@ pages, the text always filling its cell, the focus without effect; pages are cha
 Frames effect. **PDF**: zoom out unchanged, zoom in sharper only. **Other files**: confirmed as
 designed. The 4096 px cap now concerns PDF pages and thumbnails only. No open question left.
 
+### Iteration 3 — 2026-09-30
+
+Confirmation batch (Q8, Q10–Q12), the go having been declined. Confirmed: the zoom **re-wraps** a
+text (no crop of the 100 % layout); the **4096 px cap**; the **Animated Zoom** left out. New, since
+the Crop effect landed (`workfiles/20260930-crop-effect.md`): a text with the Crop on is **not
+re-laid out** by the zoom — it zooms like an image, rendered sharp at the zoom's scale, under the
+same cap. The re-render timing (after the gesture) stays the agent's design (Q9 not asked).
+
 ---
 
 ## Implementation Log
@@ -181,12 +192,12 @@ Questions asked by the agent during design, with user responses.
 | 5 | At zoom in, do a text's frames stay the 100 % pages or follow the visible window? | "The zoom changes the amount of text shown and recomputes the number of pages. Changing page is in Frames now (it already exists)" | 2026-09-26 |
 | 6 | At zoom out, does a PDF show several pages at once or shrink as today? | Shrinks as today | 2026-09-26 |
 | 7 | Other files: sharper at zoom in, unchanged at zoom out, no frames — acceptable? | Yes | 2026-09-26 |
-| 8 | Does the zoom re-wrap the text (line breaks recomputed, no line cut) or crop it? | | |
+| 8 | Does the zoom re-wrap the text (line breaks recomputed, no line cut) or crop it? | Re-wrap | 2026-09-30 |
 | 9 | When is a document re-rendered during a zoom gesture? | Not asked (the batch was dismissed, then trimmed to four questions) — left to the agent as designed: after the gesture, the current bitmap scaled meanwhile | 2026-09-30 |
-| 10 | How far does a zoomed-in PDF page / thumbnail stay sharp (render cap)? | | |
-| 11 | Does the Animated Zoom effect also re-render a text? | | |
-| 12 | A text with the Crop effect on: does the zoom still re-lay it out, or fall back to a scaled draw? | | |
+| 10 | How far does a zoomed-in PDF page / thumbnail stay sharp (render cap)? | 4096 px | 2026-09-30 |
+| 11 | Does the Animated Zoom effect also re-render a text? | No | 2026-09-30 |
+| 12 | A text with the Crop effect on: does the zoom still re-lay it out, or fall back to a scaled draw? | Scaled draw (sharp, no re-layout) | 2026-09-30 |
 
 ---
 
-*Last updated: 2026-09-26*
+*Last updated: 2026-09-30*
