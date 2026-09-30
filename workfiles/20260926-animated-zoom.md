@@ -83,11 +83,19 @@ See *Open Questions*: what the Animations tab holds, the export length, the prev
   carries the effect (on), and only those; it stops when no cell carries it.
 - Animated sources carrying the effect are repainted by that timer as well, so the zoom advances
   between two video frames.
+- The zoom's time is read from `AnimationPlayer`'s clock, so the grid's **start over** (RULES.md
+  § *Preview Playback*: an image arriving or deleted) also brings every zoom back to its starting
+  state, at the same instant as the videos — the preview plays what an export gives. What turning
+  the effect on or changing its duration does to the phase: see *Open Questions*.
 
 ## Exports
 
 - `HasAnimation` also counts the effect.
-- **Length**: see *Open Questions* (how a zoom cycle combines with the longest video loop).
+- **Length**: decided in `Animation.VideoLength` only (RULES.md § *Video Length*), so the export,
+  the preview's soundtrack loop and the length readout follow at once. How the zoom cycle enters it:
+  see *Open Questions*.
+- **Crop**: the zoom applies to the cropped image, like the static Zoom (RULES.md § *The Crop
+  Exception*) — nothing to add, it multiplies the static Zoom after the crop.
 
 ## UI
 
@@ -169,6 +177,16 @@ length (GLOSSARY), is folded into the export-length question.
 The second batch was dismissed and asked again. Meanwhile, the rules gained the **progress line**
 (a helper indicator under every playing cell, following its loop): a new question, whether a still
 carrying the effect shows one.
+
+### Iteration 4 — 2026-09-30
+
+The rules moved on while the questions waited: **Video Length** (one definition,
+`Animation.VideoLength`, read by the export, the soundtrack loop and the length readout), **Preview
+Playback** (an image arriving or deleted starts the grid over; an effect change does not) and the
+**Crop** (zoom applies to the cropped image). The design now reads the length from
+`Animation.VideoLength` and the zoom's time from `AnimationPlayer`'s clock, so the start over
+covers it; the export-length question is reframed on `VideoLength` (does a zoom cycle count as a
+playing loop, even against a soundtrack?).
 
 ---
 
