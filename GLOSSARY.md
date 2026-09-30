@@ -30,6 +30,7 @@ each.
 | Starting point | Where the Frames effect makes an animated image start playing |
 | Frozen | An animated image the Frames effect holds on one frame, shown and exported as a still |
 | Heard | A video whose sound is in the grid's mix: it has a sound track, plays (not frozen), and its Volume effect does not mute it |
+| Start over (*repartir de zéro*) | Every animated image playing again from its starting point at one instant, the soundtrack from its beginning: what an image arriving in a cell, or one removed, does to the grid |
 | Options toolbar | The always-visible row above the effects toolbar, holding the selected tab's options and the effect's own Reset button |
 | Helper indicator (*indicateur d'aide*) | A measure or geometry aid drawn over a cell in the preview only — guides, handles, value readouts such as the zoom percentage; always fluorescent green (see RULES.md) |
 | Progress line (*ligne de progression*) | The helper indicator along the bottom edge of every playing cell: a fluorescent green line growing from the left edge as the content's loop plays, continuous, starting over at each loop; none on a frozen content, nor under the selected cell's blur bars; preview only |

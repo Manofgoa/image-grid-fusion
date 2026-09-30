@@ -141,7 +141,7 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 - Options: **Browse…**, the file's name (its whole path in a tooltip; *No file* until one is chosen), and the volume, from 0 to 200 % — above 100 %, amplified and clipped like a video's. Set before any file, the volume waits for the first one.
 - Its **Reset** forgets the file: the soundtrack off, the volume back to 100 %.
 - It follows the grid's duration, the longest loop: a shorter soundtrack **loops**, a longer one is **cut**. A grid of stills has no duration of its own: with the soundtrack on, it lasts as long as the soundtrack — **Copy** and **Save** then produce an MP4 video of the stills and the sound instead of a PNG.
-- The preview plays it while the grid holds an image, from its start when turned on, looping on the grid's duration.
+- The preview plays it while the grid holds an image, from its start when turned on — and again, with the images, whenever one arrives or is removed — looping on the grid's duration.
 
 ### Borders
 
@@ -202,7 +202,7 @@ A cell holding **multiple content** plays it, live in the preview and in the exp
 
 A single-page PDF, a text that fits its cell, a one-frame GIF and plain images stay still.
 
-- **Live preview**: every cell plays on one clock, so pages and views change together, each from the starting point of its Frames effect. Hovering a cell no longer holds it still: freezing goes through the Frames effect.
+- **Live preview**: every cell plays on one clock, so pages and views change together, each from the starting point of its Frames effect. An image arriving in a cell — by any route, in an empty cell or replacing another — and an image removed **start the grid over**: every animated image from its starting point, at the same instant, the soundtrack from its beginning, so the preview plays what the export gives; a frozen image stays on its frame; a swap or a layout change changes nothing. Hovering a cell no longer holds it still: freezing goes through the Frames effect.
 - **Progress line**: every playing cell shows, along its bottom edge just inside the selection outline, a fluorescent green line growing from the left edge as its loop plays — read from the clock at each repaint, so it glides even for a PDF or a text that only changes every second — and starting over at each loop. None on a frozen content; on the selected cell, the Blur's bars take its place while they show. In the preview only, never in the exports.
 - **Sound**: the sounds of every video with sound are **mixed**, each at its Volume — a frozen or muted video adds nothing — and the soundtrack over them when it is on (see Soundtrack). In the preview, each sound plays in step with its own video (held with it, looping with it); the exported video carries the mix, each sound from its video's starting point, looping with it, in one AAC track.
 - **Export**: as soon as a content plays (not frozen), or a soundtrack is on, **Save** writes an **MP4 video** (H.264, AAC sound) instead of a PNG, and **Copy** puts an MP4 file on the clipboard (written to `%TEMP%\ImageGridFusion`, one file per export, cleaned at the next start), pastable in Explorer, chat apps or mail. The buttons name what they produce: **Copy PNG** / **Copy MP4**, **Save PNG…** / **Save MP4…**.
