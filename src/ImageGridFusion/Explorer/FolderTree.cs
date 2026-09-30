@@ -53,6 +53,23 @@ internal sealed class FolderTree
                 && relativePath[relativeFolder.Length] is '\\' or '/'
                 && relativePath.StartsWith(relativeFolder, StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>Two relative folders A→Z, folder by folder, so a folder's subfolders follow it before its next sibling.</summary>
+    public static int ComparePaths(string a, string b)
+    {
+        string[] left = a.Split(['\\', '/']);
+        string[] right = b.Split(['\\', '/']);
+        for (int i = 0; i < Math.Min(left.Length, right.Length); i++)
+        {
+            int order = FolderListing.NameOrder.Compare(left[i], right[i]);
+            if (order != 0)
+            {
+                return order;
+            }
+        }
+
+        return left.Length.CompareTo(right.Length);
+    }
+
     /// <summary>The parent of a relative folder; the base folder ("") for a top-level one.</summary>
     public static string Parent(string relativeFolder) => Path.GetDirectoryName(relativeFolder) ?? "";
 }
