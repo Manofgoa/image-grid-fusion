@@ -47,8 +47,9 @@ Relevant components:
 - A new `ImageLook.Angle` (−180…+180, derived: `Rotation + FineAngle` brought into that range) and
   `ImageLook.WithAngle(int degrees)` replace `WithRotation` / `WithFineAngle` on the UI side.
 - `WithAngle` crosses a quarter-turn boundary through `Rotate(quarterTurns)`, as the quarter-turn
-  buttons did: the flips swap axis and the focus turns with the image, so the image seen on screen
-  turns continuously — no jump when the slider passes ±45°, ±135°.
+  buttons did: the flips swap axis, the focus and the Crop's kept part (`CropEffect.QuarterTurned`)
+  turn with the image, so the image seen on screen turns continuously — no jump when the slider
+  passes ±45°, ±135°.
 - At ±45° exactly, the nearer quarter is the current one (no flip-flop around the boundary).
 - `KeptRotation`, `TurnOn` / `TurnOff` / `Reset` keep working on (`Rotation`, `FineAngle`), unchanged.
 - `MaxFineAngle` stays (internal bound of the decomposition); the UI no longer uses it.
@@ -117,6 +118,14 @@ user asked what the slider's track is.
 The page step is 15° (Q&A #7): a click on the bar beside the thumb, and PageUp / PageDown, jump by
 15°. No open question remains.
 
+### Iteration 4 — 2026-09-30
+
+Design re-checked against the code, after the Crop effect landed (`workfiles/20260930-crop-effect.md`):
+`Rotate(quarterTurns)` now also quarter-turns the crop, so `WithAngle`, going through it, keeps the
+kept part on the same content; the Crop's consumers read `ImageLook.Shown`, which the quarter +
+fine decomposition leaves unchanged. The rest of the rotation code (quarter-turn buttons, fine-angle
+slider, `WithRotation` / `WithFineAngle`) is as the design describes. No open question.
+
 ---
 
 ## Implementation Log
@@ -146,7 +155,9 @@ Questions asked by the agent during design, with user responses.
 | 6 | Width of the slider: keep 160 px or widen it? | Widen to 360 px | 2026-09-26 |
 | 7 | Page step (a click on the slider's bar beside the thumb, PageUp / PageDown): 15°, 45° or 90°? | 15° | 2026-09-26 |
 | 8 | Go for the implementation? | No — the gate holds | 2026-09-26 |
+| 9 | Go for the implementation? | Dismissed — asked again | 2026-09-30 |
+| 10 | Go for the implementation? | | |
 
 ---
 
-*Last updated: 2026-09-26*
+*Last updated: 2026-09-30*
