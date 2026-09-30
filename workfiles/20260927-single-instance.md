@@ -41,9 +41,11 @@ for the startup files), README § Tray & startup.
 |---|---|
 | Visible, in front | Nothing more than loading its files, if any |
 | Behind other windows | Brings it to the front |
-| Minimized | Restores it and brings it to the front |
+| Minimized | Restores it — **maximized again if it was maximized** before being minimized — and brings it to the front |
 | Hidden in the tray (closed) | Shows it and brings it to the front |
 
+- A second launch carrying **`--tray`** (Windows start-up while the app already runs) **leaves the
+  running instance as it is**: nothing shown, nothing loaded.
 - It then **exits at once**: no window, no tray icon, not even briefly.
 - **Its files** are handed over as full paths (relative ones resolved against the second launch's
   own working directory) and loaded with `AddFilesAsync`, exactly like a drop on the window:
@@ -55,9 +57,17 @@ for the startup files), README § Tray & startup.
 ### The Test Bypass Argument
 
 - Proposed name: **`--new-instance`**.
-- A launch with it starts a new instance even when one already runs — see Open Questions for how
-  it interacts with the lock.
+- A launch with it starts a new instance even when one already runs.
+- That instance is **fully independent**: it takes no lock and answers no second launch. The
+  "normal" instance stays the one later launches bring back; with none running, the next normal
+  launch starts one, whatever `--new-instance` instances run beside it.
 - It is not a file to load (filtered out like `--tray`).
+
+### Restoring a Minimized Window
+
+- The tray click (`TrayApplicationContext.ShowForm`) and the second launch bring the window back
+  the same way: a window minimized while maximized comes back **maximized**, one minimized at its
+  normal size comes back at that size (today the tray click always restores the normal size).
 
 ### Technical Approach (proposed)
 
@@ -77,7 +87,9 @@ for the startup files), README § Tray & startup.
 - README § Tray & startup: the line *"Several instances can run side by side, each with its own
   window and tray icon; the last window closed sets the size remembered."* is replaced by the
   single-instance behaviour and the `--new-instance` argument.
-- Where the agent-side instruction lives (when to launch with `--new-instance`): see Open Questions.
+- The app's **RULES.md**, a new § *Launching for Tests*: the app is single-instance per exe
+  location; when the agent needs its own instance while one of the same exe runs (the user's,
+  which it must not disturb nor can rebuild over), it launches with `--new-instance`.
 
 ---
 
@@ -98,14 +110,11 @@ verified by hand.
 - [x] ~~Files given to a second launch?~~ → Loaded by the running instance, like a drop
 - [x] ~~Instance hidden in the tray?~~ → Shown and brought to the front, like minimized
 - [x] ~~Two copies of the exe?~~ → One instance per exe location
-- [ ] An instance started with `--new-instance`: fully independent (takes no lock, answers no
-      second launch), or does it become the instance later normal launches bring back?
-- [ ] Where is the agent-side instruction documented (README only, the app's RULES.md, the shared
-      mini-apps CLAUDE.md § Launch After Delivery)?
-- [ ] A second launch carrying `--tray` (Windows start-up while the app already runs): does it
-      leave the running instance as it is, or show its window?
-- [ ] A window minimized while maximized: restored maximized, or at its normal size (what the tray
-      click does today)?
+- [x] ~~An instance started with `--new-instance`: fully independent, or the instance later normal
+      launches bring back?~~ → Fully independent
+- [x] ~~Where is the agent-side instruction documented?~~ → README + the app's RULES.md
+- [x] ~~A second launch carrying `--tray`?~~ → Leaves the running instance as it is
+- [x] ~~A window minimized while maximized?~~ → Restored maximized, the tray click too
 
 ---
 
@@ -124,6 +133,14 @@ in the order the requests were made.
   the normal one cannot be rebuilt and relaunched — proposed as `--new-instance`, documented.
 - Proposed technique: named mutex keyed on the exe path + named pipe hand-over.
 - Remaining questions listed above.
+
+### Iteration 2 — 2026-09-30
+
+- `--new-instance` instances are fully independent of the lock.
+- Agent-side documentation in the app's RULES.md, user-side in the README.
+- A second launch with `--tray` leaves the running instance alone.
+- A window minimized while maximized comes back maximized — the tray click included, a change of
+  today's behaviour.
 
 ---
 
@@ -151,11 +168,11 @@ Questions asked by the agent during design, with user responses.
 | 3 | Two copies of the exe: one instance for all, or one per location? | One per location | 2026-09-27 |
 | 4 | Subject straightforward or tricky / long? | Straightforward | 2026-09-27 |
 | 5 | *(user, unprompted)* | Add a launch argument starting a specific instance for tests, when the normal one cannot be rebuilt and relaunched; document it | 2026-09-27 |
-| 6 | `--new-instance` instance: fully independent, or the one later launches bring back? | | 2026-09-27 |
-| 7 | Where is the agent-side instruction documented? | | 2026-09-27 |
-| 8 | Second launch with `--tray`: leave the running instance as is, or show it? | | 2026-09-27 |
-| 9 | Window minimized while maximized: restored maximized or normal? | | 2026-09-27 |
+| 6 | `--new-instance` instance: fully independent, or the one later launches bring back? | Fully independent | 2026-09-27 |
+| 7 | Where is the agent-side instruction documented? | README + the app's RULES.md | 2026-09-27 |
+| 8 | Second launch with `--tray`: leave the running instance as is, or show it? | Leave it as is | 2026-09-27 |
+| 9 | Window minimized while maximized: restored maximized or normal? | Maximized, like before | 2026-09-27 |
 
 ---
 
-*Last updated: 2026-09-27*
+*Last updated: 2026-09-30*
