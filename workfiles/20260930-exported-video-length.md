@@ -72,8 +72,12 @@ One definition, the one the export applies today:
 - **Always visible**, never disabled, not locked while exporting, and **a click on it does
   nothing**: a readout, not an action. The export keeps the length it started with; the readout
   keeps following the grid.
-- Vertically centred on the buttons (`Anchor = Left` in the flow panel, like the status label);
-  a **minimum width** of `⏱ 000.0 s`, so a length under 1000 s never moves its neighbours.
+- Vertically centred on the buttons (`Anchor = Left` in the flow panel, like the status label),
+  the text **left-aligned** so the glyph stays put after the gear while the digits grow, a 6 px
+  margin before Copy; a **minimum width** of `⏱ 000.0 s`, so a length under 1000 s never moves
+  its neighbours.
+- The decimal separator follows the **current culture** (`31,0 s` in French), as the export
+  summaries' `Seconds` helper already does: the two agree to the digit.
 
 ### Tooltip
 
@@ -95,11 +99,12 @@ On the shared `_toolTip`, several lines, refreshed with the text:
 
 - Computed in `UpdateButtons()`, right where the captions switch between PNG and MP4, from the
   preview's images and the active soundtrack: the readout and the captions can never disagree.
-- Every route that changes what plays already reaches `UpdateButtons` (the captions depend on
-  it): images, layout, the selected cell's effects (Frames' freeze goes through the options
-  toolbar, on the selected cell), the soundtrack's file, level and toggle, the global Reset,
-  *Clear all*, the exports' begin and end. The run checks the one route acting on **non-selected
-  cells** — the effects toolbar's Reset — and wires it if it does not.
+- Every route that changes what plays reaches `UpdateButtons` (the captions depend on it): images,
+  layout, the selected cell's effects (Frames' freeze goes through the options toolbar, on the
+  selected cell), the soundtrack's file, level and toggle, the global Reset, *Clear all*, the
+  exports' begin and end. The effects toolbar's Reset acts on the **selected cell only**
+  (`MainForm.ResetEffects` → `GridPreview.SetSelectedLook`), raising `SelectedImageChanged` like
+  any option: nothing to wire.
 
 ---
 
@@ -183,6 +188,27 @@ seconds format whatever the length, and **does nothing when clicked**. Design co
 Go given for the code, the unit tests (not applicable: no test project) and the documentation.
 Branch: `main`, the repository's standing choice (every run lands on `main`; no worktree asked).
 
+### Iteration 4 — 2026-09-30 — 🧭 Implementation choices
+
+Delivered as designed, with these choices the design left open:
+
+- **The preview's soundtrack loop reads the shared rule**: `AnimationPlayer.SyncSoundtrack` calls
+  `Animation.VideoLength(_images, soundtrack)` in place of `soundtrack.LoopIn(GridLength(...))` —
+  the same value, from the one place.
+- **Nothing wired for the effects toolbar's Reset**: it acts on the selected cell only and raises
+  `SelectedImageChanged`, so `UpdateButtons` — and the readout — already follow it.
+- **Text left-aligned**, the clock glyph anchored after the gear, a 6 px margin before Copy.
+- **Plays N times**: the ratio rounded to one decimal *before* the *once* test (`plays once` from
+  0.95 to 1.04), then written with at most one decimal — `plays 2 times`, `plays 3.1 times`.
+- **Decimal separator of the current culture** (`31,0 s` in French), as the summaries: not
+  forced to a dot, so the readout and the status line's summary keep agreeing.
+- **The check instance became the delivery instance**: two videos had been dropped into it and
+  its window hidden to the tray before the checks ended; it was kept rather than replaced by a
+  fresh launch (⚠️ *Launch After Delivery*, `mini-apps/CLAUDE.md`), the build being the delivered
+  one.
+- Self-check on the launched app: `⏱ 31,0 s` shown between ⚙ and *Copy MP4* with two videos in
+  the grid; build clean, 0 warning.
+
 ---
 
 ## Implementation Log
@@ -192,9 +218,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable: no test project |
-| README | | | With `GLOSSARY.md` and `RULES.md` |
+| Code | 3 | 2026-09-30 | `928c4c1` the shared rule `Animation.VideoLength`; `987def9` the length readout |
+| Unit tests | — | — | Not applicable: no test project |
+| README | 3 | 2026-09-30 | `83553f0`, with `GLOSSARY.md` (*Video length*, *Length readout*) and `RULES.md` (§ Video Length) |
 
 ---
 
