@@ -88,7 +88,7 @@ internal sealed class GridPreview : Control
     private Point _panPoint;
     private readonly PanMagnet _panX = new();
     private readonly PanMagnet _panY = new();
-    private bool _showsBlurBars;
+    private ImageEffect? _barsEffect;
     private BarSide? _hoveredBar;
     private BarSide? _draggedBar;
     private int _barGrab;
@@ -231,18 +231,19 @@ internal sealed class GridPreview : Control
     public SourceImage? SelectedImage => _selected >= 0 && _selected < _images.Count ? _images[_selected] : null;
 
     /// <summary>
-    /// Draws the bars of the blur on the selected cell, and lets them be dragged: set while the blur is
-    /// the selected effect of the effects toolbar.
+    /// The effect whose bars the selected cell shows and lets be dragged — the blur, or the crop in its
+    /// edit view — set while that effect is the selected one of the effects toolbar and is on; <c>null</c>
+    /// for none.
     /// </summary>
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public bool ShowsBlurBars
+    public ImageEffect? BarsEffect
     {
-        get => _showsBlurBars;
+        get => _barsEffect;
         set
         {
-            if (value != _showsBlurBars)
+            if (value != _barsEffect)
             {
-                _showsBlurBars = value;
+                _barsEffect = value;
                 _hoveredBar = null;
                 Invalidate();
             }
@@ -465,6 +466,11 @@ internal sealed class GridPreview : Control
         g.DrawImageUnscaled(_cache, canvas.Location);
 
         var cells = CellBounds();
+        if (!_dragging && _barsEffect == ImageEffect.Crop && ShownBars(_selected) is { } crop)
+        {
+            PaintCropEdit(g, canvas, cells[_selected], crop);
+        }
+
         g.SmoothingMode = SmoothingMode.AntiAlias;
 
         // Under the interaction feedback, like the grid itself: a dragged cell dims its line too.
@@ -497,9 +503,9 @@ internal sealed class GridPreview : Control
         // Under the blur bars, which keep their click priority over it.
         PaintSourceName(g);
 
-        if (!_dragging && ShownBlur(_selected) is { } blur && _selected < cells.Length)
+        if (!_dragging && ShownBars(_selected) is { } bars)
         {
-            PaintBlurBars(g, cells[_selected], blur);
+            PaintBars(g, cells[_selected], bars);
         }
 
         if (_panning && !_dragging && _pressed >= 0 && _pressed < cells.Length)
@@ -565,10 +571,10 @@ internal sealed class GridPreview : Control
             return;
         }
 
-        // The bars of the blur come before the handle and the pan, on their own reach only.
-        if (ShownBlur(index) is { } blur && BarAt(CellBounds()[index], blur, e.Location) is { } bar)
+        // The bars of the blur, or of the crop, come before the handle and the pan, on their own reach only.
+        if (ShownBars(index) is { } bars && BarAt(CellBounds()[index], bars, e.Location) is { } bar)
         {
-            var area = blur.Area(CellBounds()[index]);
+            var area = bars.Area;
             _draggedBar = bar;
             _barGrab = bar switch
             {
@@ -1022,7 +1028,7 @@ internal sealed class GridPreview : Control
         bool onHandle = actions && HandleBounds(CellBounds()[hovered]).Contains(location);
         var onSource = SourceHitAt(location);
         bool onControl = onClose || onDropZone || onCanvas || onSource.Icon;
-        var onBar = actions && !onControl && ShownBlur(hovered) is { } blur ? BarAt(CellBounds()[hovered], blur, location) : null;
+        var onBar = actions && !onControl && ShownBars(hovered) is { } bars ? BarAt(CellBounds()[hovered], bars, location) : null;
         var onSeparator = actions && !onControl && onBar is null ? SeparatorAt(location) : null;
         if (hovered == _hovered && onClose == _hoveringClose && onCanvas == _hoveringCanvas && onDropZone == _hoveringDropZone
             && onHandle == _hoveringHandle && onBar == _hoveredBar && onSeparator?.Vertical == _hoveredSeparator?.Vertical
@@ -1075,13 +1081,16 @@ internal sealed class GridPreview : Control
 
     /// <summary>
     /// Size an animated frame is decoded at to be drawn about 1:1: the cell, in the frame's own
-    /// orientation, enlarged by a zoom in.
+    /// orientation, enlarged by a zoom in, and by a crop keeping only a part of the frame.
     /// </summary>
     private static Size FrameDisplaySize(SourceImage image, Rectangle cell)
     {
         var size = image.Look.Oriented(cell.Size);
         double zoom = Math.Max(1, image.Look.Zoom);
-        return new Size((int)Math.Ceiling(size.Width * zoom), (int)Math.Ceiling(size.Height * zoom));
+        var crop = image.Look.Crop;
+        double width = size.Width * zoom / (crop is null ? 1 : Math.Max(0.01, crop.Right - crop.Left));
+        double height = size.Height * zoom / (crop is null ? 1 : Math.Max(0.01, crop.Bottom - crop.Top));
+        return new Size((int)Math.Ceiling(width), (int)Math.Ceiling(height));
     }
 
     /// <summary>
@@ -1661,19 +1670,48 @@ internal sealed class GridPreview : Control
         SelectedImageChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>The blur whose bars cell <paramref name="index"/> shows: only the selected one, while the blur is selected and the grid is not locked.</summary>
-    private BlurEffect? ShownBlur(int index) =>
-        _showsBlurBars && !_locked && index >= 0 && index == _selected && index < _images.Count ? _images[index].Look.Blur : null;
+    /// <summary>
+    /// The bars cell <paramref name="index"/> shows: only the selected one, while the blur or the crop is
+    /// the selected effect and is on, and the grid is not locked.
+    /// </summary>
+    private Bars? ShownBars(int index)
+    {
+        var cells = CellBounds();
+        if (_barsEffect is null || _locked || index < 0 || index != _selected || index >= _images.Count || index >= cells.Length)
+        {
+            return null;
+        }
+
+        var cell = cells[index];
+        var image = _images[index];
+        switch (_barsEffect)
+        {
+            case ImageEffect.Blur when image.Look.Blur is { } blur:
+                return new Bars(blur.Area(cell), cell);
+            case ImageEffect.Crop when image.Look.Crop is { } crop:
+                var span = Rectangle.Round(Compositor.UncroppedBounds(image.Look.Oriented(image.Bitmap.Size), cell));
+                var seen = crop.Seen(image.Look);
+                return new Bars(
+                    Rectangle.FromLTRB(
+                        span.X + (int)Math.Round(seen.Left * span.Width),
+                        span.Y + (int)Math.Round(seen.Top * span.Height),
+                        span.X + (int)Math.Round(seen.Right * span.Width),
+                        span.Y + (int)Math.Round(seen.Bottom * span.Height)),
+                    span);
+            default:
+                return null;
+        }
+    }
 
     /// <summary>The bar within reach of <paramref name="location"/>, the nearest one when several are.</summary>
-    private BarSide? BarAt(Rectangle cell, BlurEffect blur, Point location)
+    private BarSide? BarAt(Rectangle cell, Bars bars, Point location)
     {
         if (!cell.Contains(location))
         {
             return null;
         }
 
-        var area = blur.Area(cell);
+        var area = bars.Area;
         int reach = LogicalToDeviceUnits(BarReach);
         BarSide? nearest = null;
         int best = int.MaxValue;
@@ -1698,28 +1736,37 @@ internal sealed class GridPreview : Control
     private static Cursor BarCursor(BarSide side) => side is BarSide.Left or BarSide.Right ? Cursors.SizeWE : Cursors.SizeNS;
 
     /// <summary>
-    /// Moves the bar being dragged along its own axis. Within <see cref="BarSnap"/> of its edge of the
-    /// cell it lands exactly on it, so no strip of a pixel or two stays sharp there.
+    /// Moves the bar being dragged along its own axis. Within <see cref="BarSnap"/> of its edge — of the
+    /// cell for the blur, of the image for the crop — it lands exactly on it, so no strip of a pixel or
+    /// two is left there.
     /// </summary>
     private void DragBar(BarSide side, Point location)
     {
-        var cells = CellBounds();
-        if (_selected < 0 || _selected >= cells.Length || _images[_selected].Look.Blur is not { } blur)
+        if (ShownBars(_selected) is not { } bars)
         {
             return;
         }
 
-        var cell = cells[_selected];
+        var span = bars.Span;
         bool vertical = side is BarSide.Left or BarSide.Right;
-        int length = vertical ? cell.Width : cell.Height;
-        int offset = (vertical ? location.X - cell.X : location.Y - cell.Y) + _barGrab;
+        int length = Math.Max(1, vertical ? span.Width : span.Height);
+        int offset = (vertical ? location.X - span.X : location.Y - span.Y) + _barGrab;
         int snap = LogicalToDeviceUnits(BarSnap);
         double fraction = side is BarSide.Left or BarSide.Top
             ? (offset <= snap ? 0 : offset / (double)length)
             : (length - offset <= snap ? 1 : offset / (double)length);
         double gap = LogicalToDeviceUnits(BarMinGap) / (double)length;
         Cursor = BarCursor(side);
-        SetLook(_selected, _images[_selected].Look.WithBlur(blur.WithSide(side, fraction, gap)));
+        var image = _images[_selected];
+        var look = image.Look;
+        if (_barsEffect == ImageEffect.Crop && look.Crop is { } crop)
+        {
+            SetLook(_selected, look.WithCrop(crop.WithSeenSide(side, fraction, gap, look, image.Bitmap.Size)));
+        }
+        else if (look.Blur is { } blur)
+        {
+            SetLook(_selected, look.WithBlur(blur.WithSide(side, fraction, gap)));
+        }
     }
 
     /// <summary>
@@ -1886,13 +1933,40 @@ internal sealed class GridPreview : Control
     }
 
     /// <summary>
-    /// The four bars as guides across the whole cell, fluorescent green and outlined so they show on
-    /// any image, with a grip at the middle of each side of the sharp rectangle; the grip turns white
-    /// while hovered or dragged.
+    /// The crop's edit view over the selected cell, in place of its cropped image: the whole image on the
+    /// background the cropped one gets, live, and the part cut off dimmed — interaction feedback, not a
+    /// helper indicator.
     /// </summary>
-    private void PaintBlurBars(Graphics g, Rectangle cell, BlurEffect blur)
+    private void PaintCropEdit(Graphics g, Rectangle canvas, Rectangle cell, Bars bars)
     {
-        var area = blur.Area(cell);
+        var image = _images[_selected];
+        var state = g.Save();
+        g.SetClip(cell, CombineMode.Intersect);
+        PaintCheckerboard(g, canvas);
+        g.TranslateTransform(canvas.X, canvas.Y);
+        var local = cell;
+        local.Offset(-canvas.X, -canvas.Y);
+        Compositor.DrawUncropped(g, new Frame(image.Bitmap, image.BandColor, image.Look), local);
+        DrawBordersOver(g, local, canvas.Size);
+        g.Restore(state);
+
+        state = g.Save();
+        g.SetClip(Rectangle.Intersect(bars.Span, cell));
+        g.SetClip(bars.Area, CombineMode.Exclude);
+        using var dim = new SolidBrush(Color.FromArgb(150, 0, 0, 0));
+        g.FillRectangle(dim, bars.Span);
+        g.Restore(state);
+    }
+
+    /// <summary>
+    /// The four bars as guides across the cell for the blur, across the whole image for the crop,
+    /// fluorescent green and outlined so they show on any image, with a grip at the middle of each side
+    /// of the rectangle they frame; the grip turns white while hovered or dragged.
+    /// </summary>
+    private void PaintBars(Graphics g, Rectangle cell, Bars bars)
+    {
+        var area = bars.Area;
+        var span = bars.Span;
 
         // A bar on the right or bottom side sits on the last sharp pixel, inside the cell.
         int left = area.Left;
@@ -1910,10 +1984,10 @@ internal sealed class GridPreview : Control
         {
             foreach (var pen in new[] { outline, line })
             {
-                g.DrawLine(pen, left, cell.Top, left, cell.Bottom);
-                g.DrawLine(pen, right, cell.Top, right, cell.Bottom);
-                g.DrawLine(pen, cell.Left, top, cell.Right, top);
-                g.DrawLine(pen, cell.Left, bottom, cell.Right, bottom);
+                g.DrawLine(pen, left, span.Top, left, span.Bottom);
+                g.DrawLine(pen, right, span.Top, right, span.Bottom);
+                g.DrawLine(pen, span.Left, top, span.Right, top);
+                g.DrawLine(pen, span.Left, bottom, span.Right, bottom);
             }
         }
 
@@ -1940,7 +2014,7 @@ internal sealed class GridPreview : Control
         using var line = new Pen(HelperColor, LogicalToDeviceUnits(ProgressLineWidth));
         for (int i = 0; i < cells.Length && i < _images.Count; i++)
         {
-            if (!_dragging && ShownBlur(i) is not null)
+            if (!_dragging && ShownBars(i) is not null)
             {
                 continue;
             }
@@ -2026,6 +2100,9 @@ internal sealed class GridPreview : Control
 
         g.Restore(state);
     }
+
+    /// <summary>The rectangle the bars frame, and the one they run across: the cell for the blur, the whole image of the edit view for the crop.</summary>
+    private readonly record struct Bars(Rectangle Area, Rectangle Span);
 
     private void PaintBarGrip(Graphics g, BarSide side, Rectangle bounds)
     {
@@ -2191,7 +2268,7 @@ internal sealed class GridPreview : Control
     {
         using var path = SourceNamePath(out var cell, out var text, out var icon);
         if (path is null || SelectedImage?.FilePath is null || !cell.Contains(location)
-            || ShownBlur(_selected) is { } blur && BarAt(cell, blur, location) is not null)
+            || ShownBars(_selected) is { } bars && BarAt(cell, bars, location) is not null)
         {
             return (false, false);
         }

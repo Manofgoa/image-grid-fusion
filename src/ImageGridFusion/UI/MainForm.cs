@@ -2194,7 +2194,9 @@ internal sealed class MainForm : Form
 
         _effectResetButton.Visible = _selectedEffect is not null;
         _effectResetButton.Enabled = usable && ResetLook(_selectedEffect) != look;
-        _preview.ShowsBlurBars = _selectedEffect == ImageEffect.Blur && look?.IsActive(ImageEffect.Blur) == true;
+        _preview.BarsEffect = _selectedEffect is ImageEffect.Blur or ImageEffect.Crop && look?.IsActive(_selectedEffect.Value) == true
+            ? _selectedEffect
+            : null;
     }
 
     /// <summary>A click on a global tab shows its options, and activates nothing.</summary>
