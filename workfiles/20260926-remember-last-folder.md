@@ -17,15 +17,15 @@ Components concerned:
 
 | Component | Role today |
 |---|---|
-| `UI/MainForm.cs` — `PickFiles()` (l.459) | The only **open** dialog (`OpenFileDialog`, *Add images*, multiselect): every kind of content a cell accepts — images, videos, PDF, text. Sets no `InitialDirectory` |
-| `UI/MainForm.cs` — `Save()` (l.666), `DefaultSaveFolder()` (l.911) | The only **save** dialog (`SaveFileDialog`), PNG or MP4 export. Opens on the folder of the first loaded image's file, else *My Pictures* |
-| `UI/StartupRegistration.cs` | The only per-user state the app writes today: the *Start with Windows* registry value (`HKCU\…\Run`). Nothing else survives a restart |
+| `UI/MainForm.cs` — `PickFiles()` | Open dialog *Add images* (multiselect): every kind of content a cell accepts — images, videos, PDF, text. Sets no `InitialDirectory` |
+| `UI/MainForm.cs` — `BrowseSoundtrack()` | Open dialog *Choose a soundtrack* (audio or video file). Sets no `InitialDirectory` |
+| `UI/MainForm.cs` — `SaveAs()` | Save dialog of the exports — PNG, MP4 or GIF. Opens on `DefaultSaveFolder()`: the folder of the first loaded image's file, else *My Pictures* |
+| `UI/MainForm.cs` — `SaveLastVideo()` | Save dialog of **Save last…** — copies the last generated MP4 / GIF. Opens on `DefaultSaveFolder()` too |
+| `UI/MainForm.cs` — `PickExplorerFolder()` | Folder dialog of the file explorer's base folder — already remembered, as that setting itself. Not concerned |
+| `UI/AppSettings.cs` | The app settings remembered between sessions, per user, in the **registry** (`HKCU\Software\ImageGridFusion`) — *no settings file*: border color, Twitter corners, explorer folder / panel / width / tile size / pages per load, window size. `RULES.md` § Global Effects names it as the app settings' store |
 | `README.md` | Documents the features |
 
-There is no settings store yet (no `Properties.Settings`, no settings file): this work creates the
-first one. Project: WinForms, `net10.0-windows10.0.19041.0`.
-
-Related: `workfiles/20260925-soundtrack.md` (design stage) may add an audio picker later.
+Project: WinForms, `net10.0-windows10.0.19041.0`.
 
 ---
 
@@ -83,6 +83,11 @@ the remembered folder and check the parent is used.
   folder, or the dialog's default folder?~~ → Nearest existing parent, else the dialog's default
 - [x] ~~Unit tests: none, verified by hand like every previous workfile, or a first test
   project?~~ → None, verified by hand
+- [ ] Storage, now that `UI/AppSettings.cs` keeps the app settings in the registry: move to it, or
+  keep the JSON file decided in Q&A #7?
+- [ ] *Choose a soundtrack*: a remembered folder of its own, shared with *Add images*, or not
+  concerned?
+- [ ] **Save last…**: shares the exports' folder, a folder of its own, or not concerned?
 
 ---
 
@@ -111,6 +116,19 @@ tests.
 
 Q&A #9–#10: a missing remembered folder falls back to its nearest existing parent, else to the
 dialog's default folder; no unit tests, verified by hand. No open question remains.
+
+### Iteration 4 — 2026-09-30
+
+The code moved on since the design (other sessions), before any go: re-checked before asking it.
+
+- A settings store now exists: `UI/AppSettings.cs`, in the **registry**, stated "no settings file",
+  and named by `RULES.md` as the app settings' store — it contradicts the JSON decision (Q&A #7).
+- A second open dialog: *Choose a soundtrack* (`BrowseSoundtrack`).
+- A second save dialog: **Save last…** (`SaveLastVideo`), opening on `DefaultSaveFolder()` like the
+  exports.
+- The explorer's base-folder dialog is already remembered (it is that setting): not concerned.
+
+Three questions reopened or added.
 
 ---
 
@@ -143,7 +161,10 @@ Questions asked by the agent during design, with user responses.
 | 8 | Written when a dialog closes, or when the app closes? | When the dialog closes | 2026-09-26 |
 | 9 | Remembered folder missing: nearest existing parent, or default folder? | Nearest existing parent | 2026-09-26 |
 | 10 | Unit tests: none, or a first test project? | None, verified by hand | 2026-09-26 |
+| 11 | Storage: the registry via `AppSettings`, or the JSON file of Q&A #7? | | 2026-09-30 |
+| 12 | *Choose a soundtrack*: own folder, shared with *Add images*, or not concerned? | | 2026-09-30 |
+| 13 | **Save last…**: exports' folder, own folder, or not concerned? | | 2026-09-30 |
 
 ---
 
-*Last updated: 2026-09-26*
+*Last updated: 2026-09-30*
