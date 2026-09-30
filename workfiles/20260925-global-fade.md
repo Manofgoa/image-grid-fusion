@@ -31,11 +31,22 @@ Fade to it.
 The Fade follows `RULES.md` § Global Effects Toolbar as it stands: a **tab** of the global effects
 toolbar, with its **activation checkbox**, its options in the **global options toolbar** below.
 
-- **Tab**: **☑ Fade** — its place among Soundtrack and Borders: see Open Question 17.
-- **Options**: **one duration**, applied to the fade-in and the fade-out alike — a slider from
-  **0.1 s to 5 s by 0.1 s**, **1 s** by default, with its value shown (`1.0 s`); a **curve**
-  choice, **Squared** (default — gain x², heard as a steady rise) or **Linear**; the options
-  toolbar ends with the Fade's own **Reset**. Their layout: see Open Question 20.
+- **Tab**: **☑ Fade**, between **Soundtrack** and **Borders** — the two sound effects side by
+  side (`GlobalEffect { Soundtrack, Fade, Borders }`). Named "Fade", not "Sound fade": a later
+  image fade joins it as options of the same tab.
+- **Options**, left to right in the global options toolbar:
+  - **Duration**: one duration, applied to the fade-in and the fade-out alike — a slider from
+    **0.1 s to 5 s by 0.1 s**, **1 s** by default, its value shown (`1.0 s`).
+  - **Curve**: two exclusive **icon buttons drawing the shape of the fade** (rise, hold, fall),
+    their name in a tooltip — **Squared** (default — gain x², heard as a steady rise) and
+    **Linear**. The pressed one is the curve in use.
+  - The Fade's own **Reset**, ending the toolbar.
+
+```
+│ Duration [──●──────] 1.0 s   [╭─╮][/‾\]                                     [↻ Reset] │
+│ Global effects  ☑ Soundtrack │ ☑ Fade │ ☐ Borders                              [Reset] │
+│ [Clear all]  status line …                                    [Copy] [Save] [⚙]      │
+```
 - Everything else comes from the rule: settings **kept when off** and shown in the options,
   **acting on an option turns it on**, the tabs' **Reset** and **Clear all** bring back the
   initial state (off, 1 s, Squared), enabled with no cell selected, **locked while exporting**.
@@ -67,8 +78,7 @@ toolbar, with its **activation checkbox**, its options in the **global options t
 ## Rule and Glossary
 
 - `RULES.md` § Global Effects already holds the distinction table and the toolbar's rules; the
-  Fade needs **no new rule**. Whether § Effects is still renamed § Cell Effects (Q&A 15): see Open
-  Question 18.
+  Fade needs **no new rule**, and § Effects **keeps its name** (the rename of Q&A 15 is dropped).
 - `GLOSSARY.md`: **Fade** added to the *Global effect* list, and a **Fade** entry — the global
   effect fading the grid's sound in at the start and out at the end, over one duration, on a
   Squared or Linear curve.
@@ -123,11 +133,11 @@ created. The fade's envelope stays a pure function, so a later test project can 
 - [x] ~~14. **What fades** — the whole mix (every heard video, and the soundtrack once it exists), or the videos only?~~ → The whole mix
 - [x] ~~15. **Not applicable** — Fade disabled when **nothing is heard** (every video muted, frozen or silent), or only when no video has a sound track?~~ → When nothing is heard
 - [x] ~~16. **Reset** — a *Reset* button for the Fade in the row, like the options row's per-effect Reset, or none (Clear all only)?~~ → Yes, ending the row
-- [ ] 17. **Tab position** — where does the Fade tab go among Soundtrack and Borders?
-- [ ] 18. **Rename** — the rule landed without renaming § Effects: is § Effects still renamed § Cell Effects (Q&A 15), or is the rename dropped?
-- [ ] 19. **Tab name** — "Fade", the later image fade joining as options of the same tab, or "Sound fade", a later image fade getting its own tab?
-- [ ] 20. **Options layout** — how the duration and the curve are laid out in the global options toolbar?
-- [x] ~~12. **Status of the rule** — does the new rule go into `RULES.md` as a new § Global Effects next to § Effects, with § Effects renamed "Cell effects"?~~ → Yes: new § Global Effects, § Effects renamed § Cell Effects
+- [x] ~~17. **Tab position** — where does the Fade tab go among Soundtrack and Borders?~~ → Between Soundtrack and Borders
+- [x] ~~18. **Rename** — the rule landed without renaming § Effects: is § Effects still renamed § Cell Effects (Q&A 15), or is the rename dropped?~~ → Dropped — § Effects keeps its name
+- [x] ~~19. **Tab name** — "Fade", the later image fade joining as options of the same tab, or "Sound fade", a later image fade getting its own tab?~~ → "Fade" — a later image fade joins the same tab
+- [x] ~~20. **Options layout** — how the duration and the curve are laid out in the global options toolbar?~~ → Duration slider, then the curve as two icon buttons drawing their shape (tooltip names), then Reset
+- [x] ~~12. **Status of the rule** — does the new rule go into `RULES.md` as a new § Global Effects next to § Effects, with § Effects renamed "Cell effects"?~~ → Yes: new § Global Effects, § Effects renamed § Cell Effects *(revised 2026-09-30, see Iteration 8: the rule landed elsewhere, the rename dropped)*
 
 ---
 
@@ -199,6 +209,14 @@ in the order the requests were made.
   not applicable) are kept.
 - New open questions 17–20.
 
+### Iteration 8 — 2026-09-30
+
+- OQ 17–20 answered (Q&A 23–26), after a mockup of three layouts: the **Fade** tab sits **between
+  Soundtrack and Borders**; it is named **Fade**, a later image fade joining it; the options are the
+  Duration slider, then the curve as **two icon buttons drawing their shape** (Squared / Linear in
+  tooltips), then Reset; the **§ Cell Effects rename is dropped** (revises OQ 12).
+- No open question left.
+
 ---
 
 ## Implementation Log
@@ -211,7 +229,7 @@ says so rather than staying blank.
 | Code | | | |
 | Unit tests | 2 | 2026-09-26 | Declined — no test project (Q&A 8) |
 | README | | | |
-| RULES.md / GLOSSARY.md | | | |
+| GLOSSARY.md | | | Fade in the *Global effect* list, a Fade entry; `RULES.md` unchanged (the rule landed, rename dropped) |
 
 ---
 
@@ -243,10 +261,10 @@ Questions asked by the agent during design, with user responses.
 | 20 | OQ 15 — Not applicable: when nothing is heard, or when no sound track? | **Nothing heard** | 2026-09-26 |
 | 21 | OQ 16 — Reset button for the Fade in the row? | **Yes, ending the row** | 2026-09-26 |
 | 22 | Go for implementation? | Dismissed — asked for the questions as MCQ | 2026-09-30 |
-| 23 | OQ 17 — Tab position among Soundtrack and Borders? | | 2026-09-30 |
-| 24 | OQ 18 — Rename § Effects to § Cell Effects, or drop it? | | 2026-09-30 |
-| 25 | OQ 19 — Tab name: "Fade" or "Sound fade"? | | 2026-09-30 |
-| 26 | OQ 20 — Options layout in the global options toolbar? | | 2026-09-30 |
+| 23 | OQ 17 — Tab position among Soundtrack and Borders? | **Between Soundtrack and Borders** | 2026-09-30 |
+| 24 | OQ 18 — Rename § Effects to § Cell Effects, or drop it? | **Dropped** | 2026-09-30 |
+| 25 | OQ 19 — Tab name: "Fade" or "Sound fade"? | **Fade** | 2026-09-30 |
+| 26 | OQ 20 — Options layout in the global options toolbar? | **C — curve icon buttons** | 2026-09-30 |
 
 ---
 
