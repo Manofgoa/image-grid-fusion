@@ -7,8 +7,8 @@ public enum BlurKind
     Pixelate,
 }
 
-/// <summary>A side of the sharp rectangle, each moved by its own bar.</summary>
-public enum BlurSide
+/// <summary>A side of a rectangle moved by its own bar: the blur's sharp rectangle, the crop's kept part.</summary>
+public enum BarSide
 {
     Left,
     Top,
@@ -42,11 +42,11 @@ public sealed record BlurEffect
     /// <summary>From 0, the lightest blur, to 1, the strongest.</summary>
     public double Intensity { get; private init; } = 0.5;
 
-    public double Side(BlurSide side) => side switch
+    public double Side(BarSide side) => side switch
     {
-        BlurSide.Left => Left,
-        BlurSide.Top => Top,
-        BlurSide.Right => Right,
+        BarSide.Left => Left,
+        BarSide.Top => Top,
+        BarSide.Right => Right,
         _ => Bottom,
     };
 
@@ -54,11 +54,11 @@ public sealed record BlurEffect
     /// Moves one side to <paramref name="value"/>, kept within the cell and at least
     /// <paramref name="minGap"/> away from the opposite side, so the bars never cross.
     /// </summary>
-    public BlurEffect WithSide(BlurSide side, double value, double minGap = 0) => side switch
+    public BlurEffect WithSide(BarSide side, double value, double minGap = 0) => side switch
     {
-        BlurSide.Left => this with { Left = Math.Max(0, Math.Min(value, Right - minGap)) },
-        BlurSide.Top => this with { Top = Math.Max(0, Math.Min(value, Bottom - minGap)) },
-        BlurSide.Right => this with { Right = Math.Min(1, Math.Max(value, Left + minGap)) },
+        BarSide.Left => this with { Left = Math.Max(0, Math.Min(value, Right - minGap)) },
+        BarSide.Top => this with { Top = Math.Max(0, Math.Min(value, Bottom - minGap)) },
+        BarSide.Right => this with { Right = Math.Min(1, Math.Max(value, Left + minGap)) },
         _ => this with { Bottom = Math.Min(1, Math.Max(value, Top + minGap)) },
     };
 

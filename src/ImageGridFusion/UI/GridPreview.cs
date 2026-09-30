@@ -89,8 +89,8 @@ internal sealed class GridPreview : Control
     private readonly PanMagnet _panX = new();
     private readonly PanMagnet _panY = new();
     private bool _showsBlurBars;
-    private BlurSide? _hoveredBar;
-    private BlurSide? _draggedBar;
+    private BarSide? _hoveredBar;
+    private BarSide? _draggedBar;
     private int _barGrab;
     private Separator? _hoveredSeparator;
     private Separator? _draggedSeparator;
@@ -572,9 +572,9 @@ internal sealed class GridPreview : Control
             _draggedBar = bar;
             _barGrab = bar switch
             {
-                BlurSide.Left => area.Left - e.X,
-                BlurSide.Right => area.Right - e.X,
-                BlurSide.Top => area.Top - e.Y,
+                BarSide.Left => area.Left - e.X,
+                BarSide.Right => area.Right - e.X,
+                BarSide.Top => area.Top - e.Y,
                 _ => area.Bottom - e.Y,
             };
             BeginLive(index);
@@ -1397,7 +1397,7 @@ internal sealed class GridPreview : Control
 
         var image = _images[_selected];
         var zoomed = image.Look.WithZoom(zoom);
-        var size = zoomed.Oriented(image.Bitmap.Size);
+        var size = zoomed.Shown(image.Bitmap.Size);
         BeginLive(_selected);
         SetLook(_selected, zoomed.WithFocus(FitCalculator.WithinStops(cells[_selected], size, zoomed.Zoom, zoomed.Focus, zoomed.FineAngle)));
         ShowZoomBadge(image);
@@ -1430,7 +1430,7 @@ internal sealed class GridPreview : Control
         // The point under the mouse, where it is actually shown, then the placement that keeps it there.
         var cell = cells[index];
         var zoomed = look.WithZoom(zoom);
-        var size = look.Oriented(image.Bitmap.Size);
+        var size = look.Shown(image.Bitmap.Size);
         var before = FitCalculator.ComputeTurned(cell, size, look.Zoom, look.Focus, look.FineAngle).Fit.Image;
         var after = FitCalculator.DrawnSize(cell, size, zoomed.Zoom);
         var under = TurnedBack(cell, image, location);
@@ -1597,7 +1597,7 @@ internal sealed class GridPreview : Control
     private static PointF TurnedBack(Rectangle cell, SourceImage image, PointF point)
     {
         var look = image.Look;
-        using var turn = FitCalculator.ComputeTurned(cell, look.Oriented(image.Bitmap.Size), look.Zoom, look.Focus, look.FineAngle).Transform();
+        using var turn = FitCalculator.ComputeTurned(cell, look.Shown(image.Bitmap.Size), look.Zoom, look.Focus, look.FineAngle).Transform();
         if (turn is null)
         {
             return point;
@@ -1625,7 +1625,7 @@ internal sealed class GridPreview : Control
         var cell = cells[index];
         var image = _images[index];
         var look = image.Look;
-        var size = look.Oriented(image.Bitmap.Size);
+        var size = look.Shown(image.Bitmap.Size);
         var shown = FitCalculator.ComputeTurned(cell, size, look.Zoom, look.Focus, look.FineAngle);
         var bounds = shown.Bounds;
         var stops = FitCalculator.Stops(cell, bounds.Size);
@@ -1666,7 +1666,7 @@ internal sealed class GridPreview : Control
         _showsBlurBars && !_locked && index >= 0 && index == _selected && index < _images.Count ? _images[index].Look.Blur : null;
 
     /// <summary>The bar within reach of <paramref name="location"/>, the nearest one when several are.</summary>
-    private BlurSide? BarAt(Rectangle cell, BlurEffect blur, Point location)
+    private BarSide? BarAt(Rectangle cell, BlurEffect blur, Point location)
     {
         if (!cell.Contains(location))
         {
@@ -1675,14 +1675,14 @@ internal sealed class GridPreview : Control
 
         var area = blur.Area(cell);
         int reach = LogicalToDeviceUnits(BarReach);
-        BlurSide? nearest = null;
+        BarSide? nearest = null;
         int best = int.MaxValue;
         foreach (var (side, distance) in new[]
         {
-            (BlurSide.Left, Math.Abs(location.X - area.Left)),
-            (BlurSide.Right, Math.Abs(location.X - area.Right)),
-            (BlurSide.Top, Math.Abs(location.Y - area.Top)),
-            (BlurSide.Bottom, Math.Abs(location.Y - area.Bottom)),
+            (BarSide.Left, Math.Abs(location.X - area.Left)),
+            (BarSide.Right, Math.Abs(location.X - area.Right)),
+            (BarSide.Top, Math.Abs(location.Y - area.Top)),
+            (BarSide.Bottom, Math.Abs(location.Y - area.Bottom)),
         })
         {
             if (distance <= reach && distance < best)
@@ -1695,13 +1695,13 @@ internal sealed class GridPreview : Control
         return nearest;
     }
 
-    private static Cursor BarCursor(BlurSide side) => side is BlurSide.Left or BlurSide.Right ? Cursors.SizeWE : Cursors.SizeNS;
+    private static Cursor BarCursor(BarSide side) => side is BarSide.Left or BarSide.Right ? Cursors.SizeWE : Cursors.SizeNS;
 
     /// <summary>
     /// Moves the bar being dragged along its own axis. Within <see cref="BarSnap"/> of its edge of the
     /// cell it lands exactly on it, so no strip of a pixel or two stays sharp there.
     /// </summary>
-    private void DragBar(BlurSide side, Point location)
+    private void DragBar(BarSide side, Point location)
     {
         var cells = CellBounds();
         if (_selected < 0 || _selected >= cells.Length || _images[_selected].Look.Blur is not { } blur)
@@ -1710,11 +1710,11 @@ internal sealed class GridPreview : Control
         }
 
         var cell = cells[_selected];
-        bool vertical = side is BlurSide.Left or BlurSide.Right;
+        bool vertical = side is BarSide.Left or BarSide.Right;
         int length = vertical ? cell.Width : cell.Height;
         int offset = (vertical ? location.X - cell.X : location.Y - cell.Y) + _barGrab;
         int snap = LogicalToDeviceUnits(BarSnap);
-        double fraction = side is BlurSide.Left or BlurSide.Top
+        double fraction = side is BarSide.Left or BarSide.Top
             ? (offset <= snap ? 0 : offset / (double)length)
             : (length - offset <= snap ? 1 : offset / (double)length);
         double gap = LogicalToDeviceUnits(BarMinGap) / (double)length;
@@ -1919,10 +1919,10 @@ internal sealed class GridPreview : Control
 
         int length = LogicalToDeviceUnits(BarGripLength);
         int width = LogicalToDeviceUnits(BarGripWidth);
-        PaintBarGrip(g, BlurSide.Left, new Rectangle(left - width / 2, midY - length / 2, width, length));
-        PaintBarGrip(g, BlurSide.Right, new Rectangle(right - width / 2, midY - length / 2, width, length));
-        PaintBarGrip(g, BlurSide.Top, new Rectangle(midX - length / 2, top - width / 2, length, width));
-        PaintBarGrip(g, BlurSide.Bottom, new Rectangle(midX - length / 2, bottom - width / 2, length, width));
+        PaintBarGrip(g, BarSide.Left, new Rectangle(left - width / 2, midY - length / 2, width, length));
+        PaintBarGrip(g, BarSide.Right, new Rectangle(right - width / 2, midY - length / 2, width, length));
+        PaintBarGrip(g, BarSide.Top, new Rectangle(midX - length / 2, top - width / 2, length, width));
+        PaintBarGrip(g, BarSide.Bottom, new Rectangle(midX - length / 2, bottom - width / 2, length, width));
         g.Restore(state);
     }
 
@@ -1977,7 +1977,7 @@ internal sealed class GridPreview : Control
         }
 
         var look = image.Look;
-        var drawn = FitCalculator.ComputeTurned(cell, look.Oriented(image.Bitmap.Size), look.Zoom, look.Focus, look.FineAngle).Bounds.Size;
+        var drawn = FitCalculator.ComputeTurned(cell, look.Shown(image.Bitmap.Size), look.Zoom, look.Focus, look.FineAngle).Bounds.Size;
         int inset = LogicalToDeviceUnits(2);
         int left = cell.Left + inset;
         int right = cell.Right - 1 - inset;
@@ -2027,7 +2027,7 @@ internal sealed class GridPreview : Control
         g.Restore(state);
     }
 
-    private void PaintBarGrip(Graphics g, BlurSide side, Rectangle bounds)
+    private void PaintBarGrip(Graphics g, BarSide side, Rectangle bounds)
     {
         bool hot = _hoveredBar == side || _draggedBar == side;
         using var brush = new SolidBrush(hot ? Color.White : HelperColor);
