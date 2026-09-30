@@ -177,6 +177,12 @@ zoom, fine angle and blur) and the tab position (between Background and Zoom) co
 ratios' behaviour — picking one, dragging under one, the pixel measure, a quarter turn — written
 as proposed details. No Open Question remains.
 
+### Iteration 4 — 2026-09-30 — ✅ Implemented
+
+Go given: code, tests and documentation (no test project — the unit-test step does not apply).
+The scope is frozen as the sections above stand. The work lands on `main` (the user's standing
+preference for this app).
+
 ---
 
 ## Implementation Log
