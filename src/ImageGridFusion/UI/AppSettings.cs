@@ -7,8 +7,8 @@ namespace ImageGridFusion.UI;
 /// <summary>
 /// The app's settings remembered between sessions, in <see cref="FileName"/> next to the exe — never the
 /// registry: the border color, whether the borders' Twitter corners are on by default, the file explorer's
-/// base folder, whether its panel is open, its width, its tile size and its pages per load, and the window's
-/// size. Each save rewrites the whole file at once.
+/// base folder, whether its panel is open, its width, its tile size and its pages per load, the window's
+/// size, and the last folders of the file dialogs. Each save rewrites the whole file at once.
 /// </summary>
 internal static class AppSettings
 {
@@ -23,6 +23,9 @@ internal static class AppSettings
     private const string ExplorerPagesPerLoadName = "ExplorerPagesPerLoad";
     private const string WindowWidthName = "WindowWidth";
     private const string WindowHeightName = "WindowHeight";
+    private const string AddFolderName = "LastAddFolder";
+    private const string SoundtrackFolderName = "LastSoundtrackFolder";
+    private const string ExportFolderName = "LastExportFolder";
 
     /// <summary>
     /// The names the settings had as registry values, in the same types (DWORD → int, string → string):
@@ -148,4 +151,25 @@ internal static class AppSettings
 
     /// <summary>Saves the window's client size, in logical pixels; throws an <see cref="IsSaveError"/> exception on failure.</summary>
     public static void SaveWindowClientSize(Size size) => Save((WindowWidthName, size.Width), (WindowHeightName, size.Height));
+
+    /// <summary>The folder of the files last picked in the Add images dialog; null when none was saved.</summary>
+    public static string? AddFolder => Text(AddFolderName);
+
+    /// <summary>Saves the Add images dialog's folder; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveAddFolder(string folder) => Save((AddFolderName, folder));
+
+    /// <summary>The folder of the file last picked in the soundtrack dialog; null when none was saved.</summary>
+    public static string? SoundtrackFolder => Text(SoundtrackFolderName);
+
+    /// <summary>Saves the soundtrack dialog's folder; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveSoundtrackFolder(string folder) => Save((SoundtrackFolderName, folder));
+
+    /// <summary>
+    /// The folder of the file last saved by an export or Save last…, shared by both; null until a first
+    /// one was saved.
+    /// </summary>
+    public static string? ExportFolder => Text(ExportFolderName);
+
+    /// <summary>Saves the exports' folder; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveExportFolder(string folder) => Save((ExportFolderName, folder));
 }

@@ -869,9 +869,11 @@ internal sealed class MainForm : Form
             Title = "Add images",
             Multiselect = true,
             Filter = PickerFilter(),
+            InitialDirectory = ExistingFolder(AppSettings.AddFolder) ?? "",
         };
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
+            RememberFolder(AppSettings.SaveAddFolder, dialog.FileName, "Add images");
             await AddFilesAsync(dialog.FileNames);
         }
     }
@@ -1203,12 +1205,14 @@ internal sealed class MainForm : Form
             Filter = SaveFilter(last.Format),
             DefaultExt = Extension(last.Format),
             FileName = last.FileName,
-            InitialDirectory = DefaultSaveFolder(),
+            InitialDirectory = ExportFolder(),
         };
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
             return;
         }
+
+        RememberFolder(AppSettings.SaveExportFolder, dialog.FileName, "Export");
 
         try
         {
@@ -1394,12 +1398,14 @@ internal sealed class MainForm : Form
             Filter = SaveFilter(format),
             DefaultExt = extension,
             FileName = $"fusion-{DateTime.Now:yyyyMMdd-HHmmss}.{extension}",
-            InitialDirectory = DefaultSaveFolder(),
+            InitialDirectory = ExportFolder(),
         };
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
             return;
         }
+
+        RememberFolder(AppSettings.SaveExportFolder, dialog.FileName, "Export");
 
         string saved = $"Saved {Path.GetFileName(dialog.FileName)}";
         var clock = Stopwatch.StartNew();
@@ -1755,6 +1761,44 @@ internal sealed class MainForm : Form
     {
         string? file = _preview.Images.Select(i => i.FilePath).FirstOrDefault(p => p is not null);
         return Path.GetDirectoryName(file) ?? Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
+    }
+
+    /// <summary>
+    /// Where the exports and Save last… open: the folder of the last file they saved — or its nearest parent
+    /// still there — and <see cref="DefaultSaveFolder"/> until a first one was saved.
+    /// </summary>
+    private string ExportFolder() => ExistingFolder(AppSettings.ExportFolder) ?? DefaultSaveFolder();
+
+    /// <summary>A remembered folder, or its nearest parent that still exists (a drive unplugged, a folder deleted); null when none does.</summary>
+    private static string? ExistingFolder(string? folder)
+    {
+        for (string? current = folder; !string.IsNullOrEmpty(current); current = Path.GetDirectoryName(current))
+        {
+            if (Directory.Exists(current))
+            {
+                return current;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>A file dialog closed on <paramref name="file"/>: its folder is remembered between sessions, where that dialog opens next.</summary>
+    private void RememberFolder(Action<string> save, string file, string dialog)
+    {
+        if (Path.GetDirectoryName(file) is not { Length: > 0 } folder)
+        {
+            return;
+        }
+
+        try
+        {
+            save(folder);
+        }
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
+        {
+            ShowStatus($"{dialog} folder not remembered: {ex.Message}", error: true);
+        }
     }
 
     /// <summary>Opens the settings menu above the ⚙ button, ticked from the settings as they are now.</summary>
@@ -2240,9 +2284,11 @@ internal sealed class MainForm : Form
                 $"Audio|{Patterns(SoundtrackFile.AudioExtensions)}",
                 $"Videos|{Patterns(VideoExtensions)}",
                 "All files (*.*)|*.*"),
+            InitialDirectory = ExistingFolder(AppSettings.SoundtrackFolder) ?? "",
         };
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
+            RememberFolder(AppSettings.SaveSoundtrackFolder, dialog.FileName, "Soundtrack");
             await LoadSoundtrackAsync(dialog.FileName);
         }
     }
