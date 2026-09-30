@@ -104,6 +104,7 @@ internal sealed class GridPreview : Control
     private readonly System.Windows.Forms.Timer _wheelEnd = new() { Interval = WheelEndDelay };
     private int _wheelCell = -1;
     private int _wheelDelta;
+    private bool _wheelWithControl;
 
     // The zoom percentage of the image last zoomed, over its cell: held a moment after each change, then faded out.
     private readonly System.Windows.Forms.Timer _zoomBadgeTimer = new();
@@ -691,7 +692,20 @@ internal sealed class GridPreview : Control
         UpdateHover(e.Location);
     }
 
-    /// <summary>The wheel zooms the cell under the mouse, around the point under it; not while another gesture runs.</summary>
+    protected override void WndProc(ref Message m)
+    {
+        if (m.Msg == WheelSteps.WM_MOUSEWHEEL)
+        {
+            _wheelWithControl = WheelSteps.WithControl(m);
+        }
+
+        base.WndProc(ref m);
+    }
+
+    /// <summary>
+    /// The wheel zooms the cell under the mouse, around the point under it — with Control held, by
+    /// steps of 5 %; not while another gesture runs.
+    /// </summary>
     protected override void OnMouseWheel(MouseEventArgs e)
     {
         base.OnMouseWheel(e);
@@ -717,7 +731,7 @@ internal sealed class GridPreview : Control
         }
 
         BeginLive(index);
-        ZoomAt(index, e.Location, notches);
+        ZoomAt(index, e.Location, notches, _wheelWithControl);
         _wheelEnd.Start();
     }
 
@@ -1362,10 +1376,11 @@ internal sealed class GridPreview : Control
     }
     /// <summary>
     /// Zooms by <paramref name="notches"/> of the wheel, <see cref="NotchesPerDoubling"/> of them
-    /// doubling the zoom, keeping the point of the image under <paramref name="location"/> in place
-    /// as far as the image stays within its stops; lands on 100 % when crossing it.
+    /// doubling the zoom — or, <paramref name="fine"/>, each moving it onto the next multiple of 5 % —
+    /// keeping the point of the image under <paramref name="location"/> in place as far as the image
+    /// stays within its stops; lands on 100 % when crossing it.
     /// </summary>
-    private void ZoomAt(int index, Point location, int notches)
+    private void ZoomAt(int index, Point location, int notches, bool fine)
     {
         var cells = CellBounds();
         if (index >= cells.Length)
@@ -1375,7 +1390,9 @@ internal sealed class GridPreview : Control
 
         var image = _images[index];
         var look = image.Look;
-        double zoom = look.Zoom * Math.Pow(2, notches / (double)NotchesPerDoubling);
+        double zoom = fine
+            ? WheelSteps.Snap(look.Zoom * 100, WheelSteps.Percent, notches) / 100
+            : look.Zoom * Math.Pow(2, notches / (double)NotchesPerDoubling);
         if ((look.Zoom - 1) * (zoom - 1) < 0)
         {
             zoom = 1;
