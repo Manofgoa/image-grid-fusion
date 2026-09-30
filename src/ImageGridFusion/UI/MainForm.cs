@@ -115,6 +115,12 @@ internal sealed class MainForm : Form
     private readonly CheckBox[] _quarterTurns = [OptionButton("0°"), OptionButton("90°"), OptionButton("180°"), OptionButton("270°")];
     private readonly TrackBar _fineAngle = OptionSlider(-ImageLook.MaxFineAngle, ImageLook.MaxFineAngle, 5);
     private readonly Label _fineAngleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    // Free first, then the listed ratios, each button previewing its format.
+    private readonly (CheckBox Button, double? Ratio)[] _cropRatios =
+    [
+        (OptionButton("Free"), null),
+        .. CropEffect.Ratios.Select(ratio => (OptionButton(RatioText(ratio)), (double?)ratio)),
+    ];
     private readonly CheckBox _flipX = OptionButton("Horizontal");
     private readonly CheckBox _flipY = OptionButton("Vertical");
     private readonly StepSlider _frames = OptionSlider(0, 1, 10);
@@ -315,6 +321,7 @@ internal sealed class MainForm : Form
         _optionsRow.Controls.Add(_effectResetButton, 1, 0);
         _optionsHost.Controls.AddRange([.. _options.Values]);
         _options[ImageEffect.Background].Controls.AddRange([_backgroundAutomatic, _backgroundOpacityIcon, _backgroundOpacity, _backgroundOpacityLabel, _backgroundColor]);
+        _options[ImageEffect.Crop].Controls.AddRange([.. _cropRatios.Select(r => r.Button)]);
         _options[ImageEffect.Zoom].Controls.AddRange([_zoom, _zoomLabel]);
         _options[ImageEffect.Rotate].Controls.AddRange([.. _quarterTurns, _fineAngle, _fineAngleLabel]);
         _options[ImageEffect.Flip].Controls.AddRange([_flipX, _flipY]);
@@ -446,6 +453,12 @@ internal sealed class MainForm : Form
         }
 
         _fineAngle.ValueChanged += (_, _) => SetFineAngle();
+        foreach (var (button, ratio) in _cropRatios)
+        {
+            button.TextImageRelation = TextImageRelation.ImageBeforeText;
+            button.Click += (_, _) => SetCropRatio(ratio);
+        }
+
         _flipX.Click += (_, _) => ChangeLook(ImageEffect.Flip, look => look.ToggleFlipX());
         _flipY.Click += (_, _) => ChangeLook(ImageEffect.Flip, look => look.ToggleFlipY());
         _frames.ValueChanged += (_, _) => ChangeFrames(frames => frames.AtPage(_frames.Value, _frames.Maximum + 1));
@@ -578,6 +591,11 @@ internal sealed class MainForm : Form
             _pixelate.Image?.Dispose();
             _blurIntensityIcon.Image?.Dispose();
             _backgroundOpacityIcon.Image?.Dispose();
+            foreach (var (button, _) in _cropRatios)
+            {
+                button.Image?.Dispose();
+            }
+
             _borderColor.Image?.Dispose();
             _colorDialog.Dispose();
         }
@@ -597,12 +615,13 @@ internal sealed class MainForm : Form
     private void UpdateEffectIcons()
     {
         int size = LogicalToDeviceUnits(16);
-        Image?[] previous = [_resetButton.Image, _effectResetButton.Image, _globalResetButton.Image, _globalEffectResetButton.Image, _grayscaleIcon.Image, _gaussian.Image, _pixelate.Image, _blurIntensityIcon.Image, _backgroundOpacityIcon.Image];
+        Image?[] previous = [_resetButton.Image, _effectResetButton.Image, _globalResetButton.Image, _globalEffectResetButton.Image, _grayscaleIcon.Image, _gaussian.Image, _pixelate.Image, _blurIntensityIcon.Image, _backgroundOpacityIcon.Image, .. _cropRatios.Select(r => r.Button.Image)];
         foreach (var effect in Enum.GetValues<ImageEffect>())
         {
             _effectTabs.SetIcon(effect, effect switch
             {
                 ImageEffect.Background => EffectIcons.Background(size),
+                ImageEffect.Crop => EffectIcons.Crop(size),
                 ImageEffect.Zoom => EffectIcons.Zoom(size),
                 ImageEffect.Rotate => EffectIcons.Rotate(size),
                 ImageEffect.Flip => EffectIcons.Flip(size),
@@ -623,6 +642,11 @@ internal sealed class MainForm : Form
         _grayscaleIcon.Size = new Size(size, size);
         _gaussian.Image = EffectIcons.Gaussian(size);
         _pixelate.Image = EffectIcons.Pixelate(size);
+        foreach (var (button, ratio) in _cropRatios)
+        {
+            button.Image = EffectIcons.Ratio(size, ratio);
+        }
+
         _blurIntensityIcon.Image = EffectIcons.Intensity(size);
         _blurIntensityIcon.Size = new Size(size, size);
         _backgroundOpacityIcon.Image = EffectIcons.Opacity(size);
@@ -2043,6 +2067,23 @@ internal sealed class MainForm : Form
         _framesLabel.Text = _freeze.Checked ? $"Frozen on: {at}" : $"Starts at: {at}";
     }
 
+    /// <summary>A ratio button: the kept part reshaped to it around its center, or freed.</summary>
+    private void SetCropRatio(double? ratio)
+    {
+        if (_preview.SelectedImage is { } image)
+        {
+            ChangeLook(ImageEffect.Crop, look => look.Crop is { } crop ? look.WithCrop(crop.WithRatio(ratio, look, image.Bitmap.Size)) : look);
+        }
+    }
+
+    private static string RatioText(double ratio) => ratio switch
+    {
+        1 => "1:1",
+        < 1 => $"{Math.Round(16 * ratio)}:16",
+        _ when CropEffect.Same(ratio, 4 / 3.0) => "4:3",
+        _ => $"{Math.Round(9 * ratio)}:9",
+    };
+
     private void SetBlurKind(BlurKind kind) =>
         ChangeLook(ImageEffect.Blur, look => look.Blur is { } blur ? look.WithBlur(blur.WithKind(kind)) : look);
 
@@ -2144,6 +2185,15 @@ internal sealed class MainForm : Form
             }
 
             _fineAngle.Value = rotated.FineAngle;
+
+            if (look.TurnOn(ImageEffect.Crop).Crop is { } crop)
+            {
+                double? kept = crop.SeenRatio(look);
+                foreach (var (button, ratio) in _cropRatios)
+                {
+                    button.Checked = ratio is { } r ? kept is { } k && CropEffect.Same(r, k) : kept is null;
+                }
+            }
 
             var flipped = look.TurnOn(ImageEffect.Flip);
             _flipX.Checked = flipped.FlipX;
