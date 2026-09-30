@@ -178,6 +178,11 @@ The four open questions settled, each on the recommended option, over a mockup o
 placements: the readout goes **between ⚙ and Copy**, reads **`⏱ 12.5 s`**, keeps the summaries'
 seconds format whatever the length, and **does nothing when clicked**. Design complete.
 
+### Iteration 3 — 2026-09-30 — ✅ Implemented
+
+Go given for the code, the unit tests (not applicable: no test project) and the documentation.
+Branch: `main`, the repository's standing choice (every run lands on `main`; no worktree asked).
+
 ---
 
 ## Implementation Log
