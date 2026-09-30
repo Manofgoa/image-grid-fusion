@@ -57,8 +57,10 @@ Relevant components:
   keeps the same content when the image is turned or flipped, and survives resizing and layout
   changes. A Crop exception to RULES.md § Scope and State (*geometry in fractions of the cell*).
 - **The canvas follows the kept part** (Q&A 8), as it follows a rotation: `Frame.Size` becomes the
-  cropped part's oriented size, so the canvas sizing — preview and exports — treats the kept part
-  as the image. The grid's proportions change live while a bar is dragged.
+  cropped part's oriented size (`ImageLook.Shown`), so the canvas sizing treats the kept part as
+  the image. The grid's **proportions are fixed** by the layout (1200:628), so what follows the kept
+  part is the canvas's **resolution** — wide enough that the kept part is not downscaled — not its
+  shape (see Iteration 6).
 - **Default zone** (Q&A 9): **10 % cut off each edge** — the effect shows as soon as it is turned
   on, the bars easy to grab. Turned off, it is drawn as the whole image.
 
@@ -126,8 +128,12 @@ The general effect rules apply (RULES.md § Effects), nothing special:
 ## Test Impact
 
 The repository holds **no test project**: nothing testable by unit tests is created or updated.
-The behaviour is checked by hand in the launched app (and by a scripted checker in the scratchpad
-if the run needs one).
+The behaviour is checked by hand in the launched app, and was checked during the run by a scripted
+checker in the scratchpad (38 checks, all passed): the lifecycle (on, off, kept, reset), the sizes,
+the Seen / WithSeen round trip in the 16 orientations, the crop following a turn and a flip, the
+ratios (picking, dragging, the edge, a quarter turn), the move, the rendering (crop and fill, the
+fitting rule on the kept part), the automatic background on the kept part, the edit view and the
+canvas sizing.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
@@ -145,6 +151,9 @@ if the run needs one).
 - [x] ~~4. What zone does the crop start with when it is turned on?~~ → 10 % cut off each edge
 - [x] ~~5. What does the options toolbar hold besides the Reset button?~~ → Aspect-ratio buttons
   (Free, 1:1, 4:3, 16:9, 9:16), each previewing its format
+- [ ] 6. *(emerged during the run)* In the edit view, a drag **outside** the kept part and the mouse
+  wheel still pan and zoom the cropped image — unseen until the edit view is left. Keep them, or
+  make the edit view ignore them?
 
 ---
 
@@ -193,6 +202,42 @@ in the edit view, now moves it whole — size and ratio kept, stopped at the ima
 cursor over it; the bars keep their priority on their reach. (The option had been offered with the
 options toolbar in Q&A 10, not picked then.)
 
+### Iteration 6 — 2026-09-30 — 🧭 Implementation choices
+
+No project rule was broken. The choices the frozen design left open, or could not keep as written:
+
+- **The canvas's shape cannot follow the kept part** — divergent: the grid's proportions are fixed
+  by the layout (`GridLayout.RatioWidth` : `RatioHeight`), and `CanvasSizer` only picks the
+  resolution. `Frame.Size` returns the kept part's size, so the canvas is wide enough for it not to
+  be downscaled; the grid's shape does not move while a bar is dragged.
+- **Frame of reference**: the sides are stored in fractions of the image **as loaded** (before
+  rotation and flip), so nothing needs turning when the image turns; `CropEffect.Seen` / `WithSeen`
+  convert them to and from the image as seen, where the bars work. The ratio is stored in that
+  frame too; `CropEffect.QuarterTurned` frees a ratio with no button once turned (4:3).
+- **Rendering**: the fitting rule runs on `ImageLook.Shown`; the part it gives is moved by where the
+  kept part lies in the oriented image (`Compositor.Uncropped`) before being mapped to the bitmap —
+  one change in `DrawCell` and `AutomaticBackground`. The fallback of the automatic color, used
+  only when the sides shown are transparent, stays the dominant color of the **whole** image
+  (`BandColor.Dominant`, computed once per image).
+- **Edit view**: `GridPreview.OnPaint` draws it over the cached cell — checkerboard, then
+  `Compositor.DrawUncropped` (the whole image fitted whole on the background the cropped image
+  gets), the borders' brackets over it, the cut-off part dimmed (black at 150/255, interaction
+  feedback). The Twitter corners are not cut on that cell while it shows. Blur is not drawn in it.
+- **Bars**: the blur's bars are generalized — `BlurSide` renamed `BarSide`, a `Bars` pair (the
+  rectangle framed, the one spanned: the cell for the blur, the edit view's image for the crop),
+  `GridPreview.ShowsBlurBars` replaced by `BarsEffect`. The crop's bars snap onto the image's
+  edges, with the blur's 6 px snap and 8 px minimum gap.
+- **Move** (Iteration 5): a drag inside the kept part, off the ✥ handle, moves it
+  (`CropEffect.MovedSeen`); the ✥ handle keeps swapping.
+- **Animated frames** are decoded larger by the crop's share (`FrameDisplaySize`), so a cropped
+  video stays about 1:1.
+- **Options**: the ratio buttons are `OptionButton`s with a drawn preview (`EffectIcons.Ratio`,
+  *Free* as a dashed square); the tab's icon is two orange crop marks (`EffectIcons.Crop`).
+- **Gestures in the edit view**: outside the kept part, the pan and the wheel keep acting on the
+  cropped image's zoom and position, as the design did not say otherwise — raised as Open
+  Question 6.
+- **Branch**: stayed on `main`, the user's standing preference for this app.
+
 ---
 
 ## Implementation Log
@@ -202,9 +247,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | — | — | Does not apply — no test project |
-| README | | | |
+| Code | 4, 5 | 2026-09-30 | `95d418f` the model and rendering; `df0bd34` the edit view and bars; `8526dc4` the tab and ratio options; `2ce7d17` the move (Iteration 5). Each commit builds; checked by a scripted checker, 38 checks (§ Test Impact) |
+| Unit tests | — | — | Does not apply — no test project; scripted checker in the scratchpad, 38 checks, all passed |
+| README | 4 | 2026-09-30 | `8b3dec7` — § Effects: the Crop section, the tab list, the defaults; § Fitting rules, § Canvas size, § Resizing the cells, the progress line |
+| Rules, Glossary | 4 | 2026-09-30 | `72d53d4` — RULES.md § *The Crop Exception*; GLOSSARY: *Crop*, *Crop edit view*, *Effect* and *Progress line* updated |
 
 ---
 
