@@ -115,6 +115,9 @@ verified by hand.
 - [x] ~~Where is the agent-side instruction documented?~~ → README + the app's RULES.md
 - [x] ~~A second launch carrying `--tray`?~~ → Leaves the running instance as it is
 - [x] ~~A window minimized while maximized?~~ → Restored maximized, the tray click too
+- [ ] A `--new-instance` launch from another exe location runs `StartupRegistration.Refresh`, which
+      moves the *Start with Windows* registration to that exe: skip it for `--new-instance`?
+- [ ] A `--new-instance` instance closing writes the remembered window size (`HKCU`): skip it?
 
 ---
 
@@ -172,6 +175,8 @@ Questions asked by the agent during design, with user responses.
 | 7 | Where is the agent-side instruction documented? | README + the app's RULES.md | 2026-09-27 |
 | 8 | Second launch with `--tray`: leave the running instance as is, or show it? | Leave it as is | 2026-09-27 |
 | 9 | Window minimized while maximized: restored maximized or normal? | Maximized, like before | 2026-09-27 |
+| 10 | `--new-instance`: skip the startup registration refresh? | | 2026-09-30 |
+| 11 | `--new-instance`: skip saving the window size? | | 2026-09-30 |
 
 ---
 
