@@ -76,21 +76,28 @@ value:
 
 ---
 
-## Implementation Sketch
+## Implementation
 
-- **One pure helper** computing "next multiple of `step` in direction `notches`, clamped" — shared
-  by the cell and the sliders.
-- **Cell**: `GridPreview.OnMouseWheel` reads `ModifierKeys`; with Ctrl, the target zoom comes from
-  the helper on `Zoom × 100` instead of `Math.Pow(2, …)`. `ZoomAt` takes the target zoom (or a
-  zoom function) so the cursor-anchoring code stays shared.
-- **Sliders**: every slider is built by `MainForm.OptionSlider`. It returns a small `TrackBar`
-  subclass overriding `OnMouseWheel`: with Ctrl it computes the new value with the helper — in the
-  slider's own step (5 by default, 5° for the fine angle, 5 thousandths for the thickness) or
-  through a raw ↔ displayed-unit mapping where the raw value is not the unit shown (Zoom: log2 ↔
-  percentage; Frames: index ↔ share of the frame count) — sets it, and marks the event handled so
-  the stock 1-unit move does not add to it. Without Ctrl it defers to the stock behaviour.
-
----
+- **`UI/WheelSteps.cs`** — the pure helpers: `Snap(value, step, notches)` gives the multiple of
+  `step` reached after `notches` (from between two multiples, the first notch stops on the next one;
+  a value within 1/1000 of a step of a multiple counts as on it); `Within(value, target, notches,
+  min, max)` moves an integer control at least one unit per notch and clamps it; `WithControl(m)`
+  reads Control from the wheel message's own `MK_CONTROL` flag, as `ThumbnailGrid` already does.
+- **Cell** — `GridPreview.WndProc` records the flag of each `WM_MOUSEWHEEL`; `OnMouseWheel` passes
+  it to `ZoomAt(index, location, notches, fine)`, which computes `Snap(Zoom × 100, 5, notches) / 100`
+  instead of the ×2^(1/4) per notch. Cursor anchoring, stops, badge and `WithZoom`'s clamp and
+  activation are shared.
+- **Sliders** — `UI/StepSlider.cs`, a `TrackBar` recording the same flag in `WndProc`; with Control,
+  `OnMouseWheel` marks the event handled (no stock nor native move), accumulates the notches, then
+  either calls its `ControlWheel` hook or moves `Value` to `Within(Snap(Value, ControlStep, …))`.
+  `MainForm.OptionSlider` returns it, with a `controlStep` parameter (5 by default; 5 thousandths for
+  the borders thickness).
+  - **Zoom slider** — `MainForm.StepZoom`: snaps the selected image's zoom (its kept one when off)
+    and applies it **exactly** through `ApplyZoom` — the thumb set to the nearest log-scale position
+    while `_syncingEffects` holds — because hundredths of a doubling are coarser than 5 % above
+    ~700 %.
+  - **Frames slider** — `MainForm.StepFrames`: snaps `index / count` on the 5 % grid, back to the
+    nearest index, at least one frame per notch.
 
 ## Test Impact
 
@@ -161,6 +168,22 @@ Go given by the user ("lance l'implémentation"), read as code + documentation �
 apply, the repository has no test project. The run waited for the "exported video length" session
 to finish in the same checkout, then started on `main` (the repository's working branch).
 
+### Iteration 5 — 2026-09-30 — 🧭 Implementation choices
+
+- **Control read from the wheel message** (`MK_CONTROL`), the idiom `ThumbnailGrid` already uses,
+  rather than `ModifierKeys`. Side effect worth knowing: a precision touchpad's pinch reaches
+  applications as Ctrl + wheel, so pinching over a cell now zooms by 5 % steps.
+- **The zoom slider applies the exact snapped zoom** instead of moving its log-scale thumb: one unit
+  of that scale is ~0.7 % at 100 % but ~11 % at 1600 %, too coarse to land on multiples of 5; the
+  thumb is placed on the nearest position, and the label shows the exact percentage.
+- **"At least one unit per notch" for every slider**, not only Frames — a no-op where the step is a
+  whole number of units, a guarantee that no notch is lost.
+- Names: `WheelSteps` (helpers), `StepSlider` (the slider), `StepZoom` / `StepFrames` / `ApplyZoom`
+  in `MainForm`.
+- The go was read as **code + documentation** (unit tests not applicable); the run stayed on
+  **`main`**, the repository's working branch — no branch question.
+- No project rule broken.
+
 ---
 
 ## Implementation Log
@@ -170,9 +193,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable — no test project |
-| README | | | |
+| Code | 5 | 2026-09-30 | Cell wheel (`GridPreview`), option sliders (`StepSlider`, `MainForm`) |
+| Unit tests | 5 | 2026-09-30 | Not applicable — no test project |
+| README | 5 | 2026-09-30 | Zoom gesture line, options row bullet |
 
 ---
 
