@@ -171,6 +171,18 @@ public sealed record CropEffect
     }
 
     /// <summary>
+    /// The kept part moved whole by <paramref name="dx"/>, <paramref name="dy"/> (fractions of the image
+    /// as <paramref name="look"/> shows it): its size, and so its ratio, kept, stopped at the image's edges.
+    /// </summary>
+    public CropEffect MovedSeen(double dx, double dy, ImageLook look)
+    {
+        var seen = Seen(look);
+        float x = (float)Math.Clamp(dx, -seen.Left, 1 - seen.Right);
+        float y = (float)Math.Clamp(dy, -seen.Top, 1 - seen.Bottom);
+        return WithSeen(new RectangleF(seen.X + x, seen.Y + y, seen.Width, seen.Height), look);
+    }
+
+    /// <summary>
     /// The crop once its image is turned a quarter turn: it turns along, being in the image's own frame,
     /// and so does its ratio as seen — freed when no button offers it turned (4:3 would be 3:4).
     /// </summary>

@@ -92,6 +92,11 @@ internal sealed class GridPreview : Control
     private BarSide? _hoveredBar;
     private BarSide? _draggedBar;
     private int _barGrab;
+    private bool _hoveringKept;
+
+    // The crop's kept part being moved whole, and where the drag started.
+    private CropEffect? _movedCrop;
+    private Point _moveFrom;
     private Separator? _hoveredSeparator;
     private Separator? _draggedSeparator;
     private int _separatorGrab;
@@ -587,6 +592,15 @@ internal sealed class GridPreview : Control
             return;
         }
 
+        // Inside the crop's kept part, in its edit view, a drag moves it whole; the handle still swaps.
+        if (KeptPartAt(index, e.Location))
+        {
+            _movedCrop = _images[index].Look.Crop;
+            _moveFrom = e.Location;
+            BeginLive(index);
+            return;
+        }
+
         // A separator comes after the blur bars, before the handle and the pan, on its own band only.
         // It resizes the grid, not the cell: the selection stays.
         if (SeparatorAt(e.Location) is { } separator)
@@ -628,6 +642,12 @@ internal sealed class GridPreview : Control
         if (_draggedBar is { } bar)
         {
             DragBar(bar, e.Location);
+            return;
+        }
+
+        if (_movedCrop is { } crop)
+        {
+            MoveCrop(crop, e.Location);
             return;
         }
 
@@ -687,9 +707,10 @@ internal sealed class GridPreview : Control
             return;
         }
 
-        if (_draggedBar is not null)
+        if (_draggedBar is not null || _movedCrop is not null)
         {
             _draggedBar = null;
+            _movedCrop = null;
             EndLive();
             UpdateHover(e.Location);
             Invalidate();
@@ -1029,9 +1050,10 @@ internal sealed class GridPreview : Control
         var onSource = SourceHitAt(location);
         bool onControl = onClose || onDropZone || onCanvas || onSource.Icon;
         var onBar = actions && !onControl && ShownBars(hovered) is { } bars ? BarAt(CellBounds()[hovered], bars, location) : null;
-        var onSeparator = actions && !onControl && onBar is null ? SeparatorAt(location) : null;
+        bool onKept = actions && !onControl && onBar is null && KeptPartAt(hovered, location);
+        var onSeparator = actions && !onControl && onBar is null && !onKept ? SeparatorAt(location) : null;
         if (hovered == _hovered && onClose == _hoveringClose && onCanvas == _hoveringCanvas && onDropZone == _hoveringDropZone
-            && onHandle == _hoveringHandle && onBar == _hoveredBar && onSeparator?.Vertical == _hoveredSeparator?.Vertical
+            && onHandle == _hoveringHandle && onBar == _hoveredBar && onKept == _hoveringKept && onSeparator?.Vertical == _hoveredSeparator?.Vertical
             && onSource == (_hoveringSourceName, _hoveringSourceIcon))
         {
             return;
@@ -1045,9 +1067,11 @@ internal sealed class GridPreview : Control
         _hoveringDropZone = onDropZone;
         _hoveringHandle = onHandle;
         _hoveredBar = onBar;
+        _hoveringKept = onKept;
         _hoveredSeparator = onSeparator;
         Cursor = onControl ? Cursors.Hand
             : onBar is { } bar ? BarCursor(bar)
+            : onKept ? Cursors.SizeAll
             : onSeparator is { } separator ? SeparatorCursor(separator)
             : onHandle ? Cursors.SizeAll
             : Cursors.Default;
@@ -1767,6 +1791,26 @@ internal sealed class GridPreview : Control
         {
             SetLook(_selected, look.WithBlur(blur.WithSide(side, fraction, gap)));
         }
+    }
+
+    /// <summary>Whether <paramref name="location"/> is inside the crop's kept part, in its edit view on cell <paramref name="index"/>, off its handle.</summary>
+    private bool KeptPartAt(int index, Point location) =>
+        _barsEffect == ImageEffect.Crop && ShownBars(index) is { } bars && bars.Area.Contains(location)
+        && !HandleBounds(CellBounds()[index]).Contains(location);
+
+    /// <summary>Moves the crop's kept part whole with the mouse, from where the drag started: its size and ratio kept, stopped at the image's edges.</summary>
+    private void MoveCrop(CropEffect crop, Point location)
+    {
+        if (ShownBars(_selected) is not { } bars || bars.Span.Width < 1 || bars.Span.Height < 1)
+        {
+            return;
+        }
+
+        Cursor = Cursors.SizeAll;
+        var look = _images[_selected].Look;
+        double dx = (location.X - _moveFrom.X) / (double)bars.Span.Width;
+        double dy = (location.Y - _moveFrom.Y) / (double)bars.Span.Height;
+        SetLook(_selected, look.WithCrop(crop.MovedSeen(dx, dy, look)));
     }
 
     /// <summary>
