@@ -110,8 +110,8 @@ player: the arriving image's playback exists, the removed image's is gone.
 
 | Method | After `OnImagesChanged()` |
 |---|---|
-| `Add` (l.280) | `_player.Restart()` — once per call, whatever the number of images added (a multi-file drop restarts once) |
-| `RemoveAt` (l.907) | `_player.Restart()` — the remaining images start over; with none animated left, only the soundtrack does |
+| `Add` (d9e2ea7) | `_player.Restart()` — once per call when at least one image landed, whatever their number (a multi-file drop restarts once, a drop of unreadable files changes nothing) |
+| `RemoveAt` (d9e2ea7) | `_player.Restart()` — the remaining images start over; with none animated left, only the soundtrack does |
 
 Not called from `Clear` (nothing is left; `UpdateSoundtrack` drops the soundtrack's start when no
 image remains, and *Clear all* resets the soundtrack anyway), `Swap`, the layout setter, `SetLook`
@@ -234,6 +234,24 @@ gained the progress line (fc632ba): `AnimationPlayer.ProgressOf` reads the posit
 playing image from the same clock, so a restart moves every line back to its left edge by
 construction — no change to the design.
 
+### Iteration 4 — 2026-09-30 — 🧭 Implementation choices
+
+No rule broken. Delivered as designed (code d9e2ea7, documentation b8efeec), with these choices the
+design left open:
+
+- `Add` starts the grid over only when **at least one image landed** (`ignored < images.Count`): a
+  drop of unreadable files, or of nothing placeable, changes nothing — the design said "an image
+  arriving", and none did.
+- `Restart` sits between `Update` and `ProgressOf` in `AnimationPlayer`; the class summary says the
+  grid can be started over; its doc comment and the two call sites name RULES.md.
+- The *Preview Playback* rule stands between § Global Effects Toolbar and § On-Cell Helper
+  Indicators in `RULES.md`; the *Start over* row follows *Heard* in `GLOSSARY.md`, next to
+  *Starting point* and *Frozen*.
+- The build compiled at once; its copy of the exe retried while an instance opened by another
+  session held the file, then went through. No test run: no test project.
+- Launched for the user with two MP4s of the base folder as arguments, an instance opened by the
+  delivery of another session being already open on the same build.
+
 ---
 
 ## Implementation Log
@@ -243,9 +261,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Does not apply — no test project in the repository (see *Test Impact*) |
-| README | | | With `RULES.md` and `GLOSSARY.md` |
+| Code | 3 | 2026-09-30 | d9e2ea7 — `AnimationPlayer.Restart`, called from `GridPreview.Add` and `RemoveAt` |
+| Unit tests | — | — | Does not apply — no test project in the repository (see *Test Impact*) |
+| README | 3 | 2026-09-30 | b8efeec — README, `RULES.md` (§ Preview Playback), `GLOSSARY.md` (*Start over*) |
 
 ---
 
