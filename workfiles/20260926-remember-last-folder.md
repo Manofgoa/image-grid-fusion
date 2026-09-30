@@ -73,12 +73,21 @@ Agreed — the registry in `AppSettings` was never wanted:
   corners by default, explorer folder / panel open / width / tile size / pages per load, window
   size — with the remembered folders added to it. Its readers keep their defaults and clamps; a
   missing or unreadable file gives the defaults.
-- **Migration, once**: at the first launch without `settings.json`, the values found under
-  `HKCU\Software\ImageGridFusion` are copied into the file, then that key is deleted. This is the
-  registry's last use.
+- **Migration, once** (`UI/RegistryMigration.cs`, run first by `Program.Main`): when
+  `HKCU\Software\ImageGridFusion` exists, each of its values the file does **not have yet** is copied
+  into it, then the key is deleted — the file's own values win. On failure nothing is deleted and the
+  next start-up tries again. The obsolete values (`ExplorerColumns`, `ExplorerSpan`) go with the key.
+  This is the registry's last use.
+- **Each copy of the exe has its own file** (Debug, Release, published): the first copy launched
+  takes the registry's values, the others start from the defaults.
+- **Writes**: each save reads the file again, sets its values and rewrites it whole, through a
+  `.tmp` file moved over it — another instance's saves are kept, a failure never leaves half a file.
+  A failed save says so in the status line (`… not remembered`), like the other settings.
 - ***Start with Windows***: the `Run` value is replaced by a **shortcut in the user's *Startup*
-  folder** (`shell:startup`), launching the exe with the same hidden argument. The migration turns an
-  existing `Run` value into that shortcut, then deletes the value.
+  folder** (`shell:startup`), `ImageGridFusion.lnk`, launching the exe with the same hidden argument
+  (written through `IShellLinkW`). The migration turns an existing `Run` value into that shortcut,
+  then deletes the value. At each start-up an existing shortcut is rewritten to point at the exe
+  launched, as the `Run` value was.
 - **Rule**: "settings in `settings.json` next to the `.exe`, never the registry" is written into
   `RULES.md` at implementation, and its registry mention (§ Global Effects) is fixed; the other
   running sessions are told.
@@ -190,6 +199,31 @@ Go given by the user through the session *Drag-drop images dans Favoris* ("atten
 then "lancer les dévs"): code, README and `RULES.md` (no unit tests, Q&A #10). Stays on `main`, the
 standing choice for this app. The Debug build is left alone while that session's instance runs.
 
+### Iteration 8 — 2026-09-30 — 🧭 Implementation choices
+
+- **Branch**: `main`, the app's standing choice — no Branch Gate question.
+- **`AppSettings` keeps its API**, file-backed: `Save(params (name, value)[])`, `Has`, `IsSaveError`;
+  the MainForm catches moved from `StartupRegistration.IsRegistryError` to `AppSettings.IsSaveError`
+  (and `StartupRegistration.IsStartupError` for *Start with Windows*, `COMException` included).
+- **Migration merges** rather than running only without a file: a value already in the file wins, the
+  registry's fills the gaps. It also covers an older build still running and writing the key back.
+- **One file per exe copy** — the consequence of "next to the `.exe`".
+- **Save reads the file again first** (commit `29f7c8a`), found while checking: without it, two
+  instances would overwrite each other's settings with their in-memory copies.
+- **Shortcut refresh**: rewritten at each start-up when it exists, instead of comparing its target.
+- **Folders**: `LastAddFolder`, `LastSoundtrackFolder`, `LastExportFolder` in `settings.json`; the
+  folder is saved right after the dialog's OK, before the files load or the export starts.
+- **Checks**: Debug and Release builds without warnings; first launch of the Debug build migrated the
+  8 registry values into `bin\Debug\…\settings.json` and deleted the key. The dialogs, the missing
+  folder and the Startup shortcut are left to the user's hand test.
+- **Launch**: the instance launched for the user runs the build before `29f7c8a` — stopping it to
+  relaunch was refused by the permission classifier. It is relaunched once closed.
+- **Rule propagation**: 10 of the 14 running sessions were told of the `RULES.md` change; the last 4
+  (*Explorateur de fichier : dossiers ouvrables*, *Emojis superposés sur contenu*, *Règles
+  d'architecture workfiles*, *Rechercher fichier par contenu OCR*) were blocked by the messaging
+  limit.
+- No rule broken.
+
 ---
 
 ## Implementation Log
@@ -199,10 +233,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 7, 8 | 2026-09-30 | `7eddc3b` settings file + migration + Startup shortcut, `fb64169` dialogs' folders, `29f7c8a` re-read before save |
 | Unit tests | 3 | 2026-09-26 | Declined — no test project, verified by hand (Q&A #10) |
-| README | | | |
-| RULES.md | | | |
+| README | 7 | 2026-09-30 | `c6b6f9a` |
+| RULES.md | 7 | 2026-09-30 | `57defd0` § App Settings, § Global Effects' registry mention fixed |
 
 ---
 
