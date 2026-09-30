@@ -11,7 +11,8 @@ Apply to **every effect**, the blur being the first one
 
 - An effect belongs to a **cell + image** pair. Its state lives on the image's immutable state,
   next to `ImageLook`, and is **not persisted**.
-- Its geometry is stored in **fractions of the cell**, so it survives resizing and layout changes.
+- Its geometry is stored in **fractions of the cell**, so it survives resizing and layout changes
+  — the Crop aside (§ The Crop Exception).
 - Its **settings** and its **on / off** state are independent: turning an effect off **keeps its
   settings**, and it is drawn as its **defaults** — preview, exports, canvas sizing, guides — until
   it is turned on again, as it was (origin: `workfiles/20260925-ui-cleanup.md`).
@@ -46,6 +47,25 @@ The Background effect is **on by default**, and **off does not draw its defaults
   PNG's alpha, white in the outputs without alpha), its settings kept.
 - Its **default state is on** — automatic color, 100 % opacity: a new image, a replaced one, an
   image shifting after a deletion, and every *Reset* — its own and the toolbar's — bring it back on.
+
+#### The Crop Exception
+
+The Crop effect's geometry is **not in fractions of the cell**, and its kept part **is the image**
+(origin: `workfiles/20260930-crop-effect.md`):
+
+- Its sides are fractions of the **image as loaded**, before any rotation or flip, so the crop
+  keeps the same content when the image is turned or flipped, and survives resizing and layout
+  changes like the others (`CropEffect.Seen` / `WithSeen` give and take them as the image is seen).
+- The kept part stands for the whole image everywhere the image's size is read: the fitting rule,
+  the automatic background (computed on the kept part, live while its bars move), the canvas
+  sizing and every gesture. They read `ImageLook.Shown` (`Frame.Size`) — cropped, then rotated —
+  never the bitmap's oriented size. A new consumer does the same.
+- It comes right after the orientation and before the fitting rule: zoom, fine angle, background,
+  black & white and blur all apply to the cropped image.
+- Its **edit view** — the whole image fitted whole in the selected cell, the part cut off dimmed,
+  its bars across the image and snapping onto its edges, a drag inside the kept part moving it — is
+  drawn by `GridPreview` only, while its tab is selected and it is on; `Compositor` and the
+  exports always draw the cropped image.
 
 ### Effects Toolbar
 
