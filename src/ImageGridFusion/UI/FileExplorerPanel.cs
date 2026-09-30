@@ -15,6 +15,9 @@ namespace ImageGridFusion.UI;
 /// the panel's width is the user's, dragged from its edge. A tile is dragged onto a cell like a file
 /// from the Explorer, double-clicked to be added like Add images, hearted to become a favorite.
 /// Collapses to a strip. The cached index is loaded, then rescanned in the background, at every start.
+/// The 📁 toggle switches to the folder view (workfiles/20260930-file-explorer-folder-view.md): the
+/// open folder's subfolders and files as the disk holds them, a folder tile opening its folder, the
+/// breadcrumb in the caption's line going back up, the search limited to the open folder.
 /// </summary>
 internal sealed class FileExplorerPanel : Panel
 {
@@ -36,16 +39,27 @@ internal sealed class FileExplorerPanel : Panel
 
     private const int TransientDuration = 5000;
 
+    // How long a folder may take to list before the status line says it is being read, in ms.
+    private const int ReadingNoticeDelay = 150;
+
+    private const string SearchPlaceholder = "Search files… (* for all)";
+    private const string FolderSearchPlaceholder = "Search this folder… (* for all)";
+    private const string OpenFileLocationText = "Open file location";
+    private const string OpenInExplorerText = "Open in Explorer";
+
     private readonly TableLayoutPanel _content = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 6, Padding = new Padding(6, 4, 6, 6) };
     private readonly TableLayoutPanel _header = new() { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
     private readonly Label _title = new() { Text = "Files", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly Button _collapse = new() { Text = "»", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right };
     private readonly Button _expand = new() { Text = "«", Dock = DockStyle.Fill, Visible = false, Margin = Padding.Empty };
-    private readonly TableLayoutPanel _searchRow = new() { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
-    private readonly TextBox _search = new() { PlaceholderText = "Search files… (* for all)", Anchor = AnchorStyles.Left | AnchorStyles.Right };
+    private readonly TableLayoutPanel _searchRow = new() { ColumnCount = 3, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
+    private readonly CheckBox _folderToggle = new() { Text = "📁", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0) };
+    private readonly TextBox _search = new() { PlaceholderText = SearchPlaceholder, Anchor = AnchorStyles.Left | AnchorStyles.Right };
     private readonly Button _rescan = new() { Text = "↻", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right, Enabled = false };
     private readonly Label _status = new() { Dock = DockStyle.Fill, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, Margin = Padding.Empty };
+    private readonly Panel _captionRow = new() { Dock = DockStyle.Fill, Margin = Padding.Empty };
     private readonly Label _caption = new() { Dock = DockStyle.Fill, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, Margin = Padding.Empty };
+    private readonly Breadcrumb _breadcrumb = new() { Dock = DockStyle.Fill, Visible = false };
     private readonly Panel _listHost = new() { Dock = DockStyle.Fill, Margin = Padding.Empty, BorderStyle = BorderStyle.FixedSingle };
     private readonly ThumbnailGrid _grid = new() { Dock = DockStyle.Fill };
     private readonly TableLayoutPanel _sizeRow = new() { ColumnCount = 3, RowCount = 1, Dock = DockStyle.Fill, Margin = Padding.Empty };
@@ -62,7 +76,7 @@ internal sealed class FileExplorerPanel : Panel
     };
     private readonly Button _chooseFolder = new() { Text = "Choose folder…", Dock = DockStyle.Top, AutoSize = true };
     private readonly ContextMenuStrip _menu = new();
-    private readonly ToolStripMenuItem _openLocation = new("Open file location");
+    private readonly ToolStripMenuItem _openLocation = new(OpenFileLocationText);
     private readonly ToolTip _toolTip = new();
     private readonly System.Windows.Forms.Timer _transient = new() { Interval = TransientDuration };
     private readonly Favorites _favorites = new(Favorites.DefaultPath);
@@ -86,6 +100,16 @@ internal sealed class FileExplorerPanel : Panel
     private IReadOnlyList<ExplorerRow> _list = [];
     private int _loaded;
 
+    // The folder view (workfiles/20260930-file-explorer-folder-view.md): whether it shows, the open
+    // folder relative to the base folder ("" for the base folder itself), the index's folders once
+    // derived, and the list being built — a later refresh making an earlier folder read stale.
+    private bool _folderView;
+    private string _openFolder = "";
+    private FolderTree? _tree;
+    private int _listVersion;
+    private bool _clearingSearch;
+    private bool _syncingToggle;
+
     public FileExplorerPanel()
     {
         _title.Font = new Font(Font, FontStyle.Bold);
@@ -104,10 +128,14 @@ internal sealed class FileExplorerPanel : Panel
         _header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _header.Controls.Add(_title, 0, 0);
         _header.Controls.Add(_collapse, 1, 0);
+        _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        _searchRow.Controls.Add(_search, 0, 0);
-        _searchRow.Controls.Add(_rescan, 1, 0);
+        _searchRow.Controls.Add(_folderToggle, 0, 0);
+        _searchRow.Controls.Add(_search, 1, 0);
+        _searchRow.Controls.Add(_rescan, 2, 0);
+        _captionRow.Controls.Add(_caption);
+        _captionRow.Controls.Add(_breadcrumb);
         _sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -124,7 +152,7 @@ internal sealed class FileExplorerPanel : Panel
         _content.Controls.Add(_header, 0, 0);
         _content.Controls.Add(_searchRow, 0, 1);
         _content.Controls.Add(_status, 0, 2);
-        _content.Controls.Add(_caption, 0, 3);
+        _content.Controls.Add(_captionRow, 0, 3);
         _content.Controls.Add(_listHost, 0, 4);
         _content.Controls.Add(_sizeRow, 0, 5);
         Controls.Add(_content);
@@ -136,6 +164,7 @@ internal sealed class FileExplorerPanel : Panel
         _toolTip.SetToolTip(_collapse, "Hide the file explorer");
         _toolTip.SetToolTip(_expand, "Show the file explorer");
         _toolTip.SetToolTip(_rescan, "Rescan the folder");
+        _toolTip.SetToolTip(_folderToggle, FolderToggleTip());
         _toolTip.SetToolTip(_smallerGlyph, "Smaller tiles");
         _toolTip.SetToolTip(_largerGlyph, "Larger tiles");
         _collapse.Click += (_, _) => SetOpen(false);
@@ -144,13 +173,28 @@ internal sealed class FileExplorerPanel : Panel
         _grid.SizeStepRequested += (_, direction) => StepSize(direction);
         _rescan.Click += (_, _) => Rescan();
         _chooseFolder.Click += (_, _) => ChooseFolderRequested?.Invoke(this, EventArgs.Empty);
-        _search.TextChanged += (_, _) => RefreshRows();
+        _search.TextChanged += (_, _) =>
+        {
+            if (!_clearingSearch)
+            {
+                RefreshRows();
+            }
+        };
         _search.KeyDown += OnSearchKeyDown;
+        _folderToggle.CheckedChanged += (_, _) => SetFolderView(_folderToggle.Checked);
+        _breadcrumb.UpRequested += (_, _) => GoUp();
+        _breadcrumb.SegmentClicked += (_, depth) => OpenFolderAtDepth(depth);
         _grid.HeartClicked += (_, row) => ToggleFavorite(row);
         _grid.RowActivated += (_, row) => Activate(row);
         _grid.DragRequested += (_, row) => StartDrag(row);
         _grid.MoreRequested += (_, _) => LoadMore();
-        _menu.Opening += (_, e) => e.Cancel = _grid.RowAt(_grid.PointToClient(MousePosition)) is null;
+        _grid.UpRequested += (_, _) => GoUp();
+        _menu.Opening += (_, e) =>
+        {
+            var row = _grid.RowAt(_grid.PointToClient(MousePosition));
+            e.Cancel = row is null;
+            _openLocation.Text = row?.IsFolder == true ? OpenInExplorerText : OpenFileLocationText;
+        };
         _openLocation.Click += (_, _) => OpenLocation();
         _transient.Tick += (_, _) => ShowSummary();
 
@@ -168,6 +212,9 @@ internal sealed class FileExplorerPanel : Panel
 
     /// <summary>The user changed the tile size — the slider, or the wheel over the tiles.</summary>
     public event EventHandler? TileSizeChanged;
+
+    /// <summary>The view was switched, or another folder opened: <see cref="FolderView"/> and <see cref="OpenFolder"/> to remember.</summary>
+    public event EventHandler? FolderViewChanged;
 
     /// <summary>A tile was double-clicked or entered: its file, to be added like Add images.</summary>
     public event EventHandler<string>? FileActivated;
@@ -257,6 +304,62 @@ internal sealed class FileExplorerPanel : Panel
         set => _pagesPerLoad = Math.Clamp(value, MinPagesPerLoad, MaxPagesPerLoad);
     }
 
+    /// <summary>
+    /// Whether the folder view shows — the open folder's subfolders and files — rather than the search
+    /// view — the favorites, <c>*</c> or the matches. Setting it raises nothing.
+    /// </summary>
+    [DefaultValue(false)]
+    public bool FolderView
+    {
+        get => _folderView;
+        set
+        {
+            if (value == _folderView)
+            {
+                return;
+            }
+
+            _folderView = value;
+            _syncingToggle = true;
+            try
+            {
+                _folderToggle.Checked = value;
+            }
+            finally
+            {
+                _syncingToggle = false;
+            }
+
+            ApplyView();
+            RefreshRows();
+        }
+    }
+
+    /// <summary>
+    /// The folder the folder view shows, relative to the base folder — "" for the base folder itself.
+    /// Set before <see cref="Start"/> to the remembered one; one gone from the disk gives way to its
+    /// nearest parent still there when listed. Setting it raises nothing.
+    /// </summary>
+    [DefaultValue("")]
+    public string OpenFolder
+    {
+        get => _openFolder;
+        set
+        {
+            string folder = Path.TrimEndingDirectorySeparator(value ?? "");
+            if (folder == _openFolder)
+            {
+                return;
+            }
+
+            _openFolder = folder;
+            if (_folderView)
+            {
+                RefreshRows();
+            }
+        }
+    }
+
     /// <summary>Whether <paramref name="screenPoint"/> is over the panel, open or collapsed.</summary>
     public bool ContainsScreenPoint(Point screenPoint) => Visible && RectangleToScreen(ClientRectangle).Contains(screenPoint);
 
@@ -314,7 +417,7 @@ internal sealed class FileExplorerPanel : Panel
             error = ex.Message;
         }
 
-        if (FileSearch.Words(_search.Text).Length == 0)
+        if (ShowingFavorites)
         {
             RefreshRows(keepPlace: true);
         }
@@ -345,11 +448,19 @@ internal sealed class FileExplorerPanel : Panel
     public void SetBaseFolder(string? folder)
     {
         _scan?.Cancel();
-        _index = null;
+        SetIndex(null, null);
         _rescan.Enabled = false;
+        string? previous = _baseFolder;
         try
         {
             _baseFolder = folder is null ? null : FileIndex.NormalizeFolder(folder);
+
+            // Another base folder: the folder view opens at its root. The first one, at start-up, keeps the remembered folder.
+            if (previous is not null && !string.Equals(previous, _baseFolder, StringComparison.OrdinalIgnoreCase) && _openFolder.Length > 0)
+            {
+                _openFolder = "";
+                FolderViewChanged?.Invoke(this, EventArgs.Empty);
+            }
         }
         catch (ArgumentException)
         {
@@ -542,13 +653,17 @@ internal sealed class FileExplorerPanel : Panel
     private async Task LoadAndScanAsync(string folder, CancellationToken cancellation)
     {
         ShowStatus("Loading the index…");
-        var loaded = await Task.Run(() => FileIndex.Load(FileIndex.DefaultPath, folder));
+        var (loaded, tree) = await Task.Run(() =>
+        {
+            var index = FileIndex.Load(FileIndex.DefaultPath, folder);
+            return (index, index is null ? null : FolderTree.Of(index.Entries));
+        });
         if (cancellation.IsCancellationRequested || IsDisposed)
         {
             return;
         }
 
-        _index = loaded;
+        SetIndex(loaded, tree);
         SetSummary(loaded is null ? "No index yet" : Summary(loaded));
         RefreshRows(keepPlace: true);
         await ScanAsync(folder, cancellation);
@@ -585,7 +700,7 @@ internal sealed class FileExplorerPanel : Panel
                 return;
             }
 
-            var (index, saveError) = await Task.Run(
+            var (index, tree, saveError) = await Task.Run(
                 () =>
                 {
                     var scanned = FileIndex.Scan(folder, progress, cancellation);
@@ -599,7 +714,7 @@ internal sealed class FileExplorerPanel : Panel
                         error = ex.Message;
                     }
 
-                    return (scanned, error);
+                    return (scanned, FolderTree.Of(scanned.Entries), error);
                 },
                 cancellation);
             if (cancellation.IsCancellationRequested || IsDisposed)
@@ -607,7 +722,7 @@ internal sealed class FileExplorerPanel : Panel
                 return;
             }
 
-            _index = index;
+            SetIndex(index, tree);
             SetSummary(saveError is null ? Summary(index) : $"{Summary(index)} · not saved: {saveError}", error: saveError is not null);
             RefreshRows(keepPlace: true);
         }
@@ -675,19 +790,49 @@ internal sealed class FileExplorerPanel : Panel
     }
 
     /// <summary>
-    /// The list as the search box stands: every favorite while it is blank, every file for <c>*</c>,
-    /// else the matches of its words; without a base folder, a typed search shows the invitation
-    /// instead. A new list shows its first load from the top; a refreshed one
+    /// The list as the view and the search box stand. The search view: every favorite while the box
+    /// is blank, every file for <c>*</c>, else the matches of its words. The folder view: the open
+    /// folder's content, read from the disk, while the box is blank; else the folders then the files
+    /// below the open folder, from the index. Without a base folder, a typed search or the folder view
+    /// shows the invitation instead. A new list shows its first load from the top; a refreshed one
     /// (<paramref name="keepPlace"/>: a rescan, a favorite or a missing file gone) keeps as many tiles
-    /// loaded as before, the scroll and the selection.
+    /// loaded as before, the scroll and the selection. <paramref name="select"/>: a path to select
+    /// once listed — the folder just left when going up.
     /// </summary>
-    private void RefreshRows(bool keepPlace = false)
+    private void RefreshRows(bool keepPlace = false, string? select = null)
     {
+        int version = ++_listVersion;
         bool everything = FileSearch.IsEverything(_search.Text);
         string[] words = FileSearch.Words(_search.Text);
-        bool inviting = words.Length > 0 && _baseFolder is null;
+        bool inviting = _baseFolder is null && (words.Length > 0 || _folderView);
         _invite.Visible = inviting;
         _grid.Visible = !inviting;
+        if (_folderView)
+        {
+            if (inviting)
+            {
+                ShowRows([], keepPlace, null);
+                ShowBreadcrumb("");
+            }
+            else if (words.Length == 0)
+            {
+                _ = ListFolderAsync(version, keepPlace, select);
+            }
+            else if (_index is null)
+            {
+                ShowRows([], keepPlace, null);
+                ShowBreadcrumb("Waiting for the index…");
+            }
+            else
+            {
+                var (found, trailing) = SearchFolder(_index, words, everything);
+                ShowRows(found, keepPlace, select);
+                ShowBreadcrumb(trailing);
+            }
+
+            return;
+        }
+
         var rows = new List<ExplorerRow>();
         if (words.Length == 0)
         {
@@ -720,8 +865,270 @@ internal sealed class FileExplorerPanel : Panel
                 };
         }
 
+        ShowRows(rows, keepPlace, null);
+    }
+
+    /// <summary>
+    /// A new list: its first load — or, keeping the place, as many tiles as were loaded — and enough
+    /// of it for <paramref name="select"/>, then selected.
+    /// </summary>
+    private void ShowRows(IReadOnlyList<ExplorerRow> rows, bool keepPlace, string? select)
+    {
         _list = rows;
-        ShowLoaded(keepPlace ? Math.Max(_loaded, FirstLoad()) : FirstLoad(), keepPlace);
+        int count = keepPlace ? Math.Max(_loaded, FirstLoad()) : FirstLoad();
+        if (select is not null)
+        {
+            for (int i = 0; i < rows.Count; i++)
+            {
+                if (string.Equals(rows[i].FullPath, select, StringComparison.OrdinalIgnoreCase))
+                {
+                    count = Math.Max(count, i + 1);
+                    break;
+                }
+            }
+        }
+
+        ShowLoaded(count, keepPlace);
+        if (select is not null)
+        {
+            _grid.SelectPath(select);
+        }
+    }
+
+    /// <summary>
+    /// The open folder's content, read from the disk off the UI thread — the status line saying so when
+    /// it takes a while — unless another list was asked for meanwhile. The open folder gone from the
+    /// disk gives way to its nearest parent still there, and the status line says so.
+    /// </summary>
+    private async Task ListFolderAsync(int version, bool keepPlace, string? select)
+    {
+        string root = _baseFolder!;
+        string asked = _openFolder;
+        var reading = Task.Run(() => ReadFolder(root, asked));
+        bool noticed = false;
+        if (await Task.WhenAny(reading, Task.Delay(ReadingNoticeDelay)) != reading && version == _listVersion && !IsDisposed)
+        {
+            ShowStatus("Reading the folder…");
+            noticed = true;
+        }
+
+        var listing = await reading;
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        if (noticed)
+        {
+            ShowSummary();
+        }
+
+        if (version != _listVersion)
+        {
+            return;
+        }
+
+        if (!string.Equals(listing.Folder, asked, StringComparison.OrdinalIgnoreCase))
+        {
+            _openFolder = listing.Folder;
+            keepPlace = false;
+            select = null;
+            FolderViewChanged?.Invoke(this, EventArgs.Empty);
+            Report($"Folder not found: {asked} — back to {SegmentsOf(listing.Folder)[^1]}", error: false);
+        }
+
+        var rows = new List<ExplorerRow>(listing.Folders.Count + listing.Files.Count);
+        foreach (string folder in listing.Folders)
+        {
+            rows.Add(FolderRow(folder));
+        }
+
+        foreach (var (path, _) in listing.Files)
+        {
+            rows.Add(new ExplorerRow(path, Path.GetFileName(path)));
+        }
+
+        ShowRows(rows, keepPlace, select);
+        ShowBreadcrumb(listing.Error ?? $"{Folders(listing.Folders.Count)}, {Files(listing.Files.Count)}");
+    }
+
+    /// <summary>
+    /// The folder as the disk holds it, on a worker: <paramref name="relative"/>, or its nearest parent
+    /// still there, the base folder at worst; nothing listed, and why, when that cannot be read.
+    /// </summary>
+    private static (string Folder, IReadOnlyList<string> Folders, IReadOnlyList<(string Path, DateTime Created)> Files, string? Error) ReadFolder(string root, string relative)
+    {
+        while (relative.Length > 0 && !Directory.Exists(Path.Combine(root, relative)))
+        {
+            relative = FolderTree.Parent(relative);
+        }
+
+        try
+        {
+            var (folders, files) = FolderListing.Read(Path.Combine(root, relative));
+            return (relative, folders, files, null);
+        }
+        catch (Exception ex) when (FileIndex.IsFileError(ex))
+        {
+            return (relative, [], [], ex is DirectoryNotFoundException ? "Folder not found" : $"Not readable: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// A search in the folder view, from the index: the folders below the open one, then its files —
+    /// every one of each for <c>*</c>, the folders A→Z by their path so each is followed by its
+    /// subfolders, the files the newest first; else those matching the words, best first.
+    /// </summary>
+    private (IReadOnlyList<ExplorerRow> Rows, string Trailing) SearchFolder(FileIndex index, string[] words, bool everything)
+    {
+        _tree ??= FolderTree.Of(index.Entries);
+        var folders = _tree.Folders.Where(f => FolderTree.IsUnder(f.RelativePath, _openFolder)).ToArray();
+        var files = _openFolder.Length == 0 ? index.Entries : index.Entries.Where(e => FolderTree.IsUnder(e.RelativePath, _openFolder)).ToArray();
+        IReadOnlyList<IndexEntry> foundFolders;
+        IReadOnlyList<IndexEntry> foundFiles;
+        if (everything)
+        {
+            Array.Sort(folders, (a, b) => FolderTree.ComparePaths(a.RelativePath, b.RelativePath));
+            foundFolders = folders;
+            foundFiles = FileSearch.All(files);
+        }
+        else
+        {
+            foundFolders = FileSearch.Search(folders, words);
+            foundFiles = FileSearch.Search(files, words);
+        }
+
+        var rows = new List<ExplorerRow>(foundFolders.Count + foundFiles.Count);
+        foreach (var folder in foundFolders)
+        {
+            rows.Add(FolderRow(index.FullPath(folder)));
+        }
+
+        foreach (var file in foundFiles)
+        {
+            rows.Add(new ExplorerRow(index.FullPath(file), file.Name));
+        }
+
+        int total = rows.Count;
+        string trailing = everything
+            ? $"All: {Folders(foundFolders.Count)}, {Files(foundFiles.Count)}"
+            : total switch
+            {
+                0 => "No result",
+                1 => "1 result",
+                _ => $"{total:N0} results",
+            };
+        return (rows, trailing);
+    }
+
+    /// <summary>A folder's tile: its name, then every file below it as the index counts them, once the index is there.</summary>
+    private ExplorerRow FolderRow(string fullPath)
+    {
+        string name = Path.GetFileName(fullPath);
+        if (_index is null || _baseFolder is null)
+        {
+            return new ExplorerRow(fullPath, name, IsFolder: true);
+        }
+
+        _tree ??= FolderTree.Of(_index.Entries);
+        int count = _tree.CountBelow(Path.GetRelativePath(_baseFolder, fullPath), _index.Count);
+        return new ExplorerRow(fullPath, $"{name} ({count:N0})", IsFolder: true);
+    }
+
+    private static string Folders(int count) => count == 1 ? "1 folder" : $"{count:N0} folders";
+
+    /// <summary>The base folder's name, then every folder down to <paramref name="relative"/>.</summary>
+    private string[] SegmentsOf(string relative)
+    {
+        string root = _baseFolder is null ? "" : Path.GetFileName(_baseFolder) is { Length: > 0 } name ? name : _baseFolder;
+        return relative.Length == 0 ? [root] : [root, .. relative.Split(['\\', '/'], StringSplitOptions.RemoveEmptyEntries)];
+    }
+
+    /// <summary>The breadcrumb on the open folder, <paramref name="trailing"/> after it.</summary>
+    private void ShowBreadcrumb(string trailing) => _breadcrumb.SetPath(_baseFolder is null ? [] : SegmentsOf(_openFolder), trailing);
+
+    /// <summary>The index, and the folders derived from it, taken over together.</summary>
+    private void SetIndex(FileIndex? index, FolderTree? tree)
+    {
+        _index = index;
+        _tree = tree;
+    }
+
+    /// <summary>Whether the list is the favorites: the search view with a blank box.</summary>
+    private bool ShowingFavorites => !_folderView && FileSearch.Words(_search.Text).Length == 0;
+
+    /// <summary>The 📁 toggle was pressed or released by the user: the other view shows, remembered.</summary>
+    private void SetFolderView(bool on)
+    {
+        if (_syncingToggle || on == _folderView)
+        {
+            return;
+        }
+
+        _folderView = on;
+        ApplyView();
+        RefreshRows();
+        FolderViewChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>What the view changes around the grid: the caption or the breadcrumb, the search box's hint, the toggle's tooltip.</summary>
+    private void ApplyView()
+    {
+        _caption.Visible = !_folderView;
+        _breadcrumb.Visible = _folderView;
+        _search.PlaceholderText = _folderView ? FolderSearchPlaceholder : SearchPlaceholder;
+        _toolTip.SetToolTip(_folderToggle, FolderToggleTip());
+    }
+
+    private string FolderToggleTip() => _folderView
+        ? "Back to the favorites and the search over every file"
+        : "Browse the base folder, folder by folder";
+
+    /// <summary>Opens a folder of the folder view — its content from the top, the search box cleared — and remembers it.</summary>
+    private void Navigate(string relative, string? select = null)
+    {
+        _openFolder = relative;
+        if (_search.TextLength > 0)
+        {
+            _clearingSearch = true;
+            try
+            {
+                _search.Text = "";
+            }
+            finally
+            {
+                _clearingSearch = false;
+            }
+        }
+
+        RefreshRows(select: select);
+        FolderViewChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>↑, Backspace or Alt+↑: the parent folder, the folder just left selected.</summary>
+    private void GoUp()
+    {
+        if (_folderView && _baseFolder is not null && _openFolder.Length > 0)
+        {
+            Navigate(FolderTree.Parent(_openFolder), Path.Combine(_baseFolder, _openFolder));
+        }
+    }
+
+    /// <summary>A folder of the breadcrumb clicked (0: the base folder), the one below it on the way to the open folder selected.</summary>
+    private void OpenFolderAtDepth(int depth)
+    {
+        if (_baseFolder is null)
+        {
+            return;
+        }
+
+        string[] path = SegmentsOf(_openFolder)[1..];
+        if (depth >= path.Length)
+        {
+            return;
+        }
+
+        Navigate(string.Join('\\', path[..depth]), Path.Combine(_baseFolder, string.Join('\\', path[..(depth + 1)])));
     }
 
     /// <summary>A load's slots: the pages per load times what the list shows at once.</summary>
@@ -771,6 +1178,11 @@ internal sealed class FileExplorerPanel : Panel
                 }
 
                 break;
+            case Keys.Up when e.Alt:
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                GoUp();
+                break;
             case Keys.Down when _grid.Visible && LoadedRows.Count > 0:
                 e.Handled = true;
                 if (_grid.SelectedRow is null)
@@ -783,18 +1195,28 @@ internal sealed class FileExplorerPanel : Panel
         }
     }
 
+    /// <summary>A file tile is added like Add images; a folder tile opens its folder.</summary>
     private void Activate(ExplorerRow row)
     {
-        if (Exists(row))
+        if (!Exists(row))
+        {
+            return;
+        }
+
+        if (row.IsFolder)
+        {
+            Navigate(Path.GetRelativePath(_baseFolder!, row.FullPath));
+        }
+        else
         {
             FileActivated?.Invoke(this, row.FullPath);
         }
     }
 
-    /// <summary>A tile dragged past the threshold becomes a file drag, like one from the Explorer.</summary>
+    /// <summary>A file tile dragged past the threshold becomes a file drag, like one from the Explorer; a folder tile does not drag.</summary>
     private void StartDrag(ExplorerRow row)
     {
-        if (Exists(row))
+        if (!row.IsFolder && Exists(row))
         {
             _draggingOwnTile = true;
             try
@@ -837,7 +1259,7 @@ internal sealed class FileExplorerPanel : Panel
             }
         }
 
-        if (FileSearch.Words(_search.Text).Length == 0)
+        if (ShowingFavorites)
         {
             // The favorites list: the tile leaves it, the place kept — once the grid is done with the click.
             BeginInvoke(() => RefreshRows(keepPlace: true));
@@ -857,7 +1279,7 @@ internal sealed class FileExplorerPanel : Panel
 
         try
         {
-            Process.Start("explorer.exe", $"/select,\"{row.FullPath}\"")?.Dispose();
+            Process.Start("explorer.exe", row.IsFolder ? $"\"{row.FullPath}\"" : $"/select,\"{row.FullPath}\"")?.Dispose();
         }
         catch (Win32Exception ex)
         {
@@ -871,6 +1293,19 @@ internal sealed class FileExplorerPanel : Panel
     /// </summary>
     private bool Exists(ExplorerRow row)
     {
+        if (row.IsFolder)
+        {
+            if (Directory.Exists(row.FullPath))
+            {
+                return true;
+            }
+
+            // A folder read from the disk, or derived from the index: the list is read again.
+            RefreshRows(keepPlace: true);
+            ShowTransient("Folder not found");
+            return false;
+        }
+
         if (File.Exists(row.FullPath))
         {
             return true;
@@ -879,6 +1314,7 @@ internal sealed class FileExplorerPanel : Panel
         string? error = null;
         if (_index?.Remove(row.FullPath) == true)
         {
+            _tree = null;
             try
             {
                 _index.Save(FileIndex.DefaultPath);
