@@ -44,6 +44,9 @@ Relevant components:
 - The zoning works **like the Blur's**: four bars (left, top, right, bottom), each dragged on its
   own, kept apart by a minimum gap so they never cross, snapping exactly onto the edge within
   6 logical px (RULES.md § On-Cell Handles), drawn as helper indicators (fluorescent green).
+- **Moving the kept part** (Iteration 5): in the edit view, a drag **inside the kept part** moves
+  it whole — its size and its ratio kept, stopped at the image's edges — the move cursor showing
+  over it. The bars keep their priority on their own reach; the background follows live.
 
 - **Edit view** (Q&A 6): while the Crop tab is selected and the effect is on, the selected cell
   shows the **whole oriented image**, fitted whole (contain, no zoom, no fine angle) so every edge
@@ -182,6 +185,13 @@ as proposed details. No Open Question remains.
 Go given: code, tests and documentation (no test project — the unit-test step does not apply).
 The scope is frozen as the sections above stand. The work lands on `main` (the user's standing
 preference for this app).
+
+### Iteration 5 — 2026-09-30 — ⚙️ Post-implementation — Move the kept part
+
+The user, trying the delivered edit view: *the crop must be movable*. A drag inside the kept part,
+in the edit view, now moves it whole — size and ratio kept, stopped at the image's edges, the move
+cursor over it; the bars keep their priority on their reach. (The option had been offered with the
+options toolbar in Q&A 10, not picked then.)
 
 ---
 
