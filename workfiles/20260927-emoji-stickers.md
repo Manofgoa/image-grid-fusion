@@ -24,8 +24,8 @@ Components concerned (from the scout pass):
 | Color glyphs | The app is pure GDI+ (`net10.0-windows10.0.19041.0`, no package), and GDI+ draws emojis **monochrome**: WPF text rendering rasterizes them (`UseWPF` in the `.csproj`) — see *Rendering* |
 | Gestures | `UI/GridPreview.cs` — `OnMouseDown` / `OnMouseMove` / `OnMouseUp` / `OnMouseWheel` priority chains; `OnPaint` for the selection indicator |
 | Delete key | `UI/MainForm.cs` (`case Keys.Delete when _preview.HasSelection …`) |
-| Global effects row | `UI/MainForm.cs` (`_globalTabs`, `_globalOptions[GlobalEffect.X]`), `UI/EffectTabs.cs`, `UI/EffectIcons.cs` |
-| Recent emojis | `UI/AppSettings.cs` if remembered between sessions (registry, `Software\ImageGridFusion`) |
+| Global effects toolbar | `UI/MainForm.cs` (`_globalTabs`, `_globalOptions[GlobalEffect.X]`), `UI/EffectTabs.cs`, `UI/EffectIcons.cs` |
+| Recent emojis | `recent-emojis.txt` next to the exe, read and written like `Explorer/Favorites.cs` (`favorites.txt`) |
 
 ---
 
@@ -38,12 +38,15 @@ Agreed at scoping (Q&A #1): the emojis belong to the **grid**, not to a cell + i
 |---|---|
 | An image is replaced, deleted, swapped; a cell *Reset* button | Untouched — they stay where they are on the grid |
 | The layout changes, a separator is dragged | Kept, at the same place on the grid |
-| *Clear all* | Reset — no emoji left |
-| The Emojis toggle is turned off | Hidden from the preview and the exports, **kept**; turned on again, they come back as they were |
-| Export running | The row is locked, and the emojis cannot be selected nor edited |
+| *Clear all*, the Emojis options' own *Reset*, the global tabs' *Reset* | Reset — no emoji left (the initial state) |
+| The Emojis activation checkbox is unchecked | Hidden from the preview and the exports, **kept**, the selected emoji deselected; checked again, they come back as they were |
+| Export running | The global toolbars are locked, and the emojis cannot be selected nor edited |
 
-- **Off at start-up**, with no emoji. Its options show only while it is on (Global effects row
-  rule), so adding the first emoji starts by turning the toggle on.
+- **Off at start-up**, with no emoji. Like every global effect (RULES.md § Global Effects
+  Toolbar), its tab in the **global effects toolbar** holds an activation checkbox, and its options
+  show in the **global options toolbar** whenever the tab is selected, even while it is off.
+- **Acting on its options activates it**: adding an emoji while it is off checks its activation
+  checkbox first, so the kept emojis come back with the new one.
 - **Not persisted**: the emojis on the grid are lost when the app closes, like every effect state.
 - Geometry in **fractions of the grid**: centre (x, y) in fractions of the grid's width and height,
   size in fractions of the grid's **shorter side**, angle in degrees. The emojis keep their place
@@ -62,13 +65,18 @@ used.
   stays whole; an empty field adds nothing.
 - **Recent**: the 20 emojis most recently **added to the grid**, most recent first, without
   duplicates — adding one already in the list moves it to the front.
+- **Remembered between sessions** (Q&A #14) in `recent-emojis.txt` **next to the exe**, one emoji
+  per line, like the explorer's `favorites.txt`: read at start-up, rewritten on each addition.
+  A missing or unreadable file gives an empty list; a failed write is ignored, the list staying
+  in memory for the session.
 - Clicking an emoji (palette or recent) **adds it** to the grid, **selects it** and closes the
   popup.
 
 ### Popup (Q&A #7)
 
-- The Emojis options in the Global effects row hold a **"😀 ▾" button**; it opens a popup panel
-  under it, keeping the row at its single height.
+- The Emojis options in the global options toolbar hold a **"😀 ▾" button**, then the effect's
+  own **Reset**; the button opens a popup panel next to it, keeping the toolbar at its single
+  height.
 - The panel, top to bottom: **Recent** (hidden while empty), **Palette**, then the **free field**
   with its **Add** button.
 - Clicking outside the panel, or Escape, closes it without adding anything.
@@ -149,7 +157,7 @@ workfile stayed test-free.
 - [x] ~~Where does the picker sit: inline in the Global effects row, or in a popup opened from a button in the row?~~ → Popup from a button in the row (Q&A #7)
 - [x] ~~A drag started on an **unselected** emoji: selects it only, or selects and moves it at once?~~ → Selects it only (Q&A #8)
 - [x] ~~Where does the wheel act while an emoji is selected: over that emoji only, or anywhere on the grid?~~ → Over that emoji only (Q&A #9)
-- [ ] Are the 20 recent emojis remembered between sessions (in the registry, where every app setting lives — the app has no settings `.json`), or for the session only?
+- [x] ~~Are the 20 recent emojis remembered between sessions (in the registry, where every app setting lives — the app has no settings `.json`), or for the session only?~~ → Remembered, in `recent-emojis.txt` next to the exe, like `favorites.txt` (Q&A #14)
 - [x] ~~Emoji selection and cell selection: exclusive (selecting one clears the other), or both kept at once?~~ → Exclusive (Q&A #11)
 - [x] ~~Stacking: does selecting an emoji bring it to the front?~~ → Yes, and it stays there (Q&A #12)
 - [x] ~~Unit tests: none, as in the previous workfiles, or a test project for this feature?~~ → None (Q&A #13)
@@ -191,6 +199,16 @@ front and stays there; no unit tests. The recent emojis' persistence stays open 
 why the registry rather than a settings `.json`: the app has none, every remembered setting lives
 in the registry.
 
+### Iteration 4 — 2026-09-30
+
+- The recent emojis are remembered in `recent-emojis.txt` next to the exe (Q&A #14), following
+  the explorer's `favorites.txt` — a precedent that appeared since Iteration 3.
+- Aligned on RULES.md as it now stands: the global effects moved from a row of toggles to a
+  **global effects toolbar** of tabs over a **global options toolbar**. The Emojis effect gets a tab
+  with its activation checkbox, its options show whenever the tab is selected (off included),
+  adding an emoji activates it, and its own *Reset* and the tabs' *Reset* clear every emoji like
+  *Clear all*.
+
 ---
 
 ## Implementation Log
@@ -225,8 +243,8 @@ Questions asked by the agent during design, with user responses.
 | 11 | Are the emoji selection and the cell selection exclusive? | Exclusive | 2026-09-27 |
 | 12 | Does selecting an emoji bring it to the front? | Yes | 2026-09-27 |
 | 13 | Unit tests for this feature? | None | 2026-09-27 |
-| 14 | Are the recent emojis remembered between sessions, in the registry with the other settings? | | |
+| 14 | Where are the recent emojis remembered: a file next to the exe (like `favorites.txt`), the registry, or the session only? | A file next to the exe | 2026-09-30 |
 
 ---
 
-*Last updated: 2026-09-27*
+*Last updated: 2026-09-30*
