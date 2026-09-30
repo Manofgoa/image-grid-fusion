@@ -101,6 +101,10 @@ Agreed at scoping (Q&A #3): drag + wheel, but an emoji must be **selected first*
 | Delete | — | Removes the selected emoji |
 | Escape, click outside every emoji | — | Deselects the emoji |
 
+- **Active only while the Emojis tab is selected** (Q&A #15) in the global effects toolbar, and
+  the effect on — like the cell effects' handles (RULES.md § On-Cell Handles). Otherwise the emojis
+  are drawn but ignore the mouse: a click on one reaches the cell under it. Selecting another
+  global tab, or turning the effect off, deselects the emoji.
 - Hit-testing uses the emoji's **rotated square**; the emoji on top wins where several overlap.
 - The emojis are tested **before** the cell's gestures (after the ✕ and source-icon hits),
   on their own area only.
@@ -161,7 +165,7 @@ workfile stayed test-free.
 - [x] ~~Emoji selection and cell selection: exclusive (selecting one clears the other), or both kept at once?~~ → Exclusive (Q&A #11)
 - [x] ~~Stacking: does selecting an emoji bring it to the front?~~ → Yes, and it stays there (Q&A #12)
 - [x] ~~Unit tests: none, as in the previous workfiles, or a test project for this feature?~~ → None (Q&A #13)
-- [ ] When can the emojis be selected on the grid: only while the Emojis tab is selected (like the cell effects' handles), or whenever the effect is on?
+- [x] ~~When can the emojis be selected on the grid: only while the Emojis tab is selected (like the cell effects' handles), or whenever the effect is on?~~ → Only while the Emojis tab is selected (Q&A #15)
 
 ---
 
@@ -217,6 +221,12 @@ Aligned on RULES.md § App Settings, added since Iteration 4: every remembered s
 The recent emojis go there as a JSON array instead of a separate `recent-emojis.txt` — still a
 file next to the exe, as chosen at Q&A #14.
 
+### Iteration 6 — 2026-09-30
+
+The emojis take the mouse only while the Emojis tab is selected and the effect on (Q&A #15), like
+the cell effects' handles; otherwise a click on one reaches the cell under it. Every open question
+is now answered.
+
 ---
 
 ## Implementation Log
@@ -252,7 +262,7 @@ Questions asked by the agent during design, with user responses.
 | 12 | Does selecting an emoji bring it to the front? | Yes | 2026-09-27 |
 | 13 | Unit tests for this feature? | None | 2026-09-27 |
 | 14 | Where are the recent emojis remembered: a file next to the exe (like `favorites.txt`), the registry, or the session only? | A file next to the exe | 2026-09-30 |
-| 15 | When can the emojis be selected on the grid: only while the Emojis tab is selected, or whenever the effect is on? | | |
+| 15 | When can the emojis be selected on the grid: only while the Emojis tab is selected, or whenever the effect is on? | Only while the Emojis tab is selected | 2026-09-30 |
 
 ---
 
