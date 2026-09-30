@@ -150,6 +150,21 @@ The **mirror of the cell effects' toolbars** at the bottom of the window (origin
 - An effect that needs a file before it can be on (the Soundtrack) opens the file picker when its
   checkbox is checked without one; the effect stays off if it is cancelled.
 
+## Preview Playback
+
+Applies to whatever changes the grid's content (origin: `workfiles/20260927-video-add-rewind.md`).
+
+- An image **arriving** in a cell — by any route, in an empty cell or replacing another — and an
+  image **deleted** make the grid **start over**: every animated image plays again from its
+  **starting point** (its Frames effect's), at the **same instant**, and the soundtrack from its
+  **beginning**; a frozen image stays on its frame. The preview then plays what an export gives.
+- A swap, a layout change, an effect change and the soundtrack's own toggle do **not** start the
+  grid over: the images keep playing as they are (a Frames effect change replays its own image
+  only).
+- The restart is `AnimationPlayer.Restart`, called from `GridPreview` where the images change;
+  every route into a cell goes through `GridPreview.Add`, so a new one starts the grid over by
+  itself.
+
 ## On-Cell Helper Indicators
 
 Apply to every **helper indicator** — a measure or geometry aid drawn over a cell: guides, handles,
