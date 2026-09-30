@@ -81,6 +81,23 @@ internal sealed class Favorites
         return added;
     }
 
+    /// <summary>
+    /// Adds <paramref name="fullPaths"/> in their order, the last one ending the newest — one already a
+    /// favorite moved there, as if added again, never removed — and writes the file once. Throws like
+    /// <see cref="Toggle"/>, the change kept for the session.
+    /// </summary>
+    public void Add(IEnumerable<string> fullPaths)
+    {
+        foreach (string fullPath in fullPaths)
+        {
+            Drop(fullPath);
+            _set.Add(fullPath);
+            _paths.Add(fullPath);
+        }
+
+        Save();
+    }
+
     /// <summary>Removes <paramref name="fullPath"/> if it is a favorite, writing the file; false when it was none.</summary>
     public bool Remove(string fullPath)
     {
