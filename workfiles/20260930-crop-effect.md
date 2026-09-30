@@ -272,6 +272,7 @@ Questions asked by the agent during design, with user responses.
 | 10 | What does the options toolbar hold besides Reset? | Aspect ratios imposed, with a preview of the format in each button | 2026-09-30 |
 | 11 | Do zoom, fine angle and blur apply to the already cropped image? | Yes, after the crop (recommended) | 2026-09-30 |
 | 12 | Where does the Crop tab go? | Between Background and Zoom | 2026-09-30 |
+| 13 | In the edit view, keep the pan and the wheel outside the kept part, or ignore them? | | |
 
 ---
 
