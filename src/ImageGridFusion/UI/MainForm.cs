@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using ImageGridFusion.Composition;
+using ImageGridFusion.Explorer;
 using ImageGridFusion.Imaging;
 
 namespace ImageGridFusion.UI;
@@ -542,6 +543,15 @@ internal sealed class MainForm : Form
         _preview.DragDrop += OnDragDrop;
         _preview.AddImagesClicked += (_, _) => PickFiles();
         _preview.ShowInExplorerClicked += (_, path) => ShowInExplorer(path);
+        _preview.SwapDragMoved += (_, point) => _explorer.ShowDropFrame(point is { } at && _explorer.ContainsScreenPoint(at));
+        _preview.ReleasedOffGrid += (_, released) =>
+        {
+            if (_explorer.ContainsScreenPoint(released.ScreenPoint))
+            {
+                AddToFavorites(released.Image);
+            }
+        };
+        _explorer.MessageWhileCollapsed += (_, message) => ShowStatus(message.Text, message.Error);
         _layouts.DragEnter += OnDragEnter;
         _layouts.DragDrop += OnDragDrop;
         _preview.Borders = ActiveBorders;
@@ -812,6 +822,41 @@ internal sealed class MainForm : Form
         {
             await AddTextAsync(text, target, "Nothing added: the dropped text is empty.", dropped: true);
         }
+    }
+
+    /// <summary>
+    /// A cell's image dropped by its ✥ handle onto the file explorer: its file becomes a favorite. An
+    /// image without one is saved first into favorites-from-pasted — a pasted image as a PNG, a text in
+    /// the form it arrived — and adopts that file (see workfiles/20260930-favorites-drag-drop.md).
+    /// </summary>
+    private void AddToFavorites(SourceImage image)
+    {
+        if (image.FilePath is null)
+        {
+            string? saved;
+            try
+            {
+                saved = image.TextOrigin is { } text ? PastedFavorites.SaveText(text.Content, text.Extension)
+                    : image.Pages is null ? PastedFavorites.SaveImage(image.Bitmap)
+                    : null;
+            }
+            catch (Exception ex) when (FileIndex.IsFileError(ex) || ex is ExternalException)
+            {
+                _explorer.Report($"Not added to favorites: the image could not be saved: {ex.Message}", error: true);
+                return;
+            }
+
+            if (saved is null)
+            {
+                _explorer.Report("Not added to favorites: this image has no file and cannot be saved", error: true);
+                return;
+            }
+
+            image.AdoptFile(saved);
+            _preview.RefreshSourceName();
+        }
+
+        _explorer.AddFavorites([image.FilePath!]);
     }
 
     private int DropCell(DragEventArgs e) => _preview.CellAt(_preview.PointToClient(new Point(e.X, e.Y)));

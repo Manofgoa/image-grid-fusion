@@ -467,7 +467,7 @@ internal sealed class FileExplorerPanel : Panel
     }
 
     /// <summary>A message on the status line, else on the window's while the panel is collapsed.</summary>
-    private void Report(string message, bool error)
+    public void Report(string message, bool error)
     {
         if (_open)
         {
