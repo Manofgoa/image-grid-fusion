@@ -42,6 +42,7 @@ Settled at scoping (Q&A #1–#5):
 
 ## Drop From the Windows Explorer
 
+- The drop target is the **whole panel**, open or **collapsed** (the 20 px strip included).
 - The panel accepts a `FileDrop` (`DataFormats.FileDrop`), shows the **copy** effect and its hover
   frame (§ Feedback), and on the drop adds every file to the favorites, **in the order given**, the
   last one ending at the top (the list is *the newest first*).
@@ -52,6 +53,9 @@ Settled at scoping (Q&A #1–#5):
   window's handler (`MainForm.OnDragDrop`, *"elsewhere in the window: added like a paste"*) and lands
   in the grid. With this task, the panel takes the drop for the favorites; the grid no longer
   receives files dropped on the panel.
+- A **tile of the panel** dragged and released on the panel itself does **nothing** (the tiles are not
+  a source): the panel knows the drag is its own (a flag held during its `DoDragDrop`) and shows the
+  *none* effect, no frame.
 - A **text** dropped on the panel (`TextData`, from another app) is not a file: see Open Questions.
 
 ## Drop From a Cell (✥ Handle)
@@ -87,9 +91,9 @@ Settled at scoping (Q&A #1–#5):
 - A new `Favorites.Add(fullPath)` — adds when missing, never removes, writes the file (the
   `Toggle` / `Remove` pattern: atomic write through `.tmp`, a write error thrown as an
   `IsFileError`, the change kept for the session). Several files are added with **one** write.
-- A file already a favorite: see Open Questions.
-- The panel then refreshes: the favorites list keeps its place (`RefreshRows(keepPlace: true)`), a
-  search's tiles get their hearts redrawn.
+- A file **already a favorite** is **moved to the top**, as if added again.
+- The panel then refreshes: the favorites list keeps its place (`RefreshRows(keepPlace: true)`); a
+  **search** showing **stays**, its tiles' hearts redrawn.
 
 ## Feedback
 
@@ -97,7 +101,8 @@ Settled at scoping (Q&A #1–#5):
   around the panel's list. It is interaction feedback, not a helper indicator (RULES.md
   § On-Cell Helper Indicators): it takes the preview's **drop-target highlight** colour.
 - **After the drop**: the panel's transient status line (`ShowTransient`, 5 s) says what was added —
-  `Added to favorites: name` or `Added to favorites: N files`; errors on the same line, in red.
+  `Added to favorites: name` or `Added to favorites: N files`; errors on the same line, in red. The
+  panel **collapsed**, the message goes to the window's status line instead.
 
 ## Documentation
 
@@ -129,13 +134,14 @@ previous workfile, the delivery is checked by hand or by a script driving the bu
 
 ## Open Questions
 
-- [ ] A file dropped that is **already a favorite**: moved to the top (as if added again), or left in
-  place?
-- [ ] A drop while a **search** is showing: the search stays (the hearts redrawn), or the panel
-  switches to the favorites list?
-- [ ] The **collapsed panel** (the 20 px strip): does it accept the drop too?
-- [ ] A **tile dragged from the panel** and released on the panel (tiles are not a source): nothing,
-  or a favorite anyway? (Today it falls through to the window and lands in the grid.)
+- [x] ~~A file dropped that is **already a favorite**: moved to the top (as if added again), or left in
+  place?~~ → Moved to the top, as if added again
+- [x] ~~A drop while a **search** is showing: the search stays (the hearts redrawn), or the panel
+  switches to the favorites list?~~ → The search stays, the hearts redrawn
+- [x] ~~The **collapsed panel** (the 20 px strip): does it accept the drop too?~~ → Yes, framed while
+  hovered; the message goes to the window's status line
+- [x] ~~A **tile dragged from the panel** and released on the panel (tiles are not a source): nothing,
+  or a favorite anyway? (Today it falls through to the window and lands in the grid.)~~ → Nothing
 - [ ] A **folder** dropped from the Explorer: ignored, or its files added?
 - [ ] Every file type, or only what the cells can show? (The cells show anything, through the Shell
   thumbnail as a last resort.)
@@ -175,6 +181,13 @@ by OLE; the panel registers no drop target today, its drops falling through to t
 image have no file (pasted image, pasted text, dropped text). Design sections drafted; thirteen
 open questions listed.
 
+### Iteration 2 — 2026-09-30
+
+First batch of open questions answered (Q&A #6–#9): a file already a favorite moves to the top; a
+search showing stays; the collapsed panel accepts the drop, its message on the window's status line;
+a tile released on its own panel does nothing. § Drop From the Windows Explorer, § Adding a
+Favorite and § Feedback updated.
+
 ---
 
 ## Implementation Log
@@ -201,10 +214,10 @@ Questions asked by the agent during design, with user responses.
 | 3 | Which sources besides the cells? | The Windows Explorer (not the app's tiles) | 2026-09-30 |
 | 4 | From a cell, which gesture starts the drag? | The ✥ handle released outside the grid, over the panel | 2026-09-30 |
 | 5 | Straightforward or tricky / long? | Straightforward | 2026-09-30 |
-| 6 | A file dropped that is already a favorite: moved to the top, or left in place? | | |
-| 7 | A drop while a search shows: the search stays, or the panel switches to the favorites? | | |
-| 8 | Does the collapsed panel (the strip) accept the drop? | | |
-| 9 | A tile dragged from the panel and released on it: nothing, or a favorite? | | |
+| 6 | A file dropped that is already a favorite: moved to the top, or left in place? | Moved to the top | 2026-09-30 |
+| 7 | A drop while a search shows: the search stays, or the panel switches to the favorites? | The search stays | 2026-09-30 |
+| 8 | Does the collapsed panel (the strip) accept the drop? | Yes | 2026-09-30 |
+| 9 | A tile dragged from the panel and released on it: nothing, or a favorite? | Nothing | 2026-09-30 |
 | 10 | A folder dropped from the Explorer: ignored, or its files added? | | |
 | 11 | Every file type, or only what the cells can show? | | |
 | 12 | The pasted image's format and name? | | |
