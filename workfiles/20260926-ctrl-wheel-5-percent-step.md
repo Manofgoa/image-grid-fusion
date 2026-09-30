@@ -14,7 +14,7 @@ Today the wheel changes values in fine, uneven increments:
 - **Over a cell**, each notch multiplies the zoom by 2^(1/4) (`GridPreview.OnMouseWheel` →
   `ZoomAt`, `NotchesPerDoubling = 4`): 100 % → 119 % → 141 % → 168 % → 200 %. Crossing 100 %
   snaps exactly onto 100 %.
-- **Over an option slider** (options toolbar and Global effects row), the stock `TrackBar` moves by
+- **Over an option slider** (options toolbar and global options toolbar), the stock `TrackBar` moves by
   `SmallChange = 1` per notch — 1 % for most sliders, 1° for the fine angle, one hundredth of a
   doubling for the zoom slider, one frame for Frames.
 
@@ -57,6 +57,8 @@ value:
 |---|---|---|
 | Background opacity, Black & white, Blur intensity | % | 5 %, snapped |
 | Volume, Soundtrack volume | % (0…`MaxLevel`×100) | 5 %, snapped |
+| Borders opacity | % (`MinOpacity`…100) | 5 %, snapped |
+| Borders thickness | thousandths of the grid's shorter side, shown as 0.1 %…6.0 % | *see Open Questions* |
 | Zoom | hundredths of a doubling (log scale) | *see Open Questions* |
 | Rotate — fine angle | degrees (±`MaxFineAngle`) | *see Open Questions* |
 | Frames | frame index | *see Open Questions* |
@@ -96,7 +98,7 @@ helper is written as a pure static function, so it can be pinned the day a test 
 ## Open Questions
 
 - [x] ~~Which wheels does Ctrl affect?~~ → The cell zoom **and** the option sliders (options toolbar
-  and Global effects row).
+  and global options toolbar).
 - [x] ~~How does the 5 % step apply?~~ → Snapped onto multiples of 5 (103 → 105 → 110).
 - [x] ~~Does the wheel without Ctrl change?~~ → No, unchanged.
 - [ ] Zoom — the cell range is 10 %…1600 %: a flat 5-point step is a 50 % jump at 10 % and takes
@@ -109,6 +111,8 @@ helper is written as a pure static function, so it can be pinned the day a test 
 - [ ] Sliders — a stock `TrackBar` takes the wheel when it has the focus (and, depending on the
   Windows "scroll inactive windows" setting, when hovered). Leave that routing as it is, or make a
   hovered slider take Ctrl+wheel even without focus?
+- [ ] Borders thickness (shown 0.1 %…6.0 %): a 5-point step is nearly its whole range. Step of
+  0.5 % snapped, 5 % of the range, or keep its plain wheel even with Ctrl?
 
 ---
 
@@ -127,6 +131,14 @@ slider; the plain wheel is untouched. The exploration located the single wheel p
 (`GridPreview.OnMouseWheel` / `ZoomAt`) and the single factory of every slider
 (`MainForm.OptionSlider`). Four points remain open: the zoom's wide range, the fine angle's unit,
 the frames' unit, and which slider receives the wheel.
+
+### Iteration 2 — 2026-09-30
+
+The code moved since Iteration 1 (commit aa38add and later): the Global effects row became the
+global effects toolbar over the global options toolbar, and the Borders global effect added two
+sliders built by `OptionSlider` — thickness and opacity. The opacity follows the plain 5 % rule;
+the thickness (0.1 %…6.0 %) gets its own open question. The first open-question batch was
+dismissed; the user asked for it again as multiple-choice questions.
 
 ---
 
@@ -157,7 +169,8 @@ Questions asked by the agent during design, with user responses.
 | 6 | Fine angle: 5° snapped, or 5 % of the range (4.5°)? | | |
 | 7 | Frames: 5 frames, or 5 % of the frame count? | | |
 | 8 | Sliders: leave the wheel routing as is, or let a hovered slider take Ctrl+wheel without focus? | | |
+| 9 | Borders thickness: 0.5 % snapped, 5 % of the range, or excluded? | | |
 
 ---
 
-*Last updated: 2026-09-26*
+*Last updated: 2026-09-30*
