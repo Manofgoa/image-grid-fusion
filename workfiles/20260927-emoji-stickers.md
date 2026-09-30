@@ -25,7 +25,7 @@ Components concerned (from the scout pass):
 | Gestures | `UI/GridPreview.cs` — `OnMouseDown` / `OnMouseMove` / `OnMouseUp` / `OnMouseWheel` priority chains; `OnPaint` for the selection indicator |
 | Delete key | `UI/MainForm.cs` (`case Keys.Delete when _preview.HasSelection …`) |
 | Global effects toolbar | `UI/MainForm.cs` (`_globalTabs`, `_globalOptions[GlobalEffect.X]`), `UI/EffectTabs.cs`, `UI/EffectIcons.cs` |
-| Recent emojis | `recent-emojis.txt` next to the exe, read and written like `Explorer/Favorites.cs` (`favorites.txt`) |
+| Recent emojis | `settings.json` next to the exe, through `UI/AppSettings.cs` (a `RecentEmojis` getter and `SaveRecentEmojis`, like the other settings) |
 
 ---
 
@@ -65,10 +65,10 @@ used.
   stays whole; an empty field adds nothing.
 - **Recent**: the 20 emojis most recently **added to the grid**, most recent first, without
   duplicates — adding one already in the list moves it to the front.
-- **Remembered between sessions** (Q&A #14) in `recent-emojis.txt` **next to the exe**, one emoji
-  per line, like the explorer's `favorites.txt`: read at start-up, rewritten on each addition.
-  A missing or unreadable file gives an empty list; a failed write is ignored, the list staying
-  in memory for the session.
+- **Remembered between sessions** (Q&A #14) in **`settings.json` next to the exe**, as a JSON
+  array of strings, read and written through `UI/AppSettings.cs` only (RULES.md § App Settings):
+  read at start-up, saved on each addition. An unreadable value gives an empty list; a failed save
+  says so in the status line, the list staying in memory for the session.
 - Clicking an emoji (palette or recent) **adds it** to the grid, **selects it** and closes the
   popup.
 
@@ -157,7 +157,7 @@ workfile stayed test-free.
 - [x] ~~Where does the picker sit: inline in the Global effects row, or in a popup opened from a button in the row?~~ → Popup from a button in the row (Q&A #7)
 - [x] ~~A drag started on an **unselected** emoji: selects it only, or selects and moves it at once?~~ → Selects it only (Q&A #8)
 - [x] ~~Where does the wheel act while an emoji is selected: over that emoji only, or anywhere on the grid?~~ → Over that emoji only (Q&A #9)
-- [x] ~~Are the 20 recent emojis remembered between sessions (in the registry, where every app setting lives — the app has no settings `.json`), or for the session only?~~ → Remembered, in `recent-emojis.txt` next to the exe, like `favorites.txt` (Q&A #14)
+- [x] ~~Are the 20 recent emojis remembered between sessions (in the registry, where every app setting lives — the app has no settings `.json`), or for the session only?~~ → Remembered, in a file next to the exe (Q&A #14): `settings.json` through `AppSettings` *(revised 2026-09-30, see Iteration 5)*
 - [x] ~~Emoji selection and cell selection: exclusive (selecting one clears the other), or both kept at once?~~ → Exclusive (Q&A #11)
 - [x] ~~Stacking: does selecting an emoji bring it to the front?~~ → Yes, and it stays there (Q&A #12)
 - [x] ~~Unit tests: none, as in the previous workfiles, or a test project for this feature?~~ → None (Q&A #13)
@@ -209,6 +209,13 @@ in the registry.
   with its activation checkbox, its options show whenever the tab is selected (off included),
   adding an emoji activates it, and its own *Reset* and the tabs' *Reset* clear every emoji like
   *Clear all*.
+
+### Iteration 5 — 2026-09-30
+
+Aligned on RULES.md § App Settings, added since Iteration 4: every remembered setting now lives in
+`settings.json` next to the exe, through `UI/AppSettings.cs`, and the app never uses the registry.
+The recent emojis go there as a JSON array instead of a separate `recent-emojis.txt` — still a
+file next to the exe, as chosen at Q&A #14.
 
 ---
 
