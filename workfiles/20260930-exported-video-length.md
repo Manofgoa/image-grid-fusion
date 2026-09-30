@@ -63,14 +63,15 @@ One definition, the one the export applies today:
 
 ### Placement and Look
 
-- A **label** in the bottom bar's right-hand cluster (`_outputButtons`), its place an Open
-  Question (A recommended: between ⚙ and Copy, so only the gear moves when the text widens; the
-  buttons keep their place against the window's right edge).
-- Text: **`⏱ 12.5 s`** — the `Seconds` format of the export summaries, one decimal — and
-  **`⏱ —`** while there is no video length. Its final form is an Open Question (glyph, no glyph,
-  or the word *Length*).
-- **Always visible**, never disabled, not locked while exporting: a readout, not an action. The
-  export keeps the length it started with; the readout keeps following the grid.
+- A **label** in the bottom bar's right-hand cluster (`_outputButtons`), **between ⚙ and Copy**:
+  only the gear moves when the text widens; Copy, Copy last and Save keep their place against the
+  window's right edge.
+- Text: **`⏱ 12.5 s`** — the clock glyph, then the `Seconds` format of the export summaries:
+  seconds with one decimal whatever the length (`75.0 s`, never minutes), so the readout and the
+  summary after an export agree to the digit — and **`⏱ —`** while there is no video length.
+- **Always visible**, never disabled, not locked while exporting, and **a click on it does
+  nothing**: a readout, not an action. The export keeps the length it started with; the readout
+  keeps following the grid.
 - Vertically centred on the buttons (`Anchor = Left` in the flow panel, like the status label);
   a **minimum width** of `⏱ 000.0 s`, so a length under 1000 s never moves its neighbours.
 
@@ -141,12 +142,15 @@ the launched app:
 
 ## Open Questions
 
-- [ ] **Placement** of the readout in the bottom bar: **A** between ⚙ and Copy (recommended) ·
+- [x] ~~**Placement** of the readout in the bottom bar: **A** between ⚙ and Copy (recommended) ·
   **B** at the far right, after Save's ▾ · **C** at the end of the status line, before the
-  cluster · **D** inside the captions (`Copy MP4 · 12.5 s`), no readout while a PNG.
-- [ ] **Text form**: `⏱ 12.5 s` (recommended) · `12.5 s` · `Length: 12.5 s`.
-- [ ] **Long lengths**: `75.0 s`, as the export summaries write them (recommended) · `1:15.0`.
-- [ ] **Click on the readout**: nothing (recommended) · selects the cell that sets the length.
+  cluster · **D** inside the captions (`Copy MP4 · 12.5 s`), no readout while a PNG.~~ → **A**,
+  between ⚙ and Copy.
+- [x] ~~**Text form**: `⏱ 12.5 s` (recommended) · `12.5 s` · `Length: 12.5 s`.~~ → `⏱ 12.5 s`.
+- [x] ~~**Long lengths**: `75.0 s`, as the export summaries write them (recommended) ·
+  `1:15.0`.~~ → `75.0 s`, as the summaries, whatever the length.
+- [x] ~~**Click on the readout**: nothing (recommended) · selects the cell that sets the
+  length.~~ → Nothing.
 
 ---
 
@@ -167,6 +171,12 @@ the detail in a tooltip, a straightforward subject. Exploration (one scout pass)
 written twice (`Animation.GridLength`, `GridExport.Job`) plus an orphan `Animation.VideoLength`
 that counts the frozen contents; `UpdateButtons` is the refresh point of the PNG ↔ MP4 captions;
 the `Seconds` helper formats `12.5 s`; no test project exists.
+
+### Iteration 2 — 2026-09-30
+
+The four open questions settled, each on the recommended option, over a mockup of the four
+placements: the readout goes **between ⚙ and Copy**, reads **`⏱ 12.5 s`**, keeps the summaries'
+seconds format whatever the length, and **does nothing when clicked**. Design complete.
 
 ---
 
@@ -194,10 +204,10 @@ Questions asked by the agent during design, with user responses.
 | 3 | When is it visible? | Always; `—` while there is no video | 2026-09-30 |
 | 4 | What does it show? | The length alone, the detail in a tooltip | 2026-09-30 |
 | 5 | Straightforward or tricky / long subject? | Straightforward | 2026-09-30 |
-| 6 | Placement in the bottom bar (A / B / C / D)? | | |
-| 7 | Text form (glyph, bare, the word Length)? | | |
-| 8 | Long lengths: seconds as the summaries, or minutes? | | |
-| 9 | Click on the readout: nothing, or select the cell that sets the length? | | |
+| 6 | Placement in the bottom bar (A / B / C / D)? | A — between ⚙ and Copy | 2026-09-30 |
+| 7 | Text form (glyph, bare, the word Length)? | `⏱ 12.5 s` | 2026-09-30 |
+| 8 | Long lengths: seconds as the summaries, or minutes? | Seconds, as the summaries (`75.0 s`) | 2026-09-30 |
+| 9 | Click on the readout: nothing, or select the cell that sets the length? | Nothing | 2026-09-30 |
 
 ---
 
