@@ -105,6 +105,16 @@ internal sealed class AnimationPlayer : IDisposable
         }
     }
 
+    /// <summary>
+    /// Share of its loop <paramref name="image"/> has played, from 0 up to 1 excluded, read from the
+    /// clock at the moment of the call — the preview's progress line samples it at each paint.
+    /// <c>null</c> while the image does not play: a still, a frozen image, a stopped player.
+    /// </summary>
+    public double? ProgressOf(SourceImage image) =>
+        _playbacks.TryGetValue(image, out var playback) && playback.PausedAt is null && image.Pages is { } pages
+            ? Animation.Progress(Position(playback), pages.LoopDuration)
+            : null;
+
     /// <summary>Size the frames of <paramref name="image"/> are shown at: larger frames are scaled down off the UI thread.</summary>
     public void SetDisplaySize(SourceImage image, Size size)
     {
