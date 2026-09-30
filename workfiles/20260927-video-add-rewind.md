@@ -226,6 +226,14 @@ still land right after `OnImagesChanged()` in `Add` (l.280) and `RemoveAt` (l.90
 else in the design changes. The line numbers of § Overview, § Design and § Documentation were
 refreshed; the concurrent-work note became a landed one. No open question.
 
+### Iteration 3 — 2026-09-30 — ✅ Implemented
+
+Go given for code and documentation (Q&A #6; the unit tests do not apply). Branch: `main`, the
+standing choice for this app — no branch, no worktree unless asked. Just before the run, `main`
+gained the progress line (fc632ba): `AnimationPlayer.ProgressOf` reads the position of each
+playing image from the same clock, so a restart moves every line back to its left edge by
+construction — no change to the design.
+
 ---
 
 ## Implementation Log
@@ -252,6 +260,7 @@ Questions asked by the agent during design, with user responses.
 | 3 | Does the soundtrack start over from its beginning at the same time? | Yes, with the videos | 2026-09-27 |
 | 4 | Straightforward, or tricky / long? | Straightforward — one scouting pass | 2026-09-27 |
 | 5 | The design is complete and no open question remains: implement? (No / the code / code, unit tests and documentation) | No — the gate holds | 2026-09-27 |
+| 6 | The design holds against the current code and no question is open: implement? (No / the code / code, unit tests and documentation) | Code, unit tests and documentation — the tests do not apply (no test project): code and documentation, on `main` | 2026-09-30 |
 
 ---
 
