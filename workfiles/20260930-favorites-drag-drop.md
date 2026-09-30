@@ -43,9 +43,10 @@ Settled at scoping (Q&A #1–#5):
 ## Drop From the Windows Explorer
 
 - The drop target is the **whole panel**, open or **collapsed** (the 20 px strip included).
-- The panel accepts a `FileDrop` (`DataFormats.FileDrop`), shows the **copy** effect and its hover
-  frame (§ Feedback), and on the drop adds every file to the favorites, **in the order given**, the
-  last one ending at the top (the list is *the newest first*).
+- The panel (`AllowDrop`, its children none of their own) accepts a `FileDrop`, shows the **copy**
+  effect, the Shell's drag label *Add to Favorites*, and its hover frame (§ Feedback), and on the
+  drop adds every file to the favorites (`FileExplorerPanel.AddFavorites`), **in the order given**,
+  the last one ending at the top (the list is *the newest first*).
 - **Every file type** is accepted, as the cells show anything (the Shell thumbnail as a last resort).
 - A **folder** is **ignored**, the files dropped with it added; the message says how many folders
   were skipped. A drop of folders only adds nothing and says so.
@@ -68,9 +69,13 @@ Settled at scoping (Q&A #1–#5):
   `OnMouseUp`, `Swap`), not an OLE drag: the preview keeps receiving the mouse outside its bounds.
 - While the ✥ drag is over the panel (screen point inside the panel's bounds), the panel shows its
   hover frame and the preview's drop-target highlight is off (no cell targeted).
-- Released over the panel: no swap; the preview raises an event with the dragged cell's image;
-  `MainForm` resolves the file (below) and hands it to the panel, which adds it to the favorites.
-- Released anywhere else outside the grid: nothing, as today.
+- `GridPreview.SwapDragMoved` reports every move of the ✥ drag in screen coordinates, and null when
+  it ends (released, or the capture lost); `MainForm` frames the panel while the point is over it
+  (`FileExplorerPanel.ContainsScreenPoint` / `ShowDropFrame`).
+- Released on no cell: no swap; `GridPreview.ReleasedOffGrid` carries the image and the screen
+  point; over the panel, `MainForm.AddToFavorites` resolves the file (below) and hands it to
+  `FileExplorerPanel.AddFavorites`.
+- Released anywhere else outside the grid — or inside the preview but on no cell: nothing, as today.
 - Locked while exporting like every other gesture on the cells (the ✥ handle is inert then). A drop
   **from the Windows Explorer** onto the panel is **accepted during an export**: the favorites do not
   touch the grid.
@@ -96,9 +101,11 @@ Settled at scoping (Q&A #1–#5):
 - **Texts** (pasted or dropped) are saved as **the text itself**, not a picture, in the form
   `TextData.Parse` read it from — kept on the `SourceImage` when the text arrives: its RTF →
   `pasted-yyyyMMdd-HHmmss.rtf`, else its HTML → `.html` (the fragment the clipboard header points
-  to), else its plain text → `.txt`, UTF-8. It reads back with every page and its styles (§ Reading
+  to, in a minimal UTF-8 document), else its plain text → `.txt` — every one in UTF-8 without BOM
+  (`TextData.Parse` returns the `TextOrigin` with the styled text). It reads back with every page and its styles (§ Reading
   Styled Text Files).
-- The cell **adopts the saved file**: `SourceImage.FilePath` becomes the saved path, so the cell
+- The cell **adopts the saved file** (`SourceImage.AdoptFile`, the name re-measured by
+  `GridPreview.RefreshSourceName`): `SourceImage.FilePath` becomes the saved path, so the cell
   shows the file's name instead of *Pasted image* / *Pasted text* / *Dropped text*, *Show in
   Explorer* works, and a second ✥ drop reuses the file instead of saving a duplicate; its effects are
   kept (nothing is reloaded).
@@ -106,6 +113,12 @@ Settled at scoping (Q&A #1–#5):
   **Recycle Bin**: the app created it for the favorite. Anywhere else, un-hearting leaves the file
   alone, as today. A cell that adopted the file keeps its image (loaded in memory).
 - A save that fails (disk full, rights) adds nothing and says why in the panel's status line.
+- The folder and its files: `Explorer/PastedFavorites.cs` — the name taken with `FileMode.CreateNew`
+  (so two saves in one second get `-2`), a failed write leaving no file; the Recycle Bin through
+  `SHFileOperation`, silent (no confirmation, no error dialog), a refusal said in red.
+- A consequence: an adopted file is a file like any other, so the **Save** dialog's default folder —
+  the folder of the first image with a file (`MainForm.DefaultSaveFolder`) — can become
+  `favorites-from-pasted\` when that image comes first.
 
 ## Reading Styled Text Files
 
@@ -129,12 +142,17 @@ Settled at scoping (Q&A #1–#5):
 
 ## Feedback
 
-- **Hover frame**: while an accepted drop hovers the panel (OLE drag or ✥ drag), a frame is drawn
-  around the panel's list. It is interaction feedback, not a helper indicator (RULES.md
-  § On-Cell Helper Indicators): it takes the preview's **drop-target highlight** colour.
+- **Hover frame**: while an accepted drop hovers the panel (OLE drag or ✥ drag), a 3 px frame is
+  drawn in the content's padding, around everything the open panel shows; on the **collapsed
+  strip**, the **«** button that fills it turns to the highlight colour instead. It is interaction
+  feedback, not a helper indicator (RULES.md § On-Cell Helper Indicators): it takes the preview's
+  **drop-target highlight** colour (`SystemColors.Highlight`, solid).
 - **After the drop**: the panel's transient status line (`ShowTransient`, 5 s) says what was added —
-  `Added to favorites: name` or `Added to favorites: N files`; errors on the same line, in red. The
-  panel **collapsed**, the message goes to the window's status line instead.
+  `Added to favorites: name` or `Added to favorites: N files`, `— 1 folder skipped` /
+  `— N folders skipped` appended; `Nothing added: folders do not become favorites`; errors on the
+  same line, in red. The panel **collapsed**, the message goes to the window's status line instead
+  (`FileExplorerPanel.MessageWhileCollapsed`).
+- **Un-hearting a pasted favorite**: `name sent to the Recycle Bin`.
 
 ## Documentation
 
@@ -171,6 +189,32 @@ previous workfile, the delivery is checked by hand or by a script driving the bu
 | Pasted styled text | A text copied from Word, ✥ onto the panel: `pasted-….rtf`, reloaded from the favorites with its styles |
 | During an export | A file dropped from the Explorer onto the panel while exporting: added |
 | Write error | `favorites.txt` read-only: the red status line, the favorite kept for the session |
+
+Run at delivery — 2026-09-30, a checker in the session's scratchpad (`checks\`, not in the
+repository) loading the built `ImageGridFusion.dll`, its internal types reached by reflection, its
+favorites and `favorites-from-pasted\` next to the checker, so the real ones are untouched.
+**Logic** (20 checks): `Favorites.Add` in order, the last the newest, one already a favorite moved to
+the top and never removed, a duplicate kept once, `favorites.txt` written in add order;
+`PastedFavorites` — the PNG in the folder, a second save in the same second named `-2`, the alpha
+kept, `Holds` true for its files only (not a subfolder), `Recycle` removing the file and silent on
+one already gone; the texts through `TextData.Parse` → saved → read back by `TextPages` — an RTF
+saved as `.rtf` and read back with its styles, not its markup; a clipboard HTML saved as a UTF-8
+document without its header, read back with its styles; a plain text as `.txt`; the RTF markup in a
+`.txt` still plain; an unreadable `.rtf` falling back to plain; a saved `.rtf` loading as a text
+image; `AdoptFile`. **UI** (21 checks), the real `FileExplorerPanel` and `GridPreview` hosted in a
+test form, driven through their drag and mouse handlers: files accepted with the copy effect and
+framed, the frame gone on the drop, two files added and a folder skipped, the status line, the
+favorites list refreshed; a folder alone adding nothing; a dropped text refused, no frame; the
+panel's own tile refused; the collapsed strip accepting, highlighted, its message on the window,
+the file already a favorite moved to the top; the ✥ handle released over the panel — the image
+and the point reported, over the panel, no swap, the moves reported and ending with null; released
+above the window — reported, not over the panel; released on another cell — swapped, nothing
+reported. **All 41 passed** (Iteration 7).
+
+Not run: an OLE drag from the real Windows Explorer and the frame as seen on screen (left to the
+hand test), the `MainForm` wiring of the ✥ drop (`AddToFavorites`: save, adopt, add — its parts
+checked one by one above), the heart un-checking a pasted favorite in the panel (`Recycle` checked
+alone), a read-only `favorites.txt`, a drop during an export.
 
 ---
 
@@ -272,6 +316,29 @@ Go given: code, tests and documentation (no test project: checked by script, § 
 frozen on the design sections as they stand. Stays on `main` (the app's standing rule, memory
 *Work on main only*).
 
+### Iteration 7 — 2026-09-30 — 🧭 Implementation choices
+
+The run's own decisions, the frozen design leaving them open:
+
+- **Branch**: no branch question asked — the app's standing rule is to work on `main` (memory *Work
+  on main only*); every commit is on `main`.
+- **Drag label**: the Shell's drag image carries *Add to Favorites* over the panel
+  (`DragEventArgs.Message`), telling this drop from a drop into the grid.
+- **Collapsed strip**: the **«** button filling the strip cannot be framed, so it turns to the
+  highlight colour while hovered.
+- **Frame**: 3 px, drawn in the content's padding (no layout change, the panel's minimum width
+  untouched), `SystemColors.Highlight` solid — the colour of the preview's drop-target fill, which
+  is that colour at 90 alpha.
+- **Messages**: the wordings in § Feedback; an image without a file and without a saved form (none
+  arrives so today) is refused with a message.
+- **Texts**: every saved text in UTF-8 without BOM; the HTML wrapped in a minimal document so a
+  browser opens it too.
+- **Recycle Bin**: `SHFileOperation`, silent, a refusal reported in red rather than a Shell dialog.
+- **Consequence reported, not changed** (scope frozen): an adopted file can make
+  `favorites-from-pasted\` the Save dialog's default folder (§ Images Without a File).
+
+No project rule was broken.
+
 ---
 
 ## Implementation Log
@@ -281,9 +348,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | — | — | Does not apply — no test project, checked by hand or script (§ Test Impact) |
-| README | | | |
+| Code | 7 | 2026-09-30 | `7324d1a` `.rtf` / `.html` files read with their styles; `ae332db` `Favorites.Add` and `PastedFavorites`; `4e4c507` the text's origin kept, `AdoptFile`; `d8423fb` the panel as a drop target; `bd31aee` the ✥ handle released over the panel. Checked by a scripted checker, 41 checks (§ Test Impact) |
+| Unit tests | — | — | Does not apply — no test project; checked by a scripted checker in the scratchpad, 41 checks, all passed (§ Test Impact) |
+| README | 7 | 2026-09-30 | `7301249` — § *File explorer*: the summary line, *Dropping favorites* and *Pasted favorites* bullets; § *Previews*: `.rtf` / `.html` read with their styles; GLOSSARY: *Favorite* revised, *Pasted favorite* added |
 
 ---
 
