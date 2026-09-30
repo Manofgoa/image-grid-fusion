@@ -61,6 +61,11 @@ for the startup files), README § Tray & startup.
 - That instance is **fully independent**: it takes no lock and answers no second launch. The
   "normal" instance stays the one later launches bring back; with none running, the next normal
   launch starts one, whatever `--new-instance` instances run beside it.
+- It **leaves the user's settings alone** where the app writes them on its own:
+  - no `StartupRegistration.Refresh` — the *Start with Windows* registration keeps pointing at the
+    exe it points at;
+  - the window size is **read** at start-up but **never saved** when the window closes or hides.
+  Settings the user changes by hand in that instance (⚙ menu, explorer…) are saved as usual.
 - It is not a file to load (filtered out like `--tray`).
 
 ### Restoring a Minimized Window
@@ -115,9 +120,9 @@ verified by hand.
 - [x] ~~Where is the agent-side instruction documented?~~ → README + the app's RULES.md
 - [x] ~~A second launch carrying `--tray`?~~ → Leaves the running instance as it is
 - [x] ~~A window minimized while maximized?~~ → Restored maximized, the tray click too
-- [ ] A `--new-instance` launch from another exe location runs `StartupRegistration.Refresh`, which
-      moves the *Start with Windows* registration to that exe: skip it for `--new-instance`?
-- [ ] A `--new-instance` instance closing writes the remembered window size (`HKCU`): skip it?
+- [x] ~~A `--new-instance` launch runs `StartupRegistration.Refresh`: skip it?~~ → Skipped
+- [x] ~~A `--new-instance` instance closing writes the remembered window size: skip it?~~ → Skipped,
+      the size is still read
 
 ---
 
@@ -144,6 +149,11 @@ in the order the requests were made.
 - A second launch with `--tray` leaves the running instance alone.
 - A window minimized while maximized comes back maximized — the tray click included, a change of
   today's behaviour.
+
+### Iteration 3 — 2026-09-30
+
+- Emerged while re-reading the start-up: a `--new-instance` instance neither refreshes the startup
+  registration nor saves the window size, so tests never change the user's automatic settings.
 
 ---
 
@@ -175,8 +185,8 @@ Questions asked by the agent during design, with user responses.
 | 7 | Where is the agent-side instruction documented? | README + the app's RULES.md | 2026-09-27 |
 | 8 | Second launch with `--tray`: leave the running instance as is, or show it? | Leave it as is | 2026-09-27 |
 | 9 | Window minimized while maximized: restored maximized or normal? | Maximized, like before | 2026-09-27 |
-| 10 | `--new-instance`: skip the startup registration refresh? | | 2026-09-30 |
-| 11 | `--new-instance`: skip saving the window size? | | 2026-09-30 |
+| 10 | `--new-instance`: skip the startup registration refresh? | Yes, skip it | 2026-09-30 |
+| 11 | `--new-instance`: skip saving the window size? | Yes, skip it | 2026-09-30 |
 
 ---
 
