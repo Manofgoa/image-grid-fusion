@@ -47,6 +47,9 @@ Relevant components:
 - **Moving the kept part** (Iteration 5): in the edit view, a drag **inside the kept part** moves
   it whole — its size and its ratio kept, stopped at the image's edges — the move cursor showing
   over it. The bars keep their priority on their own reach; the background follows live.
+- **Other gestures in the edit view** (Iteration 7): on the cell being edited, a drag outside the
+  kept part and the mouse wheel do **nothing** — they would pan and zoom the cropped image unseen.
+  The ✥ handle still swaps, the × still removes.
 
 - **Edit view** (Q&A 6): while the Crop tab is selected and the effect is on, the selected cell
   shows the **whole oriented image**, fitted whole (contain, no zoom, no fine angle) so every edge
@@ -151,9 +154,9 @@ canvas sizing.
 - [x] ~~4. What zone does the crop start with when it is turned on?~~ → 10 % cut off each edge
 - [x] ~~5. What does the options toolbar hold besides the Reset button?~~ → Aspect-ratio buttons
   (Free, 1:1, 4:3, 16:9, 9:16), each previewing its format
-- [ ] 6. *(emerged during the run)* In the edit view, a drag **outside** the kept part and the mouse
-  wheel still pan and zoom the cropped image — unseen until the edit view is left. Keep them, or
-  make the edit view ignore them?
+- [x] ~~6. *(emerged during the run)* In the edit view, a drag **outside** the kept part and the
+  mouse wheel still pan and zoom the cropped image — unseen until the edit view is left. Keep them,
+  or make the edit view ignore them?~~ → Ignored in the edit view *(Iteration 7)*
 
 ---
 
@@ -238,6 +241,12 @@ No project rule was broken. The choices the frozen design left open, or could no
   Question 6.
 - **Branch**: stayed on `main`, the user's standing preference for this app.
 
+### Iteration 7 — 2026-09-30 — ⚙️ Post-implementation — Edit view ignores the other gestures
+
+Open Question 6 answered: in the edit view, a drag outside the kept part and the mouse wheel are
+**ignored** on the cell being edited, instead of panning and zooming the cropped image unseen. The
+✥ handle and the × keep working. The user also confirmed the task is finished.
+
 ---
 
 ## Implementation Log
@@ -272,7 +281,7 @@ Questions asked by the agent during design, with user responses.
 | 10 | What does the options toolbar hold besides Reset? | Aspect ratios imposed, with a preview of the format in each button | 2026-09-30 |
 | 11 | Do zoom, fine angle and blur apply to the already cropped image? | Yes, after the crop (recommended) | 2026-09-30 |
 | 12 | Where does the Crop tab go? | Between Background and Zoom | 2026-09-30 |
-| 13 | In the edit view, keep the pan and the wheel outside the kept part, or ignore them? | | |
+| 13 | In the edit view, keep the pan and the wheel outside the kept part, or ignore them? | Ignore them in the edit view | 2026-09-30 |
 
 ---
 
