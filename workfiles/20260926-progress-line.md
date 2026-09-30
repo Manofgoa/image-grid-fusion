@@ -204,6 +204,12 @@ selection outline, the line hidden on the selected cell while its blur bars show
 the soundtrack, no track for the remaining part. The design sections describe the agreed solution;
 no question remains open, the go is asked.
 
+### Iteration 3 — 2026-09-30 — ✅ Implemented
+
+Go given for the code, the unit tests (not applicable, see Test Impact) and the documentation
+(Q&A #9). Branch: the run stays on `main`, the standing choice of this app — no worktree was
+requested.
+
 ---
 
 ## Implementation Log
@@ -233,7 +239,8 @@ Questions asked by the agent during design, with user responses.
 | 6 | The selected cell while its blur bars show: line hidden, or both drawn? | Line hidden on that cell | 2026-09-26 |
 | 7 | Show the soundtrack's own progress somewhere, or out of scope? | Out of scope | 2026-09-26 |
 | 8 | A dim track for the remaining part, or nothing? | No track | 2026-09-26 |
+| 9 | Go for implementation? | Code, unit tests and documentation | 2026-09-30 |
 
 ---
 
-*Last updated: 2026-09-26*
+*Last updated: 2026-09-30*
