@@ -17,7 +17,10 @@ public sealed class SourceImage : IDisposable
 
     public Bitmap Bitmap { get; private set; }
 
-    public string? FilePath { get; }
+    public string? FilePath { get; private set; }
+
+    /// <summary>A text pasted or dropped: the form it was read from, saved as is when it becomes a favorite.</summary>
+    public TextOrigin? TextOrigin { get; set; }
 
     /// <summary>An image without a file that was dropped (a text dragged from another app), not pasted: named so in the preview.</summary>
     public bool Dropped { get; set; }
@@ -58,6 +61,12 @@ public sealed class SourceImage : IDisposable
     /// <summary>Time in the loop where the image starts playing.</summary>
     public TimeSpan StartTime => Pages?.TimeOf(StartPage) ?? TimeSpan.Zero;
 
+    /// <summary>
+    /// An image without a file, now saved into <paramref name="path"/>: it names that file from now
+    /// on, as if loaded from it; nothing is reloaded, its look kept.
+    /// </summary>
+    public void AdoptFile(string path) => FilePath = path;
+
     /// <summary>Shows another page: takes ownership of <paramref name="bitmap"/> and disposes the previous one.</summary>
     public void ShowPage(int page, Bitmap bitmap)
     {
@@ -84,3 +93,6 @@ public sealed class SourceImage : IDisposable
         Pages?.Dispose();
     }
 }
+
+/// <summary>A text as it arrived — its RTF, its HTML as a document, or its plain text — and the extension of that form.</summary>
+public sealed record TextOrigin(string Content, string Extension);
