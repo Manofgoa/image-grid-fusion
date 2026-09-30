@@ -252,6 +252,11 @@ design left open:
 - Launched for the user with two MP4s of the base folder as arguments, an instance opened by the
   delivery of another session being already open on the same build.
 
+### Iteration 5 — 2026-09-30 — Finished
+
+The user confirmed the task finished. The app launched for the delivery, with two videos, exited
+cleanly (exit code 0).
+
 ---
 
 ## Implementation Log
