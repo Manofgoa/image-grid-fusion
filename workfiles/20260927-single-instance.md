@@ -62,9 +62,12 @@ for the startup files), README § Tray & startup.
   "normal" instance stays the one later launches bring back; with none running, the next normal
   launch starts one, whatever `--new-instance` instances run beside it.
 - It **leaves the user's settings alone** where the app writes them on its own:
-  - no `StartupRegistration.Refresh` — the *Start with Windows* registration keeps pointing at the
-    exe it points at;
-  - the window size is **read** at start-up but **never saved** when the window closes or hides.
+  - no `StartupRegistration.Refresh` — the *Start with Windows* shortcut (user's *Startup* folder)
+    keeps pointing at the exe it points at;
+  - no `RegistryMigration.Run` — an older version's registry values stay for a normal launch to
+    move;
+  - the window size is **read** at start-up but **never saved** to `settings.json` when the window
+    closes or hides.
   Settings the user changes by hand in that instance (⚙ menu, explorer…) are saved as usual.
 - It is not a file to load (filtered out like `--tray`).
 
@@ -77,7 +80,8 @@ for the startup files), README § Tray & startup.
 ### Technical Approach (proposed)
 
 - A named `Mutex` (`Local\ImageGridFusion-{hash of the exe path}`) taken in `Program.Main` before
-  anything else (before `StartupRegistration.Refresh`, which a second launch must not run).
+  anything else (before `RegistryMigration.Run` and `StartupRegistration.Refresh`, which a second
+  launch must not run).
 - A named pipe with the same key: the first instance listens in the background and marshals each
   message to the UI thread (show the window, then add the files); the second launch connects,
   writes its arguments, and exits.
@@ -122,7 +126,8 @@ verified by hand.
 - [x] ~~A window minimized while maximized?~~ → Restored maximized, the tray click too
 - [x] ~~A `--new-instance` launch runs `StartupRegistration.Refresh`: skip it?~~ → Skipped
 - [x] ~~A `--new-instance` instance closing writes the remembered window size: skip it?~~ → Skipped,
-      the size is still read
+      the size is still read *(revised 2026-09-30, see Iteration 4: `settings.json`, no more
+      registry; `RegistryMigration.Run` skipped too)*
 
 ---
 
@@ -154,6 +159,14 @@ in the order the requests were made.
 
 - Emerged while re-reading the start-up: a `--new-instance` instance neither refreshes the startup
   registration nor saves the window size, so tests never change the user's automatic settings.
+
+### Iteration 4 — 2026-09-30
+
+- The app's settings moved meanwhile (RULES.md § App Settings): `settings.json` next to the exe,
+  *Start with Windows* a shortcut in the *Startup* folder, `RegistryMigration.Run` at start-up.
+  Iteration 3's two skips still hold on the new storage; wording updated.
+- Same principle extended: a `--new-instance` launch skips `RegistryMigration.Run`, an automatic
+  write too. Put to the user with the go.
 
 ---
 
