@@ -4,5 +4,6 @@ namespace ImageGridFusion.Composition;
 public enum GlobalEffect
 {
     Soundtrack,
+    Fade,
     Borders,
 }

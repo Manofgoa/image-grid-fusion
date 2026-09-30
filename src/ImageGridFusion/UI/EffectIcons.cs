@@ -1,4 +1,5 @@
 using System.Drawing.Drawing2D;
+using ImageGridFusion.Composition;
 
 namespace ImageGridFusion.UI;
 
@@ -237,6 +238,61 @@ internal static class EffectIcons
         g.FillEllipse(brush, left - headWidth, s * 0.7f, headWidth, headHeight);
         g.FillEllipse(brush, right - headWidth, s * 0.58f, headWidth, headHeight);
     });
+
+    /// <summary>A sea-green hill rising, holding and falling, the shape of a fade.</summary>
+    public static Bitmap Fade(int size) => Draw(size, (g, s) =>
+    {
+        using var brush = new LinearGradientBrush(new RectangleF(0, 0, s, s), Color.FromArgb(20, 170, 140), Color.FromArgb(30, 110, 230), 0f);
+        g.FillPolygon(brush, FadeShape(new RectangleF(s * 0.04f, s * 0.2f, s * 0.92f, s * 0.64f), FadeCurve.Squared, closed: true));
+    });
+
+    /// <summary>
+    /// The fade's <paramref name="curve"/>, twice as wide as tall: a rise, a hold and a fall, drawn in dark
+    /// blue over a light fill.
+    /// </summary>
+    public static Bitmap Curve(int size, FadeCurve curve)
+    {
+        size = Math.Max(8, size);
+        var bitmap = new Bitmap(size * 2, size);
+        using var g = Graphics.FromImage(bitmap);
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+        var area = new RectangleF(size * 0.1f, size * 0.15f, size * 1.8f, size * 0.7f);
+        using (var fill = new SolidBrush(Color.FromArgb(90, 20, 170, 140)))
+        {
+            g.FillPolygon(fill, FadeShape(area, curve, closed: true));
+        }
+
+        using var pen = new Pen(Color.FromArgb(40, 70, 150), Math.Max(1.5f, size * 0.11f)) { LineJoin = LineJoin.Round, StartCap = LineCap.Round, EndCap = LineCap.Round };
+        g.DrawLines(pen, FadeShape(area, curve, closed: false));
+        return bitmap;
+    }
+
+    /// <summary>
+    /// The outline of a fade over <paramref name="area"/>: the rise over its first third, the hold, the
+    /// fall over its last third, the gain as <paramref name="curve"/> gives it; <paramref name="closed"/>
+    /// along the bottom edge, to be filled.
+    /// </summary>
+    private static PointF[] FadeShape(RectangleF area, FadeCurve curve, bool closed)
+    {
+        const int Steps = 12;
+        var fade = new SoundFade(TimeSpan.FromSeconds(1), curve);
+        var points = new List<PointF>();
+        for (int i = 0; i <= Steps * 3; i++)
+        {
+            double t = i / (double)Steps;
+            double gain = fade.GainAt(t, 3);
+            points.Add(new PointF(area.Left + (float)(t / 3) * area.Width, area.Bottom - (float)gain * area.Height));
+        }
+
+        if (closed)
+        {
+            points.Add(new PointF(area.Right, area.Bottom));
+            points.Add(new PointF(area.Left, area.Bottom));
+        }
+
+        return [.. points];
+    }
 
     /// <summary>A hot pink L-bracket over the corner of a grey picture, the signature of the corner borders.</summary>
     public static Bitmap Borders(int size) => Draw(size, (g, s) =>

@@ -231,6 +231,16 @@ internal sealed class MainForm : Form
     // The level set before any file is chosen, given to the first one.
     private double _soundtrackLevel = 1;
 
+    // The fade's options: its duration in tenths of a second, and its curve, drawn on two exclusive buttons.
+    private readonly TrackBar _fadeDuration = OptionSlider((int)Math.Round(SoundFade.MinDuration.TotalSeconds * 10), (int)Math.Round(SoundFade.MaxDuration.TotalSeconds * 10), 5, controlStep: 1);
+    private readonly Label _fadeDurationLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly RadioButton _fadeSquared = CurveButton();
+    private readonly RadioButton _fadeLinear = CurveButton();
+
+    // The fade's settings, kept while it is off; back to their initial state, off, with its Resets and Clear all.
+    private SoundFade _fade = SoundFade.Initial;
+    private bool _fadeOn;
+
     // The borders' options; their color is a setting of the ⚙ menu, remembered between sessions.
     private readonly ComboBox _bordersStyle = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 90, Anchor = AnchorStyles.Left };
     // In thousandths of the grid's shorter side: Control + wheel steps by 0.5 %.
@@ -346,6 +356,7 @@ internal sealed class MainForm : Form
         _globalOptionsHost.Controls.AddRange([.. _globalOptions.Values]);
         _bordersStyle.Items.AddRange(Enum.GetNames<BorderPattern>());
         _globalOptions[GlobalEffect.Soundtrack].Controls.AddRange([_soundtrackBrowse, _soundtrackFile, _soundtrackVolume, _soundtrackVolumeLabel]);
+        _globalOptions[GlobalEffect.Fade].Controls.AddRange([_fadeDuration, _fadeDurationLabel, _fadeSquared, _fadeLinear]);
         _globalOptions[GlobalEffect.Borders].Controls.AddRange(
             [_bordersStyle, _bordersThickness, _bordersThicknessLabel, _bordersOpacity, _bordersOpacityLabel, _bordersOuterFrame, _bordersRounded]);
 
@@ -506,6 +517,16 @@ internal sealed class MainForm : Form
         _toolTip.SetToolTip(_soundtrackBrowse, "Mixes the sound of an audio or video file over the videos, in the preview and the MP4 export; a file can also be dropped on these rows");
         _soundtrackBrowse.Click += (_, _) => BrowseSoundtrack();
         _soundtrackVolume.ValueChanged += (_, _) => SetSoundtrackVolume();
+        _toolTip.SetToolTip(_fadeDuration, "How long the sound takes to rise from silence at the start of the video, and to fall back to it at the end");
+        _toolTip.SetToolTip(_fadeSquared, "Squared: the sound rises slowly, then faster — heard as a steady rise");
+        _toolTip.SetToolTip(_fadeLinear, "Linear: the gain rises in a straight line — heard as a quick rise that levels off");
+        _fadeDuration.ValueChanged += (_, _) =>
+        {
+            _fadeDurationLabel.Text = FadeText(_fadeDuration.Value);
+            ChangeFade(fade => fade.WithDuration(TimeSpan.FromSeconds(_fadeDuration.Value / 10.0)));
+        };
+        _fadeSquared.Click += (_, _) => ChangeFade(fade => fade.WithCurve(FadeCurve.Squared));
+        _fadeLinear.Click += (_, _) => ChangeFade(fade => fade.WithCurve(FadeCurve.Linear));
         _toolTip.SetToolTip(_bordersStyle, "Brackets at the grid's corners, or a gap between the cells; the borders' color is in the ⚙ settings");
         _toolTip.SetToolTip(_bordersThickness, "Width of the borders, as a share of the grid's shorter side");
         _toolTip.SetToolTip(_bordersOuterFrame, "Also draws the borders around the grid; the corner brackets already are its frame");
@@ -589,6 +610,8 @@ internal sealed class MainForm : Form
             _grayscaleIcon.Image?.Dispose();
             _gaussian.Image?.Dispose();
             _pixelate.Image?.Dispose();
+            _fadeSquared.Image?.Dispose();
+            _fadeLinear.Image?.Dispose();
             _blurIntensityIcon.Image?.Dispose();
             _backgroundOpacityIcon.Image?.Dispose();
             foreach (var (button, _) in _cropRatios)
@@ -615,7 +638,7 @@ internal sealed class MainForm : Form
     private void UpdateEffectIcons()
     {
         int size = LogicalToDeviceUnits(16);
-        Image?[] previous = [_resetButton.Image, _effectResetButton.Image, _globalResetButton.Image, _globalEffectResetButton.Image, _grayscaleIcon.Image, _gaussian.Image, _pixelate.Image, _blurIntensityIcon.Image, _backgroundOpacityIcon.Image, .. _cropRatios.Select(r => r.Button.Image)];
+        Image?[] previous = [_resetButton.Image, _effectResetButton.Image, _globalResetButton.Image, _globalEffectResetButton.Image, _grayscaleIcon.Image, _gaussian.Image, _pixelate.Image, _fadeSquared.Image, _fadeLinear.Image, _blurIntensityIcon.Image, _backgroundOpacityIcon.Image, .. _cropRatios.Select(r => r.Button.Image)];
         foreach (var effect in Enum.GetValues<ImageEffect>())
         {
             _effectTabs.SetIcon(effect, effect switch
@@ -633,6 +656,7 @@ internal sealed class MainForm : Form
         }
 
         _globalTabs.SetIcon(GlobalEffect.Soundtrack, EffectIcons.Soundtrack(size));
+        _globalTabs.SetIcon(GlobalEffect.Fade, EffectIcons.Fade(size));
         _globalTabs.SetIcon(GlobalEffect.Borders, EffectIcons.Borders(size));
         _resetButton.Image = EffectIcons.Reset(size);
         _effectResetButton.Image = EffectIcons.Reset(size);
@@ -642,6 +666,8 @@ internal sealed class MainForm : Form
         _grayscaleIcon.Size = new Size(size, size);
         _gaussian.Image = EffectIcons.Gaussian(size);
         _pixelate.Image = EffectIcons.Pixelate(size);
+        _fadeSquared.Image = EffectIcons.Curve(size, FadeCurve.Squared);
+        _fadeLinear.Image = EffectIcons.Curve(size, FadeCurve.Linear);
         foreach (var (button, ratio) in _cropRatios)
         {
             button.Image = EffectIcons.Ratio(size, ratio);
@@ -1085,7 +1111,8 @@ internal sealed class MainForm : Form
         int count = _preview.Images.Count;
         bool soundtrack = _soundtrack is not null;
         bool borders = !BordersInitial;
-        if (count == 0 && SoundtrackInitial && !borders)
+        bool fade = !FadeInitial;
+        if (count == 0 && SoundtrackInitial && !borders && !fade)
         {
             return;
         }
@@ -1104,7 +1131,14 @@ internal sealed class MainForm : Form
             removed.Add(count > 0 ? "the soundtrack" : "The soundtrack");
         }
 
-        ShowStatus(removed.Count > 0 ? $"{string.Join(" and ", removed)} removed." : "Borders back to their initial state.");
+        ShowStatus(removed.Count > 0
+            ? $"{string.Join(" and ", removed)} removed."
+            : (borders, fade) switch
+            {
+                (true, true) => "Borders and fade back to their initial state.",
+                (false, true) => "Fade back to its initial state.",
+                _ => "Borders back to their initial state.",
+            });
     }
 
     /// <summary>Copies the grid in the format its content suits: a PNG, or an MP4 video while a content plays or a soundtrack is on.</summary>
@@ -1478,6 +1512,21 @@ internal sealed class MainForm : Form
     /// <summary>Whether the soundtrack is in its initial state: no file, off, the level at 100 %.</summary>
     private bool SoundtrackInitial => _soundtrack is null && _soundtrackLevel == 1;
 
+    /// <summary>The fade, <c>null</c> while it is off.</summary>
+    private SoundFade? ActiveFade => _fadeOn ? _fade : null;
+
+    /// <summary>Whether the fade is in its initial state: off, 1 s, squared.</summary>
+    private bool FadeInitial => !_fadeOn && _fade == SoundFade.Initial;
+
+    /// <summary>
+    /// Why the fade does not apply — nothing is heard: no video plays with its sound, and no soundtrack
+    /// is on above 0 % — or <c>null</c> when it does.
+    /// </summary>
+    private string? FadeUnavailable =>
+        Animation.Heard(_preview.Images).Count > 0 || ActiveSoundtrack is { Level: > 0 }
+            ? null
+            : "Nothing is heard: no video plays with its sound, and no soundtrack is on";
+
     /// <summary>A video to export: content that plays, or a soundtrack over stills.</summary>
     private bool ProducesVideo => HasAnimation || ActiveSoundtrack is not null;
 
@@ -1538,7 +1587,7 @@ internal sealed class MainForm : Form
     /// </summary>
     private async Task<GridExport.Result?> ExportAnimationAsync(string path, GridExport.Format format)
     {
-        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, ActiveBorders, ActiveSoundtrack);
+        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, ActiveBorders, ActiveSoundtrack, ActiveFade);
         string what = format == GridExport.Format.Gif ? "GIF" : "video";
         var cancellation = BeginExport($"Exporting the {what}… 0 %", cancellable: true);
         var progress = new Progress<double>(done =>
@@ -1857,7 +1906,7 @@ internal sealed class MainForm : Form
     private void UpdateButtons()
     {
         bool any = _preview.Images.Count > 0 && !IsExporting;
-        _clearButton.Enabled = (_preview.Images.Count > 0 || !SoundtrackInitial || !BordersInitial) && !IsExporting;
+        _clearButton.Enabled = (_preview.Images.Count > 0 || !SoundtrackInitial || !BordersInitial || !FadeInitial) && !IsExporting;
         _copyButton.Enabled = any;
         _saveButton.Enabled = any;
 
@@ -1920,6 +1969,16 @@ internal sealed class MainForm : Form
     };
 
     /// <summary>A slider of the options; Control + wheel moves it by <paramref name="controlStep"/>, snapped (5 % for a percentage, 5° for an angle).</summary>
+    /// <summary>A button of the fade's curve: its shape drawn, its name in the tooltip; the two in a row are exclusive.</summary>
+    private static RadioButton CurveButton() => new()
+    {
+        AutoSize = true,
+        Appearance = Appearance.Button,
+        BackColor = SystemColors.Control,
+        Anchor = AnchorStyles.Left,
+        ImageAlign = ContentAlignment.MiddleCenter,
+    };
+
     private static StepSlider OptionSlider(int minimum, int maximum, int largeChange, int controlStep = (int)WheelSteps.Percent) => new()
     {
         Minimum = minimum,
@@ -2264,20 +2323,25 @@ internal sealed class MainForm : Form
     {
         _selectedGlobalEffect = effect;
         UpdateGlobalEffects();
-        if (effect == GlobalEffect.Soundtrack)
+        switch (effect)
         {
-            ToggleSoundtrack();
-        }
-        else
-        {
-            ToggleBorders();
+            case GlobalEffect.Soundtrack:
+                ToggleSoundtrack();
+                break;
+            case GlobalEffect.Fade:
+                ToggleFade();
+                break;
+            default:
+                ToggleBorders();
+                break;
         }
     }
 
     /// <summary>
     /// <paramref name="effect"/> back to its initial state, the one Clear all restores — every global
-    /// effect when <c>null</c>: the soundtrack off, with no file, at 100 %; the borders off, their initial
-    /// settings keeping the color and the Twitter corners default of the ⚙ menu. The cells are left alone.
+    /// effect when <c>null</c>: the soundtrack off, with no file, at 100 %; the fade off, 1 s, squared;
+    /// the borders off, their initial settings keeping the color and the Twitter corners default of the ⚙
+    /// menu. The cells are left alone.
     /// </summary>
     private void ResetGlobalEffects(GlobalEffect? effect = null)
     {
@@ -2292,6 +2356,13 @@ internal sealed class MainForm : Form
             _soundtrackOn = false;
             _soundtrackLevel = 1;
             _preview.Soundtrack = ActiveSoundtrack;
+        }
+
+        if (effect is null or GlobalEffect.Fade)
+        {
+            _fade = SoundFade.Initial;
+            _fadeOn = false;
+            _preview.Fade = ActiveFade;
         }
 
         if (effect is null or GlobalEffect.Borders)
@@ -2409,21 +2480,26 @@ internal sealed class MainForm : Form
     private void UpdateGlobalEffects()
     {
         bool enabled = !IsExporting;
+        string? fadeUnavailable = FadeUnavailable;
         _globalTabs.SetState(GlobalEffect.Soundtrack, ActiveSoundtrack is not null, unavailable: null);
+        _globalTabs.SetState(GlobalEffect.Fade, ActiveFade is not null, fadeUnavailable);
         _globalTabs.SetState(GlobalEffect.Borders, ActiveBorders is not null, unavailable: null);
         _globalTabs.Selected = _selectedGlobalEffect;
         _globalTabs.Enabled = enabled;
-        _globalResetButton.Enabled = enabled && !(SoundtrackInitial && BordersInitial);
+        _globalResetButton.Enabled = enabled && !(SoundtrackInitial && BordersInitial && FadeInitial);
         foreach (var (effect, row) in _globalOptions)
         {
             row.Visible = _selectedGlobalEffect == effect;
-            row.Enabled = enabled;
+
+            // An effect that does not apply keeps its tab selectable, its options disabled (RULES.md).
+            row.Enabled = enabled && (effect != GlobalEffect.Fade || fadeUnavailable is null);
         }
 
         _globalEffectResetButton.Visible = _selectedGlobalEffect is not null;
         _globalEffectResetButton.Enabled = enabled && _selectedGlobalEffect switch
         {
             GlobalEffect.Soundtrack => !SoundtrackInitial,
+            GlobalEffect.Fade => !FadeInitial,
             GlobalEffect.Borders => !BordersInitial,
             _ => false,
         };
@@ -2440,9 +2516,50 @@ internal sealed class MainForm : Form
         bool syncing = _syncingEffects;
         _syncingEffects = true;
         _soundtrackVolume.Value = (int)Math.Round((_soundtrack?.Level ?? _soundtrackLevel) * 100);
+        _fadeDuration.Value = (int)Math.Round(_fade.Duration.TotalSeconds * 10);
+        _fadeSquared.Checked = _fade.Curve == FadeCurve.Squared;
+        _fadeLinear.Checked = _fade.Curve == FadeCurve.Linear;
         _syncingEffects = syncing;
         _soundtrackVolumeLabel.Text = VolumeText(_soundtrackVolume.Value);
+        _fadeDurationLabel.Text = FadeText(_fadeDuration.Value);
     }
+
+    /// <summary>The fade's checkbox: on or off, its settings kept.</summary>
+    private void ToggleFade()
+    {
+        if (IsExporting)
+        {
+            return;
+        }
+
+        _fadeOn = !_fadeOn;
+        ApplyFade();
+    }
+
+    /// <summary>
+    /// An option of the fade changed: applied to its settings, turning it on from the settings it kept
+    /// (RULES.md), unless the row is being synced.
+    /// </summary>
+    private void ChangeFade(Func<SoundFade, SoundFade> change)
+    {
+        if (_syncingEffects || IsExporting)
+        {
+            return;
+        }
+
+        _fade = change(_fade);
+        _fadeOn = true;
+        ApplyFade();
+    }
+
+    /// <summary>The fade as it stands, to the preview, then to the row and the output buttons.</summary>
+    private void ApplyFade()
+    {
+        _preview.Fade = ActiveFade;
+        UpdateButtons();
+    }
+
+    private static string FadeText(int tenths) => $"Duration: {tenths / 10.0:0.0} s";
 
     /// <summary>The borders' checkbox: on or off, their settings kept.</summary>
     private void ToggleBorders()
