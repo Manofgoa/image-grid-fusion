@@ -22,12 +22,13 @@ Components touched (from the scout pass):
 | Component | Today | Becomes |
 |---|---|---|
 | `Composition/ImageLook.cs` | `ImageEffect.BlackAndWhite`, `double? Grayscale` (0–1), `KeptGrayscale`, activated at `Grayscale = 1`, `WithGrayscale` | `ImageEffect.Colors`, a `ColorsEffect? Colors` record + `KeptColors`, activated at `ColorsEffect.Default` (all 0), `WithColors` |
-| `Composition/Compositor.cs` | `GrayscaleMatrix(intensity)` set on the `ImageAttributes`; `Gray(bands, intensity)` for the band color | `ColorsMatrix(colors)` — one composed 5×5 `ColorMatrix`; the band color passed through the same matrix |
+| `Composition/Compositor.cs` | `GrayscaleMatrix(intensity)` set on the `ImageAttributes` and `Gray(fill, intensity)` on the Background's fill, in **two** paths: `DrawCell` and `DrawUncropped` (the crop edit view) | `ColorsMatrix(colors)` — one composed 5×5 `ColorMatrix` — and the fill passed through the same matrix, in both paths |
 | `UI/EffectTabs.cs` | Tab text `"Black & white"` | `"Colors"` |
 | `UI/EffectIcons.cs` | `BlackAndWhite(size)`: a half black / half white disc | `Colors(size)`: see *Tab Icon* |
 | `UI/MainForm.cs` | `_grayscaleIcon`, `_grayscale` slider (0–100), `_grayscaleLabel` "Intensity: n%" | Four slider + label pairs, see *Options* |
 | `README.md` | `### Black & white` section, tab list line 43 | `### Colors` section, tab list |
-| `GLOSSARY.md` | Effect list names "Black & white" | Names "Colors" |
+| `GLOSSARY.md` | Effect list names "Black & white" (after Background, Crop … Frames) | Names "Colors" at the same place |
+| `RULES.md` | § The Crop Exception: "zoom, fine angle, background, black & white and blur all apply to the cropped image" | "… background, colors and blur …" — a rules file: the change is propagated to the running sessions |
 
 ---
 
@@ -65,8 +66,12 @@ Every setting is stored as a value in [−1, 1] (hue in degrees), the default 0 
   - Contrast: scaling around 0.5 (translation row of the matrix).
   - Brightness: an offset on the three channels (translation row).
 - GDI+ clamps each channel to [0, 1] after the matrix.
-- **Bands** follow the effect as they follow the black & white today: the band color goes through
-  the same matrix.
+- The **Background's fill** — automatic or chosen — follows the effect as it follows the black &
+  white today: the fill color goes through the same matrix. No fill while the Background is off.
+- Both drawing paths apply it: `Compositor.DrawCell` (preview, exports, playback) and
+  `Compositor.DrawUncropped` (the crop edit view), so the edit view shows the colors too.
+- The effect applies to the **cropped** image, after the orientation and the crop, like every
+  effect after them (RULES.md § The Crop Exception).
 - An effect at its defaults (all 0) sets **no** matrix, so an unchanged image is drawn exactly as
   without the effect.
 - Resolution-independent by nature (a per-pixel color transform).
@@ -100,7 +105,8 @@ disc of hue sectors in a gray ring, keeping the ring of today's icon.
 **Nothing to test** — the solution has no test project, and creating one is outside this scope
 (every previous workfile stayed test-free). Verification is manual: a photo and a video cell; each
 slider dragged to both ends and back to 0; Saturation −100 % giving the same black & white as
-before; the bands following; the effect turned off and on again (settings kept); the effect's own
+before; the Background's fill following (automatic and chosen); the crop edit view showing the
+colors; the effect turned off and on again (settings kept); the effect's own
 Reset and the toolbar's Reset (all back to 0, off); a copy / save (PNG and MP4) showing the colors.
 
 ---
@@ -130,6 +136,19 @@ The four open questions answered: the sliders on **one row, ≈ 90 px each**; **
 (Brightness ±50 % offset, Contrast flat gray … ×3); a **color wheel** icon; the checkbox turning the
 effect on at its all-0 defaults without visible change is **accepted**. No question left open.
 
+### Iteration 3 — 2026-09-30
+
+Refresh after the Background and Crop effects landed (the go had been declined on 2026-09-26):
+
+- The black & white already applies to the **Background's fill**, automatic or chosen: the user
+  chose that Colors **keeps that behaviour** — the fill goes through the same matrix.
+- The black & white is applied in **two** paths, `DrawCell` and `DrawUncropped` (crop edit view):
+  Colors replaces it in both.
+- `RULES.md` § The Crop Exception names "black & white" in its order of effects: renamed to
+  "colors" with the documentation.
+- The GLOSSARY's effect list now reads Background, Crop, Zoom, Rotate, Flip, Frames, Black & white,
+  Blur, Volume: "Black & white" becomes "Colors" at the same place.
+
 ---
 
 ## Implementation Log
@@ -154,7 +173,8 @@ effect on at its all-0 defaults without visible change is **accepted**. No quest
 | 6 | Strength at the ends (Brightness, Contrast)? | **Moderate**: Brightness ±50 % offset, Contrast flat gray … ×3 | 2026-09-26 |
 | 7 | Tab icon? | **Color wheel** in a gray ring | 2026-09-26 |
 | 8 | Checkbox at the defaults showing nothing — accepted? | **Accepted** | 2026-09-26 |
+| 9 | Does the Background's fill (automatic or chosen) follow the Colors settings? | **Yes, like the black & white** — in both drawing paths | 2026-09-30 |
 
 ---
 
-*Last updated: 2026-09-26*
+*Last updated: 2026-09-30*
