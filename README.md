@@ -24,6 +24,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
     - A fluorescent green **progress line** along the bottom of every playing cell shows how far its loop has played, gliding continuously; none on a frozen content. Never in the exports
   - The sounds of every video are mixed; the **Volume** effect sets each one from 0 to 200 %, or mutes it
   - A **soundtrack** — the sound of an audio or video file — can be mixed over them, for the whole grid (see Global effects)
+  - A **fade** brings the whole mix in from silence at the start of the video, and out to silence at its end (see Fade)
   - Zoom a cell from 10 % to 1600 %: with the **Zoom** effect's slider (it snaps to 100 %), or with the mouse wheel over any cell, around the point under the mouse (4 notches double the zoom; crossing 100 % stops on it). With **Ctrl** held, each notch moves the zoom by 5 %, onto the multiples of 5: 103 % → 105 % → 110 %, or 100 % the other way
   - Drag an image to move it in its cell, at any zoom — past the cell's edges too, to center a detail lying on the border of the image; the area it uncovers gets the band color (see Fitting rules), and at least 10 % of the cell always stays covered so it can be grabbed back
     - Magnetic stops: the image stops where one of its edges lines up with an edge of the cell, and where it is centered; keep dragging about 24 px to go past a stop (moving back inside over an edge is free). While it is held, a dashed fluorescent green guide shows the stop: along the aligned edge, or through the center (both lines cross when centered both ways)
@@ -139,10 +140,10 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 
 ## Global effects
 
-- The effects of the whole grid — not of a cell — sit at the bottom of the window, the mirror of the cell effects at the top: the tabs, then the options row below them, just above the bottom bar. The tabs row holds a **Global effects** label, one tab per global effect — **Soundtrack**, **Borders** — and, at the far right, a **Reset** button as tall as the tabs.
+- The effects of the whole grid — not of a cell — sit at the bottom of the window, the mirror of the cell effects at the top: the tabs, then the options row below them, just above the bottom bar. The tabs row holds a **Global effects** label, one tab per global effect — **Soundtrack**, **Fade**, **Borders** — and, at the far right, a **Reset** button as tall as the tabs.
 - Each tab holds a checkbox, checked while its global effect is on. Clicking it turns the effect on or off, keeping its settings, and selects the tab. Clicking a tab elsewhere selects it: its options show in the row below, joined to it. No tab is selected at start-up; the options row is always there, empty until one is.
 - An effect that is off shows its kept settings in its options, and changing any of them turns it on.
-- The options row ends with a **Reset** button that brings the selected tab's global effect back to its initial state — the one **Clear all** restores; the **Reset** at the far right of the tabs does it for both at once. The cells' **Reset** buttons leave the global effects alone, and theirs leave the cells alone.
+- The options row ends with a **Reset** button that brings the selected tab's global effect back to its initial state — the one **Clear all** restores; the **Reset** at the far right of the tabs does it for all of them at once. The cells' **Reset** buttons leave the global effects alone, and theirs leave the cells alone.
 - They work with no cell selected, and are locked while exporting.
 
 ### Soundtrack
@@ -153,6 +154,14 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 - Its **Reset** forgets the file: the soundtrack off, the volume back to 100 %.
 - It follows the grid's duration, the longest loop: a shorter soundtrack **loops**, a longer one is **cut**. A grid of stills has no duration of its own: with the soundtrack on, it lasts as long as the soundtrack — **Copy** and **Save** then produce an MP4 video of the stills and the sound instead of a PNG.
 - The preview plays it while the grid holds an image, from its start when turned on — and again, with the images, whenever one arrives or is removed — looping on the grid's duration.
+
+### Fade
+
+- The whole sound mix — every heard video and the soundtrack — **rises from silence** over the fade's duration at the start of the video, and **falls back to silence** over as long before its end. In the exported MP4 video, and in the preview on every loop of the grid: a sound shorter than the grid keeps looping within it without fading, only the grid's start and end fade. A GIF has no sound.
+- **Off at start-up**, and back to that state with **Clear all** and the Resets. Check the **Fade** tab to turn it on or off, its settings kept.
+- Options: the **duration**, from 0.1 to 5 s by 0.1 s, 1 s at first, used for both ends; then the **curve**, two buttons drawing the fade's shape — **Squared**, the first one (the gain grows as the square of the ramp, heard as a steady rise), or **Linear** — their names in tooltips.
+- A video shorter than two fades gets two fades of half its length: the sound rises, then falls straight away.
+- While **nothing is heard** — no video plays with its sound, and no soundtrack is on above 0 % — the Fade's checkbox and options are disabled, the checkbox's tooltip saying why; its settings are kept for when a sound comes back.
 
 ### Borders
 
@@ -215,7 +224,7 @@ A single-page PDF, a text that fits its cell, a one-frame GIF and plain images s
 
 - **Live preview**: every cell plays on one clock, so pages and views change together, each from the starting point of its Frames effect. An image arriving in a cell — by any route, in an empty cell or replacing another — and an image removed **start the grid over**: every animated image from its starting point, at the same instant, the soundtrack from its beginning, so the preview plays what the export gives; a frozen image stays on its frame; a swap or a layout change changes nothing. Hovering a cell no longer holds it still: freezing goes through the Frames effect.
 - **Progress line**: every playing cell shows, along its bottom edge just inside the selection outline, a fluorescent green line growing from the left edge as its loop plays — read from the clock at each repaint, so it glides even for a PDF or a text that only changes every second — and starting over at each loop. None on a frozen content; on the selected cell, the Blur's or the Crop's bars take its place while they show. In the preview only, never in the exports.
-- **Sound**: the sounds of every video with sound are **mixed**, each at its Volume — a frozen or muted video adds nothing — and the soundtrack over them when it is on (see Soundtrack). In the preview, each sound plays in step with its own video (held with it, looping with it); the exported video carries the mix, each sound from its video's starting point, looping with it, in one AAC track.
+- **Sound**: the sounds of every video with sound are **mixed**, each at its Volume — a frozen or muted video adds nothing — and the soundtrack over them when it is on (see Soundtrack); the Fade brings the mix in and out (see Fade). In the preview, each sound plays in step with its own video (held with it, looping with it); the exported video carries the mix, each sound from its video's starting point, looping with it, in one AAC track.
 - **Export**: as soon as a content plays (not frozen), or a soundtrack is on, **Save** writes an **MP4 video** (H.264, AAC sound) instead of a PNG, and **Copy** puts an MP4 file on the clipboard (written to `%TEMP%\ImageGridFusion`, one file per export, cleaned at the next start), pastable in Explorer, chat apps or mail. The buttons name what they produce: **Copy PNG** / **Copy MP4**, **Save PNG…** / **Save MP4…**.
   - The **▾ arrow** on the right of Copy and of Save opens a menu that forces the format for that export only: **GIF** or **MP4 Video**. They are disabled while nothing plays — Save's arrow with them, Copy's staying enabled for its **JPEG for sharing** (see Output); for a still of animated content, freeze it with the Frames effect. Both arrows open again as soon as a last video exists, for **Copy last** and **Save last** (see Output).
   - A **GIF** loops forever and has no sound; each frame gets its own 256-color palette. Copied, it goes on the clipboard both as a file and in the GIF clipboard format, which some apps paste directly. A large canvas at 30 fps makes heavy GIFs.
