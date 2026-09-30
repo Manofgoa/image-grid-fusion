@@ -25,7 +25,8 @@ Agreed at scoping (see Q&A 1–4):
 - **Location**: decided once the candidate rules are known (Open Question).
 
 Evidence comes from a read-only exploration of `src/ImageGridFusion/` and `workfiles/`
-(Iteration 1). File references are as of commit `c703607`.
+(Iteration 1), re-checked against the code on 2026-09-30 (Iteration 2). File references are as of
+commit `72d53d4`.
 
 ---
 
@@ -69,10 +70,11 @@ Evidence comes from a read-only exploration of `src/ImageGridFusion/` and `workf
   `MainForm.ChangeLook`), a property for grid-wide settings (`Borders`).
 - **Up** (GridPreview → MainForm): C# events named **`XChanged`** for state (`ImagesChanged`,
   `SelectedImageChanged`, `LayoutChanged`) and **`XClicked`** for intents (`AddImagesClicked`,
-  `ShowInExplorerClicked`), raised by `OnX()` methods.
+  `ShowInExplorerClicked`), raised by `OnX()` methods; a gesture that leaves the control is named
+  after the gesture (`SwapDragMoved`, `ReleasedOffGrid`).
 - The **effects lifecycle** of § Effects › Scope and State (reset on replace / shift, kept on swap)
-  is implemented in **one place**: `GridPreview`'s `RemoveAt` / `Replace` / `Swap`. The Volume's
-  sound on arrival lives in `Composition/Animation.cs` (`SoundOnArrival`).
+  is implemented in **one place**: `GridPreview`'s `RemoveAt` / `Replace` / `Swap`; every route
+  into a cell goes through `GridPreview.Add` (already stated by § Preview Playback for the restart).
 
 ### A4 — One Rendering Path
 
@@ -105,7 +107,7 @@ grid:
   `VideoReader`, `VideoEncoder`, `ShellThumbnail`), behind `IDisposable` wrappers.
 - Media Foundation objects **live on the thread pool**: they are created and released there — even
   the release is `Task.Run(reader.Dispose)` so it never blocks the UI thread
-  (`AnimationPlayer.cs:238-241`).
+  (`AnimationPlayer.cs:273-276`).
 - Every `Bitmap`, reader and frame is **disposed by its owner**, in a `finally` or a `Dispose` chain.
 
 ### A7 — Code Style
@@ -117,25 +119,31 @@ grid:
   (e.g. `MediaFoundation.cs`, `BlurEffect.cs`, `FitCalculator.cs`) — *not* strictly one type per
   file: 15 files hold more than one.
 
+### A8 — One Definition, Read Everywhere
+
+- A value several places need — the preview, the exports, a readout, the gestures — is **computed
+  in one member** and read there, never re-derived: `Animation.VideoLength` (§ Video Length),
+  `ImageLook.Shown` (§ The Crop Exception), `Compositor.Cells` (the Borders' gap),
+  `AppSettings` (§ App Settings).
+- RULES.md already states it **case by case**; this rule states the pattern, so a new shared value
+  follows it without waiting for its own section.
+
 ---
 
 ## Candidate Rules — UX Conventions
 
-### U1 — Persistence
+### U1 — Files the App Writes
 
-| What | Store | Written |
+Where the settings live is **already a rule** since 2026-09-30 (RULES.md § App Settings:
+`settings.json` next to the exe, never the registry). What it does not say yet:
+
+| What | Where | How |
 |---|---|---|
-| Cell and global effects, the grid, the images | **Nothing** — not persisted (already in RULES.md) | — |
-| Scalar **app settings** (Borders color, Twitter corners by default, explorer folder / open / columns) | Registry, `HKCU\Software\ImageGridFusion`, through `UI/AppSettings.cs` — one typed getter + one `SaveX` per value, the first-launch default a constant there | On change |
-| Start with Windows | Registry `Run` key, `UI/StartupRegistration.cs` | On change |
-| **Collections and caches** (favorites, file index) | Text files **next to the exe** (`favorites.txt`, `files.index`), one entry per line | **Atomically**: `.tmp` then `File.Move(overwrite: true)` |
-| Generated files (last video, light copy) | `%TEMP%\ImageGridFusion` | Swept at the **next start-up**, files in use left for later |
+| Settings, favorites, index | Next to the exe (`settings.json`, `favorites.txt`, `files.index`) | **Atomically**: written to `<file>.tmp`, then `File.Move(overwrite: true)` — `AppSettings.cs:84-86`, `Favorites.cs:126-128`, `FileIndex.cs:91-105` |
+| Generated files (last video, light copy) | `%TEMP%\ImageGridFusion` | Swept at the **next start-up** (`MainForm.CleanTempVideos`, off the UI thread), files in use left for later |
 
-- **No settings file** (no JSON, no XML): the JSON store designed by
-  `20260926-remember-last-folder.md` was superseded by `20260926-file-explorer.md` and never built.
-- **Failures**: a read failure falls back to the default, silently; a write failure keeps the value
-  **for the session** and says so in the status line (`20260923-barre-etat-windows.md`,
-  `20260926-cell-borders.md`).
+- A new data file follows both: next to the exe for what is kept, the temp folder for what is
+  generated, and never written in place.
 
 ### U2 — Status Line
 
@@ -162,13 +170,26 @@ grid:
 - Every size in pixels is expressed in **logical pixels** and scaled with `LogicalToDeviceUnits`
   (6 UI files) — the handle-snapping rule of RULES.md is one instance.
 
+### U6 — Ctrl + Wheel
+
+Implemented since 2026-09-30 (`20260926-ctrl-wheel-5-percent-step.md`, delivered):
+
+- **Every option slider is a `StepSlider`** (`UI/StepSlider.cs`, built by `MainForm.OptionSlider`):
+  the wheel alone moves it as a stock `TrackBar`; **with Control**, it moves onto the **next
+  multiple of 5 %** (`WheelSteps.Percent`), one step per notch — or does its own `ControlWheel` for
+  a slider whose value is not the unit it shows (the Borders' gap, 0.5 %).
+- **On a cell**, the wheel zooms; with Control, by steps of 5 % (`GridPreview.OnMouseWheel`).
+- Control is read from the **wheel message itself** (`WheelSteps.WithControl`), not from the
+  keyboard state, so it works whatever window has the focus.
+- The file explorer's tiles are the one other Ctrl + wheel: it sizes them (Glossary › Tile size),
+  the wheel alone scrolling — a list, not a slider.
+
 ### Not Retained
 
 | Candidate | Why not |
 |---|---|
-| Ctrl + wheel = 5 % steps on every slider | Decided in `20260926-ctrl-wheel-5-percent-step.md`, reused by `20260927-emoji-stickers.md`, but **not implemented** — see Open Questions |
 | Image provenance label (pasted / dropped / file) reused across features | One workfile only (`20260926-source-file-name.md`); the other occurrence is a list, not a decision |
-| "Remembered between sessions" for window size, background fading | Designed, not built (`20260927-remember-window-size.md`, `20260926-cell-background-fading.md`) |
+| Registry vs file for the settings | Settled by RULES.md § App Settings (2026-09-30) |
 
 ---
 
@@ -178,10 +199,10 @@ Exceptions the code shows against the rules above. Reported only — **no refact
 
 | Rule | Gap | Where |
 |---|---|---|
-| A3 | The Borders exist **twice**: `MainForm._borders` (the toolbar's copy, kept while off) and `GridPreview`'s render copy, pushed by `ApplyBorders` | `MainForm.cs:230`, `MainForm.cs:2296-2299` |
-| A6 | The fire-and-forget `Task.Run(reader.Dispose)` leaves a failing `Dispose` unobserved | `AnimationPlayer.cs:241` |
-| U4 | Each Copy builds its own `DataObject`; no shared helper (only the animated path has one, `PutOnClipboard`) | `MainForm.cs:1044`, `1058`, `1193` |
-| — | `MainForm.cs` (2 393 lines) and `GridPreview.cs` (2 170 lines) are six times the size of any other file; no rule is broken, noted for context | — |
+| A3 | The Borders exist **twice**: `MainForm._borders` (the toolbar's copy, kept while off) and `GridPreview`'s render copy, pushed by `ApplyBorders` | `MainForm.cs:250`, `MainForm.cs:1473` |
+| A6 | The fire-and-forget `Task.Run(reader.Dispose)` leaves a failing `Dispose` unobserved | `AnimationPlayer.cs:276` |
+| U4 | Each Copy builds its own `DataObject`; no shared helper (only the animated path has one, `PutOnClipboard`) | `MainForm.cs:1171`, `1187`, `1396` |
+| — | `MainForm.cs` (2 747 lines) and `GridPreview.cs` (2 441 lines) are several times the size of any other file; no rule is broken, noted for context | — |
 
 ---
 
@@ -198,13 +219,14 @@ Nothing testable changes: the deliverable is documentation only (`RULES.md` and/
 
 ## Open Questions
 
-- [ ] Which candidate rules are kept (A1–A7, U1–U5)?
-- [ ] Where do they go: all in `RULES.md`, or the code architecture (A1–A7) in a new
-  `ARCHITECTURE.md` imported by `CLAUDE.md`, the UX conventions (U1–U5) in `RULES.md`?
+- [ ] Which candidate rules are kept (A1–A8, U1–U6)?
+- [ ] Where do they go: all in `RULES.md`, or the code architecture (A1–A8) in a new
+  `ARCHITECTURE.md` imported by `CLAUDE.md`, the UX conventions (U1–U6) in `RULES.md`?
 - [ ] A4 generalises the existing § Effects › Rendering and § On-Cell Helper Indicators rules:
   rewrite them around the new rule, or leave them untouched and add A4 beside them?
-- [ ] Ctrl + wheel 5 % steps: written now as a rule (the code catching up when its workfile is
-  implemented), or left out until it is built?
+- [x] ~~Ctrl + wheel 5 % steps: written now as a rule (the code catching up when its workfile is
+  implemented), or left out until it is built?~~ → Moot: implemented on 2026-09-30, now candidate
+  U6 like the others (Iteration 2)
 - [ ] Are § Known Gaps also recorded in the rules file (a "Known exceptions" line under each rule),
   or only in this workfile?
 
@@ -227,6 +249,24 @@ explorer's own status line).
 
 Result: 7 code-architecture candidates (A1–A7), 5 UX candidates (U1–U5), 3 candidates set aside
 (not built or not recurring), 4 known gaps.
+
+### Iteration 2 — 2026-09-30
+
+The open questions were never answered (the session stopped while they were asked, then the
+second asking was declined). Meanwhile ~45 commits landed on `main`, so the candidates were
+re-checked against the code before asking again:
+
+- **U1 rewritten**: RULES.md § App Settings now puts the settings in `settings.json` next to the
+  exe and removes the registry — the registry / JSON contradiction is settled there. U1 keeps only
+  what that section does not say: the atomic writes and the temp folder swept at start-up.
+- **U6 added**: Ctrl + wheel 5 % steps are implemented (`StepSlider`, `WheelSteps`, the cell zoom);
+  its "not built" row and its Open Question go.
+- **A8 added**: "one definition, read everywhere", the pattern RULES.md now states case by case
+  (§ Video Length, § The Crop Exception).
+- **A3 corrected**: `SoundOnArrival` no longer exists (the Volume exception was reduced); the
+  gesture events `SwapDragMoved` / `ReleasedOffGrid` noted beside `XChanged` / `XClicked`.
+- A1, A2, A4, A5, A7, U2–U5 re-checked, unchanged; the known gaps are still there, their line
+  numbers updated.
 
 ---
 
@@ -255,12 +295,12 @@ Questions asked by the agent during design, with user responses.
 | 2 | Only what the code already does, also a target it does not meet everywhere, or descriptive with the gaps reported? | Descriptive, gaps reported in the workfile, no refactoring | 2026-09-27 |
 | 3 | Where do the rules live: `RULES.md` or a separate `ARCHITECTURE.md`? | "It depends on what you propose" — decided after the proposal | 2026-09-27 |
 | 4 | Exploration depth: straightforward or tricky / long? | Tricky / long — scout pass then deepening | 2026-09-27 |
-| 5 | Which candidate rules are kept (A1–A7, U1–U5)? | | |
-| 6 | Where do they go: all in `RULES.md`, or A1–A7 in `ARCHITECTURE.md` and U1–U5 in `RULES.md`? | | |
+| 5 | Which candidate rules are kept (A1–A8, U1–U6)? | | |
+| 6 | Where do they go: all in `RULES.md`, or A1–A8 in `ARCHITECTURE.md` and U1–U6 in `RULES.md`? | | |
 | 7 | A4: rewrite the existing Rendering / Helper Indicators rules around it, or add it beside them? | | |
-| 8 | Ctrl + wheel 5 % steps: a rule now, or left out until built? | | |
+| 8 | Ctrl + wheel 5 % steps: a rule now, or left out until built? | Never answered — moot, implemented meanwhile (Iteration 2) | 2026-09-30 |
 | 9 | Known gaps: also in the rules file, or only in this workfile? | | |
 
 ---
 
-*Last updated: 2026-09-27*
+*Last updated: 2026-09-30*
