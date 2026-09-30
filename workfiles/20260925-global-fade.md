@@ -1,6 +1,6 @@
 # Global Fade
 
-> Working document — a first **global effect**, **Fade**, applied to the whole grid rather than
+> Working document — a **global effect**, **Fade**, applied to the whole grid rather than
 > to one cell; it starts with the sound: a fade-in at the start and a fade-out at the end.
 > This file is the source of truth for the planned work until implemented,
 > then the log of every adjustment made to it afterwards.
@@ -9,55 +9,39 @@
 
 ## Overview
 
-Every effect today belongs to a **cell + image** pair (see [RULES.md](../RULES.md) § Effects).
-The **Fade** is the first effect that belongs to the **grid**: it is a **global effect**.
+Cell effects belong to a **cell + image** pair ([RULES.md](../RULES.md) § Effects); **global
+effects** belong to the grid (§ Global Effects) — **Soundtrack** and **Borders** exist. The
+**Fade** is a new global effect.
 
-It starts with the **sound** — the grid's **mix** (every heard video, each at its Volume
-effect, since `video-mute.md`): the mix rises from silence over a duration at the start and
-falls back to silence over the same duration at the end. A visual fade (to / from
-black) may join it later; it is out of this workfile's scope.
+It starts with the **sound** — the grid's **mix** (every heard video at its Volume, and the
+soundtrack at its level): the mix rises from silence over a duration at the start and falls back
+to silence over the same duration at the end. A visual fade (to / from black) may join it later;
+it is out of this workfile's scope.
 
 It is heard **in the preview and in the MP4 export**.
 
-This workfile also creates the **rule** separating global effects from cell effects, in
-`RULES.md`, and the matching glossary term.
+The rule separating global effects from cell effects, drafted here, **has landed** in `RULES.md`
+§ Global Effects with `soundtrack.md` and `global-effects-tabs.md`; this workfile only adds the
+Fade to it.
 
 ---
 
-## UI — Global Effects Row
+## UI — Fade Tab
 
-- A **dedicated row at the bottom** of the window, **just above the bottom bar** (Clear all /
-  status line / Copy / Save), labelled **Global effects**, always visible.
-- It follows the **cell-effect model** of `RULES.md` (tabs aside): each global effect has an
-  **activation checkbox** — **☑ Fade** only for now — followed by its options, **always shown**,
-  in the same row (no separate options row).
-  - Its **settings and its on / off state are independent**: unchecked, it keeps its settings and
-    shows them in its options; it is heard as its default (no fade) until checked again.
-  - **Acting on any option turns it on** (the checkbox gets checked) before applying the change.
-  - A **Reset** button ends the row: it brings the Fade back to its **default state** — 1 s,
-    Squared, **off**.
-- Fade options: **one duration**, applied to the fade-in and the fade-out alike — a slider from
-  **0.1 s to 5 s by 0.1 s**, **1 s** by default, with its value shown (`1.0 s`).
-- A **curve** choice, two exclusive buttons after the slider: **Squared** (default — gain x²,
-  heard as a steady rise) and **Linear**.
-- **Not applicable** when **nothing is heard** (no video, or every video muted, frozen or without
-  a sound track): its checkbox and options are disabled, the checkbox's tooltip saying why. Its
-  state is kept and applies again as soon as a sound is heard.
-- The row is **locked while exporting**, like the cell effects: the export keeps the setting it
-  started with.
-- **Clear all** removes the global effects too: back to their default state.
+The Fade follows `RULES.md` § Global Effects Toolbar as it stands: a **tab** of the global effects
+toolbar, with its **activation checkbox**, its options in the **global options toolbar** below.
 
-```
-┌─ top bar ────────────────────────────────────────────────────────────────┐
-│ Effects  [Zoom][Rotate][Flip][Frames][B&W][Blur] [Reset]                   │
-│ (options of the selected cell effect)                                      │
-│                                                                            │
-│                              grid preview                                  │
-│                                                                            │
-│ Global effects  [☑ Fade]  Duration [──●────] 1.0 s  [Squared][Linear] [Reset] │
-│ [Clear all]  status line …        [☐ Force as image] [Copy] [Save] [⚙]    │
-└────────────────────────────────────────────────────────────────────────────┘
-```
+- **Tab**: **☑ Fade** — its place among Soundtrack and Borders: see Open Question 17.
+- **Options**: **one duration**, applied to the fade-in and the fade-out alike — a slider from
+  **0.1 s to 5 s by 0.1 s**, **1 s** by default, with its value shown (`1.0 s`); a **curve**
+  choice, **Squared** (default — gain x², heard as a steady rise) or **Linear**; the options
+  toolbar ends with the Fade's own **Reset**. Their layout: see Open Question 20.
+- Everything else comes from the rule: settings **kept when off** and shown in the options,
+  **acting on an option turns it on**, the tabs' **Reset** and **Clear all** bring back the
+  initial state (off, 1 s, Squared), enabled with no cell selected, **locked while exporting**.
+- **Not applicable** when **nothing is heard** — no heard video and no soundtrack on (or at 0 %):
+  its checkbox and options are disabled, the checkbox's tooltip saying why. Its state is kept and
+  applies again as soon as a sound is heard.
 
 ---
 
@@ -68,61 +52,44 @@ This workfile also creates the **rule** separating global effects from cell effe
   (Squared) or *x* (Linear).
 - **Short content**: when 2 × D exceeds the length, the effective D is **half the length** — the
   sound rises then falls straight away, never above its normal volume.
-- **What fades**: the **whole mix** — every heard video, and the soundtrack
-  (`soundtrack.md`) once it exists — at the mix's output, after the voices are summed.
-- **Export** (MP4): start = the video's time 0, end = the export's length (the longest loop).
+- **What fades**: the **whole mix** — every heard video and the soundtrack — at the mix's
+  output, after the voices are summed.
+- **Export** (MP4): start = the video's time 0, end = the export's length (the longest loop, or
+  the soundtrack's length for a grid of stills).
   The sounds keep looping inside the export as today — only the export's own start and end fade.
 - **Preview**: the fade follows the **grid's loop** — the export's length, the longest loop —
   so the preview sounds exactly like the export: a sound shorter than the grid's loop keeps
-  looping without fading inside it, and the mix fades only at the grid loop's start and end.
-  (Today `PreviewSound` only knows each video's own position: the grid's loop length and the
-  position in it must reach it.)
+  looping without fading inside it, and the mix fades only at the grid loop's start and end. The
+  grid's clock already reaches `PreviewSound` for the soundtrack (`SyncSoundtrack`).
 
 ---
 
-## Global Effect vs Effect — Rule to Create
+## Rule and Glossary
 
-In `RULES.md`: the current § Effects is **renamed § Cell Effects**, and a new **§ Global Effects**
-follows it, holding this table and the Global effects row's rules (row above the bottom bar,
-activation checkbox, options inline and always shown, settings kept when off, acting on an
-option turns it on, Reset at the end of the row, disabled with a tooltip when not applicable,
-locked while exporting):
-
-| | **Effect** (cell effect) | **Global effect** |
-|---|---|---|
-| Belongs to | A cell + image pair | The grid |
-| UI | The effects toolbar (top), its options in the options toolbar | The **Global effects** row (bottom), its options in the same row |
-| No cell selected | Disabled | Stays enabled; disabled only when it does not apply (e.g. nothing heard for the Fade) |
-| Image replaced, cell *Reset* (both) | Reset | Untouched |
-| Its own *Reset* | The options row's Reset | The Reset ending the Global effects row |
-| *Clear all* | Reset (no image left) | Reset |
-| Swap, layout change | Kept, follows the image | Kept |
-| Rendering | `Compositor.DrawCell` | At the grid level, in the preview and in every export |
-| Persistence | Not persisted | Not persisted |
-
-Glossary (`GLOSSARY.md`): **Effect** keeps meaning the cell effect (noted "also *cell
-effect*"); new terms:
-
-- **Global effect** — a transformation of the whole grid, turned on or off from the Global
-  effects row: Fade. Turned off, it keeps its settings.
-- **Global effects row** — the always-visible row just above the bottom bar: the "Global
-  effects" label, each global effect's activation checkbox and options, the Reset button.
+- `RULES.md` § Global Effects already holds the distinction table and the toolbar's rules; the
+  Fade needs **no new rule**. Whether § Effects is still renamed § Cell Effects (Q&A 15): see Open
+  Question 18.
+- `GLOSSARY.md`: **Fade** added to the *Global effect* list, and a **Fade** entry — the global
+  effect fading the grid's sound in at the start and out at the end, over one duration, on a
+  Squared or Linear curve.
 
 ---
 
 ## Current State (explored)
 
 Re-explored 2026-09-26, after `video-mute.md` was delivered (the first pass described a single
-elected sound, now gone).
+elected sound, now gone), and 2026-09-30, after the soundtrack, the borders and the global effects
+tabs landed.
 
 | Topic | Where | What it does today |
 |---|---|---|
 | Preview sound | `UI/PreviewSound.cs` | A Windows **`AudioGraph`**: one input node per video with sound, at its Volume gain (`OutgoingGain`), kept in step with its frames by `Sync(image, position, playing)`; one **device output node** (`_output`) — its `OutgoingGain` can carry the fade for the whole mix |
-| Preview clock | `UI/AnimationPlayer.cs:26-170` | Calls `_sound.Sync(image, time, playing)` per video every tick; the grid loop's length and position are not passed to the sound yet |
+| Preview clock | `UI/AnimationPlayer.cs` | Calls `_sound.Sync(image, time, playing)` per video every tick, and `SyncSoundtrack(position, gain)` on the **grid's clock** |
 | Export sound | `Imaging/VideoEncoder.cs:197-330` (`Mixer`) | Every voice decoded to PCM 16-bit, **summed** into a mix buffer, clamped to 16-bit (`_clipped`), then encoded to AAC; `_frames` / `_lengthFrames` give each step's position against the export length |
 | Export seam | `VideoEncoder.cs:280-296` (`Mixer.WriteUntil`) | Multiply the summed mix by the fade gain **before the clamp**: one place, for every voice at once |
 | Export length | `VideoEncoder.cs:45` | `Mixer.Create(sounds, length.Ticks, failed)` — the export length already reaches the mixer |
-| Soundtrack | `workfiles/20260925-soundtrack.md` (design) | A second global effect, a forced sound track, planned in **this** Global effects row, created by whichever lands first |
+| Soundtrack | `Composition/Soundtrack.cs`, `UI/PreviewSound.cs:57-122` | Delivered global effect: a file's sound mixed at its level (0–200 %), looped or cut to the grid's loop (`LoopIn`), giving a grid of stills its length; its own voice in the preview graph and in the export mixer |
+| Global effects | `Composition/GlobalEffect.cs`, `UI/EffectTabs.cs` | `enum GlobalEffect { Soundtrack, Borders }`, "in the order of the global effects' tabs"; the tabs stand on the global options toolbar |
 | Tests | — | **No test project** in the repository |
 | Cell-effect UI | `RULES.md` § Effects (revised) | Effect **tabs** with an activation checkbox; settings **kept when off**; options always shown; **acting on an option turns the effect on**; a per-effect *Reset* ends the options row; a non-applicable effect has its checkbox disabled with a tooltip saying why |
 
@@ -156,6 +123,10 @@ created. The fade's envelope stays a pure function, so a later test project can 
 - [x] ~~14. **What fades** — the whole mix (every heard video, and the soundtrack once it exists), or the videos only?~~ → The whole mix
 - [x] ~~15. **Not applicable** — Fade disabled when **nothing is heard** (every video muted, frozen or silent), or only when no video has a sound track?~~ → When nothing is heard
 - [x] ~~16. **Reset** — a *Reset* button for the Fade in the row, like the options row's per-effect Reset, or none (Clear all only)?~~ → Yes, ending the row
+- [ ] 17. **Tab position** — where does the Fade tab go among Soundtrack and Borders?
+- [ ] 18. **Rename** — the rule landed without renaming § Effects: is § Effects still renamed § Cell Effects (Q&A 15), or is the rename dropped?
+- [ ] 19. **Tab name** — "Fade", the later image fade joining as options of the same tab, or "Sound fade", a later image fade getting its own tab?
+- [ ] 20. **Options layout** — how the duration and the curve are laid out in the global options toolbar?
 - [x] ~~12. **Status of the rule** — does the new rule go into `RULES.md` as a new § Global Effects next to § Effects, with § Effects renamed "Cell effects"?~~ → Yes: new § Global Effects, § Effects renamed § Cell Effects
 
 ---
@@ -215,6 +186,19 @@ in the order the requests were made.
   checkbox disabled with a tooltip; a **Reset** ends the row.
 - No open question left.
 
+### Iteration 7 — 2026-09-30
+
+- The go question was dismissed again; main moved: the **Soundtrack** and **Borders** global
+  effects landed, with `RULES.md` § Global Effects (from this workfile's draft) and a **global
+  effects toolbar** of tabs standing on a **global options toolbar** (`global-effects-tabs.md`).
+- The design follows: the Fade becomes a **tab** of that toolbar, the rule it drafted is no longer
+  to be written, the soundtrack joins the faded mix and the "nothing heard" test, and a grid of
+  stills with a soundtrack fades over the soundtrack's length.
+- The Global effects row of Iterations 1–6 (checkbox and inline options, Reset ending the row) is
+  replaced by the landed toolbar; the agreed settings (duration, curve, Reset, lock, Clear all,
+  not applicable) are kept.
+- New open questions 17–20.
+
 ---
 
 ## Implementation Log
@@ -258,7 +242,12 @@ Questions asked by the agent during design, with user responses.
 | 19 | OQ 14 — What fades: the whole mix, or the videos only? | **The whole mix** | 2026-09-26 |
 | 20 | OQ 15 — Not applicable: when nothing is heard, or when no sound track? | **Nothing heard** | 2026-09-26 |
 | 21 | OQ 16 — Reset button for the Fade in the row? | **Yes, ending the row** | 2026-09-26 |
+| 22 | Go for implementation? | Dismissed — asked for the questions as MCQ | 2026-09-30 |
+| 23 | OQ 17 — Tab position among Soundtrack and Borders? | | 2026-09-30 |
+| 24 | OQ 18 — Rename § Effects to § Cell Effects, or drop it? | | 2026-09-30 |
+| 25 | OQ 19 — Tab name: "Fade" or "Sound fade"? | | 2026-09-30 |
+| 26 | OQ 20 — Options layout in the global options toolbar? | | 2026-09-30 |
 
 ---
 
-*Last updated: 2026-09-26*
+*Last updated: 2026-09-30*
