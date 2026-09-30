@@ -237,6 +237,7 @@ says so rather than staying blank.
 | Unit tests | 3 | 2026-09-26 | Declined — no test project, verified by hand (Q&A #10) |
 | README | 7 | 2026-09-30 | `c6b6f9a` |
 | RULES.md | 7 | 2026-09-30 | `57defd0` § App Settings, § Global Effects' registry mention fixed |
+| Manual validation | 8 | 2026-09-30 | Tested by hand by the user and confirmed finished |
 
 ---
 
