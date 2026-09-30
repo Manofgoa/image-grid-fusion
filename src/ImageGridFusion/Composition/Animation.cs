@@ -17,13 +17,23 @@ public static class Animation
     public static double Progress(TimeSpan time, TimeSpan loop) =>
         loop <= TimeSpan.Zero ? 0 : LoopTime(time, loop).Ticks / (double)loop.Ticks;
 
-    /// <summary>Length of the video: the longest loop; the others loop until it ends.</summary>
-    public static TimeSpan VideoLength(IEnumerable<SourceImage> images) =>
-        images.Where(i => i.IsAnimated).Select(i => i.Pages!.LoopDuration).DefaultIfEmpty(TimeSpan.Zero).Max();
-
     /// <summary>Length of the grid's loop: the longest playing content; a frozen one plays nothing.</summary>
     public static TimeSpan GridLength(IEnumerable<SourceImage> images) =>
         images.Where(i => i.Plays).Select(i => i.Pages!.LoopDuration).DefaultIfEmpty(TimeSpan.Zero).Max();
+
+    /// <summary>
+    /// Length of the exported video — the one rule the export, the preview's soundtrack loop and the
+    /// bottom bar's length readout read (RULES.md § Video Length): the grid's loop of
+    /// <paramref name="gridLength"/>, the shorter contents starting over until it ends; for a grid of
+    /// stills with a <paramref name="soundtrack"/>, the soundtrack's length; <see cref="TimeSpan.Zero"/>
+    /// without either, the export being a still.
+    /// </summary>
+    public static TimeSpan VideoLength(TimeSpan gridLength, Soundtrack? soundtrack) =>
+        soundtrack?.LoopIn(gridLength) ?? gridLength;
+
+    /// <summary>The <see cref="VideoLength(TimeSpan, Soundtrack?)"/> of <paramref name="images"/> as they stand.</summary>
+    public static TimeSpan VideoLength(IEnumerable<SourceImage> images, Soundtrack? soundtrack) =>
+        VideoLength(GridLength(images), soundtrack);
 
     /// <summary>Number of frames of a video of <paramref name="length"/>, the last one possibly shown shorter.</summary>
     public static int FrameCount(TimeSpan length) => Math.Max(1, (int)Math.Ceiling(length.TotalSeconds * FramesPerSecond - 1e-6));

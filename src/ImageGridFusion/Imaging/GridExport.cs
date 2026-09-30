@@ -22,8 +22,7 @@ internal static class GridExport
             Items = items;
             Layout = layout;
             Borders = borders;
-            var grid = items.Select(i => i.Loop).DefaultIfEmpty(TimeSpan.Zero).Max();
-            Length = soundtrack?.LoopIn(grid) ?? grid;
+            Length = Animation.VideoLength(items.Select(i => i.Loop).DefaultIfEmpty(TimeSpan.Zero).Max(), soundtrack);
 
             // The soundtrack loops on its own length, cut where the video ends.
             var sounds = heard.Select(i => new MixedSound(i.FilePath!, i.Pages!.LoopDuration, i.StartTime, i.Look.SoundGain));
@@ -40,7 +39,7 @@ internal static class GridExport
         /// <summary>The sounds mixed into the video: each from the starting point of its video, at its volume; the soundtrack last.</summary>
         public IReadOnlyList<MixedSound> Sounds { get; }
 
-        /// <summary>Length of the video: the longest loop; with a soundtrack and no loop, the soundtrack's.</summary>
+        /// <summary>Length of the video (<see cref="Animation.VideoLength(TimeSpan, Soundtrack?)"/>): the longest loop; with a soundtrack and no loop, the soundtrack's.</summary>
         public TimeSpan Length { get; }
 
         /// <summary>The grid as it stands, with its <paramref name="borders"/>, and <paramref name="soundtrack"/> mixed over its sounds when one is on.</summary>
