@@ -182,9 +182,10 @@ Questions asked by the agent during design, with user responses.
 | 6 | At zoom out, does a PDF show several pages at once or shrink as today? | Shrinks as today | 2026-09-26 |
 | 7 | Other files: sharper at zoom in, unchanged at zoom out, no frames — acceptable? | Yes | 2026-09-26 |
 | 8 | Does the zoom re-wrap the text (line breaks recomputed, no line cut) or crop it? | | |
-| 9 | When is a document re-rendered during a zoom gesture? | | |
+| 9 | When is a document re-rendered during a zoom gesture? | Not asked (the batch was dismissed, then trimmed to four questions) — left to the agent as designed: after the gesture, the current bitmap scaled meanwhile | 2026-09-30 |
 | 10 | How far does a zoomed-in PDF page / thumbnail stay sharp (render cap)? | | |
 | 11 | Does the Animated Zoom effect also re-render a text? | | |
+| 12 | A text with the Crop effect on: does the zoom still re-lay it out, or fall back to a scaled draw? | | |
 
 ---
 
