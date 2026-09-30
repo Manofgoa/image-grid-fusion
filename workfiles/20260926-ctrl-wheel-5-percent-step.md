@@ -155,6 +155,12 @@ and the Zoom slider, 5° snapped for the fine angle, 5 % of the frame count for 
 routing of the sliders unchanged, 0.5 % snapped for the Borders thickness. The slider table and
 the implementation sketch now state each step.
 
+### Iteration 4 — 2026-09-30 — ✅ Implemented
+
+Go given by the user ("lance l'implémentation"), read as code + documentation — unit tests do not
+apply, the repository has no test project. The run waited for the "exported video length" session
+to finish in the same checkout, then started on `main` (the repository's working branch).
+
 ---
 
 ## Implementation Log
