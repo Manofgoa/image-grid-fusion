@@ -209,6 +209,14 @@ Questions asked by the agent during design, with user responses.
 | 3 | In which order is a folder's content shown? | Folders A→Z, then files newest first | 2026-09-30 |
 | 4 | What is remembered between sessions? | The view and the open folder | 2026-09-30 |
 | 5 | Is the subject straightforward or tricky / long? | Straightforward — one scout pass | 2026-09-30 |
+| 6 | Where does the view toggle go? | | 2026-09-30 |
+| 7 | Where does the breadcrumb go? | | 2026-09-30 |
+| 8 | What does a folder tile look like? | | 2026-09-30 |
+| 9 | A folder tile: heart, drag, context menu? | | 2026-09-30 |
+| 10 | Which key goes up? | | 2026-09-30 |
+| 11 | The open folder no longer in the index: where does the view go? | | 2026-09-30 |
+| 12 | Folders without files below them: invisible, or read from the disk? | | 2026-09-30 |
+| 13 | A search in the folder view: files only, or folders too? | | 2026-09-30 |
 
 ---
 
