@@ -57,8 +57,14 @@ The canvas takes the ratio that **loses the least of the images**:
 - **Cells without a sized image** (empty, a text or page preview, which adapts to its cell) do not
   weigh in. With **nothing** that weighs in, Free is **Twitter's ratio**.
 - **Recomputed** whenever the content changes — an image arriving, deleted, swapped, cropped,
-  turned; the layout; the separators. While a **separator is dragged**, the ratio is held, and
-  recomputed when it is released, so the canvas does not change shape under the mouse.
+  turned, another page shown; the layout; the separators. While a **separator** or a **crop bar**
+  (or the crop's kept part) is dragged, the ratio is held, and recomputed when it is released, so
+  the canvas does not change shape under the mouse.
+- **Stable**: the images' ratios are rounded to 3 decimals, and a new free ratio within 0.2 % of the
+  current one is ignored, so a playing video's frames, scaled to their cell, never nudge it.
+- Code: `OutputFormats.FreeRatio` (`Composition/OutputFormat.cs`), called by
+  `GridPreview.UpdateRatio` — every content change goes through it; `GridPreview.CanvasRatio` is
+  the ratio every reader takes.
 
 ---
 
@@ -72,7 +78,7 @@ The ratio is centralised but **constant**; its readers today, and what they beco
 | Export canvas size | `Composition/CanvasSizer.cs:12-32` (`Compute`; line 25 turns cell fractions into heights) | Takes the ratio; the **longer side** is clamped to **[1200, 4096]** (today the width), the other side from the ratio |
 | Callers of `CanvasSizer.Compute` | `Compositor.Render` (`Compositor.cs:45`, PNG), `GridExport.RenderAnimation` (`GridExport.cs:138`, GIF / MP4, then `Animation.EvenSize`) | Pass the ratio the export started with |
 | Preview canvas | `UI/GridPreview.cs:1290-1309` (`CanvasBounds`) | The largest rectangle **of the current ratio** in the control |
-| Text / page loaders | `Imaging/ImageLoader.cs:24, 33`, `GridPreview.cs:1381` | Read the current ratio, following a format change the way they follow a layout change |
+| Text / page loaders | `Imaging/ImageLoader.cs:24, 33`, `GridPreview.FitPagesToCells` | The loader lays a text out first on Twitter's smallest canvas; `FitPagesToCells` reshapes it to its cell on the smallest canvas of the current ratio as soon as it arrives, and again on every ratio change |
 | Layout strip thumbnails | `UI/LayoutStrip.cs:205` (`HeightFor`) | Drawn in the current ratio — tall and narrow in Story, the strip scrolling as it already does |
 
 Export sizes with the longer side clamped: Twitter, Landscape and a landscape Free unchanged
@@ -82,7 +88,9 @@ Export sizes with the longer side clamped: Twitter, Landscape and a landscape Fr
 ### The Borders' Twitter Corners
 
 - Offered in the **Twitter format only**. In every other format the option is **disabled**, its
-  tooltip saying why, its setting **kept**, and nothing is rounded — preview and exports.
+  label reading *Twitter corners (Twitter format only)* — a disabled checkbox shows no tooltip — its
+  setting **kept**, and nothing is rounded — preview and exports (`MainForm.ActiveBorders` drops
+  the rounding).
 - Back in Twitter, it is drawn again as it was set. The ⚙ menu's default is untouched.
 
 ---
@@ -99,7 +107,8 @@ Export sizes with the longer side clamped: Twitter, Landscape and a landscape Fr
 ### The Format Tab
 
 - A new tab **Format**, **first** in the row (the format is chosen before the rest), with an icon
-  from `EffectIcons` — a ratio rectangle.
+  from `EffectIcons` — a landscape frame over a portrait one (`EffectIcons.Format`). The enum
+  keeps its name, `GlobalEffect`, its `Format` value first.
 - **No activation checkbox**: a format is always in force. `EffectTabs` gains an opt-in for a
   checkbox-less tab — no glyph in `Tabs()`, none painted in `PaintTab`, `HitTest` never reports
   `OnCheck` for it. `ToggleGlobalEffect`'s `default:` branch never receives it.
@@ -113,8 +122,10 @@ Export sizes with the longer side clamped: Twitter, Landscape and a landscape Fr
   ratio**, all of them at one height; the format's **name below**.
 - **Free** is drawn at its computed ratio, with a **dashed** outline.
 - The **active** format is highlighted like the active layout (`LayoutStrip.PaintButton`: the
-  highlight fill and inset border); a hovered one gets the hover wash.
-- A small owner-drawn control (e.g. `FormatStrip`) laid out horizontally; the global options
+  highlight fill and inset border, the fill lighter on the options row's white); a hovered one gets
+  the control-light wash. Each thumbnail's tooltip says what the format suits — Free's, its ratio
+  for this grid.
+- A small owner-drawn control, `UI/FormatStrip.cs`, laid out horizontally; the global options
   toolbar takes its height, being sized on its tallest options (RULES § Options Toolbar) — the
   bottom toolbar grows by that much for every tab.
 - Redrawn when the layout, the separators or (for Free) the content change.
@@ -215,6 +226,30 @@ height.
 Go given for code, tests and documentation (no test project: nothing to create). Branch: `main`,
 the repository's standing choice (the work lands on `main`).
 
+### Iteration 4 — 2026-10-01 — 🧭 Implementation choices
+
+Decisions the frozen design left open or that had to differ; no project rule was broken.
+
+- **Free held during crop drags too**: the design held it while a separator is dragged; a crop bar
+  or the kept part dragged changes the image's shape just as live, so the ratio is held then too,
+  recomputed on release.
+- **Free stabilised**: image ratios rounded to 3 decimals, a change under 0.2 % ignored — a playing
+  video's frames are scaled to their cell, their rounding would otherwise nudge the canvas.
+- **Free follows a page shown** (a PDF browsed), besides the changes the design listed.
+- **Twitter corners outside Twitter**: the disabled checkbox's label says *(Twitter format only)*
+  instead of a tooltip — WinForms shows no tooltip on a disabled control.
+- **Text loaders**: a text is first laid out on Twitter's smallest canvas, then reshaped to its cell
+  at the current ratio as soon as it arrives (`FitPagesToCells`) — the loader runs off the UI thread
+  and does not know the cell.
+- **`GlobalEffect` keeps its name**, with `Format` as its first value, rather than a wider rename.
+- **Clear all's message** lists every reset item (soundtrack level, borders, fade, format); the old
+  fallback named the borders whatever was reset.
+- **Format strip colors**: the layout strip's highlight is drawn lighter, and its white hover wash
+  replaced by the control-light one, the options row being white.
+- **Self-check**: the app was launched and the Format tab, the label and a ratio change seen; the
+  instance was then in use by the user, so the synthetic clicks were stopped — the exports' ratios
+  are left to the hand test.
+
 ---
 
 ## Implementation Log
@@ -224,9 +259,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project in the repository |
-| README | | | |
+| Code | 3 | 2026-10-01 | Ratio as a parameter + Free; checkbox-less tabs; Format strip and icon; Global toolbar wiring |
+| Unit tests | 3 | 2026-10-01 | No test project in the repository: nothing created |
+| README | 3 | 2026-10-01 | README (Global, Format, Borders, Canvas size), RULES (Global Toolbar, Output Format), GLOSSARY |
 
 ---
 
