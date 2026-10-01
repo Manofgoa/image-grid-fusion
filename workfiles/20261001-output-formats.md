@@ -179,6 +179,13 @@ Questions asked by the agent during design, with user responses.
 | 2 | Which formats? | Free, Twitter, Square 1:1, Portrait 4:5, Story 9:16, Landscape 16:9 | 2026-10-01 |
 | 3 | Where is it set, and is "Global effects" renamed? | A tab of the bottom toolbar, renamed "Global" | 2026-10-01 |
 | 4 | Simple or tricky / long? | Simple — a single exploration pass | 2026-10-01 |
+| 5 | How do the Format thumbnails look (variants A–D drawn inline)? | | |
+| 6 | What is Free? | | |
+| 7 | Is the format remembered between sessions? | | |
+| 8 | Do Reset (all) and Clear all bring back Twitter? | | |
+| 9 | Do the layout strip's thumbnails take the current format's ratio? | | |
+| 10 | Export size: clamp the longer side instead of the width? | | |
+| 11 | Twitter corners: every format, or Twitter only? | | |
 
 ---
 
