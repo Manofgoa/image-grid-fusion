@@ -21,7 +21,7 @@ public static class ImageLoader
         ?? TryPages(path, VideoFrames.TryOpen(path))
         ?? TryPages(path, PdfPages.TryOpen(path))
         ?? (IsSvg(path) ? TryThumbnail(path) : null)
-        ?? TryPages(path, TextPages.TryOpen(path, new Size(GridLayout.RatioWidth, GridLayout.RatioHeight)))
+        ?? TryPages(path, TextPages.TryOpen(path, CanvasSizer.Smallest(OutputFormats.TwitterRatio)))
         ?? TryThumbnail(path);
 
     private static bool IsSvg(string path) => Path.GetExtension(path).Equals(".svg", StringComparison.OrdinalIgnoreCase);
@@ -30,7 +30,7 @@ public static class ImageLoader
 
     /// <summary>A text pasted or dropped, rendered like a text file. Null when it is blank.</summary>
     public static SourceImage? FromText(StyledText text) =>
-        TryPages(null, TextPages.TryCreate(text, new Size(GridLayout.RatioWidth, GridLayout.RatioHeight)));
+        TryPages(null, TextPages.TryCreate(text, CanvasSizer.Smallest(OutputFormats.TwitterRatio)));
 
     private static SourceImage? TryDecode(string path)
     {

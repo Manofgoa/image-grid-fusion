@@ -32,17 +32,18 @@ public static class Compositor
         return matrix;
     }
 
-    /// <summary>Renders the final image at the size given by <see cref="CanvasSizer"/>.</summary>
-    public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout layout, GridBorders? borders = null) =>
-        Render(images.Select(i => new Frame(i.Bitmap, i.BandColor, i.Look)).ToList(), layout, borders);
+    /// <summary>Renders the final image at <paramref name="ratio"/>, at the size given by <see cref="CanvasSizer"/>.</summary>
+    public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders = null) =>
+        Render(images.Select(i => new Frame(i.Bitmap, i.BandColor, i.Look)).ToList(), layout, ratio, borders);
 
     /// <summary>
-    /// Renders frames at the size given by <see cref="CanvasSizer"/>; frame i goes into cell i. With an
-    /// alpha channel, transparent where a cell, or the gap between the cells, has no fill: a PNG keeps it.
+    /// Renders frames at <paramref name="ratio"/>, at the size given by <see cref="CanvasSizer"/>; frame i
+    /// goes into cell i. With an alpha channel, transparent where a cell, or the gap between the cells,
+    /// has no fill: a PNG keeps it.
     /// </summary>
-    public static Bitmap Render(IReadOnlyList<Frame> frames, GridLayout layout, GridBorders? borders = null)
+    public static Bitmap Render(IReadOnlyList<Frame> frames, GridLayout layout, double ratio, GridBorders? borders = null)
     {
-        var canvas = CanvasSizer.Compute(frames.Select(f => f.Size).ToList(), layout);
+        var canvas = CanvasSizer.Compute(frames.Select(f => f.Size).ToList(), layout, ratio);
         var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppArgb);
         using var g = Graphics.FromImage(bitmap);
         Draw(g, frames, layout, canvas, borders);

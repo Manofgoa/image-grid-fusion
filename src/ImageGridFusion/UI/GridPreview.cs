@@ -82,6 +82,11 @@ internal sealed class GridPreview : Control
     private readonly AnimationPlayer _player = new();
     private Soundtrack? _soundtrack;
     private SoundFade? _fade;
+
+    // The output format, and the ratio the canvas is drawn at: the format's, or the free one as last
+    // computed — held while a separator or a crop bar is dragged.
+    private OutputFormat _format = OutputFormat.Twitter;
+    private double _ratio = OutputFormats.TwitterRatio;
     private GridBorders? _borders;
     private bool _locked;
     private bool _hoveringHandle;
@@ -142,6 +147,7 @@ internal sealed class GridPreview : Control
             _cache?.Dispose();
             _cache = null;
             Invalidate();
+            UpdateRatio();
         };
         _player.FrameShown += (_, image) => RedrawCell(image);
         _wheelEnd.Tick += (_, _) => EndLive();
@@ -162,6 +168,9 @@ internal sealed class GridPreview : Control
 
     /// <summary>Raised when the active layout changes, picked by the user or reset with the image count, or when its cells are resized.</summary>
     public event EventHandler? LayoutChanged;
+
+    /// <summary>Raised when the canvas takes another ratio: another output format, or the free one computed anew.</summary>
+    public event EventHandler? RatioChanged;
 
     /// <summary>
     /// Raised as a cell dragged by its ✥ handle moves, with the mouse in screen coordinates — the
@@ -219,6 +228,31 @@ internal sealed class GridPreview : Control
             ContentVersion++;
         }
     }
+
+    /// <summary>
+    /// The output format: the ratio of the canvas, in the preview and in every export (RULES.md
+    /// § Output Format). Not persisted, <see cref="OutputFormat.Twitter"/> at first.
+    /// </summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public OutputFormat Format
+    {
+        get => _format;
+        set
+        {
+            if (value != _format)
+            {
+                _format = value;
+                UpdateRatio();
+            }
+        }
+    }
+
+    /// <summary>The canvas's width ÷ height as drawn: the format's, or the free one — the one rule every reader goes through.</summary>
+    public double CanvasRatio => _ratio;
+
+    /// <summary>The ratio the free format gives the grid as it stands, whatever the format.</summary>
+    public double FreeRatio => _layout is null ? OutputFormats.TwitterRatio
+        : OutputFormats.FreeRatio(_images.Select(i => i.Pages is { PageSize: not null } ? (Size?)null : i.Look.Shown(i.Size)).ToList(), _layout);
 
     /// <summary>The borders drawn on the grid, shrinking its cells for their gap; <c>null</c> when they are off.</summary>
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -380,6 +414,7 @@ internal sealed class GridPreview : Control
         SyncPlayer();
         Invalidate();
         ContentVersion++;
+        UpdateRatio();
         LayoutChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -737,6 +772,7 @@ internal sealed class GridPreview : Control
             _draggedBar = null;
             _movedCrop = null;
             EndLive();
+            UpdateRatio();
             UpdateHover(e.Location);
             Invalidate();
             return;
@@ -821,10 +857,12 @@ internal sealed class GridPreview : Control
             EndDrag();
         }
 
-        if (_draggedBar is not null)
+        if (_draggedBar is not null || _movedCrop is not null)
         {
             _draggedBar = null;
+            _movedCrop = null;
             EndLive();
+            UpdateRatio();
             Invalidate();
         }
 
@@ -1057,6 +1095,7 @@ internal sealed class GridPreview : Control
 
         FitPagesToCells();
         SyncPlayer();
+        UpdateRatio();
 
         ImagesChanged?.Invoke(this, EventArgs.Empty);
         if (layoutReset)
@@ -1284,7 +1323,7 @@ internal sealed class GridPreview : Control
     }
 
     /// <summary>
-    /// Largest rectangle at the output ratio that fits the control once the drop zone and its gap
+    /// Largest rectangle at the canvas ratio that fits the control once the drop zone and its gap
     /// are reserved on the right, centered in what remains.
     /// </summary>
     private Rectangle CanvasBounds()
@@ -1298,11 +1337,11 @@ internal sealed class GridPreview : Control
         }
 
         int width = area.Width;
-        int height = GridLayout.HeightFor(width);
+        int height = GridLayout.HeightFor(width, _ratio);
         if (height > area.Height)
         {
             height = area.Height;
-            width = (int)(height * (double)GridLayout.RatioWidth / GridLayout.RatioHeight);
+            width = Math.Min(area.Width, GridLayout.WidthFor(height, _ratio));
         }
 
         return new Rectangle(area.X + (area.Width - width) / 2, area.Y + (area.Height - height) / 2, width, height);
@@ -1367,9 +1406,10 @@ internal sealed class GridPreview : Control
     }
 
     /// <summary>
-    /// Text pages take the shape of their cell, at its size on a 1200 px canvas, so they never widen
-    /// the canvas: laid out again, keeping the reading position, whenever that cell changes. A text
-    /// turned a quarter takes the turned shape, so it still fills its cell once rotated.
+    /// Text pages take the shape of their cell, at its size on the smallest canvas
+    /// (<see cref="CanvasSizer.Smallest"/>), so they never enlarge the canvas: laid out again, keeping the
+    /// reading position, whenever that cell changes — the canvas's ratio included. A text turned a
+    /// quarter takes the turned shape, so it still fills its cell once rotated.
     /// </summary>
     private void FitPagesToCells()
     {
@@ -1378,7 +1418,7 @@ internal sealed class GridPreview : Control
             return;
         }
 
-        var cells = Compositor.Cells(_layout, new Size(GridLayout.RatioWidth, GridLayout.RatioHeight), _borders);
+        var cells = Compositor.Cells(_layout, CanvasSizer.Smallest(_ratio), _borders);
         for (int i = 0; i < _images.Count; i++)
         {
             var shape = _images[i].Look.Oriented(cells[i].Size);
@@ -1423,6 +1463,9 @@ internal sealed class GridPreview : Control
         {
             FitPagesToCells();
         }
+
+        // A crop or a quarter turn changes the image's shape, so the free ratio.
+        UpdateRatio();
 
         if (frames)
         {
@@ -1967,7 +2010,38 @@ internal sealed class GridPreview : Control
         UpdateDisplaySizes();
         Invalidate();
         ContentVersion++;
+        UpdateRatio();
         LayoutChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Gives the canvas the ratio of the format, the free one computed from the grid as it stands, then
+    /// lays the grid out again on it. Held while a separator or a crop bar is dragged, so the canvas does
+    /// not change shape under the mouse: the release computes it again.
+    /// </summary>
+    private void UpdateRatio()
+    {
+        if (_draggedSeparator is not null || _draggedBar is not null || _movedCrop is not null)
+        {
+            return;
+        }
+
+        double ratio = OutputFormats.Ratio(_format) ?? FreeRatio;
+
+        // A video's frames, scaled to their cell, must not nudge the free ratio back and forth.
+        if (Math.Abs(ratio / _ratio - 1) < 0.002)
+        {
+            return;
+        }
+
+        _ratio = ratio;
+        _cache?.Dispose();
+        _cache = null;
+        FitPagesToCells();
+        UpdateDisplaySizes();
+        Invalidate();
+        ContentVersion++;
+        RatioChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>Draws some cells again into the cached preview, fast, and paints them at once.</summary>

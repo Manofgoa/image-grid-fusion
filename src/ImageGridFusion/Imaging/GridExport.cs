@@ -17,10 +17,11 @@ internal static class GridExport
     /// </summary>
     public sealed class Job : IDisposable
     {
-        private Job(IReadOnlyList<Item> items, GridLayout layout, GridBorders? borders, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack, SoundFade? fade)
+        private Job(IReadOnlyList<Item> items, GridLayout layout, double ratio, GridBorders? borders, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack, SoundFade? fade)
         {
             Items = items;
             Layout = layout;
+            Ratio = ratio;
             Borders = borders;
             Fade = fade;
             Length = Animation.VideoLength(items.Select(i => i.Loop).DefaultIfEmpty(TimeSpan.Zero).Max(), soundtrack);
@@ -33,6 +34,9 @@ internal static class GridExport
         public IReadOnlyList<Item> Items { get; }
 
         public GridLayout Layout { get; }
+
+        /// <summary>The canvas's width ÷ height, the output format's as the export started — the free one as computed then.</summary>
+        public double Ratio { get; }
 
         /// <summary>The borders drawn on the grid; <c>null</c> while they are off.</summary>
         public GridBorders? Borders { get; }
@@ -47,16 +51,18 @@ internal static class GridExport
         public TimeSpan Length { get; }
 
         /// <summary>
-        /// The grid as it stands, with its <paramref name="borders"/>, <paramref name="soundtrack"/> mixed
-        /// over its sounds when one is on, and the mix faded by <paramref name="fade"/> when it is on.
+        /// The grid as it stands, at its <paramref name="ratio"/>, with its <paramref name="borders"/>,
+        /// <paramref name="soundtrack"/> mixed over its sounds when one is on, and the mix faded by
+        /// <paramref name="fade"/> when it is on.
         /// </summary>
-        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout, GridBorders? borders, Soundtrack? soundtrack = null, SoundFade? fade = null) => new(
+        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders, Soundtrack? soundtrack = null, SoundFade? fade = null) => new(
             images.Select(i => i.Plays
                 ? new Item(null, i.BandColor, i.Pages, i.Pages!.LoopDuration, i.Look, i.Page, i.StartTime)
                 : i.IsAnimated
                 ? new Item(null, i.BandColor, i.Pages, TimeSpan.Zero, i.Look, i.StartPage, TimeSpan.Zero)
                 : new Item(new Bitmap(i.Bitmap), i.BandColor, null, TimeSpan.Zero, i.Look, 0, TimeSpan.Zero)).ToList(),
             layout,
+            ratio,
             borders,
             Animation.Heard(images),
             soundtrack,
@@ -135,7 +141,7 @@ internal static class GridExport
                 frames[i] = FirstFrame(job.Items[i], play: true, out readers[i]);
             }
 
-            var canvas = Animation.EvenSize(CanvasSizer.Compute(frames.Select(f => f.Size).ToList(), job.Layout));
+            var canvas = Animation.EvenSize(CanvasSizer.Compute(frames.Select(f => f.Size).ToList(), job.Layout, job.Ratio));
             using var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppRgb);
             using var g = Graphics.FromImage(bitmap);
             encoder = format == Format.Gif
@@ -213,7 +219,7 @@ internal static class GridExport
                 frames[i] = new Frame(frame, BandColor.Of(frame), item.Look);
             }
 
-            return Compositor.Render(frames, job.Layout, job.Borders);
+            return Compositor.Render(frames, job.Layout, job.Ratio, job.Borders);
         }
         finally
         {

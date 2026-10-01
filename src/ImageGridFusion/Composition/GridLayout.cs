@@ -12,13 +12,12 @@ public enum MirrorAxis
 /// A layout of 1 to 4 cells, described on a grid of units. Cell 0 is the featured cell and takes
 /// image 1; the other cells follow in reading order. Its cells can be resized by moving the
 /// separators between them: the edges of each cell are kept as fractions of the canvas, starting on
-/// the units. Also holds the output ratio and the catalog of layouts per image count, the basic ones
-/// first, then the advanced ones the layout strip keeps in a collapsible group.
+/// the units. Also holds the catalog of layouts per image count, the basic ones first, then the
+/// advanced ones the layout strip keeps in a collapsible group. The canvas's ratio is the output
+/// format's (<see cref="OutputFormats"/>).
 /// </summary>
 public sealed class GridLayout
 {
-    public const int RatioWidth = 1200;
-    public const int RatioHeight = 628;
     public const int MaxImages = 4;
 
     /// <summary>Smallest share of the canvas width (or height) a separator leaves to each cell it moves.</summary>
@@ -101,7 +100,11 @@ public sealed class GridLayout
     /// <summary>Whether a separator was moved away from the layout's own proportions.</summary>
     public bool IsResized => !_edges.SequenceEqual(_defaults);
 
-    public static int HeightFor(int width) => (int)Math.Round(width * (double)RatioHeight / RatioWidth);
+    /// <summary>Height of a canvas <paramref name="width"/> wide at <paramref name="ratio"/> (width ÷ height).</summary>
+    public static int HeightFor(int width, double ratio) => Math.Max(1, (int)Math.Round(width / ratio));
+
+    /// <summary>Width of a canvas <paramref name="height"/> high at <paramref name="ratio"/> (width ÷ height).</summary>
+    public static int WidthFor(int height, double ratio) => Math.Max(1, (int)Math.Round(height * ratio));
 
     /// <summary>Layouts available for <paramref name="count"/> images, the default one first and the advanced ones last.</summary>
     public static IReadOnlyList<GridLayout> For(int count) =>

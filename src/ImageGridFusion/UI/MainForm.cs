@@ -569,6 +569,11 @@ internal sealed class MainForm : Form
             // A text may fit its new cell, or no longer: it stops or starts scrolling.
             UpdateButtons();
         };
+        _preview.RatioChanged += (_, _) =>
+        {
+            _layouts.Ratio = _preview.CanvasRatio;
+            UpdateButtons();
+        };
         _layouts.LayoutPicked += (_, layout) => _preview.SetLayout(layout);
         _layouts.MirrorToggled += (_, _) => _preview.SetLayout(_preview.ActiveLayout!.Mirrored());
         _layouts.ActiveLayoutClicked += (_, _) => _preview.ResetCellSizes();
@@ -1563,10 +1568,10 @@ internal sealed class MainForm : Form
         if (!_preview.Images.Any(i => i.IsAnimated))
         {
             Cursor.Current = Cursors.WaitCursor;
-            return Compositor.Render(_preview.Images, _preview.ActiveLayout!, ActiveBorders);
+            return Compositor.Render(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders);
         }
 
-        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, ActiveBorders);
+        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders);
         BeginExport("Rendering the image…", cancellable: false);
         try
         {
@@ -1590,7 +1595,7 @@ internal sealed class MainForm : Form
     /// </summary>
     private async Task<GridExport.Result?> ExportAnimationAsync(string path, GridExport.Format format)
     {
-        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, ActiveBorders, ActiveSoundtrack, ActiveFade);
+        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, ActiveSoundtrack, ActiveFade);
         string what = format == GridExport.Format.Gif ? "GIF" : "video";
         var cancellation = BeginExport($"Exporting the {what}… 0 %", cancellable: true);
         var progress = new Progress<double>(done =>

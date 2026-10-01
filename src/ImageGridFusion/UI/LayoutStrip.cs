@@ -16,6 +16,7 @@ internal sealed class LayoutStrip : ScrollableControl
 
     private readonly ToolTip _toolTip = new();
     private GridLayout? _active;
+    private double _ratio = OutputFormats.TwitterRatio;
     private IReadOnlyList<GridLayout> _layouts = GridLayout.For(1);
     private bool _expanded;
     private List<Item> _items = [];
@@ -68,6 +69,22 @@ internal sealed class LayoutStrip : ScrollableControl
             _active = value;
             _layouts = GridLayout.For(value?.Count ?? 1);
             Arrange();
+        }
+    }
+
+    /// <summary>The canvas's width ÷ height: the thumbnails are drawn at it, tall and narrow for a portrait format.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public double Ratio
+    {
+        get => _ratio;
+        set
+        {
+            if (value != _ratio)
+            {
+                _ratio = value;
+                Arrange();
+            }
         }
     }
 
@@ -191,7 +208,7 @@ internal sealed class LayoutStrip : ScrollableControl
     }
 
     /// <summary>
-    /// Items stacked from the top: the mirror toggle, the basic thumbnails at the output ratio, then
+    /// Items stacked from the top: the mirror toggle, the basic thumbnails at the canvas ratio, then
     /// the "More" header over the advanced thumbnails — all of them expanded, only the active one
     /// collapsed. No header when the image count has no advanced layout. The items keep the size the
     /// whole strip gives them: a scrollbar only pushes them left into the margin.
@@ -202,7 +219,7 @@ internal sealed class LayoutStrip : ScrollableControl
         int spacing = LogicalToDeviceUnits(6);
         int width = Math.Max(1, Width - 2 * margin);
         int left = Math.Max(0, Math.Min(margin, ClientSize.Width - width - LogicalToDeviceUnits(3)));
-        int thumbnailHeight = GridLayout.HeightFor(width - 2 * LogicalToDeviceUnits(4)) + 2 * LogicalToDeviceUnits(4);
+        int thumbnailHeight = GridLayout.HeightFor(width - 2 * LogicalToDeviceUnits(4), _ratio) + 2 * LogicalToDeviceUnits(4);
         int y = LogicalToDeviceUnits(16);
         var items = new List<Item>();
 
