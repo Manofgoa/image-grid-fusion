@@ -170,8 +170,8 @@ internal sealed class MainForm : Form
     private ImageEffect? _selectedEffect;
     private bool _syncingEffects;
 
-    // The global effects, the mirror of the cell effects: their tabs standing on their options row, just
-    // above the bottom bar (see RULES.md). A file dropped anywhere on either row becomes the soundtrack.
+    // The Global toolbar — the format, then the global effects — the mirror of the cell effects: its tabs
+    // standing on their options row, just above the bottom bar (see RULES.md). A file dropped anywhere on either row becomes the soundtrack.
     private readonly TableLayoutPanel _globalTabsRow = new()
     {
         Dock = DockStyle.Bottom,
@@ -181,8 +181,14 @@ internal sealed class MainForm : Form
         Padding = new Padding(8, 8, 8, 0),
         AllowDrop = true,
     };
-    private readonly Label _globalLabel = new() { Text = "Global effects →", AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly EffectTabs<GlobalEffect> _globalTabs = new(effect => effect.ToString(), standing: true) { Anchor = AnchorStyles.Left | AnchorStyles.Bottom, Margin = Padding.Empty };
+    private readonly Label _globalLabel = new() { Text = "Global →", AutoSize = true, Anchor = AnchorStyles.Left };
+
+    // The Format is a setting, always in force: its tab has no checkbox.
+    private readonly EffectTabs<GlobalEffect> _globalTabs = new(effect => effect.ToString(), standing: true, hasCheck: effect => effect != GlobalEffect.Format)
+    {
+        Anchor = AnchorStyles.Left | AnchorStyles.Bottom,
+        Margin = Padding.Empty,
+    };
 
     // Stands on the options row like the tabs, and as tall as them.
     private readonly Button _globalResetButton = new()
@@ -219,6 +225,7 @@ internal sealed class MainForm : Form
 
     // The selected global tab belongs to its own toolbar, not to the cell effects' one; none at startup.
     private GlobalEffect? _selectedGlobalEffect;
+    private readonly FormatStrip _formatStrip = new();
     private readonly Button _soundtrackBrowse = new() { Text = "Browse…", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly Label _soundtrackFile = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly TrackBar _soundtrackVolume = OptionSlider(0, (int)(Soundtrack.MaxLevel * 100), 10);
@@ -355,6 +362,7 @@ internal sealed class MainForm : Form
         _globalOptionsRow.Controls.Add(_globalEffectResetButton, 1, 0);
         _globalOptionsHost.Controls.AddRange([.. _globalOptions.Values]);
         _bordersStyle.Items.AddRange(Enum.GetNames<BorderPattern>());
+        _globalOptions[GlobalEffect.Format].Controls.Add(_formatStrip);
         _globalOptions[GlobalEffect.Soundtrack].Controls.AddRange([_soundtrackBrowse, _soundtrackFile, _soundtrackVolume, _soundtrackVolumeLabel]);
         _globalOptions[GlobalEffect.Fade].Controls.AddRange([_fadeDuration, _fadeDurationLabel, _fadeSquared, _fadeLinear]);
         _globalOptions[GlobalEffect.Borders].Controls.AddRange(
@@ -507,8 +515,9 @@ internal sealed class MainForm : Form
         _globalTabsRow.Paint += (_, e) => PaintOptionsEdge(e.Graphics, _globalTabsRow, standing: true);
         _globalTabs.TabClicked += (_, effect) => SelectGlobalEffect(effect);
         _globalTabs.CheckClicked += (_, effect) => ToggleGlobalEffect(effect);
-        _toolTip.SetToolTip(_globalEffectResetButton, "Brings this global effect back to its initial state");
-        _toolTip.SetToolTip(_globalResetButton, "Brings every global effect back to its initial state; the cells are left alone");
+        _formatStrip.FormatPicked += (_, format) => SetFormat(format);
+        _toolTip.SetToolTip(_globalEffectResetButton, "Brings this global setting back to its initial state");
+        _toolTip.SetToolTip(_globalResetButton, "Brings the format back to Twitter and every global effect back to its initial state; the cells are left alone");
         _globalEffectResetButton.Click += (_, _) =>
         {
             if (_selectedGlobalEffect is { } effect)
@@ -663,6 +672,7 @@ internal sealed class MainForm : Form
             });
         }
 
+        _globalTabs.SetIcon(GlobalEffect.Format, EffectIcons.Format(size));
         _globalTabs.SetIcon(GlobalEffect.Soundtrack, EffectIcons.Soundtrack(size));
         _globalTabs.SetIcon(GlobalEffect.Fade, EffectIcons.Fade(size));
         _globalTabs.SetIcon(GlobalEffect.Borders, EffectIcons.Borders(size));
@@ -1108,7 +1118,7 @@ internal sealed class MainForm : Form
         }
     }
 
-    /// <summary>Removes every image and the global effects: back to the initial state.</summary>
+    /// <summary>Removes every image, the global effects and the format: back to the initial state.</summary>
     private void ClearAll()
     {
         if (IsExporting)
@@ -1120,7 +1130,9 @@ internal sealed class MainForm : Form
         bool soundtrack = _soundtrack is not null;
         bool borders = !BordersInitial;
         bool fade = !FadeInitial;
-        if (count == 0 && SoundtrackInitial && !borders && !fade)
+        bool format = !FormatInitial;
+        bool soundtrackInitial = SoundtrackInitial;
+        if (count == 0 && soundtrackInitial && !borders && !fade && !format)
         {
             return;
         }
@@ -1139,14 +1151,32 @@ internal sealed class MainForm : Form
             removed.Add(count > 0 ? "the soundtrack" : "The soundtrack");
         }
 
+        // What was only set, not removed: a soundtrack level without a file, the borders, the fade, the format.
+        var reset = new List<string>();
+        if (!soundtrack && !soundtrackInitial)
+        {
+            reset.Add("soundtrack");
+        }
+
+        if (borders)
+        {
+            reset.Add("borders");
+        }
+
+        if (fade)
+        {
+            reset.Add("fade");
+        }
+
+        if (format)
+        {
+            reset.Add("format");
+        }
+
+        string resetText = reset.Count > 1 ? $"{string.Join(", ", reset[..^1])} and {reset[^1]}" : reset.FirstOrDefault() ?? "";
         ShowStatus(removed.Count > 0
             ? $"{string.Join(" and ", removed)} removed."
-            : (borders, fade) switch
-            {
-                (true, true) => "Borders and fade back to their initial state.",
-                (false, true) => "Fade back to its initial state.",
-                _ => "Borders back to their initial state.",
-            });
+            : $"{char.ToUpperInvariant(resetText[0])}{resetText[1..]} back to {(reset.Count > 1 || borders ? "their" : "its")} initial state.");
     }
 
     /// <summary>Copies the grid in the format its content suits: a PNG, or an MP4 video while a content plays or a soundtrack is on.</summary>
@@ -1511,8 +1541,17 @@ internal sealed class MainForm : Form
     /// <summary>The soundtrack mixed into the preview and the MP4 export; <c>null</c> while off.</summary>
     private Soundtrack? ActiveSoundtrack => _soundtrackOn ? _soundtrack : null;
 
-    /// <summary>The borders drawn on the preview and the exports; <c>null</c> while off.</summary>
-    private GridBorders? ActiveBorders => _bordersOn ? _borders : null;
+    /// <summary>
+    /// The borders drawn on the preview and the exports; <c>null</c> while off. Their Twitter corners
+    /// are drawn in the Twitter format only, their setting kept in the others.
+    /// </summary>
+    private GridBorders? ActiveBorders => !_bordersOn ? null : TwitterCornersApply ? _borders : _borders with { Rounded = false };
+
+    /// <summary>Whether the borders' Twitter corners apply: in the Twitter format only.</summary>
+    private bool TwitterCornersApply => _preview.Format == OutputFormat.Twitter;
+
+    /// <summary>Whether the format is as the app starts: Twitter.</summary>
+    private bool FormatInitial => _preview.Format == OutputFormat.Twitter;
 
     /// <summary>Whether the borders are as the app starts: off, with their initial settings.</summary>
     private bool BordersInitial => !_bordersOn && _borders == GridBorders.Initial(_borders.Color, _roundedByDefault);
@@ -1914,7 +1953,7 @@ internal sealed class MainForm : Form
     private void UpdateButtons()
     {
         bool any = _preview.Images.Count > 0 && !IsExporting;
-        _clearButton.Enabled = (_preview.Images.Count > 0 || !SoundtrackInitial || !BordersInitial || !FadeInitial) && !IsExporting;
+        _clearButton.Enabled = (_preview.Images.Count > 0 || !SoundtrackInitial || !BordersInitial || !FadeInitial || !FormatInitial) && !IsExporting;
         _copyButton.Enabled = any;
         _saveButton.Enabled = any;
 
@@ -2339,23 +2378,48 @@ internal sealed class MainForm : Form
             case GlobalEffect.Fade:
                 ToggleFade();
                 break;
-            default:
+            case GlobalEffect.Borders:
                 ToggleBorders();
+                break;
+            default:
+                // The Format's tab has no checkbox.
                 break;
         }
     }
 
     /// <summary>
+    /// A format thumbnail picked: the canvas takes its ratio, in the preview and the exports; the
+    /// borders' Twitter corners follow it. Locked while exporting, like every global tab.
+    /// </summary>
+    private void SetFormat(OutputFormat format)
+    {
+        if (IsExporting)
+        {
+            return;
+        }
+
+        _preview.Format = format;
+        _preview.Borders = ActiveBorders;
+        UpdateButtons();
+    }
+
+    /// <summary>
     /// <paramref name="effect"/> back to its initial state, the one Clear all restores — every global
-    /// effect when <c>null</c>: the soundtrack off, with no file, at 100 %; the fade off, 1 s, squared;
-    /// the borders off, their initial settings keeping the color and the Twitter corners default of the ⚙
-    /// menu. The cells are left alone.
+    /// tab when <c>null</c>: the format Twitter; the soundtrack off, with no file, at 100 %; the fade
+    /// off, 1 s, squared; the borders off, their initial settings keeping the color and the Twitter
+    /// corners default of the ⚙ menu. The cells are left alone.
     /// </summary>
     private void ResetGlobalEffects(GlobalEffect? effect = null)
     {
         if (IsExporting)
         {
             return;
+        }
+
+        if (effect is null or GlobalEffect.Format)
+        {
+            _preview.Format = OutputFormat.Twitter;
+            _preview.Borders = ActiveBorders;
         }
 
         if (effect is null or GlobalEffect.Soundtrack)
@@ -2494,7 +2558,9 @@ internal sealed class MainForm : Form
         _globalTabs.SetState(GlobalEffect.Borders, ActiveBorders is not null, unavailable: null);
         _globalTabs.Selected = _selectedGlobalEffect;
         _globalTabs.Enabled = enabled;
-        _globalResetButton.Enabled = enabled && !(SoundtrackInitial && BordersInitial && FadeInitial);
+        _globalResetButton.Enabled = enabled && !(SoundtrackInitial && BordersInitial && FadeInitial && FormatInitial);
+        _formatStrip.Selected = _preview.Format;
+        _formatStrip.SetGrid(_preview.ActiveLayout, _preview.FreeRatio);
         foreach (var (effect, row) in _globalOptions)
         {
             row.Visible = _selectedGlobalEffect == effect;
@@ -2509,6 +2575,7 @@ internal sealed class MainForm : Form
             GlobalEffect.Soundtrack => !SoundtrackInitial,
             GlobalEffect.Fade => !FadeInitial,
             GlobalEffect.Borders => !BordersInitial,
+            GlobalEffect.Format => !FormatInitial,
             _ => false,
         };
         UpdateBorders();
@@ -2808,6 +2875,11 @@ internal sealed class MainForm : Form
         _bordersThicknessLabel.Text = ThicknessText(_bordersThickness.Value);
         _bordersOpacityLabel.Text = OpacityText(_bordersOpacity.Value);
         _bordersOuterFrame.Enabled = _borders.HasGap;
+
+        // Outside the Twitter format the corners are not rounded, their setting kept. A disabled
+        // checkbox shows no tooltip: its text says why.
+        _bordersRounded.Enabled = TwitterCornersApply;
+        _bordersRounded.Text = TwitterCornersApply ? "Twitter corners" : "Twitter corners (Twitter format only)";
 
         // Only the corner brackets lie over the images.
         _bordersOpacity.Enabled = !_borders.HasGap;

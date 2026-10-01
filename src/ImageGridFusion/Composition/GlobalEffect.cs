@@ -1,8 +1,12 @@
 namespace ImageGridFusion.Composition;
 
-/// <summary>Effects of the whole grid, in the order of the global effects' tabs (see RULES.md).</summary>
+/// <summary>
+/// The tabs of the Global toolbar, in their order (see RULES.md): the <see cref="Format"/>, a global
+/// setting always in force, then the effects of the whole grid.
+/// </summary>
 public enum GlobalEffect
 {
+    Format,
     Soundtrack,
     Fade,
     Borders,
