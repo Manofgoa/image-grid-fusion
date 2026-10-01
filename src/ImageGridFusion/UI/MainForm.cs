@@ -1931,7 +1931,7 @@ internal sealed class MainForm : Form
             item.Checked = (int)item.Tag! == _explorer.PagesPerLoad;
         }
 
-        // Locked like the global effects toolbar: an export keeps the borders it started with.
+        // Locked like the Global toolbar: an export keeps the borders it started with.
         _borderColor.Enabled = !IsExporting;
         _settingsMenu.Show(_settingsButton, Point.Empty, ToolStripDropDownDirection.AboveRight);
     }
