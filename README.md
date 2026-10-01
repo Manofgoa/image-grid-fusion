@@ -1,12 +1,12 @@
 # Image Grid Fusion
 
-A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a single image sized for Twitter/X's in-feed ratio.
+A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a single image sized for Twitter/X's in-feed ratio — or a square, a portrait, a story, a 16:9 or the content's own ratio.
 
 ## Features
 
 - Fast-starting `.exe` with a GUI, no installer
 - Merges 1 to 4 images into one; a single image fills the whole canvas and is exportable
-- Output ratio locked to 1200:628 (≈1.91:1); the ratio matters, not the resolution (see Canvas size)
+- Output ratio picked among a few formats — **Twitter** 1200:628 (≈1.91:1, the default), **Square** 1:1, **Portrait** 4:5, **Story** 9:16, **Landscape** 16:9, or **Free**, the content's own; the ratio matters, not the resolution (see Format, Canvas size)
 - Drag & drop images onto the `.exe` icon or onto the window, or paste them with `Ctrl+V`
 - Paste or drop a text too, from any app: it becomes an image, rendered like a text file, its bold, italic, underline, strike and colors kept (see Pasted text)
 - Not only images: videos, PDFs, text files, and any file Windows shows a thumbnail for, are turned into an image (see Previews)
@@ -23,7 +23,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
   - Videos, animated GIFs, PDFs of several pages and long texts play live in their cell (see Animated content); the **Frames** effect sets where one starts, or freezes it on a frame
     - A fluorescent green **progress line** along the bottom of every playing cell shows how far its loop has played, gliding continuously; none on a frozen content. Never in the exports
   - The sounds of every video are mixed; the **Volume** effect sets each one from 0 to 200 %, or mutes it
-  - A **soundtrack** — the sound of an audio or video file — can be mixed over them, for the whole grid (see Global effects)
+  - A **soundtrack** — the sound of an audio or video file — can be mixed over them, for the whole grid (see Global)
   - A **fade** brings the whole mix in from silence at the start of the video, and out to silence at its end (see Fade)
   - Zoom a cell from 10 % to 1600 %: with the **Zoom** effect's slider (it snaps to 100 %), or with the mouse wheel over any cell, around the point under the mouse (4 notches double the zoom; crossing 100 % stops on it). With **Ctrl** held, each notch moves the zoom by 5 %, onto the multiples of 5: 103 % → 105 % → 110 %, or 100 % the other way
   - Drag an image to move it in its cell, at any zoom — past the cell's edges too, to center a detail lying on the border of the image; the area it uncovers gets the band color (see Fitting rules), and at least 10 % of the cell always stays covered so it can be grabbed back
@@ -34,8 +34,8 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
   - Zooming and moving show live, smoothed once the gesture ends (the wheel: once it stops turning); not while exporting
   - Drag the **✥** handle shown in the middle of a hovered cell onto another cell to swap the two images (in a small cell, it shrinks, or sits below the **×**)
   - Drop a file or a text onto a cell to replace it
-  - **Clear all** (bottom left) removes every image and the global effects at once, with no confirmation, back to the initial state
-- Effects per cell, from the effect tabs at the top of the window (see Effects), and global effects for the whole grid, from their tabs at the bottom, above the bottom bar (see Global effects)
+  - **Clear all** (bottom left) removes every image and the global effects at once, and brings the format back to Twitter, with no confirmation, back to the initial state
+- Effects per cell, from the effect tabs at the top of the window (see Effects), and the format and global effects for the whole grid, from the Global tabs at the bottom, above the bottom bar (see Global)
   - **Borders** on the grid, off at start-up: hotpink brackets at its four corners, or a gap between the cells drawn as a solid, dashed, dotted or double line, with an optional outer frame; the grid's corners rounded the way Twitter / X shows images; their color is set from the **⚙** menu and remembered (see Borders)
 - Copy to clipboard (`Ctrl+C`) or save (`Ctrl+S`): a PNG, or an MP4 video when the grid holds content that plays or a soundtrack is on; the ▾ arrow next to each button forces a looping GIF or an MP4 video; Copy's also offers a light JPEG for sharing in chat apps that cap image size (WhatsApp: 16 MB)
 - Lives in the notification area: closing the window only hides it, the tray icon brings it back, and it can start with Windows (see Tray & startup)
@@ -139,18 +139,28 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 - A video added or dropped in (or replacing another) is **heard at 100 %**, the effect off, whatever the other cells play: the sounds of every video are mixed at once. Both Resets bring it back there. Turning the effect off makes the video heard at 100 %.
 - Above 100 %, the sound is amplified, clipped where it goes beyond full scale. The preview and the exported video both play it at its volume.
 
-## Global effects
+## Global
 
-- The effects of the whole grid — not of a cell — sit at the bottom of the window, the mirror of the cell effects at the top: the tabs, then the options row below them, just above the bottom bar. The tabs row holds a **Global effects** label, one tab per global effect — **Soundtrack**, **Fade**, **Borders** — and, at the far right, a **Reset** button as tall as the tabs.
-- Each tab holds a checkbox, checked while its global effect is on. Clicking it turns the effect on or off, keeping its settings, and selects the tab. Clicking a tab elsewhere selects it: its options show in the row below, joined to it. No tab is selected at start-up; the options row is always there, empty until one is.
+- What concerns the whole grid — not a cell — sits at the bottom of the window, the mirror of the cell effects at the top: the tabs, then the options row below them, just above the bottom bar. The tabs row holds a **Global** label, the **Format** tab, one tab per global effect — **Soundtrack**, **Fade**, **Borders** — and, at the far right, a **Reset** button as tall as the tabs.
+- Each global effect's tab holds a checkbox, checked while its effect is on. Clicking it turns the effect on or off, keeping its settings, and selects the tab. Clicking a tab elsewhere selects it: its options show in the row below, joined to it. No tab is selected at start-up; the options row is always there, as tall as the Format's thumbnails, empty until a tab is selected.
+- The **Format** is a setting, always in force: its tab has no checkbox.
 - An effect that is off shows its kept settings in its options, and changing any of them turns it on.
-- The options row ends with a **Reset** button that brings the selected tab's global effect back to its initial state — the one **Clear all** restores; the **Reset** at the far right of the tabs does it for all of them at once. The cells' **Reset** buttons leave the global effects alone, and theirs leave the cells alone.
+- The options row ends with a **Reset** button that brings the selected tab back to its initial state — the one **Clear all** restores: the format Twitter, an effect off with its initial settings; the **Reset** at the far right of the tabs does it for all of them at once. The cells' **Reset** buttons leave the Global tabs alone, and theirs leave the cells alone.
 - They work with no cell selected, and are locked while exporting.
+
+### Format
+
+- The ratio of the final image or video — the preview's canvas and every export — picked from a row of thumbnails, each drawing the current layout, its cells as resized, at the format's ratio, its name below; the active one is highlighted, a click on another picks it.
+- **Free**, the content's own ratio, outlined dashed; **Twitter**, 1200:628 (≈1.91:1), Twitter / X's in-feed ratio and the default; **Square 1:1**; **Portrait 4:5**; **Story 9:16**; **Landscape 16:9**. Hover a thumbnail for what it suits.
+- The grid stretches to the format, and every image fits its cell by the usual fitting rule (see Fitting rules).
+- **Free** takes, between 9:16 and 21:9, the ratio where the images lose the least — what the fitting rule crops off plus the bands it leaves, over every cell, a big cell counting more: a single image gets its own ratio. Empty cells and texts (which take their cell's shape) do not count; with nothing that counts, it is Twitter's ratio. It follows the grid as it changes — an image added, removed, swapped, cropped or turned, another layout — but holds while a separator or a crop bar is dragged, computed again when it is released, so the canvas never changes shape under the mouse.
+- The **layout strip** draws its thumbnails at the format's ratio.
+- Not remembered: the app starts in Twitter, and **Clear all** and the **Reset** buttons bring it back there.
 
 ### Soundtrack
 
 - The sound of an **audio file** (mp3, wav, m4a, aac, wma, flac…) or of a **video** is mixed **over** the sounds of the videos, which keep playing at their own Volume — in the preview and in the exported MP4 video; a GIF has no sound.
-- Check the **Soundtrack** tab: with no file yet, it opens a picker, and the soundtrack stays off if it is cancelled; with one, it turns the soundtrack on or off, keeping its file and volume. A file **dropped on the global effects' tabs or options** becomes the soundtrack and turns it on; so does one picked with **Browse…**. A file Windows reads no sound track from is refused, with a status-line message.
+- Check the **Soundtrack** tab: with no file yet, it opens a picker, and the soundtrack stays off if it is cancelled; with one, it turns the soundtrack on or off, keeping its file and volume. A file **dropped on the Global tabs or options** becomes the soundtrack and turns it on; so does one picked with **Browse…**. A file Windows reads no sound track from is refused, with a status-line message.
 - Options: **Browse…**, the file's name (its whole path in a tooltip; *No file* until one is chosen), and the volume, from 0 to 200 % — above 100 %, amplified and clipped like a video's. Set before any file, the volume waits for the first one.
 - Its **Reset** forgets the file: the soundtrack off, the volume back to 100 %.
 - It follows the grid's duration, the longest loop: a shorter soundtrack **loops**, a longer one is **cut**. A grid of stills has no duration of its own: with the soundtrack on, it lasts as long as the soundtrack — **Copy** and **Save** then produce an MP4 video of the stills and the sound instead of a PNG.
@@ -172,12 +182,13 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
   - the **thickness**, from 0.1 to 6 % of the grid's shorter side (default 0.6 %), so the preview and every export size look the same;
   - **Opacity**, from 10 to 100 % (full by default): the corner brackets' opacity, as they lie over the images. Enabled in the Corners style only;
   - **Outer frame**, off by default: also borders the grid itself. Disabled in the Corners style, whose brackets already are its frame;
-  - **Twitter corners**, for every style, on by default (see below).
+  - **Twitter corners**, for every style, on by default, in the **Twitter** format only (see below).
 - **Corners**: an L-shaped bracket over the images at each of the grid's four corners, each arm covering 10 % of the edge it lies on — the cells are left as they are.
 - The other styles leave a real **gap** between the cells: the grid keeps its size and the cells shrink to make room — and, with the outer frame, leave a margin as wide around the grid. The style fills the gap; what it leaves unpainted (between dashes or dots, inside the double line) is transparent, like a cell without background (see Background). Clicking in a gap acts on one of the two cells beside it; a separator is still dragged from the gap (see Resizing the cells).
 - **Twitter corners**: Twitter / X shows a posted image with rounded corners, which would cut into the corner brackets. With this option, the grid's **four outer corners** are rounded as Twitter rounds them — a radius of 3 % of the grid's longer side, its 16 px on an image shown about 540 px across — and the corner brackets and the outer frame follow the curve, so the preview shows what Twitter will.
   - The **preview** shows the rounded-off corners **cut out**, as Twitter will show them. The **exports** — PNG, JPEG for sharing, GIF, MP4 video — are never cut: the corner brackets and the outer frame fill the rounded-off corners out to the square angle, their inner edge following the curve, so Twitter's own rounding, whatever its radius at the size it shows the image, never uncovers a white or transparent sliver. The gap styles without an outer frame keep the image there, for Twitter to round.
   - With the Borders off, the corners are square.
+  - In any other **format** (see Format), the option is disabled — its label saying *Twitter format only* — its setting kept, and the corners are square; back in Twitter, they are rounded again as set.
   - **Twitter corners by default**, a checkable item of the **⚙** menu, on until changed and remembered between sessions, sets whether the option is on at start-up and after **Clear all**. Changing it leaves the open grid as it is.
 - **Color**: the **⚙** menu's **Border color** item, with a swatch of the current color, opens the standard color dialog; the color chosen applies at once and is remembered between sessions, in the settings file (see Tray & startup). Hotpink until one is chosen.
 - The borders show in the preview and in every export: PNG, JPEG for sharing, GIF and MP4 video.
@@ -198,7 +209,7 @@ A file that is not an image is turned into one when it can be previewed. The fir
 - A file none of them handles is skipped, with a status-line message; the app never draws an icon or a placeholder instead.
 - A video whose codec Windows lacks (HEVC without its Store extension, some mkv / avi) falls back to its Windows thumbnail, if any.
 - The slider is the **Frames** effect's (see Effects), never in the output. The image follows it live while dragging.
-- **Text** is recognized from its content: at most 1 MB, UTF-8 or UTF-16 with a byte order mark, and no NUL byte in its first 8 KB. The extension only decides how it reads: an `.rtf` file, or an `.htm` / `.html` one, is read like a pasted rich text (see Pasted text), with its bold, italic, colors and highlights — plain text when nothing can be read from it; any other extension, as plain text. It is rendered on pages shaped like its cell, at the cell's size on a 1200 px canvas, and laid out again when the cell changes (layout, swap, image count, a separator released), keeping the reading position.
+- **Text** is recognized from its content: at most 1 MB, UTF-8 or UTF-16 with a byte order mark, and no NUL byte in its first 8 KB. The extension only decides how it reads: an `.rtf` file, or an `.htm` / `.html` one, is read like a pasted rich text (see Pasted text), with its bold, italic, colors and highlights — plain text when nothing can be read from it; any other extension, as plain text. It is rendered on pages shaped like its cell, at the cell's size on the smallest canvas (its longer side 1200 px), and laid out again when the cell changes (layout, swap, image count, a separator released, another format), keeping the reading position.
 - **Readable text**: the font is the largest size between 24 and 96 px at which the whole text fits one page; below 24 px, the text is paginated at 24 px instead. Since the canvas is never narrower than the width at which no image is downscaled (see Canvas size), the text is at least that tall in the output. PDFs are rendered whole, so their small print may stay unreadable in a small cell.
 
 ### Pasted text
@@ -241,7 +252,7 @@ Each image count offers several layouts, picked by clicking a thumbnail in the s
 
 From the top, the strip holds the mirror toggle (see Mirror), the layouts below, then a **More ▸** header: click it to show that count's extra layouts (see More layouts), click **More ▾** to hide them again. It starts collapsed, and collapses again whenever the number of images changes; collapsed while one of the extra layouts is active, it keeps that one's thumbnail shown. A strip taller than the window scrolls, with the mouse wheel or its scrollbar; the thumbnails keep their size.
 
-Image **1** always takes the featured (big) cell; the other images follow in reading order (left→right, top→bottom). Cell ratios are given for a 1.91:1 canvas: below 1 suits portraits and phone screenshots, around 1.9 landscapes, above 3 panoramas.
+Image **1** always takes the featured (big) cell; the other images follow in reading order (left→right, top→bottom). Cell ratios are given for a 1.91:1 canvas (the Twitter format): below 1 suits portraits and phone screenshots, around 1.9 landscapes, above 3 panoramas.
 
 **1 image** - fills the whole canvas
 
@@ -391,7 +402,7 @@ Drag the **separator** between two cells to give one of them more room: the curs
 
 ## Canvas size
 
-Output resolution is kept as high as possible so source images aren't needlessly downscaled: the canvas width is the width at which no image — the kept part of a cropped one — is downscaled in the active layout, with its cells as resized, clamped between 1200 and 4096 px; height follows from the 1200:628 ratio.
+Output resolution is kept as high as possible so source images aren't needlessly downscaled: the canvas is the size at which no image — the kept part of a cropped one — is downscaled in the active layout, with its cells as resized, at the format's ratio (see Format), its **longer side** clamped between 1200 and 4096 px — the width of a Twitter, Landscape or wide Free canvas, the height of a Story or Portrait one (675 × 1200 to 2304 × 4096 in Story).
 
 ## Output
 
