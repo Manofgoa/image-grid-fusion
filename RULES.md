@@ -58,8 +58,8 @@ The Crop effect's geometry is **not in fractions of the cell**, and its kept par
   changes like the others (`CropEffect.Seen` / `WithSeen` give and take them as the image is seen).
 - The kept part stands for the whole image everywhere the image's size is read: the fitting rule,
   the automatic background (computed on the kept part, live while its bars move), the canvas
-  sizing and every gesture. They read `ImageLook.Shown` (`Frame.Size`) — cropped, then rotated —
-  never the bitmap's oriented size. A new consumer does the same.
+  sizing, the free format's ratio and every gesture. They read `ImageLook.Shown` (`Frame.Size`) —
+  cropped, then rotated — never the bitmap's oriented size. A new consumer does the same.
 - It comes right after the orientation and before the fitting rule: zoom, fine angle, background,
   black & white and blur all apply to the cropped image.
 - Its **edit view** — the whole image fitted whole in the selected cell, the part cut off dimmed,
@@ -131,7 +131,7 @@ drafted by `workfiles/20260925-global-fade.md`). § Effects above covers the cel
 | | **Effect** (cell effect) | **Global effect** |
 |---|---|---|
 | Belongs to | A cell + image pair | The grid |
-| UI | The effects toolbar, its options in the options toolbar | The **global effects toolbar**, its options in the global options toolbar below it |
+| UI | The effects toolbar, its options in the options toolbar | The **Global toolbar**, its options in the global options toolbar below it |
 | No cell selected | Disabled | Stays enabled; disabled only when it does not apply |
 | Image replaced, cell *Reset* buttons | Reset | Untouched |
 | The global *Reset* buttons | Untouched | Reset — back to the initial state |
@@ -148,15 +148,15 @@ drafted by `workfiles/20260925-global-fade.md`). § Effects above covers the cel
   `Compositor.Cells` / `Compositor.Draw`, so the preview and every export shrink the cells alike;
   hit-testing keeps the **unshrunk slots**, so no dead zone appears between the cells.
 
-### Global Effects Toolbar
+### Global Toolbar
 
 The **mirror of the cell effects' toolbars** at the bottom of the window (origin:
-`workfiles/20260926-global-effects-tabs.md`):
+`workfiles/20260926-global-effects-tabs.md`, renamed by `workfiles/20261001-output-formats.md`):
 
-- A **global effects toolbar** of tabs **standing on** a **global options toolbar**, both always
-  visible, just above the bottom bar: a **Global effects** label, one **tab** per global effect,
-  then, at the far right, a **Reset** button as tall as the tabs. The selected tab is drawn joined
-  to the options toolbar **below** it.
+- A **Global toolbar** of tabs **standing on** a **global options toolbar**, both always
+  visible, just above the bottom bar: a **Global** label, one **tab** per global setting then per
+  global effect, then, at the far right, a **Reset** button as tall as the tabs. The selected tab is
+  drawn joined to the options toolbar **below** it.
 - Everything § Effects Toolbar and § Options Toolbar say holds, the cells aside: an **activation
   checkbox** per tab, the same clicks, the selected tab belonging to the toolbar (independent of
   the cell effects' one, none at startup), the options toolbar at **one height** and **empty** while
@@ -169,6 +169,27 @@ The **mirror of the cell effects' toolbars** at the bottom of the window (origin
   effects: the export keeps the settings it started with.
 - An effect that needs a file before it can be on (the Soundtrack) opens the file picker when its
   checkbox is checked without one; the effect stays off if it is cancelled.
+- A **global setting** (the Format) is a tab of the same toolbar for a value **always in force**: its
+  tab has **no activation checkbox**, its options show its value, its own **Reset** brings back its
+  default, and the tabs' **Reset** and *Clear all* reset it with the global effects. Like them, it is
+  not persisted and leaves the cells alone.
+
+## Output Format
+
+The canvas ratio has **one definition** (origin: `workfiles/20261001-output-formats.md`): the
+**output format** chosen in the Format tab — Free, Twitter (1200:628, the default), Square 1:1,
+Portrait 4:5, Story 9:16, Landscape 16:9 — given by `GridPreview.CanvasRatio`.
+
+- The **Free** ratio is computed by `OutputFormats.FreeRatio`: between 9:16 and 21:9, the one losing
+  the least of the images (crops plus bands, weighted by the cells' area), images read through
+  `ImageLook.Shown`, texts and empty cells left out, Twitter's ratio with nothing to weigh. It is
+  **held** while a separator or a crop bar is dragged, computed again on release.
+- The **preview canvas**, the **canvas sizing** (`CanvasSizer.Compute`), the **exports** (the ratio
+  captured in `GridExport.Job` when they start), the **text pages** and the **layout strip** read it.
+  A new consumer reads it there too, never a constant: `GridLayout` holds no ratio.
+- The export's **longer side** is clamped to **[1200, 4096]** px, the other side following the ratio.
+- The Borders' **Twitter corners** apply in the **Twitter format only**: elsewhere their option is
+  disabled, its setting kept, and nothing is rounded.
 
 ## Preview Playback
 
