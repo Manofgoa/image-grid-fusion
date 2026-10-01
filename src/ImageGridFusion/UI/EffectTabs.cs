@@ -8,7 +8,8 @@ namespace ImageGridFusion.UI;
 /// its effect on or off. They hang down from the options row above them — the cell effects — or,
 /// <see cref="Standing"/>, stand up from the options row below them — the global effects. The
 /// selected tab, whose options the row shows, is drawn joined to it. A checkbox that cannot be used is
-/// disabled, its tooltip saying why; its tab can still be selected.
+/// disabled, its tooltip saying why; its tab can still be selected. A setting's tab — always in force,
+/// like the output format — has no checkbox at all.
 /// </summary>
 internal sealed class EffectTabs<TEffect> : Control
     where TEffect : struct, Enum
@@ -21,6 +22,7 @@ internal sealed class EffectTabs<TEffect> : Control
 
     private readonly TEffect[] _effects = Enum.GetValues<TEffect>();
     private readonly Func<TEffect, string> _title;
+    private readonly Func<TEffect, bool> _hasCheck;
     private readonly Dictionary<TEffect, Image> _icons = [];
     private readonly Dictionary<TEffect, bool> _checked = [];
     private readonly Dictionary<TEffect, string?> _unavailable = [];
@@ -31,9 +33,11 @@ internal sealed class EffectTabs<TEffect> : Control
 
     /// <param name="title">The text of each effect's tab.</param>
     /// <param name="standing">The tabs stand on the options row below them, instead of hanging from the one above.</param>
-    public EffectTabs(Func<TEffect, string> title, bool standing = false)
+    /// <param name="hasCheck">Whether a tab holds an activation checkbox; every one when not given.</param>
+    public EffectTabs(Func<TEffect, string> title, bool standing = false, Func<TEffect, bool>? hasCheck = null)
     {
         _title = title;
+        _hasCheck = hasCheck ?? (_ => true);
         Standing = standing;
         SetStyle(
             ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer |
@@ -144,16 +148,19 @@ internal sealed class EffectTabs<TEffect> : Control
         int closed = Standing ? 0 : bounds.Bottom - 1;
         g.DrawLine(border, bounds.Left, closed, bounds.Right - 1, closed);
 
-        bool usable = Enabled && _unavailable.GetValueOrDefault(tab.Effect) is null;
-        bool isChecked = _checked.GetValueOrDefault(tab.Effect);
-        var state = (isChecked, usable) switch
+        if (_hasCheck(tab.Effect))
         {
-            (true, true) => CheckBoxState.CheckedNormal,
-            (true, false) => CheckBoxState.CheckedDisabled,
-            (false, true) => CheckBoxState.UncheckedNormal,
-            _ => CheckBoxState.UncheckedDisabled,
-        };
-        CheckBoxRenderer.DrawCheckBox(g, tab.Check.Location, state);
+            bool usable = Enabled && _unavailable.GetValueOrDefault(tab.Effect) is null;
+            bool isChecked = _checked.GetValueOrDefault(tab.Effect);
+            var state = (isChecked, usable) switch
+            {
+                (true, true) => CheckBoxState.CheckedNormal,
+                (true, false) => CheckBoxState.CheckedDisabled,
+                (false, true) => CheckBoxState.UncheckedNormal,
+                _ => CheckBoxState.UncheckedDisabled,
+            };
+            CheckBoxRenderer.DrawCheckBox(g, tab.Check.Location, state);
+        }
 
         if (_icons.GetValueOrDefault(tab.Effect) is { } icon)
         {
@@ -229,14 +236,14 @@ internal sealed class EffectTabs<TEffect> : Control
         }
     }
 
-    /// <summary>The tab under <paramref name="location"/>; its checkbox answers on the padding around it too.</summary>
+    /// <summary>The tab under <paramref name="location"/>; its checkbox, if it has one, answers on the padding around it too.</summary>
     private (Tab Tab, bool OnCheck)? HitTest(Point location)
     {
         foreach (var tab in Tabs())
         {
             if (tab.Bounds.Contains(location))
             {
-                return (tab, location.X < tab.Check.Right + LogicalToDeviceUnits(Gap) / 2);
+                return (tab, _hasCheck(tab.Effect) && location.X < tab.Check.Right + LogicalToDeviceUnits(Gap) / 2);
             }
         }
 
@@ -262,9 +269,12 @@ internal sealed class EffectTabs<TEffect> : Control
             var text = TextRenderer.MeasureText(_title(effect), Font, Size.Empty, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
             // Every tab as tall as the control, so as the Reset button beside them.
             int height = Height;
-            var bounds = new Rectangle(x, 0, pad + glyph.Width + gap + icon + gap + text.Width + pad, height);
-            var check = new Rectangle(new Point(x + pad, (height - glyph.Height) / 2), glyph);
-            var iconBounds = new Rectangle(check.Right + gap, (height - icon) / 2, icon, icon);
+            // A tab without checkbox starts on its icon.
+            bool hasCheck = _hasCheck(effect);
+            int checkWidth = hasCheck ? glyph.Width + gap : 0;
+            var bounds = new Rectangle(x, 0, pad + checkWidth + icon + gap + text.Width + pad, height);
+            var check = new Rectangle(new Point(x + pad, (height - glyph.Height) / 2), hasCheck ? glyph : new Size(0, glyph.Height));
+            var iconBounds = new Rectangle(x + pad + checkWidth, (height - icon) / 2, icon, icon);
             tabs.Add(new Tab(effect, bounds, check, iconBounds, new Rectangle(iconBounds.Right + gap, 0, text.Width, height)));
             x = bounds.Right + LogicalToDeviceUnits(Spacing);
         }
