@@ -210,6 +210,11 @@ text / page previews, falls back to Twitter's ratio with nothing to weigh, and i
 separator is dragged; the Format tab comes first; the bottom toolbar grows to the thumbnails'
 height.
 
+### Iteration 3 — 2026-10-01 — ✅ Implemented
+
+Go given for code, tests and documentation (no test project: nothing to create). Branch: `main`,
+the repository's standing choice (the work lands on `main`).
+
 ---
 
 ## Implementation Log
