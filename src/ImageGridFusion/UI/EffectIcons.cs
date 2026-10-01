@@ -150,6 +150,25 @@ internal static class EffectIcons
         g.DrawRectangle(pen, box.X, box.Y, box.Width, box.Height);
     });
 
+    /// <summary>The Format tab: a landscape frame in blue over a portrait one in orange, two ratios of the canvas.</summary>
+    public static Bitmap Format(int size) => Draw(size, (g, s) =>
+    {
+        float line = Math.Max(1f, s * 0.08f);
+        var portrait = new RectangleF(s * 0.12f, s * 0.06f, s * 0.48f, s * 0.86f);
+        var landscape = new RectangleF(s * 0.3f, s * 0.36f, s * 0.64f, s * 0.42f);
+        using (var fill = new SolidBrush(Color.FromArgb(255, 170, 60)))
+        using (var pen = new Pen(Color.FromArgb(180, 90, 0), line))
+        {
+            g.FillRectangle(fill, portrait);
+            g.DrawRectangle(pen, portrait.X, portrait.Y, portrait.Width, portrait.Height);
+        }
+
+        using var fillLandscape = new SolidBrush(Color.FromArgb(110, 190, 255));
+        using var penLandscape = new Pen(Color.FromArgb(20, 90, 200), line);
+        g.FillRectangle(fillLandscape, landscape);
+        g.DrawRectangle(penLandscape, landscape.X, landscape.Y, landscape.Width, landscape.Height);
+    });
+
     /// <summary>A drop, blue to cyan, with a light reflection.</summary>
     public static Bitmap Blur(int size) => Draw(size, (g, s) =>
     {
