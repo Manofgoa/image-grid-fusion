@@ -496,7 +496,7 @@ internal sealed class MainForm : Form
         _effectResetButton.Click += (_, _) => ResetSelectedEffect();
         _resetButton.Click += (_, _) => ResetEffects();
         _zoom.ValueChanged += (_, _) => SetZoom();
-        _zoom.ControlWheel = StepZoom;
+        this._zoom.Wheel = this.StepZoom;
         this._toolTip.SetToolTip(this._motionKind, "The kind of animation played in the cell");
         this._toolTip.SetToolTip(this._motionCycle, "How long one back-and-forth lasts: further right, faster");
         this._motionKind.SelectedIndexChanged += (_, _) => this.ChangeMotion(motion => motion.WithKind((MotionKind)this._motionKind.SelectedIndex));
@@ -2285,10 +2285,11 @@ internal sealed class MainForm : Form
     private void SetZoom() => ApplyZoom(Math.Abs(_zoom.Value) <= 4 ? 1 : Math.Pow(2, _zoom.Value / 100.0));
 
     /// <summary>
-    /// Control + wheel on the zoom slider: the zoom shown moves onto the next multiple of 5 %, as on
-    /// the cell — applied exactly, the log scale of the slider being too coarse for it at high zooms.
+    /// The wheel on the zoom slider: the zoom shown moves onto the next multiple of its step, as on the
+    /// cell — 5 %, 1 % with <paramref name="fine"/> Control, coarser above 200 % — applied exactly, the
+    /// log scale of the slider being too coarse for it at high zooms.
     /// </summary>
-    private void StepZoom(int notches)
+    private void StepZoom(int notches, bool fine)
     {
         if (_preview.SelectedImage?.Look is not { } look)
         {
@@ -2296,7 +2297,7 @@ internal sealed class MainForm : Form
         }
 
         double current = look.TurnOn(ImageEffect.Zoom).Zoom;
-        double zoom = Math.Clamp(WheelSteps.Snap(current * 100, WheelSteps.Percent, notches) / 100, ImageLook.MinZoom, ImageLook.MaxZoom);
+        double zoom = Math.Clamp(WheelSteps.Zoom(current * 100, notches, fine) / 100, ImageLook.MinZoom, ImageLook.MaxZoom);
         _syncingEffects = true;
         _zoom.Value = Math.Clamp((int)Math.Round(Math.Log2(zoom) * 100), _zoom.Minimum, _zoom.Maximum);
         _syncingEffects = false;

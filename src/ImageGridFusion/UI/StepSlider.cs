@@ -5,8 +5,9 @@ namespace ImageGridFusion.UI;
 /// <summary>
 /// The slider of every option: a stock <see cref="TrackBar"/>, whose wheel with Control held moves
 /// onto the next multiple of <see cref="ControlStep"/> instead of one unit — or does what
-/// <see cref="ControlWheel"/> says, for a slider whose value is not the unit it shows. See
-/// workfiles/20260926-ctrl-wheel-5-percent-step.md.
+/// <see cref="ControlWheel"/> says, for a slider whose value is not the unit it shows — or, for one
+/// stepping its own way with Control or not (the zoom), what <see cref="Wheel"/> says. See
+/// workfiles/20260926-ctrl-wheel-5-percent-step.md, workfiles/20261006-wheel-zoom-step.md.
 /// </summary>
 internal sealed class StepSlider : TrackBar
 {
@@ -21,6 +22,13 @@ internal sealed class StepSlider : TrackBar
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public Action<int>? ControlWheel { get; set; }
 
+    /// <summary>
+    /// Replaces the whole wheel, with Control held or not, given the notches turned (up when positive)
+    /// and whether Control is held; wins over <see cref="ControlWheel"/>.
+    /// </summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Action<int, bool>? Wheel { get; set; }
+
     protected override void WndProc(ref Message m)
     {
         if (m.Msg == WheelSteps.WM_MOUSEWHEEL)
@@ -31,10 +39,13 @@ internal sealed class StepSlider : TrackBar
         base.WndProc(ref m);
     }
 
-    /// <summary>Without Control, the stock wheel; with it, one step per notch — the deltas of a free-spinning wheel accumulated.</summary>
+    /// <summary>
+    /// Without Control, the stock wheel; with it, one step per notch — the deltas of a free-spinning
+    /// wheel accumulated. A <see cref="Wheel"/> takes every notch, with Control or not.
+    /// </summary>
     protected override void OnMouseWheel(MouseEventArgs e)
     {
-        if (!_wheelWithControl)
+        if (!_wheelWithControl && this.Wheel is null)
         {
             _wheelRest = 0;
             base.OnMouseWheel(e);
@@ -53,6 +64,12 @@ internal sealed class StepSlider : TrackBar
         _wheelRest -= notches * notch;
         if (notches == 0)
         {
+            return;
+        }
+
+        if (this.Wheel is { } any)
+        {
+            any(notches, _wheelWithControl);
             return;
         }
 
