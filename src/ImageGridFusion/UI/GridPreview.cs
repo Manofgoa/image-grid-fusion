@@ -46,6 +46,9 @@ internal sealed class GridPreview : Control
     private const int ProgressHaloWidth = 4;
     private const int ProgressTick = 16;
 
+    // The moving cells are drawn again at the export's frame rate, not at each tick of the progress lines.
+    private static readonly TimeSpan MotionInterval = TimeSpan.FromSeconds(1.0 / Animation.FramesPerSecond);
+
     private static readonly Color HoverOutlineColor = Color.FromArgb(128, Color.White);
     private static readonly Color CheckerGrey = Color.FromArgb(204, 204, 204);
 
@@ -127,6 +130,9 @@ internal sealed class GridPreview : Control
     // a second while something plays, the strips of the last tick too, so a line that vanished is erased.
     private readonly System.Windows.Forms.Timer _progressTimer = new() { Interval = ProgressTick };
     private readonly List<Rectangle> _progressStrips = [];
+
+    // The time on the grid's clock the moving cells were last drawn at.
+    private TimeSpan _motionDrawn;
 
     // The file name at the bottom of the selected cell, shortened to its width, and its folder icon.
     private (SourceImage Image, int Width, float Size, string Text)? _fittedName;
@@ -514,7 +520,7 @@ internal sealed class GridPreview : Control
             _cache = new Bitmap(canvas.Width, canvas.Height);
             using (var cacheGraphics = Graphics.FromImage(_cache))
             {
-                Compositor.Draw(cacheGraphics, _images, _layout!, canvas.Size, _borders);
+                Compositor.Draw(cacheGraphics, _images, _layout!, canvas.Size, _borders, _player.GridTime);
             }
 
             // The Twitter corners cut as a PNG is: the preview shows what Twitter / X shows.
@@ -1175,7 +1181,7 @@ internal sealed class GridPreview : Control
     private static Size FrameDisplaySize(SourceImage image, Rectangle cell)
     {
         var size = image.Look.Oriented(cell.Size);
-        double zoom = Math.Max(1, image.Look.Zoom);
+        double zoom = Math.Max(1, image.Look.Zoom * (image.Look.Motion is null ? 1 : 1 + MotionEffect.ZoomAmplitude));
         var crop = image.Look.Crop;
         double width = size.Width * zoom / (crop is null ? 1 : Math.Max(0.01, crop.Right - crop.Left));
         double height = size.Height * zoom / (crop is null ? 1 : Math.Max(0.01, crop.Bottom - crop.Top));
@@ -1211,6 +1217,9 @@ internal sealed class GridPreview : Control
         RedrawCell(image);
     }
 
+    /// <summary>What the cell of <paramref name="image"/> shows now: its frame, its motion at the grid's time.</summary>
+    private Frame FrameOf(SourceImage image) => new(image.Bitmap, image.BandColor, image.Look, _player.GridTime);
+
     /// <summary>Draws the new frame of an image into the cached preview, and repaints only its cell.</summary>
     private void RedrawCell(SourceImage image)
     {
@@ -1227,7 +1236,7 @@ internal sealed class GridPreview : Control
         using (var g = Graphics.FromImage(_cache))
         {
             ClearCell(g, cell);
-            Compositor.DrawCell(g, new Frame(image.Bitmap, image.BandColor, image.Look), cell, fast: live);
+            Compositor.DrawCell(g, this.FrameOf(image), cell, fast: live);
             DrawBordersOver(g, cell, canvas.Size);
         }
 
@@ -1318,7 +1327,7 @@ internal sealed class GridPreview : Control
                 return null;
             }
 
-            return Compositor.AutomaticBackground(new Frame(image.Bitmap, image.BandColor, image.Look), cells[_selected]);
+            return Compositor.AutomaticBackground(this.FrameOf(image), cells[_selected]);
         }
     }
 
@@ -1472,6 +1481,12 @@ internal sealed class GridPreview : Control
             ShowFrames(image);
         }
 
+        // A moving image is drawn again by the progress lines' timer.
+        if (look.Motion is not null)
+        {
+            _progressTimer.Start();
+        }
+
         // During a gesture, the frame shown is scaled; decoding it again at each step would only slow it down.
         if (image != _live)
         {
@@ -1595,11 +1610,22 @@ internal sealed class GridPreview : Control
 
     /// <summary>
     /// Repaints the progress line of every playing cell — its strip only, and the strips of the last
-    /// tick, so a line that just vanished is erased — and stops once nothing plays; the next sync of
-    /// the player, or a frames effect changed, starts it again.
+    /// tick, so a line that just vanished is erased — and draws again the cells whose Animations effect
+    /// is on, at the export's frame rate; stops once nothing plays nor moves. The next sync of the
+    /// player, a frames effect changed, or a motion turned on starts it again.
     /// </summary>
     private void OnProgressTick()
     {
+        var now = _player.GridTime;
+        if (now < _motionDrawn || now - _motionDrawn >= MotionInterval)
+        {
+            _motionDrawn = now;
+            foreach (var image in _images.Where(i => i.Look.Motion is not null).ToList())
+            {
+                this.RedrawCell(image);
+            }
+        }
+
         foreach (var strip in _progressStrips)
         {
             Invalidate(strip);
@@ -2062,7 +2088,7 @@ internal sealed class GridPreview : Control
             {
                 var image = _images[i];
                 ClearCell(g, cells[i]);
-                Compositor.DrawCell(g, new Frame(image.Bitmap, image.BandColor, image.Look), cells[i], fast: true);
+                Compositor.DrawCell(g, this.FrameOf(image), cells[i], fast: true);
                 DrawBordersOver(g, cells[i], canvas.Size);
                 area = area.IsEmpty ? cells[i] : Rectangle.Union(area, cells[i]);
             }

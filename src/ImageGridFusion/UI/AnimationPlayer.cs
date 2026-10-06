@@ -148,14 +148,28 @@ internal sealed class AnimationPlayer : IDisposable
     }
 
     /// <summary>
-    /// Share of its loop <paramref name="image"/> has played, from 0 up to 1 excluded, read from the
-    /// clock at the moment of the call — the preview's progress line samples it at each paint.
-    /// <c>null</c> while the image does not play: a still, a frozen image, a stopped player.
+    /// The clock of the grid, from its last start over: the time the motions of the Animations effects
+    /// are drawn at, as the export draws them from its first frame.
     /// </summary>
-    public double? ProgressOf(SourceImage image) =>
-        _playbacks.TryGetValue(image, out var playback) && playback.PausedAt is null && image.Pages is { } pages
-            ? Animation.Progress(Position(playback), pages.LoopDuration)
+    public TimeSpan GridTime => _clock.Elapsed;
+
+    /// <summary>
+    /// Share of its loop <paramref name="image"/> has played, from 0 up to 1 excluded, read from the
+    /// clock at the moment of the call — the preview's progress line samples it at each paint. A still,
+    /// or a frozen image, moved by its Animations effect plays the motion's cycle on the grid's clock.
+    /// <c>null</c> while the image does not play nor move, or the player is stopped.
+    /// </summary>
+    public double? ProgressOf(SourceImage image)
+    {
+        if (_playbacks.TryGetValue(image, out var playback) && playback.PausedAt is null && image.Pages is { } pages)
+        {
+            return Animation.Progress(this.Position(playback), pages.LoopDuration);
+        }
+
+        return image.Look.Motion is { } motion && _images.Contains(image)
+            ? Animation.Progress(this.GridTime, motion.Cycle)
             : null;
+    }
 
     /// <summary>Size the frames of <paramref name="image"/> are shown at: larger frames are scaled down off the UI thread.</summary>
     public void SetDisplaySize(SourceImage image, Size size)
