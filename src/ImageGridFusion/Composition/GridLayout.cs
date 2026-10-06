@@ -193,6 +193,10 @@ public sealed class GridLayout
     public double DefaultPosition(Separator separator) =>
         separator.Vertical ? _defaults[separator.Before[0]].Right : _defaults[separator.Before[0]].Bottom;
 
+    /// <summary>The same layout, mirrored the same way, its cells sized the same: what the undo history compares.</summary>
+    public bool SameAs(GridLayout? other) =>
+        other is not null && (ReferenceEquals(this, other) || (Id == other.Id && IsMirrored == other.IsMirrored && _edges.SequenceEqual(other._edges)));
+
     /// <summary>
     /// The layout with <paramref name="separator"/> moved to <paramref name="position"/>, kept within
     /// its <see cref="Range"/>: the cells on both of its sides follow it, the others stay.

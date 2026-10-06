@@ -334,6 +334,33 @@ public sealed record ImageLook
     /// </summary>
     public ImageLook WithoutEffects() => None with { Volume = Volume, KeptVolume = KeptVolume };
 
+    /// <summary>
+    /// The effects whose on / off or settings differ from <paramref name="other"/>, in the toolbar's
+    /// order: what the undo history names. A quarter turn or a flip also turns the focus and the crop
+    /// along, so neither counts as changed beside it.
+    /// </summary>
+    public IReadOnlyList<ImageEffect> ChangedEffects(ImageLook other)
+    {
+        bool Toggled(ImageEffect effect) => IsActive(effect) != other.IsActive(effect);
+        bool turned = Toggled(ImageEffect.Rotate) || Rotation != other.Rotation || FineAngle != other.FineAngle
+            || KeptRotation != other.KeptRotation;
+        bool flipped = Toggled(ImageEffect.Flip)
+            || (!turned && (FlipX != other.FlipX || FlipY != other.FlipY || KeptFlip != other.KeptFlip));
+        bool moved = turned || flipped;
+        return Enum.GetValues<ImageEffect>().Where(effect => effect switch
+        {
+            ImageEffect.Background => Background != other.Background || KeptBackground != other.KeptBackground,
+            ImageEffect.Crop => Toggled(effect) || (!moved && (Crop != other.Crop || KeptCrop != other.KeptCrop)),
+            ImageEffect.Zoom => Toggled(effect) || Zoom != other.Zoom || (!moved && (Focus != other.Focus || KeptZoom != other.KeptZoom)),
+            ImageEffect.Rotate => turned,
+            ImageEffect.Flip => flipped,
+            ImageEffect.Frames => Frames != other.Frames || KeptFrames != other.KeptFrames,
+            ImageEffect.BlackAndWhite => Grayscale != other.Grayscale || KeptGrayscale != other.KeptGrayscale,
+            ImageEffect.Blur => Blur != other.Blur || KeptBlur != other.KeptBlur,
+            _ => Volume != other.Volume || KeptVolume != other.KeptVolume,
+        }).ToList();
+    }
+
     private static int Bit(ImageEffect effect) => 1 << (int)effect;
 
     private ImageLook Activated(ImageEffect effect) => this with { Activations = Activations | Bit(effect) };

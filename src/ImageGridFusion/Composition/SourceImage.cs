@@ -89,8 +89,14 @@ public sealed class SourceImage : IDisposable
         previous.Dispose();
     }
 
+    // Once only: the grid and the undo history may both let go of the same image.
     public void Dispose()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         IsDisposed = true;
         Bitmap.Dispose();
         Pages?.Dispose();
