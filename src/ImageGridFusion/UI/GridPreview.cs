@@ -1842,7 +1842,7 @@ internal sealed class GridPreview : Control
         }
 
         this.BeginLive(this._selected);
-        this.PanBy(this._selected, delta, 0, bothWays: true);
+        this.PanBy(this._selected, delta, 0, stepwise: true);
         this._panX.Settle();
         this._panY.Settle();
         this._keyPan = (image, image.Look);
@@ -1875,11 +1875,11 @@ internal sealed class GridPreview : Control
     /// <summary>
     /// Moves an image by <paramref name="delta"/> from where it is actually shown, held by the
     /// magnetic stops unless Shift is down — until the move goes <paramref name="resistance"/> past
-    /// them, its edge stops crossed inward too when <paramref name="bothWays"/> — and never past the
-    /// share of the cell it keeps covering.
+    /// them, its edge stops crossed inward and the stops landed on exactly holding too when
+    /// <paramref name="stepwise"/> — and never past the share of the cell it keeps covering.
     /// With a fine angle, the stops are those of the turned image's box, which follows the mouse.
     /// </summary>
-    private void PanBy(int index, Size delta, float resistance, bool bothWays = false)
+    private void PanBy(int index, Size delta, float resistance, bool stepwise = false)
     {
         var cells = CellBounds();
         if (index >= cells.Length || delta.IsEmpty)
@@ -1896,8 +1896,8 @@ internal sealed class GridPreview : Control
         var stops = FitCalculator.Stops(cell, bounds.Size);
         bool free = (ModifierKeys & Keys.Shift) != 0;
         var (heldX, heldY) = (_panX.Held, _panY.Held);
-        float x = _panX.Move(bounds.X, delta.Width, stops.Left, stops.Right, cell.X + (cell.Width - bounds.Width) / 2, resistance, free, bothWays);
-        float y = _panY.Move(bounds.Y, delta.Height, stops.Top, stops.Bottom, cell.Y + (cell.Height - bounds.Height) / 2, resistance, free, bothWays);
+        float x = _panX.Move(bounds.X, delta.Width, stops.Left, stops.Right, cell.X + (cell.Width - bounds.Width) / 2, resistance, free, stepwise);
+        float y = _panY.Move(bounds.Y, delta.Height, stops.Top, stops.Bottom, cell.Y + (cell.Height - bounds.Height) / 2, resistance, free, stepwise);
 
         // Stored where it is drawn, so a drag past the covered share does not pile up out of sight.
         var focus = shown.FocusAt(cell, new PointF(x + bounds.Width / 2, y + bounds.Height / 2));

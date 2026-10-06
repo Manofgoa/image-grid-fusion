@@ -46,10 +46,11 @@ internal sealed class PanMagnet
     /// Position of the image once the drag moved it by <paramref name="delta"/> from
     /// <paramref name="position"/>. <paramref name="low"/> and <paramref name="high"/> are the edge
     /// stops, <paramref name="center"/> the center stop; <paramref name="free"/> ignores them all.
-    /// <paramref name="bothWays"/> makes an edge stop hold a move crossing it inward too — the arrow
-    /// keys' — where the drag goes back inside freely.
+    /// <paramref name="stepwise"/>, for a move by steps — the arrow keys' —, makes an edge stop hold a
+    /// move crossing it inward too, where the drag goes back inside freely, and a stop the step lands
+    /// exactly on hold it as one it passes.
     /// </summary>
-    public float Move(float position, float delta, float low, float high, float center, float resistance, bool free, bool bothWays = false)
+    public float Move(float position, float delta, float low, float high, float center, float resistance, bool free, bool stepwise = false)
     {
         if (free)
         {
@@ -90,13 +91,13 @@ internal sealed class PanMagnet
 
         // The stops that hold in the move's direction, nearest first. An image resting on an edge stop
         // is held as soon as it moves outward; one resting on the center leaves it freely, and so does
-        // one leaving an edge stop inward. Both ways, the edge crossed inward holds it too.
+        // one leaving an edge stop inward. Stepwise, the edge crossed inward holds it too.
         var stops = new List<(float At, PanStop Kind, int Outward)>
         {
             (center, PanStop.Center, 0),
             direction > 0 ? (high, PanStop.Edge, 1) : (low, PanStop.Edge, -1),
         };
-        if (bothWays)
+        if (stepwise)
         {
             stops.Add(direction > 0 ? (low, PanStop.Edge, -1) : (high, PanStop.Edge, 1));
         }
@@ -106,7 +107,7 @@ internal sealed class PanMagnet
             float ahead = (stop.At - position) * direction;
             bool outward = stop.Outward == direction;
             bool reached = outward ? ahead > -Epsilon : ahead > Epsilon;
-            bool passed = (target - stop.At) * direction > 0;
+            bool passed = (target - stop.At) * direction > (stepwise ? -Epsilon : 0);
             if (!reached || !passed || released is { } r && Math.Abs(stop.At - r) < Epsilon)
             {
                 continue;
