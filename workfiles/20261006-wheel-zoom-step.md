@@ -1,0 +1,132 @@
+# Wheel Zoom Step
+
+> Working document — the mouse wheel zooms by steps of 5 %, 1 % with Ctrl held.
+> This file is the source of truth for the planned work until implemented,
+> then the log of every adjustment made to it afterwards.
+
+---
+
+## Overview
+
+Today the wheel over a cell zooms **geometrically** — 4 notches double the zoom
+(`GridPreview.NotchesPerDoubling`), crossing 100 % stops on it — and **Ctrl + wheel** moves it onto
+the next multiple of 5 % (`workfiles/20260926-ctrl-wheel-5-percent-step.md`). The Zoom slider takes
+the stock wheel (its log-scale units), and its Ctrl + wheel steps the zoom by 5 % like the cell
+(`MainForm.StepZoom`, wired through `StepSlider.ControlWheel`).
+
+The request swaps this around for the zoom: **the plain wheel steps by 5 percentage points, Ctrl by
+1 point**, on the cell and on the Zoom tab's controls alike.
+
+Components:
+
+| Component | Role today |
+|---|---|
+| `UI/WheelSteps.cs` | `Snap(value, step, notches)`, `Percent = 5`, `WithControl(Message)` |
+| `UI/GridPreview.cs` — `OnMouseWheel`, `ZoomAt` | Wheel over a cell: geometric, or `Snap(…, 5, …)` with Ctrl |
+| `UI/StepSlider.cs` | Option slider: stock wheel, `ControlWheel` / `ControlStep` with Ctrl |
+| `UI/MainForm.cs` — `_zoom`, `StepZoom`, `SetZoom` | The Zoom slider, log scale (`Log2(zoom) × 100`), 10 %–1600 % |
+| `README.md` lines 28 and 78 | Describe the wheel and Ctrl + wheel |
+
+---
+
+## Wheel over a Cell
+
+- One notch moves the zoom by **5 percentage points**; with **Ctrl** held, by **1 point**
+  (additive: 100 → 105 → 110 %, not ×1.05).
+- From a value between two multiples of the step, the first notch **stops on the next multiple in
+  its direction** — `WheelSteps.Snap` as it is: 103 % → 105 % up, → 100 % down; with Ctrl,
+  103.4 % → 104 % up, → 103 % down.
+- The zoom stays within **10 %–1600 %** (`ImageLook.MinZoom` / `MaxZoom`).
+- 100 % being a multiple of both steps, the "crossing 100 % stops on it" rule holds by itself.
+- Everything else is unchanged: zoom around the point under the mouse, live then smoothed when the
+  wheel stops, the zoom badge, the cells where the wheel does nothing (crop edit view, a gesture
+  running, export).
+- The geometric zoom (`NotchesPerDoubling`) has no more use and goes.
+
+## Zoom Tab Controls
+
+- The **Zoom slider's wheel** follows the same steps: plain wheel → 5 points, Ctrl + wheel → 1 point,
+  onto the multiples, applied exactly (the log scale is too coarse at high zooms — the reason
+  `StepZoom` exists).
+- The slider's **drag** and its snap to 100 % near its mark are unchanged.
+- *(Open question)* the slider's keyboard (arrows, Page Up / Down).
+
+## Other Option Sliders
+
+- *(Open question)* whether the other sliders (opacities, volume, fine angle, borders' thickness,
+  Frames…) keep **Ctrl + wheel = 5 %**, which would make Ctrl mean the opposite on the zoom.
+
+---
+
+## Test Impact
+
+Not applicable — the repository has no test project (as for
+`workfiles/20260926-ctrl-wheel-5-percent-step.md`). `WheelSteps.Snap` stays a pure static function,
+ready to be pinned the day one exists.
+
+| Behaviour to pin | Test file | Create / Update |
+|---|---|---|
+| — (no test project) | — | — |
+
+---
+
+## Open Questions
+
+- [x] ~~What is a "5 % step"?~~ → Percentage points, additive (100 → 105 → 110 %)
+- [x] ~~From an off-grid value (103 %), what does a plain notch give?~~ → It snaps onto the next
+  multiple of 5 in its direction (105 % up, 100 % down)
+- [x] ~~Where does the new step apply?~~ → The wheel over a cell **and** the Zoom tab's controls
+- [ ] At high zooms a 5-point step is small (100 → 1600 % takes 300 notches, against 16 today):
+  5 points everywhere, or a coarser step above some zoom?
+- [ ] The other option sliders: keep Ctrl + wheel = 5 % (Ctrl then means the opposite on the zoom),
+  or follow the zoom (plain wheel = 5 %, Ctrl = finest unit)?
+- [ ] The Zoom slider's keyboard (arrows, Page Up / Down): unchanged, or 5 / 1 points as well?
+
+---
+
+## Design Iterations
+
+Chronological log of design refinements, of the choices the implementation run
+took on its own — flagged `🧭 Implementation choices` — and of every adjustment
+requested afterwards — flagged `⚙️ Post-implementation`. One entry per request,
+in the order the requests were made.
+
+### Iteration 1 — 2026-10-06
+
+Initial design from the request ("le zoom molette doit être de pas de 5 % ; si Ctrl maintenu, 1 %")
+and the scoping batch: additive steps snapped onto their multiples, on the cell and on the Zoom
+slider's wheel. The exploration found that the request inverts the current behaviour (Ctrl gave
+the 5 % step, the plain wheel was geometric), which raises the three open questions above.
+
+---
+
+## Implementation Log
+
+Which delivery steps are done, and in which iteration. A step that does not apply
+says so rather than staying blank.
+
+| Step | Iteration | Date | Notes |
+|---|---|---|---|
+| Code | | | |
+| Unit tests | — | — | Not applicable — no test project |
+| README | | | |
+
+---
+
+## Q&A Log
+
+Questions asked by the agent during design, with user responses.
+
+| # | Question | Answer | Date |
+|---|---|---|---|
+| 1 | What is a "5 % step" — percentage points or a ×1.05 factor? | Percentage points | 2026-10-06 |
+| 2 | From an off-grid value (103 %), a plain notch: snap onto a multiple of 5, or a pure ±5? | Snap onto the multiple of 5 | 2026-10-06 |
+| 3 | Where does the new step apply: the wheel over a cell only, or the Zoom tab's controls too? | The wheel and the Zoom controls | 2026-10-06 |
+| 4 | Depth of the exploration: straightforward, or tricky / long? | Straightforward | 2026-10-06 |
+| 5 | High zooms: 5 points everywhere, or a coarser step above some zoom? | | |
+| 6 | The other sliders: keep Ctrl + wheel = 5 %, or follow the zoom? | | |
+| 7 | The Zoom slider's keyboard: unchanged, or 5 / 1 points? | | |
+
+---
+
+*Last updated: 2026-10-06*
