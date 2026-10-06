@@ -17,9 +17,24 @@ public static class Animation
     public static double Progress(TimeSpan time, TimeSpan loop) =>
         loop <= TimeSpan.Zero ? 0 : LoopTime(time, loop).Ticks / (double)loop.Ticks;
 
-    /// <summary>Length of the grid's loop: the longest playing content; a frozen one plays nothing.</summary>
+    /// <summary>
+    /// Length of the grid's loop: the longest loop an image plays (<see cref="LoopOf(SourceImage)"/>) —
+    /// its content's, a frozen one playing nothing, or the cycle of its Animations effect.
+    /// </summary>
     public static TimeSpan GridLength(IEnumerable<SourceImage> images) =>
-        images.Where(i => i.Plays).Select(i => i.Pages!.LoopDuration).DefaultIfEmpty(TimeSpan.Zero).Max();
+        images.Select(LoopOf).DefaultIfEmpty(TimeSpan.Zero).Max();
+
+    /// <summary>The loop <paramref name="image"/> plays: its content's while it plays, or the cycle of its motion when longer.</summary>
+    public static TimeSpan LoopOf(SourceImage image) =>
+        LoopOf(image.Plays ? image.Pages!.LoopDuration : TimeSpan.Zero, image.Look);
+
+    /// <summary>
+    /// The loop of a cell whose content plays a loop of <paramref name="content"/> (zero for a still):
+    /// the cycle of the Animations effect of <paramref name="look"/> when it is on and longer — a moving
+    /// still plays a loop like a video (RULES.md § Video Length).
+    /// </summary>
+    public static TimeSpan LoopOf(TimeSpan content, ImageLook look) =>
+        look.Motion is { Cycle: var cycle } && cycle > content ? cycle : content;
 
     /// <summary>
     /// Length of the exported video — the one rule the export, the preview's soundtrack loop and the

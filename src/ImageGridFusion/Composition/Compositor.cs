@@ -3,8 +3,12 @@ using System.Drawing.Imaging;
 
 namespace ImageGridFusion.Composition;
 
-/// <summary>What a cell shows: a bitmap, what colors its bands, and the actions on the image, if any.</summary>
-public readonly record struct Frame(Bitmap Bitmap, BandColor BandColor, ImageLook? Look = null)
+/// <summary>
+/// What a cell shows: a bitmap, what colors its bands, the actions on the image, if any, and the
+/// <see cref="Time"/> on the clock of the grid the motion of its Animations effect is drawn at — 0, its
+/// starting state, for a still export.
+/// </summary>
+public readonly record struct Frame(Bitmap Bitmap, BandColor BandColor, ImageLook? Look = null, TimeSpan Time = default)
 {
     /// <summary>Size of the image as drawn: its crop's kept part, rotated by its look — what the fitting rule and the canvas sizing read.</summary>
     public Size Size => (Look ?? ImageLook.None).Shown(Bitmap.Size);
@@ -101,16 +105,19 @@ public static class Compositor
     public static Color AutomaticBackground(Frame frame, Rectangle cell)
     {
         var look = frame.Look ?? ImageLook.None;
-        var turned = FitCalculator.ComputeTurned(cell, frame.Size, look.Zoom, look.Focus, look.FineAngle);
+        var turned = FitCalculator.ComputeTurned(cell, frame.Size, look.ZoomAt(frame.Time), look.Focus, look.FineAngle);
         using var turn = turned.Transform();
         var source = Uncropped(turn is null ? turned.Fit.Source : TurnedPart(cell, turned.Fit, frame.Size, turn).Source, frame.Bitmap.Size, look);
         bool oriented = look is not { Rotation: 0, FlipX: false, FlipY: false };
         return frame.BandColor.For(oriented ? BitmapPart(frame.Bitmap.Size, look, source) : source, frame.Bitmap.Size);
     }
 
-    /// <summary>Draws the grid in the rectangle (0, 0, canvas) of <paramref name="g"/>; image i goes into cell i of the layout.</summary>
-    public static void Draw(Graphics g, IReadOnlyList<SourceImage> images, GridLayout layout, Size canvas, GridBorders? borders = null) =>
-        Draw(g, images.Select(i => new Frame(i.Bitmap, i.BandColor, i.Look)).ToList(), layout, canvas, borders);
+    /// <summary>
+    /// Draws the grid in the rectangle (0, 0, canvas) of <paramref name="g"/>; image i goes into cell i of
+    /// the layout, its motion at <paramref name="time"/> on the clock of the grid.
+    /// </summary>
+    public static void Draw(Graphics g, IReadOnlyList<SourceImage> images, GridLayout layout, Size canvas, GridBorders? borders = null, TimeSpan time = default) =>
+        Draw(g, images.Select(i => new Frame(i.Bitmap, i.BandColor, i.Look, time)).ToList(), layout, canvas, borders);
 
     /// <summary>
     /// Draws the grid in the rectangle (0, 0, canvas) of <paramref name="g"/>; frame i goes into cell i of
@@ -148,7 +155,7 @@ public static class Compositor
             attributes.SetColorMatrix(GrayscaleMatrix(grayscale));
         }
 
-        var turned = FitCalculator.ComputeTurned(cell, frame.Size, look.Zoom, look.Focus, look.FineAngle);
+        var turned = FitCalculator.ComputeTurned(cell, frame.Size, look.ZoomAt(frame.Time), look.Focus, look.FineAngle);
         var fit = turned.Fit;
         using var turn = turned.Transform();
         var (source, shown) = turn is null ? (fit.Source, fit.Destination) : TurnedPart(cell, fit, frame.Size, turn);

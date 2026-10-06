@@ -6,8 +6,9 @@ namespace ImageGridFusion.Imaging;
 /// <summary>
 /// Exports a grid holding animated content: as an MP4 video or a looping GIF of every source playing
 /// from the starting point of its frames effect, a frozen one showing its frame; or, with nothing
-/// playing, as a still of the page each source shows. With a soundtrack, a grid of stills is exported
-/// as an MP4 video as long as it.
+/// playing, as a still of the page each source shows. A cell whose Animations effect is on moves in the
+/// video, from its starting state at the first frame, and shows that state in a still. With a
+/// soundtrack, a grid of stills is exported as an MP4 video as long as it.
 /// </summary>
 internal static class GridExport
 {
@@ -24,7 +25,7 @@ internal static class GridExport
             Ratio = ratio;
             Borders = borders;
             Fade = fade;
-            Length = Animation.VideoLength(items.Select(i => i.Loop).DefaultIfEmpty(TimeSpan.Zero).Max(), soundtrack);
+            Length = Animation.VideoLength(items.Select(i => Animation.LoopOf(i.Loop, i.Look)).DefaultIfEmpty(TimeSpan.Zero).Max(), soundtrack);
 
             // The soundtrack loops on its own length, cut where the video ends.
             var sounds = heard.Select(i => new MixedSound(i.FilePath!, i.Pages!.LoopDuration, i.StartTime, i.Look.SoundGain));
@@ -47,7 +48,7 @@ internal static class GridExport
         /// <summary>The sounds mixed into the video: each from the starting point of its video, at its volume; the soundtrack last.</summary>
         public IReadOnlyList<MixedSound> Sounds { get; }
 
-        /// <summary>Length of the video (<see cref="Animation.VideoLength(TimeSpan, Soundtrack?)"/>): the longest loop; with a soundtrack and no loop, the soundtrack's.</summary>
+        /// <summary>Length of the video (<see cref="Animation.VideoLength(TimeSpan, Soundtrack?)"/>): the longest loop, motion cycles included; with a soundtrack and no loop, the soundtrack's.</summary>
         public TimeSpan Length { get; }
 
         /// <summary>
@@ -160,6 +161,12 @@ internal static class GridExport
                         frames[i].Bitmap.Dispose();
                         frames[i] = frames[i] with { Bitmap = next };
                     }
+                }
+
+                // The motions of the Animations effects, on the video's clock.
+                for (int i = 0; i < frames.Length; i++)
+                {
+                    frames[i] = frames[i] with { Time = time };
                 }
 
                 // Neither format keeps an alpha channel: a cell without background is flattened on white,

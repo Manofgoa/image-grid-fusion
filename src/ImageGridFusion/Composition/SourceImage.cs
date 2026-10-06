@@ -49,6 +49,9 @@ public sealed class SourceImage : IDisposable
     /// <summary>An animated image that plays: in the preview, and as a video when exported.</summary>
     public bool Plays => IsAnimated && !IsFrozen;
 
+    /// <summary>Changes over time, so it makes a video when exported: it plays, or its Animations effect is on.</summary>
+    public bool Moves => this.Plays || this.Look.Motion is not null;
+
     /// <summary>A video with a sound track, read again from its file to be heard.</summary>
     public bool HasSound => Pages is IHasSound { HasSound: true } && FilePath is not null;
 

@@ -8,6 +8,7 @@ public enum ImageEffect
     Background,
     Crop,
     Zoom,
+    Animations,
     Rotate,
     Flip,
     Frames,
@@ -18,7 +19,7 @@ public enum ImageEffect
 
 /// <summary>
 /// Effects applied to one image of the grid, toggled from the effects toolbar (see RULES.md): the
-/// background behind it, the crop keeping a part of it that then stands for the whole image, a zoom around <see cref="Focus"/>, a rotation by quarter turns, flips in the
+/// background behind it, the crop keeping a part of it that then stands for the whole image, a zoom around <see cref="Focus"/>, a motion over time, a rotation by quarter turns, flips in the
 /// screen frame, black &amp; white, and the blur; the frames effect for an animated image, the volume
 /// for a video with sound. An effect turned off keeps its settings, drawn as its defaults until it is
 /// turned on again — but the background, on by default, draws no fill while off (RULES.md).
@@ -53,6 +54,7 @@ public sealed record ImageLook
     private CropEffect? KeptCrop { get; init; }
     private VolumeEffect? KeptVolume { get; init; }
     private BackgroundEffect? KeptBackground { get; init; }
+    private MotionEffect? KeptMotion { get; init; }
 
     /// <summary>Clockwise rotation, in degrees: 0, 90, 180 or 270.</summary>
     public int Rotation { get; private init; }
@@ -87,6 +89,9 @@ public sealed record ImageLook
     /// </summary>
     public CropEffect? Crop { get; private init; }
 
+    /// <summary>The Animations effect, <c>null</c> while inactive: the image then stands still in its cell.</summary>
+    public MotionEffect? Motion { get; private init; }
+
     /// <summary>The blur effect, <c>null</c> while inactive. Turning or zooming the image leaves it in place.</summary>
     public BlurEffect? Blur { get; private init; }
 
@@ -102,6 +107,12 @@ public sealed record ImageLook
     /// <summary>Scale the image's sound is mixed at: 0 while muted, 1 while the volume effect is off.</summary>
     public double SoundGain => Volume?.Gain ?? 1;
 
+    /// <summary>
+    /// Scale of the fit the image is drawn at, at <paramref name="time"/> on the clock of the grid: the
+    /// <see cref="Zoom"/>, times the motion's zoom while the Animations effect is on.
+    /// </summary>
+    public double ZoomAt(TimeSpan time) => this.Motion is { Kind: MotionKind.Zoom } motion ? this.Zoom * motion.ZoomAt(time) : this.Zoom;
+
     /// <summary>Every effect at its default: none on but the background, no settings kept.</summary>
     public bool IsNone => this == None;
 
@@ -113,6 +124,7 @@ public sealed record ImageLook
         ImageEffect.BlackAndWhite => Grayscale is not null,
         ImageEffect.Blur => Blur is not null,
         ImageEffect.Volume => Volume is not null,
+        ImageEffect.Animations => this.Motion is not null,
         _ => (Activations & Bit(effect)) != 0,
     };
 
@@ -149,6 +161,8 @@ public sealed record ImageLook
                 return this with { Volume = volume, KeptVolume = null };
             case ImageEffect.Background when KeptBackground is { } background:
                 return this with { Background = background, KeptBackground = null };
+            case ImageEffect.Animations when this.KeptMotion is { } motion:
+                return this with { Motion = motion, KeptMotion = null };
             default:
                 return Activate(effect);
         }
@@ -173,6 +187,7 @@ public sealed record ImageLook
             ImageEffect.Volume => off with { KeptVolume = Volume },
             ImageEffect.Background => off with { KeptBackground = Background },
             ImageEffect.Crop => off with { KeptCrop = Crop },
+            ImageEffect.Animations => off with { KeptMotion = this.Motion },
             _ => off with { KeptBlur = Blur },
         };
     }
@@ -194,6 +209,7 @@ public sealed record ImageLook
             ImageEffect.BlackAndWhite => look with { KeptGrayscale = null },
             ImageEffect.Volume => look with { KeptVolume = null },
             ImageEffect.Crop => look with { KeptCrop = null },
+            ImageEffect.Animations => look with { KeptMotion = null },
             _ => look with { KeptBlur = null },
         };
     }
@@ -207,10 +223,11 @@ public sealed record ImageLook
         ImageEffect.BlackAndWhite => this with { Grayscale = 1 },
         ImageEffect.Blur => this with { Blur = BlurEffect.Default },
         ImageEffect.Volume => this with { Volume = VolumeEffect.Default },
+        ImageEffect.Animations => this with { Motion = MotionEffect.Default },
         _ => Activated(effect),
     };
 
-    /// <summary>Deactivates an effect, bringing back its defaults: no background, the whole image, centered at 100 %, upright, unflipped, playing from the beginning, in color, sharp, heard at 100 %.</summary>
+    /// <summary>Deactivates an effect, bringing back its defaults: no background, the whole image, centered at 100 %, still, upright, unflipped, playing from the beginning, in color, sharp, heard at 100 %.</summary>
     private ImageLook Deactivate(ImageEffect effect)
     {
         var look = effect switch
@@ -223,6 +240,7 @@ public sealed record ImageLook
             ImageEffect.Frames => this with { Frames = null },
             ImageEffect.BlackAndWhite => this with { Grayscale = null },
             ImageEffect.Volume => this with { Volume = null },
+            ImageEffect.Animations => this with { Motion = null },
             _ => this with { Blur = null },
         };
         return look with { Activations = look.Activations & ~Bit(effect) };
@@ -306,6 +324,8 @@ public sealed record ImageLook
     public ImageLook WithVolume(VolumeEffect? volume) => this with { Volume = volume };
 
     public ImageLook WithBackground(BackgroundEffect? background) => this with { Background = background };
+
+    public ImageLook WithMotion(MotionEffect? motion) => this with { Motion = motion };
 
     /// <summary>
     /// Every effect back to its default state, no settings kept — the background on: the look of an
