@@ -98,6 +98,7 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 - Four fluorescent green bars across the image set each side of the kept part on its own; a bar dragged within 6 px of the image's edge snaps onto it. A drag **inside the kept part moves it whole**, its size kept, stopped at the image's edges. Elsewhere on that cell, a drag and the mouse wheel do nothing while the edit view shows; the ✥ handle and the × keep working.
 - The crop **follows the image**: turning or flipping it keeps the same part. Zoom, fine angle and Blur apply to the cropped image.
 - Options: the ratio buttons **Free**, **1:1**, **4:3**, **16:9** and **9:16**, each drawing its format. Picking one reshapes the kept part to the largest rectangle at that ratio inside it, around its center; under a ratio, a dragged bar takes the two across along, around the center, so the ratio holds. The ratio is in pixels, so 1:1 is square whatever the image. A quarter turn turns it along — 16:9 becomes 9:16 — and frees a 4:3, which has no 3:4 button.
+- **100 %**, after the ratio buttons, keeps the **whole image**: every bar back on its edge, the ratio freed (Free pressed). Like any option it turns the crop on first — one click on a crop that is off turns it on at 100 %. The crop's own Reset still brings back 10 % in from each edge, off.
 
 ### Zoom
 
