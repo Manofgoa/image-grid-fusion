@@ -242,6 +242,24 @@ for a grid of stills; none for a PNG.
 - The readout is refreshed **with the Copy / Save captions** (`MainForm.UpdateButtons`): what the
   buttons say they produce and the length shown never disagree.
 
+## Command-Line Arguments
+
+What the exe accepts, parsed in `Program.Main` (origin: `workfiles/20261006-session-title-argument.md`):
+
+| Argument | Does |
+|---|---|
+| `--tray` (`TrayApplicationContext.HiddenArgument`) | Starts hidden, the tray icon only — given by *Start with Windows* |
+| `--title <text>` (`MainForm.TitleArgument`) | The **second title**: the window reads `Image Grid Fusion — <text>` |
+| Anything else | A file to load into the cells, as a drop would |
+
+- Options and files mix in any order; an option and its value are **never loaded as files**.
+- `--title` takes the **next argument** as its value, unless that one is an option itself; a value
+  missing or blank is ignored (the plain title), it is trimmed, and given twice the last one wins.
+- The second title is shown in the **window title bar only** — so in the taskbar and Alt+Tab — never
+  in the tray tooltip, and is **not persisted**.
+- It exists for the agents: every launch by Claude Code passes the session's name in it (see
+  `CLAUDE.md` § Launch), so instances running side by side tell which implementation they test.
+
 ## App Settings
 
 Apply to every setting remembered between sessions (origin:
