@@ -82,6 +82,10 @@ box. The preview takes the keyboard focus when it is **clicked** (a mouse press 
 arrows then move the selected image, taken from the form (`ProcessCmdKey`) while
 `GridPreview` is focused. Clicking another control gives it the arrows back.
 
+- `GridPreview.IsInputKey` claims the arrows, so an arrow the image does not take (no cell, the
+  crop's edit view) never moves the focus to the next control.
+- Selecting another tab ends the move by the arrows (`MainForm.SelectEffect`), its guides with it.
+
 ---
 
 ## Test Impact
@@ -168,6 +172,12 @@ keeps its arrows, a click on the preview giving it the focus. Decided along with
 does: no arrow move in the crop's edit view. § When the Arrows Act, § Magnetic Stops and § Focus
 updated.
 
+Implemented: `PanMagnet.Move` takes `bothWays`, adding the edge crossed inward — reached only when
+strictly ahead, so leaving an edge inward stays free; `GridPreview` takes the focus on a mouse
+press and claims the arrows (`IsInputKey`); `MainForm.ProcessCmdKey` checks `_preview.Focused`
+instead of the Zoom tab and the search box. Choices not stated by the design: the `IsInputKey`
+override, and the end of the move on a tab change moved from `UpdateEffects` to `SelectEffect`.
+
 ---
 
 ## Implementation Log
@@ -177,9 +187,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 3, 4 | 2026-10-06 | `PanMagnet.Settle`, `GridPreview.PanSelected` / `EndKeyPan`, `MainForm.ProcessCmdKey` |
+| Code | 3, 4, 6 | 2026-10-06 | `PanMagnet.Settle` / `bothWays`, `GridPreview.PanSelected` / `EndKeyPan` / focus, `MainForm.ProcessCmdKey` |
 | Unit tests | 3 | 2026-10-06 | Not applicable: no test project |
-| README | 3 | 2026-10-06 | Arrow keys under the image move, the explorer's arrows |
+| README | 3, 6 | 2026-10-06 | Arrow keys under the image move: every tab, the preview's focus, edge stops both ways |
 
 ---
 
