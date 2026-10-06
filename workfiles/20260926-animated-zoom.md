@@ -270,6 +270,11 @@ Decided during the run, none of them asked:
 
 No project rule broken.
 
+### Iteration 9 — 2026-10-06 — Task finished
+
+Tested by hand by the user and validated (Q&A 16): the task is finished. The run was already
+fast-forwarded into `main`; the worktree and its branch are removed.
+
 ---
 
 ## Implementation Log
@@ -306,6 +311,7 @@ Questions asked by the agent during design, with user responses.
 | 13 | Animations tab: only the zoom motion, or a choice of animation kind? | A choice of kind (Zoom for now) | 2026-09-26 |
 | 14 | Progress line: shown on a still carrying the effect (zoom cycle)? Which loop on a video? | Shown on a still, over the zoom cycle; a video keeps its own loop | 2026-09-30 |
 | 15 | Go: no, code only, or code, tests and documentation? | "Go in a worktree, code and doc" | 2026-10-06 |
+| 16 | Is the animated zoom finished? | "Validated — merge into main and mark it finished" | 2026-10-06 |
 
 ---
 
