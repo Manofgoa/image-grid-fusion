@@ -112,6 +112,12 @@ press (guide shown, Shift ignoring them); the arrows go to the image whatever ha
 a text box being typed in; the step is in screen pixels. § Keys, § Magnetic Stops and § Focus
 updated.
 
+### Iteration 3 — 2026-10-06 — ✅ Implemented
+
+Go given by the user: **code and documentation** (no test project, so no unit test), in a
+dedicated worktree (`feature/keyboard-image-move`), fast-forwarded into `main` and removed at the
+end.
+
 ---
 
 ## Implementation Log
