@@ -297,6 +297,8 @@ The README exists in **two languages**: `README.md` in English, the one GitHub s
   incomplete.
 - The French version uses the French terms of [GLOSSARY.md](GLOSSARY.md); code, file names,
   arguments, shortcuts and the app's UI labels (in English) stay as they are.
-- The **language line** stays the first line of both files: `🇬🇧 English · [🇫🇷 Français](README.fr.md)`
-  in the English one, `[🇬🇧 English](README.md) · 🇫🇷 Français` in the French one. A new language
-  adds its link to every README's line.
+- The **language line** stays the first line of both files: each language's flag then its name,
+  separated by ` · `, every language but the file's own linked to its README. A new language adds
+  its link to every README's line.
+- The flags are **flagcdn.com images**, `<img src="https://flagcdn.com/w20/<code>.png" width="20"
+  alt="<CODE>">`, never flag emojis: Windows draws those as two letters (GB, FR).

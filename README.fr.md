@@ -1,4 +1,4 @@
-[🇬🇧 English](README.md) · 🇫🇷 Français
+[<img src="https://flagcdn.com/w20/gb.png" width="20" alt="GB"> English](README.md) · <img src="https://flagcdn.com/w20/fr.png" width="20" alt="FR"> Français
 
 # Image Grid Fusion
 
