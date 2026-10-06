@@ -67,7 +67,8 @@ The drag's stops — the cell's center and its edges — hold a move by the arro
 - The guide stays while the stop holds: it goes with the next arrow press leaving it, a mouse press
   in the preview, another cell or another tab selected.
 - Shift + arrows ignore the stops (see § Keys).
-- Implemented as `PanBy` with a **resistance of 0** and the inward edge stops, followed by
+- Implemented as `PanBy` with a **resistance of 0**, `stepwise` — the inward edge stops, and a
+  stop a press lands on exactly holding it as one it passes —, followed by
   `PanMagnet.Settle()`, which forgets how far the press went past the stop: the next press leaves it
   from the stop itself. A move with no delta on an axis keeps that axis' stop holding.
 - The move by the arrows **goes on** while the selected image keeps the image and the look the
@@ -196,7 +197,7 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 3, 4, 6 | 2026-10-06 | `PanMagnet.Settle` / `bothWays`, `GridPreview.PanSelected` / `EndKeyPan` / focus, `MainForm.ProcessCmdKey` |
+| Code | 3, 4, 6, 7 | 2026-10-06 | `PanMagnet.Settle` / `stepwise`, `GridPreview.PanSelected` / `EndKeyPan` / focus, `MainForm.ProcessCmdKey` |
 | Unit tests | 3 | 2026-10-06 | Not applicable: no test project |
 | README | 3, 6 | 2026-10-06 | Arrow keys under the image move: every tab, the preview's focus, edge stops both ways |
 
