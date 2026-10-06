@@ -21,6 +21,7 @@ Relevant components:
 | `UI/GridPreview.cs` — `PanBy` | Moves an image by a delta in pixels from where it is shown: magnetic stops (`PanMagnet`, 24 px resistance, Shift = free), never past the share of the cell it keeps covering, stored as `ImageLook.WithFocus` |
 | `UI/PanMagnet.cs` | The magnetic stops of one axis: the cell's center and edges |
 | `Composition/ImageLook.cs` — `WithFocus` | Stores the move in fractions of the oriented image and **activates the Zoom effect** |
+| `UI/GridPreview.cs` — `PanSelected`, `EndKeyPan` | The arrows' entry point: `PanBy` with no resistance, then `PanMagnet.Settle` on both axes; the move's guides and its end |
 
 ---
 
@@ -61,6 +62,13 @@ The drag's stops — the cell's center and its edges — hold a move by the arro
 - The guide stays while the stop holds: it goes with the next arrow press leaving it, a mouse press
   in the preview, another cell or another tab selected.
 - Shift + arrows ignore the stops (see § Keys).
+- Implemented as `PanBy` with a **resistance of 0**, followed by `PanMagnet.Settle()`, which forgets
+  how far the press went past the stop: the next press leaves it from the stop itself. A move with
+  no delta on an axis keeps that axis' stop holding.
+- The move by the arrows **goes on** while the selected image keeps the image and the look the
+  last press left it (`GridPreview._keyPan`): any other change of its look — the wheel, the zoom
+  slider, an effect — ends it like the gestures above, and the next press starts with no stop
+  held.
 
 ### Focus
 
@@ -68,6 +76,9 @@ The arrows are taken from the form (`ProcessCmdKey`) whenever § When the Arrows
 **whichever control has the focus** — the Zoom slider and the file explorer included — **except a
 text box being typed in** (the file explorer's search box, `_explorer.IsEditingText`), which keeps
 its arrows and Ctrl + arrows. Outside these conditions, every control keeps its arrows.
+
+The file explorer's tiles, whose arrows move between tiles, give them up too while the Zoom tab
+and a cell are selected; the README says so.
 
 ---
 
@@ -118,6 +129,23 @@ Go given by the user: **code and documentation** (no test project, so no unit te
 dedicated worktree (`feature/keyboard-image-move`), fast-forwarded into `main` and removed at the
 end.
 
+### Iteration 4 — 2026-10-06 — 🧭 Implementation choices
+
+- **One-press hold**: `PanMagnet` gained `Settle()` (the overshoot past the stop forgotten) and an
+  early return for a move of 0 on an axis, keeping its stop held — without it, a settled edge stop
+  would let go on the other axis' press. Neutral for the drag, whose overshoot is never exactly 0.
+- **End of the move by the arrows**: tracked as the image and the look the last press left
+  (`_keyPan`), rather than hooking every route that changes an image — a mouse press, another
+  cell, another tab (`MainForm.UpdateEffects`) clear it explicitly; any other change of the
+  image or its look ends it by itself.
+- **Redraw**: each press opens the live gesture (`BeginLive`) and restarts the wheel's end timer,
+  so the cell is redrawn in full once the keys stop, as after the wheel.
+- **Steps**: `MainForm.ArrowStep` (1) and `ArrowControlStep` (10), screen pixels passed as is to
+  `PanBy`, which works in client pixels.
+- **Documentation**: the README only (§ Drag an image to move it, and the file explorer's arrows).
+  RULES and GLOSSARY unchanged: no new term, no rule beyond this feature.
+- No rule broken.
+
 ---
 
 ## Implementation Log
@@ -127,9 +155,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable: no test project |
-| README | | | |
+| Code | 3, 4 | 2026-10-06 | `PanMagnet.Settle`, `GridPreview.PanSelected` / `EndKeyPan`, `MainForm.ProcessCmdKey` |
+| Unit tests | 3 | 2026-10-06 | Not applicable: no test project |
+| README | 3 | 2026-10-06 | Arrow keys under the image move, the explorer's arrows |
 
 ---
 
