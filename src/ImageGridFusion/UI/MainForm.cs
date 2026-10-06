@@ -121,6 +121,8 @@ internal sealed class MainForm : Form
         (OptionButton("Free"), null),
         .. CropEffect.Ratios.Select(ratio => (OptionButton(RatioText(ratio)), (double?)ratio)),
     ];
+    // An action, never pressed: the kept part back to the whole image.
+    private readonly CheckBox _cropWhole = OptionButton("100 %");
     private readonly CheckBox _flipX = OptionButton("Horizontal");
     private readonly CheckBox _flipY = OptionButton("Vertical");
     private readonly StepSlider _frames = OptionSlider(0, 1, 10);
@@ -338,7 +340,7 @@ internal sealed class MainForm : Form
         _optionsRow.Controls.Add(_effectResetButton, 1, 0);
         _optionsHost.Controls.AddRange([.. _options.Values]);
         _options[ImageEffect.Background].Controls.AddRange([_backgroundAutomatic, _backgroundOpacityIcon, _backgroundOpacity, _backgroundOpacityLabel, _backgroundColor]);
-        _options[ImageEffect.Crop].Controls.AddRange([.. _cropRatios.Select(r => r.Button)]);
+        _options[ImageEffect.Crop].Controls.AddRange([.. _cropRatios.Select(r => r.Button), this._cropWhole]);
         _options[ImageEffect.Zoom].Controls.AddRange([_zoom, _zoomLabel]);
         _options[ImageEffect.Rotate].Controls.AddRange([.. _quarterTurns, _fineAngle, _fineAngleLabel]);
         _options[ImageEffect.Flip].Controls.AddRange([_flipX, _flipY]);
@@ -480,6 +482,10 @@ internal sealed class MainForm : Form
             button.TextImageRelation = TextImageRelation.ImageBeforeText;
             button.Click += (_, _) => SetCropRatio(ratio);
         }
+
+        this._cropWhole.TextImageRelation = TextImageRelation.ImageBeforeText;
+        this._cropWhole.Click += (_, _) => this.SetCropWhole();
+        _toolTip.SetToolTip(this._cropWhole, "Keeps the whole image: the bars back on its edges, the ratio freed");
 
         _flipX.Click += (_, _) => ChangeLook(ImageEffect.Flip, look => look.ToggleFlipX());
         _flipY.Click += (_, _) => ChangeLook(ImageEffect.Flip, look => look.ToggleFlipY());
@@ -636,6 +642,8 @@ internal sealed class MainForm : Form
                 button.Image?.Dispose();
             }
 
+            this._cropWhole.Image?.Dispose();
+
             _borderColor.Image?.Dispose();
             _colorDialog.Dispose();
         }
@@ -655,7 +663,7 @@ internal sealed class MainForm : Form
     private void UpdateEffectIcons()
     {
         int size = LogicalToDeviceUnits(16);
-        Image?[] previous = [_resetButton.Image, _effectResetButton.Image, _globalResetButton.Image, _globalEffectResetButton.Image, _grayscaleIcon.Image, _gaussian.Image, _pixelate.Image, _fadeSquared.Image, _fadeLinear.Image, _blurIntensityIcon.Image, _backgroundOpacityIcon.Image, .. _cropRatios.Select(r => r.Button.Image)];
+        Image?[] previous = [_resetButton.Image, _effectResetButton.Image, _globalResetButton.Image, _globalEffectResetButton.Image, _grayscaleIcon.Image, _gaussian.Image, _pixelate.Image, _fadeSquared.Image, _fadeLinear.Image, _blurIntensityIcon.Image, _backgroundOpacityIcon.Image, .. _cropRatios.Select(r => r.Button.Image), this._cropWhole.Image];
         foreach (var effect in Enum.GetValues<ImageEffect>())
         {
             _effectTabs.SetIcon(effect, effect switch
@@ -690,6 +698,8 @@ internal sealed class MainForm : Form
         {
             button.Image = EffectIcons.Ratio(size, ratio);
         }
+
+        this._cropWhole.Image = EffectIcons.WholeImage(size);
 
         _blurIntensityIcon.Image = EffectIcons.Intensity(size);
         _blurIntensityIcon.Size = new Size(size, size);
@@ -2181,6 +2191,10 @@ internal sealed class MainForm : Form
             ChangeLook(ImageEffect.Crop, look => look.Crop is { } crop ? look.WithCrop(crop.WithRatio(ratio, look, image.Bitmap.Size)) : look);
         }
     }
+
+    /// <summary>The 100 % button: the kept part becomes the whole image, its ratio freed.</summary>
+    private void SetCropWhole() =>
+        this.ChangeLook(ImageEffect.Crop, look => look.Crop is { } crop ? look.WithCrop(crop.Whole()) : look);
 
     private static string RatioText(double ratio) => ratio switch
     {

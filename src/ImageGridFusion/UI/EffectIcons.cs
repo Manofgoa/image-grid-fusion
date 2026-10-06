@@ -150,6 +150,22 @@ internal static class EffectIcons
         g.DrawRectangle(pen, box.X, box.Y, box.Width, box.Height);
     });
 
+    /// <summary>The 100 % button of the crop: a frame, the orange crop marks pushed out onto its four corners.</summary>
+    public static Bitmap WholeImage(int size) => Draw(size, (g, s) =>
+    {
+        float w = Math.Max(1.5f, s * 0.14f);
+        float edge = w / 2;
+        float far = s - edge;
+        float arm = s * 0.36f;
+        using var frame = new Pen(Color.FromArgb(180, 90, 0), Math.Max(1f, s * 0.06f));
+        g.DrawRectangle(frame, s * 0.2f, s * 0.2f, s * 0.6f, s * 0.6f);
+        using var pen = new Pen(Color.FromArgb(255, 140, 0), w) { StartCap = LineCap.Flat, EndCap = LineCap.Flat, LineJoin = LineJoin.Miter };
+        g.DrawLines(pen, [new PointF(edge, arm), new PointF(edge, edge), new PointF(arm, edge)]);
+        g.DrawLines(pen, [new PointF(s - arm, edge), new PointF(far, edge), new PointF(far, arm)]);
+        g.DrawLines(pen, [new PointF(far, s - arm), new PointF(far, far), new PointF(s - arm, far)]);
+        g.DrawLines(pen, [new PointF(arm, far), new PointF(edge, far), new PointF(edge, s - arm)]);
+    });
+
     /// <summary>The Format tab: a landscape frame in blue over a portrait one in orange, two ratios of the canvas.</summary>
     public static Bitmap Format(int size) => Draw(size, (g, s) =>
     {
