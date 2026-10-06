@@ -32,11 +32,11 @@ Relevant components:
 ## Command-Line Argument
 
 - Syntax: `--title <text>` — the option followed by its value as the **next argument**, like
-  `--tray` is matched (case-insensitive option name). *(Syntax to confirm, see Open Questions.)*
+  `--tray` is matched (case-insensitive option name).
 - The option and its value are **taken out of the file list**: neither is loaded as a file.
 - Combines freely with `--tray` and with files, in any order:
   `ImageGridFusion.exe --title "Undo / redo" a.png b.mp4`.
-- Edge cases (agent's proposal):
+- Edge cases:
   - `--title` as the last argument, without a value → ignored, the window keeps its plain title.
   - A value that is empty or only blanks → ignored, plain title.
   - The value is trimmed.
@@ -50,8 +50,8 @@ Relevant components:
 
 - **Window title bar only** — so the taskbar button and Alt+Tab show it too, Windows reading the
   same text.
-- Format: `Undo / redo — Image Grid Fusion` *(order to confirm, see Open Questions)*: the
-  distinctive part first, so it survives the taskbar's truncation.
+- Format: `Image Grid Fusion — Undo / redo` — the app's name first, the second title after an
+  em dash.
 - Without the argument, the title stays `Image Grid Fusion`, unchanged.
 - The tray icon's tooltip is **not** changed.
 
@@ -69,7 +69,7 @@ delivery launch and the agent's own checking launches alike.
 - When the session name cannot be read, the app is launched without `--title`, and the report says
   so.
 - Written in three places, by the user's answer *"both + a CLAUDE.md specific to the current
-  project"* *(split to confirm, see Open Questions)*:
+  project"*:
 
   | File | Versioned | Holds |
   |---|---|---|
@@ -105,14 +105,15 @@ every delivery.
 
 ## Open Questions
 
-- [ ] Syntax: `--title "<text>"` (value as the next argument, like `--tray`) or `--title="<text>"`
-      (one argument)?
-- [ ] Order in the title bar: `Undo / redo — Image Grid Fusion` (distinctive part first, survives
-      the taskbar's truncation) or `Image Grid Fusion — Undo / redo`?
-- [ ] The split of the launch rule between `../CLAUDE.md`, this app's `CLAUDE.md` and `RULES.md`
-      (§ Launch Rule) — is that the intended reading of "both + a project-specific CLAUDE.md"?
-- [ ] The edge cases of § Command-Line Argument (missing / blank value ignored, last one wins) —
-      agreed?
+- [x] ~~Syntax: `--title "<text>"` (value as the next argument, like `--tray`) or `--title="<text>"`
+      (one argument)?~~ → `--title "<text>"`, the value as the next argument
+- [x] ~~Order in the title bar: `Undo / redo — Image Grid Fusion` (distinctive part first, survives
+      the taskbar's truncation) or `Image Grid Fusion — Undo / redo`?~~ → `Image Grid Fusion — Undo / redo`
+- [x] ~~The split of the launch rule between `../CLAUDE.md`, this app's `CLAUDE.md` and `RULES.md`
+      (§ Launch Rule) — is that the intended reading of "both + a project-specific CLAUDE.md"?~~ → Yes,
+      that split
+- [x] ~~The edge cases of § Command-Line Argument (missing / blank value ignored, last one wins) —
+      agreed?~~ → Agreed
 
 ---
 
@@ -129,6 +130,12 @@ Initial design from the scoping answers (Q1–Q4) and one scout pass over the co
 argument parsed in `Program.cs` next to `--tray`, shown in the window title bar only
 (`Undo / redo — Image Grid Fusion`), not persisted; a launch rule passing the session name, status
 marker removed, written in the shared `../CLAUDE.md`, this app's `CLAUDE.md` and `RULES.md`.
+
+### Iteration 2 — 2026-10-06
+
+Open questions settled (Q5–Q8): the syntax `--title "<text>"` and the edge cases are kept as
+proposed, the rule split across the three files confirmed; the title bar order is **reversed** from
+the proposal — `Image Grid Fusion — Undo / redo`, the app's name first.
 
 ---
 
@@ -156,10 +163,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | Where should the launch rule be written? | Both (shared `CLAUDE.md` + `RULES.md`) + a CLAUDE.md specific to the current project | 2026-10-06 |
 | 3 | The session title may carry a status marker: what to pass? | Remove the marker | 2026-10-06 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward | 2026-10-06 |
-| 5 | Syntax: `--title "<text>"` or `--title="<text>"`? | | 2026-10-06 |
-| 6 | Order in the title bar? | | 2026-10-06 |
-| 7 | The split of the launch rule between the three files? | | 2026-10-06 |
-| 8 | The edge cases (missing / blank value ignored, last one wins)? | | 2026-10-06 |
+| 5 | Syntax: `--title "<text>"` or `--title="<text>"`? | `--title "<text>"` | 2026-10-06 |
+| 6 | Order in the title bar? | `Image Grid Fusion — Undo / redo` | 2026-10-06 |
+| 7 | The split of the launch rule between the three files? | Yes, that split | 2026-10-06 |
+| 8 | The edge cases (missing / blank value ignored, last one wins)? | Agreed | 2026-10-06 |
 
 ---
 
