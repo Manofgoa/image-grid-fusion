@@ -286,3 +286,17 @@ value readouts (origin: `workfiles/20260925-zoom-range-and-percentage.md`).
 - A hovered or dragged handle may turn **white**, as its hover feedback.
 - Interaction feedback is not a helper indicator and keeps its own colours: selection outline,
   drop-target highlight, hover outline, dimmed cell being dragged.
+
+## README Languages
+
+The README exists in **two languages**: `README.md` in English, the one GitHub shows, and
+`README.fr.md` in French, reached by the language line at the top of each.
+
+- **Every change to `README.md` is made to `README.fr.md` too, in the same commit**: same sections,
+  same order, nothing left untranslated. A commit touching one README and not the other is
+  incomplete.
+- The French version uses the French terms of [GLOSSARY.md](GLOSSARY.md); code, file names,
+  arguments, shortcuts and the app's UI labels (in English) stay as they are.
+- The **language line** stays the first line of both files: `🇬🇧 English · [🇫🇷 Français](README.fr.md)`
+  in the English one, `[🇬🇧 English](README.md) · 🇫🇷 Français` in the French one. A new language
+  adds its link to every README's line.

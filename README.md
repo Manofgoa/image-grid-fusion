@@ -1,3 +1,5 @@
+🇬🇧 English · [🇫🇷 Français](README.fr.md)
+
 # Image Grid Fusion
 
 A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a single image sized for Twitter/X's in-feed ratio — or a square, a portrait, a story, a 16:9 or the content's own ratio.
@@ -464,3 +466,7 @@ C# / WinForms on .NET 10, using `System.Drawing` (GDI+) with high-quality bicubi
 - A dedicated frame design for the single-image case.
 - OCR over the indexed images, so the file explorer's search also finds the words shown inside them.
 - The file explorer's list detached into a window of its own, to sit beside the main window or on another screen.
+
+## License
+
+[MIT](LICENSE) © Manofgoa. Contributions: see [CONTRIBUTING.md](CONTRIBUTING.md); security issues: see [SECURITY.md](SECURITY.md).
