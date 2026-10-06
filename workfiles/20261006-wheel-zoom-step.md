@@ -15,7 +15,8 @@ the stock wheel (its log-scale units), and its Ctrl + wheel steps the zoom by 5 
 (`MainForm.StepZoom`, wired through `StepSlider.ControlWheel`).
 
 The request swaps this around for the zoom: **the plain wheel steps by 5 percentage points, Ctrl by
-1 point**, on the cell and on the Zoom tab's controls alike.
+1 point** — **25 and 5 points above 200 %** — on the cell and on the Zoom slider's wheel alike. The
+other option sliders keep their Ctrl + wheel = 5 %.
 
 Components:
 
@@ -31,11 +32,22 @@ Components:
 
 ## Wheel over a Cell
 
-- One notch moves the zoom by **5 percentage points**; with **Ctrl** held, by **1 point**
-  (additive: 100 → 105 → 110 %, not ×1.05).
+- One notch moves the zoom by a number of **percentage points** (additive: 100 → 105 → 110 %, not
+  ×1.05), coarser above 200 %:
+
+  | Zoom range the notch moves in | Plain wheel | Ctrl + wheel |
+  |---|---|---|
+  | Up to 200 % | 5 points | 1 point |
+  | Above 200 % | 25 points | 5 points |
+
+- The range is the one the notch **moves into**: up from 200 % or more, or down from above 200 %,
+  takes the coarse step; so 190 → 195 → 200 → 225 → 250 up, and 250 → 225 → 200 → 195 down. 200 %
+  being a multiple of every step, the two ranges join on it.
 - From a value between two multiples of the step, the first notch **stops on the next multiple in
-  its direction** — `WheelSteps.Snap` as it is: 103 % → 105 % up, → 100 % down; with Ctrl,
-  103.4 % → 104 % up, → 103 % down.
+  its direction** — `WheelSteps.Snap` as it is: 103 % → 105 % up, → 100 % down; 213 % → 225 % up,
+  → 200 % down; with Ctrl, 103.4 % → 104 % up, → 103 % down.
+- Several notches at once (a fast wheel) are taken **one at a time**, each with the step of the
+  range it moves into, so a burst crossing 200 % lands where the same notches one by one would.
 - The zoom stays within **10 %–1600 %** (`ImageLook.MinZoom` / `MaxZoom`).
 - 100 % being a multiple of both steps, the "crossing 100 % stops on it" rule holds by itself.
 - Everything else is unchanged: zoom around the point under the mouse, live then smoothed when the
@@ -45,16 +57,16 @@ Components:
 
 ## Zoom Tab Controls
 
-- The **Zoom slider's wheel** follows the same steps: plain wheel → 5 points, Ctrl + wheel → 1 point,
-  onto the multiples, applied exactly (the log scale is too coarse at high zooms — the reason
-  `StepZoom` exists).
-- The slider's **drag** and its snap to 100 % near its mark are unchanged.
-- *(Open question)* the slider's keyboard (arrows, Page Up / Down).
+- The **Zoom slider's wheel** follows the same steps as the cell — the table above, plain and with
+  Ctrl — applied exactly (the log scale is too coarse at high zooms — the reason `StepZoom` exists).
+  It therefore takes over the plain wheel too, not only Ctrl + wheel.
+- The slider's **drag**, its snap to 100 % near its mark, and its **keyboard** (arrows, Page Up /
+  Down, in its log units) are unchanged.
 
 ## Other Option Sliders
 
-- *(Open question)* whether the other sliders (opacities, volume, fine angle, borders' thickness,
-  Frames…) keep **Ctrl + wheel = 5 %**, which would make Ctrl mean the opposite on the zoom.
+- **Unchanged**: opacities, volume, fine angle, borders' thickness, Frames… keep the stock wheel and
+  **Ctrl + wheel = 5 %**. Ctrl therefore means *coarse* on them and *fine* on the zoom — accepted.
 
 ---
 
@@ -76,11 +88,12 @@ ready to be pinned the day one exists.
 - [x] ~~From an off-grid value (103 %), what does a plain notch give?~~ → It snaps onto the next
   multiple of 5 in its direction (105 % up, 100 % down)
 - [x] ~~Where does the new step apply?~~ → The wheel over a cell **and** the Zoom tab's controls
-- [ ] At high zooms a 5-point step is small (100 → 1600 % takes 300 notches, against 16 today):
-  5 points everywhere, or a coarser step above some zoom?
-- [ ] The other option sliders: keep Ctrl + wheel = 5 % (Ctrl then means the opposite on the zoom),
-  or follow the zoom (plain wheel = 5 %, Ctrl = finest unit)?
-- [ ] The Zoom slider's keyboard (arrows, Page Up / Down): unchanged, or 5 / 1 points as well?
+- [x] ~~At high zooms a 5-point step is small (100 → 1600 % takes 300 notches, against 16 today):
+  5 points everywhere, or a coarser step above some zoom?~~ → Above 200 %, 25 points (5 with Ctrl)
+- [x] ~~The other option sliders: keep Ctrl + wheel = 5 % (Ctrl then means the opposite on the zoom),
+  or follow the zoom (plain wheel = 5 %, Ctrl = finest unit)?~~ → Unchanged
+- [x] ~~The Zoom slider's keyboard (arrows, Page Up / Down): unchanged, or 5 / 1 points as well?~~ →
+  Unchanged
 
 ---
 
@@ -97,6 +110,13 @@ Initial design from the request ("le zoom molette doit être de pas de 5 % ; si 
 and the scoping batch: additive steps snapped onto their multiples, on the cell and on the Zoom
 slider's wheel. The exploration found that the request inverts the current behaviour (Ctrl gave
 the 5 % step, the plain wheel was geometric), which raises the three open questions above.
+
+### Iteration 2 — 2026-10-06
+
+Answers to the three open questions: above 200 % the steps become 25 points (5 with Ctrl); the
+other option sliders and the Zoom slider's keyboard stay as they are. The agent settled the
+boundary: the step is the one of the range a notch moves into, notches taken one at a time, so
+200 % joins both ranges (… 195 → 200 → 225 …).
 
 ---
 
@@ -123,9 +143,9 @@ Questions asked by the agent during design, with user responses.
 | 2 | From an off-grid value (103 %), a plain notch: snap onto a multiple of 5, or a pure ±5? | Snap onto the multiple of 5 | 2026-10-06 |
 | 3 | Where does the new step apply: the wheel over a cell only, or the Zoom tab's controls too? | The wheel and the Zoom controls | 2026-10-06 |
 | 4 | Depth of the exploration: straightforward, or tricky / long? | Straightforward | 2026-10-06 |
-| 5 | High zooms: 5 points everywhere, or a coarser step above some zoom? | | |
-| 6 | The other sliders: keep Ctrl + wheel = 5 %, or follow the zoom? | | |
-| 7 | The Zoom slider's keyboard: unchanged, or 5 / 1 points? | | |
+| 5 | High zooms: 5 points everywhere, or a coarser step above some zoom? | "5 % devient 25 % au-dessus de 200 %, 1 % devient 5 % au-dessus de 200 %" | 2026-10-06 |
+| 6 | The other sliders: keep Ctrl + wheel = 5 %, or follow the zoom? | Unchanged | 2026-10-06 |
+| 7 | The Zoom slider's keyboard: unchanged, or 5 / 1 points? | Unchanged | 2026-10-06 |
 
 ---
 
