@@ -131,6 +131,12 @@ design (Q&A 1–4). Code and documentation, no tests (no test project), in a ded
   (§ Options Toolbar), so only README.md and GLOSSARY.md (the *Crop* entry) were updated.
 - No rule broken.
 
+### Iteration 4 — 2026-10-06 — ✅ Task finished
+
+Validated by the user after the manual test: *"Je valide tu peux merger dans main et marquer
+terminé"*. The branch was already fast-forwarded into `main` at the end of the run, the worktree
+and the branch removed.
+
 ---
 
 ## Implementation Log
@@ -141,6 +147,7 @@ design (Q&A 1–4). Code and documentation, no tests (no test project), in a ded
 | Unit tests | 2 | 2026-10-06 | Not requested — no test project |
 | README | 2 | 2026-10-06 | § Crop: the 100 % button |
 | GLOSSARY | 2 | 2026-10-06 | *Crop* entry: the 100 % button |
+| Manual validation | 4 | 2026-10-06 | Validated by the user |
 
 ---
 
