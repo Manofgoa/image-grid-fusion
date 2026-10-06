@@ -98,6 +98,8 @@ The behaviour is checked by hand in the launched app.
 - [x] ~~What do the magnetic stops (center, edges) do to a move by the arrows?~~ → They hold for one press: a press stops on the stop, guide shown, the next one leaves it; Shift ignores them
 - [x] ~~Which focused controls keep their own arrows (the Zoom slider, the file explorer, a text box)?~~ → Only a text box being typed in; otherwise the image gets them
 - [x] ~~Is a "pixel" a screen pixel, or a logical pixel scaled with Windows' display scaling?~~ → A screen pixel
+- [ ] Does the edge stop's inward hold apply with Ctrl only, or to the 1 px steps too?
+- [ ] With every tab moving the image, which focused controls keep their arrows?
 
 ---
 
@@ -146,6 +148,17 @@ end.
   RULES and GLOSSARY unchanged: no new term, no rule beyond this feature.
 - No rule broken.
 
+### Iteration 5 — 2026-10-06 — ⚙️ Post-implementation — Edge stops both ways, every tab
+
+Requested by the user after testing:
+
+1. With **Ctrl**, an **edge** stop must hold the image for one press **on the way in too**, not
+   only on the way out — today a press moving back inward crosses it freely, as the drag does.
+2. The arrows move the image **whatever tab is selected**, not with the Zoom tab only.
+
+Open before the code is touched: whether the inward hold is for Ctrl only, and which focused
+controls keep their arrows now that every tab moves the image.
+
 ---
 
 ## Implementation Log
@@ -174,6 +187,9 @@ Questions asked by the agent during design, with user responses.
 | 5 | What do the magnetic stops do to a move by the arrows? | Hold for one press, guide shown; Shift + arrows ignore them | 2026-10-06 |
 | 6 | Which focused controls keep their own arrows? | Only a text box being typed in; the image gets them otherwise, the Zoom slider included | 2026-10-06 |
 | 7 | Screen pixel or logical pixel? | Screen pixel | 2026-10-06 |
+| 8 | Is the task finished? (after testing) | No: with Ctrl, an edge stop must hold one press inward too; the arrows move the image whatever tab is selected | 2026-10-06 |
+| 9 | Inward edge hold: Ctrl only, or the 1 px steps too? | | |
+| 10 | With every tab moving the image, which focused controls keep their arrows? | | |
 
 ---
 
