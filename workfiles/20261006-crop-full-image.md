@@ -77,7 +77,7 @@ No double-click shortcut on the kept part (Q&A 1).
 |---|---|
 | `CropEffect.Whole()` | The same crop keeping the whole image, its ratio freed: sides 0 / 0 / 1 / 1, `Ratio = null` |
 | `EffectIcons.WholeImage(size)` | The button's icon |
-| `MainForm` | The `_cropWhole` button in the Crop options row after the ratios, its tooltip, its click → `ChangeLook(ImageEffect.Crop, look => look.WithCrop(crop.Whole()))`, its icon redrawn and disposed with the others |
+| `MainForm` | The `_cropWhole` button in the Crop options row after the ratios — an `OptionButton` like them, never pressed — its tooltip, its click → `SetCropWhole` → `ChangeLook(ImageEffect.Crop, look => look.WithCrop(crop.Whole()))`, its icon redrawn at the DPI and disposed with the others |
 
 ---
 
@@ -120,16 +120,27 @@ answering them: the **recommended option of each question** is applied and recor
 design (Q&A 1–4). Code and documentation, no tests (no test project), in a dedicated worktree
 (`feature/crop-full-image`), fast-forwarded into `main` and removed at the end.
 
+### Iteration 3 — 2026-10-06 — 🧭 Implementation choices
+
+- **The button's control**: an `OptionButton` — the same grey toggle-looking `CheckBox` as the
+  ratio buttons, `AutoCheck` off — never checked, so it sits in the row with their exact look while
+  carrying no pressed state, as the design asks.
+- **The icon** (`EffectIcons.WholeImage`): a thin dark-orange frame, the orange crop marks of the
+  Crop tab's icon pushed out onto its four corners.
+- **No rule change**: the button is an ordinary option of an effect; RULES.md already covers it
+  (§ Options Toolbar), so only README.md and GLOSSARY.md (the *Crop* entry) were updated.
+- No rule broken.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 2 | 2026-10-06 | `CropEffect.Whole`, `EffectIcons.WholeImage`, the `_cropWhole` button in `MainForm` |
 | Unit tests | 2 | 2026-10-06 | Not requested — no test project |
-| README | | | |
-| GLOSSARY | | | |
+| README | 2 | 2026-10-06 | § Crop: the 100 % button |
+| GLOSSARY | 2 | 2026-10-06 | *Crop* entry: the 100 % button |
 
 ---
 
