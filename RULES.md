@@ -225,6 +225,11 @@ Applies to everything the user composes (origin: `workfiles/20261006-undo-redo.m
   `Dispose` directly: the history keeps it alive while a step holds it.
 - A restore follows § Preview Playback: images that differ start the grid over, a swap, a layout or
   an effect change does not. It selects the cell the step touches when it touches exactly one.
+- A restore **shows briefly the helper indicators of the values it changed** (§ On-Cell Helper
+  Indicators), whatever tab is selected, with the zoom badge's timing (held 1 s, faded over 0.3 s):
+  the zoom badge, the blur bars, the crop's kept-part edges, the guides of the stops a moved image
+  rests on. The bars are drawn without grips — not handles. A new indicator a step can change is
+  added to `GridPreview.ShowRestored` / `PaintRestored`.
 - Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z are **locked while exporting** and during a gesture; a focused text
   field keeps them for its own text (the whitelist in `MainForm.ProcessCmdKey`).
 
