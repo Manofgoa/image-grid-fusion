@@ -25,7 +25,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
   - The sounds of every video are mixed; the **Volume** effect sets each one from 0 to 200 %, or mutes it
   - A **soundtrack** — the sound of an audio or video file — can be mixed over them, for the whole grid (see Global)
   - A **fade** brings the whole mix in from silence at the start of the video, and out to silence at its end (see Fade)
-  - Zoom a cell from 10 % to 1600 %: with the **Zoom** effect's slider (it snaps to 100 %), or with the mouse wheel over any cell, around the point under the mouse (4 notches double the zoom; crossing 100 % stops on it). With **Ctrl** held, each notch moves the zoom by 5 %, onto the multiples of 5: 103 % → 105 % → 110 %, or 100 % the other way
+  - Zoom a cell from 10 % to 1600 %: with the **Zoom** effect's slider (it snaps to 100 %), or with the mouse wheel over any cell, around the point under the mouse (crossing 100 % stops on it). Each notch moves the zoom by 5 %, onto the multiples of 5: 103 % → 105 % → 110 %, or 100 % the other way; with **Ctrl** held, by 1 %. Above 200 % the steps grow to 25 % (5 % with Ctrl): 195 % → 200 % → 225 % → 250 %. The wheel over the Zoom slider takes the same steps
   - Drag an image to move it in its cell, at any zoom — past the cell's edges too, to center a detail lying on the border of the image; the area it uncovers gets the band color (see Fitting rules), and at least 10 % of the cell always stays covered so it can be grabbed back
     - Magnetic stops: the image stops where one of its edges lines up with an edge of the cell, and where it is centered; keep dragging about 24 px to go past a stop (moving back inside over an edge is free). While it is held, a dashed fluorescent green guide shows the stop: along the aligned edge, or through the center (both lines cross when centered both ways)
     - Hold `Shift` while dragging to ignore the stops
@@ -76,7 +76,7 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 - Clicking a tab elsewhere selects it: its options show in the row above, joined to it. The selected tab stays selected when another cell is selected, or none. The options row is always there, empty until a tab is selected.
 - Turning an effect off keeps its settings: it is drawn as its default (no background, the whole image, 100 % centered, upright, unflipped, playing from the beginning, in color, sharp, heard at 100 %) until it is turned on again, as it was. An effect that is off shows its kept settings in its options.
 - Changing any option of an effect turns it on, from its kept settings.
-- **Ctrl + wheel** on an option's slider — here and in the global effects' options — moves it by 5 %, onto the multiples of 5 (103 % → 105 %), instead of one unit per notch: 5° for the fine angle, 0.5 % for the borders' thickness, the zoom slider on the same percentages as the wheel over the cell, and the Frames slider by 5 % of the frames or pages. The slider takes the wheel as it does without Ctrl.
+- **Ctrl + wheel** on an option's slider — here and in the global effects' options — moves it by 5 %, onto the multiples of 5 (103 % → 105 %), instead of one unit per notch: 5° for the fine angle, 0.5 % for the borders' thickness, and the Frames slider by 5 % of the frames or pages. The slider takes the wheel as it does without Ctrl. The zoom slider is the exception: its wheel takes the steps of the wheel over the cell, Ctrl making them finer (see Zoom).
 - The options row ends with a **Reset** button that brings the selected tab's effect back to its default state: default settings, turned off — except the Background, turned back on (see Background).
 - The **Reset** at the far right of the tabs does it for every effect of the selected cell at once, and also puts every separator of the grid back where its layout places it (see Resizing the cells).
 - An effect that does not apply to the selected cell (**Frames** on a still image, **Volume** on an image without sound) keeps its tab selectable, but its checkbox and options are disabled; the checkbox's tooltip says why.
@@ -104,7 +104,7 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 
 ### Zoom
 
-- Options: the zoom, from 10 % to 1600 % on a log scale, snapping to 100 %.
+- Options: the zoom, from 10 % to 1600 % on a log scale, snapping to 100 %. The wheel over it moves the zoom by the wheel's steps over a cell — 5 %, 1 % with Ctrl, 25 % / 5 % above 200 % (see above); its arrow keys keep their own small steps.
 - The mouse wheel and dragging keep working on every cell, selected or not (see above); the effect is on as soon as the image is zoomed or moved. On a cell whose zoom is off, they start from the image as shown, replacing the kept zoom.
 
 ### Animations
