@@ -1,0 +1,162 @@
+# Session Title Argument
+
+> Working document — a command-line argument adding a second title to the window, so that
+> several instances launched side by side by Claude Code sessions tell which implementation each
+> one tests.
+> This file is the source of truth for the planned work until implemented,
+> then the log of every adjustment made to it afterwards.
+
+---
+
+## Overview
+
+While several implementations are debugged at once — one Claude Code session per worktree, each
+launching its own build of the app — the windows all read *Image Grid Fusion*: nothing tells which
+one tests what. The app gains a command-line argument carrying a **second title**, shown in the
+window's title bar, and a rule makes Claude Code pass the **current session's name** in it at
+every launch.
+
+Relevant components:
+
+- `src/ImageGridFusion/Program.cs` — parses the arguments: `--tray` (`TrayApplicationContext.HiddenArgument`)
+  is taken out, every other argument is a file to load.
+- `src/ImageGridFusion/UI/MainForm.cs:288` — `Text = "Image Grid Fusion";`, the only place the window
+  title is set; nothing changes it at runtime.
+- `src/ImageGridFusion/UI/TrayApplicationContext.cs` — the tray icon's tooltip, *Image Grid Fusion*,
+  left as it is (see § Display).
+- No single-instance mechanism exists: every launch is an independent process, so several
+  instances with different titles can run side by side as they are.
+
+---
+
+## Command-Line Argument
+
+- Syntax: `--title <text>` — the option followed by its value as the **next argument**, like
+  `--tray` is matched (case-insensitive option name). *(Syntax to confirm, see Open Questions.)*
+- The option and its value are **taken out of the file list**: neither is loaded as a file.
+- Combines freely with `--tray` and with files, in any order:
+  `ImageGridFusion.exe --title "Undo / redo" a.png b.mp4`.
+- Edge cases (agent's proposal):
+  - `--title` as the last argument, without a value → ignored, the window keeps its plain title.
+  - A value that is empty or only blanks → ignored, plain title.
+  - The value is trimmed.
+  - `--title` given twice → the last one wins.
+- Not persisted: the title lives for the process only, never written to `settings.json`.
+- The *Start with Windows* shortcut keeps launching with `--tray` only.
+
+---
+
+## Display
+
+- **Window title bar only** — so the taskbar button and Alt+Tab show it too, Windows reading the
+  same text.
+- Format: `Undo / redo — Image Grid Fusion` *(order to confirm, see Open Questions)*: the
+  distinctive part first, so it survives the taskbar's truncation.
+- Without the argument, the title stays `Image Grid Fusion`, unchanged.
+- The tray icon's tooltip is **not** changed.
+
+---
+
+## Launch Rule
+
+Claude Code launches the app with `--title "<current session name>"` at every launch — the
+delivery launch and the agent's own checking launches alike.
+
+- The session name is read with the session tool on `self` (`get_session`) **at launch time**, so a
+  renamed session is honoured.
+- Its **status marker is removed** (`🏗️`, `✅`, `❓`, `🚦`, `⏳`): it changes while the app runs and
+  would soon be wrong. `🏗️ Undo / redo` → `Undo / redo`.
+- When the session name cannot be read, the app is launched without `--title`, and the report says
+  so.
+- Written in three places, by the user's answer *"both + a CLAUDE.md specific to the current
+  project"* *(split to confirm, see Open Questions)*:
+
+  | File | Versioned | Holds |
+  |---|---|---|
+  | `../CLAUDE.md` (mini-apps, § Launch After Delivery) | ❌ — the mini-apps root is not a git repository | The principle, for every app accepting `--title`: pass the session name, marker removed |
+  | `CLAUDE.md` (this app) | ✅ | The launch command for this app, with `--title` |
+  | `RULES.md` (this app) | ✅ | The app rule: the command-line arguments (`--tray`, `--title`, files), how the second title is shown |
+
+- The memory `launch-after-implementation` (auto-memory of this project) gets the same addition, so
+  it never contradicts the rule.
+- Changing a CLAUDE.md triggers the user's *Rule changes* procedure: the other running sessions of
+  the workspace are messaged to re-read it.
+
+---
+
+## Documentation
+
+- `README.md`: the `--title` argument, next to the command-line files (line 49) and `--tray`
+  (line 433).
+- `GLOSSARY.md`: a *Second title* (*titre secondaire*) entry.
+
+---
+
+## Test Impact
+
+The repository holds **no test project**: nothing testable by unit tests is created or updated.
+The behaviour is checked by hand in the launched app — which the launch rule itself exercises at
+every delivery.
+
+| Behaviour to pin | Test file | Create / Update |
+|---|---|---|
+
+---
+
+## Open Questions
+
+- [ ] Syntax: `--title "<text>"` (value as the next argument, like `--tray`) or `--title="<text>"`
+      (one argument)?
+- [ ] Order in the title bar: `Undo / redo — Image Grid Fusion` (distinctive part first, survives
+      the taskbar's truncation) or `Image Grid Fusion — Undo / redo`?
+- [ ] The split of the launch rule between `../CLAUDE.md`, this app's `CLAUDE.md` and `RULES.md`
+      (§ Launch Rule) — is that the intended reading of "both + a project-specific CLAUDE.md"?
+- [ ] The edge cases of § Command-Line Argument (missing / blank value ignored, last one wins) —
+      agreed?
+
+---
+
+## Design Iterations
+
+Chronological log of design refinements, of the choices the implementation run
+took on its own — flagged `🧭 Implementation choices` — and of every adjustment
+requested afterwards — flagged `⚙️ Post-implementation`. One entry per request,
+in the order the requests were made.
+
+### Iteration 1 — 2026-10-06
+
+Initial design from the scoping answers (Q1–Q4) and one scout pass over the code: a `--title <text>`
+argument parsed in `Program.cs` next to `--tray`, shown in the window title bar only
+(`Undo / redo — Image Grid Fusion`), not persisted; a launch rule passing the session name, status
+marker removed, written in the shared `../CLAUDE.md`, this app's `CLAUDE.md` and `RULES.md`.
+
+---
+
+## Implementation Log
+
+Which delivery steps are done, and in which iteration. A step that does not apply
+says so rather than staying blank.
+
+| Step | Iteration | Date | Notes |
+|---|---|---|---|
+| Code | | | |
+| Unit tests | | | No test project — not applicable |
+| README | | | |
+| GLOSSARY / RULES / CLAUDE.md | | | |
+
+---
+
+## Q&A Log
+
+Questions asked by the agent during design, with user responses.
+
+| # | Question | Answer | Date |
+|---|---|---|---|
+| 1 | Where should the second title appear? | Window title bar | 2026-10-06 |
+| 2 | Where should the launch rule be written? | Both (shared `CLAUDE.md` + `RULES.md`) + a CLAUDE.md specific to the current project | 2026-10-06 |
+| 3 | The session title may carry a status marker: what to pass? | Remove the marker | 2026-10-06 |
+| 4 | Is the subject straightforward or tricky / long? | Straightforward | 2026-10-06 |
+
+---
+
+*Last updated: 2026-10-06*
