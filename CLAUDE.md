@@ -20,7 +20,9 @@ src/ImageGridFusion/bin/Debug/net10.0-windows10.0.19041.0/win-x64/ImageGridFusio
   session is honoured.
 - Its **status marker is removed** (`🏗️`, `✅`, `❓`, `🚦`, `⏳`): it changes while the app runs.
   `🏗️ Undo / redo` → `--title "Undo / redo"`.
-- A worktree's build runs its own exe, with the same argument.
+- A worktree's build runs its own exe, with the same argument — **only if its source knows it**
+  (`MainForm.TitleArgument` exists): a build older than the argument would load `--title` and the
+  name as two files. Such a build is launched without it, and the report says so.
 - The name cannot be read → launched without `--title`, and the report says so.
 - The survival check (`Get-Process ImageGridFusion`) finds the instance by its `MainWindowTitle`,
   `Image Grid Fusion — <session name>`, among the others.
