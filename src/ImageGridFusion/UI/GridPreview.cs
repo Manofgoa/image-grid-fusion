@@ -25,7 +25,6 @@ internal sealed class GridPreview : Control
     private const int ButtonGap = 4;
     private const int HandleSize = 48;
     private const int WheelNotch = 120;
-    private const int NotchesPerDoubling = 4;
     private const int WheelEndDelay = 150;
     private const int BarReach = 12;
     private const int BarSnap = 6;
@@ -901,8 +900,8 @@ internal sealed class GridPreview : Control
     }
 
     /// <summary>
-    /// The wheel zooms the cell under the mouse, around the point under it — with Control held, by
-    /// steps of 5 %; not while another gesture runs.
+    /// The wheel zooms the cell under the mouse, around the point under it, by steps of 5 % — 1 % with
+    /// Control held, coarser above 200 % (<see cref="WheelSteps.Zoom"/>); not while another gesture runs.
     /// </summary>
     protected override void OnMouseWheel(MouseEventArgs e)
     {
@@ -1603,8 +1602,8 @@ internal sealed class GridPreview : Control
         _wheelEnd.Start();
     }
     /// <summary>
-    /// Zooms by <paramref name="notches"/> of the wheel, <see cref="NotchesPerDoubling"/> of them
-    /// doubling the zoom — or, <paramref name="fine"/>, each moving it onto the next multiple of 5 % —
+    /// Zooms by <paramref name="notches"/> of the wheel, each moving the zoom onto the next multiple of
+    /// its step — the finer one when <paramref name="fine"/> (<see cref="WheelSteps.Zoom"/>) —
     /// keeping the point of the image under <paramref name="location"/> in place as far as the image
     /// stays within its stops; lands on 100 % when crossing it.
     /// </summary>
@@ -1618,9 +1617,7 @@ internal sealed class GridPreview : Control
 
         var image = _images[index];
         var look = image.Look;
-        double zoom = fine
-            ? WheelSteps.Snap(look.Zoom * 100, WheelSteps.Percent, notches) / 100
-            : look.Zoom * Math.Pow(2, notches / (double)NotchesPerDoubling);
+        double zoom = WheelSteps.Zoom(look.Zoom * 100, notches, fine) / 100;
         if ((look.Zoom - 1) * (zoom - 1) < 0)
         {
             zoom = 1;
