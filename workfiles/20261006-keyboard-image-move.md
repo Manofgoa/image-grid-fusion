@@ -32,8 +32,11 @@ Relevant components:
 |---|---|
 | ← → ↑ ↓ | 1 px in that direction, on the preview |
 | Ctrl + ← → ↑ ↓ | 10 px in that direction |
+| Shift added to either | The same step, ignoring the magnetic stops — like Shift during a drag |
 | Held down | Repeats at the keyboard's repeat rate, like successive presses |
 
+- A **pixel** is a **screen pixel** of the preview (device unit, not scaled with
+  `LogicalToDeviceUnits`): the finest step whatever Windows' display scaling.
 - The move goes through **`PanBy`**, as a drag of that delta: the same limit (never past the share
   of the cell the image keeps covering), the same storage in fractions (it survives resizing,
   layout and format changes), the same activation of the Zoom effect — acting on the image
@@ -49,11 +52,22 @@ All of these hold, otherwise the arrows keep their usual behaviour:
 
 ### Magnetic Stops
 
-*Pending — see Open Questions.*
+The drag's stops — the cell's center and its edges — hold a move by the arrows for **one press**:
+
+- A press that reaches or passes a stop **stops exactly on it**, its fluorescent green guide shown
+  (`PaintPanGuides`, as during a drag).
+- The **next press** in a direction leaves it, by one step from the stop; moving back inward over
+  an edge stop is free, as for the drag.
+- The guide stays while the stop holds: it goes with the next arrow press leaving it, a mouse press
+  in the preview, another cell or another tab selected.
+- Shift + arrows ignore the stops (see § Keys).
 
 ### Focus
 
-*Pending — see Open Questions.*
+The arrows are taken from the form (`ProcessCmdKey`) whenever § When the Arrows Act holds,
+**whichever control has the focus** — the Zoom slider and the file explorer included — **except a
+text box being typed in** (the file explorer's search box, `_explorer.IsEditingText`), which keeps
+its arrows and Ctrl + arrows. Outside these conditions, every control keeps its arrows.
 
 ---
 
@@ -70,9 +84,9 @@ The behaviour is checked by hand in the launched app.
 
 ## Open Questions
 
-- [ ] What do the magnetic stops (center, edges) do to a move by the arrows?
-- [ ] Which focused controls keep their own arrows (the Zoom slider, the file explorer, a text box)?
-- [ ] Is a "pixel" a screen pixel, or a logical pixel scaled with Windows' display scaling?
+- [x] ~~What do the magnetic stops (center, edges) do to a move by the arrows?~~ → They hold for one press: a press stops on the stop, guide shown, the next one leaves it; Shift ignores them
+- [x] ~~Which focused controls keep their own arrows (the Zoom slider, the file explorer, a text box)?~~ → Only a text box being typed in; otherwise the image gets them
+- [x] ~~Is a "pixel" a screen pixel, or a logical pixel scaled with Windows' display scaling?~~ → A screen pixel
 
 ---
 
@@ -90,6 +104,13 @@ another cell; 1 px per press, 10 px with Ctrl; **Zoom tab only**. Exploration fo
 `PanBy` reusable as is, and the arrows to be handled in `MainForm.ProcessCmdKey`, the preview
 taking no keyboard focus. Three points stay open: the magnetic stops, the focus conflicts, the
 pixel unit.
+
+### Iteration 2 — 2026-10-06
+
+The three open points settled by the user: the magnetic stops hold a move by the arrows for one
+press (guide shown, Shift ignoring them); the arrows go to the image whatever has the focus, except
+a text box being typed in; the step is in screen pixels. § Keys, § Magnetic Stops and § Focus
+updated.
 
 ---
 
@@ -116,9 +137,9 @@ Questions asked by the agent during design, with user responses.
 | 2 | Steps for the arrows alone and with Ctrl? | 1 px / 10 px, on the preview | 2026-10-06 |
 | 3 | When do the arrows act on the selected image? | Zoom tab selected only | 2026-10-06 |
 | 4 | Straightforward or tricky / long? | Straightforward — a single scout pass | 2026-10-06 |
-| 5 | What do the magnetic stops do to a move by the arrows? | | |
-| 6 | Which focused controls keep their own arrows? | | |
-| 7 | Screen pixel or logical pixel? | | |
+| 5 | What do the magnetic stops do to a move by the arrows? | Hold for one press, guide shown; Shift + arrows ignore them | 2026-10-06 |
+| 6 | Which focused controls keep their own arrows? | Only a text box being typed in; the image gets them otherwise, the Zoom slider included | 2026-10-06 |
+| 7 | Screen pixel or logical pixel? | Screen pixel | 2026-10-06 |
 
 ---
 
