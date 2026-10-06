@@ -288,6 +288,22 @@ internal sealed class GridPreview : Control
         }
     }
 
+    /// <summary>
+    /// Lets go of an image that left the grid — deleted, replaced, cleared: disposes it by default; the
+    /// window hands it to the undo history instead, which keeps it while a step holds it.
+    /// </summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Action<SourceImage> ReleaseImage { get; set; } = image => image.Dispose();
+
+    /// <summary>
+    /// Whether a gesture is changing the grid right now — a cell pressed (pan, ✥ swap), a bar or a
+    /// separator dragged, a crop moved, a zoom by the wheel or the slider not yet at rest: the undo
+    /// history commits nothing before it ends.
+    /// </summary>
+    public bool InGesture =>
+        this._pressed >= 0 || this._draggedBar is not null || this._draggedSeparator is not null || this._movedCrop is not null
+        || this._live is not null || this._wheelEnd.Enabled;
+
     /// <summary>Layout the images are shown and exported with; <c>null</c> while there is no image.</summary>
     public GridLayout? ActiveLayout => _layout;
 
@@ -467,14 +483,66 @@ internal sealed class GridPreview : Control
             return;
         }
 
-        _images.ForEach(i => i.Dispose());
+        var removed = this._images.ToList();
         _images.Clear();
+        removed.ForEach(i => this.ReleaseImage(i));
         Select(-1);
         _hovered = -1;
         _hoveringClose = false;
         _hoveringHandle = false;
         EndDrag();
         OnImagesChanged();
+    }
+
+    /// <summary>
+    /// Puts back a step of the undo history: the cells' images with their looks, the layout and the
+    /// format, then <paramref name="selected"/> as the selected cell (none for -1). Images that differ
+    /// start the grid over (RULES.md § Preview Playback); images only swapped, laid out or tuned play
+    /// on, a frames change replaying its own image. Nothing is released: the history holds the images
+    /// left out.
+    /// </summary>
+    public void Restore(IReadOnlyList<CellState> cells, GridLayout? layout, OutputFormat format, int selected)
+    {
+        bool startOver = cells.Count != this._images.Count || cells.Any(c => !this._images.Contains(c.Image));
+        bool layoutChanged = layout is null ? this._layout is not null : !layout.SameAs(this._layout);
+        List<SourceImage> replayed = startOver ? [] : cells.Where(c => c.Look.Frames != c.Image.Look.Frames).Select(c => c.Image).ToList();
+
+        this._images.Clear();
+        foreach (var cell in cells)
+        {
+            cell.Image.Look = cell.Look;
+            this._images.Add(cell.Image);
+        }
+
+        this._layout = layout;
+        this._format = format;
+        this._selected = selected < this._images.Count ? selected : -1;
+        this._hovered = -1;
+        this._hoveringClose = false;
+        this._hoveringHandle = false;
+        this._hoveredBar = null;
+        this._hoveredSeparator = null;
+        this._fittedName = null;
+        this._cache?.Dispose();
+        this._cache = null;
+        this.Invalidate();
+        this.ContentVersion++;
+        this.FitPagesToCells();
+        this.SyncPlayer();
+        this.UpdateRatio();
+        replayed.ForEach(this.ShowFrames);
+        if (startOver)
+        {
+            this._player.Restart();
+        }
+
+        this.ImagesChanged?.Invoke(this, EventArgs.Empty);
+        if (layoutChanged)
+        {
+            this.LayoutChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        this.SelectedImageChanged?.Invoke(this, EventArgs.Empty);
     }
 
     protected override void Dispose(bool disposing)
@@ -1061,8 +1129,9 @@ internal sealed class GridPreview : Control
 
     private void RemoveAt(int index)
     {
-        _images[index].Dispose();
+        var removed = this._images[index];
         _images.RemoveAt(index);
+        this.ReleaseImage(removed);
 
         // The images after it move into another cell: effects belong to the cell and its image (RULES.md).
         for (int i = index; i < _images.Count; i++)
@@ -1082,8 +1151,9 @@ internal sealed class GridPreview : Control
 
     private void Replace(int index, SourceImage image)
     {
-        _images[index].Dispose();
+        var replaced = this._images[index];
         _images[index] = image;
+        this.ReleaseImage(replaced);
     }
 
     private void Swap(int a, int b)
