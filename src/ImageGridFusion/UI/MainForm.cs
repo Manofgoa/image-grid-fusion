@@ -10,6 +10,14 @@ namespace ImageGridFusion.UI;
 
 internal sealed class MainForm : Form
 {
+    /// <summary>
+    /// Gives the window a second title, its value the next argument: which implementation an instance tests, when
+    /// several run side by side. Process-only, never remembered.
+    /// </summary>
+    public const string TitleArgument = "--title";
+
+    private const string AppTitle = "Image Grid Fusion";
+
     // Screen pixels an arrow key moves the selected image by, with the Zoom tab selected; with Ctrl.
     private const int ArrowStep = 1;
     private const int ArrowControlStep = 10;
@@ -282,7 +290,7 @@ internal sealed class MainForm : Form
     // startup files are in, so they are the initial state.
     private readonly GridHistory _history;
 
-    public MainForm(string[] args)
+    public MainForm(string[] args, string? secondTitle = null)
     {
         _startupFiles = args;
         this._history = new GridHistory(this.CaptureState, () => this._preview.InGesture);
@@ -291,7 +299,7 @@ internal sealed class MainForm : Form
         SuspendLayout();
         AutoScaleDimensions = new SizeF(96F, 96F);
         AutoScaleMode = AutoScaleMode.Dpi;
-        Text = "Image Grid Fusion";
+        this.Text = secondTitle is null ? AppTitle : $"{AppTitle} — {secondTitle}";
         Icon = AppIcon.Load();
         StartPosition = FormStartPosition.CenterScreen;
 
