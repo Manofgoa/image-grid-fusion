@@ -37,6 +37,12 @@ internal sealed class PanMagnet
     }
 
     /// <summary>
+    /// Forgets how far the move went past the stop held: the next move leaves it from the stop itself,
+    /// as soon as it goes outward. What an arrow key does after each press, a stop holding it one press only.
+    /// </summary>
+    public void Settle() => this._excess = 0;
+
+    /// <summary>
     /// Position of the image once the drag moved it by <paramref name="delta"/> from
     /// <paramref name="position"/>. <paramref name="low"/> and <paramref name="high"/> are the edge
     /// stops, <paramref name="center"/> the center stop; <paramref name="free"/> ignores them all.
@@ -47,6 +53,12 @@ internal sealed class PanMagnet
         {
             Reset();
             return position + delta;
+        }
+
+        // No move on this axis: a stop held keeps holding, even with nothing past it (Settle).
+        if (delta == 0)
+        {
+            return this.Held != PanStop.None ? this.Stop : position;
         }
 
         float? released = null;
