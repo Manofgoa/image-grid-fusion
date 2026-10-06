@@ -122,11 +122,12 @@ Components concerned (from the scout pass):
 ## Test Impact
 
 The solution holds **no test project** (`ImageGridFusion.slnx` lists the app only) and every
-previous workfile stayed test-free — whether to create one is an Open Question.
+previous workfile stayed test-free. **No tests** for this work (Q&A 12): nothing is pinned, no test
+project is created.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| *(pending the test-project decision)* | | |
+| *(none — test-free by decision)* | | |
 
 ---
 
@@ -156,7 +157,7 @@ not only the blocking ones.
 - [x] ~~**Preview phase** — one shared clock for every cell, or the motion restarting from its
   starting state when the effect is turned on / its speed changes?~~ → **The grid's clock**; turning
   it on takes the motion where the clock stands
-- [ ] **Unit tests** — stay test-free like every previous workfile?
+- [x] ~~**Unit tests** — stay test-free like every previous workfile?~~ → **No tests**
 - [x] ~~**Progress line** — the helper indicator now drawn under every playing cell (GLOSSARY):
   does a still image carrying the effect show one, following the zoom cycle; and on a video, whose
   loop does it follow?~~ → **Shown on a still**, over the zoom cycle; a video keeps its own loop's
@@ -216,6 +217,12 @@ loop wins, and it gives the length over a soundtrack on a grid of stills; the mo
 a still carrying the effect shows the **progress line** over its cycle. Placement decided with it:
 the Animations tab right after Zoom. Only the unit-test question remains.
 
+### Iteration 6 — 2026-10-06
+
+Unit tests (Q&A 12): **none**, like every previous workfile. The rules that appeared meanwhile (the
+**Output Format**, the **Global toolbar** renaming the global effects toolbar, the **Fade**) touch
+nothing in this design. No open question left: the design is ready for the go.
+
 ---
 
 ## Implementation Log
@@ -248,10 +255,10 @@ Questions asked by the agent during design, with user responses.
 | 9 | Centre: the static Zoom's pan point, or the cell's centre? | Not asked — both options coincide (Iteration 2) | 2026-09-26 |
 | 10 | Export length with videos / Soundtrack, and on a grid of stills? | The cycle counts as a playing loop | 2026-09-26 |
 | 11 | Preview phase: shared clock, or restart on activation / speed change? | The grid's clock | 2026-09-26 |
-| 12 | Unit tests: stay test-free? | | 2026-09-26 |
+| 12 | Unit tests: stay test-free? | No tests | 2026-09-26 |
 | 13 | Animations tab: only the zoom motion, or a choice of animation kind? | A choice of kind (Zoom for now) | 2026-09-26 |
 | 14 | Progress line: shown on a still carrying the effect (zoom cycle)? Which loop on a video? | Shown on a still, over the zoom cycle; a video keeps its own loop | 2026-09-30 |
 
 ---
 
-*Last updated: 2026-09-30*
+*Last updated: 2026-10-06*
