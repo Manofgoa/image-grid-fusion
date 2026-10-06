@@ -137,6 +137,11 @@ Open questions settled (Q5–Q8): the syntax `--title "<text>"` and the edge cas
 proposed, the rule split across the three files confirmed; the title bar order is **reversed** from
 the proposal — `Image Grid Fusion — Undo / redo`, the app's name first.
 
+### Iteration 3 — 2026-10-06 — ✅ Implemented
+
+Go given: code, unit tests and documentation. Run on `main` (standing choice of this repository, no
+branch question asked). No test project exists: the unit-test step does not apply.
+
 ---
 
 ## Implementation Log
