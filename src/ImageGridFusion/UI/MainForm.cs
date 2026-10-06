@@ -278,9 +278,15 @@ internal sealed class MainForm : Form
     private GridBorders _borders = GridBorders.Initial(AppSettings.BorderColor, AppSettings.TwitterCornersByDefault);
     private bool _bordersOn;
 
+    // Ctrl+Z / Ctrl+Y over everything the user composes (RULES.md § Undo History); started once the
+    // startup files are in, so they are the initial state.
+    private readonly GridHistory _history;
+
     public MainForm(string[] args)
     {
         _startupFiles = args;
+        this._history = new GridHistory(this.CaptureState, () => this._preview.InGesture);
+        this._preview.ReleaseImage = this._history.Release;
 
         SuspendLayout();
         AutoScaleDimensions = new SizeF(96F, 96F);
@@ -641,6 +647,8 @@ internal sealed class MainForm : Form
     {
         if (disposing)
         {
+            // Before the preview, which disposes the images it shows: the history disposes the others.
+            this._history.Dispose();
             _settingsMenu.Dispose();
             _copyMenu.Dispose();
             _saveMenu.Dispose();
@@ -820,6 +828,8 @@ internal sealed class MainForm : Form
         {
             await AddFilesAsync(_startupFiles);
         }
+
+        this._history.Start();
     }
 
     /// <summary>Hidden in the tray, the preview stops playing; shown again, it plays from the start.</summary>
@@ -859,7 +869,8 @@ internal sealed class MainForm : Form
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
         // Typed in the file explorer's search box, these keys edit its text, not the grid.
-        if (_explorer.IsEditingText && keyData is (Keys.Control | Keys.V) or (Keys.Control | Keys.C) or Keys.Delete or Keys.Escape)
+        if (_explorer.IsEditingText && keyData is (Keys.Control | Keys.V) or (Keys.Control | Keys.C) or Keys.Delete or Keys.Escape
+            or (Keys.Control | Keys.Z) or (Keys.Control | Keys.Y) or (Keys.Control | Keys.Shift | Keys.Z))
         {
             return base.ProcessCmdKey(ref msg, keyData);
         }
@@ -874,6 +885,13 @@ internal sealed class MainForm : Form
 
         switch (keyData)
         {
+            case Keys.Control | Keys.Z:
+                this.StepHistory(undo: true);
+                return true;
+            case Keys.Control | Keys.Y:
+            case Keys.Control | Keys.Shift | Keys.Z:
+                this.StepHistory(undo: false);
+                return true;
             case Keys.Control | Keys.V:
                 Paste();
                 return true;
@@ -1173,6 +1191,88 @@ internal sealed class MainForm : Form
         {
             ShowStatus(string.Join(" · ", messages) + ".");
         }
+    }
+
+    /// <summary>Everything the user composes, as it stands: what a step of the undo history holds.</summary>
+    private GridState CaptureState() => new(
+        [.. this._preview.Images.Select(i => new CellState(i, i.Look))],
+        this._preview.ActiveLayout,
+        this._preview.Format,
+        new GlobalState(
+            this._soundtrack,
+            this._soundtrackOn,
+            this._soundtrackLevel,
+            this._fade,
+            this._fadeOn,
+            this._borders with { Color = Color.Empty },
+            this._bordersOn));
+
+    /// <summary>
+    /// Ctrl+Z (<paramref name="undo"/>) or Ctrl+Y / Ctrl+Shift+Z: the grid one step back or forward, the
+    /// status line naming what changed and how many steps remain that way. Locked while exporting, and
+    /// while a gesture runs.
+    /// </summary>
+    private void StepHistory(bool undo)
+    {
+        if (!this._history.Started || this.IsExporting || this._preview.InGesture || MouseButtons != MouseButtons.None)
+        {
+            return;
+        }
+
+        if ((undo ? this._history.Undo() : this._history.Redo()) is not { } step)
+        {
+            this.ShowStatus(undo ? "Nothing to undo" : "Nothing to redo");
+            return;
+        }
+
+        this.RestoreState(step.From, step.To);
+
+        // An undo names the action it takes back: the one that led from the restored state to the one left.
+        string action = undo ? GridHistory.Describe(step.To, step.From) : GridHistory.Describe(step.From, step.To);
+        int left = undo ? this._history.UndoCount : this._history.RedoCount;
+        this.ShowStatus($"{(undo ? "↶ Undone" : "↷ Redone")}: {action} — {(left == 0 ? "nothing more" : $"{left} more")}");
+    }
+
+    /// <summary>
+    /// Puts back <paramref name="to"/>, the state <paramref name="from"/> stood for: the global effects —
+    /// the borders keeping the color of the ⚙ menu —, then the cells, the layout and the format.
+    /// </summary>
+    private void RestoreState(GridState from, GridState to)
+    {
+        var global = to.Global;
+        this._soundtrack = global.Soundtrack;
+        this._soundtrackOn = global.SoundtrackOn;
+        this._soundtrackLevel = global.SoundtrackLevel;
+        this._fade = global.Fade;
+        this._fadeOn = global.FadeOn;
+        this._borders = global.Borders with { Color = this._borders.Color };
+        this._bordersOn = global.BordersOn;
+
+        // The sound first: a grid starting over then starts the soundtrack restored from its beginning.
+        this._preview.Soundtrack = this.ActiveSoundtrack;
+        this._preview.Fade = this.ActiveFade;
+        this._preview.Restore(to.Cells, to.Layout, to.Format, RestoredSelection(from, to, this._preview.SelectedImage));
+
+        // After the format, which tells whether the Twitter corners apply.
+        this._preview.Borders = this.ActiveBorders;
+        this.UpdateButtons();
+    }
+
+    /// <summary>
+    /// The cell selected once <paramref name="to"/> is restored: the one the step touches when it touches
+    /// exactly one — none if it ends up empty —, else the cell of <paramref name="selected"/> as it is,
+    /// none if that cell ends up empty.
+    /// </summary>
+    private static int RestoredSelection(GridState from, GridState to, SourceImage? selected)
+    {
+        int count = Math.Max(from.Cells.Count, to.Cells.Count);
+        var touched = Enumerable.Range(0, count)
+            .Where(i => i >= from.Cells.Count || i >= to.Cells.Count || from.Cells[i] != to.Cells[i])
+            .ToList();
+        int cell = touched.Count == 1 ? touched[0]
+            : selected is null ? -1
+            : from.Cells.ToList().FindIndex(c => c.Image == selected);
+        return cell < to.Cells.Count ? cell : -1;
     }
 
     /// <summary>Removes every image, the global effects and the format: back to the initial state.</summary>
