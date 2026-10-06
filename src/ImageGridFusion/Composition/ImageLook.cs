@@ -356,8 +356,10 @@ public sealed record ImageLook
             ImageEffect.Flip => flipped,
             ImageEffect.Frames => Frames != other.Frames || KeptFrames != other.KeptFrames,
             ImageEffect.BlackAndWhite => Grayscale != other.Grayscale || KeptGrayscale != other.KeptGrayscale,
+            ImageEffect.Animations => this.Motion != other.Motion || this.KeptMotion != other.KeptMotion,
             ImageEffect.Blur => Blur != other.Blur || KeptBlur != other.KeptBlur,
-            _ => Volume != other.Volume || KeptVolume != other.KeptVolume,
+            ImageEffect.Volume => Volume != other.Volume || KeptVolume != other.KeptVolume,
+            _ => false,
         }).ToList();
     }
 
