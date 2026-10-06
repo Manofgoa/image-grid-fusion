@@ -178,6 +178,15 @@ press and claims the arrows (`IsInputKey`); `MainForm.ProcessCmdKey` checks `_pr
 instead of the Zoom tab and the search box. Choices not stated by the design: the `IsInputKey`
 override, and the end of the move on a tab change moved from `UpdateEffects` to `SelectEffect`.
 
+### Iteration 7 — 2026-10-06 — ⚙️ Post-implementation — A stop reached exactly holds too
+
+Reported by the user after testing: no green bar on the way in. The code only held a press that
+went **past** a stop; a press landing **exactly** on it — always at 1 px, and at 10 px when going
+out one step and back one — neither stopped nor showed the guide, betraying § Magnetic Stops ("a
+press that reaches or passes a stop"). The same held the center at 1 px. Fix: for the arrows, a
+stop reached exactly holds the press as one passed; `PanMagnet.Move`'s `bothWays` becomes
+`stepwise`, covering both.
+
 ---
 
 ## Implementation Log
@@ -209,6 +218,7 @@ Questions asked by the agent during design, with user responses.
 | 8 | Is the task finished? (after testing) | No: with Ctrl, an edge stop must hold one press inward too; the arrows move the image whatever tab is selected | 2026-10-06 |
 | 9 | Inward edge hold: Ctrl only, or the 1 px steps too? | Both steps | 2026-10-06 |
 | 10 | With every tab moving the image, which focused controls keep their arrows? | The focused control; a click on the preview gives it the arrows | 2026-10-06 |
+| 11 | Is the task finished? (after testing the adjustment) | No: no green bar seen on the way in — relaunch | 2026-10-06 |
 
 ---
 
