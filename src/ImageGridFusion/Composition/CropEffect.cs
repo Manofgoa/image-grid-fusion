@@ -99,6 +99,9 @@ public sealed record CropEffect
         return kept.WithSeen(new RectangleF(cx - w / 2, cy - h / 2, w, h), look);
     }
 
+    /// <summary>The same crop keeping the whole image: every side on its edge, the ratio freed, none but the image's own fitting it.</summary>
+    public CropEffect Whole() => this with { Left = 0, Top = 0, Right = 1, Bottom = 1, Ratio = null };
+
     /// <summary>
     /// Moves one side, seen through <paramref name="look"/>, to <paramref name="value"/> (a fraction of
     /// the image as seen), kept within the image and at least <paramref name="minGap"/> away from the
