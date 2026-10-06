@@ -18,7 +18,7 @@ internal sealed class MainForm : Form
 
     private const string AppTitle = "Image Grid Fusion";
 
-    // Screen pixels an arrow key moves the selected image by, with the Zoom tab selected; with Ctrl.
+    // Screen pixels an arrow key moves the selected image by, the preview focused; with Ctrl.
     private const int ArrowStep = 1;
     private const int ArrowControlStep = 10;
 
@@ -883,10 +883,9 @@ internal sealed class MainForm : Form
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
-        // With the Zoom tab selected, the arrows move the selected image within its cell, whatever has the
-        // focus but the search box being typed in (see workfiles/20261006-keyboard-image-move.md).
-        if (this._selectedEffect == ImageEffect.Zoom && !this._explorer.IsEditingText && !this.IsExporting
-            && ArrowMove(keyData) is { } delta && this._preview.PanSelected(delta))
+        // The preview focused, the arrows move the selected image within its cell, whatever tab is selected;
+        // any other focused control keeps them (see workfiles/20261006-keyboard-image-move.md).
+        if (this._preview.Focused && !this.IsExporting && ArrowMove(keyData) is { } delta && this._preview.PanSelected(delta))
         {
             return true;
         }
@@ -2222,6 +2221,12 @@ internal sealed class MainForm : Form
     /// <summary>A click on a tab shows its options, and activates nothing.</summary>
     private void SelectEffect(ImageEffect effect)
     {
+        // Another tab ends a move by the arrows, its guides with it.
+        if (effect != this._selectedEffect)
+        {
+            this._preview.EndKeyPan();
+        }
+
         _selectedEffect = effect;
         UpdateEffects();
     }
@@ -2540,12 +2545,6 @@ internal sealed class MainForm : Form
         _preview.BarsEffect = _selectedEffect is ImageEffect.Blur or ImageEffect.Crop && look?.IsActive(_selectedEffect.Value) == true
             ? _selectedEffect
             : null;
-
-        // The arrows' guides belong to the Zoom tab.
-        if (this._selectedEffect != ImageEffect.Zoom)
-        {
-            this._preview.EndKeyPan();
-        }
     }
 
     /// <summary>A click on a global tab shows its options, and activates nothing.</summary>
