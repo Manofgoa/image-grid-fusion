@@ -206,6 +206,28 @@ Applies to whatever changes the grid's content (origin: `workfiles/20260927-vide
   every route into a cell goes through `GridPreview.Add`, so a new one starts the grid over by
   itself.
 
+## Undo History
+
+Applies to everything the user composes (origin: `workfiles/20261006-undo-redo.md`).
+
+- A **step** is the whole composed state after an action — a `GridState`: per cell its image and
+  that image's `ImageLook`, the `GridLayout` (separators included), the output format, the global
+  effects. Only references and immutable values: a new piece of composed state joins the snapshot
+  (`MainForm.CaptureState`) and the restore (`MainForm.RestoreState`), never a per-action inverse.
+- **Out of the history**: the selection, the selected tabs, the playback position, the app settings
+  (§ App Settings — the Borders' color is left out of the step, a restore keeps the current one),
+  the file explorer, the last video.
+- Steps are committed by `GridHistory` **once the state settles** — unchanged for ~300 ms, no mouse
+  button held, no gesture running (`GridPreview.InGesture`): no route commits its own step, so a new
+  route is covered by itself, and a gesture is one step. A new gesture that changes the grid without
+  a mouse button held sets its state in `InGesture`.
+- **50 steps** kept. An image leaving the grid goes through `GridPreview.ReleaseImage`, never
+  `Dispose` directly: the history keeps it alive while a step holds it.
+- A restore follows § Preview Playback: images that differ start the grid over, a swap, a layout or
+  an effect change does not. It selects the cell the step touches when it touches exactly one.
+- Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z are **locked while exporting** and during a gesture; a focused text
+  field keeps them for its own text (the whitelist in `MainForm.ProcessCmdKey`).
+
 ## Video Length
 
 The length of the exported video has **one definition**, `Animation.VideoLength` (origin:
