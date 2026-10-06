@@ -31,13 +31,16 @@ Relevant components:
 
 ## Command-Line Argument
 
-- Syntax: `--title <text>` — the option followed by its value as the **next argument**, like
-  `--tray` is matched (case-insensitive option name).
+- Syntax: `--title <text>` (`MainForm.TitleArgument`) — the option followed by its value as the
+  **next argument**, like `--tray` is matched (case-insensitive option name).
+- Parsed in `Program.Main`, the value handed to `MainForm(string[] args, string? secondTitle)`.
 - The option and its value are **taken out of the file list**: neither is loaded as a file.
 - Combines freely with `--tray` and with files, in any order:
   `ImageGridFusion.exe --title "Undo / redo" a.png b.mp4`.
 - Edge cases:
   - `--title` as the last argument, without a value → ignored, the window keeps its plain title.
+  - `--title` followed by an option (`--tray`, `--title`) → no value: that option keeps its own
+    meaning.
   - A value that is empty or only blanks → ignored, plain title.
   - The value is trimmed.
   - `--title` given twice → the last one wins.
@@ -77,6 +80,9 @@ delivery launch and the agent's own checking launches alike.
   | `CLAUDE.md` (this app) | ✅ | The launch command for this app, with `--title` |
   | `RULES.md` (this app) | ✅ | The app rule: the command-line arguments (`--tray`, `--title`, files), how the second title is shown |
 
+- A build older than the argument (a worktree branched before it) would load `--title` and the
+  name as two files: such a build is launched **without** it, and the report says so (app
+  `CLAUDE.md` § Launch).
 - The memory `launch-after-implementation` (auto-memory of this project) gets the same addition, so
   it never contradicts the rule.
 - Changing a CLAUDE.md triggers the user's *Rule changes* procedure: the other running sessions of
@@ -86,8 +92,9 @@ delivery launch and the agent's own checking launches alike.
 
 ## Documentation
 
-- `README.md`: the `--title` argument, next to the command-line files (line 49) and `--tray`
-  (line 433).
+- `README.md`: a *Second title* bullet in § Tray & startup, next to the instances running side by
+  side.
+- `RULES.md`: a § Command-Line Arguments section (`--tray`, `--title`, files), before § App Settings.
 - `GLOSSARY.md`: a *Second title* (*titre secondaire*) entry.
 
 ---
@@ -144,6 +151,26 @@ branch question asked). No test project exists: the unit-test step does not appl
 
 ---
 
+### Iteration 4 — 2026-10-06 — 🧭 Implementation choices
+
+- **Branch**: stayed on `main` without the Branch Gate question — the standing choice of this
+  repository (memory *work-on-main-only*).
+- **`--title` followed by an option** (`--tray`, `--title`): taken as a missing value, so that option
+  keeps its meaning — the frozen design did not say.
+- **Older builds**: the app `CLAUDE.md` § Launch passes `--title` only to a build whose source has
+  `MainForm.TitleArgument`; an older one (a worktree not yet rebased) would load the option and the
+  name as files. Not in the frozen design; added because three parallel sessions run older worktree
+  builds.
+- **Names and placement**: `MainForm.TitleArgument` next to `TrayApplicationContext.HiddenArgument`'s
+  role, a private `MainForm.AppTitle` constant, the title as an optional second constructor parameter;
+  `README.md` bullet in § Tray & startup; `RULES.md` § Command-Line Arguments before § App Settings.
+- **Rule propagation**: the three other running sessions of the workspace (*Déplacement d'image au
+  clavier*, *Gérer CTRL+Z pour annuler*, *Zoom molette pas de 5%*) were messaged to re-read both
+  `CLAUDE.md`; no title needed correcting.
+- No rule broken.
+
+---
+
 ## Implementation Log
 
 Which delivery steps are done, and in which iteration. A step that does not apply
@@ -151,10 +178,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project — not applicable |
-| README | | | |
-| GLOSSARY / RULES / CLAUDE.md | | | |
+| Code | 3 | 2026-10-06 | `Program.cs`, `MainForm.cs` — commit 6b94297 |
+| Unit tests | 3 | 2026-10-06 | No test project — not applicable |
+| README | 3 | 2026-10-06 | § Tray & startup — commit 6034877 |
+| GLOSSARY / RULES / CLAUDE.md | 3, 4 | 2026-10-06 | c2b6199, 69842a4, 54359bb; `../CLAUDE.md` (not versioned) and the launch memory updated |
 
 ---
 
