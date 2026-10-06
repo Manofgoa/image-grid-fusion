@@ -4,6 +4,8 @@
 
 Une petite application de bureau Windows, qui démarre vite, et fusionne 1 à 4 images en une seule image au format du fil d'actualité de Twitter/X — ou un carré, un portrait, une story, du 16:9 ou le format propre au contenu.
 
+Chaque mot employé ici a un seul sens, donné dans le [glossaire](GLOSSARY.fr.md).
+
 ## Fonctionnalités
 
 - `.exe` à démarrage rapide avec une interface graphique, sans installeur
@@ -454,8 +456,7 @@ La résolution de sortie est gardée aussi haute que possible pour que les image
 
 ## Compilation et exécution
 
-- Exécuter : `dotnet run --project src/ImageGridFusion`
-- Publier : `dotnet publish src/ImageGridFusion -c Release` → `src/ImageGridFusion/bin/Release/net10.0-windows10.0.19041.0/win-x64/publish/ImageGridFusion.exe`, un exe mono-fichier ReadyToRun dépendant du framework, qui nécessite le .NET 10 Desktop Runtime et **Windows 10 version 2004 ou ultérieure**.
+Voir [CONTRIBUTING.md § Build](CONTRIBUTING.md#build) (en anglais).
 
 ## Technique
 

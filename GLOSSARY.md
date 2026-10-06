@@ -1,3 +1,5 @@
+<img src="https://flagcdn.com/w20/gb.png" width="20" alt="GB"> English · [<img src="https://flagcdn.com/w20/fr.png" width="20" alt="FR"> Français](GLOSSARY.fr.md)
+
 # Glossary — Image Grid Fusion
 
 Words used in the code, the documentation, the workfiles and the conversation, with one meaning
