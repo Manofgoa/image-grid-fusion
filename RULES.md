@@ -210,7 +210,9 @@ Applies to whatever changes the grid's content (origin: `workfiles/20260927-vide
 
 The length of the exported video has **one definition**, `Animation.VideoLength` (origin:
 `workfiles/20260930-exported-video-length.md`): the grid's loop — the longest **playing** content,
-a frozen one being a still — or the soundtrack's length for a grid of stills; none for a PNG.
+a frozen one being a still, the cycle of an Animations effect counting as a loop
+(`Animation.LoopOf`, origin: `workfiles/20260926-animated-zoom.md`) — or the soundtrack's length
+for a grid of stills; none for a PNG.
 
 - The **export** (`GridExport.Job.Length`), the **preview's soundtrack loop**
   (`AnimationPlayer.SyncSoundtrack`) and the bottom bar's **length readout** read it there. A new
