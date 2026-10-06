@@ -156,6 +156,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | Where should the launch rule be written? | Both (shared `CLAUDE.md` + `RULES.md`) + a CLAUDE.md specific to the current project | 2026-10-06 |
 | 3 | The session title may carry a status marker: what to pass? | Remove the marker | 2026-10-06 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward | 2026-10-06 |
+| 5 | Syntax: `--title "<text>"` or `--title="<text>"`? | | 2026-10-06 |
+| 6 | Order in the title bar? | | 2026-10-06 |
+| 7 | The split of the launch rule between the three files? | | 2026-10-06 |
+| 8 | The edge cases (missing / blank value ignored, last one wins)? | | 2026-10-06 |
 
 ---
 
