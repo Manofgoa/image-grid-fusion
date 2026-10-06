@@ -97,6 +97,10 @@ internal sealed class GridPreview : Control
     private Point _panPoint;
     private readonly PanMagnet _panX = new();
     private readonly PanMagnet _panY = new();
+
+    // The image the arrow keys moved last, with the look they left it: its pan guides show while a stop
+    // holds it, until another gesture, cell or tab — or a change of its look — ends the move.
+    private (SourceImage Image, ImageLook Look)? _keyPan;
     private ImageEffect? _barsEffect;
     private BarSide? _hoveredBar;
     private BarSide? _draggedBar;
@@ -577,6 +581,10 @@ internal sealed class GridPreview : Control
         {
             PaintPanGuides(g, cells[_pressed], _images[_pressed]);
         }
+        else if (this.KeyPanned() && this._selected < cells.Length)
+        {
+            this.PaintPanGuides(g, cells[this._selected], this._images[this._selected]);
+        }
 
         PaintHoverOutline(g, HoverOutlineBounds(canvas, cells));
 
@@ -597,6 +605,7 @@ internal sealed class GridPreview : Control
     protected override void OnMouseDown(MouseEventArgs e)
     {
         base.OnMouseDown(e);
+        this.EndKeyPan();
         if (e.Button != MouseButtons.Left)
         {
             return;
@@ -730,7 +739,7 @@ internal sealed class GridPreview : Control
             {
                 Cursor = Cursors.SizeAll;
                 BeginLive(_pressed);
-                PanBy(_pressed, new Size(e.X - _panPoint.X, e.Y - _panPoint.Y));
+                PanBy(_pressed, new Size(e.X - _panPoint.X, e.Y - _panPoint.Y), this.LogicalToDeviceUnits(PanResistance));
             }
 
             _panPoint = e.Location;
@@ -1738,11 +1747,59 @@ internal sealed class GridPreview : Control
     }
 
     /// <summary>
+    /// Moves the selected image by <paramref name="delta"/> screen pixels, as a drag of that length would,
+    /// for the arrow keys of the Zoom tab: a magnetic stop it reaches holds it for this press only, the
+    /// next one leaving it from the stop; Shift ignores them (see workfiles/20261006-keyboard-image-move.md).
+    /// Returns whether there was an image to move.
+    /// </summary>
+    public bool PanSelected(Size delta)
+    {
+        if (this.SelectedImage is not { } image || this._locked || this._pressed >= 0 || this._selected >= this.CellBounds().Length)
+        {
+            return false;
+        }
+
+        // A stop held by another gesture, or before the image changed, does not hold this move.
+        if (!this.KeyPanned())
+        {
+            this._panX.Reset();
+            this._panY.Reset();
+        }
+
+        this.BeginLive(this._selected);
+        this.PanBy(this._selected, delta, 0);
+        this._panX.Settle();
+        this._panY.Settle();
+        this._keyPan = (image, image.Look);
+        this._wheelEnd.Start();
+        return true;
+    }
+
+    /// <summary>Ends a move by the arrow keys: its guides go, and no stop holds the next one.</summary>
+    public void EndKeyPan()
+    {
+        if (this._keyPan is null)
+        {
+            return;
+        }
+
+        this._keyPan = null;
+        this._panX.Reset();
+        this._panY.Reset();
+        this.Invalidate();
+    }
+
+    /// <summary>Whether the selected image is still as the arrow keys left it, its move going on.</summary>
+    private bool KeyPanned() =>
+        this._keyPan is { } pan && this.SelectedImage is { } image && pan.Image == image && pan.Look == image.Look;
+
+    /// <summary>
     /// Moves an image by <paramref name="delta"/> from where it is actually shown, held by the
-    /// magnetic stops unless Shift is down, and never past the share of the cell it keeps covering.
+    /// magnetic stops unless Shift is down — until the move goes <paramref name="resistance"/> past
+    /// them — and never past the share of the cell it keeps covering.
     /// With a fine angle, the stops are those of the turned image's box, which follows the mouse.
     /// </summary>
-    private void PanBy(int index, Size delta)
+    private void PanBy(int index, Size delta, float resistance)
     {
         var cells = CellBounds();
         if (index >= cells.Length || delta.IsEmpty)
@@ -1758,7 +1815,6 @@ internal sealed class GridPreview : Control
         var bounds = shown.Bounds;
         var stops = FitCalculator.Stops(cell, bounds.Size);
         bool free = (ModifierKeys & Keys.Shift) != 0;
-        float resistance = LogicalToDeviceUnits(PanResistance);
         var (heldX, heldY) = (_panX.Held, _panY.Held);
         float x = _panX.Move(bounds.X, delta.Width, stops.Left, stops.Right, cell.X + (cell.Width - bounds.Width) / 2, resistance, free);
         float y = _panY.Move(bounds.Y, delta.Height, stops.Top, stops.Bottom, cell.Y + (cell.Height - bounds.Height) / 2, resistance, free);
@@ -1785,6 +1841,7 @@ internal sealed class GridPreview : Control
 
         _selected = index;
         _hoveredBar = null;
+        this._keyPan = null;
         Invalidate();
         SelectedImageChanged?.Invoke(this, EventArgs.Empty);
     }
