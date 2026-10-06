@@ -10,6 +10,10 @@ namespace ImageGridFusion.UI;
 
 internal sealed class MainForm : Form
 {
+    // Screen pixels an arrow key moves the selected image by, with the Zoom tab selected; with Ctrl.
+    private const int ArrowStep = 1;
+    private const int ArrowControlStep = 10;
+
     private readonly string[] _startupFiles;
     private readonly GridPreview _preview = new() { Dock = DockStyle.Fill, AllowDrop = true };
     private readonly LayoutStrip _layouts = new() { Dock = DockStyle.Left, Width = 80, AllowDrop = true };
@@ -860,6 +864,14 @@ internal sealed class MainForm : Form
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
+        // With the Zoom tab selected, the arrows move the selected image within its cell, whatever has the
+        // focus but the search box being typed in (see workfiles/20261006-keyboard-image-move.md).
+        if (this._selectedEffect == ImageEffect.Zoom && !this._explorer.IsEditingText && !this.IsExporting
+            && ArrowMove(keyData) is { } delta && this._preview.PanSelected(delta))
+        {
+            return true;
+        }
+
         switch (keyData)
         {
             case Keys.Control | Keys.V:
@@ -880,6 +892,23 @@ internal sealed class MainForm : Form
             default:
                 return base.ProcessCmdKey(ref msg, keyData);
         }
+    }
+
+    /// <summary>
+    /// The move an arrow key asks for, in screen pixels: <see cref="ArrowStep"/>, or
+    /// <see cref="ArrowControlStep"/> with Ctrl; Shift leaves the step as it is. <c>null</c> for any other key.
+    /// </summary>
+    private static Size? ArrowMove(Keys keyData)
+    {
+        int step = (keyData & Keys.Control) != 0 ? ArrowControlStep : ArrowStep;
+        return (keyData & ~(Keys.Control | Keys.Shift)) switch
+        {
+            Keys.Left => new Size(-step, 0),
+            Keys.Right => new Size(step, 0),
+            Keys.Up => new Size(0, -step),
+            Keys.Down => new Size(0, step),
+            _ => null,
+        };
     }
 
     private static void OnDragEnter(object? sender, DragEventArgs e)
@@ -2403,6 +2432,12 @@ internal sealed class MainForm : Form
         _preview.BarsEffect = _selectedEffect is ImageEffect.Blur or ImageEffect.Crop && look?.IsActive(_selectedEffect.Value) == true
             ? _selectedEffect
             : null;
+
+        // The arrows' guides belong to the Zoom tab.
+        if (this._selectedEffect != ImageEffect.Zoom)
+        {
+            this._preview.EndKeyPan();
+        }
     }
 
     /// <summary>A click on a global tab shows its options, and activates nothing.</summary>
