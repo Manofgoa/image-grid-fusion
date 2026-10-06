@@ -223,6 +223,12 @@ Unit tests (Q&A 12): **none**, like every previous workfile. The rules that appe
 **Output Format**, the **Global toolbar** renaming the global effects toolbar, the **Fade**) touch
 nothing in this design. No open question left: the design is ready for the go.
 
+### Iteration 7 — 2026-10-06 — ✅ Implemented
+
+Go given (Q&A 15): **code and documentation**, in a **dedicated worktree** (branch
+`feature/animated-zoom`), fast-forwarded into `main` and removed at the end. Scope frozen on the
+design sections as they stand at this entry.
+
 ---
 
 ## Implementation Log
@@ -258,6 +264,7 @@ Questions asked by the agent during design, with user responses.
 | 12 | Unit tests: stay test-free? | No tests | 2026-09-26 |
 | 13 | Animations tab: only the zoom motion, or a choice of animation kind? | A choice of kind (Zoom for now) | 2026-09-26 |
 | 14 | Progress line: shown on a still carrying the effect (zoom cycle)? Which loop on a video? | Shown on a still, over the zoom cycle; a video keeps its own loop | 2026-09-30 |
+| 15 | Go: no, code only, or code, tests and documentation? | "Go in a worktree, code and doc" | 2026-10-06 |
 
 ---
 
