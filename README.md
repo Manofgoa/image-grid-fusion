@@ -36,6 +36,7 @@ A tiny, fast-starting Windows desktop app that merges 1 to 4 images into a singl
   - Drag the **✥** handle shown in the middle of a hovered cell onto another cell to swap the two images (in a small cell, it shrinks, or sits below the **×**)
   - Drop a file or a text onto a cell to replace it
   - **Clear all** (bottom left) removes every image and the global effects at once, and brings the format back to Twitter, with no confirmation, back to the initial state
+- **Undo** with `Ctrl+Z`, as many times as needed, and **redo** with `Ctrl+Y` or `Ctrl+Shift+Z`: images added, replaced, deleted or swapped, effects, layout, separators, format and global effects (see Undo & redo)
 - Effects per cell, from the effect tabs at the top of the window (see Effects), and the format and global effects for the whole grid, from the Global tabs at the bottom, above the bottom bar (see Global)
   - **Borders** on the grid, off at start-up: hotpink brackets at its four corners, or a gap between the cells drawn as a solid, dashed, dotted or double line, with an optional outer frame; the grid's corners rounded the way Twitter / X shows images; their color is set from the **⚙** menu and remembered (see Borders)
 - Copy to clipboard (`Ctrl+C`) or save (`Ctrl+S`): a PNG, or an MP4 video when the grid holds content that plays or a soundtrack is on; the ▾ arrow next to each button forces a looping GIF or an MP4 video; Copy's also offers a light JPEG for sharing in chat apps that cap image size (WhatsApp: 16 MB)
@@ -414,6 +415,15 @@ Drag the **separator** between two cells to give one of them more room: the curs
 
 Output resolution is kept as high as possible so source images aren't needlessly downscaled: the canvas is the size at which no image — the kept part of a cropped one — is downscaled in the active layout, with its cells as resized, at the format's ratio (see Format), its **longer side** clamped between 1200 and 4096 px — the width of a Twitter, Landscape or wide Free canvas, the height of a Story or Portrait one (675 × 1200 to 2304 × 4096 in Story).
 
+## Undo & redo
+
+- `Ctrl+Z` takes back the last change, again and again, up to the **50** last ones; `Ctrl+Y` or `Ctrl+Shift+Z` redoes what was taken back. A new change after an undo drops what could still be redone.
+- Everything the grid is made of is covered: images added, replaced, deleted or swapped, **Clear all**, every effect setting, on / off and Reset, the layout, its mirror and the separators, the format and the global effects. Not covered: the selection and the selected tabs, what the ⚙ menu sets (the borders' color among others), the file explorer, the last video.
+- A **gesture is one step**: a drag from press to release (a separator, the blur or crop bars, a move, a ✥ swap, a slider), a burst of the wheel. A step is taken once the grid has stayed still for about 0.3 s, so two changes closer than that — two very fast clicks — make one.
+- The status line names what was taken back or redone and how many steps remain that way: `↶ Undone: image deleted — 4 more`, `↷ Redone: Blur — nothing more`.
+- A step touching a single cell selects it; others leave the selection as it is. Bringing images back or taking them out starts the grid over, like adding or deleting them; a swap, a layout or an effect change does not.
+- In the file explorer's search box, these keys undo the typed text instead. Locked while exporting, and while a gesture runs. The history starts empty at each launch — files dropped on the `.exe` icon are its starting point — and is not saved.
+
 ## Output
 
 - **Copy** button / `Ctrl+C`: puts the full-resolution result on the clipboard, both as a standard bitmap (transparent cells on white) and in the PNG clipboard format (transparency kept); while a content plays, an MP4 file instead. Its ▾ arrow copies a GIF or an MP4 video (see Animated content), or a **JPEG for sharing**.
@@ -422,7 +432,7 @@ Output resolution is kept as high as possible so source images aren't needlessly
 - **Save** button / `Ctrl+S`: saves the result as a PNG file; while a content plays, as an MP4 video. Its ▾ arrow saves a GIF or an MP4 video.
   - **Save last MP4…** / **Save last GIF…**, the last entry of Save's ▾ menu: saves the last video Copy generated (see above) where you choose — its file copied there, nothing generated.
 - **Length readout** `⏱ 12.5 s`, left of Copy, always shown: what the MP4 video Copy and Save would produce lasts — the longest playing loop (an Animations cycle included), or the soundtrack's length over stills — updated as the grid changes; `⏱ —` while they produce a PNG. Seconds with one decimal whatever the length, as the export summaries write it. Hover it for the detail: the file that sets the length, then every other animated content with its loop and how many times it plays (a frozen one: *frozen, a still*), and the soundtrack, cut or looping. A readout, not a button: clicking it does nothing.
-- A status line reports feedback and errors (skipped files with no preview, ignored excess files, removed images, copy/save confirmation or failure).
+- A status line reports feedback and errors (skipped files with no preview, ignored excess files, removed images, what an undo or a redo changed, copy/save confirmation or failure).
 
 ## Tray & startup
 
