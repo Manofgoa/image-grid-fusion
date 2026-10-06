@@ -39,8 +39,9 @@ Components concerned (from the scout pass):
 - **Smooth**: a sine wave, slowing down at both ends before turning back.
 - **Fixed amplitude**: the zoom goes from the starting state to **+20 %** and back; only the speed
   is set.
-- **Speed slider** = the **duration of one back-and-forth**, from **1 s to 30 s**, **6 s** by
-  default, shown next to it (`6 s`); the slider's right end is the fastest (shortest cycle).
+- **Speed slider** = the **duration of one back-and-forth**, from **1 s to 30 s** by whole seconds,
+  **6 s** by default, shown next to it (`Back and forth: 6 s`); the slider's right end is the fastest
+  (shortest cycle).
 - **Centre**: the zoom multiplies the static Zoom, so it keeps the static Zoom's pan point
   (`Focus`) at the cell's centre, as the static Zoom does — "around the pan point" and "around the
   cell's centre" are the same thing here, except where the cover clamp shifts the image near an
@@ -74,12 +75,15 @@ Components concerned (from the scout pass):
 
 ## Rendering
 
-- **Zoom factor at time *t***: `extra(t) = 1 + 0.2 × wave(t / cycle)`, where
+- **State**: `MotionEffect` (`Kind`, `Cycle`) on `ImageLook.Motion`, `KeptMotion` while off;
+  `ImageEffect.Animations` right after `Zoom`.
+- **Zoom factor at time *t***: `MotionEffect.ZoomAt(t) = 1 + 0.2 × wave(t / cycle)`, where
   `wave(p) = (1 − cos 2πp) / 2` goes 0 → 1 → 0 over one cycle, smoothly. It **multiplies** the
-  static Zoom, before
-  the fine angle's cover zoom — `FitCalculator.ComputeTurned(cell, size, look.Zoom × extra(t), …)`.
-- **Time reaches `DrawCell`** through the `Frame` it draws (a new field, `TimeSpan`), so the effect
-  stays in one place (RULES.md § *Rendering*):
+  static Zoom (`ImageLook.ZoomAt(t)`), before the fine angle's cover zoom —
+  `FitCalculator.ComputeTurned(cell, size, look.ZoomAt(frame.Time), …)` in `DrawCell` and
+  `AutomaticBackground`. The gestures (wheel, drag, slider) still act on the static Zoom.
+- **Time reaches `DrawCell`** through the `Frame` it draws (`Frame.Time`), so the effect stays in
+  one place (RULES.md § *Rendering*):
   - **Animated exports**: the global `time` of `GridExport.RenderAnimation` (frame *k* → *k* / 30 s).
   - **Still exports**: `TimeSpan.Zero` → starting state.
   - **Preview**: the preview's clock (see *Preview Driver*).
@@ -88,11 +92,12 @@ Components concerned (from the scout pass):
 ## Preview Driver
 
 - `AnimationPlayer` only runs for animated sources; a grid of stills never repaints on its own.
-- A **preview timer** (33 ms, same pace as `AnimationPlayer`) invalidates the cells whose image
-  carries the effect (on), and only those; it stops when no cell carries it.
-- Animated sources carrying the effect are repainted by that timer as well, so the zoom advances
-  between two video frames.
-- The zoom's time is read from `AnimationPlayer`'s clock, so the grid's **start over** (RULES.md
+- The **progress lines' timer** of `GridPreview` (16 ms ticks) also draws again, in full quality,
+  the cells whose image carries the effect (on), and only those, at **30 fps** (the export's frame
+  rate); it runs while a cell plays or moves, and a motion turned on starts it.
+- Animated sources carrying the effect are drawn again by that timer as well, so the zoom advances
+  between two video frames; their frames are decoded 20 % larger, so the zoom in stays sharp.
+- The zoom's time is read from `AnimationPlayer`'s clock (`GridTime`), so the grid's **start over** (RULES.md
   § *Preview Playback*: an image arriving or deleted) also brings every zoom back to its starting
   state, at the same instant as the videos — the preview plays what an export gives. Turning the
   effect on or changing its duration does not restart anything: the motion is taken where the clock
@@ -100,10 +105,15 @@ Components concerned (from the scout pass):
 
 ## Exports
 
-- `HasAnimation` also counts the effect.
+- `HasAnimation` also counts the effect (`SourceImage.Moves`: plays, or its motion is on).
+- Every frame of `GridExport.RenderAnimation` carries the video's time; the still exports draw at
+  time 0, the starting state.
 - **Length**: decided in `Animation.VideoLength` only (RULES.md § *Video Length*), so the export,
   the preview's soundtrack loop and the length readout follow at once. The zoom cycle of a still
-  carrying the effect enters it as a playing loop (see *Behaviour*).
+  carrying the effect enters it as a playing loop (see *Behaviour*): `Animation.LoopOf` — a cell's
+  loop is its content's while it plays, or its motion's cycle when longer — read by `GridLength` and
+  by `GridExport.Job`. The length readout's tooltip names "X's animation" when a cycle sets the
+  length, and adds "(its animation)" to a moving still among the others.
 - **Crop**: the zoom applies to the cropped image, like the static Zoom (RULES.md § *The Crop
   Exception*) — nothing to add, it multiplies the static Zoom after the crop.
 
@@ -111,11 +121,12 @@ Components concerned (from the scout pass):
 
 - **Effect tab**: **Animations**, after the Zoom tab (its only kind is a zoom), with its own icon in
   `EffectIcons`.
-- **Options**: the **Type** drop-down (`Zoom`), the speed slider (cycle duration) with its value
-  label (`OptionSlider`, like Zoom's), then the effect's Reset button. Changing the type or the
+- **Options**: the **Type** drop-down (`Zoom`, no caption — a tooltip, like the Borders' style),
+  the speed slider (cycle duration) with its value label (`OptionSlider`, like Zoom's), then the
+  effect's Reset button. Changing the type or the
   duration turns the effect on (RULES.md § *Options Toolbar*).
-- **Progress line** (`GridPreview`): drawn for a still carrying the effect, its fraction read from
-  the clock over the zoom cycle.
+- **Progress line** (`AnimationPlayer.ProgressOf`): for a still — or a frozen image — carrying the
+  effect, its fraction read from the grid's clock over the zoom cycle.
 
 ---
 
@@ -229,6 +240,36 @@ Go given (Q&A 15): **code and documentation**, in a **dedicated worktree** (bran
 `feature/animated-zoom`), fast-forwarded into `main` and removed at the end. Scope frozen on the
 design sections as they stand at this entry.
 
+### Iteration 8 — 2026-10-06 — 🧭 Implementation choices
+
+Decided during the run, none of them asked:
+
+- **Names**: `ImageEffect.Animations` (right after `Zoom`), `MotionEffect` / `MotionKind` (`Zoom`),
+  `ImageLook.Motion` and `ImageLook.ZoomAt(time)`, `Frame.Time`, `SourceImage.Moves`,
+  `Animation.LoopOf`, `AnimationPlayer.GridTime`.
+- **Preview driver** — *substituted variant*: instead of a new 33 ms timer, the progress lines'
+  timer of `GridPreview` redraws the moving cells, throttled to 30 fps, in full quality. It already
+  runs while something plays and stops when nothing does, which the motion's progress line keeps
+  true for a moving still.
+- **A video carrying the effect** whose cycle is longer than its loop: the cell's loop is the cycle
+  (`LoopOf` takes the longer), consistent with "the longest loop wins"; its progress line keeps the
+  video's own loop, as agreed.
+- **Decode size**: an animated frame is decoded 20 % larger while its cell moves, so the zoom in is
+  not upscaled.
+- **Slider**: whole seconds, stored negated so the right end is the fastest; label
+  `Back and forth: 6 s`. The Type drop-down has no caption, only a tooltip, like the Borders' style.
+- **Length readout tooltip**: names an animation's cycle when it sets the length, and marks a moving
+  still among the others.
+- **Automatic background**: computed on the part shown at the grid's time, like `DrawCell` — it
+  follows the zoom.
+- **Documentation beyond the README**: GLOSSARY (the Animations entry, the video length, the
+  progress line) and RULES § *Video Length* (an Animations cycle counts as a loop) updated, so the
+  rules match the code.
+- **Code style**: the user's `this.` convention was missed on the first pass; fixed in its own
+  commit.
+
+No project rule broken.
+
 ---
 
 ## Implementation Log
@@ -238,9 +279,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
+| Code | 7 | 2026-10-06 | Model, rendering and export; preview; tab and options — three commits, plus the `this.` fix |
+| Unit tests | 7 | 2026-10-06 | None, by decision (Q&A 12) |
+| README | 7 | 2026-10-06 | The Animations section, the progress line, the export and the length readout; GLOSSARY and RULES § *Video Length* too |
 
 ---
 
