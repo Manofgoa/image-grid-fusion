@@ -118,6 +118,12 @@ other option sliders and the Zoom slider's keyboard stay as they are. The agent 
 boundary: the step is the one of the range a notch moves into, notches taken one at a time, so
 200 % joins both ranges (… 195 → 200 → 225 …).
 
+### Iteration 3 — 2026-10-06 — ✅ Implemented
+
+Go given ("vas-y dans un worktree, code et doc"): code and README; unit tests not applicable (no
+test project). The run works in the worktree `.claude/worktrees/wheel-zoom-step` on
+`feature/wheel-zoom-step`, fast-forwarded into `main` and removed at the end.
+
 ---
 
 ## Implementation Log
@@ -146,6 +152,7 @@ Questions asked by the agent during design, with user responses.
 | 5 | High zooms: 5 points everywhere, or a coarser step above some zoom? | "5 % devient 25 % au-dessus de 200 %, 1 % devient 5 % au-dessus de 200 %" | 2026-10-06 |
 | 6 | The other sliders: keep Ctrl + wheel = 5 %, or follow the zoom? | Unchanged | 2026-10-06 |
 | 7 | The Zoom slider's keyboard: unchanged, or 5 / 1 points? | Unchanged | 2026-10-06 |
+| 8 | Go for the implementation? | Code and documentation, in a worktree | 2026-10-06 |
 
 ---
 
