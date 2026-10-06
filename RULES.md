@@ -260,8 +260,9 @@ What the exe accepts, parsed in `Program.Main` (origin: `workfiles/20261006-sess
 - Options and files mix in any order; an option and its value are **never loaded as files**.
 - `--title` takes the **next argument** as its value, unless that one is an option itself; a value
   missing or blank is ignored (the plain title), it is trimmed, and given twice the last one wins.
-- The second title is shown in the **window title bar only** — so in the taskbar and Alt+Tab — never
-  in the tray tooltip, and is **not persisted**.
+- The second title is shown in the **window title bar** — so in the taskbar and Alt+Tab — and on a
+  **second line of the tray tooltip**, below the app's name, cut with `…` past the tooltip's
+  127-character cap (`TrayApplicationContext.Tooltip`). It is **not persisted**.
 - It exists for the agents: every launch by Claude Code passes the session's name in it (see
   `CLAUDE.md` § Launch), so instances running side by side tell which implementation they test.
 
