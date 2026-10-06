@@ -23,7 +23,7 @@ Relevant components:
 - `src/ImageGridFusion/UI/MainForm.cs:288` — `Text = "Image Grid Fusion";`, the only place the window
   title is set; nothing changes it at runtime.
 - `src/ImageGridFusion/UI/TrayApplicationContext.cs` — the tray icon's tooltip, *Image Grid Fusion*,
-  left as it is (see § Display).
+  given the second title on a line of its own (see § Display).
 - No single-instance mechanism exists: every launch is an independent process, so several
   instances with different titles can run side by side as they are.
 
@@ -56,7 +56,10 @@ Relevant components:
 - Format: `Image Grid Fusion — Undo / redo` — the app's name first, the second title after an
   em dash.
 - Without the argument, the title stays `Image Grid Fusion`, unchanged.
-- The tray icon's tooltip is **not** changed.
+- The **tray icon's tooltip** shows it too, on a **second line**: `Image Grid Fusion` then
+  `Undo / redo` below it. Without the argument, the tooltip stays `Image Grid Fusion` alone.
+- Windows caps a tray tooltip (127 characters in .NET): a second title too long for it is cut,
+  ending with `…`; the window title keeps it whole.
 
 ---
 
@@ -171,6 +174,15 @@ branch question asked). No test project exists: the unit-test step does not appl
 
 ---
 
+### Iteration 5 — 2026-10-06 — ⚙️ Post-implementation — Tray tooltip
+
+The user asked whether the tray icon's tooltip showed the second title — it did not, by the design
+of Q1 (window title bar only) — and asked to add it, **on a line of its own** below the app's name.
+§ Display updated: the tooltip reads `Image Grid Fusion` + line break + the second title, cut with
+`…` past Windows' tooltip cap.
+
+---
+
 ## Implementation Log
 
 Which delivery steps are done, and in which iteration. A step that does not apply
@@ -199,6 +211,7 @@ Questions asked by the agent during design, with user responses.
 | 6 | Order in the title bar? | `Image Grid Fusion — Undo / redo` | 2026-10-06 |
 | 7 | The split of the launch rule between the three files? | Yes, that split | 2026-10-06 |
 | 8 | The edge cases (missing / blank value ignored, last one wins)? | Agreed | 2026-10-06 |
+| 9 | *(user)* Does the tray tooltip show the second title? | No — added on a second line (Iteration 5) | 2026-10-06 |
 
 ---
 
