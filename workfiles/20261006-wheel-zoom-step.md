@@ -124,6 +124,23 @@ Go given ("vas-y dans un worktree, code et doc"): code and README; unit tests no
 test project). The run works in the worktree `.claude/worktrees/wheel-zoom-step` on
 `feature/wheel-zoom-step`, fast-forwarded into `main` and removed at the end.
 
+### Iteration 4 — 2026-10-06 — 🧭 Implementation choices
+
+No rule broken, no divergence from the frozen design. Choices the design left open:
+
+- **`WheelSteps.Zoom(percent, notches, fine)`** holds the rule — constants `ZoomStep` (5),
+  `FineZoomStep` (1), `CoarseZoomFrom` (200), `CoarseZoomFactor` (5) — and loops one notch at a
+  time over the existing `Snap`; `Percent` stays the other sliders' Ctrl + wheel step. Not clamped:
+  the callers clamp (`ImageLook.WithZoom`, `StepZoom`).
+- **`GridPreview.ZoomAt`** keeps its "crossing 100 % stops on it" check: a single notch always lands
+  on 100 % anyway, but a burst of notches (fast wheel) crossing it still stops there, as before.
+  `NotchesPerDoubling` is removed.
+- **`StepSlider.Wheel`** (`Action<int, bool>`, notches + Control held) is a new hook taking over the
+  whole wheel, winning over `ControlWheel`; the zoom slider uses it (`StepZoom(notches, fine)`), the
+  Frames slider keeps `ControlWheel`.
+- **README**: the Features line on the zoom, the Ctrl + wheel paragraph of § Effects (the zoom
+  slider now the exception) and § Zoom's options line.
+
 ---
 
 ## Implementation Log
@@ -133,9 +150,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 3 | 2026-10-06 | `WheelSteps.Zoom`, `GridPreview.ZoomAt`, `StepSlider.Wheel`, `MainForm.StepZoom` |
 | Unit tests | — | — | Not applicable — no test project |
-| README | | | |
+| README | 3 | 2026-10-06 | Features (zoom), § Effects (Ctrl + wheel), § Zoom |
 
 ---
 
