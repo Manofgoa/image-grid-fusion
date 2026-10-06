@@ -190,10 +190,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 3 | 2026-10-06 | `Program.cs`, `MainForm.cs` — commit 6b94297 |
+| Code | 3, 5 | 2026-10-06 | `Program.cs`, `MainForm.cs` — commit 6b94297; the tray tooltip — 23e65bd |
 | Unit tests | 3 | 2026-10-06 | No test project — not applicable |
-| README | 3 | 2026-10-06 | § Tray & startup — commit 6034877 |
-| GLOSSARY / RULES / CLAUDE.md | 3, 4 | 2026-10-06 | c2b6199, 69842a4, 54359bb; `../CLAUDE.md` (not versioned) and the launch memory updated |
+| README | 3, 5 | 2026-10-06 | § Tray & startup — commit 6034877; the tray tooltip, `README.fr.md` too — d0f2e5c |
+| GLOSSARY / RULES / CLAUDE.md | 3, 4, 5 | 2026-10-06 | c2b6199, 69842a4, 54359bb; `../CLAUDE.md` (not versioned) and the launch memory updated |
 
 ---
 
