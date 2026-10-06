@@ -9,6 +9,12 @@ internal sealed class TrayApplicationContext : ApplicationContext
     /// <summary>Starts the app hidden, with the tray icon only; given by the startup registration.</summary>
     public const string HiddenArgument = "--tray";
 
+    // The longest tooltip a NotifyIcon accepts: longer, setting it throws.
+    private const int TooltipMaxLength = 127;
+
+    // Qualified: inside an ApplicationContext, MainForm names its property, not the window's class.
+    private const string AppTitle = global::ImageGridFusion.UI.MainForm.AppTitle;
+
     private readonly MainForm _form;
     private readonly ContextMenuStrip _menu = new();
     private readonly NotifyIcon _tray;
@@ -27,7 +33,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _tray = new NotifyIcon
         {
             Icon = new Icon(_form.Icon!, SystemInformation.SmallIconSize),
-            Text = "Image Grid Fusion",
+            Text = Tooltip(this._form.SecondTitle),
             ContextMenuStrip = _menu,
             Visible = true,
         };
@@ -90,4 +96,19 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     /// <summary>The window closed for real: Quit, Windows ending the session, or the Task Manager.</summary>
     private void OnFormClosed(object? sender, FormClosedEventArgs e) => ExitThread();
+
+    /// <summary>
+    /// The app's name, then the second title on a line of its own when there is one, cut with an ellipsis past the
+    /// tooltip's cap.
+    /// </summary>
+    private static string Tooltip(string? secondTitle)
+    {
+        if (secondTitle is null)
+        {
+            return AppTitle;
+        }
+
+        string tooltip = $"{AppTitle}\n{secondTitle}";
+        return tooltip.Length <= TooltipMaxLength ? tooltip : tooltip[..(TooltipMaxLength - 1)].TrimEnd() + "…";
+    }
 }

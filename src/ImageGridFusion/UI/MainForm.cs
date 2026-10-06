@@ -16,7 +16,10 @@ internal sealed class MainForm : Form
     /// </summary>
     public const string TitleArgument = "--title";
 
-    private const string AppTitle = "Image Grid Fusion";
+    public const string AppTitle = "Image Grid Fusion";
+
+    /// <summary>The second title given with <see cref="TitleArgument"/>, null without one.</summary>
+    public string? SecondTitle { get; }
 
     // Screen pixels an arrow key moves the selected image by, the preview focused; with Ctrl.
     private const int ArrowStep = 1;
@@ -299,6 +302,7 @@ internal sealed class MainForm : Form
         SuspendLayout();
         AutoScaleDimensions = new SizeF(96F, 96F);
         AutoScaleMode = AutoScaleMode.Dpi;
+        this.SecondTitle = secondTitle;
         this.Text = secondTitle is null ? AppTitle : $"{AppTitle} — {secondTitle}";
         Icon = AppIcon.Load();
         StartPosition = FormStartPosition.CenterScreen;
