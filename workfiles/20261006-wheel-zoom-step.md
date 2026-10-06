@@ -94,6 +94,10 @@ ready to be pinned the day one exists.
   or follow the zoom (plain wheel = 5 %, Ctrl = finest unit)?~~ → Unchanged
 - [x] ~~The Zoom slider's keyboard (arrows, Page Up / Down): unchanged, or 5 / 1 points as well?~~ →
   Unchanged
+- [ ] The maximum zoom in `settings.json`: in percent (`"MaxZoom": 2000`) or as a factor (`20`)?
+- [ ] Written into the file by the app when missing, so it can be found and edited — or only read,
+  absent meaning 2000 %?
+- [ ] Which values are accepted (others falling back to 2000 %)?
 
 ---
 
@@ -141,6 +145,14 @@ No rule broken, no divergence from the frozen design. Choices the design left op
 - **README**: the Features line on the zoom, the Ctrl + wheel paragraph of § Effects (the zoom
   slider now the exception) and § Zoom's options line.
 
+### Iteration 5 — 2026-10-06 — ⚙️ Post-implementation — Maximum zoom in settings.json
+
+Requested after the user's test ("on va augmenter le zoom max à 2000 % et on va mettre cela dans
+le fichier de settings .json sans pour autant le rendre personnalisable dans l'UI"): the maximum
+zoom goes from 1600 % to **2000 %**, and is read from `settings.json` (§ App Settings) with no UI
+control. `ImageLook.MaxZoom` is a constant of the Composition layer, which may not reference
+`UI/AppSettings.cs`: the value has to be handed down at start-up. Open questions 7–9 below.
+
 ---
 
 ## Implementation Log
@@ -170,6 +182,10 @@ Questions asked by the agent during design, with user responses.
 | 6 | The other sliders: keep Ctrl + wheel = 5 %, or follow the zoom? | Unchanged | 2026-10-06 |
 | 7 | The Zoom slider's keyboard: unchanged, or 5 / 1 points? | Unchanged | 2026-10-06 |
 | 8 | Go for the implementation? | Code and documentation, in a worktree | 2026-10-06 |
+| 9 | Is the task finished? | No — maximum zoom to 2000 %, read from settings.json, no UI (Iteration 5) | 2026-10-06 |
+| 10 | The maximum zoom's unit in settings.json: percent or factor? | | |
+| 11 | Written into the file when missing, or only read? | | |
+| 12 | Which values are accepted? | | |
 
 ---
 
