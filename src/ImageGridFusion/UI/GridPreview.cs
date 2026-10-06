@@ -125,6 +125,12 @@ internal sealed class GridPreview : Control
 
     // The zoom percentage of the image last zoomed, over its cell: held a moment after each change, then faded out.
     private readonly System.Windows.Forms.Timer _zoomBadgeTimer = new();
+
+    // What the last undo or redo changed on an image that a helper indicator shows — its blur bars, its
+    // crop's edges, the guides of the stops it now rests on, per axis — shown briefly, with the zoom
+    // badge's timing, since that moment (RULES.md § Undo History).
+    private (SourceImage Image, bool Blur, bool Crop, bool GuidesX, bool GuidesY, long Since)? _restored;
+    private readonly System.Windows.Forms.Timer _restoredTimer = new();
     private SourceImage? _zoomBadgeImage;
     private long _zoomBadgeChanged;
     private Rectangle _zoomBadgeBounds;
@@ -161,6 +167,7 @@ internal sealed class GridPreview : Control
         _player.FrameShown += (_, image) => RedrawCell(image);
         _wheelEnd.Tick += (_, _) => EndLive();
         _zoomBadgeTimer.Tick += (_, _) => OnZoomBadgeTick();
+        this._restoredTimer.Tick += (_, _) => this.OnRestoredTick();
         _progressTimer.Tick += (_, _) => OnProgressTick();
     }
 
@@ -506,6 +513,9 @@ internal sealed class GridPreview : Control
         bool layoutChanged = layout is null ? this._layout is not null : !layout.SameAs(this._layout);
         List<SourceImage> replayed = startOver ? [] : cells.Where(c => c.Look.Frames != c.Image.Look.Frames).Select(c => c.Image).ToList();
 
+        // The images already in the grid whose look the step changes, with the look they leave.
+        var changed = cells.Where(c => this._images.Contains(c.Image) && c.Look != c.Image.Look).Select(c => (c.Image, Before: c.Image.Look)).ToList();
+
         this._images.Clear();
         foreach (var cell in cells)
         {
@@ -535,6 +545,7 @@ internal sealed class GridPreview : Control
             this._player.Restart();
         }
 
+        this.ShowRestored(changed);
         this.ImagesChanged?.Invoke(this, EventArgs.Empty);
         if (layoutChanged)
         {
@@ -544,12 +555,168 @@ internal sealed class GridPreview : Control
         this.SelectedImageChanged?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>
+    /// Shows briefly what a restored step changed that a helper indicator shows, whatever tab is selected:
+    /// the zoom badge over an image whose zoom changed; for the first image with any, its blur bars, its
+    /// crop's edges, the guides of the stops it now rests on along an axis it moved on — a turn or a flip
+    /// moving the image along, not counted as a move (RULES.md § Undo History).
+    /// </summary>
+    private void ShowRestored(List<(SourceImage Image, ImageLook Before)> changed)
+    {
+        this.InvalidateRestored();
+        this._restored = null;
+        this._restoredTimer.Stop();
+        foreach (var (image, before) in changed)
+        {
+            var look = image.Look;
+            if (look.Zoom != before.Zoom)
+            {
+                this.ShowZoomBadge(image);
+            }
+
+            var effects = look.ChangedEffects(before);
+            bool turned = effects.Contains(ImageEffect.Rotate) || effects.Contains(ImageEffect.Flip);
+            bool blur = look.Blur is not null && look.Blur != before.Blur;
+            bool crop = look.Crop is not null && look.Crop != before.Crop && !turned;
+            bool guidesX = !turned && look.Focus.X != before.Focus.X;
+            bool guidesY = !turned && look.Focus.Y != before.Focus.Y;
+            if (this._restored is null && (blur || crop || guidesX || guidesY))
+            {
+                this._restored = (image, blur, crop, guidesX, guidesY, Environment.TickCount64);
+            }
+        }
+
+        if (this._restored is not null)
+        {
+            this._restoredTimer.Interval = ZoomBadgeHold;
+            this._restoredTimer.Start();
+            this.InvalidateRestored();
+        }
+    }
+
+    /// <summary>Waits out the hold in one tick, then repaints the indicators along their fade, and drops them once transparent.</summary>
+    private void OnRestoredTick()
+    {
+        if (this._restored is not { } shown)
+        {
+            this._restoredTimer.Stop();
+            return;
+        }
+
+        long elapsed = Environment.TickCount64 - shown.Since;
+        if (elapsed >= ZoomBadgeHold + ZoomBadgeFade)
+        {
+            this._restoredTimer.Stop();
+            this.InvalidateRestored();
+            this._restored = null;
+            return;
+        }
+
+        this._restoredTimer.Interval = elapsed < ZoomBadgeHold ? (int)(ZoomBadgeHold - elapsed) : ZoomBadgeTick;
+        if (elapsed >= ZoomBadgeHold)
+        {
+            this.InvalidateRestored();
+        }
+    }
+
+    /// <summary>Repaints the cell of the image whose restored indicators show.</summary>
+    private void InvalidateRestored()
+    {
+        var cells = this.CellBounds();
+        int index = this._restored is { } shown ? this._images.IndexOf(shown.Image) : -1;
+        if (index >= 0 && index < cells.Length)
+        {
+            this.Invalidate(cells[index]);
+        }
+    }
+
+    /// <summary>
+    /// The indicators a restored step shows, faded out after their hold: the blur bars and the crop's
+    /// edges without their grips — not handles —, unless the cell shows the same bars as handles, and the
+    /// guides of the stops the image rests on.
+    /// </summary>
+    private void PaintRestored(Graphics g, Rectangle[] cells)
+    {
+        if (this._restored is not { } shown || this._dragging)
+        {
+            return;
+        }
+
+        int index = this._images.IndexOf(shown.Image);
+        if (index < 0 || index >= cells.Length)
+        {
+            return;
+        }
+
+        long elapsed = Environment.TickCount64 - shown.Since;
+        double opacity = Math.Clamp(1 - (elapsed - ZoomBadgeHold) / (double)ZoomBadgeFade, 0, 1);
+        var cell = cells[index];
+        var look = shown.Image.Look;
+        bool handles = this.ShownBars(index) is not null;
+        if (shown.Blur && look.Blur is { } blur && !(handles && this._barsEffect == ImageEffect.Blur))
+        {
+            this.PaintBars(g, cell, new Bars(blur.Area(cell), cell), opacity, grips: false);
+        }
+
+        var drawn = Rectangle.Round(FitCalculator.ComputeTurned(cell, look.Shown(shown.Image.Bitmap.Size), look.Zoom, look.Focus, look.FineAngle).Bounds);
+        if (shown.Crop && look.Crop is not null && !(handles && this._barsEffect == ImageEffect.Crop))
+        {
+            this.PaintBars(g, cell, new Bars(Rectangle.Intersect(drawn, cell), cell), opacity, grips: false);
+        }
+
+        if (shown.GuidesX || shown.GuidesY)
+        {
+            this.PaintGuideLines(g, cell, this.RestingGuides(cell, drawn, shown.GuidesX, shown.GuidesY), opacity);
+        }
+    }
+
+    /// <summary>
+    /// The guides of the magnetic stops an image drawn at <paramref name="drawn"/> rests on, along the axes
+    /// asked for: through the center of the cell, else along the cell edge one of its edges lies on.
+    /// </summary>
+    private List<(Point From, Point To)> RestingGuides(Rectangle cell, Rectangle drawn, bool alongX, bool alongY)
+    {
+        const int Near = 1;
+        int inset = this.LogicalToDeviceUnits(2);
+        var lines = new List<(Point From, Point To)>();
+        if (alongX)
+        {
+            int midX = cell.X + cell.Width / 2;
+            bool left = Math.Abs(drawn.Left - cell.Left) <= Near, right = Math.Abs(drawn.Right - cell.Right) <= Near;
+            int? x = Math.Abs(drawn.X + drawn.Width / 2 - midX) <= Near ? midX
+                : left && !right ? cell.Left + inset
+                : right && !left ? cell.Right - 1 - inset
+                : null;
+            if (x is { } at)
+            {
+                lines.Add((new Point(at, cell.Top), new Point(at, cell.Bottom)));
+            }
+        }
+
+        if (alongY)
+        {
+            int midY = cell.Y + cell.Height / 2;
+            bool top = Math.Abs(drawn.Top - cell.Top) <= Near, bottom = Math.Abs(drawn.Bottom - cell.Bottom) <= Near;
+            int? y = Math.Abs(drawn.Y + drawn.Height / 2 - midY) <= Near ? midY
+                : top && !bottom ? cell.Top + inset
+                : bottom && !top ? cell.Bottom - 1 - inset
+                : null;
+            if (y is { } at)
+            {
+                lines.Add((new Point(cell.Left, at), new Point(cell.Right, at)));
+            }
+        }
+
+        return lines;
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
             _wheelEnd.Dispose();
             _zoomBadgeTimer.Dispose();
+            this._restoredTimer.Dispose();
             _progressTimer.Dispose();
             _toolTip.Dispose();
             _player.Dispose();
@@ -643,6 +810,8 @@ internal sealed class GridPreview : Control
         {
             PaintBars(g, cells[_selected], bars);
         }
+
+        this.PaintRestored(g, cells);
 
         if (_panning && !_dragging && _pressed >= 0 && _pressed < cells.Length)
         {
@@ -2268,9 +2437,10 @@ internal sealed class GridPreview : Control
     /// <summary>
     /// The four bars as guides across the cell for the blur, across the whole image for the crop,
     /// fluorescent green and outlined so they show on any image, with a grip at the middle of each side
-    /// of the rectangle they frame; the grip turns white while hovered or dragged.
+    /// of the rectangle they frame; the grip turns white while hovered or dragged. Shown by an undo, they
+    /// fade out at <paramref name="opacity"/>, without <paramref name="grips"/>: not handles.
     /// </summary>
-    private void PaintBars(Graphics g, Rectangle cell, Bars bars)
+    private void PaintBars(Graphics g, Rectangle cell, Bars bars, double opacity = 1, bool grips = true)
     {
         var area = bars.Area;
         var span = bars.Span;
@@ -2286,8 +2456,8 @@ internal sealed class GridPreview : Control
         var state = g.Save();
         g.SetClip(cell, CombineMode.Intersect);
         g.SmoothingMode = SmoothingMode.None;
-        using (var outline = new Pen(HelperHalo, LogicalToDeviceUnits(4)))
-        using (var line = new Pen(HelperColor, LogicalToDeviceUnits(2)))
+        using (var outline = new Pen(Color.FromArgb((int)(HelperHalo.A * opacity), HelperHalo), LogicalToDeviceUnits(4)))
+        using (var line = new Pen(Color.FromArgb((int)(255 * opacity), HelperColor), LogicalToDeviceUnits(2)))
         {
             foreach (var pen in new[] { outline, line })
             {
@@ -2296,6 +2466,12 @@ internal sealed class GridPreview : Control
                 g.DrawLine(pen, span.Left, top, span.Right, top);
                 g.DrawLine(pen, span.Left, bottom, span.Right, bottom);
             }
+        }
+
+        if (!grips)
+        {
+            g.Restore(state);
+            return;
         }
 
         int length = LogicalToDeviceUnits(BarGripLength);
@@ -2390,11 +2566,17 @@ internal sealed class GridPreview : Control
             lines.Add((new Point(cell.Left, y), new Point(cell.Right, y)));
         }
 
+        this.PaintGuideLines(g, cell, lines, opacity: 1);
+    }
+
+    /// <summary>Guide lines over a cell, dashed green over the black halo, at <paramref name="opacity"/>.</summary>
+    private void PaintGuideLines(Graphics g, Rectangle cell, List<(Point From, Point To)> lines, double opacity)
+    {
         var state = g.Save();
         g.SetClip(cell, CombineMode.Intersect);
         g.SmoothingMode = SmoothingMode.None;
-        using var outline = new Pen(HelperHalo, LogicalToDeviceUnits(4));
-        using var dashed = new Pen(HelperColor, LogicalToDeviceUnits(2)) { DashPattern = [4, 3] };
+        using var outline = new Pen(Color.FromArgb((int)(HelperHalo.A * opacity), HelperHalo), this.LogicalToDeviceUnits(4));
+        using var dashed = new Pen(Color.FromArgb((int)(255 * opacity), HelperColor), this.LogicalToDeviceUnits(2)) { DashPattern = [4, 3] };
         foreach (var (from, to) in lines)
         {
             g.DrawLine(outline, from, to);
