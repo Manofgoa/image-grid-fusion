@@ -112,6 +112,11 @@ internal sealed class MainForm : Form
     // A log scale, in hundredths of a doubling: 50 % → 100 % and each doubling take the same length.
     private readonly StepSlider _zoom = OptionSlider((int)Math.Round(Math.Log2(ImageLook.MinZoom) * 100), (int)Math.Round(Math.Log2(ImageLook.MaxZoom) * 100), 10);
     private readonly Label _zoomLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly ComboBox _motionKind = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 90, Anchor = AnchorStyles.Left };
+
+    // Minus the duration of one back-and-forth, in seconds: the right end is the fastest.
+    private readonly StepSlider _motionCycle = OptionSlider(-(int)MotionEffect.MaxCycle.TotalSeconds, -(int)MotionEffect.MinCycle.TotalSeconds, 5, controlStep: 1);
+    private readonly Label _motionCycleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox[] _quarterTurns = [OptionButton("0°"), OptionButton("90°"), OptionButton("180°"), OptionButton("270°")];
     private readonly TrackBar _fineAngle = OptionSlider(-ImageLook.MaxFineAngle, ImageLook.MaxFineAngle, 5);
     private readonly Label _fineAngleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
@@ -342,6 +347,10 @@ internal sealed class MainForm : Form
         _options[ImageEffect.Background].Controls.AddRange([_backgroundAutomatic, _backgroundOpacityIcon, _backgroundOpacity, _backgroundOpacityLabel, _backgroundColor]);
         _options[ImageEffect.Crop].Controls.AddRange([.. _cropRatios.Select(r => r.Button), this._cropWhole]);
         _options[ImageEffect.Zoom].Controls.AddRange([_zoom, _zoomLabel]);
+        _motionKind.Items.AddRange(Enum.GetNames<MotionKind>());
+        _motionKind.SelectedIndex = (int)MotionEffect.Default.Kind;
+        _motionCycle.Value = -(int)MotionEffect.Default.Cycle.TotalSeconds;
+        _options[ImageEffect.Animations].Controls.AddRange([_motionKind, _motionCycle, _motionCycleLabel]);
         _options[ImageEffect.Rotate].Controls.AddRange([.. _quarterTurns, _fineAngle, _fineAngleLabel]);
         _options[ImageEffect.Flip].Controls.AddRange([_flipX, _flipY]);
         _options[ImageEffect.Frames].Controls.AddRange([_frames, _framesLabel, _freeze]);
@@ -470,6 +479,14 @@ internal sealed class MainForm : Form
         _resetButton.Click += (_, _) => ResetEffects();
         _zoom.ValueChanged += (_, _) => SetZoom();
         _zoom.ControlWheel = StepZoom;
+        _toolTip.SetToolTip(_motionKind, "The kind of animation played in the cell");
+        _toolTip.SetToolTip(_motionCycle, "How long one back-and-forth lasts: further right, faster");
+        _motionKind.SelectedIndexChanged += (_, _) => this.ChangeMotion(motion => motion.WithKind((MotionKind)_motionKind.SelectedIndex));
+        _motionCycle.ValueChanged += (_, _) =>
+        {
+            _motionCycleLabel.Text = CycleText(-_motionCycle.Value);
+            this.ChangeMotion(motion => motion.WithCycle(TimeSpan.FromSeconds(-_motionCycle.Value)));
+        };
         for (int i = 0; i < _quarterTurns.Length; i++)
         {
             int degrees = 90 * i;
@@ -671,6 +688,7 @@ internal sealed class MainForm : Form
                 ImageEffect.Background => EffectIcons.Background(size),
                 ImageEffect.Crop => EffectIcons.Crop(size),
                 ImageEffect.Zoom => EffectIcons.Zoom(size),
+                ImageEffect.Animations => EffectIcons.Animations(size),
                 ImageEffect.Rotate => EffectIcons.Rotate(size),
                 ImageEffect.Flip => EffectIcons.Flip(size),
                 ImageEffect.Frames => EffectIcons.Frames(size),
@@ -1399,11 +1417,16 @@ internal sealed class MainForm : Form
             ? Path.GetFileName(path)
             : $"cell {Enumerable.Range(0, images.Count).First(n => images[n] == image) + 1}";
 
+        // A loop is a playing content's, or the cycle of an Animations effect when longer.
+        string Loop(SourceImage image) => image.Plays && Animation.LoopOf(image) == image.Pages!.LoopDuration
+            ? $"{Name(image)}'s"
+            : $"{Name(image)}'s animation";
+
         var lines = new List<string>();
-        var longest = images.Where(i => i.Plays).OrderByDescending(i => i.Pages!.LoopDuration).FirstOrDefault();
+        var longest = images.Where(i => Animation.LoopOf(i) > TimeSpan.Zero).OrderByDescending(Animation.LoopOf).FirstOrDefault();
         if (longest is not null)
         {
-            lines.Add($"MP4 video of {Seconds(length)}: the longest loop, {Name(longest)}'s");
+            lines.Add($"MP4 video of {Seconds(length)}: the longest loop, {Loop(longest)}");
         }
         else if (soundtrack is not null)
         {
@@ -1414,12 +1437,13 @@ internal sealed class MainForm : Form
             lines.Add("A PNG: no content plays and the soundtrack is off");
         }
 
-        foreach (var image in images.Where(i => i.IsAnimated && i != longest))
+        foreach (var image in images.Where(i => (i.IsAnimated || i.Moves) && i != longest))
         {
-            var loop = image.Pages!.LoopDuration;
-            lines.Add(image.IsFrozen
+            var loop = Animation.LoopOf(image);
+            string what = loop == TimeSpan.Zero
                 ? $"{Name(image)} — frozen, a still"
-                : $"{Name(image)} — {Seconds(loop)}, plays {Times(length, loop)}");
+                : $"{Name(image)} — {Seconds(loop)}, plays {Times(length, loop)}";
+            lines.Add(image.Plays || loop == TimeSpan.Zero ? what : $"{what} (its animation)");
         }
 
         if (soundtrack is not null && longest is not null)
@@ -1545,8 +1569,8 @@ internal sealed class MainForm : Form
 
     private bool IsExporting => _export is not null;
 
-    /// <summary>Content that plays: a frozen one is exported as a still.</summary>
-    private bool HasAnimation => _preview.Images.Any(i => i.Plays);
+    /// <summary>Content that plays, or moves by its Animations effect: a frozen one that does not move is exported as a still.</summary>
+    private bool HasAnimation => _preview.Images.Any(i => i.Moves);
 
     /// <summary>The soundtrack mixed into the preview and the MP4 export; <c>null</c> while off.</summary>
     private Soundtrack? ActiveSoundtrack => _soundtrackOn ? _soundtrack : null;
@@ -2167,6 +2191,12 @@ internal sealed class MainForm : Form
 
     private static string AngleText(int degrees) => $"Angle: {degrees:+0;-0;0}°";
 
+    private static string CycleText(int seconds) => $"Back and forth: {seconds} s";
+
+    /// <summary>Changes the settings of the Animations effect, turning it on first (RULES.md).</summary>
+    private void ChangeMotion(Func<MotionEffect, MotionEffect> change) =>
+        this.ChangeLook(ImageEffect.Animations, look => look.Motion is { } motion ? look.WithMotion(change(motion)) : look);
+
     private static string VolumeText(int percent) => $"Volume: {percent} %";
 
     /// <summary>Not frozen, the slider sets where the content starts playing; frozen, the frame it shows.</summary>
@@ -2296,6 +2326,11 @@ internal sealed class MainForm : Form
             }
 
             _zoom.Value = Math.Clamp((int)Math.Round(Math.Log2(look.TurnOn(ImageEffect.Zoom).Zoom) * 100), _zoom.Minimum, _zoom.Maximum);
+            if (look.TurnOn(ImageEffect.Animations).Motion is { } motion)
+            {
+                _motionKind.SelectedIndex = (int)motion.Kind;
+                _motionCycle.Value = Math.Clamp(-(int)Math.Round(motion.Cycle.TotalSeconds), _motionCycle.Minimum, _motionCycle.Maximum);
+            }
 
             // A quarter turn is pressed only while the angle falls exactly on it.
             var rotated = look.TurnOn(ImageEffect.Rotate);
@@ -2347,6 +2382,7 @@ internal sealed class MainForm : Form
 
         _zoomLabel.Text = $"Zoom: {(look?.TurnOn(ImageEffect.Zoom).Zoom ?? 1) * 100:0} %";
         _fineAngleLabel.Text = AngleText(_fineAngle.Value);
+        _motionCycleLabel.Text = CycleText(-_motionCycle.Value);
         UpdateFramesLabel();
         _grayscaleLabel.Text = $"Intensity: {_grayscale.Value}%";
         _blurIntensityLabel.Text = $"Intensity: {_blurIntensity.Value}%";

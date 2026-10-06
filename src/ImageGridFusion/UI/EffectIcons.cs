@@ -29,6 +29,29 @@ internal static class EffectIcons
         g.DrawEllipse(rim, cx - r, cy - r, 2 * r, 2 * r);
     });
 
+    /// <summary>A picture breathing: a blue frame inside a larger dashed one, a purple arrow from corner to corner.</summary>
+    public static Bitmap Animations(int size) => Draw(size, (g, s) =>
+    {
+        float outer = s * 0.08f;
+        float inner = s * 0.3f;
+        using (var dashed = new Pen(Color.FromArgb(150, 110, 220), Math.Max(1, s * 0.08f)) { DashStyle = DashStyle.Dash })
+        {
+            g.DrawRectangle(dashed, outer, outer, s - 2 * outer, s - 2 * outer);
+        }
+
+        var picture = new RectangleF(inner, inner, s - 2 * inner, s - 2 * inner);
+        using (var fill = new LinearGradientBrush(picture, Color.FromArgb(170, 240, 255), Color.FromArgb(0, 150, 230), 45f))
+        {
+            g.FillRectangle(fill, picture);
+        }
+
+        using var arrow = new Pen(Color.FromArgb(120, 60, 200), Math.Max(1.2f, s * 0.1f));
+        using var cap = new AdjustableArrowCap(2f, 2f);
+        arrow.CustomStartCap = cap;
+        arrow.CustomEndCap = cap;
+        g.DrawLine(arrow, s * 0.6f, s * 0.4f, s * 0.86f, s * 0.14f);
+    });
+
     /// <summary>A clockwise arrow around a circle, orange to red.</summary>
     public static Bitmap Rotate(int size) => Draw(size, (g, s) =>
     {
