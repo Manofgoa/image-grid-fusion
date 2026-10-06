@@ -11,13 +11,14 @@
 
 Today an image is moved within its cell by a mouse drag only (`GridPreview.PanBy`, the Zoom
 effect's `Focus`). The arrow keys give the same move with a precise step: **1 px** per press,
-**10 px** with **Ctrl**. They act only while the **Zoom** tab is selected, on the **selected cell**.
+**10 px** with **Ctrl**. They act on the **selected cell**, whatever tab is selected, while the
+preview has the keyboard focus.
 
 Relevant components:
 
 | Component | Role |
 |---|---|
-| `UI/MainForm.cs` — `ProcessCmdKey` | Form-level shortcuts (Ctrl+V/C/S, Delete, Escape); the arrows are handled here, since the preview is not focusable |
+| `UI/MainForm.cs` — `ProcessCmdKey` | Form-level shortcuts (Ctrl+V/C/S, Delete, Escape); the arrows are handled here while the preview has the focus |
 | `UI/GridPreview.cs` — `PanBy` | Moves an image by a delta in pixels from where it is shown: magnetic stops (`PanMagnet`, 24 px resistance, Shift = free), never past the share of the cell it keeps covering, stored as `ImageLook.WithFocus` |
 | `UI/PanMagnet.cs` | The magnetic stops of one axis: the cell's center and edges |
 | `Composition/ImageLook.cs` — `WithFocus` | Stores the move in fractions of the oriented image and **activates the Zoom effect** |
@@ -47,8 +48,10 @@ Relevant components:
 
 All of these hold, otherwise the arrows keep their usual behaviour:
 
-- the **Zoom** tab is the selected effect tab;
+- the **preview has the keyboard focus** (see § Focus) — whatever effect tab is selected, or none;
 - a cell is selected and holds an image;
+- the selected cell does not show the **crop's edit view** (Crop tab selected, crop on), where a
+  drag does not move the image either;
 - the grid is not locked (no export running), like the drag.
 
 ### Magnetic Stops
@@ -57,14 +60,16 @@ The drag's stops — the cell's center and its edges — hold a move by the arro
 
 - A press that reaches or passes a stop **stops exactly on it**, its fluorescent green guide shown
   (`PaintPanGuides`, as during a drag).
-- The **next press** in a direction leaves it, by one step from the stop; moving back inward over
-  an edge stop is free, as for the drag.
+- The **next press** in a direction leaves it, by one step from the stop.
+- An **edge** stop holds both ways: on the way **out**, as for the drag, and on the way **in** too —
+  a press moving back inside over it stops on it, which the drag does not do. At 1 px the image
+  lands on the edge anyway: the stop only adds the guide and one press on it.
 - The guide stays while the stop holds: it goes with the next arrow press leaving it, a mouse press
   in the preview, another cell or another tab selected.
 - Shift + arrows ignore the stops (see § Keys).
-- Implemented as `PanBy` with a **resistance of 0**, followed by `PanMagnet.Settle()`, which forgets
-  how far the press went past the stop: the next press leaves it from the stop itself. A move with
-  no delta on an axis keeps that axis' stop holding.
+- Implemented as `PanBy` with a **resistance of 0** and the inward edge stops, followed by
+  `PanMagnet.Settle()`, which forgets how far the press went past the stop: the next press leaves it
+  from the stop itself. A move with no delta on an axis keeps that axis' stop holding.
 - The move by the arrows **goes on** while the selected image keeps the image and the look the
   last press left it (`GridPreview._keyPan`): any other change of its look — the wheel, the zoom
   slider, an effect — ends it like the gestures above, and the next press starts with no stop
@@ -72,13 +77,10 @@ The drag's stops — the cell's center and its edges — hold a move by the arro
 
 ### Focus
 
-The arrows are taken from the form (`ProcessCmdKey`) whenever § When the Arrows Act holds,
-**whichever control has the focus** — the Zoom slider and the file explorer included — **except a
-text box being typed in** (the file explorer's search box, `_explorer.IsEditingText`), which keeps
-its arrows and Ctrl + arrows. Outside these conditions, every control keeps its arrows.
-
-The file explorer's tiles, whose arrows move between tiles, give them up too while the Zoom tab
-and a cell are selected; the README says so.
+The **focused control keeps its arrows**: a slider, a list, the file explorer's tiles or its search
+box. The preview takes the keyboard focus when it is **clicked** (a mouse press on it), and the
+arrows then move the selected image, taken from the form (`ProcessCmdKey`) while
+`GridPreview` is focused. Clicking another control gives it the arrows back.
 
 ---
 
@@ -96,10 +98,10 @@ The behaviour is checked by hand in the launched app.
 ## Open Questions
 
 - [x] ~~What do the magnetic stops (center, edges) do to a move by the arrows?~~ → They hold for one press: a press stops on the stop, guide shown, the next one leaves it; Shift ignores them
-- [x] ~~Which focused controls keep their own arrows (the Zoom slider, the file explorer, a text box)?~~ → Only a text box being typed in; otherwise the image gets them
+- [x] ~~Which focused controls keep their own arrows (the Zoom slider, the file explorer, a text box)?~~ → Only a text box being typed in; otherwise the image gets them *(revised 2026-10-06, see Iteration 6)*
 - [x] ~~Is a "pixel" a screen pixel, or a logical pixel scaled with Windows' display scaling?~~ → A screen pixel
-- [ ] Does the edge stop's inward hold apply with Ctrl only, or to the 1 px steps too?
-- [ ] With every tab moving the image, which focused controls keep their arrows?
+- [x] ~~Does the edge stop's inward hold apply with Ctrl only, or to the 1 px steps too?~~ → Both steps
+- [x] ~~With every tab moving the image, which focused controls keep their arrows?~~ → The focused control; a click on the preview gives it the arrows *(revises the earlier focus decision, see Iteration 6)*
 
 ---
 
@@ -159,6 +161,13 @@ Requested by the user after testing:
 Open before the code is touched: whether the inward hold is for Ctrl only, and which focused
 controls keep their arrows now that every tab moves the image.
 
+### Iteration 6 — 2026-10-06 — ⚙️ Post-implementation — Focus and inward hold settled
+
+The user settled the two points: the inward edge hold applies to both steps; the focused control
+keeps its arrows, a click on the preview giving it the focus. Decided along with them, as the drag
+does: no arrow move in the crop's edit view. § When the Arrows Act, § Magnetic Stops and § Focus
+updated.
+
 ---
 
 ## Implementation Log
@@ -188,8 +197,8 @@ Questions asked by the agent during design, with user responses.
 | 6 | Which focused controls keep their own arrows? | Only a text box being typed in; the image gets them otherwise, the Zoom slider included | 2026-10-06 |
 | 7 | Screen pixel or logical pixel? | Screen pixel | 2026-10-06 |
 | 8 | Is the task finished? (after testing) | No: with Ctrl, an edge stop must hold one press inward too; the arrows move the image whatever tab is selected | 2026-10-06 |
-| 9 | Inward edge hold: Ctrl only, or the 1 px steps too? | | |
-| 10 | With every tab moving the image, which focused controls keep their arrows? | | |
+| 9 | Inward edge hold: Ctrl only, or the 1 px steps too? | Both steps | 2026-10-06 |
+| 10 | With every tab moving the image, which focused controls keep their arrows? | The focused control; a click on the preview gives it the arrows | 2026-10-06 |
 
 ---
 
