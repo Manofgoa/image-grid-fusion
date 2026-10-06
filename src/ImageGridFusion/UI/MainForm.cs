@@ -2105,7 +2105,7 @@ internal sealed class MainForm : Form
         Anchor = AnchorStyles.Left,
     };
 
-    private static string EffectTitle(ImageEffect effect) => effect switch
+    internal static string EffectTitle(ImageEffect effect) => effect switch
     {
         ImageEffect.BlackAndWhite => "Black & white",
         _ => effect.ToString(),
