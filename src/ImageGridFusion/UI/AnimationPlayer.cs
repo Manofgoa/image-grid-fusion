@@ -151,7 +151,7 @@ internal sealed class AnimationPlayer : IDisposable
     /// The clock of the grid, from its last start over: the time the motions of the Animations effects
     /// are drawn at, as the export draws them from its first frame.
     /// </summary>
-    public TimeSpan GridTime => _clock.Elapsed;
+    public TimeSpan GridTime => this._clock.Elapsed;
 
     /// <summary>
     /// Share of its loop <paramref name="image"/> has played, from 0 up to 1 excluded, read from the
@@ -161,12 +161,12 @@ internal sealed class AnimationPlayer : IDisposable
     /// </summary>
     public double? ProgressOf(SourceImage image)
     {
-        if (_playbacks.TryGetValue(image, out var playback) && playback.PausedAt is null && image.Pages is { } pages)
+        if (this._playbacks.TryGetValue(image, out var playback) && playback.PausedAt is null && image.Pages is { } pages)
         {
             return Animation.Progress(this.Position(playback), pages.LoopDuration);
         }
 
-        return image.Look.Motion is { } motion && _images.Contains(image)
+        return image.Look.Motion is { } motion && this._images.Contains(image)
             ? Animation.Progress(this.GridTime, motion.Cycle)
             : null;
     }

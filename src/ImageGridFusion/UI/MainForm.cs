@@ -347,10 +347,10 @@ internal sealed class MainForm : Form
         _options[ImageEffect.Background].Controls.AddRange([_backgroundAutomatic, _backgroundOpacityIcon, _backgroundOpacity, _backgroundOpacityLabel, _backgroundColor]);
         _options[ImageEffect.Crop].Controls.AddRange([.. _cropRatios.Select(r => r.Button), this._cropWhole]);
         _options[ImageEffect.Zoom].Controls.AddRange([_zoom, _zoomLabel]);
-        _motionKind.Items.AddRange(Enum.GetNames<MotionKind>());
-        _motionKind.SelectedIndex = (int)MotionEffect.Default.Kind;
-        _motionCycle.Value = -(int)MotionEffect.Default.Cycle.TotalSeconds;
-        _options[ImageEffect.Animations].Controls.AddRange([_motionKind, _motionCycle, _motionCycleLabel]);
+        this._motionKind.Items.AddRange(Enum.GetNames<MotionKind>());
+        this._motionKind.SelectedIndex = (int)MotionEffect.Default.Kind;
+        this._motionCycle.Value = -(int)MotionEffect.Default.Cycle.TotalSeconds;
+        this._options[ImageEffect.Animations].Controls.AddRange([this._motionKind, this._motionCycle, this._motionCycleLabel]);
         _options[ImageEffect.Rotate].Controls.AddRange([.. _quarterTurns, _fineAngle, _fineAngleLabel]);
         _options[ImageEffect.Flip].Controls.AddRange([_flipX, _flipY]);
         _options[ImageEffect.Frames].Controls.AddRange([_frames, _framesLabel, _freeze]);
@@ -479,13 +479,13 @@ internal sealed class MainForm : Form
         _resetButton.Click += (_, _) => ResetEffects();
         _zoom.ValueChanged += (_, _) => SetZoom();
         _zoom.ControlWheel = StepZoom;
-        _toolTip.SetToolTip(_motionKind, "The kind of animation played in the cell");
-        _toolTip.SetToolTip(_motionCycle, "How long one back-and-forth lasts: further right, faster");
-        _motionKind.SelectedIndexChanged += (_, _) => this.ChangeMotion(motion => motion.WithKind((MotionKind)_motionKind.SelectedIndex));
-        _motionCycle.ValueChanged += (_, _) =>
+        this._toolTip.SetToolTip(this._motionKind, "The kind of animation played in the cell");
+        this._toolTip.SetToolTip(this._motionCycle, "How long one back-and-forth lasts: further right, faster");
+        this._motionKind.SelectedIndexChanged += (_, _) => this.ChangeMotion(motion => motion.WithKind((MotionKind)this._motionKind.SelectedIndex));
+        this._motionCycle.ValueChanged += (_, _) =>
         {
-            _motionCycleLabel.Text = CycleText(-_motionCycle.Value);
-            this.ChangeMotion(motion => motion.WithCycle(TimeSpan.FromSeconds(-_motionCycle.Value)));
+            this._motionCycleLabel.Text = CycleText(-this._motionCycle.Value);
+            this.ChangeMotion(motion => motion.WithCycle(TimeSpan.FromSeconds(-this._motionCycle.Value)));
         };
         for (int i = 0; i < _quarterTurns.Length; i++)
         {
@@ -2328,8 +2328,8 @@ internal sealed class MainForm : Form
             _zoom.Value = Math.Clamp((int)Math.Round(Math.Log2(look.TurnOn(ImageEffect.Zoom).Zoom) * 100), _zoom.Minimum, _zoom.Maximum);
             if (look.TurnOn(ImageEffect.Animations).Motion is { } motion)
             {
-                _motionKind.SelectedIndex = (int)motion.Kind;
-                _motionCycle.Value = Math.Clamp(-(int)Math.Round(motion.Cycle.TotalSeconds), _motionCycle.Minimum, _motionCycle.Maximum);
+                this._motionKind.SelectedIndex = (int)motion.Kind;
+                this._motionCycle.Value = Math.Clamp(-(int)Math.Round(motion.Cycle.TotalSeconds), this._motionCycle.Minimum, this._motionCycle.Maximum);
             }
 
             // A quarter turn is pressed only while the angle falls exactly on it.
@@ -2382,7 +2382,7 @@ internal sealed class MainForm : Form
 
         _zoomLabel.Text = $"Zoom: {(look?.TurnOn(ImageEffect.Zoom).Zoom ?? 1) * 100:0} %";
         _fineAngleLabel.Text = AngleText(_fineAngle.Value);
-        _motionCycleLabel.Text = CycleText(-_motionCycle.Value);
+        this._motionCycleLabel.Text = CycleText(-this._motionCycle.Value);
         UpdateFramesLabel();
         _grayscaleLabel.Text = $"Intensity: {_grayscale.Value}%";
         _blurIntensityLabel.Text = $"Intensity: {_blurIntensity.Value}%";

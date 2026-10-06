@@ -520,7 +520,7 @@ internal sealed class GridPreview : Control
             _cache = new Bitmap(canvas.Width, canvas.Height);
             using (var cacheGraphics = Graphics.FromImage(_cache))
             {
-                Compositor.Draw(cacheGraphics, _images, _layout!, canvas.Size, _borders, _player.GridTime);
+                Compositor.Draw(cacheGraphics, _images, _layout!, canvas.Size, _borders, this._player.GridTime);
             }
 
             // The Twitter corners cut as a PNG is: the preview shows what Twitter / X shows.
@@ -1218,7 +1218,7 @@ internal sealed class GridPreview : Control
     }
 
     /// <summary>What the cell of <paramref name="image"/> shows now: its frame, its motion at the grid's time.</summary>
-    private Frame FrameOf(SourceImage image) => new(image.Bitmap, image.BandColor, image.Look, _player.GridTime);
+    private Frame FrameOf(SourceImage image) => new(image.Bitmap, image.BandColor, image.Look, this._player.GridTime);
 
     /// <summary>Draws the new frame of an image into the cached preview, and repaints only its cell.</summary>
     private void RedrawCell(SourceImage image)
@@ -1484,7 +1484,7 @@ internal sealed class GridPreview : Control
         // A moving image is drawn again by the progress lines' timer.
         if (look.Motion is not null)
         {
-            _progressTimer.Start();
+            this._progressTimer.Start();
         }
 
         // During a gesture, the frame shown is scaled; decoding it again at each step would only slow it down.
@@ -1616,11 +1616,11 @@ internal sealed class GridPreview : Control
     /// </summary>
     private void OnProgressTick()
     {
-        var now = _player.GridTime;
-        if (now < _motionDrawn || now - _motionDrawn >= MotionInterval)
+        var now = this._player.GridTime;
+        if (now < this._motionDrawn || now - this._motionDrawn >= MotionInterval)
         {
-            _motionDrawn = now;
-            foreach (var image in _images.Where(i => i.Look.Motion is not null).ToList())
+            this._motionDrawn = now;
+            foreach (var image in this._images.Where(i => i.Look.Motion is not null).ToList())
             {
                 this.RedrawCell(image);
             }
