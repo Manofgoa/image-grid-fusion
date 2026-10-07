@@ -832,7 +832,7 @@ internal sealed class MainForm : Form
     }
 
     /// <summary>The ⚙ menu's Border color item shows the color as a swatch, drawn at the monitor's DPI.</summary>
-    private void UpdateBorderColorSwatch() => this.SetSwatch(_borderColor, _borders.Color);
+    private void UpdateBorderColorSwatch() => this.SetSwatch(this._borderColor, this._borders.Color);
 
     /// <summary>The ⚙ menu's Arrow color item shows the OCR arrow's color as a swatch, drawn at the monitor's DPI.</summary>
     private void UpdateOcrArrowColorSwatch() => this.SetSwatch(this._ocrArrowColor, this._explorer.ArrowStyle.Color);
