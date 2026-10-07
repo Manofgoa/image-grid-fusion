@@ -213,6 +213,11 @@ One question follows: the crop edit view (Q&A 15). A stray table header in § Wh
 Answer to Q&A 15: **no readout on a cell while it shows its crop edit view**; what changes there
 shows nothing, leaving the view included; the other cells keep theirs. No open question left.
 
+### Iteration 7 — 2026-10-07 — ✅ Implemented
+
+Go given (Q&A 16): code, tests and documentation. Implemented on `main` — this app's work lands on
+`main` (the user's standing choice), no branch question asked.
+
 ---
 
 ## Implementation Log
@@ -251,6 +256,7 @@ Questions asked by the agent during design, with user responses.
 | 13 | "Whenever the center moves": the image's own look only, or the grid's geometry (separators, layout, format, Borders' gap) too? | The grid's geometry too — on every image whose offset changes; the Animations motion left out | 2026-10-07 |
 | 14 | The design is complete: start implementing? | Neither choice: one agent to refresh the design against the code other sessions finished, and say whether it can start or needs more info; one agent to push | 2026-10-07 |
 | 15 | What does a cell's readout do while it shows its crop edit view? | Nothing on that cell; the other cells keep theirs | 2026-10-07 |
+| 16 | The design is complete and up to date with main: start implementing? | Code, tests and documentation | 2026-10-07 |
 
 ---
 
