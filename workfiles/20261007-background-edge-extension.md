@@ -27,7 +27,9 @@ thumbnail strip control modelled on `UI/FormatStrip.cs`, the Background options 
 ## Fill Modes
 
 The Background's options gain a row of **fill-mode thumbnails**, each a schematic cell drawn like the
-Format thumbnails (`FormatStrip`): an image in the middle, its bands, its corners.
+Format thumbnails (`FormatStrip`): an image in the middle, its bands, its corners, **its name below**
+as in the Format tab. The cell options toolbar grows to their height, for every tab (it keeps one
+height, the tallest options' — RULES.md § Options Toolbar).
 
 | Thumbnail | Bands | Corners |
 |---|---|---|
@@ -37,10 +39,12 @@ Format thumbnails (`FormatStrip`): an image in the middle, its bands, its corner
 | **Background corners** | Edge pixels extended | The flat fill (the color in use, at its opacity) |
 
 - The **Color** thumbnail is today's behaviour: the extension is a mode of the Background, not a
-  separate effect (Q&A 2 — *to confirm*, see Open Questions).
+  separate effect (Q&A 2, 5).
 - The **color controls stay** in every mode: the flat fill is still painted under the whole cell — it
   shows through the image's transparent pixels, fills the Background corners, and is what the fade
   goes to.
+- The **opacity applies to the whole background**, the extension included: at 0 % the cell is
+  transparent behind its image, as today (Q&A 7).
 
 ### Edges Extended
 
@@ -66,7 +70,10 @@ Format thumbnails (`FormatStrip`): an image in the middle, its bands, its corner
 ### Soften
 
 - A checkbox **Soften**, **off by default**: blurs the extension so the streaks of the stretched
-  pixels melt — the image itself stays sharp. Strength and shape: see Open Questions.
+  pixels melt — the image itself stays sharp.
+- The blur is **progressive**: sharp against the image, so no seam shows at its edge, softer with
+  the distance from it (Q&A 6). Its strength is resolution-independent, relative to the cell
+  (RULES.md § Rendering).
 - Disabled in the **Color** mode, its value kept.
 
 ---
@@ -85,8 +92,9 @@ Format thumbnails (`FormatStrip`): an image in the middle, its bands, its corner
 
 ## Crop Edit View
 
-`Compositor.DrawUncropped` paints the flat fill behind the whole image. With an extension mode: see
-Open Questions.
+`Compositor.DrawUncropped` paints the flat fill behind the whole image. With an extension mode, it
+extends the edges of the **whole image** the view shows, in the same mode, fade and soften (Q&A 8)
+— the extension always reads the image as drawn.
 
 ---
 
@@ -111,19 +119,13 @@ MP4 and GIF exports; undo / redo; Reset buttons.
 
 - [x] ~~How are the corners filled?~~ → Three corner fills chosen by thumbnails (Corner pixel,
   Miter, Background corners), plus a fade slider 0–100 (0 by default, no fade) (Q&A 1)
-- [ ] Integration (Q&A 2 answered "implicit"): is the reading right — the thumbnails **are** the
-  Background's fill mode, with a first **Color** thumbnail for today's flat fill, the color controls
-  kept for the fill under it, the Background corners and the fade?
+- [x] ~~Integration (Q&A 2 answered "implicit"): are the thumbnails the Background's fill mode?~~ →
+  Yes: four thumbnails, Color first, the color controls kept (Q&A 5)
 - [x] ~~Soften the streaks?~~ → A checkbox (Q&A 3)
-- [ ] Soften: a **fixed** blur of the whole extension, or **progressive** — sharp against the image,
-  softer with the distance?
-- [ ] Opacity: does the Background's opacity apply to the extension too (0 % = transparent cell as
-  today), or only to the flat fill (the extension always opaque)?
-- [ ] Crop edit view: extend the edges of the **whole image** it shows, or keep the **flat fill**
-  there?
-- [ ] Options toolbar height: four thumbnails with labels below (as in the Format tab) make the cell
-  options row taller for every tab; or compact thumbnails without labels (names in tooltips) at
-  the current height?
+- [x] ~~Soften: fixed or progressive?~~ → Progressive, sharp against the image (Q&A 6)
+- [x] ~~Opacity on the extension?~~ → Yes, on the whole background (Q&A 7)
+- [x] ~~Crop edit view?~~ → The whole image's edges extended (Q&A 8)
+- [x] ~~Thumbnails with labels or compact?~~ → With labels, the options toolbar taller (Q&A 9)
 
 ---
 
@@ -137,6 +139,13 @@ thumbnails, the fade as a 0–100 slider (0 = none) — and adds a soften checkb
 the image as drawn in the cell, so crop, orientation, fine angle and black & white come for free.
 Exploration done directly (subject rated simple): `BackgroundEffect`, `Compositor.DrawCell` /
 `DrawUncropped`, `FitCalculator.ComputeTurned`, `FormatStrip`, `BlurRenderer`, no test project.
+
+### Iteration 2 — 2026-10-07
+
+Open questions answered (Q&A 5–9): the thumbnails are the Background's fill mode (Color, Corner
+pixel, Miter, Background corners), the color controls kept; soften is progressive; the opacity
+covers the extension; the crop edit view extends the whole image; the thumbnails carry their labels,
+the cell options toolbar growing to their height.
 
 ---
 
@@ -160,11 +169,11 @@ Exploration done directly (subject rated simple): `BackgroundEffect`, `Composito
 | 2 | How does the option fit in the Background: Color / Edges mode, a checkbox over the color, or a separate effect? | "Implicit from my previous answer" | 2026-10-07 |
 | 3 | Add a setting to soften the stretched streaks? | A checkbox for it | 2026-10-07 |
 | 4 | Is the subject simple, or tricky / long? | Simple | 2026-10-07 |
-| 5 | Are the thumbnails the Background's fill mode, a first Color thumbnail for today's flat fill? | | 2026-10-07 |
-| 6 | Soften: fixed blur, or progressive with the distance? | | 2026-10-07 |
-| 7 | Does the opacity apply to the extension too? | | 2026-10-07 |
-| 8 | Crop edit view: extend the whole image's edges, or flat fill? | | 2026-10-07 |
-| 9 | Thumbnails with labels (taller options row) or compact with tooltips? | | 2026-10-07 |
+| 5 | Are the thumbnails the Background's fill mode, a first Color thumbnail for today's flat fill? | Yes, 4 thumbnails | 2026-10-07 |
+| 6 | Soften: fixed blur, or progressive with the distance? | Progressive | 2026-10-07 |
+| 7 | Does the opacity apply to the extension too? | Yes, to the whole background | 2026-10-07 |
+| 8 | Crop edit view: extend the whole image's edges, or flat fill? | Extend the whole image's edges | 2026-10-07 |
+| 9 | Thumbnails with labels (taller options row) or compact with tooltips? | With labels | 2026-10-07 |
 
 ---
 
