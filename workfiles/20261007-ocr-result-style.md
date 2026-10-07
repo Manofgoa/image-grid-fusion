@@ -65,6 +65,8 @@ File contents
 - The thickness is the width of the **colored stroke only**, in logical px scaled with
   `LogicalToDeviceUnits`. The **dark halo is not counted**: it stays 1 px wider on each side of
   the stroke, whatever the thickness.
+- The **outline is always 1 px** (logical) all around the arrow — along the stroke and around the
+  head alike, whatever the thickness.
 - **0 (none)**: no arrow at all — neither stroke, nor head, nor halo. The bulb stays.
 - Default: **2 px**, today's width — nothing changes at the first launch.
 - The **head grows with the thickness**: 7 px at 2 px, 2 px more per px of thickness —
@@ -202,6 +204,13 @@ No rule broken. Choices the frozen design left open, now in the domain sections:
 - README: the light bulb and its arrow were undocumented — the new bullet describes them before the
   menu, a little more than the menu alone.
 - Checked off-screen by reflection on the built assembly (no test project).
+
+### Iteration 7 — 2026-10-07 — ⚙️ Post-implementation — 1 px outline around the head
+
+The user, testing: the arrow's outline must always be 1 px; around the triangle it was thicker.
+The head's halo was drawn with the stroke's halo pen (thickness + 2 px, centered on its edges), so
+it stood out by 2 px at 2 px and 3.5 px at 5 px. Now the head's outline is drawn with its own
+2 px pen, half of it hidden under the fill: 1 px outside, like along the stroke.
 
 ---
 
