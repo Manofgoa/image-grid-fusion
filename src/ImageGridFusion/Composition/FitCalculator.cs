@@ -55,11 +55,14 @@ public static class FitCalculator
     // A turned image whose center is nearly off its cell would otherwise grow without bound.
     private const double MaxCoverScale = 8;
 
-    // Keeping a turned image's center through a zoom: close enough in pixels, the passes allowed, the
-    // focus step the drawn center's slopes are measured over.
-    private const double CenterTolerance = 0.01;
-    private const int MaxCenterPasses = 16;
+    // Keeping a turned image's point through a zoom: close enough in pixels, the passes allowed, the
+    // focus step the drawn point's slopes are measured over.
+    private const double PointTolerance = 0.01;
+    private const int MaxPointPasses = 16;
     private const float FocusStep = 1e-4f;
+
+    /// <summary>The image's center, as a point of it: what the zooms without a cursor keep in place.</summary>
+    public static readonly PointF ImageCenter = new(0.5f, 0.5f);
 
     public static double Scale(double cellWidth, double cellHeight, Size image)
     {
@@ -253,24 +256,45 @@ public static class FitCalculator
     }
 
     /// <summary>
-    /// The focus that draws the image at <paramref name="to"/> with the center of its box where it is
-    /// drawn at <paramref name="from"/> with <paramref name="focus"/>: a zoom grows or shrinks the image
-    /// around its own center, never moving it — <see cref="MinCoveredShare"/> aside, applied where the
-    /// image is placed. Every zoom goes through it (RULES.md § Zoom Keeps the Image in Place).
+    /// The point of the image — in fractions of it as shown — drawn at <paramref name="spot"/> of the
+    /// cell at <paramref name="zoom"/> with <paramref name="focus"/>; brought into the image, its
+    /// nearest edge point, when the spot is over a band.
     /// </summary>
-    public static PointF FocusKeepingCenter(Rectangle cell, Size image, double from, double to, PointF focus, int degrees)
+    public static PointF ImagePointAt(Rectangle cell, Size image, double zoom, PointF focus, int degrees, PointF spot)
     {
-        var center = Middle(ComputeTurned(cell, image, from, focus, degrees).Bounds);
-        var kept = ComputeTurned(cell, image, to, focus, degrees).FocusAt(cell, center);
+        var turned = ComputeTurned(cell, image, zoom, focus, degrees);
+        var unturned = Unturn(turned.Center, spot, turned.Scale, turned.Degrees);
+        var placed = turned.Fit.Image;
+        return new PointF(
+            Math.Clamp((unturned.X - placed.X) / placed.Width, 0, 1),
+            Math.Clamp((unturned.Y - placed.Y) / placed.Height, 0, 1));
+    }
+
+    /// <summary>
+    /// The focus that draws the image at <paramref name="to"/> with its <paramref name="point"/> — in
+    /// fractions of it as shown, <see cref="ImageCenter"/> for its center — where it is drawn at
+    /// <paramref name="from"/> with <paramref name="focus"/>: a zoom grows or shrinks the image around
+    /// that point, never moving it — <see cref="MinCoveredShare"/> aside, applied where the image is
+    /// placed. Every zoom goes through it (RULES.md § Zoom Keeps the Image in Place).
+    /// </summary>
+    public static PointF FocusKeeping(Rectangle cell, Size image, double from, double to, PointF focus, int degrees, PointF point)
+    {
+        var target = DrawnPoint(ComputeTurned(cell, image, from, focus, degrees), point);
+
+        // The center goes where the point's place puts it at the new size: exact without a fine angle.
+        var after = ComputeTurned(cell, image, to, focus, degrees);
+        var middle = Middle(after.Bounds);
+        var reached = DrawnPoint(after, point);
+        var kept = after.FocusAt(cell, new PointF(middle.X + target.X - reached.X, middle.Y + target.Y - reached.Y));
         if (degrees == 0)
         {
             return kept;
         }
 
-        // Turned, the cover scale depends on where the image stands: Newton's steps on the center drawn,
+        // Turned, the cover scale depends on where the image stands: Newton's steps on the point drawn,
         // halved until they bring it closer. Where no focus reaches it, the closest one found.
         double miss = Miss(kept);
-        for (int pass = 0; pass < MaxCenterPasses && miss > CenterTolerance; pass++)
+        for (int pass = 0; pass < MaxPointPasses && miss > PointTolerance; pass++)
         {
             var drawn = Drawn(kept);
             var alongX = Drawn(kept with { X = kept.X + FocusStep });
@@ -283,8 +307,8 @@ public static class FitCalculator
                 break;
             }
 
-            double ex = center.X - drawn.X;
-            double ey = center.Y - drawn.Y;
+            double ex = target.X - drawn.X;
+            double ey = target.Y - drawn.Y;
             var step = new PointF((float)((yy * ex - xy * ey) / determinant), (float)((xx * ey - yx * ex) / determinant));
             bool closer = false;
             for (float share = 1; share > 1f / 256 && !closer; share /= 2)
@@ -305,12 +329,19 @@ public static class FitCalculator
 
         return kept;
 
-        PointF Drawn(PointF at) => Middle(ComputeTurned(cell, image, to, at, degrees).Bounds);
+        PointF Drawn(PointF at) => DrawnPoint(ComputeTurned(cell, image, to, at, degrees), point);
 
         double Miss(PointF at)
         {
             var drawn = Drawn(at);
-            return Math.Abs(drawn.X - center.X) + Math.Abs(drawn.Y - center.Y);
+            return Math.Abs(drawn.X - target.X) + Math.Abs(drawn.Y - target.Y);
         }
+    }
+
+    /// <summary>Where <paramref name="point"/> of the image — in fractions of it as shown — is drawn in the cell.</summary>
+    private static PointF DrawnPoint(TurnedFit turned, PointF point)
+    {
+        var placed = turned.Fit.Image;
+        return Turn(turned.Center, new PointF(placed.X + point.X * placed.Width, placed.Y + point.Y * placed.Height), turned.Scale, turned.Degrees);
     }
 }

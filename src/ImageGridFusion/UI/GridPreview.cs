@@ -1137,10 +1137,11 @@ internal sealed class GridPreview : Control
     }
 
     /// <summary>
-    /// The wheel zooms the cell under the mouse, around the image's own center, by steps of 5 % — 1 % with
-    /// Control held, coarser above 200 % (<see cref="WheelSteps.Zoom"/>); not while another gesture runs.
-    /// Over the selected cell showing the bars of a resizable zone, it scales that zone instead
-    /// (<see cref="ScaleZone"/>) — unless Alt is held: it then zooms the image as without bars.
+    /// The wheel zooms the cell under the mouse, around the point of the image under it, by steps of 5 % —
+    /// 1 % with Control held, coarser above 200 % (<see cref="WheelSteps.Zoom"/>); not while another
+    /// gesture runs. Over the selected cell showing the bars of a resizable zone, it scales that zone
+    /// instead (<see cref="ScaleZone"/>) — unless Alt is held: it then zooms the image as without bars,
+    /// around the point of the image under the mouse in the crop's edit view (<see cref="KeptPartPoint"/>).
     /// </summary>
     protected override void OnMouseWheel(MouseEventArgs e)
     {
@@ -1168,13 +1169,18 @@ internal sealed class GridPreview : Control
         }
 
         BeginLive(index);
-        if (this.ShownBars(index) is { } zone && !this._wheelWithAlt)
+        var bars = this.ShownBars(index);
+        if (bars is { } zone && !this._wheelWithAlt)
         {
             this.ScaleZone(zone, e.Location, notches, _wheelWithControl);
         }
+        else if (bars is { } kept && this.EditsCrop(index))
+        {
+            this.ZoomAt(index, e.Location, notches, _wheelWithControl, KeptPartPoint(kept, e.Location));
+        }
         else
         {
-            this.ZoomAt(index, notches, _wheelWithControl);
+            this.ZoomAt(index, e.Location, notches, _wheelWithControl);
         }
 
         _wheelEnd.Start();
@@ -1867,7 +1873,7 @@ internal sealed class GridPreview : Control
         var zoomed = look.WithZoom(zoom);
         var size = zoomed.Shown(image.Bitmap.Size);
         BeginLive(_selected);
-        SetLook(_selected, zoomed.WithFocus(FitCalculator.FocusKeepingCenter(cell, size, look.ZoomIn(cell, size), zoomed.Zoom, look.Focus, look.FineAngle)));
+        SetLook(_selected, zoomed.WithFocus(FitCalculator.FocusKeeping(cell, size, look.ZoomIn(cell, size), zoomed.Zoom, look.Focus, look.FineAngle, FitCalculator.ImageCenter)));
         ShowZoomBadge(image);
         _wheelEnd.Start();
     }
@@ -1889,7 +1895,7 @@ internal sealed class GridPreview : Control
         var look = image.Look;
         var fitted = fit == ZoomFit.None ? look.WithZoom(ZoomOf(image, cell)) : look.WithZoomFit(fit);
         var size = fitted.Shown(image.Bitmap.Size);
-        var focus = FitCalculator.FocusKeepingCenter(cell, size, look.ZoomIn(cell, size), fitted.ZoomIn(cell, size), look.Focus, look.FineAngle);
+        var focus = FitCalculator.FocusKeeping(cell, size, look.ZoomIn(cell, size), fitted.ZoomIn(cell, size), look.Focus, look.FineAngle, FitCalculator.ImageCenter);
         this.SetLook(this._selected, fitted.WithFocus(focus));
         this.ShowZoomBadge(image);
     }
@@ -1911,10 +1917,11 @@ internal sealed class GridPreview : Control
     /// <summary>
     /// Zooms by <paramref name="notches"/> of the wheel, each moving the zoom onto the next multiple of
     /// its step — the finer one when <paramref name="fine"/> (<see cref="WheelSteps.Zoom"/>) —
-    /// around the image's own center, which stays where it is (<see cref="FitCalculator.FocusKeepingCenter"/>);
+    /// keeping the point of the image under <paramref name="location"/> where it is drawn — or the point
+    /// <paramref name="at"/>, in fractions of the image shown (<see cref="FitCalculator.FocusKeeping"/>);
     /// lands on 100 % when crossing it.
     /// </summary>
-    private void ZoomAt(int index, int notches, bool fine)
+    private void ZoomAt(int index, Point location, int notches, bool fine, PointF? at = null)
     {
         var cells = CellBounds();
         if (index >= cells.Length)
@@ -1936,7 +1943,8 @@ internal sealed class GridPreview : Control
         }
 
         var zoomed = look.WithZoom(zoom);
-        SetLook(index, zoomed.WithFocus(FitCalculator.FocusKeepingCenter(cell, size, current, zoomed.Zoom, look.Focus, look.FineAngle)));
+        var point = at ?? FitCalculator.ImagePointAt(cell, size, current, look.Focus, look.FineAngle, location);
+        SetLook(index, zoomed.WithFocus(FitCalculator.FocusKeeping(cell, size, current, zoomed.Zoom, look.Focus, look.FineAngle, point)));
         ShowZoomBadge(image);
     }
 
@@ -2686,6 +2694,18 @@ internal sealed class GridPreview : Control
         {
             this.SetLook(this._selected, look.WithBlur(blur.Scaled(notches, anchor, minWidth, minHeight)));
         }
+    }
+
+    /// <summary>
+    /// The point of the image under <paramref name="location"/> in the crop's edit view, in fractions of
+    /// the kept part — the image shown once cropped — brought into it when over the part cut off.
+    /// </summary>
+    private static PointF KeptPartPoint(Bars bars, Point location)
+    {
+        var kept = bars.Area;
+        return new PointF(
+            kept.Width < 1 ? 0.5f : Math.Clamp((location.X - kept.X) / (float)kept.Width, 0, 1),
+            kept.Height < 1 ? 0.5f : Math.Clamp((location.Y - kept.Y) / (float)kept.Height, 0, 1));
     }
 
     /// <summary>Whether cell <paramref name="index"/> shows the crop's edit view: its pan then does nothing, its wheel scales the kept part.</summary>

@@ -144,11 +144,11 @@ public sealed record ImageLook
     /// <summary>
     /// The focus the image is drawn with at <paramref name="time"/>, read with <see cref="ZoomAt"/>: the
     /// motion's zoom grows the image around its own center, where it stands at time 0, like every zoom
-    /// (<see cref="FitCalculator.FocusKeepingCenter"/>); <see cref="Focus"/> while it does not zoom.
+    /// (<see cref="FitCalculator.FocusKeeping"/>); <see cref="Focus"/> while it does not zoom.
     /// </summary>
     public PointF FocusAt(TimeSpan time, Rectangle cell, Size shown) =>
         this.Motion is { Kind: MotionKind.Zoom }
-            ? FitCalculator.FocusKeepingCenter(cell, shown, this.ZoomIn(cell, shown), this.ZoomAt(time, cell, shown), this.Focus, this.FineAngle)
+            ? FitCalculator.FocusKeeping(cell, shown, this.ZoomIn(cell, shown), this.ZoomAt(time, cell, shown), this.Focus, this.FineAngle, FitCalculator.ImageCenter)
             : this.Focus;
 
     /// <summary>
@@ -354,7 +354,7 @@ public sealed record ImageLook
     };
 
     /// <summary>
-    /// The focus is kept as it is; the gesture converts it so the image keeps its center (see <see cref="FitCalculator.FocusKeepingCenter"/>).
+    /// The focus is kept as it is; the gesture converts it so the image keeps a point in place (see <see cref="FitCalculator.FocusKeeping"/>).
     /// A free zoom: it leaves the fit mode.
     /// </summary>
     public ImageLook WithZoom(double zoom) => Activated(ImageEffect.Zoom) with { Zoom = Math.Clamp(zoom, MinZoom, MaxZoom), ZoomFit = ZoomFit.None, KeptZoom = null };
