@@ -47,6 +47,11 @@ internal sealed class FileExplorerPanel : Panel
     private const int ContentSaveInterval = 30000;
     private const int ContentRefreshInterval = 5000;
 
+    // The texts are also saved every ContentSaveEvery files extracted, no sooner than ContentSaveFloor
+    // ms after the previous save (workfiles/20261007-index-write-every-50-files.md § Design).
+    private const int ContentSaveEvery = 50;
+    private const int ContentSaveFloor = 5000;
+
     // How long a folder may take to list before the status line says it is being read, in ms.
     private const int ReadingNoticeDelay = 150;
 
@@ -972,8 +977,8 @@ internal sealed class FileExplorerPanel : Panel
     /// <summary>
     /// The extraction's worker: the texts of the files gone from the index dropped, then every file
     /// whose text is missing or older than the file extracted, waiting between two while the search
-    /// is busy; the texts saved every half minute and at the end, so a pass cut short resumes where it
-    /// stopped.
+    /// is busy; the texts saved every 50 files — no sooner than 5 s after the previous save — every half
+    /// minute whatever the count, and at the end, so a pass cut short resumes where it stopped.
     /// </summary>
     private void Extract(FileIndex index, ContentIndex contents, IProgress<ExtractionProgress> progress, CancellationToken cancellation)
     {
@@ -981,6 +986,7 @@ internal sealed class FileExplorerPanel : Panel
         var queue = index.Entries.Where(e => e.Stamp is not null && !contents.IsCurrent(e)).ToArray();
         var extractor = new ContentExtractor();
         int done = 0;
+        int unsaved = 0;
         long saved = Environment.TickCount64;
         long refreshed = saved;
         try
@@ -1005,12 +1011,14 @@ internal sealed class FileExplorerPanel : Panel
                 contents.Set(entry.RelativePath, entry.Stamp!.Value, text, boxes);
                 changed = true;
                 done++;
+                unsaved++;
 
                 long now = Environment.TickCount64;
-                if (now - saved >= ContentSaveInterval)
+                if (now - saved >= ContentSaveInterval || (unsaved >= ContentSaveEvery && now - saved >= ContentSaveFloor))
                 {
                     TrySave(contents);
                     saved = now;
+                    unsaved = 0;
                 }
 
                 if (now - refreshed >= ContentRefreshInterval)
