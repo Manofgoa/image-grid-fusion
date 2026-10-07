@@ -151,8 +151,9 @@ internal sealed class FileIndex
     /// <summary>
     /// Scans <paramref name="baseFolder"/> and its subfolders, on the calling thread: a first pass counts
     /// the files, so the second, which records them, reports an exact ratio. Hidden and system entries
-    /// are skipped with their content, inaccessible folders too. Each file's creation time comes with
-    /// the enumeration, without another disk access. Throws like the enumeration does when the folder
+    /// are skipped with their content, inaccessible folders too. Each file's creation time, size and
+    /// last write come with the enumeration, without another disk access — the last two kept in
+    /// memory only, for the content texts. Throws like the enumeration does when the folder
     /// itself cannot be read.
     /// </summary>
     public static FileIndex Scan(string baseFolder, IProgress<ScanProgress>? progress, CancellationToken cancellation)
@@ -187,20 +188,20 @@ internal sealed class FileIndex
         // The enumeration prefixes each path with the root as given; a drive root already ends with its separator.
         int prefix = root.EndsWith(Path.DirectorySeparatorChar) ? root.Length : root.Length + 1;
         var entries = new List<IndexEntry>(count);
-        var files = new FileSystemEnumerable<(string Path, DateTime Created)>(
+        var files = new FileSystemEnumerable<(string Path, DateTime Created, long Size, DateTime Written)>(
             root,
-            (ref FileSystemEntry entry) => (entry.ToFullPath(), entry.CreationTimeUtc.UtcDateTime),
+            (ref FileSystemEntry entry) => (entry.ToFullPath(), entry.CreationTimeUtc.UtcDateTime, entry.Length, entry.LastWriteTimeUtc.UtcDateTime),
             options)
         {
             ShouldIncludePredicate = (ref FileSystemEntry entry) => !entry.IsDirectory,
         };
-        foreach (var (file, created) in files)
+        foreach (var (file, created, size, written) in files)
         {
             cancellation.ThrowIfCancellationRequested();
             string relative = file.Length > prefix && file.StartsWith(root, StringComparison.OrdinalIgnoreCase)
                 ? file[prefix..]
                 : Path.GetRelativePath(root, file);
-            entries.Add(new IndexEntry(relative, created));
+            entries.Add(new IndexEntry(relative, created, new FileStamp(size, written)));
             Report(ScanPhase.Indexing, entries.Count, count, force: entries.Count == count);
         }
 

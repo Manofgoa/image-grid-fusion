@@ -126,10 +126,11 @@ internal sealed class IndexEntry
 {
     private static readonly char[] Separators = ['\\', '/'];
 
-    public IndexEntry(string relativePath, DateTime created)
+    public IndexEntry(string relativePath, DateTime created, FileStamp? stamp = null)
     {
         RelativePath = relativePath;
         Created = created;
+        this.Stamp = stamp;
         Folded = FileSearch.Fold(relativePath);
         NameStart = Folded.LastIndexOfAny(Separators) + 1;
     }
@@ -139,6 +140,12 @@ internal sealed class IndexEntry
     /// <summary>When the file was created — arrived in the folder — in UTC; <see cref="DateTime.MinValue"/> when unknown.</summary>
     public DateTime Created { get; }
 
+    /// <summary>
+    /// The file's size and last write as the scan found them; null for an entry loaded from the index
+    /// file, which does not hold them — only a scanned index tells which content texts are stale.
+    /// </summary>
+    public FileStamp? Stamp { get; }
+
     /// <summary>The relative path, folded once for every search.</summary>
     public string Folded { get; }
 
@@ -147,3 +154,6 @@ internal sealed class IndexEntry
 
     public string Name => Path.GetFileName(RelativePath);
 }
+
+/// <summary>What tells a file changed since its content text was extracted: its size and last write, in UTC.</summary>
+internal readonly record struct FileStamp(long Size, DateTime Written);
