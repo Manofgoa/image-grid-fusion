@@ -655,6 +655,7 @@ internal sealed class FileExplorerPanel : Panel
         ShowStatus("Loading the index…");
         var (loaded, tree) = await Task.Run(() =>
         {
+            FileIndex.MoveLegacy();
             var index = FileIndex.Load(FileIndex.DefaultPath, folder);
             return (index, index is null ? null : FolderTree.Of(index.Entries));
         });

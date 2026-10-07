@@ -6,15 +6,19 @@ namespace ImageGridFusion.Explorer;
 
 /// <summary>
 /// The file explorer's index: every file under the base folder and its subfolders, cached in a text
-/// file next to the exe so the search never reads the disk. Three header lines — a version, the base
-/// folder, the scan's time — then one line per file: its relative path and, after a tab, its creation
-/// time (UTC, ISO 8601); further tab-separated columns are tolerated, for the text a later task may
-/// add. See workfiles/20260926-file-explorer.md § Index File and
-/// workfiles/20260927-file-explorer-show-all.md § Index File.
+/// file of the <see cref="FolderName"/> folder next to the exe so the search never reads the disk.
+/// Three header lines — a version, the base folder, the scan's time — then one line per file: its
+/// relative path and, after a tab, its creation time (UTC, ISO 8601); further tab-separated columns
+/// are tolerated. See workfiles/20260926-file-explorer.md § Index File,
+/// workfiles/20260927-file-explorer-show-all.md § Index File and workfiles/20260926-ocr-search.md
+/// § Index Folder.
 /// </summary>
 internal sealed class FileIndex
 {
     public const string FileName = "files.index";
+
+    /// <summary>The folder next to the exe holding every indexing file: this index and the content texts.</summary>
+    public const string FolderName = "Index";
     private const string Header = "ImageGridFusion index 2";
     private const int ProgressInterval = 100;
 
@@ -36,8 +40,32 @@ internal sealed class FileIndex
 
     public int Count => _entries.Count;
 
-    /// <summary>Where the index of this exe lives: next to it.</summary>
-    public static string DefaultPath => Path.Combine(AppContext.BaseDirectory, FileName);
+    /// <summary>The indexing folder of this exe: <see cref="FolderName"/>, next to it.</summary>
+    public static string Folder => Path.Combine(AppContext.BaseDirectory, FolderName);
+
+    /// <summary>Where the index of this exe lives: in its indexing folder.</summary>
+    public static string DefaultPath => Path.Combine(Folder, FileName);
+
+    /// <summary>
+    /// Moves an index left next to the exe by an older version into the indexing folder, as it is, so
+    /// the upgrade does not rescan from nothing; nothing happens when the folder already holds one.
+    /// Best effort: a failure leaves it where it is, and the scan writes a new one.
+    /// </summary>
+    public static void MoveLegacy()
+    {
+        string legacy = Path.Combine(AppContext.BaseDirectory, FileName);
+        try
+        {
+            if (File.Exists(legacy) && !File.Exists(DefaultPath))
+            {
+                Directory.CreateDirectory(Folder);
+                File.Move(legacy, DefaultPath);
+            }
+        }
+        catch (Exception ex) when (IsFileError(ex))
+        {
+        }
+    }
 
     /// <summary>A base folder as compared and stored: its full path, without a trailing separator.</summary>
     public static string NormalizeFolder(string folder) => Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder));
@@ -88,6 +116,7 @@ internal sealed class FileIndex
     /// <summary>Writes the index to a temp file, moved over the previous one: a crash keeps that one.</summary>
     public void Save(string path)
     {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         string temp = path + ".tmp";
         using (var writer = new StreamWriter(temp, append: false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
         {
