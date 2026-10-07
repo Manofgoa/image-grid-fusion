@@ -31,8 +31,12 @@ Components:
 - The explorer **collapsed**: it is **opened first**, as its « button does — the open state saved,
   the splitter shown — then the box focused.
 - The box already focused: `Ctrl+F` selects its text again.
-- **Another text field focused** (a field of the options toolbars): `Ctrl+F` is **left to it**,
-  not taken to the search box.
+- **Another text field focused**: `Ctrl+F` is **left to it**, not taken to the search box —
+  `MainForm.FocusedControl()` (the focused control, down through nested containers) being a
+  `TextBoxBase` other than the search box. No such field exists today (the two combo boxes are
+  drop-down lists): the guard is there for a future one.
+- `MainForm.ProcessCmdKey` handles it and calls `FileExplorerPanel.FocusSearch()`, which opens the
+  panel through `SetOpen(true)` (raising `OpenChanged`) when collapsed.
 - The view is left as it is: the search view or the folder view, each with its own search.
 - Not locked while exporting: the explorer is not part of the export.
 
@@ -42,6 +46,8 @@ Components:
   untouched. Today `Escape` is already kept by the box (the whitelist in `ProcessCmdKey`) but does
   nothing there.
 - It **keeps the text**: the search and its results stay shown; only the focus moves.
+- `FileExplorerPanel.OnSearchKeyDown` takes it (no beep) and raises `SearchEscaped`; the window
+  focuses the preview.
 
 ## Shortcut Shown
 
@@ -95,6 +101,19 @@ Go given: code, unit tests and documentation, in a dedicated worktree
 (`.claude/worktrees/ctrl-f-search-focus`, branch `feature/ctrl-f-search-focus`), fast-forwarded into
 `main` and removed at the end.
 
+### Iteration 4 — 2026-10-07 — 🧭 Implementation choices
+
+No rule broken. Choices the design left open:
+
+- **Escape** is taken in `FileExplorerPanel.OnSearchKeyDown` (already reached: `ProcessCmdKey`
+  whitelists it for the box), raising a new `SearchEscaped` event; `MainForm` focuses the preview.
+  The panel does not know the preview.
+- **The text-field guard** is written although no other text field exists today (both combo boxes
+  are drop-down lists): `MainForm.FocusedControl()` walks `ActiveControl` through nested containers,
+  and `Ctrl+F` goes to the search box unless that control is another `TextBoxBase`.
+- **README**: one bullet after § File explorer › Search, in both languages; the glossary is
+  unchanged (no new term).
+
 ---
 
 ## Implementation Log
@@ -104,9 +123,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable — no testable change (§ Test Impact) |
-| README | | | |
+| Code | 3 | 2026-10-07 | `MainForm.ProcessCmdKey` / `FocusedControl`, `FileExplorerPanel.FocusSearch` / `SearchEscaped`, placeholders |
+| Unit tests | 3 | 2026-10-07 | Not applicable — no testable change (§ Test Impact) |
+| README | 3 | 2026-10-07 | `README.md` and `README.fr.md` § File explorer |
 
 ---
 
