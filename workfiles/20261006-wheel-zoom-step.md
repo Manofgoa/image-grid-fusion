@@ -121,7 +121,6 @@ ready to be pinned the day one exists.
   → In percent
 - [x] ~~Written into the file by the app when missing, so it can be found and edited — or only read,
   absent meaning 2000 %?~~ → Written when missing
-- [x] ~~Which values are accepted (others falling back to 2000 %)?~~ → 200 to 10 000
 - [x] ~~A value above 10 000 overwritten in the file at start-up: with 10 000 (the cap) or 2000 (the
   default)? And a value below 200, or unreadable: overwritten too?~~ → Clamped: above 10 000 →
   10 000, below 200 → 200, unreadable → 2000, each written back into the file
