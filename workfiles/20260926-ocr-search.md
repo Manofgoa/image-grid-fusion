@@ -215,7 +215,7 @@ never folds them again. A file leaving the index (rescan, deletion from the pane
 - Tiles found by their name alone, and the favorites shown while the search box is empty, have no
   bulb.
 
-### Arrow to the Word *(proposed — Iteration 14, awaiting its go)*
+### Arrow to the Word
 
 - On a tile found by the OCR of its image or PDF page, a **small arrow** from the bulb to the word
   found: to the **top-center** of the word's box, or its **bottom-center** when the word sits above
@@ -224,6 +224,9 @@ never folds them again. A file leaving the index (rescan, deletion from the pane
   downscaled or not), so it maps onto the thumbnail whatever its size: `files.content` gains a
   column of boxes per file, its version going to 2.
 - The arrow points at the **first recognised word** holding the first query word the content found.
+- **Read again** — the images and PDFs whose text was extracted without positions (a version-1
+  `files.content`) are stale: the next pass recognises them again, in the background as usual; the
+  text and HTML files keep their texts (Q&A #32).
 
 ## Progress Bar
 
@@ -477,7 +480,8 @@ User question, after testing (Q&A #31): would a small arrow on the thumbnail, fr
 word the OCR found — the word's top-center, or its bottom-center when above the bulb — be
 complicated? Answered: not complicated, but the texts extracted so far hold no positions, so the
 OCR has to run again on the images and PDFs. *Content Badge › Arrow to the Word* written as a
-proposal; the go asked (Q&A #32).
+proposal; the go asked (Q&A #32), then given: the images and PDFs extracted without positions are
+read again by the next pass.
 
 ---
 
@@ -485,7 +489,7 @@ proposal; the go asked (Q&A #32).
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 9, 10, 11, 12, 13 | 2026-10-07 | Delivered on the worktree branch `feature/content-search`, to be merged into `main` once tested |
+| Code | 9, 10, 11, 12, 13, 14 | 2026-10-07 | Delivered on the worktree branch `feature/content-search`, to be merged into `main` once tested |
 | Unit tests | | | None planned — no test project (see *Test Impact*) |
 | README | | | Declined for now (Q&A #27, code only) — the file explorer's section, plus the Glossary (*Content text*, *Index folder*, *Index* revised), each with its `.fr.md` in the same commit; RULES.md § App Settings (`files.index` in `Index\`) |
 
@@ -528,7 +532,7 @@ Questions asked by the agent during design, with user responses.
 | 29 | Which adjustments? | *OCR on xxx.png* to become *OCR: 254/3500 (xxx.png)* | 2026-10-07 |
 | 30 | After this test: merge into `main`, merge with the docs, other adjustments, or not tested yet? | The two settings tied to the content analysis grouped in the menu, ideally not as a submenu; a result found by its content and not by its name: a light bulb at the thumbnail's top-left, under the heart, its tooltip saying it was found in the content, with an excerpt around it (a few words before, a few after) | 2026-10-07 |
 | 31 | After this test: merge into `main`, merge with the docs, other adjustments, or not tested yet? | Would a small arrow on the thumbnail showing where the OCR found the word be complicated? From the bulb to the word's top-center (or bottom-center when above the bulb) | 2026-10-07 |
-| 32 | The arrow: go, the images and PDFs read again by the OCR; go, the positions only for files extracted from now on or after a Rebuild; or no? | | |
+| 32 | The arrow: go, the images and PDFs read again by the OCR; go, the positions only for files extracted from now on or after a Rebuild; or no? | Go, the images and PDFs read again by the OCR | 2026-10-07 |
 
 ---
 
