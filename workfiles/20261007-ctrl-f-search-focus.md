@@ -41,11 +41,12 @@ Components:
 - `Escape` in the search box **gives the focus back to the grid** (the preview), the cell selection
   untouched. Today `Escape` is already kept by the box (the whitelist in `ProcessCmdKey`) but does
   nothing there.
-- Whether it clears the text: see § Open Questions.
+- It **keeps the text**: the search and its results stay shown; only the focus moves.
 
 ## Shortcut Shown
 
-- The shortcut is shown on the search box itself — where exactly: see § Open Questions.
+- In the search box's **placeholder**, both views: `Search files… (Ctrl+F, * for all)` and
+  `Search this folder… (Ctrl+F, * for all)`. No tooltip.
 - README § File explorer (and its French version, in the same commit): `Ctrl+F` and `Escape`.
 
 ---
@@ -64,8 +65,8 @@ hand in the running app.
 
 ## Open Questions
 
-- [ ] `Escape` in the search box: does it clear the text?
-- [ ] Where is `Ctrl+F` shown: the placeholder, a tooltip on the box, or both?
+- [x] ~~`Escape` in the search box: does it clear the text?~~ → No: it only gives the focus back to the grid
+- [x] ~~Where is `Ctrl+F` shown: the placeholder, a tooltip on the box, or both?~~ → The placeholder only
 
 ---
 
@@ -82,6 +83,11 @@ Scoping batch answered (Q&A 1–4): `Ctrl+F` opens a collapsed explorer then foc
 text selected; `Escape` gives the focus back to the grid; the shortcut is shown in the app and
 documented in the README; not active while another text field is focused. Exploration: one direct
 pass — `ProcessCmdKey` already whitelists `Escape` for the box, `SetOpen` already opens and focuses.
+
+### Iteration 2 — 2026-10-07
+
+Open questions answered (Q&A 5–6): `Escape` keeps the text and only moves the focus to the grid;
+`Ctrl+F` is shown in the placeholder of both views, no tooltip.
 
 ---
 
@@ -108,8 +114,8 @@ Questions asked by the agent during design, with user responses.
 | 2 | The text already in the search box? | Select it all | 2026-10-07 |
 | 3 | Extras in scope (active in another text field, Escape back to the grid, shortcut shown, README)? | Escape back to the grid, shortcut shown, README — not active in another text field | 2026-10-07 |
 | 4 | Straightforward or tricky / long? | Straightforward | 2026-10-07 |
-| 5 | `Escape` in the search box: does it clear the text? | | |
-| 6 | Where is `Ctrl+F` shown? | | |
+| 5 | `Escape` in the search box: does it clear the text? | No — keep the text, only move the focus | 2026-10-07 |
+| 6 | Where is `Ctrl+F` shown? | In the placeholder | 2026-10-07 |
 
 ---
 
