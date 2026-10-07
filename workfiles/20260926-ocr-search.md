@@ -102,6 +102,9 @@ Components touched: `Explorer/FileIndex.cs` (index folder, stamps), `Explorer/Fi
   alike) runs only while **Search file contents (OCR)** is checked, an entry of the ⚙ menu,
   remembered in `settings.json` (`AppSettings`), **off by default**; off, the search is by path
   only, as today (Q&A #23).
+- **Its menu group** — the two content entries, *Search file contents (OCR)* and *Rebuild content
+  index*, form a **group of the ⚙ menu**, not a submenu: a separator, a grey **File contents**
+  caption that does nothing when clicked, then the two entries (Iteration 12).
 - **Turned off** — the extraction stops; the texts already extracted are **kept and still
   searched**, the badge included; turned on again, the pass resumes where it stopped (Q&A #24).
 - **When** — in the **background**, **after** each scan (start-up and ↻): the list of files is
@@ -201,11 +204,16 @@ never folds them again. A file leaving the index (rescan, deletion from the pane
 ## Content Badge
 
 - A tile found **thanks to its content** (at least one word matched in its text, not in its path)
-  carries a **badge**: a small medallion like the heart's, in the tile's **top-right** corner (the
-  heart being top-left), holding a **T** in the heart's font; carried by `ExplorerRow.ByContent`
-  (from `SearchMatch.ByContent`), no hit area.
-- Badge only — no tooltip, no snippet. Tiles found by their name alone, and the favorites shown
-  while the search box is empty, have no badge.
+  carries a **light bulb** 💡 in a medallion like the heart's, at the tile's **top-left, under the
+  heart** (Iteration 13 — it replaces the T of the top-right corner).
+- **Its tooltip**, while the pointer is over the bulb: *Found in its content:* then an **excerpt**
+  of the text around the first word the content found — **4 words before, 4 after**, an ellipsis
+  where the text goes on — the tile's tooltip (its path) everywhere else on the tile.
+- Carried by `ExplorerRow.ContentWord` (from `SearchMatch.ContentWord`: the first query word found
+  in the content only); the excerpt computed when the bulb is hovered (`ContentIndex.ExcerptOf`),
+  not at search time. Clicking the bulb does what a click on the tile does.
+- Tiles found by their name alone, and the favorites shown while the search box is empty, have no
+  bulb.
 
 ## Progress Bar
 
@@ -232,12 +240,12 @@ here). The checks to run at delivery:
 
 | Behaviour | Check |
 |---|---|
-| OCR of an image | A screenshot holding a distinctive word: found by that word once the pass is over, with the T badge |
+| OCR of an image | A screenshot holding a distinctive word: found by that word once the pass is over, with the bulb under the heart, its tooltip showing the words around it |
 | French and English | A French word with accents typed without them, and an English word: both found |
 | OCR of a PDF | A scanned PDF and a native-text PDF: found by a word of their first page, not of their second |
 | Text / HTML | A `.txt` note found by a sentence fragment; an `.html` page by a word of its text, not by a tag name |
 | Cap | A text file whose word sits beyond its first 32 KB: not found by it |
-| Mixed words | One word in a file's name, another in its text: found, with the badge |
+| Mixed words | One word in a file's name, another in its text: found, with the bulb |
 | Name first | A word in one file's name and in another file's text: the name match ranks first |
 | Large image | An image longer than the OCR maximum: downscaled and read |
 | Incremental | Restart the app: nothing is re-extracted; edit one file: only that file is |
@@ -249,7 +257,8 @@ here). The checks to run at delivery:
 | Status line | During the pass: *… · indexed HH:MM · OCR: 254/3 500 (name.png)*, the count and the name changing file by file; the plain summary at the end |
 | Pause | Typing a search while the pass runs: the status line's file name stops changing while the thumbnails load, the pass resuming about 1 s after they are all shown |
 | ↻ | Enabled once the scan ends; pressed during the extraction: the list rescanned, then the extraction resumes without redoing the files done |
-| Folder view | A search typed in the folder view finds a file below the open folder by its content, with the badge |
+| Folder view | A search typed in the folder view finds a file below the open folder by its content, with the bulb |
+| Menu group | ⚙: a separator, the grey *File contents* caption, then the two content entries |
 
 ---
 
@@ -433,13 +442,28 @@ pass's count before the file's name. *Extraction › Status line* updated. Agent
 being the whole pass's; the count shown alone for a file of the no-text kind, so it never
 flickers away; the numbers grouped like the scan's own count (*3 500*).
 
+### Iteration 12 — 2026-10-07 — ⚙️ Post-implementation — The content entries grouped in the ⚙ menu
+
+User request, after testing (Q&A #30): the two settings tied to the content analysis form a group
+of the menu — ideally not a submenu. *Extraction › Its menu group* written: a separator, a grey
+*File contents* caption, then the two entries. Agent's choices: the caption's wording, and a
+caption rather than a submenu.
+
+### Iteration 13 — 2026-10-07 — ⚙️ Post-implementation — A light bulb with an excerpt
+
+User request, same answer (Q&A #30): a result found by its content and not by its name shows a
+light bulb at the thumbnail's top-left, under the heart, its tooltip saying it was found in the
+content, with an excerpt around it — a few words before, a few after. *Content Badge* rewritten:
+the bulb replaces the T of the top-right corner. Agent's choices: 4 words each side, around the
+first query word the content found; the tooltip's wording; the excerpt computed on hover.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 9, 10, 11 | 2026-10-07 | Delivered on the worktree branch `feature/content-search`, to be merged into `main` once tested |
+| Code | 9, 10, 11, 12, 13 | 2026-10-07 | Delivered on the worktree branch `feature/content-search`, to be merged into `main` once tested |
 | Unit tests | | | None planned — no test project (see *Test Impact*) |
 | README | | | Declined for now (Q&A #27, code only) — the file explorer's section, plus the Glossary (*Content text*, *Index folder*, *Index* revised), each with its `.fr.md` in the same commit; RULES.md § App Settings (`files.index` in `Index\`) |
 
@@ -480,6 +504,7 @@ Questions asked by the agent during design, with user responses.
 | 27 | The design is complete: start the implementation — code, tests and docs / code only / no? | Code, in a dedicated worktree; once done, the user tests it and it is merged into `main` if OK | 2026-10-07 |
 | 28 | Once tested: merge into `main`, merge with the docs, adjustments, or not tested yet? | Adjustments | 2026-10-07 |
 | 29 | Which adjustments? | *OCR on xxx.png* to become *OCR: 254/3500 (xxx.png)* | 2026-10-07 |
+| 30 | After this test: merge into `main`, merge with the docs, other adjustments, or not tested yet? | The two settings tied to the content analysis grouped in the menu, ideally not as a submenu; a result found by its content and not by its name: a light bulb at the thumbnail's top-left, under the heart, its tooltip saying it was found in the content, with an excerpt around it (a few words before, a few after) | 2026-10-07 |
 
 ---
 
