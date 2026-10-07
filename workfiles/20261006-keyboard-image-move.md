@@ -188,6 +188,14 @@ press that reaches or passes a stop"). The same held the center at 1 px. Fix: fo
 stop reached exactly holds the press as one passed; `PanMagnet.Move`'s `bothWays` becomes
 `stepwise`, covering both.
 
+### Iteration 8 — 2026-10-07 — ⚙️ Post-implementation — Ctrl + Shift jumps to the edge
+
+Requested by the user after testing: **Ctrl + Shift + arrow** moves the image **straight to the
+edge** concerned — the edge stop and its dashed green guide — instead of 10 px ignoring the stops.
+
+Open before the code is touched: which stops the jump lands on (the edges only, or the center
+too).
+
 ---
 
 ## Implementation Log
@@ -220,7 +228,9 @@ Questions asked by the agent during design, with user responses.
 | 9 | Inward edge hold: Ctrl only, or the 1 px steps too? | Both steps | 2026-10-06 |
 | 10 | With every tab moving the image, which focused controls keep their arrows? | The focused control; a click on the preview gives it the arrows | 2026-10-06 |
 | 11 | Is the task finished? (after testing the adjustment) | No: no green bar seen on the way in — relaunch | 2026-10-06 |
+| 12 | Is the task finished? (after testing the exact-landing fix) | No: Ctrl + Shift + arrow moves the image straight to the edge concerned | 2026-10-07 |
+| 13 | Which stops does Ctrl + Shift land on: the edges only, or the center too? | | |
 
 ---
 
-*Last updated: 2026-10-06*
+*Last updated: 2026-10-07*
