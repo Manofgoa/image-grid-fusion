@@ -97,16 +97,18 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 - **Opacity**: from 0 to 100 % (default 100 %), over the whole background — the extended edges included.
 - **Fill**: four thumbnails, **Color** by default.
   - **Color**: the flat fill around the image.
-  - **Corner pixel**, **Miter** and **Background corners** extend the image's **edges**: its top row of pixels is stretched up to the top of the cell, its bottom row down to the bottom, its side columns out to the sides — the image as drawn in the cell, so cropped, rotated, flipped, zoomed and in black & white. Where the image is smaller than its cell both ways, each mode fills the four corners its own way: the color of the image's corner pixel; a mitered joint — each corner split on its diagonal, each half its edge mirrored past the image's corner; or the background color. With a fine angle, the edges extended are those of the rectangle the turned image covers, its corners spilling over them.
+  - **Corner pixel**, **Miter** and **Background corners** extend the image's **edges**: its top row of pixels is stretched up to the top of the cell, its bottom row down to the bottom, its side columns out to the sides — the image as drawn in the cell, so cropped, rotated, flipped, zoomed and in black & white. Where the image is smaller than its cell both ways, each mode fills the four corners its own way: the color of the image's corner pixel; a mitered joint — each corner split on its diagonal, each half the flat color of its edge's pixel next to the image's corner, a 1 px line in the corner pixel's color drawn over the diagonal at 50 % opacity; or the background color. With a fine angle, the edges extended are those of the rectangle the turned image covers, its corners spilling over them.
   - The color settings still count: the flat fill stays under the image (its transparent pixels show it), fills the Background corners, and is what Blend goes to.
+- The fill's settings sit on two lines beside the thumbnails: the color's (*Automatic color*, Opacity, *Color…*) over the extended edges' (Edges, Blend, Soften).
+- **Edges**: from 0 to 100 % (default 100 %): the extended edges' own opacity over the background color, which keeps its own — at 0 %, the bands show the background color only.
 - **Blend**: from 0 to 100 % (default 0 %): the extended edges blend into the background color with the distance from the image, reaching that share of it at the cell's edge — at 100 %, they vanish there.
 - **Soften** (unchecked by default): blurs the extended edges, more with the distance from the image, the image itself staying sharp.
-- Blend and Soften act on the extended edges only: disabled with the Color fill, their values kept.
+- Edges, Blend and Soften act on the extended edges only: disabled with the Color fill, their values kept.
 - The Crop's edit view extends the edges of the whole image it shows.
 - The **color button** is painted with the color in use. Clicking it opens the standard color dialog, on that color; choosing a color unchecks *Automatic color*. Checking it again drops the chosen color; unchecking it keeps the automatic color of the moment as the chosen one.
 - **Black & white** turns the background gray too, whatever its color.
 - **Off**, or below 100 %, the cell is transparent behind its image: the preview shows grey and white squares there, as drawing apps do. A PNG — saved, or the PNG format of a copy — keeps the transparency; the copied bitmap, the MP4 video and the GIF show white instead.
-- Replacing the image, the Background's own Reset and the tabs' Reset bring it back on, automatic, at 100 %, with the Color fill, Blend at 0 % and Soften unchecked.
+- Replacing the image, the Background's own Reset and the tabs' Reset bring it back on, automatic, at 100 %, with the Color fill, Edges at 100 %, Blend at 0 % and Soften unchecked.
 
 ### Crop
 

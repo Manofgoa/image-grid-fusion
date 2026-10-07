@@ -97,16 +97,18 @@ Un panneau repliable à droite de l'aperçu, ouvert au démarrage : une zone de 
 - **Opacity** : de 0 à 100 % (100 % par défaut), sur tout le fond — bords étendus compris.
 - **Remplissage** : quatre miniatures, **Color** par défaut.
   - **Color** : l'aplat de couleur autour de l'image.
-  - **Corner pixel**, **Miter** et **Background corners** étendent les **bords** de l'image : sa rangée de pixels du haut est étirée jusqu'en haut de la cellule, celle du bas jusqu'en bas, ses colonnes latérales jusqu'aux côtés — l'image telle que dessinée dans la cellule, donc recadrée, tournée, retournée, zoomée et en noir et blanc. Là où l'image est plus petite que sa cellule dans les deux sens, chaque mode remplit les quatre coins à sa façon : la couleur du pixel de coin de l'image ; un joint en onglet — chaque coin partagé sur sa diagonale, chaque moitié son bord en miroir au-delà du coin de l'image ; ou la couleur du fond. Avec un angle fin, les bords étendus sont ceux du rectangle que couvre l'image tournée, ses coins débordant dessus.
+  - **Corner pixel**, **Miter** et **Background corners** étendent les **bords** de l'image : sa rangée de pixels du haut est étirée jusqu'en haut de la cellule, celle du bas jusqu'en bas, ses colonnes latérales jusqu'aux côtés — l'image telle que dessinée dans la cellule, donc recadrée, tournée, retournée, zoomée et en noir et blanc. Là où l'image est plus petite que sa cellule dans les deux sens, chaque mode remplit les quatre coins à sa façon : la couleur du pixel de coin de l'image ; un joint en onglet — chaque coin partagé sur sa diagonale, chaque moitié de la couleur unie du pixel de son bord voisin du coin de l'image, une ligne de 1 px de la couleur du pixel de coin tracée sur la diagonale à 50 % d'opacité ; ou la couleur du fond. Avec un angle fin, les bords étendus sont ceux du rectangle que couvre l'image tournée, ses coins débordant dessus.
   - Les réglages de couleur comptent toujours : l'aplat reste sous l'image (ses pixels transparents le montrent), remplit les coins de Background corners, et c'est vers lui que va Blend.
+- Les réglages du remplissage tiennent sur deux lignes à côté des miniatures : ceux de la couleur (*Automatic color*, Opacity, *Color…*) au-dessus de ceux des bords étendus (Edges, Blend, Soften).
+- **Edges** : de 0 à 100 % (100 % par défaut) : l'opacité propre des bords étendus sur la couleur du fond, qui garde la sienne — à 0 %, les bandes ne montrent que la couleur du fond.
 - **Blend** : de 0 à 100 % (0 % par défaut) : les bords étendus s'estompent dans la couleur du fond avec la distance à l'image, jusqu'à cette part au bord de la cellule — à 100 %, ils y disparaissent.
 - **Soften** (décochée par défaut) : floute les bords étendus, d'autant plus loin de l'image, l'image elle-même restant nette.
-- Blend et Soften n'agissent que sur les bords étendus : désactivés avec le remplissage Color, leurs valeurs gardées.
+- Edges, Blend et Soften n'agissent que sur les bords étendus : désactivés avec le remplissage Color, leurs valeurs gardées.
 - La vue d'édition du Crop étend les bords de l'image entière qu'elle montre.
 - Le **bouton de couleur** est peint avec la couleur utilisée. Cliquer dessus ouvre la boîte de dialogue de couleur standard, sur cette couleur ; choisir une couleur décoche *Automatic color*. La cocher de nouveau abandonne la couleur choisie ; la décocher garde la couleur automatique du moment comme couleur choisie.
 - **Black & white** rend aussi le fond gris, quelle que soit sa couleur.
 - **Désactivé**, ou sous 100 %, la cellule est transparente derrière son image : l'aperçu y montre des carreaux gris et blancs, comme les applications de dessin. Un PNG — enregistré, ou le format PNG d'une copie — conserve la transparence ; le bitmap copié, la vidéo MP4 et le GIF affichent du blanc à la place.
-- Remplacer l'image, le Reset propre à Background et le Reset des onglets le remettent activé, automatique, à 100 %, avec le remplissage Color, Blend à 0 % et Soften décochée.
+- Remplacer l'image, le Reset propre à Background et le Reset des onglets le remettent activé, automatique, à 100 %, avec le remplissage Color, Edges à 100 %, Blend à 0 % et Soften décochée.
 
 ### Crop (recadrage)
 
