@@ -97,8 +97,18 @@ Components touched: `Explorer/FileIndex.cs` (index folder, stamps), `Explorer/Fi
 
 ## Extraction
 
-- **When** — in the **background**, after each scan (start-up and ↻), for the files whose content
-  text is **missing or stale**; a search reads the cache only, never the disk.
+- **An app setting** — the extraction runs only while **OCR** is turned on, a checkable entry of
+  the ⚙ menu, remembered in `settings.json` (`AppSettings`), **off by default**. Its scope and what
+  turning it off does: *(open, Q&A #23, #24)*.
+- **When** — in the **background**, **after** each scan (start-up and ↻): the list of files is
+  indexed first — it is what the search needs — then the content texts, **one file at a time**,
+  for the files whose content text is **missing or stale**; a search reads the cache only, never
+  the disk.
+- **Paused during a search** — the extraction pauses while a search is under way, so it never
+  slows down the thumbnails being shown, and resumes on its own afterwards. What exactly
+  pauses it: *(open, Q&A #25)*.
+- **Status line** — while a file is analysed, the summary gets its name:
+  *12 345 files · indexed 17:20 · OCR on xxxx.png*; back to the plain summary when the pass ends.
 - **Change detection** — the scan also reads each file's **size + last-write time**, from the
   `FileSystemEntry` it already enumerates (no extra disk access), and keeps them **in memory** on
   the `IndexEntry` — `files.index` stays format 2, the stamps being needed only right after a scan.
@@ -154,7 +164,9 @@ never folds them again. A file leaving the index (rescan, deletion from the pane
   its content: a new leading key of `Rank`, before the name hits; within each group, the current
   ranking (name hits, first position, name length, path). Every match is listed, loaded by pages as
   today, *N results* counting both groups.
-- **Where** — *(open, Q&A #21)*.
+- **Where** — in **both views**: the search view, and a search typed in the folder view (the files
+  below the open folder), the badge included; the folder tiles stay searched by their name
+  (Q&A #21).
 - **Untouched** — `*` (every file, newest first) and the favorites (empty box) do not read the
   content; the folder view's folder tiles stay path-only.
 - **Before the cache is loaded** — the search matches paths only, as today, and refreshes once the
@@ -179,7 +191,7 @@ never folds them again. A file leaving the index (rescan, deletion from the pane
   row and the status line — so nothing moves when it appears; the bar is **hidden while no job
   runs**.
 - The scan's existing status text stays as it is.
-- **↻ during the extraction** — *(open, Q&A #22)*.
+- **↻ during the extraction** — *(open, Q&A #26 — #22 answered with the OCR setting instead)*.
 
 ---
 
@@ -204,6 +216,10 @@ here). The checks to run at delivery:
 | Cancellation | Change the base folder or press ↻ during the pass: it stops and restarts cleanly |
 | Index folder | An existing `files.index` next to the exe moved into `Index\` at start-up, no full rescan from nothing; `favorites.txt` untouched |
 | Progress bar | 3 px, blue, under the box, during the scan and the extraction; hidden when idle, nothing moving |
+| OCR setting | Off at first launch: no extraction runs; turned on from ⚙: the pass starts after the file list, remembered after a restart |
+| Status line | During the pass: *… · indexed HH:MM · OCR on name.png*, the name changing file by file; the plain summary at the end |
+| Pause | Typing a search while the pass runs: the thumbnails come as fast as with OCR off; the pass resumes afterwards |
+| Folder view | A search typed in the folder view finds a file below the open folder by its content, with the badge |
 
 ---
 
@@ -233,10 +249,17 @@ not only the blocking ones.
   indexing job, the scan included (Q&A #17).
 - [x] ~~Limits?~~ → Oversized images downscaled then read (Q&A #18); a ⚙ *Rebuild content index*
   entry (Q&A #19); no per-file time budget, every source being bounded.
-- [ ] **Folder view**: does the content search also apply to a search typed in the folder view
-  (the files below the open folder), with the badge — or to the search view only? (Q&A #21)
+- [x] ~~**Folder view**: does the content search also apply to a search typed in the folder view?~~
+  → Yes, like the search view, with the badge (Q&A #21).
 - [ ] **↻ during the extraction**: enabled once the scan ends (pressed, it rescans and the
-  extraction resumes where it stopped), or disabled until the extraction ends? (Q&A #22)
+  extraction resumes where it stopped), or disabled until the extraction ends? (Q&A #22, not
+  answered as such — asked again as #26)
+- [ ] **OCR setting scope**: does it gate the OCR only (images, PDF — the text and HTML files read
+  whatever the setting), or the whole content extraction? (Q&A #23)
+- [ ] **OCR turned off**: the texts already extracted kept and still searched (turned on again, the
+  pass resumes), or ignored by the search while off? (Q&A #24)
+- [ ] **Pause trigger**: what pauses the extraction — the thumbnails loading plus a moment after
+  the last keystroke, or as long as the search box holds a query? (Q&A #25)
 
 ---
 
@@ -310,6 +333,20 @@ before the go:
   line.
 - Two new open questions: the folder view (Q&A #21), ↻ during the extraction (Q&A #22).
 
+### Iteration 7 — 2026-10-07 — OCR as an app setting, paused during a search
+
+Q&A #21: the content search applies to the folder view's search too, the badge included — *Search*
+updated. Q&A #22, answered with new requirements instead of the choice offered:
+
+- The OCR is an **app setting** to turn on, a checkable ⚙ entry, off by default (*off by default*
+  is the agent's reading of *an option to turn on*).
+- It runs **after** the file list's indexing, which keeps the priority, **one file at a time**.
+- The status line names the file being analysed, after the summary: *… · OCR on xxxx.png*.
+- It **pauses during a search**, so the thumbnails are not slowed down.
+
+*Extraction* updated. New open questions: the setting's scope (Q&A #23), what turning it off does
+(Q&A #24), what pauses the pass (Q&A #25), and ↻ asked again (Q&A #26).
+
 ---
 
 ## Implementation Log
@@ -348,8 +385,12 @@ Questions asked by the agent during design, with user responses.
 | 18 | An image larger than the OCR accepts: downscaled, or skipped? | Downscaled then read | 2026-09-29 |
 | 19 | A way to re-extract everything: a ⚙ menu entry, Shift + ↻, or nothing? | A ⚙ menu entry | 2026-09-29 |
 | 20 | *(2026-09-29, the go question — cut short by the end of the session, unanswered.)* How do we resume: refresh against the current code then go, go now (code, tests and docs / code only), or no? | Refresh, then go | 2026-10-07 |
-| 21 | Folder view: the content search also in a search typed in the folder view, with the badge, or in the search view only? | | |
-| 22 | ↻ during the extraction: enabled once the scan ends (the extraction resuming after the rescan), or disabled until the extraction ends? | | |
+| 21 | Folder view: the content search also in a search typed in the folder view, with the badge, or in the search view only? | Yes, like the search view | 2026-10-07 |
+| 22 | ↻ during the extraction: enabled once the scan ends (the extraction resuming after the rescan), or disabled until the extraction ends? | *(not answered as such)* The OCR is an option to turn on in the app's settings. On, it indexes file by file, with an indication next to the file count and the last indexing time naming the file being analysed — e.g. *OCR on xxxx.png*. It comes AFTER the indexing of the file list, which has priority so the search works. It is paused during a search, so it does not slow down the thumbnails | 2026-10-07 |
+| 23 | OCR setting scope: the OCR only (images, PDF), or the whole content extraction (text and HTML files too)? | | |
+| 24 | OCR turned off: the texts already extracted kept and searched, or ignored while off? | | |
+| 25 | Pause trigger: the thumbnails loading plus a moment after the last keystroke, or as long as the search box holds a query? | | |
+| 26 | ↻ during the extraction (#22 again): enabled once the scan ends, or disabled until the extraction ends? | | |
 
 ---
 
