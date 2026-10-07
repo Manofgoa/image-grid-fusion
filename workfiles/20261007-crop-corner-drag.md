@@ -203,7 +203,7 @@ says so rather than staying blank.
 | Unit tests | 3 | 2026-10-07 | None — no test project (§ Test Impact) |
 | README | 3 | 2026-10-07 | § Crop, § Blur, § Resizing the cells — EN and FR |
 | GLOSSARY | 3 | 2026-10-07 | *Crop edit view* — EN and FR |
-| Manual validation | | | Pending — the app launched for the user |
+| Manual validation | 4 | 2026-10-07 | Validated by the user |
 
 ---
 
