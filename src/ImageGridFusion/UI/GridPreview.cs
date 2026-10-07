@@ -502,6 +502,22 @@ internal sealed class GridPreview : Control
 
     public void ClearSelection() => Select(-1);
 
+    /// <summary>
+    /// Selects the cell under the mouse pointer when it holds an image, else keeps the selection: what a
+    /// shortcut acting on the hovered cell, else on the selected one, does first. Whether an image is
+    /// selected afterwards.
+    /// </summary>
+    public bool SelectUnderPointer()
+    {
+        var location = this.PointToClient(Cursor.Position);
+        if (this.ClientRectangle.Contains(location) && this.CellAt(location) is var index and >= 0 && index < this._images.Count)
+        {
+            this.Select(index);
+        }
+
+        return this.SelectedImage is not null;
+    }
+
     /// <summary>Puts every separator back where the layout's own proportions place it; the mirror stays.</summary>
     public void ResetCellSizes()
     {

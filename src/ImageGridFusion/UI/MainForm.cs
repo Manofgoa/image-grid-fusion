@@ -986,6 +986,12 @@ internal sealed class MainForm : Form
             case Keys.Control | Keys.S:
                 Save();
                 return true;
+            case Keys.Control | Keys.R when !this.IsExporting:
+                this.TurnQuarter(1);
+                return true;
+            case Keys.Control | Keys.Shift | Keys.R when !this.IsExporting:
+                this.TurnQuarter(-1);
+                return true;
             case Keys.Control | Keys.F when this._explorer.IsEditingText || this.FocusedControl() is not TextBoxBase:
                 this._explorer.FocusSearch();
                 return true;
@@ -998,6 +1004,23 @@ internal sealed class MainForm : Form
             default:
                 return base.ProcessCmdKey(ref msg, keyData);
         }
+    }
+
+    /// <summary>
+    /// Ctrl+R / Ctrl+Shift+R: <paramref name="quarterTurns"/> quarter turns of the hovered cell's image,
+    /// else the selected one's, that cell selected and the Rotate tab with it; the effect is turned on from
+    /// its kept settings, and the fine angle goes back to 0°, like the rotation buttons
+    /// (see workfiles/20260930-rotation-ctrl-r.md).
+    /// </summary>
+    private void TurnQuarter(int quarterTurns)
+    {
+        if (!this._preview.SelectUnderPointer())
+        {
+            return;
+        }
+
+        this.SelectEffect(ImageEffect.Rotate);
+        this.ChangeLook(ImageEffect.Rotate, look => look.WithRotation(look.Rotation + 90 * quarterTurns));
     }
 
     /// <summary>
