@@ -152,6 +152,11 @@ pictograms follow the Background's schematic vocabulary (grey cell, white image,
 direction); Crop's 100 % is set apart from the ratios by a gap and a thin line. The Pictograms
 table now describes each drawing.
 
+### Iteration 3 — 2026-10-07 — ✅ Implemented
+
+Go given: code, tests and documentation, in the current checkout, on `main` (the repository's
+standing choice).
+
 ---
 
 ## Implementation Log
