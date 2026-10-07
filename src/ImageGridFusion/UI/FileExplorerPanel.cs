@@ -60,8 +60,14 @@ internal sealed class FileExplorerPanel : Panel
     private readonly Label _title = new() { Text = "Files", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly Button _collapse = new() { Text = "»", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right };
     private readonly Button _expand = new() { Text = "«", Dock = DockStyle.Fill, Visible = false, Margin = Padding.Empty };
-    private readonly TableLayoutPanel _searchRow = new() { ColumnCount = 3, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
+    private readonly TableLayoutPanel _searchRow = new() { ColumnCount = 5, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
     private readonly CheckBox _folderToggle = new() { Text = "📁", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0) };
+
+    // The search criteria (workfiles/20261007-search-options.md): pressed, the search looks in the
+    // relative paths, in the content texts; both at start-up, never none, not remembered. Toggled by
+    // hand (AutoCheck off), so the last one pressed stays pressed.
+    private readonly CheckBox _byName = new() { Text = "Aa", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0), Checked = true, AutoCheck = false };
+    private readonly CheckBox _byContent = new() { Text = "💡", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0), Checked = true, AutoCheck = false };
     private readonly TextBox _search = new() { PlaceholderText = SearchPlaceholder, Anchor = AnchorStyles.Left | AnchorStyles.Right };
     private readonly Button _rescan = new() { Text = "↻", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right, Enabled = false };
     private readonly IndexingBar _progress = new() { Dock = DockStyle.Fill };
@@ -151,11 +157,15 @@ internal sealed class FileExplorerPanel : Panel
         _header.Controls.Add(_title, 0, 0);
         _header.Controls.Add(_collapse, 1, 0);
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _searchRow.Controls.Add(_folderToggle, 0, 0);
-        _searchRow.Controls.Add(_search, 1, 0);
-        _searchRow.Controls.Add(_rescan, 2, 0);
+        _searchRow.Controls.Add(this._byName, 1, 0);
+        _searchRow.Controls.Add(this._byContent, 2, 0);
+        _searchRow.Controls.Add(_search, 3, 0);
+        _searchRow.Controls.Add(_rescan, 4, 0);
         _captionRow.Controls.Add(_caption);
         _captionRow.Controls.Add(_breadcrumb);
         _sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -190,6 +200,7 @@ internal sealed class FileExplorerPanel : Panel
         _toolTip.SetToolTip(_expand, "Show the file explorer");
         _toolTip.SetToolTip(_rescan, "Rescan the folder");
         _toolTip.SetToolTip(_folderToggle, FolderToggleTip());
+        this.ApplyCriteriaTips();
         _toolTip.SetToolTip(_smallerGlyph, "Smaller tiles");
         _toolTip.SetToolTip(_largerGlyph, "Larger tiles");
         _collapse.Click += (_, _) => SetOpen(false);
@@ -208,6 +219,8 @@ internal sealed class FileExplorerPanel : Panel
         };
         _search.KeyDown += OnSearchKeyDown;
         _folderToggle.CheckedChanged += (_, _) => SetFolderView(_folderToggle.Checked);
+        this._byName.Click += (_, _) => this.ToggleCriterion(this._byName, this._byContent);
+        this._byContent.Click += (_, _) => this.ToggleCriterion(this._byContent, this._byName);
         _breadcrumb.UpRequested += (_, _) => GoUp();
         _breadcrumb.SegmentClicked += (_, depth) => OpenFolderAtDepth(depth);
         _grid.HeartClicked += (_, row) => ToggleFavorite(row);
@@ -358,6 +371,8 @@ internal sealed class FileExplorerPanel : Panel
             {
                 this.StopExtraction();
             }
+
+            this.ApplyCriteriaTips();
         }
     }
 
@@ -1299,9 +1314,14 @@ internal sealed class FileExplorerPanel : Panel
             Array.Sort(folders, (a, b) => FolderTree.ComparePaths(a.RelativePath, b.RelativePath));
             foundFolders = folders;
         }
-        else
+        else if (this._byName.Checked)
         {
             foundFolders = FileSearch.Search(folders, words).Select(m => m.Entry).ToArray();
+        }
+        else
+        {
+            // Content only: a folder has no content text, so none is found.
+            foundFolders = [];
         }
 
         var foundFiles = this.Find(files, words, everything);
@@ -1331,7 +1351,7 @@ internal sealed class FileExplorerPanel : Panel
 
     /// <summary>
     /// The files of a search: every one for <c>*</c>, the most recently created first; else those
-    /// matching the words — by their path or by their content text — best first.
+    /// matching the words — by their path or by their content text, as the search criteria ask — best first.
     /// </summary>
     private IReadOnlyList<SearchMatch> Find(IReadOnlyList<IndexEntry> entries, string[] words, bool everything)
     {
@@ -1340,8 +1360,8 @@ internal sealed class FileExplorerPanel : Panel
             return FileSearch.All(entries).Select(e => new SearchMatch(e, null)).ToArray();
         }
 
-        var contents = this._contents;
-        return FileSearch.Search(entries, words, contents is null ? null : e => contents.FoldedOf(e.RelativePath));
+        var contents = this._byContent.Checked ? this._contents : null;
+        return FileSearch.Search(entries, words, contents is null ? null : e => contents.FoldedOf(e.RelativePath), this._byName.Checked);
     }
 
     /// <summary>The words around the one the search found in a tile's content text, 4 on each side.</summary>
@@ -1413,6 +1433,45 @@ internal sealed class FileExplorerPanel : Panel
         _breadcrumb.Visible = _folderView;
         _search.PlaceholderText = _folderView ? FolderSearchPlaceholder : SearchPlaceholder;
         _toolTip.SetToolTip(_folderToggle, FolderToggleTip());
+    }
+
+    /// <summary>
+    /// A search criterion button clicked: pressed or released, the search shown run again — unless it is
+    /// the last one pressed, which stays pressed. Nothing else moves: the favorites and <c>*</c> stay as
+    /// they are, the criteria counting once words are typed.
+    /// </summary>
+    private void ToggleCriterion(CheckBox criterion, CheckBox other)
+    {
+        if (criterion.Checked && !other.Checked)
+        {
+            return;
+        }
+
+        criterion.Checked = !criterion.Checked;
+        this.ApplyCriteriaTips();
+        if (FileSearch.Words(_search.Text).Length > 0 && !FileSearch.IsEverything(_search.Text))
+        {
+            this.RefreshRows();
+        }
+    }
+
+    /// <summary>The criteria buttons' tooltips: what each searches, whether it is on, why the last one pressed stays pressed, the extraction stopped.</summary>
+    private void ApplyCriteriaTips()
+    {
+        _toolTip.SetToolTip(this._byName, CriterionTip("Search in the file names and their folders", this._byName.Checked, this._byContent.Checked, null));
+        _toolTip.SetToolTip(this._byContent, CriterionTip(
+            "Search in the text inside the files",
+            this._byContent.Checked,
+            this._byName.Checked,
+            this._contentSearch ? null : "The extraction is stopped (⚙ Search file contents (OCR)): only the texts already extracted are searched"));
+    }
+
+    private static string CriterionTip(string what, bool on, bool otherOn, string? note)
+    {
+        string state = !on ? "off — click to turn on"
+            : otherOn ? "on — click to turn off"
+            : "on — at least one criterion stays on";
+        return note is null ? $"{what}: {state}" : $"{what}: {state}\n{note}";
     }
 
     private string FolderToggleTip() => _folderView
