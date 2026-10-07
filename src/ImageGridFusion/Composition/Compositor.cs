@@ -105,7 +105,7 @@ public static class Compositor
     public static Color AutomaticBackground(Frame frame, Rectangle cell)
     {
         var look = frame.Look ?? ImageLook.None;
-        var turned = FitCalculator.ComputeTurned(cell, frame.Size, look.ZoomAt(frame.Time), look.Focus, look.FineAngle);
+        var turned = FitCalculator.ComputeTurned(cell, frame.Size, look.ZoomAt(frame.Time, cell, frame.Size), look.Focus, look.FineAngle);
         using var turn = turned.Transform();
         var source = Uncropped(turn is null ? turned.Fit.Source : TurnedPart(cell, turned.Fit, frame.Size, turn).Source, frame.Bitmap.Size, look);
         bool oriented = look is not { Rotation: 0, FlipX: false, FlipY: false };
@@ -155,7 +155,7 @@ public static class Compositor
             attributes.SetColorMatrix(GrayscaleMatrix(grayscale));
         }
 
-        var turned = FitCalculator.ComputeTurned(cell, frame.Size, look.ZoomAt(frame.Time), look.Focus, look.FineAngle);
+        var turned = FitCalculator.ComputeTurned(cell, frame.Size, look.ZoomAt(frame.Time, cell, frame.Size), look.Focus, look.FineAngle);
         var fit = turned.Fit;
         using var turn = turned.Transform();
         var (source, shown) = turn is null ? (fit.Source, fit.Destination) : TurnedPart(cell, fit, frame.Size, turn);

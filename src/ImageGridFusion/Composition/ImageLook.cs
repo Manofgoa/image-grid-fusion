@@ -18,6 +18,22 @@ public enum ImageEffect
 }
 
 /// <summary>
+/// The Zoom effect's fit mode: while one is on, the zoom is computed from the cell and the image, so it
+/// stays fitted when the cell changes shape (see <see cref="FitCalculator.FitZoom"/>).
+/// </summary>
+public enum ZoomFit
+{
+    /// <summary>The free zoom, <see cref="ImageLook.Zoom"/>.</summary>
+    None,
+
+    /// <summary>The whole image in the cell, touching it on one axis, bands on the other.</summary>
+    Contain,
+
+    /// <summary>The cell covered, the overflow cropped.</summary>
+    Fill,
+}
+
+/// <summary>
 /// Effects applied to one image of the grid, toggled from the effects toolbar (see RULES.md): the
 /// background behind it, the crop keeping a part of it that then stands for the whole image, a zoom around <see cref="Focus"/>, a motion over time, a rotation by quarter turns, flips in the
 /// screen frame, black &amp; white, and the blur; the frames effect for an animated image, the volume
@@ -50,7 +66,7 @@ public sealed record ImageLook
     // The settings of the effects turned off, brought back when they are turned on again; never drawn.
     // A zoom or a move of the image replaces the kept zoom, and turning or flipping the image turns or
     // flips the kept focus and flips with it, so they come back on the same part of the image.
-    private (double Zoom, PointF Focus)? KeptZoom { get; init; }
+    private (double Zoom, PointF Focus, ZoomFit Fit)? KeptZoom { get; init; }
     private (int Rotation, int FineAngle)? KeptRotation { get; init; }
     private (bool X, bool Y)? KeptFlip { get; init; }
     private FramesEffect? KeptFrames { get; init; }
@@ -81,6 +97,12 @@ public sealed record ImageLook
 
     /// <summary>Scale of the fit given by the fitting rule: 1 draws the image as that rule does.</summary>
     public double Zoom { get; private init; } = 1;
+
+    /// <summary>
+    /// The Zoom effect's fit mode: while not <see cref="ZoomFit.None"/>, the zoom drawn is computed from
+    /// the cell (<see cref="ZoomIn"/>) and <see cref="Zoom"/> is not read.
+    /// </summary>
+    public ZoomFit ZoomFit { get; private init; }
 
     /// <summary>
     /// Point of the oriented image kept at the center of the cell, in fractions of its width and
@@ -116,7 +138,16 @@ public sealed record ImageLook
     /// Scale of the fit the image is drawn at, at <paramref name="time"/> on the clock of the grid: the
     /// <see cref="Zoom"/>, times the motion's zoom while the Animations effect is on.
     /// </summary>
-    public double ZoomAt(TimeSpan time) => this.Motion is { Kind: MotionKind.Zoom } motion ? this.Zoom * motion.ZoomAt(time) : this.Zoom;
+    public double ZoomAt(TimeSpan time, Rectangle cell, Size shown) =>
+        this.Motion is { Kind: MotionKind.Zoom } motion ? this.ZoomIn(cell, shown) * motion.ZoomAt(time) : this.ZoomIn(cell, shown);
+
+    /// <summary>
+    /// The zoom the image is drawn at in <paramref name="cell"/>, <paramref name="shown"/> being its size
+    /// as drawn (<see cref="Shown"/>): the one its fit mode gives there, else <see cref="Zoom"/>.
+    /// Every reader of the zoom goes through it.
+    /// </summary>
+    public double ZoomIn(Rectangle cell, Size shown) =>
+        this.ZoomFit == ZoomFit.None ? this.Zoom : Math.Clamp(FitCalculator.FitZoom(cell, shown, this.ZoomFit), MinZoom, MaxZoom);
 
     /// <summary>Every effect at its default: none on but the background, no settings kept.</summary>
     public bool IsNone => this == None;
@@ -147,7 +178,7 @@ public sealed record ImageLook
         switch (effect)
         {
             case ImageEffect.Zoom when KeptZoom is { } zoom:
-                return Activated(effect) with { Zoom = zoom.Zoom, Focus = zoom.Focus, KeptZoom = null };
+                return Activated(effect) with { Zoom = zoom.Zoom, Focus = zoom.Focus, ZoomFit = zoom.Fit, KeptZoom = null };
             case ImageEffect.Rotate when KeptRotation is { } rotation:
                 return WithRotation(rotation.Rotation) with { FineAngle = rotation.FineAngle, KeptRotation = null };
             case ImageEffect.Flip when KeptFlip is { } flip:
@@ -184,7 +215,7 @@ public sealed record ImageLook
         var off = Deactivate(effect);
         return effect switch
         {
-            ImageEffect.Zoom => off with { KeptZoom = (Zoom, Focus) },
+            ImageEffect.Zoom => off with { KeptZoom = (Zoom, Focus, this.ZoomFit) },
             ImageEffect.Rotate => off with { KeptRotation = (Rotation, FineAngle) },
             ImageEffect.Flip => off with { KeptFlip = (FlipX, FlipY) },
             ImageEffect.Frames => off with { KeptFrames = Frames },
@@ -239,7 +270,7 @@ public sealed record ImageLook
         {
             ImageEffect.Background => this with { Background = null },
             ImageEffect.Crop => this with { Crop = null },
-            ImageEffect.Zoom => this with { Zoom = 1, Focus = Center },
+            ImageEffect.Zoom => this with { Zoom = 1, Focus = Center, ZoomFit = ZoomFit.None },
             ImageEffect.Rotate => WithRotation(0),
             ImageEffect.Flip => (FlipX ? ToggleFlipX() : this) is var flipped && flipped.FlipY ? flipped.ToggleFlipY() : flipped,
             ImageEffect.Frames => this with { Frames = null },
@@ -277,7 +308,7 @@ public sealed record ImageLook
             FlipY = swap ? FlipX : FlipY,
             Focus = Turned(Focus, turns),
             KeptFlip = swap && KeptFlip is { } flip ? (flip.Y, flip.X) : KeptFlip,
-            KeptZoom = KeptZoom is { } zoom ? (zoom.Zoom, Turned(zoom.Focus, turns)) : null,
+            KeptZoom = KeptZoom is { } zoom ? zoom with { Focus = Turned(zoom.Focus, turns) } : null,
             Crop = swap ? Crop?.QuarterTurned() : Crop,
             KeptCrop = swap ? KeptCrop?.QuarterTurned() : KeptCrop,
         };
@@ -302,18 +333,24 @@ public sealed record ImageLook
     {
         FlipX = !FlipX,
         Focus = new PointF(1 - Focus.X, Focus.Y),
-        KeptZoom = KeptZoom is { } zoom ? (zoom.Zoom, new PointF(1 - zoom.Focus.X, zoom.Focus.Y)) : null,
+        KeptZoom = KeptZoom is { } zoom ? zoom with { Focus = new PointF(1 - zoom.Focus.X, zoom.Focus.Y) } : null,
     };
 
     public ImageLook ToggleFlipY() => Activated(ImageEffect.Flip) with
     {
         FlipY = !FlipY,
         Focus = new PointF(Focus.X, 1 - Focus.Y),
-        KeptZoom = KeptZoom is { } zoom ? (zoom.Zoom, new PointF(zoom.Focus.X, 1 - zoom.Focus.Y)) : null,
+        KeptZoom = KeptZoom is { } zoom ? zoom with { Focus = new PointF(zoom.Focus.X, 1 - zoom.Focus.Y) } : null,
     };
 
-    /// <summary>The focus is kept at every zoom; the gesture brings the image back within its stops (see <see cref="FitCalculator.WithinStops"/>).</summary>
-    public ImageLook WithZoom(double zoom) => Activated(ImageEffect.Zoom) with { Zoom = Math.Clamp(zoom, MinZoom, MaxZoom), KeptZoom = null };
+    /// <summary>
+    /// The focus is kept at every zoom; the gesture brings the image back within its stops (see <see cref="FitCalculator.WithinStops"/>).
+    /// A free zoom: it leaves the fit mode.
+    /// </summary>
+    public ImageLook WithZoom(double zoom) => Activated(ImageEffect.Zoom) with { Zoom = Math.Clamp(zoom, MinZoom, MaxZoom), ZoomFit = ZoomFit.None, KeptZoom = null };
+
+    /// <summary>Puts the image in a fit mode, the focus kept; <see cref="Zoom"/> is left as it was, unread while the mode is on.</summary>
+    public ImageLook WithZoomFit(ZoomFit fit) => Activated(ImageEffect.Zoom) with { ZoomFit = fit, KeptZoom = null };
 
     /// <summary>Unclamped: how far the image may go depends on its cell, and is applied where the image is placed.</summary>
     public ImageLook WithFocus(PointF focus) => Activated(ImageEffect.Zoom) with { Focus = focus, KeptZoom = null };
@@ -356,7 +393,7 @@ public sealed record ImageLook
         {
             ImageEffect.Background => Background != other.Background || KeptBackground != other.KeptBackground,
             ImageEffect.Crop => Toggled(effect) || (!moved && (Crop != other.Crop || KeptCrop != other.KeptCrop)),
-            ImageEffect.Zoom => Toggled(effect) || Zoom != other.Zoom || (!moved && (Focus != other.Focus || KeptZoom != other.KeptZoom)),
+            ImageEffect.Zoom => Toggled(effect) || Zoom != other.Zoom || this.ZoomFit != other.ZoomFit || (!moved && (Focus != other.Focus || KeptZoom != other.KeptZoom)),
             ImageEffect.Rotate => turned,
             ImageEffect.Flip => flipped,
             ImageEffect.Frames => Frames != other.Frames || KeptFrames != other.KeptFrames,

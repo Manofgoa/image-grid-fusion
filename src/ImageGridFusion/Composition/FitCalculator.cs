@@ -64,6 +64,24 @@ public static class FitCalculator
         return Math.Min(fill, fit / (1 - CropThreshold));
     }
 
+    /// <summary>
+    /// The zoom — a scale of <see cref="Scale"/> — at which an image of <paramref name="image"/> size lies
+    /// whole in <paramref name="cell"/> (<see cref="ZoomFit.Contain"/>) or covers it (<see cref="ZoomFit.Fill"/>);
+    /// 1 for <see cref="ZoomFit.None"/>. It depends only on the shapes of the cell and the image.
+    /// </summary>
+    public static double FitZoom(Rectangle cell, Size image, ZoomFit fit)
+    {
+        if (fit == ZoomFit.None || cell.Width <= 0 || cell.Height <= 0 || image.Width <= 0 || image.Height <= 0)
+        {
+            return 1;
+        }
+
+        double sx = (double)cell.Width / image.Width;
+        double sy = (double)cell.Height / image.Height;
+        double target = fit == ZoomFit.Contain ? Math.Min(sx, sy) : Math.Max(sx, sy);
+        return target / Scale(cell.Width, cell.Height, image);
+    }
+
     public static Fit Compute(Rectangle cell, Size image) => Compute(cell, image, 1, new PointF(0.5f, 0.5f));
 
     /// <summary>
