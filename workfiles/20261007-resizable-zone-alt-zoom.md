@@ -50,23 +50,32 @@ The crop edit view shows the whole image fitted whole, so the zoom does not show
   place the **image point under the cursor in the edit view**: that point, mapped from the edit
   view's geometry (the whole image fitted whole, `Compositor.UncroppedBounds`) into the image as
   seen, then **clamped into the kept part** when the cursor is over the part cut off, stays where
-  the rendered cell shows it. What the user points at is the zoom's center. `ZoomAt` takes that
-  rendered position as its `location` in the edit view; elsewhere it keeps the cursor.
+  the rendered cell shows it. What the user points at is the zoom's center. In code:
+  `GridPreview.KeptPartPoint` gives the cursor's place in the kept part as drawn by the edit view
+  (`Bars.Area`), in fractions clamped to [0, 1], and `ZoomAt` takes it as its optional `at` —
+  a point of the image shown, kept where it is drawn — instead of reading the cursor.
 
 ### Detecting Alt
 
 `WM_MOUSEWHEEL`'s key flags (`MK_*`) carry Ctrl and Shift, never Alt: Alt is read from
 `Control.ModifierKeys` when the wheel message arrives, in `GridPreview.WndProc` next to
-`_wheelWithControl` (e.g. `_wheelWithAlt`). `OnMouseWheel` then takes the `ZoomAt` branch when it
-is set, whatever `ShownBars` gives.
+`_wheelWithControl` (`_wheelWithAlt`). `OnMouseWheel` then takes the `ZoomAt` branch when it is
+set, whatever `ShownBars` gives.
 
 ### Alt Key Release
 
 Releasing Alt alone, in a window, can put it into **menu mode** (`WM_SYSKEYUP` → `SC_KEYMENU`: the
 system menu gets the keyboard, the next keys go to it). After an Alt + wheel, that release must
-**not** do it: the user only held Alt as a modifier. To check during implementation — if it
-happens, the `SC_KEYMENU` that follows an Alt + wheel (keyboard-triggered, `lParam == 0`) is
-swallowed in the form's `WndProc`; an Alt pressed and released alone keeps its usual behaviour.
+**not** do it: the user only held Alt as a modifier. The guard is in place whether or not Windows
+would start it (harmless when it does not):
+
+- every wheel message over the grid records whether Alt was held (`GridPreview._altWheeled`) — a
+  wheel without Alt clears it;
+- `MainForm.WndProc` swallows the keyboard-triggered `SC_KEYMENU` (`lParam == 0`) when
+  `GridPreview.TakeAltWheel()` says the wheel was turned with Alt, which also clears the record;
+- an Alt pressed and released alone keeps its usual behaviour. Left-over case: Alt + wheel, then
+  Alt released while another window has the keyboard — the record stays, and the next lone Alt's
+  menu mode is swallowed once.
 
 ---
 
@@ -131,6 +140,24 @@ left.
 Go given: code, tests and documentation. Branch gate: stays on `main`, the repository's standing
 choice (the run commits there directly).
 
+### Iteration 4 — 2026-10-07 — 🧭 Implementation choices
+
+No rule broken. Choices the frozen design left open:
+
+- **Menu-mode guard implemented without proving the menu mode happens**: proving it means sending
+  synthetic Alt and wheel input on the user's desktop, during an unattended run. The guard is
+  harmless when no `SC_KEYMENU` comes; its left-over case is in § Alt Key Release. To check by
+  hand: Alt + wheel over the grid, release Alt, then press ↓ — no system menu must drop.
+- **`ZoomAt(…, PointF? at)`**: the edit view's anchor is passed as fractions of the image shown,
+  not as a screen point turned back through the fine angle — `before` is already the unturned
+  drawing, so the point is placed there directly.
+- **The edit view's point is read from `Bars.Area`**, the kept part as the edit view draws it, so
+  the clamp into the kept part is a clamp to [0, 1].
+- **The Alt record is set by any wheel message over the grid** (a locked grid or a gap included):
+  Alt was a modifier there too, and its release should not start the menu mode either.
+- **One code commit** for `GridPreview` and `MainForm`: the form's guard reads the preview's
+  record, they make one unit. Rules, README and glossary in three more commits.
+
 ---
 
 ## Implementation Log
@@ -140,10 +167,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable — no test project, UI gesture only (see § Test Impact) |
-| README | | | |
-| RULES / GLOSSARY | | | |
+| Code | 3 | 2026-10-07 | `GridPreview` (Alt read, Alt branch, `KeptPartPoint`, `ZoomAt(at)`, `TakeAltWheel`), `MainForm.WndProc` |
+| Unit tests | 3 | 2026-10-07 | Not applicable — no test project, UI gesture only (see § Test Impact) |
+| README | 3 | 2026-10-07 | Crop, Blur and Zoom wheel lines, en / fr |
+| RULES / GLOSSARY | 3 | 2026-10-07 | RULES § Resizable Zones; *Resizable zone* entry, en / fr |
 
 ---
 
