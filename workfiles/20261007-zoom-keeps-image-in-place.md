@@ -65,24 +65,31 @@ draws the image in). The image grows or shrinks around its own center.
 The stored representation stays `Focus` — the move, the stops, the magnets, flips and quarter turns
 all work on it. A zoom from `z₀` to `z₁` converts the focus instead:
 
-- One helper, `FitCalculator` (e.g. `FocusKeepingCenter(cell, shown, z₀, z₁, focus, degrees)`): the
-  focus at `z₁` whose drawn box has the same center as the box drawn at `z₀` — read from
-  `ComputeTurned`, so the fine angle and the drawing's own clamp are honoured.
-- `GridPreview.ZoomAt`, `ZoomSelected` and `FitSelected` call it in place of their focus
-  computation and `WithinStops`; `FitSelected` converts from the zoom shown before the button to the
-  zoom the mode gives (`ImageLook.ZoomIn`).
-- The **Animations** motion: the drawing reads a focus converted the same way from the zoom at
-  time 0 (`ImageLook.ZoomIn`) to the zoom at `time` (`ImageLook.ZoomAt`) — one accessor on
-  `ImageLook` (e.g. `FocusAt(time, cell, shown)`) read by `Compositor.DrawCell` and
-  `Compositor.AutomaticBackground`, so the preview, the exports and the automatic background agree.
-  The stored focus is untouched.
+- One helper, `FitCalculator.FocusKeepingCenter(cell, shown, from, to, focus, degrees)`: the focus
+  at `to` whose drawn box (`ComputeTurned(…).Bounds`) has the same center as the box drawn at `from`,
+  so the fine angle and the 10 % coverage are honoured.
+  - Without a fine angle, one `TurnedFit.FocusAt` is exact.
+  - With one, the cover scale depends on where the image stands: Newton's steps on the drawn center
+    (slopes measured over a focus step of 1e-4), each halved until it brings the center closer, up
+    to 16 passes, 0.01 px close enough. Where no focus reaches the center (a turned image moved far
+    off its cell, ~0.5 % of random extreme cases), the closest one found is kept.
+  - The result may be **unclamped** — beyond what the 10 % coverage lets the drawing show — as a
+    drag's focus is: zooming back in brings the image back exactly where it was.
+- `GridPreview.ZoomAt` (now `ZoomAt(index, notches, fine)`), `ZoomSelected` and `FitSelected` call
+  it in place of their focus computation and `WithinStops`; `FitSelected` converts from the zoom
+  shown before the button to the zoom the mode gives (`ImageLook.ZoomIn`). `WithinStops`,
+  `GridPreview.TurnedBack` and `GridPreview.KeptPartPoint`, left without callers, are removed.
+- The **Animations** motion: `ImageLook.FocusAt(time, cell, shown)` converts the stored focus from
+  the zoom at time 0 (`ImageLook.ZoomIn`) to the zoom at `time` (`ImageLook.ZoomAt`), read by
+  `Compositor.DrawCell` and `Compositor.AutomaticBackground`, so the preview, the exports and the
+  automatic background agree. The stored focus is untouched.
 
 ### Interactions
 
 - **Undo history**: unchanged — a zoom still changes `Zoom` and `Focus`, one step per gesture.
-- **Resizable zones**: the wheel scales the zone while its bars show, unchanged. The
-  `20261007-resizable-zone-alt-zoom` workfile (in design) makes Alt + wheel call `ZoomAt`: it
-  inherits this rule by itself.
+- **Resizable zones**: the wheel scales the zone while its bars show, unchanged. Alt + wheel
+  (`20261007-resizable-zone-alt-zoom`, implemented meanwhile) calls `ZoomAt` and keeps the image's
+  center too — in the crop edit view as well, where it used to keep the image point under the cursor.
 - **A fit mode following its cell** (a separator, a layout, the format, a crop resizing the cell or
   the image while Contain / Fill is pressed): not a zoom gesture — the focus is read as stored,
   unchanged.
@@ -97,7 +104,8 @@ all work on it. A zoom from `z₀` to `z₁` converts the focus instead:
 - **README.md / README.fr.md** — the wheel line ("around the point under the mouse") and "Zooming
   keeps the image where it was moved, at any zoom, but always brings it back within its stops"
   rewritten; the Animations section if it says where the motion zooms.
-- **GLOSSARY** — nothing new unless a term is introduced.
+- **GLOSSARY.md / GLOSSARY.fr.md** — the Animations zoom around the image's center; "a zoom" left
+  out of what shows the position readout.
 
 ---
 
@@ -158,6 +166,27 @@ the image point under the cursor (`ZoomAt`'s `at` argument, `GridPreview.KeptPar
 route the rule now covers too (see the implementation choices). The other sessions (background
 edge extension, search options, kebab-case folders, index folder naming) do not touch the zoom.
 
+### Iteration 4 — 2026-10-07 — 🧭 Implementation choices
+
+No project rule broken.
+
+- **The crop edit view's Alt zoom keeps the image's center** (divergent from
+  `20261007-resizable-zone-alt-zoom`, which kept the image point under the cursor there): the user's
+  rule covers every wheel zoom. Its `at` argument and `GridPreview.KeptPartPoint` are removed, and the
+  Alt line of RULES.md § Resizable Zones and the README (en / fr) rewritten.
+- **Turned images**: a single conversion pass oscillated on a turned image moved off its cell (the
+  cover scale depends on the position); `FocusKeepingCenter` solves it with halved Newton steps and
+  keeps the closest focus where the exact center cannot be reached. Checked on 20 000 random cases
+  (scratchpad program on the built dll): exact without a fine angle; with one, 92 left off by more
+  than 0.5 px, all far off their cell, besides the 10 % coverage cases.
+- **Unclamped focus**: the converted focus is stored as computed, the 10 % coverage applied at the
+  drawing, like a drag's — zooming back in restores the image's place.
+- **Dead code removed**: `FitCalculator.WithinStops` (both overloads) and `GridPreview.TurnedBack`.
+- **Names**: `FitCalculator.FocusKeepingCenter`, `ImageLook.FocusAt`; RULES.md gets
+  § Effects › Rendering › Zoom Keeps the Image in Place.
+- **Glossary updated** (the design expected nothing there): the Animations entry and the position
+  readout's triggers mentioned the zoom.
+
 ---
 
 ## Implementation Log
@@ -167,9 +196,11 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable — no test project |
-| README | | | |
+| Code | 3, 4 | 2026-10-07 | `9c3c852` zoom routes, `3c54916` Animations |
+| Unit tests | 3 | 2026-10-07 | Not applicable — no test project; checked by a scratchpad program instead (Iteration 4) |
+| RULES.md | 3, 4 | 2026-10-07 | `3d90002` |
+| README | 3 | 2026-10-07 | `d7c6f21` (en / fr) |
+| Glossary | 4 | 2026-10-07 | `a1e4306` (en / fr) |
 
 ---
 
