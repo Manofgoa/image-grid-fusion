@@ -123,6 +123,17 @@ The Crop effect's geometry is **not in fractions of the cell**, and its kept par
   the effect on (its checkbox gets checked) before applying the change, starting from its kept
   settings, so a change never happens without showing. The only exception is the effect's own
   **Reset** button, ending the row, which brings the effect back to its default state.
+- **A choice among values is an option thumbnail** (origin: `workfiles/20261007-effect-option-buttons.md`):
+  the Background's format — a pictogram in a **56 × 40** box (`ThumbnailStrip.EffectBox`), its name
+  below, the pressed ones highlighted, its tooltip saying what it does — never a text button. Every
+  strip of the cell effects has that box, so the options toolbar keeps its height.
+  - The pictograms use the Background's vocabulary: the cell a grey box, the image a white rectangle,
+    both outlined dark, a blue marker in a corner where a direction must show
+    (`ThumbnailStrip.PaintCell` / `PaintImage`); faded while disabled.
+  - Zero, one or several thumbnails may be pressed, as the effect's state says; an **action** among
+    them, never pressed (Crop's 100 %), is **set apart** after them by a wider gap and a line.
+  - Out of it: plain on / off checkboxes (Freeze, Mute, Automatic color, Soften), the Color… button,
+    the sliders and a drop-down of a single value (the Animations' Type).
 
 ### On-Cell Handles
 
