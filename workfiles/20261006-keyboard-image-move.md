@@ -203,6 +203,13 @@ The user chose the **next stop**, the center included: from an edge, two presses
 edge. Ctrl + Shift no longer gives a 10 px step ignoring the stops; Shift alone still gives 1 px
 ignoring them. Nothing ahead → nothing moves. § Keys updated.
 
+Implemented: `GridPreview.JumpSelected` computes the move to the nearest stop ahead
+(`ToNextStop`, the same stops as `PanBy`: the cell's center and edges of the box shown), rounded to
+whole pixels, then moves through the same key path as the arrows (`KeyPan`) with the stops on, so
+`stepwise` lands it exactly on the stop, held, its guide shown. `PanBy` now takes `free` from its
+caller instead of reading Shift itself — the jump is made with Shift held. `MainForm.ArrowMove`
+became `ArrowDirection`, the step chosen in `ProcessCmdKey`. README and README.fr updated.
+
 ---
 
 ## Implementation Log
@@ -212,9 +219,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 3, 4, 6, 7 | 2026-10-06 | `PanMagnet.Settle` / `stepwise`, `GridPreview.PanSelected` / `EndKeyPan` / focus, `MainForm.ProcessCmdKey` |
+| Code | 3, 4, 6, 7, 9 | 2026-10-07 | `PanMagnet.Settle` / `stepwise`, `GridPreview.PanSelected` / `JumpSelected` / `EndKeyPan` / focus, `MainForm.ProcessCmdKey` |
 | Unit tests | 3 | 2026-10-06 | Not applicable: no test project |
-| README | 3, 6 | 2026-10-06 | Arrow keys under the image move: every tab, the preview's focus, edge stops both ways |
+| README | 3, 6, 9 | 2026-10-07 | Arrow keys under the image move: every tab, the preview's focus, edge stops both ways, Ctrl + Shift jump (English and French) |
 
 ---
 
