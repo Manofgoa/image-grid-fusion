@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+
 namespace ImageGridFusion.UI;
 
 /// <summary>
@@ -8,6 +10,9 @@ internal sealed class TrayApplicationContext : ApplicationContext
 {
     /// <summary>Starts the app hidden, with the tray icon only; given by the startup registration.</summary>
     public const string HiddenArgument = "--tray";
+
+    // ShowWindow's command restoring a minimized window to the state it had before: maximized or normal.
+    private const int SwRestore = 9;
 
     // The longest tooltip a NotifyIcon accepts: longer, setting it throws.
     private const int TooltipMaxLength = 127;
@@ -76,7 +81,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _form.Show();
         if (_form.WindowState == FormWindowState.Minimized)
         {
-            _form.WindowState = FormWindowState.Normal;
+            // As the taskbar does: maximized again if it was maximized before being minimized.
+            ShowWindow(_form.Handle, SwRestore);
         }
 
         _form.Activate();
@@ -111,4 +117,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         string tooltip = $"{AppTitle}\n{secondTitle}";
         return tooltip.Length <= TooltipMaxLength ? tooltip : tooltip[..(TooltipMaxLength - 1)].TrimEnd() + "…";
     }
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr window, int command);
 }
