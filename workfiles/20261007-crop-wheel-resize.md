@@ -43,7 +43,10 @@ Computed in the image **as seen** (`CropEffect.Seen` / `WithSeen`), in fractions
 in pixels of the oriented image as `WithRatio` / `WithSeenSide` do.
 
 - A notch **scales the kept part around the fixed point**: `new = anchor + (old − anchor) × k`, its
-  ratio unchanged since both sides scale by `k`. Step size: see Open Questions.
+  ratio unchanged since both sides scale by `k`.
+- **Direction and step**: a notch **up grows** the kept part (more of the image kept), a notch down
+  shrinks it; each notch scales its sides by a **fixed factor**, `k = 1.05` up, `1 / 1.05` down
+  (`k = 1.05^notches` for several notches at once) — no snapping onto multiples.
 - **Growing — slide, then stop**: the scale is clamped so the kept part fits in the image
   (width ≤ 1 and height ≤ 1 in fractions); the scaled part is then **shifted back inside** the image
   where it crosses an edge, so it keeps growing on the other side. Growth stops at the **largest
@@ -63,19 +66,27 @@ in pixels of the oriented image as `WithRatio` / `WithSeenSide` do.
   true through `_wheelEnd`, as the zoom wheel's does; `BeginLive` / `EndLive` show it live.
 - **Restore indicators**: nothing new — the crop's kept-part edges are already in
   `ShowRestored` / `PaintRestored`.
-- **Free format**: the kept part's size changes the Free ratio (`OutputFormats.FreeRatio` reads
-  `ImageLook.Shown`); whether it is held during a burst — see Open Questions.
+- **No new helper indicator**: no size readout during a burst — the bars and the dimmed part
+  already show the kept part.
+- **Free format — held during a burst**: the kept part's size changes the Free ratio
+  (`OutputFormats.FreeRatio` reads `ImageLook.Shown`). Like a crop bar drag, the canvas ratio is
+  **held while the wheel turns** (`GridPreview.UpdateRatio` returns while a crop wheel burst runs)
+  and **computed again when it stops** (the `_wheelEnd` tick), so the canvas does not change shape
+  under the mouse.
 - **Fitting rule, automatic background, canvas sizing** follow the kept part as they do for the
   bars, through `SetLook`.
 
 ## Documentation
 
 - **README.md / README.fr.md** § Crop: the edit view's sentence *"Elsewhere on that cell, a drag
-  and the mouse wheel do nothing"* becomes: the wheel over the cell grows / shrinks the kept part,
-  ratio kept, around its center — the point under the cursor with Ctrl; a drag outside the kept
-  part still does nothing.
-- **RULES.md** § The Crop Exception: the edit view's description gains the wheel.
-- **GLOSSARY.md / GLOSSARY.fr.md**: *Crop edit view* gains *the wheel scaling the kept part*.
+  and the mouse wheel do nothing"* becomes: the wheel over the cell grows (up) / shrinks (down) the
+  kept part by 5 % a notch, ratio kept, around its center — the point under the cursor with Ctrl —
+  sliding along the image's edges, then stopping; a drag outside the kept part still does nothing.
+  § Format: the Free ratio is also held while the wheel scales a kept part.
+- **RULES.md** § The Crop Exception: the edit view's description gains the wheel; § Output Format:
+  the Free ratio held during a crop wheel burst too.
+- **GLOSSARY.md / GLOSSARY.fr.md**: *Crop edit view* gains *the wheel scaling the kept part*;
+  *Free format* is held during a crop wheel burst too.
 
 ---
 
@@ -92,10 +103,10 @@ Nothing is created or updated; the behaviours below are checked by hand at deliv
 
 ## Open Questions
 
-- [ ] Wheel direction: does a notch **up shrink** the kept part (the cropped image zooms in, like the zoom wheel's up) or **grow** it?
-- [ ] Step per notch: the kept part's size **× / ÷ a fixed factor** (e.g. 5 % of its current size), or **snapped onto multiples of 5 %** of the largest kept part at that ratio (like the zoom's steps)?
-- [ ] Free format during a burst: is the canvas ratio **held until the wheel stops** (like a bar drag), or **recomputed at every notch**?
-- [ ] Helper indicator: does a burst show a **size readout** (a green badge, like the zoom's percentage), or do the bars and the dimmed part suffice?
+- [x] ~~Wheel direction: does a notch **up shrink** the kept part (the cropped image zooms in, like the zoom wheel's up) or **grow** it?~~ → Up grows, down shrinks
+- [x] ~~Step per notch: the kept part's size **× / ÷ a fixed factor** (e.g. 5 % of its current size), or **snapped onto multiples of 5 %** of the largest kept part at that ratio (like the zoom's steps)?~~ → Fixed factor: × 1.05 up, ÷ 1.05 down
+- [x] ~~Free format during a burst: is the canvas ratio **held until the wheel stops** (like a bar drag), or **recomputed at every notch**?~~ → Held until the wheel stops, computed again then
+- [x] ~~Helper indicator: does a burst show a **size readout** (a green badge, like the zoom's percentage), or do the bars and the dimmed part suffice?~~ → No readout: the bars and the dimmed part suffice
 
 ---
 
@@ -114,6 +125,13 @@ the cursor with Ctrl; growing slides along the image's edges, then stops at the 
 at that ratio. Exploration: `OnMouseWheel` currently returns on `EditsCrop`; Ctrl+wheel is the zoom's
 fine step elsewhere; no test project. Four open questions: direction, step, Free format during a
 burst, readout.
+
+### Iteration 2 — 2026-10-07
+
+Open questions answered (Q5–Q8): a notch up grows the kept part, down shrinks it; each notch scales
+it by a fixed factor of 1.05; the Free format's ratio is held during a burst and computed again
+when the wheel stops; no size readout. Gesture, Geometry, Interplay and Documentation updated —
+the Free-format hold also reaches RULES.md § Output Format, the README § Format and the glossaries.
 
 ---
 
@@ -140,10 +158,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | Which point stays fixed while it grows or shrinks? | The kept part's center; the point under the cursor while Ctrl is held | 2026-10-07 |
 | 3 | When the growing kept part reaches an image edge? | Slide along it, then stop (the largest kept part at the ratio within the image) | 2026-10-07 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward — one scout pass | 2026-10-07 |
-| 5 | Wheel direction: up shrinks or grows? | | |
-| 6 | Step per notch: fixed factor or snapped multiples of 5 %? | | |
-| 7 | Free format during a burst: held or recomputed per notch? | | |
-| 8 | Size readout during a burst? | | |
+| 5 | Wheel direction: up shrinks or grows? | Up grows | 2026-10-07 |
+| 6 | Step per notch: fixed factor or snapped multiples of 5 %? | Fixed factor, 5 % | 2026-10-07 |
+| 7 | Free format during a burst: held or recomputed per notch? | Held until the wheel stops | 2026-10-07 |
+| 8 | Size readout during a burst? | Nothing more | 2026-10-07 |
 
 ---
 
