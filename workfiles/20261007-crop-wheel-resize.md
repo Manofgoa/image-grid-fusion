@@ -16,7 +16,7 @@ handles on the selected cell while that effect's tab is selected and the effect 
 | Zone | Effect | Its **bounds** — what it lives in | Ratio kept |
 |---|---|---|---|
 | The **kept part** | Crop (edit view) | The **image as seen** (`CropEffect.Seen` fractions) | A ratio button pressed (1:1, 4:3, 16:9, 9:16) — that ratio; **Free** — its current proportions |
-| The **blurred zone** | Blur (blur or pixelation) | The **cell** (`BlurEffect` fractions) | No ratio buttons — its current proportions |
+| The **sharp rectangle** (the bands around it blurred) | Blur (gaussian or pixelate) | The **cell** (`BlurEffect` fractions) | No ratio buttons — its current proportions |
 
 The mouse wheel becomes the way to **grow or shrink the zone** without dragging its four bars one
 by one, its **current ratio kept**. The rule is written once for every resizable zone, so a future
@@ -65,7 +65,7 @@ the geometry is **one shared helper** for every zone, in `Composition/`.
 - A notch **scales the zone around the fixed point**: `new = anchor + (old − anchor) × k`, its
   ratio unchanged since both sides scale by `k`.
 - **Direction and step**: a notch **up grows** the zone (more of the image kept, more of the cell
-  blurred), a notch down shrinks it; each notch scales its sides by a **fixed factor**, `k = 1.05`
+  kept sharp), a notch down shrinks it; each notch scales its sides by a **fixed factor**, `k = 1.05`
   up, `1 / 1.05` down (`k = 1.05^notches` for several notches at once) — no snapping onto
   multiples.
 - **Growing — slide, then stop**: the scale is clamped so the zone fits in its bounds
@@ -76,7 +76,7 @@ the geometry is **one shared helper** for every zone, in `Composition/`.
   (`BarMinGap`, 8 logical px of the bars' span — the edit view's image for the crop, the cell for
   the blur — scaled with `LogicalToDeviceUnits`); the scale is clamped so the smaller side lands on
   it.
-- A ratio kept by a crop button stays **exactly** that ratio; a Free kept part and the blur zone
+- A ratio kept by a crop button stays **exactly** that ratio; a Free kept part and the sharp rectangle
   keep their proportions up to the rounding of the fractions.
 - New members: the shared helper (e.g. `ZoneScale.Scaled(RectangleF zone, double factor, PointF anchor, double minWidth, double minHeight)`,
   all in fractions of the bounds), then `CropEffect.ScaledSeen(factor, anchor, minWidth, minHeight, look)`
@@ -95,7 +95,7 @@ the geometry is **one shared helper** for every zone, in `Composition/`.
   (`OutputFormats.FreeRatio` reads `ImageLook.Shown`). Like a crop bar drag, the canvas ratio is
   **held while the wheel turns** (`GridPreview.UpdateRatio` returns while a crop wheel burst runs)
   and **computed again when it stops** (the `_wheelEnd` tick), so the canvas does not change shape
-  under the mouse. The blur zone does not weigh in the Free ratio: nothing to hold.
+  under the mouse. The sharp rectangle does not weigh in the Free ratio: nothing to hold.
 - **Fitting rule, automatic background, canvas sizing** follow the kept part as they do for the
   bars, through `SetLook`.
 
@@ -179,6 +179,14 @@ Q9 answered: whenever the selected tab has a resizable zone and its bars show, t
 selected cell resizes the zone, anywhere on the cell — the image's zoom wheel then works on the
 other cells, from another tab or with the slider. Gesture § *Where* rewritten as one rule for every
 zone. No open question left.
+
+### Iteration 5 — 2026-10-07 — ✅ Implemented
+
+Go given: code, tests and documentation. Branch: `main`, per the standing preference that this
+app's work lands on main (no branch question). Before the first write, the Blur's zone was named
+by its code: the **sharp rectangle** (`BlurEffect`), the bands around it blurred — growing it keeps
+more of the cell sharp. The corner drag (`workfiles/20261007-crop-corner-drag.md`) is already on
+main, Blur included.
 
 ---
 
