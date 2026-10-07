@@ -50,7 +50,7 @@ named in **kebab-case**: lowercase words joined by hyphens (`index`, `favorites-
   what the app writes on disk, not the repository's layout.
 - A new folder's name lives in **one constant** (`FolderName`), next to the code that owns it.
 - It applies to the folders created **from now on**: an existing one keeps its name unless a
-  workfile renames it (`%TEMP%\ImageGridFusion` stays).
+  workfile renames it (Image Grid Fusion's `%TEMP%\ImageGridFusion` stays).
 ```
 
 - `../CLAUDE.md` is **not versioned** (`mini-apps/` is not a git repository): the change is written,
@@ -116,16 +116,26 @@ Go given (Q&A 7): code and documentation, in a dedicated worktree
 (`.claude/worktrees/kebab-case-folders`, branch `feature/kebab-case-folders`), fast-forwarded into
 `main` and removed at the end.
 
+### Iteration 4 — 2026-10-07 — 🧭 Implementation choices
+
+- **Worktree despite "Current checkout"**: the go's answers disagreed — the free text asked for
+  "a separate worktree", the second question said *Current checkout*. The explicit text won.
+- **The shared rule names the app** for its example: "Image Grid Fusion's `%TEMP%\ImageGridFusion`",
+  since `../CLAUDE.md` is read by every app.
+- **`RULES.md` § App Settings** also said "like `files.index` and `favorites.txt`": fixed in its own
+  commit with the docs (§ Documentation lists it).
+- No rule broken.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Shared rule (`../CLAUDE.md`) | | | Not versioned |
-| Unit tests | | | No test project — nothing to test |
-| README | | | README, glossary and RULES.md, English and French |
+| Code | 3 | 2026-10-07 | `FileIndex.FolderName` = `"index"`; built |
+| Shared rule (`../CLAUDE.md`) | 3 | 2026-10-07 | § Folder Names; not versioned, so not committed; sent to the running session *Zoom sans déplacement d'image* |
+| Unit tests | 3 | 2026-10-07 | Not applicable — no test project |
+| README | 3 | 2026-10-07 | README, glossary (English and French) and RULES.md § App Settings |
 
 ---
 
