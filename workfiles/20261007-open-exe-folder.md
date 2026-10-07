@@ -27,7 +27,8 @@ Components: `src/ImageGridFusion/UI/MainForm.cs` (the menu, `ShowInExplorer`), `
   stands apart from the settings above it (the separator follows the last group of the menu as it
   stands when implemented).
 - In the **⚙ menu only** — not in the tray icon's menu (*Open* / *Quit*).
-- Always enabled.
+- Always enabled, with a tooltip: *Opens Explorer on the folder of this exe, the exe selected — where
+  settings.json and the app's other files live*.
 
 ## Behaviour
 
@@ -42,7 +43,7 @@ Components: `src/ImageGridFusion/UI/MainForm.cs` (the menu, `ShowInExplorer`), `
 
 ## Documentation
 
-- `README.md` § Tray & startup, the line listing what the ⚙ menu holds: adds **Open app folder**,
+- `README.md` § Tray & startup, the line listing what the ⚙ menu holds: ends with **Open app folder**,
   opening Explorer on the running exe's folder, the exe selected — where `settings.json` and the
   other data files live. `README.fr.md` mirrored in the same commit.
 - No new glossary term, no RULES.md change: it is an action of the ⚙ menu, not a setting, an effect
@@ -66,6 +67,9 @@ through the existing `ShowInExplorer`. Checked by hand on the launched app.
 - [x] ~~What does the item open?~~ → The exe's folder, the exe selected (`/select`)
 - [x] ~~Where in the ⚙ menu, with which label?~~ → At the end, after a separator, *Open app folder*
 - [x] ~~Also in the tray icon's menu?~~ → No, the ⚙ menu only
+- [ ] The README's line listing the ⚙ menu does not name its *File contents* group (*Search file
+  contents (OCR)*, *Rebuild content index*), added by another workfile — complete it? (found during
+  the run, out of scope)
 
 ---
 
@@ -88,6 +92,14 @@ a separator, Explorer on the running exe's folder with the exe selected, through
 Go given: code, tests and documentation, in a dedicated worktree (`feature/open-exe-folder` under
 `.claude/worktrees/`), fast-forwarded into `main` and removed at the end.
 
+### Iteration 3 — 2026-10-07 — 🧭 Implementation choices
+
+- The item got a **tooltip**, like every other item of the ⚙ menu (the design did not state one).
+- The separator and the item follow the menu's last group as it stood: *File contents*.
+- The README sentence is appended to the existing line listing the ⚙ menu, rather than a new bullet:
+  the bullets under that line belong to *Start with Windows*.
+- No rule broken.
+
 ---
 
 ## Implementation Log
@@ -97,9 +109,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 2 | 2026-10-07 | `MainForm._openAppFolder`, through `ShowInExplorer(Environment.ProcessPath)` |
 | Unit tests | — | — | Not applicable: no test project, shell action only |
-| README | | | |
+| README | 2 | 2026-10-07 | § Tray & startup, EN and FR |
 
 ---
 
