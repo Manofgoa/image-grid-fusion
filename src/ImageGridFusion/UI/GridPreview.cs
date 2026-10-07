@@ -978,7 +978,7 @@ internal sealed class GridPreview : Control
             {
                 Cursor = Cursors.SizeAll;
                 BeginLive(_pressed);
-                PanBy(_pressed, new Size(e.X - _panPoint.X, e.Y - _panPoint.Y), this.LogicalToDeviceUnits(PanResistance));
+                PanBy(_pressed, new Size(e.X - _panPoint.X, e.Y - _panPoint.Y), this.LogicalToDeviceUnits(PanResistance), (ModifierKeys & Keys.Shift) != 0);
             }
 
             _panPoint = e.Location;
@@ -1992,7 +1992,18 @@ internal sealed class GridPreview : Control
     /// workfiles/20261006-keyboard-image-move.md). Returns whether there was an image to move: none in the
     /// crop's edit view, where a drag does not move it either.
     /// </summary>
-    public bool PanSelected(Size delta)
+    public bool PanSelected(Size delta) => this.KeyPan(_ => delta, (ModifierKeys & Keys.Shift) != 0);
+
+    /// <summary>
+    /// Moves the selected image straight onto the next magnetic stop ahead in <paramref name="direction"/>
+    /// (a unit step) — the center or an edge, whichever comes first — held there with its guide, as a press
+    /// landing on it; nothing moves when no stop lies ahead. Ctrl + Shift + arrow. Returns whether there
+    /// was an image to move, as <see cref="PanSelected"/>.
+    /// </summary>
+    public bool JumpSelected(Size direction) => this.KeyPan(index => this.ToNextStop(index, direction), free: false);
+
+    /// <summary>The move of an arrow key, <paramref name="delta"/> giving it for the cell moved; see <see cref="PanSelected"/>.</summary>
+    private bool KeyPan(Func<int, Size> delta, bool free)
     {
         if (this.SelectedImage is not { } image || this._locked || this._pressed >= 0 || this._selected >= this.CellBounds().Length
             || this.EditsCrop(this._selected))
@@ -2008,12 +2019,39 @@ internal sealed class GridPreview : Control
         }
 
         this.BeginLive(this._selected);
-        this.PanBy(this._selected, delta, 0, stepwise: true);
+        this.PanBy(this._selected, delta(this._selected), 0, free, stepwise: true);
         this._panX.Settle();
         this._panY.Settle();
         this._keyPan = (image, image.Look);
         this._wheelEnd.Start();
         return true;
+    }
+
+    /// <summary>
+    /// The move bringing image <paramref name="index"/> onto the nearest magnetic stop ahead of it in
+    /// <paramref name="direction"/>, on each axis; nothing on an axis with no stop ahead. The stops are
+    /// those <see cref="PanBy"/> holds the image on.
+    /// </summary>
+    private Size ToNextStop(int index, Size direction)
+    {
+        var cell = this.CellBounds()[index];
+        var image = this._images[index];
+        var look = image.Look;
+        var bounds = FitCalculator.ComputeTurned(cell, look.Shown(image.Bitmap.Size), look.Zoom, look.Focus, look.FineAngle).Bounds;
+        var stops = FitCalculator.Stops(cell, bounds.Size);
+        return new Size(
+            NextStop(bounds.X, direction.Width, stops.Left, stops.Right, cell.X + (cell.Width - bounds.Width) / 2),
+            NextStop(bounds.Y, direction.Height, stops.Top, stops.Bottom, cell.Y + (cell.Height - bounds.Height) / 2));
+    }
+
+    /// <summary>
+    /// Whole pixels from <paramref name="position"/> to the nearest of <paramref name="stops"/> ahead in
+    /// <paramref name="direction"/>; 0 without one. A stop within half a pixel is where the image already is.
+    /// </summary>
+    private static int NextStop(float position, int direction, params float[] stops)
+    {
+        var ahead = stops.Select(s => (s - position) * direction).Where(d => d > 0.5f).ToList();
+        return ahead.Count == 0 ? 0 : direction * (int)Math.Round(ahead.Min(), MidpointRounding.AwayFromZero);
     }
 
     /// <summary>The arrows are the preview's own keys while it has the focus: they never move the focus away.</summary>
@@ -2040,12 +2078,12 @@ internal sealed class GridPreview : Control
 
     /// <summary>
     /// Moves an image by <paramref name="delta"/> from where it is actually shown, held by the
-    /// magnetic stops unless Shift is down — until the move goes <paramref name="resistance"/> past
+    /// magnetic stops unless <paramref name="free"/> — until the move goes <paramref name="resistance"/> past
     /// them, its edge stops crossed inward and the stops landed on exactly holding too when
     /// <paramref name="stepwise"/> — and never past the share of the cell it keeps covering.
     /// With a fine angle, the stops are those of the turned image's box, which follows the mouse.
     /// </summary>
-    private void PanBy(int index, Size delta, float resistance, bool stepwise = false)
+    private void PanBy(int index, Size delta, float resistance, bool free, bool stepwise = false)
     {
         var cells = CellBounds();
         if (index >= cells.Length || delta.IsEmpty)
@@ -2060,7 +2098,6 @@ internal sealed class GridPreview : Control
         var shown = FitCalculator.ComputeTurned(cell, size, look.Zoom, look.Focus, look.FineAngle);
         var bounds = shown.Bounds;
         var stops = FitCalculator.Stops(cell, bounds.Size);
-        bool free = (ModifierKeys & Keys.Shift) != 0;
         var (heldX, heldY) = (_panX.Held, _panY.Held);
         float x = _panX.Move(bounds.X, delta.Width, stops.Left, stops.Right, cell.X + (cell.Width - bounds.Width) / 2, resistance, free, stepwise);
         float y = _panY.Move(bounds.Y, delta.Height, stops.Top, stops.Bottom, cell.Y + (cell.Height - bounds.Height) / 2, resistance, free, stepwise);
