@@ -30,7 +30,8 @@ library, no package.
 
 Components touched: `Explorer/FileIndex.cs` (index folder, stamps), `Explorer/FileSearch.cs`
 (matching, ranking), a new content cache and extractor under `Explorer/`, `UI/FileExplorerPanel.cs`
-(background pass, progress bar), `UI/ThumbnailGrid.cs` (content badge), the ⚙ menu (rebuild entry).
+(background pass, pause, progress bar, status line), `UI/ThumbnailGrid.cs` (content badge),
+`UI/MainForm.cs` (the ⚙ setting and rebuild entries), `UI/AppSettings.cs` (the setting).
 
 ---
 
