@@ -17,10 +17,12 @@ The new option **extends the image's edge pixels** into the bands: the image's t
 stretched up to the top of the cell, its bottom row down to the bottom, its left and right columns
 out to the sides. Where the image is smaller than its cell **in both directions** (zoomed out, or
 moved), the four **corner regions** touch no edge row nor column: they get one of three corner fills,
-chosen with thumbnails. A **fade** slider and a **soften** checkbox complete it.
+chosen with thumbnails. A **Blend** slider and a **Soften** checkbox complete it.
 
-Components: `BackgroundEffect` (state), `Compositor.DrawCell` / `DrawUncropped` (rendering), a new
-thumbnail strip control modelled on `UI/FormatStrip.cs`, the Background options in `UI/MainForm.cs`.
+Components: `BackgroundEffect` (state), `Compositor.DrawCell` / `DrawUncropped` /
+`DrawBackground` and `EdgeExtension` (rendering), `UI/BackgroundFillStrip.cs` on a
+`UI/ThumbnailStrip.cs` base shared with `UI/FormatStrip.cs`, the Background options in
+`UI/MainForm.cs`.
 
 ---
 
@@ -35,13 +37,13 @@ height, the tallest options' — RULES.md § Options Toolbar).
 |---|---|---|
 | **Color** (default) | The flat fill, as today | The flat fill |
 | **Corner pixel** | Edge pixels extended | Flat, the color of the image's corner pixel (clamp-to-edge) |
-| **Miter** | Edge pixels extended | Split on the diagonal from the image's corner to the cell's corner: each half continues its edge at 45° (the top row's pixels slanting into the upper half, the left column's into the lower one) |
+| **Miter** | Edge pixels extended | Split on the diagonal from the image's corner to the cell's corner: each half continues its edge mirrored past the image's corner (the top row's pixels in the upper half, the left column's in the lower one), the two meeting on the diagonal like a frame's mitered joint |
 | **Background corners** | Edge pixels extended | The flat fill (the color in use, at its opacity) |
 
 - The **Color** thumbnail is today's behaviour: the extension is a mode of the Background, not a
   separate effect (Q&A 2, 5).
 - The **color controls stay** in every mode: the flat fill is still painted under the whole cell — it
-  shows through the image's transparent pixels, fills the Background corners, and is what the fade
+  shows through the image's transparent pixels, fills the Background corners, and is what Blend
   goes to.
 - The **opacity applies to the whole background**, the extension included: at 0 % the cell is
   transparent behind its image, as today (Q&A 7).
@@ -49,9 +51,11 @@ height, the tallest options' — RULES.md § Options Toolbar).
 ### Edges Extended
 
 - The edges are those of the image **as drawn in the cell** — after crop, rotation, flip, fine angle,
-  zoom and black & white — the rectangle `Compositor.DrawCell` draws into (`shown`, axis-aligned even
-  with a fine angle, since the turned image covers that rectangle). Extending what is drawn handles
-  every other effect at once.
+  zoom and black & white — the rectangle `Compositor.DrawCell` draws into (`fit.Destination`,
+  axis-aligned even with a fine angle, since the turned image covers that rectangle; taken a pixel
+  inside then, its antialiased edges left out — `EdgeExtension.Covered`). The image is rendered alone
+  at the cell's size to read them (`Compositor.DrawBackground`). Extending what is drawn handles
+  every other effect at once. With a fine angle, the turned image's corners spill over the bands.
 - A band extends **one pixel row or column** of that rectangle, stretched perpendicular to its edge,
   out to the cell's edge. An edge pixel's alpha is extended with it, the flat fill showing through.
 - An image covering its cell has no band: nothing to extend, the mode changes nothing.
@@ -59,9 +63,10 @@ height, the tallest options' — RULES.md § Options Toolbar).
   the flat fill).
 - Videos and animations: extended on every frame, as `DrawCell` draws each one.
 
-### Fade
+### Blend
 
-- A slider **0 – 100**, **0 by default** (no fade).
+- A slider **Blend**, **0 – 100 %**, **0 by default** (no fade). Named *Blend*, not *Fade*: the
+  glossary's *Fade* is the global sound effect.
 - The extension blends toward the flat fill with the distance from the image, linearly, reaching
   **N %** of the flat fill at the cell's edge: 100 makes the extension vanish exactly at the cell's
   edge. Each band fades over its own depth; a corner over its own (by the larger of its two distances).
@@ -72,21 +77,24 @@ height, the tallest options' — RULES.md § Options Toolbar).
 - A checkbox **Soften**, **off by default**: blurs the extension so the streaks of the stretched
   pixels melt — the image itself stays sharp.
 - The blur is **progressive**: sharp against the image, so no seam shows at its edge, softer with
-  the distance from it (Q&A 6). Its strength is resolution-independent, relative to the cell
-  (RULES.md § Rendering).
+  the distance from it (Q&A 6): a pixel averages its edge over ±0.5 px per pixel of distance
+  (`EdgeExtension.SoftenSpread`), the edge's end pixel repeating past it — so resolution-independent
+  (RULES.md § Rendering). In a Corner pixel corner, the row's and the column's averages are mixed by
+  the pixel's distances, so the corner meets both bands without a seam.
 - Disabled in the **Color** mode, its value kept.
 
 ---
 
 ## State
 
-- `BackgroundEffect` gains `Mode` (Color, CornerPixel, Miter, BackgroundCorners), `Fade` (0–1) and
-  `Soften` (bool); `Default` keeps Color, 0, off — so the default state, every Reset and the
+- `BackgroundEffect` gains `Mode` (`BackgroundFill`: Color, CornerPixel, Miter, BackgroundCorners),
+  `Blend` (0–1) and `Soften` (bool); `Default` keeps Color, 0, off — so the default state, every Reset and the
   Background exception (on by default, off draws no fill) are unchanged.
 - Off, the effect draws nothing, the extension included (Background exception).
 - Not persisted, part of `ImageLook` — so the undo history covers it by itself (RULES.md § Undo
   History).
-- Acting on any of the new options turns the Background on, like its other options.
+- Acting on any of the new options turns the Background on, like its other options — a click on the
+  thumbnail already selected included.
 
 ---
 
@@ -152,17 +160,41 @@ the cell options toolbar growing to their height.
 Go given: code, tests and documentation. Branch Gate: stays on `main`, the standing choice for this
 repository. No unit tests (no test project).
 
+### Iteration 4 — 2026-10-07 — 🧭 Implementation choices
+
+- **Miter mirrored, not slanted at 45°**: each corner half takes its edge mirrored past the image's
+  corner. Slanting the stretched pixels at 45° would have broken the corner against its band (the
+  band's column at the corner's boundary is the corner pixel, the slant would reach far along the
+  row there); mirrored, the corner meets its bands without a seam and the diagonal shows the joint.
+- **Diagonal from the image's corner to the cell's**, as designed, not at 45°: a non-square corner
+  is split on its own diagonal.
+- **Fade named Blend** in the code, UI and docs: *Fade* already names the global sound effect, one
+  meaning per term (GLOSSARY.md).
+- **Soften spread**: ±0.5 px per pixel of distance; in a Corner pixel corner, the row's and the
+  column's averages mixed by the distances, so the corner joins both bands.
+- **Fine angle**: the covered rectangle is taken a pixel inside, the turned image's antialiased
+  edges left out; its corners spill over the bands.
+- **`ThumbnailStrip<T>` base** extracted from `FormatStrip` (`FormatPicked` → `Picked`): the Format
+  and Background strips share the row, hover, highlight, label and click; `PicksSelected` lets a
+  click on the selected Background thumbnail turn the effect on.
+- **Thumbnail colors**: each edge of the schematic image its own color (blue top, amber right, coral
+  bottom, green left), the corner pixel purple, the flat fill gray; faded while disabled.
+- **Cost**: the extension is computed per pixel in managed code, the image rendered a second time
+  alone — about 0.2 s for a 1200 × 628 cell at full quality with every option; heavier on MP4
+  exports and video playback with an extending fill. Not optimized further (not in the design).
+- Branch: `main`, as the repository's standing choice.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project in the repository |
-| README (+ `README.fr.md`) | | | |
-| Glossary (+ `GLOSSARY.fr.md`) | | | |
-| Rules | | | |
+| Code | 3 | 2026-10-07 | State, rendering, thumbnail strip base, Background options — checked with a scratch rendering harness (every mode, Blend, Soften, fine angle, opacity, black & white) |
+| Unit tests | 3 | 2026-10-07 | None: no test project in the repository |
+| README (+ `README.fr.md`) | 3 | 2026-10-07 | § Background |
+| Glossary (+ `GLOSSARY.fr.md`) | 3 | 2026-10-07 | Background row updated, Edge extension row added |
+| Rules | 3 | 2026-10-07 | § The Background's Edge Extension |
 
 ---
 
