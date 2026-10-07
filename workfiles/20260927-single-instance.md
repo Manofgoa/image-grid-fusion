@@ -69,7 +69,8 @@ for the startup files), README § Tray & startup.
   - the window size is **read** at start-up but **never saved** to `settings.json` when the window
     closes or hides.
   Settings the user changes by hand in that instance (⚙ menu, explorer…) are saved as usual.
-- It is not a file to load (filtered out like `--tray`).
+- It is not a file to load (filtered out like `--tray` and `--title`), and mixes with them in any
+  order (RULES.md § Command-Line Arguments).
 
 ### Restoring a Minimized Window
 
@@ -96,7 +97,8 @@ for the startup files), README § Tray & startup.
 - README § Tray & startup: the line *"Several instances can run side by side, each with its own
   window and tray icon; the last window closed sets the size remembered."* is replaced by the
   single-instance behaviour and the `--new-instance` argument.
-- The app's **RULES.md**, a new § *Launching for Tests*: the app is single-instance per exe
+- README.fr.md mirrors every README change, in the same commit (`../CLAUDE.md` § Repository Docs).
+- The app's **RULES.md**, a new row in § *Command-Line Arguments* and a rule below it: the app is single-instance per exe
   location; when the agent needs its own instance while one of the same exe runs (the user's,
   which it must not disturb nor can rebuild over), it launches with `--new-instance`.
 
@@ -124,6 +126,12 @@ verified by hand.
 - [x] ~~Where is the agent-side instruction documented?~~ → README + the app's RULES.md
 - [x] ~~A second launch carrying `--tray`?~~ → Leaves the running instance as it is
 - [x] ~~A window minimized while maximized?~~ → Restored maximized, the tray click too
+- [ ] Agents launch the app with `--title "<session name>"` (`CLAUDE.md` § Launch), several sessions
+      side by side: a second launch of the same exe would now only bring the first one back. Every
+      agent launch passes `--new-instance`, only when one already runs, or the second title is part
+      of the lock?
+- [ ] A normal second launch carrying `--title`: does it change the running instance's second title,
+      or is it ignored?
 - [x] ~~A `--new-instance` launch runs `StartupRegistration.Refresh`: skip it?~~ → Skipped
 - [x] ~~A `--new-instance` instance closing writes the remembered window size: skip it?~~ → Skipped,
       the size is still read *(revised 2026-09-30, see Iteration 4: `settings.json`, no more
@@ -168,6 +176,16 @@ in the order the requests were made.
 - Same principle extended: a `--new-instance` launch skips `RegistryMigration.Run`, an automatic
   write too. Put to the user with the go.
 
+### Iteration 5 — 2026-10-07
+
+- The codebase moved meanwhile: a `--title <text>` argument (the second title, RULES.md
+  § Command-Line Arguments), passed by every agent launch (`CLAUDE.md` § Launch) so sessions testing
+  side by side tell their windows apart; a French README to keep in step.
+- Documentation updated accordingly: `--new-instance` goes in RULES.md's arguments table, README.fr.md
+  mirrors the README.
+- Two new questions: how agent launches meet the single instance, and what a handed-over `--title`
+  does.
+
 ---
 
 ## Implementation Log
@@ -200,7 +218,9 @@ Questions asked by the agent during design, with user responses.
 | 9 | Window minimized while maximized: restored maximized or normal? | Maximized, like before | 2026-09-27 |
 | 10 | `--new-instance`: skip the startup registration refresh? | Yes, skip it | 2026-09-30 |
 | 11 | `--new-instance`: skip saving the window size? | Yes, skip it | 2026-09-30 |
+| 12 | Agent launches (`--title`, sessions side by side) vs the single instance? | | 2026-10-07 |
+| 13 | Normal second launch with `--title`: change the running title, or ignore it? | | 2026-10-07 |
 
 ---
 
-*Last updated: 2026-09-30*
+*Last updated: 2026-10-07*
