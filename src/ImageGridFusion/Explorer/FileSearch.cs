@@ -52,11 +52,13 @@ internal static class FileSearch
     /// <summary>
     /// Every entry matching every word, best first — the explorer shows them load by load. A word
     /// missing from the relative path may be found in the entry's folded content text, given by
-    /// <paramref name="contentOf"/> (null: none), the match then made by its content. Ranked by the
-    /// entries matched by their path alone first, then by the words found in the file name itself, then
-    /// the position of the first word in the name, then the shorter name, then the relative path.
+    /// <paramref name="contentOf"/> (null: none), the match then made by its content; with
+    /// <paramref name="byName"/> false, the path is not read and every word is looked for in the content
+    /// text only. Ranked by the entries matched by their path alone first, then by the words found in the
+    /// file name itself, then the position of the first word in the name, then the shorter name, then the
+    /// relative path.
     /// </summary>
-    public static IReadOnlyList<SearchMatch> Search(IReadOnlyList<IndexEntry> entries, string[] words, Func<IndexEntry, string?>? contentOf = null)
+    public static IReadOnlyList<SearchMatch> Search(IReadOnlyList<IndexEntry> entries, string[] words, Func<IndexEntry, string?>? contentOf = null, bool byName = true)
     {
         if (words.Length == 0)
         {
@@ -66,7 +68,7 @@ internal static class FileSearch
         var matches = new List<(IndexEntry Entry, Rank Rank)>();
         foreach (var entry in entries)
         {
-            if (Rank.Of(entry, words, contentOf) is { } rank)
+            if (Rank.Of(entry, words, contentOf, byName) is { } rank)
             {
                 matches.Add((entry, rank));
             }
@@ -82,8 +84,11 @@ internal static class FileSearch
         /// <summary>Whether a word was found in the content text only.</summary>
         public bool ByContent => this.ContentWord is not null;
 
-        /// <summary>Null when a word is missing from both the folded relative path and the content text.</summary>
-        public static Rank? Of(IndexEntry entry, string[] words, Func<IndexEntry, string?>? contentOf)
+        /// <summary>
+        /// Null when a word is missing from both the folded relative path — not read unless
+        /// <paramref name="byName"/> — and the content text.
+        /// </summary>
+        public static Rank? Of(IndexEntry entry, string[] words, Func<IndexEntry, string?>? contentOf, bool byName)
         {
             string folded = entry.Folded;
             int nameStart = entry.NameStart;
@@ -94,7 +99,7 @@ internal static class FileSearch
             string? contentWord = null;
             for (int i = 0; i < words.Length; i++)
             {
-                int inName = folded.IndexOf(words[i], nameStart, StringComparison.Ordinal);
+                int inName = byName ? folded.IndexOf(words[i], nameStart, StringComparison.Ordinal) : -1;
                 if (inName >= 0)
                 {
                     nameHits++;
@@ -103,7 +108,7 @@ internal static class FileSearch
                         first = inName - nameStart;
                     }
                 }
-                else if (folded.IndexOf(words[i], StringComparison.Ordinal) < 0)
+                else if (!byName || folded.IndexOf(words[i], StringComparison.Ordinal) < 0)
                 {
                     if (!contentRead)
                     {
