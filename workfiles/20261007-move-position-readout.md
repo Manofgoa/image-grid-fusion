@@ -28,6 +28,7 @@ Relevant components:
 | `Composition/ImageLook.cs` — `Focus`, `ZoomIn` | The move, stored as the point of the oriented image kept at the cell's center; the zoom, read through `ZoomIn(cell, shown)` — the fit mode resolved — never `Zoom` (RULES.md § Effects › Rendering) |
 | `Composition/FitCalculator.cs` — `ComputeTurned` | Where the image is drawn in a cell: its box (`Bounds`), the turned image's when it has a fine angle |
 | `Composition/CanvasSizer.cs` — `Compute`; `Composition/Compositor.cs` — `Cells` | The export canvas and its cells (shrunk by the Borders' gap) |
+| `UI/GridPreview.cs` — `ExportOffsets`, `UpdateReadouts`, `OnReadoutTick`, `ScheduleReadouts`, `PaintReadouts`, `PaintReadout`, `ReadoutPath` | **The readout** (implemented): the offsets in export px; their comparison at each paint with the ones last painted, showing the readouts that changed; their timer; their paint |
 
 ---
 
@@ -77,11 +78,16 @@ several may show at once.
 - The arrow keys keep their step of 1 **preview** px (10 with Ctrl): the readout, in export px, may
   jump by several units per press. Changing the step is out of this workfile's scope.
 
+- **Detection** (implemented): at each paint, every image's offset is compared with the one last
+  painted (`UpdateReadouts`), so every route — a move, a look, the grid's geometry, the export
+  canvas, a restore — is covered by one check, none calling it; `ShowRestored` is left untouched.
 - **Timing**: the zoom badge's — full opacity for `ZoomBadgeHold` (1 s) after the last change, then
   faded out over `ZoomBadgeFade` (0.3 s), each image's readout on its own clock. During a
   **gesture** (`GridPreview.InGesture` — something pressed or dragged: the image, a separator, a bar
   or a corner; a wheel or slider zoom not at rest yet), it stays at full opacity, even with the mouse
-  still: the hold and the fade start when the gesture ends.
+  still: the hold and the fade start when the gesture ends. Every readout showing is held, an earlier
+  one still fading included.
+- Hidden during a swap (the ✥ drag), like the restore indicators.
 - **Look**: the zoom badge's — bold text of `ZoomBadgeTextSize`, `HelperColor` over the `HelperHalo`
   outline. A helper indicator: preview only, never in the exports.
 
@@ -95,7 +101,10 @@ several may show at once.
     (`0, 0`);
   - the **text** just below the dot, centered on it.
 - **Kept inside the cell**: near the cell's edge, or past it for an image pushed beyond its stops,
-  the text is pushed back so it shows whole in the cell; the dot and the line are clipped to the cell.
+  the text is pushed back so it shows whole in the cell, 4 px from its edges; the dot and the line
+  are clipped to the cell.
+- Sizes: the dot 3 px in radius; the line 2 px, dashed 4 / 3 like the pan guides, antialiased; the
+  text the zoom badge's size, 6 px below the dot.
 - **Two lines**: `x -35px`, then `y +12px` below it.
   - A signed integer: `+` for a positive value, `-` (hyphen-minus) for a negative one, no sign for
     `0` (`x 0px`).
@@ -218,6 +227,29 @@ shows nothing, leaving the view included; the other cells keep theirs. No open q
 Go given (Q&A 16): code, tests and documentation. Implemented on `main` — this app's work lands on
 `main` (the user's standing choice), no branch question asked.
 
+### Iteration 8 — 2026-10-07 — 🧭 Implementation choices
+
+- ⚠️ **Rule broken — Branch Gate** (`create-workfile` skill): on `main`, the branch question was not
+  asked; the work was done on `main`, the user's standing choice for this app (their memory "work on
+  main only").
+- **Detection at paint time**: rather than a call in each route, `UpdateReadouts` compares, at each
+  paint, every image's export offset with the one last painted. Every route is covered by one check,
+  a future one included, and a restore needs nothing in `ShowRestored`. RULES.md § Undo History says
+  so (the readout as the exception to "added to `ShowRestored`"), and a new § Position Readout
+  (under § On-Cell Helper Indicators) states the rule.
+- **The hold during a gesture** keeps every readout showing at full opacity, an earlier one still
+  fading included; the timer polls every 30 ms while `InGesture` holds, so the hold starts at most
+  30 ms after the gesture ends.
+- **Hidden during a swap** (`_dragging`), like the restore indicators.
+- **The dashed line** is drawn whenever the offset in export px is not `0, 0`, antialiased, with the
+  pan guides' pens (2 px, dashed 4 / 3, the 4 px halo).
+- **Sizes**: the dot 3 px in radius; the text the zoom badge's size, 6 px below the dot, kept 4 px
+  inside the cell's edges.
+- **Numbers**: invariant culture, so a negative value always reads `-35` (never a culture's own
+  minus sign); `0` reads `0`, unsigned.
+- **No layout holding the images** (a transition): no offsets, no readout; the next paint takes them
+  as new.
+
 ---
 
 ## Implementation Log
@@ -227,11 +259,11 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable: no test project |
-| README (+ `README.fr.md`) | | | |
-| GLOSSARY (+ `GLOSSARY.fr.md`) — the position readout | | | |
-| RULES — § On-Cell Helper Indicators, § Undo History (`ShowRestored`) | | | |
+| Code | 7, 8 | 2026-10-07 | `GridPreview`: offsets, detection at paint, timer, paint |
+| Unit tests | 7 | 2026-10-07 | Not applicable: no test project |
+| README (+ `README.fr.md`) | 7 | 2026-10-07 | The readout under the zoom badge's line; the restore's indicators |
+| GLOSSARY (+ `GLOSSARY.fr.md`) — the position readout | 7 | 2026-10-07 | New entry *Position readout* |
+| RULES — § On-Cell Helper Indicators, § Undo History (`ShowRestored`) | 8 | 2026-10-07 | New § Position Readout; § Undo History names the readout and its exception |
 
 ---
 
