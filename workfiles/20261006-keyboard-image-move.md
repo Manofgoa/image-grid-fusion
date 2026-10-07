@@ -210,6 +210,8 @@ whole pixels, then moves through the same key path as the arrows (`KeyPan`) with
 caller instead of reading Shift itself — the jump is made with Shift held. `MainForm.ArrowMove`
 became `ArrowDirection`, the step chosen in `ProcessCmdKey`. README and README.fr updated.
 
+Validated by the user after testing: the task is finished.
+
 ---
 
 ## Implementation Log
@@ -244,6 +246,7 @@ Questions asked by the agent during design, with user responses.
 | 11 | Is the task finished? (after testing the adjustment) | No: no green bar seen on the way in — relaunch | 2026-10-06 |
 | 12 | Is the task finished? (after testing the exact-landing fix) | No: Ctrl + Shift + arrow moves the image straight to the edge concerned | 2026-10-07 |
 | 13 | Which stops does Ctrl + Shift land on: the edges only, or the center too? | The next stop ahead, the center included | 2026-10-07 |
+| 14 | Is the task finished? (after testing the Ctrl + Shift jump) | Yes | 2026-10-07 |
 
 ---
 
