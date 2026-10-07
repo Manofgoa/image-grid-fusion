@@ -162,8 +162,8 @@ internal sealed class FileExplorerPanel : Panel
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _searchRow.Controls.Add(_folderToggle, 0, 0);
-        _searchRow.Controls.Add(this._byName, 1, 0);
-        _searchRow.Controls.Add(this._byContent, 2, 0);
+        this._searchRow.Controls.Add(this._byName, 1, 0);
+        this._searchRow.Controls.Add(this._byContent, 2, 0);
         _searchRow.Controls.Add(_search, 3, 0);
         _searchRow.Controls.Add(_rescan, 4, 0);
         _captionRow.Controls.Add(_caption);
@@ -1449,7 +1449,7 @@ internal sealed class FileExplorerPanel : Panel
 
         criterion.Checked = !criterion.Checked;
         this.ApplyCriteriaTips();
-        if (FileSearch.Words(_search.Text).Length > 0 && !FileSearch.IsEverything(_search.Text))
+        if (FileSearch.Words(this._search.Text).Length > 0 && !FileSearch.IsEverything(this._search.Text))
         {
             this.RefreshRows();
         }
@@ -1458,8 +1458,8 @@ internal sealed class FileExplorerPanel : Panel
     /// <summary>The criteria buttons' tooltips: what each searches, whether it is on, why the last one pressed stays pressed, the extraction stopped.</summary>
     private void ApplyCriteriaTips()
     {
-        _toolTip.SetToolTip(this._byName, CriterionTip("Search in the file names and their folders", this._byName.Checked, this._byContent.Checked, null));
-        _toolTip.SetToolTip(this._byContent, CriterionTip(
+        this._toolTip.SetToolTip(this._byName, CriterionTip("Search in the file names and their folders", this._byName.Checked, this._byContent.Checked, null));
+        this._toolTip.SetToolTip(this._byContent, CriterionTip(
             "Search in the text inside the files",
             this._byContent.Checked,
             this._byName.Checked,
