@@ -328,6 +328,7 @@ What the exe accepts, parsed in `Program.Main` (origin: `workfiles/20261006-sess
 |---|---|
 | `--tray` (`TrayApplicationContext.HiddenArgument`) | Starts hidden, the tray icon only — given by *Start with Windows* |
 | `--title <text>` (`MainForm.TitleArgument`) | The **second title**: the window reads `Image Grid Fusion — <text>` |
+| `--new-instance` (`SingleInstance.NewInstanceArgument`) | Starts an instance **outside the single-instance lock** — for tests |
 | Anything else | A file to load into the cells, as a drop would |
 
 - Options and files mix in any order; an option and its value are **never loaded as files**.
@@ -338,6 +339,23 @@ What the exe accepts, parsed in `Program.Main` (origin: `workfiles/20261006-sess
   127-character cap (`TrayApplicationContext.Tooltip`). It is **not persisted**.
 - It exists for the agents: every launch by Claude Code passes the session's name in it (see
   `CLAUDE.md` § Launch), so instances running side by side tell which implementation they test.
+
+### Single Instance
+
+One running instance **per exe location** and Windows session (origin:
+`workfiles/20260927-single-instance.md`), `UI/SingleInstance.cs`:
+
+- The lock is a named mutex keyed on the exe's full path, taken in `Program.Main` **before anything
+  else** runs; a named pipe carries the hand-over.
+- A **later launch** of the same exe hands its files over — as full paths — and ends: the running
+  instance comes to the front (`TrayApplicationContext.Launched`, the window restored as the taskbar
+  does) and loads them like a drop (`MainForm.AddLaunchFiles`). With `--tray`, it hands nothing over;
+  its `--title` is ignored. No answer within 3 s: it ends with nothing done.
+- A `--new-instance` instance takes **no lock** and answers no launch, and makes **no write of its
+  own accord**: no `RegistryMigration.Run`, no `StartupRegistration.Refresh`, no window size saved.
+  A new automatic write at start-up or exit is skipped for it too.
+- **Agents launch with `--new-instance`, always** (`CLAUDE.md` § Launch): without it, an agent's launch
+  would bring back, and load its files into, the user's instance or another session's.
 
 ## App Settings
 
