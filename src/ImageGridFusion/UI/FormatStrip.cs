@@ -9,7 +9,7 @@ namespace ImageGridFusion.UI;
 /// format is drawn at the ratio it would give the grid, outlined dashed. The active format is
 /// highlighted like the active layout of the layout strip; a click on another one picks it.
 /// </summary>
-internal sealed class FormatStrip : ThumbnailStrip<OutputFormat>
+internal sealed class FormatStrip : SelectionStrip<OutputFormat>
 {
     private GridLayout? _layout;
     private double _freeRatio = OutputFormats.TwitterRatio;

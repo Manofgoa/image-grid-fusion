@@ -7,7 +7,7 @@ namespace ImageGridFusion.UI;
 /// the bands around it, the corners — its name below. A click on any one, the selected included, picks
 /// it, so it turns the Background on like its other options.
 /// </summary>
-internal sealed class BackgroundFillStrip : ThumbnailStrip<BackgroundFill>
+internal sealed class BackgroundFillStrip : SelectionStrip<BackgroundFill>
 {
     // The thumbnails' colors: each edge of the image its own, the corner pixel another, the flat fill gray.
     private static readonly Color TopEdge = Color.FromArgb(55, 138, 221);
@@ -22,7 +22,7 @@ internal sealed class BackgroundFillStrip : ThumbnailStrip<BackgroundFill>
         this.FitSize();
     }
 
-    protected override Size Box => new(56, 40);
+    protected override Size Box => EffectBox;
 
     protected override bool PicksSelected => true;
 
@@ -42,7 +42,7 @@ internal sealed class BackgroundFillStrip : ThumbnailStrip<BackgroundFill>
         _ => "The image's edge pixels stretched to the cell's edges; the corners keep the background color",
     };
 
-    protected override void PaintThumbnail(Graphics g, BackgroundFill fill, Rectangle box, bool selected)
+    protected override void PaintThumbnail(Graphics g, BackgroundFill fill, Rectangle box, bool pressed)
     {
         var image = new Rectangle(box.X + box.Width * 3 / 10, box.Y + box.Height * 3 / 10, box.Width * 2 / 5, box.Height * 2 / 5);
         this.Fill(g, SystemColors.ControlDark, box);
@@ -82,32 +82,7 @@ internal sealed class BackgroundFillStrip : ThumbnailStrip<BackgroundFill>
         }
 
         this.Fill(g, SystemColors.Window, image);
-        using var pen = new Pen(this.Enabled ? SystemColors.ControlDarkDark : SystemColors.ControlDark);
-        g.DrawRectangle(pen, image.X, image.Y, image.Width - 1, image.Height - 1);
-        g.DrawRectangle(pen, box.X, box.Y, box.Width - 1, box.Height - 1);
-    }
-
-    private void Fill(Graphics g, Color color, Rectangle bounds)
-    {
-        using var brush = new SolidBrush(this.Shade(color));
-        g.FillRectangle(brush, bounds);
-    }
-
-    private void Fill(Graphics g, Color color, Point[] polygon)
-    {
-        using var brush = new SolidBrush(this.Shade(color));
-        g.FillPolygon(brush, polygon);
-    }
-
-    /// <summary>The color as drawn: faded toward the control's color while the strip is disabled.</summary>
-    private Color Shade(Color color)
-    {
-        if (this.Enabled)
-        {
-            return color;
-        }
-
-        var back = SystemColors.Control;
-        return Color.FromArgb((color.R + 2 * back.R) / 3, (color.G + 2 * back.G) / 3, (color.B + 2 * back.B) / 3);
+        this.Outline(g, image);
+        this.Outline(g, box);
     }
 }
