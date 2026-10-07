@@ -58,7 +58,8 @@ image's edges over the bands (origin: `workfiles/20261007-background-edge-extens
   (`EdgeExtension.Covered`) — never the bitmap: crop, orientation, fine angle, zoom and black &
   white are extended with it, and a new effect drawn in the image is extended by itself.
 - The flat fill stays under the image, fills the Background corners and is what Blend goes to; the
-  **opacity covers the whole background**, the extended edges included.
+  **opacity covers the whole background**, the extended edges included, and the **edge opacity**
+  covers the extended edges only, over the flat fill.
 - Blend and Soften grow with the distance from the image relative to the band's depth, so the
   preview and an export at another size look the same.
 - The crop edit view (`Compositor.DrawUncropped`) extends the whole image it shows.
