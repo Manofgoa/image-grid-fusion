@@ -905,6 +905,23 @@ internal sealed class MainForm : Form
     }
 
     /// <summary>
+    /// Alt released after turning the wheel over the grid with it held was a modifier, not the menu key:
+    /// the menu mode its release would start is swallowed (RULES.md § Resizable Zones).
+    /// </summary>
+    protected override void WndProc(ref Message m)
+    {
+        const int WM_SYSCOMMAND = 0x0112;
+        const int SC_KEYMENU = 0xF100;
+        if (m.Msg == WM_SYSCOMMAND && ((int)(long)m.WParam & 0xFFF0) == SC_KEYMENU && m.LParam == IntPtr.Zero
+            && this._preview.TakeAltWheel())
+        {
+            return;
+        }
+
+        base.WndProc(ref m);
+    }
+
+    /// <summary>
     /// The ×, Alt+F4 and the taskbar's Close window only hide it: the app keeps running in the tray,
     /// grid unchanged. A real close (Quit, logoff, shutdown) during an export cancels it first; the
     /// window closes once it has stopped. Either way, its size is remembered first.

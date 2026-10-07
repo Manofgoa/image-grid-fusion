@@ -133,6 +133,12 @@ internal sealed class GridPreview : Control
     private int _wheelDelta;
     private bool _wheelWithControl;
 
+    // Alt held: the wheel zooms the image even over a resizable zone's bars. WM_MOUSEWHEEL's key flags never carry Alt.
+    private bool _wheelWithAlt;
+
+    // The wheel was turned with Alt held: releasing it must not put the window into menu mode.
+    private bool _altWheeled;
+
     // The wheel is scaling the crop's kept part: the free format's ratio is held until the burst ends.
     private bool _wheelHoldsRatio;
 
@@ -330,6 +336,17 @@ internal sealed class GridPreview : Control
     public bool InGesture =>
         this._pressed >= 0 || this._draggedBar is not null || this._draggedCorner is not null || this._draggedSeparator is not null
         || this._movedCrop is not null || this._live is not null || this._wheelEnd.Enabled;
+
+    /// <summary>
+    /// Whether the wheel was turned over the grid with Alt held since the last call, cleared by it: the
+    /// form then swallows the menu mode that releasing Alt would start (RULES.md § Resizable Zones).
+    /// </summary>
+    public bool TakeAltWheel()
+    {
+        bool wheeled = this._altWheeled;
+        this._altWheeled = false;
+        return wheeled;
+    }
 
     /// <summary>Layout the images are shown and exported with; <c>null</c> while there is no image.</summary>
     public GridLayout? ActiveLayout => _layout;
@@ -1112,6 +1129,8 @@ internal sealed class GridPreview : Control
         if (m.Msg == WheelSteps.WM_MOUSEWHEEL)
         {
             _wheelWithControl = WheelSteps.WithControl(m);
+            this._wheelWithAlt = (ModifierKeys & Keys.Alt) != 0;
+            this._altWheeled = this._wheelWithAlt;
         }
 
         base.WndProc(ref m);
@@ -1121,7 +1140,8 @@ internal sealed class GridPreview : Control
     /// The wheel zooms the cell under the mouse, around the point under it, by steps of 5 % — 1 % with
     /// Control held, coarser above 200 % (<see cref="WheelSteps.Zoom"/>); not while another gesture runs.
     /// Over the selected cell showing the bars of a resizable zone, it scales that zone instead
-    /// (<see cref="ScaleZone"/>).
+    /// (<see cref="ScaleZone"/>) — unless Alt is held: it then zooms the image as without bars, around the
+    /// point of the image under the mouse in the crop's edit view (<see cref="KeptPartPoint"/>).
     /// </summary>
     protected override void OnMouseWheel(MouseEventArgs e)
     {
@@ -1149,9 +1169,14 @@ internal sealed class GridPreview : Control
         }
 
         BeginLive(index);
-        if (this.ShownBars(index) is { } bars)
+        var bars = this.ShownBars(index);
+        if (bars is { } zone && !this._wheelWithAlt)
         {
-            this.ScaleZone(bars, e.Location, notches, _wheelWithControl);
+            this.ScaleZone(zone, e.Location, notches, _wheelWithControl);
+        }
+        else if (bars is { } kept && this.EditsCrop(index))
+        {
+            this.ZoomAt(index, e.Location, notches, _wheelWithControl, KeptPartPoint(kept, e.Location));
         }
         else
         {
@@ -1890,9 +1915,10 @@ internal sealed class GridPreview : Control
     /// Zooms by <paramref name="notches"/> of the wheel, each moving the zoom onto the next multiple of
     /// its step — the finer one when <paramref name="fine"/> (<see cref="WheelSteps.Zoom"/>) —
     /// keeping the point of the image under <paramref name="location"/> in place as far as the image
-    /// stays within its stops; lands on 100 % when crossing it.
+    /// stays within its stops — or the point <paramref name="at"/>, in fractions of the image shown,
+    /// where it is drawn; lands on 100 % when crossing it.
     /// </summary>
-    private void ZoomAt(int index, Point location, int notches, bool fine)
+    private void ZoomAt(int index, Point location, int notches, bool fine, PointF? at = null)
     {
         var cells = CellBounds();
         if (index >= cells.Length)
@@ -1920,6 +1946,13 @@ internal sealed class GridPreview : Control
         var under = TurnedBack(cell, image, location);
         double x = Math.Clamp((under.X - before.X) / before.Width, 0, 1);
         double y = Math.Clamp((under.Y - before.Y) / before.Height, 0, 1);
+        if (at is { } point)
+        {
+            x = point.X;
+            y = point.Y;
+            under = new PointF((float)(before.X + x * before.Width), (float)(before.Y + y * before.Height));
+        }
+
         var origin = new PointF((float)(under.X - x * after.Width), (float)(under.Y - y * after.Height));
         var focus = FitCalculator.FocusAt(cell, after, origin);
         SetLook(index, zoomed.WithFocus(FitCalculator.WithinStops(cell, size, zoomed.Zoom, focus, zoomed.FineAngle)));
@@ -2691,6 +2724,18 @@ internal sealed class GridPreview : Control
         {
             this.SetLook(this._selected, look.WithBlur(blur.Scaled(notches, anchor, minWidth, minHeight)));
         }
+    }
+
+    /// <summary>
+    /// The point of the image under <paramref name="location"/> in the crop's edit view, in fractions of
+    /// the kept part — the image shown once cropped — brought into it when over the part cut off.
+    /// </summary>
+    private static PointF KeptPartPoint(Bars bars, Point location)
+    {
+        var kept = bars.Area;
+        return new PointF(
+            kept.Width < 1 ? 0.5f : Math.Clamp((location.X - kept.X) / (float)kept.Width, 0, 1),
+            kept.Height < 1 ? 0.5f : Math.Clamp((location.Y - kept.Y) / (float)kept.Height, 0, 1));
     }
 
     /// <summary>Whether cell <paramref name="index"/> shows the crop's edit view: its pan then does nothing, its wheel scales the kept part.</summary>
