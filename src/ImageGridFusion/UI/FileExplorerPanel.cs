@@ -50,8 +50,8 @@ internal sealed class FileExplorerPanel : Panel
     // How long a folder may take to list before the status line says it is being read, in ms.
     private const int ReadingNoticeDelay = 150;
 
-    private const string SearchPlaceholder = "Search files… (* for all)";
-    private const string FolderSearchPlaceholder = "Search this folder… (* for all)";
+    private const string SearchPlaceholder = "Search files… (Ctrl+F, * for all)";
+    private const string FolderSearchPlaceholder = "Search this folder… (Ctrl+F, * for all)";
     private const string OpenFileLocationText = "Open file location";
     private const string OpenInExplorerText = "Open in Explorer";
 
@@ -250,6 +250,9 @@ internal sealed class FileExplorerPanel : Panel
 
     /// <summary>A message the collapsed panel cannot show, its status line hidden: for the window's status line.</summary>
     public event EventHandler<(string Text, bool Error)>? MessageWhileCollapsed;
+
+    /// <summary>Escape in the search box: the focus is to go back to the grid, the search kept.</summary>
+    public event EventHandler? SearchEscaped;
 
     /// <summary>Whether the panel is open, or collapsed to its strip. Setting it raises nothing.</summary>
     [Browsable(false)]
@@ -514,6 +517,21 @@ internal sealed class FileExplorerPanel : Panel
 
     /// <summary>The search box has the focus: its keys are its own, not the window's shortcuts.</summary>
     public bool IsEditingText => _search.Focused;
+
+    /// <summary>
+    /// Ctrl+F: the panel opened if collapsed, as its « button does, then the search box focused, its
+    /// text selected (see workfiles/20261007-ctrl-f-search-focus.md).
+    /// </summary>
+    public void FocusSearch()
+    {
+        if (!this._open)
+        {
+            this.SetOpen(true);
+        }
+
+        this._search.Focus();
+        this._search.SelectAll();
+    }
 
     /// <summary>
     /// Loads the favorites and the cached index of <paramref name="baseFolder"/> — usable at once —
@@ -1508,6 +1526,11 @@ internal sealed class FileExplorerPanel : Panel
                 }
 
                 _grid.Focus();
+                break;
+            case Keys.Escape:
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                this.SearchEscaped?.Invoke(this, EventArgs.Empty);
                 break;
         }
     }

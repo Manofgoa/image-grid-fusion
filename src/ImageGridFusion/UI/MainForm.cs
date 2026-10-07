@@ -666,6 +666,7 @@ internal sealed class MainForm : Form
             }
         };
         _explorer.MessageWhileCollapsed += (_, message) => ShowStatus(message.Text, message.Error);
+        this._explorer.SearchEscaped += (_, _) => this._preview.Focus();
         _layouts.DragEnter += OnDragEnter;
         _layouts.DragDrop += OnDragDrop;
         _preview.Borders = ActiveBorders;
@@ -934,6 +935,9 @@ internal sealed class MainForm : Form
             case Keys.Control | Keys.S:
                 Save();
                 return true;
+            case Keys.Control | Keys.F when this._explorer.IsEditingText || this.FocusedControl() is not TextBoxBase:
+                this._explorer.FocusSearch();
+                return true;
             case Keys.Delete when _preview.HasSelection && !IsExporting:
                 _preview.RemoveSelected();
                 return true;
@@ -943,6 +947,21 @@ internal sealed class MainForm : Form
             default:
                 return base.ProcessCmdKey(ref msg, keyData);
         }
+    }
+
+    /// <summary>
+    /// The control holding the focus, down through the nested containers: Ctrl+F leaves a text field
+    /// other than the explorer's search box to itself.
+    /// </summary>
+    private Control? FocusedControl()
+    {
+        Control? control = this.ActiveControl;
+        while (control is ContainerControl { ActiveControl: { } inner })
+        {
+            control = inner;
+        }
+
+        return control;
     }
 
     /// <summary>
