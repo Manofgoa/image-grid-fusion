@@ -578,7 +578,7 @@ internal sealed class MainForm : Form
         _globalTabsRow.Paint += (_, e) => PaintOptionsEdge(e.Graphics, _globalTabsRow, standing: true);
         _globalTabs.TabClicked += (_, effect) => SelectGlobalEffect(effect);
         _globalTabs.CheckClicked += (_, effect) => ToggleGlobalEffect(effect);
-        _formatStrip.FormatPicked += (_, format) => SetFormat(format);
+        _formatStrip.Picked += (_, format) => SetFormat(format);
         _toolTip.SetToolTip(_globalEffectResetButton, "Brings this global setting back to its initial state");
         _toolTip.SetToolTip(_globalResetButton, "Brings the format back to Twitter and every global effect back to its initial state; the cells are left alone");
         _globalEffectResetButton.Click += (_, _) =>
