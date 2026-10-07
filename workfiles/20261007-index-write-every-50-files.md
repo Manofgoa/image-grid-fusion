@@ -50,13 +50,25 @@ goal depends on the save cadence, today time-based.
 
 ## Design
 
-- A constant **`ContentSaveEvery = 50`** in `FileExplorerPanel`, next to the other timings.
-- In `Extract`, a counter of the files processed since the last save; when it reaches 50,
-  `TrySave(contents)` and the counter starts over.
+- Two constants in `FileExplorerPanel`, next to the other timings: **`ContentSaveEvery = 50`**
+  (files) and **`ContentSaveFloor = 5000`** (ms).
+- In `Extract`, a counter of the files processed since the last save. After each file,
+  `files.content` is written (`TrySave`) when **either**:
+  - **50 files** were processed since the last save **and at least 5 s** passed since it
+    (Q&A #6) — the floor keeps a run of fast text files from rewriting the whole file several times
+    a second; or
+  - **30 s** passed since the last save, whatever the count (`ContentSaveInterval`, kept — Q&A #5),
+    so slow OCR never goes minutes without a save.
+- Every save, whichever triggered it, starts the counter over and the 30 s clock again. A count
+  reaching 50 inside the floor is not lost: the save comes with the first file once the 5 s have
+  passed.
 - *Processed* = every file the pass went through, **whatever its result** — text found, no text,
   extraction failed — i.e. each `done++`.
 - The save at the end of the pass stays.
-- The relation with the 30 s timer and the 5 s refresh: see § Open Questions.
+- The search shown keeps its **5 s refresh** from memory (Q&A #7): it already sees the texts as
+  they arrive, independently of the saves.
+- The `Extract` doc comment ("saved every half minute and at the end") is updated to the new
+  cadence.
 
 ---
 
@@ -78,13 +90,12 @@ the next launch resuming after the last multiple of 50.
 - [x] ~~What is the goal of the cadence?~~ → Both: nothing lost, and progressive results (Q&A #1)
 - [x] ~~Which indexing is concerned?~~ → The content extraction only (Q&A #2)
 - [x] ~~Constant or setting?~~ → A constant (Q&A #3)
-- [ ] The current 30 s save timer: replaced by the 50 files, or kept alongside (whichever comes
-      first)? With slow OCR (seconds per image), 50 files can take minutes; with text files, 50
-      files can take under a second.
-- [ ] Saving every 50 fast files (text, HTML) can rewrite a large `files.content` very often: a
-      floor between two saves (e.g. at least a few seconds), or strictly every 50?
-- [ ] The 5 s refresh of the search shown: kept as is (it already reads the memory), or tied to
-      the 50 files too?
+- [x] ~~The current 30 s save timer: replaced by the 50 files, or kept alongside?~~ → Kept
+      alongside: whichever comes first (Q&A #5)
+- [x] ~~A floor between two saves for fast files, or strictly every 50?~~ → At least 5 s between
+      two saves triggered by the 50 files (Q&A #6)
+- [x] ~~The 5 s refresh of the search shown: kept, or tied to the 50 files?~~ → Kept as is
+      (Q&A #7)
 
 ---
 
@@ -102,6 +113,12 @@ Single scout pass, done directly: the extraction already saves every 30 s and at
 search already reads the memory refreshed every 5 s. Proposed: a 50-file counter in `Extract`
 triggering `TrySave`; its relation with the 30 s timer, a floor between saves and the refresh
 cadence left open.
+
+### Iteration 2 — 2026-10-07
+
+Open questions answered (Q&A #5–#7): the 30 s timer is kept alongside the 50-file trigger,
+whichever comes first; the 50-file trigger waits for at least 5 s since the last save; the 5 s
+search refresh is unchanged. § Design updated; no open question left.
 
 ---
 
@@ -128,9 +145,9 @@ Questions asked by the agent during design, with user responses.
 | 2 | Which indexing is concerned? | The content only; the scan of the names stays as is | 2026-10-07 |
 | 3 | The 50: a constant or a ⚙ setting? | A constant | 2026-10-07 |
 | 4 | Straightforward or tricky / long to explore? | Straightforward | 2026-10-07 |
-| 5 | The 30 s save timer: replaced by the 50 files, or kept alongside? | | 2026-10-07 |
-| 6 | A floor between two saves for fast files, or strictly every 50? | | 2026-10-07 |
-| 7 | The 5 s refresh of the search: kept, or tied to the 50 files? | | 2026-10-07 |
+| 5 | The 30 s save timer: replaced by the 50 files, or kept alongside? | Both, whichever comes first | 2026-10-07 |
+| 6 | A floor between two saves for fast files, or strictly every 50? | At least 5 s | 2026-10-07 |
+| 7 | The 5 s refresh of the search: kept, or tied to the 50 files? | Kept at 5 s | 2026-10-07 |
 
 ---
 
