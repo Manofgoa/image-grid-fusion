@@ -109,6 +109,9 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 ### Zoom
 
 - Options: the zoom, from 10 % to the maximum zoom (2000 % by default) on a log scale, snapping to 100 %. The wheel over it moves the zoom by the wheel's steps over a cell — 5 %, 1 % with Ctrl, 25 % / 5 % above 200 % (see above); its arrow keys keep their own small steps.
+- **Contain** and **Fill**, after the zoom, fit the image to its cell: **Contain** shows the whole image, bands on one side; **Fill** covers the cell, the overflow cropped. The fit **lasts**: while a button is pressed, the zoom follows the cell — resized by a separator, a layout, the format — and the image, cropped or turned; the slider and the label show the zoom it gives. The image stays where it was moved, and can still be dragged.
+  - Pressing the other button switches to it; unpressing the pressed one, the wheel or the slider leave the fit for a free zoom, starting from the zoom shown.
+  - A fine angle still zooms the fitted image just enough to cover what it covers unturned.
 - The mouse wheel and dragging keep working on every cell, selected or not (see above); the effect is on as soon as the image is zoomed or moved. On a cell whose zoom is off, they start from the image as shown, replacing the kept zoom.
 
 ### Animations

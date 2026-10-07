@@ -109,6 +109,9 @@ Un panneau repliable à droite de l'aperçu, ouvert au démarrage : une zone de 
 ### Zoom
 
 - Options : le zoom, de 10 % au zoom maximum (2000 % par défaut) sur une échelle logarithmique, s'aimantant sur 100 %. La molette au-dessus déplace le zoom des pas de la molette au-dessus d'une cellule — 5 %, 1 % avec Ctrl, 25 % / 5 % au-dessus de 200 % (voir plus haut) ; ses touches fléchées gardent leurs propres petits pas.
+- **Contain** et **Fill**, après le zoom, ajustent l'image à sa cellule : **Contain** montre l'image entière, des bandes d'un côté ; **Fill** couvre la cellule, le surplus rogné. L'ajustement **dure** : tant qu'un bouton est enfoncé, le zoom suit la cellule — redimensionnée par un séparateur, une disposition, le format — et l'image, recadrée ou tournée ; le curseur et le libellé montrent le zoom obtenu. L'image reste là où elle a été déplacée, et peut toujours être glissée.
+  - Enfoncer l'autre bouton bascule sur lui ; relâcher le bouton enfoncé, la molette ou le curseur quittent l'ajustement pour un zoom libre, en partant du zoom affiché.
+  - Un angle fin zoome toujours l'image ajustée juste assez pour couvrir ce qu'elle couvre non tournée.
 - La molette de la souris et le glissement continuent de fonctionner sur chaque cellule, sélectionnée ou non (voir plus haut) ; l'effet est activé dès que l'image est zoomée ou déplacée. Sur une cellule dont le zoom est désactivé, ils partent de l'image telle qu'affichée, en remplaçant le zoom conservé.
 
 ### Animations
