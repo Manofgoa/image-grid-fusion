@@ -142,6 +142,16 @@ public sealed record ImageLook
         this.Motion is { Kind: MotionKind.Zoom } motion ? this.ZoomIn(cell, shown) * motion.ZoomAt(time) : this.ZoomIn(cell, shown);
 
     /// <summary>
+    /// The focus the image is drawn with at <paramref name="time"/>, read with <see cref="ZoomAt"/>: the
+    /// motion's zoom grows the image around its own center, where it stands at time 0, like every zoom
+    /// (<see cref="FitCalculator.FocusKeepingCenter"/>); <see cref="Focus"/> while it does not zoom.
+    /// </summary>
+    public PointF FocusAt(TimeSpan time, Rectangle cell, Size shown) =>
+        this.Motion is { Kind: MotionKind.Zoom }
+            ? FitCalculator.FocusKeepingCenter(cell, shown, this.ZoomIn(cell, shown), this.ZoomAt(time, cell, shown), this.Focus, this.FineAngle)
+            : this.Focus;
+
+    /// <summary>
     /// The zoom the image is drawn at in <paramref name="cell"/>, <paramref name="shown"/> being its size
     /// as drawn (<see cref="Shown"/>): the one its fit mode gives there, else <see cref="Zoom"/>.
     /// Every reader of the zoom goes through it.
