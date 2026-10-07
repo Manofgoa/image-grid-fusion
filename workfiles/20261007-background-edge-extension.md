@@ -37,7 +37,7 @@ height, the tallest options' — RULES.md § Options Toolbar).
 |---|---|---|
 | **Color** (default) | The flat fill, as today | The flat fill |
 | **Corner pixel** | Edge pixels extended | Flat, the color of the image's corner pixel (clamp-to-edge) |
-| **Miter** | Edge pixels extended | Split on the diagonal from the image's corner to the cell's corner: each half continues its edge mirrored past the image's corner (the top row's pixels in the upper half, the left column's in the lower one), the two meeting on the diagonal like a frame's mitered joint |
+| **Miter** | Edge pixels extended | Split on the diagonal from the image's corner to the cell's corner, each half flat: the half along the top or bottom row takes the row's pixel next to the image's corner, the half along the left or right column the column's pixel next to it; a **1 px line** in the image's corner pixel color, at **50 % opacity**, drawn over the diagonal |
 | **Background corners** | Edge pixels extended | The flat fill (the color in use, at its opacity) |
 
 - The **Color** thumbnail is today's behaviour: the extension is a mode of the Background, not a
@@ -47,6 +47,10 @@ height, the tallest options' — RULES.md § Options Toolbar).
   goes to.
 - The **opacity applies to the whole background**, the extension included: at 0 % the cell is
   transparent behind its image, as today (Q&A 7).
+- The **Edges** opacity applies to the extension only, over the flat fill (§ Edge Opacity).
+- **Layout** (Q&A 11): the thumbnails, then two lines beside them — the color line (*Automatic
+  color*, the opacity, *Color…*) over the edges line (*Edges*, *Blend*, *Soften*) — within the
+  options toolbar's height.
 
 ### Edges Extended
 
@@ -62,6 +66,13 @@ height, the tallest options' — RULES.md § Options Toolbar).
 - The **Blur** effect applies after, over the whole cell, the extension included (it already does for
   the flat fill).
 - Videos and animations: extended on every frame, as `DrawCell` draws each one.
+
+### Edge Opacity
+
+- A slider **Edges**, **0 – 100 %**, **100 by default**: the extended edges' opacity over the flat
+  fill — at 0 % the bands show the flat fill only — the flat fill's own opacity untouched. The
+  Background's opacity still applies over the whole background, both included.
+- Disabled in the **Color** mode, its value kept.
 
 ### Blend
 
@@ -80,7 +91,7 @@ height, the tallest options' — RULES.md § Options Toolbar).
   the distance from it (Q&A 6): a pixel averages its edge over ±0.5 px per pixel of distance
   (`EdgeExtension.SoftenSpread`), the edge's end pixel repeating past it — so resolution-independent
   (RULES.md § Rendering). In a Corner pixel corner, the row's and the column's averages are mixed by
-  the pixel's distances, so the corner meets both bands without a seam.
+  the pixel's distances, so the corner meets both bands without a seam. Miter corners stay flat.
 - Disabled in the **Color** mode, its value kept.
 
 ---
@@ -88,7 +99,7 @@ height, the tallest options' — RULES.md § Options Toolbar).
 ## State
 
 - `BackgroundEffect` gains `Mode` (`BackgroundFill`: Color, CornerPixel, Miter, BackgroundCorners),
-  `Blend` (0–1) and `Soften` (bool); `Default` keeps Color, 0, off — so the default state, every Reset and the
+  `Blend` (0–1), `Soften` (bool) and `EdgeOpacity` (0–1, 1 by default); `Default` keeps Color, 0, off — so the default state, every Reset and the
   Background exception (on by default, off draws no fill) are unchanged.
 - Off, the effect draws nothing, the extension included (Background exception).
 - Not persisted, part of `ImageLook` — so the undo history covers it by itself (RULES.md § Undo
@@ -196,6 +207,8 @@ Requested after testing:
   `0:1` for both parts — read as the two neighbours of the corner, see Q&A 10); each part filled flat
   with its color, then a **1 px line** in the corner pixel's color, **50 % opacity**, drawn over the
   diagonal. So two colors per corner, plus the line.
+- Q&A 10–11 settled the reading of the miter and the layout: the domain sections now describe the
+  two-color miter, the Edges slider, and the Background options on two lines beside the thumbnails.
 
 ---
 
@@ -224,8 +237,8 @@ Requested after testing:
 | 7 | Does the opacity apply to the extension too? | Yes, to the whole background | 2026-10-07 |
 | 8 | Crop edit view: extend the whole image's edges, or flat fill? | Extend the whole image's edges | 2026-10-07 |
 | 9 | Thumbnails with labels (taller options row) or compact with tooltips? | With labels | 2026-10-07 |
-| 10 | Miter: the left part takes the pixel below the corner, the right part the pixel right of it? | | 2026-10-07 |
-| 11 | Background options row with the new Edges slider: two lines beside the thumbnails, one line with shorter sliders, or appended at the end? | | 2026-10-07 |
+| 10 | Miter: the left part takes the pixel below the corner, the right part the pixel right of it? | Yes | 2026-10-07 |
+| 11 | Background options row with the new Edges slider: two lines beside the thumbnails, one line with shorter sliders, or appended at the end? | Two lines beside the thumbnails | 2026-10-07 |
 
 ---
 
