@@ -61,7 +61,9 @@ File contents
   `LogicalToDeviceUnits`. The **dark halo is not counted**: it stays 1 px wider on each side of
   the stroke, whatever the thickness.
 - **0 (none)**: no arrow at all — neither stroke, nor head, nor halo. The bulb stays.
-- Default: *open question*.
+- Default: **2 px**, today's width — nothing changes at the first launch.
+- The **head grows with the thickness**: 7 px at 2 px, 2 px more per px of thickness —
+  1 px → 5, 2 → 7, 3 → 9, 4 → 11, 5 → 13 (`head = 3 + 2 × thickness`, logical px).
 
 ### Curve
 
@@ -77,6 +79,7 @@ File contents
 - The color of the stroke and the head; the halo stays dark. Default: today's amber
   (214, 150, 0).
 - The bulb glyph itself is unchanged (a color emoji).
+- **No way back to the default** in the menu: the color dialog only, like *Border color…*.
 
 ---
 
@@ -101,10 +104,10 @@ create or update. The behaviour is checked by hand on the launched app.
 
 ## Open Questions
 
-- [ ] Default thickness: today's 2 px, or another?
-- [ ] The head's size: fixed at 7 px, or growing with the thickness?
-- [ ] The curve: how much and which way does it bend?
-- [ ] The color: a way back to the default amber in the menu, or the color dialog only?
+- [x] ~~Default thickness: today's 2 px, or another?~~ → 2 px
+- [x] ~~The head's size: fixed at 7 px, or growing with the thickness?~~ → Grows: `3 + 2 × thickness`
+- [ ] The curve: how much and which way does it bend? (sketches asked)
+- [x] ~~The color: a way back to the default amber in the menu, or the color dialog only?~~ → The color dialog only
 
 ---
 
@@ -123,6 +126,12 @@ remembered; 0 means no arrow at all; the subject is straightforward (a single di
 one chained question, the arrow's drawing and the ⚙ menu's pattern). The user then asked what the
 current thickness is (2 px), said the black halo is **not** part of the chosen thickness, and added
 an **arrow color** option.
+
+### Iteration 2 — 2026-10-07
+
+Answers Q&A #6–#9: default thickness 2 px; the head grows with the thickness (`3 + 2 × thickness`);
+the color through the dialog only, no default item. The curve's bend is still open: the user asked
+for sketches of the options (Q&A #10).
 
 ---
 
@@ -150,10 +159,11 @@ Questions asked by the agent during design, with user responses.
 | 3 | Thickness 0 (none): what becomes of the arrow? | No arrow at all | 2026-10-07 |
 | 4 | Straightforward or tricky / long? | Straightforward | 2026-10-07 |
 | 5 | (User, unprompted) | Add an option to choose the arrow's color | 2026-10-07 |
-| 6 | Default thickness, now known to be 2 px? | | |
-| 7 | The head's size with the thickness? | | |
-| 8 | The curve's bend? | | |
-| 9 | A way back to the default color? | | |
+| 6 | Default thickness, now known to be 2 px? | 2 px, as today | 2026-10-07 |
+| 7 | The head's size with the thickness? | Grows with it (+2 px per px) | 2026-10-07 |
+| 8 | The curve's bend: always clockwise ~15 %, outward from the tile's center, or more marked ~25 %? | Asked for small example sketches first | 2026-10-07 |
+| 9 | A way back to the default color? | The color dialog only | 2026-10-07 |
+| 10 | The curve's bend, from the sketches? | | |
 
 ---
 
