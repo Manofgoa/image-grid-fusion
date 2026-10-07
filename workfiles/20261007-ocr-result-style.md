@@ -221,7 +221,7 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 5, 6 | 2026-10-07 | `OcrArrowStyle`, `ThumbnailGrid` drawing, `FileExplorerPanel.ArrowStyle`, `AppSettings.OcrArrow`, ⚙ submenu in `MainForm`. Checked off-screen: the built `CurvedArrow` / `StraightArrow` drawn by reflection for six word positions at 2 and 5 px |
+| Code | 5, 6, 7 | 2026-10-07 | `OcrArrowStyle`, `ThumbnailGrid` drawing, `FileExplorerPanel.ArrowStyle`, `AppSettings.OcrArrow`, ⚙ submenu in `MainForm`. Checked off-screen: the built `CurvedArrow` / `StraightArrow` drawn by reflection for six word positions at 2 and 5 px |
 | Unit tests | 5 | 2026-10-07 | Not applicable: no test project |
 | README | 5, 6 | 2026-10-07 | en / fr: *Found in its content* bullet |
 
