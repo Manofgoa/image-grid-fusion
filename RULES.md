@@ -148,6 +148,12 @@ future one included, gets the same wheel (origin: `workfiles/20261007-crop-wheel
 - One geometry for every zone: `Composition/ZoneScale.Scaled`, in fractions of the bounds, called
   by the effect (`CropEffect.ScaledSeen`, `BlurEffect.Scaled`) from `GridPreview.ScaleZone`. A new
   zone adds its case there.
+- With **Alt** held, the wheel **zooms the image** instead, exactly as without bars — its steps, the
+  point under the cursor, Ctrl's finer steps (origin: `workfiles/20261007-resizable-zone-alt-zoom.md`).
+  In the crop edit view, where the zoom does not show, it keeps the **image point under the cursor**
+  — clamped into the kept part — where the rendered cell draws it, the zoom badge alone showing the
+  change. Alt is read from `ModifierKeys` (the wheel's key flags never carry it), and releasing it
+  after an Alt + wheel starts no menu mode (`GridPreview.TakeAltWheel`, `MainForm.WndProc`).
 - Its bars are **solid along the zone's sides** and **dashed beyond them**, up to the bounds' edge, in
   the guides' pattern (`GridPreview.GuidePen`), each overhang drawn from the zone's corner outward;
   the same in the restore flash (§ Undo History). The dashed part stays **grabbable**, and stays
