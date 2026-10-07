@@ -165,8 +165,7 @@ internal sealed class MainForm : Form
     ];
     // An action, never pressed: the kept part back to the whole image.
     private readonly CheckBox _cropWhole = OptionButton("100 %");
-    private readonly CheckBox _flipX = OptionButton("Horizontal");
-    private readonly CheckBox _flipY = OptionButton("Vertical");
+    private readonly FlipStrip _flip = new() { Anchor = AnchorStyles.Left };
     private readonly StepSlider _frames = OptionSlider(0, 1, 10);
     private readonly Label _framesLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _freeze = new() { Text = "Freeze", AutoSize = true, Anchor = AnchorStyles.Left };
@@ -412,7 +411,7 @@ internal sealed class MainForm : Form
         this._motionCycle.Value = -(int)MotionEffect.Default.Cycle.TotalSeconds;
         this._options[ImageEffect.Animations].Controls.AddRange([this._motionKind, this._motionCycle, this._motionCycleLabel]);
         _options[ImageEffect.Rotate].Controls.AddRange([this._quarterTurns, _fineAngle, _fineAngleLabel]);
-        _options[ImageEffect.Flip].Controls.AddRange([_flipX, _flipY]);
+        _options[ImageEffect.Flip].Controls.Add(this._flip);
         _options[ImageEffect.Frames].Controls.AddRange([_frames, _framesLabel, _freeze]);
         _options[ImageEffect.BlackAndWhite].Controls.AddRange([_grayscaleIcon, _grayscale, _grayscaleLabel]);
         _options[ImageEffect.Blur].Controls.AddRange([_gaussian, _pixelate, _blurIntensityIcon, _blurIntensity, _blurIntensityLabel]);
@@ -584,8 +583,7 @@ internal sealed class MainForm : Form
         this._cropWhole.Click += (_, _) => this.SetCropWhole();
         _toolTip.SetToolTip(this._cropWhole, "Keeps the whole image: the bars back on its edges, the ratio freed");
 
-        _flipX.Click += (_, _) => ChangeLook(ImageEffect.Flip, look => look.ToggleFlipX());
-        _flipY.Click += (_, _) => ChangeLook(ImageEffect.Flip, look => look.ToggleFlipY());
+        this._flip.Picked += (_, axis) => this.ChangeLook(ImageEffect.Flip, look => axis == FlipAxis.Horizontal ? look.ToggleFlipX() : look.ToggleFlipY());
         _frames.ValueChanged += (_, _) => ChangeFrames(frames => frames.AtPage(_frames.Value, _frames.Maximum + 1));
         _frames.ControlWheel = StepFrames;
         _freeze.CheckedChanged += (_, _) => ChangeFrames(frames => frames.WithFrozen(_freeze.Checked));
@@ -2702,8 +2700,8 @@ internal sealed class MainForm : Form
             }
 
             var flipped = look.TurnOn(ImageEffect.Flip);
-            _flipX.Checked = flipped.FlipX;
-            _flipY.Checked = flipped.FlipY;
+            this._flip.FlipX = flipped.FlipX;
+            this._flip.FlipY = flipped.FlipY;
             if (look.TurnOn(ImageEffect.Frames).Frames is { } frames && image!.Pages is { } pages)
             {
                 _frames.Maximum = Math.Max(0, pages.Count - 1);
