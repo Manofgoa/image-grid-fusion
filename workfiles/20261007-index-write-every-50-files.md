@@ -125,6 +125,19 @@ search refresh is unchanged. § Design updated; no open question left.
 Go given: code and documentation, in a worktree (`.claude/worktrees/index-write-every-50-files`,
 branch `feature/index-write-every-50-files`). Scope frozen on § Design as of Iteration 2.
 
+### Iteration 4 — 2026-10-07 — 🧭 Implementation choices
+
+No divergent choice: § Design implemented as written — `ContentSaveEvery` and `ContentSaveFloor`
+next to `ContentSaveInterval`, an `unsaved` counter in `Extract` reset by every save, the
+`Extract` doc comment updated. No rule broken.
+
+- **Documentation**: nothing to update. The README describes the content search (⚙ *Search file
+  contents (OCR)*, the 💡 criterion) but not the extraction pass's save cadence; RULES.md and the
+  glossary don't mention it either. Adding a description of the pass to the README is outside the
+  frozen scope.
+- `workfiles/20260926-ocr-search.md` still says "saved every 30 s and at the end": left as is, a
+  workfile being the history of its own task.
+
 ---
 
 ## Implementation Log
@@ -134,9 +147,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project in the repository |
-| README | | | The save cadence is not documented there; RULES.md and the glossary don't mention it either |
+| Code | 3 | 2026-10-07 | `FileExplorerPanel.Extract`: saved every 50 files, 5 s floor, 30 s kept |
+| Unit tests | 3 | 2026-10-07 | Not applicable — no test project in the repository |
+| README | 3 | 2026-10-07 | Not applicable — the save cadence is not documented there; RULES.md and the glossary don't mention it either |
 
 ---
 
