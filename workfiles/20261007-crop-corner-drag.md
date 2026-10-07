@@ -190,6 +190,20 @@ No rule broken. Choices the frozen design did not state:
 - **French docs**: the bracket is a *crochet en L*, the glossary's term for the Corners style's
   L-bracket.
 
+### Iteration 5 — 2026-10-07 — ⚙️ Post-implementation — Every resizable green zone
+
+Request relayed from the session designing `workfiles/20261007-crop-wheel-resize.md`, in the
+user's words: what is defined here holds for every display of a resizable green zone (e.g. the
+pixelation / Blur).
+
+- **Already delivered**: since Iteration 2 the corners cover the Blur's sharp rectangle too, its
+  bounds being the **cell** (the crop's being the image) — `DragCorner` and `PaintCorners` serve
+  every zone `ShownBars` shows. No code change.
+- The Crop and the Blur are today the only resizable green zones; a future one shown through
+  `ShownBars` gets the corners by itself.
+- A shared rule for "resizable zones" in RULES.md § On-Cell Handles (corners, wheel) is left to the
+  user — out of this workfile's frozen scope.
+
 ---
 
 ## Implementation Log
