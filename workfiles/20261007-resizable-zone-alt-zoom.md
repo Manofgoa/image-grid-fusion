@@ -46,7 +46,12 @@ The crop edit view shows the whole image fitted whole, so the zoom does not show
   bars are hidden;
 - in the edit view, **only the zoom badge** shows it, over the cell as usual (`PaintZoomBadge` is
   drawn whatever the view).
-- **Anchor** — the cursor is over the edit view, not over the rendered image: see Open Questions.
+- **Anchor** — the cursor is over the edit view, not over the rendered image. The zoom keeps in
+  place the **image point under the cursor in the edit view**: that point, mapped from the edit
+  view's geometry (the whole image fitted whole, `Compositor.UncroppedBounds`) into the image as
+  seen, then **clamped into the kept part** when the cursor is over the part cut off, stays where
+  the rendered cell shows it. What the user points at is the zoom's center. `ZoomAt` takes that
+  rendered position as its `location` in the edit view; elsewhere it keeps the cursor.
 
 ### Detecting Alt
 
@@ -89,13 +94,9 @@ project**. `ZoneScale.Scaled` and `WheelSteps.Zoom` are untouched.
 
 ## Open Questions
 
-- [ ] In the crop edit view, the cursor points at the whole image, not at the rendered cell: which
-  point does the Alt zoom keep in place?
-  - **(a)** The **image point under the cursor in the edit view**, kept at its rendered position
-    (clamped into the kept part) — what the user points at is the zoom's center. *(recommended)*
-  - **(b)** The rendered cell's point at the same cell coordinates — `ZoomAt` unchanged, but its
-    anchor is a point the user does not see.
-  - **(c)** The **cell's center**.
+- [x] ~~In the crop edit view, the cursor points at the whole image, not at the rendered cell: which
+  point does the Alt zoom keep in place?~~ → The image point under the cursor in the edit view,
+  kept at its rendered position, clamped into the kept part (Q5, Iteration 2)
 
 ---
 
@@ -118,6 +119,12 @@ Exploration (read directly — one chain of questions, all in `GridPreview`'s wh
 over the cell whatever the view; `ZoomAt` anchors on the rendered image under the cursor, which the
 crop edit view does not show — the open question. The form has no `MenuStrip` (only
 `ContextMenuStrip`s), so the Alt release risk is the system menu's menu mode, to be checked.
+
+### Iteration 2 — 2026-10-07
+
+Q5 answered: in the crop edit view, the Alt zoom keeps in place the image point under the cursor,
+clamped into the kept part, at its rendered position (§ In the Crop Edit View). No open question
+left.
 
 ---
 
@@ -145,7 +152,7 @@ Questions asked by the agent during design, with user responses.
 | 2 | In the crop edit view the zoom does not show: what does Alt + wheel do there? | It really zooms; only the zoom badge shows it in the edit view | 2026-10-07 |
 | 3 | While Alt is held, do the zone's bars change? | No, nothing changes | 2026-10-07 |
 | 4 | Straightforward or tricky / long to explore? | Straightforward — one scout pass | 2026-10-07 |
-| 5 | Crop edit view: which point does the Alt zoom keep in place — the image point under the cursor, the rendered cell's point at the same coordinates, or the cell's center? | | 2026-10-07 |
+| 5 | Crop edit view: which point does the Alt zoom keep in place — the image point under the cursor, the rendered cell's point at the same coordinates, or the cell's center? | The image point under the cursor, clamped into the kept part, kept at its rendered position | 2026-10-07 |
 
 ---
 
