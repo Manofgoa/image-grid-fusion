@@ -130,6 +130,9 @@ internal sealed class GridPreview : Control
     private int _wheelDelta;
     private bool _wheelWithControl;
 
+    // The wheel is scaling the crop's kept part: the free format's ratio is held until the burst ends.
+    private bool _wheelHoldsRatio;
+
     // The zoom percentage of the image last zoomed, over its cell: held a moment after each change, then faded out.
     private readonly System.Windows.Forms.Timer _zoomBadgeTimer = new();
 
@@ -1099,13 +1102,15 @@ internal sealed class GridPreview : Control
     /// <summary>
     /// The wheel zooms the cell under the mouse, around the point under it, by steps of 5 % — 1 % with
     /// Control held, coarser above 200 % (<see cref="WheelSteps.Zoom"/>); not while another gesture runs.
+    /// Over the selected cell showing the bars of a resizable zone, it scales that zone instead
+    /// (<see cref="ScaleZone"/>).
     /// </summary>
     protected override void OnMouseWheel(MouseEventArgs e)
     {
         base.OnMouseWheel(e);
         int index = CellAt(e.Location);
         if (index < 0 || _locked || _pressed >= 0 || _draggedBar is not null || _draggedSeparator is not null || _movedCrop is not null
-            || this._draggedCorner is not null || EditsCrop(index))
+            || this._draggedCorner is not null)
         {
             return;
         }
@@ -1126,7 +1131,15 @@ internal sealed class GridPreview : Control
         }
 
         BeginLive(index);
-        ZoomAt(index, e.Location, notches, _wheelWithControl);
+        if (this.ShownBars(index) is { } bars)
+        {
+            this.ScaleZone(bars, e.Location, notches, _wheelWithControl);
+        }
+        else
+        {
+            ZoomAt(index, e.Location, notches, _wheelWithControl);
+        }
+
         _wheelEnd.Start();
     }
 
@@ -1493,6 +1506,12 @@ internal sealed class GridPreview : Control
     private void EndLive()
     {
         _wheelEnd.Stop();
+        if (this._wheelHoldsRatio)
+        {
+            this._wheelHoldsRatio = false;
+            this.UpdateRatio();
+        }
+
         if (_live is not { } image)
         {
             return;
@@ -2386,7 +2405,37 @@ internal sealed class GridPreview : Control
         }
     }
 
-    /// <summary>Whether cell <paramref name="index"/> shows the crop's edit view: its pan and wheel then do nothing.</summary>
+    /// <summary>
+    /// Scales the zone of the <paramref name="bars"/> shown on the selected cell by <paramref name="notches"/>
+    /// of the wheel (up grows it), its ratio kept, around its center — around the point under
+    /// <paramref name="location"/> with Control held — no side closer than <see cref="BarMinGap"/> to the
+    /// one across (RULES.md § On-Cell Handles).
+    /// </summary>
+    private void ScaleZone(Bars bars, Point location, int notches, bool atCursor)
+    {
+        var span = bars.Span;
+        if (span.Width < 1 || span.Height < 1)
+        {
+            return;
+        }
+
+        double gap = this.LogicalToDeviceUnits(BarMinGap);
+        double minWidth = gap / span.Width;
+        double minHeight = gap / span.Height;
+        PointF? anchor = atCursor ? new PointF((location.X - span.X) / (float)span.Width, (location.Y - span.Y) / (float)span.Height) : null;
+        var look = this._images[this._selected].Look;
+        if (this._barsEffect == ImageEffect.Crop && look.Crop is { } crop)
+        {
+            this._wheelHoldsRatio = true;
+            this.SetLook(this._selected, look.WithCrop(crop.ScaledSeen(notches, anchor, minWidth, minHeight, look)));
+        }
+        else if (look.Blur is { } blur)
+        {
+            this.SetLook(this._selected, look.WithBlur(blur.Scaled(notches, anchor, minWidth, minHeight)));
+        }
+    }
+
+    /// <summary>Whether cell <paramref name="index"/> shows the crop's edit view: its pan then does nothing, its wheel scales the kept part.</summary>
     private bool EditsCrop(int index) => _barsEffect == ImageEffect.Crop && ShownBars(index) is not null;
 
     /// <summary>Whether <paramref name="location"/> is inside the crop's kept part, in its edit view on cell <paramref name="index"/>, off its handle.</summary>
@@ -2540,12 +2589,14 @@ internal sealed class GridPreview : Control
 
     /// <summary>
     /// Gives the canvas the ratio of the format, the free one computed from the grid as it stands, then
-    /// lays the grid out again on it. Held while a separator or a crop bar is dragged, so the canvas does
-    /// not change shape under the mouse: the release computes it again.
+    /// lays the grid out again on it. Held while a separator or a crop bar is dragged, or the wheel scales
+    /// the crop's kept part, so the canvas does not change shape under the mouse: the release, or the end
+    /// of the wheel's burst, computes it again.
     /// </summary>
     private void UpdateRatio()
     {
-        if (_draggedSeparator is not null || _draggedBar is not null || this._draggedCorner is not null || _movedCrop is not null)
+        if (_draggedSeparator is not null || _draggedBar is not null || this._draggedCorner is not null || _movedCrop is not null
+            || this._wheelHoldsRatio)
         {
             return;
         }
