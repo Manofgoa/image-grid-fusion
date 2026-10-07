@@ -147,6 +147,12 @@ future one included, gets the same wheel (origin: `workfiles/20261007-crop-wheel
 - One geometry for every zone: `Composition/ZoneScale.Scaled`, in fractions of the bounds, called
   by the effect (`CropEffect.ScaledSeen`, `BlurEffect.Scaled`) from `GridPreview.ScaleZone`. A new
   zone adds its case there.
+- Its bars are **solid along the zone's sides** and **dashed beyond them**, up to the bounds' edge, in
+  the guides' pattern (`GridPreview.GuidePen`), each overhang drawn from the zone's corner outward;
+  the same in the restore flash (§ Undo History). The dashed part stays **grabbable**, and stays
+  green while its bar is hovered or dragged — only the grip and the corners' brackets turn white.
+  One drawing for every zone: `GridPreview.PaintBars` (origin:
+  `workfiles/20261007-zone-bars-dashed-overhang.md`).
 
 ### Rendering
 
