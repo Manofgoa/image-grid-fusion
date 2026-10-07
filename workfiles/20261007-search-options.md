@@ -156,7 +156,12 @@ fast-forwarded into `main` and removed at the end. No unit test: no test project
 - **Incident (design phase)**: a `git commit -a` on `main` swept in another session's uncommitted
   `BackgroundEffect.cs`; the commit was reset (`--soft`) at once and redone with the workfile only,
   the file left modified as it was.
-- No project rule broken.
+- ⚠️ **Rule broken — the launch path** (`CLAUDE.md` § Launch): the delivery launch ran a build of
+  `main` output to the scratchpad (`dotnet build -o`), not `src/ImageGridFusion/bin/…/ImageGridFusion.exe`
+  — that exe was locked by two instances of another session (*Extension pixels bord image*), which
+  were left running. The scratchpad build got a copy of `settings.json`, `favorites.txt` and `Index\`;
+  what it saves stays there.
+- Merged: rebased onto `main` (no conflict), fast-forwarded, worktree and branch removed.
 
 ---
 
