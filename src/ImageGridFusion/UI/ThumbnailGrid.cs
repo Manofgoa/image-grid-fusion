@@ -766,10 +766,18 @@ internal sealed class ThumbnailGrid : ScrollableControl
         var (stroke, tip) = drawn;
         using (stroke)
         {
+            // The outline stands 1 px out all around: along the stroke, a pen 2 px wider than it; around
+            // the head, a 2 px pen on its edges, its inner half under the fill.
             float width = this.LogicalToDeviceUnits(style.Thickness);
-            using (var halo = new Pen(Color.FromArgb(170, 0, 0, 0), width + this.LogicalToDeviceUnits(2)) { LineJoin = LineJoin.Round })
+            int outline = this.LogicalToDeviceUnits(1);
+            var haloColor = Color.FromArgb(170, 0, 0, 0);
+            using (var halo = new Pen(haloColor, width + 2 * outline))
             {
                 g.DrawPath(halo, stroke);
+            }
+
+            using (var halo = new Pen(haloColor, 2 * outline) { LineJoin = LineJoin.Round })
+            {
                 g.DrawPolygon(halo, tip);
             }
 
