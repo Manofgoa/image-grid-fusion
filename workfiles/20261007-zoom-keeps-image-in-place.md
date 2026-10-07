@@ -238,6 +238,7 @@ Questions asked by the agent during design, with user responses.
 | 6 | Keep the 10 % coverage guarantee on a zoom out? | Yes, kept | 2026-10-07 |
 | 7 | Go — scope and where? | Check the recently finished sessions for an impact, then go: code and documentation, current checkout | 2026-10-07 |
 | 8 | Is the task finished? | No — the zoom anchored where the cursor is, not on the center | 2026-10-07 |
+| 9 | Is the task finished? | Yes — validated by the user | 2026-10-07 |
 
 ---
 
