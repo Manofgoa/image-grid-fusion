@@ -63,6 +63,7 @@ for the startup files), README § Tray & startup.
 - That instance is **fully independent**: it takes no lock and answers no second launch. The
   "normal" instance stays the one later launches bring back; with none running, the next normal
   launch starts one, whatever `--new-instance` instances run beside it.
+- In `MainForm`, the switch is `savesWindowSize`.
 - It **leaves the user's settings alone** where the app writes them on its own:
   - no `StartupRegistration.Refresh` — the *Start with Windows* shortcut (user's *Startup* folder)
     keeps pointing at the exe it points at;
@@ -80,17 +81,27 @@ for the startup files), README § Tray & startup.
   the same way: a window minimized while maximized comes back **maximized**, one minimized at its
   normal size comes back at that size (today the tray click always restores the normal size).
 
-### Technical Approach (proposed)
+### Technical Approach
 
-- A named `Mutex` (`Local\ImageGridFusion-{hash of the exe path}`) taken in `Program.Main` before
-  anything else (before `RegistryMigration.Run` and `StartupRegistration.Refresh`, which a second
-  launch must not run).
-- A named pipe with the same key: the first instance listens in the background and marshals each
-  message to the UI thread (show the window, then add the files); the second launch connects,
-  writes its arguments, and exits.
-- Windows' foreground lock: the second launch, having just been started by the user, calls
-  `AllowSetForegroundWindow` for the running process before handing over, so the window really
-  comes to the front instead of only flashing in the taskbar.
+`UI/SingleInstance.cs`:
+
+- A named `Mutex` (`Local\ImageGridFusion-{first 16 hex digits of the SHA-256 of the upper-cased exe
+  path}`) taken in `Program.Main` before anything else — the arguments parsed first, then the lock,
+  then `ApplicationConfiguration.Initialize`, `RegistryMigration.Run` and
+  `StartupRegistration.Refresh`, which a second launch never runs.
+- A named pipe `{key}-{Windows session id}` — pipe names are machine-wide, unlike the mutex's
+  `Local\` — opened `CurrentUserOnly` on both sides. The running instance listens in the
+  background (`SingleInstance.Listen`) and posts each message to the UI thread
+  (`TrayApplicationContext.Launched`: show the window, then `MainForm.AddLaunchFiles`); a later
+  launch connects (3 s timeout), writes one full path per line, and exits.
+- Windows' foreground lock: the later launch reads the running process' id from the pipe
+  (`GetNamedPipeServerProcessId`) and calls `AllowSetForegroundWindow` for it before writing.
+- Files handed over before the window was ever shown (a `--tray` start) wait in a list and are
+  loaded with the startup files, in `OnShown`.
+- If the mutex cannot be created at all, the launch runs alone, without lock nor listening, rather
+  than not at all.
+- The restore (tray click and hand-over alike) is `ShowWindow(SW_RESTORE)`, which brings a minimized
+  window back to the state it had before — maximized or normal.
 
 ---
 
@@ -106,7 +117,7 @@ for the startup files), README § Tray & startup.
   file), as for `--title`. The other running sessions of the workspace are told of the change
   (global rule on CLAUDE.md changes).
 - README.fr.md mirrors every README change, in the same commit (`../CLAUDE.md` § Repository Docs).
-- The app's **RULES.md**, a new row in § *Command-Line Arguments* and a rule below it: the app is single-instance per exe
+- The app's **RULES.md**, a new row in § *Command-Line Arguments* and a § *Single Instance* below it: the app is single-instance per exe
   location; when the agent needs its own instance while one of the same exe runs (the user's,
   which it must not disturb nor can rebuild over), it launches with `--new-instance`.
 
@@ -201,6 +212,26 @@ in the order the requests were made.
 - Go given for code and documentation (no unit tests: no test project), in a dedicated worktree
   (`feature/single-instance`, fast-forwarded into `main` and removed at the end).
 
+### Iteration 8 — 2026-10-07 — 🧭 Implementation choices
+
+- No rule broken.
+- Pipe name carries the Windows session id, and both ends are `CurrentUserOnly`: pipe names are
+  machine-wide, so two users running the same exe would otherwise collide.
+- A mutex that cannot be created lets the app run unlocked rather than refuse to start.
+- Files handed over before the window was first shown are queued and loaded with the startup files.
+- A second launch with `--tray` does not even connect to the running instance.
+- The agent rule went into RULES.md as a § *Single Instance* subsection under § *Command-Line
+  Arguments*, plus the app's `CLAUDE.md` § Launch.
+- Code in two commits: the tray's maximized restore, then the single instance itself (lock,
+  hand-over and `--new-instance` share `Program.Main`).
+- Checked by hand on the worktree build: a second launch exits in ~0.25 s and leaves one process; a
+  window minimized while maximized comes back maximized; a relative file path is loaded; `--tray`
+  exits; `--new-instance` runs beside. Not checked: the window taking the foreground, which needs a
+  launch by the user (the agent's shell has no foreground right to lend).
+- Incident while checking: the test script first targeted the first `ImageGridFusion` process found,
+  which was another session's instance (*Rotation avec CTRL+R*): it was maximized then minimized
+  once. The script was then pinned to its own process id.
+
 ---
 
 ## Implementation Log
@@ -210,9 +241,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 7 | 2026-10-07 | `SingleInstance`, `Program.Main`, tray restore, `MainForm.AddLaunchFiles` / `savesWindowSize` |
 | Unit tests | 1 | 2026-09-27 | Not applicable — no test project, process-level behaviour |
-| README | | | |
+| README | 7 | 2026-10-07 | README.md + README.fr.md; RULES.md § Single Instance; app CLAUDE.md § Launch |
 
 ---
 
