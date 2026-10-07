@@ -126,6 +126,11 @@ Q5 answered: in the crop edit view, the Alt zoom keeps in place the image point 
 clamped into the kept part, at its rendered position (§ In the Crop Edit View). No open question
 left.
 
+### Iteration 3 — 2026-10-07 — ✅ Implemented
+
+Go given: code, tests and documentation. Branch gate: stays on `main`, the repository's standing
+choice (the run commits there directly).
+
 ---
 
 ## Implementation Log
