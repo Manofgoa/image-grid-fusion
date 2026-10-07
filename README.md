@@ -102,6 +102,7 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 - Keeps a part of the image, which then **becomes the image**: the kept part fills the cell by the fitting rules, as a whole image would (up to 15 % cropped, bands beyond); its automatic background is computed on it, the color following the bars live; and the canvas is sized so it is not downscaled (see Canvas size). **10 % cut off each edge** when activated.
 - **Edit view**: while the Crop tab is selected and the crop is on, the selected cell shows the **whole image** — rotated and flipped, but neither zoomed nor turned by a fine angle — fitted whole, the part cut off dimmed, on the background the cropped image gets. The other cells, the other tabs and every export show the cropped image.
 - Four fluorescent green bars across the image set each side of the kept part on its own; a bar dragged within 6 px of the image's edge snaps onto it. A drag **inside the kept part moves it whole**, its size kept, stopped at the image's edges. Elsewhere on that cell, a drag and the mouse wheel do nothing while the edit view shows; the ✥ handle and the × keep working.
+- Its **four corners**, each marked by a green L-bracket, move the two bars meeting there at once, following the mouse on both axes while the opposite corner stays put; each bar snaps onto the image's edge as on its own. Under a ratio (see the options below), the kept part keeps it: it grows or shrinks from the opposite corner, as far as the mouse goes on either axis, stopped at the image's edges.
 - The crop **follows the image**: turning or flipping it keeps the same part. Zoom, fine angle and Blur apply to the cropped image.
 - Options: the ratio buttons **Free**, **1:1**, **4:3**, **16:9** and **9:16**, each drawing its format. Picking one reshapes the kept part to the largest rectangle at that ratio inside it, around its center; under a ratio, a dragged bar takes the two across along, around the center, so the ratio holds. The ratio is in pixels, so 1:1 is square whatever the image. A quarter turn turns it along — 16:9 becomes 9:16 — and frees a 4:3, which has no 3:4 button.
 - **100 %**, after the ratio buttons, keeps the **whole image**: every bar back on its edge, the ratio freed (Free pressed). Like any option it turns the crop on first — one click on a crop that is off turns it on at 100 %. The crop's own Reset still brings back 10 % in from each edge, off.
@@ -146,7 +147,7 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 ### Blur
 
 - Blurs the bands around a rectangle of the cell, which stays sharp; the rectangle is centered on half of the cell when activated.
-- Four fluorescent green bars across the cell, two vertical and two horizontal, set each side of the sharp rectangle on its own: drag them while the blur's options show and the blur is on. A bar dragged within 6 px of its edge of the cell snaps onto it, so no thin blurred strip is left there.
+- Four fluorescent green bars across the cell, two vertical and two horizontal, set each side of the sharp rectangle on its own: drag them while the blur's options show and the blur is on. A bar dragged within 6 px of its edge of the cell snaps onto it, so no thin blurred strip is left there. Its four corners, each marked by a green L-bracket, move the two bars meeting there at once.
 - The rectangle stays in place in the cell when the image is zoomed, moved or turned.
 - Options: **Gaussian** or **Pixelate**, and the intensity, relative to the cell's size so an export looks like the preview.
 
@@ -401,7 +402,7 @@ Drag the **separator** between two cells to give one of them more room: the curs
 - **Magnetic**: within 6 px, it lands exactly back on its place in the layout, or in line with a parallel separator — such as the other arm of a broken line.
 - **Back to the layout's sizes**: double-click a separator to put it back; click the active thumbnail again, or the effects **Reset**, to put all of them back. The active thumbnail keeps the layout's own shape.
 - The sizes belong to the grid, not to the images: swapping two cells or replacing an image keeps them; picking another layout or changing the number of images starts again on the layout's own sizes. They are not kept between two launches.
-- On the selected cell, a Blur or Crop bar lying on its edge is grabbed before the separator; the separator stays reachable from the neighbour cell, or once that tab is unselected or its effect is off.
+- On the selected cell, a Blur or Crop bar lying on its edge — or one of their corners there — is grabbed before the separator; the separator stays reachable from the neighbour cell, or once that tab is unselected or its effect is off.
 - A text is laid out again for its new cell once the separator is released. Not while exporting.
 
 ## Fitting rules
