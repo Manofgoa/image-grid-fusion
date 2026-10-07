@@ -58,8 +58,8 @@ internal sealed class GridPreview : Control
 
     // Helper indicators drawn over a cell (see RULES.md): fluorescent green over a black halo, so they
     // show on any image.
-    private static readonly Color HelperColor = Color.FromArgb(57, 255, 20);
-    private static readonly Color HelperHalo = Color.FromArgb(160, 0, 0, 0);
+    internal static readonly Color HelperColor = Color.FromArgb(57, 255, 20);
+    internal static readonly Color HelperHalo = Color.FromArgb(160, 0, 0, 0);
 
     private readonly List<SourceImage> _images = [];
     private GridLayout? _layout;

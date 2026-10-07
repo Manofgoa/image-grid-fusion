@@ -157,14 +157,8 @@ internal sealed class MainForm : Form
     private readonly QuarterTurnStrip _quarterTurns = new() { Anchor = AnchorStyles.Left };
     private readonly TrackBar _fineAngle = OptionSlider(-ImageLook.MaxFineAngle, ImageLook.MaxFineAngle, 5);
     private readonly Label _fineAngleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
-    // Free first, then the listed ratios, each button previewing its format.
-    private readonly (CheckBox Button, double? Ratio)[] _cropRatios =
-    [
-        (OptionButton("Free"), null),
-        .. CropEffect.Ratios.Select(ratio => (OptionButton(RatioText(ratio)), (double?)ratio)),
-    ];
-    // An action, never pressed: the kept part back to the whole image.
-    private readonly CheckBox _cropWhole = OptionButton("100 %");
+    // Free first, then the listed ratios, each drawing its kept part; then 100 %, an action, never pressed.
+    private readonly CropStrip _crop = new() { Anchor = AnchorStyles.Left };
     private readonly FlipStrip _flip = new() { Anchor = AnchorStyles.Left };
     private readonly StepSlider _frames = OptionSlider(0, 1, 10);
     private readonly Label _framesLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
@@ -404,7 +398,7 @@ internal sealed class MainForm : Form
         backgroundLines.FlowDirection = FlowDirection.TopDown;
         backgroundLines.Controls.AddRange([backgroundColorLine, backgroundEdgesLine]);
         _options[ImageEffect.Background].Controls.AddRange([this._backgroundFill, backgroundLines]);
-        _options[ImageEffect.Crop].Controls.AddRange([.. _cropRatios.Select(r => r.Button), this._cropWhole]);
+        _options[ImageEffect.Crop].Controls.Add(this._crop);
         _options[ImageEffect.Zoom].Controls.AddRange([_zoom, _zoomLabel, this._zoomFit]);
         this._motionKind.Items.AddRange(Enum.GetNames<MotionKind>());
         this._motionKind.SelectedIndex = (int)MotionEffect.Default.Kind;
@@ -573,15 +567,17 @@ internal sealed class MainForm : Form
         this._quarterTurns.Picked += (_, degrees) => this.ChangeLook(ImageEffect.Rotate, look => look.WithRotation(degrees));
 
         _fineAngle.ValueChanged += (_, _) => SetFineAngle();
-        foreach (var (button, ratio) in _cropRatios)
+        this._crop.Picked += (_, choice) =>
         {
-            button.TextImageRelation = TextImageRelation.ImageBeforeText;
-            button.Click += (_, _) => SetCropRatio(ratio);
-        }
-
-        this._cropWhole.TextImageRelation = TextImageRelation.ImageBeforeText;
-        this._cropWhole.Click += (_, _) => this.SetCropWhole();
-        _toolTip.SetToolTip(this._cropWhole, "Keeps the whole image: the bars back on its edges, the ratio freed");
+            if (choice.Whole)
+            {
+                this.SetCropWhole();
+            }
+            else
+            {
+                this.SetCropRatio(choice.Ratio);
+            }
+        };
 
         this._flip.Picked += (_, axis) => this.ChangeLook(ImageEffect.Flip, look => axis == FlipAxis.Horizontal ? look.ToggleFlipX() : look.ToggleFlipY());
         _frames.ValueChanged += (_, _) => ChangeFrames(frames => frames.AtPage(_frames.Value, _frames.Maximum + 1));
@@ -751,12 +747,6 @@ internal sealed class MainForm : Form
             _fadeLinear.Image?.Dispose();
             _blurIntensityIcon.Image?.Dispose();
             _backgroundOpacityIcon.Image?.Dispose();
-            foreach (var (button, _) in _cropRatios)
-            {
-                button.Image?.Dispose();
-            }
-
-            this._cropWhole.Image?.Dispose();
 
             _borderColor.Image?.Dispose();
             _colorDialog.Dispose();
@@ -777,7 +767,7 @@ internal sealed class MainForm : Form
     private void UpdateEffectIcons()
     {
         int size = LogicalToDeviceUnits(16);
-        Image?[] previous = [_resetButton.Image, _effectResetButton.Image, _globalResetButton.Image, _globalEffectResetButton.Image, _grayscaleIcon.Image, _gaussian.Image, _pixelate.Image, _fadeSquared.Image, _fadeLinear.Image, _blurIntensityIcon.Image, _backgroundOpacityIcon.Image, .. _cropRatios.Select(r => r.Button.Image), this._cropWhole.Image];
+        Image?[] previous = [_resetButton.Image, _effectResetButton.Image, _globalResetButton.Image, _globalEffectResetButton.Image, _grayscaleIcon.Image, _gaussian.Image, _pixelate.Image, _fadeSquared.Image, _fadeLinear.Image, _blurIntensityIcon.Image, _backgroundOpacityIcon.Image];
         foreach (var effect in Enum.GetValues<ImageEffect>())
         {
             _effectTabs.SetIcon(effect, effect switch
@@ -809,13 +799,6 @@ internal sealed class MainForm : Form
         _pixelate.Image = EffectIcons.Pixelate(size);
         _fadeSquared.Image = EffectIcons.Curve(size, FadeCurve.Squared);
         _fadeLinear.Image = EffectIcons.Curve(size, FadeCurve.Linear);
-        foreach (var (button, ratio) in _cropRatios)
-        {
-            button.Image = EffectIcons.Ratio(size, ratio);
-        }
-
-        this._cropWhole.Image = EffectIcons.WholeImage(size);
-
         _blurIntensityIcon.Image = EffectIcons.Intensity(size);
         _blurIntensityIcon.Size = new Size(size, size);
         _backgroundOpacityIcon.Image = EffectIcons.Opacity(size);
@@ -2558,14 +2541,6 @@ internal sealed class MainForm : Form
     private void SetCropWhole() =>
         this.ChangeLook(ImageEffect.Crop, look => look.Crop is { } crop ? look.WithCrop(crop.Whole()) : look);
 
-    private static string RatioText(double ratio) => ratio switch
-    {
-        1 => "1:1",
-        < 1 => $"{Math.Round(16 * ratio)}:16",
-        _ when CropEffect.Same(ratio, 4 / 3.0) => "4:3",
-        _ => $"{Math.Round(9 * ratio)}:9",
-    };
-
     private void SetBlurKind(BlurKind kind) =>
         ChangeLook(ImageEffect.Blur, look => look.Blur is { } blur ? look.WithBlur(blur.WithKind(kind)) : look);
 
@@ -2692,11 +2667,7 @@ internal sealed class MainForm : Form
 
             if (look.TurnOn(ImageEffect.Crop).Crop is { } crop)
             {
-                double? kept = crop.SeenRatio(look);
-                foreach (var (button, ratio) in _cropRatios)
-                {
-                    button.Checked = ratio is { } r ? kept is { } k && CropEffect.Same(r, k) : kept is null;
-                }
+                this._crop.Kept = crop.SeenRatio(look);
             }
 
             var flipped = look.TurnOn(ImageEffect.Flip);
