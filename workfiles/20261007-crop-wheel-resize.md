@@ -40,10 +40,13 @@ the glossaries.
 | Plain | The zone's **center** |
 | **Ctrl** held | The **point under the cursor** — clamped to the zone's bounds (the image for the crop, when the cursor is on a band around it) |
 
-- **Where — Crop**: anywhere over the cell showing the edit view — inside the kept part, on the
-  dimmed part, on the bands. Other cells keep the zoom wheel; the selected cell outside the edit
-  view too.
-- **Where — Blur**: see Open Questions (the zoom wheel works on that cell today).
+- **Where — one rule for every zone**: while the selected tab is one with a resizable zone and its
+  bars show (the effect on, `ShownBars(selected)`), the wheel **anywhere over the selected cell**
+  acts on the zone — inside it, outside it, on the crop's dimmed part and bands. The image's zoom
+  wheel no longer works on that cell then: it works on the other cells, from any other tab, or with
+  the Zoom slider. With the effect off (no bars), the wheel zooms as before.
+  - Crop: the cell showing the edit view (it returned on `EditsCrop` until now).
+  - Blur: the selected cell while the Blur tab is selected and the blur on (it zoomed until now).
 - **Not while** another gesture runs (a press, a bar or kept-part drag, a separator) or the grid is
   locked (export) — like the zoom wheel.
 - Fine-grained wheels add up to whole notches, per cell, as the zoom wheel does (`_wheelDelta`).
@@ -103,7 +106,10 @@ the geometry is **one shared helper** for every zone, in `Composition/`.
   kept part by 5 % a notch, ratio kept, around its center — the point under the cursor with Ctrl —
   sliding along the image's edges, then stopping; a drag outside the kept part still does nothing.
   § Format: the Free ratio is also held while the wheel scales a kept part.
-  § Blur: the wheel over its zone, the same way, within the cell.
+  § Blur: the wheel over the selected cell scales its zone the same way, within the cell, while
+  the Blur tab is selected and the blur on; § Zoom: *"the mouse wheel … keeps working on every
+  cell"* gains the exception — not on the selected cell while a tab with a resizable zone shows
+  its bars.
 - **RULES.md** § On-Cell Handles: a new rule for every **resizable zone** (four bars) — the wheel
   scales it, ratio kept, center or point under the cursor with Ctrl, sliding then stopping at its
   bounds, the shared helper; § The Crop Exception: the edit view's description gains the wheel;
@@ -130,7 +136,7 @@ Nothing is created or updated; the behaviours below are checked by hand at deliv
 - [x] ~~Step per notch: the kept part's size **× / ÷ a fixed factor** (e.g. 5 % of its current size), or **snapped onto multiples of 5 %** of the largest kept part at that ratio (like the zoom's steps)?~~ → Fixed factor: × 1.05 up, ÷ 1.05 down
 - [x] ~~Free format during a burst: is the canvas ratio **held until the wheel stops** (like a bar drag), or **recomputed at every notch**?~~ → Held until the wheel stops, computed again then
 - [x] ~~Helper indicator: does a burst show a **size readout** (a green badge, like the zoom's percentage), or do the bars and the dimmed part suffice?~~ → No readout: the bars and the dimmed part suffice
-- [ ] Blur zone vs zoom wheel: while the Blur tab is selected and the blur on, the wheel over the selected cell zooms the image today. Does it scale the blur zone **anywhere over the cell** (the zoom then only from other tabs, the slider, or other cells — as in the crop edit view), or **only over the blurred zone**, the zoom wheel kept elsewhere on the cell?
+- [x] ~~Blur zone vs zoom wheel: while the Blur tab is selected and the blur on, the wheel over the selected cell zooms the image today. Does it scale the blur zone **anywhere over the cell** (the zoom then only from other tabs, the slider, or other cells — as in the crop edit view), or **only over the blurred zone**, the zoom wheel kept elsewhere on the cell?~~ → Whenever a tab with a resizable zone is selected (its bars showing), the wheel over the selected cell resizes the zone, anywhere on the cell
 
 ---
 
@@ -167,6 +173,13 @@ image as seen for the crop, the cell for the blur), and RULES.md § On-Cell Hand
 every resizable zone. The corner-drag session was informed by message. New open question: the
 blur zone's wheel against the zoom wheel on the same cell.
 
+### Iteration 4 — 2026-10-07
+
+Q9 answered: whenever the selected tab has a resizable zone and its bars show, the wheel over the
+selected cell resizes the zone, anywhere on the cell — the image's zoom wheel then works on the
+other cells, from another tab or with the slider. Gesture § *Where* rewritten as one rule for every
+zone. No open question left.
+
 ---
 
 ## Implementation Log
@@ -196,7 +209,7 @@ Questions asked by the agent during design, with user responses.
 | 6 | Step per notch: fixed factor or snapped multiples of 5 %? | Fixed factor, 5 % | 2026-10-07 |
 | 7 | Free format during a burst: held or recomputed per notch? | Held until the wheel stops | 2026-10-07 |
 | 8 | Size readout during a burst? | Nothing more | 2026-10-07 |
-| 9 | Blur zone: wheel anywhere over the cell, or only over the zone (zoom elsewhere)? | | |
+| 9 | Blur zone: wheel anywhere over the cell, or only over the zone (zoom elsewhere)? | Whenever a tab with a resizable zone is selected, the wheel acts on the resizing — anywhere over the cell | 2026-10-07 |
 
 ---
 
