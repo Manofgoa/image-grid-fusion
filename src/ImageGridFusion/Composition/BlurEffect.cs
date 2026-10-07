@@ -65,6 +65,24 @@ public sealed record BlurEffect
         _ => this with { Bottom = Math.Min(1, Math.Max(value, Top + minGap)) },
     };
 
+    /// <summary>
+    /// The sharp rectangle scaled by <paramref name="notches"/> of the wheel (<see cref="ZoneScale.Scaled"/>),
+    /// its ratio kept, around its center or <paramref name="anchor"/> — the anchor and the minimum sides
+    /// in fractions of the cell.
+    /// </summary>
+    public BlurEffect Scaled(int notches, PointF? anchor, double minWidth, double minHeight)
+    {
+        var zone = ZoneScale.Scaled(
+            RectangleF.FromLTRB((float)this.Left, (float)this.Top, (float)this.Right, (float)this.Bottom), notches, anchor, minWidth, minHeight);
+        return this with
+        {
+            Left = Math.Clamp(zone.Left, 0, 1),
+            Top = Math.Clamp(zone.Top, 0, 1),
+            Right = Math.Clamp(zone.Right, 0, 1),
+            Bottom = Math.Clamp(zone.Bottom, 0, 1),
+        };
+    }
+
     public BlurEffect WithKind(BlurKind kind) => this with { Kind = kind };
 
     public BlurEffect WithIntensity(double intensity) => this with { Intensity = Math.Clamp(intensity, 0, 1) };

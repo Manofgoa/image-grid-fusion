@@ -238,6 +238,14 @@ public sealed record CropEffect
     }
 
     /// <summary>
+    /// The kept part scaled by <paramref name="notches"/> of the wheel (<see cref="ZoneScale.Scaled"/>),
+    /// its ratio kept, around its center or <paramref name="anchor"/> — the anchor and the minimum sides
+    /// in fractions of the image as <paramref name="look"/> shows it.
+    /// </summary>
+    public CropEffect ScaledSeen(int notches, PointF? anchor, double minWidth, double minHeight, ImageLook look) =>
+        this.WithSeen(ZoneScale.Scaled(this.Seen(look), notches, anchor, minWidth, minHeight), look);
+
+    /// <summary>
     /// The crop once its image is turned a quarter turn: it turns along, being in the image's own frame,
     /// and so does its ratio as seen — freed when no button offers it turned (4:3 would be 3:4).
     /// </summary>
