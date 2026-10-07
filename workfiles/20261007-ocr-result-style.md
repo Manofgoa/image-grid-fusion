@@ -72,7 +72,11 @@ File contents
   straight arrow.
 - Its start stays on the bulb's edge and its tip on the word's top-center (or bottom-center), as
   today.
-- How much and which way it bends: *open question*.
+- It **always arrives vertically**: on the word's top-center, its head pointing **straight down**;
+  on its bottom-center (the word above the bulb), **straight up**. The curve adapts to land that
+  way — the head is never slanted.
+- The curve's exact shape: *open question*.
+- Off: today's straight arrow, its head along the line.
 
 ### Color
 
@@ -106,7 +110,10 @@ create or update. The behaviour is checked by hand on the launched app.
 
 - [x] ~~Default thickness: today's 2 px, or another?~~ → 2 px
 - [x] ~~The head's size: fixed at 7 px, or growing with the thickness?~~ → Grows: `3 + 2 × thickness`
-- [ ] The curve: how much and which way does it bend? (sketches asked)
+- [x] ~~The curve: how much and which way does it bend? (sketches asked)~~ → It bends so as to arrive
+  vertically on the word's top- or bottom-center, the head pointing straight down or up
+- [ ] The curve's shape: leaving the bulb horizontally (an elbow-like arc), or along the straight
+  line and turning vertical near the word?
 - [x] ~~The color: a way back to the default amber in the menu, or the color dialog only?~~ → The color dialog only
 
 ---
@@ -132,6 +139,13 @@ an **arrow color** option.
 Answers Q&A #6–#9: default thickness 2 px; the head grows with the thickness (`3 + 2 × thickness`);
 the color through the dialog only, no default item. The curve's bend is still open: the user asked
 for sketches of the options (Q&A #10).
+
+### Iteration 3 — 2026-10-07
+
+Sketches shown (a fixed bow clockwise, outward, or stronger): none kept. The curved arrow
+**arrives vertically** on the word's top- or bottom-center, its head straight down or up, the
+curve adapting to land there (Q&A #10). Its exact shape asked with two new sketches (Q&A #11).
+The straight arrow (option off) stays as today.
 
 ---
 
@@ -163,7 +177,8 @@ Questions asked by the agent during design, with user responses.
 | 7 | The head's size with the thickness? | Grows with it (+2 px per px) | 2026-10-07 |
 | 8 | The curve's bend: always clockwise ~15 %, outward from the tile's center, or more marked ~25 %? | Asked for small example sketches first | 2026-10-07 |
 | 9 | A way back to the default color? | The color dialog only | 2026-10-07 |
-| 10 | The curve's bend, from the sketches? | | |
+| 10 | The curve's bend, from the sketches (A clockwise 15 %, B outward 15 %, C clockwise 25 %)? | None of them: the arrow must arrive above or below the word's center, its head pointing straight down or up — the curve adapts to land there | 2026-10-07 |
+| 11 | The curve's shape: horizontal start (elbow), or straight start turning vertical near the word? | | |
 
 ---
 
