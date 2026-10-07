@@ -209,6 +209,11 @@ Requested after testing:
   diagonal. So two colors per corner, plus the line.
 - Q&A 10–11 settled the reading of the miter and the layout: the domain sections now describe the
   two-color miter, the Edges slider, and the Background options on two lines beside the thumbnails.
+- Choices taken while implementing it: the edge opacity lays the extension over the flat fill before
+  Blend goes to it (`EdgeExtension.Draw`); a Miter corner stays flat under Soften; the diagonal line
+  takes the corner's pixels whose center lies within half a pixel of the diagonal, so it is 1 px
+  wide at any angle; the miter thumbnail draws its diagonal too. Checked with the rendering harness
+  (Miter, Edges at 60 % over a white fill).
 
 ---
 
@@ -216,11 +221,11 @@ Requested after testing:
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 3 | 2026-10-07 | State, rendering, thumbnail strip base, Background options — checked with a scratch rendering harness (every mode, Blend, Soften, fine angle, opacity, black & white) |
+| Code | 3, 5 | 2026-10-07 | State, rendering, thumbnail strip base, Background options — checked with a scratch rendering harness (every mode, Blend, Soften, fine angle, opacity, black & white) |
 | Unit tests | 3 | 2026-10-07 | None: no test project in the repository |
-| README (+ `README.fr.md`) | 3 | 2026-10-07 | § Background |
-| Glossary (+ `GLOSSARY.fr.md`) | 3 | 2026-10-07 | Background row updated, Edge extension row added |
-| Rules | 3 | 2026-10-07 | § The Background's Edge Extension |
+| README (+ `README.fr.md`) | 3, 5 | 2026-10-07 | § Background |
+| Glossary (+ `GLOSSARY.fr.md`) | 3, 5 | 2026-10-07 | Background row updated, Edge extension row added |
+| Rules | 3, 5 | 2026-10-07 | § The Background's Edge Extension |
 
 ---
 
