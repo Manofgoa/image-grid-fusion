@@ -38,6 +38,8 @@ internal sealed class MainForm : Form
     private readonly ToolStripMenuItem _explorerFolder = new("File explorer folder…");
     // How many pages of tiles the explorer loads at a time: a submenu of exclusive choices, remembered between sessions.
     private readonly ToolStripMenuItem _explorerPages = new("File explorer pages per load");
+    private readonly ToolStripMenuItem _explorerContentSearch = new("Search file contents (OCR)");
+    private readonly ToolStripMenuItem _rebuildContent = new("Rebuild content index");
     private readonly Button _clearButton = new() { Text = "Clear all", AutoSize = true };
     private readonly Button _settingsButton = new() { Text = "⚙", Size = new Size(32, 23), AutoSize = true };
     // The length readout: what the exported video would last, always shown, its detail in its tooltip (see RefreshLength).
@@ -414,6 +416,7 @@ internal sealed class MainForm : Form
         _explorer.OpenWidth = AppSettings.ExplorerWidth;
         _explorer.TileSize = AppSettings.ExplorerTileSize;
         _explorer.PagesPerLoad = AppSettings.ExplorerPagesPerLoad;
+        _explorer.ContentSearch = AppSettings.ExplorerContentSearch;
         _explorer.OpenFolder = AppSettings.ExplorerOpenFolder;
         _explorer.FolderView = AppSettings.ExplorerFolderView;
         _explorerSplitter.Visible = _explorer.Open;
@@ -434,7 +437,7 @@ internal sealed class MainForm : Form
         _outputButtons.SizeChanged += (_, _) => FitStatusWidth();
         _cancelButton.VisibleChanged += (_, _) => FitStatusWidth();
         _clearButton.Click += (_, _) => ClearAll();
-        _settingsMenu.Items.AddRange([_startWithWindows, _borderColor, _twitterCornersDefault, _explorerFolder, _explorerPages]);
+        _settingsMenu.Items.AddRange([_startWithWindows, _borderColor, _twitterCornersDefault, _explorerFolder, _explorerPages, this._explorerContentSearch, this._rebuildContent]);
         for (int pages = FileExplorerPanel.MinPagesPerLoad; pages <= FileExplorerPanel.MaxPagesPerLoad; pages++)
         {
             int choice = pages;
@@ -453,6 +456,10 @@ internal sealed class MainForm : Form
         _explorerFolder.ToolTipText = "The folder the file explorer searches, with its subfolders; remembered between sessions";
         _explorerFolder.Click += (_, _) => PickExplorerFolder();
         _explorerPages.ToolTipText = "How many screens of tiles the file explorer loads at a time, the next ones as the list scrolls; remembered between sessions";
+        this._explorerContentSearch.ToolTipText = "Whether the file explorer's search also finds files by the text inside them — recognised in images and a PDF's first page, read in text and HTML files — extracted in the background after the files are indexed; remembered between sessions";
+        this._explorerContentSearch.Click += (_, _) => this.ToggleExplorerContentSearch();
+        this._rebuildContent.ToolTipText = "Forgets the text found in every file and extracts it all again — after installing an OCR language, for instance";
+        this._rebuildContent.Click += (_, _) => _explorer.RebuildContentIndex();
         _explorer.OpenChanged += (_, _) =>
         {
             _explorerSplitter.Visible = _explorer.Open;
@@ -2113,6 +2120,9 @@ internal sealed class MainForm : Form
             item.Checked = (int)item.Tag! == _explorer.PagesPerLoad;
         }
 
+        this._explorerContentSearch.Checked = _explorer.ContentSearch;
+        this._rebuildContent.Enabled = _explorer.CanRebuildContent;
+
         // Locked like the Global toolbar: an export keeps the borders it started with.
         _borderColor.Enabled = !IsExporting;
         _settingsMenu.Show(_settingsButton, Point.Empty, ToolStripDropDownDirection.AboveRight);
@@ -3013,6 +3023,25 @@ internal sealed class MainForm : Form
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
             ShowStatus($"File explorer pages per load not remembered: {ex.Message}", error: true);
+        }
+    }
+
+    /// <summary>
+    /// The ⚙ menu's Search file contents (OCR): the file explorer starts or stops extracting the files'
+    /// content texts — those already extracted still searched — and the choice is remembered between sessions.
+    /// </summary>
+    private void ToggleExplorerContentSearch()
+    {
+        bool enable = !_explorer.ContentSearch;
+        _explorer.ContentSearch = enable;
+        this._explorerContentSearch.Checked = enable;
+        try
+        {
+            AppSettings.SaveExplorerContentSearch(enable);
+        }
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
+        {
+            this.ShowStatus($"File content search not remembered: {ex.Message}", error: true);
         }
     }
 

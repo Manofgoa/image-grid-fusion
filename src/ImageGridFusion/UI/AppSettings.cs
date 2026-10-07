@@ -8,7 +8,7 @@ namespace ImageGridFusion.UI;
 /// The app's settings remembered between sessions, in <see cref="FileName"/> next to the exe — never the
 /// registry: the border color, whether the borders' Twitter corners are on by default, the file explorer's
 /// base folder, whether its panel is open, its width, its tile size, its pages per load, its view and
-/// open folder, the window's
+/// open folder, whether it searches the files' contents, the window's
 /// size, the last folders of the file dialogs, and the maximum zoom (edited by hand only). Each save rewrites the whole file at once.
 /// </summary>
 internal static class AppSettings
@@ -24,6 +24,7 @@ internal static class AppSettings
     private const string ExplorerPagesPerLoadName = "ExplorerPagesPerLoad";
     private const string ExplorerFolderViewName = "ExplorerFolderView";
     private const string ExplorerOpenFolderName = "ExplorerOpenFolder";
+    private const string ExplorerContentSearchName = "ExplorerContentSearch";
     private const string MaxZoomName = "MaxZoom";
     private const string WindowWidthName = "WindowWidth";
     private const string WindowHeightName = "WindowHeight";
@@ -179,6 +180,15 @@ internal static class AppSettings
     /// <summary>Saves the file explorer's view and open folder together; throws an <see cref="IsSaveError"/> exception on failure.</summary>
     public static void SaveExplorerFolderView(bool folderView, string openFolder) =>
         Save((ExplorerFolderViewName, folderView ? 1 : 0), (ExplorerOpenFolderName, openFolder));
+
+    /// <summary>
+    /// Whether the file explorer extracts the files' content texts — OCR included — for its search; false
+    /// when nothing was saved. See workfiles/20260926-ocr-search.md § Extraction.
+    /// </summary>
+    public static bool ExplorerContentSearch => Int(ExplorerContentSearchName) is int value && value != 0;
+
+    /// <summary>Saves whether the file explorer searches the files' contents; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveExplorerContentSearch(bool on) => Save((ExplorerContentSearchName, on ? 1 : 0));
 
     /// <summary>
     /// The client size the window had at its last use, in logical (96 DPI) pixels; null when none was
