@@ -184,6 +184,19 @@ repository. No unit tests (no test project).
   exports and video playback with an extending fill. Not optimized further (not in the design).
 - Branch: `main`, as the repository's standing choice.
 
+### Iteration 5 — 2026-10-07 — ⚙️ Post-implementation — Edge opacity and a two-color miter
+
+Requested after testing:
+
+- **Edge opacity**: act on the extended edges' opacity without changing the flat fill's; the
+  Background's opacity over the whole background stays wanted too.
+- **Miter redrawn**: not the mirrored edges. Taking the top-left corner: the image's corner pixel
+  gives the color of the intersection, the pixel next to it down the left column the color of the
+  left part, the pixel next to it along the top row the color of the right part (the request wrote
+  `0:1` for both parts — read as the two neighbours of the corner, see Q&A 10); each part filled flat
+  with its color, then a **1 px line** in the corner pixel's color, **50 % opacity**, drawn over the
+  diagonal. So two colors per corner, plus the line.
+
 ---
 
 ## Implementation Log
@@ -211,6 +224,8 @@ repository. No unit tests (no test project).
 | 7 | Does the opacity apply to the extension too? | Yes, to the whole background | 2026-10-07 |
 | 8 | Crop edit view: extend the whole image's edges, or flat fill? | Extend the whole image's edges | 2026-10-07 |
 | 9 | Thumbnails with labels (taller options row) or compact with tooltips? | With labels | 2026-10-07 |
+| 10 | Miter: the left part takes the pixel below the corner, the right part the pixel right of it? | | 2026-10-07 |
+| 11 | Background options row with the new Edges slider: two lines beside the thumbnails, one line with shorter sliders, or appended at the end? | | 2026-10-07 |
 
 ---
 
