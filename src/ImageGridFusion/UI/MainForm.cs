@@ -38,6 +38,8 @@ internal sealed class MainForm : Form
     private readonly ToolStripMenuItem _explorerFolder = new("File explorer folder…");
     // How many pages of tiles the explorer loads at a time: a submenu of exclusive choices, remembered between sessions.
     private readonly ToolStripMenuItem _explorerPages = new("File explorer pages per load");
+    // The file contents' group of the ⚙ menu: a caption, grey and inert, over its two entries.
+    private readonly ToolStripMenuItem _contentCaption = new("File contents") { Enabled = false };
     private readonly ToolStripMenuItem _explorerContentSearch = new("Search file contents (OCR)");
     private readonly ToolStripMenuItem _rebuildContent = new("Rebuild content index");
     private readonly Button _clearButton = new() { Text = "Clear all", AutoSize = true };
@@ -437,7 +439,7 @@ internal sealed class MainForm : Form
         _outputButtons.SizeChanged += (_, _) => FitStatusWidth();
         _cancelButton.VisibleChanged += (_, _) => FitStatusWidth();
         _clearButton.Click += (_, _) => ClearAll();
-        _settingsMenu.Items.AddRange([_startWithWindows, _borderColor, _twitterCornersDefault, _explorerFolder, _explorerPages, this._explorerContentSearch, this._rebuildContent]);
+        _settingsMenu.Items.AddRange([_startWithWindows, _borderColor, _twitterCornersDefault, _explorerFolder, _explorerPages, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent]);
         for (int pages = FileExplorerPanel.MinPagesPerLoad; pages <= FileExplorerPanel.MaxPagesPerLoad; pages++)
         {
             int choice = pages;
