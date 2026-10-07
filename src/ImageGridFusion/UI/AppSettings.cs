@@ -8,7 +8,7 @@ namespace ImageGridFusion.UI;
 /// The app's settings remembered between sessions, in <see cref="FileName"/> next to the exe — never the
 /// registry: the border color, whether the borders' Twitter corners are on by default, the file explorer's
 /// base folder, whether its panel is open, its width, its tile size, its pages per load, its view and
-/// open folder, whether it searches the files' contents, the window's
+/// open folder, whether it searches the files' contents, the OCR result style, the window's
 /// size, the last folders of the file dialogs, and the maximum zoom (edited by hand only). Each save rewrites the whole file at once.
 /// </summary>
 internal static class AppSettings
@@ -25,6 +25,9 @@ internal static class AppSettings
     private const string ExplorerFolderViewName = "ExplorerFolderView";
     private const string ExplorerOpenFolderName = "ExplorerOpenFolder";
     private const string ExplorerContentSearchName = "ExplorerContentSearch";
+    private const string OcrArrowCurvedName = "OcrArrowCurved";
+    private const string OcrArrowThicknessName = "OcrArrowThickness";
+    private const string OcrArrowColorName = "OcrArrowColor";
     private const string MaxZoomName = "MaxZoom";
     private const string WindowWidthName = "WindowWidth";
     private const string WindowHeightName = "WindowHeight";
@@ -189,6 +192,21 @@ internal static class AppSettings
 
     /// <summary>Saves whether the file explorer searches the files' contents; throws an <see cref="IsSaveError"/> exception on failure.</summary>
     public static void SaveExplorerContentSearch(bool on) => Save((ExplorerContentSearchName, on ? 1 : 0));
+
+    /// <summary>
+    /// How the light bulb's arrow is drawn — the ⚙ menu's OCR result style: each part read on its own,
+    /// its <see cref="OcrArrowStyle.Default"/> value when missing or, for the thickness, out of range.
+    /// </summary>
+    public static OcrArrowStyle OcrArrow => new(
+        Int(OcrArrowCurvedName) is not int curved || curved != 0,
+        Int(OcrArrowThicknessName) is int thickness && thickness is >= OcrArrowStyle.MinThickness and <= OcrArrowStyle.MaxThickness
+            ? thickness
+            : OcrArrowStyle.DefaultThickness,
+        Int(OcrArrowColorName) is int argb ? Color.FromArgb(argb) : OcrArrowStyle.DefaultColor);
+
+    /// <summary>Saves the OCR result style; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveOcrArrow(OcrArrowStyle style) =>
+        Save((OcrArrowCurvedName, style.Curved ? 1 : 0), (OcrArrowThicknessName, style.Thickness), (OcrArrowColorName, style.Color.ToArgb()));
 
     /// <summary>
     /// The client size the window had at its last use, in logical (96 DPI) pixels; null when none was

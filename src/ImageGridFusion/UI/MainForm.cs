@@ -38,10 +38,16 @@ internal sealed class MainForm : Form
     private readonly ToolStripMenuItem _explorerFolder = new("File explorer folder…");
     // How many pages of tiles the explorer loads at a time: a submenu of exclusive choices, remembered between sessions.
     private readonly ToolStripMenuItem _explorerPages = new("File explorer pages per load");
-    // The file contents' group of the ⚙ menu: a caption, grey and inert, over its two entries.
+    // The file contents' group of the ⚙ menu: a caption, grey and inert, over its entries.
     private readonly ToolStripMenuItem _contentCaption = new("File contents") { Enabled = false };
     private readonly ToolStripMenuItem _explorerContentSearch = new("Search file contents (OCR)");
     private readonly ToolStripMenuItem _rebuildContent = new("Rebuild content index");
+    // How the light bulb's arrow to the word found is drawn: a submenu of the group, the thickness a
+    // submenu of exclusive choices, remembered between sessions. See workfiles/20261007-ocr-result-style.md.
+    private readonly ToolStripMenuItem _ocrResultStyle = new("OCR result style");
+    private readonly ToolStripMenuItem _ocrArrowCurved = new("Curved arrow");
+    private readonly ToolStripMenuItem _ocrArrowThickness = new("Arrow thickness");
+    private readonly ToolStripMenuItem _ocrArrowColor = new("Arrow color…");
     // The ⚙ menu's last item, an action rather than a setting: Explorer on the running exe's folder.
     private readonly ToolStripMenuItem _openAppFolder = new("Open app folder");
     private readonly Button _clearButton = new() { Text = "Clear all", AutoSize = true };
@@ -443,6 +449,7 @@ internal sealed class MainForm : Form
         _explorer.TileSize = AppSettings.ExplorerTileSize;
         _explorer.PagesPerLoad = AppSettings.ExplorerPagesPerLoad;
         _explorer.ContentSearch = AppSettings.ExplorerContentSearch;
+        this._explorer.ArrowStyle = AppSettings.OcrArrow;
         _explorer.OpenFolder = AppSettings.ExplorerOpenFolder;
         _explorer.FolderView = AppSettings.ExplorerFolderView;
         _explorerSplitter.Visible = _explorer.Open;
@@ -463,13 +470,22 @@ internal sealed class MainForm : Form
         _outputButtons.SizeChanged += (_, _) => FitStatusWidth();
         _cancelButton.VisibleChanged += (_, _) => FitStatusWidth();
         _clearButton.Click += (_, _) => ClearAll();
-        _settingsMenu.Items.AddRange([_startWithWindows, _borderColor, _twitterCornersDefault, _explorerFolder, _explorerPages, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, new ToolStripSeparator(), this._openAppFolder]);
+        _settingsMenu.Items.AddRange([_startWithWindows, _borderColor, _twitterCornersDefault, _explorerFolder, _explorerPages, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._ocrResultStyle, new ToolStripSeparator(), this._openAppFolder]);
         for (int pages = FileExplorerPanel.MinPagesPerLoad; pages <= FileExplorerPanel.MaxPagesPerLoad; pages++)
         {
             int choice = pages;
             var item = new ToolStripMenuItem(choice.ToString()) { Tag = choice };
             item.Click += (_, _) => SetExplorerPagesPerLoad(choice);
             _explorerPages.DropDownItems.Add(item);
+        }
+
+        this._ocrResultStyle.DropDownItems.AddRange([this._ocrArrowCurved, this._ocrArrowThickness, this._ocrArrowColor]);
+        for (int thickness = OcrArrowStyle.MinThickness; thickness <= OcrArrowStyle.MaxThickness; thickness++)
+        {
+            int choice = thickness;
+            var item = new ToolStripMenuItem(choice == 0 ? "0 (none)" : $"{choice} px") { Tag = choice };
+            item.Click += (_, _) => this.SetOcrArrow(this._explorer.ArrowStyle with { Thickness = choice });
+            this._ocrArrowThickness.DropDownItems.Add(item);
         }
 
         _toolTip.SetToolTip(_settingsButton, "Settings");
@@ -486,6 +502,12 @@ internal sealed class MainForm : Form
         this._explorerContentSearch.Click += (_, _) => this.ToggleExplorerContentSearch();
         this._rebuildContent.ToolTipText = "Forgets the text found in every file and extracts it all again — after installing an OCR language, for instance";
         this._rebuildContent.Click += (_, _) => _explorer.RebuildContentIndex();
+        this._ocrResultStyle.ToolTipText = "How the arrow from a tile's light bulb to the word the OCR found is drawn; remembered between sessions";
+        this._ocrArrowCurved.ToolTipText = "Whether the arrow is a slight curve arriving straight down — or up — onto the word, rather than a straight line; remembered between sessions";
+        this._ocrArrowCurved.Click += (_, _) => this.SetOcrArrow(this._explorer.ArrowStyle with { Curved = !this._explorer.ArrowStyle.Curved });
+        this._ocrArrowThickness.ToolTipText = "The width of the arrow's colored line, its dark outline not counted; 0 draws no arrow; remembered between sessions";
+        this._ocrArrowColor.ToolTipText = "The color of the arrow, its dark outline staying dark; remembered between sessions";
+        this._ocrArrowColor.Click += (_, _) => this.PickOcrArrowColor();
         this._openAppFolder.ToolTipText = "Opens Explorer on the folder of this exe, the exe selected — where settings.json and the app's other files live";
         this._openAppFolder.Click += (_, _) => this.ShowInExplorer(Environment.ProcessPath ?? Application.ExecutablePath);
         _explorer.OpenChanged += (_, _) =>
@@ -814,22 +836,29 @@ internal sealed class MainForm : Form
         }
 
         UpdateBorderColorSwatch();
+        this.UpdateOcrArrowColorSwatch();
     }
 
     /// <summary>The ⚙ menu's Border color item shows the color as a swatch, drawn at the monitor's DPI.</summary>
-    private void UpdateBorderColorSwatch()
+    private void UpdateBorderColorSwatch() => this.SetSwatch(this._borderColor, this._borders.Color);
+
+    /// <summary>The ⚙ menu's Arrow color item shows the OCR arrow's color as a swatch, drawn at the monitor's DPI.</summary>
+    private void UpdateOcrArrowColorSwatch() => this.SetSwatch(this._ocrArrowColor, this._explorer.ArrowStyle.Color);
+
+    /// <summary>A menu item's image becomes a square of <paramref name="color"/>, outlined, at the monitor's DPI.</summary>
+    private void SetSwatch(ToolStripMenuItem item, Color color)
     {
-        int size = LogicalToDeviceUnits(16);
+        int size = this.LogicalToDeviceUnits(16);
         var swatch = new Bitmap(size, size);
         using (var g = Graphics.FromImage(swatch))
-        using (var fill = new SolidBrush(_borders.Color))
+        using (var fill = new SolidBrush(color))
         {
             g.FillRectangle(fill, 0, 0, size, size);
             g.DrawRectangle(SystemPens.ControlDark, 0, 0, size - 1, size - 1);
         }
 
-        var previous = _borderColor.Image;
-        _borderColor.Image = swatch;
+        var previous = item.Image;
+        item.Image = swatch;
         previous?.Dispose();
     }
 
@@ -2248,6 +2277,11 @@ internal sealed class MainForm : Form
 
         this._explorerContentSearch.Checked = _explorer.ContentSearch;
         this._rebuildContent.Enabled = _explorer.CanRebuildContent;
+        this._ocrArrowCurved.Checked = this._explorer.ArrowStyle.Curved;
+        foreach (ToolStripMenuItem item in this._ocrArrowThickness.DropDownItems)
+        {
+            item.Checked = (int)item.Tag! == this._explorer.ArrowStyle.Thickness;
+        }
 
         // Locked like the Global toolbar: an export keeps the borders it started with.
         _borderColor.Enabled = !IsExporting;
@@ -3194,6 +3228,36 @@ internal sealed class MainForm : Form
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
             this.ShowStatus($"File content search not remembered: {ex.Message}", error: true);
+        }
+    }
+
+    /// <summary>The ⚙ menu's Arrow color…: the standard color dialog, the color chosen applied at once and remembered between sessions.</summary>
+    private void PickOcrArrowColor()
+    {
+        this._colorDialog.Color = this._explorer.ArrowStyle.Color;
+        if (this._colorDialog.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        this.SetOcrArrow(this._explorer.ArrowStyle with { Color = this._colorDialog.Color });
+    }
+
+    /// <summary>
+    /// The ⚙ menu's OCR result style: the light bulb's arrow drawn so at once in the file explorer's tiles,
+    /// the style remembered between sessions.
+    /// </summary>
+    private void SetOcrArrow(OcrArrowStyle style)
+    {
+        this._explorer.ArrowStyle = style;
+        this.UpdateOcrArrowColorSwatch();
+        try
+        {
+            AppSettings.SaveOcrArrow(style);
+        }
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
+        {
+            this.ShowStatus($"OCR result style not remembered: {ex.Message}", error: true);
         }
     }
 

@@ -50,6 +50,11 @@ File contents
 - Each choice applies **at once** to the tiles shown, and is saved in `settings.json`; a save that
   fails says so in the status line, a value that cannot be read falls back to its default.
 - Every item has a tooltip ending with "remembered between sessions", like its neighbours.
+- Stored as `OcrArrowCurved` (1 / 0), `OcrArrowThickness` (0–5) and `OcrArrowColor` (ARGB) in
+  `settings.json`, read and written together as an `OcrArrowStyle` (`UI/OcrArrowStyle.cs`) through
+  `AppSettings.OcrArrow` / `SaveOcrArrow`, each part falling back to its default on its own.
+- *Arrow color…* stays enabled while exporting: unlike the border color, it never touches the grid.
+- The swatch is drawn by a `MainForm.SetSwatch` shared with *Border color…*.
 
 ---
 
@@ -60,6 +65,8 @@ File contents
 - The thickness is the width of the **colored stroke only**, in logical px scaled with
   `LogicalToDeviceUnits`. The **dark halo is not counted**: it stays 1 px wider on each side of
   the stroke, whatever the thickness.
+- The **outline is always 1 px** (logical) all around the arrow — along the stroke and around the
+  head alike, whatever the thickness.
 - **0 (none)**: no arrow at all — neither stroke, nor head, nor halo. The bulb stays.
 - Default: **2 px**, today's width — nothing changes at the first launch.
 - The **head grows with the thickness**: 7 px at 2 px, 2 px more per px of thickness —
@@ -89,6 +96,14 @@ File contents
   stroke enters the base from outside even when the neck is level with — or past — the start.
 - Off: today's straight arrow, its head along the line.
 - The halo follows the curve and the head, as today on the straight arrow.
+- Handles: the first covers **60 %** of the way across to the neck, the last **60 %** of the way
+  down (or up) to it, never shorter than **1.5 heads** (`ThumbnailGrid.CurveHandle`,
+  `ThumbnailGrid.CurvedArrow`).
+- A word **right under (or over) the bulb** — the neck within the bulb's radius horizontally — gets
+  a stroke leaving the bulb's bottom (or top) vertically, onto the base; none when that word
+  overlaps the bulb, as today's *none when the word is under the bulb*.
+- The arc is not clipped to the thumbnail: like the straight arrow, it may run over the tile's
+  margin when it swings past a word near the picture's edge.
 
 ### Color
 
@@ -101,8 +116,9 @@ File contents
 
 ## Documentation
 
-- `README.md` / `README.fr.md`: the ⚙ menu's **OCR result style** next to *Search file contents
-  (OCR)* in the file explorer's section.
+- `README.md` / `README.fr.md`: a **Found in its content** bullet after *Search criteria* in the
+  file explorer's section — the light bulb, its tooltip and its arrow, which the README did not
+  describe yet, then the ⚙ menu's **OCR result style**.
 - `GLOSSARY.md` / `GLOSSARY.fr.md`: no term changes planned.
 
 ---
@@ -168,6 +184,34 @@ past and back when the word is too close in height to the bulb. Sketch shown. Do
 *Curve* now gives the geometry (a cubic Bézier ending at the neck, its last handle vertical with a
 minimum length). No open question left.
 
+### Iteration 5 — 2026-10-07 — ✅ Implemented
+
+Go given (Q&A #12): code, tests and documentation, in a worktree on `feature/ocr-result-style`
+(`.claude/worktrees/ocr-result-style`). Scope frozen as the domain sections stand.
+
+### Iteration 6 — 2026-10-07 — 🧭 Implementation choices
+
+No rule broken. Choices the frozen design left open, now in the domain sections:
+
+- Settings stored as three values (`OcrArrowCurved`, `OcrArrowThickness`, `OcrArrowColor`), grouped
+  in an `OcrArrowStyle` record struct; the head's size is `OcrArrowStyle.Head`.
+- Curve handles at 60 % of the way, the arriving one at least 1.5 heads long.
+- A word right under or over the bulb: a stroke leaving the bulb vertically; none when the word
+  overlaps the bulb.
+- The arc is not clipped to the thumbnail.
+- *Arrow color…* not locked while exporting; its swatch through a `SetSwatch` shared with *Border
+  color…* (whose rewritten line now takes `this.`).
+- README: the light bulb and its arrow were undocumented — the new bullet describes them before the
+  menu, a little more than the menu alone.
+- Checked off-screen by reflection on the built assembly (no test project).
+
+### Iteration 7 — 2026-10-07 — ⚙️ Post-implementation — 1 px outline around the head
+
+The user, testing: the arrow's outline must always be 1 px; around the triangle it was thicker.
+The head's halo was drawn with the stroke's halo pen (thickness + 2 px, centered on its edges), so
+it stood out by 2 px at 2 px and 3.5 px at 5 px. Now the head's outline is drawn with its own
+2 px pen, half of it hidden under the fill: 1 px outside, like along the stroke.
+
 ---
 
 ## Implementation Log
@@ -177,9 +221,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable: no test project |
-| README | | | |
+| Code | 5, 6, 7 | 2026-10-07 | `OcrArrowStyle`, `ThumbnailGrid` drawing, `FileExplorerPanel.ArrowStyle`, `AppSettings.OcrArrow`, ⚙ submenu in `MainForm`. Checked off-screen: the built `CurvedArrow` / `StraightArrow` drawn by reflection for six word positions at 2 and 5 px |
+| Unit tests | 5 | 2026-10-07 | Not applicable: no test project |
+| README | 5, 6 | 2026-10-07 | en / fr: *Found in its content* bullet |
 
 ---
 
@@ -200,7 +244,7 @@ Questions asked by the agent during design, with user responses.
 | 9 | A way back to the default color? | The color dialog only | 2026-10-07 |
 | 10 | The curve's bend, from the sketches (A clockwise 15 %, B outward 15 %, C clockwise 25 %)? | None of them: the arrow must arrive above or below the word's center, its head pointing straight down or up — the curve adapts to land there | 2026-10-07 |
 | 11 | The curve's shape: horizontal start (elbow), or straight start turning vertical near the word? | The elbow (A), but the stroke must reach the triangle's flat part — tending towards its center when it would not arrive at the right place | 2026-10-07 |
-| 12 | Go for the implementation? (scope, where) | | |
+| 12 | Go for the implementation? (scope, where) | Code, tests and documentation; in a worktree | 2026-10-07 |
 
 ---
 
