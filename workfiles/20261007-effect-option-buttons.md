@@ -88,17 +88,25 @@ vertical line, so it does not read as a ratio.
 
 ### Code
 
-- `ThumbnailStrip<T>` holds **one selected value** and is built over an **enum**. The new strips
-  need zero, one or several pressed items, an action item, and the crop's ratios (a list of
-  doubles, not an enum). The strip is **generalized** — exact shape decided at implementation
-  (e.g. items given as a list, a per-item pressed state) — without changing the Background's and
-  the Format's behaviour.
-- One derived strip per effect (or per group of items), next to `BackgroundFillStrip`, drawing its
-  pictograms.
-- `MainForm`: the `OptionButton` / `RadioButton` fields replaced by the strips; their `Checked`
-  syncing (`MainForm.cs` ~2690–2735) becomes the strips' pressed state; the DPI icon refresh
-  (`MainForm.cs` ~790–830) loses the icons no longer used. `OptionButton` is removed if nothing
-  uses it any more; the `EffectIcons` drawings no longer used are removed.
+- `ThumbnailStrip<T>` (any `notnull` item) takes its **items as a list** and asks the derived strip
+  which are pressed (`IsPressed`), which a click picks (`Picks`, all by default) and which stands
+  apart (`IsApart`: a wider gap and a line before it). It holds the shared box (`EffectBox`, 56 × 40)
+  and the pictograms' drawing: `Shade`, `Fill`, `Outline`, `PaintCell`, `PaintImage` (the image and
+  its blue marker, `Marker`).
+- `SelectionStrip<T>` (an enum, exactly one selected) carries the former single selection
+  (`Selected`, `PicksSelected`): `BackgroundFillStrip`, `FormatStrip` and `BlurKindStrip` derive from
+  it, their behaviour unchanged.
+- One strip per effect: `ZoomFitStrip` (`Fit`), `QuarterTurnStrip` (`Rotation`, null with a fine
+  angle), `FlipStrip` (`FlipX`, `FlipY`; items `FlipAxis`), `CropStrip` (`Kept`; items `CropChoice`,
+  the 100 % one `Whole` and apart), `BlurKindStrip` (`Selected`, the selected one picked too).
+- `MainForm`: the `OptionButton` / `RadioButton` fields replaced by the strips, their syncing by the
+  strips' state, the DPI icon refresh and `Dispose` rid of the icons no longer used. `OptionButton`,
+  `RatioText` (moved into `CropStrip`) and `EffectIcons.Ratio` / `WholeImage` / `Gaussian` /
+  `Pixelate` are removed.
+- The 100 % pictogram draws the crop bars in the helper indicators' green over their halo:
+  `GridPreview.HelperColor` / `HelperHalo` became `internal` to be shared, still defined once.
+- Every thumbnail has a tooltip — the strip asks one per item: the Zoom's and the 100 %'s kept, the
+  others written (quarter turns, mirrors, ratios, blur kinds had none).
 
 ### Rule
 
@@ -157,17 +165,38 @@ table now describes each drawing.
 Go given: code, tests and documentation, in the current checkout, on `main` (the repository's
 standing choice).
 
+### Iteration 4 — 2026-10-07 — 🧭 Implementation choices
+
+- **Branch**: stayed on `main` without asking the Branch Gate — the repository's standing choice
+  (work lands on `main` unless a worktree is asked for).
+- **Generalization**: `ThumbnailStrip<T>` over any item list with per-item `IsPressed` / `Picks` /
+  `IsApart`; the single selection moved to a new `SelectionStrip<T>` (Background, Format, Blur).
+- **Shared drawing**: the Background's `Shade` / `Fill` moved up into `ThumbnailStrip`, with
+  `Outline`, `PaintCell`, `PaintImage` and the marker color (the Background's top edge blue); `Shade`
+  now keeps the alpha.
+- **Pictograms** as the Pictograms table says; Fill kept the mockup's dashed inset. The 100 %
+  draws green bars over a dark halo — first drawn 1 px, too faint, then 2 px over 4 px.
+- **Tooltips** written for the items that had none (the strip asks one per item).
+- **`GridPreview.HelperColor` / `HelperHalo`** made `internal`, for the 100 % pictogram.
+- **Removed**: `OptionButton`, `EffectIcons.Ratio` / `WholeImage` / `Gaussian` / `Pixelate`;
+  `RatioText` moved into `CropStrip`.
+- **Docs**: README / README.fr reworded (thumbnails, 100 % set apart); RULES.md § Options Toolbar
+  gains the option thumbnail rule; a glossary term **Option thumbnail** (*miniature d'option*) added
+  in both glossaries — not in the design, the documentation step's own choice.
+- **Check**: the strips rendered offscreen to PNG (enabled and disabled) from a scratch program
+  outside the repository, then the app launched.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project in the repository |
-| RULES.md | | | |
-| README / README.fr | | | |
-| GLOSSARY / GLOSSARY.fr | | | |
+| Code | 3–4 | 2026-10-07 | Strips generalized, one strip per effect, unused buttons and icons removed |
+| Unit tests | 3 | 2026-10-07 | None: no test project in the repository; checked by rendering and by hand |
+| RULES.md | 4 | 2026-10-07 | § Options Toolbar: option thumbnails |
+| README / README.fr | 4 | 2026-10-07 | Effects, Crop, Zoom, Rotate |
+| GLOSSARY / GLOSSARY.fr | 4 | 2026-10-07 | Option thumbnail added |
 
 ---
 
