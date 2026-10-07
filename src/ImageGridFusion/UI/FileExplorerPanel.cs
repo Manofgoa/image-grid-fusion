@@ -850,10 +850,10 @@ internal sealed class FileExplorerPanel : Panel
         }
         else
         {
-            var found = everything ? FileSearch.All(_index.Entries) : FileSearch.Search(_index.Entries, words);
-            foreach (var entry in found)
+            var found = this.Find(_index.Entries, words, everything);
+            foreach (var (entry, byContent) in found)
             {
-                rows.Add(new ExplorerRow(_index.FullPath(entry), entry.Name));
+                rows.Add(new ExplorerRow(_index.FullPath(entry), entry.Name, ByContent: byContent));
             }
 
             _caption.Text = everything
@@ -986,18 +986,17 @@ internal sealed class FileExplorerPanel : Panel
         var folders = _tree.Folders.Where(f => FolderTree.IsUnder(f.RelativePath, _openFolder)).ToArray();
         var files = _openFolder.Length == 0 ? index.Entries : index.Entries.Where(e => FolderTree.IsUnder(e.RelativePath, _openFolder)).ToArray();
         IReadOnlyList<IndexEntry> foundFolders;
-        IReadOnlyList<IndexEntry> foundFiles;
         if (everything)
         {
             Array.Sort(folders, (a, b) => FolderTree.ComparePaths(a.RelativePath, b.RelativePath));
             foundFolders = folders;
-            foundFiles = FileSearch.All(files);
         }
         else
         {
-            foundFolders = FileSearch.Search(folders, words);
-            foundFiles = FileSearch.Search(files, words);
+            foundFolders = FileSearch.Search(folders, words).Select(m => m.Entry).ToArray();
         }
+
+        var foundFiles = this.Find(files, words, everything);
 
         var rows = new List<ExplorerRow>(foundFolders.Count + foundFiles.Count);
         foreach (var folder in foundFolders)
@@ -1005,9 +1004,9 @@ internal sealed class FileExplorerPanel : Panel
             rows.Add(FolderRow(index.FullPath(folder)));
         }
 
-        foreach (var file in foundFiles)
+        foreach (var (file, byContent) in foundFiles)
         {
-            rows.Add(new ExplorerRow(index.FullPath(file), file.Name));
+            rows.Add(new ExplorerRow(index.FullPath(file), file.Name, ByContent: byContent));
         }
 
         int total = rows.Count;
@@ -1021,6 +1020,13 @@ internal sealed class FileExplorerPanel : Panel
             };
         return (rows, trailing);
     }
+
+    /// <summary>
+    /// The files of a search: every one for <c>*</c>, the most recently created first; else those
+    /// matching the words — by their path or by their content text — best first.
+    /// </summary>
+    private IReadOnlyList<SearchMatch> Find(IReadOnlyList<IndexEntry> entries, string[] words, bool everything) =>
+        everything ? FileSearch.All(entries).Select(e => new SearchMatch(e, false)).ToArray() : FileSearch.Search(entries, words);
 
     /// <summary>A folder's tile: its name, then every file below it as the index counts them, once the index is there.</summary>
     private ExplorerRow FolderRow(string fullPath)

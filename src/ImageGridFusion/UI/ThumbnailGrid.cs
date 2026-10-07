@@ -9,8 +9,9 @@ namespace ImageGridFusion.UI;
 /// <summary>
 /// A tile of the explorer's grid: a file — a favorite, a search result, a file of the open folder — or,
 /// in the folder view, a folder (<paramref name="IsFolder"/>), its name then carrying its file count.
+/// <paramref name="ByContent"/>: a search result found thanks to its content text.
 /// </summary>
-internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false);
+internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false, bool ByContent = false);
 
 /// <summary>
 /// The file explorer's list: a grid of tiles, one per file — its thumbnail from the Shell's cache,
