@@ -2940,9 +2940,10 @@ internal sealed class GridPreview : Control
 
     /// <summary>
     /// The four bars as guides across the cell for the blur, across the whole image for the crop,
-    /// fluorescent green and outlined so they show on any image, with a grip at the middle of each side
-    /// of the rectangle they frame; the grip turns white while hovered or dragged. Shown by an undo, they
-    /// fade out at <paramref name="opacity"/>, without <paramref name="grips"/>: not handles.
+    /// fluorescent green and outlined so they show on any image: solid along the sides of the rectangle
+    /// they frame, dashed beyond it as the guides are, with a grip at the middle of each side; the grip
+    /// turns white while hovered or dragged. Shown by an undo, they fade out at
+    /// <paramref name="opacity"/>, without <paramref name="grips"/>: not handles.
     /// </summary>
     private void PaintBars(Graphics g, Rectangle cell, Bars bars, double opacity = 1, bool grips = true)
     {
@@ -2962,13 +2963,44 @@ internal sealed class GridPreview : Control
         g.SmoothingMode = SmoothingMode.None;
         using (var outline = new Pen(Color.FromArgb((int)(HelperHalo.A * opacity), HelperHalo), LogicalToDeviceUnits(4)))
         using (var line = new Pen(Color.FromArgb((int)(255 * opacity), HelperColor), LogicalToDeviceUnits(2)))
+        using (var dashed = this.GuidePen(opacity))
         {
-            foreach (var pen in new[] { outline, line })
+            g.DrawLine(outline, left, span.Top, left, span.Bottom);
+            g.DrawLine(outline, right, span.Top, right, span.Bottom);
+            g.DrawLine(outline, span.Left, top, span.Right, top);
+            g.DrawLine(outline, span.Left, bottom, span.Right, bottom);
+
+            g.DrawLine(line, left, top, left, bottom);
+            g.DrawLine(line, right, top, right, bottom);
+            g.DrawLine(line, left, top, right, top);
+            g.DrawLine(line, left, bottom, right, bottom);
+
+            // Each overhang from the rectangle's corner outward, so a dash starts right at the corner;
+            // none where a side lies on the span's edge.
+            foreach (int x in new[] { left, right })
             {
-                g.DrawLine(pen, left, span.Top, left, span.Bottom);
-                g.DrawLine(pen, right, span.Top, right, span.Bottom);
-                g.DrawLine(pen, span.Left, top, span.Right, top);
-                g.DrawLine(pen, span.Left, bottom, span.Right, bottom);
+                if (top > span.Top)
+                {
+                    g.DrawLine(dashed, x, top, x, span.Top);
+                }
+
+                if (bottom < span.Bottom - 1)
+                {
+                    g.DrawLine(dashed, x, bottom, x, span.Bottom);
+                }
+            }
+
+            foreach (int y in new[] { top, bottom })
+            {
+                if (left > span.Left)
+                {
+                    g.DrawLine(dashed, left, y, span.Left, y);
+                }
+
+                if (right < span.Right - 1)
+                {
+                    g.DrawLine(dashed, right, y, span.Right, y);
+                }
             }
         }
 
@@ -3117,7 +3149,7 @@ internal sealed class GridPreview : Control
         g.SetClip(cell, CombineMode.Intersect);
         g.SmoothingMode = SmoothingMode.None;
         using var outline = new Pen(Color.FromArgb((int)(HelperHalo.A * opacity), HelperHalo), this.LogicalToDeviceUnits(4));
-        using var dashed = new Pen(Color.FromArgb((int)(255 * opacity), HelperColor), this.LogicalToDeviceUnits(2)) { DashPattern = [4, 3] };
+        using var dashed = this.GuidePen(opacity);
         foreach (var (from, to) in lines)
         {
             g.DrawLine(outline, from, to);
@@ -3130,6 +3162,10 @@ internal sealed class GridPreview : Control
 
         g.Restore(state);
     }
+
+    /// <summary>The dashed green pen of the guides, and of the bars beyond their rectangle, at <paramref name="opacity"/>.</summary>
+    private Pen GuidePen(double opacity) =>
+        new(Color.FromArgb((int)(255 * opacity), HelperColor), this.LogicalToDeviceUnits(2)) { DashPattern = [4, 3] };
 
     /// <summary>The rectangle the bars frame, and the one they run across: the cell for the blur, the whole image of the edit view for the crop.</summary>
     private readonly record struct Bars(Rectangle Area, Rectangle Span);
