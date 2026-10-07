@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Drawing.Drawing2D;
+using System.Globalization;
 using System.Drawing.Imaging;
 using ImageGridFusion.Composition;
 using ImageGridFusion.Imaging;
@@ -40,6 +41,8 @@ internal sealed class GridPreview : Control
     private const int ZoomBadgeFade = 300;
     private const int ZoomBadgeTick = 30;
     private const int ZoomBadgeTextSize = 16;
+    private const int ReadoutDotRadius = 3;
+    private const int ReadoutTextGap = 6;
     private const int SourceNameTextSize = 12;
     private const int SourceIconSize = 16;
     private const int CheckerSquare = 8;
@@ -145,6 +148,13 @@ internal sealed class GridPreview : Control
     private long _zoomBadgeChanged;
     private Rectangle _zoomBadgeBounds;
 
+    // Every image's offset from its cell's center in export pixels, as last painted, with the cell it was
+    // in; and the position readouts showing, per image, since its offset last changed — held a moment,
+    // then faded out, with the zoom badge's timing (RULES.md § Position Readout).
+    private Dictionary<SourceImage, (int Cell, Point Offset)> _offsets = [];
+    private readonly Dictionary<SourceImage, long> _readouts = [];
+    private readonly System.Windows.Forms.Timer _readoutTimer = new();
+
     // The progress line of every playing cell, along its bottom edge: its strip repainted about 60 times
     // a second while something plays, the strips of the last tick too, so a line that vanished is erased.
     private readonly System.Windows.Forms.Timer _progressTimer = new() { Interval = ProgressTick };
@@ -178,6 +188,7 @@ internal sealed class GridPreview : Control
         _wheelEnd.Tick += (_, _) => EndLive();
         _zoomBadgeTimer.Tick += (_, _) => OnZoomBadgeTick();
         this._restoredTimer.Tick += (_, _) => this.OnRestoredTick();
+        this._readoutTimer.Tick += (_, _) => this.OnReadoutTick();
         _progressTimer.Tick += (_, _) => OnProgressTick();
     }
 
@@ -732,6 +743,7 @@ internal sealed class GridPreview : Control
             _wheelEnd.Dispose();
             _zoomBadgeTimer.Dispose();
             this._restoredTimer.Dispose();
+            this._readoutTimer.Dispose();
             _progressTimer.Dispose();
             _toolTip.Dispose();
             _player.Dispose();
@@ -758,6 +770,7 @@ internal sealed class GridPreview : Control
 
         using var highlight = new SolidBrush(Color.FromArgb(90, SystemColors.Highlight));
         PaintDropZone(g, DropZoneBounds(canvas));
+        this.UpdateReadouts();
         if (_images.Count == 0)
         {
             PaintEmptyState(g, canvas);
@@ -836,6 +849,8 @@ internal sealed class GridPreview : Control
         {
             this.PaintPanGuides(g, cells[this._selected], this._images[this._selected]);
         }
+
+        this.PaintReadouts(g, cells);
 
         PaintHoverOutline(g, HoverOutlineBounds(canvas, cells));
 
@@ -2058,6 +2073,211 @@ internal sealed class GridPreview : Control
         }
 
         g.Restore(state);
+    }
+
+    /// <summary>
+    /// Every image's offset from its cell's center in the PNG export of the grid as it stands — its canvas
+    /// and cells as <see cref="Compositor.Render(IReadOnlyList{Frame}, GridLayout, double, GridBorders?)"/>
+    /// gives them —, x to the right, y downward; <c>null</c> without a layout holding the images.
+    /// </summary>
+    private Point[]? ExportOffsets()
+    {
+        if (this._layout is not { } layout || layout.Count != this._images.Count)
+        {
+            return null;
+        }
+
+        var canvas = CanvasSizer.Compute(this._images.Select(i => i.Look.Shown(i.Bitmap.Size)).ToList(), layout, this.CanvasRatio);
+        var cells = Compositor.Cells(layout, canvas, this._borders);
+        return this._images.Select((image, i) => CenterOffset(cells[i], image)).ToArray();
+    }
+
+    /// <summary>Where the center of the box <paramref name="image"/> is drawn in lies from the center of <paramref name="cell"/>, rounded.</summary>
+    private static Point CenterOffset(Rectangle cell, SourceImage image)
+    {
+        var bounds = DrawnBounds(cell, image);
+        return new Point(
+            (int)Math.Round(bounds.X + bounds.Width / 2 - (cell.X + cell.Width / 2.0)),
+            (int)Math.Round(bounds.Y + bounds.Height / 2 - (cell.Y + cell.Height / 2.0)));
+    }
+
+    /// <summary>The box <paramref name="image"/> is drawn in within <paramref name="cell"/>: the turned image's with a fine angle.</summary>
+    private static RectangleF DrawnBounds(Rectangle cell, SourceImage image)
+    {
+        var look = image.Look;
+        var shown = look.Shown(image.Bitmap.Size);
+        return FitCalculator.ComputeTurned(cell, shown, look.ZoomIn(cell, shown), look.Focus, look.FineAngle).Bounds;
+    }
+
+    /// <summary>
+    /// Compares every image's export offset with the one last painted, and shows the readout of each one
+    /// whose offset changed while it stayed in its cell, whatever changed it. An image new in its cell, or
+    /// in a cell showing the crop edit view, takes its offset as the new starting value and shows none.
+    /// </summary>
+    private void UpdateReadouts()
+    {
+        var offsets = this.ExportOffsets();
+        var seen = new Dictionary<SourceImage, (int Cell, Point Offset)>();
+        var cells = offsets is null ? Array.Empty<Rectangle>() : this.CellBounds();
+        bool shown = false;
+        for (int i = 0; offsets is not null && i < this._images.Count; i++)
+        {
+            var image = this._images[i];
+            bool stayed = this._offsets.TryGetValue(image, out var last) && last.Cell == i;
+            if (!stayed || this.EditsCrop(i))
+            {
+                this._readouts.Remove(image);
+            }
+            else if (last.Offset != offsets[i])
+            {
+                this._readouts[image] = Environment.TickCount64;
+                shown = true;
+                if (i < cells.Length)
+                {
+                    this.Invalidate(cells[i]);
+                }
+            }
+
+            seen[image] = (i, offsets[i]);
+        }
+
+        this._offsets = seen;
+        foreach (var gone in this._readouts.Keys.Where(image => !seen.ContainsKey(image)).ToList())
+        {
+            this._readouts.Remove(gone);
+        }
+
+        if (shown)
+        {
+            this.ScheduleReadouts();
+        }
+    }
+
+    /// <summary>
+    /// Keeps the readouts at full opacity while a gesture runs, so their hold starts when it ends; repaints
+    /// them along their fade, and drops them once transparent.
+    /// </summary>
+    private void OnReadoutTick()
+    {
+        long now = Environment.TickCount64;
+        bool held = this.InGesture;
+        var cells = this.CellBounds();
+        foreach (var (image, since) in this._readouts.ToList())
+        {
+            int index = this._images.IndexOf(image);
+            long elapsed = now - since;
+            if (held && index >= 0)
+            {
+                this._readouts[image] = now;
+                continue;
+            }
+
+            if (elapsed >= ZoomBadgeHold + ZoomBadgeFade || index < 0)
+            {
+                this._readouts.Remove(image);
+            }
+
+            if (elapsed >= ZoomBadgeHold && index >= 0 && index < cells.Length)
+            {
+                this.Invalidate(cells[index]);
+            }
+        }
+
+        this.ScheduleReadouts();
+    }
+
+    /// <summary>
+    /// Ticks again when the first hold ends, often while a readout fades or a gesture holds them; stops
+    /// once none shows.
+    /// </summary>
+    private void ScheduleReadouts()
+    {
+        if (this._readouts.Count == 0)
+        {
+            this._readoutTimer.Stop();
+            return;
+        }
+
+        long now = Environment.TickCount64;
+        long wait = this.InGesture ? ZoomBadgeTick : this._readouts.Values.Min(since => ZoomBadgeHold - (now - since));
+        this._readoutTimer.Interval = (int)Math.Clamp(wait, ZoomBadgeTick, ZoomBadgeHold);
+        this._readoutTimer.Start();
+    }
+
+    /// <summary>The position readouts, helper indicators, over their cells — none during a swap — faded out after their hold.</summary>
+    private void PaintReadouts(Graphics g, Rectangle[] cells)
+    {
+        if (this._readouts.Count == 0 || this._dragging)
+        {
+            return;
+        }
+
+        long now = Environment.TickCount64;
+        foreach (var (image, since) in this._readouts)
+        {
+            int index = this._images.IndexOf(image);
+            if (index >= 0 && index < cells.Length && this._offsets.TryGetValue(image, out var seen))
+            {
+                double opacity = Math.Clamp(1 - (now - since - ZoomBadgeHold) / (double)ZoomBadgeFade, 0, 1);
+                this.PaintReadout(g, cells[index], image, seen.Offset, opacity);
+            }
+        }
+    }
+
+    /// <summary>
+    /// One position readout: a dot on the image's center, a dashed line to it from the cell's center —
+    /// none at 0, 0 —, and the offset in export pixels below the dot on two lines, kept inside the cell.
+    /// </summary>
+    private void PaintReadout(Graphics g, Rectangle cell, SourceImage image, Point offset, double opacity)
+    {
+        var bounds = DrawnBounds(cell, image);
+        var center = new PointF(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height / 2);
+        var middle = new PointF(cell.X + cell.Width / 2f, cell.Y + cell.Height / 2f);
+        var state = g.Save();
+        g.SetClip(cell, CombineMode.Intersect);
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        var green = Color.FromArgb((int)(255 * opacity), HelperColor);
+        using var halo = new Pen(Color.FromArgb((int)(HelperHalo.A * opacity), HelperHalo), this.LogicalToDeviceUnits(4)) { LineJoin = LineJoin.Round };
+        using var fill = new SolidBrush(green);
+        if (offset != Point.Empty)
+        {
+            using var dashed = new Pen(green, this.LogicalToDeviceUnits(2)) { DashPattern = [4, 3] };
+            g.DrawLine(halo, middle, center);
+            g.DrawLine(dashed, middle, center);
+        }
+
+        float radius = this.LogicalToDeviceUnits(ReadoutDotRadius);
+        var dot = new RectangleF(center.X - radius, center.Y - radius, 2 * radius, 2 * radius);
+        g.DrawEllipse(halo, dot);
+        g.FillEllipse(fill, dot);
+
+        using var text = this.ReadoutPath(cell, center, offset);
+        g.DrawPath(halo, text);
+        g.FillPath(fill, text);
+        g.Restore(state);
+    }
+
+    /// <summary>
+    /// The text of a readout, <c>x -35px</c> over <c>y +12px</c>, centered just below <paramref name="center"/>,
+    /// then pushed back inside <paramref name="cell"/>, its halo included, where it would cross an edge.
+    /// </summary>
+    private GraphicsPath ReadoutPath(Rectangle cell, PointF center, Point offset)
+    {
+        static string Signed(int value) => value > 0 ? $"+{value}" : value.ToString(CultureInfo.InvariantCulture);
+
+        using var format = new StringFormat { Alignment = StringAlignment.Center };
+        var path = new GraphicsPath();
+        path.AddString($"x {Signed(offset.X)}px\ny {Signed(offset.Y)}px", this.Font.FontFamily, (int)FontStyle.Bold, this.LogicalToDeviceUnits(ZoomBadgeTextSize), PointF.Empty, format);
+        var box = path.GetBounds();
+        float margin = this.LogicalToDeviceUnits(4);
+        float x = center.X - (box.X + box.Width / 2);
+        float y = center.Y + this.LogicalToDeviceUnits(ReadoutTextGap) - box.Y;
+        x = Math.Max(cell.Left + margin - box.X, Math.Min(x, cell.Right - margin - box.Right));
+        y = Math.Max(cell.Top + margin - box.Y, Math.Min(y, cell.Bottom - margin - box.Bottom));
+        using var move = new Matrix();
+        move.Translate(x, y);
+        path.Transform(move);
+        return path;
     }
 
     /// <summary>
