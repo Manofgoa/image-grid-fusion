@@ -361,15 +361,21 @@ enabled again once the scan ends. Agent's choices stated for the go: *Reading na
 line for a text or HTML file; the rebuild entry disabled while the setting is off. No open question
 left.
 
+### Iteration 9 — 2026-10-07 — ✅ Implemented
+
+Go given for the **code only** (Q&A #27), in a **dedicated worktree** on its own branch, to be
+tested by the user and merged into `main` once accepted. README, Glossary and RULES.md are not
+part of this go.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | Not started |
+| Code | 9 | 2026-10-07 | In progress, worktree branch `feature/content-search` |
 | Unit tests | | | None planned — no test project (see *Test Impact*) |
-| README | | | Not started — the file explorer's section, plus the Glossary (*Content text*, *Index folder*, *Index* revised), each with its `.fr.md` in the same commit; RULES.md § App Settings (`files.index` in `Index\`) |
+| README | | | Declined for now (Q&A #27, code only) — the file explorer's section, plus the Glossary (*Content text*, *Index folder*, *Index* revised), each with its `.fr.md` in the same commit; RULES.md § App Settings (`files.index` in `Index\`) |
 
 ---
 
@@ -405,6 +411,7 @@ Questions asked by the agent during design, with user responses.
 | 24 | OCR turned off: the texts already extracted kept and searched, or ignored while off? | Kept and still searched | 2026-10-07 |
 | 25 | Pause trigger: the thumbnails loading plus a moment after the last keystroke, or as long as the search box holds a query? | The thumbnails loading, and a moment after the last keystroke | 2026-10-07 |
 | 26 | ↻ during the extraction (#22 again): enabled once the scan ends, or disabled until the extraction ends? | Enabled once the scan ends | 2026-10-07 |
+| 27 | The design is complete: start the implementation — code, tests and docs / code only / no? | Code, in a dedicated worktree; once done, the user tests it and it is merged into `main` if OK | 2026-10-07 |
 
 ---
 
