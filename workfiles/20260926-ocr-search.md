@@ -456,6 +456,10 @@ light bulb at the thumbnail's top-left, under the heart, its tooltip saying it w
 content, with an excerpt around it — a few words before, a few after. *Content Badge* rewritten:
 the bulb replaces the T of the top-right corner. Agent's choices: 4 words each side, around the
 first query word the content found; the tooltip's wording; the excerpt computed on hover.
+Checked: `ContentIndex.ExcerptOf` called by reflection on the built assembly — 4 words each side,
+accents folded, ellipses only where the text goes on, null when the word is missing. The bulb's
+drawing and its tooltip were **not** checked on screen: the check window took the keyboard focus
+while the user was typing elsewhere, and the checks were stopped; left to the user's test.
 
 ---
 
