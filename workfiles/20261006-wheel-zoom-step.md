@@ -194,6 +194,19 @@ Answers to questions 13–14: a value above 10 000 becomes 10 000, below 200 bec
 no longer reset to 2000), an unreadable one 2000 — and in every case the file is rewritten with the
 value applied, so it always shows it (§ Maximum Zoom).
 
+Implemented in the worktree `.claude/worktrees/max-zoom-setting` (`feature/max-zoom-setting`),
+fast-forwarded into `main` and removed. Choices the design left open, no rule broken:
+
+- **`AppSettings.MaxZoom`** (percent, clamped, 2000 when missing or not a whole number),
+  `HoldsMaxZoom`, `SaveMaxZoom`, constants `DefaultMaxZoom` / `MinMaxZoom` / `MaxMaxZoom`.
+- **`ImageLook.MaxZoom`** becomes a settable static property (20 until set), set in `Program.Main`
+  before the main window is built — its Zoom slider takes its range from it at construction.
+- **The write-back** is `MainForm.WriteMaxZoom`, called at the start of the constructor so a failure
+  can reach the status line; it runs with a hidden start (`--tray`) too.
+- Checked by hand on the worktree build: `"MaxZoom": 50000` was rewritten to `10000` at launch.
+- **README** (English and French): the Features zoom line, § Zoom's options line and the
+  *Settings file* paragraph, which now describes `"MaxZoom"`. RULES.md and the glossary unchanged.
+
 ---
 
 ## Implementation Log
@@ -203,9 +216,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 3 | 2026-10-06 | `WheelSteps.Zoom`, `GridPreview.ZoomAt`, `StepSlider.Wheel`, `MainForm.StepZoom` |
+| Code | 3, 7 | 2026-10-06, 2026-10-07 | `WheelSteps.Zoom`, `GridPreview.ZoomAt`, `StepSlider.Wheel`, `MainForm.StepZoom`; then the maximum zoom setting (`AppSettings.MaxZoom`, `ImageLook.MaxZoom`, `MainForm.WriteMaxZoom`) |
 | Unit tests | — | — | Not applicable — no test project |
-| README | 3 | 2026-10-06 | Features (zoom), § Effects (Ctrl + wheel), § Zoom |
+| README | 3, 7 | 2026-10-06, 2026-10-07 | Features (zoom), § Effects (Ctrl + wheel), § Zoom; then the maximum zoom, English and French |
 
 ---
 
