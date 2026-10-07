@@ -91,6 +91,13 @@ internal sealed class ThumbnailGrid : ScrollableControl
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public Func<string, bool> IsFavorite { get; set; } = _ => false;
 
+    /// <summary>
+    /// Whether thumbnails are being loaded in the background — the file explorer's content extraction
+    /// waits meanwhile. Safe to read from any thread.
+    /// </summary>
+    [Browsable(false)]
+    public bool LoadingThumbnails => this._thumbnails.Busy;
+
     /// <summary>The tiles loaded, top-left first; the Loading… slot, when shown, comes after them.</summary>
     [Browsable(false)]
     public IReadOnlyList<ExplorerRow> Rows => _rows;
@@ -534,6 +541,24 @@ internal sealed class ThumbnailGrid : ScrollableControl
                 favorite ? Color.Crimson : SystemColors.GrayText,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         }
+
+        // A search result found thanks to its content text: a T in a medallion, opposite the heart.
+        if (row.ByContent)
+        {
+            var badge = this.Scrolled(this.ContentBadgeBounds(index));
+            var smoothing = g.SmoothingMode;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.FillEllipse(Brushes.White, badge);
+            g.DrawEllipse(SystemPens.ControlDark, badge);
+            g.SmoothingMode = smoothing;
+            TextRenderer.DrawText(
+                g,
+                "T",
+                this._heartFont,
+                badge,
+                SystemColors.ControlText,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        }
         TextRenderer.DrawText(
             g,
             row.Name,
@@ -602,6 +627,15 @@ internal sealed class ThumbnailGrid : ScrollableControl
         int size = LogicalToDeviceUnits(Medallion);
         int inset = LogicalToDeviceUnits(MedallionInset);
         return new Rectangle(tile.X + inset, tile.Y + inset, size, size);
+    }
+
+    /// <summary>The content badge's medallion: the heart's, in the tile's top-right corner.</summary>
+    private Rectangle ContentBadgeBounds(int index)
+    {
+        var tile = this.TileBounds(index);
+        int size = this.LogicalToDeviceUnits(Medallion);
+        int inset = this.LogicalToDeviceUnits(MedallionInset);
+        return new Rectangle(tile.Right - inset - size, tile.Y + inset, size, size);
     }
 
     /// <summary>Content coordinates to client ones.</summary>
@@ -813,6 +847,18 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
         /// <summary>A thumbnail arrived (or none exists) for the path; on the UI thread.</summary>
         public event Action<string>? Loaded;
+
+        /// <summary>Whether thumbnails are being loaded, or wait to be; safe from any thread.</summary>
+        public bool Busy
+        {
+            get
+            {
+                lock (this._lock)
+                {
+                    return this._working;
+                }
+            }
+        }
 
         /// <summary>
         /// The box the thumbnails are scaled to, and the size asked from the Shell; changing it drops
