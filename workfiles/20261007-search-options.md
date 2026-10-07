@@ -33,7 +33,12 @@ Components: `UI/FileExplorerPanel.cs` (search row, `Find`, `SearchFolder`), `Exp
   `CheckBox` with `Appearance.Button`, 26 × 23.
 - Becomes `[📁] [Aa] [💡] [search box] [↻]`: the two new buttons are **toggle buttons with an icon**,
   built like the 📁 (`CheckBox`, `Appearance.Button`, same size and margins), **pressed = criterion on**.
-- Each has a **tooltip** saying what it searches and whether it is on.
+- Each has a **tooltip** saying what it searches and its state — *off — click to turn on*, *on — click
+  to turn off*, or *on — at least one criterion stays on* for the only one pressed; **💡**'s adds a
+  second line while the ⚙ OCR setting is off (`ApplyCriteriaTips`, refreshed by the toggles and by
+  `ContentSearch`).
+- Both are `CheckBox`es with `AutoCheck` off, toggled by `FileExplorerPanel.ToggleCriterion`, which
+  ignores a click on the only one pressed.
 - **At least one stays on**: a click on the last pressed button does **nothing** — it stays pressed,
   its tooltip saying at least one criterion stays on.
 - **Not remembered**: both pressed at every launch; process state only, not an app setting, not in
@@ -54,6 +59,8 @@ Components: `UI/FileExplorerPanel.cs` (search row, `Find`, `SearchFolder`), `Exp
 - The 💡 on a tile and its arrow keep showing the first word found in the content.
 - With `*` alone (every file) or an empty box (the favorites), the buttons stay **clickable with no
   effect**: their state counts as soon as words are typed.
+- `FileSearch.Search` takes `byName` (default true): false, the path is not read. `Find` passes
+  `byName` and gives no content texts while 💡 is released; `SearchFolder` finds no folder while Aa is.
 - Toggling a button **runs the search again** at once, as typing does (back to the top: a new search).
 - Applies to the **search view** and the **folder view** alike — same box, same `Find`.
 - Content only, in the **folder view**: the **folder tiles are hidden** — a folder has no content; only
@@ -68,6 +75,9 @@ Components: `UI/FileExplorerPanel.cs` (search row, `Find`, `SearchFolder`), `Exp
 - `README.md` / `README.fr.md`, § File explorer: the two buttons, their defaults, the three modes.
 - `GLOSSARY.md` / `GLOSSARY.fr.md`: a new term, **Search criteria** (*critères de recherche*) — the
   **Aa** and **💡** buttons; the *File explorer* row mentions them.
+- The README documents no content search otherwise (its docs were declined in
+  `workfiles/20260926-ocr-search.md`, and § Planned still lists the OCR): the criteria bullet names
+  the ⚙ setting that extracts the texts, nothing more.
 
 ---
 
@@ -81,6 +91,7 @@ created. The behaviours are checked by hand on the running app:
 | Name only: a word found only in a content text finds nothing | — (manual check) | — |
 | Content only: a word in a file name but not in its content finds nothing | — (manual check) | — |
 | Both on: today's results unchanged | — (manual check) | — |
+| `FileSearch.Search` with `byName` false / no content: the three modes | scratchpad console over `FileSearch.cs` (not kept) | 7 cases, all passed |
 | The last pressed button cannot be released | — (manual check) | — |
 
 ---
@@ -93,6 +104,7 @@ created. The behaviours are checked by hand on the running app:
 - [x] ~~A click on the **last pressed** button: does nothing, or switches to the other criterion?~~ → Does nothing; its tooltip says at least one stays on
 - [x] ~~With `*` alone or an empty box (every file / the favorites), do the buttons stay clickable with no effect?~~ → Yes, clickable with no effect
 - [x] ~~Documentation: README (EN + FR) only, or also a glossary term (*search criteria*)?~~ → README and glossary, EN + FR
+- [ ] *(found during the run, out of scope)* The README still lists the OCR search under § Planned and does not describe the content search (declined in `workfiles/20260926-ocr-search.md`): document it now?
 
 ---
 
@@ -127,6 +139,25 @@ the documentation covers the README and the glossary, both languages. *Search* u
 Go given: code, tests and documentation, in a dedicated worktree (`feature/search-options`),
 fast-forwarded into `main` and removed at the end. No unit test: no test project.
 
+### Iteration 5 — 2026-10-07 — 🧭 Implementation choices
+
+- **Tooltips** worded by the agent: what each criterion searches, then its state; 💡's second line
+  while the ⚙ OCR setting is off.
+- **`AutoCheck` off** on both buttons, toggled by hand in `ToggleCriterion`: the simplest way to keep
+  the last one pressed, keyboard (Space) included.
+- **Re-run only with words typed** (not `*`, not an empty box), so the favorites and `*` lists keep
+  their scroll — the "clickable with no effect" of Iteration 3.
+- **Checks**: no test project — the three modes checked by a throwaway console project in the
+  scratchpad compiling `FileSearch.cs` (7 cases, all passed); the window itself left to the user's
+  hand test. The worktree's `bin` got a copy of `main`'s `settings.json`, `favorites.txt` and
+  `Index\` to search a real folder (not committed).
+- **README**: describes the buttons only; it documents no content search otherwise — raised as a
+  new Open Question, not done (scope).
+- **Incident (design phase)**: a `git commit -a` on `main` swept in another session's uncommitted
+  `BackgroundEffect.cs`; the commit was reset (`--soft`) at once and redone with the workfile only,
+  the file left modified as it was.
+- No project rule broken.
+
 ---
 
 ## Implementation Log
@@ -136,10 +167,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | None planned — no test project (see *Test Impact*) |
-| README | | | |
-| Glossary | | | |
+| Code | 5 | 2026-10-07 | `FileSearch.Search(byName)`, the Aa / 💡 buttons in `FileExplorerPanel` |
+| Unit tests | 5 | 2026-10-07 | None — no test project; a scratchpad check instead (see *Test Impact*) |
+| README | 5 | 2026-10-07 | § File explorer, *Search criteria* bullet, EN + FR |
+| Glossary | 5 | 2026-10-07 | *Search criteria* term, *File explorer* row, EN + FR |
 
 ---
 
