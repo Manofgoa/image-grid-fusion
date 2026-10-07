@@ -42,6 +42,8 @@ internal sealed class MainForm : Form
     private readonly ToolStripMenuItem _contentCaption = new("File contents") { Enabled = false };
     private readonly ToolStripMenuItem _explorerContentSearch = new("Search file contents (OCR)");
     private readonly ToolStripMenuItem _rebuildContent = new("Rebuild content index");
+    // The ⚙ menu's last item, an action rather than a setting: Explorer on the running exe's folder.
+    private readonly ToolStripMenuItem _openAppFolder = new("Open app folder");
     private readonly Button _clearButton = new() { Text = "Clear all", AutoSize = true };
     private readonly Button _settingsButton = new() { Text = "⚙", Size = new Size(32, 23), AutoSize = true };
     // The length readout: what the exported video would last, always shown, its detail in its tooltip (see RefreshLength).
@@ -444,7 +446,7 @@ internal sealed class MainForm : Form
         _outputButtons.SizeChanged += (_, _) => FitStatusWidth();
         _cancelButton.VisibleChanged += (_, _) => FitStatusWidth();
         _clearButton.Click += (_, _) => ClearAll();
-        _settingsMenu.Items.AddRange([_startWithWindows, _borderColor, _twitterCornersDefault, _explorerFolder, _explorerPages, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent]);
+        _settingsMenu.Items.AddRange([_startWithWindows, _borderColor, _twitterCornersDefault, _explorerFolder, _explorerPages, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, new ToolStripSeparator(), this._openAppFolder]);
         for (int pages = FileExplorerPanel.MinPagesPerLoad; pages <= FileExplorerPanel.MaxPagesPerLoad; pages++)
         {
             int choice = pages;
@@ -467,6 +469,8 @@ internal sealed class MainForm : Form
         this._explorerContentSearch.Click += (_, _) => this.ToggleExplorerContentSearch();
         this._rebuildContent.ToolTipText = "Forgets the text found in every file and extracts it all again — after installing an OCR language, for instance";
         this._rebuildContent.Click += (_, _) => _explorer.RebuildContentIndex();
+        this._openAppFolder.ToolTipText = "Opens Explorer on the folder of this exe, the exe selected — where settings.json and the app's other files live";
+        this._openAppFolder.Click += (_, _) => this.ShowInExplorer(Environment.ProcessPath ?? Application.ExecutablePath);
         _explorer.OpenChanged += (_, _) =>
         {
             _explorerSplitter.Visible = _explorer.Open;
