@@ -347,6 +347,18 @@ internal sealed class FileExplorerPanel : Panel
     }
 
     /// <summary>
+    /// How the light bulb's arrow to the word found by the OCR is drawn — the ⚙ menu's OCR result
+    /// style; the tiles shown are painted again at once. Setting it raises nothing.
+    /// </summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public OcrArrowStyle ArrowStyle
+    {
+        get => this._grid.ArrowStyle;
+        set => this._grid.ArrowStyle = value;
+    }
+
+    /// <summary>
     /// Whether the files' content texts are extracted — the ⚙ menu's Search file contents (OCR): on, the
     /// extraction runs after each scan; turned off, it stops, the texts already extracted kept and
     /// still searched. Setting it raises nothing.

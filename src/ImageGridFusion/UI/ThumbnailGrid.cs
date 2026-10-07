@@ -40,6 +40,9 @@ internal sealed class ThumbnailGrid : ScrollableControl
     // The light bulb of a tile found by its content: amber, the glyph drawn in one color.
     private static readonly Color BulbColor = Color.FromArgb(214, 150, 0);
 
+    // The curved arrow's handles, as a share of the way they cover: leaving the bulb, arriving on the word.
+    private const float CurveHandle = 0.6f;
+
     // The sizes the thumbnails are asked from the Shell at: the smallest not below the drawn tile width.
     private static readonly int[] Buckets = [256, 512, 1024];
 
@@ -55,6 +58,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
     private bool _hasMore;
     private bool _moreAsked;
     private int _tileSize = DefaultTileSize;
+    private OcrArrowStyle _arrowStyle = OcrArrowStyle.Default;
     private int _perRow = 1;
     private int _tileW = 1;
     private int _tileH = 1;
@@ -188,6 +192,24 @@ internal sealed class ThumbnailGrid : ScrollableControl
             int top = TopIndex();
             _tileSize = value;
             Relayout(top);
+        }
+    }
+
+    /// <summary>How the light bulb's arrow is drawn; the tiles are painted again when it changes.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public OcrArrowStyle ArrowStyle
+    {
+        get => this._arrowStyle;
+        set
+        {
+            if (value == this._arrowStyle)
+            {
+                return;
+            }
+
+            this._arrowStyle = value;
+            this.Invalidate();
         }
     }
 
@@ -704,52 +726,117 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
     /// <summary>
     /// The light bulb's arrow, from the bulb to the word recognised in the drawn thumbnail: to the
-    /// middle of its top edge, or of its bottom edge when the word sits above the bulb; amber over a
-    /// dark halo, legible on any picture. None when the word is under the bulb.
+    /// middle of its top edge, or of its bottom edge when the word sits above the bulb; drawn in the
+    /// <see cref="ArrowStyle"/> — curved or straight, its stroke's thickness, its color — over a dark
+    /// halo 1 px wider on each side, legible on any picture. None at thickness 0, nor when the word is
+    /// under the bulb. See workfiles/20261007-ocr-result-style.md § Drawing.
     /// </summary>
     private void PaintArrow(Graphics g, Rectangle bulb, Rectangle picture, RectangleF spot)
     {
+        var style = this._arrowStyle;
+        if (style.Thickness <= 0)
+        {
+            return;
+        }
+
         var word = new RectangleF(
             picture.X + spot.X * picture.Width,
             picture.Y + spot.Y * picture.Height,
             spot.Width * picture.Width,
             spot.Height * picture.Height);
         var from = new PointF(bulb.X + bulb.Width / 2f, bulb.Y + bulb.Height / 2f);
-        var to = new PointF(word.X + word.Width / 2f, word.Y + word.Height / 2f >= from.Y ? word.Y : word.Bottom);
+        bool down = word.Y + word.Height / 2f >= from.Y;
+        var to = new PointF(word.X + word.Width / 2f, down ? word.Y : word.Bottom);
         float dx = to.X - from.X;
         float dy = to.Y - from.Y;
         float length = MathF.Sqrt(dx * dx + dy * dy);
         float radius = bulb.Width / 2f;
-        float head = this.LogicalToDeviceUnits(7);
+        float head = this.LogicalToDeviceUnits(style.Head);
         if (length <= radius + head)
         {
             return;
         }
 
+        var arrow = style.Curved ? CurvedArrow(from, radius, to, down, head) : StraightArrow(from, radius, to, length, head);
+        if (arrow is not { } drawn)
+        {
+            return;
+        }
+
+        var (stroke, tip) = drawn;
+        using (stroke)
+        {
+            float width = this.LogicalToDeviceUnits(style.Thickness);
+            using (var halo = new Pen(Color.FromArgb(170, 0, 0, 0), width + this.LogicalToDeviceUnits(2)) { LineJoin = LineJoin.Round })
+            {
+                g.DrawPath(halo, stroke);
+                g.DrawPolygon(halo, tip);
+            }
+
+            using (var pen = new Pen(style.Color, width))
+            {
+                g.DrawPath(pen, stroke);
+            }
+
+            using var fill = new SolidBrush(style.Color);
+            g.FillPolygon(fill, tip);
+        }
+    }
+
+    /// <summary>
+    /// The straight arrow: its stroke from the bulb's edge along the line to the word, up to the base
+    /// of its head, the head along the line, <paramref name="head"/> long and wide.
+    /// </summary>
+    private static (GraphicsPath Stroke, PointF[] Tip) StraightArrow(PointF from, float radius, PointF to, float length, float head)
+    {
         // Unit vectors along the arrow and across it.
-        float ux = dx / length;
-        float uy = dy / length;
+        float ux = (to.X - from.X) / length;
+        float uy = (to.Y - from.Y) / length;
         var start = new PointF(from.X + ux * radius, from.Y + uy * radius);
         var neck = new PointF(to.X - ux * head, to.Y - uy * head);
         float half = head / 2f;
-        PointF[] tip = [to, new PointF(neck.X - uy * half, neck.Y + ux * half), new PointF(neck.X + uy * half, neck.Y - ux * half)];
+        var stroke = new GraphicsPath();
+        stroke.AddLine(start, neck);
+        return (stroke, [to, new PointF(neck.X - uy * half, neck.Y + ux * half), new PointF(neck.X + uy * half, neck.Y - ux * half)]);
+    }
 
-        float width = this.LogicalToDeviceUnits(2);
-        using (var halo = new Pen(Color.FromArgb(170, 0, 0, 0), width + this.LogicalToDeviceUnits(2)) { LineJoin = LineJoin.Round })
+    /// <summary>
+    /// The curved arrow, arriving vertically: its head upright — pointing straight down onto the word's
+    /// top edge, or straight up onto its bottom edge — and its stroke an arc leaving the bulb's edge
+    /// horizontally, towards the word's side, and entering the head through the middle of its flat
+    /// base, vertically, from outside: its last handle never shorter than 1.5 heads, so a word level
+    /// with the bulb gets an arc swinging past the base and back into it. A word right under (or over)
+    /// the bulb gets a stroke leaving it vertically; null when that word overlaps the bulb.
+    /// </summary>
+    private static (GraphicsPath Stroke, PointF[] Tip)? CurvedArrow(PointF from, float radius, PointF to, bool down, float head)
+    {
+        float side = down ? 1f : -1f;
+        var neck = new PointF(to.X, to.Y - side * head);
+        float half = head / 2f;
+        PointF[] tip = [to, new PointF(neck.X - half, neck.Y), new PointF(neck.X + half, neck.Y)];
+        float across = neck.X - from.X;
+        PointF start;
+        PointF leave;
+        if (MathF.Abs(across) <= radius)
         {
-            g.DrawLine(halo, start, neck);
-            g.DrawPolygon(halo, tip);
+            start = new PointF(from.X, from.Y + side * radius);
+            if (side * (neck.Y - start.Y) <= 0)
+            {
+                return null;
+            }
+
+            leave = new PointF(start.X, start.Y + (neck.Y - start.Y) * CurveHandle);
+        }
+        else
+        {
+            start = new PointF(from.X + MathF.Sign(across) * radius, from.Y);
+            leave = new PointF(start.X + (neck.X - start.X) * CurveHandle, start.Y);
         }
 
-        using (var pen = new Pen(BulbColor, width))
-        {
-            g.DrawLine(pen, start, neck);
-        }
-
-        using (var fill = new SolidBrush(BulbColor))
-        {
-            g.FillPolygon(fill, tip);
-        }
+        float arrive = MathF.Max(MathF.Abs(neck.Y - start.Y) * CurveHandle, head * 1.5f);
+        var stroke = new GraphicsPath();
+        stroke.AddBezier(start, leave, new PointF(neck.X, neck.Y - side * arrive), neck);
+        return (stroke, tip);
     }
 
     private Font MakeBulbFont() => new("Segoe UI Emoji", this.Font.SizeInPoints);
