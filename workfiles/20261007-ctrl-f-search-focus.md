@@ -126,6 +126,7 @@ says so rather than staying blank.
 | Code | 3 | 2026-10-07 | `MainForm.ProcessCmdKey` / `FocusedControl`, `FileExplorerPanel.FocusSearch` / `SearchEscaped`, placeholders |
 | Unit tests | 3 | 2026-10-07 | Not applicable — no testable change (§ Test Impact) |
 | README | 3 | 2026-10-07 | `README.md` and `README.fr.md` § File explorer |
+| Manual validation | 3 | 2026-10-07 | Tested by the user in the running app, task confirmed finished |
 
 ---
 
