@@ -17,6 +17,15 @@ internal enum ContentKind
 }
 
 /// <summary>
+/// A file's content text as extracted, and where the OCR recognised its words — null for a file read
+/// as text, empty for one recognised without a word.
+/// </summary>
+internal sealed record ContentResult(string Text, IReadOnlyList<WordBox>? Boxes)
+{
+    public static readonly ContentResult None = new("", null);
+}
+
+/// <summary>
 /// Extracts a file's content text for the file explorer's search, on the calling thread: Windows' own
 /// text recognition (<see cref="OcrEngine"/>) on a still image — a GIF's first frame — or a PDF's first
 /// page, in French and in English when Windows has those languages; the text of a text or HTML file,
@@ -58,31 +67,36 @@ internal sealed class ContentExtractor
     /// <summary>Whether Windows has a text recognition language at all: without one, images and PDFs get no text.</summary>
     public bool CanRecognize => this._engines.Value.Length > 0;
 
-    /// <summary>The file's content text, as raw as it came; "" when it has none, or it cannot be read.</summary>
-    public string Extract(string path)
+    /// <summary>
+    /// The file's content text, as raw as it came, and its words' boxes when the OCR read it; no text
+    /// when it has none, or it cannot be read.
+    /// </summary>
+    public ContentResult Extract(string path)
     {
+        var kind = KindOf(path);
         try
         {
-            return KindOf(path) switch
+            return kind switch
             {
                 ContentKind.Image => this.RecognizeFile(path),
                 ContentKind.Pdf => this.RecognizePdf(path),
-                ContentKind.Text => TextPages.TryReadContent(path) ?? "",
-                _ => "",
+                ContentKind.Text => new ContentResult(TextPages.TryReadContent(path) ?? "", null),
+                _ => ContentResult.None,
             };
         }
         catch (Exception)
         {
-            // WinRT reports unreadable, unknown or damaged files with assorted exception types.
-            return "";
+            // WinRT reports unreadable, unknown or damaged files with assorted exception types. Recognised
+            // without a word, so it is not tried again until it changes.
+            return kind is ContentKind.Image or ContentKind.Pdf ? new ContentResult("", []) : ContentResult.None;
         }
     }
 
-    private string RecognizeFile(string path)
+    private ContentResult RecognizeFile(string path)
     {
         if (!this.CanRecognize)
         {
-            return "";
+            return new ContentResult("", []);
         }
 
         using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
@@ -90,22 +104,23 @@ internal sealed class ContentExtractor
         return this.Recognize(stream);
     }
 
-    private string RecognizePdf(string path)
+    private ContentResult RecognizePdf(string path)
     {
         if (!this.CanRecognize)
         {
-            return "";
+            return new ContentResult("", []);
         }
 
         using var page = PdfPages.TryRenderFirstPage(path, (int)Math.Min(PdfLongSide, OcrEngine.MaxImageDimension));
-        return page is null ? "" : this.Recognize(page);
+        return page is null ? new ContentResult("", []) : this.Recognize(page);
     }
 
     /// <summary>
     /// The image decoded — oriented as its EXIF says, or downscaled to <see cref="OcrEngine.MaxImageDimension"/>
-    /// when longer — then recognised by every engine, their texts joined.
+    /// when longer — then recognised by every engine, their texts joined, each word's box kept in
+    /// fractions of the image recognised.
     /// </summary>
-    private string Recognize(IRandomAccessStream stream)
+    private ContentResult Recognize(IRandomAccessStream stream)
     {
         var decoder = BitmapDecoder.CreateAsync(stream).AsTask().GetAwaiter().GetResult();
         uint width = decoder.PixelWidth;
@@ -131,6 +146,9 @@ internal sealed class ContentExtractor
             orientation,
             ColorManagementMode.DoNotColorManage).AsTask().GetAwaiter().GetResult();
         var text = new StringBuilder();
+        var boxes = new List<WordBox>();
+        double imageWidth = Math.Max(1, bitmap.PixelWidth);
+        double imageHeight = Math.Max(1, bitmap.PixelHeight);
         foreach (var engine in this._engines.Value)
         {
             var result = engine.RecognizeAsync(bitmap).AsTask().GetAwaiter().GetResult();
@@ -138,9 +156,19 @@ internal sealed class ContentExtractor
             {
                 text.Append(result.Text).Append(' ');
             }
+
+            foreach (var line in result.Lines)
+            {
+                foreach (var word in line.Words)
+                {
+                    var r = word.BoundingRect;
+                    boxes.Add(new WordBox(word.Text, new RectangleF(
+                        (float)(r.X / imageWidth), (float)(r.Y / imageHeight), (float)(r.Width / imageWidth), (float)(r.Height / imageHeight))));
+                }
+            }
         }
 
-        return text.ToString();
+        return new ContentResult(text.ToString(), boxes);
     }
 
     /// <summary>

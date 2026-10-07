@@ -8,10 +8,12 @@ namespace ImageGridFusion.Explorer;
 /// The content texts of the indexed files — the words recognised in an image or a PDF's first page,
 /// the text of a text or HTML file — cached in <see cref="FileName"/> in the indexing folder, so the
 /// search never reads the disk. A version line, the base folder, then one line per file: its relative
-/// path, the size and last write (UTC ticks) it was extracted at, and its text, each after a tab. A
-/// file with no text is kept with an empty one, so it is not extracted again until it changes. Read
+/// path, the size and last write (UTC ticks) it was extracted at, the boxes of the words the OCR
+/// recognised — <c>-</c> for a file read as text — and its text, each after a tab. A file with no
+/// text is kept with an empty one, so it is not extracted again until it changes. A version-1 file,
+/// without the boxes, is read too: its recognised files are then stale, to be recognised again. Read
 /// by the search on the UI thread while the extraction writes it from a worker. See
-/// workfiles/20260926-ocr-search.md § `files.content`.
+/// workfiles/20260926-ocr-search.md § `files.content` and § Arrow to the Word.
 /// </summary>
 internal sealed class ContentIndex
 {
@@ -20,7 +22,15 @@ internal sealed class ContentIndex
     /// <summary>The longest text kept per file, in characters: its beginning.</summary>
     public const int MaxLength = 32 * 1024;
 
-    private const string Header = "ImageGridFusion content 1";
+    /// <summary>The most word boxes kept per file: the first ones recognised.</summary>
+    public const int MaxBoxes = 4000;
+
+    private const string Header = "ImageGridFusion content 2";
+    private const string HeaderWithoutBoxes = "ImageGridFusion content 1";
+
+    // A box: x, y, width, height in fractions of the image, then the word; boxes joined by the unit separator.
+    private const char BoxSeparator = '\u001F';
+    private const string NoBoxes = "-";
 
     private readonly ConcurrentDictionary<string, ContentText> _texts = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _saving = new();
@@ -45,21 +55,25 @@ internal sealed class ContentIndex
         try
         {
             using var reader = new StreamReader(path, Encoding.UTF8);
-            if (reader.ReadLine() != Header || reader.ReadLine() is not { } folder
+            string? header = reader.ReadLine();
+            bool withBoxes = header == Header;
+            if ((!withBoxes && header != HeaderWithoutBoxes) || reader.ReadLine() is not { } folder
                 || !string.Equals(Path.TrimEndingDirectorySeparator(folder), contents.BaseFolder, StringComparison.OrdinalIgnoreCase))
             {
                 return contents;
             }
 
+            int count = withBoxes ? 5 : 4;
             while (reader.ReadLine() is { } line)
             {
-                string[] columns = line.Split('\t', 4);
-                if (columns.Length == 4 && columns[0].Length > 0
+                string[] columns = line.Split('\t', count);
+                if (columns.Length == count && columns[0].Length > 0
                     && long.TryParse(columns[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out long size)
                     && long.TryParse(columns[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out long ticks)
                     && ticks >= DateTime.MinValue.Ticks && ticks <= DateTime.MaxValue.Ticks)
                 {
-                    contents._texts[columns[0]] = new ContentText(new FileStamp(size, new DateTime(ticks, DateTimeKind.Utc)), columns[3]);
+                    var boxes = withBoxes ? ParseBoxes(columns[3]) : null;
+                    contents._texts[columns[0]] = new ContentText(new FileStamp(size, new DateTime(ticks, DateTimeKind.Utc)), columns[^1], boxes);
                 }
             }
         }
@@ -102,15 +116,43 @@ internal sealed class ContentIndex
         return null;
     }
 
-    /// <summary>Whether the file's text was extracted at the stamp the scan found it with; false for an entry without one.</summary>
+    /// <summary>
+    /// Where the OCR recognised the first word holding <paramref name="foldedWord"/> — accents and case
+    /// ignored — in fractions of the image; null for a file read as text, or a word it did not place.
+    /// </summary>
+    public RectangleF? SpotOf(string relativePath, string foldedWord)
+    {
+        if (!this._texts.TryGetValue(relativePath, out var text) || text.Boxes is null)
+        {
+            return null;
+        }
+
+        foreach (var box in text.Boxes)
+        {
+            if (box.Folded.Contains(foldedWord, StringComparison.Ordinal))
+            {
+                return box.Bounds;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Whether the file's text was extracted at the stamp the scan found it with — and, for a file the
+    /// OCR reads, with the boxes of its words; false for an entry without a stamp.
+    /// </summary>
     public bool IsCurrent(IndexEntry entry) =>
-        entry.Stamp is { } stamp && this._texts.TryGetValue(entry.RelativePath, out var text) && text.Stamp == stamp;
+        entry.Stamp is { } stamp && this._texts.TryGetValue(entry.RelativePath, out var text) && text.Stamp == stamp
+        && (text.Boxes is not null || ContentExtractor.KindOf(entry.RelativePath) is not (ContentKind.Image or ContentKind.Pdf));
 
     /// <summary>
     /// Records a file's text at its stamp: white space collapsed into single spaces, then cut to
-    /// <see cref="MaxLength"/>; "" for a file with none.
+    /// <see cref="MaxLength"/>; "" for a file with none. <paramref name="boxes"/>: where the OCR
+    /// recognised its words, the first <see cref="MaxBoxes"/> kept; null for a file read as text.
     /// </summary>
-    public void Set(string relativePath, FileStamp stamp, string text) => this._texts[relativePath] = new ContentText(stamp, Clean(text));
+    public void Set(string relativePath, FileStamp stamp, string text, IReadOnlyList<WordBox>? boxes) =>
+        this._texts[relativePath] = new ContentText(stamp, Clean(text), boxes is null ? null : boxes.Take(MaxBoxes).ToArray());
 
     public void Remove(string relativePath) => this._texts.TryRemove(relativePath, out _);
 
@@ -159,6 +201,8 @@ internal sealed class ContentIndex
                     writer.Write('\t');
                     writer.Write(text.Stamp.Written.Ticks.ToString(CultureInfo.InvariantCulture));
                     writer.Write('\t');
+                    writer.Write(FormatBoxes(text.Boxes));
+                    writer.Write('\t');
                     writer.WriteLine(text.Text);
                 }
             }
@@ -202,13 +246,71 @@ internal sealed class ContentIndex
         return clean.ToString();
     }
 
-    /// <summary>A file's text, the stamp it was extracted at, and its folded form, computed once.</summary>
-    private sealed class ContentText(FileStamp stamp, string text)
+    private static string FormatBoxes(WordBox[]? boxes)
+    {
+        if (boxes is null)
+        {
+            return NoBoxes;
+        }
+
+        var text = new StringBuilder();
+        foreach (var box in boxes)
+        {
+            if (text.Length > 0)
+            {
+                text.Append(BoxSeparator);
+            }
+
+            var b = box.Bounds;
+            text.Append(CultureInfo.InvariantCulture, $"{b.X:0.#####};{b.Y:0.#####};{b.Width:0.#####};{b.Height:0.#####};{box.Word}");
+        }
+
+        return text.ToString();
+    }
+
+    private static WordBox[]? ParseBoxes(string column)
+    {
+        if (column == NoBoxes)
+        {
+            return null;
+        }
+
+        var boxes = new List<WordBox>();
+        foreach (string item in column.Split(BoxSeparator, StringSplitOptions.RemoveEmptyEntries))
+        {
+            string[] parts = item.Split(';', 5);
+            if (parts.Length == 5
+                && float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out float x)
+                && float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float y)
+                && float.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out float width)
+                && float.TryParse(parts[3], NumberStyles.Float, CultureInfo.InvariantCulture, out float height))
+            {
+                boxes.Add(new WordBox(parts[4], new RectangleF(x, y, width, height)));
+            }
+        }
+
+        return boxes.ToArray();
+    }
+
+    /// <summary>A file's text, the stamp it was extracted at, its folded form computed once, and its words' boxes.</summary>
+    private sealed class ContentText(FileStamp stamp, string text, WordBox[]? boxes)
     {
         public FileStamp Stamp { get; } = stamp;
 
         public string Text { get; } = text;
 
         public string Folded { get; } = FileSearch.Fold(text);
+
+        public WordBox[]? Boxes { get; } = boxes;
     }
+}
+
+/// <summary>A word the OCR recognised and its box, in fractions of the image as recognised; its folded form computed once.</summary>
+internal sealed class WordBox(string word, RectangleF bounds)
+{
+    public string Word { get; } = word;
+
+    public RectangleF Bounds { get; } = bounds;
+
+    public string Folded { get; } = FileSearch.Fold(word);
 }

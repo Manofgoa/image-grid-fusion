@@ -967,7 +967,8 @@ internal sealed class FileExplorerPanel : Panel
                 string path = index.FullPath(entry);
                 var kind = ContentExtractor.KindOf(path);
                 progress.Report(new ExtractionProgress(done, queue.Length, path, kind, false));
-                contents.Set(entry.RelativePath, entry.Stamp!.Value, extractor.Extract(path));
+                var (text, boxes) = extractor.Extract(path);
+                contents.Set(entry.RelativePath, entry.Stamp!.Value, text, boxes);
                 changed = true;
                 done++;
 
