@@ -1,7 +1,7 @@
 # Zoom Keeps the Image in Place
 
-> Working document — zooming an image grows or shrinks it around its own center: the image never
-> moves in its cell.
+> Working document — zooming an image grows or shrinks it around a point of it that stays in place
+> — the point under the cursor for the wheel, its center otherwise: the zoom never moves it further.
 > This file is the source of truth for the planned work until implemented,
 > then the log of every adjustment made to it afterwards.
 
@@ -23,8 +23,8 @@ Today a zoom moves the image in its cell:
   `Compositor.DrawCell` / `AutomaticBackground` with the same focus) pulses around the cell's
   center: a moved image drifts back and forth.
 
-The goal: **the image's center stays where it is** — the position readout's `x` / `y` do not change
-when the zoom does.
+The goal: **a zoom never moves the image** beyond growing it around a fixed point — the point under
+the cursor for the wheel, its center for the other routes (revised in Iteration 5).
 
 Components: `Composition/FitCalculator.cs`, `Composition/ImageLook.cs`, `Composition/Compositor.cs`,
 `UI/GridPreview.cs` (`ZoomAt`, `ZoomSelected`), RULES.md, README (en / fr).
@@ -35,61 +35,69 @@ Components: `Composition/FitCalculator.cs`, `Composition/ImageLook.cs`, `Composi
 
 ### The Rule
 
-A zoom keeps the **offset of the image's center from the cell's center** — the value the position
-readout shows (`GridPreview.ExportOffsets`, the center of the box `FitCalculator.ComputeTurned`
-draws the image in). The image grows or shrinks around its own center.
+A zoom grows or shrinks the image around **one point of the image that stays where it is** — no
+stops afterwards, so nothing else moves it:
 
-| Route | Today | After |
+- The **wheel** keeps the **image point under the cursor** (clamped into the image: over a band,
+  the image's nearest edge point) — revised in Iteration 5.
+- The routes **without a cursor** keep the **image's center**: the offset of the image's center
+  from the cell's center — the value the position readout shows (`GridPreview.ExportOffsets`, the
+  center of the box `FitCalculator.ComputeTurned` draws the image in) — does not change.
+
+| Route | Before this workfile | After |
 |---|---|---|
-| Wheel over a cell (`GridPreview.ZoomAt`) | Around the point under the cursor, then back within the stops | Around the image's center; no stops |
+| Wheel over a cell (`GridPreview.ZoomAt`) | Around the point under the cursor, then back within the stops | Around the image point under the cursor; no stops |
+| Alt + wheel over a resizable zone's bars | As the wheel; the crop edit view around the image point under the cursor | As the wheel; the crop edit view around the image point under the cursor (`GridPreview.KeptPartPoint`); no stops |
 | Zoom effect's slider (`GridPreview.ZoomSelected`) | Around the cell's center (focus kept), then back within the stops | Around the image's center; no stops |
 | Animations, Zoom motion (`Compositor`, `ImageLook.ZoomAt`) | Pulses around the cell's center | Pulses around the image's center |
 | Contain / Fill (`GridPreview.FitSelected`) — pressing, switching or unpressing | Focus kept, back within the stops | Around the image's center; no stops |
 
-- **No stops after a zoom**: the offset is kept even when it leaves a band — zooming out a moved
-  image may uncover a side of the cell; the Background fills it, as it does after a drag past an
-  edge. The stops remain the drag's and the arrow keys' (magnetic stops), untouched.
+- **No stops after a zoom**: the image is not brought back within its stops — zooming out may
+  uncover a side of the cell; the Background fills it, as it does after a drag past an edge. The
+  stops remain the drag's and the arrow keys' (magnetic stops), untouched.
 - **The 10 % coverage stays** (`FitCalculator.MinCoveredShare`, applied at every drawing): zooming
   out an image moved far past an edge pushes it back just enough to keep covering 10 % of the cell,
-  so it can still be grabbed — the **only case where a zoom moves the image**. The next zoom starts
-  from where it was drawn.
-- An image **never moved** (offset `0, 0`) zooms as today with the slider: centered, it stays
-  centered.
-- The **wheel no longer zooms toward the cursor** (decided at scoping: the image's center for every
-  route). Ctrl keeps its meaning (the finer step), and crossing 100 % still stops on it.
-- The **position readout** no longer shows on a zoom, by its own rule (§ Position Readout: it shows
-  when the offset changes) — except where the 10 % coverage pushes the image back.
+  so it can still be grabbed — the **only case where a zoom moves its fixed point**. The next zoom
+  starts from where it was drawn.
+- An image **never moved** zooms with the slider as before: centered, it stays centered.
+- Ctrl keeps its meaning on the wheel (the finer step), and crossing 100 % still stops on it.
+- The **position readout** shows on a wheel zoom whose point is off the image's center (the offset
+  changes), by its own rule (§ Position Readout); not on the routes keeping the center — except where
+  the 10 % coverage pushes the image back.
 
 ### Computing It
 
 The stored representation stays `Focus` — the move, the stops, the magnets, flips and quarter turns
 all work on it. A zoom from `z₀` to `z₁` converts the focus instead:
 
-- One helper, `FitCalculator.FocusKeepingCenter(cell, shown, from, to, focus, degrees)`: the focus
-  at `to` whose drawn box (`ComputeTurned(…).Bounds`) has the same center as the box drawn at `from`,
-  so the fine angle and the 10 % coverage are honoured.
-  - Without a fine angle, one `TurnedFit.FocusAt` is exact.
-  - With one, the cover scale depends on where the image stands: Newton's steps on the drawn center
-    (slopes measured over a focus step of 1e-4), each halved until it brings the center closer, up
-    to 16 passes, 0.01 px close enough. Where no focus reaches the center (a turned image moved far
-    off its cell, ~0.5 % of random extreme cases), the closest one found is kept.
+- One helper, `FitCalculator.FocusKeeping(cell, shown, from, to, focus, degrees, point)`: the focus
+  at `to` that draws the image point `point` (fractions of the image as shown) where it is drawn at
+  `from`, so the fine angle and the 10 % coverage are honoured. `FitCalculator.ImageCenter`
+  (0.5, 0.5) is the image's center; `FitCalculator.ImagePointAt(cell, shown, zoom, focus, degrees,
+  spot)` gives the image point drawn at a spot of the cell, clamped into the image.
+  - Without a fine angle, one computation is exact.
+  - With one, the cover scale depends on where the image stands: Newton's steps on the drawn point
+    (slopes measured over a focus step of 1e-4), each halved until it brings the point closer, up
+    to 16 passes, 0.01 px close enough. Where no focus reaches it (a turned image moved far off its
+    cell, ~0.5 % of random extreme cases), the closest one found is kept.
   - The result may be **unclamped** — beyond what the 10 % coverage lets the drawing show — as a
-    drag's focus is: zooming back in brings the image back exactly where it was.
-- `GridPreview.ZoomAt` (now `ZoomAt(index, notches, fine)`), `ZoomSelected` and `FitSelected` call
-  it in place of their focus computation and `WithinStops`; `FitSelected` converts from the zoom
-  shown before the button to the zoom the mode gives (`ImageLook.ZoomIn`). `WithinStops`,
-  `GridPreview.TurnedBack` and `GridPreview.KeptPartPoint`, left without callers, are removed.
+    drag's focus is: zooming back brings the image back exactly where it was.
+- `GridPreview.ZoomAt(index, location, notches, fine, at)` passes the image point under the cursor
+  (`ImagePointAt`, or `at` — `KeptPartPoint` — in the crop edit view); `ZoomSelected` and
+  `FitSelected` pass the center; none calls `WithinStops`. `FitSelected` converts from the zoom
+  shown before the button to the zoom the mode gives (`ImageLook.ZoomIn`). `WithinStops` and
+  `GridPreview.TurnedBack`, left without callers, are removed.
 - The **Animations** motion: `ImageLook.FocusAt(time, cell, shown)` converts the stored focus from
-  the zoom at time 0 (`ImageLook.ZoomIn`) to the zoom at `time` (`ImageLook.ZoomAt`), read by
-  `Compositor.DrawCell` and `Compositor.AutomaticBackground`, so the preview, the exports and the
-  automatic background agree. The stored focus is untouched.
+  the zoom at time 0 (`ImageLook.ZoomIn`) to the zoom at `time` (`ImageLook.ZoomAt`), around the
+  center, read by `Compositor.DrawCell` and `Compositor.AutomaticBackground`, so the preview, the
+  exports and the automatic background agree. The stored focus is untouched.
 
 ### Interactions
 
 - **Undo history**: unchanged — a zoom still changes `Zoom` and `Focus`, one step per gesture.
 - **Resizable zones**: the wheel scales the zone while its bars show, unchanged. Alt + wheel
-  (`20261007-resizable-zone-alt-zoom`, implemented meanwhile) calls `ZoomAt` and keeps the image's
-  center too — in the crop edit view as well, where it used to keep the image point under the cursor.
+  (`20261007-resizable-zone-alt-zoom`) calls `ZoomAt` like the wheel, its crop edit view anchoring
+  the image point under the cursor as that workfile designed.
 - **A fit mode following its cell** (a separator, a layout, the format, a crop resizing the cell or
   the image while Contain / Fill is pressed): not a zoom gesture — the focus is read as stored,
   unchanged.
@@ -99,13 +107,15 @@ all work on it. A zoom from `z₀` to `z₁` converts the focus instead:
 
 ## Documentation
 
-- **RULES.md** — under § Effects › Rendering (next to the `ImageLook.ZoomIn` rule): every zoom keeps
-  the image's center offset, through the one helper; a new zoom route or zoom reader does the same.
-- **README.md / README.fr.md** — the wheel line ("around the point under the mouse") and "Zooming
-  keeps the image where it was moved, at any zoom, but always brings it back within its stops"
-  rewritten; the Animations section if it says where the motion zooms.
-- **GLOSSARY.md / GLOSSARY.fr.md** — the Animations zoom around the image's center; "a zoom" left
-  out of what shows the position readout.
+- **RULES.md** — § Effects › Rendering › Zoom Keeps the Image in Place: every zoom keeps one image
+  point in place — the point under the cursor for the wheel, the center otherwise — through the one
+  helper, no stops; a new zoom route does the same. § Resizable Zones' Alt line: the image point
+  under the cursor, in the crop edit view too.
+- **README.md / README.fr.md** — the wheel around the image point under the cursor; zooming never
+  brings the image back within its stops; the slider, Contain / Fill and the Animations around its
+  center; the crop edit view's Alt zoom keeping the point under the cursor.
+- **GLOSSARY.md / GLOSSARY.fr.md** — the Animations zoom around the image's center; the position
+  readout's triggers keep "a zoom" (a wheel zoom off-center moves the image's center).
 
 ---
 
@@ -187,6 +197,16 @@ No project rule broken.
 - **Glossary updated** (the design expected nothing there): the Animations entry and the position
   readout's triggers mentioned the zoom.
 
+### Iteration 5 — 2026-10-07 — ⚙️ Post-implementation — The wheel zooms at the cursor
+
+The user, after testing: the zoom must be anchored where the cursor is, not on the center. Only the
+wheel has a cursor: the wheel and Alt + wheel keep the **image point under the cursor** in place
+(clamped into the image), the crop edit view's Alt zoom getting back its `KeptPartPoint` anchor; the
+slider, Contain / Fill and the Animations keep the image's center. Still no stops after a zoom, the
+10 % coverage kept. The helper generalizes to any image point (`FitCalculator.FocusKeeping`,
+`ImagePointAt`); RULES.md, the README and the glossary follow. Revises the scoping answer "the
+image's center" (Q&A 1) for the wheel, and the crop edit view choice of Iteration 4.
+
 ---
 
 ## Implementation Log
@@ -210,13 +230,14 @@ Questions asked by the agent during design, with user responses.
 
 | # | Question | Answer | Date |
 |---|---|---|---|
-| 1 | What stays fixed when zooming? | The image's center | 2026-10-07 |
+| 1 | What stays fixed when zooming? | The image's center *(revised 2026-10-07, see Iteration 5: the point under the cursor for the wheel)* | 2026-10-07 |
 | 2 | Which zoom routes are concerned? | The wheel over a cell, the Zoom effect's options, the Animations zoom | 2026-10-07 |
 | 3 | If keeping the offset leaves a band when zooming out? | Keep the offset | 2026-10-07 |
 | 4 | Straightforward or tricky? | Straightforward | 2026-10-07 |
 | 5 | Contain / Fill: keep the image's center too? | Yes, like the other routes | 2026-10-07 |
 | 6 | Keep the 10 % coverage guarantee on a zoom out? | Yes, kept | 2026-10-07 |
 | 7 | Go — scope and where? | Check the recently finished sessions for an impact, then go: code and documentation, current checkout | 2026-10-07 |
+| 8 | Is the task finished? | No — the zoom anchored where the cursor is, not on the center | 2026-10-07 |
 
 ---
 
