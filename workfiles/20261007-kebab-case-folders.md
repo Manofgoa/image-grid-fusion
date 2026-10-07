@@ -110,6 +110,12 @@ Open Questions settled (Q&A 5–6): `%TEMP%\ImageGridFusion` keeps its name, the
 covers the folders created from now on; the docs placing `files.index` next to the exe are fixed
 (README, glossary, RULES.md § App Settings), English and French.
 
+### Iteration 3 — 2026-10-07 — ✅ Implemented
+
+Go given (Q&A 7): code and documentation, in a dedicated worktree
+(`.claude/worktrees/kebab-case-folders`, branch `feature/kebab-case-folders`), fast-forwarded into
+`main` and removed at the end.
+
 ---
 
 ## Implementation Log
@@ -133,7 +139,7 @@ covers the folders created from now on; the docs placing `files.index` next to t
 | 4 | Straightforward or tricky / long? | Straightforward | 2026-10-07 |
 | 5 | `%TEMP%\ImageGridFusion`: renamed `image-grid-fusion` here, or left? | Left as it is | 2026-10-07 |
 | 6 | Fix the docs placing `files.index` next to the exe? | Fix them | 2026-10-07 |
-| 7 | Go for implementation? (scope, where) | | |
+| 7 | Go for implementation? (scope, where) | Code and docs, in a separate worktree | 2026-10-07 |
 
 ---
 
