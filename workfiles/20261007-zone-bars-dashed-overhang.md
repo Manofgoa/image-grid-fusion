@@ -75,9 +75,10 @@ the dashed overhang grabs the bar as today: the change is visual only.
 
 ### Hover and Drag
 
-Today, while a bar is hovered or dragged, only its **grip** turns white (`PaintBarGrip`), and a
-hovered or dragged **corner** only its L-bracket (`PaintCorners`); the bar's line itself stays
-green. The user asked for the overhang to turn white **with its bar** — see Open Questions.
+**Unchanged.** While a bar is hovered or dragged, only its **grip** turns white (`PaintBarGrip`),
+and a hovered or dragged **corner** only its L-bracket (`PaintCorners`); the bar's line — its solid
+side and its dashed overhangs alike — stays green. The overhang follows its bar's line: green, as
+the side.
 
 ---
 
@@ -113,12 +114,9 @@ already computed. Checked by hand in the running app (crop edit view, blur bars,
 - [x] ~~Does the dashed part stay grabbable?~~ → Yes, the change is visual only (Q2).
 - [x] ~~A general rule of the resizable zones, or crop and blur only?~~ → A rule, in RULES.md
   § Resizable Zones (Q3).
-- [ ] **Hover / drag white**: the user wants the overhang white "with its bar", but the bar's line
-  never turns white today — only its grip and the corners' brackets do. Which one?
-  - **Line unchanged**: the line, solid and dashed, stays green while hovered or dragged; only the
-    grip and the brackets turn white, as today.
-  - **Whole bar white**: a hovered or dragged bar turns white end to end — its side and its
-    overhangs — its grip with it; a hovered or dragged corner turns its two bars white.
+- [x] ~~**Hover / drag white**: the bar's line never turns white today, only its grip and the
+  corners' brackets — line unchanged, or the whole bar white?~~ → Line unchanged: solid and dashed,
+  it stays green; only the grip and the brackets turn white, as today (Q5).
 
 ---
 
@@ -139,6 +137,11 @@ Exploration: the bars are drawn by `GridPreview.PaintBars` for the handles and f
 alike, full-length over `Bars.Span`, solid; the guides' dashed pen is `PaintGuideLines`'
 (`[4, 3]` over a solid halo); `BarAt` already hit-tests the whole line. One point left open: the
 bar's line does not turn white on hover today, only its grip.
+
+### Iteration 2 — 2026-10-07
+
+Hover / drag settled (Q5): the bar's line stays green while hovered or dragged, its dashed overhang
+included — only the grip and the corners' brackets turn white, as today. Nothing left open.
 
 ---
 
@@ -166,7 +169,7 @@ Questions asked by the agent during design, with user responses.
 | 2 | Where else does the dashed overhang apply — hover / drag white, the restore flash, still grabbable? | All three | 2026-10-07 |
 | 3 | Written as a general rule of the resizable zones in RULES.md, or crop and blur only? | A rule in RULES.md | 2026-10-07 |
 | 4 | Is the subject straightforward, or tricky / long? | Straightforward | 2026-10-07 |
-| 5 | Hover / drag white: line unchanged (only grip and brackets whiten), or the whole bar white, side and overhangs? | | 2026-10-07 |
+| 5 | Hover / drag white: line unchanged (only grip and brackets whiten), or the whole bar white, side and overhangs? | Line unchanged — stays green, only grip and brackets whiten | 2026-10-07 |
 
 ---
 
