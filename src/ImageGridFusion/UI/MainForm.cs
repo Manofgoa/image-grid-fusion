@@ -167,25 +167,7 @@ internal sealed class MainForm : Form
     private readonly TrackBar _grayscale = OptionSlider(0, 100, 10);
     private readonly Label _grayscaleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
 
-    // The standard look, as the options: the flat one sizes itself without its image, clipping both.
-    private readonly RadioButton _gaussian = new()
-    {
-        Text = "Gaussian",
-        AutoSize = true,
-        Appearance = Appearance.Button,
-        BackColor = SystemColors.Control,
-        Anchor = AnchorStyles.Left,
-        TextImageRelation = TextImageRelation.ImageBeforeText,
-    };
-    private readonly RadioButton _pixelate = new()
-    {
-        Text = "Pixelate",
-        AutoSize = true,
-        Appearance = Appearance.Button,
-        BackColor = SystemColors.Control,
-        Anchor = AnchorStyles.Left,
-        TextImageRelation = TextImageRelation.ImageBeforeText,
-    };
+    private readonly BlurKindStrip _blurKind = new() { Anchor = AnchorStyles.Left };
     private readonly PictureBox _blurIntensityIcon = new() { SizeMode = PictureBoxSizeMode.CenterImage, Anchor = AnchorStyles.Left };
     private readonly TrackBar _blurIntensity = OptionSlider(0, 100, 10);
     private readonly Label _blurIntensityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
@@ -408,7 +390,7 @@ internal sealed class MainForm : Form
         _options[ImageEffect.Flip].Controls.Add(this._flip);
         _options[ImageEffect.Frames].Controls.AddRange([_frames, _framesLabel, _freeze]);
         _options[ImageEffect.BlackAndWhite].Controls.AddRange([_grayscaleIcon, _grayscale, _grayscaleLabel]);
-        _options[ImageEffect.Blur].Controls.AddRange([_gaussian, _pixelate, _blurIntensityIcon, _blurIntensity, _blurIntensityLabel]);
+        _options[ImageEffect.Blur].Controls.AddRange([this._blurKind, _blurIntensityIcon, _blurIntensity, _blurIntensityLabel]);
         _options[ImageEffect.Volume].Controls.AddRange([_mute, _volume, _volumeLabel]);
         _globalTabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _globalTabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -589,9 +571,8 @@ internal sealed class MainForm : Form
             ChangeLook(ImageEffect.BlackAndWhite, look => look.WithGrayscale(_grayscale.Value / 100.0));
         };
 
-        // Click rather than CheckedChanged: choosing the kind already shown still turns the blur on.
-        _gaussian.Click += (_, _) => SetBlurKind(BlurKind.Gaussian);
-        _pixelate.Click += (_, _) => SetBlurKind(BlurKind.Pixelate);
+        // The kind already shown is picked too: choosing it still turns the blur on.
+        this._blurKind.Picked += (_, kind) => this.SetBlurKind(kind);
         _blurIntensity.ValueChanged += (_, _) => SetBlurIntensity();
         _volume.ValueChanged += (_, _) =>
         {
@@ -741,8 +722,6 @@ internal sealed class MainForm : Form
             _effectsLabel.Font.Dispose();
             _globalLabel.Font.Dispose();
             _grayscaleIcon.Image?.Dispose();
-            _gaussian.Image?.Dispose();
-            _pixelate.Image?.Dispose();
             _fadeSquared.Image?.Dispose();
             _fadeLinear.Image?.Dispose();
             _blurIntensityIcon.Image?.Dispose();
@@ -767,7 +746,7 @@ internal sealed class MainForm : Form
     private void UpdateEffectIcons()
     {
         int size = LogicalToDeviceUnits(16);
-        Image?[] previous = [_resetButton.Image, _effectResetButton.Image, _globalResetButton.Image, _globalEffectResetButton.Image, _grayscaleIcon.Image, _gaussian.Image, _pixelate.Image, _fadeSquared.Image, _fadeLinear.Image, _blurIntensityIcon.Image, _backgroundOpacityIcon.Image];
+        Image?[] previous = [_resetButton.Image, _effectResetButton.Image, _globalResetButton.Image, _globalEffectResetButton.Image, _grayscaleIcon.Image, _fadeSquared.Image, _fadeLinear.Image, _blurIntensityIcon.Image, _backgroundOpacityIcon.Image];
         foreach (var effect in Enum.GetValues<ImageEffect>())
         {
             _effectTabs.SetIcon(effect, effect switch
@@ -795,8 +774,6 @@ internal sealed class MainForm : Form
         _globalEffectResetButton.Image = EffectIcons.Reset(size);
         _grayscaleIcon.Image = EffectIcons.Intensity(size);
         _grayscaleIcon.Size = new Size(size, size);
-        _gaussian.Image = EffectIcons.Gaussian(size);
-        _pixelate.Image = EffectIcons.Pixelate(size);
         _fadeSquared.Image = EffectIcons.Curve(size, FadeCurve.Squared);
         _fadeLinear.Image = EffectIcons.Curve(size, FadeCurve.Linear);
         _blurIntensityIcon.Image = EffectIcons.Intensity(size);
@@ -2687,8 +2664,7 @@ internal sealed class MainForm : Form
 
             if (look.TurnOn(ImageEffect.Blur).Blur is { } blur)
             {
-                _gaussian.Checked = blur.Kind == BlurKind.Gaussian;
-                _pixelate.Checked = blur.Kind == BlurKind.Pixelate;
+                this._blurKind.Selected = blur.Kind;
                 _blurIntensity.Value = (int)Math.Round(blur.Intensity * 100);
             }
 
