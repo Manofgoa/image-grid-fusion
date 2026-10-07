@@ -69,7 +69,11 @@ several may show at once.
   - the window resized — the export pixels do not change;
   - the **Animations** effect's motion playing — its zoom moves the center continuously, and would
     keep the readout on; the readout reads the motion's **starting state** (`ImageLook.ZoomIn`, the
-    zoom at time 0), as a PNG shows it.
+    zoom at time 0), as a PNG shows it;
+  - a cell showing its **crop edit view** (`EditsCrop`): no readout on it while the view shows, and
+    what changes there shows nothing — the offset it leaves is taken as the new starting value, so
+    leaving the view shows nothing either. The other cells keep theirs (e.g. the Free format computed
+    again after a crop wheel burst).
 - The arrow keys keep their step of 1 **preview** px (10 with Ctrl): the readout, in export px, may
   jump by several units per press. Changing the step is out of this workfile's scope.
 
@@ -137,9 +141,10 @@ created or updated. The change is checked by hand in the running app.
       pixels (separator drag, layout, format, Borders' gap)? The Animations motion, moving the center
       continuously, would keep the readout on forever: left out either way?~~ → The grid's geometry
       too, on every image whose offset changes; the Animations motion left out
-- [ ] While a cell shows its **crop edit view** (the whole image fitted whole, the export's center
+- [x] ~~While a cell shows its **crop edit view** (the whole image fitted whole, the export's center
       not on screen; a drag there moves the crop, the wheel or a corner scales the kept part), what
-      does that cell's readout do?
+      does that cell's readout do?~~ → Nothing: no readout on that cell while its edit view shows; the
+      other cells keep theirs
 
 ---
 
@@ -203,6 +208,11 @@ Refreshed against `main` at `527aaf5`, and against two rule updates sent by thos
 
 One question follows: the crop edit view (Q&A 15). A stray table header in § When It Shows removed.
 
+### Iteration 6 — 2026-10-07
+
+Answer to Q&A 15: **no readout on a cell while it shows its crop edit view**; what changes there
+shows nothing, leaving the view included; the other cells keep theirs. No open question left.
+
 ---
 
 ## Implementation Log
@@ -240,7 +250,7 @@ Questions asked by the agent during design, with user responses.
 | 12 | Near or past the cell's edge: text kept inside the cell, or cut? | Kept inside the cell | 2026-10-07 |
 | 13 | "Whenever the center moves": the image's own look only, or the grid's geometry (separators, layout, format, Borders' gap) too? | The grid's geometry too — on every image whose offset changes; the Animations motion left out | 2026-10-07 |
 | 14 | The design is complete: start implementing? | Neither choice: one agent to refresh the design against the code other sessions finished, and say whether it can start or needs more info; one agent to push | 2026-10-07 |
-| 15 | What does a cell's readout do while it shows its crop edit view? | | 2026-10-07 |
+| 15 | What does a cell's readout do while it shows its crop edit view? | Nothing on that cell; the other cells keep theirs | 2026-10-07 |
 
 ---
 
