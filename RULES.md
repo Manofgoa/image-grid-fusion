@@ -148,12 +148,13 @@ future one included, gets the same wheel (origin: `workfiles/20261007-crop-wheel
 - One geometry for every zone: `Composition/ZoneScale.Scaled`, in fractions of the bounds, called
   by the effect (`CropEffect.ScaledSeen`, `BlurEffect.Scaled`) from `GridPreview.ScaleZone`. A new
   zone adds its case there.
-- With **Alt** held, the wheel **zooms the image** instead, exactly as without bars — its steps,
-  around the image's center (§ Rendering › Zoom Keeps the Image in Place), Ctrl's finer steps
-  (origin: `workfiles/20261007-resizable-zone-alt-zoom.md`). In the crop edit view the zoom does not
-  show: the zoom badge alone shows the change. Alt is read from `ModifierKeys` (the wheel's key flags
-  never carry it), and releasing it after an Alt + wheel starts no menu mode
-  (`GridPreview.TakeAltWheel`, `MainForm.WndProc`).
+- With **Alt** held, the wheel **zooms the image** instead, exactly as without bars — its steps, the
+  point under the cursor (§ Rendering › Zoom Keeps the Image in Place), Ctrl's finer steps (origin:
+  `workfiles/20261007-resizable-zone-alt-zoom.md`). In the crop edit view, where the zoom does not
+  show, it keeps the **image point under the cursor** — clamped into the kept part
+  (`GridPreview.KeptPartPoint`) — where the rendered cell draws it, the zoom badge alone showing the
+  change. Alt is read from `ModifierKeys` (the wheel's key flags never carry it), and releasing it
+  after an Alt + wheel starts no menu mode (`GridPreview.TakeAltWheel`, `MainForm.WndProc`).
 - Its bars are **solid along the zone's sides** and **dashed beyond them**, up to the bounds' edge, in
   the guides' pattern (`GridPreview.GuidePen`), each overhang drawn from the zone's corner outward;
   the same in the restore flash (§ Undo History). The dashed part stays **grabbable**, and stays
@@ -173,22 +174,24 @@ future one included, gets the same wheel (origin: `workfiles/20261007-crop-wheel
 
 #### Zoom Keeps the Image in Place
 
-A zoom grows or shrinks the image **around its own center**: the offset of the image's center from
-the cell's center — the position readout's value — does not change (origin:
-`workfiles/20261007-zoom-keeps-image-in-place.md`).
+A zoom grows or shrinks the image around **one point of it that stays where it is** — nothing else
+moves it (origin: `workfiles/20261007-zoom-keeps-image-in-place.md`):
 
-- Every zoom route keeps it: the wheel, Alt + wheel over a resizable zone, the Zoom effect's slider,
-  Contain / Fill, and the Animations' Zoom motion. A new route does the same.
-- One computation, `FitCalculator.FocusKeepingCenter`: the stored position stays `ImageLook.Focus`,
+- The **wheel** — Alt + wheel over a resizable zone included — keeps the **image point under the
+  cursor** (`FitCalculator.ImagePointAt`, clamped into the image: over a band, its nearest edge point).
+- The routes **without a cursor** — the Zoom effect's slider, Contain / Fill, the Animations' Zoom
+  motion — keep the **image's center** (`FitCalculator.ImageCenter`): the position readout's value
+  does not change. A new route keeps the point under the cursor if it has one, the center otherwise.
+- One computation, `FitCalculator.FocusKeeping`: the stored position stays `ImageLook.Focus`,
   converted from the zoom shown before to the zoom after. The gestures store the converted focus;
   the motion is drawn with `ImageLook.FocusAt` (time 0's position, the stored focus untouched), read
   by `Compositor` next to `ImageLook.ZoomAt`.
-- **No stops** after a zoom: the offset is kept even when it leaves a band. The magnetic stops are the
-  drag's and the arrow keys' only.
+- **No stops** after a zoom: the image is not brought back within them, even when a band shows. The
+  magnetic stops are the drag's and the arrow keys' only.
 - The **10 % coverage** (`FitCalculator.MinCoveredShare`), applied where the image is placed, is the
   only push a zoom gives the image.
 - With a fine angle, the cover scale depends on where the image stands; where no position draws the
-  center exactly where it was (an image moved far off its cell), the closest one is taken.
+  point exactly where it was (an image moved far off its cell), the closest one is taken.
 
 ## Global Effects
 
