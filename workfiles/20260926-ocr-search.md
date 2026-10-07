@@ -34,24 +34,41 @@ Components touched: `Explorer/FileIndex.cs` (index folder, stamps), `Explorer/Fi
 
 ---
 
-## Existing Code (exploration, 2026-09-29)
+## Existing Code (exploration 2026-09-29, refreshed 2026-10-07)
 
-- **Index** — `FileIndex` holds a `List<IndexEntry>`, each carrying `RelativePath`, `Folded`,
-  `NameStart` only: **no size, no last-write time**. `files.index` (next to the exe) is three header
-  lines, then one relative path per line; `Load` already tolerates extra tab-separated columns
-  (drops them), `Save` never writes any. A rescan (`FileIndex.Scan`, start-up and ↻) rebuilds the
-  list **from scratch**, reading names only, and indexes every file whatever its type.
-- **Search** — `FileSearch.Search` runs on every keystroke, on the UI thread, no debounce: the query
-  is folded (accents dropped, lower case) and split on white space; **every word** must be a
-  substring of the folded relative path; ranked by name hits, then first position in the name,
-  then name length, then path; only the **best 10** are kept (`FileSearch.Limit`), the caption
-  saying *N results — first 10*.
-- **Tiles** — `ThumbnailGrid` paints each `ExplorerRow(FullPath, Name)`; the heart medallion
-  (`HeartBounds`, `PaintTile`) is the model for a second badge.
-- **Background work** — `FileExplorerPanel.Restart()` cancels and renews one
-  `CancellationTokenSource` shared by the scan; `ScanAsync` reports through
-  `IProgress<ScanProgress>` to the status line. `ThumbnailCache` runs its own single-worker queue
-  raising `Loaded` — the template for a throttled queue.
+- **Index** — `files.index`, next to the exe (`FileIndex.DefaultPath`), **format 2**
+  (`ImageGridFusion index 2`): three header lines (version, base folder, scan time), then
+  `{relative path}\t{creation time UTC, "o"}` per file; `Load` reads the first two columns and
+  ignores any further one; an older header, another base folder or an unreadable file returns null
+  (no migration — the panel then scans). Saved atomically (`.tmp` then move). `IndexEntry`
+  (in `FileSearch.cs`) holds `RelativePath`, `Created`, `Folded`, `NameStart`, `Name`: **no size, no
+  last-write time**. `FileIndex.Scan` (static) rebuilds the list **from scratch**, two passes, the
+  second over a `FileSystemEnumerable` reading the creation time from each `FileSystemEntry` — its
+  `Length` and `LastWriteTimeUtc` are there for free, unread. The only in-place change is
+  `FileIndex.Remove` (a clicked file found missing, `FileExplorerPanel.Exists`), the index saved
+  again on the UI thread.
+- **Search** — runs on every keystroke, on the UI thread: the query folded (accents dropped, lower
+  case) and split on white space; **every word** a substring of the folded relative path.
+  `FileSearch.Search(entries, words)` returns **every match**, sorted by `Rank` (name hits, first
+  position in the name, name length, path) — no limit any more; `*` lists everything, newest
+  first (`FileSearch.All`). Two call sites: the search view (`RefreshRows`) and the **folder view**
+  (`SearchFolder`, the entries filtered below the open folder by the panel, its folders searched as
+  synthetic path-only entries). The rows are then shown a few pages at a time behind a *Loading…*
+  tile; the caption reads *N results*.
+- **Tiles** — `ThumbnailGrid` paints each `ExplorerRow(FullPath, Name, IsFolder)`; the heart
+  medallion sits in the **top-left** corner (`HeartBounds`, `Medallion` 24, `MedallionInset` 4
+  logical px), skipped on folder tiles.
+- **Panel layout** — `FileExplorerPanel._content`, a 6-row table: header, search row (📁, box, ↻),
+  status line, caption / breadcrumb, the grid, the size slider; the row heights set in
+  `ApplyMetrics`.
+- **Background work** — `FileExplorerPanel.Restart()` cancels and renews the one
+  `CancellationTokenSource` (`_scan`), used by `SetBaseFolder`, ↻ and `Dispose`; `ScanAsync` reports
+  `ScanProgress` to the status line, disables ↻ while it runs, then `SetIndex` + `RefreshRows`.
+  `ThumbnailCache` runs its own single-worker queue raising `Loaded`.
+- **⚙ menu** — built in `MainForm` (`_settingsMenu`), its entries calling the panel's public API
+  (`_explorer.SetBaseFolder`, `PagesPerLoad`).
+- **App data** — `settings.json`, `favorites.txt`, `favorites-from-pasted\` and `files.index` all
+  sit next to the exe (RULES.md § App Settings).
 - **OCR** — `Windows.Media.Ocr` is reachable from the current target
   (`net10.0-windows10.0.19041.0`) with no project change. It takes a `SoftwareBitmap`:
   `Windows.Graphics.Imaging.BitmapDecoder` (WIC) decodes a file straight into one — every WIC
@@ -72,21 +89,31 @@ Components touched: `Explorer/FileIndex.cs` (index folder, stamps), `Explorer/Fi
 - Every indexing file lives in a subfolder **`Index\` next to the exe**: `files.index` (the list
   of indexed files) and the new **`files.content`** (the content texts).
 - **Migration** — at start-up, a `files.index` found next to the exe while `Index\files.index`
-  does not exist is **moved** into `Index\`, so the upgrade does not rescan from nothing.
-- `favorites.txt` **stays next to the exe**: it is not indexing data.
+  does not exist is **moved** into `Index\` as it is (format 2 unchanged), so the upgrade does not
+  rescan from nothing.
+- `favorites.txt`, `favorites-from-pasted\` and `settings.json` **stay next to the exe**: they are
+  not indexing data. RULES.md § App Settings, which lists `files.index` beside the exe, is updated
+  with the move.
 
 ## Extraction
 
 - **When** — in the **background**, after each scan (start-up and ↻), for the files whose content
   text is **missing or stale**; a search reads the cache only, never the disk.
-- **Change detection** — the scan now reads each file's **size + last-write time** (from the
-  enumeration's file info, no extra open). `files.content` keeps, per file, the stamp it was
-  extracted at; a file whose stamp still matches keeps its text, the others are queued. A file with
-  no text (a video, an image with no word, a failed extraction) is recorded **with an empty text**,
-  so it is not retried until it changes.
-- **Worker** — one file at a time, on a background worker, cancelled with the scan (folder change,
-  ↻, closing the app); the results written to `files.content` as the pass progresses (saved
-  atomically, `.tmp` then move, like `files.index`), so a pass cut short resumes where it stopped.
+- **Change detection** — the scan also reads each file's **size + last-write time**, from the
+  `FileSystemEntry` it already enumerates (no extra disk access), and keeps them **in memory** on
+  the `IndexEntry` — `files.index` stays format 2, the stamps being needed only right after a scan.
+  `files.content` keeps, per file, the stamp it was extracted at; a file whose stamp still matches
+  keeps its text, the others are queued. A file with no text (a video, an image with no word, a
+  failed extraction) is recorded **with an empty text**, so it is not retried until it changes.
+- **Worker** — started at the end of `ScanAsync`, with the **scan's cancellation token**, so the
+  folder change, ↻, the rebuild and closing the app cancel it through `Restart()` like the scan;
+  one file at a time, off the UI thread; the results written to `files.content` as the pass
+  progresses (saved atomically, `.tmp` then move, like `files.index`), so a pass cut short resumes
+  where it stopped. The search refreshes (`RefreshRows`, keeping its place) as texts arrive, at most
+  every few seconds, and once at the end.
+- **Missing file** — a clicked file found missing, removed from the index (`FileIndex.Remove`),
+  leaves the content cache too; the cache is shared between the worker and the UI thread, so it is
+  thread-safe.
 - **OCR engines** — **French and English**: one `OcrEngine` per language, each created when its
   Windows OCR language is installed; an image is recognised by each engine and the texts are
   concatenated. With only one of the two installed, that one alone; with neither, the engine of the
@@ -100,8 +127,10 @@ Components touched: `Explorer/FileIndex.cs` (index folder, stamps), `Explorer/Fi
   `.htm` / `.html` file passing it: its text with the tags stripped, entities decoded.
 - **Cap** — each content text is kept to its **first 32 KB**, white space collapsed.
 - **Time budget** — none: every source is bounded (one image, one PDF page, ≤ 1 MB of text).
-- **Rebuild** — a ⚙ menu entry, **Rebuild content index**, clears every content text and queues
-  the whole folder again (after installing an OCR language, for instance).
+- **Rebuild** — a ⚙ menu entry, **Rebuild content index** (built in `MainForm` with the other
+  entries, calling a new `_explorer.RebuildContentIndex()`), clears every content text and queues
+  the whole folder again (after installing an OCR language, for instance); disabled while no base
+  folder is set.
 
 ## `files.content`
 
@@ -122,16 +151,20 @@ never folds them again. A file leaving the index (rescan, deletion from the pane
 - **Unified** — the existing search box: **each word** may be found in the file's **path or its
   content text** (*facture 2024*: *facture* in the name, *2024* in the text).
 - **Ranking** — a file whose words are **all found in its path ranks before** every file needing
-  its content; within each group, the current ranking (name hits, first position, name length,
-  path). The best 10 still show, *N results — first 10* counting both groups.
+  its content: a new leading key of `Rank`, before the name hits; within each group, the current
+  ranking (name hits, first position, name length, path). Every match is listed, loaded by pages as
+  today, *N results* counting both groups.
+- **Where** — *(open, Q&A #21)*.
+- **Untouched** — `*` (every file, newest first) and the favorites (empty box) do not read the
+  content; the folder view's folder tiles stay path-only.
 - **Before the cache is loaded** — the search matches paths only, as today, and refreshes once the
   content texts arrive.
 
 ## Content Badge
 
 - A tile found **thanks to its content** (at least one word matched in its text, not in its path)
-  carries a **badge**: a small medallion like the heart's, in the tile's **opposite top corner**,
-  holding a **T**.
+  carries a **badge**: a small medallion like the heart's, in the tile's **top-right** corner (the
+  heart being top-left), holding a **T**; carried by a new flag on `ExplorerRow`, no hit area.
 - Badge only — no tooltip, no snippet. Tiles found by their name alone, and the favorites shown
   while the search box is empty, have no badge.
 
@@ -142,9 +175,11 @@ never folds them again. A file leaving the index (rescan, deletion from the pane
 - It shows **every indexing job** — the scan, the content extraction, and any future indexing job:
   proportional to the job's progress (files done / files to do), a job whose total is not known yet
   (the scan's counting phase) shown as a short segment sweeping the track.
-- Its 3 px row is **always reserved**, so nothing moves when it appears; the bar is **hidden while
-  no job runs**.
+- Its 3 px row is **always reserved** — a new absolute row of the panel's table, between the search
+  row and the status line — so nothing moves when it appears; the bar is **hidden while no job
+  runs**.
 - The scan's existing status text stays as it is.
+- **↻ during the extraction** — *(open, Q&A #22)*.
 
 ---
 
@@ -198,6 +233,10 @@ not only the blocking ones.
   indexing job, the scan included (Q&A #17).
 - [x] ~~Limits?~~ → Oversized images downscaled then read (Q&A #18); a ⚙ *Rebuild content index*
   entry (Q&A #19); no per-file time budget, every source being bounded.
+- [ ] **Folder view**: does the content search also apply to a search typed in the folder view
+  (the files below the open folder), with the badge — or to the search view only? (Q&A #21)
+- [ ] **↻ during the extraction**: enabled once the scan ends (pressed, it rescans and the
+  extraction resumes where it stopped), or disabled until the extraction ends? (Q&A #22)
 
 ---
 
@@ -251,6 +290,26 @@ Q&A #16–19: the folder named `Index\`, an existing `files.index` moved into it
 left next to the exe; the bar showing every indexing job, the scan and future ones included; an
 oversized image downscaled then read; a ⚙ *Rebuild content index* entry. No open question left.
 
+### Iteration 6 — 2026-10-07 — Refreshed against the current code
+
+The go question of 2026-09-29 was cut short by the end of the session, unanswered; meanwhile the
+file explorer moved on (`file explorer show all`, the folder view, favorites dropped onto the
+panel). At the user's request (Q&A #20), a read-only refresh (two agents: index / search, panel UI)
+before the go:
+
+- *Existing Code* rewritten: `files.index` is format 2 with a creation time per file; the search
+  returns every match (no best 10), loaded by pages; the folder view has its own search site;
+  the heart is top-left; the ⚙ menu lives in `MainForm`.
+- *Index Folder*: the format-2 file moved as it is; RULES.md § App Settings updated with the move.
+- *Extraction*: the size and last-write stamps read from the scan's `FileSystemEntry`, kept in
+  memory only (no format 3); the worker started at the end of `ScanAsync` on the scan's token; the
+  search refreshed as texts arrive; a missing file removed from the cache with the index.
+- *Search*: path-only matches first through a new leading `Rank` key; every match listed;
+  `*`, favorites and folder tiles untouched.
+- *Content Badge*: top-right. *Progress Bar*: a new table row between the search row and the status
+  line.
+- Two new open questions: the folder view (Q&A #21), ↻ during the extraction (Q&A #22).
+
 ---
 
 ## Implementation Log
@@ -259,7 +318,7 @@ oversized image downscaled then read; a ⚙ *Rebuild content index* entry. No op
 |---|---|---|---|
 | Code | | | Not started |
 | Unit tests | | | None planned — no test project (see *Test Impact*) |
-| README | | | Not started — the file explorer's section, plus the Glossary (*Content text*, *Index folder*) |
+| README | | | Not started — the file explorer's section, plus the Glossary (*Content text*, *Index folder*, *Index* revised), each with its `.fr.md` in the same commit; RULES.md § App Settings (`files.index` in `Index\`) |
 
 ---
 
@@ -288,7 +347,10 @@ Questions asked by the agent during design, with user responses.
 | 17 | What does the progress bar show: the extraction only, or the scan too? | The extraction, the scan, and every future indexing job | 2026-09-29 |
 | 18 | An image larger than the OCR accepts: downscaled, or skipped? | Downscaled then read | 2026-09-29 |
 | 19 | A way to re-extract everything: a ⚙ menu entry, Shift + ↻, or nothing? | A ⚙ menu entry | 2026-09-29 |
+| 20 | *(2026-09-29, the go question — cut short by the end of the session, unanswered.)* How do we resume: refresh against the current code then go, go now (code, tests and docs / code only), or no? | Refresh, then go | 2026-10-07 |
+| 21 | Folder view: the content search also in a search typed in the folder view, with the badge, or in the search view only? | | |
+| 22 | ↻ during the extraction: enabled once the scan ends (the extraction resuming after the rescan), or disabled until the extraction ends? | | |
 
 ---
 
-*Last updated: 2026-09-29*
+*Last updated: 2026-10-07*
