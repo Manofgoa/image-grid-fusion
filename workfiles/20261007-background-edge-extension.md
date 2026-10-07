@@ -147,6 +147,11 @@ pixel, Miter, Background corners), the color controls kept; soften is progressiv
 covers the extension; the crop edit view extends the whole image; the thumbnails carry their labels,
 the cell options toolbar growing to their height.
 
+### Iteration 3 — 2026-10-07 — ✅ Implemented
+
+Go given: code, tests and documentation. Branch Gate: stays on `main`, the standing choice for this
+repository. No unit tests (no test project).
+
 ---
 
 ## Implementation Log
