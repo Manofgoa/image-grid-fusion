@@ -897,11 +897,16 @@ internal sealed class FileExplorerPanel : Panel
             }
 
             this._progress.ShowProgress(p.Total == 0 ? 1 : (double)p.Done / p.Total);
-            this.SetActivity(p.File is null ? null : $"{(p.Kind == ContentKind.Text ? "Reading" : "OCR on")} {Path.GetFileName(p.File)}");
             if (p.Refresh)
             {
                 this.RefreshContentResults();
+                return;
             }
+
+            // The file's rank in the pass, then its name — none for a file that has no text to find.
+            this.SetActivity(p.File is null ? null
+                : p.Kind == ContentKind.None ? $"OCR: {p.Done + 1:N0}/{p.Total:N0}"
+                : $"OCR: {p.Done + 1:N0}/{p.Total:N0} ({Path.GetFileName(p.File)})");
         });
         try
         {
@@ -960,7 +965,7 @@ internal sealed class FileExplorerPanel : Panel
 
                 string path = index.FullPath(entry);
                 var kind = ContentExtractor.KindOf(path);
-                progress.Report(new ExtractionProgress(done, queue.Length, kind == ContentKind.None ? null : path, kind, false));
+                progress.Report(new ExtractionProgress(done, queue.Length, path, kind, false));
                 contents.Set(entry.RelativePath, entry.Stamp!.Value, extractor.Extract(path));
                 changed = true;
                 done++;
