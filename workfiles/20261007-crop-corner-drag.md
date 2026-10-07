@@ -45,7 +45,7 @@ the four bars as handles.
 - **Priority**: a corner comes **before the bars** — within its square, the corner is grabbed, not
   the nearer bar. Then the bars, the kept part, the separator, the handle and the pan, as today. A
   corner lying on the cell's edge is grabbed before the separator, like a bar there (README §
-  Separators). The **×** and the source-name icon keep their priority over all of it (`onControl`).
+  Resizing the cells). The **×** and the source-name icon keep their priority over all of it (`onControl`).
 - **Cursor**: `SizeNWSE` on the top-left and bottom-right corners, `SizeNESW` on the other two —
   while hovered and while dragged.
 
