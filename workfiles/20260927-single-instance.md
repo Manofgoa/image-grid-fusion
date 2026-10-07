@@ -46,6 +46,8 @@ for the startup files), README § Tray & startup.
 
 - A second launch carrying **`--tray`** (Windows start-up while the app already runs) **leaves the
   running instance as it is**: nothing shown, nothing loaded.
+- A **`--title`** it carries is **ignored**: the running instance keeps its second title; only the
+  files are handed over.
 - It then **exits at once**: no window, no tray icon, not even briefly.
 - **Its files** are handed over as full paths (relative ones resolved against the second launch's
   own working directory) and loaded with `AddFilesAsync`, exactly like a drop on the window:
@@ -97,6 +99,12 @@ for the startup files), README § Tray & startup.
 - README § Tray & startup: the line *"Several instances can run side by side, each with its own
   window and tray icon; the last window closed sets the size remembered."* is replaced by the
   single-instance behaviour and the `--new-instance` argument.
+- The app's **CLAUDE.md § Launch**: **every** agent launch — the delivery launch and the agent's own
+  checks — passes `--new-instance` next to `--title`, so an agent's test never brings back, nor
+  loads files into, the user's instance or another session's. The command line shown there gets it;
+  a worktree build whose source predates the argument is launched without it (it would load it as a
+  file), as for `--title`. The other running sessions of the workspace are told of the change
+  (global rule on CLAUDE.md changes).
 - README.fr.md mirrors every README change, in the same commit (`../CLAUDE.md` § Repository Docs).
 - The app's **RULES.md**, a new row in § *Command-Line Arguments* and a rule below it: the app is single-instance per exe
   location; when the agent needs its own instance while one of the same exe runs (the user's,
@@ -126,12 +134,9 @@ verified by hand.
 - [x] ~~Where is the agent-side instruction documented?~~ → README + the app's RULES.md
 - [x] ~~A second launch carrying `--tray`?~~ → Leaves the running instance as it is
 - [x] ~~A window minimized while maximized?~~ → Restored maximized, the tray click too
-- [ ] Agents launch the app with `--title "<session name>"` (`CLAUDE.md` § Launch), several sessions
-      side by side: a second launch of the same exe would now only bring the first one back. Every
-      agent launch passes `--new-instance`, only when one already runs, or the second title is part
-      of the lock?
-- [ ] A normal second launch carrying `--title`: does it change the running instance's second title,
-      or is it ignored?
+- [x] ~~Agent launches (`--title`, sessions side by side) vs the single instance?~~ → Every agent
+      launch passes `--new-instance` (app `CLAUDE.md` § Launch)
+- [x] ~~A normal second launch carrying `--title`?~~ → Ignored, the running instance keeps its title
 - [x] ~~A `--new-instance` launch runs `StartupRegistration.Refresh`: skip it?~~ → Skipped
 - [x] ~~A `--new-instance` instance closing writes the remembered window size: skip it?~~ → Skipped,
       the size is still read *(revised 2026-09-30, see Iteration 4: `settings.json`, no more
@@ -186,6 +191,11 @@ in the order the requests were made.
 - Two new questions: how agent launches meet the single instance, and what a handed-over `--title`
   does.
 
+### Iteration 6 — 2026-10-07
+
+- Every agent launch passes `--new-instance`, written in the app's `CLAUDE.md` § Launch.
+- A `--title` handed over by a second launch is ignored.
+
 ---
 
 ## Implementation Log
@@ -218,8 +228,8 @@ Questions asked by the agent during design, with user responses.
 | 9 | Window minimized while maximized: restored maximized or normal? | Maximized, like before | 2026-09-27 |
 | 10 | `--new-instance`: skip the startup registration refresh? | Yes, skip it | 2026-09-30 |
 | 11 | `--new-instance`: skip saving the window size? | Yes, skip it | 2026-09-30 |
-| 12 | Agent launches (`--title`, sessions side by side) vs the single instance? | | 2026-10-07 |
-| 13 | Normal second launch with `--title`: change the running title, or ignore it? | | 2026-10-07 |
+| 12 | Agent launches (`--title`, sessions side by side) vs the single instance? | Every agent launch passes `--new-instance` | 2026-10-07 |
+| 13 | Normal second launch with `--title`: change the running title, or ignore it? | Ignored | 2026-10-07 |
 
 ---
 
