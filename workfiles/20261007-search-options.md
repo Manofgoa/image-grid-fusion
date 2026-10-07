@@ -52,12 +52,22 @@ Components: `UI/FileExplorerPanel.cs` (search row, `Find`, `SearchFolder`), `Exp
 - Ranking unchanged: path matches first, then content matches (`Rank.CompareTo`); content only, every
   match is a content match, so they rank among themselves by the existing tie-breakers.
 - The 💡 on a tile and its arrow keep showing the first word found in the content.
+- With `*` alone (every file) or an empty box (the favorites), the buttons stay **clickable with no
+  effect**: their state counts as soon as words are typed.
 - Toggling a button **runs the search again** at once, as typing does (back to the top: a new search).
 - Applies to the **search view** and the **folder view** alike — same box, same `Find`.
 - Content only, in the **folder view**: the **folder tiles are hidden** — a folder has no content; only
   the files found by their content show.
 - **💡 stays enabled** while the ⚙ menu's *Search file contents (OCR)* is off: it searches the texts
   already extracted, as today; its tooltip then says the extraction is stopped.
+
+---
+
+## Documentation
+
+- `README.md` / `README.fr.md`, § File explorer: the two buttons, their defaults, the three modes.
+- `GLOSSARY.md` / `GLOSSARY.fr.md`: a new term, **Search criteria** (*critères de recherche*) — the
+  **Aa** and **💡** buttons; the *File explorer* row mentions them.
 
 ---
 
@@ -81,8 +91,8 @@ created. The behaviours are checked by hand on the running app:
 - [x] ~~Content only, in the **folder view**: are the matching **folder tiles** still shown (folders have no content)?~~ → Hidden
 - [x] ~~While the ⚙ menu's **Search file contents (OCR)** is off (texts already extracted still searched), how does **💡** behave?~~ → Stays enabled, searching the texts already extracted; its tooltip says the extraction is stopped
 - [x] ~~A click on the **last pressed** button: does nothing, or switches to the other criterion?~~ → Does nothing; its tooltip says at least one stays on
-- [ ] With `*` alone or an empty box (every file / the favorites), do the buttons stay clickable with no effect?
-- [ ] Documentation: README (EN + FR) only, or also a glossary term (*search criteria*)?
+- [x] ~~With `*` alone or an empty box (every file / the favorites), do the buttons stay clickable with no effect?~~ → Yes, clickable with no effect
+- [x] ~~Documentation: README (EN + FR) only, or also a glossary term (*search criteria*)?~~ → README and glossary, EN + FR
 
 ---
 
@@ -106,6 +116,12 @@ Four open questions answered: **Aa** keeps covering the whole relative path; con
 the folder tiles of the folder view; **💡** stays enabled with the ⚙ OCR setting off; a click on the
 last pressed button does nothing. *UI* and *Search* updated.
 
+### Iteration 3 — 2026-10-07
+
+Last two questions answered: the buttons stay clickable with no effect under `*` or an empty box;
+the documentation covers the README and the glossary, both languages. *Search* updated, a
+*Documentation* section added. No open question left.
+
 ---
 
 ## Implementation Log
@@ -118,6 +134,7 @@ says so rather than staying blank.
 | Code | | | |
 | Unit tests | | | None planned — no test project (see *Test Impact*) |
 | README | | | |
+| Glossary | | | |
 
 ---
 
@@ -135,8 +152,8 @@ Questions asked by the agent during design, with user responses.
 | 6 | Content only, folder view: folder tiles shown? | Hidden | 2026-10-07 | |
 | 7 | 💡 while the ⚙ OCR setting is off? | Stays enabled, the tooltip says the extraction is stopped | 2026-10-07 | |
 | 8 | Click on the last pressed button? | Nothing happens | 2026-10-07 | |
-| 9 | Buttons with `*` / an empty box? | | |
-| 10 | Documentation scope? | | |
+| 9 | Buttons with `*` / an empty box? | Clickable, no effect | 2026-10-07 | |
+| 10 | Documentation scope? | README + glossary (EN + FR) | 2026-10-07 | |
 
 ---
 
