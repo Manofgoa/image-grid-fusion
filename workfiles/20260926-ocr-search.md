@@ -483,6 +483,18 @@ OCR has to run again on the images and PDFs. *Content Badge › Arrow to the Wor
 proposal; the go asked (Q&A #32), then given: the images and PDFs extracted without positions are
 read again by the next pass.
 
+Agent's choices: the boxes of both engines kept (the arrow takes the first match, the French
+engine's); at most 4 000 boxes per file; a box serialized as `x;y;w;h;word` in fractions to five
+decimals, the boxes joined by the unit separator (U+001F), `-` for a file read as text; a failed
+OCR recorded with no word and an empty list of boxes, so it is not retried until it changes; the
+arrow 2 px wide, its head 7 px, amber (the bulb's color) over a dark translucent halo, drawn under
+the bulb; none while the thumbnail is not loaded, nor when the word lies under the bulb. Known
+limit: an image over 10 000 px with an EXIF turn is recognised unturned (Iteration 10), so its
+arrow would point at the unturned position.
+Checked off-screen, by reflection on the built assembly: the OCR's boxes of the test screenshot
+where the text was drawn, and the arrow drawn into a bitmap — to the bottom-center from a bulb
+below the word, to the top-center from a bulb above it. Not checked in the running app.
+
 ---
 
 ## Implementation Log
