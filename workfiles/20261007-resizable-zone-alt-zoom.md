@@ -158,6 +158,8 @@ No rule broken. Choices the frozen design left open:
 - **One code commit** for `GridPreview` and `MainForm`: the form's guard reads the preview's
   record, they make one unit. Rules, README and glossary in three more commits.
 
+Tested by the user on the delivered build, task confirmed finished (2026-10-07).
+
 ---
 
 ## Implementation Log
