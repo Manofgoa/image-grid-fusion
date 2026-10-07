@@ -75,6 +75,33 @@ internal sealed class ContentIndex
     /// <summary>The folded text of a file, for the search; null when it has none yet.</summary>
     public string? FoldedOf(string relativePath) => this._texts.TryGetValue(relativePath, out var text) ? text.Folded : null;
 
+    /// <summary>
+    /// The words of a file's text around the first one holding <paramref name="foldedWord"/> — accents
+    /// and case ignored — <paramref name="around"/> on each side, an ellipsis where the text goes on;
+    /// null when the text does not hold it.
+    /// </summary>
+    public string? ExcerptOf(string relativePath, string foldedWord, int around)
+    {
+        if (!this._texts.TryGetValue(relativePath, out var text) || text.Text.Length == 0)
+        {
+            return null;
+        }
+
+        string[] words = text.Text.Split(' ');
+        for (int i = 0; i < words.Length; i++)
+        {
+            if (FileSearch.Fold(words[i]).Contains(foldedWord, StringComparison.Ordinal))
+            {
+                int from = Math.Max(0, i - around);
+                int to = Math.Min(words.Length - 1, i + around);
+                string excerpt = string.Join(' ', words, from, to - from + 1);
+                return $"{(from > 0 ? "… " : "")}{excerpt}{(to < words.Length - 1 ? " …" : "")}";
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>Whether the file's text was extracted at the stamp the scan found it with; false for an entry without one.</summary>
     public bool IsCurrent(IndexEntry entry) =>
         entry.Stamp is { } stamp && this._texts.TryGetValue(entry.RelativePath, out var text) && text.Stamp == stamp;

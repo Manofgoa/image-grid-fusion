@@ -183,6 +183,7 @@ internal sealed class FileExplorerPanel : Panel
         _menu.Items.Add(_openLocation);
         _grid.ContextMenuStrip = _menu;
         _grid.IsFavorite = _favorites.Contains;
+        this._grid.ContentExcerpt = this.ExcerptOf;
 
         _toolTip.SetToolTip(_collapse, "Hide the file explorer");
         _toolTip.SetToolTip(_expand, "Show the file explorer");
@@ -1138,9 +1139,9 @@ internal sealed class FileExplorerPanel : Panel
         else
         {
             var found = this.Find(_index.Entries, words, everything);
-            foreach (var (entry, byContent) in found)
+            foreach (var (entry, contentWord) in found)
             {
-                rows.Add(new ExplorerRow(_index.FullPath(entry), entry.Name, ByContent: byContent));
+                rows.Add(new ExplorerRow(_index.FullPath(entry), entry.Name, ContentWord: contentWord));
             }
 
             _caption.Text = everything
@@ -1291,9 +1292,9 @@ internal sealed class FileExplorerPanel : Panel
             rows.Add(FolderRow(index.FullPath(folder)));
         }
 
-        foreach (var (file, byContent) in foundFiles)
+        foreach (var (file, contentWord) in foundFiles)
         {
-            rows.Add(new ExplorerRow(index.FullPath(file), file.Name, ByContent: byContent));
+            rows.Add(new ExplorerRow(index.FullPath(file), file.Name, ContentWord: contentWord));
         }
 
         int total = rows.Count;
@@ -1316,12 +1317,18 @@ internal sealed class FileExplorerPanel : Panel
     {
         if (everything)
         {
-            return FileSearch.All(entries).Select(e => new SearchMatch(e, false)).ToArray();
+            return FileSearch.All(entries).Select(e => new SearchMatch(e, null)).ToArray();
         }
 
         var contents = this._contents;
         return FileSearch.Search(entries, words, contents is null ? null : e => contents.FoldedOf(e.RelativePath));
     }
+
+    /// <summary>The words around the one the search found in a tile's content text, 4 on each side.</summary>
+    private string? ExcerptOf(ExplorerRow row) =>
+        row.ContentWord is { } word && this._contents is { } contents && this._baseFolder is { } root
+            ? contents.ExcerptOf(Path.GetRelativePath(root, row.FullPath), word, 4)
+            : null;
 
     /// <summary>A folder's tile: its name, then every file below it as the index counts them, once the index is there.</summary>
     private ExplorerRow FolderRow(string fullPath)

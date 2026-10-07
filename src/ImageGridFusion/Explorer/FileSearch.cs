@@ -73,12 +73,15 @@ internal static class FileSearch
         }
 
         matches.Sort((a, b) => a.Rank.CompareTo(b.Rank));
-        return matches.Select(m => new SearchMatch(m.Entry, m.Rank.ByContent)).ToArray();
+        return matches.Select(m => new SearchMatch(m.Entry, m.Rank.ContentWord)).ToArray();
     }
 
     /// <summary>How well an entry matches; lower compares first.</summary>
-    private readonly record struct Rank(bool ByContent, int NameHits, int FirstPosition, int NameLength, string Path) : IComparable<Rank>
+    private readonly record struct Rank(string? ContentWord, int NameHits, int FirstPosition, int NameLength, string Path) : IComparable<Rank>
     {
+        /// <summary>Whether a word was found in the content text only.</summary>
+        public bool ByContent => this.ContentWord is not null;
+
         /// <summary>Null when a word is missing from both the folded relative path and the content text.</summary>
         public static Rank? Of(IndexEntry entry, string[] words, Func<IndexEntry, string?>? contentOf)
         {
@@ -88,7 +91,7 @@ internal static class FileSearch
             int first = int.MaxValue;
             string? content = null;
             bool contentRead = false;
-            bool byContent = false;
+            string? contentWord = null;
             for (int i = 0; i < words.Length; i++)
             {
                 int inName = folded.IndexOf(words[i], nameStart, StringComparison.Ordinal);
@@ -113,11 +116,11 @@ internal static class FileSearch
                         return null;
                     }
 
-                    byContent = true;
+                    contentWord ??= words[i];
                 }
             }
 
-            return new Rank(byContent, nameHits, first, folded.Length - nameStart, entry.RelativePath);
+            return new Rank(contentWord, nameHits, first, folded.Length - nameStart, entry.RelativePath);
         }
 
         public int CompareTo(Rank other)
@@ -127,6 +130,7 @@ internal static class FileSearch
             {
                 order = other.NameHits.CompareTo(NameHits);
             }
+
             if (order == 0)
             {
                 order = FirstPosition.CompareTo(other.FirstPosition);
@@ -176,8 +180,15 @@ internal sealed class IndexEntry
     public string Name => Path.GetFileName(RelativePath);
 }
 
-/// <summary>An entry the search found; <paramref name="ByContent"/> when a word was found in its content text only.</summary>
-internal readonly record struct SearchMatch(IndexEntry Entry, bool ByContent);
+/// <summary>
+/// An entry the search found; <paramref name="ContentWord"/>: the first query word found in its content
+/// text only — null when its path holds every word.
+/// </summary>
+internal readonly record struct SearchMatch(IndexEntry Entry, string? ContentWord)
+{
+    /// <summary>Whether the entry was found thanks to its content text.</summary>
+    public bool ByContent => this.ContentWord is not null;
+}
 
 /// <summary>What tells a file changed since its content text was extracted: its size and last write, in UTC.</summary>
 internal readonly record struct FileStamp(long Size, DateTime Written);

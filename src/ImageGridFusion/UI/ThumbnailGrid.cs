@@ -9,9 +9,14 @@ namespace ImageGridFusion.UI;
 /// <summary>
 /// A tile of the explorer's grid: a file — a favorite, a search result, a file of the open folder — or,
 /// in the folder view, a folder (<paramref name="IsFolder"/>), its name then carrying its file count.
-/// <paramref name="ByContent"/>: a search result found thanks to its content text.
+/// <paramref name="ContentWord"/>: for a search result found thanks to its content text, the first
+/// query word found there, folded.
 /// </summary>
-internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false, bool ByContent = false);
+internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false, string? ContentWord = null)
+{
+    /// <summary>Whether the search found it thanks to its content text: it shows the light bulb.</summary>
+    public bool ByContent => this.ContentWord is not null;
+}
 
 /// <summary>
 /// The file explorer's list: a grid of tiles, one per file — its thumbnail from the Shell's cache,
@@ -32,6 +37,9 @@ internal sealed class ThumbnailGrid : ScrollableControl
     private const int Medallion = 24;
     private const int MedallionInset = 4;
 
+    // The light bulb of a tile found by its content: amber, the glyph drawn in one color.
+    private static readonly Color BulbColor = Color.FromArgb(214, 150, 0);
+
     // The sizes the thumbnails are asked from the Shell at: the smallest not below the drawn tile width.
     private static readonly int[] Buckets = [256, 512, 1024];
 
@@ -39,6 +47,10 @@ internal sealed class ThumbnailGrid : ScrollableControl
     private readonly ThumbnailCache _thumbnails;
     private Font _heartFont;
     private Font _nameFont;
+    private Font _bulbFont;
+
+    // The tile whose light bulb the pointer is over, its tooltip then the excerpt; -1 for none.
+    private int _bulbTip = -1;
     private IReadOnlyList<ExplorerRow> _rows = [];
     private bool _hasMore;
     private bool _moreAsked;
@@ -66,6 +78,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         _thumbnails = new ThumbnailCache(this);
         _thumbnails.Loaded += InvalidateTileOf;
         (_heartFont, _nameFont) = MakeFonts();
+        this._bulbFont = this.MakeBulbFont();
     }
 
     /// <summary>The heart of a tile was clicked.</summary>
@@ -90,6 +103,11 @@ internal sealed class ThumbnailGrid : ScrollableControl
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public Func<string, bool> IsFavorite { get; set; } = _ => false;
+
+    /// <summary>The words around the one a search found in a tile's content text, for its light bulb's tooltip; null when unknown.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Func<ExplorerRow, string?> ContentExcerpt { get; set; } = _ => null;
 
     /// <summary>
     /// Whether thumbnails are being loaded in the background — the file explorer's content extraction
@@ -139,6 +157,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         }
 
         _toolTip.SetToolTip(this, null);
+        this._bulbTip = -1;
     }
 
     /// <summary>
@@ -205,6 +224,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
             _toolTip.Dispose();
             _heartFont.Dispose();
             _nameFont.Dispose();
+            this._bulbFont.Dispose();
         }
 
         base.Dispose(disposing);
@@ -241,6 +261,9 @@ internal sealed class ThumbnailGrid : ScrollableControl
         (_heartFont, _nameFont) = MakeFonts();
         heart.Dispose();
         name.Dispose();
+        var bulb = this._bulbFont;
+        this._bulbFont = this.MakeBulbFont();
+        bulb.Dispose();
         UpdateExtent();
     }
 
@@ -349,6 +372,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
     {
         base.OnMouseMove(e);
         Hover(IndexAt(e.Location));
+        this.ShowBulbTip(IndexAt(e.Location), e.Location);
         if (_pressed < 0 || (e.Button & MouseButtons.Left) == 0)
         {
             return;
@@ -542,21 +566,21 @@ internal sealed class ThumbnailGrid : ScrollableControl
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         }
 
-        // A search result found thanks to its content text: a T in a medallion, opposite the heart.
+        // A search result found thanks to its content text: a light bulb in a medallion, under the heart.
         if (row.ByContent)
         {
-            var badge = this.Scrolled(this.ContentBadgeBounds(index));
+            var bulb = this.Scrolled(this.BulbBounds(index));
             var smoothing = g.SmoothingMode;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.FillEllipse(Brushes.White, badge);
-            g.DrawEllipse(SystemPens.ControlDark, badge);
+            g.FillEllipse(Brushes.White, bulb);
+            g.DrawEllipse(SystemPens.ControlDark, bulb);
             g.SmoothingMode = smoothing;
             TextRenderer.DrawText(
                 g,
-                "T",
-                this._heartFont,
-                badge,
-                SystemColors.ControlText,
+                "\U0001F4A1",
+                this._bulbFont,
+                bulb,
+                BulbColor,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         }
         TextRenderer.DrawText(
@@ -629,14 +653,41 @@ internal sealed class ThumbnailGrid : ScrollableControl
         return new Rectangle(tile.X + inset, tile.Y + inset, size, size);
     }
 
-    /// <summary>The content badge's medallion: the heart's, in the tile's top-right corner.</summary>
-    private Rectangle ContentBadgeBounds(int index)
+    /// <summary>The light bulb's medallion: the heart's size, right under it.</summary>
+    private Rectangle BulbBounds(int index)
     {
-        var tile = this.TileBounds(index);
-        int size = this.LogicalToDeviceUnits(Medallion);
+        var heart = this.HeartBounds(index);
         int inset = this.LogicalToDeviceUnits(MedallionInset);
-        return new Rectangle(tile.Right - inset - size, tile.Y + inset, size, size);
+        return new Rectangle(heart.X, heart.Bottom + inset, heart.Width, heart.Height);
     }
+
+    private bool OnBulb(int index, Point client) => index >= 0 && this._rows[index].ByContent && this.BulbBounds(index).Contains(this.Unscrolled(client));
+
+    /// <summary>
+    /// The pointer over a tile's light bulb: its tooltip says the tile was found in its content, with the
+    /// words around; elsewhere on the tile, the tile's own tooltip.
+    /// </summary>
+    private void ShowBulbTip(int index, Point client)
+    {
+        int bulb = this.OnBulb(index, client) ? index : -1;
+        if (bulb == this._bulbTip)
+        {
+            return;
+        }
+
+        this._bulbTip = bulb;
+        if (bulb >= 0)
+        {
+            string? excerpt = this.ContentExcerpt(this._rows[bulb]);
+            this._toolTip.SetToolTip(this, excerpt is null ? "Found in its content" : $"Found in its content: {excerpt}");
+        }
+        else
+        {
+            this._toolTip.SetToolTip(this, index >= 0 ? this._rows[index].FullPath : null);
+        }
+    }
+
+    private Font MakeBulbFont() => new("Segoe UI Emoji", this.Font.SizeInPoints);
 
     /// <summary>Content coordinates to client ones.</summary>
     private Rectangle Scrolled(Rectangle content)
@@ -779,6 +830,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         }
 
         _toolTip.SetToolTip(this, index >= 0 ? _rows[index].FullPath : null);
+        this._bulbTip = -1;
     }
 
     private void Select(int index)
