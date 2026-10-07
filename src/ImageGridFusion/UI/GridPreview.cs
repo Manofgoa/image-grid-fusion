@@ -41,8 +41,8 @@ internal sealed class GridPreview : Control
     private const int ZoomBadgeFade = 300;
     private const int ZoomBadgeTick = 30;
     private const int ZoomBadgeTextSize = 16;
-    private const int ReadoutDotRadius = 3;
-    private const int ReadoutTextGap = 6;
+    private const int ReadoutCrossStroke = 30;
+    private const double ReadoutLineOpacity = 0.5;
     private const int SourceNameTextSize = 12;
     private const int SourceIconSize = 16;
     private const int CheckerSquare = 8;
@@ -857,7 +857,10 @@ internal sealed class GridPreview : Control
         if (_hovered >= 0 && !_dragging && !_locked)
         {
             PaintCloseButton(g, CloseBounds(cells[_hovered]), _hoveringClose);
-            PaintHandle(g, HandleBounds(cells[_hovered]), _hoveringHandle);
+            if (this.HandleOf(_hovered) is { IsEmpty: false } handle)
+            {
+                PaintHandle(g, handle, _hoveringHandle);
+            }
         }
 
         PaintZoomBadge(g);
@@ -967,7 +970,7 @@ internal sealed class GridPreview : Control
         }
 
         // The crop's edit view shows the whole image: a drag off its kept part would pan the cropped one unseen.
-        if (EditsCrop(index) && !HandleBounds(CellBounds()[index]).Contains(e.Location))
+        if (EditsCrop(index) && !this.HandleOf(index).Contains(e.Location))
         {
             return;
         }
@@ -976,7 +979,7 @@ internal sealed class GridPreview : Control
         Select(index);
         _pressed = index;
         _pressPoint = e.Location;
-        _panning = !HandleBounds(CellBounds()[index]).Contains(e.Location);
+        _panning = !this.HandleOf(index).Contains(e.Location);
         _panPoint = e.Location;
         _panX.Reset();
         _panY.Reset();
@@ -1426,7 +1429,7 @@ internal sealed class GridPreview : Control
         bool onCanvas = _images.Count == 0 && CanvasBounds().Contains(location);
         bool onDropZone = DropZoneBounds(CanvasBounds()).Contains(location);
         bool actions = hovered >= 0 && !_locked;
-        bool onHandle = actions && HandleBounds(CellBounds()[hovered]).Contains(location);
+        bool onHandle = actions && this.HandleOf(hovered).Contains(location);
         var onSource = SourceHitAt(location);
         bool onControl = onClose || onDropZone || onCanvas || onSource.Icon;
         var onCorner = actions && !onControl && this.ShownBars(hovered) is { } framed
@@ -1713,6 +1716,13 @@ internal sealed class GridPreview : Control
     }
 
     /// <summary>
+    /// The ✥ handle of cell <paramref name="index"/>; empty — neither drawn nor grabbed — while its
+    /// position readout shows, so a press at the center keeps moving the image.
+    /// </summary>
+    private Rectangle HandleOf(int index) =>
+        index < this._images.Count && this._readouts.ContainsKey(this._images[index]) ? Rectangle.Empty : this.HandleBounds(this.CellBounds()[index]);
+
+    /// <summary>
     /// The drag handle that swaps the image, centered in the cell. It shrinks, still centered, while
     /// it would come closer than a gap to the ×; below the size of a button it falls back just below it.
     /// </summary>
@@ -1923,6 +1933,7 @@ internal sealed class GridPreview : Control
     private void ShowZoomBadge(SourceImage image)
     {
         InvalidateZoomBadge();
+        this.InvalidateReadoutOf(image);
         _zoomBadgeImage = image;
         _zoomBadgeChanged = Environment.TickCount64;
         _zoomBadgeTimer.Stop();
@@ -1939,6 +1950,7 @@ internal sealed class GridPreview : Control
         {
             _zoomBadgeTimer.Stop();
             InvalidateZoomBadge();
+            this.InvalidateReadoutOf(_zoomBadgeImage);
             _zoomBadgeImage = null;
             return;
         }
@@ -2204,6 +2216,17 @@ internal sealed class GridPreview : Control
         this._readoutTimer.Start();
     }
 
+    /// <summary>Repaints the cell of <paramref name="image"/> when its readout shows: its text follows the zoom badge coming or going.</summary>
+    private void InvalidateReadoutOf(SourceImage? image)
+    {
+        var cells = this.CellBounds();
+        int index = image is not null && this._readouts.ContainsKey(image) ? this._images.IndexOf(image) : -1;
+        if (index >= 0 && index < cells.Length)
+        {
+            this.Invalidate(cells[index]);
+        }
+    }
+
     /// <summary>The position readouts, helper indicators, over their cells — none during a swap — faded out after their hold.</summary>
     private void PaintReadouts(Graphics g, Rectangle[] cells)
     {
@@ -2225,8 +2248,9 @@ internal sealed class GridPreview : Control
     }
 
     /// <summary>
-    /// One position readout: a dot on the image's center, a dashed line to it from the cell's center —
-    /// none at 0, 0 —, and the offset in export pixels below the dot on two lines, kept inside the cell.
+    /// One position readout: an X cross on the image's center, a dashed line to it from the cell's center
+    /// at half opacity — none at 0, 0 —, and the offset in export pixels on two lines in the cell's
+    /// top-right corner, below the zoom badge when it shows there.
     /// </summary>
     private void PaintReadout(Graphics g, Rectangle cell, SourceImage image, Point offset, double opacity)
     {
@@ -2236,47 +2260,61 @@ internal sealed class GridPreview : Control
         var state = g.Save();
         g.SetClip(cell, CombineMode.Intersect);
         g.SmoothingMode = SmoothingMode.AntiAlias;
-        var green = Color.FromArgb((int)(255 * opacity), HelperColor);
-        using var halo = new Pen(Color.FromArgb((int)(HelperHalo.A * opacity), HelperHalo), this.LogicalToDeviceUnits(4)) { LineJoin = LineJoin.Round };
-        using var fill = new SolidBrush(green);
+        Pen Halo(double alpha) => new(Color.FromArgb((int)(HelperHalo.A * alpha), HelperHalo), this.LogicalToDeviceUnits(4)) { LineJoin = LineJoin.Round };
+        Color Green(double alpha) => Color.FromArgb((int)(255 * alpha), HelperColor);
         if (offset != Point.Empty)
         {
-            using var dashed = new Pen(green, this.LogicalToDeviceUnits(2)) { DashPattern = [4, 3] };
-            g.DrawLine(halo, middle, center);
+            using var faintHalo = Halo(opacity * ReadoutLineOpacity);
+            using var dashed = new Pen(Green(opacity * ReadoutLineOpacity), this.LogicalToDeviceUnits(2)) { DashPattern = [4, 3] };
+            g.DrawLine(faintHalo, middle, center);
             g.DrawLine(dashed, middle, center);
         }
 
-        float radius = this.LogicalToDeviceUnits(ReadoutDotRadius);
-        var dot = new RectangleF(center.X - radius, center.Y - radius, 2 * radius, 2 * radius);
-        g.DrawEllipse(halo, dot);
-        g.FillEllipse(fill, dot);
+        using var halo = Halo(opacity);
+        using var stroke = new Pen(Green(opacity), this.LogicalToDeviceUnits(2));
+        float arm = this.LogicalToDeviceUnits(ReadoutCrossStroke) / 2f / MathF.Sqrt(2);
+        foreach (float slope in new[] { 1f, -1f })
+        {
+            var from = new PointF(center.X - arm, center.Y - slope * arm);
+            var to = new PointF(center.X + arm, center.Y + slope * arm);
+            g.DrawLine(halo, from, to);
+        }
 
-        using var text = this.ReadoutPath(cell, center, offset);
+        foreach (float slope in new[] { 1f, -1f })
+        {
+            g.DrawLine(stroke, new PointF(center.X - arm, center.Y - slope * arm), new PointF(center.X + arm, center.Y + slope * arm));
+        }
+
+        using var fill = new SolidBrush(Green(opacity));
+        using var text = this.ReadoutPath(cell, image, offset);
         g.DrawPath(halo, text);
         g.FillPath(fill, text);
         g.Restore(state);
     }
 
     /// <summary>
-    /// The text of a readout, <c>x -35px</c> over <c>y +12px</c>, centered just below <paramref name="center"/>,
-    /// then pushed back inside <paramref name="cell"/>, its halo included, where it would cross an edge.
+    /// The text of a readout, <c>x -35px</c> over <c>y +12px</c>, right-aligned in the top-right corner of
+    /// <paramref name="cell"/> — the zoom badge's place, just below the × — or just below the zoom badge
+    /// when it shows over the same image.
     /// </summary>
-    private GraphicsPath ReadoutPath(Rectangle cell, PointF center, Point offset)
+    private GraphicsPath ReadoutPath(Rectangle cell, SourceImage image, Point offset)
     {
         static string Signed(int value) => value > 0 ? $"+{value}" : value.ToString(CultureInfo.InvariantCulture);
 
-        using var format = new StringFormat { Alignment = StringAlignment.Center };
+        var close = CloseBounds(cell);
+        float top = close.Bottom + this.LogicalToDeviceUnits(ButtonGap);
+        if (this._zoomBadgeImage == image)
+        {
+            using var badge = this.ZoomBadgePath(out _);
+            if (badge is not null)
+            {
+                top = badge.GetBounds().Bottom + this.LogicalToDeviceUnits(ButtonGap);
+            }
+        }
+
+        using var format = new StringFormat { Alignment = StringAlignment.Far };
         var path = new GraphicsPath();
-        path.AddString($"x {Signed(offset.X)}px\ny {Signed(offset.Y)}px", this.Font.FontFamily, (int)FontStyle.Bold, this.LogicalToDeviceUnits(ZoomBadgeTextSize), PointF.Empty, format);
-        var box = path.GetBounds();
-        float margin = this.LogicalToDeviceUnits(4);
-        float x = center.X - (box.X + box.Width / 2);
-        float y = center.Y + this.LogicalToDeviceUnits(ReadoutTextGap) - box.Y;
-        x = Math.Max(cell.Left + margin - box.X, Math.Min(x, cell.Right - margin - box.Right));
-        y = Math.Max(cell.Top + margin - box.Y, Math.Min(y, cell.Bottom - margin - box.Bottom));
-        using var move = new Matrix();
-        move.Translate(x, y);
-        path.Transform(move);
+        path.AddString($"x {Signed(offset.X)}px\ny {Signed(offset.Y)}px", this.Font.FontFamily, (int)FontStyle.Bold, this.LogicalToDeviceUnits(ZoomBadgeTextSize), new PointF(close.Right, top), format);
         return path;
     }
 
@@ -2661,7 +2699,7 @@ internal sealed class GridPreview : Control
     /// <summary>Whether <paramref name="location"/> is inside the crop's kept part, in its edit view on cell <paramref name="index"/>, off its handle.</summary>
     private bool KeptPartAt(int index, Point location) =>
         _barsEffect == ImageEffect.Crop && ShownBars(index) is { } bars && bars.Area.Contains(location)
-        && !HandleBounds(CellBounds()[index]).Contains(location);
+        && !this.HandleOf(index).Contains(location);
 
     /// <summary>Moves the crop's kept part whole with the mouse, from where the drag started: its size and ratio kept, stopped at the image's edges.</summary>
     private void MoveCrop(CropEffect crop, Point location)
