@@ -174,6 +174,58 @@ public sealed record CropEffect
     }
 
     /// <summary>
+    /// Moves one corner, seen through <paramref name="look"/>, to <paramref name="x"/>, <paramref name="y"/>
+    /// (fractions of the image as seen), the opposite corner fixed: each side kept within the image and
+    /// at least <paramref name="minGapX"/>, <paramref name="minGapY"/> away from the one across. While a
+    /// ratio is kept, the larger of the two rectangles at that ratio the corner gives is taken, so it never
+    /// lags behind the mouse, cut back to the largest one fitting the image from the fixed corner.
+    /// </summary>
+    public CropEffect WithSeenCorner(BarCorner corner, double x, double y, double minGapX, double minGapY, ImageLook look, Size size)
+    {
+        var seen = this.Seen(look);
+        bool left = corner.Vertical == BarSide.Left;
+        bool top = corner.Horizontal == BarSide.Top;
+
+        // The fixed corner, and the room from it to the image's edges on the grabbed corner's side.
+        double fixedX = left ? seen.Right : seen.Left;
+        double fixedY = top ? seen.Bottom : seen.Top;
+        double roomX = left ? fixedX : 1 - fixedX;
+        double roomY = top ? fixedY : 1 - fixedY;
+        double width = Math.Min(Math.Max(left ? fixedX - x : x - fixedX, minGapX), roomX);
+        double height = Math.Min(Math.Max(top ? fixedY - y : y - fixedY, minGapY), roomY);
+        if (this.SeenRatio(look) is { } ratio)
+        {
+            // In fractions, the ratio is scaled by the image's own shape.
+            var pixels = look.Oriented(size);
+            double shape = ratio * pixels.Height / pixels.Width;
+            if (width / shape > height)
+            {
+                height = width / shape;
+            }
+            else
+            {
+                width = height * shape;
+            }
+
+            if (width > roomX)
+            {
+                width = roomX;
+                height = width / shape;
+            }
+
+            if (height > roomY)
+            {
+                height = roomY;
+                width = height * shape;
+            }
+        }
+
+        double l = left ? fixedX - width : fixedX;
+        double t = top ? fixedY - height : fixedY;
+        return this.WithSeen(new RectangleF((float)l, (float)t, (float)width, (float)height), look);
+    }
+
+    /// <summary>
     /// The kept part moved whole by <paramref name="dx"/>, <paramref name="dy"/> (fractions of the image
     /// as <paramref name="look"/> shows it): its size, and so its ratio, kept, stopped at the image's edges.
     /// </summary>

@@ -16,6 +16,9 @@ public enum BarSide
     Bottom,
 }
 
+/// <summary>A corner of a rectangle framed by bars: the vertical bar and the horizontal one meeting there, moved together.</summary>
+public readonly record struct BarCorner(BarSide Vertical, BarSide Horizontal);
+
 /// <summary>
 /// The blur effect of an image: a rectangle of its cell stays sharp, the bands around it are blurred
 /// with <see cref="Kind"/> at <see cref="Intensity"/>. The sides are fractions of the cell's width and
