@@ -207,6 +207,8 @@ fast-forwarded into `main` and removed. Choices the design left open, no rule br
 - **README** (English and French): the Features zoom line, § Zoom's options line and the
   *Settings file* paragraph, which now describes `"MaxZoom"`. RULES.md and the glossary unchanged.
 
+The user tested the delivery by hand and confirmed the task is finished.
+
 ---
 
 ## Implementation Log
@@ -242,6 +244,7 @@ Questions asked by the agent during design, with user responses.
 | 12 | Which values are accepted? | 200 to 10 000 | 2026-10-07 |
 | 13 | A value above 10 000 overwritten with 10 000 (the cap) or 2000 (the default)? | 10 000 (the cap) | 2026-10-07 |
 | 14 | A value below 200 or unreadable: overwritten too, or only ignored? | Overwritten too | 2026-10-07 |
+| 15 | Is the task finished? | Yes — tested by hand, the task is finished | 2026-10-07 |
 
 ---
 
