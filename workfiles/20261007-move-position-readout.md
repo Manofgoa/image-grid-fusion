@@ -305,6 +305,8 @@ Questions asked by the agent during design, with user responses.
 | 14 | The design is complete: start implementing? | Neither choice: one agent to refresh the design against the code other sessions finished, and say whether it can start or needs more info; one agent to push | 2026-10-07 |
 | 15 | What does a cell's readout do while it shows its crop edit view? | Nothing on that cell; the other cells keep theirs | 2026-10-07 |
 | 16 | The design is complete and up to date with main: start implementing? | Code, tests and documentation | 2026-10-07 |
+| 17 | After testing the delivery, is the task finished? | No — adjustments (Iteration 9) | 2026-10-07 |
+| 18 | After testing the adjustments, is the task finished? | Yes — finished | 2026-10-07 |
 
 ---
 
