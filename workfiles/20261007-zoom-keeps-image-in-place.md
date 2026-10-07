@@ -216,11 +216,11 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 3, 4 | 2026-10-07 | `9c3c852` zoom routes, `3c54916` Animations |
-| Unit tests | 3 | 2026-10-07 | Not applicable — no test project; checked by a scratchpad program instead (Iteration 4) |
-| RULES.md | 3, 4 | 2026-10-07 | `3d90002` |
-| README | 3 | 2026-10-07 | `d7c6f21` (en / fr) |
-| Glossary | 4 | 2026-10-07 | `a1e4306` (en / fr) |
+| Code | 3, 4, 5 | 2026-10-07 | `9c3c852` zoom routes, `3c54916` Animations, `0f5e6fb` the wheel at the cursor |
+| Unit tests | 3, 5 | 2026-10-07 | Not applicable — no test project; checked by a scratchpad program instead (Iteration 4; Iteration 5: 20 000 random cases, the point exact without a fine angle, 70 extreme turned cases off) |
+| RULES.md | 3, 4, 5 | 2026-10-07 | `3d90002`, `11767b3` |
+| README | 3, 5 | 2026-10-07 | `d7c6f21`, `80c0ef9` (en / fr) |
+| Glossary | 4, 5 | 2026-10-07 | `a1e4306`, `5472893` (en / fr) |
 
 ---
 
