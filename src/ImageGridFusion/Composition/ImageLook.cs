@@ -28,7 +28,12 @@ public enum ImageEffect
 public sealed record ImageLook
 {
     public const double MinZoom = 0.1;
-    public const double MaxZoom = 16;
+
+    /// <summary>
+    /// The highest zoom, a factor: an app setting the UI hands down once at start-up, before the main
+    /// window is built (Composition never reads the settings itself). 20 — 2000 % — until then.
+    /// </summary>
+    public static double MaxZoom { get; set; } = 20;
 
     /// <summary>A fine angle goes this far either way from the quarter turn; beyond, the next quarter turn is nearer.</summary>
     public const int MaxFineAngle = 45;

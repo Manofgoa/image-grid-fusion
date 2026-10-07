@@ -9,7 +9,7 @@ namespace ImageGridFusion.UI;
 /// registry: the border color, whether the borders' Twitter corners are on by default, the file explorer's
 /// base folder, whether its panel is open, its width, its tile size, its pages per load, its view and
 /// open folder, the window's
-/// size, and the last folders of the file dialogs. Each save rewrites the whole file at once.
+/// size, the last folders of the file dialogs, and the maximum zoom (edited by hand only). Each save rewrites the whole file at once.
 /// </summary>
 internal static class AppSettings
 {
@@ -24,6 +24,7 @@ internal static class AppSettings
     private const string ExplorerPagesPerLoadName = "ExplorerPagesPerLoad";
     private const string ExplorerFolderViewName = "ExplorerFolderView";
     private const string ExplorerOpenFolderName = "ExplorerOpenFolder";
+    private const string MaxZoomName = "MaxZoom";
     private const string WindowWidthName = "WindowWidth";
     private const string WindowHeightName = "WindowHeight";
     private const string AddFolderName = "LastAddFolder";
@@ -146,6 +147,28 @@ internal static class AppSettings
 
     /// <summary>Saves the file explorer's pages per load; throws an <see cref="IsSaveError"/> exception on failure.</summary>
     public static void SaveExplorerPagesPerLoad(int pages) => Save((ExplorerPagesPerLoadName, pages));
+
+    /// <summary>The maximum zoom, in percent, when the file holds no whole number for it.</summary>
+    public const int DefaultMaxZoom = 2000;
+
+    /// <summary>The lowest maximum zoom accepted, in percent: a lower one is raised to it.</summary>
+    public const int MinMaxZoom = 200;
+
+    /// <summary>The highest maximum zoom accepted, in percent: a higher one is lowered to it.</summary>
+    public const int MaxMaxZoom = 10000;
+
+    /// <summary>
+    /// The maximum zoom in percent — no UI sets it, it is edited by hand in the file: a whole number
+    /// clamped to <see cref="MinMaxZoom"/>–<see cref="MaxMaxZoom"/>, <see cref="DefaultMaxZoom"/> when
+    /// missing or not a whole number. See workfiles/20261006-wheel-zoom-step.md.
+    /// </summary>
+    public static int MaxZoom => Int(MaxZoomName) is int value ? Math.Clamp(value, MinMaxZoom, MaxMaxZoom) : DefaultMaxZoom;
+
+    /// <summary>Whether the file holds <see cref="MaxZoom"/> as it is applied: false when missing, unreadable or out of range.</summary>
+    public static bool HoldsMaxZoom => Int(MaxZoomName) == MaxZoom;
+
+    /// <summary>Saves the maximum zoom, in percent; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveMaxZoom(int percent) => Save((MaxZoomName, percent));
 
     /// <summary>Whether the file explorer shows its folder view; false — the search view — when nothing was saved.</summary>
     public static bool ExplorerFolderView => Int(ExplorerFolderViewName) is int value && value != 0;

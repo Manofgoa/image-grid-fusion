@@ -1,3 +1,4 @@
+using ImageGridFusion.Composition;
 using ImageGridFusion.UI;
 
 namespace ImageGridFusion;
@@ -37,6 +38,8 @@ internal static class Program
             }
         }
 
+        // Before the main window: its zoom slider takes its range from it.
+        ImageLook.MaxZoom = AppSettings.MaxZoom / 100.0;
         Application.Run(new TrayApplicationContext(new MainForm(files.ToArray(), secondTitle), hidden: args.Any(IsHidden)));
     }
 }

@@ -298,6 +298,7 @@ internal sealed class MainForm : Form
         _startupFiles = args;
         this._history = new GridHistory(this.CaptureState, () => this._preview.InGesture);
         this._preview.ReleaseImage = this._history.Release;
+        this.WriteMaxZoom();
 
         SuspendLayout();
         AutoScaleDimensions = new SizeF(96F, 96F);
@@ -3094,6 +3095,28 @@ internal sealed class MainForm : Form
     };
 
     /// <summary>Shows a message that stays until the next one replaces it; errors in red.</summary>
+    /// <summary>
+    /// Writes the maximum zoom applied into the settings file when it does not hold it — missing, out
+    /// of range or unreadable — so the file always shows it; a failed write says so, the value applied
+    /// all the same.
+    /// </summary>
+    private void WriteMaxZoom()
+    {
+        if (AppSettings.HoldsMaxZoom)
+        {
+            return;
+        }
+
+        try
+        {
+            AppSettings.SaveMaxZoom(AppSettings.MaxZoom);
+        }
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
+        {
+            this.ShowStatus($"Maximum zoom not written to {AppSettings.FileName}: {ex.Message}", error: true);
+        }
+    }
+
     private void ShowStatus(string message, bool error = false)
     {
         _status.ForeColor = error ? Color.Firebrick : SystemColors.ControlText;
