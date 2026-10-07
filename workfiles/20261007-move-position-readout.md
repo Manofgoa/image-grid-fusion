@@ -47,19 +47,35 @@ Relevant components:
 
 | Event | Readout |
 |---|---|
-| The image is dragged with the mouse (`_panning`) | Shown over its cell, updated at each move |
-| The image is moved with the arrow keys — 1 px, Ctrl, Shift, Ctrl + Shift jump | Shown over its cell, updated at each press |
-| A zoom (wheel, slider) or a fine angle that moves the image's center — the wheel keeping the point under the mouse, the image brought back within its stops | Shown over its cell, updated at each change |
-| An undo / redo restore that moves an image's center | Shown briefly, as the zoom badge and the guides of `ShowRestored` |
+**The rule**: an image **staying in its cell** whose offset — the readout's value, in export pixels —
+changes shows its readout, whatever changed it (Q&A 9, 13). Each such image shows its own, so
+several may show at once.
 
-- **Whenever the image's center moves** in its cell, the readout shows (Q&A 9) — the boundary of
-  "whenever" is Q&A 13.
+| Change | Readouts shown |
+|---|---|
+| The image dragged with the mouse (`_panning`) | Its own, updated at each move |
+| The image moved with the arrow keys — 1 px, Ctrl, Shift, Ctrl + Shift jump | Its own, updated at each press |
+| The image's look: zoom (wheel, slider) — the wheel keeping the point under the mouse, the image brought back within its stops —, fine angle, quarter turn, flip, crop | Its own, when its offset changes |
+| The grid's geometry: a separator dragged, the layout, the output format, the Borders' gap | Every image whose offset changes |
+| The export canvas resized by another image arriving, leaving or cropped (`CanvasSizer.Compute`) | Every other image whose offset changes — its offset in export px follows the canvas |
+| An undo / redo restore | Every image whose offset changes, briefly, as the zoom badge and the guides of `ShowRestored` |
+
+- **Not shown**:
+  - an image **arriving** in a cell, replaced, shifting into another cell after a deletion, or
+    **swapped** — it changed cell, it did not move in it;
+  - an image centered staying centered — its offset stays `0, 0`;
+  - the window resized — the export pixels do not change;
+  - the **Animations** effect's motion playing — its zoom moves the center continuously, and would
+    keep the readout on; the readout reads the motion's **starting state** (`ImageLook.Zoom`), as a
+    PNG shows it.
 - The arrow keys keep their step of 1 **preview** px (10 with Ctrl): the readout, in export px, may
   jump by several units per press. Changing the step is out of this workfile's scope.
 
 - **Timing**: the zoom badge's — full opacity for `ZoomBadgeHold` (1 s) after the last change, then
-  faded out over `ZoomBadgeFade` (0.3 s). During a **mouse drag**, it stays at full opacity while the
-  button is down, even with the mouse still: the hold and the fade start at the release.
+  faded out over `ZoomBadgeFade` (0.3 s), each image's readout on its own clock. During a **mouse
+  gesture** (`GridPreview.InGesture` — an image, a separator or a crop bar dragged), it stays at full
+  opacity while the button is down, even with the mouse still: the hold and the fade start at the
+  release.
 - **Look**: the zoom badge's — bold text of `ZoomBadgeTextSize`, `HelperColor` over the `HelperHalo`
   outline. A helper indicator: preview only, never in the exports.
 
@@ -114,10 +130,11 @@ created or updated. The change is checked by hand in the running app.
 - [x] ~~The arrow keys move 1 **preview** px (10 with Ctrl): the readout, in export px, jumps by
       several units per press. Kept as is, or out of this workfile's scope?~~ → Kept as is, out of
       scope
-- [ ] "Whenever the center moves": a change of the **image's own look** only (move, zoom, fine angle,
+- [x] ~~"Whenever the center moves": a change of the **image's own look** only (move, zoom, fine angle,
       quarter turn, flip, crop), or also a change of the **grid's geometry** that shifts it in export
       pixels (separator drag, layout, format, Borders' gap)? The Animations motion, moving the center
-      continuously, would keep the readout on forever: left out either way?
+      continuously, would keep the readout on forever: left out either way?~~ → The grid's geometry
+      too, on every image whose offset changes; the Animations motion left out
 
 ---
 
@@ -151,6 +168,17 @@ angle too, not only a move; the arrow keys' step stays as it is (out of scope); 
 mockup's D in full — **text, dot and dashed line** from the cell's center; the text is **kept inside
 the cell**. One question follows from "whenever": its boundary (Q&A 13).
 
+### Iteration 4 — 2026-10-07
+
+Answer to Q&A 13: the grid's geometry counts too. The rule becomes **an image staying in its cell
+whose offset in export pixels changes shows its readout**, whatever changed it, one readout per
+image. Consequences written into § When It Shows: a separator, the layout, the format, the Borders'
+gap, and the export canvas resized by another image all show the readouts of the images they shift;
+an image changing cell (arrival, replacement, shift, swap) does not; the Animations motion is left
+out, the readout reading its starting state. The hold during a drag extends to every mouse gesture
+(`InGesture`), a separator or a crop bar dragged included. Documentation steps added to the
+Implementation Log (README, GLOSSARY, RULES, with their French versions). No open question left.
+
 ---
 
 ## Implementation Log
@@ -162,7 +190,9 @@ says so rather than staying blank.
 |---|---|---|---|
 | Code | | | |
 | Unit tests | | | Not applicable: no test project |
-| README | | | |
+| README (+ `README.fr.md`) | | | |
+| GLOSSARY (+ `GLOSSARY.fr.md`) — the position readout | | | |
+| RULES — § On-Cell Helper Indicators, § Undo History (`ShowRestored`) | | | |
 
 ---
 
@@ -184,7 +214,7 @@ Questions asked by the agent during design, with user responses.
 | 10 | Arrow keys step 1 preview px, the readout jumping several export px: kept as is? | Kept as is — out of scope | 2026-10-07 |
 | 11 | Are the mockup's dot and dashed line part of the readout? | Yes — text, dot and dashed line | 2026-10-07 |
 | 12 | Near or past the cell's edge: text kept inside the cell, or cut? | Kept inside the cell | 2026-10-07 |
-| 13 | "Whenever the center moves": the image's own look only, or the grid's geometry (separators, layout, format, Borders' gap) too? | | 2026-10-07 |
+| 13 | "Whenever the center moves": the image's own look only, or the grid's geometry (separators, layout, format, Borders' gap) too? | The grid's geometry too — on every image whose offset changes; the Animations motion left out | 2026-10-07 |
 
 ---
 
