@@ -232,6 +232,7 @@ says so rather than staying blank.
 | README | 5 | 2026-10-07 | README.md / README.fr.md § Crop, Zoom, Blur, Format |
 | RULES.md | 5 | 2026-10-07 | § On-Cell Handles › Resizable Zones, § The Crop Exception, § Output Format |
 | Glossary | 5 | 2026-10-07 | GLOSSARY.md / GLOSSARY.fr.md: Crop edit view, Resizable zone, Free format |
+| Validation | 6 | 2026-10-07 | Task confirmed finished by the user |
 
 ---
 
