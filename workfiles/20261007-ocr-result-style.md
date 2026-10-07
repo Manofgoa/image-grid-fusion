@@ -75,8 +75,20 @@ File contents
 - It **always arrives vertically**: on the word's top-center, its head pointing **straight down**;
   on its bottom-center (the word above the bulb), **straight up**. The curve adapts to land that
   way — the head is never slanted.
-- The curve's exact shape: *open question*.
+- **Shape — an elbow-like arc**: it leaves the bulb **horizontally**, towards the word's side, and
+  turns to come down (or up) onto the word.
+- **The stroke enters the head through the middle of its flat base**, vertically: the head is an
+  upright triangle — its tip on the word's top- or bottom-center, its base horizontal — and the
+  curve ends at the **center of that base**, never on a slanted side. Where the word is too close
+  in height to the bulb for a vertical arrival (barely below it, or above it with its base below
+  the bulb), the curve **swings past the base and comes back into it**: its last stretch is always
+  vertical, from outside the triangle.
+- Geometry (a cubic Bézier, in the drawn tile's pixels): start on the bulb's edge, leaving
+  horizontally; end at the head's base center (the *neck*); first handle horizontal, towards the
+  neck; last handle vertical, on the side away from the tip, at least a minimum length so the
+  stroke enters the base from outside even when the neck is level with — or past — the start.
 - Off: today's straight arrow, its head along the line.
+- The halo follows the curve and the head, as today on the straight arrow.
 
 ### Color
 
@@ -112,8 +124,9 @@ create or update. The behaviour is checked by hand on the launched app.
 - [x] ~~The head's size: fixed at 7 px, or growing with the thickness?~~ → Grows: `3 + 2 × thickness`
 - [x] ~~The curve: how much and which way does it bend? (sketches asked)~~ → It bends so as to arrive
   vertically on the word's top- or bottom-center, the head pointing straight down or up
-- [ ] The curve's shape: leaving the bulb horizontally (an elbow-like arc), or along the straight
-  line and turning vertical near the word?
+- [x] ~~The curve's shape: leaving the bulb horizontally (an elbow-like arc), or along the straight
+  line and turning vertical near the word?~~ → The elbow-like arc, the stroke always entering the
+  head through the center of its flat base — swinging past it and back when needed
 - [x] ~~The color: a way back to the default amber in the menu, or the color dialog only?~~ → The color dialog only
 
 ---
@@ -147,6 +160,14 @@ Sketches shown (a fixed bow clockwise, outward, or stronger): none kept. The cur
 curve adapting to land there (Q&A #10). Its exact shape asked with two new sketches (Q&A #11).
 The straight arrow (option off) stays as today.
 
+### Iteration 4 — 2026-10-07
+
+Shape chosen (Q&A #11): the elbow-like arc leaving the bulb horizontally, with one requirement —
+the stroke reaches the head through the **center of its flat base**, vertically, the curve swinging
+past and back when the word is too close in height to the bulb. Sketch shown. Domain section
+*Curve* now gives the geometry (a cubic Bézier ending at the neck, its last handle vertical with a
+minimum length). No open question left.
+
 ---
 
 ## Implementation Log
@@ -178,7 +199,8 @@ Questions asked by the agent during design, with user responses.
 | 8 | The curve's bend: always clockwise ~15 %, outward from the tile's center, or more marked ~25 %? | Asked for small example sketches first | 2026-10-07 |
 | 9 | A way back to the default color? | The color dialog only | 2026-10-07 |
 | 10 | The curve's bend, from the sketches (A clockwise 15 %, B outward 15 %, C clockwise 25 %)? | None of them: the arrow must arrive above or below the word's center, its head pointing straight down or up — the curve adapts to land there | 2026-10-07 |
-| 11 | The curve's shape: horizontal start (elbow), or straight start turning vertical near the word? | | |
+| 11 | The curve's shape: horizontal start (elbow), or straight start turning vertical near the word? | The elbow (A), but the stroke must reach the triangle's flat part — tending towards its center when it would not arrive at the right place | 2026-10-07 |
+| 12 | Go for the implementation? (scope, where) | | |
 
 ---
 
