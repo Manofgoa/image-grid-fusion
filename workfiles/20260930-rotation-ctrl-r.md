@@ -24,7 +24,8 @@ Relevant components:
 | `Composition/ImageLook.cs` — `Rotate(int quarterTurns)` | A relative quarter turn (negative: counter-clockwise), turning the flips and the focus with it, activating the effect |
 | `Composition/ImageLook.cs` — `WithRotation(int degrees)` | What the options' 0° / 90° / 180° / 270° buttons use: an absolute angle, the fine angle back to 0 |
 | `UI/MainForm.cs` — `ChangeLook` | Applies an option to the selected image, turning the effect on from its kept settings first (RULES.md § Options Toolbar) |
-| `UI/GridPreview.cs` — `_hovered` | The hovered cell index, private today |
+| `UI/GridPreview.cs` — `SelectUnderPointer` | Selects the cell under the mouse pointer when it holds an image, else keeps the selection; whether an image is selected afterwards |
+| `UI/MainForm.cs` — `TurnQuarter` | The shortcuts' action: the target selected, the Rotate tab selected, the quarter turn applied through `ChangeLook` |
 
 ---
 
@@ -39,9 +40,11 @@ Relevant components:
 
 ### Target Cell
 
-- The **hovered cell** when the mouse is over a cell holding an image.
+- The **hovered cell** when the mouse is over a cell holding an image — read from the pointer's
+  position when the key is pressed, by the cells' slots, so a point in the gap between two cells
+  belongs to one of them, as for every hit-test.
 - Otherwise the **selected cell**.
-- Neither → the shortcut does nothing.
+- Neither → the shortcut does nothing, and no tab is selected.
 - The target cell **becomes the selected cell**, so the Rotate tab shows the options of the image
   that just turned.
 
@@ -49,6 +52,21 @@ Relevant components:
 
 Go given for **code and tests**, in a dedicated worktree (`feature/rotation-ctrl-r`), fast-forwarded
 into `main` at the end. The documentation (README) is not part of the go: declined.
+
+### Iteration 4 — 2026-10-07 — 🧭 Implementation choices
+
+- **Target read from the pointer, not the hover state**: `GridPreview.SelectUnderPointer` hit-tests
+  the pointer's position when the key is pressed (`CellAt`, by slots), so a key pressed without a
+  mouse move since the last turn still finds its cell.
+- **The quarter turn** is `ImageLook.WithRotation(Rotation ± 90)` — the rotation buttons' own
+  operation, the fine angle back to 0° — applied through `ChangeLook`, which turns the effect on from
+  its kept settings first.
+- **No cell under the pointer nor selected**: nothing happens, and the Rotate tab is not selected
+  either.
+- **Focus**: the shortcuts are taken whatever control holds the focus — no text field of the app
+  uses Ctrl+R.
+- **Tests**: the go asked for code and tests, but the repository holds no test project (§ Test
+  Impact). None written, and no test project created: it is outside the frozen scope.
 
 ### Effect State
 
@@ -62,6 +80,10 @@ into `main` at the end. The documentation (README) is not part of the go: declin
   shortcut.
 - It is **ignored while exporting**, like the effects toolbar (the export keeps the settings it
   started with).
+- It is taken **whatever control holds the focus**, a text field included: no text field of the app
+  uses Ctrl+R.
+- The undo history records each turn as a step, and the position readout shows when the turn moves
+  the image's center, both by themselves (RULES.md § Undo History, § Position Readout).
 
 ---
 
@@ -114,8 +136,8 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable: no test project |
+| Code | 4 | 2026-10-07 | `GridPreview.SelectUnderPointer`, `MainForm.TurnQuarter`, the two cases in `ProcessCmdKey` |
+| Unit tests | 4 | 2026-10-07 | Not applicable: no test project in the repository, none created (outside the scope) |
 | README | — | 2026-10-07 | Declined: not part of the go (code and tests only) |
 
 ---
