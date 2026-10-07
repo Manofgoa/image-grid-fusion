@@ -31,6 +31,8 @@ internal sealed class GridPreview : Control
     private const int BarMinGap = 8;
     private const int BarGripLength = 32;
     private const int BarGripWidth = 8;
+    private const int CornerArm = 16;
+    private const int CornerWidth = 6;
     private const int SeparatorReach = 4;
     private const int SeparatorSnap = 6;
     private const int PanResistance = 24;
@@ -104,6 +106,11 @@ internal sealed class GridPreview : Control
     private BarSide? _hoveredBar;
     private BarSide? _draggedBar;
     private int _barGrab;
+
+    // The corner of the bars hovered, the one dragged, and how far from it it was grabbed on each axis.
+    private BarCorner? _hoveredCorner;
+    private BarCorner? _draggedCorner;
+    private Size _cornerGrab;
     private bool _hoveringKept;
 
     // The crop's kept part being moved whole, and where the drag started.
@@ -307,8 +314,8 @@ internal sealed class GridPreview : Control
     /// history commits nothing before it ends.
     /// </summary>
     public bool InGesture =>
-        this._pressed >= 0 || this._draggedBar is not null || this._draggedSeparator is not null || this._movedCrop is not null
-        || this._live is not null || this._wheelEnd.Enabled;
+        this._pressed >= 0 || this._draggedBar is not null || this._draggedCorner is not null || this._draggedSeparator is not null
+        || this._movedCrop is not null || this._live is not null || this._wheelEnd.Enabled;
 
     /// <summary>Layout the images are shown and exported with; <c>null</c> while there is no image.</summary>
     public GridLayout? ActiveLayout => _layout;
@@ -335,6 +342,7 @@ internal sealed class GridPreview : Control
             {
                 _barsEffect = value;
                 _hoveredBar = null;
+                this._hoveredCorner = null;
                 Invalidate();
             }
         }
@@ -530,6 +538,7 @@ internal sealed class GridPreview : Control
         this._hoveringClose = false;
         this._hoveringHandle = false;
         this._hoveredBar = null;
+        this._hoveredCorner = null;
         this._hoveredSeparator = null;
         this._fittedName = null;
         this._cache?.Dispose();
@@ -887,6 +896,15 @@ internal sealed class GridPreview : Control
             return;
         }
 
+        // A corner of the bars comes before them, on both of their reaches: it moves the two meeting there.
+        if (this.ShownBars(index) is { } framed && this.CornerAt(this.CellBounds()[index], framed, e.Location) is { } corner)
+        {
+            this._draggedCorner = corner;
+            this._cornerGrab = new Size(SideOf(framed.Area, corner.Vertical) - e.X, SideOf(framed.Area, corner.Horizontal) - e.Y);
+            this.BeginLive(index);
+            return;
+        }
+
         // The bars of the blur, or of the crop, come before the handle and the pan, on their own reach only.
         if (ShownBars(index) is { } bars && BarAt(CellBounds()[index], bars, e.Location) is { } bar)
         {
@@ -953,6 +971,12 @@ internal sealed class GridPreview : Control
         if (_draggedSeparator is { } separator)
         {
             DragSeparator(separator, e.Location);
+            return;
+        }
+
+        if (this._draggedCorner is { } corner)
+        {
+            this.DragCorner(corner, e.Location);
             return;
         }
 
@@ -1024,9 +1048,10 @@ internal sealed class GridPreview : Control
             return;
         }
 
-        if (_draggedBar is not null || _movedCrop is not null)
+        if (_draggedBar is not null || this._draggedCorner is not null || _movedCrop is not null)
         {
             _draggedBar = null;
+            this._draggedCorner = null;
             _movedCrop = null;
             EndLive();
             UpdateRatio();
@@ -1080,7 +1105,7 @@ internal sealed class GridPreview : Control
         base.OnMouseWheel(e);
         int index = CellAt(e.Location);
         if (index < 0 || _locked || _pressed >= 0 || _draggedBar is not null || _draggedSeparator is not null || _movedCrop is not null
-            || EditsCrop(index))
+            || this._draggedCorner is not null || EditsCrop(index))
         {
             return;
         }
@@ -1114,9 +1139,10 @@ internal sealed class GridPreview : Control
             EndDrag();
         }
 
-        if (_draggedBar is not null || _movedCrop is not null)
+        if (_draggedBar is not null || this._draggedCorner is not null || _movedCrop is not null)
         {
             _draggedBar = null;
+            this._draggedCorner = null;
             _movedCrop = null;
             EndLive();
             UpdateRatio();
@@ -1129,10 +1155,12 @@ internal sealed class GridPreview : Control
     protected override void OnMouseLeave(EventArgs e)
     {
         base.OnMouseLeave(e);
-        if ((_hovered >= 0 || _hoveringCanvas || _hoveringDropZone) && !_dragging && !_panning && _draggedBar is null && _draggedSeparator is null)
+        if ((_hovered >= 0 || _hoveringCanvas || _hoveringDropZone) && !_dragging && !_panning && _draggedBar is null && this._draggedCorner is null
+            && _draggedSeparator is null)
         {
             _hovered = -1;
             _hoveredBar = null;
+            this._hoveredCorner = null;
             _hoveredSeparator = null;
             _hoveringClose = false;
             _hoveringHandle = false;
@@ -1373,12 +1401,15 @@ internal sealed class GridPreview : Control
         bool onHandle = actions && HandleBounds(CellBounds()[hovered]).Contains(location);
         var onSource = SourceHitAt(location);
         bool onControl = onClose || onDropZone || onCanvas || onSource.Icon;
-        var onBar = actions && !onControl && ShownBars(hovered) is { } bars ? BarAt(CellBounds()[hovered], bars, location) : null;
-        bool onKept = actions && !onControl && onBar is null && KeptPartAt(hovered, location);
-        var onSeparator = actions && !onControl && onBar is null && !onKept ? SeparatorAt(location) : null;
+        var onCorner = actions && !onControl && this.ShownBars(hovered) is { } framed
+            ? this.CornerAt(this.CellBounds()[hovered], framed, location)
+            : null;
+        var onBar = actions && !onControl && onCorner is null && ShownBars(hovered) is { } bars ? BarAt(CellBounds()[hovered], bars, location) : null;
+        bool onKept = actions && !onControl && onCorner is null && onBar is null && KeptPartAt(hovered, location);
+        var onSeparator = actions && !onControl && onCorner is null && onBar is null && !onKept ? SeparatorAt(location) : null;
         if (hovered == _hovered && onClose == _hoveringClose && onCanvas == _hoveringCanvas && onDropZone == _hoveringDropZone
-            && onHandle == _hoveringHandle && onBar == _hoveredBar && onKept == _hoveringKept && onSeparator?.Vertical == _hoveredSeparator?.Vertical
-            && onSource == (_hoveringSourceName, _hoveringSourceIcon))
+            && onHandle == _hoveringHandle && onCorner == this._hoveredCorner && onBar == _hoveredBar && onKept == _hoveringKept
+            && onSeparator?.Vertical == _hoveredSeparator?.Vertical && onSource == (_hoveringSourceName, _hoveringSourceIcon))
         {
             return;
         }
@@ -1390,10 +1421,12 @@ internal sealed class GridPreview : Control
         _hoveringCanvas = onCanvas;
         _hoveringDropZone = onDropZone;
         _hoveringHandle = onHandle;
+        this._hoveredCorner = onCorner;
         _hoveredBar = onBar;
         _hoveringKept = onKept;
         _hoveredSeparator = onSeparator;
         Cursor = onControl ? Cursors.Hand
+            : onCorner is { } corner ? CornerCursor(corner)
             : onBar is { } bar ? BarCursor(bar)
             : onKept ? Cursors.SizeAll
             : onSeparator is { } separator ? SeparatorCursor(separator)
@@ -2166,6 +2199,7 @@ internal sealed class GridPreview : Control
 
         _selected = index;
         _hoveredBar = null;
+        this._hoveredCorner = null;
         this._keyPan = null;
         Invalidate();
         SelectedImageChanged?.Invoke(this, EventArgs.Empty);
@@ -2248,15 +2282,8 @@ internal sealed class GridPreview : Control
             return;
         }
 
-        var span = bars.Span;
         bool vertical = side is BarSide.Left or BarSide.Right;
-        int length = Math.Max(1, vertical ? span.Width : span.Height);
-        int offset = (vertical ? location.X - span.X : location.Y - span.Y) + _barGrab;
-        int snap = LogicalToDeviceUnits(BarSnap);
-        double fraction = side is BarSide.Left or BarSide.Top
-            ? (offset <= snap ? 0 : offset / (double)length)
-            : (length - offset <= snap ? 1 : offset / (double)length);
-        double gap = LogicalToDeviceUnits(BarMinGap) / (double)length;
+        var (fraction, gap) = this.BarFraction(side, (vertical ? location.X : location.Y) + _barGrab, bars.Span);
         Cursor = BarCursor(side);
         var image = _images[_selected];
         var look = image.Look;
@@ -2267,6 +2294,95 @@ internal sealed class GridPreview : Control
         else if (look.Blur is { } blur)
         {
             SetLook(_selected, look.WithBlur(blur.WithSide(side, fraction, gap)));
+        }
+    }
+
+    /// <summary>
+    /// Where a bar of <paramref name="side"/> dragged to <paramref name="position"/> — on its own axis, its
+    /// grab offset included — lies in fractions of <paramref name="span"/>: within <see cref="BarSnap"/> of
+    /// its edge, exactly on it, so no strip of a pixel or two is left there. With the minimum gap between
+    /// it and the bar across, in the same fractions.
+    /// </summary>
+    private (double Fraction, double Gap) BarFraction(BarSide side, int position, Rectangle span)
+    {
+        bool vertical = side is BarSide.Left or BarSide.Right;
+        int length = Math.Max(1, vertical ? span.Width : span.Height);
+        int offset = position - (vertical ? span.X : span.Y);
+        int snap = this.LogicalToDeviceUnits(BarSnap);
+        double fraction = side is BarSide.Left or BarSide.Top
+            ? (offset <= snap ? 0 : offset / (double)length)
+            : (length - offset <= snap ? 1 : offset / (double)length);
+        return (fraction, this.LogicalToDeviceUnits(BarMinGap) / (double)length);
+    }
+
+    /// <summary>The corner of the bars within reach of <paramref name="location"/> on both axes, the nearest one when several are.</summary>
+    private BarCorner? CornerAt(Rectangle cell, Bars bars, Point location)
+    {
+        if (!cell.Contains(location))
+        {
+            return null;
+        }
+
+        int reach = this.LogicalToDeviceUnits(BarReach);
+        BarCorner? nearest = null;
+        int best = int.MaxValue;
+        foreach (var corner in Corners)
+        {
+            int dx = Math.Abs(location.X - SideOf(bars.Area, corner.Vertical));
+            int dy = Math.Abs(location.Y - SideOf(bars.Area, corner.Horizontal));
+            if (dx <= reach && dy <= reach && dx + dy < best)
+            {
+                nearest = corner;
+                best = dx + dy;
+            }
+        }
+
+        return nearest;
+    }
+
+    private static readonly BarCorner[] Corners =
+    [
+        new(BarSide.Left, BarSide.Top),
+        new(BarSide.Right, BarSide.Top),
+        new(BarSide.Left, BarSide.Bottom),
+        new(BarSide.Right, BarSide.Bottom),
+    ];
+
+    /// <summary>Where <paramref name="side"/> of <paramref name="area"/> lies, on its own axis.</summary>
+    private static int SideOf(Rectangle area, BarSide side) => side switch
+    {
+        BarSide.Left => area.Left,
+        BarSide.Right => area.Right,
+        BarSide.Top => area.Top,
+        _ => area.Bottom,
+    };
+
+    private static Cursor CornerCursor(BarCorner corner) =>
+        (corner.Vertical == BarSide.Left) == (corner.Horizontal == BarSide.Top) ? Cursors.SizeNWSE : Cursors.SizeNESW;
+
+    /// <summary>
+    /// Moves the corner being dragged with the mouse: the two bars meeting there together, each snapped
+    /// onto its edge like a bar. Under the crop's ratio, the opposite corner stays fixed and the ratio holds.
+    /// </summary>
+    private void DragCorner(BarCorner corner, Point location)
+    {
+        if (this.ShownBars(this._selected) is not { } bars)
+        {
+            return;
+        }
+
+        var (x, gapX) = this.BarFraction(corner.Vertical, location.X + this._cornerGrab.Width, bars.Span);
+        var (y, gapY) = this.BarFraction(corner.Horizontal, location.Y + this._cornerGrab.Height, bars.Span);
+        this.Cursor = CornerCursor(corner);
+        var image = this._images[this._selected];
+        var look = image.Look;
+        if (this._barsEffect == ImageEffect.Crop && look.Crop is { } crop)
+        {
+            this.SetLook(this._selected, look.WithCrop(crop.WithSeenCorner(corner, x, y, gapX, gapY, look, image.Bitmap.Size)));
+        }
+        else if (look.Blur is { } blur)
+        {
+            this.SetLook(this._selected, look.WithBlur(blur.WithSide(corner.Vertical, x, gapX).WithSide(corner.Horizontal, y, gapY)));
         }
     }
 
@@ -2429,7 +2545,7 @@ internal sealed class GridPreview : Control
     /// </summary>
     private void UpdateRatio()
     {
-        if (_draggedSeparator is not null || _draggedBar is not null || _movedCrop is not null)
+        if (_draggedSeparator is not null || _draggedBar is not null || this._draggedCorner is not null || _movedCrop is not null)
         {
             return;
         }
@@ -2559,7 +2675,44 @@ internal sealed class GridPreview : Control
         PaintBarGrip(g, BarSide.Right, new Rectangle(right - width / 2, midY - length / 2, width, length));
         PaintBarGrip(g, BarSide.Top, new Rectangle(midX - length / 2, top - width / 2, length, width));
         PaintBarGrip(g, BarSide.Bottom, new Rectangle(midX - length / 2, bottom - width / 2, length, width));
+        this.PaintCorners(g, left, top, right, bottom);
         g.Restore(state);
+    }
+
+    /// <summary>
+    /// The L-bracket at each corner of the rectangle the bars frame — <paramref name="left"/> to
+    /// <paramref name="bottom"/>, as the bars are drawn — its arms along the two bars meeting there,
+    /// thicker than them, never longer than half the rectangle: green over the black halo, white while
+    /// hovered or dragged.
+    /// </summary>
+    private void PaintCorners(Graphics g, int left, int top, int right, int bottom)
+    {
+        int half = this.LogicalToDeviceUnits(CornerWidth) / 2;
+        int armX = Math.Max(half, Math.Min(this.LogicalToDeviceUnits(CornerArm), (right - left) / 2));
+        int armY = Math.Max(half, Math.Min(this.LogicalToDeviceUnits(CornerArm), (bottom - top) / 2));
+        using var pen = new Pen(HelperHalo, this.LogicalToDeviceUnits(1));
+        foreach (var corner in Corners)
+        {
+            int x = corner.Vertical == BarSide.Left ? left : right;
+            int y = corner.Horizontal == BarSide.Top ? top : bottom;
+
+            // Inward from the corner: right and down from the top-left one.
+            int dx = corner.Vertical == BarSide.Left ? 1 : -1;
+            int dy = corner.Horizontal == BarSide.Top ? 1 : -1;
+            Point[] bracket =
+            [
+                new(x - dx * half, y - dy * half),
+                new(x + dx * armX, y - dy * half),
+                new(x + dx * armX, y + dy * half),
+                new(x + dx * half, y + dy * half),
+                new(x + dx * half, y + dy * armY),
+                new(x - dx * half, y + dy * armY),
+            ];
+            bool hot = this._hoveredCorner == corner || this._draggedCorner == corner;
+            using var brush = new SolidBrush(hot ? Color.White : HelperColor);
+            g.FillPolygon(brush, bracket);
+            g.DrawPolygon(pen, bracket);
+        }
     }
 
     /// <summary>
