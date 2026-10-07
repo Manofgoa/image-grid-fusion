@@ -52,9 +52,21 @@ Relevant components:
 | An undo / redo restore moves an image (its focus changes, not by a turn or a flip) | Shown briefly, as the zoom badge and the guides of `ShowRestored` |
 
 - **Timing**: the zoom badge's — full opacity for `ZoomBadgeHold` (1 s) after the last change, then
-  faded out over `ZoomBadgeFade` (0.3 s).
+  faded out over `ZoomBadgeFade` (0.3 s). During a **mouse drag**, it stays at full opacity while the
+  button is down, even with the mouse still: the hold and the fade start at the release.
 - **Look**: the zoom badge's — bold text of `ZoomBadgeTextSize`, `HelperColor` over the `HelperHalo`
-  outline, clipped to the cell. A helper indicator: preview only, never in the exports.
+  outline. A helper indicator: preview only, never in the exports.
+
+### Where and How It Reads
+
+- **At the image's center**, the text centered on it, following the image as it moves — wherever the
+  zoom badge is (top-right, below the ×): the two are independent and may show together.
+- **Two lines**: `x -35px`, then `y +12px` below it.
+  - A signed integer: `+` for a positive value, `-` (hyphen-minus) for a negative one, no sign for
+    `0` (`x 0px`).
+  - **x positive to the right, y positive downward** — the image's pixel rows, the screen's
+    convention.
+
 
 ---
 
@@ -71,11 +83,18 @@ created or updated. The change is checked by hand in the running app.
 
 ## Open Questions
 
-- [ ] Where does the readout sit in the cell, and how does it live beside the zoom badge?
-- [ ] Text format: `x −35  y +12`, `−35, +12 px`, two lines?
-- [ ] Sign of y: positive **downward** (the image's pixel rows, the screen's convention) or **upward**?
-- [ ] Mouse drag: strictly the zoom badge's timing (fades 1 s after the last move, even with the
-      button still held), or held while the button is down, the fade starting at release?
+- [x] ~~Where does the readout sit in the cell, and how does it live beside the zoom badge?~~ → At
+      the image's center, following the image; independent of the zoom badge (top-right)
+- [x] ~~Text format: `x −35  y +12`, `−35, +12 px`, two lines?~~ → Two lines, `x -35px` then `y +12px`
+- [x] ~~Sign of y: positive **downward** (the image's pixel rows, the screen's convention) or
+      **upward**?~~ → Downward
+- [x] ~~Mouse drag: strictly the zoom badge's timing (fades 1 s after the last move, even with the
+      button still held), or held while the button is down, the fade starting at release?~~ → Held
+      while the button is down; the hold and the fade start at the release
+- [ ] The mockup's option D also drew a **dot** on the image's center and a **dashed line** from the
+      cell's center to it: are they part of the readout, or the text only?
+- [ ] Near the cell's edge — or past it, an image pushed beyond its stops — the text centered on the
+      image's center would be cut by the cell: kept inside the cell, or cut?
 - [ ] A zoom or a fine angle that moves the image's center (the wheel keeping the point under the
       mouse, the image brought back within its stops): does it show the readout too?
 - [ ] The arrow keys move 1 **preview** px (10 with Ctrl): the readout, in export px, jumps by
@@ -97,6 +116,14 @@ center, in export pixels, shown on a mouse drag, an arrow-key move and an undo /
 moves the image, with the zoom badge's look and timing. Exploration done directly (one area,
 `GridPreview`, questions chaining): every move goes through `PanBy`; the zoom badge and the restore
 indicators give the timer, the paint and the restore hook to mirror.
+
+### Iteration 2 — 2026-10-07
+
+Answers to Q&A 5–8, from a mockup of four placements (below the ×, top-left, bottom-center, at the
+image's center): the readout sits **at the image's center** and follows it, independent of the zoom
+badge; **two lines**, `x -35px` / `y +12px`; **y positive downward**; during a mouse drag it is
+**held while the button is down**, its hold and fade starting at the release. Two questions follow
+from the placement chosen: the mockup's dot and dashed line, and the text near the cell's edge.
 
 ---
 
@@ -123,12 +150,14 @@ Questions asked by the agent during design, with user responses.
 | 2 | What do x and y stand for? | The offset from the center (0, 0 = centered, signed) | 2026-10-07 |
 | 3 | Which moves show the coordinates? | Mouse drag, arrow keys, undo / redo restore | 2026-10-07 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward — a single scout pass | 2026-10-07 |
-| 5 | Where does the readout sit (A below the ×, B top-left, C bottom-center, D at the image's center)? | | 2026-10-07 |
-| 6 | Text format? | | 2026-10-07 |
-| 7 | Sign of y: positive downward or upward? | | 2026-10-07 |
-| 8 | Mouse drag: zoom badge's timing strictly, or held while the button is down? | | 2026-10-07 |
+| 5 | Where does the readout sit (A below the ×, B top-left, C bottom-center, D at the image's center)? | D — at the image's center, following the image | 2026-10-07 |
+| 6 | Text format? | Two lines: `x -35px` then `y +12px` | 2026-10-07 |
+| 7 | Sign of y: positive downward or upward? | Downward | 2026-10-07 |
+| 8 | Mouse drag: zoom badge's timing strictly, or held while the button is down? | Held while the button is down; 1 s after the release, then the fade | 2026-10-07 |
 | 9 | Does a zoom or a fine angle moving the image's center show the readout too? | | 2026-10-07 |
 | 10 | Arrow keys step 1 preview px, the readout jumping several export px: kept as is? | | 2026-10-07 |
+| 11 | Are the mockup's dot and dashed line part of the readout? | | 2026-10-07 |
+| 12 | Near or past the cell's edge: text kept inside the cell, or cut? | | 2026-10-07 |
 
 ---
 
