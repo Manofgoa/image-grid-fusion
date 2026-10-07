@@ -127,6 +127,10 @@ internal sealed class MainForm : Form
     // A log scale, in hundredths of a doubling: 50 % → 100 % and each doubling take the same length.
     private readonly StepSlider _zoom = OptionSlider((int)Math.Round(Math.Log2(ImageLook.MinZoom) * 100), (int)Math.Round(Math.Log2(ImageLook.MaxZoom) * 100), 10);
     private readonly Label _zoomLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+
+    // The zoom's fit modes, exclusive: at most one pressed, from the look of the selected image.
+    private readonly CheckBox _zoomContain = OptionButton("Contain");
+    private readonly CheckBox _zoomFill = OptionButton("Fill");
     private readonly ComboBox _motionKind = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 90, Anchor = AnchorStyles.Left };
 
     // Minus the duration of one back-and-forth, in seconds: the right end is the fastest.
@@ -369,7 +373,7 @@ internal sealed class MainForm : Form
         _optionsHost.Controls.AddRange([.. _options.Values]);
         _options[ImageEffect.Background].Controls.AddRange([_backgroundAutomatic, _backgroundOpacityIcon, _backgroundOpacity, _backgroundOpacityLabel, _backgroundColor]);
         _options[ImageEffect.Crop].Controls.AddRange([.. _cropRatios.Select(r => r.Button), this._cropWhole]);
-        _options[ImageEffect.Zoom].Controls.AddRange([_zoom, _zoomLabel]);
+        _options[ImageEffect.Zoom].Controls.AddRange([_zoom, _zoomLabel, this._zoomContain, this._zoomFill]);
         this._motionKind.Items.AddRange(Enum.GetNames<MotionKind>());
         this._motionKind.SelectedIndex = (int)MotionEffect.Default.Kind;
         this._motionCycle.Value = -(int)MotionEffect.Default.Cycle.TotalSeconds;
@@ -502,6 +506,10 @@ internal sealed class MainForm : Form
         _resetButton.Click += (_, _) => ResetEffects();
         _zoom.ValueChanged += (_, _) => SetZoom();
         this._zoom.Wheel = this.StepZoom;
+        this._zoomContain.Click += (_, _) => this.SetZoomFit(ZoomFit.Contain);
+        this._zoomFill.Click += (_, _) => this.SetZoomFit(ZoomFit.Fill);
+        _toolTip.SetToolTip(this._zoomContain, "Keeps the whole image in its cell, whatever its size: bands on one side");
+        _toolTip.SetToolTip(this._zoomFill, "Keeps the cell covered by the image, whatever its size: the overflow cropped");
         this._toolTip.SetToolTip(this._motionKind, "The kind of animation played in the cell");
         this._toolTip.SetToolTip(this._motionCycle, "How long one back-and-forth lasts: further right, faster");
         this._motionKind.SelectedIndexChanged += (_, _) => this.ChangeMotion(motion => motion.WithKind((MotionKind)this._motionKind.SelectedIndex));
@@ -2300,12 +2308,29 @@ internal sealed class MainForm : Form
             return;
         }
 
-        double current = look.TurnOn(ImageEffect.Zoom).Zoom;
+        double current = this._preview.SelectedZoom(look.TurnOn(ImageEffect.Zoom));
         double zoom = Math.Clamp(WheelSteps.Zoom(current * 100, notches, fine) / 100, ImageLook.MinZoom, ImageLook.MaxZoom);
         _syncingEffects = true;
         _zoom.Value = Math.Clamp((int)Math.Round(Math.Log2(zoom) * 100), _zoom.Minimum, _zoom.Maximum);
         _syncingEffects = false;
         ApplyZoom(zoom);
+    }
+
+    /// <summary>
+    /// A fit mode's button: the image put in that mode, the other one left; the pressed one unpressed
+    /// leaves the mode, the zoom kept as it was shown.
+    /// </summary>
+    private void SetZoomFit(ZoomFit fit)
+    {
+        if (this._preview.SelectedImage?.Look is not { } look)
+        {
+            return;
+        }
+
+        // Acting on an option turns its effect on, from the settings it kept (RULES.md).
+        var zoomed = look.TurnOn(ImageEffect.Zoom);
+        this._preview.SetSelectedLook(zoomed);
+        this._preview.FitSelected(zoomed.ZoomFit == fit ? ZoomFit.None : fit);
     }
 
     private void ApplyZoom(double zoom)
@@ -2472,7 +2497,10 @@ internal sealed class MainForm : Form
                 }
             }
 
-            _zoom.Value = Math.Clamp((int)Math.Round(Math.Log2(look.TurnOn(ImageEffect.Zoom).Zoom) * 100), _zoom.Minimum, _zoom.Maximum);
+            var zoomed = look.TurnOn(ImageEffect.Zoom);
+            _zoom.Value = Math.Clamp((int)Math.Round(Math.Log2(this._preview.SelectedZoom(zoomed)) * 100), _zoom.Minimum, _zoom.Maximum);
+            this._zoomContain.Checked = zoomed.ZoomFit == ZoomFit.Contain;
+            this._zoomFill.Checked = zoomed.ZoomFit == ZoomFit.Fill;
             if (look.TurnOn(ImageEffect.Animations).Motion is { } motion)
             {
                 this._motionKind.SelectedIndex = (int)motion.Kind;
@@ -2527,7 +2555,7 @@ internal sealed class MainForm : Form
             }
         }
 
-        _zoomLabel.Text = $"Zoom: {(look?.TurnOn(ImageEffect.Zoom).Zoom ?? 1) * 100:0} %";
+        _zoomLabel.Text = $"Zoom: {this._preview.SelectedZoom(look?.TurnOn(ImageEffect.Zoom)) * 100:0} %";
         _fineAngleLabel.Text = AngleText(_fineAngle.Value);
         this._motionCycleLabel.Text = CycleText(-this._motionCycle.Value);
         UpdateFramesLabel();
