@@ -163,6 +163,10 @@ fast-forwarded into `main` and removed at the end. No unit test: no test project
   what it saves stays there.
 - Merged: rebased onto `main` (no conflict), fast-forwarded, worktree and branch removed.
 
+### Iteration 6 — 2026-10-07
+
+Tested by the user on the launched app: task finished.
+
 ---
 
 ## Implementation Log
