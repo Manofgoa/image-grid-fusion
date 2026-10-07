@@ -148,6 +148,16 @@ converted for the motion's zoom.
 Open questions answered: Contain / Fill keep the image's center too — every zoom route follows one
 rule; the 10 % coverage stays, the only case where a zoom moves the image. No open question left.
 
+### Iteration 3 — 2026-10-07 — ✅ Implemented
+
+Go for code and documentation, on the current checkout (`main`, the app's standing choice), once
+the recently finished sessions are checked for an impact. Checked: `c028fa3`
+(`20261007-resizable-zone-alt-zoom`, finished) makes Alt + wheel over a resizable zone call
+`ZoomAt` "exactly as without bars" — it inherits the rule — and, in the crop edit view, zoom around
+the image point under the cursor (`ZoomAt`'s `at` argument, `GridPreview.KeptPartPoint`): a zoom
+route the rule now covers too (see the implementation choices). The other sessions (background
+edge extension, search options, kebab-case folders, index folder naming) do not touch the zoom.
+
 ---
 
 ## Implementation Log
@@ -175,6 +185,7 @@ Questions asked by the agent during design, with user responses.
 | 4 | Straightforward or tricky? | Straightforward | 2026-10-07 |
 | 5 | Contain / Fill: keep the image's center too? | Yes, like the other routes | 2026-10-07 |
 | 6 | Keep the 10 % coverage guarantee on a zoom out? | Yes, kept | 2026-10-07 |
+| 7 | Go — scope and where? | Check the recently finished sessions for an impact, then go: code and documentation, current checkout | 2026-10-07 |
 
 ---
 
