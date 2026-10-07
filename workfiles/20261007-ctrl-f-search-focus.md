@@ -89,6 +89,12 @@ pass — `ProcessCmdKey` already whitelists `Escape` for the box, `SetOpen` alre
 Open questions answered (Q&A 5–6): `Escape` keeps the text and only moves the focus to the grid;
 `Ctrl+F` is shown in the placeholder of both views, no tooltip.
 
+### Iteration 3 — 2026-10-07 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a dedicated worktree
+(`.claude/worktrees/ctrl-f-search-focus`, branch `feature/ctrl-f-search-focus`), fast-forwarded into
+`main` and removed at the end.
+
 ---
 
 ## Implementation Log
