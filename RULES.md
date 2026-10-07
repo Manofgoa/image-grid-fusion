@@ -325,8 +325,12 @@ The offset of an image from its cell's center, shown while it changes (origin:
   the zoom read through `ImageLook.ZoomIn`) from the cell's center, in the pixels of the **PNG
   export** of the grid as it stands — the canvas `CanvasSizer.Compute` gives, the cells of
   `Compositor.Cells` (`GridPreview.ExportOffsets`): x to the right, y downward, rounded.
-- It is drawn at the image's center: a dot, a dashed line from the cell's center (none at `0, 0`),
-  and `x -35px` over `y +12px` below the dot, pushed back inside the cell near an edge.
+- An **X cross** (strokes of 30 px) on the image's center, a dashed line to it from the cell's center
+  at **50 % opacity** (none at `0, 0`), and `x -35px` over `y +12px` in the cell's **top-right
+  corner**, right-aligned below the × — the zoom badge's place — or below the zoom badge when it shows
+  on the same cell.
+- While it shows, the cell's **✥ swap handle is hidden**, neither drawn nor grabbed
+  (`GridPreview.HandleOf`): a press at the center keeps moving the image.
 - **One rule decides when it shows**: an image **staying in its cell** whose offset changes,
   whatever changed it — a move, its look, the grid's geometry, the export canvas, a restore. It is
   checked at each paint against the offsets last painted (`GridPreview.UpdateReadouts`), so a new
