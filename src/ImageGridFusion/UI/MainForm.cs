@@ -889,7 +889,11 @@ internal sealed class MainForm : Form
 
         // The preview focused, the arrows move the selected image within its cell, whatever tab is selected;
         // any other focused control keeps them (see workfiles/20261006-keyboard-image-move.md).
-        if (this._preview.Focused && !this.IsExporting && ArrowMove(keyData) is { } delta && this._preview.PanSelected(delta))
+        // Ctrl + Shift jumps to the next stop instead.
+        if (this._preview.Focused && !this.IsExporting && ArrowDirection(keyData) is { } direction
+            && ((keyData & (Keys.Control | Keys.Shift)) == (Keys.Control | Keys.Shift)
+                ? this._preview.JumpSelected(direction)
+                : this._preview.PanSelected(direction * ((keyData & Keys.Control) != 0 ? ArrowControlStep : ArrowStep))))
         {
             return true;
         }
@@ -924,21 +928,16 @@ internal sealed class MainForm : Form
     }
 
     /// <summary>
-    /// The move an arrow key asks for, in screen pixels: <see cref="ArrowStep"/>, or
-    /// <see cref="ArrowControlStep"/> with Ctrl; Shift leaves the step as it is. <c>null</c> for any other key.
+    /// The direction of an arrow key, a unit step, Ctrl and Shift held or not; <c>null</c> for any other key.
     /// </summary>
-    private static Size? ArrowMove(Keys keyData)
+    private static Size? ArrowDirection(Keys keyData) => (keyData & ~(Keys.Control | Keys.Shift)) switch
     {
-        int step = (keyData & Keys.Control) != 0 ? ArrowControlStep : ArrowStep;
-        return (keyData & ~(Keys.Control | Keys.Shift)) switch
-        {
-            Keys.Left => new Size(-step, 0),
-            Keys.Right => new Size(step, 0),
-            Keys.Up => new Size(0, -step),
-            Keys.Down => new Size(0, step),
-            _ => null,
-        };
-    }
+        Keys.Left => new Size(-1, 0),
+        Keys.Right => new Size(1, 0),
+        Keys.Up => new Size(0, -1),
+        Keys.Down => new Size(0, 1),
+        _ => null,
+    };
 
     private static void OnDragEnter(object? sender, DragEventArgs e)
     {
