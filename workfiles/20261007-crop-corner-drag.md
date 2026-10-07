@@ -91,8 +91,12 @@ When a ratio is kept (1:1, 4:3, 16:9, 9:16):
 - Drawn in `PaintBars` with the grips (`grips: true`) — so it shows only while the bars are
   handles, for the crop and the blur, never on the indicators an undo shows briefly
   (`PaintRestored`, `grips: false`).
-- Proposed size: arms of **16 logical px** from the corner, **6 logical px** thick
-  (`BarGripWidth` is 8, the bars 2). Adjusted at implementation if it hides too much of the image.
+- Size: arms of **16 logical px** from the corner (`CornerArm`), **6 logical px** thick
+  (`CornerWidth`; `BarGripWidth` is 8, the bars 2), outlined by a 1 px halo like the grips. An arm is
+  **never longer than half the rectangle** on its axis, so the four brackets never overlap on a
+  small kept part.
+- While a corner is hovered, no bar counts as hovered: the middle grips stay green, only the
+  bracket turns white.
 
 ---
 
@@ -167,6 +171,25 @@ Open questions answered (Q&A #5–7):
 Go given: code, unit tests and documentation (no test project — nothing to pin, see § Test
 Impact). Branch Gate: stays on `main`, the repository's standing choice.
 
+### Iteration 4 — 2026-10-07 — 🧭 Implementation choices
+
+No rule broken. Choices the frozen design did not state:
+
+- **`BarCorner`** (`Composition/BlurEffect.cs`, next to `BarSide`): a record struct of the vertical
+  and the horizontal side meeting at a corner — the hovered and dragged corner, compared by value.
+- **`CropEffect.WithSeenCorner`** carries the whole corner rule (free and under a ratio); the blur
+  needs no new method: `WithSide` is applied for each of the two sides.
+- **`GridPreview.BarFraction`** extracted from `DragBar`: the snapped fraction and the minimum gap
+  of one bar, shared by `DragBar` and `DragCorner` so a corner snaps exactly as a bar.
+- **Corner reach**: the nearest corner by `dx + dy` when several are within reach (a tiny
+  rectangle).
+- **Hover**: a hovered corner clears the hovered bar, the kept part and the separator, so only its
+  bracket turns white; the wheel is ignored while a corner is dragged, like a bar.
+- **Bracket**: drawn as one 6-point polygon (filled, then outlined with the halo), its arms capped
+  at half the rectangle — see § Rendering.
+- **French docs**: the bracket is a *crochet en L*, the glossary's term for the Corners style's
+  L-bracket.
+
 ---
 
 ## Implementation Log
@@ -176,10 +199,11 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
-| GLOSSARY | | | |
+| Code | 3 | 2026-10-07 | `BarCorner`, `CropEffect.WithSeenCorner`; `GridPreview`: `CornerAt`, `DragCorner`, `BarFraction`, `PaintCorners` |
+| Unit tests | 3 | 2026-10-07 | None — no test project (§ Test Impact) |
+| README | 3 | 2026-10-07 | § Crop, § Blur, § Resizing the cells — EN and FR |
+| GLOSSARY | 3 | 2026-10-07 | *Crop edit view* — EN and FR |
+| Manual validation | | | Pending — the app launched for the user |
 
 ---
 
