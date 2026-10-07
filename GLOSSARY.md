@@ -36,6 +36,7 @@ each.
 | Effect tab (*onglet*) | One effect's tab in the effects toolbar, holding its activation checkbox; the selected tab is the one whose options show |
 | Activation checkbox | The checkbox in an effect tab: checked while the effect is on for the selected cell |
 | Animations (*animations*) | The cell effect playing a motion in the cell on the grid's clock, its kind chosen in a Type drop-down — **Zoom** only for now: in to +20 % and back, on a sine, one back-and-forth every 1 to 30 s (6 s by default). Its cycle is a playing loop: it counts in the video length and draws a progress line on a still. At time 0, its **starting state**, the one a PNG shows (`MotionEffect`, `ImageLook.Motion`) |
+| Fit mode (*mode d'ajustement*) | The Zoom effect's **Contain** or **Fill** button pressed: the zoom computed from the cell and the image (`ImageLook.ZoomFit`, `ImageLook.ZoomIn`) — the whole image in the cell, or the cell covered — so it stays fitted when either changes shape; the wheel, the slider or unpressing it leave it for the free zoom it gave |
 | Fine angle | The Rotate effect's ±45° added to the quarter turn, the image zoomed to keep covering its cell |
 | Starting point | Where the Frames effect makes an animated image start playing |
 | Frozen | An animated image the Frames effect holds on one frame, shown and exported as a still |
