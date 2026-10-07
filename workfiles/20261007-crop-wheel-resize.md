@@ -78,10 +78,17 @@ the geometry is **one shared helper** for every zone, in `Composition/`.
   it.
 - A ratio kept by a crop button stays **exactly** that ratio; a Free kept part and the sharp rectangle
   keep their proportions up to the rounding of the fractions.
-- New members: the shared helper (e.g. `ZoneScale.Scaled(RectangleF zone, double factor, PointF anchor, double minWidth, double minHeight)`,
-  all in fractions of the bounds), then `CropEffect.ScaledSeen(factor, anchor, minWidth, minHeight, look)`
-  and `BlurEffect.Scaled(factor, anchor, minWidth, minHeight)` built on it; `GridPreview` converts
-  the cursor and `BarMinGap` through the bars' span (`ShownBars(...).Span`).
+- A notch down never grows a zone already below the minimum (it stays as it is).
+- New members: the shared helper `ZoneScale.Scaled(RectangleF zone, int notches, PointF? anchor, double minWidth, double minHeight)`
+  (`Composition/ZoneScale.cs`, all in fractions of the bounds, a `null` anchor meaning the zone's
+  center, `ZoneScale.NotchFactor` = 1.05), then `CropEffect.ScaledSeen(notches, anchor, minWidth, minHeight, look)`
+  and `BlurEffect.Scaled(notches, anchor, minWidth, minHeight)` built on it; `GridPreview.ScaleZone`
+  converts the cursor and `BarMinGap` through the bars' span (`ShownBars(...).Span`) and calls the
+  effect of the selected tab. `OnMouseWheel` routes a notch there whenever `ShownBars(cell)` is not
+  null, to `ZoomAt` otherwise.
+- The Free-format hold is the flag `GridPreview._wheelHoldsRatio`, set by a crop notch, read by
+  `UpdateRatio`, released by `EndLive` — the wheel's end, or any other gesture taking over — which
+  then computes the ratio again.
 
 ## Interplay
 
@@ -115,7 +122,8 @@ the geometry is **one shared helper** for every zone, in `Composition/`.
   bounds, the shared helper; § The Crop Exception: the edit view's description gains the wheel;
   § Output Format: the Free ratio held during a crop wheel burst too.
 - **GLOSSARY.md / GLOSSARY.fr.md**: *Crop edit view* gains *the wheel scaling the kept part*;
-  *Free format* is held during a crop wheel burst too.
+  *Free format* is held during a crop wheel burst too; a new term, *Resizable zone* (*zone
+  dimensionnable*), the one RULES.md names.
 
 ---
 
@@ -188,6 +196,28 @@ by its code: the **sharp rectangle** (`BlurEffect`), the bands around it blurred
 more of the cell sharp. The corner drag (`workfiles/20261007-crop-corner-drag.md`) is already on
 main, Blur included.
 
+### Iteration 6 — 2026-10-07 — 🧭 Implementation choices
+
+- ⚠️ **Rule broken — the launch path** (`CLAUDE.md` § Launch): the exe under
+  `src/ImageGridFusion/bin/Debug/…` was locked by a running instance (PID 47664, no second title —
+  not started by this session), so the build failed to copy it. It was not killed: the build was
+  sent to the session's scratchpad (`dotnet build -o …\scratchpad\build`) and launched from there,
+  with `--title` as the rule asks. Why: no compliant option without closing an instance someone
+  may be testing. Autonomous run: reported instead of asked.
+- **Signatures**: the helper takes the **notches** (`int`) rather than a factor, and a **nullable
+  anchor** (`null` = the zone's center), so the 1.05 factor lives in one place
+  (`ZoneScale.NotchFactor`) and the center is computed from the zone being scaled.
+- **A notch down never grows** a zone already below the minimum gap (it can be after a window
+  shrink): it stays as it is.
+- **The Free-format hold** is released by `EndLive`, not by the wheel's timer alone: any gesture
+  taking over ends it and computes the ratio again, so it can never stay held.
+- **The crop wheel shows live** through `BeginLive` / `EndLive`, like the zoom wheel — what keeps
+  `InGesture` true for the undo history.
+- **Glossary**: a new term, *Resizable zone*, since RULES.md now names it (§ On-Cell Handles ›
+  Resizable Zones).
+- **README**: the Crop section does not repeat that a wheel burst is one undo step — § Undo
+  already says it (one place per fact).
+
 ---
 
 ## Implementation Log
@@ -197,9 +227,11 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 5 | 2026-10-07 | `ZoneScale`, `CropEffect.ScaledSeen`, `BlurEffect.Scaled`; `GridPreview.OnMouseWheel` / `ScaleZone`, the Free-format hold |
 | Unit tests | — | — | Not applicable: no test project |
-| README | | | |
+| README | 5 | 2026-10-07 | README.md / README.fr.md § Crop, Zoom, Blur, Format |
+| RULES.md | 5 | 2026-10-07 | § On-Cell Handles › Resizable Zones, § The Crop Exception, § Output Format |
+| Glossary | 5 | 2026-10-07 | GLOSSARY.md / GLOSSARY.fr.md: Crop edit view, Resizable zone, Free format |
 
 ---
 
