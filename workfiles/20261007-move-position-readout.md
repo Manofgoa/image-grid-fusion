@@ -28,7 +28,7 @@ Relevant components:
 | `Composition/ImageLook.cs` — `Focus`, `ZoomIn` | The move, stored as the point of the oriented image kept at the cell's center; the zoom, read through `ZoomIn(cell, shown)` — the fit mode resolved — never `Zoom` (RULES.md § Effects › Rendering) |
 | `Composition/FitCalculator.cs` — `ComputeTurned` | Where the image is drawn in a cell: its box (`Bounds`), the turned image's when it has a fine angle |
 | `Composition/CanvasSizer.cs` — `Compute`; `Composition/Compositor.cs` — `Cells` | The export canvas and its cells (shrunk by the Borders' gap) |
-| `UI/GridPreview.cs` — `ExportOffsets`, `UpdateReadouts`, `OnReadoutTick`, `ScheduleReadouts`, `PaintReadouts`, `PaintReadout`, `ReadoutPath` | **The readout** (implemented): the offsets in export px; their comparison at each paint with the ones last painted, showing the readouts that changed; their timer; their paint |
+| `UI/GridPreview.cs` — `ExportOffsets`, `UpdateReadouts`, `OnReadoutTick`, `ScheduleReadouts`, `PaintReadouts`, `PaintReadout`, `ReadoutPath`, `HandleOf`, `InvalidateReadoutOf` | **The readout** (implemented): the offsets in export px; their comparison at each paint with the ones last painted, showing the readouts that changed; their timer; their paint |
 
 ---
 
@@ -260,6 +260,12 @@ Requested after testing the delivery:
 - During a move, the cell's **✥ swap handle is hidden**. Read as: hidden — neither drawn nor
   grabbed — while the cell's readout shows, so a press at the center keeps moving the image.
 
+Done: the text right-aligned below the × at the zoom badge's place, or `ButtonGap` below the badge's
+text when it shows over the same image, the cell repainted when the badge comes or goes
+(`InvalidateReadoutOf`); the cross 30 px a stroke, 2 px wide, over the halo; the line and its halo at
+half opacity; the handle through `HandleOf`, empty while the readout shows, at every place that drew
+or hit-tested it (paint, press, hover, the crop's kept part).
+
 ---
 
 ## Implementation Log
@@ -269,11 +275,11 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 7, 8 | 2026-10-07 | `GridPreview`: offsets, detection at paint, timer, paint |
+| Code | 7, 8, 9 | 2026-10-07 | `GridPreview`: offsets, detection at paint, timer, paint; Iteration 9: text in the top-right, cross, line at 50 %, handle hidden |
 | Unit tests | 7 | 2026-10-07 | Not applicable: no test project |
-| README (+ `README.fr.md`) | 7 | 2026-10-07 | The readout under the zoom badge's line; the restore's indicators |
-| GLOSSARY (+ `GLOSSARY.fr.md`) — the position readout | 7 | 2026-10-07 | New entry *Position readout* |
-| RULES — § On-Cell Helper Indicators, § Undo History (`ShowRestored`) | 8 | 2026-10-07 | New § Position Readout; § Undo History names the readout and its exception |
+| README (+ `README.fr.md`) | 7, 9 | 2026-10-07 | The readout under the zoom badge's line; the restore's indicators |
+| GLOSSARY (+ `GLOSSARY.fr.md`) — the position readout | 7, 9 | 2026-10-07 | New entry *Position readout* |
+| RULES — § On-Cell Helper Indicators, § Undo History (`ShowRestored`) | 8, 9 | 2026-10-07 | New § Position Readout; § Undo History names the readout and its exception |
 
 ---
 
