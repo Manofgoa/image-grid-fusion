@@ -1137,11 +1137,10 @@ internal sealed class GridPreview : Control
     }
 
     /// <summary>
-    /// The wheel zooms the cell under the mouse, around the point under it, by steps of 5 % — 1 % with
+    /// The wheel zooms the cell under the mouse, around the image's own center, by steps of 5 % — 1 % with
     /// Control held, coarser above 200 % (<see cref="WheelSteps.Zoom"/>); not while another gesture runs.
     /// Over the selected cell showing the bars of a resizable zone, it scales that zone instead
-    /// (<see cref="ScaleZone"/>) — unless Alt is held: it then zooms the image as without bars, around the
-    /// point of the image under the mouse in the crop's edit view (<see cref="KeptPartPoint"/>).
+    /// (<see cref="ScaleZone"/>) — unless Alt is held: it then zooms the image as without bars.
     /// </summary>
     protected override void OnMouseWheel(MouseEventArgs e)
     {
@@ -1169,18 +1168,13 @@ internal sealed class GridPreview : Control
         }
 
         BeginLive(index);
-        var bars = this.ShownBars(index);
-        if (bars is { } zone && !this._wheelWithAlt)
+        if (this.ShownBars(index) is { } zone && !this._wheelWithAlt)
         {
             this.ScaleZone(zone, e.Location, notches, _wheelWithControl);
         }
-        else if (bars is { } kept && this.EditsCrop(index))
-        {
-            this.ZoomAt(index, e.Location, notches, _wheelWithControl, KeptPartPoint(kept, e.Location));
-        }
         else
         {
-            ZoomAt(index, e.Location, notches, _wheelWithControl);
+            this.ZoomAt(index, notches, _wheelWithControl);
         }
 
         _wheelEnd.Start();
@@ -1857,7 +1851,7 @@ internal sealed class GridPreview : Control
 
     /// <summary>
     /// Sets the zoom of the selected image, from the options of the zoom effect: shown fast while the
-    /// slider moves, in full once it rests. A zoom always brings the image back within its stops.
+    /// slider moves, in full once it rests. A zoom keeps the image's center where it is.
     /// </summary>
     public void ZoomSelected(double zoom)
     {
@@ -1868,17 +1862,19 @@ internal sealed class GridPreview : Control
         }
 
         var image = _images[_selected];
-        var zoomed = image.Look.WithZoom(zoom);
+        var look = image.Look;
+        var cell = cells[_selected];
+        var zoomed = look.WithZoom(zoom);
         var size = zoomed.Shown(image.Bitmap.Size);
         BeginLive(_selected);
-        SetLook(_selected, zoomed.WithFocus(FitCalculator.WithinStops(cells[_selected], size, zoomed.Zoom, zoomed.Focus, zoomed.FineAngle)));
+        SetLook(_selected, zoomed.WithFocus(FitCalculator.FocusKeepingCenter(cell, size, look.ZoomIn(cell, size), zoomed.Zoom, look.Focus, look.FineAngle)));
         ShowZoomBadge(image);
         _wheelEnd.Start();
     }
     /// <summary>
-    /// Puts the selected image in a fit mode, from the options of the zoom effect, the image kept where it
-    /// was moved and brought back within its stops; <see cref="ZoomFit.None"/> leaves the mode for the
-    /// free zoom it gave in the cell, so nothing moves.
+    /// Puts the selected image in a fit mode, from the options of the zoom effect, the image's center
+    /// kept where it is; <see cref="ZoomFit.None"/> leaves the mode for the free zoom it gave in the
+    /// cell, so nothing moves.
     /// </summary>
     public void FitSelected(ZoomFit fit)
     {
@@ -1893,7 +1889,8 @@ internal sealed class GridPreview : Control
         var look = image.Look;
         var fitted = fit == ZoomFit.None ? look.WithZoom(ZoomOf(image, cell)) : look.WithZoomFit(fit);
         var size = fitted.Shown(image.Bitmap.Size);
-        this.SetLook(this._selected, fitted.WithFocus(FitCalculator.WithinStops(cell, size, fitted.ZoomIn(cell, size), fitted.Focus, fitted.FineAngle)));
+        var focus = FitCalculator.FocusKeepingCenter(cell, size, look.ZoomIn(cell, size), fitted.ZoomIn(cell, size), look.Focus, look.FineAngle);
+        this.SetLook(this._selected, fitted.WithFocus(focus));
         this.ShowZoomBadge(image);
     }
 
@@ -1914,11 +1911,10 @@ internal sealed class GridPreview : Control
     /// <summary>
     /// Zooms by <paramref name="notches"/> of the wheel, each moving the zoom onto the next multiple of
     /// its step — the finer one when <paramref name="fine"/> (<see cref="WheelSteps.Zoom"/>) —
-    /// keeping the point of the image under <paramref name="location"/> in place as far as the image
-    /// stays within its stops — or the point <paramref name="at"/>, in fractions of the image shown,
-    /// where it is drawn; lands on 100 % when crossing it.
+    /// around the image's own center, which stays where it is (<see cref="FitCalculator.FocusKeepingCenter"/>);
+    /// lands on 100 % when crossing it.
     /// </summary>
-    private void ZoomAt(int index, Point location, int notches, bool fine, PointF? at = null)
+    private void ZoomAt(int index, int notches, bool fine)
     {
         var cells = CellBounds();
         if (index >= cells.Length)
@@ -1939,23 +1935,8 @@ internal sealed class GridPreview : Control
             zoom = 1;
         }
 
-        // The point under the mouse, where it is actually shown, then the placement that keeps it there.
         var zoomed = look.WithZoom(zoom);
-        var before = FitCalculator.ComputeTurned(cell, size, look.ZoomIn(cell, size), look.Focus, look.FineAngle).Fit.Image;
-        var after = FitCalculator.DrawnSize(cell, size, zoomed.Zoom);
-        var under = TurnedBack(cell, image, location);
-        double x = Math.Clamp((under.X - before.X) / before.Width, 0, 1);
-        double y = Math.Clamp((under.Y - before.Y) / before.Height, 0, 1);
-        if (at is { } point)
-        {
-            x = point.X;
-            y = point.Y;
-            under = new PointF((float)(before.X + x * before.Width), (float)(before.Y + y * before.Height));
-        }
-
-        var origin = new PointF((float)(under.X - x * after.Width), (float)(under.Y - y * after.Height));
-        var focus = FitCalculator.FocusAt(cell, after, origin);
-        SetLook(index, zoomed.WithFocus(FitCalculator.WithinStops(cell, size, zoomed.Zoom, focus, zoomed.FineAngle)));
+        SetLook(index, zoomed.WithFocus(FitCalculator.FocusKeepingCenter(cell, size, current, zoomed.Zoom, look.Focus, look.FineAngle)));
         ShowZoomBadge(image);
     }
 
@@ -2352,25 +2333,6 @@ internal sealed class GridPreview : Control
     }
 
     /// <summary>
-    /// A point of the cell brought back into the unturned drawing of an image with a fine angle, so
-    /// the wheel zooms around the point under the mouse; unchanged without one.
-    /// </summary>
-    private static PointF TurnedBack(Rectangle cell, SourceImage image, PointF point)
-    {
-        var look = image.Look;
-        using var turn = FitCalculator.ComputeTurned(cell, look.Shown(image.Bitmap.Size), look.ZoomIn(cell, look.Shown(image.Bitmap.Size)), look.Focus, look.FineAngle).Transform();
-        if (turn is null)
-        {
-            return point;
-        }
-
-        turn.Invert();
-        PointF[] points = [point];
-        turn.TransformPoints(points);
-        return points[0];
-    }
-
-    /// <summary>
     /// Moves the selected image by <paramref name="delta"/> screen pixels, as a drag of that length would,
     /// for the arrow keys: a magnetic stop it reaches — an edge one on the way in too — holds it for this
     /// press only, the next one leaving it from the stop; Shift ignores them (see
@@ -2724,18 +2686,6 @@ internal sealed class GridPreview : Control
         {
             this.SetLook(this._selected, look.WithBlur(blur.Scaled(notches, anchor, minWidth, minHeight)));
         }
-    }
-
-    /// <summary>
-    /// The point of the image under <paramref name="location"/> in the crop's edit view, in fractions of
-    /// the kept part — the image shown once cropped — brought into it when over the part cut off.
-    /// </summary>
-    private static PointF KeptPartPoint(Bars bars, Point location)
-    {
-        var kept = bars.Area;
-        return new PointF(
-            kept.Width < 1 ? 0.5f : Math.Clamp((location.X - kept.X) / (float)kept.Width, 0, 1),
-            kept.Height < 1 ? 0.5f : Math.Clamp((location.Y - kept.Y) / (float)kept.Height, 0, 1));
     }
 
     /// <summary>Whether cell <paramref name="index"/> shows the crop's edit view: its pan then does nothing, its wheel scales the kept part.</summary>

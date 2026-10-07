@@ -55,6 +55,12 @@ public static class FitCalculator
     // A turned image whose center is nearly off its cell would otherwise grow without bound.
     private const double MaxCoverScale = 8;
 
+    // Keeping a turned image's center through a zoom: close enough in pixels, the passes allowed, the
+    // focus step the drawn center's slopes are measured over.
+    private const double CenterTolerance = 0.01;
+    private const int MaxCenterPasses = 16;
+    private const float FocusStep = 1e-4f;
+
     public static double Scale(double cellWidth, double cellHeight, Size image)
     {
         double sx = cellWidth / image.Width;
@@ -246,28 +252,65 @@ public static class FitCalculator
             : 1;
     }
 
-    /// <summary>The focus, moved just enough for the image to lie between its edge stops; see <see cref="Stops"/>.</summary>
-    public static PointF WithinStops(Rectangle cell, Size image, double zoom, PointF focus)
+    /// <summary>
+    /// The focus that draws the image at <paramref name="to"/> with the center of its box where it is
+    /// drawn at <paramref name="from"/> with <paramref name="focus"/>: a zoom grows or shrinks the image
+    /// around its own center, never moving it — <see cref="MinCoveredShare"/> aside, applied where the
+    /// image is placed. Every zoom goes through it (RULES.md § Zoom Keeps the Image in Place).
+    /// </summary>
+    public static PointF FocusKeepingCenter(Rectangle cell, Size image, double from, double to, PointF focus, int degrees)
     {
-        var drawn = DrawnSize(cell, image, zoom);
-        var placed = Place(cell, drawn, focus);
-        var stops = Stops(cell, drawn);
-        return FocusAt(cell, drawn, new PointF(Math.Clamp(placed.X, stops.Left, stops.Right), Math.Clamp(placed.Y, stops.Top, stops.Bottom)));
-    }
-
-    /// <summary>The same with a fine angle: the stops are those of the turned image's box; see <see cref="ComputeTurned"/>.</summary>
-    public static PointF WithinStops(Rectangle cell, Size image, double zoom, PointF focus, int degrees)
-    {
+        var center = Middle(ComputeTurned(cell, image, from, focus, degrees).Bounds);
+        var kept = ComputeTurned(cell, image, to, focus, degrees).FocusAt(cell, center);
         if (degrees == 0)
         {
-            return WithinStops(cell, image, zoom, focus);
+            return kept;
         }
 
-        var turned = ComputeTurned(cell, image, zoom, focus, degrees);
-        var bounds = turned.Bounds;
-        var stops = Stops(cell, bounds.Size);
-        float x = Math.Clamp(bounds.X, stops.Left, stops.Right);
-        float y = Math.Clamp(bounds.Y, stops.Top, stops.Bottom);
-        return turned.FocusAt(cell, new PointF(x + bounds.Width / 2, y + bounds.Height / 2));
+        // Turned, the cover scale depends on where the image stands: Newton's steps on the center drawn,
+        // halved until they bring it closer. Where no focus reaches it, the closest one found.
+        double miss = Miss(kept);
+        for (int pass = 0; pass < MaxCenterPasses && miss > CenterTolerance; pass++)
+        {
+            var drawn = Drawn(kept);
+            var alongX = Drawn(kept with { X = kept.X + FocusStep });
+            var alongY = Drawn(kept with { Y = kept.Y + FocusStep });
+            double xx = (alongX.X - drawn.X) / FocusStep, yx = (alongX.Y - drawn.Y) / FocusStep;
+            double xy = (alongY.X - drawn.X) / FocusStep, yy = (alongY.Y - drawn.Y) / FocusStep;
+            double determinant = xx * yy - xy * yx;
+            if (Math.Abs(determinant) < 1e-9)
+            {
+                break;
+            }
+
+            double ex = center.X - drawn.X;
+            double ey = center.Y - drawn.Y;
+            var step = new PointF((float)((yy * ex - xy * ey) / determinant), (float)((xx * ey - yx * ex) / determinant));
+            bool closer = false;
+            for (float share = 1; share > 1f / 256 && !closer; share /= 2)
+            {
+                var next = new PointF(kept.X + share * step.X, kept.Y + share * step.Y);
+                double nextMiss = Miss(next);
+                if (nextMiss < miss)
+                {
+                    (kept, miss, closer) = (next, nextMiss, true);
+                }
+            }
+
+            if (!closer)
+            {
+                break;
+            }
+        }
+
+        return kept;
+
+        PointF Drawn(PointF at) => Middle(ComputeTurned(cell, image, to, at, degrees).Bounds);
+
+        double Miss(PointF at)
+        {
+            var drawn = Drawn(at);
+            return Math.Abs(drawn.X - center.X) + Math.Abs(drawn.Y - center.Y);
+        }
     }
 }

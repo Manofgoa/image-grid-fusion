@@ -344,12 +344,12 @@ public sealed record ImageLook
     };
 
     /// <summary>
-    /// The focus is kept at every zoom; the gesture brings the image back within its stops (see <see cref="FitCalculator.WithinStops"/>).
+    /// The focus is kept as it is; the gesture converts it so the image keeps its center (see <see cref="FitCalculator.FocusKeepingCenter"/>).
     /// A free zoom: it leaves the fit mode.
     /// </summary>
     public ImageLook WithZoom(double zoom) => Activated(ImageEffect.Zoom) with { Zoom = Math.Clamp(zoom, MinZoom, MaxZoom), ZoomFit = ZoomFit.None, KeptZoom = null };
 
-    /// <summary>Puts the image in a fit mode, the focus kept; <see cref="Zoom"/> is left as it was, unread while the mode is on.</summary>
+    /// <summary>Puts the image in a fit mode, the focus kept as it is; <see cref="Zoom"/> is left as it was, unread while the mode is on.</summary>
     public ImageLook WithZoomFit(ZoomFit fit) => Activated(ImageEffect.Zoom) with { ZoomFit = fit, KeptZoom = null };
 
     /// <summary>Unclamped: how far the image may go depends on its cell, and is applied where the image is placed.</summary>
