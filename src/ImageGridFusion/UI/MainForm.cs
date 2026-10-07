@@ -195,6 +195,8 @@ internal sealed class MainForm : Form
     // Its face is the swatch: painted with the background color in use, opaque.
     private readonly Button _backgroundColor = new() { Text = "Color…", AutoSize = true, Anchor = AnchorStyles.Left, UseVisualStyleBackColor = false };
     private readonly BackgroundFillStrip _backgroundFill = new() { Anchor = AnchorStyles.Left };
+    private readonly TrackBar _backgroundEdgeOpacity = OptionSlider(0, 100, 10);
+    private readonly Label _backgroundEdgeOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly TrackBar _backgroundBlend = OptionSlider(0, 100, 10);
     private readonly Label _backgroundBlendLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _backgroundSoften = new() { Text = "Soften", AutoSize = true, Anchor = AnchorStyles.Left };
@@ -381,8 +383,15 @@ internal sealed class MainForm : Form
         _optionsRow.Controls.Add(_optionsHost, 0, 0);
         _optionsRow.Controls.Add(_effectResetButton, 1, 0);
         _optionsHost.Controls.AddRange([.. _options.Values]);
-        _options[ImageEffect.Background].Controls.AddRange(
-            [_backgroundFill, _backgroundAutomatic, _backgroundOpacityIcon, _backgroundOpacity, _backgroundOpacityLabel, _backgroundColor, _backgroundBlend, _backgroundBlendLabel, _backgroundSoften]);
+        // Beside the thumbnails, two lines: the flat color's settings over the extended edges' ones.
+        var backgroundColorLine = OptionLine();
+        backgroundColorLine.Controls.AddRange([_backgroundAutomatic, _backgroundOpacityIcon, _backgroundOpacity, _backgroundOpacityLabel, _backgroundColor]);
+        var backgroundEdgesLine = OptionLine();
+        backgroundEdgesLine.Controls.AddRange([this._backgroundEdgeOpacity, this._backgroundEdgeOpacityLabel, this._backgroundBlend, this._backgroundBlendLabel, this._backgroundSoften]);
+        var backgroundLines = OptionLine();
+        backgroundLines.FlowDirection = FlowDirection.TopDown;
+        backgroundLines.Controls.AddRange([backgroundColorLine, backgroundEdgesLine]);
+        _options[ImageEffect.Background].Controls.AddRange([this._backgroundFill, backgroundLines]);
         _options[ImageEffect.Crop].Controls.AddRange([.. _cropRatios.Select(r => r.Button), this._cropWhole]);
         _options[ImageEffect.Zoom].Controls.AddRange([_zoom, _zoomLabel, this._zoomContain, this._zoomFill]);
         this._motionKind.Items.AddRange(Enum.GetNames<MotionKind>());
@@ -583,6 +592,12 @@ internal sealed class MainForm : Form
             ChangeLook(ImageEffect.Background, look => look.WithBackground(look.Background!.WithOpacity(_backgroundOpacity.Value / 100.0)));
         };
         _backgroundColor.Click += (_, _) => PickBackgroundColor();
+        this._toolTip.SetToolTip(this._backgroundEdgeOpacity, "The extended edges' opacity over the background color, which keeps its own");
+        this._backgroundEdgeOpacity.ValueChanged += (_, _) =>
+        {
+            this._backgroundEdgeOpacityLabel.Text = EdgeOpacityText(this._backgroundEdgeOpacity.Value);
+            this.ChangeLook(ImageEffect.Background, look => look.WithBackground(look.Background!.WithEdgeOpacity(this._backgroundEdgeOpacity.Value / 100.0)));
+        };
         this._toolTip.SetToolTip(this._backgroundBlend, "Blends the extended edges into the background color, more with the distance from the image: at 100 %, they vanish by the cell's edge");
         this._toolTip.SetToolTip(this._backgroundSoften, "Blurs the extended edges, more with the distance from the image, the image itself staying sharp");
         this._backgroundFill.Picked += (_, mode) => this.ChangeLook(ImageEffect.Background, look => look.WithBackground(look.Background!.WithMode(mode)));
@@ -2469,6 +2484,18 @@ internal sealed class MainForm : Form
 
     private static string BlendText(int percent) => $"Blend: {percent} %";
 
+    private static string EdgeOpacityText(int percent) => $"Edges: {percent} %";
+
+    /// <summary>A line of options inside an options row, as tall and wide as its controls.</summary>
+    private static FlowLayoutPanel OptionLine() => new()
+    {
+        AutoSize = true,
+        AutoSizeMode = AutoSizeMode.GrowAndShrink,
+        WrapContents = false,
+        Margin = Padding.Empty,
+        Anchor = AnchorStyles.Left,
+    };
+
     /// <summary>
     /// Checked, the automatic color again, the chosen one dropped; unchecked, the automatic color of the
     /// moment frozen as the chosen one.
@@ -2545,6 +2572,7 @@ internal sealed class MainForm : Form
                 _backgroundOpacity.Value = (int)Math.Round(background.Opacity * 100);
                 this._backgroundFill.Selected = background.Mode;
                 this._backgroundBlend.Value = (int)Math.Round(background.Blend * 100);
+                this._backgroundEdgeOpacity.Value = (int)Math.Round(background.EdgeOpacity * 100);
                 this._backgroundSoften.Checked = background.Soften;
                 if (_selectedEffect == ImageEffect.Background)
                 {
@@ -2619,6 +2647,7 @@ internal sealed class MainForm : Form
         _volumeLabel.Text = VolumeText(_volume.Value);
         _backgroundOpacityLabel.Text = OpacityText(_backgroundOpacity.Value);
         this._backgroundBlendLabel.Text = BlendText(this._backgroundBlend.Value);
+        this._backgroundEdgeOpacityLabel.Text = EdgeOpacityText(this._backgroundEdgeOpacity.Value);
         _syncingEffects = false;
 
         // An effect that does not apply to the image keeps its tab selectable, its options disabled.
@@ -2629,8 +2658,10 @@ internal sealed class MainForm : Form
             row.Enabled = usable;
         }
 
-        // The blend and the soften act on the extended edges: disabled with the flat color, their values kept.
+        // The edges' opacity, the blend and the soften act on the extended edges: disabled with the flat
+        // color, their values kept.
         bool extends = look?.TurnOn(ImageEffect.Background).Background?.Extends == true;
+        this._backgroundEdgeOpacity.Enabled = this._backgroundEdgeOpacityLabel.Enabled = extends;
         this._backgroundBlend.Enabled = this._backgroundBlendLabel.Enabled = this._backgroundSoften.Enabled = extends;
 
         _effectResetButton.Visible = _selectedEffect is not null;
