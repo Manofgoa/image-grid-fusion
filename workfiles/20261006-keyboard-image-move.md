@@ -34,7 +34,8 @@ Relevant components:
 |---|---|
 | ← → ↑ ↓ | 1 px in that direction, on the preview |
 | Ctrl + ← → ↑ ↓ | 10 px in that direction |
-| Shift added to either | The same step, ignoring the magnetic stops — like Shift during a drag |
+| Shift + ← → ↑ ↓ | 1 px, ignoring the magnetic stops — like Shift during a drag |
+| Ctrl + Shift + ← → ↑ ↓ | **Straight to the next stop** in that direction — the center or an edge, whichever comes first — held there with its guide, as a press landing on it; nothing when no stop lies ahead |
 | Held down | Repeats at the keyboard's repeat rate, like successive presses |
 
 - A **pixel** is a **screen pixel** of the preview (device unit, not scaled with
@@ -196,6 +197,12 @@ edge** concerned — the edge stop and its dashed green guide — instead of 10 
 Open before the code is touched: which stops the jump lands on (the edges only, or the center
 too).
 
+### Iteration 9 — 2026-10-07 — ⚙️ Post-implementation — The jump lands on the next stop
+
+The user chose the **next stop**, the center included: from an edge, two presses reach the other
+edge. Ctrl + Shift no longer gives a 10 px step ignoring the stops; Shift alone still gives 1 px
+ignoring them. Nothing ahead → nothing moves. § Keys updated.
+
 ---
 
 ## Implementation Log
@@ -229,7 +236,7 @@ Questions asked by the agent during design, with user responses.
 | 10 | With every tab moving the image, which focused controls keep their arrows? | The focused control; a click on the preview gives it the arrows | 2026-10-06 |
 | 11 | Is the task finished? (after testing the adjustment) | No: no green bar seen on the way in — relaunch | 2026-10-06 |
 | 12 | Is the task finished? (after testing the exact-landing fix) | No: Ctrl + Shift + arrow moves the image straight to the edge concerned | 2026-10-07 |
-| 13 | Which stops does Ctrl + Shift land on: the edges only, or the center too? | | |
+| 13 | Which stops does Ctrl + Shift land on: the edges only, or the center too? | The next stop ahead, the center included | 2026-10-07 |
 
 ---
 
