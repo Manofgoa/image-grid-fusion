@@ -2304,19 +2304,6 @@ internal sealed class MainForm : Form
         Margin = new Padding(0, 3, 3, 3),
     };
 
-    /// <summary>A toggle of an options row, pressed from the look of the selected image.</summary>
-    private static CheckBox OptionButton(string text) => new()
-    {
-        Text = text,
-        AutoSize = true,
-        AutoCheck = false,
-        Appearance = Appearance.Button,
-
-        // The normal grey of buttons, not the white of the options row they sit on.
-        BackColor = SystemColors.Control,
-        Anchor = AnchorStyles.Left,
-    };
-
     /// <summary>A slider of the options; Control + wheel moves it by <paramref name="controlStep"/>, snapped (5 % for a percentage, 5° for an angle).</summary>
     /// <summary>A button of the fade's curve: its shape drawn, its name in the tooltip; the two in a row are exclusive.</summary>
     private static RadioButton CurveButton() => new()

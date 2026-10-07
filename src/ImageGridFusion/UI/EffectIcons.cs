@@ -149,46 +149,6 @@ internal static class EffectIcons
         g.DrawLines(pen, [new PointF(s * 0.04f, a), new PointF(b, a), new PointF(b, s * 0.96f)]);
     });
 
-    /// <summary>
-    /// The format of a ratio button: a rectangle at <paramref name="ratio"/> (width : height), as large
-    /// as the icon allows, filled in orange; free, a dashed square.
-    /// </summary>
-    public static Bitmap Ratio(int size, double? ratio) => Draw(size, (g, s) =>
-    {
-        float inset = s * 0.08f;
-        float room = s - 2 * inset;
-        float width = ratio is { } r && r < 1 ? (float)(room * r) : room;
-        float height = ratio is { } q && q > 1 ? (float)(room / q) : room;
-        var box = new RectangleF((s - width) / 2, (s - height) / 2, width, height);
-        using var pen = new Pen(Color.FromArgb(180, 90, 0), Math.Max(1f, s * 0.08f));
-        if (ratio is null)
-        {
-            pen.DashStyle = DashStyle.Dash;
-            g.DrawRectangle(pen, box.X, box.Y, box.Width, box.Height);
-            return;
-        }
-
-        using var fill = new SolidBrush(Color.FromArgb(255, 170, 60));
-        g.FillRectangle(fill, box);
-        g.DrawRectangle(pen, box.X, box.Y, box.Width, box.Height);
-    });
-
-    /// <summary>The 100 % button of the crop: a frame, the orange crop marks pushed out onto its four corners.</summary>
-    public static Bitmap WholeImage(int size) => Draw(size, (g, s) =>
-    {
-        float w = Math.Max(1.5f, s * 0.14f);
-        float edge = w / 2;
-        float far = s - edge;
-        float arm = s * 0.36f;
-        using var frame = new Pen(Color.FromArgb(180, 90, 0), Math.Max(1f, s * 0.06f));
-        g.DrawRectangle(frame, s * 0.2f, s * 0.2f, s * 0.6f, s * 0.6f);
-        using var pen = new Pen(Color.FromArgb(255, 140, 0), w) { StartCap = LineCap.Flat, EndCap = LineCap.Flat, LineJoin = LineJoin.Miter };
-        g.DrawLines(pen, [new PointF(edge, arm), new PointF(edge, edge), new PointF(arm, edge)]);
-        g.DrawLines(pen, [new PointF(s - arm, edge), new PointF(far, edge), new PointF(far, arm)]);
-        g.DrawLines(pen, [new PointF(far, s - arm), new PointF(far, far), new PointF(s - arm, far)]);
-        g.DrawLines(pen, [new PointF(arm, far), new PointF(edge, far), new PointF(edge, s - arm)]);
-    });
-
     /// <summary>The Format tab: a landscape frame in blue over a portrait one in orange, two ratios of the canvas.</summary>
     public static Bitmap Format(int size) => Draw(size, (g, s) =>
     {
@@ -225,40 +185,6 @@ internal static class EffectIcons
 
         using var shine = new SolidBrush(Color.FromArgb(170, Color.White));
         g.FillEllipse(shine, cx - r * 0.6f, cy - r * 0.35f, r * 0.4f, r * 0.55f);
-    });
-
-    /// <summary>A soft disc, magenta fading out to its edge.</summary>
-    public static Bitmap Gaussian(int size) => Draw(size, (g, s) =>
-    {
-        using var path = new GraphicsPath();
-        path.AddEllipse(0, 0, s - 1, s - 1);
-        using var brush = new PathGradientBrush(path)
-        {
-            CenterColor = Color.FromArgb(255, 220, 40, 200),
-            SurroundColors = [Color.FromArgb(0, 120, 60, 255)],
-
-            // A solid core, so the disc still reads at 16 px.
-            FocusScales = new PointF(0.4f, 0.4f),
-        };
-        g.FillPath(brush, path);
-    });
-
-    /// <summary>Three by three squares of bright colors.</summary>
-    public static Bitmap Pixelate(int size) => Draw(size, (g, s) =>
-    {
-        Color[] colors =
-        [
-            Color.FromArgb(255, 70, 70), Color.FromArgb(255, 170, 0), Color.FromArgb(255, 225, 0),
-            Color.FromArgb(40, 200, 90), Color.FromArgb(0, 170, 255), Color.FromArgb(120, 90, 255),
-            Color.FromArgb(230, 60, 200), Color.FromArgb(0, 210, 190), Color.FromArgb(255, 120, 40),
-        ];
-        float cell = s / 3f;
-        float gap = Math.Max(1, s / 16f);
-        for (int i = 0; i < colors.Length; i++)
-        {
-            using var brush = new SolidBrush(colors[i]);
-            g.FillRectangle(brush, i % 3 * cell + gap / 2, i / 3 * cell + gap / 2, cell - gap, cell - gap);
-        }
     });
 
     /// <summary>A dark blue loudspeaker sending two green sound waves to the right.</summary>
