@@ -18,7 +18,7 @@ internal sealed class FileIndex
     public const string FileName = "files.index";
 
     /// <summary>The folder next to the exe holding every indexing file: this index and the content texts.</summary>
-    public const string FolderName = "Index";
+    public const string FolderName = "index";
     private const string Header = "ImageGridFusion index 2";
     private const int ProgressInterval = 100;
 
