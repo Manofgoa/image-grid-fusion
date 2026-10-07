@@ -250,8 +250,9 @@ Applies to everything the user composes (origin: `workfiles/20261006-undo-redo.m
 - A restore **shows briefly the helper indicators of the values it changed** (§ On-Cell Helper
   Indicators), whatever tab is selected, with the zoom badge's timing (held 1 s, faded over 0.3 s):
   the zoom badge, the blur bars, the crop's kept-part edges, the guides of the stops a moved image
-  rests on. The bars are drawn without grips — not handles. A new indicator a step can change is
-  added to `GridPreview.ShowRestored` / `PaintRestored`.
+  rests on, the position readout of every image whose offset changed. The bars are drawn without
+  grips — not handles. A new indicator a step can change is added to `GridPreview.ShowRestored` /
+  `PaintRestored` — the position readout aside, which sees a restore by itself (§ Position Readout).
 - Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z are **locked while exporting** and during a gesture; a focused text
   field keeps them for its own text (the whitelist in `MainForm.ProcessCmdKey`).
 
@@ -314,6 +315,26 @@ value readouts (origin: `workfiles/20260925-zoom-range-and-percentage.md`).
 - A hovered or dragged handle may turn **white**, as its hover feedback.
 - Interaction feedback is not a helper indicator and keeps its own colours: selection outline,
   drop-target highlight, hover outline, dimmed cell being dragged.
+
+### Position Readout
+
+The offset of an image from its cell's center, shown while it changes (origin:
+`workfiles/20261007-move-position-readout.md`):
+
+- Its value is the offset of the center of the box the image is drawn in (`FitCalculator.ComputeTurned`,
+  the zoom read through `ImageLook.ZoomIn`) from the cell's center, in the pixels of the **PNG
+  export** of the grid as it stands — the canvas `CanvasSizer.Compute` gives, the cells of
+  `Compositor.Cells` (`GridPreview.ExportOffsets`): x to the right, y downward, rounded.
+- It is drawn at the image's center: a dot, a dashed line from the cell's center (none at `0, 0`),
+  and `x -35px` over `y +12px` below the dot, pushed back inside the cell near an edge.
+- **One rule decides when it shows**: an image **staying in its cell** whose offset changes,
+  whatever changed it — a move, its look, the grid's geometry, the export canvas, a restore. It is
+  checked at each paint against the offsets last painted (`GridPreview.UpdateReadouts`), so a new
+  route that moves an image is covered by itself and needs no call of its own.
+- Not shown: an image new in its cell (arrived, replaced, shifted, swapped), a cell showing the crop
+  edit view, the Animations motion playing (the zoom at time 0 is read), the window resized.
+- Each image's readout has the zoom badge's timing on its own clock, **held at full opacity while
+  `InGesture`**, its hold starting when the gesture ends.
 
 ## Repository Docs
 
