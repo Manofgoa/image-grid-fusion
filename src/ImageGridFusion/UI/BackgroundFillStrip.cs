@@ -38,7 +38,7 @@ internal sealed class BackgroundFillStrip : ThumbnailStrip<BackgroundFill>
     {
         BackgroundFill.Color => "A flat color around the image",
         BackgroundFill.CornerPixel => "The image's edge pixels stretched to the cell's edges; each corner the color of the image's corner pixel",
-        BackgroundFill.Miter => "The image's edge pixels stretched to the cell's edges; each corner split on its diagonal, the two edges meeting there like a frame's mitered joint",
+        BackgroundFill.Miter => "The image's edge pixels stretched to the cell's edges; each corner split on its diagonal, each half the color of its edge's pixel next to the image's corner, the corner pixel's color over the diagonal",
         _ => "The image's edge pixels stretched to the cell's edges; the corners keep the background color",
     };
 
@@ -75,6 +75,8 @@ internal sealed class BackgroundFillStrip : ThumbnailStrip<BackgroundFill>
                 {
                     this.Fill(g, row, [inner, outer, new(inner.X, outer.Y)]);
                     this.Fill(g, column, [inner, outer, new(outer.X, inner.Y)]);
+                    using var line = new Pen(Color.FromArgb(128, this.Shade(CornerPixel)));
+                    g.DrawLine(line, inner, outer);
                 }
             }
         }
