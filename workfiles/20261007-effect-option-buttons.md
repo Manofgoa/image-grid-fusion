@@ -25,6 +25,10 @@ Out of scope (agreed):
 - The **Global** options (Format already uses the format; Fade's curve buttons, Soundtrack, Borders
   stay as they are).
 - The effects' own **Reset** button, ending the options row, and the toolbars' Reset buttons.
+- The plain **checkboxes** of the options — Frames' *Freeze*, Volume's *Mute*, Background's
+  *Automatic color* and *Soften* — and Background's *Color…* button: not choices among values, they
+  stay as they are.
+- The Animations' **Type** drop-down: one value (Zoom) for now, it stays a drop-down.
 
 ---
 
@@ -62,18 +66,25 @@ What "the Background's format" means, taken from `ThumbnailStrip<T>`:
 
 ### Pictograms
 
-To be settled (see Open Questions). Draft, one per item, in the Background's vocabulary — the
-**cell** a grey box, the **image** a white rectangle outlined dark:
+In the **Background's vocabulary** (style A of the mockup shown on 2026-10-07): the **cell** a grey
+box outlined dark, the **image** a white rectangle outlined dark, a **colored marker** (a small
+blue corner triangle) where the drawing must show a direction. Faded while the strip is disabled,
+as `BackgroundFillStrip.Shade` does.
 
 | Item | Pictogram |
 |---|---|
-| Contain | The image whole inside the cell, bands on two sides |
-| Fill | The image larger than the cell, its overflow drawn faded beyond the cell's outline |
-| 0° / 90° / 180° / 270° | An asymmetric image (a landscape rectangle with a marker in one corner) turned by that angle |
-| Horizontal / Vertical | The asymmetric image and its mirror on either side of a dashed axis, vertical / horizontal |
-| Free / 1:1 / 4:3 / 16:9 / 9:16 | The image with the kept part at that ratio (Free: a dashed kept part), the cut-off part dimmed |
-| 100 % | The whole image, the bars on its edges |
-| Gaussian / Pixelate | A shape softened / a shape in coarse squares |
+| Contain | The image whole inside the cell, as wide as it, bands above and below; the marker in its top-left corner |
+| Fill | The image covering the whole cell, its edge beyond the cell shown by a dashed outline just inside; the marker in the corner |
+| 0° / 90° / 180° / 270° | A landscape image, the marker in its top-left corner, turned by that angle (portrait at 90° / 270°) — the marker follows the turn |
+| Horizontal | The image and its mirror left and right of a dashed **vertical** axis, the markers mirrored |
+| Vertical | The image and its mirror above and below a dashed **horizontal** axis, the markers mirrored |
+| Free / 1:1 / 4:3 / 16:9 / 9:16 | The kept part at that ratio, white, centred in the grey cell (Free: dashed, of no particular ratio) |
+| 100 % | The whole image, white, the green crop bars along its edges |
+| Gaussian | The image, a soft blue disc in its middle fading outward |
+| Pixelate | The image, a block of 2 × 2 coarse squares in blues in its middle |
+
+Crop's **100 %** is **set apart** from the ratios (C2): after them, past a wider gap and a thin
+vertical line, so it does not read as a ratio.
 
 ### Code
 
@@ -111,15 +122,16 @@ disabled state).
 
 ## Open Questions
 
-- [ ] The plain **checkboxes** of the cell effects' options — Frames' *Freeze*, Volume's *Mute*,
+- [x] ~~The plain **checkboxes** of the cell effects' options — Frames' *Freeze*, Volume's *Mute*,
   Background's *Automatic color* and *Soften* — and Background's *Color…* button: do they stay as
-  they are?
-- [ ] The Animations' **Type** drop-down (one value, Zoom, for now): stays a drop-down, or becomes a
-  strip?
-- [ ] The **pictograms' style**: the Background's schematic vocabulary (grey cell, white image), or
-  the existing 16 px `EffectIcons` drawn larger?
-- [ ] Crop's **100 %** (an action, never pressed): in the same strip as the ratios, set apart by a
-  wider gap, or as it is in the Background's — no distinction?
+  they are?~~ → They stay as they are
+- [x] ~~The Animations' **Type** drop-down (one value, Zoom, for now): stays a drop-down, or becomes a
+  strip?~~ → Stays a drop-down
+- [x] ~~The **pictograms' style**: the Background's schematic vocabulary (grey cell, white image), or
+  the existing 16 px `EffectIcons` drawn larger?~~ → The Background's schematic vocabulary (style A)
+- [x] ~~Crop's **100 %** (an action, never pressed): in the same strip as the ratios, set apart by a
+  wider gap, or as it is in the Background's — no distinction?~~ → Set apart: a wider gap and a thin
+  vertical line (C2)
 
 ---
 
@@ -131,6 +143,14 @@ Initial design from the request and the scoping answers: cell effects only; the 
 get a pictogram and their name below; the effects' Reset buttons untouched. The Background's
 `ThumbnailStrip` format becomes the standard for Zoom, Rotate, Flip, Crop and Blur; the strip is
 generalized for zero / several pressed items and action items; a rule is added to RULES.md.
+
+### Iteration 2 — 2026-10-07
+
+Open questions answered after a mockup of two pictogram styles and two Crop layouts: the plain
+checkboxes, *Color…* and the Animations' Type drop-down stay as they are (out of scope); the
+pictograms follow the Background's schematic vocabulary (grey cell, white image, a blue marker for
+direction); Crop's 100 % is set apart from the ratios by a gap and a thin line. The Pictograms
+table now describes each drawing.
 
 ---
 
@@ -154,10 +174,10 @@ generalized for zero / several pressed items and action items; a rule is added t
 | 2 | What the text-only buttons become | A pictogram, their name below | 2026-10-07 |
 | 3 | The effect's own Reset button | Left as it is | 2026-10-07 |
 | 4 | Exploration depth | Straightforward | 2026-10-07 |
-| 5 | Plain checkboxes and *Color…*: stay as they are? | | |
-| 6 | Animations' Type drop-down: stays or becomes a strip? | | |
-| 7 | Pictograms' style | | |
-| 8 | Crop's 100 %: set apart or not? | | |
+| 5 | Plain checkboxes and *Color…*: stay as they are? | Yes, as they are | 2026-10-07 |
+| 6 | Animations' Type drop-down: stays or becomes a strip? | Stays a drop-down | 2026-10-07 |
+| 7 | Pictograms' style | A — the Background's schematic vocabulary | 2026-10-07 |
+| 8 | Crop's 100 %: set apart or not? | C2 — set apart by a gap and a line | 2026-10-07 |
 
 ---
 
