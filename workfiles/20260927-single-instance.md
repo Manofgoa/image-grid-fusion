@@ -244,6 +244,7 @@ says so rather than staying blank.
 | Code | 7 | 2026-10-07 | `SingleInstance`, `Program.Main`, tray restore, `MainForm.AddLaunchFiles` / `savesWindowSize` |
 | Unit tests | 1 | 2026-09-27 | Not applicable — no test project, process-level behaviour |
 | README | 7 | 2026-10-07 | README.md + README.fr.md; RULES.md § Single Instance; app CLAUDE.md § Launch |
+| User validation | 8 | 2026-10-07 | Confirmed finished by the user |
 
 ---
 
