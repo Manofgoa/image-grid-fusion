@@ -215,6 +215,16 @@ never folds them again. A file leaving the index (rescan, deletion from the pane
 - Tiles found by their name alone, and the favorites shown while the search box is empty, have no
   bulb.
 
+### Arrow to the Word *(proposed — Iteration 14, awaiting its go)*
+
+- On a tile found by the OCR of its image or PDF page, a **small arrow** from the bulb to the word
+  found: to the **top-center** of the word's box, or its **bottom-center** when the word sits above
+  the bulb. None for a text or HTML file — no position to point at.
+- The OCR keeps each recognised word's **box**, in fractions of the image as recognised (oriented,
+  downscaled or not), so it maps onto the thumbnail whatever its size: `files.content` gains a
+  column of boxes per file, its version going to 2.
+- The arrow points at the **first recognised word** holding the first query word the content found.
+
 ## Progress Bar
 
 - A **miniature progress bar** (`UI/IndexingBar.cs`) directly **under the search box**, across the
@@ -461,6 +471,14 @@ accents folded, ellipses only where the text goes on, null when the word is miss
 drawing and its tooltip were **not** checked on screen: the check window took the keyboard focus
 while the user was typing elsewhere, and the checks were stopped; left to the user's test.
 
+### Iteration 14 — 2026-10-07 — ⚙️ Post-implementation — An arrow to the word (proposed)
+
+User question, after testing (Q&A #31): would a small arrow on the thumbnail, from the bulb to the
+word the OCR found — the word's top-center, or its bottom-center when above the bulb — be
+complicated? Answered: not complicated, but the texts extracted so far hold no positions, so the
+OCR has to run again on the images and PDFs. *Content Badge › Arrow to the Word* written as a
+proposal; the go asked (Q&A #32).
+
 ---
 
 ## Implementation Log
@@ -509,6 +527,8 @@ Questions asked by the agent during design, with user responses.
 | 28 | Once tested: merge into `main`, merge with the docs, adjustments, or not tested yet? | Adjustments | 2026-10-07 |
 | 29 | Which adjustments? | *OCR on xxx.png* to become *OCR: 254/3500 (xxx.png)* | 2026-10-07 |
 | 30 | After this test: merge into `main`, merge with the docs, other adjustments, or not tested yet? | The two settings tied to the content analysis grouped in the menu, ideally not as a submenu; a result found by its content and not by its name: a light bulb at the thumbnail's top-left, under the heart, its tooltip saying it was found in the content, with an excerpt around it (a few words before, a few after) | 2026-10-07 |
+| 31 | After this test: merge into `main`, merge with the docs, other adjustments, or not tested yet? | Would a small arrow on the thumbnail showing where the OCR found the word be complicated? From the bulb to the word's top-center (or bottom-center when above the bulb) | 2026-10-07 |
+| 32 | The arrow: go, the images and PDFs read again by the OCR; go, the positions only for files extracted from now on or after a Rebuild; or no? | | |
 
 ---
 
