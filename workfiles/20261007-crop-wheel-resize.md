@@ -1,6 +1,7 @@
-# Crop Wheel Resize
+# Zone Wheel Resize
 
-> Working document — the mouse wheel grows or shrinks the Crop's kept part, keeping its current ratio.
+> Working document — the mouse wheel grows or shrinks a resizable green zone (the Crop's kept
+> part, the Blur's zone), keeping its current ratio.
 > This file is the source of truth for the planned work until implemented,
 > then the log of every adjustment made to it afterwards.
 
@@ -8,71 +9,90 @@
 
 ## Overview
 
-In the **crop edit view** (Crop tab selected, crop on, selected cell), the mouse wheel does nothing
-today (`GridPreview.OnMouseWheel` returns on `EditsCrop`). It becomes the way to **grow or shrink
-the kept part** without dragging its four bars one by one, its **current ratio kept**:
+A **resizable zone** is a rectangle set by the four fluorescent green bars of an effect, drawn as
+handles on the selected cell while that effect's tab is selected and the effect is on
+(`GridPreview.ShownBars`). There are two today:
 
-- a ratio button pressed (1:1, 4:3, 16:9, 9:16) — that ratio;
-- **Free** — the kept part's proportions as they stand when the notch arrives.
+| Zone | Effect | Its **bounds** — what it lives in | Ratio kept |
+|---|---|---|---|
+| The **kept part** | Crop (edit view) | The **image as seen** (`CropEffect.Seen` fractions) | A ratio button pressed (1:1, 4:3, 16:9, 9:16) — that ratio; **Free** — its current proportions |
+| The **blurred zone** | Blur (blur or pixelation) | The **cell** (`BlurEffect` fractions) | No ratio buttons — its current proportions |
 
-Components: `Composition/CropEffect.cs` (the geometry), `UI/GridPreview.cs` (the wheel), the
-README / README.fr, RULES.md and the glossaries (the edit view's description).
+The mouse wheel becomes the way to **grow or shrink the zone** without dragging its four bars one
+by one, its **current ratio kept**. The rule is written once for every resizable zone, so a future
+one (any effect showing four bars) gets it by itself. The four-corner drag designed in parallel
+(`workfiles/20261007-crop-corner-drag.md`) is widened to every resizable zone the same way (user
+request, Iteration 3).
+
+Today the wheel does nothing in the crop edit view (`GridPreview.OnMouseWheel` returns on
+`EditsCrop`), and zooms the image under the Blur's bars.
+
+Components: a shared scaling helper in `Composition/`, `Composition/CropEffect.cs`,
+`Composition/BlurEffect.cs`, `UI/GridPreview.cs` (the wheel), the README / README.fr, RULES.md and
+the glossaries.
 
 ---
 
 ## Gesture
 
-| Wheel | Fixed point while the kept part is scaled |
+| Wheel | Fixed point while the zone is scaled |
 |---|---|
-| Plain | The kept part's **center** |
-| **Ctrl** held | The **point of the image under the cursor** — clamped to the image when the cursor is on a band around it |
+| Plain | The zone's **center** |
+| **Ctrl** held | The **point under the cursor** — clamped to the zone's bounds (the image for the crop, when the cursor is on a band around it) |
 
-- **Where**: anywhere over the cell showing the edit view — inside the kept part, on the dimmed
-  part, on the bands. Other cells keep the zoom wheel; the selected cell outside the edit view too.
+- **Where — Crop**: anywhere over the cell showing the edit view — inside the kept part, on the
+  dimmed part, on the bands. Other cells keep the zoom wheel; the selected cell outside the edit
+  view too.
+- **Where — Blur**: see Open Questions (the zoom wheel works on that cell today).
 - **Not while** another gesture runs (a press, a bar or kept-part drag, a separator) or the grid is
   locked (export) — like the zoom wheel.
 - Fine-grained wheels add up to whole notches, per cell, as the zoom wheel does (`_wheelDelta`).
-- Ctrl therefore means *anchor under the cursor* in the edit view, not *finer step*: the zoom's
-  fine step does not apply there.
-- Acting on it is acting on the effect, which is already on (the edit view only shows while it is
-  on) — no activation to handle.
+- Ctrl therefore means *anchor under the cursor* over a zone being edited, not *finer step*: the
+  zoom's fine step does not apply there.
+- Acting on it is acting on the effect, which is already on (the bars only show while it is on) —
+  no activation to handle.
 
 ## Geometry
 
-Computed in the image **as seen** (`CropEffect.Seen` / `WithSeen`), in fractions, the ratio read
-in pixels of the oriented image as `WithRatio` / `WithSeenSide` do.
+Computed in **fractions of the zone's bounds** — the image as seen for the crop
+(`CropEffect.Seen` / `WithSeen`), the cell for the blur. The bounds keep their pixel size during a
+notch, so scaling both sides of a rectangle in fractions by the same `k` keeps its pixel ratio:
+the geometry is **one shared helper** for every zone, in `Composition/`.
 
-- A notch **scales the kept part around the fixed point**: `new = anchor + (old − anchor) × k`, its
+- A notch **scales the zone around the fixed point**: `new = anchor + (old − anchor) × k`, its
   ratio unchanged since both sides scale by `k`.
-- **Direction and step**: a notch **up grows** the kept part (more of the image kept), a notch down
-  shrinks it; each notch scales its sides by a **fixed factor**, `k = 1.05` up, `1 / 1.05` down
-  (`k = 1.05^notches` for several notches at once) — no snapping onto multiples.
-- **Growing — slide, then stop**: the scale is clamped so the kept part fits in the image
-  (width ≤ 1 and height ≤ 1 in fractions); the scaled part is then **shifted back inside** the image
-  where it crosses an edge, so it keeps growing on the other side. Growth stops at the **largest
-  rectangle at that ratio within the image** — reached exactly, not approached.
+- **Direction and step**: a notch **up grows** the zone (more of the image kept, more of the cell
+  blurred), a notch down shrinks it; each notch scales its sides by a **fixed factor**, `k = 1.05`
+  up, `1 / 1.05` down (`k = 1.05^notches` for several notches at once) — no snapping onto
+  multiples.
+- **Growing — slide, then stop**: the scale is clamped so the zone fits in its bounds
+  (width ≤ 1 and height ≤ 1 in fractions); the scaled zone is then **shifted back inside** where it
+  crosses an edge, so it keeps growing on the other side. Growth stops at the **largest rectangle
+  at that ratio within the bounds** — reached exactly, not approached.
 - **Shrinking — stops at a minimum**: neither side goes below the bars' minimum gap
-  (`BarMinGap`, 8 logical px of the edit view's image span, scaled with `LogicalToDeviceUnits`);
-  the scale is clamped so the smaller side lands on it.
-- A ratio kept by a button stays **exactly** that ratio; a Free kept part keeps its proportions up
-  to the rounding of the fractions.
-- New member: `CropEffect.ScaledSeen(double factor, PointF anchor, double minWidth, double minHeight, ImageLook look)`
-  — anchor and minimums in fractions of the image as seen; `GridPreview` converts the cursor and
-  `BarMinGap` through the edit view's span (`ShownBars(...).Span`).
+  (`BarMinGap`, 8 logical px of the bars' span — the edit view's image for the crop, the cell for
+  the blur — scaled with `LogicalToDeviceUnits`); the scale is clamped so the smaller side lands on
+  it.
+- A ratio kept by a crop button stays **exactly** that ratio; a Free kept part and the blur zone
+  keep their proportions up to the rounding of the fractions.
+- New members: the shared helper (e.g. `ZoneScale.Scaled(RectangleF zone, double factor, PointF anchor, double minWidth, double minHeight)`,
+  all in fractions of the bounds), then `CropEffect.ScaledSeen(factor, anchor, minWidth, minHeight, look)`
+  and `BlurEffect.Scaled(factor, anchor, minWidth, minHeight)` built on it; `GridPreview` converts
+  the cursor and `BarMinGap` through the bars' span (`ShownBars(...).Span`).
 
 ## Interplay
 
 - **Undo history**: a wheel burst is one step by itself — the burst keeps `GridPreview.InGesture`
   true through `_wheelEnd`, as the zoom wheel's does; `BeginLive` / `EndLive` show it live.
-- **Restore indicators**: nothing new — the crop's kept-part edges are already in
+- **Restore indicators**: nothing new — the crop's kept-part edges and the blur bars are already in
   `ShowRestored` / `PaintRestored`.
-- **No new helper indicator**: no size readout during a burst — the bars and the dimmed part
-  already show the kept part.
-- **Free format — held during a burst**: the kept part's size changes the Free ratio
+- **No new helper indicator**: no size readout during a burst — the bars (and the crop's dimmed
+  part) already show the zone.
+- **Free format — held during a crop burst**: the kept part's size changes the Free ratio
   (`OutputFormats.FreeRatio` reads `ImageLook.Shown`). Like a crop bar drag, the canvas ratio is
   **held while the wheel turns** (`GridPreview.UpdateRatio` returns while a crop wheel burst runs)
   and **computed again when it stops** (the `_wheelEnd` tick), so the canvas does not change shape
-  under the mouse.
+  under the mouse. The blur zone does not weigh in the Free ratio: nothing to hold.
 - **Fitting rule, automatic background, canvas sizing** follow the kept part as they do for the
   bars, through `SetLook`.
 
@@ -83,8 +103,11 @@ in pixels of the oriented image as `WithRatio` / `WithSeenSide` do.
   kept part by 5 % a notch, ratio kept, around its center — the point under the cursor with Ctrl —
   sliding along the image's edges, then stopping; a drag outside the kept part still does nothing.
   § Format: the Free ratio is also held while the wheel scales a kept part.
-- **RULES.md** § The Crop Exception: the edit view's description gains the wheel; § Output Format:
-  the Free ratio held during a crop wheel burst too.
+  § Blur: the wheel over its zone, the same way, within the cell.
+- **RULES.md** § On-Cell Handles: a new rule for every **resizable zone** (four bars) — the wheel
+  scales it, ratio kept, center or point under the cursor with Ctrl, sliding then stopping at its
+  bounds, the shared helper; § The Crop Exception: the edit view's description gains the wheel;
+  § Output Format: the Free ratio held during a crop wheel burst too.
 - **GLOSSARY.md / GLOSSARY.fr.md**: *Crop edit view* gains *the wheel scaling the kept part*;
   *Free format* is held during a crop wheel burst too.
 
@@ -107,6 +130,7 @@ Nothing is created or updated; the behaviours below are checked by hand at deliv
 - [x] ~~Step per notch: the kept part's size **× / ÷ a fixed factor** (e.g. 5 % of its current size), or **snapped onto multiples of 5 %** of the largest kept part at that ratio (like the zoom's steps)?~~ → Fixed factor: × 1.05 up, ÷ 1.05 down
 - [x] ~~Free format during a burst: is the canvas ratio **held until the wheel stops** (like a bar drag), or **recomputed at every notch**?~~ → Held until the wheel stops, computed again then
 - [x] ~~Helper indicator: does a burst show a **size readout** (a green badge, like the zoom's percentage), or do the bars and the dimmed part suffice?~~ → No readout: the bars and the dimmed part suffice
+- [ ] Blur zone vs zoom wheel: while the Blur tab is selected and the blur on, the wheel over the selected cell zooms the image today. Does it scale the blur zone **anywhere over the cell** (the zoom then only from other tabs, the slider, or other cells — as in the crop edit view), or **only over the blurred zone**, the zoom wheel kept elsewhere on the cell?
 
 ---
 
@@ -132,6 +156,16 @@ Open questions answered (Q5–Q8): a notch up grows the kept part, down shrinks 
 it by a fixed factor of 1.05; the Free format's ratio is held during a burst and computed again
 when the wheel stops; no size readout. Gesture, Geometry, Interplay and Documentation updated —
 the Free-format hold also reaches RULES.md § Output Format, the README § Format and the glossaries.
+
+### Iteration 3 — 2026-10-07
+
+User request: what this workfile defines — and what `workfiles/20261007-crop-corner-drag.md`
+defines in parallel — holds for **every resizable green zone**, the Blur / pixelation zone
+included, not only the Crop's kept part. Scope widened: the workfile becomes *Zone Wheel Resize*
+(file name kept), the geometry moves to one shared helper in fractions of the zone's bounds (the
+image as seen for the crop, the cell for the blur), and RULES.md § On-Cell Handles gets a rule for
+every resizable zone. The corner-drag session was informed by message. New open question: the
+blur zone's wheel against the zoom wheel on the same cell.
 
 ---
 
@@ -162,6 +196,7 @@ Questions asked by the agent during design, with user responses.
 | 6 | Step per notch: fixed factor or snapped multiples of 5 %? | Fixed factor, 5 % | 2026-10-07 |
 | 7 | Free format during a burst: held or recomputed per notch? | Held until the wheel stops | 2026-10-07 |
 | 8 | Size readout during a burst? | Nothing more | 2026-10-07 |
+| 9 | Blur zone: wheel anywhere over the cell, or only over the zone (zoom elsewhere)? | | |
 
 ---
 
