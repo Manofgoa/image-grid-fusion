@@ -74,12 +74,18 @@ Components:
   `settings.json` (RULES.md § App Settings) under `"MaxZoom"`, **in percent** (`"MaxZoom": 2000`).
   **No UI control**: it is edited by hand in the file, and read **once at start-up** — a change
   takes effect at the next launch.
-- **Written when missing**: at start-up, a file without `"MaxZoom"` gets `"MaxZoom": 2000`, so the
-  setting can be found. A write that fails says so in the status line (§ App Settings).
-- **Accepted values**: whole numbers from **200** to **10 000**. Anything else — out of range, not a
-  whole number, unreadable — falls back to 2000 %.
-- *(Open question)* a value **above 10 000** is also **overwritten in the file** at start-up — with
-  which value?
+- **Accepted values**: whole numbers from **200** to **10 000**. At start-up the value applied is:
+
+  | In the file | Applied, and written back into the file |
+  |---|---|
+  | A whole number from 200 to 10 000 | That value — the file is left as it is |
+  | Above 10 000 | 10 000 |
+  | Below 200 | 200 |
+  | Missing, not a whole number, unreadable | 2000 |
+
+- **The file always shows the value applied**: whenever it does not hold it, it is written at
+  start-up, so the setting can be found and read. A write that fails says so in the status line
+  (§ App Settings), the value applied all the same.
 - It bounds everything the zoom's maximum bounds: the zoom itself (`ImageLook.WithZoom`), the Zoom
   slider's range, the wheel over a cell and over the slider.
 - The Composition layer may not reference `UI/AppSettings.cs`: `ImageLook.MaxZoom` becomes a value
@@ -116,8 +122,11 @@ ready to be pinned the day one exists.
 - [x] ~~Written into the file by the app when missing, so it can be found and edited — or only read,
   absent meaning 2000 %?~~ → Written when missing
 - [x] ~~Which values are accepted (others falling back to 2000 %)?~~ → 200 to 10 000
-- [ ] A value above 10 000 overwritten in the file at start-up: with 10 000 (the cap) or 2000 (the
-  default)? And a value below 200, or unreadable: overwritten too?
+- [x] ~~A value above 10 000 overwritten in the file at start-up: with 10 000 (the cap) or 2000 (the
+  default)? And a value below 200, or unreadable: overwritten too?~~ → Clamped: above 10 000 →
+  10 000, below 200 → 200, unreadable → 2000, each written back into the file
+- [x] ~~Which values are accepted (others falling back to 2000 %)?~~ → 200 to 10 000 *(revised
+  2026-10-07, see Iteration 7: out of range is clamped, not reset to 2000)*
 
 ---
 
@@ -180,6 +189,12 @@ Then a new request, while the adjustment started: "si valeur > 10 000 lors de l'
 démarrage, overrider la valeur dans le .json et l'écrire" — a value above 10 000 is replaced in the
 file at start-up, not only ignored. Its replacing value is an open question.
 
+### Iteration 7 — 2026-10-07 — ⚙️ Post-implementation — Maximum zoom clamped and written back
+
+Answers to questions 13–14: a value above 10 000 becomes 10 000, below 200 becomes 200 (clamped,
+no longer reset to 2000), an unreadable one 2000 — and in every case the file is rewritten with the
+value applied, so it always shows it (§ Maximum Zoom).
+
 ---
 
 ## Implementation Log
@@ -213,8 +228,8 @@ Questions asked by the agent during design, with user responses.
 | 10 | The maximum zoom's unit in settings.json: percent or factor? | Percent | 2026-10-07 |
 | 11 | Written into the file when missing, or only read? | Written when missing | 2026-10-07 |
 | 12 | Which values are accepted? | 200 to 10 000 | 2026-10-07 |
-| 13 | A value above 10 000 overwritten with 10 000 (the cap) or 2000 (the default)? | | |
-| 14 | A value below 200 or unreadable: overwritten too, or only ignored? | | |
+| 13 | A value above 10 000 overwritten with 10 000 (the cap) or 2000 (the default)? | 10 000 (the cap) | 2026-10-07 |
+| 14 | A value below 200 or unreadable: overwritten too, or only ignored? | Overwritten too | 2026-10-07 |
 
 ---
 
