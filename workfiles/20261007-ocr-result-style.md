@@ -168,6 +168,11 @@ past and back when the word is too close in height to the bulb. Sketch shown. Do
 *Curve* now gives the geometry (a cubic Bézier ending at the neck, its last handle vertical with a
 minimum length). No open question left.
 
+### Iteration 5 — 2026-10-07 — ✅ Implemented
+
+Go given (Q&A #12): code, tests and documentation, in a worktree on `feature/ocr-result-style`
+(`.claude/worktrees/ocr-result-style`). Scope frozen as the domain sections stand.
+
 ---
 
 ## Implementation Log
@@ -200,7 +205,7 @@ Questions asked by the agent during design, with user responses.
 | 9 | A way back to the default color? | The color dialog only | 2026-10-07 |
 | 10 | The curve's bend, from the sketches (A clockwise 15 %, B outward 15 %, C clockwise 25 %)? | None of them: the arrow must arrive above or below the word's center, its head pointing straight down or up — the curve adapts to land there | 2026-10-07 |
 | 11 | The curve's shape: horizontal start (elbow), or straight start turning vertical near the word? | The elbow (A), but the stroke must reach the triangle's flat part — tending towards its center when it would not arrive at the right place | 2026-10-07 |
-| 12 | Go for the implementation? (scope, where) | | |
+| 12 | Go for the implementation? (scope, where) | Code, tests and documentation; in a worktree | 2026-10-07 |
 
 ---
 
