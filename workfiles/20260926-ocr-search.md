@@ -112,9 +112,12 @@ Components touched: `Explorer/FileIndex.cs` (index folder, stamps), `Explorer/Fi
   **thumbnails are loading** (`ThumbnailCache`'s queue not empty) and for **1 s after the last
   keystroke** in the search box; it resumes on its own once the display is calm, even with the
   search still shown (Q&A #25).
-- **Status line** — while a file is analysed, the summary gets its name:
-  *12 345 files · indexed 17:20 · OCR on xxxx.png* (*Reading xxxx.txt* for a text or HTML file,
-  which is not recognised but read); back to the plain summary when the pass ends or pauses.
+- **Status line** — while a file is analysed, the summary gets the pass's count and the file's
+  name: *12 345 files · indexed 17:20 · OCR: 254/3 500 (xxxx.png)* — the file's rank in the pass
+  out of the files the pass extracts, thousands grouped like the scan's *Indexing…* count — the
+  same *OCR:* label for a text or HTML file, the count being the whole pass's; for a file of the
+  no-text kind, the count without a name. Back to the plain summary when the pass ends or pauses
+  (Iteration 11).
 - **Change detection** — the scan also reads each file's **size + last-write time**, from the
   `FileSystemEntry` it already enumerates (no extra disk access), and keeps them **in memory** on
   the `IndexEntry` — `files.index` stays format 2, the stamps being needed only right after a scan.
@@ -141,8 +144,7 @@ Components touched: `Explorer/FileIndex.cs` (index folder, stamps), `Explorer/Fi
   `.jpeg`, `.jpe`, `.jfif`, `.bmp`, `.dib`, `.gif`, `.tif`, `.tiff`, `.webp`, `.heic`, `.heif`,
   `.avif`, `.ico`, `.jxr`, `.wdp`) → OCR; `.pdf` → OCR of its first page; a video, audio, archive,
   executable, `.psd` or Office Open XML extension → no text, the file not even opened; anything
-  else → read as text when it passes the text test. The status line names nothing for a file of
-  the no-text kind.
+  else → read as text when it passes the text test.
 - **Images** — decoded with `BitmapDecoder` into a `SoftwareBitmap`, oriented as its EXIF says (a
   GIF gives its first frame); an image longer than `OcrEngine.MaxImageDimension` (10 000 px) on a
   side is **downscaled** to it, not skipped — its EXIF orientation then ignored, so the scaled size
@@ -244,7 +246,7 @@ here). The checks to run at delivery:
 | Index folder | An existing `files.index` next to the exe moved into `Index\` at start-up, no full rescan from nothing; `favorites.txt` untouched |
 | Progress bar | 3 px, blue, under the box, during the scan and the extraction; hidden when idle, nothing moving |
 | OCR setting | Off at first launch: no extraction runs, text files included; turned on from ⚙: the pass starts after the file list, remembered after a restart; turned off mid-pass: it stops, the texts already extracted still found |
-| Status line | During the pass: *… · indexed HH:MM · OCR on name.png*, the name changing file by file; the plain summary at the end |
+| Status line | During the pass: *… · indexed HH:MM · OCR: 254/3 500 (name.png)*, the count and the name changing file by file; the plain summary at the end |
 | Pause | Typing a search while the pass runs: the status line's file name stops changing while the thumbnails load, the pass resuming about 1 s after they are all shown |
 | ↻ | Enabled once the scan ends; pressed during the extraction: the list rescanned, then the extraction resumes without redoing the files done |
 | Folder view | A search typed in the folder view finds a file below the open folder by its content, with the badge |
@@ -423,13 +425,21 @@ base folder change**, which need the ⚙ menu and are left to the user's test.
 **Left open by the code-only go**: RULES.md § App Settings still says `files.index` lives next to
 the exe, README / Glossary say nothing of the content search yet.
 
+### Iteration 11 — 2026-10-07 — ⚙️ Post-implementation — Count on the status line
+
+User request, after testing (Q&A #29): *OCR on xxx.png* becomes *OCR: 254/3500 (xxx.png)* — the
+pass's count before the file's name. *Extraction › Status line* updated. Agent's choices: the
+*OCR:* label for every file of the pass — the *Reading* of a text or HTML file dropped, the count
+being the whole pass's; the count shown alone for a file of the no-text kind, so it never
+flickers away; the numbers grouped like the scan's own count (*3 500*).
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 9, 10 | 2026-10-07 | Delivered on the worktree branch `feature/content-search`, to be merged into `main` once tested |
+| Code | 9, 10, 11 | 2026-10-07 | Delivered on the worktree branch `feature/content-search`, to be merged into `main` once tested |
 | Unit tests | | | None planned — no test project (see *Test Impact*) |
 | README | | | Declined for now (Q&A #27, code only) — the file explorer's section, plus the Glossary (*Content text*, *Index folder*, *Index* revised), each with its `.fr.md` in the same commit; RULES.md § App Settings (`files.index` in `Index\`) |
 
@@ -468,6 +478,8 @@ Questions asked by the agent during design, with user responses.
 | 25 | Pause trigger: the thumbnails loading plus a moment after the last keystroke, or as long as the search box holds a query? | The thumbnails loading, and a moment after the last keystroke | 2026-10-07 |
 | 26 | ↻ during the extraction (#22 again): enabled once the scan ends, or disabled until the extraction ends? | Enabled once the scan ends | 2026-10-07 |
 | 27 | The design is complete: start the implementation — code, tests and docs / code only / no? | Code, in a dedicated worktree; once done, the user tests it and it is merged into `main` if OK | 2026-10-07 |
+| 28 | Once tested: merge into `main`, merge with the docs, adjustments, or not tested yet? | Adjustments | 2026-10-07 |
+| 29 | Which adjustments? | *OCR on xxx.png* to become *OCR: 254/3500 (xxx.png)* | 2026-10-07 |
 
 ---
 
