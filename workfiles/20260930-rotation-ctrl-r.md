@@ -45,6 +45,11 @@ Relevant components:
 - The target cell **becomes the selected cell**, so the Rotate tab shows the options of the image
   that just turned.
 
+### Iteration 3 — 2026-10-07 — ✅ Implemented
+
+Go given for **code and tests**, in a dedicated worktree (`feature/rotation-ctrl-r`), fast-forwarded
+into `main` at the end. The documentation (README) is not part of the go: declined.
+
 ### Effect State
 
 - The shortcut is an action on the Rotate effect's option: like any option, it **turns the effect
@@ -111,7 +116,7 @@ says so rather than staying blank.
 |---|---|---|---|
 | Code | | | |
 | Unit tests | | | Not applicable: no test project |
-| README | | | |
+| README | — | 2026-10-07 | Declined: not part of the go (code and tests only) |
 
 ---
 
@@ -127,7 +132,8 @@ Questions asked by the agent during design, with user responses.
 | 4 | Straightforward or tricky / long subject? | Straightforward | 2026-09-30 |
 | 5 | Fine angle kept or put back to 0° by the quarter turn? | Put back to 0° | 2026-09-30 |
 | 6 | Hovered cell other than the selected one: selected by the shortcut? | Yes | 2026-09-30 |
+| 7 | Go for the implementation? | Code and tests, in a separate worktree | 2026-10-07 |
 
 ---
 
-*Last updated: 2026-09-30*
+*Last updated: 2026-10-07*
