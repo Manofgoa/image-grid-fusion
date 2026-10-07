@@ -93,18 +93,17 @@ several may show at once.
 
 ### Where and How It Reads
 
-- **At the image's center**, following the image as it moves — wherever the zoom badge is
-  (top-right, below the ×): the two are independent and may show together.
-- Three parts, all `HelperColor` over the `HelperHalo`, faded together:
-  - a **dot** on the image's center;
-  - a **dashed line** from the cell's center to the image's center — none while they coincide
-    (`0, 0`);
-  - the **text** just below the dot, centered on it.
-- **Kept inside the cell**: near the cell's edge, or past it for an image pushed beyond its stops,
-  the text is pushed back so it shows whole in the cell, 4 px from its edges; the dot and the line
-  are clipped to the cell.
-- Sizes: the dot 3 px in radius; the line 2 px, dashed 4 / 3 like the pan guides, antialiased; the
-  text the zoom badge's size, 6 px below the dot.
+- Two parts, all `HelperColor` over the `HelperHalo`, faded together:
+  - **at the image's center**, following the image: an **X cross** — two diagonal strokes of about
+    30 px each, crossing on the center, to aim at it — and a **dashed line** from the cell's center
+    to the image's center at **50 % opacity** — none while they coincide (`0, 0`); both clipped to
+    the cell;
+  - the **text**, in the cell's **top-right corner, right-aligned below the ×** — the zoom badge's
+    place — or **just below the zoom badge** when it shows on the same cell.
+- **While the readout shows, the cell's ✥ swap handle is hidden** — neither drawn nor grabbed: a
+  press there moves the image like the rest of the cell. It comes back once the readout has faded.
+- Sizes: the cross's strokes 30 px, 2 px wide; the line 2 px, dashed 4 / 3 like the pan guides,
+  antialiased; the text the zoom badge's size.
 - **Two lines**: `x -35px`, then `y +12px` below it.
   - A signed integer: `+` for a positive value, `-` (hyphen-minus) for a negative one, no sign for
     `0` (`x 0px`).
@@ -249,6 +248,17 @@ Go given (Q&A 16): code, tests and documentation. Implemented on `main` — this
   minus sign); `0` reads `0`, unsigned.
 - **No layout holding the images** (a transition): no offsets, no readout; the next paint takes them
   as new.
+
+### Iteration 9 — 2026-10-07 — ⚙️ Post-implementation — Readout in the top-right, cross, hidden handle
+
+Requested after testing the delivery:
+
+- The **text** moves to the cell's **top-right**, where the zoom badge is, and **below the zoom badge**
+  when it shows too.
+- The **dashed line** to the center stays, at **50 % opacity**.
+- The **dot** gives way to an **X cross** of about 30 px a stroke, to aim at the center more easily.
+- During a move, the cell's **✥ swap handle is hidden**. Read as: hidden — neither drawn nor
+  grabbed — while the cell's readout shows, so a press at the center keeps moving the image.
 
 ---
 
