@@ -50,6 +50,11 @@ File contents
 - Each choice applies **at once** to the tiles shown, and is saved in `settings.json`; a save that
   fails says so in the status line, a value that cannot be read falls back to its default.
 - Every item has a tooltip ending with "remembered between sessions", like its neighbours.
+- Stored as `OcrArrowCurved` (1 / 0), `OcrArrowThickness` (0–5) and `OcrArrowColor` (ARGB) in
+  `settings.json`, read and written together as an `OcrArrowStyle` (`UI/OcrArrowStyle.cs`) through
+  `AppSettings.OcrArrow` / `SaveOcrArrow`, each part falling back to its default on its own.
+- *Arrow color…* stays enabled while exporting: unlike the border color, it never touches the grid.
+- The swatch is drawn by a `MainForm.SetSwatch` shared with *Border color…*.
 
 ---
 
@@ -89,6 +94,14 @@ File contents
   stroke enters the base from outside even when the neck is level with — or past — the start.
 - Off: today's straight arrow, its head along the line.
 - The halo follows the curve and the head, as today on the straight arrow.
+- Handles: the first covers **60 %** of the way across to the neck, the last **60 %** of the way
+  down (or up) to it, never shorter than **1.5 heads** (`ThumbnailGrid.CurveHandle`,
+  `ThumbnailGrid.CurvedArrow`).
+- A word **right under (or over) the bulb** — the neck within the bulb's radius horizontally — gets
+  a stroke leaving the bulb's bottom (or top) vertically, onto the base; none when that word
+  overlaps the bulb, as today's *none when the word is under the bulb*.
+- The arc is not clipped to the thumbnail: like the straight arrow, it may run over the tile's
+  margin when it swings past a word near the picture's edge.
 
 ### Color
 
@@ -101,8 +114,9 @@ File contents
 
 ## Documentation
 
-- `README.md` / `README.fr.md`: the ⚙ menu's **OCR result style** next to *Search file contents
-  (OCR)* in the file explorer's section.
+- `README.md` / `README.fr.md`: a **Found in its content** bullet after *Search criteria* in the
+  file explorer's section — the light bulb, its tooltip and its arrow, which the README did not
+  describe yet, then the ⚙ menu's **OCR result style**.
 - `GLOSSARY.md` / `GLOSSARY.fr.md`: no term changes planned.
 
 ---
@@ -173,6 +187,22 @@ minimum length). No open question left.
 Go given (Q&A #12): code, tests and documentation, in a worktree on `feature/ocr-result-style`
 (`.claude/worktrees/ocr-result-style`). Scope frozen as the domain sections stand.
 
+### Iteration 6 — 2026-10-07 — 🧭 Implementation choices
+
+No rule broken. Choices the frozen design left open, now in the domain sections:
+
+- Settings stored as three values (`OcrArrowCurved`, `OcrArrowThickness`, `OcrArrowColor`), grouped
+  in an `OcrArrowStyle` record struct; the head's size is `OcrArrowStyle.Head`.
+- Curve handles at 60 % of the way, the arriving one at least 1.5 heads long.
+- A word right under or over the bulb: a stroke leaving the bulb vertically; none when the word
+  overlaps the bulb.
+- The arc is not clipped to the thumbnail.
+- *Arrow color…* not locked while exporting; its swatch through a `SetSwatch` shared with *Border
+  color…* (whose rewritten line now takes `this.`).
+- README: the light bulb and its arrow were undocumented — the new bullet describes them before the
+  menu, a little more than the menu alone.
+- Checked off-screen by reflection on the built assembly (no test project).
+
 ---
 
 ## Implementation Log
@@ -182,9 +212,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable: no test project |
-| README | | | |
+| Code | 5, 6 | 2026-10-07 | `OcrArrowStyle`, `ThumbnailGrid` drawing, `FileExplorerPanel.ArrowStyle`, `AppSettings.OcrArrow`, ⚙ submenu in `MainForm`. Checked off-screen: the built `CurvedArrow` / `StraightArrow` drawn by reflection for six word positions at 2 and 5 px |
+| Unit tests | 5 | 2026-10-07 | Not applicable: no test project |
+| README | 5, 6 | 2026-10-07 | en / fr: *Found in its content* bullet |
 
 ---
 
