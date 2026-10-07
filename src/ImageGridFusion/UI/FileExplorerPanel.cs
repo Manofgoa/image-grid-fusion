@@ -47,7 +47,7 @@ internal sealed class FileExplorerPanel : Panel
     private const string OpenFileLocationText = "Open file location";
     private const string OpenInExplorerText = "Open in Explorer";
 
-    private readonly TableLayoutPanel _content = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 6, Padding = new Padding(6, 4, 6, 6) };
+    private readonly TableLayoutPanel _content = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 7, Padding = new Padding(6, 4, 6, 6) };
     private readonly TableLayoutPanel _header = new() { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
     private readonly Label _title = new() { Text = "Files", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly Button _collapse = new() { Text = "»", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right };
@@ -56,6 +56,7 @@ internal sealed class FileExplorerPanel : Panel
     private readonly CheckBox _folderToggle = new() { Text = "📁", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0) };
     private readonly TextBox _search = new() { PlaceholderText = SearchPlaceholder, Anchor = AnchorStyles.Left | AnchorStyles.Right };
     private readonly Button _rescan = new() { Text = "↻", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right, Enabled = false };
+    private readonly IndexingBar _progress = new() { Dock = DockStyle.Fill };
     private readonly Label _status = new() { Dock = DockStyle.Fill, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, Margin = Padding.Empty };
     private readonly Panel _captionRow = new() { Dock = DockStyle.Fill, Margin = Padding.Empty };
     private readonly Label _caption = new() { Dock = DockStyle.Fill, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, Margin = Padding.Empty };
@@ -120,6 +121,7 @@ internal sealed class FileExplorerPanel : Panel
         _content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _content.RowStyles.Add(new RowStyle(SizeType.Absolute, IndexingBar.Thickness));
         _content.RowStyles.Add(new RowStyle(SizeType.Absolute, 20));
         _content.RowStyles.Add(new RowStyle(SizeType.Absolute, 20));
         _content.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
@@ -151,10 +153,11 @@ internal sealed class FileExplorerPanel : Panel
         _listHost.Controls.Add(_invite);
         _content.Controls.Add(_header, 0, 0);
         _content.Controls.Add(_searchRow, 0, 1);
-        _content.Controls.Add(_status, 0, 2);
-        _content.Controls.Add(_captionRow, 0, 3);
-        _content.Controls.Add(_listHost, 0, 4);
-        _content.Controls.Add(_sizeRow, 0, 5);
+        _content.Controls.Add(this._progress, 0, 2);
+        _content.Controls.Add(_status, 0, 3);
+        _content.Controls.Add(_captionRow, 0, 4);
+        _content.Controls.Add(_listHost, 0, 5);
+        _content.Controls.Add(_sizeRow, 0, 6);
         Controls.Add(_content);
         Controls.Add(_expand);
         _menu.Items.Add(_openLocation);
@@ -555,13 +558,14 @@ internal sealed class FileExplorerPanel : Panel
         Width = IsHandleCreated ? LogicalToDeviceUnits(logical) : logical;
     }
 
-    /// <summary>The rows sized to the font: the status and caption lines, the slider's row, the invitation.</summary>
+    /// <summary>The rows sized to the font and the DPI: the progress bar's, the status and caption lines, the slider's row, the invitation.</summary>
     private void ApplyMetrics()
     {
         int line = Font.Height + LogicalToDeviceUnits(4);
-        _content.RowStyles[2].Height = line;
+        _content.RowStyles[2].Height = this.LogicalToDeviceUnits(IndexingBar.Thickness);
         _content.RowStyles[3].Height = line;
-        _content.RowStyles[5].Height = Font.Height * 2 + LogicalToDeviceUnits(4);
+        _content.RowStyles[4].Height = line;
+        _content.RowStyles[6].Height = Font.Height * 2 + LogicalToDeviceUnits(4);
         _inviteText.Height = Font.Height * 4 + LogicalToDeviceUnits(8);
     }
 
