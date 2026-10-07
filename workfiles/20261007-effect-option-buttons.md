@@ -154,6 +154,10 @@ generalized for zero / several pressed items and action items; a rule is added t
 | 2 | What the text-only buttons become | A pictogram, their name below | 2026-10-07 |
 | 3 | The effect's own Reset button | Left as it is | 2026-10-07 |
 | 4 | Exploration depth | Straightforward | 2026-10-07 |
+| 5 | Plain checkboxes and *Color…*: stay as they are? | | |
+| 6 | Animations' Type drop-down: stays or becomes a strip? | | |
+| 7 | Pictograms' style | | |
+| 8 | Crop's 100 %: set apart or not? | | |
 
 ---
 
