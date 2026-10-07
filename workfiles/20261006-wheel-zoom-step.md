@@ -48,7 +48,7 @@ Components:
   → 200 % down; with Ctrl, 103.4 % → 104 % up, → 103 % down.
 - Several notches at once (a fast wheel) are taken **one at a time**, each with the step of the
   range it moves into, so a burst crossing 200 % lands where the same notches one by one would.
-- The zoom stays within **10 %–1600 %** (`ImageLook.MinZoom` / `MaxZoom`).
+- The zoom stays within **10 %** and the **maximum zoom** (§ Maximum Zoom, 2000 % by default).
 - 100 % being a multiple of both steps, the "crossing 100 % stops on it" rule holds by itself.
 - Everything else is unchanged: zoom around the point under the mouse, live then smoothed when the
   wheel stops, the zoom badge, the cells where the wheel does nothing (crop edit view, a gesture
@@ -67,6 +67,23 @@ Components:
 
 - **Unchanged**: opacities, volume, fine angle, borders' thickness, Frames… keep the stock wheel and
   **Ctrl + wheel = 5 %**. Ctrl therefore means *coarse* on them and *fine* on the zoom — accepted.
+
+## Maximum Zoom
+
+- The maximum zoom is **2000 %** by default (1600 % before), an **app setting** kept in
+  `settings.json` (RULES.md § App Settings) under `"MaxZoom"`, **in percent** (`"MaxZoom": 2000`).
+  **No UI control**: it is edited by hand in the file, and read **once at start-up** — a change
+  takes effect at the next launch.
+- **Written when missing**: at start-up, a file without `"MaxZoom"` gets `"MaxZoom": 2000`, so the
+  setting can be found. A write that fails says so in the status line (§ App Settings).
+- **Accepted values**: whole numbers from **200** to **10 000**. Anything else — out of range, not a
+  whole number, unreadable — falls back to 2000 %.
+- *(Open question)* a value **above 10 000** is also **overwritten in the file** at start-up — with
+  which value?
+- It bounds everything the zoom's maximum bounds: the zoom itself (`ImageLook.WithZoom`), the Zoom
+  slider's range, the wheel over a cell and over the slider.
+- The Composition layer may not reference `UI/AppSettings.cs`: `ImageLook.MaxZoom` becomes a value
+  set at start-up (`Program.Main`) from the setting, before the main window is built.
 
 ---
 
@@ -94,10 +111,13 @@ ready to be pinned the day one exists.
   or follow the zoom (plain wheel = 5 %, Ctrl = finest unit)?~~ → Unchanged
 - [x] ~~The Zoom slider's keyboard (arrows, Page Up / Down): unchanged, or 5 / 1 points as well?~~ →
   Unchanged
-- [ ] The maximum zoom in `settings.json`: in percent (`"MaxZoom": 2000`) or as a factor (`20`)?
-- [ ] Written into the file by the app when missing, so it can be found and edited — or only read,
-  absent meaning 2000 %?
-- [ ] Which values are accepted (others falling back to 2000 %)?
+- [x] ~~The maximum zoom in `settings.json`: in percent (`"MaxZoom": 2000`) or as a factor (`20`)?~~
+  → In percent
+- [x] ~~Written into the file by the app when missing, so it can be found and edited — or only read,
+  absent meaning 2000 %?~~ → Written when missing
+- [x] ~~Which values are accepted (others falling back to 2000 %)?~~ → 200 to 10 000
+- [ ] A value above 10 000 overwritten in the file at start-up: with 10 000 (the cap) or 2000 (the
+  default)? And a value below 200, or unreadable: overwritten too?
 
 ---
 
@@ -153,6 +173,13 @@ zoom goes from 1600 % to **2000 %**, and is read from `settings.json` (§ App Se
 control. `ImageLook.MaxZoom` is a constant of the Composition layer, which may not reference
 `UI/AppSettings.cs`: the value has to be handed down at start-up. Open questions 7–9 below.
 
+### Iteration 6 — 2026-10-07 — ⚙️ Post-implementation — Maximum zoom: answers and overwrite
+
+Answers: in percent, written into the file when missing, 200 to 10 000 accepted (§ Maximum Zoom).
+Then a new request, while the adjustment started: "si valeur > 10 000 lors de l'ouverture au
+démarrage, overrider la valeur dans le .json et l'écrire" — a value above 10 000 is replaced in the
+file at start-up, not only ignored. Its replacing value is an open question.
+
 ---
 
 ## Implementation Log
@@ -183,10 +210,12 @@ Questions asked by the agent during design, with user responses.
 | 7 | The Zoom slider's keyboard: unchanged, or 5 / 1 points? | Unchanged | 2026-10-06 |
 | 8 | Go for the implementation? | Code and documentation, in a worktree | 2026-10-06 |
 | 9 | Is the task finished? | No — maximum zoom to 2000 %, read from settings.json, no UI (Iteration 5) | 2026-10-06 |
-| 10 | The maximum zoom's unit in settings.json: percent or factor? | | |
-| 11 | Written into the file when missing, or only read? | | |
-| 12 | Which values are accepted? | | |
+| 10 | The maximum zoom's unit in settings.json: percent or factor? | Percent | 2026-10-07 |
+| 11 | Written into the file when missing, or only read? | Written when missing | 2026-10-07 |
+| 12 | Which values are accepted? | 200 to 10 000 | 2026-10-07 |
+| 13 | A value above 10 000 overwritten with 10 000 (the cap) or 2000 (the default)? | | |
+| 14 | A value below 200 or unreadable: overwritten too, or only ignored? | | |
 
 ---
 
-*Last updated: 2026-10-06*
+*Last updated: 2026-10-07*
