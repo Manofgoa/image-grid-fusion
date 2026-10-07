@@ -83,20 +83,54 @@ public sealed class PdfPages : PageSource
 
     private Bitmap RenderPage(int page)
     {
-        using var pdfPage = _document.GetPage((uint)page);
+        using var output = this.RenderToStream(page, LongSide);
+        using var image = Image.FromStream(output.AsStream());
+        return ImageLoader.Copy(image);
+    }
+
+    /// <summary>
+    /// The first page of a PDF, rendered with its long side at <paramref name="longSide"/> px, as an
+    /// encoded image at the start of its stream — for the file explorer's text recognition; null when
+    /// Windows cannot open the file.
+    /// </summary>
+    public static InMemoryRandomAccessStream? TryRenderFirstPage(string path, int longSide)
+    {
+        using var pages = TryOpen(path);
+        if (pages is null)
+        {
+            return null;
+        }
+
+        lock (pages._document)
+        {
+            return pages.RenderToStream(0, longSide);
+        }
+    }
+
+    /// <summary>A page rendered with its long side at <paramref name="longSide"/> px, the stream at its start.</summary>
+    private InMemoryRandomAccessStream RenderToStream(int page, int longSide)
+    {
+        using var pdfPage = this._document.GetPage((uint)page);
         var size = pdfPage.Size;
-        double scale = LongSide / Math.Max(size.Width, size.Height);
+        double scale = longSide / Math.Max(size.Width, size.Height);
         var options = new PdfPageRenderOptions
         {
             DestinationWidth = (uint)Math.Max(1, Math.Round(size.Width * scale)),
             DestinationHeight = (uint)Math.Max(1, Math.Round(size.Height * scale)),
         };
 
-        using var output = new InMemoryRandomAccessStream();
-        pdfPage.RenderToStreamAsync(output, options).AsTask().GetAwaiter().GetResult();
-        output.Seek(0);
-        using var image = Image.FromStream(output.AsStream());
-        return ImageLoader.Copy(image);
+        var output = new InMemoryRandomAccessStream();
+        try
+        {
+            pdfPage.RenderToStreamAsync(output, options).AsTask().GetAwaiter().GetResult();
+            output.Seek(0);
+            return output;
+        }
+        catch
+        {
+            output.Dispose();
+            throw;
+        }
     }
 
     public override void Dispose() => _stream.Dispose();

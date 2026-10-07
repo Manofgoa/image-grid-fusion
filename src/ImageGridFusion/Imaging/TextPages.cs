@@ -111,6 +111,12 @@ public sealed class TextPages : PageSource
     public static TextPages? TryOpen(string path, Size pageSize) =>
         TryReadText(path) is { } text ? TryCreate(Styled(path, text), pageSize) : null;
 
+    /// <summary>
+    /// The text <see cref="TryOpen"/> would show, without its styles: an HTML or RTF file read without
+    /// its markup; null when the file is not text by the same test. For the file explorer's content search.
+    /// </summary>
+    public static string? TryReadContent(string path) => TryReadText(path) is { } text ? Styled(path, text).Text : null;
+
     private static StyledText Styled(string path, string text)
     {
         string extension = Path.GetExtension(path);
