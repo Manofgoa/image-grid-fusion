@@ -34,8 +34,8 @@ Components: `UI/FileExplorerPanel.cs` (search row, `Find`, `SearchFolder`), `Exp
 - Becomes `[📁] [Aa] [💡] [search box] [↻]`: the two new buttons are **toggle buttons with an icon**,
   built like the 📁 (`CheckBox`, `Appearance.Button`, same size and margins), **pressed = criterion on**.
 - Each has a **tooltip** saying what it searches and whether it is on.
-- **At least one stays on**: the last pressed button cannot be released (see *Open Questions* for
-  how a click on it behaves).
+- **At least one stays on**: a click on the last pressed button does **nothing** — it stays pressed,
+  its tooltip saying at least one criterion stays on.
 - **Not remembered**: both pressed at every launch; process state only, not an app setting, not in
   the undo history (the file explorer is outside it, RULES.md § Undo History).
 
@@ -46,7 +46,7 @@ Components: `UI/FileExplorerPanel.cs` (search row, `Find`, `SearchFolder`), `Exp
 | Criteria on | A word matches a file when it is found… |
 |---|---|
 | Name + content (default) | in its relative path, or else in its content text — today's behaviour |
-| Name only | in its relative path — the content texts are not read (`contentOf` null) |
+| Name only | in its relative path (name **and** subfolders, as today) — the content texts are not read (`contentOf` null) |
 | Content only | in its content text — the path is not read; a file without a content text matches nothing |
 
 - Ranking unchanged: path matches first, then content matches (`Rank.CompareTo`); content only, every
@@ -54,6 +54,10 @@ Components: `UI/FileExplorerPanel.cs` (search row, `Find`, `SearchFolder`), `Exp
 - The 💡 on a tile and its arrow keep showing the first word found in the content.
 - Toggling a button **runs the search again** at once, as typing does (back to the top: a new search).
 - Applies to the **search view** and the **folder view** alike — same box, same `Find`.
+- Content only, in the **folder view**: the **folder tiles are hidden** — a folder has no content; only
+  the files found by their content show.
+- **💡 stays enabled** while the ⚙ menu's *Search file contents (OCR)* is off: it searches the texts
+  already extracted, as today; its tooltip then says the extraction is stopped.
 
 ---
 
@@ -73,10 +77,10 @@ created. The behaviours are checked by hand on the running app:
 
 ## Open Questions
 
-- [ ] What does **Aa** cover: the relative path (name **and** subfolders, as today) or the file name only?
-- [ ] Content only, in the **folder view**: are the matching **folder tiles** still shown (folders have no content)?
-- [ ] While the ⚙ menu's **Search file contents (OCR)** is off (texts already extracted still searched), how does **💡** behave?
-- [ ] A click on the **last pressed** button: does nothing, or switches to the other criterion?
+- [x] ~~What does **Aa** cover: the relative path (name **and** subfolders, as today) or the file name only?~~ → The whole relative path, as today
+- [x] ~~Content only, in the **folder view**: are the matching **folder tiles** still shown (folders have no content)?~~ → Hidden
+- [x] ~~While the ⚙ menu's **Search file contents (OCR)** is off (texts already extracted still searched), how does **💡** behave?~~ → Stays enabled, searching the texts already extracted; its tooltip says the extraction is stopped
+- [x] ~~A click on the **last pressed** button: does nothing, or switches to the other criterion?~~ → Does nothing; its tooltip says at least one stays on
 - [ ] With `*` alone or an empty box (every file / the favorites), do the buttons stay clickable with no effect?
 - [ ] Documentation: README (EN + FR) only, or also a glossary term (*search criteria*)?
 
@@ -95,6 +99,12 @@ Initial design from the request and the scoping answers: two toggle buttons with
 **💡**) between 📁 and the search box, both on by default, at least one always on, not remembered
 between sessions. The search reads the path, the content text or both accordingly; ranking and the
 bulb unchanged. No test project: manual checks only.
+
+### Iteration 2 — 2026-10-07
+
+Four open questions answered: **Aa** keeps covering the whole relative path; content only hides
+the folder tiles of the folder view; **💡** stays enabled with the ⚙ OCR setting off; a click on the
+last pressed button does nothing. *UI* and *Search* updated.
 
 ---
 
@@ -121,10 +131,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | Both criteria unchecked: what happens? | Impossible, one stays on | 2026-10-07 |
 | 3 | Is the buttons' state remembered between sessions? | No, both on at every launch | 2026-10-07 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward — a single scout pass | 2026-10-07 |
-| 5 | What does **Aa** cover? | | |
-| 6 | Content only, folder view: folder tiles shown? | | |
-| 7 | 💡 while the ⚙ OCR setting is off? | | |
-| 8 | Click on the last pressed button? | | |
+| 5 | What does **Aa** cover? | The whole relative path (name and subfolders), as today | 2026-10-07 | |
+| 6 | Content only, folder view: folder tiles shown? | Hidden | 2026-10-07 | |
+| 7 | 💡 while the ⚙ OCR setting is off? | Stays enabled, the tooltip says the extraction is stopped | 2026-10-07 | |
+| 8 | Click on the last pressed button? | Nothing happens | 2026-10-07 | |
 | 9 | Buttons with `*` / an empty box? | | |
 | 10 | Documentation scope? | | |
 
