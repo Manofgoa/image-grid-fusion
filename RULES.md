@@ -121,6 +121,9 @@ The Crop effect's geometry is **not in fractions of the cell**, and its kept par
   playback all show it from one place.
 - Its strength is **resolution-independent** (relative to the cell size), so the preview and an
   export at another size look the same.
+- The zoom is read through **`ImageLook.ZoomIn`** — the Zoom effect's fit mode (Contain / Fill)
+  resolved against the cell and `ImageLook.Shown` — never `ImageLook.Zoom` directly, which is the
+  free zoom only. A new reader of the zoom does the same (origin: `workfiles/20261007-zoom-fit.md`).
 
 ## Global Effects
 
