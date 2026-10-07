@@ -196,6 +196,11 @@ in the order the requests were made.
 - Every agent launch passes `--new-instance`, written in the app's `CLAUDE.md` § Launch.
 - A `--title` handed over by a second launch is ignored.
 
+### Iteration 7 — 2026-10-07 — ✅ Implemented
+
+- Go given for code and documentation (no unit tests: no test project), in a dedicated worktree
+  (`feature/single-instance`, fast-forwarded into `main` and removed at the end).
+
 ---
 
 ## Implementation Log
