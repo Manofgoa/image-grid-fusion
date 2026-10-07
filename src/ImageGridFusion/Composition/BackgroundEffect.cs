@@ -9,7 +9,10 @@ public enum BackgroundFill
     /// <summary>The edges extended; each corner the color of the image's corner pixel.</summary>
     CornerPixel,
 
-    /// <summary>The edges extended; each corner split on its diagonal, each half its band mirrored past the image's corner.</summary>
+    /// <summary>
+    /// The edges extended; each corner split on its diagonal, each half the flat color of its edge's pixel
+    /// next to the image's corner, the corner pixel's color drawn over the diagonal at half opacity.
+    /// </summary>
     Miter,
 
     /// <summary>The edges extended; the corners keep the flat fill.</summary>
@@ -49,6 +52,12 @@ public sealed record BackgroundEffect
     /// <summary>The extended edges blurred, more with the distance from the image. Kept, unused, in the <see cref="BackgroundFill.Color"/> mode.</summary>
     public bool Soften { get; private init; }
 
+    /// <summary>
+    /// From 0, the extended edges invisible over the flat fill, to 1, opaque; the flat fill's opacity
+    /// untouched. Kept, unused, in the <see cref="BackgroundFill.Color"/> mode.
+    /// </summary>
+    public double EdgeOpacity { get; private init; } = 1;
+
     /// <summary>The image's edges are stretched over the bands.</summary>
     public bool Extends => Mode != BackgroundFill.Color;
 
@@ -68,6 +77,8 @@ public sealed record BackgroundEffect
     public BackgroundEffect WithBlend(double blend) => this with { Blend = Math.Clamp(blend, 0, 1) };
 
     public BackgroundEffect WithSoften(bool soften) => this with { Soften = soften };
+
+    public BackgroundEffect WithEdgeOpacity(double opacity) => this with { EdgeOpacity = Math.Clamp(opacity, 0, 1) };
 
     /// <summary>The fill, given the <paramref name="automatic"/> band color: the color in use at the opacity.</summary>
     public Color Fill(Color automatic) => Color.FromArgb((int)Math.Round(255 * Opacity), Automatic ? automatic : Color);
