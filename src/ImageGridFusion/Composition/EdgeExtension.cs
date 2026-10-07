@@ -7,8 +7,8 @@ namespace ImageGridFusion.Composition;
 /// <summary>
 /// The Background's extending modes: the image's edge pixels — the outermost row or column of the image
 /// as drawn in the cell — stretched over the bands out to the cell's edges, the corners filled by the
-/// mode, the whole blended into the flat fill with the distance and softened if asked, then painted at
-/// the background's opacity.
+/// mode, laid over the flat fill at the edge opacity, blended into it with the distance and softened
+/// if asked, then painted at the background's opacity.
 /// </summary>
 internal static class EdgeExtension
 {
@@ -16,6 +16,9 @@ internal static class EdgeExtension
     // side per pixel of distance from the image: sharp against it, softer further out, and relative to
     // the cell, so the preview and an export at another size look the same.
     private const double SoftenSpread = 0.5;
+
+    // The opacity of the line a Miter corner draws over its diagonal, in the image's corner pixel color.
+    private const double MiterLineOpacity = 0.5;
 
     /// <summary>
     /// The rectangle of <paramref name="cell"/> the image covers, drawn at <paramref name="drawn"/>, whose
@@ -93,18 +96,15 @@ internal static class EdgeExtension
                             column.Sample(columnEnd, spread * dx),
                             dy / (double)(dx + dy)),
 
-                        // The diagonal runs from the image's corner to the cell's: on the row's side, the
-                        // row mirrored past the corner; on the column's side, the column.
-                        BackgroundFill.Miter => dy * (long)depthX >= dx * (long)depthY
-                            ? row.Sample(rowEnd + rowInward * (dx - 1), spread * dy)
-                            : column.Sample(columnEnd + columnInward * (dy - 1), spread * dx),
+                        BackgroundFill.Miter => Miter(row, column, rowEnd, rowInward, columnEnd, columnInward, dx, dy, depthX, depthY),
                         _ => null,
                     };
                     distance = Math.Max((dx - 0.5) / depthX, (dy - 0.5) / depthY);
                 }
 
+                // The edge opacity lets the flat fill through, then the blend goes to it with the distance.
                 pixels[y * width + x] = sample is { } s
-                    ? s.Over(flat).Toward(flat, background.Blend * Math.Clamp(distance, 0, 1)).Argb
+                    ? s.Over(flat).Toward(flat, 1 - background.EdgeOpacity).Toward(flat, background.Blend * Math.Clamp(distance, 0, 1)).Argb
                     : flatArgb;
             }
         }
@@ -132,6 +132,23 @@ internal static class EdgeExtension
         }
 
         g.DrawImage(back, cell, 0, 0, width, height, GraphicsUnit.Pixel, attributes);
+    }
+
+    /// <summary>
+    /// A Miter corner's pixel, <paramref name="dx"/> and <paramref name="dy"/> pixels out from the image's
+    /// corner in a corner <paramref name="depthX"/> by <paramref name="depthY"/>: split on the diagonal from
+    /// the image's corner to the cell's, the row's side flat in the row's pixel next to the corner, the
+    /// column's side in the column's; the corner pixel's color laid at half opacity over the diagonal.
+    /// </summary>
+    private static Pixel Miter(Line row, Line column, int rowEnd, int rowInward, int columnEnd, int columnInward, int dx, int dy, int depthX, int depthY)
+    {
+        var part = dy * (long)depthX >= dx * (long)depthY
+            ? row.Sample(rowEnd + rowInward, 0)
+            : column.Sample(columnEnd + columnInward, 0);
+
+        // The 1 px line: the pixels whose center lies within half a pixel of the diagonal.
+        double across = Math.Abs((dx - 0.5) * depthY - (dy - 0.5) * depthX) / Math.Sqrt((double)depthX * depthX + (double)depthY * depthY);
+        return across < 0.5 ? Pixel.Mix(row.Sample(rowEnd, 0), part, MiterLineOpacity) : part;
     }
 
     /// <summary>A color with straight (not premultiplied) channels, from 0 to 255.</summary>
