@@ -184,6 +184,7 @@ internal sealed class FileExplorerPanel : Panel
         _grid.ContextMenuStrip = _menu;
         _grid.IsFavorite = _favorites.Contains;
         this._grid.ContentExcerpt = this.ExcerptOf;
+        this._grid.ContentSpot = this.SpotOf;
 
         _toolTip.SetToolTip(_collapse, "Hide the file explorer");
         _toolTip.SetToolTip(_expand, "Show the file explorer");
@@ -1329,6 +1330,12 @@ internal sealed class FileExplorerPanel : Panel
     private string? ExcerptOf(ExplorerRow row) =>
         row.ContentWord is { } word && this._contents is { } contents && this._baseFolder is { } root
             ? contents.ExcerptOf(Path.GetRelativePath(root, row.FullPath), word, 4)
+            : null;
+
+    /// <summary>Where the OCR recognised the word the search found in a tile's content, for the bulb's arrow.</summary>
+    private RectangleF? SpotOf(ExplorerRow row) =>
+        row.ContentWord is { } word && this._contents is { } contents && this._baseFolder is { } root
+            ? contents.SpotOf(Path.GetRelativePath(root, row.FullPath), word)
             : null;
 
     /// <summary>A folder's tile: its name, then every file below it as the index counts them, once the index is there.</summary>

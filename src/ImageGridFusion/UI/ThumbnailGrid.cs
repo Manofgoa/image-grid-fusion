@@ -110,6 +110,14 @@ internal sealed class ThumbnailGrid : ScrollableControl
     public Func<ExplorerRow, string?> ContentExcerpt { get; set; } = _ => null;
 
     /// <summary>
+    /// Where the OCR recognised the word a search found in a tile's content, in fractions of its image —
+    /// the light bulb's arrow points there; null when unknown (a text file, say).
+    /// </summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Func<ExplorerRow, RectangleF?> ContentSpot { get; set; } = _ => null;
+
+    /// <summary>
     /// Whether thumbnails are being loaded in the background — the file explorer's content extraction
     /// waits meanwhile. Safe to read from any thread.
     /// </summary>
@@ -528,6 +536,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         // Loaded at its bucket's size: scaled to the tile — enlarged when smaller — its proportions kept,
         // centered. A folder Windows has no thumbnail for gets a drawn folder.
         bool known = _thumbnails.TryGet(row.FullPath, out var image);
+        Rectangle? drawn = null;
         if (known && image is null && row.IsFolder)
         {
             PaintFolderGlyph(g, tile);
@@ -539,6 +548,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
             int height = Math.Max(1, (int)Math.Round(image.Height * scale));
             var target = new Rectangle(tile.X + (tile.Width - width) / 2, tile.Y + (tile.Height - height) / 2, width, height);
             g.DrawImage(image, target, new Rectangle(0, 0, image.Width, image.Height), GraphicsUnit.Pixel);
+            drawn = target;
         }
 
         var border = selected ? SystemColors.Highlight : index == _hovered ? SystemColors.HotTrack : SystemColors.ControlDark;
@@ -572,6 +582,11 @@ internal sealed class ThumbnailGrid : ScrollableControl
             var bulb = this.Scrolled(this.BulbBounds(index));
             var smoothing = g.SmoothingMode;
             g.SmoothingMode = SmoothingMode.AntiAlias;
+            if (drawn is { } picture && this.ContentSpot(row) is { } spot)
+            {
+                this.PaintArrow(g, bulb, picture, spot);
+            }
+
             g.FillEllipse(Brushes.White, bulb);
             g.DrawEllipse(SystemPens.ControlDark, bulb);
             g.SmoothingMode = smoothing;
@@ -684,6 +699,56 @@ internal sealed class ThumbnailGrid : ScrollableControl
         else
         {
             this._toolTip.SetToolTip(this, index >= 0 ? this._rows[index].FullPath : null);
+        }
+    }
+
+    /// <summary>
+    /// The light bulb's arrow, from the bulb to the word recognised in the drawn thumbnail: to the
+    /// middle of its top edge, or of its bottom edge when the word sits above the bulb; amber over a
+    /// dark halo, legible on any picture. None when the word is under the bulb.
+    /// </summary>
+    private void PaintArrow(Graphics g, Rectangle bulb, Rectangle picture, RectangleF spot)
+    {
+        var word = new RectangleF(
+            picture.X + spot.X * picture.Width,
+            picture.Y + spot.Y * picture.Height,
+            spot.Width * picture.Width,
+            spot.Height * picture.Height);
+        var from = new PointF(bulb.X + bulb.Width / 2f, bulb.Y + bulb.Height / 2f);
+        var to = new PointF(word.X + word.Width / 2f, word.Y + word.Height / 2f >= from.Y ? word.Y : word.Bottom);
+        float dx = to.X - from.X;
+        float dy = to.Y - from.Y;
+        float length = MathF.Sqrt(dx * dx + dy * dy);
+        float radius = bulb.Width / 2f;
+        float head = this.LogicalToDeviceUnits(7);
+        if (length <= radius + head)
+        {
+            return;
+        }
+
+        // Unit vectors along the arrow and across it.
+        float ux = dx / length;
+        float uy = dy / length;
+        var start = new PointF(from.X + ux * radius, from.Y + uy * radius);
+        var neck = new PointF(to.X - ux * head, to.Y - uy * head);
+        float half = head / 2f;
+        PointF[] tip = [to, new PointF(neck.X - uy * half, neck.Y + ux * half), new PointF(neck.X + uy * half, neck.Y - ux * half)];
+
+        float width = this.LogicalToDeviceUnits(2);
+        using (var halo = new Pen(Color.FromArgb(170, 0, 0, 0), width + this.LogicalToDeviceUnits(2)) { LineJoin = LineJoin.Round })
+        {
+            g.DrawLine(halo, start, neck);
+            g.DrawPolygon(halo, tip);
+        }
+
+        using (var pen = new Pen(BulbColor, width))
+        {
+            g.DrawLine(pen, start, neck);
+        }
+
+        using (var fill = new SolidBrush(BulbColor))
+        {
+            g.FillPolygon(fill, tip);
         }
     }
 
