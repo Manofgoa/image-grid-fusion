@@ -83,6 +83,11 @@ exe's folder in Explorer") and the scoping answers: *Open app folder* at the end
 a separator, Explorer on the running exe's folder with the exe selected, through the existing
 `ShowInExplorer`; ⚙ menu only; README EN / FR updated.
 
+### Iteration 2 — 2026-10-07 — ✅ Implemented
+
+Go given: code, tests and documentation, in a dedicated worktree (`feature/open-exe-folder` under
+`.claude/worktrees/`), fast-forwarded into `main` and removed at the end.
+
 ---
 
 ## Implementation Log
@@ -108,6 +113,7 @@ Questions asked by the agent during design, with user responses.
 | 2 | Where in the ⚙ menu, with which label? | At the end, after a separator — *Open app folder* | 2026-10-07 |
 | 3 | Also in the tray icon's menu (Open / Quit)? | No, the ⚙ menu only | 2026-10-07 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward — single scout pass | 2026-10-07 |
+| 5 | Start implementing the workfile? | Code, tests and documentation — in a separate worktree | 2026-10-07 |
 
 ---
 
