@@ -123,6 +123,12 @@ Questions asked by the agent during design, with user responses.
 | 2 | What do x and y stand for? | The offset from the center (0, 0 = centered, signed) | 2026-10-07 |
 | 3 | Which moves show the coordinates? | Mouse drag, arrow keys, undo / redo restore | 2026-10-07 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward — a single scout pass | 2026-10-07 |
+| 5 | Where does the readout sit (A below the ×, B top-left, C bottom-center, D at the image's center)? | | 2026-10-07 |
+| 6 | Text format? | | 2026-10-07 |
+| 7 | Sign of y: positive downward or upward? | | 2026-10-07 |
+| 8 | Mouse drag: zoom badge's timing strictly, or held while the button is down? | | 2026-10-07 |
+| 9 | Does a zoom or a fine angle moving the image's center show the readout too? | | 2026-10-07 |
+| 10 | Arrow keys step 1 preview px, the readout jumping several export px: kept as is? | | 2026-10-07 |
 
 ---
 
