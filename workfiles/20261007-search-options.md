@@ -122,6 +122,11 @@ Last two questions answered: the buttons stay clickable with no effect under `*`
 the documentation covers the README and the glossary, both languages. *Search* updated, a
 *Documentation* section added. No open question left.
 
+### Iteration 4 — 2026-10-07 — ✅ Implemented
+
+Go given: code, tests and documentation, in a dedicated worktree (`feature/search-options`),
+fast-forwarded into `main` and removed at the end. No unit test: no test project.
+
 ---
 
 ## Implementation Log
