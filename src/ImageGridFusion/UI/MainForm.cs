@@ -192,6 +192,10 @@ internal sealed class MainForm : Form
 
     // Its face is the swatch: painted with the background color in use, opaque.
     private readonly Button _backgroundColor = new() { Text = "Color…", AutoSize = true, Anchor = AnchorStyles.Left, UseVisualStyleBackColor = false };
+    private readonly BackgroundFillStrip _backgroundFill = new() { Anchor = AnchorStyles.Left };
+    private readonly TrackBar _backgroundBlend = OptionSlider(0, 100, 10);
+    private readonly Label _backgroundBlendLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _backgroundSoften = new() { Text = "Soften", AutoSize = true, Anchor = AnchorStyles.Left };
 
     // One dialog for the whole session, so its custom colors stay from one pick to the next.
     private readonly ColorDialog _colorDialog = new() { AnyColor = true };
@@ -375,7 +379,8 @@ internal sealed class MainForm : Form
         _optionsRow.Controls.Add(_optionsHost, 0, 0);
         _optionsRow.Controls.Add(_effectResetButton, 1, 0);
         _optionsHost.Controls.AddRange([.. _options.Values]);
-        _options[ImageEffect.Background].Controls.AddRange([_backgroundAutomatic, _backgroundOpacityIcon, _backgroundOpacity, _backgroundOpacityLabel, _backgroundColor]);
+        _options[ImageEffect.Background].Controls.AddRange(
+            [_backgroundFill, _backgroundAutomatic, _backgroundOpacityIcon, _backgroundOpacity, _backgroundOpacityLabel, _backgroundColor, _backgroundBlend, _backgroundBlendLabel, _backgroundSoften]);
         _options[ImageEffect.Crop].Controls.AddRange([.. _cropRatios.Select(r => r.Button), this._cropWhole]);
         _options[ImageEffect.Zoom].Controls.AddRange([_zoom, _zoomLabel, this._zoomContain, this._zoomFill]);
         this._motionKind.Items.AddRange(Enum.GetNames<MotionKind>());
@@ -574,6 +579,16 @@ internal sealed class MainForm : Form
             ChangeLook(ImageEffect.Background, look => look.WithBackground(look.Background!.WithOpacity(_backgroundOpacity.Value / 100.0)));
         };
         _backgroundColor.Click += (_, _) => PickBackgroundColor();
+        this._toolTip.SetToolTip(this._backgroundBlend, "Blends the extended edges into the background color, more with the distance from the image: at 100 %, they vanish by the cell's edge");
+        this._toolTip.SetToolTip(this._backgroundSoften, "Blurs the extended edges, more with the distance from the image, the image itself staying sharp");
+        this._backgroundFill.Picked += (_, mode) => this.ChangeLook(ImageEffect.Background, look => look.WithBackground(look.Background!.WithMode(mode)));
+        this._backgroundBlend.ValueChanged += (_, _) =>
+        {
+            this._backgroundBlendLabel.Text = BlendText(this._backgroundBlend.Value);
+            this.ChangeLook(ImageEffect.Background, look => look.WithBackground(look.Background!.WithBlend(this._backgroundBlend.Value / 100.0)));
+        };
+        this._backgroundSoften.CheckedChanged += (_, _) =>
+            this.ChangeLook(ImageEffect.Background, look => look.WithBackground(look.Background!.WithSoften(this._backgroundSoften.Checked)));
         _globalResetButton.SizeChanged += (_, _) => FitEffectRows();
         _globalTabsRow.Paint += (_, e) => PaintOptionsEdge(e.Graphics, _globalTabsRow, standing: true);
         _globalTabs.TabClicked += (_, effect) => SelectGlobalEffect(effect);
@@ -2448,6 +2463,8 @@ internal sealed class MainForm : Form
 
     private static string OpacityText(int percent) => $"Opacity: {percent} %";
 
+    private static string BlendText(int percent) => $"Blend: {percent} %";
+
     /// <summary>
     /// Checked, the automatic color again, the chosen one dropped; unchecked, the automatic color of the
     /// moment frozen as the chosen one.
@@ -2522,6 +2539,9 @@ internal sealed class MainForm : Form
             {
                 _backgroundAutomatic.Checked = background.Automatic;
                 _backgroundOpacity.Value = (int)Math.Round(background.Opacity * 100);
+                this._backgroundFill.Selected = background.Mode;
+                this._backgroundBlend.Value = (int)Math.Round(background.Blend * 100);
+                this._backgroundSoften.Checked = background.Soften;
                 if (_selectedEffect == ImageEffect.Background)
                 {
                     ShowBackgroundColor(BackgroundShown(background));
@@ -2594,6 +2614,7 @@ internal sealed class MainForm : Form
         _blurIntensityLabel.Text = $"Intensity: {_blurIntensity.Value}%";
         _volumeLabel.Text = VolumeText(_volume.Value);
         _backgroundOpacityLabel.Text = OpacityText(_backgroundOpacity.Value);
+        this._backgroundBlendLabel.Text = BlendText(this._backgroundBlend.Value);
         _syncingEffects = false;
 
         // An effect that does not apply to the image keeps its tab selectable, its options disabled.
@@ -2603,6 +2624,10 @@ internal sealed class MainForm : Form
             row.Visible = _selectedEffect == effect;
             row.Enabled = usable;
         }
+
+        // The blend and the soften act on the extended edges: disabled with the flat color, their values kept.
+        bool extends = look?.TurnOn(ImageEffect.Background).Background?.Extends == true;
+        this._backgroundBlend.Enabled = this._backgroundBlendLabel.Enabled = this._backgroundSoften.Enabled = extends;
 
         _effectResetButton.Visible = _selectedEffect is not null;
         _effectResetButton.Enabled = usable && ResetLook(_selectedEffect) != look;
