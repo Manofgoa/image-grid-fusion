@@ -48,6 +48,21 @@ The Background effect is **on by default**, and **off does not draw its defaults
 - Its **default state is on** — automatic color, 100 % opacity: a new image, a replaced one, an
   image shifting after a deletion, and every *Reset* — its own and the toolbar's — bring it back on.
 
+#### The Background's Edge Extension
+
+In its extending fills (Corner pixel, Miter, Background corners), the Background stretches the
+image's edges over the bands (origin: `workfiles/20261007-background-edge-extension.md`):
+
+- It reads the image **as drawn in the cell** — rendered alone at the cell's size
+  (`Compositor.DrawBackground`), the outermost rows and columns of the rectangle it covers
+  (`EdgeExtension.Covered`) — never the bitmap: crop, orientation, fine angle, zoom and black &
+  white are extended with it, and a new effect drawn in the image is extended by itself.
+- The flat fill stays under the image, fills the Background corners and is what Blend goes to; the
+  **opacity covers the whole background**, the extended edges included.
+- Blend and Soften grow with the distance from the image relative to the band's depth, so the
+  preview and an export at another size look the same.
+- The crop edit view (`Compositor.DrawUncropped`) extends the whole image it shows.
+
 #### The Crop Exception
 
 The Crop effect's geometry is **not in fractions of the cell**, and its kept part **is the image**
