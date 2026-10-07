@@ -120,6 +120,11 @@ Open questions answered (Q&A #5–#7): the 30 s timer is kept alongside the 50-f
 whichever comes first; the 50-file trigger waits for at least 5 s since the last save; the 5 s
 search refresh is unchanged. § Design updated; no open question left.
 
+### Iteration 3 — 2026-10-07 — ✅ Implemented
+
+Go given: code and documentation, in a worktree (`.claude/worktrees/index-write-every-50-files`,
+branch `feature/index-write-every-50-files`). Scope frozen on § Design as of Iteration 2.
+
 ---
 
 ## Implementation Log
