@@ -121,6 +121,16 @@ manually in the app.
 - [x] ~~On or off at startup, remembered across launches?~~ → Remembered (on / off and depth); off at
   the very first launch
 - [x] ~~No test project: create one, or ship without unit tests?~~ → No unit tests
+- [ ] *(2026-10-07, Iteration 4)* The Background effect now has extending modes (Corner pixel, Miter,
+  Background corners) — the non-solid case "if fixed color" pointed at: what happens on a seam where
+  a cell extends its edges?
+- [ ] *(Iteration 4)* A neighbour whose Background is off (transparent) or at a low opacity: fade
+  toward its fill, transparent included, or no fade on that seam?
+- [ ] *(Iteration 4)* The Borders' gap separates the cells: fade across it, or no fade while a gap is
+  shown?
+- [ ] *(Iteration 4)* The grid-level setting now falls under RULES.md § Global Effects (a Global
+  toolbar tab, not persisted, reset by the global Resets and *Clear all*, part of the undo step),
+  which contradicts Q13's bottom bar and remembered setting: make it a global effect?
 
 ---
 
@@ -153,6 +163,30 @@ The Q9–Q12 batch was dismissed; the agent's recommendations were re-asked in o
 accepted: continuous corners and multi-neighbour seams, an adjustable depth slider (10 % of the
 smallest cell by default), the setting in the bottom bar, remembered across launches and off at the
 first launch, no unit tests. The design is complete.
+
+### Iteration 4 — 2026-10-07
+
+The user asked to check the impact of the work done since this design (session *Background edge
+extension*, ~1 000 commits). Findings:
+
+- The cell's background is now the **Background** cell effect (`ImageLook.Background`,
+  `Composition/BackgroundEffect.cs`): automatic or chosen color, an **opacity**, on by default, off
+  leaving the cell transparent; drawn by `Compositor.DrawBackground` before the image.
+- It has **extending modes** (`workfiles/20261007-background-edge-extension.md`): the image's edges
+  stretched over the bands — the non-solid background "if fixed color" pointed at. The fade of this
+  design is the solid-color case.
+- "Alpha" is now concrete: fills have an opacity, and an off Background is transparent; the PNG
+  export is 32 bpp ARGB.
+- A grid-level setting is now a **global effect** (RULES.md § Global Effects): Global toolbar tab,
+  not persisted, global Resets and *Clear all*, undo step. Q13's bottom bar and remembered setting
+  contradict it. *Fade* (sound) and *Blend* (Background) are taken names.
+- The **Borders** global effect can leave a **gap** between the cells (`GridBorders.Inset`).
+- Separators resize cells; neighbours must be found from the cells' rectangles. The Animations
+  effect can change the automatic color over time, so a cell's seams follow its neighbours' frames
+  (the preview's per-cell redraws, `GridPreview`, must redraw neighbours).
+- Still no test project.
+
+Four questions reopened (Open Questions, Q14–Q17); the design sections are updated once answered.
 
 ---
 
@@ -188,7 +222,11 @@ Questions asked by the agent during design, with user responses.
 | 11 | Where does the setting live? | Dismissed — re-asked as Q13 | 2026-09-26 |
 | 12 | On or off at startup, remembered across launches? | Dismissed — re-asked as Q13 | 2026-09-26 |
 | 13 | Accept the five recommendations (continuous corners, 10 % slider, bottom bar, remembered, no unit tests)? | Yes, all five | 2026-09-26 |
+| 14 | Seam where a cell extends its edges (Background extending modes)? | | 2026-10-07 |
+| 15 | Neighbour whose Background is off or at a low opacity? | | 2026-10-07 |
+| 16 | Borders' gap between the cells? | | 2026-10-07 |
+| 17 | Make the setting a global effect (RULES.md § Global Effects)? | | 2026-10-07 |
 
 ---
 
-*Last updated: 2026-09-26*
+*Last updated: 2026-10-07*
