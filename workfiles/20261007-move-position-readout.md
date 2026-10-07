@@ -49,7 +49,13 @@ Relevant components:
 |---|---|
 | The image is dragged with the mouse (`_panning`) | Shown over its cell, updated at each move |
 | The image is moved with the arrow keys — 1 px, Ctrl, Shift, Ctrl + Shift jump | Shown over its cell, updated at each press |
-| An undo / redo restore moves an image (its focus changes, not by a turn or a flip) | Shown briefly, as the zoom badge and the guides of `ShowRestored` |
+| A zoom (wheel, slider) or a fine angle that moves the image's center — the wheel keeping the point under the mouse, the image brought back within its stops | Shown over its cell, updated at each change |
+| An undo / redo restore that moves an image's center | Shown briefly, as the zoom badge and the guides of `ShowRestored` |
+
+- **Whenever the image's center moves** in its cell, the readout shows (Q&A 9) — the boundary of
+  "whenever" is Open Question 7.
+- The arrow keys keep their step of 1 **preview** px (10 with Ctrl): the readout, in export px, may
+  jump by several units per press. Changing the step is out of this workfile's scope.
 
 - **Timing**: the zoom badge's — full opacity for `ZoomBadgeHold` (1 s) after the last change, then
   faded out over `ZoomBadgeFade` (0.3 s). During a **mouse drag**, it stays at full opacity while the
@@ -59,14 +65,20 @@ Relevant components:
 
 ### Where and How It Reads
 
-- **At the image's center**, the text centered on it, following the image as it moves — wherever the
-  zoom badge is (top-right, below the ×): the two are independent and may show together.
+- **At the image's center**, following the image as it moves — wherever the zoom badge is
+  (top-right, below the ×): the two are independent and may show together.
+- Three parts, all `HelperColor` over the `HelperHalo`, faded together:
+  - a **dot** on the image's center;
+  - a **dashed line** from the cell's center to the image's center — none while they coincide
+    (`0, 0`);
+  - the **text** just below the dot, centered on it.
+- **Kept inside the cell**: near the cell's edge, or past it for an image pushed beyond its stops,
+  the text is pushed back so it shows whole in the cell; the dot and the line are clipped to the cell.
 - **Two lines**: `x -35px`, then `y +12px` below it.
   - A signed integer: `+` for a positive value, `-` (hyphen-minus) for a negative one, no sign for
     `0` (`x 0px`).
   - **x positive to the right, y positive downward** — the image's pixel rows, the screen's
     convention.
-
 
 ---
 
@@ -91,14 +103,21 @@ created or updated. The change is checked by hand in the running app.
 - [x] ~~Mouse drag: strictly the zoom badge's timing (fades 1 s after the last move, even with the
       button still held), or held while the button is down, the fade starting at release?~~ → Held
       while the button is down; the hold and the fade start at the release
-- [ ] The mockup's option D also drew a **dot** on the image's center and a **dashed line** from the
-      cell's center to it: are they part of the readout, or the text only?
-- [ ] Near the cell's edge — or past it, an image pushed beyond its stops — the text centered on the
-      image's center would be cut by the cell: kept inside the cell, or cut?
-- [ ] A zoom or a fine angle that moves the image's center (the wheel keeping the point under the
-      mouse, the image brought back within its stops): does it show the readout too?
-- [ ] The arrow keys move 1 **preview** px (10 with Ctrl): the readout, in export px, jumps by
-      several units per press. Kept as is, or out of this workfile's scope?
+- [x] ~~The mockup's option D also drew a **dot** on the image's center and a **dashed line** from the
+      cell's center to it: are they part of the readout, or the text only?~~ → Part of it: text, dot
+      and dashed line
+- [x] ~~Near the cell's edge — or past it, an image pushed beyond its stops — the text centered on the
+      image's center would be cut by the cell: kept inside the cell, or cut?~~ → Kept inside the cell
+- [x] ~~A zoom or a fine angle that moves the image's center (the wheel keeping the point under the
+      mouse, the image brought back within its stops): does it show the readout too?~~ → Yes:
+      whenever the image's center moves
+- [x] ~~The arrow keys move 1 **preview** px (10 with Ctrl): the readout, in export px, jumps by
+      several units per press. Kept as is, or out of this workfile's scope?~~ → Kept as is, out of
+      scope
+- [ ] "Whenever the center moves": a change of the **image's own look** only (move, zoom, fine angle,
+      quarter turn, flip, crop), or also a change of the **grid's geometry** that shifts it in export
+      pixels (separator drag, layout, format, Borders' gap)? The Animations motion, moving the center
+      continuously, would keep the readout on forever: left out either way?
 
 ---
 
@@ -124,6 +143,13 @@ image's center): the readout sits **at the image's center** and follows it, inde
 badge; **two lines**, `x -35px` / `y +12px`; **y positive downward**; during a mouse drag it is
 **held while the button is down**, its hold and fade starting at the release. Two questions follow
 from the placement chosen: the mockup's dot and dashed line, and the text near the cell's edge.
+
+### Iteration 3 — 2026-10-07
+
+Answers to Q&A 9–12: the readout shows **whenever the image's center moves** — a zoom or a fine
+angle too, not only a move; the arrow keys' step stays as it is (out of scope); the readout is the
+mockup's D in full — **text, dot and dashed line** from the cell's center; the text is **kept inside
+the cell**. One question follows from "whenever": its boundary (Q&A 13).
 
 ---
 
@@ -154,10 +180,11 @@ Questions asked by the agent during design, with user responses.
 | 6 | Text format? | Two lines: `x -35px` then `y +12px` | 2026-10-07 |
 | 7 | Sign of y: positive downward or upward? | Downward | 2026-10-07 |
 | 8 | Mouse drag: zoom badge's timing strictly, or held while the button is down? | Held while the button is down; 1 s after the release, then the fade | 2026-10-07 |
-| 9 | Does a zoom or a fine angle moving the image's center show the readout too? | | 2026-10-07 |
-| 10 | Arrow keys step 1 preview px, the readout jumping several export px: kept as is? | | 2026-10-07 |
-| 11 | Are the mockup's dot and dashed line part of the readout? | | 2026-10-07 |
-| 12 | Near or past the cell's edge: text kept inside the cell, or cut? | | 2026-10-07 |
+| 9 | Does a zoom or a fine angle moving the image's center show the readout too? | Yes — whenever the image's center moves | 2026-10-07 |
+| 10 | Arrow keys step 1 preview px, the readout jumping several export px: kept as is? | Kept as is — out of scope | 2026-10-07 |
+| 11 | Are the mockup's dot and dashed line part of the readout? | Yes — text, dot and dashed line | 2026-10-07 |
+| 12 | Near or past the cell's edge: text kept inside the cell, or cut? | Kept inside the cell | 2026-10-07 |
+| 13 | "Whenever the center moves": the image's own look only, or the grid's geometry (separators, layout, format, Borders' gap) too? | | 2026-10-07 |
 
 ---
 
