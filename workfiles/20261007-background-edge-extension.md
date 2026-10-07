@@ -214,6 +214,7 @@ Requested after testing:
   takes the corner's pixels whose center lies within half a pixel of the diagonal, so it is 1 px
   wide at any angle; the miter thumbnail draws its diagonal too. Checked with the rendering harness
   (Miter, Edges at 60 % over a white fill).
+- Tested and validated by the user: task finished (2026-10-07).
 
 ---
 
