@@ -39,6 +39,14 @@ internal sealed class FileExplorerPanel : Panel
 
     private const int TransientDuration = 5000;
 
+    // The content extraction (workfiles/20260926-ocr-search.md § Extraction), in ms: how long it waits
+    // after a keystroke, how often it looks again while paused, how often it saves its texts and
+    // refreshes the search shown.
+    private const int KeystrokePause = 1000;
+    private const int PausePoll = 200;
+    private const int ContentSaveInterval = 30000;
+    private const int ContentRefreshInterval = 5000;
+
     // How long a folder may take to list before the status line says it is being read, in ms.
     private const int ReadingNoticeDelay = 150;
 
@@ -91,6 +99,18 @@ internal sealed class FileExplorerPanel : Panel
     private CancellationTokenSource? _scan;
     private string _summary = "No base folder";
     private bool _summaryError;
+
+    // The content texts of the base folder's files, once loaded; whether the content search is on (the
+    // ⚙ setting); the extraction running, cancelled with the scan; whether the index came from a scan,
+    // with its stamps; whether a scan runs; the last keystroke in the search box (Environment.TickCount64,
+    // read by the extraction's worker); what the extraction does, after the summary.
+    private ContentIndex? _contents;
+    private bool _contentSearch;
+    private CancellationTokenSource? _extraction;
+    private bool _indexScanned;
+    private bool _scanning;
+    private long _lastKeystroke;
+    private string? _activity;
     private int _pagesPerLoad = DefaultPagesPerLoad;
 
     // A tile of this panel being dragged: not a source of favorites, so the panel refuses it.
@@ -178,6 +198,7 @@ internal sealed class FileExplorerPanel : Panel
         _chooseFolder.Click += (_, _) => ChooseFolderRequested?.Invoke(this, EventArgs.Empty);
         _search.TextChanged += (_, _) =>
         {
+            Interlocked.Exchange(ref this._lastKeystroke, Environment.TickCount64);
             if (!_clearingSearch)
             {
                 RefreshRows();
@@ -305,6 +326,61 @@ internal sealed class FileExplorerPanel : Panel
     {
         get => _pagesPerLoad;
         set => _pagesPerLoad = Math.Clamp(value, MinPagesPerLoad, MaxPagesPerLoad);
+    }
+
+    /// <summary>
+    /// Whether the files' content texts are extracted — the ⚙ menu's Search file contents (OCR): on, the
+    /// extraction runs after each scan; turned off, it stops, the texts already extracted kept and
+    /// still searched. Setting it raises nothing.
+    /// </summary>
+    [DefaultValue(false)]
+    public bool ContentSearch
+    {
+        get => this._contentSearch;
+        set
+        {
+            if (value == this._contentSearch)
+            {
+                return;
+            }
+
+            this._contentSearch = value;
+            if (value)
+            {
+                this.StartExtraction();
+            }
+            else
+            {
+                this.StopExtraction();
+            }
+        }
+    }
+
+    /// <summary>Whether the content texts can be rebuilt: the content search on, a base folder set.</summary>
+    public bool CanRebuildContent => this._contentSearch && this._baseFolder is not null;
+
+    /// <summary>
+    /// Forgets every content text and extracts them all again — after an OCR language was installed,
+    /// for instance: the folder rescanned first, the list of files keeping the priority.
+    /// </summary>
+    public void RebuildContentIndex()
+    {
+        if (!this.CanRebuildContent)
+        {
+            return;
+        }
+
+        this.StopExtraction();
+        if (this._contents is { } contents)
+        {
+            contents.Clear();
+        }
+        else
+        {
+            this._contents = new ContentIndex(this._baseFolder!);
+        }
+
+        this.Rescan();
     }
 
     /// <summary>
@@ -452,6 +528,12 @@ internal sealed class FileExplorerPanel : Panel
     {
         _scan?.Cancel();
         SetIndex(null, null);
+        this.StopExtraction();
+        this._contents = null;
+        this._indexScanned = false;
+        this._scanning = false;
+        this._activity = null;
+        this._progress.HideProgress();
         _rescan.Enabled = false;
         string? previous = _baseFolder;
         try
@@ -657,11 +739,11 @@ internal sealed class FileExplorerPanel : Panel
     private async Task LoadAndScanAsync(string folder, CancellationToken cancellation)
     {
         ShowStatus("Loading the index…");
-        var (loaded, tree) = await Task.Run(() =>
+        var (loaded, tree, contents) = await Task.Run(() =>
         {
             FileIndex.MoveLegacy();
             var index = FileIndex.Load(FileIndex.DefaultPath, folder);
-            return (index, index is null ? null : FolderTree.Of(index.Entries));
+            return (index, index is null ? null : FolderTree.Of(index.Entries), ContentIndex.Load(ContentIndex.DefaultPath, folder));
         });
         if (cancellation.IsCancellationRequested || IsDisposed)
         {
@@ -669,6 +751,7 @@ internal sealed class FileExplorerPanel : Panel
         }
 
         SetIndex(loaded, tree);
+        this._contents ??= contents;
         SetSummary(loaded is null ? "No index yet" : Summary(loaded));
         RefreshRows(keepPlace: true);
         await ScanAsync(folder, cancellation);
@@ -690,13 +773,26 @@ internal sealed class FileExplorerPanel : Panel
     private async Task ScanAsync(string folder, CancellationToken cancellation)
     {
         _rescan.Enabled = false;
+        this._scanning = true;
+        this._activity = null;
+        this._progress.ShowUnknown();
         var progress = new Progress<ScanProgress>(p =>
         {
             if (!cancellation.IsCancellationRequested && !IsDisposed)
             {
                 ShowStatus(p.Phase == ScanPhase.Counting ? $"Counting… {p.Done:N0}" : $"Indexing… {p.Done:N0}/{p.Total:N0}");
+                if (p.Phase == ScanPhase.Counting || p.Total == 0)
+                {
+                    this._progress.ShowUnknown();
+                }
+                else
+                {
+                    this._progress.ShowProgress((double)p.Done / p.Total);
+                }
             }
         });
+        var known = this._contents;
+        bool scanned = false;
         try
         {
             if (!Directory.Exists(folder))
@@ -705,7 +801,7 @@ internal sealed class FileExplorerPanel : Panel
                 return;
             }
 
-            var (index, tree, saveError) = await Task.Run(
+            var (index, tree, saveError, contents) = await Task.Run(
                 () =>
                 {
                     var scanned = FileIndex.Scan(folder, progress, cancellation);
@@ -719,7 +815,8 @@ internal sealed class FileExplorerPanel : Panel
                         error = ex.Message;
                     }
 
-                    return (scanned, FolderTree.Of(scanned.Entries), error);
+                    // A rescan that cut the cached index's loading short loads the texts itself.
+                    return (scanned, FolderTree.Of(scanned.Entries), error, known ?? ContentIndex.Load(ContentIndex.DefaultPath, folder));
                 },
                 cancellation);
             if (cancellation.IsCancellationRequested || IsDisposed)
@@ -728,6 +825,9 @@ internal sealed class FileExplorerPanel : Panel
             }
 
             SetIndex(index, tree);
+            this._contents ??= contents;
+            this._indexScanned = true;
+            scanned = true;
             SetSummary(saveError is null ? Summary(index) : $"{Summary(index)} · not saved: {saveError}", error: saveError is not null);
             RefreshRows(keepPlace: true);
         }
@@ -746,7 +846,185 @@ internal sealed class FileExplorerPanel : Panel
             if (!cancellation.IsCancellationRequested && !IsDisposed)
             {
                 _rescan.Enabled = true;
+                this._scanning = false;
+                this._progress.HideProgress();
             }
+        }
+
+        // The list of files first, the search needing it; then their content texts.
+        if (scanned)
+        {
+            this.StartExtraction();
+        }
+    }
+
+    /// <summary>
+    /// Starts extracting the content texts the scanned index lacks, when the content search is on —
+    /// cancelled with the scan, so a rescan, another folder or closing stops it — any extraction
+    /// running stopped first.
+    /// </summary>
+    private void StartExtraction()
+    {
+        if (!this._contentSearch || !this._indexScanned || this._scanning || this._index is not { } index
+            || this._contents is not { } contents || this._scan is not { IsCancellationRequested: false } scan)
+        {
+            return;
+        }
+
+        this.StopExtraction();
+        this._extraction = CancellationTokenSource.CreateLinkedTokenSource(scan.Token);
+        _ = this.ExtractAsync(index, contents, this._extraction.Token);
+    }
+
+    private void StopExtraction()
+    {
+        this._extraction?.Cancel();
+        this._extraction = null;
+    }
+
+    /// <summary>
+    /// Extracts the content texts off the UI thread, one file at a time: the bar and the status line
+    /// following it, the search shown refreshed every few seconds and at the end.
+    /// </summary>
+    private async Task ExtractAsync(FileIndex index, ContentIndex contents, CancellationToken cancellation)
+    {
+        bool finished = false;
+        var progress = new Progress<ExtractionProgress>(p =>
+        {
+            if (finished || cancellation.IsCancellationRequested || this.IsDisposed)
+            {
+                return;
+            }
+
+            this._progress.ShowProgress(p.Total == 0 ? 1 : (double)p.Done / p.Total);
+            this.SetActivity(p.File is null ? null : $"{(p.Kind == ContentKind.Text ? "Reading" : "OCR on")} {Path.GetFileName(p.File)}");
+            if (p.Refresh)
+            {
+                this.RefreshContentResults();
+            }
+        });
+        try
+        {
+            await Task.Run(() => this.Extract(index, contents, progress, cancellation), cancellation);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            finished = true;
+            if (!this.IsDisposed)
+            {
+                this.SetActivity(null);
+                if (!this._scanning)
+                {
+                    this._progress.HideProgress();
+                }
+
+                if (!cancellation.IsCancellationRequested)
+                {
+                    this.RefreshContentResults();
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// The extraction's worker: the texts of the files gone from the index dropped, then every file
+    /// whose text is missing or older than the file extracted, waiting between two while the search
+    /// is busy; the texts saved every half minute and at the end, so a pass cut short resumes where it
+    /// stopped.
+    /// </summary>
+    private void Extract(FileIndex index, ContentIndex contents, IProgress<ExtractionProgress> progress, CancellationToken cancellation)
+    {
+        bool changed = contents.RetainOnly(index.Entries);
+        var queue = index.Entries.Where(e => e.Stamp is not null && !contents.IsCurrent(e)).ToArray();
+        var extractor = new ContentExtractor();
+        int done = 0;
+        long saved = Environment.TickCount64;
+        long refreshed = saved;
+        try
+        {
+            foreach (var entry in queue)
+            {
+                cancellation.ThrowIfCancellationRequested();
+                if (this.ExtractionPaused())
+                {
+                    progress.Report(new ExtractionProgress(done, queue.Length, null, ContentKind.None, false));
+                    while (this.ExtractionPaused())
+                    {
+                        cancellation.WaitHandle.WaitOne(PausePoll);
+                        cancellation.ThrowIfCancellationRequested();
+                    }
+                }
+
+                string path = index.FullPath(entry);
+                var kind = ContentExtractor.KindOf(path);
+                progress.Report(new ExtractionProgress(done, queue.Length, kind == ContentKind.None ? null : path, kind, false));
+                contents.Set(entry.RelativePath, entry.Stamp!.Value, extractor.Extract(path));
+                changed = true;
+                done++;
+
+                long now = Environment.TickCount64;
+                if (now - saved >= ContentSaveInterval)
+                {
+                    TrySave(contents);
+                    saved = now;
+                }
+
+                if (now - refreshed >= ContentRefreshInterval)
+                {
+                    refreshed = now;
+                    progress.Report(new ExtractionProgress(done, queue.Length, null, ContentKind.None, true));
+                }
+            }
+        }
+        finally
+        {
+            if (changed)
+            {
+                TrySave(contents);
+            }
+        }
+    }
+
+    /// <summary>Whether the extraction waits: thumbnails are loading, or the search box was typed in a moment ago. Read from the worker.</summary>
+    private bool ExtractionPaused() =>
+        this._grid.LoadingThumbnails || Environment.TickCount64 - Interlocked.Read(ref this._lastKeystroke) < KeystrokePause;
+
+    /// <summary>Saves the content texts, a failure left for the next save.</summary>
+    private static void TrySave(ContentIndex contents)
+    {
+        try
+        {
+            contents.Save(ContentIndex.DefaultPath);
+        }
+        catch (Exception ex) when (FileIndex.IsFileError(ex))
+        {
+        }
+    }
+
+    /// <summary>The search shown — not the favorites, nor <c>*</c>, nor a folder as the disk holds it — run again, its place kept, as texts arrived.</summary>
+    private void RefreshContentResults()
+    {
+        if (FileSearch.Words(_search.Text).Length > 0 && !FileSearch.IsEverything(_search.Text))
+        {
+            this.RefreshRows(keepPlace: true);
+        }
+    }
+
+    /// <summary>What the extraction does — the file it reads — after the summary on the status line; null for nothing.</summary>
+    private void SetActivity(string? activity)
+    {
+        if (activity == this._activity)
+        {
+            return;
+        }
+
+        this._activity = activity;
+        if (!this._transient.Enabled)
+        {
+            this.ShowSummary();
         }
     }
 
@@ -769,7 +1047,7 @@ internal sealed class FileExplorerPanel : Panel
     private void ShowSummary()
     {
         _transient.Stop();
-        Show(_summary, _summaryError);
+        Show(this._activity is null ? this._summary : $"{this._summary} · {this._activity}", this._summaryError);
     }
 
     /// <summary>A progress text, kept until the next status.</summary>
@@ -1029,8 +1307,16 @@ internal sealed class FileExplorerPanel : Panel
     /// The files of a search: every one for <c>*</c>, the most recently created first; else those
     /// matching the words — by their path or by their content text — best first.
     /// </summary>
-    private IReadOnlyList<SearchMatch> Find(IReadOnlyList<IndexEntry> entries, string[] words, bool everything) =>
-        everything ? FileSearch.All(entries).Select(e => new SearchMatch(e, false)).ToArray() : FileSearch.Search(entries, words);
+    private IReadOnlyList<SearchMatch> Find(IReadOnlyList<IndexEntry> entries, string[] words, bool everything)
+    {
+        if (everything)
+        {
+            return FileSearch.All(entries).Select(e => new SearchMatch(e, false)).ToArray();
+        }
+
+        var contents = this._contents;
+        return FileSearch.Search(entries, words, contents is null ? null : e => contents.FoldedOf(e.RelativePath));
+    }
 
     /// <summary>A folder's tile: its name, then every file below it as the index counts them, once the index is there.</summary>
     private ExplorerRow FolderRow(string fullPath)
@@ -1326,6 +1612,7 @@ internal sealed class FileExplorerPanel : Panel
         if (_index?.Remove(row.FullPath) == true)
         {
             _tree = null;
+            this._contents?.Remove(Path.GetRelativePath(_index.BaseFolder, row.FullPath));
             try
             {
                 _index.Save(FileIndex.DefaultPath);
@@ -1350,3 +1637,9 @@ internal sealed class FileExplorerPanel : Panel
         return false;
     }
 }
+
+/// <summary>
+/// Where the content extraction stands: the files done out of those to do, the file it reads now
+/// (null while it waits or between two), how it has it, and whether the search shown is to be refreshed.
+/// </summary>
+internal readonly record struct ExtractionProgress(int Done, int Total, string? File, ContentKind Kind, bool Refresh);
