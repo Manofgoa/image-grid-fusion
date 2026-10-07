@@ -66,14 +66,14 @@ internal sealed class CropStrip : ThumbnailStrip<CropChoice>
         {
             // The whole image kept, the crop bars along its edges.
             this.Fill(g, SystemColors.Window, box);
-            int inset = this.LogicalToDeviceUnits(3);
+            int inset = this.LogicalToDeviceUnits(4);
             var bars = Rectangle.Inflate(box, -inset, -inset);
-            using (var halo = new Pen(this.Shade(GridPreview.HelperHalo), this.LogicalToDeviceUnits(3)))
+            using (var halo = new Pen(this.Shade(GridPreview.HelperHalo), this.LogicalToDeviceUnits(4)))
             {
                 g.DrawRectangle(halo, bars);
             }
 
-            using (var bar = new Pen(this.Shade(GridPreview.HelperColor), this.LogicalToDeviceUnits(1)))
+            using (var bar = new Pen(this.Shade(GridPreview.HelperColor), this.LogicalToDeviceUnits(2)))
             {
                 g.DrawRectangle(bar, bars);
             }
