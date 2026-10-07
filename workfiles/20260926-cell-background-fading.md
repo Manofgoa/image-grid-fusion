@@ -8,39 +8,40 @@
 
 ## Overview
 
-Every cell fills the area its image does not cover — and the image's transparent pixels — with a
-single **band color** (`BandColor.For`, painted by `Compositor.DrawCell` before the image). Two
-neighbour cells with different band colors therefore meet on a hard line.
+Every cell paints its **Background** effect behind its image (`ImageLook.Background`,
+`Composition/BackgroundEffect.cs`, drawn by `Compositor.DrawBackground`): in the **Color** mode, a
+flat fill — the automatic band color or a chosen color, at an opacity — over the whole cell; off, no
+fill, the cell transparent. Two neighbour cells with different fills meet on a hard line.
 
-This work adds a **fade at the seams**: a transition strip along every edge shared by two cells,
-where each cell's band color blends into its neighbour's. The rest of the cell keeps its own color.
+This work adds a **global effect, Seams** (*Jointures*): a transition strip along every edge shared
+by two cells, where each cell's flat fill blends into its neighbour's. The rest of the cell keeps its
+own fill.
 
-Scope agreed with the user (scoping batch, 2026-09-26):
+Scope agreed with the user (scoping batch, 2026-09-26, revised 2026-10-07):
 
-- The **background** is the area not covered by the image (the bands), not the image itself —
-  images are never faded into each other.
+- The **background** is the Background effect's fill (the bands and the image's transparent pixels),
+  not the image itself — images are never faded into each other.
 - The fade is a **strip along the shared edges**, not a gradient across the whole cell or grid.
-- It is a **grid-level setting**, not an effect: one setting for every seam, not a cell + image
-  pair, so the effect rules of RULES.md do not apply to it.
-- Band colors are a **fixed (solid) color** today: the fade starts as a **linear gradient** between
-  two colors, alpha taken into account. It applies to every band as it exists now; a future
-  non-solid background (e.g. a blurred extension of the image) would get its own fade later, out of
-  this scope.
+- It is a **global effect** (RULES.md § Global Effects), not a cell effect: one setting for every
+  seam.
+- A first stage for **solid fills**: a **linear gradient** between two flat fills, alpha taken into
+  account. A cell **extending its edges** (Background modes Corner pixel, Miter, Background corners)
+  keeps its seams sharp; a fade of the extension is later work, out of this scope.
 
 ---
 
-## Current State (codebase)
+## Current State (codebase, 2026-10-07)
 
 | Fact | Where |
 |---|---|
-| A cell's band color is computed from the sides of the part it shows: the image's uniform background, else the most frequent side color, else the dominant color. Always opaque | `Composition/BandColor.cs` |
-| It depends on the part shown, so it changes with zoom and focus | `BandColor.For(part, size)` |
-| `DrawCell` fills the whole cell with it, then draws the image clipped to the cell; the black & white effect grays it | `Composition/Compositor.cs:90-95` |
-| Cells tile the canvas exactly, no gap; neighbours share their boundary pixel line | `GridLayout.Cells` |
-| Each cell is drawn **independently**: `Compositor.Draw` loops `DrawCell`, and the preview redraws a single cell into its cache at every animation frame | `Compositor.cs:54-61`, `UI/GridPreview.cs:909-925` |
-| Exports go through `Compositor.Draw`, into a 24 bpp bitmap (no alpha in the output) | `Imaging/GridExport.cs:133`, `Compositor.Render` |
-| The ⚙ settings menu holds app settings only (Start with Windows, in the registry); there is no grid-level settings row | `UI/MainForm.cs:917` |
-| No test project exists | repository root |
+| The Background effect holds the fill: automatic band color or chosen color, an opacity, a fill mode; on by default, off draws nothing | `Composition/BackgroundEffect.cs`, RULES.md § The Background Exception |
+| The automatic color depends on the part shown, so it changes with crop, zoom, focus — and over time with the Animations effect | `BandColor.For`, `Compositor.AutomaticBackground` |
+| `DrawCell` draws the background (`DrawBackground`: flat fill, or the edges extended), then the image, then the blur | `Composition/Compositor.cs:142-244` |
+| Cells come from the layout and its separators, inset by the Borders when they leave a gap | `Compositor.Cells`, `GridBorders.Inset` / `HasGap` |
+| `Compositor.Draw` loops `DrawCell`, then draws the borders; the preview also redraws single cells (animation frames, live gestures) | `Compositor.cs:126-136`, `UI/GridPreview.cs:1587`, `:2913` |
+| Global effects: the `GlobalEffect` tabs (Format, Soundtrack, Fade, Borders), not persisted, part of the undo step | `Composition/GlobalEffect.cs`, `UI/GridHistory.cs`, RULES.md § Global Effects / § Undo History |
+| The still export is 32 bpp ARGB: a transparent cell stays transparent in a PNG | `Compositor.Render` |
+| No test project exists | `CONTRIBUTING.md` |
 
 ---
 
@@ -48,13 +49,14 @@ Scope agreed with the user (scoping batch, 2026-09-26):
 
 - For each edge a cell shares with a neighbour, a **strip** inside the cell, along that edge.
 - Its depth is **resolution-independent**: a share of the **smallest cell's** smaller dimension,
-  set by the user (see Setting), so the preview and an export at another size look the same.
-- Each cell draws **its own half** of the transition, from its own color to the **seam color** —
-  the **50 / 50 mix** of the two band colors — and meets the neighbour's half on the seam without a
-  step. This also keeps the preview's per-cell redraw exact.
+  set by the user (§ Global Effect), so the preview and an export at another size look the same.
+- Neighbours are found from the **cells' rectangles** (layouts, separators), never from a layout id.
+- Each cell draws **its own half** of the transition, from its own fill to the **seam color** — the
+  **50 / 50 mix** of the two fills — and meets the neighbour's half on the seam without a step. This
+  also keeps the preview's per-cell redraw exact.
 - A seam fades **even when the neighbour shows no band there** (its image covers that side): the
-  gradient goes toward its band color, which is computed from the sides of its image, so the
-  transition stays consistent with what it shows.
+  gradient goes toward its fill, computed from the sides of its image, so the transition stays
+  consistent with what it shows.
 - The outer border of the grid has no neighbour: no fade there.
 - Where an edge is shared with several neighbours (a tall cell next to two stacked cells), the strip
   is split into one segment per neighbour, and **everything stays continuous**: where two segments
@@ -64,33 +66,52 @@ Scope agreed with the user (scoping batch, 2026-09-26):
   gradients are **mixed**, and the corner point reaches the mix of every cell meeting there, the same
   value from each cell — no step across either seam.
 
+## Which Seams Fade
+
+| Seam between | Fades |
+|---|---|
+| Two cells whose Background is in the **Color** mode | ✅ |
+| A cell whose Background is **off**, and a Color-mode or off cell | ✅ — the off cell counts as a **transparent** fill |
+| A cell whose Background **extends its edges** (Corner pixel, Miter, Background corners), and any cell | ❌ — the seam stays sharp on both sides |
+
 ## Colors and Alpha
 
-- Colors interpolated **with their alpha** (premultiplied), so a transparent color never drags a
-  dark fringe into the gradient. Band colors are opaque today; the rule keeps the gradient correct
-  if one ever is not.
-- The colors blended are the band colors **as shown**, the black & white effect applied.
-- Transparent pixels of the image already show the band fill: they show the gradient where it lies.
+- Colors interpolated **with their alpha** (premultiplied): a fill at a low opacity, or an off
+  Background (transparent), fades the strip's **opacity** toward the seam as well as its color, and
+  never drags a dark fringe into the gradient.
+- The fills blended are the fills **as shown**: the Background's color at its opacity, the black &
+  white effect applied (`BackgroundEffect.Fill`, `Compositor.Gray`).
+- Transparent pixels of the image already show the fill: they show the gradient where it lies.
 - The image itself is never faded: its edges stay opaque.
 
 ## Rendering
 
-- Drawn in `Compositor.DrawCell` (or right after the band fill), so the preview, the exports and
-  video playback all show it, like every other background drawing.
-- `DrawCell` receives, per shared edge, the neighbour's band color(s); `Compositor.Draw` and the
-  preview's single-cell redraw compute them from the layout.
-- A change of a cell's band color (zoom, focus, image replaced, black & white) also redraws its
-  neighbours' strips in the preview.
+- Drawn in `Compositor.DrawCell`, as part of the cell's flat fill (`DrawBackground`), so the
+  preview, the exports and video playback all show it; the image and the blur come over it as today.
+- `DrawCell` receives, per shared edge, the neighbour's fill(s) at the frame's time;
+  `Compositor.Draw` and the preview's single-cell redraws compute them from the cells.
+- A change of a cell's fill — Background options, crop, zoom, focus, image replaced, black & white,
+  the Animations motion — also redraws its neighbours' strips in the preview.
+- With the **Borders leaving a gap** (every style but Corners), the cells no longer touch: Seams
+  does not apply (§ Global Effect).
 
-## Setting
+## Global Effect
 
-- One grid-level setting, in the **bottom bar**, next to the export buttons and *Force as image*,
-  always visible:
-  - an on / off **checkbox** (*Fade seams*);
-  - a **depth slider**, in % of the smallest cell's smaller dimension, **10 %** by default.
-- **Remembered across launches** (on / off and depth); **off at the very first launch**.
-- Not an effect: no tab, not tied to a cell, unaffected by the effects' *Reset*.
-- Moving the slider while the fade is off turns it on, like acting on an effect's option.
+A new **global effect, Seams** (*Jointures*), following RULES.md § Global Effects and § Global
+Toolbar:
+
+- A tab **after Borders** in the Global toolbar (`GlobalEffect.Seams`), with its activation checkbox.
+- Its options: a **Depth** slider, in % of the smallest cell's smaller dimension, **10 %** by default,
+  then its own **Reset**. Acting on the slider turns the effect on.
+- **Off at start-up**, not persisted; the global *Reset* buttons and *Clear all* bring back its
+  initial state (off, 10 %); untouched by the cell *Reset* buttons, kept on a swap or a layout
+  change.
+- Part of the **undo step** (`GridState`, `MainForm.CaptureState` / `RestoreState`).
+- **Does not apply while the Borders leave a gap**: its checkbox and options disabled, with a
+  tooltip saying why, its settings kept — like the Twitter corners outside the Twitter format.
+- Locked while exporting, like every global effect; the export keeps the settings it started with.
+- Its name avoids *Fade* (the sound global effect) and *Blend* (a Background option); added to the
+  glossary (en / fr).
 
 ---
 
@@ -118,19 +139,18 @@ manually in the app.
 - [x] ~~Strip depth: fixed or adjustable, default?~~ → Adjustable slider, % of the smallest cell,
   10 % by default
 - [x] ~~Where does the setting live?~~ → Bottom bar, next to the export buttons and *Force as image*
+  *(revised 2026-10-07, see Iteration 5)*
 - [x] ~~On or off at startup, remembered across launches?~~ → Remembered (on / off and depth); off at
-  the very first launch
+  the very first launch *(revised 2026-10-07, see Iteration 5)*
 - [x] ~~No test project: create one, or ship without unit tests?~~ → No unit tests
-- [ ] *(2026-10-07, Iteration 4)* The Background effect now has extending modes (Corner pixel, Miter,
-  Background corners) — the non-solid case "if fixed color" pointed at: what happens on a seam where
-  a cell extends its edges?
-- [ ] *(Iteration 4)* A neighbour whose Background is off (transparent) or at a low opacity: fade
-  toward its fill, transparent included, or no fade on that seam?
-- [ ] *(Iteration 4)* The Borders' gap separates the cells: fade across it, or no fade while a gap is
-  shown?
-- [ ] *(Iteration 4)* The grid-level setting now falls under RULES.md § Global Effects (a Global
-  toolbar tab, not persisted, reset by the global Resets and *Clear all*, part of the undo step),
-  which contradicts Q13's bottom bar and remembered setting: make it a global effect?
+- [x] ~~*(2026-10-07, Iteration 4)* A seam where a cell extends its edges?~~ → No fade: the seam
+  stays sharp; the extension gets its own fade later
+- [x] ~~*(Iteration 4)* A neighbour whose Background is off or at a low opacity?~~ → Fade toward its
+  fill, transparent included (premultiplied)
+- [x] ~~*(Iteration 4)* The Borders' gap?~~ → Seams does not apply while a gap shows: disabled with
+  a tooltip, settings kept
+- [x] ~~*(Iteration 4)* Make the setting a global effect?~~ → Yes: global effect *Seams*, a Global
+  toolbar tab after Borders, off at start-up, not persisted
 
 ---
 
@@ -188,6 +208,15 @@ extension*, ~1 000 commits). Findings:
 
 Four questions reopened (Open Questions, Q14–Q17); the design sections are updated once answered.
 
+### Iteration 5 — 2026-10-07
+
+Answers to Q14–Q17. The design sections are rewritten on the current codebase: the fill is the
+Background effect's (Color mode); a seam touching an extending Background stays sharp; an off
+Background fades as a transparent fill; the setting becomes the global effect **Seams** — a Global
+toolbar tab after Borders, its Depth slider (10 %) in its options, off at start-up, not persisted,
+in the undo step — replacing Q13's bottom bar and remembered setting; it does not apply while the
+Borders leave a gap. Documentation now means README and GLOSSARY in English and French.
+
 ---
 
 ## Implementation Log
@@ -199,7 +228,8 @@ says so rather than staying blank.
 |---|---|---|---|
 | Code | | | |
 | Unit tests | | | |
-| README | | | |
+| README (en / fr) | | | |
+| GLOSSARY (en / fr) | | | |
 
 ---
 
@@ -222,10 +252,10 @@ Questions asked by the agent during design, with user responses.
 | 11 | Where does the setting live? | Dismissed — re-asked as Q13 | 2026-09-26 |
 | 12 | On or off at startup, remembered across launches? | Dismissed — re-asked as Q13 | 2026-09-26 |
 | 13 | Accept the five recommendations (continuous corners, 10 % slider, bottom bar, remembered, no unit tests)? | Yes, all five | 2026-09-26 |
-| 14 | Seam where a cell extends its edges (Background extending modes)? | | 2026-10-07 |
-| 15 | Neighbour whose Background is off or at a low opacity? | | 2026-10-07 |
-| 16 | Borders' gap between the cells? | | 2026-10-07 |
-| 17 | Make the setting a global effect (RULES.md § Global Effects)? | | 2026-10-07 |
+| 14 | Seam where a cell extends its edges (Background extending modes)? | No fade — the extension gets its own fade later | 2026-10-07 |
+| 15 | Neighbour whose Background is off or at a low opacity? | Fade toward its fill, transparent included | 2026-10-07 |
+| 16 | Borders' gap between the cells? | Seams does not apply with a gap: disabled, tooltip, settings kept | 2026-10-07 |
+| 17 | Make the setting a global effect (RULES.md § Global Effects)? | Yes — global effect *Seams*, after Borders | 2026-10-07 |
 
 ---
 
