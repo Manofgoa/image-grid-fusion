@@ -154,7 +154,7 @@ internal sealed class MainForm : Form
     // Minus the duration of one back-and-forth, in seconds: the right end is the fastest.
     private readonly StepSlider _motionCycle = OptionSlider(-(int)MotionEffect.MaxCycle.TotalSeconds, -(int)MotionEffect.MinCycle.TotalSeconds, 5, controlStep: 1);
     private readonly Label _motionCycleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly CheckBox[] _quarterTurns = [OptionButton("0°"), OptionButton("90°"), OptionButton("180°"), OptionButton("270°")];
+    private readonly QuarterTurnStrip _quarterTurns = new() { Anchor = AnchorStyles.Left };
     private readonly TrackBar _fineAngle = OptionSlider(-ImageLook.MaxFineAngle, ImageLook.MaxFineAngle, 5);
     private readonly Label _fineAngleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     // Free first, then the listed ratios, each button previewing its format.
@@ -411,7 +411,7 @@ internal sealed class MainForm : Form
         this._motionKind.SelectedIndex = (int)MotionEffect.Default.Kind;
         this._motionCycle.Value = -(int)MotionEffect.Default.Cycle.TotalSeconds;
         this._options[ImageEffect.Animations].Controls.AddRange([this._motionKind, this._motionCycle, this._motionCycleLabel]);
-        _options[ImageEffect.Rotate].Controls.AddRange([.. _quarterTurns, _fineAngle, _fineAngleLabel]);
+        _options[ImageEffect.Rotate].Controls.AddRange([this._quarterTurns, _fineAngle, _fineAngleLabel]);
         _options[ImageEffect.Flip].Controls.AddRange([_flipX, _flipY]);
         _options[ImageEffect.Frames].Controls.AddRange([_frames, _framesLabel, _freeze]);
         _options[ImageEffect.BlackAndWhite].Controls.AddRange([_grayscaleIcon, _grayscale, _grayscaleLabel]);
@@ -571,11 +571,7 @@ internal sealed class MainForm : Form
             this._motionCycleLabel.Text = CycleText(-this._motionCycle.Value);
             this.ChangeMotion(motion => motion.WithCycle(TimeSpan.FromSeconds(-this._motionCycle.Value)));
         };
-        for (int i = 0; i < _quarterTurns.Length; i++)
-        {
-            int degrees = 90 * i;
-            _quarterTurns[i].Click += (_, _) => ChangeLook(ImageEffect.Rotate, look => look.WithRotation(degrees));
-        }
+        this._quarterTurns.Picked += (_, degrees) => this.ChangeLook(ImageEffect.Rotate, look => look.WithRotation(degrees));
 
         _fineAngle.ValueChanged += (_, _) => SetFineAngle();
         foreach (var (button, ratio) in _cropRatios)
@@ -2692,10 +2688,7 @@ internal sealed class MainForm : Form
 
             // A quarter turn is pressed only while the angle falls exactly on it.
             var rotated = look.TurnOn(ImageEffect.Rotate);
-            for (int i = 0; i < _quarterTurns.Length; i++)
-            {
-                _quarterTurns[i].Checked = rotated.Rotation == 90 * i && rotated.FineAngle == 0;
-            }
+            this._quarterTurns.Rotation = rotated.FineAngle == 0 ? rotated.Rotation : null;
 
             _fineAngle.Value = rotated.FineAngle;
 
