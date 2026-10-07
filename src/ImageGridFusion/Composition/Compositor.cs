@@ -163,45 +163,84 @@ public static class Compositor
         bool oriented = look is not { Rotation: 0, FlipX: false, FlipY: false };
         var bitmapPart = oriented ? BitmapPart(frame.Bitmap.Size, look, source) : source;
 
+        var destination = Rectangle.Round(shown);
+        void DrawImage(Graphics target)
+        {
+            // The clip stays in the cell: it is not turned with the drawing.
+            var state = target.Save();
+            target.SetClip(cell, CombineMode.Intersect);
+            if (turn is not null)
+            {
+                target.MultiplyTransform(turn);
+            }
+
+            if (!oriented)
+            {
+                target.DrawImage(
+                    frame.Bitmap,
+                    destination,
+                    source.X, source.Y, source.Width, source.Height,
+                    GraphicsUnit.Pixel,
+                    attributes);
+            }
+            else
+            {
+                DrawOriented(target, frame.Bitmap, look, source, bitmapPart, destination, attributes);
+            }
+
+            target.Restore(state);
+        }
+
         // Bands, and transparent pixels, show the background: the band color of the part shown, or the
-        // chosen one, at its opacity; none while the effect is off, the cell left transparent.
+        // chosen one, at its opacity, the image's edges extended over the bands in an extending mode;
+        // none while the effect is off, the cell left transparent.
         if (look.Background is { } background)
         {
-            var fill = background.Fill(background.Automatic ? frame.BandColor.For(bitmapPart, frame.Bitmap.Size) : background.Color);
-            using var brush = new SolidBrush(look.Grayscale is { } gray ? Gray(fill, gray) : fill);
-            g.FillRectangle(brush, cell);
+            var automatic = background.Automatic ? frame.BandColor.For(bitmapPart, frame.Bitmap.Size) : background.Color;
+            DrawBackground(g, background, automatic, look.Grayscale, cell, EdgeExtension.Covered(fit.Destination, cell, turn is not null), DrawImage, fast);
         }
 
-        var destination = Rectangle.Round(shown);
-        using var clip = g.Clip;
-        g.SetClip(cell, CombineMode.Intersect);
-
-        // The clip stays in the cell: it is not turned with the drawing.
-        using var transform = g.Transform;
-        if (turn is not null)
-        {
-            g.MultiplyTransform(turn);
-        }
-
-        if (!oriented)
-        {
-            g.DrawImage(
-                frame.Bitmap,
-                destination,
-                source.X, source.Y, source.Width, source.Height,
-                GraphicsUnit.Pixel,
-                attributes);
-        }
-        else
-        {
-            DrawOriented(g, frame.Bitmap, look, source, bitmapPart, destination, attributes);
-        }
-
-        g.Transform = transform;
+        DrawImage(g);
 
         // Every effect is drawn here, so the preview, the exports and a playing video all show it.
+        using var clip = g.Clip;
+        g.SetClip(cell, CombineMode.Intersect);
         BlurRenderer.Draw(g, frame, cell, fast);
         g.Clip = clip;
+    }
+
+    /// <summary>
+    /// The background of <paramref name="cell"/>: the flat fill — <paramref name="automatic"/> or the
+    /// chosen color, at the opacity, turned gray by <paramref name="grayscale"/> — or, in an extending
+    /// mode with bands around the image's place <paramref name="covered"/>, the image's edges extended:
+    /// read from the image alone, which <paramref name="drawImage"/> draws at the cell's size.
+    /// </summary>
+    private static void DrawBackground(Graphics g, BackgroundEffect background, Color automatic, double? grayscale, Rectangle cell, Rectangle? covered, Action<Graphics> drawImage, bool fast)
+    {
+        var fill = background.Fill(automatic);
+        if (grayscale is { } gray)
+        {
+            fill = Gray(fill, gray);
+        }
+
+        if (!background.Extends || covered is not { } place)
+        {
+            using var brush = new SolidBrush(fill);
+            g.FillRectangle(brush, cell);
+            return;
+        }
+
+        using var image = new Bitmap(cell.Width, cell.Height, PixelFormat.Format32bppPArgb);
+        using (var ig = Graphics.FromImage(image))
+        {
+            ig.InterpolationMode = fast ? InterpolationMode.Bilinear : InterpolationMode.HighQualityBicubic;
+            ig.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            ig.CompositingQuality = fast ? CompositingQuality.HighSpeed : CompositingQuality.HighQuality;
+            ig.TranslateTransform(-cell.X, -cell.Y);
+            drawImage(ig);
+        }
+
+        EdgeExtension.Draw(g, image, cell, place, background, fill);
     }
 
     /// <summary>
@@ -233,13 +272,6 @@ public static class Compositor
         g.InterpolationMode = InterpolationMode.HighQualityBicubic;
         g.PixelOffsetMode = PixelOffsetMode.HighQuality;
         g.CompositingQuality = CompositingQuality.HighQuality;
-        if (look.Background is { } background)
-        {
-            var fill = background.Fill(background.Automatic ? AutomaticBackground(frame, cell) : background.Color);
-            using var brush = new SolidBrush(look.Grayscale is { } gray ? Gray(fill, gray) : fill);
-            g.FillRectangle(brush, cell);
-        }
-
         var size = look.Oriented(frame.Bitmap.Size);
         var image = UncroppedBounds(size, cell);
 
@@ -250,10 +282,22 @@ public static class Compositor
             attributes.SetColorMatrix(GrayscaleMatrix(grayscale));
         }
 
-        var state = g.Save();
-        g.SetClip(cell, CombineMode.Intersect);
-        DrawOriented(g, frame.Bitmap, look, new RectangleF(PointF.Empty, size), new RectangleF(PointF.Empty, frame.Bitmap.Size), Rectangle.Round(image), attributes);
-        g.Restore(state);
+        void DrawImage(Graphics target)
+        {
+            var state = target.Save();
+            target.SetClip(cell, CombineMode.Intersect);
+            DrawOriented(target, frame.Bitmap, look, new RectangleF(PointF.Empty, size), new RectangleF(PointF.Empty, frame.Bitmap.Size), Rectangle.Round(image), attributes);
+            target.Restore(state);
+        }
+
+        // In an extending mode, the edges of the whole image the view shows are extended.
+        if (look.Background is { } background)
+        {
+            var automatic = background.Automatic ? AutomaticBackground(frame, cell) : background.Color;
+            DrawBackground(g, background, automatic, look.Grayscale, cell, EdgeExtension.Covered(image, cell, turned: false), DrawImage, fast: false);
+        }
+
+        DrawImage(g);
         return image;
     }
 
