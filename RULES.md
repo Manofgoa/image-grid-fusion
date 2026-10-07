@@ -63,7 +63,8 @@ The Crop effect's geometry is **not in fractions of the cell**, and its kept par
 - It comes right after the orientation and before the fitting rule: zoom, fine angle, background,
   black & white and blur all apply to the cropped image.
 - Its **edit view** — the whole image fitted whole in the selected cell, the part cut off dimmed,
-  its bars across the image and snapping onto its edges, a drag inside the kept part moving it — is
+  its bars across the image and snapping onto its edges, a drag inside the kept part moving it, the
+  wheel scaling it (§ On-Cell Handles › Resizable Zones) — is
   drawn by `GridPreview` only, while its tab is selected and it is on; `Compositor` and the
   exports always draw the cropped image.
 
@@ -114,6 +115,23 @@ The Crop effect's geometry is **not in fractions of the cell**, and its kept par
 - They take priority over the cell's other gestures on their own hit area only.
 - A handle positioned relative to a cell edge **snaps exactly onto it** within 6 logical px
   (scaled with `LogicalToDeviceUnits`), so no 1–2 px strip is left along the edge.
+
+#### Resizable Zones
+
+A **resizable zone** is a rectangle set by an effect's four bars, in fractions of its **bounds**:
+the crop's kept part in the image as seen, the blur's sharp rectangle in the cell. Every zone, a
+future one included, gets the same wheel (origin: `workfiles/20261007-crop-wheel-resize.md`):
+
+- While its bars show (§ above), the wheel **anywhere over the selected cell** scales the zone
+  instead of zooming the image: up grows it, down shrinks it, **5 % a notch**
+  (`ZoneScale.NotchFactor`), its **ratio kept** — a crop ratio button's, else its current shape.
+- It scales around the zone's **center**; with **Ctrl** held, around the **point under the cursor**,
+  clamped to the bounds. Ctrl means no finer step there.
+- Growing, it **slides back inside** its bounds where it crosses an edge, then stops at the largest
+  rectangle at its ratio within them; shrinking stops at the bars' minimum gap.
+- One geometry for every zone: `Composition/ZoneScale.Scaled`, in fractions of the bounds, called
+  by the effect (`CropEffect.ScaledSeen`, `BlurEffect.Scaled`) from `GridPreview.ScaleZone`. A new
+  zone adds its case there.
 
 ### Rendering
 
@@ -186,7 +204,8 @@ Portrait 4:5, Story 9:16, Landscape 16:9 — given by `GridPreview.CanvasRatio`.
 - The **Free** ratio is computed by `OutputFormats.FreeRatio`: between 9:16 and 21:9, the one losing
   the least of the images (crops plus bands, weighted by the cells' area), images read through
   `ImageLook.Shown`, texts and empty cells left out, Twitter's ratio with nothing to weigh. It is
-  **held** while a separator or a crop bar is dragged, computed again on release.
+  **held** while a separator or a crop bar is dragged, or the wheel scales the crop's kept part,
+  computed again on release or when the wheel stops.
 - The **preview canvas**, the **canvas sizing** (`CanvasSizer.Compute`), the **exports** (the ratio
   captured in `GridExport.Job` when they start), the **text pages** and the **layout strip** read it.
   A new consumer reads it there too, never a constant: `GridLayout` holds no ratio.
