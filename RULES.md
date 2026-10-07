@@ -323,7 +323,7 @@ Apply to every setting remembered between sessions (origin:
 `workfiles/20260926-remember-last-folder.md`):
 
 - It is kept in **`settings.json`, next to the `.exe`** (`AppContext.BaseDirectory`), read and
-  written through `UI/AppSettings.cs` only — like `files.index` and `favorites.txt`, the app's data
+  written through `UI/AppSettings.cs` only — like the `index\` folder and `favorites.txt`, the app's data
   lives beside it.
 - The app **never uses the registry**. *Start with Windows* is a shortcut in the user's *Startup*
   folder (`UI/StartupRegistration.cs`). The only registry code left is `UI/RegistryMigration.cs`,
