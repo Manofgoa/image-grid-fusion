@@ -32,7 +32,7 @@ shared by every mini-app makes every future folder an app creates kebab-case.
 |---|---|---|
 | `favorites-from-pasted\` next to the exe | `PastedFavorites.FolderName` | ✅ |
 | `Index\` next to the exe | `FileIndex.FolderName` | ❌ → `index`, this workfile |
-| `%TEMP%\ImageGridFusion\` | `MainForm.TempVideoFolder` | ❌ → see Open Questions |
+| `%TEMP%\ImageGridFusion\` | `MainForm.TempVideoFolder` | ❌ → left as it is: the rule covers future folders (Q&A 5) |
 
 ---
 
@@ -49,6 +49,8 @@ named in **kebab-case**: lowercase words joined by hyphens (`index`, `favorites-
 - The **source folders** keep the .NET convention, PascalCase (`Explorer`, `UI`): the rule is about
   what the app writes on disk, not the repository's layout.
 - A new folder's name lives in **one constant** (`FolderName`), next to the code that owns it.
+- It applies to the folders created **from now on**: an existing one keeps its name unless a
+  workfile renames it (`%TEMP%\ImageGridFusion` stays).
 ```
 
 - `../CLAUDE.md` is **not versioned** (`mini-apps/` is not a git repository): the change is written,
@@ -60,9 +62,15 @@ named in **kebab-case**: lowercase words joined by hyphens (`index`, `favorites-
 
 ## Documentation
 
-See Open Questions — the README and the glossary still place `files.index` "next to the exe",
-which it no longer is since the indexing folder exists (`README.md` § Index and § Settings file,
-`GLOSSARY.md` § Index, and their French versions).
+The docs still place `files.index` "next to the exe", which it no longer is since the indexing
+folder exists. They now name the `index\` folder (Q&A 6), English and French in the same commit:
+
+| File | Where | Becomes |
+|---|---|---|
+| `README.md` / `README.fr.md` | § Index | `files.index`, in the `index\` folder next to the exe |
+| `README.md` / `README.fr.md` | § Settings file | like the `index\` folder and `favorites.txt` |
+| `GLOSSARY.md` / `GLOSSARY.fr.md` | Index row | cached in `indexiles.index` next to the exe |
+| `RULES.md` | § App Settings | like the `index\` folder and `favorites.txt` |
 
 ---
 
@@ -79,11 +87,10 @@ Nothing testable changes: the repository has **no test project** (`src/` holds o
 
 ## Open Questions
 
-- [ ] `%TEMP%\ImageGridFusion` breaks the new rule: rename it `%TEMP%\image-grid-fusion` in this
-  workfile, or leave it (the rule then covers future folders only)? Renamed, the old folder's last
-  files are no longer cleaned at start-up — it stays in `%TEMP%` until Windows cleans it.
-- [ ] Fix the docs placing `files.index` "next to the exe" (it lives in `index\`, with
-  `files.content`), English and French, in this workfile?
+- [x] ~~`%TEMP%\ImageGridFusion` breaks the new rule: rename it `%TEMP%\image-grid-fusion` in this
+  workfile, or leave it?~~ → Left as it is; the rule covers the folders created from now on
+- [x] ~~Fix the docs placing `files.index` "next to the exe" (it lives in `index\`, with
+  `files.content`), English and French, in this workfile?~~ → Fixed, § Documentation
 
 ---
 
@@ -97,6 +104,12 @@ an app creates at run time kebab-case, the source folders aside. The exploration
 runtime folder in PascalCase (`%TEMP%\ImageGridFusion`) and stale docs about `files.index`: both
 left as Open Questions.
 
+### Iteration 2 — 2026-10-07
+
+Open Questions settled (Q&A 5–6): `%TEMP%\ImageGridFusion` keeps its name, the rule saying it
+covers the folders created from now on; the docs placing `files.index` next to the exe are fixed
+(README, glossary, RULES.md § App Settings), English and French.
+
 ---
 
 ## Implementation Log
@@ -106,7 +119,7 @@ left as Open Questions.
 | Code | | | |
 | Shared rule (`../CLAUDE.md`) | | | Not versioned |
 | Unit tests | | | No test project — nothing to test |
-| README | | | Depends on Open Questions |
+| README | | | README, glossary and RULES.md, English and French |
 
 ---
 
@@ -118,8 +131,9 @@ left as Open Questions.
 | 2 | Where does the kebab-case rule live? | `../CLAUDE.md`, shared by every app | 2026-10-07 |
 | 3 | What does the rule cover? | The folders an app creates at run time; source folders stay PascalCase | 2026-10-07 |
 | 4 | Straightforward or tricky / long? | Straightforward | 2026-10-07 |
-| 5 | `%TEMP%\ImageGridFusion`: renamed `image-grid-fusion` here, or left? | | |
-| 6 | Fix the docs placing `files.index` next to the exe? | | |
+| 5 | `%TEMP%\ImageGridFusion`: renamed `image-grid-fusion` here, or left? | Left as it is | 2026-10-07 |
+| 6 | Fix the docs placing `files.index` next to the exe? | Fix them | 2026-10-07 |
+| 7 | Go for implementation? (scope, where) | | |
 
 ---
 
