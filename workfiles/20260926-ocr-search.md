@@ -125,8 +125,10 @@ Components touched: `Explorer/FileIndex.cs` (index folder, stamps), `Explorer/Fi
   folder change, ↻, the rebuild and closing the app cancel it through `Restart()` like the scan;
   one file at a time, off the UI thread; the results written to `files.content` as the pass
   progresses (saved atomically, `.tmp` then move, like `files.index`), so a pass cut short resumes
-  where it stopped. The search refreshes (`RefreshRows`, keeping its place) as texts arrive, at most
-  every few seconds, and once at the end.
+  where it stopped — saved every 30 s and at the end. The search shown (not the favorites, nor `*`)
+  refreshes (`RefreshRows`, keeping its place) as texts arrive, every 5 s, and once at the end.
+  Closing the app mid-pass may lose what the last 30 s extracted: the final save runs on the
+  worker, which the process does not wait for.
 - **Missing file** — a clicked file found missing, removed from the index (`FileIndex.Remove`),
   leaves the content cache too; the cache is shared between the worker and the UI thread, so it is
   thread-safe.
@@ -135,18 +137,34 @@ Components touched: `Explorer/FileIndex.cs` (index folder, stamps), `Explorer/Fi
   concatenated. With only one of the two installed, that one alone; with neither, the engine of the
   user profile's languages; with no OCR language at all, images and PDFs get no text (text files
   still do).
-- **Images** — decoded with `BitmapDecoder` into a `SoftwareBitmap` (a GIF gives its first frame);
-  an image longer than `OcrEngine.MaxImageDimension` on a side is **downscaled** to it, not skipped.
-- **PDF** — its **first page only**, rendered by `Windows.Data.Pdf` at an OCR resolution (larger
-  than the preview's 1600 px), then recognised like an image.
-- **Text** — a file passing the `TextPages` text test (≤ 1 MB, UTF-8 / UTF-16): its text. An
-  `.htm` / `.html` file passing it: its text with the tags stripped, entities decoded.
-- **Cap** — each content text is kept to its **first 32 KB**, white space collapsed.
+- **Which way** (`ContentExtractor.KindOf`, by extension) — an image extension (`.png`, `.jpg`,
+  `.jpeg`, `.jpe`, `.jfif`, `.bmp`, `.dib`, `.gif`, `.tif`, `.tiff`, `.webp`, `.heic`, `.heif`,
+  `.avif`, `.ico`, `.jxr`, `.wdp`) → OCR; `.pdf` → OCR of its first page; a video, audio, archive,
+  executable, `.psd` or Office Open XML extension → no text, the file not even opened; anything
+  else → read as text when it passes the text test. The status line names nothing for a file of
+  the no-text kind.
+- **Images** — decoded with `BitmapDecoder` into a `SoftwareBitmap`, oriented as its EXIF says (a
+  GIF gives its first frame); an image longer than `OcrEngine.MaxImageDimension` (10 000 px) on a
+  side is **downscaled** to it, not skipped — its EXIF orientation then ignored, so the scaled size
+  cannot stretch it across the turned axes.
+- **PDF** — its **first page only**, rendered by `Windows.Data.Pdf` with its long side at
+  **2 400 px** (`PdfPages.TryRenderFirstPage`, the preview's 1 600 px kept), then recognised like an
+  image.
+- **Text** — a file passing the `TextPages` text test (≤ 1 MB, UTF-8 / UTF-16): its text as
+  `TextPages` reads it (`TextPages.TryReadContent`) — an `.htm` / `.html` file without its markup
+  (head, scripts and styles left out, entities decoded), and likewise an `.rtf` file without its
+  control words, both falling back to the raw text when that reader finds nothing.
+- **Cap** — each content text is kept to its **first 32 768 characters**, white space and control
+  characters collapsed into single spaces. With both engines, an image's text holds what each
+  recognised, one after the other — often the same words twice, which the search does not mind.
 - **Time budget** — none: every source is bounded (one image, one PDF page, ≤ 1 MB of text).
 - **Rebuild** — a ⚙ menu entry, **Rebuild content index** (built in `MainForm` with the other
-  entries, calling a new `_explorer.RebuildContentIndex()`), clears every content text and queues
-  the whole folder again (after installing an OCR language, for instance); disabled while no base
-  folder is set or the setting is off.
+  entries, calling `_explorer.RebuildContentIndex()`), clears every content text in memory and
+  rescans the folder — the list keeping the priority — the extraction then redoing every file
+  (after installing an OCR language, for instance); disabled while no base folder is set or the
+  setting is off.
+- **Pause** — checked between two files, every 200 ms while it holds (`ThumbnailGrid.LoadingThumbnails`,
+  the last keystroke's time kept by the panel).
 
 ## `files.content`
 
@@ -182,14 +200,16 @@ never folds them again. A file leaving the index (rescan, deletion from the pane
 
 - A tile found **thanks to its content** (at least one word matched in its text, not in its path)
   carries a **badge**: a small medallion like the heart's, in the tile's **top-right** corner (the
-  heart being top-left), holding a **T**; carried by a new flag on `ExplorerRow`, no hit area.
+  heart being top-left), holding a **T** in the heart's font; carried by `ExplorerRow.ByContent`
+  (from `SearchMatch.ByContent`), no hit area.
 - Badge only — no tooltip, no snippet. Tiles found by their name alone, and the favorites shown
   while the search box is empty, have no badge.
 
 ## Progress Bar
 
-- A **miniature progress bar** directly **under the search box**, as wide as the box, **3 px**
-  high (scaled with the DPI), **blue**, on a transparent track.
+- A **miniature progress bar** (`UI/IndexingBar.cs`) directly **under the search box**, across the
+  panel's content width, **3 px** high (scaled with the DPI), **blue** (0, 120, 215), on a
+  transparent track; the unknown total shown by a quarter-length segment sweeping the track.
 - It shows **every indexing job** — the scan, the content extraction, and any future indexing job:
   proportional to the job's progress (files done / files to do), a job whose total is not known yet
   (the scan's counting phase) shown as a short segment sweeping the track.
@@ -367,13 +387,49 @@ Go given for the **code only** (Q&A #27), in a **dedicated worktree** on its own
 tested by the user and merged into `main` once accepted. README, Glossary and RULES.md are not
 part of this go.
 
+### Iteration 10 — 2026-10-07 — 🧭 Implementation choices
+
+The run on branch `feature/content-search`, in the worktree `.claude/worktrees/content-search`
+(the Branch Gate settled by the go itself: a dedicated worktree). No rule broken. The choices the
+frozen design did not state, now in the domain sections:
+
+- **Which way per file** — by extension: a list of image extensions for OCR, `.pdf`, a list of
+  media / archive / executable / Office extensions never opened, anything else tried as text.
+- **RTF read without markup** — the design named HTML only; an `.rtf` file passes the text test
+  anyway, and `TextPages` reads it like a paste, so its words are kept without the control words
+  rather than with them.
+- **Cap in characters** — 32 768 characters, white space and control characters collapsed.
+- **Two engines, texts joined** — the same words often twice; harmless for a substring search.
+- **Oversized image** — downscaled with its EXIF orientation ignored.
+- **PDF page at 2 400 px** on its long side for the OCR.
+- **Timings** — paused polls every 200 ms; texts saved every 30 s and at the end; the search shown
+  refreshed every 5 s and at the end. Closing the app mid-pass may lose the last 30 s of work.
+- **Rebuild** — clears the texts in memory and rescans; the extraction redoes every file after the
+  scan.
+- **Stamps** — `FileStamp(Size, Written)` on `IndexEntry`, null for an entry loaded from
+  `files.index`; `files.content` holds the last write as UTC ticks.
+- **Code style** — the new code qualifies instance members with `this.` (the user's convention for
+  added code), the lines only modified keeping their style.
+
+Checks run at delivery (a test folder in the scratchpad, the worktree's build, UI Automation to
+type in the search box, the window captured): every row of *Test Impact* passed — OCR of a PNG and
+of a 12 000 px PNG, French accents folded, the PDF's first page only, HTML without its script and
+title, the 32 KB cap, mixed words with the badge, the name match first, nothing re-extracted after
+a restart and only the edited file after an edit, the legacy `files.index` moved into `Index\`, the
+bar and *OCR on name* during the pass, the plain summary and the bar still while paused by a
+keystroke, the folder view's search with the badge — except **Rebuild** and **Cancellation by a
+base folder change**, which need the ⚙ menu and are left to the user's test.
+
+**Left open by the code-only go**: RULES.md § App Settings still says `files.index` lives next to
+the exe, README / Glossary say nothing of the content search yet.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 9 | 2026-10-07 | In progress, worktree branch `feature/content-search` |
+| Code | 9, 10 | 2026-10-07 | Delivered on the worktree branch `feature/content-search`, to be merged into `main` once tested |
 | Unit tests | | | None planned — no test project (see *Test Impact*) |
 | README | | | Declined for now (Q&A #27, code only) — the file explorer's section, plus the Glossary (*Content text*, *Index folder*, *Index* revised), each with its `.fr.md` in the same commit; RULES.md § App Settings (`files.index` in `Index\`) |
 
