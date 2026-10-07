@@ -495,15 +495,25 @@ Checked off-screen, by reflection on the built assembly: the OCR's boxes of the 
 where the text was drawn, and the arrow drawn into a bitmap — to the bottom-center from a bulb
 below the word, to the top-center from a bulb above it. Not checked in the running app.
 
+### Iteration 15 — 2026-10-07 — Merged into `main`
+
+The user tested the arrow and accepted the branch (Q&A #33): `feature/content-search` rebased onto
+`main` — no file in common with what `main` had gained meanwhile, no conflict — then fast-forwarded
+into it, the worktree and the branch removed. The OCR cache the user's test built, and the content
+search setting turned on there, were carried over to the main build's folder, so the extraction does
+not start from scratch. The documentation stays out of this task (Q&A #27, #33): RULES.md
+§ App Settings still places `files.index` next to the exe, README and Glossary do not describe the
+content search yet.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 9, 10, 11, 12, 13, 14 | 2026-10-07 | Delivered on the worktree branch `feature/content-search`, to be merged into `main` once tested |
+| Code | 9, 10, 11, 12, 13, 14 | 2026-10-07 | Delivered on the worktree branch `feature/content-search`, merged into `main` (Iteration 15) |
 | Unit tests | | | None planned — no test project (see *Test Impact*) |
-| README | | | Declined for now (Q&A #27, code only) — the file explorer's section, plus the Glossary (*Content text*, *Index folder*, *Index* revised), each with its `.fr.md` in the same commit; RULES.md § App Settings (`files.index` in `Index\`) |
+| README | | | Declined (Q&A #27, code only; merged without the docs, Q&A #33) — the file explorer's section, plus the Glossary (*Content text*, *Index folder*, *Index* revised), each with its `.fr.md` in the same commit; RULES.md § App Settings (`files.index` in `Index\`) |
 
 ---
 
@@ -545,6 +555,7 @@ Questions asked by the agent during design, with user responses.
 | 30 | After this test: merge into `main`, merge with the docs, other adjustments, or not tested yet? | The two settings tied to the content analysis grouped in the menu, ideally not as a submenu; a result found by its content and not by its name: a light bulb at the thumbnail's top-left, under the heart, its tooltip saying it was found in the content, with an excerpt around it (a few words before, a few after) | 2026-10-07 |
 | 31 | After this test: merge into `main`, merge with the docs, other adjustments, or not tested yet? | Would a small arrow on the thumbnail showing where the OCR found the word be complicated? From the bulb to the word's top-center (or bottom-center when above the bulb) | 2026-10-07 |
 | 32 | The arrow: go, the images and PDFs read again by the OCR; go, the positions only for files extracted from now on or after a Rebuild; or no? | Go, the images and PDFs read again by the OCR | 2026-10-07 |
+| 33 | After this test: merge into `main`, merge with the docs, other adjustments, or not tested yet? | OK, merge into `main` | 2026-10-07 |
 
 ---
 
