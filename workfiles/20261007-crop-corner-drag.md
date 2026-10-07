@@ -162,6 +162,11 @@ Open questions answered (Q&A #5–7):
   edit view* entry, both languages. The § Resizing the cells line came from the read of README: a bar on
   the cell's edge is grabbed before the separator, and a corner there follows it.
 
+### Iteration 3 — 2026-10-07 — ✅ Implemented
+
+Go given: code, unit tests and documentation (no test project — nothing to pin, see § Test
+Impact). Branch Gate: stays on `main`, the repository's standing choice.
+
 ---
 
 ## Implementation Log
