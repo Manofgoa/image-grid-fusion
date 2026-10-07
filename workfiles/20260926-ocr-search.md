@@ -97,18 +97,23 @@ Components touched: `Explorer/FileIndex.cs` (index folder, stamps), `Explorer/Fi
 
 ## Extraction
 
-- **An app setting** — the extraction runs only while **OCR** is turned on, a checkable entry of
-  the ⚙ menu, remembered in `settings.json` (`AppSettings`), **off by default**. Its scope and what
-  turning it off does: *(open, Q&A #23, #24)*.
+- **An app setting** — the whole content extraction (OCR of images and PDFs, text and HTML files
+  alike) runs only while **Search file contents (OCR)** is checked, an entry of the ⚙ menu,
+  remembered in `settings.json` (`AppSettings`), **off by default**; off, the search is by path
+  only, as today (Q&A #23).
+- **Turned off** — the extraction stops; the texts already extracted are **kept and still
+  searched**, the badge included; turned on again, the pass resumes where it stopped (Q&A #24).
 - **When** — in the **background**, **after** each scan (start-up and ↻): the list of files is
   indexed first — it is what the search needs — then the content texts, **one file at a time**,
   for the files whose content text is **missing or stale**; a search reads the cache only, never
   the disk.
-- **Paused during a search** — the extraction pauses while a search is under way, so it never
-  slows down the thumbnails being shown, and resumes on its own afterwards. What exactly
-  pauses it: *(open, Q&A #25)*.
+- **Paused during a search** — the extraction pauses, between two files, while the tiles'
+  **thumbnails are loading** (`ThumbnailCache`'s queue not empty) and for **1 s after the last
+  keystroke** in the search box; it resumes on its own once the display is calm, even with the
+  search still shown (Q&A #25).
 - **Status line** — while a file is analysed, the summary gets its name:
-  *12 345 files · indexed 17:20 · OCR on xxxx.png*; back to the plain summary when the pass ends.
+  *12 345 files · indexed 17:20 · OCR on xxxx.png* (*Reading xxxx.txt* for a text or HTML file,
+  which is not recognised but read); back to the plain summary when the pass ends or pauses.
 - **Change detection** — the scan also reads each file's **size + last-write time**, from the
   `FileSystemEntry` it already enumerates (no extra disk access), and keeps them **in memory** on
   the `IndexEntry` — `files.index` stays format 2, the stamps being needed only right after a scan.
@@ -140,7 +145,7 @@ Components touched: `Explorer/FileIndex.cs` (index folder, stamps), `Explorer/Fi
 - **Rebuild** — a ⚙ menu entry, **Rebuild content index** (built in `MainForm` with the other
   entries, calling a new `_explorer.RebuildContentIndex()`), clears every content text and queues
   the whole folder again (after installing an OCR language, for instance); disabled while no base
-  folder is set.
+  folder is set or the setting is off.
 
 ## `files.content`
 
@@ -191,7 +196,8 @@ never folds them again. A file leaving the index (rescan, deletion from the pane
   row and the status line — so nothing moves when it appears; the bar is **hidden while no job
   runs**.
 - The scan's existing status text stays as it is.
-- **↻ during the extraction** — *(open, Q&A #26 — #22 answered with the OCR setting instead)*.
+- **↻ during the extraction** — enabled again as soon as the scan ends; pressed, it rescans the
+  file list (the priority), then the extraction resumes where it stopped (Q&A #26).
 
 ---
 
@@ -216,9 +222,10 @@ here). The checks to run at delivery:
 | Cancellation | Change the base folder or press ↻ during the pass: it stops and restarts cleanly |
 | Index folder | An existing `files.index` next to the exe moved into `Index\` at start-up, no full rescan from nothing; `favorites.txt` untouched |
 | Progress bar | 3 px, blue, under the box, during the scan and the extraction; hidden when idle, nothing moving |
-| OCR setting | Off at first launch: no extraction runs; turned on from ⚙: the pass starts after the file list, remembered after a restart |
+| OCR setting | Off at first launch: no extraction runs, text files included; turned on from ⚙: the pass starts after the file list, remembered after a restart; turned off mid-pass: it stops, the texts already extracted still found |
 | Status line | During the pass: *… · indexed HH:MM · OCR on name.png*, the name changing file by file; the plain summary at the end |
-| Pause | Typing a search while the pass runs: the thumbnails come as fast as with OCR off; the pass resumes afterwards |
+| Pause | Typing a search while the pass runs: the status line's file name stops changing while the thumbnails load, the pass resuming about 1 s after they are all shown |
+| ↻ | Enabled once the scan ends; pressed during the extraction: the list rescanned, then the extraction resumes without redoing the files done |
 | Folder view | A search typed in the folder view finds a file below the open folder by its content, with the badge |
 
 ---
@@ -251,15 +258,12 @@ not only the blocking ones.
   entry (Q&A #19); no per-file time budget, every source being bounded.
 - [x] ~~**Folder view**: does the content search also apply to a search typed in the folder view?~~
   → Yes, like the search view, with the badge (Q&A #21).
-- [ ] **↻ during the extraction**: enabled once the scan ends (pressed, it rescans and the
-  extraction resumes where it stopped), or disabled until the extraction ends? (Q&A #22, not
-  answered as such — asked again as #26)
-- [ ] **OCR setting scope**: does it gate the OCR only (images, PDF — the text and HTML files read
-  whatever the setting), or the whole content extraction? (Q&A #23)
-- [ ] **OCR turned off**: the texts already extracted kept and still searched (turned on again, the
-  pass resumes), or ignored by the search while off? (Q&A #24)
-- [ ] **Pause trigger**: what pauses the extraction — the thumbnails loading plus a moment after
-  the last keystroke, or as long as the search box holds a query? (Q&A #25)
+- [x] ~~**↻ during the extraction**?~~ → Enabled once the scan ends, the extraction resuming after
+  the rescan (Q&A #26; #22 had been answered with the OCR setting instead).
+- [x] ~~**OCR setting scope**?~~ → The whole content extraction, text and HTML included (Q&A #23).
+- [x] ~~**OCR turned off**?~~ → The texts kept and still searched; turned on again, the pass resumes
+  (Q&A #24).
+- [x] ~~**Pause trigger**?~~ → The thumbnails loading, and 1 s after the last keystroke (Q&A #25).
 
 ---
 
@@ -347,6 +351,15 @@ updated. Q&A #22, answered with new requirements instead of the choice offered:
 *Extraction* updated. New open questions: the setting's scope (Q&A #23), what turning it off does
 (Q&A #24), what pauses the pass (Q&A #25), and ↻ asked again (Q&A #26).
 
+### Iteration 8 — 2026-10-07 — Setting scope, pause, ↻
+
+Q&A #23–26: the setting gates the whole content extraction, text and HTML included — named
+*Search file contents (OCR)* in the ⚙ menu; turned off, the texts already extracted are kept and
+still searched; the pass pauses while thumbnails load and 1 s after the last keystroke; ↻ is
+enabled again once the scan ends. Agent's choices stated for the go: *Reading name* on the status
+line for a text or HTML file; the rebuild entry disabled while the setting is off. No open question
+left.
+
 ---
 
 ## Implementation Log
@@ -387,10 +400,10 @@ Questions asked by the agent during design, with user responses.
 | 20 | *(2026-09-29, the go question — cut short by the end of the session, unanswered.)* How do we resume: refresh against the current code then go, go now (code, tests and docs / code only), or no? | Refresh, then go | 2026-10-07 |
 | 21 | Folder view: the content search also in a search typed in the folder view, with the badge, or in the search view only? | Yes, like the search view | 2026-10-07 |
 | 22 | ↻ during the extraction: enabled once the scan ends (the extraction resuming after the rescan), or disabled until the extraction ends? | *(not answered as such)* The OCR is an option to turn on in the app's settings. On, it indexes file by file, with an indication next to the file count and the last indexing time naming the file being analysed — e.g. *OCR on xxxx.png*. It comes AFTER the indexing of the file list, which has priority so the search works. It is paused during a search, so it does not slow down the thumbnails | 2026-10-07 |
-| 23 | OCR setting scope: the OCR only (images, PDF), or the whole content extraction (text and HTML files too)? | | |
-| 24 | OCR turned off: the texts already extracted kept and searched, or ignored while off? | | |
-| 25 | Pause trigger: the thumbnails loading plus a moment after the last keystroke, or as long as the search box holds a query? | | |
-| 26 | ↻ during the extraction (#22 again): enabled once the scan ends, or disabled until the extraction ends? | | |
+| 23 | OCR setting scope: the OCR only (images, PDF), or the whole content extraction (text and HTML files too)? | The whole content extraction, text and HTML included | 2026-10-07 |
+| 24 | OCR turned off: the texts already extracted kept and searched, or ignored while off? | Kept and still searched | 2026-10-07 |
+| 25 | Pause trigger: the thumbnails loading plus a moment after the last keystroke, or as long as the search box holds a query? | The thumbnails loading, and a moment after the last keystroke | 2026-10-07 |
+| 26 | ↻ during the extraction (#22 again): enabled once the scan ends, or disabled until the extraction ends? | Enabled once the scan ends | 2026-10-07 |
 
 ---
 
