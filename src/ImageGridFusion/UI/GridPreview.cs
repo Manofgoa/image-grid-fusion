@@ -566,10 +566,13 @@ internal sealed class GridPreview : Control
         this.InvalidateRestored();
         this._restored = null;
         this._restoredTimer.Stop();
+        var cells = this.CellBounds();
         foreach (var (image, before) in changed)
         {
             var look = image.Look;
-            if (look.Zoom != before.Zoom)
+            int index = this._images.IndexOf(image);
+            var cell = index >= 0 && index < cells.Length ? cells[index] : Rectangle.Empty;
+            if (ZoomOf(image, cell) != ZoomOf(image, cell, before))
             {
                 this.ShowZoomBadge(image);
             }
@@ -658,7 +661,7 @@ internal sealed class GridPreview : Control
             this.PaintBars(g, cell, new Bars(blur.Area(cell), cell), opacity, grips: false);
         }
 
-        var drawn = Rectangle.Round(FitCalculator.ComputeTurned(cell, look.Shown(shown.Image.Bitmap.Size), look.Zoom, look.Focus, look.FineAngle).Bounds);
+        var drawn = Rectangle.Round(FitCalculator.ComputeTurned(cell, look.Shown(shown.Image.Bitmap.Size), look.ZoomIn(cell, look.Shown(shown.Image.Bitmap.Size)), look.Focus, look.FineAngle).Bounds);
         if (shown.Crop && look.Crop is not null && !(handles && this._barsEffect == ImageEffect.Crop))
         {
             this.PaintBars(g, cell, new Bars(Rectangle.Intersect(drawn, cell), cell), opacity, grips: false);
@@ -1431,7 +1434,7 @@ internal sealed class GridPreview : Control
     private static Size FrameDisplaySize(SourceImage image, Rectangle cell)
     {
         var size = image.Look.Oriented(cell.Size);
-        double zoom = Math.Max(1, image.Look.Zoom * (image.Look.Motion is null ? 1 : 1 + MotionEffect.ZoomAmplitude));
+        double zoom = Math.Max(1, image.Look.ZoomIn(cell, image.Look.Shown(image.Bitmap.Size)) * (image.Look.Motion is null ? 1 : 1 + MotionEffect.ZoomAmplitude));
         var crop = image.Look.Crop;
         double width = size.Width * zoom / (crop is null ? 1 : Math.Max(0.01, crop.Right - crop.Left));
         double height = size.Height * zoom / (crop is null ? 1 : Math.Max(0.01, crop.Bottom - crop.Top));
@@ -1771,6 +1774,42 @@ internal sealed class GridPreview : Control
         _wheelEnd.Start();
     }
     /// <summary>
+    /// Puts the selected image in a fit mode, from the options of the zoom effect, the image kept where it
+    /// was moved and brought back within its stops; <see cref="ZoomFit.None"/> leaves the mode for the
+    /// free zoom it gave in the cell, so nothing moves.
+    /// </summary>
+    public void FitSelected(ZoomFit fit)
+    {
+        var cells = this.CellBounds();
+        if (this._selected < 0 || this._selected >= cells.Length || this._locked)
+        {
+            return;
+        }
+
+        var image = this._images[this._selected];
+        var cell = cells[this._selected];
+        var look = image.Look;
+        var fitted = fit == ZoomFit.None ? look.WithZoom(ZoomOf(image, cell)) : look.WithZoomFit(fit);
+        var size = fitted.Shown(image.Bitmap.Size);
+        this.SetLook(this._selected, fitted.WithFocus(FitCalculator.WithinStops(cell, size, fitted.ZoomIn(cell, size), fitted.Focus, fitted.FineAngle)));
+        this.ShowZoomBadge(image);
+    }
+
+    /// <summary>The zoom <paramref name="look"/> — the selected image's own by default — draws the selected image at in its cell; 1 with none selected.</summary>
+    public double SelectedZoom(ImageLook? look = null)
+    {
+        var cells = this.CellBounds();
+        return this.SelectedImage is { } image && this._selected < cells.Length ? ZoomOf(image, cells[this._selected], look) : 1;
+    }
+
+    /// <summary>The zoom <paramref name="look"/> — the image's own by default — draws <paramref name="image"/> at in <paramref name="cell"/>: its fit mode's there, else its free zoom.</summary>
+    private static double ZoomOf(SourceImage image, Rectangle cell, ImageLook? look = null)
+    {
+        look ??= image.Look;
+        return look.ZoomIn(cell, look.Shown(image.Bitmap.Size));
+    }
+
+    /// <summary>
     /// Zooms by <paramref name="notches"/> of the wheel, each moving the zoom onto the next multiple of
     /// its step — the finer one when <paramref name="fine"/> (<see cref="WheelSteps.Zoom"/>) —
     /// keeping the point of the image under <paramref name="location"/> in place as far as the image
@@ -1786,17 +1825,20 @@ internal sealed class GridPreview : Control
 
         var image = _images[index];
         var look = image.Look;
-        double zoom = WheelSteps.Zoom(look.Zoom * 100, notches, fine) / 100;
-        if ((look.Zoom - 1) * (zoom - 1) < 0)
+        var cell = cells[index];
+        var size = look.Shown(image.Bitmap.Size);
+
+        // From the zoom shown: a fit mode is left for the free zoom it gives in this cell.
+        double current = look.ZoomIn(cell, size);
+        double zoom = WheelSteps.Zoom(current * 100, notches, fine) / 100;
+        if ((current - 1) * (zoom - 1) < 0)
         {
             zoom = 1;
         }
 
         // The point under the mouse, where it is actually shown, then the placement that keeps it there.
-        var cell = cells[index];
         var zoomed = look.WithZoom(zoom);
-        var size = look.Shown(image.Bitmap.Size);
-        var before = FitCalculator.ComputeTurned(cell, size, look.Zoom, look.Focus, look.FineAngle).Fit.Image;
+        var before = FitCalculator.ComputeTurned(cell, size, look.ZoomIn(cell, size), look.Focus, look.FineAngle).Fit.Image;
         var after = FitCalculator.DrawnSize(cell, size, zoomed.Zoom);
         var under = TurnedBack(cell, image, location);
         double x = Math.Clamp((under.X - before.X) / before.Width, 0, 1);
@@ -1928,7 +1970,7 @@ internal sealed class GridPreview : Control
         var origin = new PointF(close.Right, close.Bottom + LogicalToDeviceUnits(ButtonGap));
         using var format = new StringFormat { Alignment = StringAlignment.Far };
         var path = new GraphicsPath();
-        path.AddString($"{_zoomBadgeImage!.Look.Zoom * 100:0} %", Font.FontFamily, (int)FontStyle.Bold, LogicalToDeviceUnits(ZoomBadgeTextSize), origin, format);
+        path.AddString($"{ZoomOf(_zoomBadgeImage!, cell) * 100:0} %", Font.FontFamily, (int)FontStyle.Bold, LogicalToDeviceUnits(ZoomBadgeTextSize), origin, format);
         return path;
     }
 
@@ -1973,7 +2015,7 @@ internal sealed class GridPreview : Control
     private static PointF TurnedBack(Rectangle cell, SourceImage image, PointF point)
     {
         var look = image.Look;
-        using var turn = FitCalculator.ComputeTurned(cell, look.Shown(image.Bitmap.Size), look.Zoom, look.Focus, look.FineAngle).Transform();
+        using var turn = FitCalculator.ComputeTurned(cell, look.Shown(image.Bitmap.Size), look.ZoomIn(cell, look.Shown(image.Bitmap.Size)), look.Focus, look.FineAngle).Transform();
         if (turn is null)
         {
             return point;
@@ -2037,7 +2079,7 @@ internal sealed class GridPreview : Control
         var cell = this.CellBounds()[index];
         var image = this._images[index];
         var look = image.Look;
-        var bounds = FitCalculator.ComputeTurned(cell, look.Shown(image.Bitmap.Size), look.Zoom, look.Focus, look.FineAngle).Bounds;
+        var bounds = FitCalculator.ComputeTurned(cell, look.Shown(image.Bitmap.Size), look.ZoomIn(cell, look.Shown(image.Bitmap.Size)), look.Focus, look.FineAngle).Bounds;
         var stops = FitCalculator.Stops(cell, bounds.Size);
         return new Size(
             NextStop(bounds.X, direction.Width, stops.Left, stops.Right, cell.X + (cell.Width - bounds.Width) / 2),
@@ -2095,7 +2137,7 @@ internal sealed class GridPreview : Control
         var image = _images[index];
         var look = image.Look;
         var size = look.Shown(image.Bitmap.Size);
-        var shown = FitCalculator.ComputeTurned(cell, size, look.Zoom, look.Focus, look.FineAngle);
+        var shown = FitCalculator.ComputeTurned(cell, size, look.ZoomIn(cell, size), look.Focus, look.FineAngle);
         var bounds = shown.Bounds;
         var stops = FitCalculator.Stops(cell, bounds.Size);
         var (heldX, heldY) = (_panX.Held, _panY.Held);
@@ -2104,7 +2146,7 @@ internal sealed class GridPreview : Control
 
         // Stored where it is drawn, so a drag past the covered share does not pile up out of sight.
         var focus = shown.FocusAt(cell, new PointF(x + bounds.Width / 2, y + bounds.Height / 2));
-        var moved = FitCalculator.ComputeTurned(cell, size, look.Zoom, focus, look.FineAngle);
+        var moved = FitCalculator.ComputeTurned(cell, size, look.ZoomIn(cell, size), focus, look.FineAngle);
         var middle = new PointF(moved.Bounds.X + moved.Bounds.Width / 2, moved.Bounds.Y + moved.Bounds.Height / 2);
         SetLook(index, look.WithFocus(moved.FocusAt(cell, middle)));
 
@@ -2571,7 +2613,7 @@ internal sealed class GridPreview : Control
         }
 
         var look = image.Look;
-        var drawn = FitCalculator.ComputeTurned(cell, look.Shown(image.Bitmap.Size), look.Zoom, look.Focus, look.FineAngle).Bounds.Size;
+        var drawn = FitCalculator.ComputeTurned(cell, look.Shown(image.Bitmap.Size), look.ZoomIn(cell, look.Shown(image.Bitmap.Size)), look.Focus, look.FineAngle).Bounds.Size;
         int inset = LogicalToDeviceUnits(2);
         int left = cell.Left + inset;
         int right = cell.Right - 1 - inset;
