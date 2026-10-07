@@ -58,7 +58,10 @@ The guides (`PaintGuideLines`) use the same halo, solid, under a green pen of th
   image, can run past it).
 - **Grips and corners**: unchanged, on the zone's sides and corners.
 - **One pen definition**: the dashed green pen is the guides' one — same width, same pattern, same
-  colour — not a second look-alike.
+  colour — not a second look-alike: `GridPreview.GuidePen(opacity)`, used by `PaintGuideLines` and
+  `PaintBars`.
+- **Order**: the four halos first, full-length and solid; then the four sides, solid; then the
+  overhangs, dashed — so no halo covers a green part.
 
 ### Where It Applies
 
@@ -148,6 +151,20 @@ included — only the grip and the corners' brackets turn white, as today. Nothi
 Go for code, tests and documentation, in a dedicated worktree (`feature/zone-bars-dashed-overhang`
 under `.claude/worktrees/`), fast-forwarded into `main` and removed at the end.
 
+### Iteration 4 — 2026-10-07 — 🧭 Implementation choices
+
+- **Shared pen**: the guides' dashed pen extracted into `GridPreview.GuidePen(opacity)`, now used by
+  `PaintGuideLines` and `PaintBars` — the design's "one pen definition". The position readout's
+  dashed line (half opacity) keeps its own pen: not a guide.
+- **Drawing order**: halos full-length first, then the solid sides, then the dashed overhangs.
+- **No overhang test**: a right or bottom bar sits on the zone's last pixel (`Right - 1`), so its
+  overhang is skipped when it is on the span's last pixel, not only beyond it — no 1 px dashed stub
+  when the zone touches the edge. The overhangs end where today's full-length lines ended.
+- **Documentation**: RULES.md § Resizable Zones gets the bullet (naming `GuidePen` and `PaintBars`);
+  the glossary's *Resizable zone* row says solid along / dashed beyond; the README says it in the
+  Crop section, the Blur section pointing to it ("drawn as the crop's"). French versions alike.
+- No rule broken, nothing outside the frozen scope.
+
 ---
 
 ## Implementation Log
@@ -157,10 +174,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable — no test project, painting only |
-| README | | | |
-| RULES.md / GLOSSARY | | | |
+| Code | 3 | 2026-10-07 | `GridPreview.PaintBars`, `GuidePen` |
+| Unit tests | 3 | 2026-10-07 | Not applicable — no test project, painting only |
+| README | 3 | 2026-10-07 | Crop and Blur bars bullets, EN + FR |
+| RULES.md / GLOSSARY | 3 | 2026-10-07 | § Resizable Zones bullet; *Resizable zone* row, EN + FR |
 
 ---
 
