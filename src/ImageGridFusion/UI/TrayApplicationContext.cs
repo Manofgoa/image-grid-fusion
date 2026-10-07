@@ -88,6 +88,16 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _form.Activate();
     }
 
+    /// <summary>
+    /// A later launch of the exe: the window comes to the front — from the tray, minimized or behind others — and
+    /// loads the files it handed over.
+    /// </summary>
+    public void Launched(string[] files)
+    {
+        this.ShowForm();
+        this._form.AddLaunchFiles(files);
+    }
+
     private void Quit()
     {
         _form.CloseForGood();

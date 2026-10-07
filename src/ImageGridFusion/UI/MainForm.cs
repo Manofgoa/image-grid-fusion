@@ -82,6 +82,13 @@ internal sealed class MainForm : Form
     private readonly bool _sizeRemembered;
     private bool _opened;
 
+    // Off for an instance started with --new-instance: it reads the remembered size, never writes it.
+    private readonly bool _savesWindowSize;
+
+    // Files a later launch of the exe handed over before the window was first shown: loaded with the startup files.
+    private readonly List<string> _launchFiles = [];
+    private bool _shown;
+
     /// <summary>The last MP4 or GIF Copy generated in this session; null until one was. Nothing that happens to the grid touches it.</summary>
     private LastVideo? _lastVideo;
 
@@ -309,9 +316,10 @@ internal sealed class MainForm : Form
     // startup files are in, so they are the initial state.
     private readonly GridHistory _history;
 
-    public MainForm(string[] args, string? secondTitle = null)
+    public MainForm(string[] args, string? secondTitle = null, bool savesWindowSize = true)
     {
         _startupFiles = args;
+        this._savesWindowSize = savesWindowSize;
         this._history = new GridHistory(this.CaptureState, () => this._preview.InGesture);
         this._preview.ReleaseImage = this._history.Release;
         this.WriteMaxZoom();
@@ -870,6 +878,26 @@ internal sealed class MainForm : Form
         CenterToScreen();
     }
 
+    /// <summary>
+    /// Files a later launch of the exe handed over: loaded like a drop — refused while exporting — or, the window
+    /// not shown yet, with the startup files.
+    /// </summary>
+    public async void AddLaunchFiles(string[] paths)
+    {
+        if (paths.Length == 0)
+        {
+            return;
+        }
+
+        if (!this._shown)
+        {
+            this._launchFiles.AddRange(paths);
+            return;
+        }
+
+        await this.AddFilesAsync(paths);
+    }
+
     /// <summary>Closes the window for real, instead of hiding it; the tray's Quit.</summary>
     public void CloseForGood()
     {
@@ -889,9 +917,12 @@ internal sealed class MainForm : Form
         _explorer.Start(AppSettings.ExplorerFolder);
 
         // Files dropped on the .exe icon; loaded once the window is visible so startup stays fast.
-        if (_startupFiles.Length > 0)
+        string[] files = [.. _startupFiles, .. this._launchFiles];
+        this._launchFiles.Clear();
+        this._shown = true;
+        if (files.Length > 0)
         {
-            await AddFilesAsync(_startupFiles);
+            await AddFilesAsync(files);
         }
 
         this._history.Start();
@@ -3206,7 +3237,7 @@ internal sealed class MainForm : Form
     /// </summary>
     private void SaveWindowSize()
     {
-        if (!_opened)
+        if (!_opened || !this._savesWindowSize)
         {
             return;
         }
