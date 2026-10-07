@@ -143,6 +143,11 @@ bar's line does not turn white on hover today, only its grip.
 Hover / drag settled (Q5): the bar's line stays green while hovered or dragged, its dashed overhang
 included — only the grip and the corners' brackets turn white, as today. Nothing left open.
 
+### Iteration 3 — 2026-10-07 — ✅ Implemented
+
+Go for code, tests and documentation, in a dedicated worktree (`feature/zone-bars-dashed-overhang`
+under `.claude/worktrees/`), fast-forwarded into `main` and removed at the end.
+
 ---
 
 ## Implementation Log
