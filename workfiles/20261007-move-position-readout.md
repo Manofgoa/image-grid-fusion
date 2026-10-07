@@ -53,7 +53,7 @@ Relevant components:
 | An undo / redo restore that moves an image's center | Shown briefly, as the zoom badge and the guides of `ShowRestored` |
 
 - **Whenever the image's center moves** in its cell, the readout shows (Q&A 9) — the boundary of
-  "whenever" is Open Question 7.
+  "whenever" is Q&A 13.
 - The arrow keys keep their step of 1 **preview** px (10 with Ctrl): the readout, in export px, may
   jump by several units per press. Changing the step is out of this workfile's scope.
 
