@@ -29,7 +29,7 @@ internal static class GridExport
             Length = Animation.VideoLength(items.Select(i => Animation.LoopOf(i.Loop, i.Look)).DefaultIfEmpty(TimeSpan.Zero).Max(), soundtrack);
 
             // The soundtrack loops on its own length, cut where the video ends.
-            var sounds = heard.Select(i => new MixedSound(i.FilePath!, i.Pages!.LoopDuration, i.StartTime, i.Look.SoundGain));
+            var sounds = heard.Select(i => new MixedSound(i.FilePath!, i.PlayedLength, i.StartTime, i.Look.SoundGain, i.PlayedFrom));
             Sounds = (soundtrack is null ? sounds : sounds.Append(new MixedSound(soundtrack.Path, soundtrack.Duration, TimeSpan.Zero, soundtrack.Level))).ToList();
         }
 
@@ -62,7 +62,7 @@ internal static class GridExport
         /// </summary>
         public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders, Soundtrack? soundtrack = null, SoundFade? fade = null, SeamFade? seams = null) => new(
             images.Select(i => i.Plays
-                ? new Item(null, i.BandColor, i.Pages, i.Pages!.LoopDuration, i.Look, i.Page, i.StartTime)
+                ? new Item(null, i.BandColor, i.Pages, i.PlayedLength, i.Look, i.Page, i.StartTime, i.PlayedFrom)
                 : i.IsAnimated
                 ? new Item(null, i.BandColor, i.Pages, TimeSpan.Zero, i.Look, i.StartPage, TimeSpan.Zero)
                 : new Item(new Bitmap(i.Bitmap), i.BandColor, null, TimeSpan.Zero, i.Look, 0, TimeSpan.Zero)).ToList(),
@@ -86,10 +86,15 @@ internal static class GridExport
     /// <summary>
     /// A cell: a still copy, or an animated source with its loop, the page it shows and where it
     /// starts playing, and the effects on the image. A frozen source has no loop: its page is a still.
+    /// The loop is the part its frames effect leaves to play, beginning at <paramref name="From"/> in
+    /// the content (workfiles/20261008-video-trim.md).
     /// </summary>
-    public sealed record Item(Bitmap? Still, BandColor BandColor, PageSource? Source, TimeSpan Loop, ImageLook Look, int Page, TimeSpan Start)
+    public sealed record Item(Bitmap? Still, BandColor BandColor, PageSource? Source, TimeSpan Loop, ImageLook Look, int Page, TimeSpan Start, TimeSpan From = default)
     {
         public bool Plays => Source is not null && Loop > TimeSpan.Zero;
+
+        /// <summary>Content time shown at <paramref name="time"/> of the video.</summary>
+        public TimeSpan ContentTime(TimeSpan time) => this.From + Animation.LoopTime(this.Start + time, this.Loop);
     }
 
     /// <summary>
@@ -111,7 +116,7 @@ internal static class GridExport
         }
 
         reader = item.Source.OpenAnimation();
-        var first = reader.FrameAt(Animation.LoopTime(item.Start, item.Loop)) ?? throw new InvalidOperationException("A source has no frame to show.");
+        var first = reader.FrameAt(item.ContentTime(TimeSpan.Zero)) ?? throw new InvalidOperationException("A source has no frame to show.");
         return new Frame(first, item.BandColor, item.Look);
     }
 
@@ -161,7 +166,7 @@ internal static class GridExport
                 var time = Animation.FrameTime(k);
                 for (int i = 0; k > 0 && i < readers.Length; i++)
                 {
-                    if (readers[i]?.FrameAt(Animation.LoopTime(job.Items[i].Start + time, job.Items[i].Loop)) is { } next)
+                    if (readers[i]?.FrameAt(job.Items[i].ContentTime(time)) is { } next)
                     {
                         frames[i].Bitmap.Dispose();
                         frames[i] = frames[i] with { Bitmap = next };

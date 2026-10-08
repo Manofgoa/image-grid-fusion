@@ -44,6 +44,15 @@ public abstract class PageSource : IDisposable
     /// <summary>Time in the loop where the animation shows <paramref name="page"/>: where it resumes after browsing.</summary>
     public virtual TimeSpan TimeOf(int page) => TimeSpan.Zero;
 
+    /// <summary>
+    /// The pages are the frames of a video or an animated GIF, one each: the Frames effect trims them
+    /// and starts on any of them (workfiles/20261008-video-trim.md). False for a PDF's or a text's pages.
+    /// </summary>
+    public virtual bool HasFrames => false;
+
+    /// <summary>Frames per second of a video, for its minutes : seconds : frame fields; <c>null</c> for a GIF, its frames numbered.</summary>
+    public virtual double? FrameRate => null;
+
     public virtual void Dispose()
     {
     }

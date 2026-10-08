@@ -24,9 +24,12 @@ public static class Animation
     public static TimeSpan GridLength(IEnumerable<SourceImage> images) =>
         images.Select(LoopOf).DefaultIfEmpty(TimeSpan.Zero).Max();
 
-    /// <summary>The loop <paramref name="image"/> plays: its content's while it plays, or the cycle of its motion when longer.</summary>
+    /// <summary>
+    /// The loop <paramref name="image"/> plays: its content's while it plays — the trimmed part
+    /// (<see cref="SourceImage.PlayedLength"/>) — or the cycle of its motion when longer.
+    /// </summary>
     public static TimeSpan LoopOf(SourceImage image) =>
-        LoopOf(image.Plays ? image.Pages!.LoopDuration : TimeSpan.Zero, image.Look);
+        LoopOf(image.Plays ? image.PlayedLength : TimeSpan.Zero, image.Look);
 
     /// <summary>
     /// The loop of a cell whose content plays a loop of <paramref name="content"/> (zero for a still):

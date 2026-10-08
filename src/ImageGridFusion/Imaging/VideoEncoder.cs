@@ -348,7 +348,7 @@ internal sealed class VideoEncoder : IFrameEncoder
 
     /// <summary>
     /// The sound of one video, decoded to 16-bit PCM by a Source Reader: from its starting point, then
-    /// from the start again every loop, cut at the end of each loop, silent where the sound is shorter
+    /// from the loop's beginning again every loop — its trim's, else the file's start — cut at the end of each loop, silent where the sound is shorter
     /// than its loop; added to the mix at its gain, as stereo.
     /// </summary>
     private sealed class Voice : IDisposable
@@ -356,6 +356,7 @@ internal sealed class VideoEncoder : IFrameEncoder
         private readonly IMFSourceReader _reader;
         private readonly long _loop;
         private readonly long _start;
+        private readonly long _from;
         private readonly double _gain;
         private int _rate;
         private int _channels;
@@ -375,6 +376,7 @@ internal sealed class VideoEncoder : IFrameEncoder
             Path = sound.Path;
             _loop = sound.Loop.Ticks;
             _start = sound.Start.Ticks;
+            this._from = sound.From.Ticks;
             _gain = sound.Gain;
             _reader = MediaFoundation.CreateSourceReader(sound.Path, attributes: null);
             try
@@ -441,9 +443,9 @@ internal sealed class VideoEncoder : IFrameEncoder
 
             // The first loop is cut short: the video's time 0 is the sound's time start.
             _position = _start * rate / TimeSpan.TicksPerSecond % _loopFrames;
-            if (_start > 0)
+            if (this._from + _start > 0)
             {
-                _reader.SetCurrentPosition(Guid.Empty, PropVariant.FromLong(_start));
+                _reader.SetCurrentPosition(Guid.Empty, PropVariant.FromLong(this._from + _start));
             }
         }
 
@@ -493,7 +495,7 @@ internal sealed class VideoEncoder : IFrameEncoder
             _ended = false;
             _pendingCount = 0;
             _pendingFrame = 0;
-            _reader.SetCurrentPosition(Guid.Empty, PropVariant.FromLong(0));
+            _reader.SetCurrentPosition(Guid.Empty, PropVariant.FromLong(this._from));
         }
 
         /// <summary>Decodes until the pending frames reach the position; <c>false</c> once the sound ended in this loop.</summary>
@@ -512,7 +514,8 @@ internal sealed class VideoEncoder : IFrameEncoder
             _reader.ReadSample(MediaFoundation.FirstAudioStream, 0, out _, out int flags, out long timestamp, out var sample);
             try
             {
-                long frame = timestamp * _rate / TimeSpan.TicksPerSecond;
+                // Frames of the loop, counted from where it begins in the file.
+                long frame = (timestamp - this._from) * _rate / TimeSpan.TicksPerSecond;
                 if ((flags & MediaFoundation.EndOfStreamFlag) != 0 || (sample is not null && frame >= _loopFrames))
                 {
                     _ended = true;
@@ -582,5 +585,9 @@ internal sealed class VideoEncoder : IFrameEncoder
     }
 }
 
-/// <summary>A sound of an exported video's mix: a video or audio file, looping every <paramref name="Loop"/> from <paramref name="Start"/>, scaled by <paramref name="Gain"/>.</summary>
-internal sealed record MixedSound(string Path, TimeSpan Loop, TimeSpan Start, double Gain);
+/// <summary>
+/// A sound of an exported video's mix: a video or audio file, looping every <paramref name="Loop"/> from
+/// <paramref name="Start"/>, scaled by <paramref name="Gain"/>; the loop begins at <paramref name="From"/>
+/// in the file — a trimmed video's (workfiles/20261008-video-trim.md).
+/// </summary>
+internal sealed record MixedSound(string Path, TimeSpan Loop, TimeSpan Start, double Gain, TimeSpan From = default);

@@ -40,6 +40,8 @@ public sealed class GifFrames : PageSource
 
     public override TimeSpan TimeOf(int page) => StepReader.StartOf(_delays, page);
 
+    public override bool HasFrames => true;
+
     /// <summary>Returns null unless the file is a GIF GDI+ can decode with at least two frames.</summary>
     public static GifFrames? TryOpen(string path)
     {

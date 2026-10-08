@@ -6,13 +6,18 @@ namespace ImageGridFusion.Imaging;
 
 /// <summary>
 /// Frames of a video, decoded by Windows (Media Foundation, through <see cref="MediaComposition"/>),
-/// at 100 positions 1 % of the duration apart. A codec Windows lacks
+/// one page per frame at the file's frame rate, so the Frames effect can stand on any of them
+/// (workfiles/20261008-video-trim.md). A codec Windows lacks
 /// (HEVC without its extension, some mkv / avi) makes the file fall back to its thumbnail, if any.
 /// Played frame by frame by a <see cref="VideoReader"/>.
 /// </summary>
 public sealed class VideoFrames : PageSource, IHasSound
 {
-    private const int MaxPositions = 100;
+    /// <summary>A file giving no frame rate, or an absurd one, is counted at the export's.</summary>
+    private const double DefaultFrameRate = Animation.FramesPerSecond;
+
+    /// <summary>A frame's time read back lands on that frame despite the ticks' rounding.</summary>
+    private const double FrameTolerance = 1e-4;
 
     private static readonly HashSet<string> Extensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -22,19 +27,19 @@ public sealed class VideoFrames : PageSource, IHasSound
     private readonly string _path;
     private readonly MediaComposition _composition;
     private readonly TimeSpan _duration;
-    private readonly TimeSpan _step;
+    private readonly double _frameRate;
     private readonly int _width;
     private readonly int _height;
 
-    private VideoFrames(string path, MediaComposition composition, TimeSpan duration, int width, int height, bool hasSound)
+    private VideoFrames(string path, MediaComposition composition, TimeSpan duration, double frameRate, int width, int height, bool hasSound)
     {
         _path = path;
         _composition = composition;
         _duration = duration;
+        _frameRate = frameRate;
         _width = width;
         _height = height;
-        _step = Step(duration);
-        Count = Positions(duration);
+        Count = Frames(duration, frameRate);
         HasSound = hasSound;
     }
 
@@ -44,21 +49,29 @@ public sealed class VideoFrames : PageSource, IHasSound
 
     public override TimeSpan LoopDuration => _duration;
 
+    public override bool HasFrames => true;
+
+    public override double? FrameRate => _frameRate;
+
     public override AnimationReader OpenAnimation() => VideoReader.Open(_path);
 
-    public override int PageAt(TimeSpan time) => Math.Clamp((int)(time / _step), 0, Count - 1);
+    public override int PageAt(TimeSpan time) => Math.Clamp((int)Math.Floor(time.TotalSeconds * _frameRate + FrameTolerance), 0, Count - 1);
 
-    public override TimeSpan TimeOf(int page) => Count == 1 ? TimeSpan.Zero : _step * page;
+    public override TimeSpan TimeOf(int page) => Count == 1 ? TimeSpan.Zero : FrameTime(page);
 
-    /// <summary>The position nearest to 10 % of the duration, past the usual black intro frames.</summary>
-    public override int InitialPage => Math.Min(Count - 1, (int)Math.Round(_duration * 0.1 / _step));
+    /// <summary>The frame nearest to 10 % of the duration, past the usual black intro frames.</summary>
+    public override int InitialPage => Math.Clamp((int)Math.Round(_duration.TotalSeconds * 0.1 * _frameRate), 0, Count - 1);
 
     public override string Label(int page) => Time(page).ToString(_duration.TotalHours >= 1 ? @"h\:mm\:ss" : @"m\:ss");
 
-    public static TimeSpan Step(TimeSpan duration) => duration / MaxPositions;
+    /// <summary>Frames k / rate, 0 ≤ k &lt; count, starting within the duration; a single one for a duration too short.</summary>
+    public static int Frames(TimeSpan duration, double frameRate) => Math.Max(1, (int)Math.Ceiling(duration.TotalSeconds * frameRate - FrameTolerance));
 
-    /// <summary>Positions k × step, 0 ≤ k &lt; count: 100, or a single one for a duration too short to split.</summary>
-    public static int Positions(TimeSpan duration) => Math.Clamp((int)Math.Floor(duration / Step(duration)), 1, MaxPositions);
+    /// <summary>The rate a file gives, or the export's when it gives none or an absurd one.</summary>
+    private static double RateOf(uint numerator, uint denominator) =>
+        numerator == 0 || denominator == 0 || numerator / (double)denominator is < 1 or > 1000
+            ? DefaultFrameRate
+            : numerator / (double)denominator;
 
     /// <summary>Returns null when the file is not a video Windows can decode.</summary>
     public static VideoFrames? TryOpen(string path)
@@ -80,7 +93,8 @@ public sealed class VideoFrames : PageSource, IHasSound
 
             var composition = new MediaComposition();
             composition.Clips.Add(clip);
-            return new VideoFrames(path, composition, clip.OriginalDuration, (int)properties.Width, (int)properties.Height, clip.EmbeddedAudioTracks.Count > 0);
+            var rate = RateOf(properties.FrameRate.Numerator, properties.FrameRate.Denominator);
+            return new VideoFrames(path, composition, clip.OriginalDuration, rate, (int)properties.Width, (int)properties.Height, clip.EmbeddedAudioTracks.Count > 0);
         }
         catch (Exception)
         {
@@ -99,6 +113,8 @@ public sealed class VideoFrames : PageSource, IHasSound
         return ImageLoader.Copy(image);
     }
 
-    /// <summary>A lone position shows the 10 % mark rather than the first frame.</summary>
-    private TimeSpan Time(int page) => Count == 1 ? _duration * 0.1 : _step * page;
+    /// <summary>A lone frame shows the 10 % mark rather than the first one.</summary>
+    private TimeSpan Time(int page) => Count == 1 ? _duration * 0.1 : FrameTime(page);
+
+    private TimeSpan FrameTime(int page) => TimeSpan.FromTicks((long)Math.Round(page * TimeSpan.TicksPerSecond / _frameRate));
 }

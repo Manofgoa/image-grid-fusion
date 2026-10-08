@@ -101,6 +101,38 @@ internal sealed class PreviewSound : IDisposable
         }
     }
 
+    /// <summary>
+    /// The part of the sound of <paramref name="image"/> heard, from <paramref name="from"/> to
+    /// <paramref name="to"/> in its file, looping on it: the trim of its frames effect, so the sound
+    /// starts over with its frames (workfiles/20261008-video-trim.md).
+    /// </summary>
+    public void Span(SourceImage image, TimeSpan from, TimeSpan to)
+    {
+        if (!this._voices.TryGetValue(image, out var voice) || voice.Node is not { } node)
+        {
+            return;
+        }
+
+        TimeSpan? start = from > TimeSpan.Zero ? from : null;
+        TimeSpan? end = to < node.Duration ? to : null;
+        if (node.StartTime == start && node.EndTime == end)
+        {
+            return;
+        }
+
+        try
+        {
+            // Widened first, so the new start never falls after the old end.
+            node.EndTime = null;
+            node.StartTime = start;
+            node.EndTime = end;
+        }
+        catch (Exception)
+        {
+            // Windows refuses this part: the whole sound loops, its frames still trimmed.
+        }
+    }
+
     /// <summary>Plays the soundtrack from <paramref name="position"/> at <paramref name="gain"/>.</summary>
     public void SyncSoundtrack(TimeSpan position, double gain)
     {

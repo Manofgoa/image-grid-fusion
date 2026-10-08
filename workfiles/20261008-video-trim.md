@@ -63,18 +63,20 @@ Settled by the user (Q&A 1–10):
 - **Default state**: start at the first frame, end after the last one — the whole content plays,
   as today. *Reset* (the effect's own, the toolbar's) brings that back; a replaced image, or one
   shifting after a deletion, arrives untrimmed.
-- **Stored in content time** (`TimeSpan` from the beginning of the file), not as a share: a video or
-  a GIF never lays out again, and a time keeps the exact frame the user picked.
-- **Minimum span**: one frame — the end is at least one frame after the start.
-- **Frame-accurate starting point** for a video or a GIF: it can stand on any frame of the span
-  (today: 100 positions over the whole video). PDFs and texts keep their page positions.
+- **Stored as frame indices** — `FramesEffect.First` and `Last`, both played, `Last` null for the
+  content's last frame — not as a share: a video or a GIF never lays out again, and an index keeps the
+  exact frame the user picked.
+- **Minimum span**: one frame — **To** may stand on **From**'s frame, never before it.
+- **A video's pages are its frames**, at the file's frame rate (`VideoFrames`, 30 fps when the file
+  gives none): before, 100 positions 1 % apart. So the starting point, the frozen frame and the trim
+  stand on any frame. PDFs and texts keep their page positions.
 - **One definition of the played span** — `SourceImage` gives it (start, end, length) and every
   consumer reads it there, never `Pages.LoopDuration` directly for a trimmed content:
   - `Animation.LoopOf` → the **trimmed length**, so `Animation.VideoLength`, the length readout,
     the export length and the soundtrack's loop follow by themselves (RULES.md § Video Length);
   - the **preview** plays content time `start + LoopTime(position, length)`;
-  - the **sound** of the video is heard inside the span only, looping with it, in the preview and
-    in the MP4 (`MixedSound` gains the span's start);
+  - the **sound** of the video is heard inside the span only, looping with it, in the preview
+    (`PreviewSound.Span`: the audio node's own start and end times) and in the MP4 (`MixedSound.From`);
   - the **exports** read frames inside the span.
 - **Frozen**: a frozen image shows its starting point's frame, which is inside the span — the trim
   itself changes nothing else for a still.
@@ -98,22 +100,28 @@ lines there):
 
 | Control | Behaviour |
 |---|---|
-| **From slider** (start) | One step per frame of the content, from the first frame to the end − 1 frame |
-| **To slider** (end) | One step per frame, from the start + 1 frame to the end of the content |
+| **From slider** (start) | One step per frame, over the **whole content**; stopped at **To**'s frame |
+| **To slider** (end) | One step per frame, over the **whole content**; the **last frame played**, stopped at **From**'s frame |
+| Ctrl + wheel on a slider | 5 % of the frames it covers, onto the multiples of 5 % of its course |
 | **Starts at slider** (starting point) | Its course covers the **trimmed part only**, [start, end], one step per frame (Q&A 6); it narrows when the trim does |
 | *Freeze* | Kept, as today: holds the image on the starting point's frame |
 | **Video fields** (each of the three) | **Minutes** — not capped at 59, a video over an hour shows `75`; **seconds** — 0 to 59; **frame** — the frame within the second, 0 to the file's frame rate − 1 |
 | **GIF field** (each of the three) | One field: the **frame number** in the GIF, 1 to its frame count (the numbering of today's `3 / 12` label) |
 | ↑ / ↓ in a field | +1 / −1 of that field's unit, carrying over between the video's fields (§ Agreed Scope); **Ctrl** → ±5 |
 | Wheel over a field | As ↑ / ↓, Ctrl → ±5 |
-| Typing a number | Applied on **Enter** or when the field is **left**; an invalid value is put back as it was |
+| Typing a number | Applied on **Enter** or when the field is **left**; an invalid value is put back as it was; **Escape** puts the text back |
+| ↑ / ↓ on minutes or seconds | The frame within the second kept, cut to the new second's frame count |
+| Editing keys in a field | Ctrl+C / V / Z / Y, Delete and Escape edit the field's text, not the grid (`MainForm.ProcessCmdKey`) |
+| PDF or text | The trim's lines disabled, their tooltip saying why; the starting point shows its page label instead of fields |
 
 - **Acting on any of them activates the effect** (RULES.md § Options Toolbar).
 - A slider and its fields always show the same time: moving the slider rewrites the fields, a
   field's change moves the slider.
-- **Ranges**: the start stays before the end by one frame at least; pushing a bound against the
-  other stops it there, it does not push the other. The starting point stays inside [start, end]: a
-  bound moved past it brings it along.
+- **Ranges**: **To** never stands before **From**; pushing a bound against the other stops it there,
+  it does not push the other. The starting point stays inside [start, end]: a bound moved past it
+  brings it along (`FramesEffect.WithTrim`).
+- A thin line separates the trim (left) from the starting point and *Freeze* (right); the From / To
+  captions, sliders and fields stand in a grid so they line up.
 - The *Starts at* label is replaced by the fields (no `Starts at: 0:06` text left); with *Freeze*
   checked, the label of that line reads **Frozen on** instead of **Starts at**, as today.
 
@@ -180,6 +188,37 @@ User request (Q&A 10): the **starting point gets the same fields** — three for
 GIF — next to its slider, replacing the `Starts at: 0:06` label text. So it becomes frame-accurate on
 a video or a GIF (one slider step per frame of the span); PDFs and texts keep their page slider.
 
+### Iteration 5 — 2026-10-08 — ✅ Implemented
+
+Go given: **code, unit tests and documentation**, in a **worktree** (`.claude/worktrees/video-trim`,
+branch `feature/video-trim`, from `main`). The scope is the design sections above, as they stand.
+
+### Iteration 6 — 2026-10-08 — 🧭 Implementation choices
+
+No project rule broken. Choices the frozen design did not state, or that it stated otherwise:
+
+- **A video's pages became its frames** (`VideoFrames`, at the file's frame rate, 30 fps when it
+  gives none or an absurd one): the starting point, Freeze and the trim needed frame-accurate pages —
+  they were 100 positions 1 % apart.
+- **Frame indices, not times**: the trim is stored as `FramesEffect.First` / `Last` (frame indices)
+  instead of content time — exact, and no rounding between a time and its frame.
+- **To is the last frame played** (inclusive), so a GIF reads `From 1 To 12` and a video's To shows
+  that frame's time; the minimum span is one frame, To standing on From's frame.
+- **Both trim sliders cover the whole content** (not From up to end − 1, To from start + 1): one scale
+  for both, a bound stopped against the other.
+- **Ctrl + wheel** on the three sliders: 5 % of the frames the slider covers (the starting point's
+  rule before, now over its trimmed course).
+- **Preview sound**: looped inside the trim by the audio node's own `StartTime` / `EndTime`
+  (`PreviewSound.Span`); a part Windows refuses leaves the whole sound looping.
+- **Fields**: Escape puts the typed text back; ↑ / ↓ on minutes or seconds keep the frame within the
+  second, cut to the new second's frame count; a focused field keeps Ctrl+C / V / Z / Y, Delete and
+  Escape (`MainForm.ProcessCmdKey`) — Delete would else remove the selected image.
+- **PDF and text**: the trim's lines are disabled with a tooltip on them; the starting point keeps its
+  page label instead of fields.
+- **Layout**: the From / To rows in a grid, so their sliders line up; a thin line between the trim and
+  the starting point.
+- **RULES.md** gets a § Video Length › Played Part (the one definition of what a content plays).
+
 ---
 
 ## Implementation Log
@@ -189,9 +228,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable — no test project |
-| README | | | |
+| Code | 5, 6 | 2026-10-08 | Video pages per frame; trim model (`FramesEffect`, `SourceImage`, `Animation`, `AnimationPlayer`, `PreviewSound`, `GridExport`, `VideoEncoder`); `FrameField` + Frames options in `MainForm` — four commits |
+| Unit tests | 5 | 2026-10-08 | Not applicable — no test project |
+| README | 5 | 2026-10-08 | `README.md` + `README.fr.md`; also `GLOSSARY.md` + `GLOSSARY.fr.md` (Trim / Découpe), `RULES.md` (§ Played Part) |
 
 ---
 
