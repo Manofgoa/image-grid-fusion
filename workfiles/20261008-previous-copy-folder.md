@@ -138,6 +138,11 @@ name too long for Windows fails the write, reported as any write failure; a writ
 the Copy successful and adds `Not kept in previous\: <reason>` to the status line; a glossary term,
 **Previous copy**. Sections *File Name*, *Status Line* and *Documentation* updated.
 
+### Iteration 3 — 2026-10-08 — ✅ Implemented
+
+Go given: code, unit tests (not applicable — no test project) and documentation, in a worktree on
+`feature/previous-copy-folder`.
+
 ---
 
 ## Implementation Log
