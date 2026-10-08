@@ -70,17 +70,27 @@ Agreed in the scoping batch (Q&A 1–3):
 
 ---
 
-## Timeline Model (proposal)
+## Timeline Model
 
-One pure computation in `Composition`, read by every consumer — like `Animation.VideoLength`:
+One pure computation in `Composition/VideoCascade.cs`, read by every consumer — like
+`Animation.VideoLength`:
 
-- A **cascade schedule** built from the ordered images: per taking-part image a **turn** —
-  `[offset, offset + turn length)` on the grid's clock — the offsets the running sum of the previous
-  turns and of the pauses after them.
-- At grid time `t` (taken within the cascade's loop), a taking-part image shows:
-  before its turn → its starting point; inside → its content time; after → its last played frame.
-- The preview (`AnimationPlayer`), the export (`GridExport.Item`), both sounds and the length readout
-  read it there; none re-derives it. Off, every consumer behaves exactly as today.
+- `VideoCascade` — the settings (`Pause`, 0 to `MaxPause` = 3 s; `Initial` = no pause).
+- `CascadeSchedule` — built from the turns in cell order (`CascadeSchedule.Of(images, cascade)`):
+  per taking-part cell a **turn** `[TurnAt(i), TurnAt(i) + turn)` on the grid's clock, the offsets the
+  running sum of the previous turns and of the pauses after them; `Length` the whole cascade.
+  `TakesPart(image)` = `Plays && Trims` (a video or an animated GIF that plays); `TurnOf(image)` its
+  `PlayedLength`.
+- `Played(i, t)` — how far into its turn a cell stands at grid time `t` (taken within `Length`):
+  zero before its turn (its starting point), the elapsed time inside, `turn − 1 tick` after it (the
+  last frame played). `Plays(i, t)` — inside its turn.
+- `Animation.GridLength(images, cascade)` — the whole cascade, or a loop played beside it when longer
+  (a content taking no part, an Animations cycle); `Animation.VideoLength(images, soundtrack, cascade)`.
+- Consumers: `AnimationPlayer.Position` (content time = `StartTime + Played`), `AnimationPlayer.InTurn`
+  (sound), `AnimationPlayer.ProgressOf` (the turn's progress, none outside it), the soundtrack loop and
+  the Fade (`VideoLength` with the cascade); `GridExport.Job.ContentTime(i, t)` and `Job.Length`;
+  `MixedSound.TurnAt` / `Cycle`, the exported voice mixed during its turn only (`Voice.MixInto`
+  gating `MixLoop`); the length readout and its tooltip. Off, every consumer behaves as before.
 
 ---
 
@@ -90,7 +100,15 @@ One pure computation in `Composition`, read by every consumer — like `Animatio
   `EffectIcons`.
 - Off at start-up; on / off and its settings in `GlobalState` (undo step), not persisted; reset by the
   Global Resets and *Clear all*, locked while exporting.
-- Options: the **Pause** slider (§ Behaviour), then the effect's own Reset.
+- Options: the **Pause** slider (§ Behaviour), `Pause: 0.0 s`, by 0.1 s (Ctrl + wheel 0.1 s too, as
+  the Fade's duration), then the effect's own Reset.
+- Icon (`EffectIcons.Cascade`): three play triangles stepping down to the right, the first one green,
+  the others grey.
+- Undo: `Cascade` / `CascadeOn` in `GlobalState`, named *Cascade* by `GridHistory.Describe`; a restore
+  that changes them starts the grid over, as the toggle does (through `GridPreview.Cascade`).
+- Length readout tooltip: with the cascade setting the length, its first line reads *MP4 video of
+  N s: the cascade, K contents one after the other* (and the pause), then one line per turn —
+  *name — turn of N s, from M s* — then the contents playing alongside.
 - **Availability**: disabled, with a tooltip saying why, while **no** content can take part — no
   video or animated GIF playing. With a single one, it simply plays alone, then pauses.
 
@@ -128,6 +146,8 @@ blocking ones. Each one carries the agent's proposal.
   the grid over — an amendment of RULES.md § Preview Playback
 - [x] ~~**Progress line**~~ → On the content playing its turn only, its turn's progress; none on the
   waiting ones
+- [ ] *(found during the run)* The **Seams** global effect is not documented: absent from the README's
+  Global tab list and sections (EN + FR) and from the glossary's *Global effect* row. Document it?
 
 ---
 
@@ -158,6 +178,35 @@ proposed two), on / off and Pause starting the grid over, the progress line on t
 only. The pause is placed after every turn, the last one included, so the exported loop pauses
 evenly. No Open Question left.
 
+### Iteration 4 — 2026-10-08 — ✅ Implemented
+
+Go given: **code, unit tests and documentation**, in a **worktree** (`.claude/worktrees/video-cascade`,
+branch `feature/video-cascade`). The design sections as they stand are the frozen scope.
+
+### Iteration 5 — 2026-10-08 — 🧭 Implementation choices
+
+No project rule broken. Choices the frozen design did not state:
+
+- **Taking part** = `SourceImage.Plays && Trims`: a video or an animated GIF that plays (`Trims` is
+  the "has frames" test the trim already uses).
+- **"The last frame it played"** = its turn's end less one tick, which the reader resolves to the
+  frame just before the starting point.
+- **Preview**: the schedule is recomputed from the images at each read (no cache), so a Frames
+  change — trim, starting point, freeze — reshapes the cascade at once; it does **not** start the grid
+  over (§ Preview Playback unchanged for the Frames effect), later turns simply shift.
+- **Progress timer**: kept running while the cascade is on with a content taking part
+  (`AnimationPlayer.Cascading`), so the next turn's line appears after a pause where no line shows.
+- **Export sound**: `MixedSound` gets `TurnAt` and `Cycle`; a gated voice moves its loop only during
+  its turn — a turn being one whole loop, the next turn starts where the previous did.
+- **Undo**: the cascade is part of the step; restoring a different cascade starts the grid over, as
+  the toggle does.
+- **Unavailable tooltip**: *No video nor animated GIF plays: there is nothing to play one after the
+  other*.
+- Icon, slider text and length-readout tooltip: see § Global Effect.
+
+Noticed, not done (scope freeze): the **Seams** global effect is missing from the README's tab list
+and § Global, and from the glossary's *Global effect* row — offered as an Open Question.
+
 ---
 
 ## Implementation Log
@@ -167,9 +216,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable — no test project |
-| README | | | |
+| Code | 5 | 2026-10-08 | `VideoCascade` / `CascadeSchedule`, `Animation`; `AnimationPlayer`; `GridExport`, `VideoEncoder`; the Cascade tab (`GlobalEffect`, `EffectIcons`, `GridPreview`, `GridHistory`, `MainForm`) — four commits |
+| Unit tests | 5 | 2026-10-08 | Not applicable — no test project |
+| README | 5 | 2026-10-08 | `README.md` + `README.fr.md` (§ Cascade, tab list, live preview, length readout); also `GLOSSARY.md` + `GLOSSARY.fr.md` (Cascade, Turn), `RULES.md` (§ Video Length › Cascade, § Preview Playback) |
 
 ---
 

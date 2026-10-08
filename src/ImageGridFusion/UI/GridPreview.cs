@@ -99,6 +99,7 @@ internal sealed class GridPreview : Control
     // The seams global effect, and the fills its strips were last drawn from in the cache: a cell drawn
     // again whose fill changed draws its neighbours again too.
     private SeamFade? _seams;
+    private VideoCascade? _cascade;
     private IReadOnlyList<Color?>? _seamFills;
     private bool _locked;
     private bool _hoveringHandle;
@@ -345,6 +346,30 @@ internal sealed class GridPreview : Control
             this._cache?.Dispose();
             this._cache = null;
             this.Invalidate();
+            this.ContentVersion++;
+        }
+    }
+
+    /// <summary>
+    /// The Cascade playing the videos and animated GIFs one after the other; <c>null</c> when it is off.
+    /// Turned on or off, or its pause changed, it starts the grid over, so the first one plays at once
+    /// (workfiles/20261008-video-cascade.md).
+    /// </summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public VideoCascade? Cascade
+    {
+        get => this._cascade;
+        set
+        {
+            if (value == this._cascade)
+            {
+                return;
+            }
+
+            this._cascade = value;
+            this._player.SetCascade(value);
+            this._player.Restart();
+            this._progressTimer.Start();
             this.ContentVersion++;
         }
     }
@@ -2085,7 +2110,7 @@ internal sealed class GridPreview : Control
     /// <summary>
     /// Repaints the progress line of every playing cell — its strip only, and the strips of the last
     /// tick, so a line that just vanished is erased — and draws again the cells whose Animations effect
-    /// is on, at the export's frame rate; stops once nothing plays nor moves. The next sync of the
+    /// is on, at the export's frame rate; stops once nothing plays nor moves, the cascade's pauses aside. The next sync of the
     /// player, a frames effect changed, or a motion turned on starts it again.
     /// </summary>
     private void OnProgressTick()
@@ -2117,7 +2142,8 @@ internal sealed class GridPreview : Control
             }
         }
 
-        if (_progressStrips.Count == 0)
+        // In the cascade, the next turn draws its line after a pause where none shows.
+        if (_progressStrips.Count == 0 && !this._player.Cascading)
         {
             _progressTimer.Stop();
         }

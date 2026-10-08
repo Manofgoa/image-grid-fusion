@@ -18,7 +18,9 @@ internal sealed record GlobalState(
     GridBorders Borders,
     bool BordersOn,
     SeamFade Seams,
-    bool SeamsOn);
+    bool SeamsOn,
+    VideoCascade Cascade,
+    bool CascadeOn);
 
 /// <summary>
 /// Everything the user composes, as it stood after an action: the cells' images and looks, the layout
@@ -198,6 +200,11 @@ internal sealed class GridHistory : IDisposable
         if (o.Seams != n.Seams || o.SeamsOn != n.SeamsOn)
         {
             labels.Add(nameof(GlobalEffect.Seams));
+        }
+
+        if (o.Cascade != n.Cascade || o.CascadeOn != n.CascadeOn)
+        {
+            labels.Add(nameof(GlobalEffect.Cascade));
         }
 
         return labels.Count switch

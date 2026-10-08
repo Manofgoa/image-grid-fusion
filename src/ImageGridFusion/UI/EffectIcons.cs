@@ -309,6 +309,20 @@ internal static class EffectIcons
         g.DrawLine(pen, middle, cells.Top, middle, cells.Bottom);
     });
 
+    /// <summary>Three play triangles stepping down to the right, the first one lit, the others waiting in grey.</summary>
+    public static Bitmap Cascade(int size) => Draw(size, (g, s) =>
+    {
+        float side = s * 0.36f;
+        for (int i = 0; i < 3; i++)
+        {
+            float x = s * 0.04f + i * s * 0.3f;
+            float y = s * 0.06f + i * s * 0.28f;
+            PointF[] play = [new(x, y), new(x + side * 0.87f, y + side / 2), new(x, y + side)];
+            using var brush = new SolidBrush(i == 0 ? Color.FromArgb(40, 160, 70) : Color.FromArgb(150, 150, 150));
+            g.FillPolygon(brush, play);
+        }
+    });
+
     /// <summary>A wedge growing to the right, yellow to red.</summary>
     public static Bitmap Intensity(int size) => Draw(size, (g, s) =>
     {

@@ -323,6 +323,10 @@ internal sealed class MainForm : Form
     // The seams' settings, kept while they are off; back to their initial state, off, with their Resets and Clear all.
     private SeamFade _seams = SeamFade.Initial;
     private bool _seamsOn;
+    private readonly TrackBar _cascadePause = OptionSlider(0, (int)Math.Round(VideoCascade.MaxPause.TotalSeconds * 10), 5, controlStep: 1);
+    private readonly Label _cascadePauseLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private VideoCascade _cascade = VideoCascade.Initial;
+    private bool _cascadeOn;
 
     // Ctrl+Z / Ctrl+Y over everything the user composes (RULES.md § Undo History); started once the
     // startup files are in, so they are the initial state.
@@ -459,6 +463,7 @@ internal sealed class MainForm : Form
         _globalOptions[GlobalEffect.Borders].Controls.AddRange(
             [_bordersStyle, _bordersThickness, _bordersThicknessLabel, _bordersOpacity, _bordersOpacityLabel, _bordersOuterFrame, _bordersRounded]);
         this._globalOptions[GlobalEffect.Seams].Controls.AddRange([this._seamsDepth, this._seamsDepthLabel]);
+        this._globalOptions[GlobalEffect.Cascade].Controls.AddRange([this._cascadePause, this._cascadePauseLabel]);
 
         // Docked in reverse order of addition: the options row and the tabs row, then the bottom bar,
         // the global options row above it and the global tabs row above that, span the whole width; the
@@ -713,6 +718,12 @@ internal sealed class MainForm : Form
             this._seamsDepthLabel.Text = DepthText(this._seamsDepth.Value);
             this.ChangeSeams(seams => seams.WithDepth(this._seamsDepth.Value / 100.0));
         };
+        this._toolTip.SetToolTip(this._cascadePause, "How long every video and animated GIF stands still after each turn, before the next one plays");
+        this._cascadePause.ValueChanged += (_, _) =>
+        {
+            this._cascadePauseLabel.Text = PauseText(this._cascadePause.Value);
+            this.ChangeCascade(cascade => cascade.WithPause(TimeSpan.FromSeconds(this._cascadePause.Value / 10.0)));
+        };
         _toolTip.SetToolTip(_bordersStyle, "Brackets at the grid's corners, or a gap between the cells; the borders' color is in the ⚙ settings");
         _toolTip.SetToolTip(_bordersThickness, "Width of the borders, as a share of the grid's shorter side");
         _toolTip.SetToolTip(_bordersOuterFrame, "Also draws the borders around the grid; the corner brackets already are its frame");
@@ -850,6 +861,7 @@ internal sealed class MainForm : Form
         _globalTabs.SetIcon(GlobalEffect.Fade, EffectIcons.Fade(size));
         _globalTabs.SetIcon(GlobalEffect.Borders, EffectIcons.Borders(size));
         this._globalTabs.SetIcon(GlobalEffect.Seams, EffectIcons.Seams(size));
+        this._globalTabs.SetIcon(GlobalEffect.Cascade, EffectIcons.Cascade(size));
         _resetButton.Image = EffectIcons.Reset(size);
         _effectResetButton.Image = EffectIcons.Reset(size);
         _globalResetButton.Image = EffectIcons.Reset(size);
@@ -1460,7 +1472,9 @@ internal sealed class MainForm : Form
             this._borders with { Color = Color.Empty },
             this._bordersOn,
             this._seams,
-            this._seamsOn));
+            this._seamsOn,
+            this._cascade,
+            this._cascadeOn));
 
     /// <summary>
     /// Ctrl+Z (<paramref name="undo"/>) or Ctrl+Y / Ctrl+Shift+Z: the grid one step back or forward, the
@@ -1504,10 +1518,13 @@ internal sealed class MainForm : Form
         this._bordersOn = global.BordersOn;
         this._seams = global.Seams;
         this._seamsOn = global.SeamsOn;
+        this._cascade = global.Cascade;
+        this._cascadeOn = global.CascadeOn;
 
         // The sound first: a grid starting over then starts the soundtrack restored from its beginning.
         this._preview.Soundtrack = this.ActiveSoundtrack;
         this._preview.Fade = this.ActiveFade;
+        this._preview.Cascade = this.ActiveCascade;
         this._preview.Restore(to.Cells, to.Layout, to.Format, RestoredSelection(from, to, this._preview.SelectedImage));
 
         // After the format, which tells whether the Twitter corners apply.
@@ -1546,9 +1563,10 @@ internal sealed class MainForm : Form
         bool borders = !BordersInitial;
         bool fade = !FadeInitial;
         bool seams = !this.SeamsInitial;
+        bool cascade = !this.CascadeInitial;
         bool format = !FormatInitial;
         bool soundtrackInitial = SoundtrackInitial;
-        if (count == 0 && soundtrackInitial && !borders && !fade && !seams && !format)
+        if (count == 0 && soundtrackInitial && !borders && !fade && !seams && !cascade && !format)
         {
             return;
         }
@@ -1587,6 +1605,11 @@ internal sealed class MainForm : Form
         if (seams)
         {
             reset.Add("seams");
+        }
+
+        if (cascade)
+        {
+            reset.Add("cascade");
         }
 
         if (format)
@@ -1810,19 +1833,20 @@ internal sealed class MainForm : Form
     {
         var images = _preview.Images;
         var soundtrack = ActiveSoundtrack;
-        var length = images.Count == 0 ? TimeSpan.Zero : Animation.VideoLength(images, soundtrack);
+        var length = images.Count == 0 ? TimeSpan.Zero : Animation.VideoLength(images, soundtrack, this.ActiveCascade);
         _lengthReadout.Text = length > TimeSpan.Zero ? $"⏱ {Seconds(length)}" : "⏱ —";
         // As wide as a length under 1000 s: the digits change without moving the gear.
         _lengthReadout.MinimumSize = new Size(TextRenderer.MeasureText("⏱ 000.0 s", _lengthReadout.Font).Width, 0);
-        _toolTip.SetToolTip(_lengthReadout, LengthDetail(images, soundtrack, length));
+        _toolTip.SetToolTip(_lengthReadout, LengthDetail(images, soundtrack, length, this.ActiveCascade));
     }
 
     /// <summary>
     /// The length readout's tooltip: what sets the length, then every other animated content with its
     /// loop and how many times it plays (a frozen one is a still), in cell order, and the soundtrack,
-    /// cut or looping, when one is on over playing contents.
+    /// cut or looping, when one is on over playing contents. With the <paramref name="cascade"/> on, the
+    /// turns, each with its length and where it begins.
     /// </summary>
-    private static string LengthDetail(IReadOnlyList<SourceImage> images, Soundtrack? soundtrack, TimeSpan length)
+    private static string LengthDetail(IReadOnlyList<SourceImage> images, Soundtrack? soundtrack, TimeSpan length, VideoCascade? cascade)
     {
         if (images.Count == 0)
         {
@@ -1833,14 +1857,30 @@ internal sealed class MainForm : Form
             ? Path.GetFileName(path)
             : $"cell {Enumerable.Range(0, images.Count).First(n => images[n] == image) + 1}";
 
+        var schedule = cascade is null ? null : CascadeSchedule.Of(images, cascade);
+        bool cascading = schedule is not null && schedule.Length > TimeSpan.Zero;
+
+        // In the cascade, a content taking part plays its turn: only the cycle of its Animations effect loops beside it.
+        TimeSpan Beside(SourceImage image) => cascading && CascadeSchedule.TakesPart(image)
+            ? Animation.LoopOf(TimeSpan.Zero, image.Look)
+            : Animation.LoopOf(image);
+
         // A loop is a playing content's, or the cycle of an Animations effect when longer.
-        string Loop(SourceImage image) => image.Plays && Animation.LoopOf(image) == image.PlayedLength
+        string Loop(SourceImage image) => image.Plays && Beside(image) == image.PlayedLength
             ? $"{Name(image)}'s"
             : $"{Name(image)}'s animation";
 
         var lines = new List<string>();
-        var longest = images.Where(i => Animation.LoopOf(i) > TimeSpan.Zero).OrderByDescending(Animation.LoopOf).FirstOrDefault();
-        if (longest is not null)
+        var longest = images.Where(i => Beside(i) > TimeSpan.Zero).OrderByDescending(Beside).FirstOrDefault();
+        bool cascadeSets = cascading && (longest is null || schedule!.Length >= Beside(longest));
+        if (cascadeSets)
+        {
+            longest = null;
+            int turns = images.Count(CascadeSchedule.TakesPart);
+            string pause = cascade!.Pause > TimeSpan.Zero ? $", {Seconds(cascade.Pause)} of pause after each" : "";
+            lines.Add($"MP4 video of {Seconds(length)}: the cascade, {(turns == 1 ? "1 content" : $"{turns} contents")} one after the other{pause}");
+        }
+        else if (longest is not null)
         {
             lines.Add($"MP4 video of {Seconds(length)}: the longest loop, {Loop(longest)}");
         }
@@ -1853,16 +1893,27 @@ internal sealed class MainForm : Form
             lines.Add("A PNG: no content plays and the soundtrack is off");
         }
 
-        foreach (var image in images.Where(i => (i.IsAnimated || i.Moves) && i != longest))
+        for (int i = 0; cascading && i < images.Count; i++)
         {
-            var loop = Animation.LoopOf(image);
+            if (schedule!.Has(i))
+            {
+                lines.Add($"{Name(images[i])} — turn of {Seconds(CascadeSchedule.TurnOf(images[i]))}, from {Seconds(schedule.TurnAt(i))}");
+            }
+        }
+
+        // A content taking part in the cascade is listed again only for the cycle of its Animations effect.
+        foreach (var image in images.Where(i => (i.IsAnimated || i.Moves) && i != longest
+            && !(cascading && CascadeSchedule.TakesPart(i) && Beside(i) == TimeSpan.Zero)))
+        {
+            var loop = Beside(image);
             string what = loop == TimeSpan.Zero
                 ? $"{Name(image)} — frozen, a still"
                 : $"{Name(image)} — {Seconds(loop)}, plays {Times(length, loop)}";
-            lines.Add(image.Plays || loop == TimeSpan.Zero ? what : $"{what} (its animation)");
+            bool motion = !image.Plays || (cascading && CascadeSchedule.TakesPart(image));
+            lines.Add(!motion || loop == TimeSpan.Zero ? what : $"{what} (its animation)");
         }
 
-        if (soundtrack is not null && longest is not null)
+        if (soundtrack is not null && (longest is not null || cascadeSets))
         {
             string name = Path.GetFileName(soundtrack.Path);
             lines.Add(soundtrack.Duration > length
@@ -2036,6 +2087,16 @@ internal sealed class MainForm : Form
     private string? SeamsUnavailable =>
         this.ActiveBorders is { HasGap: true } ? "The borders leave a gap between the cells: they no longer touch" : null;
 
+    /// <summary>The cascade, <c>null</c> while it is off.</summary>
+    private VideoCascade? ActiveCascade => this._cascadeOn ? this._cascade : null;
+
+    /// <summary>Whether the cascade is in its initial state: off, no pause.</summary>
+    private bool CascadeInitial => !this._cascadeOn && this._cascade == VideoCascade.Initial;
+
+    /// <summary>Why the cascade does not apply — no video nor animated GIF plays — or <c>null</c> when it does.</summary>
+    private string? CascadeUnavailable =>
+        this._preview.Images.Any(CascadeSchedule.TakesPart) ? null : "No video nor animated GIF plays: there is nothing to play one after the other";
+
     /// <summary>A video to export: content that plays, or a soundtrack over stills.</summary>
     private bool ProducesVideo => HasAnimation || ActiveSoundtrack is not null;
 
@@ -2096,7 +2157,7 @@ internal sealed class MainForm : Form
     /// </summary>
     private async Task<GridExport.Result?> ExportAnimationAsync(string path, GridExport.Format format)
     {
-        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, ActiveSoundtrack, ActiveFade, this.ActiveSeams);
+        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, ActiveSoundtrack, ActiveFade, this.ActiveSeams, this.ActiveCascade);
         string what = format == GridExport.Format.Gif ? "GIF" : "video";
         var cancellation = BeginExport($"Exporting the {what}… 0 %", cancellable: true);
         var progress = new Progress<double>(done =>
@@ -2423,7 +2484,7 @@ internal sealed class MainForm : Form
     private void UpdateButtons()
     {
         bool any = _preview.Images.Count > 0 && !IsExporting;
-        _clearButton.Enabled = (_preview.Images.Count > 0 || !SoundtrackInitial || !BordersInitial || !FadeInitial || !this.SeamsInitial || !FormatInitial) && !IsExporting;
+        _clearButton.Enabled = (_preview.Images.Count > 0 || !SoundtrackInitial || !BordersInitial || !FadeInitial || !this.SeamsInitial || !this.CascadeInitial || !FormatInitial) && !IsExporting;
         _copyButton.Enabled = any;
         _saveButton.Enabled = any;
 
@@ -2929,6 +2990,9 @@ internal sealed class MainForm : Form
             case GlobalEffect.Seams:
                 this.ToggleSeams();
                 break;
+            case GlobalEffect.Cascade:
+                this.ToggleCascade();
+                break;
             default:
                 // The Format's tab has no checkbox.
                 break;
@@ -2955,7 +3019,7 @@ internal sealed class MainForm : Form
     /// <paramref name="effect"/> back to its initial state, the one Clear all restores — every global
     /// tab when <c>null</c>: the format Twitter; the soundtrack off, with no file, at 100 %; the fade
     /// off, 1 s, squared; the borders off, their initial settings keeping the color and the Twitter
-    /// corners default of the ⚙ menu; the seams off, 10 %. The cells are left alone.
+    /// corners default of the ⚙ menu; the seams off, 10 %; the cascade off, no pause. The cells are left alone.
     /// </summary>
     private void ResetGlobalEffects(GlobalEffect? effect = null)
     {
@@ -2997,6 +3061,13 @@ internal sealed class MainForm : Form
             this._seams = SeamFade.Initial;
             this._seamsOn = false;
             this._preview.Seams = this.ActiveSeams;
+        }
+
+        if (effect is null or GlobalEffect.Cascade)
+        {
+            this._cascade = VideoCascade.Initial;
+            this._cascadeOn = false;
+            this._preview.Cascade = this.ActiveCascade;
         }
 
         UpdateButtons();
@@ -3109,13 +3180,15 @@ internal sealed class MainForm : Form
         bool enabled = !IsExporting;
         string? fadeUnavailable = FadeUnavailable;
         string? seamsUnavailable = this.SeamsUnavailable;
+        string? cascadeUnavailable = this.CascadeUnavailable;
         _globalTabs.SetState(GlobalEffect.Soundtrack, ActiveSoundtrack is not null, unavailable: null);
         _globalTabs.SetState(GlobalEffect.Fade, ActiveFade is not null, fadeUnavailable);
         _globalTabs.SetState(GlobalEffect.Borders, ActiveBorders is not null, unavailable: null);
         this._globalTabs.SetState(GlobalEffect.Seams, this.ActiveSeams is not null, seamsUnavailable);
+        this._globalTabs.SetState(GlobalEffect.Cascade, this.ActiveCascade is not null, cascadeUnavailable);
         _globalTabs.Selected = _selectedGlobalEffect;
         _globalTabs.Enabled = enabled;
-        _globalResetButton.Enabled = enabled && !(SoundtrackInitial && BordersInitial && FadeInitial && this.SeamsInitial && FormatInitial);
+        _globalResetButton.Enabled = enabled && !(SoundtrackInitial && BordersInitial && FadeInitial && this.SeamsInitial && this.CascadeInitial && FormatInitial);
         _formatStrip.Selected = _preview.Format;
         _formatStrip.SetGrid(_preview.ActiveLayout, _preview.FreeRatio);
         foreach (var (effect, row) in _globalOptions)
@@ -3125,7 +3198,8 @@ internal sealed class MainForm : Form
             // An effect that does not apply keeps its tab selectable, its options disabled (RULES.md).
             row.Enabled = enabled
                 && (effect != GlobalEffect.Fade || fadeUnavailable is null)
-                && (effect != GlobalEffect.Seams || seamsUnavailable is null);
+                && (effect != GlobalEffect.Seams || seamsUnavailable is null)
+                && (effect != GlobalEffect.Cascade || cascadeUnavailable is null);
         }
 
         _globalEffectResetButton.Visible = _selectedGlobalEffect is not null;
@@ -3135,6 +3209,7 @@ internal sealed class MainForm : Form
             GlobalEffect.Fade => !FadeInitial,
             GlobalEffect.Borders => !BordersInitial,
             GlobalEffect.Seams => !this.SeamsInitial,
+            GlobalEffect.Cascade => !this.CascadeInitial,
             GlobalEffect.Format => !FormatInitial,
             _ => false,
         };
@@ -3155,10 +3230,12 @@ internal sealed class MainForm : Form
         _fadeSquared.Checked = _fade.Curve == FadeCurve.Squared;
         _fadeLinear.Checked = _fade.Curve == FadeCurve.Linear;
         this._seamsDepth.Value = (int)Math.Round(this._seams.Depth * 100);
+        this._cascadePause.Value = (int)Math.Round(this._cascade.Pause.TotalSeconds * 10);
         _syncingEffects = syncing;
         _soundtrackVolumeLabel.Text = VolumeText(_soundtrackVolume.Value);
         _fadeDurationLabel.Text = FadeText(_fadeDuration.Value);
         this._seamsDepthLabel.Text = DepthText(this._seamsDepth.Value);
+        this._cascadePauseLabel.Text = PauseText(this._cascadePause.Value);
     }
 
     /// <summary>The fade's checkbox: on or off, its settings kept.</summary>
@@ -3235,6 +3312,44 @@ internal sealed class MainForm : Form
 
     /// <summary>The seams' depth, from percent of the smallest cell's shorter side.</summary>
     private static string DepthText(int percent) => $"Depth: {percent} %";
+
+    /// <summary>The cascade's checkbox: on or off, its settings kept; either way the grid starts over.</summary>
+    private void ToggleCascade()
+    {
+        if (this.IsExporting)
+        {
+            return;
+        }
+
+        this._cascadeOn = !this._cascadeOn;
+        this.ApplyCascade();
+    }
+
+    /// <summary>
+    /// An option of the cascade changed: applied to its settings, turning it on from the settings it
+    /// kept (RULES.md), unless the row is being synced.
+    /// </summary>
+    private void ChangeCascade(Func<VideoCascade, VideoCascade> change)
+    {
+        if (this._syncingEffects || this.IsExporting)
+        {
+            return;
+        }
+
+        this._cascade = change(this._cascade);
+        this._cascadeOn = true;
+        this.ApplyCascade();
+    }
+
+    /// <summary>The cascade as it stands, to the preview — which starts the grid over —, then to the row and the output buttons.</summary>
+    private void ApplyCascade()
+    {
+        this._preview.Cascade = this.ActiveCascade;
+        this.UpdateButtons();
+    }
+
+    /// <summary>The cascade's pause, from tenths of a second.</summary>
+    private static string PauseText(int tenths) => $"Pause: {tenths / 10.0:0.0} s";
 
     /// <summary>The borders' checkbox: on or off, their settings kept.</summary>
     private void ToggleBorders()
