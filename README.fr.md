@@ -40,7 +40,7 @@ Chaque mot employé ici a un seul sens, donné dans le [glossaire](GLOSSARY.fr.m
   - Zoomer et déplacer s'affichent en direct, lissés à la fin du geste (la molette : une fois qu'elle cesse de tourner) ; pas pendant un export
   - Faire glisser la poignée **✥** affichée au milieu d'une cellule survolée sur une autre cellule pour échanger les deux images (dans une petite cellule, elle rétrécit, ou se place sous le **×**)
   - Déposer un fichier ou un texte sur une cellule pour la remplacer
-  - **Clear all** (en bas à gauche) retire d'un coup toutes les images et les effets globaux, et remet le format sur Twitter, sans confirmation, de retour à l'état initial
+  - **Clear all** (en bas à gauche) ou `Ctrl+N` retire d'un coup toutes les images et les effets globaux, et remet le format sur Twitter, sans confirmation, de retour à l'état initial
 - **Annuler** avec `Ctrl+Z`, autant de fois que nécessaire, et **rétablir** avec `Ctrl+Y` ou `Ctrl+Shift+Z` : images ajoutées, remplacées, supprimées ou échangées, effets, disposition, séparateurs, format et effets globaux (voir Annuler et rétablir)
 - Des effets par cellule, depuis les onglets d'effets en haut de la fenêtre (voir Effets), et le format et les effets globaux pour toute la grille, depuis les onglets Global en bas, au-dessus de la barre du bas (voir Global)
   - Des **Borders** (bordures) sur la grille, désactivées au démarrage : des crochets rose vif (hotpink) aux quatre coins, ou un espace entre les cellules dessiné en trait plein, tiretés, pointillé ou double, avec un cadre extérieur facultatif ; les coins de la grille arrondis comme Twitter / X affiche les images ; leur couleur se règle depuis le menu **⚙** et est mémorisée (voir Borders)
