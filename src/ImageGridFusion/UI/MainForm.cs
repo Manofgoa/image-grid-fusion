@@ -444,6 +444,7 @@ internal sealed class MainForm : Form
         _outputButtons.SizeChanged += (_, _) => FitStatusWidth();
         _cancelButton.VisibleChanged += (_, _) => FitStatusWidth();
         _clearButton.Click += (_, _) => ClearAll();
+        this._toolTip.SetToolTip(this._clearButton, "Removes every image and the global effects, and brings the format back to Twitter (Ctrl+N)");
         _settingsMenu.Items.AddRange([_startWithWindows, _borderColor, _twitterCornersDefault, _explorerFolder, _explorerPages, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._ocrResultStyle, new ToolStripSeparator(), this._openAppFolder]);
         for (int pages = FileExplorerPanel.MinPagesPerLoad; pages <= FileExplorerPanel.MaxPagesPerLoad; pages++)
         {
@@ -1003,6 +1004,14 @@ internal sealed class MainForm : Form
                 return true;
             case Keys.Control | Keys.S:
                 Save();
+                return true;
+            case Keys.Control | Keys.N:
+                // The Clear all button, its own guards included; ignored while a gesture runs, like undo.
+                if (!this._preview.InGesture && MouseButtons == MouseButtons.None)
+                {
+                    this.ClearAll();
+                }
+
                 return true;
             case Keys.Control | Keys.R when !this.IsExporting:
                 this.TurnQuarter(1);

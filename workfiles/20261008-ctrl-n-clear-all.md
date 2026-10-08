@@ -103,6 +103,18 @@ chained: the button, its handler, `ProcessCmdKey`):
 Open question answered (Q&A #5): `Ctrl+N` is **ignored during a gesture** (`GridPreview.InGesture` or a
 mouse button held), as undo is — § Behaviour updated. No open question left.
 
+### Iteration 3 — 2026-10-08 — ✅ Implemented
+
+Go given: **code, unit tests and documentation**, in a **worktree** —
+`.claude/worktrees/ctrl-n-clear-all`, branch `feature/ctrl-n-clear-all`. The scope is frozen as the
+sections above stand.
+
+### Iteration 4 — 2026-10-08 — 🧭 Implementation choices
+
+No divergent choice: the code does what the sections above describe. `Ctrl+N` is a `case` of
+`MainForm.ProcessCmdKey` next to `Ctrl+S`, its gesture guard inside the case so the key is consumed
+either way; the tooltip is set right after the button's `Click` wiring. No rule broken.
+
 ---
 
 ## Implementation Log
@@ -112,9 +124,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable — no test project (see Test Impact) |
-| README | | | |
+| Code | 3 | 2026-10-08 | `Ctrl+N` case in `MainForm.ProcessCmdKey`, Clear all tooltip; build clean (0 warnings) |
+| Unit tests | 3 | 2026-10-08 | Not applicable — no test project (see Test Impact) |
+| README | 3 | 2026-10-08 | § Features, the Clear all bullet, EN + FR |
 
 ---
 

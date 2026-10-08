@@ -40,7 +40,7 @@ Each word used here has one meaning, given in the [Glossary](GLOSSARY.md).
   - Zooming and moving show live, smoothed once the gesture ends (the wheel: once it stops turning); not while exporting
   - Drag the **✥** handle shown in the middle of a hovered cell onto another cell to swap the two images (in a small cell, it shrinks, or sits below the **×**)
   - Drop a file or a text onto a cell to replace it
-  - **Clear all** (bottom left) removes every image and the global effects at once, and brings the format back to Twitter, with no confirmation, back to the initial state
+  - **Clear all** (bottom left) or `Ctrl+N` removes every image and the global effects at once, and brings the format back to Twitter, with no confirmation, back to the initial state
 - **Undo** with `Ctrl+Z`, as many times as needed, and **redo** with `Ctrl+Y` or `Ctrl+Shift+Z`: images added, replaced, deleted or swapped, effects, layout, separators, format and global effects (see Undo & redo)
 - Effects per cell, from the effect tabs at the top of the window (see Effects), and the format and global effects for the whole grid, from the Global tabs at the bottom, above the bottom bar (see Global)
   - **Borders** on the grid, off at start-up: hotpink brackets at its four corners, or a gap between the cells drawn as a solid, dashed, dotted or double line, with an optional outer frame; the grid's corners rounded the way Twitter / X shows images; their color is set from the **⚙** menu and remembered (see Borders)
