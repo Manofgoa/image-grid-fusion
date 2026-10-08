@@ -25,6 +25,28 @@ public static class Animation
         images.Select(LoopOf).DefaultIfEmpty(TimeSpan.Zero).Max();
 
     /// <summary>
+    /// The grid's loop with the Cascade <paramref name="cascade"/> on: the whole cascade, or the longest
+    /// loop played beside it when longer — a content taking no part, or the cycle of an Animations
+    /// effect (workfiles/20261008-video-cascade.md). <see cref="GridLength(IEnumerable{SourceImage})"/>
+    /// while it is off (<c>null</c>).
+    /// </summary>
+    public static TimeSpan GridLength(IEnumerable<SourceImage> images, VideoCascade? cascade)
+    {
+        if (cascade is null)
+        {
+            return GridLength(images);
+        }
+
+        var list = images.ToList();
+        var beside = list
+            .Select(i => LoopOf(CascadeSchedule.TakesPart(i) || !i.Plays ? TimeSpan.Zero : i.PlayedLength, i.Look))
+            .DefaultIfEmpty(TimeSpan.Zero)
+            .Max();
+        var whole = CascadeSchedule.Of(list, cascade).Length;
+        return whole > beside ? whole : beside;
+    }
+
+    /// <summary>
     /// The loop <paramref name="image"/> plays: its content's while it plays — the trimmed part
     /// (<see cref="SourceImage.PlayedLength"/>) — or the cycle of its motion when longer.
     /// </summary>
@@ -49,9 +71,9 @@ public static class Animation
     public static TimeSpan VideoLength(TimeSpan gridLength, Soundtrack? soundtrack) =>
         soundtrack?.LoopIn(gridLength) ?? gridLength;
 
-    /// <summary>The <see cref="VideoLength(TimeSpan, Soundtrack?)"/> of <paramref name="images"/> as they stand.</summary>
-    public static TimeSpan VideoLength(IEnumerable<SourceImage> images, Soundtrack? soundtrack) =>
-        VideoLength(GridLength(images), soundtrack);
+    /// <summary>The <see cref="VideoLength(TimeSpan, Soundtrack?)"/> of <paramref name="images"/> as they stand, the Cascade <paramref name="cascade"/> on unless <c>null</c>.</summary>
+    public static TimeSpan VideoLength(IEnumerable<SourceImage> images, Soundtrack? soundtrack, VideoCascade? cascade = null) =>
+        VideoLength(GridLength(images, cascade), soundtrack);
 
     /// <summary>Number of frames of a video of <paramref name="length"/>, the last one possibly shown shorter.</summary>
     public static int FrameCount(TimeSpan length) => Math.Max(1, (int)Math.Ceiling(length.TotalSeconds * FramesPerSecond - 1e-6));
