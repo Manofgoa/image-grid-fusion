@@ -45,9 +45,14 @@ naming, the README (EN + FR), the glossary (EN + FR).
   one constant next to the code owning it (`../CLAUDE.md` § Folder Names), like
   `PastedFavorites.FolderName` and `FileIndex.FolderName`.
 - Created on the first Copy that needs it.
-- **Last content only**: the new file is written first, then every other file of the folder is
-  deleted — a failed write never leaves the folder empty. A file that cannot be deleted (in use) is
-  left for the next Copy.
+- **Last content only**: the new file is written first — as `~writing<ext>`, renamed to its name
+  once complete — then every other file of the folder is deleted: a failed write never leaves the
+  folder empty nor a half-written file. A file that cannot be deleted (in use) is left for the next
+  Copy.
+- Kept **after the clipboard step**: a Copy that fails to reach the clipboard keeps nothing.
+- The cells' files are read **when the Copy starts**, before the render or the export.
+- One class owns the folder and the name: `UI/PreviousCopy.cs` (`Name`, `Keep`, `KeepCopyOf`),
+  called from `MainForm.Copy` and `MainForm.CopyForSharing` through `MainForm.KeepPrevious`.
 - Subfolders, if any, are left alone: only the folder's files are deleted.
 - A `--new-instance` instance writes it too: a Copy is the user's action, not a write *of its own
   accord* (RULES.md § Single Instance).
@@ -79,7 +84,8 @@ The source names are file names already, so they hold no invalid character.
 
 - Unchanged when `previous` is written.
 - A write that fails (disk full, folder read-only, name too long) **does not fail the Copy** — the
-  content is on the clipboard: the status line adds `Not kept in previous\: <reason>`.
+  content is on the clipboard: the status line's summary ends with `· Not kept in previous\: <reason>`,
+  in the normal colour (not as an error).
 
 ---
 
@@ -138,6 +144,27 @@ name too long for Windows fails the write, reported as any write failure; a writ
 the Copy successful and adds `Not kept in previous\: <reason>` to the status line; a glossary term,
 **Previous copy**. Sections *File Name*, *Status Line* and *Documentation* updated.
 
+### Iteration 3 — 2026-10-08 — ✅ Implemented
+
+Go given: code, unit tests (not applicable — no test project) and documentation, in a worktree on
+`feature/previous-copy-folder`.
+
+### Iteration 4 — 2026-10-08 — 🧭 Implementation choices
+
+No rule broken. Choices the design did not state:
+
+- **Atomic write**: the new file is written as `~writing<ext>` in the folder, then renamed over its
+  name — copying the same grid twice never leaves a half-written file under the kept name.
+- **Order**: `previous` is written after the clipboard step; a Copy failing there keeps nothing.
+- **Cells read at the start** of the Copy, before the render or the export.
+- **Status line**: the reason is appended to the usual summary after ` · `, in the normal colour —
+  the Copy succeeded.
+- **Synchronous copy**: the temp file is copied on the UI thread once the export is done; a local
+  file copy, even of a large MP4, is short next to its encoding.
+- **Code**: `UI/PreviousCopy.cs`, its name rule a pure static function (`Name`) ready for a test
+  project; `MainForm.CellFiles` and `MainForm.KeepPrevious` wire it into the three Copy routes.
+- **Checked**: two test images `chat.png` and `plage.png`, `Ctrl+C` → `previous\chat + plage.png`.
+
 ---
 
 ## Implementation Log
@@ -147,9 +174,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable — no test project |
-| README | | | |
+| Code | 3 | 2026-10-08 | `UI/PreviousCopy.cs`, `UI/MainForm.cs` — one commit |
+| Unit tests | 3 | 2026-10-08 | Not applicable — no test project |
+| README | 3 | 2026-10-08 | `README.md` + `README.fr.md`; also `GLOSSARY.md` + `GLOSSARY.fr.md` |
 
 ---
 
