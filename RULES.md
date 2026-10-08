@@ -284,7 +284,8 @@ Applies to whatever changes the grid's content (origin: `workfiles/20260927-vide
   **beginning**; a frozen image stays on its frame. The preview then plays what an export gives.
 - A swap, a layout change, an effect change and the soundtrack's own toggle do **not** start the
   grid over: the images keep playing as they are (a Frames effect change replays its own image
-  only).
+  only). The **Cascade** is the exception: turned on or off, or its pause changed, it starts the grid
+  over, so the first content plays at once (origin: `workfiles/20261008-video-cascade.md`).
 - The restart is `AnimationPlayer.Restart`, called from `GridPreview` where the images change;
   every route into a cell goes through `GridPreview.Add`, so a new one starts the grid over by
   itself.
@@ -330,6 +331,23 @@ for a grid of stills; none for a PNG.
   consumer reads it there too, never re-derives it.
 - The readout is refreshed **with the Copy / Save captions** (`MainForm.UpdateButtons`): what the
   buttons say they produce and the length shown never disagree.
+
+### Cascade
+
+While the Cascade global effect is on, the videos and animated GIFs that play take **turns** instead
+of playing at once (origin: `workfiles/20261008-video-cascade.md`), one definition,
+`Composition/CascadeSchedule`:
+
+- In **cell order**; a turn is one whole loop of the played part from the starting point
+  (`SourceImage.PlayedLength`), followed by the effect's pause; the cascade starts over after the last.
+  Before its turn a content stands on its starting point, after it on the last frame it played; it is
+  heard during its turn only.
+- The grid's loop is then the whole cascade, or a loop played alongside when longer — a content
+  taking no part, an Animations cycle (`Animation.GridLength(images, cascade)`): the video length, the
+  soundtrack's loop and the Fade read it through `Animation.VideoLength`.
+- The preview (`AnimationPlayer.Position`), its sound (`AnimationPlayer.InTurn`), the export's frames
+  (`GridExport.Job.ContentTime`) and its sound (`MixedSound.TurnAt` / `Cycle`) all read the schedule. A
+  new consumer of a content's time reads it there too.
 
 ### Played Part
 
