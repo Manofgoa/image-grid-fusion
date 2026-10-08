@@ -173,7 +173,16 @@ internal sealed class MainForm : Form
     private readonly Label _trimToLabel = new() { Text = "To", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly StepSlider _trimTo = OptionSlider(0, 1, 10);
     private readonly FrameField _trimToField = new();
-    private readonly FlowLayoutPanel _trimLines = OptionLine();
+    // A grid, so the From and To sliders line up whatever their captions' widths.
+    private readonly TableLayoutPanel _trimLines = new()
+    {
+        AutoSize = true,
+        AutoSizeMode = AutoSizeMode.GrowAndShrink,
+        ColumnCount = 3,
+        RowCount = 2,
+        Margin = Padding.Empty,
+        Anchor = AnchorStyles.Left,
+    };
     private readonly PictureBox _grayscaleIcon = new() { SizeMode = PictureBoxSizeMode.CenterImage, Anchor = AnchorStyles.Left };
     private readonly TrackBar _grayscale = OptionSlider(0, 100, 10);
     private readonly Label _grayscaleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
@@ -400,13 +409,12 @@ internal sealed class MainForm : Form
         _options[ImageEffect.Rotate].Controls.AddRange([this._quarterTurns, _fineAngle, _fineAngleLabel]);
         _options[ImageEffect.Flip].Controls.Add(this._flip);
         // The trim on two lines at the left, the starting point and Freeze at the right (layout A).
-        this._trimToLabel.MinimumSize = new Size(this._trimFromLabel.PreferredWidth, 0);
-        var trimFromLine = OptionLine();
-        trimFromLine.Controls.AddRange([this._trimFromLabel, this._trimFrom, this._trimFromField]);
-        var trimToLine = OptionLine();
-        trimToLine.Controls.AddRange([this._trimToLabel, this._trimTo, this._trimToField]);
-        this._trimLines.FlowDirection = FlowDirection.TopDown;
-        this._trimLines.Controls.AddRange([trimFromLine, trimToLine]);
+        this._trimLines.Controls.Add(this._trimFromLabel, 0, 0);
+        this._trimLines.Controls.Add(this._trimFrom, 1, 0);
+        this._trimLines.Controls.Add(this._trimFromField, 2, 0);
+        this._trimLines.Controls.Add(this._trimToLabel, 0, 1);
+        this._trimLines.Controls.Add(this._trimTo, 1, 1);
+        this._trimLines.Controls.Add(this._trimToField, 2, 1);
         var framesStartLine = OptionLine();
         framesStartLine.Controls.AddRange([this._framesCaption, _frames, this._framesField, _framesLabel]);
         var framesStartLines = OptionLine();
