@@ -13,13 +13,15 @@ slider of 100 positions for a video) or, frozen, **the frame it shows**. The who
 plays: its loop is the file's full length.
 
 This task adds a **trim**: a **start** and an **end** chosen in the Frames tab, so that only the part
-between them plays — in the preview, in the sound, in the exports, in the video length.
+between them plays — in the preview, in the sound, in the exports, in the video length. The starting
+point gets the same precise controls.
 
-Each of the two bounds is set by:
+Each of the three times (start, end, starting point) is set by:
 
 - a **slider**;
-- three **text fields**: **minutes**, **seconds**, and the **frame within the second**;
-- in a field, **↑ / ↓** add / take **1**, and **5** with **Ctrl** held.
+- text fields — for a **video**, three: **minutes**, **seconds**, and the **frame within the
+  second**; for an **animated GIF**, one: the **frame number**;
+- in a field, **↑ / ↓** (or the wheel) add / take **1**, and **5** with **Ctrl** held.
 
 Components concerned (from the exploration):
 
@@ -39,16 +41,17 @@ Components concerned (from the exploration):
 
 ## Agreed Scope
 
-Settled by the user at scoping (Q&A 1–4):
+Settled by the user (Q&A 1–10):
 
 - **The starting point stays**, and **coexists** with the trim: the image loops from the start to
   the end, but begins playing at its starting point, which is kept **inside [start, end]**.
-- **Overflow carries over**, like a clock: frame 24 of 25 + ↑ → frame 0 of the next second; second
-  59 + ↑ → second 0 of the next minute; and back the same way with ↓. A value never leaves the
-  content's bounds, and the start always stays before the end.
-- **Applies to videos and animated GIFs**, counted in the content's own frames. The other animated
-  contents (PDF of several pages, long text) do not get the trim: its controls are disabled there,
-  with a tooltip saying why (RULES.md § Effects Toolbar).
+- **Overflow carries over**, like a clock: frame 23 at 24 fps + ↑ → frame 0 of the next second;
+  second 59 + ↑ → second 0 of the next minute; and back the same way with ↓. A value never leaves its
+  allowed range (§ Frames Options — UI).
+- **Applies to videos and animated GIFs**, counted in the **content's own frames**: a video's frame
+  rate as the file gives it, a GIF's own frames. The other animated contents (PDF of several pages,
+  long text) do not get the trim, nor the starting point's fields: those controls are disabled there,
+  with a tooltip saying why (RULES.md § Effects Toolbar); their starting point slider stays as today.
 
 ---
 
@@ -63,6 +66,8 @@ Settled by the user at scoping (Q&A 1–4):
 - **Stored in content time** (`TimeSpan` from the beginning of the file), not as a share: a video or
   a GIF never lays out again, and a time keeps the exact frame the user picked.
 - **Minimum span**: one frame — the end is at least one frame after the start.
+- **Frame-accurate starting point** for a video or a GIF: it can stand on any frame of the span
+  (today: 100 positions over the whole video). PDFs and texts keep their page positions.
 - **One definition of the played span** — `SourceImage` gives it (start, end, length) and every
   consumer reads it there, never `Pages.LoopDuration` directly for a trimmed content:
   - `Animation.LoopOf` → the **trimmed length**, so `Animation.VideoLength`, the length readout,
@@ -80,25 +85,37 @@ Settled by the user at scoping (Q&A 1–4):
 
 ## Frames Options — UI
 
-Controls of the Frames options toolbar, at the toolbar's current height (the Background already
-holds two lines there):
+Layout **A** (Q&A 7), in the options toolbar's current height (the Background already holds two
+lines there):
+
+```
+┌───────────────────────────────────────────┬────────────────────────────────────────────┐
+│ From  [────■──────────]  [0]:[04]:[12]    │ Starts at [──■────────]  [0]:[06]:[00]     │
+│ To    [──────────■────]  [0]:[21]:[00]    │ ☐ Freeze                                   │
+└───────────────────────────────────────────┴────────────────────────────────────────────┘
+   video: minutes : seconds : frame          GIF: one field, the frame number
+```
 
 | Control | Behaviour |
 |---|---|
-| **Start slider** | One step per frame of the content, from the first frame to the end − 1 frame |
-| **End slider** | One step per frame, from the start + 1 frame to the end of the content |
-| **Minutes field** (each bound) | Minutes of the bound's time; not capped at 59 — a video longer than an hour shows `75` |
-| **Seconds field** (each bound) | 0 to 59 |
-| **Frame field** (each bound) | The frame within the second, from 0 |
-| ↑ / ↓ in a field | +1 / −1 of that field's unit, carrying over (§ Agreed Scope); **Ctrl** → ±5 |
-| Starting point slider, *Freeze* | Kept, as today; the starting point stays within [start, end] |
+| **From slider** (start) | One step per frame of the content, from the first frame to the end − 1 frame |
+| **To slider** (end) | One step per frame, from the start + 1 frame to the end of the content |
+| **Starts at slider** (starting point) | Its course covers the **trimmed part only**, [start, end], one step per frame (Q&A 6); it narrows when the trim does |
+| *Freeze* | Kept, as today: holds the image on the starting point's frame |
+| **Video fields** (each of the three) | **Minutes** — not capped at 59, a video over an hour shows `75`; **seconds** — 0 to 59; **frame** — the frame within the second, 0 to the file's frame rate − 1 |
+| **GIF field** (each of the three) | One field: the **frame number** in the GIF, 1 to its frame count (the numbering of today's `3 / 12` label) |
+| ↑ / ↓ in a field | +1 / −1 of that field's unit, carrying over between the video's fields (§ Agreed Scope); **Ctrl** → ±5 |
+| Wheel over a field | As ↑ / ↓, Ctrl → ±5 |
+| Typing a number | Applied on **Enter** or when the field is **left**; an invalid value is put back as it was |
 
 - **Acting on any of them activates the effect** (RULES.md § Options Toolbar).
-- The slider and the three fields of a bound always show the same time: moving the slider rewrites
-  the fields, a field's change moves the slider.
-- Pushing a bound against the other stops it there (one frame apart); it does not push the other.
-
-The labels, the exact layout and the fields' editing behaviour are in § Open Questions.
+- A slider and its fields always show the same time: moving the slider rewrites the fields, a
+  field's change moves the slider.
+- **Ranges**: the start stays before the end by one frame at least; pushing a bound against the
+  other stops it there, it does not push the other. The starting point stays inside [start, end]: a
+  bound moved past it brings it along.
+- The *Starts at* label is replaced by the fields (no `Starts at: 0:06` text left); with *Freeze*
+  checked, the label of that line reads **Frozen on** instead of **Starts at**, as today.
 
 ---
 
@@ -116,15 +133,15 @@ preview, its sound, the length readout, an MP4 and a GIF export.
 
 ## Open Questions
 
-- [ ] **Frame field's rate**: what "a frame within the second" counts — the video's own frame rate
-  (read from the file: 0..23 at 24 fps, 0..59 at 60 fps), or the export's fixed 30 fps grid? And
-  for a GIF, whose frames have their own delays?
-- [ ] **Starting point slider's range**: does it keep spanning the whole content (clamped into
-  [start, end], its positions outside unreachable), or span the trimmed part only?
-- [ ] **Layout** of the Frames options: where the two bounds, the starting point and *Freeze* sit in
-  the options toolbar, and the bounds' labels.
-- [ ] **Typing in a field**: is a typed value applied at each keystroke or on Enter / leaving the
-  field (an invalid one reverted)? Does the **wheel** over a field act as ↑ / ↓?
+- [x] ~~**Frame field's rate**: what "a frame within the second" counts — the video's own frame rate,
+  or the export's fixed 30 fps grid? And for a GIF?~~ → The content's own frames: the video's frame
+  rate read from the file; a GIF gets a single frame-number field (Q&A 5, 9)
+- [x] ~~**Starting point slider's range**: the whole content, clamped, or the trimmed part only?~~ →
+  The trimmed part only, one step per frame (Q&A 6)
+- [x] ~~**Layout** of the Frames options and the bounds' labels?~~ → Layout A: From / To on two lines
+  at the left, Starts at and Freeze at the right (Q&A 7)
+- [x] ~~**Typing in a field**: each keystroke or Enter / leaving? The wheel?~~ → Enter or leaving the
+  field, an invalid value put back; the wheel acts as ↑ / ↓ (Q&A 8)
 
 ---
 
@@ -144,6 +161,24 @@ The played span has one definition on `SourceImage`, read by the loop, the previ
 the exports, so the video length follows by itself. Stored in content time, one frame at least.
 Four questions left open: the frame field's rate, the starting point slider's range, the layout,
 the fields' editing.
+
+### Iteration 2 — 2026-10-08
+
+The four open questions answered (Q&A 5–8): the frame field counts the file's own frames (the video's
+frame rate); the starting point slider covers the trimmed part only; layout A (From / To at the left,
+Starts at and Freeze at the right), labels `From` / `To`; a typed value is applied on Enter or leaving
+the field, the wheel acting as the arrows.
+
+### Iteration 3 — 2026-10-08
+
+User request (Q&A 9): for an animated GIF, **one field** — the frame number — replaces the three
+minutes / seconds / frame fields.
+
+### Iteration 4 — 2026-10-08
+
+User request (Q&A 10): the **starting point gets the same fields** — three for a video, one for a
+GIF — next to its slider, replacing the `Starts at: 0:06` label text. So it becomes frame-accurate on
+a video or a GIF (one slider step per frame of the span); PDFs and texts keep their page slider.
 
 ---
 
@@ -170,10 +205,12 @@ Questions asked by the agent during design, with user responses.
 | 2 | Overflow in the minutes / seconds / frames fields? | Carry over, like a clock; clamped to the content's bounds, start < end | 2026-10-08 |
 | 3 | Which contents get the start / end? | Videos and animated GIFs, in their own frames | 2026-10-08 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward — a single scout pass | 2026-10-08 |
-| 5 | Frame field's rate (video's own fps or export's 30 fps; GIF)? | | |
-| 6 | Starting point slider's range (whole content or trimmed part)? | | |
-| 7 | Layout of the Frames options and the bounds' labels? | | |
-| 8 | Typing in a field (each keystroke or Enter / leave) and the wheel? | | |
+| 5 | Frame field's rate (video's own fps or export's 30 fps; GIF)? | The file's own frames: the video's frame rate; a GIF's own frames | 2026-10-08 |
+| 6 | Starting point slider's range (whole content or trimmed part)? | The trimmed part only | 2026-10-08 |
+| 7 | Layout of the Frames options and the bounds' labels? | Layout A — From / To on two lines at the left, Starts at and Freeze at the right | 2026-10-08 |
+| 8 | Typing in a field (each keystroke or Enter / leave) and the wheel? | Enter or leaving the field, invalid put back; the wheel acts as ↑ / ↓ | 2026-10-08 |
+| 9 | *(user, unprompted)* GIF fields | One field instead of the three for a GIF | 2026-10-08 |
+| 10 | *(user, unprompted)* Starting point fields | The starting point also gets the three fields (one for a GIF) | 2026-10-08 |
 
 ---
 
