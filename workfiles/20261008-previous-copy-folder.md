@@ -66,15 +66,20 @@ Built from the **files of the grid's cells**, in **cell order**:
 | The same name twice (same file in two cells, or two files with one name) appears **once**, case-insensitively | `chat + chat` → `chat` |
 | No cell has a file | `fusion-YYYYMMDD-HHMMSS` — the name the temp files and Save's dialog already use |
 | Extension | `.png`, `.mp4`, `.gif` or `.jpg`, the copied content's |
-| Too long | See Open Questions |
+| Length | **No cap**: every name is kept. A name too long for Windows makes the write fail, handled as any write failure (§ Status Line) |
 
 The source names are file names already, so they hold no invalid character.
+
+- The combined name is used for `previous` **only**: the temp file put on the clipboard and Save's
+  dialog default name stay `fusion-YYYYMMDD-HHMMSS`.
 
 ---
 
 ## Status Line
 
-Unchanged when `previous` is written. Its failure does not fail the Copy — see Open Questions.
+- Unchanged when `previous` is written.
+- A write that fails (disk full, folder read-only, name too long) **does not fail the Copy** — the
+  content is on the clipboard: the status line adds `Not kept in previous\: <reason>`.
 
 ---
 
@@ -82,7 +87,8 @@ Unchanged when `previous` is written. Its failure does not fail the Copy — see
 
 - `README.md` + `README.fr.md`, § Copy: every Copy also keeps its content in `previous\` next to the
   exe, the last one only, named after the cells' files.
-- `GLOSSARY.md` + `GLOSSARY.fr.md`: see Open Questions.
+- `GLOSSARY.md` + `GLOSSARY.fr.md`: a new term, **Previous copy** (*copie précédente*) — the last
+  copied content, kept in `previous\` next to the exe, named after the cells' files.
 
 ---
 
@@ -99,17 +105,13 @@ static function (cell file paths → file name), ready to be pinned the day one 
 
 ## Open Questions
 
-- [ ] **Clipboard and Save names**: should the combined name also be given to the temp file put on
-  the clipboard (MP4, GIF, JPEG — the name seen when pasting into Explorer or a chat app) and to
-  Save's dialog default name? *Proposal: no — `previous` only, as asked; the rest stays
-  `fusion-…`.*
-- [ ] **Length cap**: *Proposal: whole names are added while the name stays within 100 characters;
-  the ones left out are counted — `chat + plage + 3 more.mp4`. A first name longer than 100
-  characters on its own is cut, ending with `…`.*
-- [ ] **Write failure** (disk full, folder read-only): *Proposal: the Copy still succeeds — the
-  content is on the clipboard — and the status line adds `Not kept in previous\: <reason>`.*
-- [ ] **Glossary**: add a term? *Proposal: **Previous copy** (*copie précédente*) — the last copied
-  content, kept in `previous\` next to the exe, named after the cells' files.*
+- [x] ~~**Clipboard and Save names**: should the combined name also be given to the temp file put on
+  the clipboard and to Save's dialog default name?~~ → No: `previous` only.
+- [x] ~~**Length cap**?~~ → None: every name is kept; a name too long for Windows fails the write,
+  reported like any write failure.
+- [x] ~~**Write failure**?~~ → The Copy still succeeds; the status line adds
+  `Not kept in previous\: <reason>`.
+- [x] ~~**Glossary**: add a term?~~ → **Previous copy** (*copie précédente*).
 
 ---
 
@@ -128,6 +130,13 @@ folder unchanged; the folder keeps the last content only, the new file written b
 are deleted; the name joins the cells' file names with ` + `, cells without a file skipped,
 duplicates once, `fusion-…` when none. Four proposals left open: names on the clipboard / Save,
 length cap, write failure, glossary term.
+
+### Iteration 2 — 2026-10-08
+
+Open questions answered (Q&A 5–8): the combined name for `previous` only; **no length cap** — a
+name too long for Windows fails the write, reported as any write failure; a write failure leaves
+the Copy successful and adds `Not kept in previous\: <reason>` to the status line; a glossary term,
+**Previous copy**. Sections *File Name*, *Status Line* and *Documentation* updated.
 
 ---
 
@@ -154,10 +163,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | Link with the temp folder `%TEMP%\ImageGridFusion`? | An extra copy: the temp folder stays as it is, `previous` holds a copy | 2026-10-08 |
 | 3 | How are the cells' file names combined? | Joined by ` + `, cell order, no extension, duplicates removed, capped; no file → `fusion-YYYYMMDD-HHMMSS` | 2026-10-08 |
 | 4 | Straightforward or tricky subject? | Straightforward — one scout pass | 2026-10-08 |
-| 5 | Combined name also on the clipboard's temp file and Save's default name? | | |
-| 6 | Length cap of the combined name? | | |
-| 7 | What a failure to write `previous` does? | | |
-| 8 | Glossary term? | | |
+| 5 | Combined name also on the clipboard's temp file and Save's default name? | No — `previous` only | 2026-10-08 |
+| 6 | Length cap of the combined name? | None — Windows' limit only | 2026-10-08 |
+| 7 | What a failure to write `previous` does? | The Copy succeeds; the status line warns | 2026-10-08 |
+| 8 | Glossary term? | **Previous copy** (*copie précédente*) | 2026-10-08 |
 
 ---
 
