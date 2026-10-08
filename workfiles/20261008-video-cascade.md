@@ -44,12 +44,22 @@ Agreed in the scoping batch (Q&A 1–3):
 - **Waiting**: a taking-part content not playing its turn stands **still**:
   - **before its turn**: on its **starting point** (its Frames effect's, `SourceImage.StartPage`);
   - **after its turn**: on the **last frame it played**.
+- **A turn**: **one whole loop** of the content's played part (its trim), from its **starting point**
+  round to it again — turn length = `SourceImage.PlayedLength`. With the starting point on the trim's
+  first frame, it plays From → To; otherwise it wraps at To back to From and ends just before the
+  starting point. *The last frame it played* is therefore the frame just before its starting point
+  (To when the starting point is the trim's first frame).
+- **Sound**: a content is heard **during its turn only** — silent while it waits, as a frozen one.
 - **Loop**: once the last one has played, the cascade starts over from the first — every content
   back on its starting point.
+- **Video length** (amends RULES.md § Video Length while the Cascade is on): the **sum of the turns**;
+  an Animations cycle longer than that sum still sets the length; the soundtrack loops or is cut on it
+  as today; the Fade fades the start and the end of the whole cascade.
+- **Not taking part**: PDF pages, texts longer than their cell and Animations motions keep playing
+  **in parallel** on the grid's clock, as today.
 
-To settle (see § Open Questions): what one turn plays, its sound, the video length, the contents
-that animate without taking part (PDF pages, long texts, Animations motions), the effect's options,
-its availability, the restart on toggle, the progress line.
+To settle (see § Open Questions): the effect's options, its availability, the restart on toggle, the
+progress line.
 
 ---
 
@@ -94,16 +104,14 @@ preview, its sound, the length readout, an MP4 and a GIF export.
 Every question the design cannot settle on its own, listed before Iteration 1 — not only the
 blocking ones. Each one carries the agent's proposal.
 
-- [ ] **Turn content**: what does one turn play? *Proposal*: from its **starting point to the end of
-  its trim**, once (turn length = `PlayedLength − StartTime`). Alternative: a whole loop of the played
-  part starting at the starting point (wrapping round to it).
-- [ ] **Sound**: is a content heard **only during its turn**, silent while it waits? *Proposal*: yes.
-- [ ] **Video length**: *Proposal*: the **sum of the turns**; an Animations cycle longer than that sum
-  still sets the length (`Animation.LoopOf` unchanged for motions); the soundtrack loops or is cut on
-  it as today; the Fade fades the whole cascade's start and end.
-- [ ] **Animated contents not taking part** — PDF of several pages, text longer than its cell,
-  Animations motion on a still: *Proposal*: they keep playing **in parallel** on the grid's clock, as
-  today.
+- [x] ~~**Turn content**: what does one turn play?~~ → **One whole loop** of its played part, from its
+  starting point round to it again (turn length = `PlayedLength`)
+- [x] ~~**Sound**: is a content heard only during its turn?~~ → Yes, silent while it waits
+- [x] ~~**Video length**~~ → The **sum of the turns**; an Animations cycle longer than that sum still
+  sets the length; the soundtrack loops or is cut on it as today; the Fade fades the whole cascade's
+  start and end
+- [x] ~~**Animated contents not taking part** (PDF pages, long text, Animations motion)~~ → They keep
+  playing **in parallel** on the grid's clock, as today
 - [ ] **Options**: does the effect have options? *Proposal*: a **Gap** slider (pause between two
   turns, 0 to 3 s, 0 by default), plus its own Reset. Alternative: no option, the tab's checkbox only.
 - [ ] **Availability**: *Proposal*: disabled, with a tooltip, while fewer than **two** contents can
@@ -130,6 +138,12 @@ jouée puis la 2 puis 3 etc ») and the scoping batch: cell order, videos and an
 part, still on their starting point before their turn and on their last played frame after it. A
 single timeline computation proposed; the remaining points listed as Open Questions with proposals.
 
+### Iteration 2 — 2026-10-08
+
+Q&A 5 answered: a turn plays **one whole loop** of the played part from the starting point (not the
+proposed starting point → end of trim); sound during the turn only; video length = sum of the turns;
+non-taking-part contents in parallel. § Behaviour updated.
+
 ---
 
 ## Implementation Log
@@ -155,7 +169,7 @@ Questions asked by the agent during design, with user responses.
 | 2 | What does a video show while not playing (before / after its turn)? | Still on its starting point before, on its last played frame after | 2026-10-08 |
 | 3 | Which contents take part? | Videos and animated GIFs (playing, not frozen) | 2026-10-08 |
 | 4 | Depth of the exploration? | Straightforward — single scout pass | 2026-10-08 |
-| 5 | Turn content, sound, video length, non-taking-part contents | | 2026-10-08 |
+| 5 | Turn content, sound, video length, non-taking-part contents | One whole loop of the played part from its starting point · heard during its turn only · sum of the turns (a longer Animations cycle wins, soundtrack and Fade as today) · the others play in parallel | 2026-10-08 |
 | 6 | Options, availability, restart on toggle, progress line | | 2026-10-08 |
 
 ---
