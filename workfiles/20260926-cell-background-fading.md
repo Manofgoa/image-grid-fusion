@@ -86,12 +86,23 @@ Scope agreed with the user (scoping batch, 2026-09-26, revised 2026-10-07):
 
 ## Rendering
 
-- Drawn in `Compositor.DrawCell`, as part of the cell's flat fill (`DrawBackground`), so the
-  preview, the exports and video playback all show it; the image and the blur come over it as today.
-- `DrawCell` receives, per shared edge, the neighbour's fill(s) at the frame's time;
-  `Compositor.Draw` and the preview's single-cell redraws compute them from the cells.
+- **One rule gives every pixel** (`Composition/SeamField.cs`): near a seam, a pixel takes the
+  average of the flat fills under a square around it, of side twice the depth, clipped to the canvas,
+  premultiplied, weighted by the area each fading cell covers in it. Along a straight seam it is the
+  linear gradient to the 50 / 50 mix; segment junctions and corners come out continuous by
+  themselves; the canvas's edges have no seam. Cells that do not fade are left out of the average.
+- Drawn in `Compositor.DrawCell`, in place of the cell's flat fill (`DrawBackground`): the inside
+  plain, a strip of the depth along each side that has a neighbour, computed per pixel. The preview,
+  the exports, video playback and the blur's redraw (`BlurRenderer`) all show it; the image and the
+  blur come over it as today. The crop edit view (`DrawUncropped`) shows no seams.
+- An **off** Background, which draws no fill, still draws its strips: the neighbours' fills fading
+  into its transparency.
+- `Compositor.Draw` builds the grid's `SeamField` (the fills at the frame's time,
+  `Compositor.FlatFill`) and hands it to every `DrawCell`; the preview's single-cell redraws build
+  it from all the cells too (`GridPreview.DrawIntoCache`).
 - A change of a cell's fill — Background options, crop, zoom, focus, image replaced, black & white,
-  the Animations motion — also redraws its neighbours' strips in the preview.
+  the Animations motion — draws **every cell** of the preview's cache again, with the same speed /
+  quality as the redraw that caused it (`GridPreview._seamFills` compared by value).
 - With the **Borders leaving a gap** (every style but Corners), the cells no longer touch: Seams
   does not apply (§ Global Effect).
 
@@ -101,8 +112,9 @@ A new **global effect, Seams** (*Jointures*), following RULES.md § Global Effec
 Toolbar:
 
 - A tab **after Borders** in the Global toolbar (`GlobalEffect.Seams`), with its activation checkbox.
-- Its options: a **Depth** slider, in % of the smallest cell's smaller dimension, **10 %** by default,
-  then its own **Reset**. Acting on the slider turns the effect on.
+- Its options: a **Depth** slider, **1 to 50 %** of the smallest cell's smaller dimension, **10 %** by
+  default, then its own **Reset**. Acting on the slider turns the effect on.
+- Its tab icon: two cells, blue and orange, fading into each other (`EffectIcons.Seams`).
 - **Off at start-up**, not persisted; the global *Reset* buttons and *Clear all* bring back its
   initial state (off, 10 %); untouched by the cell *Reset* buttons, kept on a swap or a layout
   change.
@@ -224,6 +236,30 @@ dedicated worktree (`.claude/worktrees/cell-background-fading`, branch
 `feature/cell-background-fading`), fast-forwarded into `main` and removed at the end, at the user's
 request. Scope frozen on the design sections as of Iteration 5.
 
+### Iteration 7 — 2026-10-08 — 🧭 Implementation choices
+
+Decisions the frozen design left open, taken by the implementation run. No project rule was broken.
+
+- **The fade is one rule**: an area-weighted, premultiplied average of the flat fills over a square
+  of side twice the depth around each pixel (`SeamField`). It gives the linear gradient to the
+  50 / 50 mix, the continuous segment junctions and corners, and leaves the non-fading cells out of
+  the average — instead of separate cases per seam, junction and corner.
+- **Strips per pixel, inside plain**: only the strips along sides with a neighbour are computed per
+  pixel (two passes of per-axis overlaps), the rest of the cell keeps one `FillRectangle`.
+- **An off Background draws the fade strips** into its cell (Q15's "fade toward transparency"),
+  although off otherwise draws no fill — RULES.md § The Background Exception is not updated (code
+  only).
+- **Depth range 1–50 %**, 10 % by default; label `Depth: 10 %`.
+- **Preview**: when a redrawn cell's fill changed, every cell is drawn again (simplest correct
+  set), at the quality of the redraw that caused it — during a live gesture, the neighbours are drawn
+  fast too, until the next full redraw.
+- **Not faded**: the crop edit view, a slot without image, the layout strip and format thumbnails.
+- **Unavailable text**: *The borders leave a gap between the cells: they no longer touch*; the
+  compositor itself ignores the seams while a gap shows (`SeamField.Of`), so every export follows.
+- **Undo / status label**: `Seams`; Clear all reports *seams … back to their initial state*.
+- Documentation not written (README, GLOSSARY, RULES.md § Global Effects / Global toolbar list):
+  the go covered the code only.
+
 ---
 
 ## Implementation Log
@@ -233,10 +269,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README (en / fr) | | | |
-| GLOSSARY (en / fr) | | | |
+| Code | 6, 7 | 2026-10-08 | `SeamFade`, `SeamField`, `Compositor`, `BlurRenderer`, `GridExport`, `GridPreview`, `MainForm`, `GridHistory`, `GlobalEffect`, `EffectIcons`; checked on a rendered sheet (2, 3, 4 cells; off and extending backgrounds) |
+| Unit tests | 6 | 2026-10-08 | Declined — no test project, decided in Q13 |
+| README (en / fr) | 6 | 2026-10-08 | Declined — the go covered the code only |
+| GLOSSARY (en / fr) | 6 | 2026-10-08 | Declined — the go covered the code only |
 
 ---
 
