@@ -113,6 +113,10 @@ PNG hidden on folder tiles, Ctrl+C doing Copy while the tiles are focused, Copy 
 Added from reading `MainForm.ProcessCmdKey`: with the tiles focused, Ctrl+C belongs to them — a
 folder tile or none selected copies nothing, not the grid; the menu's Copy shows its `Ctrl+C`.
 
+### Iteration 3 — 2026-10-08 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree on `feature/explorer-tile-copy-menu`.
+
 ---
 
 ## Implementation Log
