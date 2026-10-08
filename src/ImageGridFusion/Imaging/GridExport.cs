@@ -8,7 +8,8 @@ namespace ImageGridFusion.Imaging;
 /// from the starting point of its frames effect, a frozen one showing its frame; or, with nothing
 /// playing, as a still of the page each source shows. A cell whose Animations effect is on moves in the
 /// video, from its starting state at the first frame, and shows that state in a still. With a
-/// soundtrack, a grid of stills is exported as an MP4 video as long as it.
+/// soundtrack, a grid of stills is exported as an MP4 video as long as it. With the Cascade on, the
+/// videos and animated GIFs play their turns one after the other (<see cref="CascadeSchedule"/>).
 /// </summary>
 internal static class GridExport
 {
@@ -18,7 +19,7 @@ internal static class GridExport
     /// </summary>
     public sealed class Job : IDisposable
     {
-        private Job(IReadOnlyList<Item> items, GridLayout layout, double ratio, GridBorders? borders, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack, SoundFade? fade, SeamFade? seams)
+        private Job(IReadOnlyList<Item> items, GridLayout layout, double ratio, GridBorders? borders, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack, SoundFade? fade, SeamFade? seams, CascadeSchedule? cascade)
         {
             Items = items;
             Layout = layout;
@@ -26,10 +27,25 @@ internal static class GridExport
             Borders = borders;
             Fade = fade;
             this.Seams = seams;
-            Length = Animation.VideoLength(items.Select(i => Animation.LoopOf(i.Loop, i.Look)).DefaultIfEmpty(TimeSpan.Zero).Max(), soundtrack);
+            this.Cascade = cascade;
 
-            // The soundtrack loops on its own length, cut where the video ends.
-            var sounds = heard.Select(i => new MixedSound(i.FilePath!, i.PlayedLength, i.StartTime, i.Look.SoundGain, i.PlayedFrom));
+            // In the cascade, a content taking part counts by its turn, the others by their loops beside it.
+            var beside = items
+                .Select((item, i) => Animation.LoopOf(cascade?.Has(i) == true ? TimeSpan.Zero : item.Loop, item.Look))
+                .DefaultIfEmpty(TimeSpan.Zero)
+                .Max();
+            var grid = cascade is not null && cascade.Length > beside ? cascade.Length : beside;
+            Length = Animation.VideoLength(grid, soundtrack);
+
+            // The soundtrack loops on its own length, cut where the video ends; in the cascade, a video is
+            // heard during its turn only.
+            var sounds = heard.Select(i =>
+            {
+                int index = items.ToList().FindIndex(item => item.Image == i);
+                return cascade is not null && cascade.Has(index)
+                    ? new MixedSound(i.FilePath!, i.PlayedLength, i.StartTime, i.Look.SoundGain, i.PlayedFrom, cascade.TurnAt(index), cascade.Length)
+                    : new MixedSound(i.FilePath!, i.PlayedLength, i.StartTime, i.Look.SoundGain, i.PlayedFrom);
+            });
             Sounds = (soundtrack is null ? sounds : sounds.Append(new MixedSound(soundtrack.Path, soundtrack.Duration, TimeSpan.Zero, soundtrack.Level))).ToList();
         }
 
@@ -49,6 +65,9 @@ internal static class GridExport
         /// <summary>The seams fading the cells' flat fills into each other; <c>null</c> while they are off.</summary>
         public SeamFade? Seams { get; }
 
+        /// <summary>The turns of the Cascade; <c>null</c> while it is off.</summary>
+        public CascadeSchedule? Cascade { get; }
+
         /// <summary>The sounds mixed into the video: each from the starting point of its video, at its volume; the soundtrack last.</summary>
         public IReadOnlyList<MixedSound> Sounds { get; }
 
@@ -58,11 +77,12 @@ internal static class GridExport
         /// <summary>
         /// The grid as it stands, at its <paramref name="ratio"/>, with its <paramref name="borders"/>,
         /// <paramref name="soundtrack"/> mixed over its sounds when one is on, the mix faded by
-        /// <paramref name="fade"/> when it is on, and the cells' fills faded by <paramref name="seams"/>.
+        /// <paramref name="fade"/> when it is on, the cells' fills faded by <paramref name="seams"/>, and the
+        /// videos playing one after the other with <paramref name="cascade"/> when it is on.
         /// </summary>
-        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders, Soundtrack? soundtrack = null, SoundFade? fade = null, SeamFade? seams = null) => new(
+        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders, Soundtrack? soundtrack = null, SoundFade? fade = null, SeamFade? seams = null, VideoCascade? cascade = null) => new(
             images.Select(i => i.Plays
-                ? new Item(null, i.BandColor, i.Pages, i.PlayedLength, i.Look, i.Page, i.StartTime, i.PlayedFrom)
+                ? new Item(null, i.BandColor, i.Pages, i.PlayedLength, i.Look, i.Page, i.StartTime, i.PlayedFrom) { Image = i }
                 : i.IsAnimated
                 ? new Item(null, i.BandColor, i.Pages, TimeSpan.Zero, i.Look, i.StartPage, TimeSpan.Zero)
                 : new Item(new Bitmap(i.Bitmap), i.BandColor, null, TimeSpan.Zero, i.Look, 0, TimeSpan.Zero)).ToList(),
@@ -72,7 +92,20 @@ internal static class GridExport
             Animation.Heard(images),
             soundtrack,
             fade,
-            seams);
+            seams,
+            cascade is null ? null : CascadeSchedule.Of(images, cascade));
+
+        /// <summary>
+        /// Content time the cell at <paramref name="index"/> shows at <paramref name="time"/> of the video:
+        /// where its turn of the cascade has brought it, else where its own loop has.
+        /// </summary>
+        public TimeSpan ContentTime(int index, TimeSpan time)
+        {
+            var item = this.Items[index];
+            return this.Cascade is { } cascade && cascade.Has(index)
+                ? item.ContentTime(cascade.Played(index, time))
+                : item.ContentTime(time);
+        }
 
         public void Dispose()
         {
@@ -92,6 +125,9 @@ internal static class GridExport
     public sealed record Item(Bitmap? Still, BandColor BandColor, PageSource? Source, TimeSpan Loop, ImageLook Look, int Page, TimeSpan Start, TimeSpan From = default)
     {
         public bool Plays => Source is not null && Loop > TimeSpan.Zero;
+
+        /// <summary>The playing image the cell was captured from, to find its sound; <c>null</c> for a still.</summary>
+        public SourceImage? Image { get; init; }
 
         /// <summary>Content time shown at <paramref name="time"/> of the video.</summary>
         public TimeSpan ContentTime(TimeSpan time) => this.From + Animation.LoopTime(this.Start + time, this.Loop);
@@ -166,7 +202,7 @@ internal static class GridExport
                 var time = Animation.FrameTime(k);
                 for (int i = 0; k > 0 && i < readers.Length; i++)
                 {
-                    if (readers[i]?.FrameAt(job.Items[i].ContentTime(time)) is { } next)
+                    if (readers[i]?.FrameAt(job.ContentTime(i, time)) is { } next)
                     {
                         frames[i].Bitmap.Dispose();
                         frames[i] = frames[i] with { Bitmap = next };

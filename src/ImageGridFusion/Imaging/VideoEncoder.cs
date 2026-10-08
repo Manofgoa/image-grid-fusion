@@ -349,7 +349,8 @@ internal sealed class VideoEncoder : IFrameEncoder
     /// <summary>
     /// The sound of one video, decoded to 16-bit PCM by a Source Reader: from its starting point, then
     /// from the loop's beginning again every loop — its trim's, else the file's start — cut at the end of each loop, silent where the sound is shorter
-    /// than its loop; added to the mix at its gain, as stereo.
+    /// than its loop; added to the mix at its gain, as stereo. In the cascade, it plays one loop per turn
+    /// and is silent between its turns.
     /// </summary>
     private sealed class Voice : IDisposable
     {
@@ -371,12 +372,22 @@ internal sealed class VideoEncoder : IFrameEncoder
         private long _position;
         private bool _ended;
 
+        // In the cascade: where its turn begins in the cascade, the cascade's length (zero outside it),
+        // and the frame of the cascade the next mixed frame stands at.
+        private readonly long _turnAt;
+        private readonly long _cycle;
+        private long _turnFrame;
+        private long _cycleFrames;
+        private long _cyclePosition;
+
         public Voice(MixedSound sound)
         {
             Path = sound.Path;
             _loop = sound.Loop.Ticks;
             _start = sound.Start.Ticks;
             this._from = sound.From.Ticks;
+            this._turnAt = sound.TurnAt.Ticks;
+            this._cycle = sound.Cycle.Ticks;
             _gain = sound.Gain;
             _reader = MediaFoundation.CreateSourceReader(sound.Path, attributes: null);
             try
@@ -443,14 +454,53 @@ internal sealed class VideoEncoder : IFrameEncoder
 
             // The first loop is cut short: the video's time 0 is the sound's time start.
             _position = _start * rate / TimeSpan.TicksPerSecond % _loopFrames;
+            this._turnFrame = this._turnAt * rate / TimeSpan.TicksPerSecond;
+            this._cycleFrames = this._cycle * rate / TimeSpan.TicksPerSecond;
             if (this._from + _start > 0)
             {
                 _reader.SetCurrentPosition(Guid.Empty, PropVariant.FromLong(this._from + _start));
             }
         }
 
-        /// <summary>Adds the next <paramref name="frames"/> frames, at the voice's gain, to <paramref name="mix"/> (stereo, interleaved).</summary>
+        /// <summary>
+        /// Adds the next <paramref name="frames"/> frames, at the voice's gain, to <paramref name="mix"/>
+        /// (stereo, interleaved); in the cascade, only those falling in its turn, the loop moving on with
+        /// them alone — a turn is one whole loop, so the next one starts where this one did.
+        /// </summary>
         public void MixInto(int[] mix, int frames)
+        {
+            if (this._cycleFrames <= 0)
+            {
+                this.MixLoop(mix, 0, frames);
+                return;
+            }
+
+            int done = 0;
+            while (done < frames)
+            {
+                if (this._cyclePosition >= this._cycleFrames)
+                {
+                    this._cyclePosition = 0;
+                }
+
+                long turnEnd = this._turnFrame + this._loopFrames;
+                bool inTurn = this._cyclePosition >= this._turnFrame && this._cyclePosition < turnEnd;
+                long until = inTurn ? turnEnd
+                    : this._cyclePosition < this._turnFrame ? this._turnFrame
+                    : this._cycleFrames;
+                int count = (int)Math.Min(frames - done, Math.Max(1, Math.Min(until, this._cycleFrames) - this._cyclePosition));
+                if (inTurn)
+                {
+                    this.MixLoop(mix, done, count);
+                }
+
+                done += count;
+                this._cyclePosition += count;
+            }
+        }
+
+        /// <summary>Adds the next <paramref name="frames"/> frames of the loop to <paramref name="mix"/>, from frame <paramref name="at"/> of it.</summary>
+        private void MixLoop(int[] mix, int at, int frames)
         {
             int done = 0;
             while (done < frames)
@@ -478,7 +528,7 @@ internal sealed class VideoEncoder : IFrameEncoder
                     count = Math.Min(wanted, _pendingCount - offset);
                     for (int i = 0; i < count * 2; i++)
                     {
-                        mix[done * 2 + i] += (int)Math.Round(_pending[offset * 2 + i] * _gain);
+                        mix[(at + done) * 2 + i] += (int)Math.Round(_pending[offset * 2 + i] * _gain);
                     }
                 }
 
@@ -588,6 +638,8 @@ internal sealed class VideoEncoder : IFrameEncoder
 /// <summary>
 /// A sound of an exported video's mix: a video or audio file, looping every <paramref name="Loop"/> from
 /// <paramref name="Start"/>, scaled by <paramref name="Gain"/>; the loop begins at <paramref name="From"/>
-/// in the file — a trimmed video's (workfiles/20261008-video-trim.md).
+/// in the file — a trimmed video's (workfiles/20261008-video-trim.md). In the Cascade, a
+/// <paramref name="Cycle"/> above zero: heard only during its turn, one loop from <paramref name="TurnAt"/>
+/// in every cascade of that length (workfiles/20261008-video-cascade.md).
 /// </summary>
-internal sealed record MixedSound(string Path, TimeSpan Loop, TimeSpan Start, double Gain, TimeSpan From = default);
+internal sealed record MixedSound(string Path, TimeSpan Loop, TimeSpan Start, double Gain, TimeSpan From = default, TimeSpan TurnAt = default, TimeSpan Cycle = default);
