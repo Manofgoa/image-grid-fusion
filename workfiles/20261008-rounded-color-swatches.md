@@ -69,8 +69,13 @@ for contrast). It follows the rule like the menu items (Q4):
 
 ### One Drawing
 
-A single swatch-drawing method in `MainForm` (the bitmap for a colour at the window's DPI), used by
-the menu items and the button.
+A single swatch-drawing method, `MainForm.Swatch` (the bitmap for a colour at the window's DPI),
+used by the menu items and the button through two `SetSwatch` overloads (`ToolStripMenuItem`,
+`ButtonBase`), each disposing the bitmap it replaces. The menu items' colour is now forced opaque
+too, as the rule says.
+
+The button's options follow every move of the image: its swatch is drawn again **only when the
+colour changes** (`_backgroundSwatchColor`), or the DPI does.
 
 ---
 
@@ -124,6 +129,22 @@ mention says it shows the colour as a swatch. No open question left.
 Go given: code, unit tests and documentation, in the current checkout. Branch Gate: **stay on
 `main`**, the repository's standing choice (no branch, no worktree unless asked).
 
+### Iteration 4 — 2026-10-08 — 🧭 Implementation choices
+
+- **Branch**: stayed on `main`, the repository's standing choice (project memory), without asking
+  the Branch Gate.
+- **Shared rule wording**: besides the style, it says a button keeps its native face, the swatch
+  before its text (`TextImageRelation.ImageBeforeText`), never its whole face painted.
+- **Opaque menu swatches**: the menu items' colour is forced to alpha 255 like the button's —
+  previously it was drawn as given.
+- **Redraw on change only**: the *Color…* button's swatch is cached by colour
+  (`_backgroundSwatchColor`), as `UpdateOptions` runs on every move; the DPI handler redraws it.
+- **Contrast text dropped**: the black-or-white text computed for the coloured face goes with it.
+- **Disposal**: the button's bitmap is disposed with the form.
+- Not done, out of scope: the *Arrow color…* item's bitmap is not disposed with the form (existing
+  gap, harmless at exit).
+- No rule broken.
+
 ---
 
 ## Implementation Log
@@ -133,10 +154,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Shared rule | | | `mini-apps/shared/RULES.md`, not versioned |
-| Code | | | |
+| Shared rule | 3 | 2026-10-08 | `mini-apps/shared/RULES.md` § Colour Items — edited, not versioned (no repository) |
+| Code | 3 | 2026-10-08 | `UI/MainForm.cs` |
 | Unit tests | 1 | 2026-10-08 | Not applicable — no test project, drawing only |
-| README | | | `README.md` / `README.fr.md` § Background: *Color…* shows the colour in use as a swatch |
+| README | 3 | 2026-10-08 | `README.md` / `README.fr.md` § Background: *Color…* shows the colour in use as a swatch |
 
 ---
 
