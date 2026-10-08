@@ -45,7 +45,8 @@ Relevant code:
 - A **Color…** button in the Borders options row — `Button`, `AutoSize`, `TextImageRelation.ImageBeforeText`,
   its image the rounded swatch of the borders' color (`SetSwatch(ButtonBase, Color)`, redrawn at the
   monitor's DPI with the other swatches).
-- Placement: see Open Questions.
+- Placement: **right after the style** drop-down — style, Color…, thickness, opacity, outer frame,
+  Twitter corners — the color next to the line's shape.
 - Tooltip: what it does and that the color is remembered between sessions.
 - Click → the standard color dialog, preselected on the current color. **OK** → the change goes
   through `ChangeBorders` (§ Options Toolbar: acting on any option activates the effect — the
@@ -64,10 +65,19 @@ The color becomes part of the effect's state like its other settings (RULES.md �
 | Event | Color |
 |---|---|
 | Start-up | The color remembered in `settings.json`; hotpink when none was saved |
-| Color… → OK | Applied, the Borders turned on, the color remembered |
-| The Borders' own Reset / the Global Reset / *Clear all* | Back to the default — see Open Questions |
-| Undo / redo | Restored with the step, like the other Borders settings |
+| Color… → OK | Applied, the Borders turned on, **the color remembered** |
+| The Borders' own Reset / the Global Reset / *Clear all* | Back to **hotpink** (`AppSettings.DefaultBorderColor`); the remembered color left as it is |
+| Undo / redo | Restored with the step, like the other Borders settings; the remembered color left as it is |
 | Borders turned off | Kept, like every setting of an effect turned off |
+
+- **Only a color chosen in the dialog is remembered**: a Reset, *Clear all* or an undo changes the
+  color in force, never the one saved — the next launch starts from the last color picked.
+- **Default**: the Borders' initial state is `GridBorders.Initial(AppSettings.DefaultBorderColor,
+  _roundedByDefault)` — hotpink — in the Resets, *Clear all* and `BordersInitial` (which enables the
+  Global Reset, the Borders' Reset and *Clear all*). At start-up the borders take the remembered
+  color instead: with a remembered color other than hotpink, the Borders are not in their initial
+  state, so their Reset, the Global Reset and *Clear all* are enabled from the start — a Reset
+  there does change something (the color back to hotpink).
 
 - **Undo history**: `GlobalState.Borders` already carries the color; `RestoreState` stops overriding it
   with the current one, and the `GlobalState` comment changes accordingly. `GridHistory.Describe`
@@ -99,11 +109,11 @@ updated. Nothing in the planned work justifies creating a test project for it.
 
 ## Open Questions
 
-- [ ] What is the color's **default** brought back by the Resets and *Clear all* — hotpink, or the
-  last color remembered?
-- [ ] Which changes **overwrite the remembered color** — only a color chosen in the dialog, or every
-  change of the color in force (Reset, undo / redo included)?
-- [ ] Where does the **Color…** button sit in the Borders options row?
+- [x] ~~What is the color's **default** brought back by the Resets and *Clear all* — hotpink, or the
+  last color remembered?~~ → Hotpink; the remembered color is only the start-up one
+- [x] ~~Which changes **overwrite the remembered color** — only a color chosen in the dialog, or every
+  change of the color in force (Reset, undo / redo included)?~~ → Only a color chosen in the dialog
+- [x] ~~Where does the **Color…** button sit in the Borders options row?~~ → Right after the style
 
 ---
 
@@ -122,6 +132,14 @@ color chosen remembered in `settings.json`, the ⚙ menu item removed, Twitter c
 in the ⚙ menu. Single scout pass (subject judged straightforward), done directly: no test project
 exists, so Test Impact is empty. Three questions left open: the default, what overwrites the
 remembered color, the button's placement.
+
+### Iteration 2 — 2026-10-08
+
+Open questions answered (Q&A 5–7): the Resets and *Clear all* bring back **hotpink**, the remembered
+color being the start-up one only; **only a color chosen in the dialog** is remembered — a Reset,
+*Clear all* or an undo never overwrites it; the **Color…** button sits **right after the style**.
+Consequence written into § Behaviour: with a remembered color other than hotpink, the Borders are
+not in their initial state at start-up, so their Resets and *Clear all* are enabled from the start.
 
 ---
 
@@ -148,9 +166,9 @@ Questions asked by the agent during design, with user responses.
 | 2 | Once in the effect, how does the color behave with the Resets and undo? | An ordinary option of the effect: Resets bring back the default, undo restores it, the last color chosen remembered in `settings.json` and taken back at start-up | 2026-10-08 |
 | 3 | The ⚙ menu also holds Twitter corners by default — what about it? | Only the color moves; Twitter corners by default stays in the ⚙ menu | 2026-10-08 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward — a single scout pass | 2026-10-08 |
-| 5 | What is the default brought back by the Resets and *Clear all*? | | |
-| 6 | Which changes overwrite the remembered color? | | |
-| 7 | Where does the Color… button sit in the Borders options row? | | |
+| 5 | What is the default brought back by the Resets and *Clear all*? | Hotpink; the remembered color is taken back at start-up only | 2026-10-08 |
+| 6 | Which changes overwrite the remembered color? | Only a color chosen in the Color… dialog | 2026-10-08 |
+| 7 | Where does the Color… button sit in the Borders options row? | Right after the style drop-down | 2026-10-08 |
 
 ---
 
