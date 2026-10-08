@@ -180,6 +180,11 @@ User request (Q&A 10): the **starting point gets the same fields** — three for
 GIF — next to its slider, replacing the `Starts at: 0:06` label text. So it becomes frame-accurate on
 a video or a GIF (one slider step per frame of the span); PDFs and texts keep their page slider.
 
+### Iteration 5 — 2026-10-08 — ✅ Implemented
+
+Go given: **code, unit tests and documentation**, in a **worktree** (`.claude/worktrees/video-trim`,
+branch `feature/video-trim`, from `main`). The scope is the design sections above, as they stand.
+
 ---
 
 ## Implementation Log
