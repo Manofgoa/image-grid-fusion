@@ -269,7 +269,7 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 6, 7 | 2026-10-08 | `SeamFade`, `SeamField`, `Compositor`, `BlurRenderer`, `GridExport`, `GridPreview`, `MainForm`, `GridHistory`, `GlobalEffect`, `EffectIcons`; checked on a rendered sheet (2, 3, 4 cells; off and extending backgrounds) |
+| Code | 6, 7 | 2026-10-08 | `SeamFade`, `SeamField`, `Compositor`, `BlurRenderer`, `GridExport`, `GridPreview`, `MainForm`, `GridHistory`, `GlobalEffect`, `EffectIcons`; checked on a rendered sheet (2, 3, 4 cells; off and extending backgrounds); validated by the user in the app, task finished |
 | Unit tests | 6 | 2026-10-08 | Declined — no test project, decided in Q13 |
 | README (en / fr) | 6 | 2026-10-08 | Declined — the go covered the code only |
 | GLOSSARY (en / fr) | 6 | 2026-10-08 | Declined — the go covered the code only |
