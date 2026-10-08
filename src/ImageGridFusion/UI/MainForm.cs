@@ -1483,6 +1483,7 @@ internal sealed class MainForm : Form
             return;
         }
 
+        var cellFiles = this.CellFiles();
         if (format is { } animated)
         {
             string path = TempExportPath(Extension(animated));
@@ -1499,7 +1500,8 @@ internal sealed class MainForm : Form
                     _lastVideo = last;
                     UpdateButtons();
                     PutOnClipboard(last);
-                    ShowStatus(AnimationSummary($"Copied {last.FileName}", last));
+                    string kept = KeepPrevious(() => PreviousCopy.KeepCopyOf(path, cellFiles));
+                    ShowStatus(AnimationSummary($"Copied {last.FileName}", last) + kept);
                     NotifyIfAway($"{FormatName(animated)} copied", $"{last.FileName} is on the clipboard. If it gets overwritten, Copy last {FormatName(animated)} brings it back.", error: false);
                 }
                 catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException)
@@ -1532,11 +1534,32 @@ internal sealed class MainForm : Form
             data.SetImage(flat);
             data.SetData("PNG", png);
             Clipboard.SetDataObject(data, copy: true);
-            ShowStatus(StillSummary("Copied to the clipboard", "PNG", result.Size, png.Length, encoding));
+            string kept = KeepPrevious(() => PreviousCopy.Keep(png.ToArray(), ".png", cellFiles));
+            ShowStatus(StillSummary("Copied to the clipboard", "PNG", result.Size, png.Length, encoding) + kept);
         }
         catch (ExternalException ex)
         {
             ShowStatus($"Copy failed: {ex.Message}", error: true);
+        }
+    }
+
+    /// <summary>The cells' files in cell order, null for an image without one: what the previous copy is named after.</summary>
+    private List<string?> CellFiles() => _preview.Images.Select(image => image.FilePath).ToList();
+
+    /// <summary>
+    /// Keeps the copied content in the previous folder (<see cref="PreviousCopy"/>). Returns the status
+    /// line's suffix saying why it could not, empty when it was kept: the Copy succeeded either way.
+    /// </summary>
+    private static string KeepPrevious(Action keep)
+    {
+        try
+        {
+            keep();
+            return string.Empty;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return $" · Not kept in {PreviousCopy.FolderName}\\: {e.Message}";
         }
     }
 
@@ -1740,6 +1763,7 @@ internal sealed class MainForm : Form
             return;
         }
 
+        var cellFiles = this.CellFiles();
         var clock = Stopwatch.StartNew();
         using var result = await RenderStillAsync();
         if (result is null)
@@ -1763,7 +1787,8 @@ internal sealed class MainForm : Form
             data.SetFileDropList(new StringCollection { path });
             data.SetImage(light);
             Clipboard.SetDataObject(data, copy: true);
-            ShowStatus(StillSummary("Copied for sharing", "JPEG", light.Size, new FileInfo(path).Length, encoding));
+            string kept = KeepPrevious(() => PreviousCopy.KeepCopyOf(path, cellFiles));
+            ShowStatus(StillSummary("Copied for sharing", "JPEG", light.Size, new FileInfo(path).Length, encoding) + kept);
         }
         catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException)
         {
