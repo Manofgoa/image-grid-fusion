@@ -1,5 +1,6 @@
 using System.Collections.Specialized;
 using System.Diagnostics;
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using ImageGridFusion.Composition;
@@ -179,8 +180,11 @@ internal sealed class MainForm : Form
     private readonly TrackBar _backgroundOpacity = OptionSlider(0, 100, 10);
     private readonly Label _backgroundOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
 
-    // Its face is the swatch: painted with the background color in use, opaque.
-    private readonly Button _backgroundColor = new() { Text = "Color…", AutoSize = true, Anchor = AnchorStyles.Left, UseVisualStyleBackColor = false };
+    // A native button, the swatch of the background color in use before its text (shared RULES.md § Colour Items).
+    private readonly Button _backgroundColor = new() { Text = "Color…", AutoSize = true, Anchor = AnchorStyles.Left, TextImageRelation = TextImageRelation.ImageBeforeText };
+
+    // The color the Color… button's swatch shows: drawn again only when it changes, or the DPI does.
+    private Color? _backgroundSwatchColor;
     private readonly BackgroundFillStrip _backgroundFill = new() { Anchor = AnchorStyles.Left };
     private readonly TrackBar _backgroundEdgeOpacity = OptionSlider(0, 100, 10);
     private readonly Label _backgroundEdgeOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
@@ -729,6 +733,7 @@ internal sealed class MainForm : Form
             _backgroundOpacityIcon.Image?.Dispose();
 
             _borderColor.Image?.Dispose();
+            this._backgroundColor.Image?.Dispose();
             _colorDialog.Dispose();
         }
 
@@ -788,6 +793,10 @@ internal sealed class MainForm : Form
 
         UpdateBorderColorSwatch();
         this.UpdateOcrArrowColorSwatch();
+        if (this._backgroundSwatchColor is { } backgroundSwatch)
+        {
+            this.SetSwatch(this._backgroundColor, backgroundSwatch);
+        }
     }
 
     /// <summary>The ⚙ menu's Border color item shows the color as a swatch, drawn at the monitor's DPI.</summary>
@@ -796,21 +805,41 @@ internal sealed class MainForm : Form
     /// <summary>The ⚙ menu's Arrow color item shows the OCR arrow's color as a swatch, drawn at the monitor's DPI.</summary>
     private void UpdateOcrArrowColorSwatch() => this.SetSwatch(this._ocrArrowColor, this._explorer.ArrowStyle.Color);
 
-    /// <summary>A menu item's image becomes a square of <paramref name="color"/>, outlined, at the monitor's DPI.</summary>
+    /// <summary>A menu item's image becomes the swatch of <paramref name="color"/>; the one it replaces is disposed.</summary>
     private void SetSwatch(ToolStripMenuItem item, Color color)
     {
+        var previous = item.Image;
+        item.Image = this.Swatch(color);
+        previous?.Dispose();
+    }
+
+    /// <summary>A button's image becomes the swatch of <paramref name="color"/>; the one it replaces is disposed.</summary>
+    private void SetSwatch(ButtonBase button, Color color)
+    {
+        var previous = button.Image;
+        button.Image = this.Swatch(color);
+        previous?.Dispose();
+    }
+
+    /// <summary>
+    /// The swatch of <paramref name="color"/> in the Windows 11 style every mini-app shares (shared RULES.md § Colour
+    /// Items): a rounded square, opaque, outlined, antialiased, at the monitor's DPI.
+    /// </summary>
+    private Bitmap Swatch(Color color)
+    {
         int size = this.LogicalToDeviceUnits(16);
+        var corner = new Size(this.LogicalToDeviceUnits(6), this.LogicalToDeviceUnits(6));
         var swatch = new Bitmap(size, size);
         using (var g = Graphics.FromImage(swatch))
-        using (var fill = new SolidBrush(color))
+        using (var fill = new SolidBrush(Color.FromArgb(255, color)))
         {
-            g.FillRectangle(fill, 0, 0, size, size);
-            g.DrawRectangle(SystemPens.ControlDark, 0, 0, size - 1, size - 1);
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            var bounds = new Rectangle(0, 0, size - 1, size - 1);
+            g.FillRoundedRectangle(fill, bounds, corner);
+            g.DrawRoundedRectangle(SystemPens.ControlDark, bounds, corner);
         }
 
-        var previous = item.Image;
-        item.Image = swatch;
-        previous?.Dispose();
+        return swatch;
     }
 
     /// <summary>
@@ -2600,11 +2629,15 @@ internal sealed class MainForm : Form
     private Color BackgroundShown(BackgroundEffect background) =>
         background.Automatic ? _preview.SelectedAutomaticBackground ?? Color.White : background.Color;
 
-    /// <summary>The color button's face, its text black or white, whichever reads on it.</summary>
+    /// <summary>The color button's swatch, drawn again only when the color changes: the options follow every move.</summary>
     private void ShowBackgroundColor(Color color)
     {
-        _backgroundColor.BackColor = Color.FromArgb(255, color);
-        _backgroundColor.ForeColor = 0.299 * color.R + 0.587 * color.G + 0.114 * color.B > 140 ? Color.Black : Color.White;
+        color = Color.FromArgb(255, color);
+        if (color != this._backgroundSwatchColor)
+        {
+            this._backgroundSwatchColor = color;
+            this.SetSwatch(this._backgroundColor, color);
+        }
     }
 
     /// <summary>
