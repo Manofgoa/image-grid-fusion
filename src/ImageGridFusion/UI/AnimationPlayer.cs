@@ -10,9 +10,11 @@ namespace ImageGridFusion.UI;
 /// it; a frozen image stands on its frame; forced still, every image stops where it stands and
 /// resumes from there, or from the page it was moved to meanwhile. Also mixes the sounds of its videos,
 /// each in step with its frames, and the soundtrack, looping on the grid's duration while the grid
-/// holds an image, the whole mix faded in and out on every loop of the grid while the fade is on. The
-/// grid can be started over: every image from its starting point at once, the soundtrack from its
-/// beginning. Used from the UI thread only.
+/// holds an image, the whole mix faded in and out on every loop of the grid while the fade is on. With
+/// the Cascade on, the videos and animated GIFs play their turns one after the other on the grid's
+/// clock (<see cref="CascadeSchedule"/>), standing still and silent between them. The grid can be
+/// started over: every image from its starting point at once, the soundtrack from its beginning. Used
+/// from the UI thread only.
 /// </summary>
 internal sealed class AnimationPlayer : IDisposable
 {
@@ -32,6 +34,7 @@ internal sealed class AnimationPlayer : IDisposable
     private Soundtrack? _soundtrack;
     private TimeSpan? _soundtrackStart;
     private SoundFade? _fade;
+    private VideoCascade? _cascade;
 
     public AnimationPlayer()
     {
@@ -83,6 +86,20 @@ internal sealed class AnimationPlayer : IDisposable
         _fade = fade;
         UpdateFade();
     }
+
+    /// <summary>
+    /// Plays the videos and animated GIFs one after the other with <paramref name="cascade"/>, or all at
+    /// once when <c>null</c>; the caller starts the grid over, so the first one plays at once.
+    /// </summary>
+    public void SetCascade(VideoCascade? cascade)
+    {
+        this._cascade = cascade;
+        this.SyncSoundtrack();
+        this.SyncFade();
+    }
+
+    /// <summary>Whether the Cascade is on with a content taking part: turns follow each other, pauses included.</summary>
+    public bool Cascading => this._cascade is not null && this._images.Any(CascadeSchedule.TakesPart);
 
     /// <summary>
     /// Mixes <paramref name="soundtrack"/> over the videos, or stops it when <c>null</c>; another file
@@ -163,6 +180,14 @@ internal sealed class AnimationPlayer : IDisposable
     {
         if (this._playbacks.TryGetValue(image, out var playback) && playback.PausedAt is null && image.Pages is not null)
         {
+            // In the cascade, the line shows the turn being played only.
+            if (this.TurnOf(image) is var (schedule, index))
+            {
+                return schedule.Plays(index, this.GridTime)
+                    ? Animation.Progress(schedule.Played(index, this.GridTime), image.PlayedLength)
+                    : null;
+            }
+
             return Animation.Progress(this.Position(playback), image.PlayedLength);
         }
 
@@ -243,7 +268,7 @@ internal sealed class AnimationPlayer : IDisposable
             return;
         }
 
-        var loop = Animation.VideoLength(_images, soundtrack);
+        var loop = Animation.VideoLength(_images, soundtrack, this._cascade);
         var time = Animation.LoopTime(Animation.LoopTime(_clock.Elapsed - start, loop), soundtrack.Duration);
         _sound.SyncSoundtrack(time, soundtrack.Level);
     }
@@ -274,12 +299,50 @@ internal sealed class AnimationPlayer : IDisposable
             return;
         }
 
-        var loop = Animation.VideoLength(_images, _soundtrack);
-        var origin = Animation.GridLength(_images) > TimeSpan.Zero ? TimeSpan.Zero : _soundtrackStart ?? TimeSpan.Zero;
+        var loop = Animation.VideoLength(_images, _soundtrack, this._cascade);
+        var origin = Animation.GridLength(_images, this._cascade) > TimeSpan.Zero ? TimeSpan.Zero : _soundtrackStart ?? TimeSpan.Zero;
         _sound.MasterGain = fade.GainAt(Animation.LoopTime(_clock.Elapsed - origin, loop), loop);
     }
 
-    private TimeSpan Position(Playback playback) => playback.PausedAt ?? _clock.Elapsed - playback.Offset;
+    /// <summary>
+    /// Where <paramref name="playback"/> stands in its loop, its starting point included: where it was
+    /// paused, else where its turn of the cascade has brought it, else where the clock has.
+    /// </summary>
+    private TimeSpan Position(Playback playback)
+    {
+        if (playback.PausedAt is { } paused)
+        {
+            return paused;
+        }
+
+        return this.TurnOf(playback.Image) is var (schedule, index)
+            ? playback.Image.StartTime + schedule.Played(index, this.GridTime)
+            : this._clock.Elapsed - playback.Offset;
+    }
+
+    /// <summary>The cascade <paramref name="image"/> takes part in and its cell, or <c>null</c> while it plays on its own.</summary>
+    private (CascadeSchedule Schedule, int Index)? TurnOf(SourceImage image)
+    {
+        if (this._cascade is not { } cascade)
+        {
+            return null;
+        }
+
+        for (int i = 0; i < this._images.Count; i++)
+        {
+            if (this._images[i] == image)
+            {
+                var schedule = CascadeSchedule.Of(this._images, cascade);
+                return schedule.Has(i) ? (schedule, i) : null;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Whether <paramref name="image"/> is heard now: always on its own, during its turn only in the cascade.</summary>
+    private bool InTurn(SourceImage image) =>
+        this.TurnOf(image) is not var (schedule, index) || schedule.Plays(index, this.GridTime);
 
     private static void StandAtStart(Playback playback)
     {
@@ -301,7 +364,7 @@ internal sealed class AnimationPlayer : IDisposable
                 var time = image.ContentTime(this.Position(playback));
                 bool playing = playback.PausedAt is null;
                 this._sound.Span(image, image.PlayedFrom, image.PlayedFrom + loop);
-                _sound.Sync(image, time, playing);
+                _sound.Sync(image, time, playing && this.InTurn(image));
 
                 if (playing && loop > TimeSpan.Zero)
                 {
