@@ -158,6 +158,11 @@ proposed two), on / off and Pause starting the grid over, the progress line on t
 only. The pause is placed after every turn, the last one included, so the exported loop pauses
 evenly. No Open Question left.
 
+### Iteration 4 — 2026-10-08 — ✅ Implemented
+
+Go given: **code, unit tests and documentation**, in a **worktree** (`.claude/worktrees/video-cascade`,
+branch `feature/video-cascade`). The design sections as they stand are the frozen scope.
+
 ---
 
 ## Implementation Log
