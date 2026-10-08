@@ -27,6 +27,11 @@ the `_clearButton` and the tooltips; `README.md` / `README.fr.md`.
     (no image, every global effect and the format at their initial state) — the cases where the button
     is disabled (`MainForm.cs`, `_clearButton.Enabled`). `Ctrl+N` relies on those guards, it adds none of
     its own for them.
+  - **Ignored during a gesture**, as `Ctrl+Z` / `Ctrl+Y` are (`MainForm.StepHistory`): while
+    `GridPreview.InGesture` holds or a mouse button is down (`MouseButtons != MouseButtons.None`) —
+    a separator, a crop or blur bar, a swap or an image being dragged, a wheel burst still running.
+    The key does nothing then (it is consumed, not passed on). This guard is `Ctrl+N`'s own: the button
+    cannot be clicked in the middle of a mouse gesture anyway.
   - **Everywhere in the window**, a focused text field included (the file explorer's search box, any
     other `TextBoxBase`): `Ctrl+N` has no native meaning in a text box, so nothing is taken from it. It is
     **not** added to the explorer's text-editing whitelist at the top of `ProcessCmdKey`.
@@ -68,13 +73,10 @@ updated**. The check is manual, in the running app.
 
 ## Open Questions
 
-- [ ] During a **gesture** — a separator, a crop or blur bar, a swap or an image being dragged, the mouse
-      button still held, or a wheel burst still running (`GridPreview.InGesture`) — should `Ctrl+N` be
-      **ignored**, as `Ctrl+Z` / `Ctrl+Y` are (`MainForm.StepHistory`), or **clear anyway**?
-      The button cannot be clicked in the middle of a mouse gesture, so "exactly the button" does not
-      settle it. `GridPreview.Clear()` already ends a swap drag (`EndDrag`), so clearing would not crash
-      there; a separator or bar drag would go on over an empty grid.
-      Recommendation: ignored during a gesture, like undo.
+- [x] ~~During a **gesture** — a separator, a crop or blur bar, a swap or an image being dragged, the
+      mouse button still held, or a wheel burst still running (`GridPreview.InGesture`) — should
+      `Ctrl+N` be **ignored**, as `Ctrl+Z` / `Ctrl+Y` are (`MainForm.StepHistory`), or **clear anyway**?~~
+      → **Ignored**, like undo (Q&A #5)
 
 ---
 
@@ -95,6 +97,11 @@ chained: the button, its handler, `ProcessCmdKey`):
 - Tooltip on the button naming `Ctrl+N`; README EN + FR name the shortcut on the Clear all bullet.
 - No `TODO-FEATURES.md` row matches (the file does not exist).
 - One open question left: the behaviour during a gesture.
+
+### Iteration 2 — 2026-10-08
+
+Open question answered (Q&A #5): `Ctrl+N` is **ignored during a gesture** (`GridPreview.InGesture` or a
+mouse button held), as undo is — § Behaviour updated. No open question left.
 
 ---
 
@@ -121,7 +128,7 @@ Questions asked by the agent during design, with user responses.
 | 2 | When should Ctrl+N act? | Like the button (locked while exporting), everywhere, a focused text field included | 2026-10-08 |
 | 3 | Where should the shortcut be shown? | Button tooltip + README (EN + FR) | 2026-10-08 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward — a single scout pass | 2026-10-08 |
-| 5 | During a gesture, is Ctrl+N ignored (like Ctrl+Z) or does it clear anyway? | | 2026-10-08 |
+| 5 | During a gesture, is Ctrl+N ignored (like Ctrl+Z) or does it clear anyway? | Ignored, like Ctrl+Z | 2026-10-08 |
 
 ---
 
