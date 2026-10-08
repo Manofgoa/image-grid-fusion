@@ -95,6 +95,11 @@ internal sealed class GridPreview : Control
     private OutputFormat _format = OutputFormat.Twitter;
     private double _ratio = OutputFormats.TwitterRatio;
     private GridBorders? _borders;
+
+    // The seams global effect, and the fills its strips were last drawn from in the cache: a cell drawn
+    // again whose fill changed draws its neighbours again too.
+    private SeamFade? _seams;
+    private IReadOnlyList<Color?>? _seamFills;
     private bool _locked;
     private bool _hoveringHandle;
     private bool _panning;
@@ -318,6 +323,29 @@ internal sealed class GridPreview : Control
             UpdateDisplaySizes();
             Invalidate();
             ContentVersion++;
+        }
+    }
+
+    /// <summary>
+    /// The seams fading the cells' flat fills into each other; <c>null</c> when they are off. Drawn by
+    /// <see cref="Compositor"/>, which leaves them out while the borders leave a gap.
+    /// </summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public SeamFade? Seams
+    {
+        get => this._seams;
+        set
+        {
+            if (value == this._seams)
+            {
+                return;
+            }
+
+            this._seams = value;
+            this._cache?.Dispose();
+            this._cache = null;
+            this.Invalidate();
+            this.ContentVersion++;
         }
     }
 
@@ -819,8 +847,10 @@ internal sealed class GridPreview : Control
             _cache = new Bitmap(canvas.Width, canvas.Height);
             using (var cacheGraphics = Graphics.FromImage(_cache))
             {
-                Compositor.Draw(cacheGraphics, _images, _layout!, canvas.Size, _borders, this._player.GridTime);
+                Compositor.Draw(cacheGraphics, _images, _layout!, canvas.Size, _borders, this._player.GridTime, this._seams);
             }
+
+            this._seamFills = this.SeamsOf(Compositor.Cells(_layout!, canvas.Size, _borders))?.Fills;
 
             // The Twitter corners cut as a PNG is: the preview shows what Twitter / X shows.
             _borders?.CutCorners(_cache);
@@ -1596,17 +1626,9 @@ internal sealed class GridPreview : Control
         }
 
         bool live = image == _live;
-        var cell = Compositor.Cells(_layout, canvas.Size, _borders)[index];
-        using (var g = Graphics.FromImage(_cache))
-        {
-            ClearCell(g, cell);
-            Compositor.DrawCell(g, this.FrameOf(image), cell, fast: live);
-            DrawBordersOver(g, cell, canvas.Size);
-        }
-
-        _borders?.CutCorners(_cache, cell);
-        cell.Offset(canvas.Location);
-        Invalidate(cell);
+        var area = this.DrawIntoCache([index], canvas.Size, fast: live);
+        area.Offset(canvas.Location);
+        Invalidate(area);
         if (live)
         {
             Update();
@@ -1633,6 +1655,51 @@ internal sealed class GridPreview : Control
         g.Clear(Color.Transparent);
         g.ResetClip();
     }
+
+    /// <summary>
+    /// Draws the cells <paramref name="indices"/> again into the cached preview — every cell when a fill
+    /// the seams fade has changed since they were drawn, so the neighbours' strips follow it — and
+    /// returns the area drawn, in the canvas.
+    /// </summary>
+    private Rectangle DrawIntoCache(int[] indices, Size canvas, bool fast)
+    {
+        var cells = Compositor.Cells(this._layout!, canvas, this._borders);
+        var seams = this.SeamsOf(cells);
+        var drawn = indices.Where(i => i < this._images.Count).ToList();
+        if (seams is not null && !SameFills(seams.Fills, this._seamFills))
+        {
+            drawn = [.. Enumerable.Range(0, Math.Min(this._images.Count, cells.Length))];
+        }
+
+        this._seamFills = seams?.Fills;
+        var area = Rectangle.Empty;
+        using (var g = Graphics.FromImage(this._cache!))
+        {
+            foreach (int i in drawn)
+            {
+                ClearCell(g, cells[i]);
+                Compositor.DrawCell(g, this.FrameOf(this._images[i]), cells[i], fast, seams);
+                this.DrawBordersOver(g, cells[i], canvas);
+                area = area.IsEmpty ? cells[i] : Rectangle.Union(area, cells[i]);
+            }
+        }
+
+        // Each cell cut on its own: the union may cover cells not drawn again, already cut.
+        foreach (int i in drawn)
+        {
+            this._borders?.CutCorners(this._cache!, cells[i]);
+        }
+
+        return area;
+    }
+
+    /// <summary>The seams of the grid as it plays now, on <paramref name="cells"/>; <c>null</c> when none fades.</summary>
+    private SeamField? SeamsOf(Rectangle[] cells) =>
+        this._seams is null ? null : SeamField.Of([.. this._images.Select(this.FrameOf)], cells, this._seams, this._borders);
+
+    /// <summary>Whether two lists of fills are the same colors, compared by value.</summary>
+    private static bool SameFills(IReadOnlyList<Color?> fills, IReadOnlyList<Color?>? others) =>
+        others is not null && fills.Count == others.Count && fills.Zip(others).All(p => p.First?.ToArgb() == p.Second?.ToArgb());
 
     /// <summary>
     /// The grey and white squares of drawing apps under the whole grid, 8 logical px each: they show
@@ -2127,7 +2194,7 @@ internal sealed class GridPreview : Control
 
     /// <summary>
     /// Every image's offset from its cell's center in the PNG export of the grid as it stands — its canvas
-    /// and cells as <see cref="Compositor.Render(IReadOnlyList{Frame}, GridLayout, double, GridBorders?)"/>
+    /// and cells as <see cref="Compositor.Render(IReadOnlyList{Frame}, GridLayout, double, GridBorders?, SeamFade?)"/>
     /// gives them —, x to the right, y downward; <c>null</c> without a layout holding the images.
     /// </summary>
     private Point[]? ExportOffsets()
@@ -2918,26 +2985,7 @@ internal sealed class GridPreview : Control
             return;
         }
 
-        var cells = Compositor.Cells(_layout, canvas.Size, _borders);
-        var area = Rectangle.Empty;
-        using (var g = Graphics.FromImage(_cache))
-        {
-            foreach (int i in indices.Where(i => i < _images.Count))
-            {
-                var image = _images[i];
-                ClearCell(g, cells[i]);
-                Compositor.DrawCell(g, this.FrameOf(image), cells[i], fast: true);
-                DrawBordersOver(g, cells[i], canvas.Size);
-                area = area.IsEmpty ? cells[i] : Rectangle.Union(area, cells[i]);
-            }
-        }
-
-        // Each cell cut on its own: the union may cover cells not drawn again, already cut.
-        foreach (int i in indices.Where(i => i < _images.Count))
-        {
-            _borders?.CutCorners(_cache, cells[i]);
-        }
-
+        var area = this.DrawIntoCache(indices, canvas.Size, fast: true);
         area.Offset(canvas.Location);
         Invalidate(area);
         Update();

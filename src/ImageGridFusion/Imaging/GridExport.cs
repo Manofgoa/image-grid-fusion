@@ -18,13 +18,14 @@ internal static class GridExport
     /// </summary>
     public sealed class Job : IDisposable
     {
-        private Job(IReadOnlyList<Item> items, GridLayout layout, double ratio, GridBorders? borders, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack, SoundFade? fade)
+        private Job(IReadOnlyList<Item> items, GridLayout layout, double ratio, GridBorders? borders, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack, SoundFade? fade, SeamFade? seams)
         {
             Items = items;
             Layout = layout;
             Ratio = ratio;
             Borders = borders;
             Fade = fade;
+            this.Seams = seams;
             Length = Animation.VideoLength(items.Select(i => Animation.LoopOf(i.Loop, i.Look)).DefaultIfEmpty(TimeSpan.Zero).Max(), soundtrack);
 
             // The soundtrack loops on its own length, cut where the video ends.
@@ -45,6 +46,9 @@ internal static class GridExport
         /// <summary>The fade of the mixed sounds, in at the start of the video and out at its end; <c>null</c> while it is off.</summary>
         public SoundFade? Fade { get; }
 
+        /// <summary>The seams fading the cells' flat fills into each other; <c>null</c> while they are off.</summary>
+        public SeamFade? Seams { get; }
+
         /// <summary>The sounds mixed into the video: each from the starting point of its video, at its volume; the soundtrack last.</summary>
         public IReadOnlyList<MixedSound> Sounds { get; }
 
@@ -53,10 +57,10 @@ internal static class GridExport
 
         /// <summary>
         /// The grid as it stands, at its <paramref name="ratio"/>, with its <paramref name="borders"/>,
-        /// <paramref name="soundtrack"/> mixed over its sounds when one is on, and the mix faded by
-        /// <paramref name="fade"/> when it is on.
+        /// <paramref name="soundtrack"/> mixed over its sounds when one is on, the mix faded by
+        /// <paramref name="fade"/> when it is on, and the cells' fills faded by <paramref name="seams"/>.
         /// </summary>
-        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders, Soundtrack? soundtrack = null, SoundFade? fade = null) => new(
+        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders, Soundtrack? soundtrack = null, SoundFade? fade = null, SeamFade? seams = null) => new(
             images.Select(i => i.Plays
                 ? new Item(null, i.BandColor, i.Pages, i.Pages!.LoopDuration, i.Look, i.Page, i.StartTime)
                 : i.IsAnimated
@@ -67,7 +71,8 @@ internal static class GridExport
             borders,
             Animation.Heard(images),
             soundtrack,
-            fade);
+            fade,
+            seams);
 
         public void Dispose()
         {
@@ -172,7 +177,7 @@ internal static class GridExport
                 // Neither format keeps an alpha channel: a cell without background is flattened on white,
                 // cleared at each frame so the previous one does not show through.
                 g.Clear(Color.White);
-                Compositor.Draw(g, frames, job.Layout, canvas, job.Borders);
+                Compositor.Draw(g, frames, job.Layout, canvas, job.Borders, job.Seams);
                 encoder.WriteFrame(bitmap, time, Animation.FrameTime(k + 1) - time);
                 progress?.Report((k + 1) / (double)count);
             }
@@ -226,7 +231,7 @@ internal static class GridExport
                 frames[i] = new Frame(frame, BandColor.Of(frame), item.Look);
             }
 
-            return Compositor.Render(frames, job.Layout, job.Ratio, job.Borders);
+            return Compositor.Render(frames, job.Layout, job.Ratio, job.Borders, job.Seams);
         }
         finally
         {
