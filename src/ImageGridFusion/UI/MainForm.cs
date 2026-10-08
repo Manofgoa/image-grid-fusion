@@ -967,6 +967,14 @@ internal sealed class MainForm : Form
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
+        // The explorer's tiles focused, Ctrl+C copies the selected tile's file, never the grid
+        // (see workfiles/20261008-explorer-tile-copy-menu.md).
+        if (keyData == (Keys.Control | Keys.C) && this._explorer.TilesFocused)
+        {
+            this._explorer.CopySelected();
+            return true;
+        }
+
         // The preview focused, the arrows move the selected image within its cell, whatever tab is selected;
         // any other focused control keeps them (see workfiles/20261006-keyboard-image-move.md).
         // Ctrl + Shift jumps to the next stop instead.
