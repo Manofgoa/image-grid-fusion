@@ -29,11 +29,16 @@ own Copy in `UI/MainForm.cs` (the clipboard formats a PNG is given there).
 
 | Tile | Entries |
 |---|---|
-| File | **Copy**, **Copy PNG**, a separator, **Open file location** |
+| File | **Copy** (shortcut shown: `Ctrl+C`), **Copy PNG**, a separator, **Open file location** |
 | Folder | **Open in Explorer** only, as today — Copy and Copy PNG **hidden** |
 | Loading… slot, empty space | No menu (as today: `RowAt` gives no row, the opening is cancelled) |
 
 - The menu acts on the **tile right-clicked**, which the right-click selects (existing behaviour).
+- **Ctrl+C** with the **tiles focused** (`ThumbnailGrid`) does **Copy** on the selected file tile —
+  the menu's Copy, not the grid's. `MainForm.ProcessCmdKey` hands it to the explorer, next to the
+  search box's own whitelist (`IsEditingText`). With the tiles focused, Ctrl+C belongs to them: a
+  folder tile, or no tile, selected → nothing is copied, the grid neither. Anywhere else, Ctrl+C
+  copies the grid, as today. Copy PNG has no shortcut.
 - A file gone from the disk: both entries go through `Exists(row)`, as Open file location does —
   the file leaves the index and the favorites, the status line says so, nothing is copied.
 
@@ -48,7 +53,9 @@ own Copy in `UI/MainForm.cs` (the clipboard formats a PNG is given there).
 
 - The image is **`ImageLoader.TryLoadFile(path)`'s bitmap** — what the cell shows when the file
   arrives in it — at its **full size**, no effect applied (no crop, zoom, background…: the file
-  alone, not a cell).
+  alone, not a cell). For a video, that is the frame at **10 % of its length**
+  (`VideoFrames.InitialPage`), not its often black first frame; for an animated GIF, a PDF or a
+  text, their initial page.
 - Loaded **off the UI thread** (`TryLoadFile` blocks on file and WinRT calls), the clipboard set
   back on the UI thread; the `SourceImage` disposed once copied.
 - The clipboard formats are **those of the grid's Copy as PNG** (`MainForm`): a standard bitmap
@@ -73,14 +80,14 @@ wiring — a menu, the clipboard, an existing loader — with no new pure logic 
 
 ## Open Questions
 
-- [ ] For a video, Copy PNG takes the frame the cell shows on arrival — at **10 % of its length**
-  (`VideoFrames.InitialPage`) — or the **very first frame** (often black)?
-- [ ] On a folder tile: Copy and Copy PNG **hidden** (only Open in Explorer stays), or shown
-  **disabled**?
-- [ ] **Ctrl+C** on a selected tile (the tiles focused): does it do Copy, or is the menu the only
-  route? (Ctrl+C elsewhere in the window copies the grid — `MainForm`.)
-- [ ] Menu order: **Copy, Copy PNG**, separator, **Open file location** — or Open file location
-  first?
+- [x] ~~For a video, Copy PNG takes the frame the cell shows on arrival — at 10 % of its length
+  (`VideoFrames.InitialPage`) — or the very first frame (often black)?~~ → As the cell: at 10 %
+- [x] ~~On a folder tile: Copy and Copy PNG hidden (only Open in Explorer stays), or shown
+  disabled?~~ → Hidden
+- [x] ~~Ctrl+C on a selected tile (the tiles focused): does it do Copy, or is the menu the only
+  route?~~ → Ctrl+C does Copy while the tiles are focused; the grid's Ctrl+C everywhere else
+- [x] ~~Menu order: Copy, Copy PNG, separator, Open file location — or Open file location
+  first?~~ → Copy first
 
 ---
 
@@ -99,6 +106,13 @@ tiles only. Exploration found the existing menu (Open file location / Open in Ex
 right-click already selecting the tile, the grid Copy's PNG clipboard formats, and no test
 project. Four points left open, above.
 
+### Iteration 2 — 2026-10-08
+
+The four open points settled (Q&A 5–8): a video's frame at 10 % as the cell shows it, Copy / Copy
+PNG hidden on folder tiles, Ctrl+C doing Copy while the tiles are focused, Copy first in the menu.
+Added from reading `MainForm.ProcessCmdKey`: with the tiles focused, Ctrl+C belongs to them — a
+folder tile or none selected copies nothing, not the grid; the menu's Copy shows its `Ctrl+C`.
+
 ---
 
 ## Implementation Log
@@ -110,7 +124,7 @@ says so rather than staying blank.
 |---|---|---|---|
 | Code | | | |
 | Unit tests | | | No test project in the repository — see § Test Impact |
-| README | | | `README.md` and `README.fr.md` § file explorer: the right-click menu's entries |
+| README | | | `README.md` and `README.fr.md` § file explorer: the right-click menu's entries, Ctrl+C on a tile |
 
 ---
 
@@ -124,10 +138,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | What does Copy PNG do on a tile that is not a still image (video, animated GIF, PDF, text)? | Its first frame / preview, as the app shows it in a cell | 2026-10-08 |
 | 3 | Does the menu apply to folder tiles too? | No, file tiles only | 2026-10-08 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward — a single scout pass | 2026-10-08 |
-| 5 | For a video, Copy PNG takes the frame at 10 % (as the cell) or the very first one? | | |
-| 6 | On a folder tile, Copy / Copy PNG hidden or disabled? | | |
-| 7 | Ctrl+C on a selected tile does Copy? | | |
-| 8 | Menu order? | | |
+| 5 | For a video, Copy PNG takes the frame at 10 % (as the cell) or the very first one? | As the cell, at 10 % | 2026-10-08 |
+| 6 | On a folder tile, Copy / Copy PNG hidden or disabled? | Hidden | 2026-10-08 |
+| 7 | Ctrl+C on a selected tile does Copy? | Yes, while the tiles are focused | 2026-10-08 |
+| 8 | Menu order? | Copy, Copy PNG, separator, Open file location | 2026-10-08 |
 
 ---
 
