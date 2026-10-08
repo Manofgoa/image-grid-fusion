@@ -103,6 +103,12 @@ chained: the button, its handler, `ProcessCmdKey`):
 Open question answered (Q&A #5): `Ctrl+N` is **ignored during a gesture** (`GridPreview.InGesture` or a
 mouse button held), as undo is — § Behaviour updated. No open question left.
 
+### Iteration 3 — 2026-10-08 — ✅ Implemented
+
+Go given: **code, unit tests and documentation**, in a **worktree** —
+`.claude/worktrees/ctrl-n-clear-all`, branch `feature/ctrl-n-clear-all`. The scope is frozen as the
+sections above stand.
+
 ---
 
 ## Implementation Log
