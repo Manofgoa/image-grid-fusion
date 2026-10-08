@@ -161,9 +161,9 @@ internal sealed class AnimationPlayer : IDisposable
     /// </summary>
     public double? ProgressOf(SourceImage image)
     {
-        if (this._playbacks.TryGetValue(image, out var playback) && playback.PausedAt is null && image.Pages is { } pages)
+        if (this._playbacks.TryGetValue(image, out var playback) && playback.PausedAt is null && image.Pages is not null)
         {
-            return Animation.Progress(this.Position(playback), pages.LoopDuration);
+            return Animation.Progress(this.Position(playback), image.PlayedLength);
         }
 
         return image.Look.Motion is { } motion && this._images.Contains(image)
@@ -296,9 +296,11 @@ internal sealed class AnimationPlayer : IDisposable
             playback.Reader = await Task.Run(pages.OpenAnimation, cancellation);
             while (!cancellation.IsCancellationRequested && !image.IsDisposed)
             {
-                var loop = pages.LoopDuration;
-                var time = Animation.LoopTime(Position(playback), loop);
+                // Content time, within the part the frames effect leaves to play.
+                var loop = image.PlayedLength;
+                var time = image.ContentTime(this.Position(playback));
                 bool playing = playback.PausedAt is null;
+                this._sound.Span(image, image.PlayedFrom, image.PlayedFrom + loop);
                 _sound.Sync(image, time, playing);
 
                 if (playing && loop > TimeSpan.Zero)

@@ -1709,7 +1709,7 @@ internal sealed class MainForm : Form
             : $"cell {Enumerable.Range(0, images.Count).First(n => images[n] == image) + 1}";
 
         // A loop is a playing content's, or the cycle of an Animations effect when longer.
-        string Loop(SourceImage image) => image.Plays && Animation.LoopOf(image) == image.Pages!.LoopDuration
+        string Loop(SourceImage image) => image.Plays && Animation.LoopOf(image) == image.PlayedLength
             ? $"{Name(image)}'s"
             : $"{Name(image)}'s animation";
 
