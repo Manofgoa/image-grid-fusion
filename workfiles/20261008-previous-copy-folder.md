@@ -154,6 +154,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | Link with the temp folder `%TEMP%\ImageGridFusion`? | An extra copy: the temp folder stays as it is, `previous` holds a copy | 2026-10-08 |
 | 3 | How are the cells' file names combined? | Joined by ` + `, cell order, no extension, duplicates removed, capped; no file → `fusion-YYYYMMDD-HHMMSS` | 2026-10-08 |
 | 4 | Straightforward or tricky subject? | Straightforward — one scout pass | 2026-10-08 |
+| 5 | Combined name also on the clipboard's temp file and Save's default name? | | |
+| 6 | Length cap of the combined name? | | |
+| 7 | What a failure to write `previous` does? | | |
+| 8 | Glossary term? | | |
 
 ---
 
