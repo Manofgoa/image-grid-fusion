@@ -163,6 +163,17 @@ internal sealed class MainForm : Form
     private readonly StepSlider _frames = OptionSlider(0, 1, 10);
     private readonly Label _framesLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _freeze = new() { Text = "Freeze", AutoSize = true, Anchor = AnchorStyles.Left };
+
+    // The Frames effect's trim and its starting point's fields (workfiles/20261008-video-trim.md).
+    private readonly Label _framesCaption = new() { Text = "Starts at", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly FrameField _framesField = new();
+    private readonly Label _trimFromLabel = new() { Text = "From", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly StepSlider _trimFrom = OptionSlider(0, 1, 10);
+    private readonly FrameField _trimFromField = new();
+    private readonly Label _trimToLabel = new() { Text = "To", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly StepSlider _trimTo = OptionSlider(0, 1, 10);
+    private readonly FrameField _trimToField = new();
+    private readonly FlowLayoutPanel _trimLines = OptionLine();
     private readonly PictureBox _grayscaleIcon = new() { SizeMode = PictureBoxSizeMode.CenterImage, Anchor = AnchorStyles.Left };
     private readonly TrackBar _grayscale = OptionSlider(0, 100, 10);
     private readonly Label _grayscaleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
@@ -388,7 +399,21 @@ internal sealed class MainForm : Form
         this._options[ImageEffect.Animations].Controls.AddRange([this._motionKind, this._motionCycle, this._motionCycleLabel]);
         _options[ImageEffect.Rotate].Controls.AddRange([this._quarterTurns, _fineAngle, _fineAngleLabel]);
         _options[ImageEffect.Flip].Controls.Add(this._flip);
-        _options[ImageEffect.Frames].Controls.AddRange([_frames, _framesLabel, _freeze]);
+        // The trim on two lines at the left, the starting point and Freeze at the right (layout A).
+        this._trimToLabel.MinimumSize = new Size(this._trimFromLabel.PreferredWidth, 0);
+        var trimFromLine = OptionLine();
+        trimFromLine.Controls.AddRange([this._trimFromLabel, this._trimFrom, this._trimFromField]);
+        var trimToLine = OptionLine();
+        trimToLine.Controls.AddRange([this._trimToLabel, this._trimTo, this._trimToField]);
+        this._trimLines.FlowDirection = FlowDirection.TopDown;
+        this._trimLines.Controls.AddRange([trimFromLine, trimToLine]);
+        var framesStartLine = OptionLine();
+        framesStartLine.Controls.AddRange([this._framesCaption, _frames, this._framesField, _framesLabel]);
+        var framesStartLines = OptionLine();
+        framesStartLines.FlowDirection = FlowDirection.TopDown;
+        framesStartLines.Controls.AddRange([framesStartLine, _freeze]);
+        var framesSeparator = new Label { AutoSize = false, Width = 2, BorderStyle = BorderStyle.Fixed3D, Anchor = AnchorStyles.Top | AnchorStyles.Bottom, Margin = new Padding(8, 4, 8, 4) };
+        _options[ImageEffect.Frames].Controls.AddRange([this._trimLines, framesSeparator, framesStartLines]);
         _options[ImageEffect.BlackAndWhite].Controls.AddRange([_grayscaleIcon, _grayscale, _grayscaleLabel]);
         _options[ImageEffect.Blur].Controls.AddRange([this._blurKind, _blurIntensityIcon, _blurIntensity, _blurIntensityLabel]);
         _options[ImageEffect.Volume].Controls.AddRange([_mute, _volume, _volumeLabel]);
@@ -562,8 +587,35 @@ internal sealed class MainForm : Form
         };
 
         this._flip.Picked += (_, axis) => this.ChangeLook(ImageEffect.Flip, look => axis == FlipAxis.Horizontal ? look.ToggleFlipX() : look.ToggleFlipY());
-        _frames.ValueChanged += (_, _) => ChangeFrames(frames => frames.AtPage(_frames.Value, _frames.Maximum + 1));
-        _frames.ControlWheel = StepFrames;
+        _frames.ValueChanged += (_, _) => ChangeFrames(frames => frames.AtPage(_frames.Value, this.FrameCount));
+        _frames.ControlWheel = notches => this.StepFrames(this._frames, notches);
+        this._framesField.ValueChanged += (_, _) => this._frames.Value = this._framesField.Value;
+
+        // A bound pushed against the other stops there, one frame of the content at least.
+        this._trimFrom.ValueChanged += (_, _) =>
+        {
+            if (!this._syncingEffects && this._trimFrom.Value > this._trimTo.Value)
+            {
+                this._trimFrom.Value = this._trimTo.Value;
+                return;
+            }
+
+            this.ChangeFrames(frames => frames.WithTrim(this._trimFrom.Value, this._trimTo.Value, this.FrameCount));
+        };
+        this._trimTo.ValueChanged += (_, _) =>
+        {
+            if (!this._syncingEffects && this._trimTo.Value < this._trimFrom.Value)
+            {
+                this._trimTo.Value = this._trimFrom.Value;
+                return;
+            }
+
+            this.ChangeFrames(frames => frames.WithTrim(this._trimFrom.Value, this._trimTo.Value, this.FrameCount));
+        };
+        this._trimFrom.ControlWheel = notches => this.StepFrames(this._trimFrom, notches);
+        this._trimTo.ControlWheel = notches => this.StepFrames(this._trimTo, notches);
+        this._trimFromField.ValueChanged += (_, _) => this._trimFrom.Value = this._trimFromField.Value;
+        this._trimToField.ValueChanged += (_, _) => this._trimTo.Value = this._trimToField.Value;
         _freeze.CheckedChanged += (_, _) => ChangeFrames(frames => frames.WithFrozen(_freeze.Checked));
         _grayscale.ValueChanged += (_, _) =>
         {
@@ -960,8 +1012,8 @@ internal sealed class MainForm : Form
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
-        // Typed in the file explorer's search box, these keys edit its text, not the grid.
-        if (_explorer.IsEditingText && keyData is (Keys.Control | Keys.V) or (Keys.Control | Keys.C) or Keys.Delete or Keys.Escape
+        // Typed in the file explorer's search box, or in a Frames field, these keys edit its text, not the grid.
+        if ((_explorer.IsEditingText || this.IsEditingFrameField) && keyData is (Keys.Control | Keys.V) or (Keys.Control | Keys.C) or Keys.Delete or Keys.Escape
             or (Keys.Control | Keys.Z) or (Keys.Control | Keys.Y) or (Keys.Control | Keys.Shift | Keys.Z))
         {
             return base.ProcessCmdKey(ref msg, keyData);
@@ -2485,15 +2537,21 @@ internal sealed class MainForm : Form
     }
 
     /// <summary>
-    /// Control + wheel on the frames slider: the starting point moves by 5 % of the frame count,
-    /// snapped onto the multiples of 5 % of the animation, at least one frame per notch.
+    /// Control + wheel on a Frames slider — the starting point, a trim bound: it moves by 5 % of the
+    /// frames the slider covers, snapped onto the multiples of 5 % of its course, at least one frame per notch.
     /// </summary>
-    private void StepFrames(int notches)
+    private void StepFrames(StepSlider slider, int notches)
     {
-        int count = _frames.Maximum + 1;
-        double at = WheelSteps.Snap(_frames.Value * 100.0 / count, WheelSteps.Percent, notches);
-        _frames.Value = WheelSteps.Within(_frames.Value, (int)Math.Round(at * count / 100), notches, _frames.Minimum, _frames.Maximum);
+        int count = slider.Maximum - slider.Minimum + 1;
+        double at = WheelSteps.Snap((slider.Value - slider.Minimum) * 100.0 / count, WheelSteps.Percent, notches);
+        slider.Value = WheelSteps.Within(slider.Value, slider.Minimum + (int)Math.Round(at * count / 100), notches, slider.Minimum, slider.Maximum);
     }
+
+    /// <summary>A field of the Frames options holds the focus: it keeps the editing keys (RULES.md § Undo History).</summary>
+    private bool IsEditingFrameField => this._framesField.IsEditing || this._trimFromField.IsEditing || this._trimToField.IsEditing;
+
+    /// <summary>The frames, or pages, of the selected image's content; 1 without one.</summary>
+    private int FrameCount => this._preview.SelectedImage?.Pages?.Count ?? 1;
 
     private void SetFineAngle()
     {
@@ -2518,11 +2576,18 @@ internal sealed class MainForm : Form
         ChangeLook(ImageEffect.Frames, look => look.Frames is { } frames ? look.WithFrames(change(frames)) : look);
     }
 
+    /// <summary>
+    /// The starting point's caption, and its value: in its fields for a video or a GIF, kept in step
+    /// with the sliders; as a label for the pages of a PDF or a text.
+    /// </summary>
     private void UpdateFramesLabel()
     {
         var pages = _preview.SelectedImage?.Pages;
-        string at = pages is null ? "" : pages.Label(Math.Clamp(_frames.Value, 0, pages.Count - 1));
-        _framesLabel.Text = _freeze.Checked ? $"Frozen on: {at}" : $"Starts at: {at}";
+        this._framesCaption.Text = _freeze.Checked ? "Frozen on" : "Starts at";
+        _framesLabel.Text = pages is null ? "" : pages.Label(Math.Clamp(_frames.Value, 0, pages.Count - 1));
+        this._framesField.Set(this._frames.Value, this._frames.Minimum, this._frames.Maximum);
+        this._trimFromField.Set(this._trimFrom.Value, this._trimFrom.Minimum, this._trimTo.Value);
+        this._trimToField.Set(this._trimTo.Value, this._trimFrom.Value, this._trimTo.Maximum);
     }
 
     /// <summary>A ratio button: the kept part reshaped to it around its center, or freed.</summary>
@@ -2672,10 +2737,29 @@ internal sealed class MainForm : Form
             this._flip.FlipY = flipped.FlipY;
             if (look.TurnOn(ImageEffect.Frames).Frames is { } frames && image!.Pages is { } pages)
             {
-                _frames.Maximum = Math.Max(0, pages.Count - 1);
-                _frames.Value = frames.PageOf(pages.Count);
+                // The kept trim of a video or a GIF; the starting point's slider covers the trimmed part only.
+                int count = pages.Count;
+                int first = image.Trims ? frames.FirstOf(count) : 0;
+                int last = image.Trims ? frames.LastOf(count) : Math.Max(0, count - 1);
+                this._trimFrom.SetRange(0, Math.Max(0, count - 1));
+                this._trimTo.SetRange(0, Math.Max(0, count - 1));
+                this._trimFrom.Value = first;
+                this._trimTo.Value = last;
+                _frames.SetRange(first, last);
+                _frames.Value = Math.Clamp(frames.PageOf(count), first, last);
                 _freeze.Checked = frames.Frozen;
+                double? rate = image.Trims ? pages.FrameRate : null;
+                this._framesField.SetFrameRate(rate);
+                this._trimFromField.SetFrameRate(rate);
+                this._trimToField.SetFrameRate(rate);
             }
+
+            // Only a video or a GIF is trimmed and gets the starting point's fields.
+            bool trims = image?.Trims == true;
+            this._trimLines.Enabled = trims;
+            this._toolTip.SetToolTip(this._trimLines, trims ? null : "The trim only applies to videos and animated GIFs");
+            this._framesField.Visible = trims;
+            _framesLabel.Visible = !trims;
 
             if (look.TurnOn(ImageEffect.BlackAndWhite).Grayscale is { } grayscale)
             {
