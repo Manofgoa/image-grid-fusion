@@ -207,6 +207,11 @@ No project rule broken. Choices the frozen design did not state:
 Noticed, not done (scope freeze): the **Seams** global effect is missing from the README's tab list
 and § Global, and from the glossary's *Global effect* row — offered as an Open Question.
 
+### Iteration 6 — 2026-10-08 — ⚙️ Post-implementation — Merged, task finished
+
+The user chose to merge: `feature/video-cascade` merged into `main` (`--no-ff`), the worktree and the
+branch removed. The user confirmed the task finished.
+
 ---
 
 ## Implementation Log
