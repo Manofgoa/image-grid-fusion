@@ -296,6 +296,14 @@ internal sealed class MainForm : Form
     private GridBorders _borders = GridBorders.Initial(AppSettings.BorderColor, AppSettings.TwitterCornersByDefault);
     private bool _bordersOn;
 
+    // The seams' option: how far the fade reaches from a seam, in percent of the smallest cell's shorter side.
+    private readonly TrackBar _seamsDepth = OptionSlider((int)Math.Round(SeamFade.MinDepth * 100), (int)Math.Round(SeamFade.MaxDepth * 100), 5);
+    private readonly Label _seamsDepthLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+
+    // The seams' settings, kept while they are off; back to their initial state, off, with their Resets and Clear all.
+    private SeamFade _seams = SeamFade.Initial;
+    private bool _seamsOn;
+
     // Ctrl+Z / Ctrl+Y over everything the user composes (RULES.md § Undo History); started once the
     // startup files are in, so they are the initial state.
     private readonly GridHistory _history;
@@ -417,6 +425,7 @@ internal sealed class MainForm : Form
         _globalOptions[GlobalEffect.Fade].Controls.AddRange([_fadeDuration, _fadeDurationLabel, _fadeSquared, _fadeLinear]);
         _globalOptions[GlobalEffect.Borders].Controls.AddRange(
             [_bordersStyle, _bordersThickness, _bordersThicknessLabel, _bordersOpacity, _bordersOpacityLabel, _bordersOuterFrame, _bordersRounded]);
+        this._globalOptions[GlobalEffect.Seams].Controls.AddRange([this._seamsDepth, this._seamsDepthLabel]);
 
         // Docked in reverse order of addition: the options row and the tabs row, then the bottom bar,
         // the global options row above it and the global tabs row above that, span the whole width; the
@@ -638,6 +647,12 @@ internal sealed class MainForm : Form
         };
         _fadeSquared.Click += (_, _) => ChangeFade(fade => fade.WithCurve(FadeCurve.Squared));
         _fadeLinear.Click += (_, _) => ChangeFade(fade => fade.WithCurve(FadeCurve.Linear));
+        this._toolTip.SetToolTip(this._seamsDepth, "How far the backgrounds of neighbour cells fade into each other from the edges they share, as a share of the smallest cell's shorter side");
+        this._seamsDepth.ValueChanged += (_, _) =>
+        {
+            this._seamsDepthLabel.Text = DepthText(this._seamsDepth.Value);
+            this.ChangeSeams(seams => seams.WithDepth(this._seamsDepth.Value / 100.0));
+        };
         _toolTip.SetToolTip(_bordersStyle, "Brackets at the grid's corners, or a gap between the cells; the borders' color is in the ⚙ settings");
         _toolTip.SetToolTip(_bordersThickness, "Width of the borders, as a share of the grid's shorter side");
         _toolTip.SetToolTip(_bordersOuterFrame, "Also draws the borders around the grid; the corner brackets already are its frame");
@@ -774,6 +789,7 @@ internal sealed class MainForm : Form
         _globalTabs.SetIcon(GlobalEffect.Soundtrack, EffectIcons.Soundtrack(size));
         _globalTabs.SetIcon(GlobalEffect.Fade, EffectIcons.Fade(size));
         _globalTabs.SetIcon(GlobalEffect.Borders, EffectIcons.Borders(size));
+        this._globalTabs.SetIcon(GlobalEffect.Seams, EffectIcons.Seams(size));
         _resetButton.Image = EffectIcons.Reset(size);
         _effectResetButton.Image = EffectIcons.Reset(size);
         _globalResetButton.Image = EffectIcons.Reset(size);
@@ -1382,7 +1398,9 @@ internal sealed class MainForm : Form
             this._fade,
             this._fadeOn,
             this._borders with { Color = Color.Empty },
-            this._bordersOn));
+            this._bordersOn,
+            this._seams,
+            this._seamsOn));
 
     /// <summary>
     /// Ctrl+Z (<paramref name="undo"/>) or Ctrl+Y / Ctrl+Shift+Z: the grid one step back or forward, the
@@ -1424,6 +1442,8 @@ internal sealed class MainForm : Form
         this._fadeOn = global.FadeOn;
         this._borders = global.Borders with { Color = this._borders.Color };
         this._bordersOn = global.BordersOn;
+        this._seams = global.Seams;
+        this._seamsOn = global.SeamsOn;
 
         // The sound first: a grid starting over then starts the soundtrack restored from its beginning.
         this._preview.Soundtrack = this.ActiveSoundtrack;
@@ -1432,6 +1452,7 @@ internal sealed class MainForm : Form
 
         // After the format, which tells whether the Twitter corners apply.
         this._preview.Borders = this.ActiveBorders;
+        this._preview.Seams = this.ActiveSeams;
         this.UpdateButtons();
     }
 
@@ -1464,9 +1485,10 @@ internal sealed class MainForm : Form
         bool soundtrack = _soundtrack is not null;
         bool borders = !BordersInitial;
         bool fade = !FadeInitial;
+        bool seams = !this.SeamsInitial;
         bool format = !FormatInitial;
         bool soundtrackInitial = SoundtrackInitial;
-        if (count == 0 && soundtrackInitial && !borders && !fade && !format)
+        if (count == 0 && soundtrackInitial && !borders && !fade && !seams && !format)
         {
             return;
         }
@@ -1502,6 +1524,11 @@ internal sealed class MainForm : Form
             reset.Add("fade");
         }
 
+        if (seams)
+        {
+            reset.Add("seams");
+        }
+
         if (format)
         {
             reset.Add("format");
@@ -1510,7 +1537,7 @@ internal sealed class MainForm : Form
         string resetText = reset.Count > 1 ? $"{string.Join(", ", reset[..^1])} and {reset[^1]}" : reset.FirstOrDefault() ?? "";
         ShowStatus(removed.Count > 0
             ? $"{string.Join(" and ", removed)} removed."
-            : $"{char.ToUpperInvariant(resetText[0])}{resetText[1..]} back to {(reset.Count > 1 || borders ? "their" : "its")} initial state.");
+            : $"{char.ToUpperInvariant(resetText[0])}{resetText[1..]} back to {(reset.Count > 1 || borders || seams ? "their" : "its")} initial state.");
     }
 
     /// <summary>Copies the grid in the format its content suits: a PNG, or an MP4 video while a content plays or a soundtrack is on.</summary>
@@ -1939,6 +1966,16 @@ internal sealed class MainForm : Form
             ? null
             : "Nothing is heard: no video plays with its sound, and no soundtrack is on";
 
+    /// <summary>The seams, <c>null</c> while they are off; the compositor leaves them out while the borders leave a gap.</summary>
+    private SeamFade? ActiveSeams => this._seamsOn ? this._seams : null;
+
+    /// <summary>Whether the seams are in their initial state: off, 10 %.</summary>
+    private bool SeamsInitial => !this._seamsOn && this._seams == SeamFade.Initial;
+
+    /// <summary>Why the seams do not apply — the borders leave a gap, the cells no longer touch — or <c>null</c> when they do.</summary>
+    private string? SeamsUnavailable =>
+        this.ActiveBorders is { HasGap: true } ? "The borders leave a gap between the cells: they no longer touch" : null;
+
     /// <summary>A video to export: content that plays, or a soundtrack over stills.</summary>
     private bool ProducesVideo => HasAnimation || ActiveSoundtrack is not null;
 
@@ -1972,10 +2009,10 @@ internal sealed class MainForm : Form
         if (!_preview.Images.Any(i => i.IsAnimated))
         {
             Cursor.Current = Cursors.WaitCursor;
-            return Compositor.Render(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders);
+            return Compositor.Render(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, this.ActiveSeams);
         }
 
-        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders);
+        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, seams: this.ActiveSeams);
         BeginExport("Rendering the image…", cancellable: false);
         try
         {
@@ -1999,7 +2036,7 @@ internal sealed class MainForm : Form
     /// </summary>
     private async Task<GridExport.Result?> ExportAnimationAsync(string path, GridExport.Format format)
     {
-        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, ActiveSoundtrack, ActiveFade);
+        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, ActiveSoundtrack, ActiveFade, this.ActiveSeams);
         string what = format == GridExport.Format.Gif ? "GIF" : "video";
         var cancellation = BeginExport($"Exporting the {what}… 0 %", cancellable: true);
         var progress = new Progress<double>(done =>
@@ -2326,7 +2363,7 @@ internal sealed class MainForm : Form
     private void UpdateButtons()
     {
         bool any = _preview.Images.Count > 0 && !IsExporting;
-        _clearButton.Enabled = (_preview.Images.Count > 0 || !SoundtrackInitial || !BordersInitial || !FadeInitial || !FormatInitial) && !IsExporting;
+        _clearButton.Enabled = (_preview.Images.Count > 0 || !SoundtrackInitial || !BordersInitial || !FadeInitial || !this.SeamsInitial || !FormatInitial) && !IsExporting;
         _copyButton.Enabled = any;
         _saveButton.Enabled = any;
 
@@ -2797,6 +2834,9 @@ internal sealed class MainForm : Form
             case GlobalEffect.Borders:
                 ToggleBorders();
                 break;
+            case GlobalEffect.Seams:
+                this.ToggleSeams();
+                break;
             default:
                 // The Format's tab has no checkbox.
                 break;
@@ -2823,7 +2863,7 @@ internal sealed class MainForm : Form
     /// <paramref name="effect"/> back to its initial state, the one Clear all restores — every global
     /// tab when <c>null</c>: the format Twitter; the soundtrack off, with no file, at 100 %; the fade
     /// off, 1 s, squared; the borders off, their initial settings keeping the color and the Twitter
-    /// corners default of the ⚙ menu. The cells are left alone.
+    /// corners default of the ⚙ menu; the seams off, 10 %. The cells are left alone.
     /// </summary>
     private void ResetGlobalEffects(GlobalEffect? effect = null)
     {
@@ -2858,6 +2898,13 @@ internal sealed class MainForm : Form
             _borders = GridBorders.Initial(_borders.Color, _roundedByDefault);
             _bordersOn = false;
             _preview.Borders = ActiveBorders;
+        }
+
+        if (effect is null or GlobalEffect.Seams)
+        {
+            this._seams = SeamFade.Initial;
+            this._seamsOn = false;
+            this._preview.Seams = this.ActiveSeams;
         }
 
         UpdateButtons();
@@ -2969,12 +3016,14 @@ internal sealed class MainForm : Form
     {
         bool enabled = !IsExporting;
         string? fadeUnavailable = FadeUnavailable;
+        string? seamsUnavailable = this.SeamsUnavailable;
         _globalTabs.SetState(GlobalEffect.Soundtrack, ActiveSoundtrack is not null, unavailable: null);
         _globalTabs.SetState(GlobalEffect.Fade, ActiveFade is not null, fadeUnavailable);
         _globalTabs.SetState(GlobalEffect.Borders, ActiveBorders is not null, unavailable: null);
+        this._globalTabs.SetState(GlobalEffect.Seams, this.ActiveSeams is not null, seamsUnavailable);
         _globalTabs.Selected = _selectedGlobalEffect;
         _globalTabs.Enabled = enabled;
-        _globalResetButton.Enabled = enabled && !(SoundtrackInitial && BordersInitial && FadeInitial && FormatInitial);
+        _globalResetButton.Enabled = enabled && !(SoundtrackInitial && BordersInitial && FadeInitial && this.SeamsInitial && FormatInitial);
         _formatStrip.Selected = _preview.Format;
         _formatStrip.SetGrid(_preview.ActiveLayout, _preview.FreeRatio);
         foreach (var (effect, row) in _globalOptions)
@@ -2982,7 +3031,9 @@ internal sealed class MainForm : Form
             row.Visible = _selectedGlobalEffect == effect;
 
             // An effect that does not apply keeps its tab selectable, its options disabled (RULES.md).
-            row.Enabled = enabled && (effect != GlobalEffect.Fade || fadeUnavailable is null);
+            row.Enabled = enabled
+                && (effect != GlobalEffect.Fade || fadeUnavailable is null)
+                && (effect != GlobalEffect.Seams || seamsUnavailable is null);
         }
 
         _globalEffectResetButton.Visible = _selectedGlobalEffect is not null;
@@ -2991,6 +3042,7 @@ internal sealed class MainForm : Form
             GlobalEffect.Soundtrack => !SoundtrackInitial,
             GlobalEffect.Fade => !FadeInitial,
             GlobalEffect.Borders => !BordersInitial,
+            GlobalEffect.Seams => !this.SeamsInitial,
             GlobalEffect.Format => !FormatInitial,
             _ => false,
         };
@@ -3010,9 +3062,11 @@ internal sealed class MainForm : Form
         _fadeDuration.Value = (int)Math.Round(_fade.Duration.TotalSeconds * 10);
         _fadeSquared.Checked = _fade.Curve == FadeCurve.Squared;
         _fadeLinear.Checked = _fade.Curve == FadeCurve.Linear;
+        this._seamsDepth.Value = (int)Math.Round(this._seams.Depth * 100);
         _syncingEffects = syncing;
         _soundtrackVolumeLabel.Text = VolumeText(_soundtrackVolume.Value);
         _fadeDurationLabel.Text = FadeText(_fadeDuration.Value);
+        this._seamsDepthLabel.Text = DepthText(this._seamsDepth.Value);
     }
 
     /// <summary>The fade's checkbox: on or off, its settings kept.</summary>
@@ -3051,6 +3105,44 @@ internal sealed class MainForm : Form
     }
 
     private static string FadeText(int tenths) => $"Duration: {tenths / 10.0:0.0} s";
+
+    /// <summary>The seams' checkbox: on or off, their settings kept.</summary>
+    private void ToggleSeams()
+    {
+        if (this.IsExporting)
+        {
+            return;
+        }
+
+        this._seamsOn = !this._seamsOn;
+        this.ApplySeams();
+    }
+
+    /// <summary>
+    /// An option of the seams changed: applied to their settings, turning them on from the settings
+    /// they kept (RULES.md), unless the row is being synced.
+    /// </summary>
+    private void ChangeSeams(Func<SeamFade, SeamFade> change)
+    {
+        if (this._syncingEffects || this.IsExporting)
+        {
+            return;
+        }
+
+        this._seams = change(this._seams);
+        this._seamsOn = true;
+        this.ApplySeams();
+    }
+
+    /// <summary>The seams as they stand, to the preview, then to the row and the output buttons.</summary>
+    private void ApplySeams()
+    {
+        this._preview.Seams = this.ActiveSeams;
+        this.UpdateButtons();
+    }
+
+    /// <summary>The seams' depth, from percent of the smallest cell's shorter side.</summary>
+    private static string DepthText(int percent) => $"Depth: {percent} %";
 
     /// <summary>The borders' checkbox: on or off, their settings kept.</summary>
     private void ToggleBorders()

@@ -16,7 +16,9 @@ internal sealed record GlobalState(
     SoundFade Fade,
     bool FadeOn,
     GridBorders Borders,
-    bool BordersOn);
+    bool BordersOn,
+    SeamFade Seams,
+    bool SeamsOn);
 
 /// <summary>
 /// Everything the user composes, as it stood after an action: the cells' images and looks, the layout
@@ -191,6 +193,11 @@ internal sealed class GridHistory : IDisposable
         if (o.Borders != n.Borders || o.BordersOn != n.BordersOn)
         {
             labels.Add(nameof(GlobalEffect.Borders));
+        }
+
+        if (o.Seams != n.Seams || o.SeamsOn != n.SeamsOn)
+        {
+            labels.Add(nameof(GlobalEffect.Seams));
         }
 
         return labels.Count switch

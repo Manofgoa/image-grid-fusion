@@ -293,6 +293,22 @@ internal static class EffectIcons
         g.FillRectangle(bracket, picture.X, picture.Y, arm, picture.Height * 0.6f);
     });
 
+    /// <summary>Two cells side by side, blue and orange, their colors fading into each other across the edge they share.</summary>
+    public static Bitmap Seams(int size) => Draw(size, (g, s) =>
+    {
+        var cells = new RectangleF(s * 0.06f, s * 0.2f, s * 0.88f, s * 0.6f);
+        using (var brush = new LinearGradientBrush(cells, Color.FromArgb(40, 120, 230), Color.FromArgb(250, 150, 30), 0f))
+        {
+            brush.WrapMode = WrapMode.TileFlipX;
+            brush.Blend = new Blend { Positions = [0f, 0.3f, 0.7f, 1f], Factors = [0f, 0f, 1f, 1f] };
+            g.FillRectangle(brush, cells);
+        }
+
+        float middle = cells.Left + cells.Width / 2;
+        using var pen = new Pen(Color.FromArgb(110, 255, 255, 255), Math.Max(1f, s * 0.04f)) { DashStyle = DashStyle.Dot };
+        g.DrawLine(pen, middle, cells.Top, middle, cells.Bottom);
+    });
+
     /// <summary>A wedge growing to the right, yellow to red.</summary>
     public static Bitmap Intensity(int size) => Draw(size, (g, s) =>
     {
