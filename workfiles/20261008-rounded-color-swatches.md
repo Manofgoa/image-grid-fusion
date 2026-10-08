@@ -119,6 +119,11 @@ Open questions answered: the *Color…* button keeps its native face, the swatch
 the text; the shared rule covers buttons picking a colour too. Added: the README pair's *Color…*
 mention says it shows the colour as a swatch. No open question left.
 
+### Iteration 3 — 2026-10-08 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in the current checkout. Branch Gate: **stay on
+`main`**, the repository's standing choice (no branch, no worktree unless asked).
+
 ---
 
 ## Implementation Log
