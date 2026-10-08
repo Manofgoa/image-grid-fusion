@@ -1,7 +1,12 @@
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
+using ImageGridFusion.Composition;
 using ImageGridFusion.Explorer;
+using ImageGridFusion.Imaging;
 
 namespace ImageGridFusion.UI;
 
@@ -59,6 +64,8 @@ internal sealed class FileExplorerPanel : Panel
     private const string FolderSearchPlaceholder = "Search this folder… (Ctrl+F, * for all)";
     private const string OpenFileLocationText = "Open file location";
     private const string OpenInExplorerText = "Open in Explorer";
+    private const string CopyText = "Copy";
+    private const string CopyPngText = "Copy PNG";
 
     private readonly TableLayoutPanel _content = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 7, Padding = new Padding(6, 4, 6, 6) };
     private readonly TableLayoutPanel _header = new() { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
@@ -97,6 +104,11 @@ internal sealed class FileExplorerPanel : Panel
     private readonly Button _chooseFolder = new() { Text = "Choose folder…", Dock = DockStyle.Top, AutoSize = true };
     private readonly ContextMenuStrip _menu = new();
     private readonly ToolStripMenuItem _openLocation = new(OpenFileLocationText);
+
+    // A file tile's copies (see workfiles/20261008-explorer-tile-copy-menu.md), hidden on a folder tile.
+    private readonly ToolStripMenuItem _copy = new(CopyText) { ShortcutKeyDisplayString = "Ctrl+C" };
+    private readonly ToolStripMenuItem _copyPng = new(CopyPngText);
+    private readonly ToolStripSeparator _copySeparator = new();
     private readonly ToolTip _toolTip = new();
     private readonly System.Windows.Forms.Timer _transient = new() { Interval = TransientDuration };
     private readonly Favorites _favorites = new(Favorites.DefaultPath);
@@ -195,6 +207,7 @@ internal sealed class FileExplorerPanel : Panel
         _content.Controls.Add(_sizeRow, 0, 6);
         Controls.Add(_content);
         Controls.Add(_expand);
+        this._menu.Items.AddRange([this._copy, this._copyPng, this._copySeparator]);
         _menu.Items.Add(_openLocation);
         _grid.ContextMenuStrip = _menu;
         _grid.IsFavorite = _favorites.Contains;
@@ -238,8 +251,14 @@ internal sealed class FileExplorerPanel : Panel
             var row = _grid.RowAt(_grid.PointToClient(MousePosition));
             e.Cancel = row is null;
             _openLocation.Text = row?.IsFolder == true ? OpenInExplorerText : OpenFileLocationText;
+            bool file = row is { IsFolder: false };
+            this._copy.Visible = file;
+            this._copyPng.Visible = file;
+            this._copySeparator.Visible = file;
         };
         _openLocation.Click += (_, _) => OpenLocation();
+        this._copy.Click += (_, _) => this.CopySelected();
+        this._copyPng.Click += async (_, _) => await this.CopySelectedPngAsync();
         _transient.Tick += (_, _) => ShowSummary();
 
         // Files dropped anywhere on the panel, open or collapsed, become favorites (see
@@ -549,6 +568,82 @@ internal sealed class FileExplorerPanel : Panel
 
     /// <summary>The search box has the focus: its keys are its own, not the window's shortcuts.</summary>
     public bool IsEditingText => _search.Focused;
+
+    /// <summary>The tiles have the focus: Ctrl+C is theirs, <see cref="CopySelected"/>, not the grid's copy.</summary>
+    public bool TilesFocused => this._grid.Focused;
+
+    /// <summary>
+    /// Copy: the selected file tile's file on the clipboard, as Ctrl+C in the Explorer puts it. A folder
+    /// tile, or no tile, selected: nothing.
+    /// </summary>
+    public void CopySelected()
+    {
+        if (this._grid.SelectedRow is not { IsFolder: false } row || !this.Exists(row))
+        {
+            return;
+        }
+
+        try
+        {
+            var data = new DataObject();
+            data.SetFileDropList(new StringCollection { row.FullPath });
+            Clipboard.SetDataObject(data, copy: true);
+            this.ShowTransient($"Copied: {Path.GetFileName(row.FullPath)}");
+        }
+        catch (ExternalException ex)
+        {
+            this.ShowTransient($"Copy failed: {ex.Message}", error: true);
+        }
+    }
+
+    /// <summary>
+    /// Copy PNG: the selected file tile's image on the clipboard, as a cell shows it when the file
+    /// arrives — a video's frame at 10 %, a PDF's or a text's page — at its full size, no effect
+    /// applied; in the grid Copy's formats.
+    /// </summary>
+    private async Task CopySelectedPngAsync()
+    {
+        if (this._grid.SelectedRow is not { IsFolder: false } row || !this.Exists(row))
+        {
+            return;
+        }
+
+        string path = row.FullPath;
+        string name = Path.GetFileName(path);
+        var image = await Task.Run(() => ImageLoader.TryLoadFile(path));
+        if (this.IsDisposed)
+        {
+            image?.Dispose();
+            return;
+        }
+
+        if (image is null)
+        {
+            this.ShowTransient($"No image to copy: {name}", error: true);
+            return;
+        }
+
+        using (image)
+        {
+            try
+            {
+                // Standard bitmap for most apps, flattened on white as it carries no transparency, plus the
+                // PNG format that browsers paste more reliably, which keeps it.
+                using var png = new MemoryStream();
+                image.Bitmap.Save(png, ImageFormat.Png);
+                using var flat = Compositor.Flattened(image.Bitmap);
+                var data = new DataObject();
+                data.SetImage(flat);
+                data.SetData("PNG", png);
+                Clipboard.SetDataObject(data, copy: true);
+                this.ShowTransient($"Copied as PNG: {name} ({image.Size.Width} × {image.Size.Height})");
+            }
+            catch (ExternalException ex)
+            {
+                this.ShowTransient($"Copy failed: {ex.Message}", error: true);
+            }
+        }
+    }
 
     /// <summary>
     /// Ctrl+F: the panel opened if collapsed, as its « button does, then the search box focused, its
