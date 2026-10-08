@@ -117,6 +117,22 @@ folder tile or none selected copies nothing, not the grid; the menu's Copy shows
 
 Go given: code, unit tests and documentation, in a worktree on `feature/explorer-tile-copy-menu`.
 
+### Iteration 4 — 2026-10-08 — 🧭 Implementation choices
+
+No rule broken. Choices the frozen design did not state:
+
+- **No progress message** while Copy PNG loads the file: the status line only speaks once it is
+  copied or has failed (a long video or PDF may take a moment).
+- **The panel closed meanwhile** (`IsDisposed` after the load): the image is disposed, nothing is
+  copied, nothing said.
+- **Ctrl+C's routing** in `MainForm.ProcessCmdKey`: checked right after the search box's whitelist,
+  before the arrows and the window's shortcuts; `FileExplorerPanel.TilesFocused` /
+  `CopySelected()` are the explorer's public side. The menu's `Ctrl+C` is a display string only
+  (`ShortcutKeyDisplayString`), so the key is never handled twice.
+- **README**: besides the file explorer's paragraph, one sentence in the bottom bar's *Copy* entry
+  says that `Ctrl+C` with the tiles focused copies the tile's file, linking to the file explorer's
+  section (one place per fact).
+
 ---
 
 ## Implementation Log
@@ -126,9 +142,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project in the repository — see § Test Impact |
-| README | | | `README.md` and `README.fr.md` § file explorer: the right-click menu's entries, Ctrl+C on a tile |
+| Code | 3 | 2026-10-08 | `FileExplorerPanel` (menu entries, Copy, Copy PNG), `MainForm.ProcessCmdKey` (Ctrl+C) — built, 0 warnings |
+| Unit tests | 3 | 2026-10-08 | Not applicable: no test project in the repository — see § Test Impact |
+| README | 3 | 2026-10-08 | `README.md` and `README.fr.md` § file explorer: the right-click menu's entries, Ctrl+C on a tile; the Copy button's entry points to it |
 
 ---
 
