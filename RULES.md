@@ -331,6 +331,19 @@ for a grid of stills; none for a PNG.
 - The readout is refreshed **with the Copy / Save captions** (`MainForm.UpdateButtons`): what the
   buttons say they produce and the length shown never disagree.
 
+### Played Part
+
+What a content plays has **one definition** too (origin: `workfiles/20261008-video-trim.md`): the
+part the Frames effect's **trim** leaves to a video or an animated GIF — `SourceImage.PlayedFrom`
+and `SourceImage.PlayedLength`, the whole content untrimmed or for a PDF or a text.
+
+- Its loop is that part (`Animation.LoopOf`); the preview (`AnimationPlayer`, through
+  `SourceImage.ContentTime`), the preview's sound (`PreviewSound.Span`), the export's frames
+  (`GridExport.Item.From`) and its sound (`MixedSound.From`) all play inside it. A new consumer of a
+  content's time reads it there, never `PageSource.LoopDuration`.
+- A video's pages are its **frames**, at the file's frame rate (`VideoFrames`), so the trim and the
+  starting point stand on any of them; the starting point stays inside the trim (`SourceImage.StartPage`).
+
 ## Command-Line Arguments
 
 What the exe accepts, parsed in `Program.Main` (origin: `workfiles/20261006-session-title-argument.md`):
