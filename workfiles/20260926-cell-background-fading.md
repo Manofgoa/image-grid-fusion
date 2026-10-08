@@ -217,6 +217,13 @@ toolbar tab after Borders, its Depth slider (10 %) in its options, off at start-
 in the undo step — replacing Q13's bottom bar and remembered setting; it does not apply while the
 Borders leave a gap. Documentation now means README and GLOSSARY in English and French.
 
+### Iteration 6 — 2026-10-08 — ✅ Implemented
+
+Go given for the **code only** (README, GLOSSARY and unit tests declined). The run happens in a
+dedicated worktree (`.claude/worktrees/cell-background-fading`, branch
+`feature/cell-background-fading`), fast-forwarded into `main` and removed at the end, at the user's
+request. Scope frozen on the design sections as of Iteration 5.
+
 ---
 
 ## Implementation Log
@@ -259,4 +266,4 @@ Questions asked by the agent during design, with user responses.
 
 ---
 
-*Last updated: 2026-10-07*
+*Last updated: 2026-10-08*
