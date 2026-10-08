@@ -19,7 +19,7 @@ internal static class BlurRenderer
     // Box blurs on the small bitmap: three of them come close to a gaussian.
     private const int GaussianPasses = 3;
 
-    public static void Draw(Graphics g, Frame frame, Rectangle cell, bool fast)
+    public static void Draw(Graphics g, Frame frame, Rectangle cell, bool fast, SeamField? seams = null)
     {
         if (frame.Look is not { Blur: { } blur } look)
         {
@@ -43,7 +43,7 @@ internal static class BlurRenderer
             // Each call prepends: the cell is moved to the origin, then scaled down.
             sg.ScaleTransform(width / (float)cell.Width, height / (float)cell.Height);
             sg.TranslateTransform(-cell.X, -cell.Y);
-            Compositor.DrawCell(sg, frame with { Look = look.WithBlur(null) }, cell, fast);
+            Compositor.DrawCell(sg, frame with { Look = look.WithBlur(null) }, cell, fast, seams);
         }
 
         bool pixelate = blur.Kind == BlurKind.Pixelate;

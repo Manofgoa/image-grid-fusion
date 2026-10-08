@@ -37,20 +37,20 @@ public static class Compositor
     }
 
     /// <summary>Renders the final image at <paramref name="ratio"/>, at the size given by <see cref="CanvasSizer"/>.</summary>
-    public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders = null) =>
-        Render(images.Select(i => new Frame(i.Bitmap, i.BandColor, i.Look)).ToList(), layout, ratio, borders);
+    public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders = null, SeamFade? seams = null) =>
+        Render(images.Select(i => new Frame(i.Bitmap, i.BandColor, i.Look)).ToList(), layout, ratio, borders, seams);
 
     /// <summary>
     /// Renders frames at <paramref name="ratio"/>, at the size given by <see cref="CanvasSizer"/>; frame i
     /// goes into cell i. With an alpha channel, transparent where a cell, or the gap between the cells,
     /// has no fill: a PNG keeps it.
     /// </summary>
-    public static Bitmap Render(IReadOnlyList<Frame> frames, GridLayout layout, double ratio, GridBorders? borders = null)
+    public static Bitmap Render(IReadOnlyList<Frame> frames, GridLayout layout, double ratio, GridBorders? borders = null, SeamFade? seams = null)
     {
         var canvas = CanvasSizer.Compute(frames.Select(f => f.Size).ToList(), layout, ratio);
         var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppArgb);
         using var g = Graphics.FromImage(bitmap);
-        Draw(g, frames, layout, canvas, borders);
+        Draw(g, frames, layout, canvas, borders, seams);
         return bitmap;
     }
 
@@ -116,20 +116,21 @@ public static class Compositor
     /// Draws the grid in the rectangle (0, 0, canvas) of <paramref name="g"/>; image i goes into cell i of
     /// the layout, its motion at <paramref name="time"/> on the clock of the grid.
     /// </summary>
-    public static void Draw(Graphics g, IReadOnlyList<SourceImage> images, GridLayout layout, Size canvas, GridBorders? borders = null, TimeSpan time = default) =>
-        Draw(g, images.Select(i => new Frame(i.Bitmap, i.BandColor, i.Look, time)).ToList(), layout, canvas, borders);
+    public static void Draw(Graphics g, IReadOnlyList<SourceImage> images, GridLayout layout, Size canvas, GridBorders? borders = null, TimeSpan time = default, SeamFade? seams = null) =>
+        Draw(g, images.Select(i => new Frame(i.Bitmap, i.BandColor, i.Look, time)).ToList(), layout, canvas, borders, seams);
 
     /// <summary>
     /// Draws the grid in the rectangle (0, 0, canvas) of <paramref name="g"/>; frame i goes into cell i of
-    /// the layout. The borders, a global effect, are drawn here too, at the grid level.
+    /// the layout. The borders and the seams, global effects, are drawn here too, at the grid level.
     /// </summary>
-    public static void Draw(Graphics g, IReadOnlyList<Frame> frames, GridLayout layout, Size canvas, GridBorders? borders = null)
+    public static void Draw(Graphics g, IReadOnlyList<Frame> frames, GridLayout layout, Size canvas, GridBorders? borders = null, SeamFade? seams = null)
     {
         var slots = layout.Cells(canvas);
         var cells = borders?.Inset(slots, canvas) ?? slots;
+        var field = SeamField.Of(frames, cells, seams, borders);
         for (int i = 0; i < frames.Count; i++)
         {
-            DrawCell(g, frames[i], cells[i]);
+            DrawCell(g, frames[i], cells[i], seams: field);
         }
 
         borders?.Draw(g, slots, canvas);
@@ -137,9 +138,10 @@ public static class Compositor
 
     /// <summary>
     /// Draws one frame into its cell, leaving the rest of <paramref name="g"/> untouched.
-    /// <paramref name="fast"/> trades smoothing for speed, the frame landing at the same place.
+    /// <paramref name="fast"/> trades smoothing for speed, the frame landing at the same place;
+    /// <paramref name="seams"/>, the grid's, fade its flat fill into its neighbours'.
     /// </summary>
-    public static void DrawCell(Graphics g, Frame frame, Rectangle cell, bool fast = false)
+    public static void DrawCell(Graphics g, Frame frame, Rectangle cell, bool fast = false, SeamField? seams = null)
     {
         g.InterpolationMode = fast ? InterpolationMode.Bilinear : InterpolationMode.HighQualityBicubic;
         g.PixelOffsetMode = PixelOffsetMode.HighQuality;
@@ -193,11 +195,15 @@ public static class Compositor
 
         // Bands, and transparent pixels, show the background: the band color of the part shown, or the
         // chosen one, at its opacity, the image's edges extended over the bands in an extending mode;
-        // none while the effect is off, the cell left transparent.
+        // none while the effect is off, the cell left transparent — but for the seams fading into it.
         if (look.Background is { } background)
         {
             var automatic = background.Automatic ? frame.BandColor.For(bitmapPart, frame.Bitmap.Size) : background.Color;
-            DrawBackground(g, background, automatic, look.Grayscale, cell, EdgeExtension.Covered(fit.Destination, cell, turn is not null), DrawImage, fast);
+            DrawBackground(g, background, automatic, look.Grayscale, cell, EdgeExtension.Covered(fit.Destination, cell, turn is not null), DrawImage, fast, seams);
+        }
+        else
+        {
+            seams?.Draw(g, cell);
         }
 
         DrawImage(g);
@@ -205,22 +211,50 @@ public static class Compositor
         // Every effect is drawn here, so the preview, the exports and a playing video all show it.
         using var clip = g.Clip;
         g.SetClip(cell, CombineMode.Intersect);
-        BlurRenderer.Draw(g, frame, cell, fast);
+        BlurRenderer.Draw(g, frame, cell, fast, seams);
         g.Clip = clip;
+    }
+
+    /// <summary>
+    /// The flat fill of <paramref name="frame"/>'s background in <paramref name="cell"/>, as
+    /// <see cref="DrawCell"/> paints it — the one the seams fade: transparent while the effect is off,
+    /// <c>null</c> when it extends the image's edges, which keeps its seams sharp.
+    /// </summary>
+    internal static Color? FlatFill(Frame frame, Rectangle cell)
+    {
+        var look = frame.Look ?? ImageLook.None;
+        if (look.Background is not { } background)
+        {
+            return Color.Transparent;
+        }
+
+        if (background.Extends)
+        {
+            return null;
+        }
+
+        var fill = background.Fill(background.Automatic ? AutomaticBackground(frame, cell) : background.Color);
+        return look.Grayscale is { } gray ? Gray(fill, gray) : fill;
     }
 
     /// <summary>
     /// The background of <paramref name="cell"/>: the flat fill — <paramref name="automatic"/> or the
     /// chosen color, at the opacity, turned gray by <paramref name="grayscale"/> — or, in an extending
     /// mode with bands around the image's place <paramref name="covered"/>, the image's edges extended:
-    /// read from the image alone, which <paramref name="drawImage"/> draws at the cell's size.
+    /// read from the image alone, which <paramref name="drawImage"/> draws at the cell's size. The flat
+    /// fill fades into the neighbours' along the <paramref name="seams"/>; an extending mode never does.
     /// </summary>
-    private static void DrawBackground(Graphics g, BackgroundEffect background, Color automatic, double? grayscale, Rectangle cell, Rectangle? covered, Action<Graphics> drawImage, bool fast)
+    private static void DrawBackground(Graphics g, BackgroundEffect background, Color automatic, double? grayscale, Rectangle cell, Rectangle? covered, Action<Graphics> drawImage, bool fast, SeamField? seams)
     {
         var fill = background.Fill(automatic);
         if (grayscale is { } gray)
         {
             fill = Gray(fill, gray);
+        }
+
+        if (!background.Extends && seams?.Draw(g, cell) == true)
+        {
+            return;
         }
 
         if (!background.Extends || covered is not { } place)
@@ -294,7 +328,7 @@ public static class Compositor
         if (look.Background is { } background)
         {
             var automatic = background.Automatic ? AutomaticBackground(frame, cell) : background.Color;
-            DrawBackground(g, background, automatic, look.Grayscale, cell, EdgeExtension.Covered(image, cell, turned: false), DrawImage, fast: false);
+            DrawBackground(g, background, automatic, look.Grayscale, cell, EdgeExtension.Covered(image, cell, turned: false), DrawImage, fast: false, seams: null);
         }
 
         DrawImage(g);
