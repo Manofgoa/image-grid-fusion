@@ -165,6 +165,10 @@ Mechanical refresh, no design change — the code moved again since 2026-09-30:
   (§ The Background's Edge Extension).
 - New code follows the `this.` convention.
 
+### Iteration 5 — 2026-10-10 — ✅ Implemented
+
+Go given: code, tests and documentation. Branch: `main` (the repository's standing choice).
+
 ---
 
 ## Code Style
