@@ -92,7 +92,8 @@ Frames effect's job (it already exists), not a pan.
 - The app only gets a **picture** of the file from Windows (its Explorer thumbnail, usually the first
   page), never its content: it cannot lay out more of it, nor split it into pages.
 - **Zoom in**: the thumbnail is requested again at the size the zoomed draw needs, so it stays sharp
-  **as far as the file's thumbnail handler allows** (some cap their size).
+  **as far as the file's thumbnail handler allows** (some cap their size). The thumbnail is now kept
+  with a one-page source, `Imaging/ThumbnailPages.cs`, which asks Windows again.
 - **Zoom out**: unchanged — the thumbnail shrinks inside its cell, the Background around it.
 - **Frames**: none, as today.
 
@@ -105,7 +106,19 @@ Frames effect's job (it already exists), not a pan.
 - The zoom read everywhere is `ImageLook.ZoomIn` (Contain / Fill resolved), so a fit mode re-renders
   a PDF or a thumbnail like a free zoom. An undo or redo that changes the zoom re-renders too.
 - During a zoom **gesture** (wheel, drag), the current bitmap is scaled as today; the document is
-  re-rendered once the zoom **stops changing**, so the gesture stays fluid.
+  re-rendered once the zoom **stops changing**, so the gesture stays fluid. A re-laid-out text is
+  drawn meanwhile at its zoom divided by the one its pages hold (`ImageLook.WithZoomLaidOut`), 100 %
+  once they follow it. The pages follow **200 ms** after the look's last change, no gesture running
+  (`GridPreview._pagesFit`, then `FitPagesToCells`).
+- **Sharp means 1:1 on the reference canvas**: a page is rendered with the pixels its drawn size
+  there asks (`GridPreview.SharpSide`), never below its unzoomed resolution. A preview larger than
+  the smallest canvas may still magnify it slightly, as text pages already were.
+- **The canvas sizing ignores the sharpening**: it reads each image at its unzoomed resolution
+  (`PageSource.Sharpening`, `Frame.SizingSize`, `SourceImage.SizingSize`), so a page rendered at
+  4096 px never makes the export bigger on its own.
+- The drawn geometry — preview, exports, readouts, guides — reads `SourceImage.DrawnLook`, the look
+  with the zoom a text's pages hold taken out; dragging or arrow-moving a re-laid-out text does
+  nothing.
 - A zoomed-in PDF page, thumbnail, or cropped text page is **capped at 4096 px on its long side**,
   so a 1600 % zoom does not allocate hundreds of megabytes: past that cap it is magnified again,
   slightly soft. A re-laid-out text needs no cap: it is always rendered at its cell's size.
@@ -190,6 +203,36 @@ re-laid-out page; an undo or redo changing the zoom re-renders. `.rtf` / `.html`
 Go given: code, unit tests and documentation. Scope frozen as of Iteration 4. Branch: `main`, as
 the app's standing practice (work lands on main).
 
+### Iteration 6 — 2026-10-10 — 🧭 Implementation choices
+
+No project rule broken. Choices the frozen design did not state:
+
+- **Canvas sizing unsharpened** — not in the design, needed to keep "exports as today": the canvas
+  sizing reads each image at its unzoomed resolution (`PageSource.Sharpening`, `Frame.SizingSize`),
+  otherwise a PDF page sharpened to 4096 px would have pushed every export to 4096 px.
+- **Scaled feedback during a gesture for a re-laid-out text** — the design's "bitmap scaled as
+  today" made concrete: the text is drawn at its zoom divided by its pages' layout zoom
+  (`ImageLook.WithZoomLaidOut(layoutZoom)`), so it grows or shrinks under the wheel, then is laid
+  out again.
+- **Re-render trigger**: a timer of 200 ms restarted by every look change of a document, firing
+  once no gesture runs (`GridPreview._pagesFit`); the existing `FitPagesToCells` does the layout and
+  the sharpening, so cell, format, gap, undo and look changes share one path.
+- **Sharpness target**: 1:1 on the smallest canvas at the output format, the reference text pages
+  already used (`GridPreview.SharpSide`); a preview larger than that canvas may still magnify a bit.
+- **One-page source for thumbnails** (`ThumbnailPages`): the Explorer thumbnail is now kept with a
+  `PageSource`, so the existing page loader renders it again. Side effect: the Frames options
+  (disabled on a still) label it `1 / 1`, as a one-page PDF.
+- **Pan on a re-laid-out text** returns early (`GridPreview.PanBy`); the wheel still stores a focus,
+  which has no effect until the text is cropped.
+- **Margins** of a re-laid-out text keep their 100 % size on the rendered page; the layout is
+  degenerate at extreme zooms (at 1600 % a cell holds a couple of characters, thousands of pages),
+  as the design asks.
+- **One code commit**: the text layout and the sharpening share `PageSource`, `FitPagesToCells` and
+  the drawn look, so they landed together (`b1af09a`); README in its own commit.
+- **Checked** with a throwaway program (scratchpad, not committed): a 120-line text on a 600 × 314
+  page gives 24 pages at 100 %, 6 at 50 %, 96 at 200 %; sharpening renders a cropped text at 3×,
+  capped at 4096 px, back to 1×.
+
 ---
 
 ## Implementation Log
@@ -199,9 +242,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project in the solution |
-| README | | | |
+| Code | 5 | 2026-10-10 | `b1af09a` |
+| Unit tests | 5 | 2026-10-10 | Not applicable — no test project in the solution; checked with a throwaway program instead |
+| README | 5 | 2026-10-10 | `d764f1f` — `README.md` and `README.fr.md`: Zoom, Previews |
 
 ---
 
