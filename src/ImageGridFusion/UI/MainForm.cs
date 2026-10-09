@@ -2475,7 +2475,7 @@ internal sealed class MainForm : Form
     private static string Seconds(TimeSpan time) => time == TimeSpan.Zero ? "0 s" : $"{time.TotalSeconds:0.0} s";
 
     /// <summary>Videos, GIFs and light JPEGs copied to the clipboard live here: the clipboard holds their path.</summary>
-    private static string TempVideoFolder => Path.Combine(Path.GetTempPath(), "ImageGridFusion");
+    internal static string TempVideoFolder => Path.Combine(Path.GetTempPath(), "ImageGridFusion");
 
     private static string TempExportPath(string extension)
     {

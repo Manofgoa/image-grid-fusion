@@ -1,5 +1,6 @@
 using ImageGridFusion.Composition;
 using ImageGridFusion.UI;
+using ImageGridFusion.Web;
 
 namespace ImageGridFusion;
 
@@ -59,6 +60,7 @@ internal static class Program
         {
             RegistryMigration.Run();
             StartupRegistration.Refresh();
+            _ = Task.Run(UrlDownloads.Clean);
         }
 
         // Before the main window: its zoom slider takes its range from it.
