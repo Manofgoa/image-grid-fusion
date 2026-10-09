@@ -129,6 +129,22 @@ Go given: code, tests and documentation, in a worktree
 (`.claude/worktrees/borders-outer-without-inner`, branch `feature/borders-outer-without-inner`).
 Scope frozen as the sections above stand.
 
+### Iteration 4 — 2026-10-09 — 🧭 Implementation choices
+
+- No rule broken.
+- `InnerLines` is the record's third positional member, right after `Thickness` and before
+  `OuterFrame`, so the two options sit side by side; `GridBorders.Initial` is the only constructor
+  call.
+- The Seams needed no change of their own: `SeamField.Of` and `MainForm.SeamsUnavailable` already read
+  `HasGap`, which now means *inner lines on*.
+- In `Bands`, the boundary lines are skipped by iterating over no orientation when the inner lines are
+  off; the frame's sides are yielded as before.
+- Tooltip: *Draws the borders between the cells; unchecked, the cells touch*.
+- Checked offscreen with a scratch project referencing the built assembly (outside the repository):
+  Solid frame alone, Dashed frame alone with Twitter corners, Double with both, Solid with neither —
+  the cells touch without inner lines, are unchanged with neither, and are unchanged with both.
+- Spotted, not done (out of scope): the README documents no **Seams** global effect at all.
+
 ---
 
 ## Implementation Log
@@ -138,10 +154,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable: no test project in the repository |
-| README (EN + FR) | | | |
-| Glossary (EN + FR) | | | |
+| Code | 3 | 2026-10-09 | `GridBorders.InnerLines` / `IsLineStyle`; the Inner lines checkbox |
+| Unit tests | 3 | 2026-10-09 | Not applicable: no test project in the repository; checked offscreen (Iteration 4) |
+| README (EN + FR) | 3 | 2026-10-09 | The Inner lines option, the gap only with it |
+| Glossary (EN + FR) | 3 | 2026-10-09 | Borders and Gap rows |
 
 ---
 
