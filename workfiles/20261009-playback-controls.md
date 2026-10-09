@@ -243,6 +243,11 @@ Answers Q5–Q8, from a mockup of three layouts and two marker styles.
 - Cascade markers: a tick at the start of each turn, the pauses not drawn.
 - The backlog row *Pause during Copy / export* marked with this workfile.
 
+### Iteration 3 — 2026-10-09 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree (`.claude/worktrees/playback-controls`,
+branch `feature/playback-controls`). The scope is frozen as the sections above stand.
+
 ---
 
 ## Implementation Log
