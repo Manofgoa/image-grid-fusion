@@ -308,6 +308,7 @@ internal sealed class MainForm : Form
     private readonly Label _bordersThicknessLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly TrackBar _bordersOpacity = OptionSlider((int)Math.Round(GridBorders.MinOpacity * 100), 100, 10);
     private readonly Label _bordersOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _bordersInnerLines = new() { Text = "Inner lines", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _bordersOuterFrame = new() { Text = "Outer frame", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _bordersRounded = new() { Text = "Twitter corners", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly ToolStripMenuItem _twitterCornersDefault = new("Twitter corners by default");
@@ -464,7 +465,7 @@ internal sealed class MainForm : Form
         _globalOptions[GlobalEffect.Soundtrack].Controls.AddRange([_soundtrackBrowse, _soundtrackFile, _soundtrackVolume, _soundtrackVolumeLabel]);
         _globalOptions[GlobalEffect.Fade].Controls.AddRange([_fadeDuration, _fadeDurationLabel, _fadeSquared, _fadeLinear]);
         _globalOptions[GlobalEffect.Borders].Controls.AddRange(
-            [_bordersStyle, this._bordersColor, _bordersThickness, _bordersThicknessLabel, _bordersOpacity, _bordersOpacityLabel, _bordersOuterFrame, _bordersRounded]);
+            [_bordersStyle, this._bordersColor, _bordersThickness, _bordersThicknessLabel, _bordersOpacity, _bordersOpacityLabel, this._bordersInnerLines, _bordersOuterFrame, _bordersRounded]);
         this._globalOptions[GlobalEffect.Seams].Controls.AddRange([this._seamsDepth, this._seamsDepthLabel]);
         this._globalOptions[GlobalEffect.Cascade].Controls.AddRange([this._cascadePause, this._cascadePauseLabel]);
 
@@ -746,6 +747,8 @@ internal sealed class MainForm : Form
             _bordersOpacityLabel.Text = OpacityText(_bordersOpacity.Value);
             ChangeBorders(borders => borders with { Opacity = _bordersOpacity.Value / 100.0 });
         };
+        this._toolTip.SetToolTip(this._bordersInnerLines, "Draws the borders between the cells; unchecked, the cells touch");
+        this._bordersInnerLines.CheckedChanged += (_, _) => this.ChangeBorders(borders => borders with { InnerLines = this._bordersInnerLines.Checked });
         _bordersOuterFrame.CheckedChanged += (_, _) => ChangeBorders(borders => borders with { OuterFrame = _bordersOuterFrame.Checked });
         _toolTip.SetToolTip(_bordersRounded, "Rounds the grid's corners like Twitter / X shows images; the borders follow the curve");
         _bordersRounded.CheckedChanged += (_, _) => ChangeBorders(borders => borders with { Rounded = _bordersRounded.Checked });
@@ -3658,8 +3661,8 @@ internal sealed class MainForm : Form
     }
 
     /// <summary>
-    /// Shows the borders' options, their kept settings while they are off; the outer frame disabled for
-    /// the corner brackets.
+    /// Shows the borders' options, their kept settings while they are off; the inner lines and the outer
+    /// frame disabled for the corner brackets.
     /// </summary>
     private void UpdateBorders()
     {
@@ -3668,6 +3671,7 @@ internal sealed class MainForm : Form
         _bordersStyle.SelectedIndex = (int)_borders.Pattern;
         _bordersThickness.Value = (int)Math.Round(_borders.Thickness * 1000);
         _bordersOpacity.Value = (int)Math.Round(_borders.Opacity * 100);
+        this._bordersInnerLines.Checked = this._borders.InnerLines;
         _bordersOuterFrame.Checked = _borders.OuterFrame;
         _bordersRounded.Checked = _borders.Rounded;
         _syncingEffects = syncing;
@@ -3678,7 +3682,8 @@ internal sealed class MainForm : Form
 
         _bordersThicknessLabel.Text = ThicknessText(_bordersThickness.Value);
         _bordersOpacityLabel.Text = OpacityText(_bordersOpacity.Value);
-        _bordersOuterFrame.Enabled = _borders.HasGap;
+        this._bordersInnerLines.Enabled = this._borders.IsLineStyle;
+        _bordersOuterFrame.Enabled = _borders.IsLineStyle;
 
         // Outside the Twitter format the corners are not rounded, their setting kept. A disabled
         // checkbox shows no tooltip: its text says why.
@@ -3686,8 +3691,8 @@ internal sealed class MainForm : Form
         _bordersRounded.Text = TwitterCornersApply ? "Twitter corners" : "Twitter corners (Twitter format only)";
 
         // Only the corner brackets lie over the images.
-        _bordersOpacity.Enabled = !_borders.HasGap;
-        _bordersOpacityLabel.Enabled = !_borders.HasGap;
+        _bordersOpacity.Enabled = !_borders.IsLineStyle;
+        _bordersOpacityLabel.Enabled = !_borders.IsLineStyle;
     }
 
     /// <summary>The borders' width, from thousandths of the grid's shorter side.</summary>
