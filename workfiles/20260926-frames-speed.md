@@ -90,8 +90,9 @@ no time-stretching):
 ## UI
 
 - In the Frames options — today the trim's two lines (`From` / `To`) at the left, a separator, then
-  the starting point's line over **Freeze** at the right: a speed slider (`OptionSlider`) and its
-  value label. Placement: see Open Questions.
+  the starting point's line over **Freeze**: the speed gets a **third column** at the right, after
+  a second separator — its value label over its slider (`OptionSlider`) — so the options toolbar
+  keeps its height.
 - Acting on it turns the effect on, starting from its kept settings (RULES.md § Options Toolbar).
 - Its label reads **`Speed: ×1.5`** (invariant culture, `×1`, `×0.25`, `×1.75`…).
 - While **Freeze** is checked, the speed slider is **disabled** (a frozen image plays nothing); the
@@ -122,7 +123,7 @@ be confirmed by the go choice.
 - [x] ~~Label format of the value?~~ → `Speed: ×1.5`
 - [x] ~~A video with sound at a speed other than ×1: what happens to its sound?~~ → It follows the speed, its pitch changing with it, in the preview and the export
 - [x] ~~While **Freeze** is checked, is the speed slider disabled?~~ → Yes, disabled; the speed is kept
-- [ ] Where does the speed slider go in the Frames options, now that they hold the trim?
+- [x] ~~Where does the speed slider go in the Frames options, now that they hold the trim?~~ → A third column after a separator, the label over the slider
 
 ---
 
@@ -161,6 +162,11 @@ follow `LoopLength`. § Sound updated: `PlaybackSpeedFactor` in the preview, dec
 `rate / speed` in the export. One new question: the slider's place, the Frames options now holding
 the trim.
 
+### Iteration 4 — 2026-10-10
+
+Placement chosen among three drawn layouts: a **third column** after a separator, the label over the
+slider, the toolbar's height unchanged. § UI updated. No open question remains.
+
 ---
 
 ## Implementation Log
@@ -192,7 +198,8 @@ Questions asked by the agent during design, with user responses.
 | 8 | Speed slider disabled while Freeze is checked? | Yes, disabled | 2026-09-26 |
 | 9 | Go for implementation? | Not answered — the session ended on the question | 2026-09-26 |
 | 10 | How do we resume the workfile? | Refresh the design first | 2026-10-10 |
-| 11 | Where does the speed slider go in the Frames options? | | |
+| 11 | Where does the speed slider go in the Frames options? | A — a third column after a separator | 2026-10-10 |
+| 12 | Go for implementation? | | |
 
 ---
 
