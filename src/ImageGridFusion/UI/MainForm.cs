@@ -67,7 +67,7 @@ internal sealed class MainForm : Form
         Padding = new Padding(8, 4, 8, 0),
     };
     private readonly Button _playButton = new() { AutoSize = true, Anchor = AnchorStyles.Left, TabStop = false, Margin = new Padding(0, 3, 3, 3) };
-    private readonly PlaybackTimeline _timeline = new() { Dock = DockStyle.Fill, Margin = new Padding(3, 3, 6, 3) };
+    private readonly PlaybackTimeline _timeline = new() { Anchor = AnchorStyles.Left | AnchorStyles.Right, Margin = new Padding(3, 3, 6, 3) };
     private readonly Label _positionReadout = new() { AutoSize = true, Anchor = AnchorStyles.Right, TextAlign = ContentAlignment.MiddleRight, Margin = new Padding(3, 3, 3, 3) };
 
     // Moves the timeline's thumb and the grid's time along while the grid plays.

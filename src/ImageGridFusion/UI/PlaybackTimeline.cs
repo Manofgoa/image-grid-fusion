@@ -85,6 +85,10 @@ internal sealed class PlaybackTimeline : Control
 
     protected override Size DefaultSize => new(200, 24);
 
+    /// <summary>As tall as the thumb and the ticks need, whatever height the row it stands in offers.</summary>
+    public override Size GetPreferredSize(Size proposedSize) =>
+        new(Math.Max(this.LogicalToDeviceUnits(80), proposedSize.Width is > 0 and < int.MaxValue ? proposedSize.Width : this.Width), this.LogicalToDeviceUnits(24));
+
     protected override void OnEnabledChanged(EventArgs e)
     {
         base.OnEnabledChanged(e);
