@@ -28,13 +28,13 @@ Components concerned (from the scout pass):
 | Component | Role today |
 |---|---|
 | `Composition/PageSource.cs` | Abstract pages of a previewed file: `Count`, `Render(page)`, `PageSize` (set when the source takes its cell's shape), `Resize(pageSize, page)`, `LoopDuration`, `OpenAnimation()` |
-| `Imaging/TextPages.cs` | Text file or pasted text; pages shaped like the cell on the 1200 px reference canvas; font = largest in [24, 96] px at which the whole text fits one page, else pages at 24 px; scrolls half a page per step when longer than a page |
+| `Imaging/TextPages.cs` | Text file, pasted text, `.rtf` / `.html` read with their styles; pages shaped like the cell on the smallest canvas at the output format; font = largest in [24, 96] px at which the whole text fits one page, else pages at 24 px; scrolls half a page per step when longer than a page |
 | `Imaging/PdfPages.cs` | PDF pages rendered through WinRT, long side fixed at 1600 px, one page per step when animated; no `PageSize`, never re-laid out |
 | `Imaging/ShellThumbnail.cs` | Any other file: the Windows Explorer thumbnail at 1024 px, one still, no pages |
 | `Imaging/ImageLoader.cs` | Tries GIF → image → video → PDF → SVG thumbnail → text → shell thumbnail |
-| `UI/GridPreview.cs` `FitPagesToCells` | Re-lays out a source with a `PageSize` whenever its cell's (oriented) shape changes, keeping the reading position, then re-requests the page and refreshes the player |
-| `Composition/ImageLook.cs` | `Zoom` (0.1–16, default 1) and `Focus`, per image |
-| `Composition/Compositor.cs` `DrawCell` + `FitCalculator` | Cover-fits the bitmap, multiplies by `Zoom`, places by `Focus`, one `DrawImage` from the full bitmap |
+| `UI/GridPreview.cs` `FitPagesToCells` | Re-lays out a source with a `PageSize` whenever its cell's (oriented) shape changes — the cells of `Compositor.Cells` on `CanvasSizer.Smallest(ratio)`, the Borders' gap included — keeping the reading position, then re-requests the page and refreshes the player |
+| `Composition/ImageLook.cs` | `Zoom` (the free zoom, 0.1–16) and `ZoomFit` (Contain / Fill), read through **`ZoomIn`** (RULES.md § Rendering); `ZoomAt` / `FocusAt` add the Animations effect's Zoom motion |
+| `Composition/Compositor.cs` `DrawCell` + `FitCalculator` | Cover-fits the bitmap, multiplies by `ZoomAt`, places by `FocusAt`, one `DrawImage` from the full bitmap; `FitCalculator.FocusKeeping` keeps the image in place on a zoom |
 | `Composition/FramesEffect.cs` | Starting point as a **fraction** of the frames, and Frozen — survives a new page count |
 
 ---
@@ -57,6 +57,8 @@ Components concerned (from the scout pass):
 The zoom changes **how much text the cell shows**, and the pages follow. Changing page is the
 Frames effect's job (it already exists), not a pan.
 
+- **The zoom read** is `ImageLook.ZoomIn` (RULES.md § Rendering), never `Zoom`: the page having its
+  cell's shape, Contain and Fill both resolve to 100 % on a re-laid-out text.
 - **Layout**: at any zoom, the text is laid out on a page of the cell's shape **divided by the
   zoom**, at the **font size chosen at 100 %** (the largest in [24, 96] px at which the whole text
   fits one page, else 24 px). The line breaks are **recomputed** for that page. The page is then
@@ -67,13 +69,15 @@ Frames effect's job (it already exists), not a pan.
   - **Zoom in (> 100 %)**: a smaller page — fewer lines and columns per page, **more pages**, the
     text larger on screen, re-wrapped: no line is cut by the cell's edge.
 - **Filling**: the text **always fills its cell**, at every zoom. The focus has no effect on it —
-  there is nothing to pan; what shows is chosen through the pages.
+  there is nothing to pan; what shows is chosen through the pages. *Zoom Keeps the Image in Place*
+  (RULES.md) has nothing to keep there: the **reading position** is what a zoom keeps.
 - **Frames**: the page count and the scroll steps come from the zoomed page. The starting point (a
   fraction) and the reading position are kept on every re-layout, as on a cell resize today; a
   frozen text stays about where its Frames effect points.
 - **With the Crop effect on**: the zoom does **not** re-lay the text out — the kept part must keep
   showing the same text. The text keeps its 100 % layout and zooms like an image (the focus moving
-  it again), but **sharp**: its page is rendered at the zoom's scale, like a PDF page (below).
+  it again, the zoom keeping it in place as for any image), but **sharp**: its page is rendered at
+  the zoom's scale, like a PDF page (below).
 
 ### PDF
 
@@ -94,15 +98,20 @@ Frames effect's job (it already exists), not a pan.
 
 ### Re-rendering
 
-- The **reference size** is the one text pages already use: the cell's size on the 1200 px canvas.
-  Exports keep drawing from the same bitmap, as today.
+- The **reference size** is the one text pages already use: the cell's size on the smallest canvas
+  at the output format (`Compositor.Cells` on `CanvasSizer.Smallest(ratio)`, the gap included), so
+  a format or a gap change re-lays the text out too, as today. Exports keep drawing from the same
+  bitmap, as today.
+- The zoom read everywhere is `ImageLook.ZoomIn` (Contain / Fill resolved), so a fit mode re-renders
+  a PDF or a thumbnail like a free zoom. An undo or redo that changes the zoom re-renders too.
 - During a zoom **gesture** (wheel, drag), the current bitmap is scaled as today; the document is
   re-rendered once the zoom **stops changing**, so the gesture stays fluid.
 - A zoomed-in PDF page, thumbnail, or cropped text page is **capped at 4096 px on its long side**,
   so a 1600 % zoom does not allocate hundreds of megabytes: past that cap it is magnified again,
   slightly soft. A re-laid-out text needs no cap: it is always rendered at its cell's size.
-- Only the static **Zoom** effect drives the re-render. The *Animated Zoom* effect
-  (`workfiles/20260926-animated-zoom.md`) stays a scaled draw.
+- Only the **Zoom** effect drives the re-render. The **Animations** effect's Zoom motion
+  (`workfiles/20260926-animated-zoom.md`, `ImageLook.ZoomAt`) stays a scaled draw on top of it: a
+  re-laid-out text breathes around its own page, drawn at 100 % times the motion's factor.
 
 ---
 
@@ -164,6 +173,18 @@ the Crop effect landed (`workfiles/20260930-crop-effect.md`): a text with the Cr
 re-laid out** by the zoom — it zooms like an image, rendered sharp at the zoom's scale, under the
 same cap. The re-render timing (after the gesture) stays the agent's design (Q9 not asked).
 
+### Iteration 4 — 2026-10-10
+
+Refresh against the rules and code that landed since Iteration 3, the design unchanged in substance
+(the user chose "refresh, then go"). The zoom is read through `ImageLook.ZoomIn` (fit mode Contain /
+Fill, `workfiles/20261007-zoom-fit.md`), which resolves to 100 % on a re-laid-out text; *Zoom Keeps
+the Image in Place* (`workfiles/20261007-zoom-keeps-image-in-place.md`) keeps the reading position
+on a re-laid-out text, the image point on a cropped one; the reference size is the cell on the
+smallest canvas at the **output format**, the Borders' gap included (`FitPagesToCells` as it stands);
+the *Animated Zoom* is now the **Animations** effect's Zoom motion, still a scaled draw, on top of the
+re-laid-out page; an undo or redo changing the zoom re-renders. `.rtf` / `.html` texts are covered as
+`TextPages`. Still no test project.
+
 ---
 
 ## Implementation Log
@@ -200,4 +221,4 @@ Questions asked by the agent during design, with user responses.
 
 ---
 
-*Last updated: 2026-09-30*
+*Last updated: 2026-10-10*
