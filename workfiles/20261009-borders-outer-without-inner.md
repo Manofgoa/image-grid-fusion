@@ -28,9 +28,9 @@ Components:
 
 ## Rendering
 
-- **Inner lines checked** (the default, today's behaviour): unchanged — a gap between the cells,
-  filled by the style; with the outer frame, a margin as wide around the grid.
-- **Inner lines unchecked, Outer frame checked**: the cells **touch** each other, with no gap and no
+- **Inner lines checked**: the behaviour before this work — a gap between the cells, filled by the
+  style; with the outer frame, a margin as wide around the grid.
+- **Inner lines unchecked, Outer frame checked** (the default): the cells **touch** each other, with no gap and no
   line between them; they shrink **only on the canvas edges**, by the frame's width, and the frame is
   drawn in the style around the grid. The frame's **thickness is unchanged**: the same Thickness slider.
 - **Both unchecked**: allowed — the Borders stay on and draw nothing, the cells as without Borders.
@@ -47,7 +47,8 @@ Components:
 
 ## Model
 
-- `GridBorders` gets a new member, `InnerLines` (`bool`), **true** in `GridBorders.Initial`.
+- `GridBorders` gets a new member, `InnerLines` (`bool`), **false** in `GridBorders.Initial`, where
+  `OuterFrame` is **true**.
 - Today `HasGap` (`Pattern != Corners`) means two things at once — *a line style* and *a gap between
   the cells*. It splits:
   - `IsLineStyle` — `Pattern != Corners`: what the Outer frame / Inner lines checkboxes and the
@@ -62,14 +63,15 @@ Components:
 
 ## UI
 
-- A checkbox **Inner lines** in the Borders' options, just before **Outer frame**, **checked by
+- A checkbox **Inner lines** in the Borders' options, just before **Outer frame**, **unchecked by
   default**.
 - Enabled like Outer frame: in the line styles only, disabled in Corners, its setting kept.
-- **Outer frame** is **checked by default** too (`GridBorders.Initial`), so a line style starts with
-  its lines between the cells and around the grid.
+- **Outer frame** is **checked by default** (`GridBorders.Initial`): a line style starts as the frame
+  alone, the cells touching.
 - The two checkboxes are independent: both may be unchecked (§ Rendering).
 - An ordinary option: acting on it turns the Borders on (`ChangeBorders`); the Borders' Reset, the
-  Global Reset and *Clear all* bring it back checked; **not remembered** between sessions.
+  Global Reset and *Clear all* bring it back unchecked, and the Outer frame checked; **not
+  remembered** between sessions.
 - Tooltip: says it draws the borders between the cells; unchecked, the cells touch.
 
 ---
@@ -87,7 +89,7 @@ running app.
 | Both unchecked: nothing drawn, cells as without Borders | — (manual) | — |
 | Inner lines unchecked: the Seams enabled and drawn between the touching cells | — (manual) | — |
 | Corners style: Inner lines and Outer frame disabled, settings kept | — (manual) | — |
-| Resets and *Clear all* bring Inner lines back checked; Ctrl+Z restores it | — (manual) | — |
+| Resets and *Clear all* bring Inner lines back unchecked, Outer frame checked; Ctrl+Z restores them | — (manual) | — |
 
 ---
 
@@ -154,6 +156,14 @@ User request: the **Outer frame** checkbox comes **checked by default**, like In
 Reset or *Clear all*, draws its lines between the cells and around the grid. The Corners style, the
 Borders' default, is unaffected. § UI and the README (EN + FR) updated.
 
+### Iteration 6 — 2026-10-09 — ⚙️ Post-implementation — Inner lines unchecked by default
+
+User request, right after Iteration 5: the **Inner lines** checkbox comes **unchecked by default**.
+`GridBorders.Initial` sets `InnerLines = false`: with Iteration 5, a line style picked for the first
+time, or after a Reset or *Clear all*, draws the outer frame alone, the cells touching — and the
+Seams stay available. Supersedes the *checked by default* of Iterations 1 and 5 for Inner lines.
+§ Rendering, § Model, § UI, § Test Impact and the README (EN + FR) updated.
+
 ---
 
 ## Implementation Log
@@ -163,9 +173,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 3, 5 | 2026-10-09 | `GridBorders.InnerLines` / `IsLineStyle`; the Inner lines checkbox; Outer frame checked by default (5) |
+| Code | 3, 5, 6 | 2026-10-09 | `GridBorders.InnerLines` / `IsLineStyle`; the Inner lines checkbox; Outer frame checked (5), Inner lines unchecked (6) by default |
 | Unit tests | 3 | 2026-10-09 | Not applicable: no test project in the repository; checked offscreen (Iteration 4) |
-| README (EN + FR) | 3, 5 | 2026-10-09 | The Inner lines option, the gap only with it; Outer frame on by default (5) |
+| README (EN + FR) | 3, 5, 6 | 2026-10-09 | The Inner lines option, the gap only with it; Outer frame on (5), Inner lines off (6) by default |
 | Glossary (EN + FR) | 3 | 2026-10-09 | Borders and Gap rows |
 
 ---
