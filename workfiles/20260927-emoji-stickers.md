@@ -1,5 +1,8 @@
 # Emoji Stickers
 
+> ❌ **Cancelled on 2026-10-10** — superseded by a text overlay over the whole grid, emojis being
+> plain characters of the text (see Iteration 7). Never implemented.
+>
 > Working document — emojis laid over the grid, several at once, each one moved, rotated and
 > resized, picked from a palette, a free field or the 20 most recently used.
 > This file is the source of truth for the planned work until implemented,
@@ -227,6 +230,13 @@ The emojis take the mouse only while the Emojis tab is selected and the effect o
 the cell effects' handles; otherwise a click on one reaches the cell under it. Every open question
 is now answered.
 
+### Iteration 7 — 2026-10-10 — ❌ Cancelled
+
+The user cancelled the task before the go: instead of emoji stickers, a **text overlay** laid over
+the whole grid, an emoji being a mere character of the text — nothing emoji-specific in the app —
+drawn in color. Images over the grid are left out for now. The new design starts in its own
+workfile; nothing of this one was implemented.
+
 ---
 
 ## Implementation Log
@@ -236,9 +246,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
+| Code | — | 2026-10-10 | Not done — task cancelled (Iteration 7) |
+| Unit tests | — | 2026-10-10 | None, by decision (Q&A #13) |
+| README | — | 2026-10-10 | Not done — task cancelled (Iteration 7) |
 
 ---
 
@@ -263,8 +273,8 @@ Questions asked by the agent during design, with user responses.
 | 13 | Unit tests for this feature? | None | 2026-09-27 |
 | 14 | Where are the recent emojis remembered: a file next to the exe (like `favorites.txt`), the registry, or the session only? | A file next to the exe | 2026-09-30 |
 | 15 | When can the emojis be selected on the grid: only while the Emojis tab is selected, or whenever the effect is on? | Only while the Emojis tab is selected | 2026-09-30 |
-| 16 | Go for implementation: no, code only, or code + unit tests + documentation? | | |
+| 16 | Go for implementation: no, code only, or code + unit tests + documentation? | Not answered — the task was cancelled (Iteration 7) | 2026-10-10 |
 
 ---
 
-*Last updated: 2026-09-30*
+*Last updated: 2026-10-10*
