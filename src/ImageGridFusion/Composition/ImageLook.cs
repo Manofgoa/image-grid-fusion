@@ -12,7 +12,7 @@ public enum ImageEffect
     Rotate,
     Flip,
     Frames,
-    BlackAndWhite,
+    Colors,
     Blur,
     Volume,
 }
@@ -70,7 +70,7 @@ public sealed record ImageLook
     private (int Rotation, int FineAngle)? KeptRotation { get; init; }
     private (bool X, bool Y)? KeptFlip { get; init; }
     private FramesEffect? KeptFrames { get; init; }
-    private double? KeptGrayscale { get; init; }
+    private ColorsEffect? KeptColors { get; init; }
     private BlurEffect? KeptBlur { get; init; }
     private CropEffect? KeptCrop { get; init; }
     private VolumeEffect? KeptVolume { get; init; }
@@ -92,8 +92,8 @@ public sealed record ImageLook
     /// <summary>Top↔bottom flip, as the image is seen once rotated.</summary>
     public bool FlipY { get; private init; }
 
-    /// <summary>Share of the way to black &amp; white, from 0 (the colors) to 1; <c>null</c> while the effect is inactive.</summary>
-    public double? Grayscale { get; private init; }
+    /// <summary>Saturation, hue, brightness and contrast of the image and its background; <c>null</c> while the effect is inactive.</summary>
+    public ColorsEffect? Colors { get; private init; }
 
     /// <summary>Scale of the fit given by the fitting rule: 1 draws the image as that rule does.</summary>
     public double Zoom { get; private init; } = 1;
@@ -167,7 +167,7 @@ public sealed record ImageLook
         ImageEffect.Background => Background is not null,
         ImageEffect.Crop => Crop is not null,
         ImageEffect.Frames => Frames is not null,
-        ImageEffect.BlackAndWhite => Grayscale is not null,
+        ImageEffect.Colors => this.Colors is not null,
         ImageEffect.Blur => Blur is not null,
         ImageEffect.Volume => Volume is not null,
         ImageEffect.Animations => this.Motion is not null,
@@ -197,8 +197,8 @@ public sealed record ImageLook
                 return flip.Y ? flipped.ToggleFlipY() : flipped;
             case ImageEffect.Frames when KeptFrames is { } frames:
                 return this with { Frames = frames, KeptFrames = null };
-            case ImageEffect.BlackAndWhite when KeptGrayscale is { } grayscale:
-                return this with { Grayscale = grayscale, KeptGrayscale = null };
+            case ImageEffect.Colors when this.KeptColors is { } colors:
+                return this with { Colors = colors, KeptColors = null };
             case ImageEffect.Crop when KeptCrop is { } crop:
                 return this with { Crop = crop, KeptCrop = null };
             case ImageEffect.Blur when KeptBlur is { } blur:
@@ -229,7 +229,7 @@ public sealed record ImageLook
             ImageEffect.Rotate => off with { KeptRotation = (Rotation, FineAngle) },
             ImageEffect.Flip => off with { KeptFlip = (FlipX, FlipY) },
             ImageEffect.Frames => off with { KeptFrames = Frames },
-            ImageEffect.BlackAndWhite => off with { KeptGrayscale = Grayscale },
+            ImageEffect.Colors => off with { KeptColors = this.Colors },
             ImageEffect.Volume => off with { KeptVolume = Volume },
             ImageEffect.Background => off with { KeptBackground = Background },
             ImageEffect.Crop => off with { KeptCrop = Crop },
@@ -252,7 +252,7 @@ public sealed record ImageLook
             ImageEffect.Rotate => look with { KeptRotation = null },
             ImageEffect.Flip => look with { KeptFlip = null },
             ImageEffect.Frames => look with { KeptFrames = null },
-            ImageEffect.BlackAndWhite => look with { KeptGrayscale = null },
+            ImageEffect.Colors => look with { KeptColors = null },
             ImageEffect.Volume => look with { KeptVolume = null },
             ImageEffect.Crop => look with { KeptCrop = null },
             ImageEffect.Animations => look with { KeptMotion = null },
@@ -266,7 +266,7 @@ public sealed record ImageLook
         ImageEffect.Background => this with { Background = BackgroundEffect.Default },
         ImageEffect.Crop => this with { Crop = CropEffect.Default },
         ImageEffect.Frames => this with { Frames = FramesEffect.Default },
-        ImageEffect.BlackAndWhite => this with { Grayscale = 1 },
+        ImageEffect.Colors => this with { Colors = ColorsEffect.Default },
         ImageEffect.Blur => this with { Blur = BlurEffect.Default },
         ImageEffect.Volume => this with { Volume = VolumeEffect.Default },
         ImageEffect.Animations => this with { Motion = MotionEffect.Default },
@@ -284,7 +284,7 @@ public sealed record ImageLook
             ImageEffect.Rotate => WithRotation(0),
             ImageEffect.Flip => (FlipX ? ToggleFlipX() : this) is var flipped && flipped.FlipY ? flipped.ToggleFlipY() : flipped,
             ImageEffect.Frames => this with { Frames = null },
-            ImageEffect.BlackAndWhite => this with { Grayscale = null },
+            ImageEffect.Colors => this with { Colors = null },
             ImageEffect.Volume => this with { Volume = null },
             ImageEffect.Animations => this with { Motion = null },
             _ => this with { Blur = null },
@@ -367,7 +367,7 @@ public sealed record ImageLook
 
     public ImageLook WithFrames(FramesEffect? frames) => this with { Frames = frames };
 
-    public ImageLook WithGrayscale(double intensity) => this with { Grayscale = Math.Clamp(intensity, 0, 1) };
+    public ImageLook WithColors(ColorsEffect? colors) => this with { Colors = colors };
 
     public ImageLook WithBlur(BlurEffect? blur) => this with { Blur = blur };
 
@@ -407,7 +407,7 @@ public sealed record ImageLook
             ImageEffect.Rotate => turned,
             ImageEffect.Flip => flipped,
             ImageEffect.Frames => Frames != other.Frames || KeptFrames != other.KeptFrames,
-            ImageEffect.BlackAndWhite => Grayscale != other.Grayscale || KeptGrayscale != other.KeptGrayscale,
+            ImageEffect.Colors => this.Colors != other.Colors || this.KeptColors != other.KeptColors,
             ImageEffect.Animations => this.Motion != other.Motion || this.KeptMotion != other.KeptMotion,
             ImageEffect.Blur => Blur != other.Blur || KeptBlur != other.KeptBlur,
             ImageEffect.Volume => Volume != other.Volume || KeptVolume != other.KeptVolume,

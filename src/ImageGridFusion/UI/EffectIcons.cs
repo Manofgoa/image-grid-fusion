@@ -114,12 +114,21 @@ internal static class EffectIcons
         g.FillRectangle(amber, strip.X + strip.Width / 2 + s * 0.04f, top, width, height);
     });
 
-    /// <summary>A disc, half black and half white, in a gray ring.</summary>
-    public static Bitmap BlackAndWhite(int size) => Draw(size, (g, s) =>
+    /// <summary>A color wheel — six hue sectors, red at the top — in a gray ring.</summary>
+    public static Bitmap Colors(int size) => Draw(size, (g, s) =>
     {
         var disc = new RectangleF(s * 0.08f, s * 0.08f, s * 0.84f, s * 0.84f);
-        g.FillPie(Brushes.White, disc.X, disc.Y, disc.Width, disc.Height, 90, 180);
-        g.FillPie(Brushes.Black, disc.X, disc.Y, disc.Width, disc.Height, 270, 180);
+        Color[] hues =
+        [
+            Color.FromArgb(230, 40, 40), Color.FromArgb(240, 200, 30), Color.FromArgb(60, 180, 60),
+            Color.FromArgb(40, 190, 220), Color.FromArgb(50, 80, 220), Color.FromArgb(200, 50, 200),
+        ];
+        for (int i = 0; i < hues.Length; i++)
+        {
+            using var sector = new SolidBrush(hues[i]);
+            g.FillPie(sector, disc.X, disc.Y, disc.Width, disc.Height, -120 + 60 * i, 60);
+        }
+
         using var ring = new Pen(Color.FromArgb(128, 128, 128), Math.Max(1, s / 12f));
         g.DrawEllipse(ring, disc);
     });

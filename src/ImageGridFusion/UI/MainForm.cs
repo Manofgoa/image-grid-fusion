@@ -201,9 +201,14 @@ internal sealed class MainForm : Form
         Margin = Padding.Empty,
         Anchor = AnchorStyles.Left,
     };
-    private readonly PictureBox _grayscaleIcon = new() { SizeMode = PictureBoxSizeMode.CenterImage, Anchor = AnchorStyles.Left };
-    private readonly TrackBar _grayscale = OptionSlider(0, 100, 10);
-    private readonly Label _grayscaleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly TrackBar _saturation = ColorsSlider(100, 10);
+    private readonly Label _saturationLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly TrackBar _hue = ColorsSlider(ColorsEffect.MaxHue, 15);
+    private readonly Label _hueLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly TrackBar _brightness = ColorsSlider(100, 10);
+    private readonly Label _brightnessLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly TrackBar _contrast = ColorsSlider(100, 10);
+    private readonly Label _contrastLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
 
     private readonly BlurKindStrip _blurKind = new() { Anchor = AnchorStyles.Left };
     private readonly PictureBox _blurIntensityIcon = new() { SizeMode = PictureBoxSizeMode.CenterImage, Anchor = AnchorStyles.Left };
@@ -468,7 +473,14 @@ internal sealed class MainForm : Form
         framesStartLines.Controls.AddRange([framesStartLine, _freeze]);
         var framesSeparator = new Label { AutoSize = false, Width = 2, BorderStyle = BorderStyle.Fixed3D, Anchor = AnchorStyles.Top | AnchorStyles.Bottom, Margin = new Padding(8, 4, 8, 4) };
         _options[ImageEffect.Frames].Controls.AddRange([this._trimLines, framesSeparator, framesStartLines]);
-        _options[ImageEffect.BlackAndWhite].Controls.AddRange([_grayscaleIcon, _grayscale, _grayscaleLabel]);
+        _options[ImageEffect.Colors].Controls.AddRange(
+            [this._saturation, this._saturationLabel, this._hue, this._hueLabel, this._brightness, this._brightnessLabel, this._contrast, this._contrastLabel]);
+
+        // Each label as wide as its widest value, so moving a slider never shifts the ones after it.
+        this._saturationLabel.MinimumSize = new Size(TextRenderer.MeasureText(SignedPercentText("Saturation", -100), this._saturationLabel.Font).Width, 0);
+        this._hueLabel.MinimumSize = new Size(TextRenderer.MeasureText(HueText(-ColorsEffect.MaxHue), this._hueLabel.Font).Width, 0);
+        this._brightnessLabel.MinimumSize = new Size(TextRenderer.MeasureText(SignedPercentText("Brightness", -100), this._brightnessLabel.Font).Width, 0);
+        this._contrastLabel.MinimumSize = new Size(TextRenderer.MeasureText(SignedPercentText("Contrast", -100), this._contrastLabel.Font).Width, 0);
         _options[ImageEffect.Blur].Controls.AddRange([this._blurKind, _blurIntensityIcon, _blurIntensity, _blurIntensityLabel]);
         _options[ImageEffect.Volume].Controls.AddRange([_mute, _volume, _volumeLabel]);
         _globalTabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -696,11 +708,10 @@ internal sealed class MainForm : Form
         this._trimFromField.ValueChanged += (_, _) => this._trimFrom.Value = this._trimFromField.Value;
         this._trimToField.ValueChanged += (_, _) => this._trimTo.Value = this._trimToField.Value;
         _freeze.CheckedChanged += (_, _) => ChangeFrames(frames => frames.WithFrozen(_freeze.Checked));
-        _grayscale.ValueChanged += (_, _) =>
+        foreach (var slider in (TrackBar[])[this._saturation, this._hue, this._brightness, this._contrast])
         {
-            _grayscaleLabel.Text = $"Intensity: {_grayscale.Value}%";
-            ChangeLook(ImageEffect.BlackAndWhite, look => look.WithGrayscale(_grayscale.Value / 100.0));
-        };
+            slider.ValueChanged += (_, _) => this.SetColors();
+        }
 
         // The kind already shown is picked too: choosing it still turns the blur on.
         this._blurKind.Picked += (_, kind) => this.SetBlurKind(kind);
@@ -869,7 +880,6 @@ internal sealed class MainForm : Form
             _globalEffectResetButton.Image?.Dispose();
             _effectsLabel.Font.Dispose();
             _globalLabel.Font.Dispose();
-            _grayscaleIcon.Image?.Dispose();
             _fadeSquared.Image?.Dispose();
             _fadeLinear.Image?.Dispose();
             _blurIntensityIcon.Image?.Dispose();
@@ -895,7 +905,7 @@ internal sealed class MainForm : Form
     private void UpdateEffectIcons()
     {
         int size = LogicalToDeviceUnits(16);
-        Image?[] previous = [_resetButton.Image, _effectResetButton.Image, _globalResetButton.Image, _globalEffectResetButton.Image, _grayscaleIcon.Image, _fadeSquared.Image, _fadeLinear.Image, _blurIntensityIcon.Image, _backgroundOpacityIcon.Image];
+        Image?[] previous = [_resetButton.Image, _effectResetButton.Image, _globalResetButton.Image, _globalEffectResetButton.Image, _fadeSquared.Image, _fadeLinear.Image, _blurIntensityIcon.Image, _backgroundOpacityIcon.Image];
         foreach (var effect in Enum.GetValues<ImageEffect>())
         {
             _effectTabs.SetIcon(effect, effect switch
@@ -907,7 +917,7 @@ internal sealed class MainForm : Form
                 ImageEffect.Rotate => EffectIcons.Rotate(size),
                 ImageEffect.Flip => EffectIcons.Flip(size),
                 ImageEffect.Frames => EffectIcons.Frames(size),
-                ImageEffect.BlackAndWhite => EffectIcons.BlackAndWhite(size),
+                ImageEffect.Colors => EffectIcons.Colors(size),
                 ImageEffect.Volume => EffectIcons.Volume(size),
                 _ => EffectIcons.Blur(size),
             });
@@ -923,8 +933,6 @@ internal sealed class MainForm : Form
         _effectResetButton.Image = EffectIcons.Reset(size);
         _globalResetButton.Image = EffectIcons.Reset(size);
         _globalEffectResetButton.Image = EffectIcons.Reset(size);
-        _grayscaleIcon.Image = EffectIcons.Intensity(size);
-        _grayscaleIcon.Size = new Size(size, size);
         _fadeSquared.Image = EffectIcons.Curve(size, FadeCurve.Squared);
         _fadeLinear.Image = EffectIcons.Curve(size, FadeCurve.Linear);
         _blurIntensityIcon.Image = EffectIcons.Intensity(size);
@@ -2689,11 +2697,38 @@ internal sealed class MainForm : Form
         Anchor = AnchorStyles.Left,
     };
 
-    internal static string EffectTitle(ImageEffect effect) => effect switch
+    internal static string EffectTitle(ImageEffect effect) => effect.ToString();
+
+    /// <summary>A slider of the Colors effect, centered on 0: narrower than the others, so its four fit one row.</summary>
+    private static StepSlider ColorsSlider(int maximum, int largeChange)
     {
-        ImageEffect.BlackAndWhite => "Black & white",
-        _ => effect.ToString(),
-    };
+        var slider = OptionSlider(-maximum, maximum, largeChange);
+        slider.Width = 90;
+        return slider;
+    }
+
+    /// <summary>The Colors sliders applied to the selected image, the effect turned on first from its kept settings (RULES.md).</summary>
+    private void SetColors()
+    {
+        this.UpdateColorsLabels();
+        this.ChangeLook(ImageEffect.Colors, look => look.WithColors(look.Colors!
+            .WithSaturation(this._saturation.Value / 100.0)
+            .WithHue(this._hue.Value)
+            .WithBrightness(this._brightness.Value / 100.0)
+            .WithContrast(this._contrast.Value / 100.0)));
+    }
+
+    private void UpdateColorsLabels()
+    {
+        this._saturationLabel.Text = SignedPercentText("Saturation", this._saturation.Value);
+        this._hueLabel.Text = HueText(this._hue.Value);
+        this._brightnessLabel.Text = SignedPercentText("Brightness", this._brightness.Value);
+        this._contrastLabel.Text = SignedPercentText("Contrast", this._contrast.Value);
+    }
+
+    private static string SignedPercentText(string name, int percent) => $"{name}: {percent:+0;-0;0} %";
+
+    private static string HueText(int degrees) => $"Hue: {degrees:+0;-0;0}°";
 
     /// <summary>A click on a tab shows its options, and activates nothing.</summary>
     private void SelectEffect(ImageEffect effect)
@@ -3038,9 +3073,12 @@ internal sealed class MainForm : Form
             this._framesField.Visible = trims;
             _framesLabel.Visible = !trims;
 
-            if (look.TurnOn(ImageEffect.BlackAndWhite).Grayscale is { } grayscale)
+            if (look.TurnOn(ImageEffect.Colors).Colors is { } colors)
             {
-                _grayscale.Value = (int)Math.Round(grayscale * 100);
+                this._saturation.Value = (int)Math.Round(colors.Saturation * 100);
+                this._hue.Value = colors.Hue;
+                this._brightness.Value = (int)Math.Round(colors.Brightness * 100);
+                this._contrast.Value = (int)Math.Round(colors.Contrast * 100);
             }
 
             if (look.TurnOn(ImageEffect.Blur).Blur is { } blur)
@@ -3061,7 +3099,7 @@ internal sealed class MainForm : Form
         _fineAngleLabel.Text = AngleText(_fineAngle.Value);
         this._motionCycleLabel.Text = CycleText(-this._motionCycle.Value);
         UpdateFramesLabel();
-        _grayscaleLabel.Text = $"Intensity: {_grayscale.Value}%";
+        this.UpdateColorsLabels();
         _blurIntensityLabel.Text = $"Intensity: {_blurIntensity.Value}%";
         _volumeLabel.Text = VolumeText(_volume.Value);
         _backgroundOpacityLabel.Text = OpacityText(_backgroundOpacity.Value);
