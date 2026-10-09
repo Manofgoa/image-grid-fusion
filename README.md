@@ -136,6 +136,10 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 - **Contain** and **Fill**, after the zoom, fit the image to its cell: **Contain** shows the whole image, bands on one side; **Fill** covers the cell, the overflow cropped. The fit **lasts**: while one is pressed, the zoom follows the cell — resized by a separator, a layout, the format — and the image, cropped or turned; the slider and the label show the zoom it gives. The image stays where it was moved, and can still be dragged.
   - Pressing the other one switches to it; unpressing the pressed one, the wheel or the slider leave the fit for a free zoom, starting from the zoom shown.
   - A fine angle still zooms the fitted image just enough to cover what it covers unturned.
+- **On a document** (see Previews), the zoom renders it again once it rests, so it never pixelates:
+  - a **text** is laid out again — zooming out shows **more of it**, smaller, on fewer pages; zooming in shows **less**, larger and re-wrapped, on more pages. It always fills its cell and does not drag: its pages, browsed with the **Frames** effect, choose what shows. Contain and Fill keep it at 100 %. A **cropped** text keeps its layout and zooms like an image, rendered sharp;
+  - a **PDF** page and an Explorer **thumbnail** are rendered sharper while zoomed in, up to 4096 px on their longer side (a thumbnail as far as its file's handler allows); zooming out shrinks them as any image.
+  - While the wheel turns or the slider moves, the page shown is scaled, as any image. A sharper page never makes the export bigger on its own (see Canvas size).
 - The mouse wheel and dragging keep working on every cell, selected or not (see above) — but on the selected cell, while the Crop or Blur tab shows its bars, the wheel scales their zone instead (see Crop, Blur), unless **Alt** is held: Alt + wheel zooms the image as usual, Ctrl still making its steps finer; the effect is on as soon as the image is zoomed or moved. On a cell whose zoom is off, they start from the image as shown, replacing the kept zoom.
 
 ### Animations
@@ -264,15 +268,16 @@ A file that is not an image is turned into one when it can be previewed. The fir
 | Animated GIF (two frames or more) | Its frames, played with their own delays | Frame by frame |
 | Image GDI+ can decode (png, jpg, bmp, gif, tif…) | The image itself | — |
 | Video (mp4, mov, m4v, avi, wmv, mkv, webm, 3gp, mpg, ts…) | A frame, first shown at 10 % of the duration | Frame by frame, at the file's frame rate |
-| PDF | A whole page, rendered with its long side at 1600 px | Page by page |
+| PDF | A whole page, rendered with its long side at 1600 px — more while zoomed in, up to 4096 px | Page by page |
 | Text, whatever its extension — an `.rtf` or `.html` with its styles | The text in a monospace font (see below) | Page by page, when the text needs several |
-| Anything else Windows shows a thumbnail for in Explorer (webp, heic, some documents…) | That thumbnail | — |
+| Anything else Windows shows a thumbnail for in Explorer (webp, heic, some documents…) | That thumbnail — asked for again at a bigger size while zoomed in | — |
 
 - A file none of them handles is skipped, with a status-line message; the app never draws an icon or a placeholder instead.
 - A video whose codec Windows lacks (HEVC without its Store extension, some mkv / avi) falls back to its Windows thumbnail, if any.
 - The slider is the **Frames** effect's (see Effects), never in the output. The image follows it live while dragging.
 - **Text** is recognized from its content: at most 1 MB, UTF-8 or UTF-16 with a byte order mark, and no NUL byte in its first 8 KB. The extension only decides how it reads: an `.rtf` file, or an `.htm` / `.html` one, is read like a pasted rich text (see Pasted text), with its bold, italic, colors and highlights — plain text when nothing can be read from it; any other extension, as plain text. It is rendered on pages shaped like its cell, at the cell's size on the smallest canvas (its longer side 1200 px), and laid out again when the cell changes (layout, swap, image count, a separator released, another format), keeping the reading position.
-- **Readable text**: the font is the largest size between 24 and 96 px at which the whole text fits one page; below 24 px, the text is paginated at 24 px instead. Since the canvas is never narrower than the width at which no image is downscaled (see Canvas size), the text is at least that tall in the output. PDFs are rendered whole, so their small print may stay unreadable in a small cell.
+- **Readable text**: the font is the largest size between 24 and 96 px at which the whole text fits one page; below 24 px, the text is paginated at 24 px instead. Since the canvas is never narrower than the width at which no image is downscaled (see Canvas size), the text is at least that tall in the output — at 100 %. PDFs are rendered whole, so their small print may stay unreadable in a small cell: zoom in, it is rendered sharper.
+- **Zooming a text** lays it out again at that same font, on a page of its cell's shape divided by the zoom: at 50 %, twice as many lines and columns, half as tall; at 200 %, half as many, twice as tall, re-wrapped (see Zoom). The pages, and how long the text scrolls, follow; the reading position is kept.
 
 ### Pasted text
 

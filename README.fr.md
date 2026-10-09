@@ -136,6 +136,10 @@ Un panneau repliable à droite de l'aperçu, ouvert au démarrage : une zone de 
 - **Contain** et **Fill**, après le zoom, ajustent l'image à sa cellule : **Contain** montre l'image entière, des bandes d'un côté ; **Fill** couvre la cellule, le surplus rogné. L'ajustement **dure** : tant que l'un d'eux est enfoncé, le zoom suit la cellule — redimensionnée par un séparateur, une disposition, le format — et l'image, recadrée ou tournée ; le curseur et le libellé montrent le zoom obtenu. L'image reste là où elle a été déplacée, et peut toujours être glissée.
   - Enfoncer l'autre bascule sur lui ; relâcher celui qui est enfoncé, la molette ou le curseur quittent l'ajustement pour un zoom libre, en partant du zoom affiché.
   - Un angle fin zoome toujours l'image ajustée juste assez pour couvrir ce qu'elle couvre non tournée.
+- **Sur un document** (voir Aperçus), le zoom le rend à nouveau une fois au repos, pour qu'il ne pixellise jamais :
+  - un **texte** est remis en page — dézoomer en montre **davantage**, plus petit, sur moins de pages ; zoomer en montre **moins**, plus grand et avec de nouveaux retours à la ligne, sur plus de pages. Il remplit toujours sa cellule et ne se glisse pas : ses pages, parcourues avec l'effet **Frames**, choisissent ce qui s'affiche. Contain et Fill le gardent à 100 %. Un texte **recadré** garde sa mise en page et zoome comme une image, rendu net ;
+  - une page de **PDF** et une **vignette** de l'Explorateur sont rendues plus nettes en zoom avant, jusqu'à 4096 px sur leur grand côté (une vignette autant que le gestionnaire de son fichier le permet) ; dézoomer les réduit comme toute image.
+  - Pendant que la molette tourne ou que le curseur bouge, la page affichée est mise à l'échelle, comme toute image. Une page plus nette n'agrandit jamais l'export à elle seule (voir Taille du canevas).
 - La molette de la souris et le glissement continuent de fonctionner sur chaque cellule, sélectionnée ou non (voir plus haut) — mais sur la cellule sélectionnée, tant que l'onglet Crop ou Blur affiche ses barres, la molette redimensionne leur zone à la place (voir Crop, Blur), sauf si **Alt** est maintenu : Alt + molette zoome l'image comme d'habitude, Ctrl rendant toujours ses pas plus fins ; l'effet est activé dès que l'image est zoomée ou déplacée. Sur une cellule dont le zoom est désactivé, ils partent de l'image telle qu'affichée, en remplaçant le zoom conservé.
 
 ### Animations
@@ -264,15 +268,16 @@ Un fichier qui n'est pas une image est transformé en image quand il peut être 
 | GIF animé (deux images ou plus) | Ses images, jouées avec leurs propres délais | Image par image |
 | Image que GDI+ sait décoder (png, jpg, bmp, gif, tif…) | L'image elle-même | — |
 | Vidéo (mp4, mov, m4v, avi, wmv, mkv, webm, 3gp, mpg, ts…) | Une image, d'abord affichée à 10 % de la durée | Image par image, à la cadence du fichier |
-| PDF | Une page entière, rendue avec son grand côté à 1600 px | Page par page |
+| PDF | Une page entière, rendue avec son grand côté à 1600 px — davantage en zoom avant, jusqu'à 4096 px | Page par page |
 | Texte, quelle que soit son extension — un `.rtf` ou `.html` avec ses styles | Le texte dans une police à chasse fixe (voir plus bas) | Page par page, quand le texte en demande plusieurs |
-| Tout le reste dont Windows affiche une vignette dans l'Explorateur (webp, heic, certains documents…) | Cette vignette | — |
+| Tout le reste dont Windows affiche une vignette dans l'Explorateur (webp, heic, certains documents…) | Cette vignette — redemandée plus grande en zoom avant | — |
 
 - Un fichier qu'aucun d'eux ne gère est ignoré, avec un message dans la ligne d'état ; l'application ne dessine jamais d'icône ni d'image de remplacement à la place.
 - Une vidéo dont Windows n'a pas le codec (HEVC sans son extension du Store, certains mkv / avi) se rabat sur sa vignette Windows, s'il y en a une.
 - Le curseur est celui de l'effet **Frames** (voir Effets), jamais dans la sortie. L'image le suit en direct pendant le glissement.
 - Le **texte** est reconnu à son contenu : 1 Mo au plus, UTF-8 ou UTF-16 avec marque d'ordre des octets, et aucun octet NUL dans ses 8 premiers Ko. L'extension décide seulement de la façon de le lire : un fichier `.rtf`, ou un `.htm` / `.html`, est lu comme un texte riche collé (voir Texte collé), avec son gras, son italique, ses couleurs et ses surlignages — du texte brut quand rien ne peut en être lu ; toute autre extension, comme du texte brut. Il est rendu sur des pages à la forme de sa cellule, à la taille de la cellule sur le plus petit canevas (son grand côté à 1200 px), et remis en page quand la cellule change (disposition, échange, nombre d'images, séparateur relâché, autre format), en gardant la position de lecture.
-- **Texte lisible** : la police est la plus grande taille entre 24 et 96 px à laquelle tout le texte tient sur une page ; sous 24 px, le texte est paginé à 24 px à la place. Comme le canevas n'est jamais plus étroit que la largeur à laquelle aucune image n'est réduite (voir Taille du canevas), le texte a au moins cette hauteur dans la sortie. Les PDF sont rendus entiers, donc leurs petits caractères peuvent rester illisibles dans une petite cellule.
+- **Texte lisible** : la police est la plus grande taille entre 24 et 96 px à laquelle tout le texte tient sur une page ; sous 24 px, le texte est paginé à 24 px à la place. Comme le canevas n'est jamais plus étroit que la largeur à laquelle aucune image n'est réduite (voir Taille du canevas), le texte a au moins cette hauteur dans la sortie — à 100 %. Les PDF sont rendus entiers, donc leurs petits caractères peuvent rester illisibles dans une petite cellule : en zoom avant, ils sont rendus plus nets.
+- **Zoomer un texte** le remet en page à cette même police, sur une page de la forme de sa cellule divisée par le zoom : à 50 %, deux fois plus de lignes et de colonnes, deux fois moins hautes ; à 200 %, deux fois moins, deux fois plus hautes, avec de nouveaux retours à la ligne (voir Zoom). Les pages, et la durée du défilement, suivent ; la position de lecture est conservée.
 
 ### Texte collé
 
