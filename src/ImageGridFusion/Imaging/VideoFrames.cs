@@ -73,10 +73,13 @@ public sealed class VideoFrames : PageSource, IHasSound
             ? DefaultFrameRate
             : numerator / (double)denominator;
 
+    /// <summary>Whether the file's extension is one of a video: only those are opened as one.</summary>
+    public static bool IsVideoFile(string path) => Extensions.Contains(Path.GetExtension(path));
+
     /// <summary>Returns null when the file is not a video Windows can decode.</summary>
     public static VideoFrames? TryOpen(string path)
     {
-        if (!Extensions.Contains(Path.GetExtension(path)))
+        if (!IsVideoFile(path))
         {
             return null;
         }
