@@ -50,8 +50,8 @@ line. **One compact row** (layout B, ~65 logical px, its height DPI-scaled next 
 
 - at the left, the **preview**, a 56 × 56 logical px box;
 - at its right, on a first line the **text field** and the **Load** button, on a second line the
-  **caption** — the state's text, or the file name and size once ready, cut with `…`, the whole
-  of it in the tooltip.
+  **caption** — the state's text, or the file name and size once ready, on two lines when it needs
+  them, cut with `…` past them, the whole of it in the tooltip.
 
 ### Controls
 
@@ -93,11 +93,13 @@ answers. A new site adds a resolver there.
 
 | # | Resolver | Recognises | Gives |
 |---|---|---|---|
-| 1 | **X / Twitter** (`Web/XPostResolver`) | `x.com`, `twitter.com`, `mobile.twitter.com`, `fxtwitter.com`, `vxtwitter.com`, `fixupx.com` — `/<user>/status/<id>` and `/i/status/<id>`, any query | The post's first media |
+| 1 | **X / Twitter** (`Web/XPostResolver`) | `x.com`, `twitter.com`, `fxtwitter.com`, `vxtwitter.com`, `fixupx.com`, each with or without `www.` / `mobile.` — `/<user>/status/<id>` and `/i/status/<id>`, any query | The post's first media |
 | 2 | **Direct link** (`Web/DirectMediaResolver`) | An `http(s)` URL whose response is `image/*` or `video/*` | The file itself |
 | 3 | **yt-dlp** (`Web/YtDlp`) | Anything left, when `yt-dlp.exe` is found | What yt-dlp downloads |
 
 - Only `http` and `https` URLs are accepted; anything else fails at once (`Not a web address`).
+  A text naming no scheme gets `https://` (`x.com/…` loads); a text holding a space, or a host
+  without a dot, is not a web address (`UrlResolver.Parse`).
 
 ### X / Twitter
 
@@ -117,7 +119,10 @@ Checked on the example post (2026-10-09): the syndication endpoint answers witho
 ### Direct Link
 
 - A `GET` streamed to disk; the `Content-Type` decides: `image/*` or `video/*` is a media, anything
-  else (an HTML page) passes to the next resolver.
+  else (an HTML page) passes to the next resolver. A link whose file name is a media's (`.jpg`,
+  `.mp4`…) is taken as one when the server gives no useful type (`application/octet-stream`).
+- An error answer (404, 403…) on a link whose file name is a media's ends the load with that error;
+  on any other link it passes to yt-dlp, which asks the site its own way.
 - The file's **extension follows the content type** (`image/jpeg` → `.jpg`, `video/mp4` → `.mp4`,
   `video/webm` → `.webm`…), since `VideoFrames.TryOpen` gates on its extension whitelist.
 
@@ -127,8 +132,10 @@ Checked on the example post (2026-10-09): the syndication endpoint answers witho
   subfolder next to the exe (`AppContext.BaseDirectory`, its name in one constant `FolderName`,
   kebab-case — `../CLAUDE.md` § Folder Names). Neither the `PATH` nor a setting.
 - Run with `ProcessStartInfo.ArgumentList` (no shell), hidden window:
-  `--no-playlist --newline -f "b[ext=mp4]/b" -o "<folder>/%(extractor)s-%(id)s.%(ext)s" -- <url>` —
-  a **single-file** format, so no ffmpeg is needed to merge streams.
+  `--no-playlist --newline --progress --encoding utf-8 --print after_move:filepath -f "b[ext=mp4]/b"
+  -o "<folder>/%(extractor)s-%(id)s.%(ext)s" -- <url>` — a **single-file** format, so no ffmpeg is
+  needed to merge streams; `--print after_move:filepath` gives the final file, `--progress` keeps the
+  progress lines the `--print` would silence.
 - Its `[download]  42.3%` lines feed the progress; its exit code and last `ERROR:` line give the
   failure message.
 - Not found → the X and direct-link resolvers still work; any other site ends in **Failed** with
@@ -160,13 +167,15 @@ Checked on the example post (2026-10-09): the syndication endpoint answers witho
 - One shared `HttpClient` (`Web/Downloader`), a browser `User-Agent`, streamed to a `~downloading`
   partial file renamed once complete (the `previous\` pattern), progress reported from
   `Content-Length`.
-- File name: `x-<screen_name>-<id>.<ext>` for a post, the URL's last segment (sanitised) for a
-  direct link, yt-dlp's template otherwise.
+- File name: `x-<screen_name>-<id>.<ext>` for a post; for a direct link, the URL's last segment
+  (sanitised, its extension the content type's) followed by an 8-hex tag of the whole URL
+  (`Example-14085c62.jpg`), so two links ending alike never share a file; yt-dlp's template otherwise.
 - **Already there** — the same file name in the folder → reused, nothing downloaded.
 - The files go to **`%TEMP%\ImageGridFusion\url-downloads\`** — a subfolder of the app's temp
   folder (`MainForm.TempVideoFolder`), so that its cleanup is one folder whatever the extension
   (`.png`, `.webm`, `.webp` included), its name in one constant `FolderName`.
-- **Emptied at start-up**, next to `CleanTempVideos` — a file in use is left for a later session.
+- **Emptied at start-up**, in the background, from `Program.Main` with the other writes of the app's
+  own accord (`UrlDownloads.Clean`) — a file in use is left for a later session.
   A `--new-instance` instance **does not empty it** (RULES.md § Single Instance: no automatic
   write of its own accord), so an agent's instance never deletes the user's downloads.
 - Accepted limit (Q6): a downloaded media made a favorite — a cell released on the explorer by its
@@ -253,6 +262,37 @@ Answers Q5–Q8, from a mockup of three layouts of the zone.
 Go given: code, unit tests and documentation, in a worktree (`feature/url-content`). The design
 sections as of Iteration 2 are the frozen scope.
 
+### Iteration 4 — 2026-10-10 — 🧭 Implementation choices
+
+Choices the run took where the frozen design was silent or not quite workable as written. No project
+rule broken.
+
+- **Hosts**: `www.` and `mobile.` accepted in front of every X host (`www.x.com`, `mobile.x.com`…),
+  not only `mobile.twitter.com`.
+- **Address parsing**: `https://` assumed when no scheme is typed; a text with a space, or a host
+  without a dot, is `Not a web address`.
+- **Direct link name**: the last segment followed by an 8-hex tag of the URL — the design's last
+  segment alone would have reused `image.jpg` of one site for another's.
+- **Direct link errors**: an error answer ends the load on a link named like a media, passes to
+  yt-dlp otherwise; a media-named link with an `application/octet-stream` type is taken.
+- **yt-dlp arguments**: `--progress --encoding utf-8 --print after_move:filepath` added, to read the
+  final file and the progress; `NO_COLOR` and `PYTHONIOENCODING=utf-8` set for it.
+- **Install offer**: the link leads the caption (`Install yt-dlp… This site needs yt-dlp`), so the
+  ellipsis never cuts it.
+- **Caption**: on two lines when it needs them (the row has the room), then cut with `…`.
+- **Poster**: a photo's poster is its `?name=small` version; the drag cursor over a ready preview is
+  the move cursor.
+- **Cleanup**: from `Program.Main`, next to `RegistryMigration.Run` / `StartupRegistration.Refresh`
+  (the normal instance's own writes), in the background — rather than beside `CleanTempVideos`, which
+  every instance runs.
+- **Code**: `VideoFrames.IsVideoFile` added for the ▶ badge, `MainForm.TempVideoFolder` made
+  `internal` for `UrlDownloads.Folder`; an unexpected I/O or HTTP error shows its own message in the
+  caption.
+- **Checked**: the resolvers on live URLs from a scratch program — the example post (5.6 MB MP4, the
+  `twitter.com…?s=20` form reusing it), a missing post, a direct `.jpg`, an HTML page (yt-dlp offer),
+  `ftp://` and plain words refused — and the zone in the app (layout, loader, ready preview with ▶).
+  The drag into a cell and the winget install are left to the manual check.
+
 ---
 
 ## Implementation Log
@@ -262,11 +302,11 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable — no test project |
-| RULES.md | | | |
-| README | | | |
-| GLOSSARY | | | |
+| Code | 4 | 2026-10-10 | `Web/` (resolvers, download, yt-dlp), `UI/UrlZone.cs`, `FileExplorerPanel` row 7, `Program.Main` cleanup |
+| Unit tests | 3 | 2026-10-10 | Not applicable — no test project |
+| RULES.md | 4 | 2026-10-10 | § Content From a URL |
+| README | 4 | 2026-10-10 | EN + FR: § Features, § File explorer (URL zone, yt-dlp), § Tech |
+| GLOSSARY | 4 | 2026-10-10 | EN + FR: *URL zone*, *Resolver* |
 | TODO-FEATURES.md | 1 | 2026-10-09 | Not applicable — no matching row |
 
 ---
@@ -288,4 +328,4 @@ Questions asked by the agent during design, with user responses.
 
 ---
 
-*Last updated: 2026-10-09*
+*Last updated: 2026-10-10*
