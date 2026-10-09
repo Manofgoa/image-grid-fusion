@@ -214,6 +214,7 @@ says so rather than staying blank.
 | Unit tests | 4 | 2026-10-09 | No test project — none created; checked by hand in the app |
 | README (EN + FR) | 4 | 2026-10-09 | Summary line, Search (ranking groups), Everything, the new **Sort** bullet, Folder view, Settings file |
 | Glossary (EN + FR) | 4 | 2026-10-09 | New *Sort order* row; *File explorer*, *Folder view* and *Index* rows (sizes, `index\files.index` typo fixed) |
+| Merge | 4 | 2026-10-09 | `feature/search-results-sort` merged into `main` (`--no-ff`); README.md / README.fr.md conflicted with the Borders' color work on the *Settings file* line — main's line kept, the order of the files added; worktree and branch removed |
 
 ---
 
