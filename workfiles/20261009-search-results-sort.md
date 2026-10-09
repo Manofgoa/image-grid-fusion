@@ -46,7 +46,7 @@ drop-down's order applies alone.
 | Entry | Order | Ties broken by |
 |---|---|---|
 | Date ↓ (default — today's order) | The most recently created first (`IndexEntry.Created`) | Name, then relative path |
-| Name ↑ | A→Z on the file name, accents and case ignored (`NameOrder`, as the folder view already uses) | Relative path |
+| Name ↑ | A→Z on the file name, in the culture's order, case ignored — an accented letter next to its plain one (`FolderListing.NameOrder`, as the folder view already uses) | Relative path |
 | Size ↑ | The smallest first | Name, then relative path |
 
 | List | Ordered by |
@@ -100,8 +100,14 @@ Agreed (Q&A 3, 10, 11): a **drop-down** (`ComboBox`, `DropDownList` style).
   `▭` glyph — `_sizeRow` gets a fourth `AutoSize` column, the slider shrinking for it.
 - Its tooltip says what the chosen order does, and that a search puts the relevance first.
 - Changing it re-orders the shown list at once, from the first load (the list scrolls back to the
-  top), the search itself not re-run when only the order changed. The favorites (search box empty)
-  are not re-ordered: the drop-down stays enabled, it applies as soon as a search or `*` shows.
+  top): the list is built again (`FileExplorerPanel.RefreshOrdered` → `RefreshRows`) — the search from
+  the index in memory, a browsed folder read again from the disk. The favorites (search box empty) are
+  not re-ordered nor refreshed: the drop-down stays enabled, it applies as soon as a search or `*`
+  shows.
+- Its entries are the app's English UI labels: `Date ↓`, `Name A→Z`, `Size ↑`; 92 logical px wide
+  (`SortWidth`), scaled with the DPI in `ApplyMetrics`.
+- **Remembered** under `ExplorerFileOrder`, by the enum's name (`Newest`, `Name`, `Smallest` —
+  `Explorer/FileOrder.cs`), saved by `MainForm.SaveExplorerFileOrder` on `FileOrderChanged`.
 - **Remembered** between sessions: an app setting in `settings.json` (`UI/AppSettings.cs`), like the
   tile size and the folder view; an unknown or missing value falls back to Date ↓.
 
@@ -176,6 +182,25 @@ the drop-down at the end of the tile size row, bottom right, rather than either 
 Go given: code, unit tests and documentation, in a worktree (`.claude/worktrees/search-results-sort`,
 branch `feature/search-results-sort`). Scope frozen as the sections above stand.
 
+### Iteration 5 — 2026-10-09 — 🧭 Implementation choices
+
+No project rule broken. Choices the frozen design did not state:
+
+- **Re-ordering re-runs the list** instead of re-sorting the one shown: the design said "the search
+  itself not re-run"; the rows (`ExplorerRow`) hold no date nor size, so the list is built again —
+  the search in memory, a browsed folder read again from the disk (§ UI). Same result on screen.
+- **Name ↑ uses the culture's order, case ignored** (`FolderListing.NameOrder`), not a folded
+  comparison: accented names sort next to their plain letter, as the folder view already did.
+- **A browsed folder's files are `IndexEntry` values** relative to the base folder (with their size),
+  so one comparer — `FileOrders.Compare` — orders the index's files and the disk's alike;
+  `FolderListing.Read(root, relative, order)` replaces `Read(folder)`.
+- **`IndexEntry.Size`** is a separate nullable property, not a loaded `Stamp`: a stamp tells the
+  content texts whether a file changed, and a loaded index still has none.
+- **The folder-view search's folders** call `FileSearch.Search` without an order and keep today's
+  full ranking; the files pass the drop-down's order and get the tiers.
+- **Docs**: the glossary's *Index* row carried `index\x0Ciles.index` (a form feed in place of `\f`);
+  fixed to `index\files.index` in both languages while editing that row.
+
 ---
 
 ## Implementation Log
@@ -185,10 +210,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project — none |
-| README (EN + FR) | | | § File explorer: the Search and Everything paragraphs (the ranking, `*`'s order), the sort drop-down |
-| Glossary (EN + FR) | | | The *Sort order* term; *Tile size* row mentions the row it shares |
+| Code | 4 | 2026-10-09 | Index sizes (`index 3`); `FileOrder` + relevance tiers in `FileSearch`, `FolderListing.Read`, the drop-down; the setting |
+| Unit tests | 4 | 2026-10-09 | No test project — none created; checked by hand in the app |
+| README (EN + FR) | 4 | 2026-10-09 | Summary line, Search (ranking groups), Everything, the new **Sort** bullet, Folder view, Settings file |
+| Glossary (EN + FR) | 4 | 2026-10-09 | New *Sort order* row; *File explorer*, *Folder view* and *Index* rows (sizes, `index\files.index` typo fixed) |
 
 ---
 
