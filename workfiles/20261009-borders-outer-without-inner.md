@@ -12,7 +12,7 @@ Today the Borders' line styles (Solid, Dashed, Dotted, Double) always leave a **
 cells**, filled by the style; the **Outer frame** option only *adds* the same band around the grid.
 There is no way to get a frame around the grid while the cells keep touching.
 
-This work adds an **Inner** option to the Borders: unchecked, the gap between the cells disappears
+This work adds an **Inner lines** option to the Borders: unchecked, the gap between the cells disappears
 — the cells touch as without Borders — while the outer frame, when checked, is still drawn.
 
 Components:
@@ -28,21 +28,30 @@ Components:
 
 ## Rendering
 
-- **Inner checked** (the default, today's behaviour): unchanged — a gap between the cells, filled by
-  the style; with the outer frame, a margin as wide around the grid.
-- **Inner unchecked, Outer frame checked**: the cells **touch** each other, with no gap and no line
-  between them; they shrink **only on the canvas edges**, by the frame's width, and the frame is drawn
-  in the style around the grid. The frame's **thickness is unchanged**: the same Thickness slider.
+- **Inner lines checked** (the default, today's behaviour): unchanged — a gap between the cells,
+  filled by the style; with the outer frame, a margin as wide around the grid.
+- **Inner lines unchecked, Outer frame checked**: the cells **touch** each other, with no gap and no
+  line between them; they shrink **only on the canvas edges**, by the frame's width, and the frame is
+  drawn in the style around the grid. The frame's **thickness is unchanged**: the same Thickness slider.
+- **Both unchecked**: allowed — the Borders stay on and draw nothing, the cells as without Borders.
+  With the Twitter corners, the images keep the rounded-off corners, for Twitter to round, as the gap
+  styles without outer frame do today.
 - The Twitter corners keep working as today for the frame (`DrawFrameCorners`).
-- The **Corners** style is not affected: Inner, like Outer frame, does not apply to it.
+- The **Corners** style is not affected: Inner lines, like Outer frame, does not apply to it.
+
+## Seams
+
+- With Inner lines unchecked the cells touch, so the **Seams** global effect **applies again**: it
+  reads `HasGap`, which is false then (§ Model). Its seams are the edges the cells share; the frame,
+  over the canvas edge, does not change them.
 
 ## Model
 
 - `GridBorders` gets a new member, `InnerLines` (`bool`), **true** in `GridBorders.Initial`.
 - Today `HasGap` (`Pattern != Corners`) means two things at once — *a line style* and *a gap between
   the cells*. It splits:
-  - `IsLineStyle` — `Pattern != Corners`: what the Outer frame / Inner checkboxes and the Opacity
-    slider's enabling, and the `Draw` / `DrawOver` branch, read;
+  - `IsLineStyle` — `Pattern != Corners`: what the Outer frame / Inner lines checkboxes and the
+    Opacity slider's enabling, and the `Draw` / `DrawOver` branch, read;
   - `HasGap` — `IsLineStyle && InnerLines`: the cells no longer touch — what `SeamField.Of` and
     `MainForm.SeamsUnavailable` read.
 - `Inset`: the half-widths on the edges shared with a neighbour apply only with `InnerLines`; the
@@ -53,8 +62,10 @@ Components:
 
 ## UI
 
-- A checkbox **Inner** in the Borders' options, next to **Outer frame**, **checked by default**.
+- A checkbox **Inner lines** in the Borders' options, just before **Outer frame**, **checked by
+  default**.
 - Enabled like Outer frame: in the line styles only, disabled in Corners, its setting kept.
+- The two checkboxes are independent: both may be unchecked (§ Rendering).
 - An ordinary option: acting on it turns the Borders on (`ChangeBorders`); the Borders' Reset, the
   Global Reset and *Clear all* bring it back checked; **not remembered** between sessions.
 - Tooltip: says it draws the borders between the cells; unchecked, the cells touch.
@@ -69,10 +80,12 @@ running app.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| Inner unchecked + Outer frame: cells touch, frame drawn around the grid, in every line style | — (manual) | — |
-| Inner checked: rendering unchanged | — (manual) | — |
-| Corners style: Inner and Outer frame disabled, settings kept | — (manual) | — |
-| Resets and *Clear all* bring Inner back checked; Ctrl+Z restores it | — (manual) | — |
+| Inner lines unchecked + Outer frame: cells touch, frame drawn around the grid, in every line style | — (manual) | — |
+| Inner lines checked: rendering unchanged | — (manual) | — |
+| Both unchecked: nothing drawn, cells as without Borders | — (manual) | — |
+| Inner lines unchecked: the Seams enabled and drawn between the touching cells | — (manual) | — |
+| Corners style: Inner lines and Outer frame disabled, settings kept | — (manual) | — |
+| Resets and *Clear all* bring Inner lines back checked; Ctrl+Z restores it | — (manual) | — |
 
 ---
 
@@ -81,11 +94,11 @@ running app.
 - [x] ~~What does "outer without inner" look like?~~ → A frame around the grid, the cells touching
 - [x] ~~How is it reached in the options?~~ → An **Inner** checkbox next to Outer frame, checked by default
 - [x] ~~The frame's thickness without inner lines?~~ → Unchanged, the same Thickness slider
-- [ ] Inner and Outer frame **both unchecked** in a line style: allowed (the Borders on, nothing
-      drawn), or at least one of the two always stays checked?
-- [ ] The **Seams** global effect, disabled today while the borders leave a gap: available again when
-      Inner is unchecked, since the cells touch?
-- [ ] The checkbox's **label**: `Inner`, `Inner lines`, `Between cells`…?
+- [x] ~~Inner and Outer frame **both unchecked** in a line style: allowed (the Borders on, nothing
+      drawn), or at least one of the two always stays checked?~~ → Allowed, nothing drawn
+- [x] ~~The **Seams** global effect, disabled today while the borders leave a gap: available again when
+      Inner is unchecked, since the cells touch?~~ → Yes, available again
+- [x] ~~The checkbox's **label**: `Inner`, `Inner lines`, `Between cells`…?~~ → `Inner lines`
 
 ---
 
@@ -102,6 +115,13 @@ Initial design from the scoping batch (Q&A 1–4): an **Inner** checkbox, checke
 the cells touch and only the outer frame is drawn, at the same thickness. `HasGap` split into
 `IsLineStyle` and `HasGap`. Three open questions left: both checkboxes unchecked, the Seams, the label.
 No feature backlog row matches (`workfiles/TODO-FEATURES.md` mentions no border).
+
+### Iteration 2 — 2026-10-09
+
+Open questions answered (Q&A 5–7): both checkboxes may be unchecked — the Borders on, nothing drawn;
+the Seams apply again with Inner lines unchecked, the cells touching; the checkbox is labelled
+**Inner lines**, placed just before Outer frame. New § Seams; § Rendering, § UI and § Test Impact
+updated.
 
 ---
 
@@ -129,9 +149,9 @@ Questions asked by the agent during design, with user responses.
 | 2 | How does the user get it in the Borders' options? | An **Inner** checkbox next to Outer, checked by default | 2026-10-09 |
 | 3 | The outer frame's thickness without inner lines? | Unchanged, from the same setting | 2026-10-09 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward — a single scout pass | 2026-10-09 |
-| 5 | Inner and Outer frame both unchecked: allowed, or one always stays checked? | | |
-| 6 | The Seams available again with Inner unchecked? | | |
-| 7 | The checkbox's label? | | |
+| 5 | Inner and Outer frame both unchecked: allowed, or one always stays checked? | Allowed — nothing drawn | 2026-10-09 |
+| 6 | The Seams available again with Inner unchecked? | Yes | 2026-10-09 |
+| 7 | The checkbox's label? | `Inner lines` | 2026-10-09 |
 
 ---
 
