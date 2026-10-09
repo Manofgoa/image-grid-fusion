@@ -197,6 +197,7 @@ internal sealed class GridPreview : Control
             UpdateRatio();
         };
         _player.FrameShown += (_, image) => RedrawCell(image);
+        this._player.PlaybackChanged += (_, _) => this.OnPlaybackChanged();
         _wheelEnd.Tick += (_, _) => EndLive();
         _zoomBadgeTimer.Tick += (_, _) => OnZoomBadgeTick();
         this._restoredTimer.Tick += (_, _) => this.OnRestoredTick();
@@ -1322,6 +1323,53 @@ internal sealed class GridPreview : Control
         }
     }
 
+    /// <summary>Raised when the grid is paused, resumes, is held or released, or its time jumps.</summary>
+    public event EventHandler? PlaybackChanged;
+
+    /// <summary>The grid paused by the user, from the transport; kept while the window is hidden.</summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool PlaybackPaused
+    {
+        get => this._player.Paused;
+        set => this._player.Paused = value;
+    }
+
+    /// <summary>The length of the timeline: the grid's loop, zero without one.</summary>
+    public TimeSpan PlaybackLength => this._player.LoopLength;
+
+    /// <summary>Where the grid stands in its loop.</summary>
+    public TimeSpan PlaybackPosition => this._player.LoopPosition;
+
+    /// <summary>Stands the grid still — a Copy, an export, a drag of the timeline — until <see cref="ReleasePlayback"/>.</summary>
+    public void HoldPlayback() => this._player.Hold();
+
+    /// <summary>Ends one <see cref="HoldPlayback"/>: the grid plays again unless paused.</summary>
+    public void ReleasePlayback() => this._player.Release();
+
+    /// <summary>
+    /// Moves the grid to <paramref name="time"/> of its loop; while the timeline is dragged
+    /// (<paramref name="scrub"/>), the mix heard there sounds for a short snippet.
+    /// </summary>
+    public void SeekPlayback(TimeSpan time, bool scrub)
+    {
+        if (scrub)
+        {
+            this._player.Scrub(time);
+        }
+        else
+        {
+            this._player.Seek(time);
+        }
+    }
+
+    /// <summary>The cells moving on the grid's clock are drawn again at its new time; the progress lines follow.</summary>
+    private void OnPlaybackChanged()
+    {
+        this._motionDrawn = TimeSpan.MaxValue;
+        this._progressTimer.Start();
+        this.PlaybackChanged?.Invoke(this, EventArgs.Empty);
+    }
+
     /// <summary>
     /// Takes the ghost from the source cell as the preview shows it, scaled down, and keeps the
     /// grab point at the same relative place inside it.
@@ -2142,8 +2190,9 @@ internal sealed class GridPreview : Control
             }
         }
 
-        // In the cascade, the next turn draws its line after a pause where none shows.
-        if (_progressStrips.Count == 0 && !this._player.Cascading)
+        // In the cascade, the next turn draws its line after a pause where none shows. The grid
+        // paused, this tick drew it where it stands: the next ones would draw the same.
+        if ((_progressStrips.Count == 0 && !this._player.Cascading) || !this._player.Running)
         {
             _progressTimer.Stop();
         }

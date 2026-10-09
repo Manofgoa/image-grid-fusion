@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using ImageGridFusion.Composition;
 
@@ -13,20 +12,38 @@ namespace ImageGridFusion.UI;
 /// holds an image, the whole mix faded in and out on every loop of the grid while the fade is on. With
 /// the Cascade on, the videos and animated GIFs play their turns one after the other on the grid's
 /// clock (<see cref="CascadeSchedule"/>), standing still and silent between them. The grid can be
-/// started over: every image from its starting point at once, the soundtrack from its beginning. Used
-/// from the UI thread only.
+/// started over: every image from its starting point at once, the soundtrack from its beginning. It can
+/// be paused — by the user, or held while a Copy or an export runs — and moved to any time of the
+/// grid's loop, wrapping at its end as the exported video does (workfiles/20261009-playback-controls.md).
+/// Used from the UI thread only.
 /// </summary>
 internal sealed class AnimationPlayer : IDisposable
 {
     private static readonly TimeSpan Interval = TimeSpan.FromMilliseconds(33);
 
-    private readonly Stopwatch _clock = Stopwatch.StartNew();
+    // A scrub snippet: its gain ramps in and out in steps of this timer, and holds this many ticks between.
+    private const int SnippetHoldTicks = 6;
+    private const double SnippetGainStep = 0.34;
+
+    private readonly PlaybackClock _clock = new();
     private readonly Dictionary<SourceImage, Playback> _playbacks = [];
     private readonly PreviewSound _sound = new();
     private readonly System.Windows.Forms.Timer _soundtrackTimer = new() { Interval = 100 };
 
     // Short enough for the fade's gain to ramp without audible steps.
     private readonly System.Windows.Forms.Timer _fadeTimer = new() { Interval = 30 };
+
+    // Brings the clock back to the start of the grid's loop once it reaches its end.
+    private readonly System.Windows.Forms.Timer _loopTimer = new() { Interval = 30 };
+    private readonly System.Windows.Forms.Timer _snippetTimer = new() { Interval = 15 };
+
+    // Paused by the user; held by a Copy, an export or a drag of the timeline, each released once.
+    private bool _paused;
+    private int _holds;
+
+    // While a scrub snippet sounds: the ticks left before its gain ramps out.
+    private bool _snippet;
+    private int _snippetTicks;
 
     // The images last synced, empty once stopped; the soundtrack and the clock time it started at,
     // null while it does not play.
@@ -40,10 +57,118 @@ internal sealed class AnimationPlayer : IDisposable
     {
         _soundtrackTimer.Tick += (_, _) => SyncSoundtrack();
         _fadeTimer.Tick += (_, _) => SyncFade();
+        this._loopTimer.Tick += (_, _) => this.WrapLoop();
+        this._snippetTimer.Tick += (_, _) => this.OnSnippetTick();
+        this._loopTimer.Start();
     }
 
     /// <summary>Raised on the UI thread once an image shows a new frame.</summary>
     public event EventHandler<SourceImage>? FrameShown;
+
+    /// <summary>Raised on the UI thread when the grid is paused, resumes, is held or released, or its time jumps.</summary>
+    public event EventHandler? PlaybackChanged;
+
+    /// <summary>Paused by the user: the clock stands still, the sound is silent, until unpaused.</summary>
+    public bool Paused
+    {
+        get => this._paused;
+        set
+        {
+            if (this._paused != value)
+            {
+                this._paused = value;
+                this.ApplyRunning();
+            }
+        }
+    }
+
+    /// <summary>Whether the grid plays: neither paused by the user nor held.</summary>
+    public bool Running => !this._paused && this._holds == 0;
+
+    /// <summary>
+    /// The grid's loop — the video length (RULES.md § Video Length), the Cascade and the soundtrack
+    /// included — or zero without one: the length of the timeline.
+    /// </summary>
+    public TimeSpan LoopLength => this._images.Count == 0 ? TimeSpan.Zero : Animation.VideoLength(this._images, this._soundtrack, this._cascade);
+
+    /// <summary>Where the grid stands in its loop: the time the exported video shows the same instant at.</summary>
+    public TimeSpan LoopPosition => Animation.LoopTime(this.GridTime, this.LoopLength);
+
+    /// <summary>Stands the grid still until <see cref="Release"/>, whatever the user's pause; holds add up.</summary>
+    public void Hold()
+    {
+        this._holds++;
+        if (this._holds == 1)
+        {
+            this.ApplyRunning();
+        }
+    }
+
+    /// <summary>Ends one <see cref="Hold"/>: the last one gives the grid back to the user's play or pause.</summary>
+    public void Release()
+    {
+        if (this._holds == 0)
+        {
+            return;
+        }
+
+        this._holds--;
+        if (this._holds == 0)
+        {
+            this.ApplyRunning();
+        }
+    }
+
+    /// <summary>
+    /// Moves the grid to <paramref name="time"/> of its loop, as the exported video shows it: every
+    /// playing image from its starting point at the clock's origin, the soundtrack from its beginning;
+    /// paused, the frames there are shown once. A frozen image stays where it stands.
+    /// </summary>
+    public void Seek(TimeSpan time)
+    {
+        this._clock.Set(time < TimeSpan.Zero ? TimeSpan.Zero : time);
+        foreach (var playback in this._playbacks.Values)
+        {
+            if (playback.PausedAt is null)
+            {
+                playback.Offset = -playback.Image.StartTime;
+            }
+
+            playback.Pending = true;
+        }
+
+        if (this._soundtrackStart is not null)
+        {
+            this._soundtrackStart = TimeSpan.Zero;
+            this.SyncSoundtrack();
+        }
+
+        this.SyncFade();
+        this.PlaybackChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Moves the grid to <paramref name="time"/> while the timeline is dragged, the grid held: the mix
+    /// heard there sounds for a short snippet, faded in and out, the next scrub step starting another.
+    /// </summary>
+    public void Scrub(TimeSpan time)
+    {
+        this.Seek(time);
+        if (!this._snippet)
+        {
+            this._snippet = true;
+            this._sound.ScrubGain = 0;
+        }
+
+        this._snippetTicks = SnippetHoldTicks;
+        this._snippetTimer.Start();
+        foreach (var playback in this._playbacks.Values)
+        {
+            this.SyncSound(playback, playback.Image.ContentTime(this.Position(playback)));
+        }
+
+        this.SyncSoundtrack();
+    }
 
     /// <summary>Plays the animated images not playing yet, stops the ones gone or shown still, and mixes the sounds of the videos.</summary>
     public void Sync(IReadOnlyList<SourceImage> images)
@@ -135,6 +260,8 @@ internal sealed class AnimationPlayer : IDisposable
                 playback.Offset = _clock.Elapsed - image.StartTime;
                 playback.Reader?.Reset();
             }
+
+            playback.Pending = true;
         }
     }
 
@@ -142,27 +269,9 @@ internal sealed class AnimationPlayer : IDisposable
     /// Plays every animated image again from its starting point, all at this instant, and the
     /// soundtrack from its beginning (RULES.md). The clock starts over, so its origin stays a whole
     /// second for the images <see cref="Sync"/> starts later; a frozen image stays where it stands, and
-    /// the sounds follow their frames by themselves.
+    /// the sounds follow their frames by themselves. Paused, the grid stays paused, at its start.
     /// </summary>
-    public void Restart()
-    {
-        _clock.Restart();
-        foreach (var playback in _playbacks.Values)
-        {
-            if (playback.PausedAt is null)
-            {
-                playback.Offset = -playback.Image.StartTime;
-            }
-        }
-
-        if (_soundtrackStart is not null)
-        {
-            _soundtrackStart = TimeSpan.Zero;
-            SyncSoundtrack();
-        }
-
-        SyncFade();
-    }
+    public void Restart() => this.Seek(TimeSpan.Zero);
 
     /// <summary>
     /// The clock of the grid, from its last start over: the time the motions of the Animations effects
@@ -201,6 +310,11 @@ internal sealed class AnimationPlayer : IDisposable
     {
         if (_playbacks.TryGetValue(image, out var playback))
         {
+            if (playback.DisplaySize != size)
+            {
+                playback.Pending = true;
+            }
+
             playback.DisplaySize = size;
         }
     }
@@ -211,6 +325,7 @@ internal sealed class AnimationPlayer : IDisposable
         if (_playbacks.TryGetValue(image, out var playback))
         {
             playback.Reader?.Reset();
+            playback.Pending = true;
         }
     }
 
@@ -237,8 +352,85 @@ internal sealed class AnimationPlayer : IDisposable
         Stop();
         _soundtrackTimer.Dispose();
         _fadeTimer.Dispose();
+        this._loopTimer.Dispose();
+        this._snippetTimer.Dispose();
         _sound.Dispose();
     }
+
+    /// <summary>The clock runs while the grid plays, the sound follows, and the transport is told.</summary>
+    private void ApplyRunning()
+    {
+        if (this.Running)
+        {
+            this.EndSnippet();
+            this._clock.Resume();
+        }
+        else
+        {
+            this._clock.Pause();
+        }
+
+        foreach (var playback in this._playbacks.Values)
+        {
+            this.SyncSound(playback, playback.Image.ContentTime(this.Position(playback)));
+        }
+
+        this.SyncSoundtrack();
+        this.PlaybackChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Once the clock reaches the end of the grid's loop, the grid starts its loop again, as the exported video loops.</summary>
+    private void WrapLoop()
+    {
+        var loop = this.LoopLength;
+        if (this.Running && loop > TimeSpan.Zero && this.GridTime >= loop)
+        {
+            this.Seek(Animation.LoopTime(this.GridTime, loop));
+        }
+    }
+
+    /// <summary>A scrub snippet ramps in, holds, then ramps out and stops its sounds.</summary>
+    private void OnSnippetTick()
+    {
+        if (this._snippetTicks > 0)
+        {
+            this._snippetTicks--;
+            this._sound.ScrubGain += SnippetGainStep;
+            return;
+        }
+
+        this._sound.ScrubGain -= SnippetGainStep;
+        if (this._sound.ScrubGain <= 0)
+        {
+            this.EndSnippet();
+        }
+    }
+
+    /// <summary>Stops a scrub snippet: its sounds go silent as the grid stands, the gain back to full.</summary>
+    private void EndSnippet()
+    {
+        if (!this._snippet)
+        {
+            return;
+        }
+
+        this._snippet = false;
+        this._snippetTimer.Stop();
+        foreach (var playback in this._playbacks.Values)
+        {
+            this.SyncSound(playback, playback.Image.ContentTime(this.Position(playback)));
+        }
+
+        this.SyncSoundtrack();
+        this._sound.ScrubGain = 1;
+    }
+
+    /// <summary>
+    /// The sound of <paramref name="playback"/> at <paramref name="time"/> of its content: heard while
+    /// it plays — not frozen, the grid running or a scrub snippet sounding — and, in the cascade, in its turn.
+    /// </summary>
+    private void SyncSound(Playback playback, TimeSpan time) =>
+        this._sound.Sync(playback.Image, time, playback.PausedAt is null && (this.Running || this._snippet) && this.InTurn(playback.Image));
 
     /// <summary>The soundtrack plays while the grid holds an image; stopped, it starts again on a whole second of the clock.</summary>
     private void UpdateSoundtrack()
@@ -270,7 +462,7 @@ internal sealed class AnimationPlayer : IDisposable
 
         var loop = Animation.VideoLength(_images, soundtrack, this._cascade);
         var time = Animation.LoopTime(Animation.LoopTime(_clock.Elapsed - start, loop), soundtrack.Duration);
-        _sound.SyncSoundtrack(time, soundtrack.Level);
+        _sound.SyncSoundtrack(time, soundtrack.Level, this.Running || this._snippet);
     }
 
     /// <summary>The fade follows the grid while it holds an image; without it, the mix plays as it is.</summary>
@@ -364,10 +556,12 @@ internal sealed class AnimationPlayer : IDisposable
                 var time = image.ContentTime(this.Position(playback));
                 bool playing = playback.PausedAt is null;
                 this._sound.Span(image, image.PlayedFrom, image.PlayedFrom + loop);
-                _sound.Sync(image, time, playing && this.InTurn(image));
+                this.SyncSound(playback, time);
 
-                if (playing && loop > TimeSpan.Zero)
+                // The grid paused, a frame is decoded only where it was moved or laid out again.
+                if (playing && loop > TimeSpan.Zero && (this.Running || playback.Pending))
                 {
+                    playback.Pending = false;
                     var reader = playback.Reader;
                     var size = playback.DisplaySize;
                     var frame = await Task.Run(() => ScaleDown(reader.FrameAt(time), size), cancellation);
@@ -444,6 +638,9 @@ internal sealed class AnimationPlayer : IDisposable
         public TimeSpan Offset { get; set; } = offset;
 
         public TimeSpan? PausedAt { get; set; }
+
+        /// <summary>A frame to show though the grid is paused: just started, moved, or laid out again.</summary>
+        public bool Pending { get; set; } = true;
 
         public Size DisplaySize { get; set; }
 

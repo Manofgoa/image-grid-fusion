@@ -26,6 +26,7 @@ internal sealed class PreviewSound : IDisposable
     private Task<AudioGraph?>? _graph;
     private AudioDeviceOutputNode? _output;
     private double _masterGain = 1;
+    private double _scrubGain = 1;
     private bool _running;
     private bool _disposed;
 
@@ -36,10 +37,21 @@ internal sealed class PreviewSound : IDisposable
         set
         {
             _masterGain = Math.Clamp(value, 0, 1);
-            if (_output is { } output)
-            {
-                output.OutgoingGain = _masterGain;
-            }
+            this.ApplyOutputGain();
+        }
+    }
+
+    /// <summary>
+    /// A further scale of the whole mix, from 0 to 1: a scrub snippet's ramp in and out, so it starts and
+    /// stops without a click (workfiles/20261009-playback-controls.md).
+    /// </summary>
+    public double ScrubGain
+    {
+        get => this._scrubGain;
+        set
+        {
+            this._scrubGain = Math.Clamp(value, 0, 1);
+            this.ApplyOutputGain();
         }
     }
 
@@ -133,12 +145,12 @@ internal sealed class PreviewSound : IDisposable
         }
     }
 
-    /// <summary>Plays the soundtrack from <paramref name="position"/> at <paramref name="gain"/>.</summary>
-    public void SyncSoundtrack(TimeSpan position, double gain)
+    /// <summary>Plays the soundtrack from <paramref name="position"/> at <paramref name="gain"/> while <paramref name="playing"/>; else pauses it.</summary>
+    public void SyncSoundtrack(TimeSpan position, double gain, bool playing)
     {
         if (_soundtrack is { } voice)
         {
-            Sync(voice, position, gain, playing: true);
+            Sync(voice, position, gain, playing);
         }
     }
 
@@ -249,8 +261,16 @@ internal sealed class PreviewSound : IDisposable
         }
 
         _output = output.DeviceOutputNode;
-        _output.OutgoingGain = _masterGain;
+        this.ApplyOutputGain();
         return graph;
+    }
+
+    private void ApplyOutputGain()
+    {
+        if (this._output is { } output)
+        {
+            output.OutgoingGain = this._masterGain * this._scrubGain;
+        }
     }
 
     /// <summary>The graph runs while it has a video or a soundtrack to mix, so an idle preview holds no audio stream open.</summary>
