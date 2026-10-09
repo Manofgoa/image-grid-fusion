@@ -176,7 +176,7 @@ says so rather than staying blank.
 | Code | 3, 5, 6 | 2026-10-09 | `GridBorders.InnerLines` / `IsLineStyle`; the Inner lines checkbox; Outer frame checked (5), Inner lines unchecked (6) by default |
 | Unit tests | 3 | 2026-10-09 | Not applicable: no test project in the repository; checked offscreen (Iteration 4) |
 | README (EN + FR) | 3, 5, 6 | 2026-10-09 | The Inner lines option, the gap only with it; Outer frame on (5), Inner lines off (6) by default |
-| Glossary (EN + FR) | 3 | 2026-10-09 | Borders and Gap rows |
+| Glossary (EN + FR) | 3, 6 | 2026-10-09 | Borders and Gap rows; the defaults in the Borders row (6) |
 
 ---
 
