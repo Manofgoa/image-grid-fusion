@@ -97,8 +97,11 @@ In the folder view, a folder in Details (Q&A 10):
 - On the line below, a **strip of thumbnails of the first files it contains**, each **half the
   folder thumbnail's size**, side by side **as far right as the row goes**, never scrolling
   sideways: as many as fit.
+- The strip shows the files **directly in the folder** only, in the **sort order** chosen
+  (Q&A 13); a folder holding only subfolders has an empty strip.
+- The strip is **a picture only** (Q&A 14): its thumbnails have no tooltip, no drag, no click of
+  their own — the whole row behaves as the folder.
 - No heart, no drag, a double-click opens it — as a folder tile.
-- Which files feed the strip and whether its thumbnails react: *see Open Questions*.
 
 ### The Excerpt and Its Highlight
 
@@ -179,10 +182,10 @@ hand in the app.
   tile, or moved?~~ → Kept on the thumbnail
 - [x] ~~A test project for the pure helpers (size format, highlight spans), or checked by hand as
   the previous workfiles?~~ → No test project, checked by hand
-- [ ] A folder row's strip — which files: the files directly in the folder, or every file below
-  it (the subfolders' too), and in which order?
-- [ ] A folder row's strip — do its thumbnails react (tooltip with the name, drag into a cell,
-  double-click loading the file), or are they a picture of the folder only?
+- [x] ~~A folder row's strip — which files: the files directly in the folder, or every file below
+  it (the subfolders' too), and in which order?~~ → The files directly in it, in the sort order
+- [x] ~~A folder row's strip — do its thumbnails react (tooltip with the name, drag into a cell,
+  double-click loading the file), or are they a picture of the folder only?~~ → A picture only
 
 ---
 
@@ -212,6 +215,12 @@ than the options offered: the name with its file count in parentheses, and below
 the first files' thumbnails**, half the folder thumbnail's size, up to the row's right edge —
 new § A Folder Row. Two questions follow from it (the strip's files and order, whether its
 thumbnails react).
+
+### Iteration 3 — 2026-10-09
+
+The folder row's strip settled (Q&A 13–14): the files directly in the folder, in the sort order,
+an empty strip for a folder of subfolders only; a picture only, the row behaving as the folder.
+No open question left.
 
 ---
 
@@ -247,8 +256,8 @@ Questions asked by the agent during design, with user responses.
 | 10 | A folder row in Details? | "Name + file count in parentheses; on the line below, thumbnails of the first files it contains, 2× smaller than the folder's, going as far right as possible without scrolling" | 2026-10-09 |
 | 11 | The heart and the light bulb in a Details row? | On the thumbnail | 2026-10-09 |
 | 12 | A test project for the pure helpers? | No, checked by hand | 2026-10-09 |
-| 13 | A folder row's strip: which files, in which order? | | |
-| 14 | A folder row's strip: do its thumbnails react? | | |
+| 13 | A folder row's strip: which files, in which order? | The files directly in it only | 2026-10-09 |
+| 14 | A folder row's strip: do its thumbnails react? | A picture only | 2026-10-09 |
 
 ---
 
