@@ -56,44 +56,73 @@ Out of scope: a column header, sorting by clicking a column, other columns (date
 ### The View Mode Control
 
 - Placed in the tile size row (`_sizeRow`), **next to the Sort drop-down**.
-- Its form: *see Open Questions*.
+- **Two icon toggle buttons** (Q&A 9): a grid icon for **Thumbnails**, a list icon for
+  **Details**; the current mode's button pressed, each with its tooltip (`Thumbnails`, `Details`).
+  One click switches.
 
 ### A Details Row
 
 Disposition D of the mockup shown on 2026-10-09:
 
 ```
-┌──────────┐ facture-edf-mars.png                     412 KB ♡
-│ thumbnail│ … montant total [électricité] à régler …
+┌──────────┐ facture-edf-mars.png                     412 Ko
+│ ♡      💡│ … montant total [électricité] à régler avant le 12 mars …
 └──────────┘
 ```
 
-- **Thumbnail** at the left, 4:3, drawn as a tile's (`ThumbnailCache`), its width derived from the
-  tile size (*see Open Questions*); the row is as tall as the thumbnail (at least the text's two
-  lines).
+- **Thumbnail** at the left, 4:3, drawn as a tile's (`ThumbnailCache`), its width **a quarter of
+  the tile size** — 25 to 250 px for the slider's 100 to 1 000 (Q&A 8); the row is as tall as the
+  thumbnail, at least the text's two lines. The slider and Ctrl + wheel resize it.
 - **Name** on the first line, ellipsized; **size** right-aligned on the same line.
 - **Excerpt** on the line below, only when the file was found by its content.
-- The heart, the light bulb, the drag into a cell, the double-click, the tooltip: *see Open
-  Questions* for what moves.
+- The **heart** and the **light bulb** stay **on the thumbnail**, at a tile's corners, with the
+  same clicks and tooltips (Q&A 11). The drag into a cell and the double-click work on the whole
+  row.
 - The `Loading…` slot becomes a row of its own at the end of the list.
+
+### A Folder Row
+
+In the folder view, a folder in Details (Q&A 10):
+
+```
+┌──────────┐ Factures (42)
+│  folder  │ ┌────┐┌────┐┌────┐┌────┐┌────┐┌────┐┌────┐┌──
+└──────────┘ └────┘└────┘└────┘└────┘└────┘└────┘└────┘└──  ← up to the right edge
+```
+
+- Its thumbnail (Windows' folder thumbnail, or the drawn folder) at the left, at a file row's
+  width.
+- **Name, then its file count in parentheses** — `Factures (42)`, the count the folder tile shows
+  today (the index's, every file below it).
+- On the line below, a **strip of thumbnails of the first files it contains**, each **half the
+  folder thumbnail's size**, side by side **as far right as the row goes**, never scrolling
+  sideways: as many as fit.
+- No heart, no drag, a double-click opens it — as a folder tile.
+- Which files feed the strip and whether its thumbnails react: *see Open Questions*.
 
 ### The Excerpt and Its Highlight
 
 - The excerpt is the one the light bulb's tooltip shows today: `ContentIndex.ExcerptOf` — the
   first word whose folded form contains the matched word, with the words around it, `…` where the
   text goes on — read from the content index in memory, no disk read.
+- **As wide as the row holds** (Q&A 5): one line, as many words around the matched one as the
+  text column's width takes, the matched word kept in view (centered when the text goes on both
+  sides), `…` where the text goes on. The light bulb's tooltip keeps its 4 words around.
+- **Every word of the search** found in the excerpt is highlighted, at each occurrence (Q&A 6) —
+  not only the word that made the file found.
 - **Highlight like emoji-selector** (the user's reference): an opaque **yellow rectangle
   (#FFFF00)**, no padding nor rounding, as tall as the line, drawn behind the matched substring,
   the text drawn over it with `TextRenderer` (`NoPadding | NoPrefix`, each run measured). The
   matching is case- and accent-insensitive (the app's existing folding), every occurrence of a
   highlighted word marked, overlapping spans merged.
-- How wide the excerpt is and which words are highlighted: *see Open Questions*.
 
 ### The Size
 
 - Read from the index (`IndexEntry.Size`, falling back to the stamp's); a file outside the index —
   a favorite elsewhere, a pasted favorite — reads it from the disk once.
-- Its format and its units: *see Open Questions*.
+- **In French units, base 1024** (Q&A 7), as the user asked — a deliberate exception to the
+  English UI: `812 octets`, `412 Ko`, `2,3 Mo`, `1,1 Go`; one decimal below 10 of a unit, none
+  above (`12 Ko`, `9,4 Mo`), the French decimal comma. An unknown size shows `—`.
 
 ---
 
@@ -118,12 +147,13 @@ From the scout pass of 2026-10-09 (inputs, not decisions):
 
 ## Test Impact
 
-The app has **no test project** (as recorded by `20261009-search-results-sort.md`). Whether one
-is created for this work: *see Open Questions*. The behaviours an assertion would pin:
+The app has **no test project** (as recorded by `20261009-search-results-sort.md`), and none is
+created for this work (Q&A 12): **nothing is unit-tested**, every behaviour below is checked by
+hand in the app.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| The size format (bytes, KB, MB, GB; rounding; unknown size) | *none — no test project* | — |
+| The size format (octets, Ko, Mo, Go; rounding; unknown size) | *none — no test project* | — |
 | The highlight spans of an excerpt (case / accent-insensitive, every occurrence, merged overlaps) | *none — no test project* | — |
 | The view mode setting read back, unknown text falling back to Thumbnails | *none — no test project* | — |
 
@@ -131,20 +161,28 @@ is created for this work: *see Open Questions*. The behaviours an assertion woul
 
 ## Open Questions
 
-- [ ] How wide is the excerpt in a Details row — the tooltip's 4 words around, or as much as the
-  row's width holds?
-- [ ] Which words are highlighted in the excerpt — the matched word only, or every word of the
-  search found in it?
-- [ ] The size's format and units — English `B / KB / MB / GB` like the rest of the UI, or French
-  `octets / Ko / Mo`? Base 1024 or 1000? And a file whose size is unknown?
-- [ ] The row thumbnail's width from the tile size (100 to 1 000 px) — the tile size itself, a
-  fraction of it, or capped?
-- [ ] The view mode control's form — a drop-down like Sort, or two toggle buttons (icons)?
-- [ ] A folder row in Details — its file count as on the folder tile, or a total size?
-- [ ] The heart, the light bulb and their tooltips in a Details row — kept on the thumbnail as on a
-  tile, or moved?
-- [ ] A test project for the pure helpers (size format, highlight spans), or checked by hand as
-  the previous workfiles?
+- [x] ~~How wide is the excerpt in a Details row — the tooltip's 4 words around, or as much as the
+  row's width holds?~~ → As much as the row's width holds, one line, the matched word in view
+- [x] ~~Which words are highlighted in the excerpt — the matched word only, or every word of the
+  search found in it?~~ → Every word of the search, at each occurrence
+- [x] ~~The size's format and units — English `B / KB / MB / GB` like the rest of the UI, or French
+  `octets / Ko / Mo`? Base 1024 or 1000? And a file whose size is unknown?~~ → French
+  `octets / Ko / Mo / Go`, base 1024; `—` when unknown
+- [x] ~~The row thumbnail's width from the tile size (100 to 1 000 px) — the tile size itself, a
+  fraction of it, or capped?~~ → A quarter, 25 to 250 px
+- [x] ~~The view mode control's form — a drop-down like Sort, or two toggle buttons (icons)?~~ →
+  Two icon toggle buttons
+- [x] ~~A folder row in Details — its file count as on the folder tile, or a total size?~~ → Name +
+  file count in parentheses, and below it a strip of the first files' thumbnails at half the
+  folder thumbnail's size, up to the right edge
+- [x] ~~The heart, the light bulb and their tooltips in a Details row — kept on the thumbnail as on a
+  tile, or moved?~~ → Kept on the thumbnail
+- [x] ~~A test project for the pure helpers (size format, highlight spans), or checked by hand as
+  the previous workfiles?~~ → No test project, checked by hand
+- [ ] A folder row's strip — which files: the files directly in the folder, or every file below
+  it (the subfolders' too), and in which order?
+- [ ] A folder row's strip — do its thumbnails react (tooltip with the name, drag into a cell,
+  double-click loading the file), or are they a picture of the folder only?
 
 ---
 
@@ -163,6 +201,17 @@ slider; the excerpt of the light bulb's tooltip below the name for a file found 
 only, highlighted in yellow as emoji-selector does; the size on every file row; the mode in every
 view and remembered. Scout pass (one pass, the subject judged straightforward): leads in § Code
 Leads. Eight questions left open.
+
+### Iteration 2 — 2026-10-09
+
+Answers to the eight open questions (Q&A 5–12): the excerpt as wide as the row holds, every
+searched word highlighted; the size in French units, base 1024 (an exception to the English UI,
+asked by the user); the row thumbnail a quarter of the tile size; two icon toggle buttons; the
+heart and the bulb kept on the thumbnail; no test project. The folder row answer goes further
+than the options offered: the name with its file count in parentheses, and below it a **strip of
+the first files' thumbnails**, half the folder thumbnail's size, up to the row's right edge —
+new § A Folder Row. Two questions follow from it (the strip's files and order, whether its
+thumbnails react).
 
 ---
 
@@ -190,14 +239,16 @@ Questions asked by the agent during design, with user responses.
 | 2 | When does the content excerpt show below the name? | Only when the search found the words in the file's content | 2026-10-09 |
 | 3 | Where does Details apply, and is it remembered? | Everywhere (search, favorites, folder view), remembered between sessions | 2026-10-09 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward — one scout pass | 2026-10-09 |
-| 5 | How wide is the excerpt? | | |
-| 6 | Which words are highlighted? | | |
-| 7 | The size's format and units? | | |
-| 8 | The row thumbnail's width from the tile size? | | |
-| 9 | The view mode control's form? | | |
-| 10 | A folder row in Details? | | |
-| 11 | The heart and the light bulb in a Details row? | | |
-| 12 | A test project for the pure helpers? | | |
+| 5 | How wide is the excerpt? | As wide as the row holds | 2026-10-09 |
+| 6 | Which words are highlighted? | Every word of the search | 2026-10-09 |
+| 7 | The size's format and units? | octets / Ko / Mo, base 1024 | 2026-10-09 |
+| 8 | The row thumbnail's width from the tile size? | A quarter, 25 to 250 px | 2026-10-09 |
+| 9 | The view mode control's form? | Two icon toggle buttons | 2026-10-09 |
+| 10 | A folder row in Details? | "Name + file count in parentheses; on the line below, thumbnails of the first files it contains, 2× smaller than the folder's, going as far right as possible without scrolling" | 2026-10-09 |
+| 11 | The heart and the light bulb in a Details row? | On the thumbnail | 2026-10-09 |
+| 12 | A test project for the pure helpers? | No, checked by hand | 2026-10-09 |
+| 13 | A folder row's strip: which files, in which order? | | |
+| 14 | A folder row's strip: do its thumbnails react? | | |
 
 ---
 
