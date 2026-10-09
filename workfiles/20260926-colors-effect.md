@@ -199,6 +199,11 @@ existing lines are left as they are.
 - `RULES.md` is changed on the branch: it is propagated to the running sessions once merged into
   `main`, where they read it.
 
+### Iteration 7 — 2026-10-10 — Closed
+
+The user confirmed the task is finished and asked for the merge of `feature/colors-effect` into
+`main`.
+
 ---
 
 ## Implementation Log
