@@ -404,6 +404,27 @@ One running instance **per exe location** and Windows session (origin:
 - **Agents launch with `--new-instance`, always** (`CLAUDE.md` § Launch): without it, an agent's launch
   would bring back, and load its files into, the user's instance or another session's.
 
+## Content From a URL
+
+What the URL zone loads (origin: `workfiles/20261009-url-content.md`), `Web/`:
+
+- **One resolver chain**, `Web/UrlResolver`: the X / Twitter post (`XPostResolver`, the public
+  syndication endpoint, the post's **first** media), the direct link to a media (`DirectMediaResolver`,
+  by its content type), then **yt-dlp** (`YtDlp`) — the first that recognises the URL answers. A new
+  site adds its resolver there.
+- A downloaded media reaches a cell **as a file**, dragged from the zone as a tile is
+  (`DataFormats.FileDrop`, `MainForm.AddFilesAsync`): no route of its own into the grid, so it is
+  loaded, started over and reset like any dropped file.
+- The downloads go to **`%TEMP%\ImageGridFusion\url-downloads\`** (`UrlDownloads.Folder`), emptied at
+  start-up by the normal instance only — a `--new-instance` one deletes nothing of its own accord.
+  The same file name already there is reused, not downloaded again.
+- **yt-dlp is never shipped**: looked for in `yt-dlp\` next to the exe only (`YtDlp.Folder`), never on
+  the `PATH`. Missing, the zone offers to install it there with winget — the command shown and
+  confirmed first; nothing is installed without that **Yes**. It is asked for a single-file format,
+  so no ffmpeg is needed.
+- The zone — its URL, its preview — is **not persisted** and is **out of the undo history**; a newer
+  load cancels the one running, its partial file deleted.
+
 ## App Settings
 
 Apply to every setting remembered between sessions (origin:
