@@ -52,12 +52,14 @@ Design:
   `Elapsed = origin + (running ? stopwatch.Elapsed : 0)`, with `Pause()`, `Resume()`, `Seek(t)`,
   `Restart()`. **Every** read of `_clock` goes through it — one clock, so frames, motion, Cascade,
   soundtrack and Fade stay in step.
-- The **grid time shown** is `LoopTime(GridTime, VideoLength)`: the timeline wraps with the grid's
-  loop, as the export does.
-- **Seek(t)** sets the clock to `t ∈ [0, VideoLength)`. Every content follows by itself — they all
-  apply `LoopTime` downstream; a Cascade content lands before, in or after its turn as the schedule
-  says. `_soundtrackStart` and the playbacks' `Offset` stay whole seconds of the **same** clock, so a
-  seek moves them all together.
+- The **grid time shown** is `LoopTime(GridTime, VideoLength)` (`AnimationPlayer.LoopPosition`), and
+  the **clock itself wraps** at the end of the loop (`AnimationPlayer.WrapLoop`, a 30 ms timer): the
+  preview loops as the exported video does, the shorter contents starting over with it.
+- **Seek(t)** sets the clock to `t ∈ [0, VideoLength)` and puts the grid **where the export stands
+  at `t`**: every playing content's `Offset` back to `-StartTime` (a content replayed alone by a
+  Frames change included), the soundtrack's start back to 0. Every content follows by itself — they
+  all apply `LoopTime` downstream; a Cascade content lands before, in or after its turn as the
+  schedule says. `Restart` is `Seek(0)`.
 - The global pause **never reuses `Playback.PausedAt`** — that is the Frames effect's frozen state,
   set and cleared by `Update` / `Restart`. A frozen content stays frozen, paused or not.
 - While paused:
@@ -96,9 +98,10 @@ The window's stack, top to bottom (`MainForm.cs:487-495`): options row, effects 
 the bottom bar (`_bottom`: Clear, status line, `_outputButtons` with ⚙, `⏱` length readout, Copy,
 Save).
 
-- The transport is a **new row docked between the preview and the global options row** — added to
-  `Controls` just before `_globalOptionsRow`, so it docks innermost of the bottom stack, right under
-  the preview (Q5, layout B of the mockup).
+- The transport is a **new row docked between the preview and the Global tabs** (`_transportRow`) —
+  added to `Controls` just before `_globalTabsRow`, so it docks innermost of the bottom stack, right
+  under the preview, **across the whole window width** — under the layout strip and the file explorer
+  too, like the Global rows (Q5, layout B of the mockup).
 - The **`⏱` length readout moves into it** as its total, and leaves the bottom bar: the length is
   shown in one place. `RefreshLength` (`MainForm.cs:1842`) and its tooltip (`LengthDetail`) go with
   it; the readout keeps its `⏱` and its `⏱ —` without a length.
@@ -108,12 +111,14 @@ Save).
 
 - A **Play / Pause button** (▶ / ❚❚), `TabStop = false`, its click giving the focus back to the
   preview.
-- A **timeline**: a custom-drawn control (a `TrackBar` cannot draw markers), its length the video
-  length (the `RefreshLength` value), the elapsed part filled, a thumb at the grid time.
-  - **Dragging** it seeks: the cells follow the thumb (frames and motion, decode throttled to the
-    paint rate), and **scrub audio** plays (§ Scrub Audio). Released, the playback goes on from there
-    if it was playing, stays paused otherwise.
-  - A **click** on the track seeks there.
+- A **timeline** (`PlaybackTimeline`): a custom-drawn control (a `TrackBar` cannot draw markers),
+  never focused, its length the video length (the `RefreshLength` value), the elapsed part filled, a
+  thumb at the grid time; 24 logical px tall whatever the row offers.
+  - **Pressing** it **holds** the grid (`HoldPlayback`) and seeks under the pointer; **dragging** it
+    scrubs: the cells follow the thumb (frames decoded at the player's 33 ms pace, the motions at the
+    progress timer's), and **scrub audio** plays (§ Scrub Audio) — a click alone sounds one snippet.
+    Released, the hold ends: the playback goes on from there if it was playing, stays paused otherwise.
+- The time readout is empty without a length, the `⏱ —` alone showing.
 - A **time readout** `3.2 s / ⏱ 10.0 s`, in the `Seconds` format: the current grid time, then the
   `⏱` length readout moved from the bottom bar (§ Placement).
 - **No video length** (no image, a grid of stills without soundtrack nor motion — `⏱ —`): the
@@ -131,7 +136,8 @@ space between the end of a turn and the next tick. A turn starting at 0 gets its
 ### Keyboard
 
 - **Space** toggles Play / Pause, taken in `MainForm.ProcessCmdKey` (`MainForm.cs:1090-1164`, before
-  `default`), not while exporting.
+  `default`) while the transport is enabled — with a video length, not exporting; otherwise it goes
+  on to the focused control as before.
 - Left to the focused control **only in a text field** (`_explorer.IsEditingText`,
   `IsEditingFrameField`, any `TextBoxBase`). A focused **button** does not keep its native Space click
   (Q6): Space is Play / Pause over it, so a Copy or a Save is never run again by accident.
@@ -146,12 +152,15 @@ time** play — editor-style.
 
 - Route: the preview's own audio graph (`PreviewSound`, WinRT `AudioGraph`), not the export's
   `MixedSound` (which re-opens and decodes every file, and cannot start a Cascade mid-schedule).
-- `PreviewSound.Snippet(t)`: for each voice heard at `t` — `InTurn` evaluated **at `t`**, the trim's
-  played part, the soundtrack's `LoopTime` — `node.Seek(target)`, `Start()`, then `Stop()` after
-  ~100 ms (a one-shot timer, restarted at each scrub step), the Fade's gain at `t` as `MasterGain`.
-- A short gain ramp in and out of each snippet avoids clicks; the soundtrack timer and the 250 ms drift
-  re-seek (`PreviewSound.cs:17,181`) are suspended while dragging, and a snippet never leaves a voice
-  marked playing.
+- `AnimationPlayer.Scrub(t)`: seeks to `t`, then lets every voice heard at `t` play — `InTurn`
+  evaluated at the clock, which stands on `t`; the trim's played part; the soundtrack's `LoopTime`; the
+  Fade's gain at `t` — through the usual `PreviewSound.Sync`, while a **snippet** is on: the grid
+  held, the sound plays as if running.
+- The snippet (`_snippetTimer`, 15 ms ticks) ramps a `PreviewSound.ScrubGain` — a factor on the
+  output, over the Fade's `MasterGain` — in over ~45 ms, holds ~90 ms, ramps out ~45 ms, then the
+  voices stop as the grid stands. Each scrub step restarts the hold; a slow drag lets the voices run
+  on, the 250 ms drift re-seek (`PreviewSound.cs:17,181`) bringing them back under the thumb.
+- The grid released, a snippet still sounding ends at once.
 
 ---
 
@@ -248,6 +257,32 @@ Answers Q5–Q8, from a mockup of three layouts and two marker styles.
 Go given: code, unit tests and documentation, in a worktree (`.claude/worktrees/playback-controls`,
 branch `feature/playback-controls`). The scope is frozen as the sections above stand.
 
+### Iteration 4 — 2026-10-09 — 🧭 Implementation choices
+
+No rule broken. Choices the frozen design did not state:
+
+- **The clock wraps at the loop's end** (`AnimationPlayer.WrapLoop`), not only the readout: at every
+  loop the preview starts over as the exported video does, so the frame scrubbed at `t` and the frame
+  played at `t` are the same. Before, the shorter contents drifted from the export after the first
+  loop.
+- **A seek re-aligns everything on the export**: offsets back to `-StartTime` — a content replayed
+  alone by a Frames change too — and the soundtrack's start back to 0. `Restart` became `Seek(0)`.
+- **Pressing the timeline holds the grid** for the whole drag, through the same hold counter as the
+  export; a click alone sounds one snippet.
+- **Scrub audio through the usual `Sync`**: no separate `PreviewSound.Snippet`; a `_snippet` flag
+  lets the voices sound while the grid is held, and a `ScrubGain` factor on the output does the ramps.
+  A slow drag hears the sound run on rather than a fixed 100 ms burst per step.
+- **The transport row spans the whole window**, under the layout strip and the explorer, docked
+  above the Global tabs.
+- **The timeline has a fixed preferred height** (24 logical px): docked to fill an auto-sized row, it
+  stretched the row to ~130 px.
+- **Space with the transport disabled** goes on to the focused control as before.
+- **The position readout is empty without a length**, `⏱ —` alone.
+- **The paused progress timer stops** after the tick that draws the paused position; a playback
+  change starts it again.
+- Proposed in Iteration 1 and kept: the transport disabled, not hidden, without a length; the pause
+  kept when the window is hidden (the grid comes back paused, at the position the clock holds).
+
 ---
 
 ## Implementation Log
@@ -257,11 +292,11 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable — no test project |
-| RULES.md | | | |
-| README | | | |
-| GLOSSARY | | | |
+| Code | 3, 4 | 2026-10-09 | `PlaybackClock`, `AnimationPlayer` (pause, holds, seek, wrap, scrub), `PreviewSound.ScrubGain`, `GridPreview` API; `PlaybackTimeline` + transport row and Space in `MainForm`; export hold — five commits |
+| Unit tests | 3 | 2026-10-09 | Not applicable — no test project |
+| RULES.md | 3 | 2026-10-09 | § Preview Playback › Transport; § Undo History (the pause out of it); § Video Length (the readout moved, the loop the preview wraps at) |
+| README | 3 | 2026-10-09 | § Animated content › Transport, feature bullet, length readout moved — EN + FR |
+| GLOSSARY | 3 | 2026-10-09 | Transport, Timeline, Grid time, Scrub audio; Length readout moved — EN + FR |
 | TODO-FEATURES.md | 2 | 2026-10-09 | *Pause during Copy / export* row marked with this workfile |
 
 ---
