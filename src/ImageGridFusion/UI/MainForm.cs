@@ -478,6 +478,7 @@ internal sealed class MainForm : Form
         _explorer.PagesPerLoad = AppSettings.ExplorerPagesPerLoad;
         _explorer.ContentSearch = AppSettings.ExplorerContentSearch;
         this._explorer.FileOrder = AppSettings.ExplorerFileOrder;
+        this._explorer.View = AppSettings.ExplorerView;
         this._explorer.ArrowStyle = AppSettings.OcrArrow;
         _explorer.OpenFolder = AppSettings.ExplorerOpenFolder;
         _explorer.FolderView = AppSettings.ExplorerFolderView;
@@ -552,6 +553,7 @@ internal sealed class MainForm : Form
         _explorer.TileSizeChanged += (_, _) => SaveExplorerTileSize();
         _explorer.FolderViewChanged += (_, _) => SaveExplorerFolderView();
         this._explorer.FileOrderChanged += (_, _) => this.SaveExplorerFileOrder();
+        this._explorer.ViewChanged += (_, _) => this.SaveExplorerView();
         _explorer.ChooseFolderRequested += (_, _) => PickExplorerFolder();
 
         // A double-clicked row is added like a file from the Add images picker.
@@ -3585,6 +3587,19 @@ internal sealed class MainForm : Form
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
             this.ShowStatus($"File explorer order not remembered: {ex.Message}", error: true);
+        }
+    }
+
+    /// <summary>The file explorer's view was switched by the user: remembered between sessions.</summary>
+    private void SaveExplorerView()
+    {
+        try
+        {
+            AppSettings.SaveExplorerView(this._explorer.View);
+        }
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
+        {
+            this.ShowStatus($"File explorer view not remembered: {ex.Message}", error: true);
         }
     }
 

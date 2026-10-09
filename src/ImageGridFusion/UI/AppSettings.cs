@@ -27,6 +27,7 @@ internal static class AppSettings
     private const string ExplorerOpenFolderName = "ExplorerOpenFolder";
     private const string ExplorerContentSearchName = "ExplorerContentSearch";
     private const string ExplorerFileOrderName = "ExplorerFileOrder";
+    private const string ExplorerViewName = "ExplorerView";
     private const string OcrArrowCurvedName = "OcrArrowCurved";
     private const string OcrArrowThicknessName = "OcrArrowThickness";
     private const string OcrArrowColorName = "OcrArrowColor";
@@ -197,6 +198,19 @@ internal static class AppSettings
 
     /// <summary>Saves the file explorer's order of the files; throws an <see cref="IsSaveError"/> exception on failure.</summary>
     public static void SaveExplorerFileOrder(FileOrder order) => Save((ExplorerFileOrderName, order.ToString()));
+
+    /// <summary>
+    /// The file explorer's view — Thumbnails or Details, its view buttons' — saved by name;
+    /// <see cref="ExplorerView.Thumbnails"/> when nothing was saved or the name is unknown. See
+    /// workfiles/20261009-explorer-details-view.md.
+    /// </summary>
+    public static ExplorerView ExplorerView =>
+        Text(ExplorerViewName) is { } name && Enum.TryParse(name, out ExplorerView view) && view.ToString() == name
+            ? view
+            : ExplorerView.Thumbnails;
+
+    /// <summary>Saves the file explorer's view; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveExplorerView(ExplorerView view) => Save((ExplorerViewName, view.ToString()));
 
     /// <summary>
     /// Whether the file explorer extracts the files' content texts — OCR included — for its search; false
