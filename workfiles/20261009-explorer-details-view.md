@@ -280,6 +280,7 @@ says so rather than staying blank.
 | Unit tests | 4 | 2026-10-09 | No test project (Q&A 12) — none created; checked by hand in the app |
 | README (EN + FR) | 4 | 2026-10-09 | New **Details view** bullet after Sort; the settings file lists the display |
 | Glossary (EN + FR) | 4 | 2026-10-09 | New *Details view* row |
+| Merge | 5 | 2026-10-09 | `feature/explorer-details-view` merged into `main` (`--no-ff`); the worktree and the branch removed. Validated by the user |
 
 ---
 
