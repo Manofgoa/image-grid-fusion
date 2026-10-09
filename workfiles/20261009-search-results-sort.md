@@ -59,12 +59,14 @@ drop-down's order applies alone.
 Agreed (Q&A 9): a search's relevance is cut into **three tiers**, the drop-down ordering the files
 inside each tier:
 
-| Tier | The file is found by | Today's `Rank` keys it replaces |
-|---|---|---|
-| 1 | Its **file name** — the words found in the name | |
-| 2 | Its **subfolders** only — a path match with no word in the name | |
-| 3 | Its **content** text — a word found only there (`SearchMatch.ByContent`) | |
-| | | First word's position in the name, name length, relative path: **dropped** — the drop-down's order and its ties take over |
+| Tier | The file is found by |
+|---|---|
+| 1 | Its **file name** — the words found in the name |
+| 2 | Its **subfolders** only — a path match with no word in the name |
+| 3 | Its **content** text — a word found only there (`SearchMatch.ByContent`) |
+
+- Today's other `Rank` keys — the first word's position in the name, the name length, the relative
+  path — are **dropped** for the files: the drop-down's order and its ties take over.
 
 - With several words, the path matches keep today's **number of words found in the file name**
   (`Rank.NameHits`, more first): all of them in the name before part of them, part of them before
