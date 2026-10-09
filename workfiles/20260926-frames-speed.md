@@ -41,18 +41,34 @@ the multiplier scales it like it scales a GIF's delays or a video's frame rate.
 
 ## Timing
 
-One clock for the whole grid, as today; the speed maps the grid's time to the image's own time:
+One clock for the whole grid (`AnimationPlayer`'s `PlaybackClock`, RULES.md § Transport), as today.
+Since 2026-10-08 a content's time goes through **one definition**, the played part
+(`SourceImage.PlayedFrom` / `PlayedLength` / `ContentTime`, RULES.md § Played Part); the speed
+slots in there, between the **loop time** (grid time, what the clock, the Cascade and the video
+length count) and the **content time** (what the frames and the sound are read at):
 
-- **Source time** = `StartTime + gridTime × Speed`, looped on the source's `LoopDuration`.
-- **Loop in grid time** = `LoopDuration / Speed`: the length of the grid's loop
-  (`Animation.GridLength`, `Animation.VideoLength`) and of the export (`GridExport.Job.Length`) use
-  it, so a slowed-down GIF lengthens the exported video, a sped-up one shortens it.
-- The starting point stays a place along the frames (`Position`), in source time: the speed does not
-  move it.
-- A **frozen** image ignores the speed (it shows one frame).
-- Applied in one place for the preview (`AnimationPlayer.RunAsync`) and one for the exports
-  (`GridExport`'s frame loop), through a shared helper in `Animation` — the frame drawn is then
-  handed to `Compositor.DrawCell` as today.
+| Member of `SourceImage` | Today | With the speed |
+|---|---|---|
+| `Speed` (new) | — | `Look.Frames?.Speed ?? 1` while it plays, 1 otherwise |
+| `PlayedFrom`, `PlayedLength` | Content time | Unchanged: content time, the trim's |
+| `LoopLength` (new) | — | `PlayedLength / Speed`: the played part's loop **in grid time** |
+| `StartTime` | Content time from `PlayedFrom` | **Grid time**: the starting point's offset in the loop, `/ Speed` |
+| `ContentTime(position)` | `PlayedFrom + LoopTime(position, PlayedLength)` | `PlayedFrom + LoopTime(position, LoopLength) × Speed` |
+
+- **Every reader of the loop in grid time** switches from `PlayedLength` to `LoopLength`:
+  `Animation.LoopOf` (so the grid's loop, `Animation.VideoLength`, the export's length, the
+  preview's wrap, the soundtrack's loop, the length readout and the timeline), the Cascade's turn
+  (`CascadeSchedule.TurnOf`, a turn being one whole loop), the progress line
+  (`AnimationPlayer`'s `Animation.Progress` calls) and the length readout's tooltip
+  (`MainForm`'s `Loop`). A slowed-down GIF lengthens the video and its turn, a sped-up one shortens
+  them.
+- **Every reader of the content time** keeps going through `ContentTime`: the preview's frames, its
+  sound sync. The export's `GridExport.Item` gets the speed and the grid-time loop, its own
+  `ContentTime` following the same formula.
+- The starting point and the trim stay places along the frames, in content time: the speed moves
+  neither, and their fields (minutes : seconds : frame, GIF frame number) are unchanged.
+- A **frozen** image ignores the speed (it shows one frame, `Speed` reads 1).
+- An Animations motion's cycle is not a content: the speed does not touch it.
 
 ---
 
@@ -61,18 +77,21 @@ One clock for the whole grid, as today; the speed maps the grid's time to the im
 A video with sound **follows its speed, its pitch with it** (higher when faster, lower when slower —
 no time-stretching):
 
-- **Preview**: the video's node in the audio graph (`PreviewSound`) plays at the speed as its
-  playback speed factor; its drift check compares positions in source time, as today.
-- **Export**: `MixedSound` carries the speed; the mixer (`VideoEncoder`'s `Voice`) reads the source
-  samples `speed` times faster (resampled), its loop and start in source time.
+- **Preview**: the video's `AudioFileInputNode` (`PreviewSound`) plays with its
+  `PlaybackSpeedFactor` set to the speed; its span (`PreviewSound.Span`) and its drift check stay in
+  content time, as today. The scrub snippets follow by themselves.
+- **Export**: `MixedSound` carries the speed; the mixer's `Voice` (`VideoEncoder`) decodes the
+  file at `rate / speed` and mixes those samples one for one at `rate` — the resampler does the
+  speed change — its loop, start, turn and cascade counted in that decoded rate.
 - It stays *heard* at any speed (RULES.md § The Volume Exception is unchanged).
 
 ---
 
 ## UI
 
-- In the Frames options, after **Freeze**: a speed slider (`OptionSlider`, like Volume) and its
-  value label.
+- In the Frames options — today the trim's two lines (`From` / `To`) at the left, a separator, then
+  the starting point's line over **Freeze** at the right: a speed slider (`OptionSlider`) and its
+  value label. Placement: see Open Questions.
 - Acting on it turns the effect on, starting from its kept settings (RULES.md § Options Toolbar).
 - Its label reads **`Speed: ×1.5`** (invariant culture, `×1`, `×0.25`, `×1.75`…).
 - While **Freeze** is checked, the speed slider is **disabled** (a frozen image plays nothing); the
@@ -84,9 +103,9 @@ no time-stretching):
 
 ## Test Impact
 
-**None.** The repository has no test project (`src/` holds `ImageGridFusion` only); earlier
-workfiles shipped without unit tests and are verified manually in the app. To be confirmed by the
-go choice.
+**None.** The repository still has no test project (`src/` holds `ImageGridFusion` only, checked
+2026-10-10); earlier workfiles shipped without unit tests and are verified manually in the app. To
+be confirmed by the go choice.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
@@ -103,6 +122,7 @@ go choice.
 - [x] ~~Label format of the value?~~ → `Speed: ×1.5`
 - [x] ~~A video with sound at a speed other than ×1: what happens to its sound?~~ → It follows the speed, its pitch changing with it, in the preview and the export
 - [x] ~~While **Freeze** is checked, is the speed slider disabled?~~ → Yes, disabled; the speed is kept
+- [ ] Where does the speed slider go in the Frames options, now that they hold the trim?
 
 ---
 
@@ -128,6 +148,18 @@ Second batch answered: range ×0.25–×4 in steps of 0.25; label `Speed: ×1.5`
 follows its speed with its pitch (preview audio graph speed factor, export mixer resampling); the
 speed slider is disabled while Freeze is checked. § Settings, § Sound and § UI updated. No open
 question remains.
+
+### Iteration 3 — 2026-10-10
+
+Resumed after two weeks: the go was never asked (the session ended on the question), and the user
+chose to refresh the design first. The code moved under it — the trim and its played part
+(`workfiles/20261008-video-trim.md`), the Cascade (`workfiles/20261008-video-cascade.md`), the
+transport's one clock (`workfiles/20261009-playback-controls.md`). § Timing rewritten on the played
+part: a new `SourceImage.LoopLength` (grid time) beside `PlayedLength` (content time), `StartTime`
+moved to grid time, `ContentTime` scaling by the speed; the Cascade's turn and the video length
+follow `LoopLength`. § Sound updated: `PlaybackSpeedFactor` in the preview, decoding at
+`rate / speed` in the export. One new question: the slider's place, the Frames options now holding
+the trim.
 
 ---
 
@@ -158,8 +190,10 @@ Questions asked by the agent during design, with user responses.
 | 6 | Label format of the value? | `Speed: ×1.5` | 2026-09-26 |
 | 7 | Sound of a video at a speed other than ×1? | Follows the speed, higher / lower pitch | 2026-09-26 |
 | 8 | Speed slider disabled while Freeze is checked? | Yes, disabled | 2026-09-26 |
-| 9 | Go for implementation? | | |
+| 9 | Go for implementation? | Not answered — the session ended on the question | 2026-09-26 |
+| 10 | How do we resume the workfile? | Refresh the design first | 2026-10-10 |
+| 11 | Where does the speed slider go in the Frames options? | | |
 
 ---
 
-*Last updated: 2026-09-26*
+*Last updated: 2026-10-10*
