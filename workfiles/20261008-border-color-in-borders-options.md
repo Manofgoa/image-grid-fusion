@@ -141,6 +141,11 @@ color being the start-up one only; **only a color chosen in the dialog** is reme
 Consequence written into § Behaviour: with a remembered color other than hotpink, the Borders are
 not in their initial state at start-up, so their Resets and *Clear all* are enabled from the start.
 
+### Iteration 3 — 2026-10-09 — ✅ Implemented
+
+Go given: code, unit tests and documentation (no test project, so no test), in a worktree on
+`feature/border-color-in-borders-options`. Scope frozen as the design sections stand.
+
 ---
 
 ## Implementation Log
@@ -169,7 +174,8 @@ Questions asked by the agent during design, with user responses.
 | 5 | What is the default brought back by the Resets and *Clear all*? | Hotpink; the remembered color is taken back at start-up only | 2026-10-08 |
 | 6 | Which changes overwrite the remembered color? | Only a color chosen in the Color… dialog | 2026-10-08 |
 | 7 | Where does the Color… button sit in the Borders options row? | Right after the style drop-down | 2026-10-08 |
+| 8 | Go for the implementation? Scope, and where? | Code, unit tests and documentation; in a worktree | 2026-10-09 |
 
 ---
 
-*Last updated: 2026-10-08*
+*Last updated: 2026-10-09*
