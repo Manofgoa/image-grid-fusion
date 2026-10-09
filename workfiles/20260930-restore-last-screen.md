@@ -77,9 +77,11 @@ A save error: "Window placement not remembered: …" in the status line, one mes
    `Screen.AllScreens`, else the primary screen (a monitor gone, or none remembered).
    `StartPosition = Manual` and `Location` = the top-left of its working area, so the window's handle is **created on that monitor** and gets its DPI from the start — the
    logical size scaled once, as the default is today, no rescale after a move between monitors.
-2. **Load**: the size clamp is unchanged, against `Screen.FromControl(this).WorkingArea` — the
-   target's. The window is then centered on that working area **by hand**: `CenterToScreen()`
-   would bring it back under the mouse, so it is no longer called.
+2. **Load**: the size clamp is unchanged, against the **target's** working area — kept from the
+   constructor in `_startScreen`, never read from the window: a remembered size larger than the
+   target makes the window stand mostly on another monitor until it is shrunk. The window is then
+   centered on that working area **by hand**, never left of or above it: `CenterToScreen()` would
+   bring it back under the mouse, so it is no longer called.
 
 **Limits, accepted.** Windows may renumber the outputs (`DISPLAY1` ↔ `DISPLAY2`) after a driver
 update or a dock change: the window then opens on the monitor now bearing that name. The screen is
@@ -174,6 +176,31 @@ matches this request. Line references refreshed. The behaviour agreed is unchang
 Go given for the code, the unit tests (not applicable) and the documentation. Branch: stays on
 `main`, the repository's standing choice (no worktree asked).
 
+### Iteration 6 — 2026-10-10 — 🧭 Implementation choices
+
+No rule broken. One divergence from the frozen design, found by the checks:
+
+- **The load clamp reads the target screen, not the window.** As designed —
+  `Screen.FromControl(this)` at load — a remembered size larger than the target (9000 × 9000
+  logical on DISPLAY1) left the window created at DISPLAY1's corner standing mostly on DISPLAY6,
+  which then took it. The target resolved in the constructor is kept in `_startScreen` and its
+  working area read at load. The centering keeps `CenterToScreen`'s floor: never left of or above
+  the working area.
+
+Names: `AppSettings.WindowScreen` / `SaveWindowPlacement` (replacing `SaveWindowClientSize`, its
+only caller moved); `MainForm.SaveWindowPlacement` (was `SaveWindowSize`), `_startScreen`; the
+status message "Window placement not remembered: …". New code written with `this.` (the user's code
+style), the surrounding lines left as they were.
+
+Checked on the built exe with `--new-instance` (which reads the setting, never writes it), the
+`WindowScreen` key of the build's `settings.json` set for each case, then the file restored byte for
+byte: nothing remembered → DISPLAY6 (primary), centered; `\.\DISPLAY1` → DISPLAY1, centered;
+`\.\DISPLAY9` (gone) → DISPLAY6; 9000 × 9000 on DISPLAY1 → its whole working area
+(2560 × 1380), on DISPLAY6 → its own (3840 × 2100). The logical size kept (1982 × 1053) on both.
+Not checked by the agent: the **save** — a `--new-instance` instance writes no placement, and the
+agent launches no other — and two monitors **at different scales** (both monitors here are at 125 %).
+Left to the user's manual checks.
+
 ---
 
 ## Implementation Log
@@ -183,9 +210,9 @@ than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
+| Code | 5, 6 | 2026-10-10 | `AppSettings.WindowScreen` / `SaveWindowPlacement`; `MainForm` constructor, `OnLoad`, `SaveWindowPlacement` |
+| Unit tests | 5 | 2026-10-10 | Not applicable — no test project (see Test Impact) |
+| README | 5 | 2026-10-10 | `README.md` and `README.fr.md`: *Features*, *Window size and screen*, `--new-instance` |
 
 ---
 
