@@ -6,9 +6,10 @@ namespace ImageGridFusion.Explorer;
 /// <summary>
 /// The file explorer's search over the index, from memory only: every word typed must appear in the
 /// folded relative path of a file — its name or its subfolders, accents and case ignored — or in its
-/// content text, and the best matches come first; <c>*</c> alone lists every file, the most recently
-/// created first. See workfiles/20260926-file-explorer.md § Search,
-/// workfiles/20260927-file-explorer-show-all.md and workfiles/20260926-ocr-search.md § Search.
+/// content text, and the best matches come first; <c>*</c> alone lists every file, in the sort
+/// drop-down's order (<see cref="FileOrder"/>). See workfiles/20260926-file-explorer.md § Search,
+/// workfiles/20260927-file-explorer-show-all.md, workfiles/20260926-ocr-search.md § Search and
+/// workfiles/20261009-search-results-sort.md.
 /// </summary>
 internal static class FileSearch
 {
@@ -18,15 +19,11 @@ internal static class FileSearch
     /// <summary>Whether the query is <see cref="Everything"/> alone, blanks around it ignored.</summary>
     public static bool IsEverything(string query) => query.Trim() == Everything;
 
-    /// <summary>Every entry, the most recently created first, then by relative path.</summary>
-    public static IReadOnlyList<IndexEntry> All(IReadOnlyList<IndexEntry> entries)
+    /// <summary>Every entry, in <paramref name="order"/> — the sort drop-down's.</summary>
+    public static IReadOnlyList<IndexEntry> All(IReadOnlyList<IndexEntry> entries, FileOrder order)
     {
         var all = entries.ToArray();
-        Array.Sort(all, (a, b) =>
-        {
-            int order = b.Created.CompareTo(a.Created);
-            return order != 0 ? order : string.Compare(a.RelativePath, b.RelativePath, StringComparison.OrdinalIgnoreCase);
-        });
+        Array.Sort(all, (a, b) => FileOrders.Compare(order, a, b));
         return all;
     }
 
@@ -56,9 +53,11 @@ internal static class FileSearch
     /// <paramref name="byName"/> false, the path is not read and every word is looked for in the content
     /// text only. Ranked by the entries matched by their path alone first, then by the words found in the
     /// file name itself, then the position of the first word in the name, then the shorter name, then the
-    /// relative path.
+    /// relative path. With an <paramref name="order"/> — the sort drop-down's, for files — only the
+    /// relevance tiers are kept (the path matches by the words found in the name, then the content
+    /// matches), each tier in that order: see workfiles/20261009-search-results-sort.md § Relevance Tiers.
     /// </summary>
-    public static IReadOnlyList<SearchMatch> Search(IReadOnlyList<IndexEntry> entries, string[] words, Func<IndexEntry, string?>? contentOf = null, bool byName = true)
+    public static IReadOnlyList<SearchMatch> Search(IReadOnlyList<IndexEntry> entries, string[] words, Func<IndexEntry, string?>? contentOf = null, bool byName = true, FileOrder? order = null)
     {
         if (words.Length == 0)
         {
@@ -74,7 +73,19 @@ internal static class FileSearch
             }
         }
 
-        matches.Sort((a, b) => a.Rank.CompareTo(b.Rank));
+        if (order is { } files)
+        {
+            matches.Sort((a, b) =>
+            {
+                int tier = a.Rank.CompareTier(b.Rank);
+                return tier != 0 ? tier : FileOrders.Compare(files, a.Entry, b.Entry);
+            });
+        }
+        else
+        {
+            matches.Sort((a, b) => a.Rank.CompareTo(b.Rank));
+        }
+
         return matches.Select(m => new SearchMatch(m.Entry, m.Rank.ContentWord)).ToArray();
     }
 
@@ -126,6 +137,16 @@ internal static class FileSearch
             }
 
             return new Rank(contentWord, nameHits, first, folded.Length - nameStart, entry.RelativePath);
+        }
+
+        /// <summary>
+        /// The relevance tier only: the path matches first, the more words in the file name the
+        /// earlier, then every content match as one tier.
+        /// </summary>
+        public int CompareTier(Rank other)
+        {
+            int order = this.ByContent.CompareTo(other.ByContent);
+            return order != 0 || this.ByContent ? order : other.NameHits.CompareTo(this.NameHits);
         }
 
         public int CompareTo(Rank other)
