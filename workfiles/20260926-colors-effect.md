@@ -87,7 +87,9 @@ Every setting is stored as a value in [−1, 1] (hue in degrees), the default 0 
   Saturation, Hue, Brightness, Contrast, then the effect's own Reset button ending the row as for
   every effect.
 - Labels, signed like the Rotate effect's angle: `Saturation: +25 %`, `Hue: −30°`,
-  `Brightness: 0 %`, `Contrast: +10 %`.
+  `Brightness: 0 %`, `Contrast: +10 %`. Each label is as wide as its widest value
+  (`MinimumSize`), so moving a slider never shifts the pairs after it.
+- Page steps: 10 % for the three percentages, 15° for the hue (`MainForm.ColorsSlider`).
 - Today's *Intensity* icon next to the slider goes (four labelled sliders do not need it).
 - Layout: **one row of narrower sliders**, ≈ 90 px each (≈ 750 px in all with the labels), so the
   row fits the default 960 px window and the options toolbar keeps its height. The other effects'
@@ -167,7 +169,7 @@ Mechanical refresh, no design change — the code moved again since 2026-09-30:
 
 ### Iteration 5 — 2026-10-10 — ✅ Implemented
 
-Go given: code, tests and documentation. Branch: `main` (the repository's standing choice).
+Go given: code, tests and documentation. Branch: `main` (the repository's standing choice) — moved to a worktree during the run, see Iteration 6.
 
 ---
 
@@ -176,15 +178,36 @@ Go given: code, tests and documentation. Branch: `main` (the repository's standi
 New code prefixes every reference to an instance member with `this.` (the user's convention);
 existing lines are left as they are.
 
+### Iteration 6 — 2026-10-10 — 🧭 Implementation choices
+
+- ⚠️ **Worktree instead of `main`** (the repository's standing choice, user memory *work-on-main-only*):
+  another running session ("Relancer sur dernier écran utilisé") had uncommitted changes in
+  `MainForm.cs` in the `main` checkout. Editing the same file there risked either session's commit
+  sweeping in the other's hunks, so the run moved to `.claude/worktrees/colors-effect`, branch
+  `feature/colors-effect`. It waits for the user's **Merge** into `main` (`--no-ff`), after which the
+  worktree is removed and the branch deleted.
+- **Model**: `Composition/ColorsEffect.cs`, a record (`Saturation`, `Hue`, `Brightness`, `Contrast`,
+  clamped `With…` methods, `IsNeutral`), its `Matrix()` for the image's `ImageAttributes` and its
+  `Apply(Color)` for the background's flat fill, both from one affine transform. Neutral settings set
+  no matrix and leave the fill untouched.
+- The saturation keeps today's luminance weights (0.299 / 0.587 / 0.114), so Saturation −100 % is
+  exactly the former 100 % black & white; the hue rotation keeps SVG's own weights.
+- **Labels** sized to their widest value; **page steps** 10 % and 15° (see *Options*).
+- `MainForm.EffectTitle` is now `effect.ToString()` — "Colors" needs no special name.
+- The tab icon: six hue sectors, red at the top, in the former gray ring.
+- No tooltip on the sliders (none in the design).
+- `RULES.md` is changed on the branch: it is propagated to the running sessions once merged into
+  `main`, where they read it.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 5 | 2026-10-10 | `7c868bd`, on `feature/colors-effect` |
 | Unit tests | | | No test project — manual verification (see *Test Impact*) |
-| README | | | |
+| README | 5 | 2026-10-10 | `7a9325a` (README EN + FR), `121ed60` (GLOSSARY EN + FR), `f6f25d9` (RULES) |
 
 ---
 
