@@ -248,6 +248,11 @@ Answers Q5–Q8, from a mockup of three layouts of the zone.
 - Proposed without a question (to confirm by reading): the `url-downloads\` subfolder rather than
   the temp folder's root, so one cleanup covers every extension; yt-dlp updates not handled.
 
+### Iteration 3 — 2026-10-09 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree (`feature/url-content`). The design
+sections as of Iteration 2 are the frozen scope.
+
 ---
 
 ## Implementation Log
