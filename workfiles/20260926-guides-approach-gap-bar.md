@@ -22,8 +22,11 @@ Components:
 
 - `UI/PanMagnet.cs` — one instance per axis, drives the stops; it knows the stops and the position,
   and is where the approach state is computed.
-- `UI/GridPreview.cs` — `PanBy` feeds the magnets and invalidates the cell when a guide appears or
-  goes; `PaintPanGuides` draws the guides (dashed green line over a dark halo, clipped to the cell).
+- `UI/GridPreview.cs` — `PanBy` feeds the magnets, for the drag and the arrow keys alike, and
+  invalidates the cell when a guide appears or goes; `PaintPanGuides` draws the guides of the pressed
+  cell during a drag, of the selected cell after an arrow key (`KeyPanned`), through
+  `PaintGuideLines` / `GuidePen(opacity)` (dashed green line over a dark halo fading with it, clipped
+  to the cell).
 - `RULES.md` — *On-Cell Helper Indicators* gets the rule, since it applies to every guide.
 
 ---
@@ -70,8 +73,9 @@ Components:
   cell can be near both an edge and the center), the **nearest** one shows.
 - The **edge guide's side** follows today's rule: the side an image covering the cell uncovers, the
   side a smaller image crosses.
-- The approach is shown **during the drag only**, like the guides today; everything goes when the
-  mouse is released.
+- The approach is shown **while the image is moved** — during a drag, everything going when the
+  mouse is released, and after an **arrow key**, as long as its guides show today (`KeyPanned`):
+  the arrow keys get the approach and the gap bar too (Q&A #12).
 
 ### Progressive Opacity
 
@@ -97,6 +101,11 @@ Components:
   dashed one), with a short tick across each end so a short gap still reads as a measure.
 - Position along the guide: **at the mouse** (Q&A #8) — at the cursor's height for a vertical guide,
   at its abscissa for a horizontal one, kept inside the cell (the bar and its ticks fully visible).
+- Moved by an **arrow key**, with no mouse to follow: through the **image's center** (Q&A #12), kept
+  inside the cell the same way.
+- The **position readout** stays shown alongside (Q&A #13): it tells the offset from the cell's center,
+  the bar the gap left to a stop — the solid bar, perpendicular to its guide, stays distinct from the
+  readout's dashed line at 50 %.
 - The bar stays at **full opacity** (Q&A #11): it is the measure, always legible; its length tells
   the closeness, the guide's opacity only echoes it.
 
@@ -106,7 +115,8 @@ Components:
 
 - `RULES.md`, *On-Cell Helper Indicators*: a guide shows **from an approach distance** in fractions
   of the cell, with a **gap bar** at 90° while the stop is not reached.
-- `README.md`: the pan's guides paragraph mentions the early display and the gap bar.
+- `README.md` and `README.fr.md`, in the same commit (`../CLAUDE.md` § French Versions): the pan's
+  guides paragraph mentions the early display and the gap bar.
 
 ---
 
@@ -114,7 +124,8 @@ Components:
 
 **No unit tests** (Q&A #9): the repository has no test project and none is created for this task.
 The behaviour is validated by hand in the app — reach at 10 %, nearest stop, opacity ramp, gap bar
-at the mouse, disappearing on hold, Shift, fine angle.
+at the mouse or through the image's center with the arrow keys, disappearing on hold, Shift, fine
+angle, the position readout alongside.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
@@ -135,11 +146,12 @@ at the mouse, disappearing on hold, Shift, fine angle.
       `PanMagnet`, or no unit tests?~~ → No unit tests
 - [x] ~~Progressive opacity: which **minimum** opacity at the edge of the reach?~~ → 20 %
 - [x] ~~Does the **gap bar** fade with the guide, or stay at full opacity?~~ → Full opacity
-- [ ] The **arrow keys** now move the image with the same stops, their guides drawn on the selected
+- [x] ~~The **arrow keys** now move the image with the same stops, their guides drawn on the selected
       cell (`GridPreview.KeyPanned`): do they get the approach and the gap bar too — and where does
-      the bar go, with no mouse to follow?
-- [ ] The **position readout** (cross on the image's center, dashed line from the cell's center)
-      shows during the move: near the center stop, how do the gap bar and it share the cell?
+      the bar go, with no mouse to follow?~~ → Yes, the bar through the image's center
+- [x] ~~The **position readout** (cross on the image's center, dashed line from the cell's center)
+      shows during the move: near the center stop, how do the gap bar and it share the cell?~~ → Both
+      shown
 
 ---
 
@@ -182,6 +194,13 @@ in the order the requests were made.
   reopen the design: the arrow keys now move the image through the stops (`PanMagnet.Move`
   `stepwise`, guides on the selected cell), and the position readout shows during the move.
 
+### Iteration 5 — 2026-10-10
+
+- Answers (Q&A #12–#13): the arrow keys get the approach and the gap bar, the bar through the image's
+  center; the gap bar and the position readout are both shown.
+- The README's French version is updated with the English one (rule added since Iteration 1).
+- No open question left: the design is ready for the go.
+
 ---
 
 ## Implementation Log
@@ -215,8 +234,8 @@ Questions asked by the agent during design, with user responses.
 | 9 | Unit tests: create a test project for `PanMagnet`, or none? | No unit tests | 2026-09-26 |
 | 10 | Progressive opacity: which minimum opacity at the edge of the reach? | 20 % | 2026-09-26 |
 | 11 | Does the gap bar fade with the guide, or stay at full opacity? | Full opacity | 2026-09-26 |
-| 12 | Arrow keys: approach and gap bar too, and where does the bar go without a mouse? | | |
-| 13 | Gap bar and position readout near the center stop: how do they share the cell? | | |
+| 12 | Arrow keys: approach and gap bar too, and where does the bar go without a mouse? | Yes, the bar through the image's center | 2026-10-10 |
+| 13 | Gap bar and position readout near the center stop: how do they share the cell? | Both shown | 2026-10-10 |
 
 ---
 
