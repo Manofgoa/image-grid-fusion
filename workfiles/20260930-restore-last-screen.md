@@ -20,12 +20,12 @@ Components concerned:
 
 | Component | Role today |
 |---|---|
-| `src/ImageGridFusion/UI/MainForm.cs` — constructor (l.262–268) | `StartPosition = CenterScreen`, the remembered (or default) logical `ClientSize`, `MinimumSize` |
-| `MainForm.OnLoad` (l.711) | Sets `_opened`; grows the default size by the global tabs row; clamps the size to `Screen.FromControl(this).WorkingArea`; `CenterToScreen()` — which WinForms centers on the screen **under the mouse** (no owner) |
-| `MainForm.OnFormClosing` (l.763) → `SaveWindowSize` (l.2627) | Saves the normal logical client size, once the window was opened in the session; a save error reported in the status line |
+| `src/ImageGridFusion/UI/MainForm.cs` — constructor (l.370–376) | `StartPosition = CenterScreen`, the remembered (or default) logical `ClientSize`, `MinimumSize` |
+| `MainForm.OnLoad` (l.1027) | Sets `_opened`; grows the default size by the global tabs row; clamps the size to `Screen.FromControl(this).WorkingArea`; `CenterToScreen()` — which WinForms centers on the screen **under the mouse** (no owner) |
+| `MainForm.OnFormClosing` (l.1120) → `SaveWindowSize` (l.3751) | Saves the normal logical client size, once the window was opened in the session and unless the instance runs with `--new-instance` (`_savesWindowSize`, RULES.md § Single Instance); a save error reported in the status line |
 | `src/ImageGridFusion/UI/AppSettings.cs` | The `settings.json` store next to the exe (RULES.md § App Settings — never the registry); `WindowClientSize` / `SaveWindowClientSize` |
 | `src/ImageGridFusion/ImageGridFusion.csproj` | `PerMonitorV2`: every monitor has its own DPI, the window rescaled when it changes monitor |
-| `README.md` | *Features* (l.41) and *Tray & startup* (l.406) describe the remembered size |
+| `README.md`, `README.fr.md` | *Features* (l.51) and *Tray & startup* (l.506) describe the remembered size; l.508 says a `--new-instance` instance does not remember its window size |
 
 ---
 
@@ -66,7 +66,8 @@ The class summary gains the window's screen.
 
 **When it is saved.** With the size, at the same moment and under the same condition: in
 `SaveWindowSize` (renamed `SaveWindowPlacement`), on every close or hide, once the window was
-opened in the session. The monitor saved is `Screen.FromControl(this)` — the one holding the largest
+opened in the session, and never by a `--new-instance` instance (the `_savesWindowSize` guard, which
+covers both values). The monitor saved is `Screen.FromControl(this)` — the one holding the largest
 part of the window; for a minimized window, Windows answers with the monitor of its normal position.
 A save error: "Window placement not remembered: …" in the status line, one message for both.
 
@@ -88,10 +89,15 @@ remembered per user, shared by every instance: the last one closed wins — as t
 
 ## Documentation
 
-- `README.md` — *Features* (l.41): the window reopens on the monitor it was last used on — the
+Every change below is made to `README.fr.md` too, in the same commit (`../CLAUDE.md` § French
+Versions).
+
+- `README.md` — *Features* (l.51): the window reopens on the monitor it was last used on — the
   primary screen when that one is gone — centered, at the size it last had.
-- `README.md` — *Tray & startup* (l.406): the **Window size** bullet becomes **Window size and
+- `README.md` — *Tray & startup* (l.506): the **Window size** bullet becomes **Window size and
   screen**: the monitor is remembered with the size; unplugged, the primary screen takes its place.
+- `README.md` — *Tray & startup*, the `--new-instance` bullet (l.508): "its window size is not
+  remembered" becomes "its window size and screen are not remembered".
 - `GLOSSARY.md`, `RULES.md`: nothing — no effect, no new term.
 
 ---
@@ -112,6 +118,7 @@ Manual checks after the run:
 | Monitors at different scales | Same apparent size, relative to the UI, on the remembered monitor |
 | Lower monitor 2's resolution below the remembered size | Fits its working area, never below 480 × 320 logical |
 | `--tray` launch, *Quit* without opening the window | Remembered screen untouched |
+| `--new-instance` launch moved to another monitor, closed | Remembered screen untouched |
 | Delete `WindowScreen` from `settings.json`, mouse on monitor 2, relaunch | Opens on the primary screen, centered |
 
 ---
@@ -153,6 +160,15 @@ RULES.md § App Settings now forbids the registry. The storage follows: `WindowS
 (`SaveWindowPlacement`), not in `RegistryNames`. Line references refreshed. The behaviour agreed is
 unchanged.
 
+### Iteration 4 — 2026-10-10
+
+The go question of 2026-09-30 was interrupted (the session ended); `main` moved on by some 1 200
+commits meanwhile. Checked again: the window code has the same shape — `CenterScreen`, the clamp
+and `CenterToScreen()` in `OnLoad`, `SaveWindowSize` — now guarded by `_savesWindowSize`, so a
+`--new-instance` instance saves no screen either. The README has a French twin, updated in the same
+commits, and its `--new-instance` bullet gains the screen. No `workfiles/TODO-FEATURES.md` row
+matches this request. Line references refreshed. The behaviour agreed is unchanged.
+
 ---
 
 ## Implementation Log
@@ -182,4 +198,4 @@ Questions asked by the agent during design, with user responses.
 
 ---
 
-*Last updated: 2026-09-30*
+*Last updated: 2026-10-10*
