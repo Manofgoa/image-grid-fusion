@@ -86,7 +86,7 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 
 ## Effects
 
-- At the top of the window, the options row, then the tabs hanging below it: an **Effects** label, one tab per effect — **Background**, **Crop**, **Zoom**, **Animations**, **Rotate**, **Flip**, **Frames**, **Black & white**, **Blur**, **Volume** — and, at the far right, a **Reset** button as tall as the tabs. They act on the selected cell; with no cell selected, both rows are disabled.
+- At the top of the window, the options row, then the tabs hanging below it: an **Effects** label, one tab per effect — **Background**, **Crop**, **Zoom**, **Animations**, **Rotate**, **Flip**, **Frames**, **Colors**, **Blur**, **Volume** — and, at the far right, a **Reset** button as tall as the tabs. They act on the selected cell; with no cell selected, both rows are disabled.
 - Each tab holds a checkbox, checked while its effect is on for the selected cell. Clicking it turns the effect on or off, and selects the tab.
 - Clicking a tab elsewhere selects it: its options show in the row above, joined to it. The selected tab stays selected when another cell is selected, or none. The options row is always there, empty until a tab is selected.
 - The choices of the options — the Background's fills, the Crop's ratios, the Zoom's Contain and Fill, the quarter turns, the mirrors, the Blur's kinds — are **thumbnails**, all of one size: each draws what it does, its name below, its tooltip saying it; the pressed ones are highlighted, the hovered one lit.
@@ -106,7 +106,7 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 - **Opacity**: from 0 to 100 % (default 100 %), over the whole background — the extended edges included.
 - **Fill**: four thumbnails, **Color** by default.
   - **Color**: the flat fill around the image.
-  - **Corner pixel**, **Miter** and **Background corners** extend the image's **edges**: its top row of pixels is stretched up to the top of the cell, its bottom row down to the bottom, its side columns out to the sides — the image as drawn in the cell, so cropped, rotated, flipped, zoomed and in black & white. Where the image is smaller than its cell both ways, each mode fills the four corners its own way: the color of the image's corner pixel; a mitered joint — each corner split on its diagonal, each half the flat color of its edge's pixel next to the image's corner, a 1 px line in the corner pixel's color drawn over the diagonal at 50 % opacity; or the background color. With a fine angle, the edges extended are those of the rectangle the turned image covers, its corners spilling over them.
+  - **Corner pixel**, **Miter** and **Background corners** extend the image's **edges**: its top row of pixels is stretched up to the top of the cell, its bottom row down to the bottom, its side columns out to the sides — the image as drawn in the cell, so cropped, rotated, flipped, zoomed and with its colors adjusted. Where the image is smaller than its cell both ways, each mode fills the four corners its own way: the color of the image's corner pixel; a mitered joint — each corner split on its diagonal, each half the flat color of its edge's pixel next to the image's corner, a 1 px line in the corner pixel's color drawn over the diagonal at 50 % opacity; or the background color. With a fine angle, the edges extended are those of the rectangle the turned image covers, its corners spilling over them.
   - The color settings still count: the flat fill stays under the image (its transparent pixels show it), fills the Background corners, and is what Blend goes to.
 - The fill's settings sit on two lines beside the thumbnails: the color's (*Automatic color*, Opacity, *Color…*, showing the color in use as a swatch) over the extended edges' (Edges, Blend, Soften).
 - **Edges**: from 0 to 100 % (default 100 %): the extended edges' own opacity over the background color, which keeps its own — at 0 %, the bands show the background color only.
@@ -115,7 +115,7 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 - Edges, Blend and Soften act on the extended edges only: disabled with the Color fill, their values kept.
 - The Crop's edit view extends the edges of the whole image it shows.
 - The **color button** is painted with the color in use. Clicking it opens the standard color dialog, on that color; choosing a color unchecks *Automatic color*. Checking it again drops the chosen color; unchecking it keeps the automatic color of the moment as the chosen one.
-- **Black & white** turns the background gray too, whatever its color.
+- **Colors** adjusts the background too, whatever its color.
 - **Off**, or below 100 %, the cell is transparent behind its image: the preview shows grey and white squares there, as drawing apps do. A PNG — saved, or the PNG format of a copy — keeps the transparency; the copied bitmap, the MP4 video and the GIF show white instead.
 - Replacing the image, the Background's own Reset and the tabs' Reset bring it back on, automatic, at 100 %, with the Color fill, Edges at 100 %, Blend at 0 % and Soften unchecked.
 
@@ -165,9 +165,15 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 - Not frozen, **Starts at** sets where the content **starts playing** — the trim's start by default — in the preview and in the exported video, its sound included; its slider covers the trimmed frames only.
 - Frozen, the content stops on the frame the slider picks, in the preview and in every export: a frozen cell is exported as that still, and a grid whose contents are all frozen is copied and saved as a PNG. A frozen video has no sound.
 
-### Black & white
+### Colors
 
-- Options: the intensity, from 0 (the colors) to 100 %; the bands follow it.
+- Options: four sliders on one row, each centered on 0 — the default, leaving the image unchanged:
+  - **Saturation**, from −100 % (black & white) to +100 % (the saturation doubled);
+  - **Hue**, from −180° to +180°, the hues turned around the color wheel;
+  - **Brightness**, from −100 % to +100 %: strongly darkened or lightened, never flat black or white;
+  - **Contrast**, from −100 % (flat mid-gray) to +100 % (three times the contrast).
+- The background follows them, its automatic color or the chosen one.
+- Turned on with every slider at 0, it changes nothing until a slider moves; moving one turns it on.
 
 ### Blur
 
