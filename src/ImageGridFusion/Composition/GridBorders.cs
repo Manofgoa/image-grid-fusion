@@ -40,7 +40,7 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool I
     public const double CornerRadiusShare = 0.03;
 
     /// <summary>The borders as the app starts and as Clear all leaves them, in <paramref name="color"/>, their corners <paramref name="rounded"/> or not.</summary>
-    public static GridBorders Initial(Color color, bool rounded) => new(BorderPattern.Corners, DefaultThickness, true, false, color, rounded, 1.0);
+    public static GridBorders Initial(Color color, bool rounded) => new(BorderPattern.Corners, DefaultThickness, false, true, color, rounded, 1.0);
 
     /// <summary>Whether the borders are drawn as a line style — inner lines, outer frame: every style but the corners.</summary>
     public bool IsLineStyle => Pattern != BorderPattern.Corners;
