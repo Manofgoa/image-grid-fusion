@@ -1,7 +1,7 @@
 # Rotation Slider
 
 > Working document — the Rotate effect's slider covers the whole circle, −180° to +180°, instead
-> of four quarter-turn buttons plus a ±45° fine angle.
+> of a ±45° fine angle added to the quarter turns.
 > This file is the source of truth for the planned work until implemented,
 > then the log of every adjustment made to it afterwards.
 
@@ -29,8 +29,10 @@ Relevant components:
 
 ## Options Toolbar — Rotate
 
-- The four quarter-turn option thumbnails: see Open Questions (removed by Q&A #1, when they were
-  text buttons).
+- The four quarter-turn option thumbnails **stay**, before the slider, as shortcuts (Q&A #11): a
+  click sets the angle exactly on that quarter turn; the one the angle falls exactly on is pressed,
+  none otherwise — as today. Their labels follow the slider's range: **0°**, **90°**, **180°**,
+  **−90°** (the pictograms unchanged).
 - One slider, **−180° → +180°**, by 1°, centered on 0°; its label reads `Angle: +37°` (same format
   as today: sign, then degrees; `0°` without sign).
 - **No snapping**: the angle moves freely, degree by degree.
@@ -59,7 +61,10 @@ Relevant components:
 
 ## Ctrl+R / Ctrl+Shift+R
 
-- See Open Questions: what a quarter turn does to an angle that is not on a quarter.
+- They go to the **next quarter turn** that way (Q&A #12), so they always land on a right angle:
+  Ctrl+R to the nearest quarter turn strictly clockwise (+37° → +90°, +90° → +180°, +180° → −90°),
+  Ctrl+Shift+R strictly counter-clockwise (+37° → 0°, 0° → −90°). On a quarter turn, that is ±90°
+  as today.
 
 ## Cover
 
@@ -70,8 +75,8 @@ Relevant components:
 ## Documentation
 
 - **README** and **README.fr** (same commit, `../CLAUDE.md` § French Versions) § *Rotate*: the
-  options become one angle slider from −180° to +180° by 1°; the quarter-turn sentence follows the
-  Open Question; the 8 mentions of "fine angle" (Background edges, Crop, Zoom…) become "an angle
+  fine angle becomes one angle slider from −180° to +180° by 1°, after the quarter-turn thumbnails
+  (0°, 90°, 180°, −90°); Ctrl+R / Ctrl+Shift+R go to the next quarter turn; the 8 mentions of "fine angle" (Background edges, Crop, Zoom…) become "an angle
   other than a quarter turn" where they speak to the user.
 - **GLOSSARY** and **GLOSSARY.fr**: a new **Angle** row — the Rotate effect's angle, −180° to +180°,
   the image zoomed to keep covering its cell. *Fine angle* stays, redefined as the code's ±45° part
@@ -97,10 +102,11 @@ MP4).
 ## Open Questions
 
 - [x] ~~Page step of the slider (click on the track, PageUp / PageDown): 15°, 45° or 90°?~~ → 15°
-- [ ] The four quarter-turn option thumbnails, now pictograms: removed as decided (Q&A #1), or kept
-      beside the slider as shortcuts to 0°, 90°, 180°, 270°?
-- [ ] Ctrl+R / Ctrl+Shift+R on an angle off a quarter (e.g. +37°): add ±90° keeping the rest
-      (+127°), or go to the next quarter turn that way (+90°)?
+- [x] ~~The four quarter-turn option thumbnails, now pictograms: removed as decided (Q&A #1), or kept
+      beside the slider as shortcuts to 0°, 90°, 180°, 270°?~~ → Kept beside the slider
+      *(revises Q&A #1, see Iteration 6)*
+- [x] ~~Ctrl+R / Ctrl+Shift+R on an angle off a quarter (e.g. +37°): add ±90° keeping the rest
+      (+127°), or go to the next quarter turn that way (+90°)?~~ → The next quarter turn that way
 - [x] ~~Width of the slider: 361 positions on today's 160 px leave ~0.4 px per degree with the
       mouse. Keep 160 px (the arrows give the exact degree), or widen it (e.g. 360 px, 1 px per degree)?~~
       → 360 px, 1 px per degree
@@ -149,6 +155,12 @@ Ctrl+Shift+R turn an image a quarter turn, the fine angle back to 0°
 what a quarter turn does to a free angle. The documentation now includes the French README and
 glossary, and *Fine angle* is kept in the glossary as the code's term so RULES.md stays untouched.
 
+### Iteration 6 — 2026-10-10
+
+The quarter-turn thumbnails stay beside the slider as shortcuts (Q&A #11, revising Q&A #1), their
+last one labelled −90° to match the slider's range. Ctrl+R / Ctrl+Shift+R go to the next quarter
+turn that way (Q&A #12). No open question remains.
+
 ---
 
 ## Implementation Log
@@ -180,8 +192,9 @@ Questions asked by the agent during design, with user responses.
 | 8 | Go for the implementation? | No — the gate holds | 2026-09-26 |
 | 9 | Go for the implementation? | Dismissed — asked again | 2026-09-30 |
 | 10 | Go for the implementation? | Dismissed | 2026-09-30 |
-| 11 | Quarter-turn thumbnails: removed, or kept beside the slider? | | |
-| 12 | Ctrl+R on an angle off a quarter: +90° keeping the rest, or the next quarter turn? | | |
+| 11 | Quarter-turn thumbnails: removed, or kept beside the slider? | Kept beside the slider | 2026-10-10 |
+| 12 | Ctrl+R on an angle off a quarter: +90° keeping the rest, or the next quarter turn? | The next quarter turn | 2026-10-10 |
+| 13 | Go for the implementation? | | |
 
 ---
 
