@@ -66,6 +66,12 @@ internal sealed class FileExplorerPanel : Panel
     private const string OpenInExplorerText = "Open in Explorer";
     private const string CopyText = "Copy";
     private const string CopyPngText = "Copy PNG";
+    private const string SortNewestText = "Date ↓";
+    private const string SortNameText = "Name A→Z";
+    private const string SortSmallestText = "Size ↑";
+
+    // The sort drop-down's width in logical pixels: its longest entry and the arrow.
+    private const int SortWidth = 92;
 
     private readonly TableLayoutPanel _content = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 7, Padding = new Padding(6, 4, 6, 6) };
     private readonly TableLayoutPanel _header = new() { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
@@ -89,11 +95,15 @@ internal sealed class FileExplorerPanel : Panel
     private readonly Breadcrumb _breadcrumb = new() { Dock = DockStyle.Fill, Visible = false };
     private readonly Panel _listHost = new() { Dock = DockStyle.Fill, Margin = Padding.Empty, BorderStyle = BorderStyle.FixedSingle };
     private readonly ThumbnailGrid _grid = new() { Dock = DockStyle.Fill };
-    private readonly TableLayoutPanel _sizeRow = new() { ColumnCount = 3, RowCount = 1, Dock = DockStyle.Fill, Margin = Padding.Empty };
+    private readonly TableLayoutPanel _sizeRow = new() { ColumnCount = 4, RowCount = 1, Dock = DockStyle.Fill, Margin = Padding.Empty };
     private readonly Label _smallerGlyph = new() { Text = "▭", AutoSize = true, Anchor = AnchorStyles.Left, TextAlign = ContentAlignment.MiddleCenter, Margin = new Padding(0, 0, 4, 0) };
     // No ticks: the thumb then sits on the row's centre line, level with the glyphs at any DPI.
     private readonly TrackBar _size = new() { AutoSize = false, Dock = DockStyle.Fill, Margin = Padding.Empty, Minimum = ThumbnailGrid.MinTileSize, Maximum = ThumbnailGrid.MaxTileSize, TickStyle = TickStyle.None, SmallChange = 20, LargeChange = 100 };
     private readonly Label _largerGlyph = new() { Text = "▭", AutoSize = true, Anchor = AnchorStyles.Right, TextAlign = ContentAlignment.MiddleCenter, Margin = new Padding(4, 0, 0, 0) };
+
+    // The sort drop-down (workfiles/20261009-search-results-sort.md), at the end of the slider's row:
+    // its entries in FileOrder's order.
+    private readonly ComboBox _sort = new() { DropDownStyle = ComboBoxStyle.DropDownList, Anchor = AnchorStyles.Right, Margin = new Padding(8, 0, 0, 0) };
     private readonly Panel _invite = new() { Dock = DockStyle.Fill, Visible = false };
     private readonly Label _inviteText = new()
     {
@@ -135,6 +145,7 @@ internal sealed class FileExplorerPanel : Panel
     private long _lastKeystroke;
     private string? _activity;
     private int _pagesPerLoad = DefaultPagesPerLoad;
+    private FileOrder _fileOrder = FileOrder.Newest;
 
     // A tile of this panel being dragged: not a source of favorites, so the panel refuses it.
     private bool _draggingOwnTile;
@@ -188,10 +199,14 @@ internal sealed class FileExplorerPanel : Panel
         _sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        this._sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _sizeRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         _sizeRow.Controls.Add(_smallerGlyph, 0, 0);
         _sizeRow.Controls.Add(_size, 1, 0);
         _sizeRow.Controls.Add(_largerGlyph, 2, 0);
+        this._sizeRow.Controls.Add(this._sort, 3, 0);
+        this._sort.Items.AddRange([SortNewestText, SortNameText, SortSmallestText]);
+        this._sort.SelectedIndex = (int)this._fileOrder;
 
         // Docked to the top in reverse order of addition: the text above the button.
         _invite.Controls.Add(_chooseFolder);
@@ -221,9 +236,11 @@ internal sealed class FileExplorerPanel : Panel
         this.ApplyCriteriaTips();
         _toolTip.SetToolTip(_smallerGlyph, "Smaller tiles");
         _toolTip.SetToolTip(_largerGlyph, "Larger tiles");
+        this.ApplySortTip();
         _collapse.Click += (_, _) => SetOpen(false);
         _expand.Click += (_, _) => SetOpen(true);
         _size.ValueChanged += (_, _) => OnSliderChanged();
+        this._sort.SelectionChangeCommitted += (_, _) => this.ChangeOrder((FileOrder)this._sort.SelectedIndex);
         _grid.SizeStepRequested += (_, direction) => StepSize(direction);
         _rescan.Click += (_, _) => Rescan();
         _chooseFolder.Click += (_, _) => ChooseFolderRequested?.Invoke(this, EventArgs.Empty);
@@ -278,6 +295,9 @@ internal sealed class FileExplorerPanel : Panel
 
     /// <summary>The view was switched, or another folder opened: <see cref="FolderView"/> and <see cref="OpenFolder"/> to remember.</summary>
     public event EventHandler? FolderViewChanged;
+
+    /// <summary>The user picked another order in the sort drop-down: <see cref="FileOrder"/> to remember.</summary>
+    public event EventHandler? FileOrderChanged;
 
     /// <summary>A tile was double-clicked or entered: its file, to be added like Add images.</summary>
     public event EventHandler<string>? FileActivated;
@@ -368,6 +388,28 @@ internal sealed class FileExplorerPanel : Panel
     {
         get => _pagesPerLoad;
         set => _pagesPerLoad = Math.Clamp(value, MinPagesPerLoad, MaxPagesPerLoad);
+    }
+
+    /// <summary>
+    /// The sort drop-down's order of the files: inside each relevance tier of a search, alone for
+    /// <c>*</c> and a browsed folder; the list shown is ordered again at once. Setting it raises nothing.
+    /// </summary>
+    [DefaultValue(FileOrder.Newest)]
+    public FileOrder FileOrder
+    {
+        get => this._fileOrder;
+        set
+        {
+            if (value == this._fileOrder || !Enum.IsDefined(value))
+            {
+                return;
+            }
+
+            this._fileOrder = value;
+            this._sort.SelectedIndex = (int)value;
+            this.ApplySortTip();
+            this.RefreshOrdered();
+        }
     }
 
     /// <summary>
@@ -795,6 +837,7 @@ internal sealed class FileExplorerPanel : Panel
         _content.RowStyles[3].Height = line;
         _content.RowStyles[4].Height = line;
         _content.RowStyles[6].Height = Font.Height * 2 + LogicalToDeviceUnits(4);
+        this._sort.Width = this.LogicalToDeviceUnits(SortWidth);
         _inviteText.Height = Font.Height * 4 + LogicalToDeviceUnits(8);
     }
 
@@ -847,6 +890,42 @@ internal sealed class FileExplorerPanel : Panel
         }
 
         _toolTip.SetToolTip(_size, $"Tile size: {_tileSize} px");
+    }
+
+    /// <summary>The user picked an order in the sort drop-down: applied, then reported to be remembered.</summary>
+    private void ChangeOrder(FileOrder order)
+    {
+        if (order == this._fileOrder)
+        {
+            return;
+        }
+
+        this.FileOrder = order;
+        this.FileOrderChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// The list shown ordered again in <see cref="FileOrder"/>, from its first load: a search, <c>*</c> or
+    /// a browsed folder — the favorites keep their own order, so they are left as they are.
+    /// </summary>
+    private void RefreshOrdered()
+    {
+        if (this._folderView || FileSearch.Words(this._search.Text).Length > 0)
+        {
+            this.RefreshRows();
+        }
+    }
+
+    /// <summary>The sort drop-down's tooltip: the order chosen, and the relevance a search puts first.</summary>
+    private void ApplySortTip()
+    {
+        string order = this._fileOrder switch
+        {
+            FileOrder.Name => "the files A→Z by name",
+            FileOrder.Smallest => "the smallest files first",
+            _ => "the most recently created files first",
+        };
+        this._toolTip.SetToolTip(this._sort, $"Sort: {order}.\nA search lists the best matches first — found in the file name, then in its folders, then in its content — each group sorted this way.\nIn the folder view, the folders come first, A→Z.");
     }
 
     /// <summary>The slider moved: its size applied and reported.</summary>
@@ -1343,7 +1422,8 @@ internal sealed class FileExplorerPanel : Panel
     {
         string root = _baseFolder!;
         string asked = _openFolder;
-        var reading = Task.Run(() => ReadFolder(root, asked));
+        var order = this._fileOrder;
+        var reading = Task.Run(() => ReadFolder(root, asked, order));
         bool noticed = false;
         if (await Task.WhenAny(reading, Task.Delay(ReadingNoticeDelay)) != reading && version == _listVersion && !IsDisposed)
         {
@@ -1382,9 +1462,9 @@ internal sealed class FileExplorerPanel : Panel
             rows.Add(FolderRow(folder));
         }
 
-        foreach (var (path, _) in listing.Files)
+        foreach (var file in listing.Files)
         {
-            rows.Add(new ExplorerRow(path, Path.GetFileName(path)));
+            rows.Add(new ExplorerRow(Path.Combine(root, file.RelativePath), file.Name));
         }
 
         ShowRows(rows, keepPlace, select);
@@ -1393,9 +1473,10 @@ internal sealed class FileExplorerPanel : Panel
 
     /// <summary>
     /// The folder as the disk holds it, on a worker: <paramref name="relative"/>, or its nearest parent
-    /// still there, the base folder at worst; nothing listed, and why, when that cannot be read.
+    /// still there, the base folder at worst; nothing listed, and why, when that cannot be read. Its
+    /// files in <paramref name="order"/>, relative to <paramref name="root"/>.
     /// </summary>
-    private static (string Folder, IReadOnlyList<string> Folders, IReadOnlyList<(string Path, DateTime Created)> Files, string? Error) ReadFolder(string root, string relative)
+    private static (string Folder, IReadOnlyList<string> Folders, IReadOnlyList<IndexEntry> Files, string? Error) ReadFolder(string root, string relative, FileOrder order)
     {
         while (relative.Length > 0 && !Directory.Exists(Path.Combine(root, relative)))
         {
@@ -1404,7 +1485,7 @@ internal sealed class FileExplorerPanel : Panel
 
         try
         {
-            var (folders, files) = FolderListing.Read(Path.Combine(root, relative));
+            var (folders, files) = FolderListing.Read(root, relative, order);
             return (relative, folders, files, null);
         }
         catch (Exception ex) when (FileIndex.IsFileError(ex))
@@ -1416,7 +1497,8 @@ internal sealed class FileExplorerPanel : Panel
     /// <summary>
     /// A search in the folder view, from the index: the folders below the open one, then its files —
     /// every one of each for <c>*</c>, the folders A→Z by their path so each is followed by its
-    /// subfolders, the files the newest first; else those matching the words, best first.
+    /// subfolders, the files in <see cref="FileOrder"/>; else those matching the words, best first,
+    /// the files of a relevance tier in <see cref="FileOrder"/>.
     /// </summary>
     private (IReadOnlyList<ExplorerRow> Rows, string Trailing) SearchFolder(FileIndex index, string[] words, bool everything)
     {
@@ -1465,18 +1547,19 @@ internal sealed class FileExplorerPanel : Panel
     }
 
     /// <summary>
-    /// The files of a search: every one for <c>*</c>, the most recently created first; else those
-    /// matching the words — by their path or by their content text, as the search criteria ask — best first.
+    /// The files of a search: every one for <c>*</c>, in <see cref="FileOrder"/>; else those matching
+    /// the words — by their path or by their content text, as the search criteria ask — best first, the
+    /// files of a relevance tier in <see cref="FileOrder"/>.
     /// </summary>
     private IReadOnlyList<SearchMatch> Find(IReadOnlyList<IndexEntry> entries, string[] words, bool everything)
     {
         if (everything)
         {
-            return FileSearch.All(entries).Select(e => new SearchMatch(e, null)).ToArray();
+            return FileSearch.All(entries, this._fileOrder).Select(e => new SearchMatch(e, null)).ToArray();
         }
 
         var contents = this._byContent.Checked ? this._contents : null;
-        return FileSearch.Search(entries, words, contents is null ? null : e => contents.FoldedOf(e.RelativePath), this._byName.Checked);
+        return FileSearch.Search(entries, words, contents is null ? null : e => contents.FoldedOf(e.RelativePath), this._byName.Checked, this._fileOrder);
     }
 
     /// <summary>The words around the one the search found in a tile's content text, 4 on each side.</summary>

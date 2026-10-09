@@ -76,7 +76,7 @@ internal sealed class FolderTree
 
 /// <summary>
 /// One folder as the disk holds it now: its subfolders and its files, hidden and system entries
-/// skipped as the scan skips them, each file's creation time from the enumeration.
+/// skipped as the scan skips them, each file's creation time and size from the enumeration.
 /// </summary>
 internal static class FolderListing
 {
@@ -84,10 +84,12 @@ internal static class FolderListing
     public static readonly StringComparer NameOrder = StringComparer.CurrentCultureIgnoreCase;
 
     /// <summary>
-    /// The folders A→Z, then the files the most recently created first, then by name. Throws like the
-    /// enumeration does when the folder cannot be read.
+    /// The folder <paramref name="relative"/> of <paramref name="root"/>: its folders A→Z, as full paths,
+    /// then its files in <paramref name="order"/> — the sort drop-down's — as entries relative to
+    /// <paramref name="root"/>, like the index's. Throws like the enumeration does when the folder cannot
+    /// be read.
     /// </summary>
-    public static (IReadOnlyList<string> Folders, IReadOnlyList<(string Path, DateTime Created)> Files) Read(string folder)
+    public static (IReadOnlyList<string> Folders, IReadOnlyList<IndexEntry> Files) Read(string root, string relative, FileOrder order)
     {
         var options = new EnumerationOptions
         {
@@ -96,12 +98,12 @@ internal static class FolderListing
             AttributesToSkip = FileAttributes.Hidden | FileAttributes.System,
         };
         var folders = new List<string>();
-        var files = new List<(string Path, DateTime Created)>();
-        var entries = new FileSystemEnumerable<(string Path, bool IsFolder, DateTime Created)>(
-            folder,
-            (ref FileSystemEntry entry) => (entry.ToFullPath(), entry.IsDirectory, entry.CreationTimeUtc.UtcDateTime),
+        var files = new List<IndexEntry>();
+        var entries = new FileSystemEnumerable<(string Path, bool IsFolder, DateTime Created, long Size)>(
+            Path.Combine(root, relative),
+            (ref FileSystemEntry entry) => (entry.ToFullPath(), entry.IsDirectory, entry.CreationTimeUtc.UtcDateTime, entry.Length),
             options);
-        foreach (var (path, isFolder, created) in entries)
+        foreach (var (path, isFolder, created, size) in entries)
         {
             if (isFolder)
             {
@@ -109,16 +111,12 @@ internal static class FolderListing
             }
             else
             {
-                files.Add((path, created));
+                files.Add(new IndexEntry(Path.Combine(relative, Path.GetFileName(path)), created, size: size));
             }
         }
 
         folders.Sort((a, b) => NameOrder.Compare(Path.GetFileName(a), Path.GetFileName(b)));
-        files.Sort((a, b) =>
-        {
-            int order = b.Created.CompareTo(a.Created);
-            return order != 0 ? order : NameOrder.Compare(Path.GetFileName(a.Path), Path.GetFileName(b.Path));
-        });
+        files.Sort((a, b) => FileOrders.Compare(order, a, b));
         return (folders, files);
     }
 }
