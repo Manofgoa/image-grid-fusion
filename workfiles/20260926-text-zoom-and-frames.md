@@ -185,6 +185,11 @@ the *Animated Zoom* is now the **Animations** effect's Zoom motion, still a scal
 re-laid-out page; an undo or redo changing the zoom re-renders. `.rtf` / `.html` texts are covered as
 `TextPages`. Still no test project.
 
+### Iteration 5 — 2026-10-10 — ✅ Implemented
+
+Go given: code, unit tests and documentation. Scope frozen as of Iteration 4. Branch: `main`, as
+the app's standing practice (work lands on main).
+
 ---
 
 ## Implementation Log
