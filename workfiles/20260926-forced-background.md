@@ -62,10 +62,15 @@ Relevant components (checked against `main` on 2026-10-10):
 |---|---|---|
 | Turned on (checkbox, or acting on an option) | Turned **off** in every cell (settings kept) | Painted |
 | A cell's Background checkbox checked afterwards | That cell on again, drawn over the forced fill | Painted |
-| Turned off (checkbox, its Reset, the tabs' Reset, Clear all) | *Open question* | Not painted |
+| Turned off (checkbox, its Reset, the tabs' Reset, Clear all) | Turned back **on** in the cells **it** turned off, their settings as kept; a cell whose Background the user turned on or off meanwhile stays as left | Not painted |
+| While on: an image enters a cell (any route), an image shifts after a deletion, a cell *Reset* or the effects toolbar's *Reset* | Comes **off** instead of its default on, so the forced fill keeps showing; turning the effect off turns it back on like the others | Painted |
 
-Turning it on changes the cells, which RULES.md's global effects otherwise leave alone: this is an
-exception the rules will state (*The Forced Background Exception*).
+The effect remembers **which cells it turned off** (the images, so the memory follows a swap); a
+cell the user turns on or off by hand leaves that memory.
+
+Turning it on and off changes the cells, which RULES.md's global effects otherwise leave alone, and
+while it is on the Background's default state is off: both are exceptions the rules will state
+(*The Forced Background Exception*).
 
 ### Other Global Effects
 
@@ -92,6 +97,22 @@ exception the rules will state (*The Forced Background Exception*).
 
 ---
 
+## Colors and Gradients
+
+- **Solid**: color 1.
+- **Linear**: from color 1 to color 2 across the whole canvas, along an **angle**.
+- **Radial**: from color 1 at the **center of the canvas** (fixed) to color 2 at its corners.
+- **Color 1**: the effect's color — following cell 1's automatic background until first activated,
+  then its own (§ State); the Color… button sets it.
+- **Color 2** (gradients): one choice among five —
+  - **Auto, last cell**: the automatic background color of the last cell holding an image;
+  - **Darker**: color 1 darkened;
+  - **Black**;
+  - **White**;
+  - **Chosen**: a color picked with a Color… button.
+
+  Its default and whether *Auto, last cell* follows the cells live: *Open questions*.
+
 ## UI
 
 - A new **tab** of the Global toolbar, with its activation checkbox, after `Seams` (before
@@ -99,7 +120,8 @@ exception the rules will state (*The Forced Background Exception*).
 - Its options, in the global options toolbar:
   - the **mode** — Solid / Linear / Radial — as **option thumbnails** (RULES.md § Options Toolbar,
     56 × 40 pictograms);
-  - the **color** button(s);
+  - color 1's **Color…** button;
+  - for the gradients, color 2's choice among its five, then its Color… button for *Chosen*;
   - the mode's geometry control (the angle for Linear);
   - its own **Reset**, ending the row.
 
@@ -125,11 +147,16 @@ to the tests question below.
 - [x] ~~The effect's own Reset: back to its default state (off), or stays on with the default
   settings?~~ → Back to the initial state, off — settled by RULES.md § Global Toolbar, written
   since (see Iteration 2).
-- [ ] Turning it off: what happens to the cells whose Background it turned off?
-- [ ] While it is on, an image entering a cell (or a cell *Reset*) brings the cell's Background back
-  **on** (its default state), covering the forced fill: keep that, or keep it off?
-- [ ] Gradient definition: two colors plus an angle (linear) / a fixed center (radial), or more?
-- [ ] Gradient second color: what default?
+- [x] ~~Turning it off: what happens to the cells whose Background it turned off?~~ → Turned back on,
+  those only; a cell the user changed meanwhile stays as left.
+- [x] ~~While it is on, an image entering a cell (or a cell *Reset*) brings the cell's Background back
+  **on**, covering the forced fill: keep that, or keep it off?~~ → Off while the effect is on.
+- [x] ~~Gradient definition: two colors plus an angle (linear) / a fixed center (radial), or more?~~ →
+  Two colors; an angle for the linear, the canvas center for the radial.
+- [x] ~~Gradient second color: what default?~~ → Not one default: a choice among Auto (last cell),
+  Darker, Black, White and a chosen color.
+- [ ] Color 2: which of the five is the default?
+- [ ] Color 2 *Auto, last cell*: follows the cells live, or frozen like color 1 once activated?
 - [ ] Opacity: opaque only, or an opacity slider (PNG alpha, white under the other outputs)?
 - [ ] Color while never activated, when cell 1 holds no image: which color?
 - [ ] The tab's label?
@@ -164,6 +191,14 @@ Design rebased on `main`, which moved on while the design was paused:
   as an exception to state in the rules.
 - New open question: the tab's label.
 
+### Iteration 3 — 2026-10-10
+
+User answers: turned off, the effect turns back on the Background of the cells it turned off (only
+those); while on, an arriving image or a cell Reset gets its Background off; gradients have two
+colors, an angle for the linear, a fixed canvas center for the radial; color 2 is a choice among
+Auto (last cell), Darker, Black, White and a chosen color. New questions: color 2's default, and
+whether its Auto follows the cells live.
+
 ---
 
 ## Implementation Log
@@ -184,15 +219,17 @@ Design rebased on `main`, which moved on while the design was paused:
 | 2 | Which area does it cover? | Cells and the gaps between them | 2026-09-26 |
 | 3 | Are the gradient modes in scope? | Solid + linear + radial | 2026-09-26 |
 | 4 | Is the subject straightforward, or tricky / long? | Straightforward | 2026-09-26 |
-| 5 | Turning it off: what happens to the cells whose Background it turned off? | | |
-| 6 | While on, an arriving image / a cell Reset brings Background back on: keep or keep it off? | | |
+| 5 | Turning it off: what happens to the cells whose Background it turned off? | Turned back on — only those it turned off | 2026-10-10 |
+| 6 | While on, an arriving image / a cell Reset brings Background back on: keep or keep it off? | Off | 2026-10-10 |
 | 7 | The effect's own Reset: back to off, or stays on with defaults? | Not asked — settled by RULES.md § Global Toolbar (back to the initial state, off) | 2026-10-10 |
-| 8 | Gradient definition: two colors + angle / fixed center, or more? | | |
-| 9 | Gradient second color default? | | |
+| 8 | Gradient definition: two colors + angle / fixed center, or more? | Two colors, fixed center | 2026-10-10 |
+| 9 | Gradient second color default? | Offer the four (Auto last cell, Darker, Black, White) plus a chosen color | 2026-10-10 |
 | 10 | Opacity: opaque only or a slider? | | |
 | 11 | Color while never activated, cell 1 empty? | | |
 | 12 | Unit tests: none or create a test project? | | |
 | 13 | The tab's label? | | |
+| 14 | Color 2: which of the five is the default? | | |
+| 15 | Color 2 Auto (last cell): live, or frozen once activated? | | |
 
 ---
 
