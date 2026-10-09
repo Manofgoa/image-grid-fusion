@@ -123,6 +123,12 @@ the Seams apply again with Inner lines unchecked, the cells touching; the checkb
 **Inner lines**, placed just before Outer frame. New § Seams; § Rendering, § UI and § Test Impact
 updated.
 
+### Iteration 3 — 2026-10-09 — ✅ Implemented
+
+Go given: code, tests and documentation, in a worktree
+(`.claude/worktrees/borders-outer-without-inner`, branch `feature/borders-outer-without-inner`).
+Scope frozen as the sections above stand.
+
 ---
 
 ## Implementation Log
