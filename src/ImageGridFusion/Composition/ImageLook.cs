@@ -365,6 +365,16 @@ public sealed record ImageLook
     /// <summary>Unclamped: how far the image may go depends on its cell, and is applied where the image is placed.</summary>
     public ImageLook WithFocus(PointF focus) => Activated(ImageEffect.Zoom) with { Focus = focus, KeptZoom = null };
 
+    /// <summary>
+    /// This look as a text laying its zoom out is drawn (<see cref="SourceImage.LaysOutZoom"/>): centered,
+    /// at its zoom divided by <paramref name="layoutZoom"/>, the one its pages are laid out for — 100 %
+    /// once they follow it, the page scaled meanwhile, during a gesture. A fit mode is 100 % on a page
+    /// shaped like its cell. Every other effect is kept, the Animations' motion moving the text around
+    /// its own page.
+    /// </summary>
+    public ImageLook WithZoomLaidOut(double layoutZoom) =>
+        this with { Zoom = (this.ZoomFit == ZoomFit.None ? this.Zoom : 1) / layoutZoom, ZoomFit = ZoomFit.None, Focus = Center };
+
     public ImageLook WithFrames(FramesEffect? frames) => this with { Frames = frames };
 
     public ImageLook WithColors(ColorsEffect? colors) => this with { Colors = colors };

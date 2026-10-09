@@ -38,6 +38,26 @@ public sealed class SourceImage : IDisposable
 
     public Size Size => Bitmap.Size;
 
+    /// <summary>
+    /// A text laying its content out for its zoom: its pages hold the zoom, so it is drawn at 100 %,
+    /// filling its cell. Not while cropped — a cropped text keeps its layout and zooms like an image
+    /// (workfiles/20260926-text-zoom-and-frames.md).
+    /// </summary>
+    public bool LaysOutZoom => this.Pages is { LayoutZoom: not null } && this.Look.Crop is null;
+
+    /// <summary>
+    /// The look the image is drawn with — by the preview, the exports and the gestures' geometry: its
+    /// own, but centered and at 100 % of the zoom its pages hold for a text laying its zoom out
+    /// (<see cref="LaysOutZoom"/>).
+    /// </summary>
+    public ImageLook DrawnLook => this.LaysOutZoom ? this.Look.WithZoomLaidOut(this.Pages!.LayoutZoom!.Value) : this.Look;
+
+    /// <summary>How many times its unzoomed resolution the page shown is rendered at (<see cref="PageSource.Sharpening"/>).</summary>
+    public double Sharpening => this.Pages?.Sharpening ?? 1;
+
+    /// <summary>The size the canvas sizing reads: the image as drawn, at its unzoomed resolution.</summary>
+    public Size SizingSize => Frame.Unsharpened(this.Look.Shown(this.Bitmap.Size), this.Sharpening);
+
     public bool IsDisposed { get; private set; }
 
     /// <summary>Plays when shown: a video, an animated GIF, a PDF of several pages, a text longer than its cell.</summary>

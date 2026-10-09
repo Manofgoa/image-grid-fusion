@@ -9,7 +9,7 @@ namespace ImageGridFusion.Imaging;
 /// </summary>
 public static class ShellThumbnail
 {
-    private const int RequestedSide = 1024;
+    internal const int RequestedSide = 1024;
 
     /// <summary>
     /// Returns null when Windows has no thumbnail for the file. <paramref name="side"/> is the size

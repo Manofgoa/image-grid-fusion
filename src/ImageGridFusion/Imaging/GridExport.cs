@@ -82,10 +82,10 @@ internal static class GridExport
         /// </summary>
         public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders, Soundtrack? soundtrack = null, SoundFade? fade = null, SeamFade? seams = null, VideoCascade? cascade = null) => new(
             images.Select(i => i.Plays
-                ? new Item(null, i.BandColor, i.Pages, i.PlayedLength, i.Look, i.Page, i.StartTime, i.PlayedFrom) { Image = i }
+                ? new Item(null, i.BandColor, i.Pages, i.PlayedLength, i.DrawnLook, i.Page, i.StartTime, i.PlayedFrom, i.Sharpening) { Image = i }
                 : i.IsAnimated
-                ? new Item(null, i.BandColor, i.Pages, TimeSpan.Zero, i.Look, i.StartPage, TimeSpan.Zero)
-                : new Item(new Bitmap(i.Bitmap), i.BandColor, null, TimeSpan.Zero, i.Look, 0, TimeSpan.Zero)).ToList(),
+                ? new Item(null, i.BandColor, i.Pages, TimeSpan.Zero, i.DrawnLook, i.StartPage, TimeSpan.Zero, Sharpening: i.Sharpening)
+                : new Item(new Bitmap(i.Bitmap), i.BandColor, null, TimeSpan.Zero, i.DrawnLook, 0, TimeSpan.Zero, Sharpening: i.Sharpening)).ToList(),
             layout,
             ratio,
             borders,
@@ -122,7 +122,7 @@ internal static class GridExport
     /// The loop is the part its frames effect leaves to play, beginning at <paramref name="From"/> in
     /// the content (workfiles/20261008-video-trim.md).
     /// </summary>
-    public sealed record Item(Bitmap? Still, BandColor BandColor, PageSource? Source, TimeSpan Loop, ImageLook Look, int Page, TimeSpan Start, TimeSpan From = default)
+    public sealed record Item(Bitmap? Still, BandColor BandColor, PageSource? Source, TimeSpan Loop, ImageLook Look, int Page, TimeSpan Start, TimeSpan From = default, double Sharpening = 1)
     {
         public bool Plays => Source is not null && Loop > TimeSpan.Zero;
 
@@ -142,18 +142,18 @@ internal static class GridExport
         reader = null;
         if (item.Source is null)
         {
-            return new Frame(item.Still!, item.BandColor, item.Look);
+            return new Frame(item.Still!, item.BandColor, item.Look, Sharpening: item.Sharpening);
         }
 
         if (!play || !item.Plays)
         {
             var page = item.Source.Render(item.Page);
-            return new Frame(page, BandColor.Of(page), item.Look);
+            return new Frame(page, BandColor.Of(page), item.Look, Sharpening: item.Sharpening);
         }
 
         reader = item.Source.OpenAnimation();
         var first = reader.FrameAt(item.ContentTime(TimeSpan.Zero)) ?? throw new InvalidOperationException("A source has no frame to show.");
-        return new Frame(first, item.BandColor, item.Look);
+        return new Frame(first, item.BandColor, item.Look, Sharpening: item.Sharpening);
     }
 
     /// <summary>The file an animated export writes.</summary>
@@ -188,7 +188,7 @@ internal static class GridExport
                 frames[i] = FirstFrame(job.Items[i], play: true, out readers[i]);
             }
 
-            var canvas = Animation.EvenSize(CanvasSizer.Compute(frames.Select(f => f.Size).ToList(), job.Layout, job.Ratio));
+            var canvas = Animation.EvenSize(CanvasSizer.Compute(frames.Select(f => f.SizingSize).ToList(), job.Layout, job.Ratio));
             using var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppRgb);
             using var g = Graphics.FromImage(bitmap);
             encoder = format == Format.Gif
@@ -263,13 +263,13 @@ internal static class GridExport
                 var item = job.Items[i];
                 if (item.Source is null)
                 {
-                    frames[i] = new Frame(item.Still!, item.BandColor, item.Look);
+                    frames[i] = new Frame(item.Still!, item.BandColor, item.Look, Sharpening: item.Sharpening);
                     continue;
                 }
 
                 var frame = item.Source.Render(item.Page);
                 owned.Add(frame);
-                frames[i] = new Frame(frame, BandColor.Of(frame), item.Look);
+                frames[i] = new Frame(frame, BandColor.Of(frame), item.Look, Sharpening: item.Sharpening);
             }
 
             return Compositor.Render(frames, job.Layout, job.Ratio, job.Borders, job.Seams);

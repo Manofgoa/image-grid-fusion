@@ -27,6 +27,9 @@ internal sealed class GridPreview : Control
     private const int HandleSize = 48;
     private const int WheelNotch = 120;
     private const int WheelEndDelay = 150;
+
+    /// <summary>How long a zoomed document's look must stay unchanged before its pages are laid out or rendered again.</summary>
+    private const int PagesFitDelay = 200;
     private const int BarReach = 12;
     private const int BarSnap = 6;
     private const int BarMinGap = 8;
@@ -135,6 +138,9 @@ internal sealed class GridPreview : Control
 
     // The wheel has no release: its zoom ends once no notch came for a moment.
     private readonly System.Windows.Forms.Timer _wheelEnd = new() { Interval = WheelEndDelay };
+
+    // A document's zoom changed: its pages follow once the gesture ends, the bitmap scaled meanwhile.
+    private readonly System.Windows.Forms.Timer _pagesFit = new() { Interval = PagesFitDelay };
     private int _wheelCell = -1;
     private int _wheelDelta;
     private bool _wheelWithControl;
@@ -199,6 +205,7 @@ internal sealed class GridPreview : Control
         _player.FrameShown += (_, image) => RedrawCell(image);
         this._player.PlaybackChanged += (_, _) => this.OnPlaybackChanged();
         _wheelEnd.Tick += (_, _) => EndLive();
+        this._pagesFit.Tick += (_, _) => this.OnPagesFitTick();
         _zoomBadgeTimer.Tick += (_, _) => OnZoomBadgeTick();
         this._restoredTimer.Tick += (_, _) => this.OnRestoredTick();
         this._readoutTimer.Tick += (_, _) => this.OnReadoutTick();
@@ -764,7 +771,7 @@ internal sealed class GridPreview : Control
         long elapsed = Environment.TickCount64 - shown.Since;
         double opacity = Math.Clamp(1 - (elapsed - ZoomBadgeHold) / (double)ZoomBadgeFade, 0, 1);
         var cell = cells[index];
-        var look = shown.Image.Look;
+        var look = shown.Image.DrawnLook;
         bool handles = this.ShownBars(index) is not null;
         if (shown.Blur && look.Blur is { } blur && !(handles && this._barsEffect == ImageEffect.Blur))
         {
@@ -828,6 +835,7 @@ internal sealed class GridPreview : Control
         if (disposing)
         {
             _wheelEnd.Dispose();
+            this._pagesFit.Dispose();
             _zoomBadgeTimer.Dispose();
             this._restoredTimer.Dispose();
             this._readoutTimer.Dispose();
@@ -1685,7 +1693,7 @@ internal sealed class GridPreview : Control
     }
 
     /// <summary>What the cell of <paramref name="image"/> shows now: its frame, its motion at the grid's time.</summary>
-    private Frame FrameOf(SourceImage image) => new(image.Bitmap, image.BandColor, image.Look, this._player.GridTime);
+    private Frame FrameOf(SourceImage image) => new(image.Bitmap, image.BandColor, image.DrawnLook, this._player.GridTime, image.Sharpening);
 
     /// <summary>Draws the new frame of an image into the cached preview, and repaints only its cell.</summary>
     private void RedrawCell(SourceImage image)
@@ -1930,6 +1938,9 @@ internal sealed class GridPreview : Control
     /// (<see cref="CanvasSizer.Smallest"/>), so they never enlarge the canvas: laid out again, keeping the
     /// reading position, whenever that cell changes — the canvas's ratio included. A text turned a
     /// quarter takes the turned shape, so it still fills its cell once rotated.
+    /// The zoom has its say too (workfiles/20260926-text-zoom-and-frames.md): a text is laid out for
+    /// its zoom — at 100 % while cropped — and a page that can be rendered sharper (a PDF, a thumbnail,
+    /// a cropped text) is rendered at the resolution its drawn size asks there, so a zoom stays sharp.
     /// </summary>
     private void FitPagesToCells()
     {
@@ -1941,15 +1952,63 @@ internal sealed class GridPreview : Control
         var cells = Compositor.Cells(_layout, CanvasSizer.Smallest(_ratio), _borders);
         for (int i = 0; i < _images.Count; i++)
         {
-            var shape = _images[i].Look.Oriented(cells[i].Size);
-            if (_images[i].Pages is { PageSize: { } size } pages && size != shape)
+            var image = this._images[i];
+            if (image.Pages is not { } pages)
+            {
+                continue;
+            }
+
+            int page = this._pageLoader.Target(image);
+            bool changed = false;
+            var shape = image.Look.Oriented(cells[i].Size);
+            if (pages.PageSize is { } size)
+            {
+                double zoom = image.LaysOutZoom ? image.Look.ZoomIn(cells[i], image.Look.Shown(shape)) : 1;
+                if (size != shape || zoom != pages.LayoutZoom)
+                {
+                    page = pages.Resize(shape, zoom, page);
+                    changed = true;
+                }
+            }
+
+            if (pages.Sharpens)
+            {
+                changed |= pages.Sharpen(SharpSide(cells[i], image));
+            }
+
+            if (changed)
             {
                 // A frozen text stays about where its frames effect points, on the new pages.
-                int page = pages.Resize(shape, _pageLoader.Target(_images[i]));
-                _pageLoader.Request(_images[i], _images[i].IsFrozen ? _images[i].StartPage : page);
-                _player.Refresh(_images[i]);
+                this._pageLoader.Request(image, image.IsFrozen ? image.StartPage : page);
+                this._player.Refresh(image);
             }
         }
+    }
+
+    /// <summary>A document's look rested: its pages follow it, unless a gesture still runs — then at the next tick.</summary>
+    private void OnPagesFitTick()
+    {
+        if (this.InGesture)
+        {
+            return;
+        }
+
+        this._pagesFit.Stop();
+        this.FitPagesToCells();
+    }
+
+    /// <summary>
+    /// The long side, in pixels, <paramref name="image"/>'s bitmap needs to be drawn 1:1 in
+    /// <paramref name="cell"/> as it is drawn now: its own, times the scale it is drawn at there —
+    /// more than its own once zoomed in.
+    /// </summary>
+    private static int SharpSide(Rectangle cell, SourceImage image)
+    {
+        var look = image.DrawnLook;
+        var shown = look.Shown(image.Bitmap.Size);
+        var bounds = FitCalculator.ComputeTurned(cell, shown, look.ZoomIn(cell, shown), look.Focus, look.FineAngle).Bounds;
+        double scale = Math.Max(bounds.Width / Math.Max(1, shown.Width), bounds.Height / Math.Max(1, shown.Height));
+        return (int)Math.Ceiling(Math.Max(image.Bitmap.Width, image.Bitmap.Height) * scale);
     }
 
     /// <summary>
@@ -1982,6 +2041,12 @@ internal sealed class GridPreview : Control
         if (turned)
         {
             FitPagesToCells();
+        }
+        else if (image.Pages is { } pages && (pages.Sharpens || pages.LayoutZoom is not null))
+        {
+            // A zoom, a crop or a fine angle may ask for other pages: laid out or rendered once it rests.
+            this._pagesFit.Stop();
+            this._pagesFit.Start();
         }
 
         // A crop or a quarter turn changes the image's shape, so the free ratio.
@@ -2279,7 +2344,7 @@ internal sealed class GridPreview : Control
             return null;
         }
 
-        var canvas = CanvasSizer.Compute(this._images.Select(i => i.Look.Shown(i.Bitmap.Size)).ToList(), layout, this.CanvasRatio);
+        var canvas = CanvasSizer.Compute(this._images.Select(i => i.SizingSize).ToList(), layout, this.CanvasRatio);
         var cells = Compositor.Cells(layout, canvas, this._borders);
         return this._images.Select((image, i) => CenterOffset(cells[i], image)).ToArray();
     }
@@ -2296,7 +2361,7 @@ internal sealed class GridPreview : Control
     /// <summary>The box <paramref name="image"/> is drawn in within <paramref name="cell"/>: the turned image's with a fine angle.</summary>
     private static RectangleF DrawnBounds(Rectangle cell, SourceImage image)
     {
-        var look = image.Look;
+        var look = image.DrawnLook;
         var shown = look.Shown(image.Bitmap.Size);
         return FitCalculator.ComputeTurned(cell, shown, look.ZoomIn(cell, shown), look.Focus, look.FineAngle).Bounds;
     }
@@ -2549,7 +2614,7 @@ internal sealed class GridPreview : Control
     {
         var cell = this.CellBounds()[index];
         var image = this._images[index];
-        var look = image.Look;
+        var look = image.DrawnLook;
         var bounds = FitCalculator.ComputeTurned(cell, look.Shown(image.Bitmap.Size), look.ZoomIn(cell, look.Shown(image.Bitmap.Size)), look.Focus, look.FineAngle).Bounds;
         var stops = FitCalculator.Stops(cell, bounds.Size);
         return new Size(
@@ -2606,6 +2671,13 @@ internal sealed class GridPreview : Control
 
         var cell = cells[index];
         var image = _images[index];
+
+        // A text laid out for its zoom always fills its cell: there is nothing to pan, its pages choose what shows.
+        if (image.LaysOutZoom)
+        {
+            return;
+        }
+
         var look = image.Look;
         var size = look.Shown(image.Bitmap.Size);
         var shown = FitCalculator.ComputeTurned(cell, size, look.ZoomIn(cell, size), look.Focus, look.FineAngle);
@@ -3080,7 +3152,7 @@ internal sealed class GridPreview : Control
         g.TranslateTransform(canvas.X, canvas.Y);
         var local = cell;
         local.Offset(-canvas.X, -canvas.Y);
-        Compositor.DrawUncropped(g, new Frame(image.Bitmap, image.BandColor, image.Look), local);
+        Compositor.DrawUncropped(g, new Frame(image.Bitmap, image.BandColor, image.DrawnLook), local);
         DrawBordersOver(g, local, canvas.Size);
         g.Restore(state);
 
@@ -3260,7 +3332,7 @@ internal sealed class GridPreview : Control
             return;
         }
 
-        var look = image.Look;
+        var look = image.DrawnLook;
         var drawn = FitCalculator.ComputeTurned(cell, look.Shown(image.Bitmap.Size), look.ZoomIn(cell, look.Shown(image.Bitmap.Size)), look.Focus, look.FineAngle).Bounds.Size;
         int inset = LogicalToDeviceUnits(2);
         int left = cell.Left + inset;

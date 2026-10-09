@@ -10,11 +10,14 @@ namespace ImageGridFusion.Imaging;
 /// </summary>
 public sealed class PdfPages : PageSource
 {
-    /// <summary>Long side of a rendered page: sharp in the export without widening the canvas on its own.</summary>
+    /// <summary>Long side of a rendered page unzoomed: sharp in the export without widening the canvas on its own.</summary>
     private const int LongSide = 1600;
 
     private readonly InMemoryRandomAccessStream _stream;
     private readonly PdfDocument _document;
+
+    /// <summary>Long side the pages are rendered at now: <see cref="LongSide"/>, more while zoomed in (<see cref="Sharpen"/>).</summary>
+    private int _longSide = LongSide;
 
     private PdfPages(InMemoryRandomAccessStream stream, PdfDocument document)
     {
@@ -36,6 +39,23 @@ public sealed class PdfPages : PageSource
     public override TimeSpan TimeOf(int page) => StepReader.StartOf(Steps(), page);
 
     private TimeSpan[] Steps() => Enumerable.Repeat(Animation.StepDuration, Count).ToArray();
+
+    public override bool Sharpens => true;
+
+    public override double Sharpening => Volatile.Read(ref this._longSide) / (double)LongSide;
+
+    /// <summary>Zoomed in, the pages are rendered with the long side the zoom needs, from <see cref="LongSide"/> up to <see cref="PageSource.MaxSharpSide"/>.</summary>
+    public override bool Sharpen(int longSide)
+    {
+        int side = Math.Clamp(longSide, LongSide, MaxSharpSide);
+        if (side == Volatile.Read(ref this._longSide))
+        {
+            return false;
+        }
+
+        Volatile.Write(ref this._longSide, side);
+        return true;
+    }
 
     /// <summary>Returns null when the file is not a PDF Windows can open (encrypted, damaged…).</summary>
     public static PdfPages? TryOpen(string path)
@@ -83,7 +103,7 @@ public sealed class PdfPages : PageSource
 
     private Bitmap RenderPage(int page)
     {
-        using var output = this.RenderToStream(page, LongSide);
+        using var output = this.RenderToStream(page, Volatile.Read(ref this._longSide));
         using var image = Image.FromStream(output.AsStream());
         return ImageLoader.Copy(image);
     }

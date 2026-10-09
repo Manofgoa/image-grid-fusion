@@ -67,8 +67,9 @@ public static class ImageLoader
         }
     }
 
+    /// <summary>Kept with its pages, so a zoom asks Windows for a bigger thumbnail.</summary>
     private static SourceImage? TryThumbnail(string path) =>
-        ShellThumbnail.TryLoad(path) is { } thumbnail ? new SourceImage(thumbnail, path) : null;
+        ThumbnailPages.TryOpen(path, out var thumbnail) is { } pages ? new SourceImage(thumbnail!, path, pages) : null;
 
     internal static Bitmap Copy(Image image)
     {

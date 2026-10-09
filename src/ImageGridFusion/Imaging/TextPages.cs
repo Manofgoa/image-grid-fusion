@@ -10,11 +10,14 @@ namespace ImageGridFusion.Imaging;
 /// pages shaped like the cell they fill, each character in its own style (bold, colors…).
 /// The font is the largest size in [<see cref="MinFontSize"/>, <see cref="MaxFontSize"/>] at which
 /// the whole text fits one page; when even the smallest does not fit, the text is paginated at it.
+/// The zoom lays the text out again at that font on a page of the cell's shape divided by the zoom,
+/// rendered at the cell's size: more text on fewer pages as it goes down, less on more pages as it
+/// goes up, always sharp (workfiles/20260926-text-zoom-and-frames.md).
 /// </summary>
 /// <remarks>
-/// Readability holds in the export because the canvas is never narrower than the width at which no
-/// image is downscaled: a page drawn at its cell size on a 1200 px canvas keeps its font height in
-/// pixels, or grows.
+/// Readability holds in the export at 100 % because the canvas is never narrower than the width at
+/// which no image is downscaled: a page drawn at its cell size on the smallest canvas keeps its font
+/// height in pixels, or grows. A zoom below 100 % shrinks it on purpose.
 /// </remarks>
 public sealed class TextPages : PageSource
 {
@@ -46,6 +49,9 @@ public sealed class TextPages : PageSource
     private readonly Color _ink;
     private Layout _layout;
 
+    /// <summary>How many times its <see cref="Layout.PageSize"/> a page is rendered at: above 1 for a cropped text zoomed in (<see cref="Sharpen"/>).</summary>
+    private double _scale = 1;
+
     private TextPages(StyledText text, Size pageSize)
     {
         _text = text;
@@ -59,12 +65,18 @@ public sealed class TextPages : PageSource
             _lineOffsets[i] = _lineOffsets[i - 1] + lines[i - 1].Length + 1;
         }
 
-        _layout = LayOut(pageSize);
+        _layout = this.LayOut(pageSize, 1);
     }
 
     public override int Count => _layout.PageCount;
 
     public override Size? PageSize => _layout.PageSize;
+
+    public override double? LayoutZoom => Volatile.Read(ref this._layout).Zoom;
+
+    public override bool Sharpens => true;
+
+    public override double Sharpening => Volatile.Read(ref this._scale);
 
     public override string Label(int page) => $"{page + 1} / {Count}";
 
@@ -133,15 +145,34 @@ public sealed class TextPages : PageSource
         return normalized.IsBlank ? null : new TextPages(normalized, pageSize);
     }
 
-    public override int Resize(Size pageSize, int page)
+    public override int Resize(Size pageSize, double zoom, int page)
     {
         var previous = _layout;
         int offset = previous.LineStarts[Math.Clamp(page, 0, previous.PageCount - 1) * previous.LinesPerPage];
-        var layout = LayOut(pageSize);
+        var layout = this.LayOut(pageSize, zoom);
         Volatile.Write(ref _layout, layout);
 
         int line = Array.FindLastIndex(layout.LineStarts, start => start <= offset);
         return Math.Max(0, line) / layout.LinesPerPage;
+    }
+
+    /// <summary>
+    /// The scale the pages are rendered at, from 1 — the cell's size, a re-laid-out text's — up to
+    /// <see cref="PageSource.MaxSharpSide"/> on the longer side: a cropped text zoomed in, which keeps
+    /// its 100 % layout and zooms like an image, stays sharp.
+    /// </summary>
+    public override bool Sharpen(int longSide)
+    {
+        var size = Volatile.Read(ref this._layout).PageSize;
+        int pageSide = Math.Max(1, Math.Max(size.Width, size.Height));
+        double scale = Math.Clamp(longSide / (double)pageSide, 1, Math.Max(1, MaxSharpSide / (double)pageSide));
+        if (Math.Abs(scale - Volatile.Read(ref this._scale)) < 0.01)
+        {
+            return false;
+        }
+
+        Volatile.Write(ref this._scale, scale);
+        return true;
     }
 
     public override Bitmap Render(int page)
@@ -156,9 +187,16 @@ public sealed class TextPages : PageSource
     private Bitmap RenderFrom(Layout layout, int first)
     {
         var (advance, lineSpacing) = Metrics.Value;
-        var bitmap = new Bitmap(layout.PageSize.Width, layout.PageSize.Height, PixelFormat.Format32bppArgb);
+        double scale = Volatile.Read(ref this._scale);
+        var bitmap = new Bitmap(
+            Math.Max(1, (int)Math.Round(layout.PageSize.Width * scale)),
+            Math.Max(1, (int)Math.Round(layout.PageSize.Height * scale)),
+            PixelFormat.Format32bppArgb);
         using var g = Graphics.FromImage(bitmap);
         g.Clear(_paper);
+
+        // Laid out on the page divided by the zoom, drawn back at the page's size, times the sharpening scale.
+        g.ScaleTransform((float)(layout.Zoom * scale), (float)(layout.Zoom * scale));
 
         // No grid fitting: glyph advances then scale linearly with the size, as measured once.
         g.TextRenderingHint = TextRenderingHint.AntiAlias;
@@ -241,12 +279,30 @@ public sealed class TextPages : PageSource
     /// <summary>Perceived lightness below the middle: a dark theme's background.</summary>
     private static bool IsDark(Color color) => 0.299 * color.R + 0.587 * color.G + 0.114 * color.B < 128;
 
-    /// <summary>Largest font at which the text fits one page, else pages at the smallest font.</summary>
-    private Layout LayOut(Size pageSize)
+    /// <summary>
+    /// Lays the text out for <paramref name="zoom"/>: at the largest font at which it fits one page at
+    /// 100 %, else at the smallest, on a page of <paramref name="pageSize"/> divided by the zoom — more
+    /// lines and columns on it as the zoom goes down, fewer as it goes up — to be rendered back at
+    /// <paramref name="pageSize"/>, so the font shows at its size times the zoom.
+    /// </summary>
+    private Layout LayOut(Size pageSize, double zoom)
     {
         int margin = Math.Max(8, (int)(Math.Min(pageSize.Width, pageSize.Height) * 0.04));
-        var content = new Size(Math.Max(1, pageSize.Width - 2 * margin), Math.Max(1, pageSize.Height - 2 * margin));
+        int fontSize = this.FittingFont(new SizeF(Math.Max(1, pageSize.Width - 2 * margin), Math.Max(1, pageSize.Height - 2 * margin)));
 
+        // The margin keeps its size on the rendered page, whatever the zoom.
+        float zoomedMargin = (float)(margin / zoom);
+        var content = new SizeF(
+            Math.Max(1, (float)(pageSize.Width / zoom) - 2 * zoomedMargin),
+            Math.Max(1, (float)(pageSize.Height / zoom) - 2 * zoomedMargin));
+        var (columns, linesPerPage) = Grid(content, fontSize);
+        var wrapped = this.Wrap(columns, int.MaxValue);
+        return new Layout(pageSize, zoom, fontSize, zoomedMargin, [.. wrapped.Select(l => l.Text)], [.. wrapped.Select(l => l.Start)], linesPerPage);
+    }
+
+    /// <summary>Largest font at which the text fits one page of <paramref name="content"/>, else the smallest.</summary>
+    private int FittingFont(SizeF content)
+    {
         int low = MinFontSize, high = MaxFontSize, best = -1;
         while (low <= high)
         {
@@ -263,13 +319,10 @@ public sealed class TextPages : PageSource
             }
         }
 
-        int fontSize = best > 0 ? best : MinFontSize;
-        var (cols, linesPerPage) = Grid(content, fontSize);
-        var wrapped = Wrap(cols, int.MaxValue);
-        return new Layout(pageSize, fontSize, margin, [.. wrapped.Select(l => l.Text)], [.. wrapped.Select(l => l.Start)], linesPerPage);
+        return best > 0 ? best : MinFontSize;
     }
 
-    private static (int Columns, int Rows) Grid(Size content, int fontSize)
+    private static (int Columns, int Rows) Grid(SizeF content, int fontSize)
     {
         var (advance, lineSpacing) = Metrics.Value;
         return (
@@ -360,8 +413,12 @@ public sealed class TextPages : PageSource
         return (width / Sample / Size, font.GetHeight(g) / Size);
     }
 
-    /// <summary>Wrapped lines, the offset each starts at in the whole text, and how many a page holds.</summary>
-    private sealed record Layout(Size PageSize, int FontSize, int Margin, string[] Lines, int[] LineStarts, int LinesPerPage)
+    /// <summary>
+    /// Wrapped lines, the offset each starts at in the whole text, and how many a page holds, for the
+    /// zoom they are laid out for: <see cref="Margin"/> and the lines' positions are on the page divided
+    /// by <see cref="Zoom"/>, the page rendered at <see cref="PageSize"/>.
+    /// </summary>
+    private sealed record Layout(Size PageSize, double Zoom, int FontSize, float Margin, string[] Lines, int[] LineStarts, int LinesPerPage)
     {
         public int PageCount => Math.Max(1, (Lines.Length + LinesPerPage - 1) / LinesPerPage);
 

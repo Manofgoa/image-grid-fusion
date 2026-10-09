@@ -15,14 +15,45 @@ public abstract class PageSource : IDisposable
     /// <summary>What the slider shows for <paramref name="page"/>: a page number or a time.</summary>
     public abstract string Label(int page);
 
+    /// <summary>
+    /// Longest side, in pixels, a page is rendered at to stay sharp under a zoom (<see cref="Sharpen"/>):
+    /// past it, the page is magnified again (workfiles/20260926-text-zoom-and-frames.md).
+    /// </summary>
+    public const int MaxSharpSide = 4096;
+
     /// <summary>Size the pages are laid out at, when the source takes the shape of its cell; else <c>null</c>.</summary>
     public virtual Size? PageSize => null;
 
     /// <summary>
-    /// Lays the pages out again at <paramref name="pageSize"/> and returns the new page holding the
-    /// start of <paramref name="page"/>. Only for a source with a <see cref="PageSize"/>.
+    /// The zoom the pages are laid out for, when the source lays its content out again for the zoom —
+    /// a text, more of it on a page as the zoom goes down, drawn at 100 % since its pages hold the
+    /// zoom; else <c>null</c>.
     /// </summary>
-    public virtual int Resize(Size pageSize, int page) => page;
+    public virtual double? LayoutZoom => null;
+
+    /// <summary>
+    /// Lays the pages out again at <paramref name="pageSize"/>, for <paramref name="zoom"/> (see
+    /// <see cref="LayoutZoom"/>), and returns the new page holding the start of <paramref name="page"/>.
+    /// Only for a source with a <see cref="PageSize"/>.
+    /// </summary>
+    public virtual int Resize(Size pageSize, double zoom, int page) => page;
+
+    /// <summary>Whether the pages can be rendered at a higher resolution, so a zoom stays sharp: a PDF, a thumbnail, a text.</summary>
+    public virtual bool Sharpens => false;
+
+    /// <summary>
+    /// Asks for the pages to be rendered <paramref name="longSide"/> pixels on their longer side, kept
+    /// between the source's own resolution and <see cref="MaxSharpSide"/>; returns whether that changes
+    /// their resolution — the page shown is then to be rendered again. Only for a source that
+    /// <see cref="Sharpens"/>.
+    /// </summary>
+    public virtual bool Sharpen(int longSide) => false;
+
+    /// <summary>
+    /// How many times its unzoomed resolution the last page was rendered at: 1 but while sharpened. The
+    /// canvas sizing divides by it, so a sharper page never widens the export on its own.
+    /// </summary>
+    public virtual double Sharpening => 1;
 
     public abstract Bitmap Render(int page);
 
