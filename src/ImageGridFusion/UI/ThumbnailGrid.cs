@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
+using ImageGridFusion.Explorer;
 using ImageGridFusion.Imaging;
 
 namespace ImageGridFusion.UI;
@@ -10,9 +11,10 @@ namespace ImageGridFusion.UI;
 /// A tile of the explorer's grid: a file — a favorite, a search result, a file of the open folder — or,
 /// in the folder view, a folder (<paramref name="IsFolder"/>), its name then carrying its file count.
 /// <paramref name="ContentWord"/>: for a search result found thanks to its content text, the first
-/// query word found there, folded.
+/// query word found there, folded. <paramref name="Size"/>: the file's size in bytes when the list
+/// knows it — the index's, the folder listing's.
 /// </summary>
-internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false, string? ContentWord = null)
+internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false, string? ContentWord = null, long? Size = null)
 {
     /// <summary>Whether the search found it thanks to its content text: it shows the light bulb.</summary>
     public bool ByContent => this.ContentWord is not null;
@@ -23,8 +25,11 @@ internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder =
 /// loaded in the background, the heart in a medallion at its corner, the name below — as many per
 /// row as fit at the tile size, stretched to fill the row, scrolling vertically. The owner loads the
 /// tiles part by part: while more remain, a Loading… slot ends them, and its coming into view asks
-/// for the next part. See workfiles/20260926-file-explorer.md § Panel,
-/// workfiles/20260928-tile-size-slider.md and workfiles/20260927-file-explorer-show-all.md.
+/// for the next part. In the <see cref="ExplorerView.Details"/> view, one row per file instead: its
+/// thumbnail a quarter of the tile size, its name and size, the excerpt of its content a search found
+/// it by, the search's words highlighted; a folder's row, a strip of its first files' thumbnails. See
+/// workfiles/20260926-file-explorer.md § Panel, workfiles/20260928-tile-size-slider.md,
+/// workfiles/20260927-file-explorer-show-all.md and workfiles/20261009-explorer-details-view.md.
 /// </summary>
 internal sealed class ThumbnailGrid : ScrollableControl
 {
@@ -36,6 +41,20 @@ internal sealed class ThumbnailGrid : ScrollableControl
     public const int Inset = 4;
     private const int Medallion = 24;
     private const int MedallionInset = 4;
+
+    // The Details view: its thumbnail's share of the tile size, the smallest its medallions shrink to,
+    // the gap between a folder strip's thumbnails, and the box those are loaded at — the largest they
+    // are drawn at (half a 250 px thumbnail), so the strip's cache never changes box.
+    private const int DetailsThumbnailShare = 4;
+    private const int MinDetailsMedallion = 14;
+    private const int StripGap = 3;
+    private static readonly Size StripBox = new(128, 96);
+    private const int StripCached = 1000;
+
+    // The excerpt's highlight: emoji-selector's opaque yellow, behind the search's words.
+    private static readonly Color HighlightColor = Color.FromArgb(255, 255, 0);
+
+    private const TextFormatFlags ExcerptFlags = TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
 
     // The light bulb of a tile found by its content: amber, the glyph drawn in one color.
     private static readonly Color BulbColor = Color.FromArgb(214, 150, 0);
@@ -51,6 +70,20 @@ internal sealed class ThumbnailGrid : ScrollableControl
     private Font _heartFont;
     private Font _nameFont;
     private Font _bulbFont;
+
+    // The Details view: the strips' thumbnails, apart from the rows' — a box of their own, more of them
+    // kept — and the folder row each was drawn in, to repaint it when one arrives; the excerpts fitted
+    // to a width; the medallions' size and fonts, shrunk with the thumbnail.
+    private readonly ThumbnailCache _stripThumbnails;
+    private readonly Dictionary<string, string> _stripOwners = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<(string Path, int Width), string?> _excerpts = new();
+    private ExplorerView _view = ExplorerView.Thumbnails;
+    private string[] _highlightWords = [];
+    private int _rowW = 1;
+    private int _rowH = 1;
+    private int _detailsMedallion;
+    private Font? _detailsHeartFont;
+    private Font? _detailsBulbFont;
 
     // The tile whose light bulb the pointer is over, its tooltip then the excerpt; -1 for none.
     private int _bulbTip = -1;
@@ -81,6 +114,9 @@ internal sealed class ThumbnailGrid : ScrollableControl
         AutoScroll = true;
         _thumbnails = new ThumbnailCache(this);
         _thumbnails.Loaded += InvalidateTileOf;
+        this._stripThumbnails = new ThumbnailCache(this, StripCached);
+        this._stripThumbnails.SetBox(StripBox, Buckets[0]);
+        this._stripThumbnails.Loaded += this.InvalidateStripOf;
         (_heartFont, _nameFont) = MakeFonts();
         this._bulbFont = this.MakeBulbFont();
     }
@@ -122,11 +158,60 @@ internal sealed class ThumbnailGrid : ScrollableControl
     public Func<ExplorerRow, RectangleF?> ContentSpot { get; set; } = _ => null;
 
     /// <summary>
+    /// A tile's content text as words, with where the word a search found stands — the Details view fits
+    /// as many around it as its row holds; null when it was not found by its content.
+    /// </summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Func<ExplorerRow, (string[] Words, int At)?> ContentWords { get; set; } = _ => null;
+
+    /// <summary>A file's size in bytes for the Details view; null when unknown.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Func<ExplorerRow, long?> SizeOf { get; set; } = row => row.Size;
+
+    /// <summary>The first files of a folder row, as full paths — the given number at most — for its strip in the Details view.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Func<ExplorerRow, int, IReadOnlyList<string>> FolderFiles { get; set; } = (_, _) => [];
+
+    /// <summary>The search's words, folded: highlighted wherever they stand in a Details row's excerpt.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public string[] HighlightWords
+    {
+        get => this._highlightWords;
+        set
+        {
+            this._highlightWords = value;
+            this.Invalidate();
+        }
+    }
+
+    /// <summary>Tiles, or a row per file; the list is laid out again, the tile that topped the view still in view.</summary>
+    [DefaultValue(ExplorerView.Thumbnails)]
+    public ExplorerView View
+    {
+        get => this._view;
+        set
+        {
+            if (value == this._view)
+            {
+                return;
+            }
+
+            int top = this.TopIndex();
+            this._view = value;
+            this.Relayout(top);
+        }
+    }
+
+    /// <summary>
     /// Whether thumbnails are being loaded in the background — the file explorer's content extraction
     /// waits meanwhile. Safe to read from any thread.
     /// </summary>
     [Browsable(false)]
-    public bool LoadingThumbnails => this._thumbnails.Busy;
+    public bool LoadingThumbnails => this._thumbnails.Busy || this._stripThumbnails.Busy;
 
     /// <summary>The tiles loaded, top-left first; the Loading… slot, when shown, comes after them.</summary>
     [Browsable(false)]
@@ -164,10 +249,13 @@ internal sealed class ThumbnailGrid : ScrollableControl
         {
             _selected = -1;
             _thumbnails.DropPending();
+            this._stripThumbnails.DropPending();
+            this._stripOwners.Clear();
             AutoScrollPosition = Point.Empty;
             UpdateExtent();
         }
 
+        this._excerpts.Clear();
         _toolTip.SetToolTip(this, null);
         this._bulbTip = -1;
     }
@@ -251,10 +339,13 @@ internal sealed class ThumbnailGrid : ScrollableControl
         if (disposing)
         {
             _thumbnails.Dispose();
+            this._stripThumbnails.Dispose();
             _toolTip.Dispose();
             _heartFont.Dispose();
             _nameFont.Dispose();
             this._bulbFont.Dispose();
+            this._detailsHeartFont?.Dispose();
+            this._detailsBulbFont?.Dispose();
         }
 
         base.Dispose(disposing);
@@ -294,7 +385,12 @@ internal sealed class ThumbnailGrid : ScrollableControl
         var bulb = this._bulbFont;
         this._bulbFont = this.MakeBulbFont();
         bulb.Dispose();
-        UpdateExtent();
+
+        // A Details row is as tall as its two lines of text at least: laid out again, its medallions'
+        // fonts made again from the new ones.
+        this._detailsMedallion = 0;
+        int top = this.TopIndex();
+        this.Relayout(top);
     }
 
     protected override bool IsInputKey(Keys keyData) =>
@@ -506,13 +602,20 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
             if (cell.IntersectsWith(clip))
             {
-                PaintTile(g, i);
+                if (this.Details)
+                {
+                    this.PaintRow(g, i);
+                }
+                else
+                {
+                    PaintTile(g, i);
+                }
             }
         }
 
         if (_hasMore)
         {
-            var slot = Scrolled(TileBounds(_rows.Count));
+            var slot = this.Scrolled(this.Details ? this.CellBounds(_rows.Count) : TileBounds(_rows.Count));
             if (slot.IntersectsWith(clip))
             {
                 PaintLoading(g, slot);
@@ -548,8 +651,221 @@ internal sealed class ThumbnailGrid : ScrollableControl
     private void PaintTile(Graphics g, int index)
     {
         var row = _rows[index];
-        var tile = Scrolled(TileBounds(index));
         bool selected = index == _selected;
+        this.PaintPicture(g, index, selected);
+        TextRenderer.DrawText(
+            g,
+            row.Name,
+            _nameFont,
+            Scrolled(NameBounds(index)),
+            selected ? SystemColors.Highlight : SystemColors.GrayText,
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+    }
+
+    /// <summary>
+    /// A Details row: a faint wash while selected or hovered, the thumbnail and its medallions as on a
+    /// tile, then the name — the size right-aligned on its line for a file — and below them the excerpt
+    /// of a file found by its content, or a folder's strip.
+    /// </summary>
+    private void PaintRow(Graphics g, int index)
+    {
+        var row = this._rows[index];
+        var cell = this.Scrolled(this.CellBounds(index));
+        bool selected = index == this._selected;
+        if (selected || index == this._hovered)
+        {
+            using var wash = new SolidBrush(Color.FromArgb(selected ? 48 : 20, SystemColors.Highlight));
+            g.FillRectangle(wash, cell);
+        }
+
+        this.PaintPicture(g, index, selected);
+        var tile = this.Scrolled(this.TileBounds(index));
+        int left = tile.Right + this.GapPx;
+        int width = cell.Right - left;
+        if (width <= 0)
+        {
+            return;
+        }
+
+        // Without padding, as the excerpt below: the name and the excerpt start on the same column.
+        const TextFormatFlags LineFlags = TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding;
+        var line = new Rectangle(left, cell.Y, width, this.LineH);
+        int nameWidth = width;
+        if (!row.IsFolder)
+        {
+            string size = FileSizes.Text(this.SizeOf(row));
+            int sizeWidth = TextRenderer.MeasureText(g, size, this._nameFont, Size.Empty, LineFlags).Width;
+            TextRenderer.DrawText(g, size, this._nameFont, line, SystemColors.GrayText, LineFlags | TextFormatFlags.Right);
+            nameWidth = Math.Max(0, width - sizeWidth - this.GapPx);
+        }
+
+        TextRenderer.DrawText(
+            g,
+            row.Name,
+            this.Font,
+            new Rectangle(left, cell.Y, nameWidth, this.LineH),
+            selected ? SystemColors.Highlight : SystemColors.ControlText,
+            LineFlags | TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
+
+        var below = Rectangle.FromLTRB(left, cell.Y + this.LineH, cell.Right, cell.Bottom);
+        if (row.IsFolder)
+        {
+            this.PaintStrip(g, row, below);
+        }
+        else if (row.ByContent)
+        {
+            this.PaintExcerpt(g, row, new Rectangle(below.X, below.Y, below.Width, this.SmallLineH));
+        }
+    }
+
+    /// <summary>
+    /// The excerpt of a file found by its content: as many words around the one found as the line holds,
+    /// over an opaque yellow behind every word of the search — emoji-selector's highlight, each span
+    /// measured with the text's own flags so it lies exactly under its letters.
+    /// </summary>
+    private void PaintExcerpt(Graphics g, ExplorerRow row, Rectangle line)
+    {
+        if (this.ExcerptOf(row, line.Width) is not { } text)
+        {
+            return;
+        }
+
+        var font = this._nameFont;
+        int y = line.Y + (line.Height - font.Height) / 2;
+        var spans = HighlightSpans.Of(text, this._highlightWords);
+        if (spans.Count > 0)
+        {
+            using var highlight = new SolidBrush(HighlightColor);
+            foreach (var (start, length) in spans)
+            {
+                int x = line.X + this.MeasureExcerpt(text[..start]);
+                var span = Rectangle.Intersect(new Rectangle(x, y, this.MeasureExcerpt(text.Substring(start, length)), font.Height), line);
+                if (!span.IsEmpty)
+                {
+                    g.FillRectangle(highlight, span);
+                }
+            }
+        }
+
+        TextRenderer.DrawText(g, text, font, new Rectangle(line.X, y, line.Width, font.Height), SystemColors.GrayText, ExcerptFlags | TextFormatFlags.EndEllipsis);
+    }
+
+    /// <summary>
+    /// The excerpt fitting <paramref name="width"/>: the word found, then words added on each side in
+    /// turn while the line holds them — the word staying near the middle while the text goes on both
+    /// sides — an ellipsis where it goes on; null when the file was not found by its content. Kept per
+    /// width until the list changes.
+    /// </summary>
+    private string? ExcerptOf(ExplorerRow row, int width)
+    {
+        var key = (row.FullPath, width);
+        if (this._excerpts.TryGetValue(key, out string? cached))
+        {
+            return cached;
+        }
+
+        string? excerpt = null;
+        if (this.ContentWords(row) is var (words, at))
+        {
+            int last = words.Length - 1;
+            string Build(int from, int to) =>
+                $"{(from > 0 ? "… " : "")}{string.Join(' ', words, from, to - from + 1)}{(to < last ? " …" : "")}";
+
+            int first = at;
+            int end = at;
+            bool canLeft = first > 0;
+            bool canRight = end < last;
+            bool leftTurn = true;
+            while (canLeft || canRight)
+            {
+                bool left = canLeft && (leftTurn || !canRight);
+                int from = left ? first - 1 : first;
+                int to = left ? end : end + 1;
+                if (this.MeasureExcerpt(Build(from, to)) <= width)
+                {
+                    (first, end) = (from, to);
+                }
+                else if (left)
+                {
+                    canLeft = false;
+                }
+                else
+                {
+                    canRight = false;
+                }
+
+                canLeft &= first > 0;
+                canRight &= end < last;
+                leftTurn = !left;
+            }
+
+            excerpt = Build(first, end);
+        }
+
+        this._excerpts[key] = excerpt;
+        return excerpt;
+    }
+
+    private int MeasureExcerpt(string text) =>
+        text.Length == 0 ? 0 : TextRenderer.MeasureText(text, this._nameFont, Size.Empty, ExcerptFlags).Width;
+
+    /// <summary>
+    /// A folder row's strip: the thumbnails of its first files — directly in it, in the sort order — each
+    /// half the row's thumbnail, side by side as far right as the row goes, as many as fit. A picture of
+    /// the folder only: they take no click of their own.
+    /// </summary>
+    private void PaintStrip(Graphics g, ExplorerRow row, Rectangle area)
+    {
+        int width = Math.Max(1, this.TileW / 2);
+        int height = Math.Min(area.Height, Math.Max(1, this.TileH / 2));
+        int gap = this.LogicalToDeviceUnits(StripGap);
+        int count = (area.Width + gap) / (width + gap);
+        if (count <= 0 || height <= 0)
+        {
+            return;
+        }
+
+        var files = this.FolderFiles(row, count);
+        for (int i = 0; i < files.Count; i++)
+        {
+            string path = files[i];
+            this._stripOwners[path] = row.FullPath;
+            var box = new Rectangle(area.X + i * (width + gap), area.Y, width, height);
+            using (var fill = new SolidBrush(SystemColors.ControlLight))
+            {
+                g.FillRectangle(fill, box);
+            }
+
+            if (this._stripThumbnails.TryGet(path, out var image) && image is not null)
+            {
+                double scale = Math.Min((double)box.Width / image.Width, (double)box.Height / image.Height);
+                int w = Math.Max(1, (int)Math.Round(image.Width * scale));
+                int h = Math.Max(1, (int)Math.Round(image.Height * scale));
+                g.DrawImage(image, new Rectangle(box.X + (box.Width - w) / 2, box.Y + (box.Height - h) / 2, w, h), new Rectangle(0, 0, image.Width, image.Height), GraphicsUnit.Pixel);
+            }
+
+            g.DrawRectangle(SystemPens.ControlDark, new Rectangle(box.X, box.Y, box.Width - 1, box.Height - 1));
+        }
+    }
+
+    /// <summary>A strip's thumbnail arrived: the folder row it was drawn in is painted again.</summary>
+    private void InvalidateStripOf(string path)
+    {
+        if (this._stripOwners.TryGetValue(path, out string? folder))
+        {
+            this.InvalidateTileOf(folder);
+        }
+    }
+
+    /// <summary>
+    /// A tile's picture, in the tile's box or a Details row's thumbnail: the thumbnail — or a drawn
+    /// folder — its border, the heart in its medallion, and the light bulb with its arrow for a file
+    /// found by its content.
+    /// </summary>
+    private void PaintPicture(Graphics g, int index, bool selected)
+    {
+        var row = _rows[index];
+        var tile = Scrolled(TileBounds(index));
         using (var fill = new SolidBrush(SystemColors.ControlLight))
         {
             g.FillRectangle(fill, tile);
@@ -592,7 +908,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
             TextRenderer.DrawText(
                 g,
                 favorite ? "♥" : "♡",
-                _heartFont,
+                this.HeartFont,
                 heart,
                 favorite ? Color.Crimson : SystemColors.GrayText,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
@@ -615,18 +931,11 @@ internal sealed class ThumbnailGrid : ScrollableControl
             TextRenderer.DrawText(
                 g,
                 "\U0001F4A1",
-                this._bulbFont,
+                this.BulbFont,
                 bulb,
                 BulbColor,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         }
-        TextRenderer.DrawText(
-            g,
-            row.Name,
-            _nameFont,
-            Scrolled(NameBounds(index)),
-            selected ? SystemColors.Highlight : SystemColors.GrayText,
-            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
     }
 
     /// <summary>A manila folder centered in the tile, its tab at the top left, half the tile's height.</summary>
@@ -663,12 +972,29 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
     private int NameH => Font.Height + LogicalToDeviceUnits(4);
 
+    private bool Details => this._view == ExplorerView.Details;
+
+    // A Details row's lines: the name's, then the excerpt's in the smaller font.
+    private int LineH => this.NameH;
+
+    private int SmallLineH => this._nameFont.Height + this.LogicalToDeviceUnits(4);
+
+    // Between two rows of tiles, the gap; between two Details rows, the inset.
+    private int RowGapPx => this.Details ? this.InsetPx : this.GapPx;
+
     private int CellW => TileW + GapPx;
 
-    private int CellH => TileH + NameH + GapPx;
+    private int CellH => this.Details ? this._rowH + this.RowGapPx : TileH + NameH + GapPx;
 
-    // Content coordinates: unscrolled.
-    private Rectangle TileBounds(int index) => new(InsetPx + index % _perRow * CellW, InsetPx + index / _perRow * CellH, TileW, TileH);
+    private Font HeartFont => this.Details && this._detailsHeartFont is { } font ? font : this._heartFont;
+
+    private Font BulbFont => this.Details && this._detailsBulbFont is { } font ? font : this._bulbFont;
+
+    // Content coordinates: unscrolled. A Details row's thumbnail is centered in its height.
+    private Rectangle TileBounds(int index) =>
+        this.Details
+            ? new Rectangle(this.InsetPx, this.InsetPx + index * this.CellH + (this._rowH - this.TileH) / 2, this.TileW, this.TileH)
+            : new(InsetPx + index % _perRow * CellW, InsetPx + index / _perRow * CellH, TileW, TileH);
 
     private Rectangle NameBounds(int index)
     {
@@ -678,6 +1004,11 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
     private Rectangle CellBounds(int index)
     {
+        if (this.Details)
+        {
+            return new Rectangle(this.InsetPx, this.InsetPx + index * this.CellH, this._rowW, this._rowH);
+        }
+
         var tile = TileBounds(index);
         return new Rectangle(tile.X, tile.Y, tile.Width, TileH + NameH);
     }
@@ -685,7 +1016,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
     private Rectangle HeartBounds(int index)
     {
         var tile = TileBounds(index);
-        int size = LogicalToDeviceUnits(Medallion);
+        int size = this.Details ? this._detailsMedallion : LogicalToDeviceUnits(Medallion);
         int inset = LogicalToDeviceUnits(MedallionInset);
         return new Rectangle(tile.X + inset, tile.Y + inset, size, size);
     }
@@ -868,6 +1199,12 @@ internal sealed class ThumbnailGrid : ScrollableControl
             return -1;
         }
 
+        if (this.Details)
+        {
+            int rowIndex = y / this.CellH;
+            return x < this._rowW && y % this.CellH < this._rowH && rowIndex < this._rows.Count ? rowIndex : -1;
+        }
+
         int column = x / CellW;
         if (column >= _perRow || x % CellW >= TileW || y % CellH >= TileH + NameH)
         {
@@ -906,22 +1243,56 @@ internal sealed class ThumbnailGrid : ScrollableControl
     {
         int slots = _rows.Count + (_hasMore ? 1 : 0);
         int rows = (slots + _perRow - 1) / _perRow;
-        AutoScrollMinSize = new Size(0, rows == 0 ? 0 : InsetPx * 2 + rows * CellH - GapPx);
+        AutoScrollMinSize = new Size(0, rows == 0 ? 0 : InsetPx * 2 + rows * CellH - this.RowGapPx);
         Invalidate();
     }
 
     /// <summary>
     /// The rows from the client width and the tile size: as many tiles per row as fit, the row's width
     /// shared between them — one at least, and never from the number of files, so a lone tile gets
-    /// the width it would have in a full row.
+    /// the width it would have in a full row. In the Details view, one file per row, its thumbnail a
+    /// quarter of the tile size — half the row at most — the row as tall as the thumbnail, its two
+    /// lines of text — the name over the excerpt or a folder's strip of half thumbnails — and its two
+    /// medallions, shrunk with the thumbnail down to <see cref="MinDetailsMedallion"/>.
     /// </summary>
     private void LayoutRows()
     {
         int available = ClientSize.Width - InsetPx * 2;
         int size = LogicalToDeviceUnits(_tileSize);
+        this._excerpts.Clear();
+        if (this.Details)
+        {
+            this._perRow = 1;
+            this._rowW = Math.Max(1, available);
+            this._tileW = Math.Clamp(size / DetailsThumbnailShare, 1, Math.Max(1, available / 2));
+            this._tileH = Math.Max(1, this._tileW * 3 / 4);
+            int inset = this.LogicalToDeviceUnits(MedallionInset);
+            int medallion = Math.Clamp((this._tileH - 3 * inset) / 2, this.LogicalToDeviceUnits(MinDetailsMedallion), this.LogicalToDeviceUnits(Medallion));
+            this.UpdateDetailsFonts(medallion);
+            this._rowH = Math.Max(Math.Max(this._tileH, this.LineH + Math.Max(this.SmallLineH, this._tileH / 2)), 2 * medallion + 3 * inset);
+            return;
+        }
+
         _perRow = Math.Max(1, (available + GapPx) / (size + GapPx));
         _tileW = Math.Max(1, (available - (_perRow - 1) * GapPx) / _perRow);
         _tileH = _tileW * 3 / 4;
+    }
+
+    /// <summary>The Details view's medallions at <paramref name="medallion"/> px, their glyphs' fonts sized to them as a tile's are to its own.</summary>
+    private void UpdateDetailsFonts(int medallion)
+    {
+        if (medallion == this._detailsMedallion && this._detailsHeartFont is not null)
+        {
+            return;
+        }
+
+        this._detailsMedallion = medallion;
+        var (heart, bulb) = (this._detailsHeartFont, this._detailsBulbFont);
+        float scale = (float)medallion / this.LogicalToDeviceUnits(Medallion);
+        this._detailsHeartFont = new Font(this._heartFont.FontFamily, Math.Max(4f, this._heartFont.SizeInPoints * scale));
+        this._detailsBulbFont = new Font(this._bulbFont.FontFamily, Math.Max(4f, this._bulbFont.SizeInPoints * scale));
+        heart?.Dispose();
+        bulb?.Dispose();
     }
 
     /// <summary>
@@ -963,7 +1334,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         UpdateExtent();
         if (top > 0)
         {
-            AutoScrollPosition = new Point(0, Math.Max(0, TileBounds(top).Y - InsetPx));
+            AutoScrollPosition = new Point(0, Math.Max(0, this.CellBounds(top).Y - InsetPx));
         }
     }
 
@@ -1046,15 +1417,19 @@ internal sealed class ThumbnailGrid : ScrollableControl
         private readonly HashSet<string> _pending = new(StringComparer.OrdinalIgnoreCase);
         private readonly Queue<string> _queue = new();
         private readonly object _lock = new();
+        private readonly int _maxCached;
         private Size _box;
         private int _side;
         private int _capacity = MaxCached;
         private bool _working;
         private volatile bool _disposed;
 
-        public ThumbnailCache(Control owner)
+        /// <param name="maxCached">The most thumbnails kept, the byte budget allowing — more for the Details view's small strip thumbnails.</param>
+        public ThumbnailCache(Control owner, int maxCached = MaxCached)
         {
             _owner = owner;
+            this._maxCached = maxCached;
+            this._capacity = maxCached;
         }
 
         /// <summary>A thumbnail arrived (or none exists) for the path; on the UI thread.</summary>
@@ -1085,7 +1460,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
             _box = box;
             _side = side;
-            _capacity = (int)Math.Clamp(Budget / Math.Max(1L, (long)box.Width * box.Height * 4), MinCached, MaxCached);
+            _capacity = (int)Math.Clamp(Budget / Math.Max(1L, (long)box.Width * box.Height * 4), MinCached, this._maxCached);
             Clear();
         }
 
