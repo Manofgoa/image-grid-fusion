@@ -5,7 +5,7 @@
 
 | Feature | Raised in | Status |
 |---|---|---|
-| **Pause during Copy / export** — while a Copy or an export runs, pause every animation and sound of the preview | User request, 2026-10-09 | To design |
+| **Pause during Copy / export** — while a Copy or an export runs, pause every animation and sound of the preview | User request, 2026-10-09 | [20261009-playback-controls.md](20261009-playback-controls.md) |
 
 ---
 

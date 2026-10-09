@@ -91,16 +91,18 @@ back paused at 0.
 
 ### Placement
 
-Proposed layouts — see Open Questions (mockup shown in the conversation). The window's stack, top
-to bottom (`MainForm.cs:487-495`): options row, effects tabs, the preview (with the layout strip
-left and the file explorer right), the global options row, the Global tabs, the bottom bar
-(`_bottom`: Clear, status line, `_outputButtons` with ⚙, `⏱` length readout, Copy, Save).
+The window's stack, top to bottom (`MainForm.cs:487-495`): options row, effects tabs, the preview
+(with the layout strip left and the file explorer right), the global options row, the Global tabs,
+the bottom bar (`_bottom`: Clear, status line, `_outputButtons` with ⚙, `⏱` length readout, Copy,
+Save).
 
-| | Where | Note |
-|---|---|---|
-| A | A new row docked between the preview and the global options row | Next to what it plays; the `⏱` readout stays in the bottom bar |
-| B | Same row as A, the `⏱` readout **moved into it** as its total | One place for the length (`RefreshLength`, `MainForm.cs:1842`, its tooltip `LengthDetail` with it) |
-| C | Inside the bottom bar, in place of part of the status line | Cheap, but competes with the status text and Cancel |
+- The transport is a **new row docked between the preview and the global options row** — added to
+  `Controls` just before `_globalOptionsRow`, so it docks innermost of the bottom stack, right under
+  the preview (Q5, layout B of the mockup).
+- The **`⏱` length readout moves into it** as its total, and leaves the bottom bar: the length is
+  shown in one place. `RefreshLength` (`MainForm.cs:1842`) and its tooltip (`LengthDetail`) go with
+  it; the readout keeps its `⏱` and its `⏱ —` without a length.
+- Its columns: Play / Pause (auto-size), the timeline (100 %), the time readout `3.2 s / ⏱ 10.0 s`.
 
 ### Controls
 
@@ -112,7 +114,8 @@ left and the file explorer right), the global options row, the Global tabs, the 
     paint rate), and **scrub audio** plays (§ Scrub Audio). Released, the playback goes on from there
     if it was playing, stays paused otherwise.
   - A **click** on the track seeks there.
-- A **time readout** `3.2 s / 10.0 s`, in the `Seconds` format of the `⏱` readout.
+- A **time readout** `3.2 s / ⏱ 10.0 s`, in the `Seconds` format: the current grid time, then the
+  `⏱` length readout moved from the bottom bar (§ Placement).
 - **No video length** (no image, a grid of stills without soundtrack nor motion — `⏱ —`): the
   transport stays in place, **disabled**, so nothing moves (proposed — same principle as the
   toolbars).
@@ -121,16 +124,17 @@ left and the file explorer right), the global options row, the Global tabs, the 
 
 ### Cascade Turn Markers
 
-While the Cascade is on, the timeline shows its schedule (`CascadeSchedule`): a mark at the start
-of each turn, and each pause visible between two turns. Style: see Open Questions.
+While the Cascade is on, the timeline shows its schedule (`CascadeSchedule`): a **tick at the start
+of each turn**, across the track (Q7, style 1 of the mockup). The pauses are not drawn: they are the
+space between the end of a turn and the next tick. A turn starting at 0 gets its tick too.
 
 ### Keyboard
 
 - **Space** toggles Play / Pause, taken in `MainForm.ProcessCmdKey` (`MainForm.cs:1090-1164`, before
   `default`), not while exporting.
-- Left to the focused control when it needs the key: a text field (`_explorer.IsEditingText`,
-  `IsEditingFrameField`, any `TextBoxBase`). Whether a focused **button** keeps its native Space click:
-  see Open Questions.
+- Left to the focused control **only in a text field** (`_explorer.IsEditingText`,
+  `IsEditingFrameField`, any `TextBoxBase`). A focused **button** does not keep its native Space click
+  (Q6): Space is Play / Pause over it, so a Copy or a Save is never run again by accident.
 - No conflict found: no `Keys.Space` handler exists in `UI/` today.
 
 ---
@@ -178,8 +182,9 @@ The backlog row, joined to this workfile (Q1).
 - **GLOSSARY.md / GLOSSARY.fr.md**: *Transport* (*barre de lecture*), *Timeline* (*ligne de temps*),
   *Grid time* (*temps de la grille*), *Scrub audio* (*extraits au glissement*).
 - **README.md / README.fr.md**: the feature in § Features, Space in the shortcuts.
-- **TODO-FEATURES.md**: the *Pause during Copy / export* row marked with this workfile — see Open
-  Questions.
+- **TODO-FEATURES.md**: the *Pause during Copy / export* row marked with this workfile (Q8) — done
+  at design time, the backlog living next to the workfiles.
+- **README.md / README.fr.md**: the `⏱` readout's description follows it into the transport row.
 
 ---
 
@@ -198,10 +203,10 @@ scrub audio, an MP4 export while playing and while paused.
 
 ## Open Questions
 
-- [ ] Where does the transport go — A, B or C (§ Placement)?
-- [ ] A focused button and Space: does Space always toggle Play / Pause (text fields aside), or does a focused button keep its native click?
-- [ ] Cascade turn markers: ticks only, or a segment per turn with the pauses shown as gaps?
-- [ ] Mark the backlog row *Pause during Copy / export* with this workfile?
+- [x] ~~Where does the transport go — A, B or C (§ Placement)?~~ → B: a row under the preview, the `⏱` readout moved into it
+- [x] ~~A focused button and Space: does Space always toggle Play / Pause (text fields aside), or does a focused button keep its native click?~~ → Always Play / Pause, text fields aside
+- [x] ~~Cascade turn markers: ticks only, or a segment per turn with the pauses shown as gaps?~~ → Ticks at the start of each turn
+- [x] ~~Mark the backlog row *Pause during Copy / export* with this workfile?~~ → Yes, marked
 
 ---
 
@@ -228,6 +233,16 @@ clock, the sound, the window layout and the Copy / export flow.
 - Proposed without a question (to confirm by reading): the transport disabled, not hidden, without a
   video length; the pause kept when the window is hidden and shown again.
 
+### Iteration 2 — 2026-10-09
+
+Answers Q5–Q8, from a mockup of three layouts and two marker styles.
+
+- Placement B: the transport row under the preview, the `⏱` length readout moved into it — the
+  bottom bar loses it.
+- Space toggles Play / Pause over a focused button too; only text fields keep it.
+- Cascade markers: a tick at the start of each turn, the pauses not drawn.
+- The backlog row *Pause during Copy / export* marked with this workfile.
+
 ---
 
 ## Implementation Log
@@ -242,7 +257,7 @@ says so rather than staying blank.
 | RULES.md | | | |
 | README | | | |
 | GLOSSARY | | | |
-| TODO-FEATURES.md | | | |
+| TODO-FEATURES.md | 2 | 2026-10-09 | *Pause during Copy / export* row marked with this workfile |
 
 ---
 
@@ -256,10 +271,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | What is heard while the timeline is dragged? | Scrub audio — short snippets, editor-style | 2026-10-09 |
 | 3 | Paused, the grid starts over (image added / removed, Cascade changed): what happens? | Stays paused, at 0 | 2026-10-09 |
 | 4 | Depth of the subject? | Straightforward — a single scout pass | 2026-10-09 |
-| 5 | Where does the transport go — A, B or C? | | |
-| 6 | A focused button and Space? | | |
-| 7 | Cascade turn markers: ticks or segments? | | |
-| 8 | Mark the backlog row with this workfile? | | |
+| 5 | Where does the transport go — A, B or C? | B — a row under the preview, the `⏱` readout moved into it | 2026-10-09 |
+| 6 | A focused button and Space? | Always Play / Pause, text fields aside | 2026-10-09 |
+| 7 | Cascade turn markers: ticks or segments? | Ticks at the start of each turn | 2026-10-09 |
+| 8 | Mark the backlog row with this workfile? | Yes | 2026-10-09 |
 
 ---
 
