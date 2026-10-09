@@ -22,13 +22,13 @@ Components touched (from the scout pass):
 | Component | Today | Becomes |
 |---|---|---|
 | `Composition/ImageLook.cs` | `ImageEffect.BlackAndWhite`, `double? Grayscale` (0–1), `KeptGrayscale`, activated at `Grayscale = 1`, `WithGrayscale` | `ImageEffect.Colors`, a `ColorsEffect? Colors` record + `KeptColors`, activated at `ColorsEffect.Default` (all 0), `WithColors` |
-| `Composition/Compositor.cs` | `GrayscaleMatrix(intensity)` set on the `ImageAttributes` and `Gray(fill, intensity)` on the Background's fill, in **two** paths: `DrawCell` and `DrawUncropped` (the crop edit view) | `ColorsMatrix(colors)` — one composed 5×5 `ColorMatrix` — and the fill passed through the same matrix, in both paths |
-| `UI/EffectTabs.cs` | Tab text `"Black & white"` | `"Colors"` |
+| `Composition/Compositor.cs` | `GrayscaleMatrix(intensity)` set on the `ImageAttributes` in `DrawCell` and `DrawUncropped` (the crop edit view); `Gray(fill, intensity)` on the Background's flat fill, in the flat-fill helper and in `DrawBackground` (its `double? grayscale` parameter, both paths calling it, the extending fills reading the image as drawn) | `ColorsMatrix(colors)` — one composed 5×5 `ColorMatrix` — on the image in both paths, and the flat fill passed through the same matrix wherever `Gray` is called today; `DrawBackground` takes the `ColorsEffect?` instead of the `double?` |
+| `UI/MainForm.cs` (tab text) | `ImageEffect.BlackAndWhite => "Black & white"` | `ImageEffect.Colors => "Colors"` |
 | `UI/EffectIcons.cs` | `BlackAndWhite(size)`: a half black / half white disc | `Colors(size)`: see *Tab Icon* |
 | `UI/MainForm.cs` | `_grayscaleIcon`, `_grayscale` slider (0–100), `_grayscaleLabel` "Intensity: n%" | Four slider + label pairs, see *Options* |
-| `README.md` | `### Black & white` section, tab list line 43 | `### Colors` section, tab list |
-| `GLOSSARY.md` | Effect list names "Black & white" (after Background, Crop … Frames) | Names "Colors" at the same place |
-| `RULES.md` | § The Crop Exception: "zoom, fine angle, background, black & white and blur all apply to the cropped image" | "… background, colors and blur …" — a rules file: the change is propagated to the running sessions |
+| `README.md` + `README.fr.md` (same commit) | Tab list; the edge extension "… zoomed and in black & white"; the Background's "**Black & white** turns the background gray too"; the `### Black & white` section | "Colors" in the tab list and the edge extension; the Background's line: the Colors settings apply to the background too; a `### Colors` section |
+| `GLOSSARY.md` + `GLOSSARY.fr.md` (same commit) | Effect list: Background, Crop, Zoom, Animations, Rotate, Flip, Frames, **Black & white**, Blur, Volume | "Colors" at the same place |
+| `RULES.md` | § The Crop Exception ("… background, black & white and blur all apply to the cropped image") and § The Background's Edge Extension ("… zoom and black & white are extended with it") | "colors" in both — a rules file: the change is propagated to the running sessions |
 
 ---
 
@@ -70,6 +70,9 @@ Every setting is stored as a value in [−1, 1] (hue in degrees), the default 0 
   white today: the fill color goes through the same matrix. No fill while the Background is off.
 - Both drawing paths apply it: `Compositor.DrawCell` (preview, exports, playback) and
   `Compositor.DrawUncropped` (the crop edit view), so the edit view shows the colors too.
+- The Background's **extending fills** (Corner pixel, Miter, Background corners) read the image as
+  drawn in the cell, so they extend its colors by themselves; their flat fill goes through the
+  matrix like the Color fill.
 - The effect applies to the **cropped** image, after the orientation and the crop, like every
   effect after them (RULES.md § The Crop Exception).
 - An effect at its defaults (all 0) sets **no** matrix, so an unchanged image is drawn exactly as
@@ -149,6 +152,26 @@ Refresh after the Background and Crop effects landed (the go had been declined o
 - The GLOSSARY's effect list now reads Background, Crop, Zoom, Rotate, Flip, Frames, Black & white,
   Blur, Volume: "Black & white" becomes "Colors" at the same place.
 
+### Iteration 4 — 2026-10-10
+
+Mechanical refresh, no design change — the code moved again since 2026-09-30:
+
+- The Background's **edge extension** landed: `DrawBackground` takes the black & white as a
+  `double? grayscale` and the flat-fill helper calls `Gray`; Colors replaces both, the extending
+  fills reading the image as drawn and so following by themselves.
+- The tab text now lives in `MainForm.cs`, not `EffectTabs.cs`.
+- The docs are **bilingual** (`README.fr.md`, `GLOSSARY.fr.md`, same commit as the English ones),
+  the effect list gained **Animations**, and `RULES.md` names the black & white in a second place
+  (§ The Background's Edge Extension).
+- New code follows the `this.` convention.
+
+---
+
+## Code Style
+
+New code prefixes every reference to an instance member with `this.` (the user's convention);
+existing lines are left as they are.
+
 ---
 
 ## Implementation Log
@@ -177,4 +200,4 @@ Refresh after the Background and Crop effects landed (the go had been declined o
 
 ---
 
-*Last updated: 2026-09-30*
+*Last updated: 2026-10-10*
