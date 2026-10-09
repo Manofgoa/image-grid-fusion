@@ -2248,8 +2248,17 @@ internal sealed class MainForm : Form
     {
         if (!_preview.Images.Any(i => i.IsAnimated))
         {
-            Cursor.Current = Cursors.WaitCursor;
-            return Compositor.Render(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, this.ActiveSeams);
+            // Rendered at once on the UI thread, the grid held all the same: its motions and soundtrack stand still.
+            this._preview.HoldPlayback();
+            try
+            {
+                Cursor.Current = Cursors.WaitCursor;
+                return Compositor.Render(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, this.ActiveSeams);
+            }
+            finally
+            {
+                this._preview.ReleasePlayback();
+            }
         }
 
         using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, seams: this.ActiveSeams);
@@ -2311,6 +2320,8 @@ internal sealed class MainForm : Form
     private CancellationToken BeginExport(string message, bool cancellable)
     {
         _export = new CancellationTokenSource();
+        // The preview stands still while the export runs (workfiles/20261009-playback-controls.md).
+        this._preview.HoldPlayback();
         _preview.Locked = true;
         _layouts.Enabled = false;
         _cancelButton.Visible = cancellable;
@@ -2323,6 +2334,7 @@ internal sealed class MainForm : Form
     {
         _export?.Dispose();
         _export = null;
+        this._preview.ReleasePlayback();
         _preview.Locked = false;
         _layouts.Enabled = true;
         _cancelButton.Visible = false;
