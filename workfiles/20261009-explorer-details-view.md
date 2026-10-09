@@ -1,0 +1,204 @@
+# Explorer Details View
+
+> Working document — a view-mode choice in the file explorer, next to the sort drop-down:
+> Thumbnails (today's tiles, the default) or Details, one row per file with its name, the
+> content excerpt a search found with the matched words highlighted in yellow, and its size.
+> This file is the source of truth for the planned work until implemented,
+> then the log of every adjustment made to it afterwards.
+
+---
+
+## Overview
+
+Today the file explorer shows every list — the search view, the favorites, the folder view — as
+**tiles** (`UI/ThumbnailGrid.cs`, owner-drawn, one control): a 4:3 thumbnail, the heart medallion,
+the light-bulb medallion on a file found by its content, the name below. The tile size slider and
+Ctrl + wheel set the tile width; the **Sort** drop-down ends the same row
+(`FileExplorerPanel._sizeRow`).
+
+The work adds a **view mode** next to the sort drop-down:
+
+| Mode | Shows |
+|---|---|
+| **Thumbnails** (default) | Today's tiles, unchanged |
+| **Details** | One row per file: its thumbnail at the left, sized by the tile size slider; its **name**, its **size** on the name line; below them, when the search found the file by its content, the **content excerpt** with the matched words highlighted in yellow |
+
+Origin: the user's request of 2026-10-09 — *"nouveau mode d'affichage en option (à côté du tri),
+par défaut vignettes mais aussi Details… affiche en dessous le bloc OCR proche (celui du tooltip)
+si pertinent avec highlight jaune (comme dans l'autre projet emoji-selector), et dans tous les cas
+la taille du fichier"*.
+
+Not matched by any row of a feature backlog (`workfiles/TODO-FEATURES.md` does not exist).
+
+---
+
+## Scope
+
+Agreed (Q&A 1–3):
+
+- **Row disposition D** (Q&A 1): the row's thumbnail follows the **tile size slider** and
+  Ctrl + wheel — one setting for both modes; the name and the size on the first line, the excerpt
+  below.
+- **Excerpt only when relevant** (Q&A 2): shown only for a file the search found **by its
+  content** (the files carrying the light bulb today); nothing below the name otherwise — the
+  favorites, `*`, a browsed folder, a file matched by its path.
+- **Everywhere, remembered** (Q&A 3): the mode applies to the search view, the favorites and the
+  folder view (folders become rows too); it is an **app setting**, remembered between sessions
+  like the sort order.
+- **The size, always**: every file row shows its size, whatever the list.
+
+Out of scope: a column header, sorting by clicking a column, other columns (date, path).
+
+---
+
+## UI
+
+### The View Mode Control
+
+- Placed in the tile size row (`_sizeRow`), **next to the Sort drop-down**.
+- Its form: *see Open Questions*.
+
+### A Details Row
+
+Disposition D of the mockup shown on 2026-10-09:
+
+```
+┌──────────┐ facture-edf-mars.png                     412 KB ♡
+│ thumbnail│ … montant total [électricité] à régler …
+└──────────┘
+```
+
+- **Thumbnail** at the left, 4:3, drawn as a tile's (`ThumbnailCache`), its width derived from the
+  tile size (*see Open Questions*); the row is as tall as the thumbnail (at least the text's two
+  lines).
+- **Name** on the first line, ellipsized; **size** right-aligned on the same line.
+- **Excerpt** on the line below, only when the file was found by its content.
+- The heart, the light bulb, the drag into a cell, the double-click, the tooltip: *see Open
+  Questions* for what moves.
+- The `Loading…` slot becomes a row of its own at the end of the list.
+
+### The Excerpt and Its Highlight
+
+- The excerpt is the one the light bulb's tooltip shows today: `ContentIndex.ExcerptOf` — the
+  first word whose folded form contains the matched word, with the words around it, `…` where the
+  text goes on — read from the content index in memory, no disk read.
+- **Highlight like emoji-selector** (the user's reference): an opaque **yellow rectangle
+  (#FFFF00)**, no padding nor rounding, as tall as the line, drawn behind the matched substring,
+  the text drawn over it with `TextRenderer` (`NoPadding | NoPrefix`, each run measured). The
+  matching is case- and accent-insensitive (the app's existing folding), every occurrence of a
+  highlighted word marked, overlapping spans merged.
+- How wide the excerpt is and which words are highlighted: *see Open Questions*.
+
+### The Size
+
+- Read from the index (`IndexEntry.Size`, falling back to the stamp's); a file outside the index —
+  a favorite elsewhere, a pasted favorite — reads it from the disk once.
+- Its format and its units: *see Open Questions*.
+
+---
+
+## Code Leads
+
+From the scout pass of 2026-10-09 (inputs, not decisions):
+
+| Piece | Where |
+|---|---|
+| Tile grid, owner-drawn, virtualized painting | `UI/ThumbnailGrid.cs` — `OnPaint` ~488, `PaintTile` ~550, `PaintLoading` ~531, `PaintFolderGlyph` ~633 |
+| Geometry from the tile size | `ThumbnailGrid.LayoutRows` ~918 (`_perRow`, `_tileW`, `_tileH`), `TileBounds` / `NameBounds` / `CellBounds` ~656-699, `UpdateExtent` ~905, `IndexAt` ~861, arrow keys ~306-371 |
+| Heart / bulb hit-tests | `HeartBounds` 685, `OnHeart` 881, `BulbBounds` 694, `OnBulb` 701, `ShowBulbTip` ~706-725 |
+| Row record | `ExplorerRow(FullPath, Name, IsFolder, ContentWord)` (`ThumbnailGrid.cs:15`) — no size, no excerpt |
+| Excerpt | `ContentIndex.ExcerptOf(relativePath, foldedWord, around)` (`Explorer/ContentIndex.cs:97-117`), called with `around = 4` by `FileExplorerPanel.ExcerptOf` (~1566), handed to the grid as `ContentExcerpt` |
+| Matched word | `SearchMatch.ContentWord` (`Explorer/FileSearch.cs:221`) — the first query word found in the content only |
+| Size | `IndexEntry.Size` (`Explorer/FileSearch.cs:176-211`), persisted in `files.index` (`FileIndex.cs`) |
+| Sort drop-down, size row | `FileExplorerPanel._sort` (106), `_sizeRow` (205-207), `ChangeOrder` (243), `SortWidth` (~840) |
+| App setting pattern | `AppSettings.ExplorerFileOrder` / `SaveExplorerFileOrder` (193-199), wired in `MainForm` (477-480, 552-554, 3579-3592) |
+| Highlight reference | emoji-selector: `EmojiSearch.MatchSpans` (`Data/EmojiSearch.cs:103-152`), `EmojiDetailsPanel.PaintText` (435-465) |
+
+---
+
+## Test Impact
+
+The app has **no test project** (as recorded by `20261009-search-results-sort.md`). Whether one
+is created for this work: *see Open Questions*. The behaviours an assertion would pin:
+
+| Behaviour to pin | Test file | Create / Update |
+|---|---|---|
+| The size format (bytes, KB, MB, GB; rounding; unknown size) | *none — no test project* | — |
+| The highlight spans of an excerpt (case / accent-insensitive, every occurrence, merged overlaps) | *none — no test project* | — |
+| The view mode setting read back, unknown text falling back to Thumbnails | *none — no test project* | — |
+
+---
+
+## Open Questions
+
+- [ ] How wide is the excerpt in a Details row — the tooltip's 4 words around, or as much as the
+  row's width holds?
+- [ ] Which words are highlighted in the excerpt — the matched word only, or every word of the
+  search found in it?
+- [ ] The size's format and units — English `B / KB / MB / GB` like the rest of the UI, or French
+  `octets / Ko / Mo`? Base 1024 or 1000? And a file whose size is unknown?
+- [ ] The row thumbnail's width from the tile size (100 to 1 000 px) — the tile size itself, a
+  fraction of it, or capped?
+- [ ] The view mode control's form — a drop-down like Sort, or two toggle buttons (icons)?
+- [ ] A folder row in Details — its file count as on the folder tile, or a total size?
+- [ ] The heart, the light bulb and their tooltips in a Details row — kept on the thumbnail as on a
+  tile, or moved?
+- [ ] A test project for the pure helpers (size format, highlight spans), or checked by hand as
+  the previous workfiles?
+
+---
+
+## Design Iterations
+
+Chronological log of design refinements, of the choices the implementation run
+took on its own — flagged `🧭 Implementation choices` — and of every adjustment
+requested afterwards — flagged `⚙️ Post-implementation`. One entry per request,
+in the order the requests were made.
+
+### Iteration 1 — 2026-10-09
+
+Initial design from the request and the scoping batch (Q&A 1–4): a view mode next to Sort,
+Thumbnails by default; Details rows in disposition D, the thumbnail following the tile size
+slider; the excerpt of the light bulb's tooltip below the name for a file found by its content
+only, highlighted in yellow as emoji-selector does; the size on every file row; the mode in every
+view and remembered. Scout pass (one pass, the subject judged straightforward): leads in § Code
+Leads. Eight questions left open.
+
+---
+
+## Implementation Log
+
+Which delivery steps are done, and in which iteration. A step that does not apply
+says so rather than staying blank.
+
+| Step | Iteration | Date | Notes |
+|---|---|---|---|
+| Code | | | |
+| Unit tests | | | |
+| README (EN + FR) | | | |
+| Glossary (EN + FR) | | | |
+
+---
+
+## Q&A Log
+
+Questions asked by the agent during design, with user responses.
+
+| # | Question | Answer | Date |
+|---|---|---|---|
+| 1 | Which disposition for a Details row (mockups A–D)? | D — the thumbnail follows the tile size slider | 2026-10-09 |
+| 2 | When does the content excerpt show below the name? | Only when the search found the words in the file's content | 2026-10-09 |
+| 3 | Where does Details apply, and is it remembered? | Everywhere (search, favorites, folder view), remembered between sessions | 2026-10-09 |
+| 4 | Is the subject straightforward or tricky / long? | Straightforward — one scout pass | 2026-10-09 |
+| 5 | How wide is the excerpt? | | |
+| 6 | Which words are highlighted? | | |
+| 7 | The size's format and units? | | |
+| 8 | The row thumbnail's width from the tile size? | | |
+| 9 | The view mode control's form? | | |
+| 10 | A folder row in Details? | | |
+| 11 | The heart and the light bulb in a Details row? | | |
+| 12 | A test project for the pure helpers? | | |
+
+---
+
+*Last updated: 2026-10-09*
