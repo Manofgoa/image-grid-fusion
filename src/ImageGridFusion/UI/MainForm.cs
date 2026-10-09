@@ -54,7 +54,24 @@ internal sealed class MainForm : Form
     private readonly Button _clearButton = new() { Text = "Clear all", AutoSize = true };
     private readonly Button _settingsButton = new() { Text = "⚙", Size = new Size(32, 23), AutoSize = true };
     // The length readout: what the exported video would last, always shown, its detail in its tooltip (see RefreshLength).
-    private readonly Label _lengthReadout = new() { AutoSize = true, Anchor = AnchorStyles.Left, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(3, 3, 6, 3) };
+    private readonly Label _lengthReadout = new() { AutoSize = true, Anchor = AnchorStyles.Left, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 3, 3) };
+
+    // The transport, between the preview and the Global toolbar: Play / Pause, the timeline over the grid's
+    // loop, the grid's time over the length readout (workfiles/20261009-playback-controls.md).
+    private readonly TableLayoutPanel _transportRow = new()
+    {
+        Dock = DockStyle.Bottom,
+        AutoSize = true,
+        ColumnCount = 4,
+        RowCount = 1,
+        Padding = new Padding(8, 4, 8, 0),
+    };
+    private readonly Button _playButton = new() { AutoSize = true, Anchor = AnchorStyles.Left, TabStop = false, Margin = new Padding(0, 3, 3, 3) };
+    private readonly PlaybackTimeline _timeline = new() { Dock = DockStyle.Fill, Margin = new Padding(3, 3, 6, 3) };
+    private readonly Label _positionReadout = new() { AutoSize = true, Anchor = AnchorStyles.Right, TextAlign = ContentAlignment.MiddleRight, Margin = new Padding(3, 3, 3, 3) };
+
+    // Moves the timeline's thumb and the grid's time along while the grid plays.
+    private readonly System.Windows.Forms.Timer _transportTimer = new() { Interval = 50 };
     private readonly ContextMenuStrip _settingsMenu = new();
     private readonly ToolStripMenuItem _startWithWindows = new("Start with Windows");
     private readonly ToolTip _toolTip = new();
@@ -361,8 +378,6 @@ internal sealed class MainForm : Form
 
         _outputButtons = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = Padding.Empty };
         _outputButtons.Controls.Add(_settingsButton);
-        // Between the gear and Copy: a wider text only moves the gear, the buttons keep their place against the right edge.
-        _outputButtons.Controls.Add(_lengthReadout);
         _outputButtons.Controls.Add(_copyButton);
         _outputButtons.Controls.Add(_copyArrow);
         _outputButtons.Controls.Add(_copyLastButton);
@@ -395,6 +410,17 @@ internal sealed class MainForm : Form
         _statusLine.Controls.Add(_cancelButton);
         _bottom.Controls.Add(_statusLine, 1, 0);
         _bottom.Controls.Add(_outputButtons, 2, 0);
+
+        // Play / Pause, the timeline taking the rest, then the grid's time and the length readout as its total.
+        this._transportRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        this._transportRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        this._transportRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        this._transportRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        this._transportRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        this._transportRow.Controls.Add(this._playButton, 0, 0);
+        this._transportRow.Controls.Add(this._timeline, 1, 0);
+        this._transportRow.Controls.Add(this._positionReadout, 2, 0);
+        this._transportRow.Controls.Add(_lengthReadout, 3, 0);
 
         _tabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _tabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -470,9 +496,9 @@ internal sealed class MainForm : Form
         this._globalOptions[GlobalEffect.Cascade].Controls.AddRange([this._cascadePause, this._cascadePauseLabel]);
 
         // Docked in reverse order of addition: the options row and the tabs row, then the bottom bar,
-        // the global options row above it and the global tabs row above that, span the whole width; the
-        // layout strip takes the left of what remains, the file explorer the right — its splitter docked
-        // against it — and the fill control goes first so it gets the rest.
+        // the global options row above it, the global tabs row above that and the transport above them,
+        // span the whole width; the layout strip takes the left of what remains, the file explorer the
+        // right — its splitter docked against it — and the fill control goes first so it gets the rest.
         _explorer.Open = AppSettings.ExplorerPanelOpen;
         _explorer.OpenWidth = AppSettings.ExplorerWidth;
         _explorer.TileSize = AppSettings.ExplorerTileSize;
@@ -489,6 +515,7 @@ internal sealed class MainForm : Form
         Controls.Add(_explorerSplitter);
         Controls.Add(_explorer);
         Controls.Add(_layouts);
+        this.Controls.Add(this._transportRow);
         Controls.Add(_globalTabsRow);
         Controls.Add(_globalOptionsRow);
         Controls.Add(_bottom);
@@ -501,6 +528,25 @@ internal sealed class MainForm : Form
         _outputButtons.SizeChanged += (_, _) => FitStatusWidth();
         _cancelButton.VisibleChanged += (_, _) => FitStatusWidth();
         _clearButton.Click += (_, _) => ClearAll();
+
+        // The transport: the button gives the focus back to the preview, so Space and the arrows act on the grid.
+        this._playButton.Click += (_, _) =>
+        {
+            this.TogglePlayback();
+            this._preview.Focus();
+        };
+        this._toolTip.SetToolTip(this._playButton, "Plays or pauses the grid (Space)");
+        this._playButton.MinimumSize = new Size(this.LogicalToDeviceUnits(36), 0);
+        this._timeline.SeekStarted += (_, _) => this._preview.HoldPlayback();
+        this._timeline.Seeking += (_, time) =>
+        {
+            this._preview.SeekPlayback(time, scrub: true);
+            this.RefreshTransportPosition();
+        };
+        this._timeline.SeekEnded += (_, _) => this._preview.ReleasePlayback();
+        this._preview.PlaybackChanged += (_, _) => this.RefreshTransport();
+        this._transportTimer.Tick += (_, _) => this.RefreshTransportPosition();
+        this._transportTimer.Start();
         this._toolTip.SetToolTip(this._clearButton, "Removes every image and the global effects, and brings the format back to Twitter (Ctrl+N)");
         _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, _explorerFolder, _explorerPages, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._ocrResultStyle, new ToolStripSeparator(), this._openAppFolder]);
         for (int pages = FileExplorerPanel.MinPagesPerLoad; pages <= FileExplorerPanel.MaxPagesPerLoad; pages++)
@@ -812,6 +858,7 @@ internal sealed class MainForm : Form
         {
             // Before the preview, which disposes the images it shows: the history disposes the others.
             this._history.Dispose();
+            this._transportTimer.Dispose();
             _settingsMenu.Dispose();
             _copyMenu.Dispose();
             _saveMenu.Dispose();
@@ -1152,6 +1199,11 @@ internal sealed class MainForm : Form
                 return true;
             case Keys.Control | Keys.F when this._explorer.IsEditingText || this.FocusedControl() is not TextBoxBase:
                 this._explorer.FocusSearch();
+                return true;
+            // Play / Pause over every control but a text field — a focused button included, so Space never
+            // runs a Copy or a Save again; the transport disabled (no length, an export running), it does nothing.
+            case Keys.Space when this._timeline.Enabled && !this._explorer.IsEditingText && !this.IsEditingFrameField && this.FocusedControl() is not TextBoxBase:
+                this.TogglePlayback();
                 return true;
             case Keys.Delete when _preview.HasSelection && !IsExporting:
                 _preview.RemoveSelected();
@@ -1852,6 +1904,59 @@ internal sealed class MainForm : Form
         // As wide as a length under 1000 s: the digits change without moving the gear.
         _lengthReadout.MinimumSize = new Size(TextRenderer.MeasureText("⏱ 000.0 s", _lengthReadout.Font).Width, 0);
         _toolTip.SetToolTip(_lengthReadout, LengthDetail(images, soundtrack, length, this.ActiveCascade));
+
+        // The transport's timeline is that length, disabled without one and while an export holds the grid.
+        this._timeline.Length = length;
+        this._timeline.Marks = CascadeMarks(images, this.ActiveCascade, length);
+        this._timeline.Enabled = length > TimeSpan.Zero && !this.IsExporting;
+        this.RefreshTransport();
+    }
+
+    /// <summary>
+    /// The timeline's ticks: where each turn of the Cascade begins over the whole <paramref name="length"/>,
+    /// the cascade starting over when a longer loop plays beside it; none while it is off.
+    /// </summary>
+    private static IReadOnlyList<TimeSpan> CascadeMarks(IReadOnlyList<SourceImage> images, VideoCascade? cascade, TimeSpan length)
+    {
+        var schedule = cascade is null ? null : CascadeSchedule.Of(images, cascade);
+        if (schedule is null || schedule.Length <= TimeSpan.Zero)
+        {
+            return [];
+        }
+
+        var marks = new List<TimeSpan>();
+        for (var start = TimeSpan.Zero; start < length; start += schedule.Length)
+        {
+            for (int i = 0; i < images.Count; i++)
+            {
+                if (schedule.Has(i) && start + schedule.TurnAt(i) < length)
+                {
+                    marks.Add(start + schedule.TurnAt(i));
+                }
+            }
+        }
+
+        return marks;
+    }
+
+    /// <summary>Pauses the grid, or plays it again, from the transport's button or Space.</summary>
+    private void TogglePlayback() => this._preview.PlaybackPaused = !this._preview.PlaybackPaused;
+
+    /// <summary>The Play / Pause button shows what a click does, enabled with the timeline; the thumb and the grid's time follow.</summary>
+    private void RefreshTransport()
+    {
+        this._playButton.Text = this._preview.PlaybackPaused ? "▶" : "❚❚";
+        this._playButton.Enabled = this._timeline.Enabled;
+        this.RefreshTransportPosition();
+    }
+
+    /// <summary>The timeline's thumb on the grid's time, and that time left of the length readout: as wide as under 1000 s, so nothing moves.</summary>
+    private void RefreshTransportPosition()
+    {
+        var position = this._timeline.Length > TimeSpan.Zero ? this._preview.PlaybackPosition : TimeSpan.Zero;
+        this._timeline.Position = position;
+        this._positionReadout.Text = this._timeline.Length > TimeSpan.Zero ? $"{position.TotalSeconds:0.0} s /" : string.Empty;
+        this._positionReadout.MinimumSize = new Size(TextRenderer.MeasureText("000.0 s /", this._positionReadout.Font).Width, 0);
     }
 
     /// <summary>
