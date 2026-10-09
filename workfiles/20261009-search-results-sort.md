@@ -51,20 +51,34 @@ drop-down's order applies alone.
 
 | List | Ordered by |
 |---|---|
-| A search with words (search view or folder view) | Relevance, then the drop-down's order |
+| A search with words (search view or folder view) | Relevance tier, then the drop-down's order |
 | `*`, a browsed folder | The drop-down's order |
 
-What "equally relevant" covers — how coarse the relevance is before the drop-down takes over — is
-an Open Question: today's `Rank` compares five keys (path vs content match, words in the file name,
-first word's position in the name, name length, relative path), and two files rarely tie on all of
-them.
+### Relevance Tiers
+
+Agreed (Q&A 9): a search's relevance is cut into **three tiers**, the drop-down ordering the files
+inside each tier:
+
+| Tier | The file is found by | Today's `Rank` keys it replaces |
+|---|---|---|
+| 1 | Its **file name** — the words found in the name | |
+| 2 | Its **subfolders** only — a path match with no word in the name | |
+| 3 | Its **content** text — a word found only there (`SearchMatch.ByContent`) | |
+| | | First word's position in the name, name length, relative path: **dropped** — the drop-down's order and its ties take over |
+
+- With several words, the path matches keep today's **number of words found in the file name**
+  (`Rank.NameHits`, more first): all of them in the name before part of them, part of them before
+  none (tier 2). One word typed gives exactly the three tiers above. The content matches are one
+  tier, whatever their name holds.
+- `FileSearch.Search` takes the order and sorts by `(tier, chosen order)`; the folders a folder-view
+  search finds keep today's full `Rank` (§ Scope).
 
 ### Size Needs the Index
 
 The index file does not hold the size: `IndexEntry.Stamp` (size + last write) exists only on a
 **scanned** entry, an entry loaded from `index\files.index` has none.
 
-Proposed:
+Agreed (Q&A 12):
 
 - `files.index` gets a third column, the size; the header becomes `ImageGridFusion index 3`.
 - An `index 2` file is still read (no size), so a launch never starts from an empty list: the
@@ -77,15 +91,17 @@ Proposed:
 
 ## UI
 
-Agreed (Q&A 3): a **drop-down** (`ComboBox`, `DropDownList` style).
+Agreed (Q&A 3, 10, 11): a **drop-down** (`ComboBox`, `DropDownList` style).
 
 - Entries: **Date ↓**, **Name A→Z**, **Size ↑**; Date ↓ at first.
-- Proposed place: in the search row, between the criteria buttons (**Aa**, **💡**) and the search
-  box — `_searchRow` gets one more `AutoSize` column. Alternative: the caption / breadcrumb row.
-  See Open Questions.
-- Its tooltip says what the chosen order does.
+- Place: at the **bottom right** of the panel, at the end of the tile size row, after the slider's
+  `▭` glyph — `_sizeRow` gets a fourth `AutoSize` column, the slider shrinking for it.
+- Its tooltip says what the chosen order does, and that a search puts the relevance first.
 - Changing it re-orders the shown list at once, from the first load (the list scrolls back to the
-  top), the search itself not re-run when only the order changed.
+  top), the search itself not re-run when only the order changed. The favorites (search box empty)
+  are not re-ordered: the drop-down stays enabled, it applies as soon as a search or `*` shows.
+- **Remembered** between sessions: an app setting in `settings.json` (`UI/AppSettings.cs`), like the
+  tile size and the folder view; an unknown or missing value falls back to Date ↓.
 
 ---
 
@@ -112,13 +128,14 @@ search, on `*`, on a browsed folder, and the sizes before / after the start-up s
   order (Date ↓, Name ↑ or Size ↑) applies alone (Q&A 7).
 - [x] ~~**Folder view's subfolders**: first and A→Z always, or following the order?~~ → Always first,
   ordered as today (Q&A 8).
-- [ ] **How coarse is the relevance** before the drop-down's order takes over (§ Sort Orders)?
-- [ ] **Remembered** between sessions (an app setting in `settings.json`), or back to Date ↓ at
-  each launch?
-- [ ] **Place** of the drop-down: in the search row next to **Aa** / **💡**, or on the caption /
-  breadcrumb line?
-- [ ] **Size in the index**: is the proposed `index 3` format (§ Size Needs the Index) fine — an
-  old index read without sizes until the start-up scan rewrites it?
+- [x] ~~**How coarse is the relevance** before the drop-down's order takes over?~~ → Three tiers:
+  file name, subfolders only, content (Q&A 9, § Relevance Tiers).
+- [x] ~~**Remembered** between sessions, or back to Date ↓ at each launch?~~ → Remembered, in
+  `settings.json` (Q&A 10).
+- [x] ~~**Place** of the drop-down: the search row, or the caption / breadcrumb line?~~ → Neither: at
+  the bottom right, at the end of the tile size row (Q&A 11).
+- [x] ~~**Size in the index**: is the `index 3` format fine?~~ → Yes, an `index 2` file still read
+  without sizes (Q&A 12).
 
 ---
 
@@ -144,6 +161,14 @@ ordering the equally relevant files, and applies alone without words; the folder
 stay first, ordered as today. New Open Question: how coarse the relevance is before the drop-down
 takes over.
 
+### Iteration 3 — 2026-10-09
+
+Q&A 9–12 answered: three relevance tiers (file name, subfolders only, content) — the first word's
+position and the name length no longer ranked, the drop-down's order taking over inside a tier,
+the number of words in the name kept for several words; the order remembered in `settings.json`;
+the drop-down at the end of the tile size row, bottom right, rather than either place proposed; the
+`index 3` format with the size, an `index 2` file still read. No Open Question left.
+
 ---
 
 ## Implementation Log
@@ -155,7 +180,8 @@ says so rather than staying blank.
 |---|---|---|---|
 | Code | | | |
 | Unit tests | | | No test project — none |
-| README | | | |
+| README (EN + FR) | | | § File explorer: the Search and Everything paragraphs (the ranking, `*`'s order), the sort drop-down |
+| Glossary (EN + FR) | | | The *Sort order* term; *Tile size* row mentions the row it shares |
 
 ---
 
@@ -173,10 +199,10 @@ Questions asked by the agent during design, with user responses.
 | 6 | Relevance then Date / Name / Size: four entries, or Relevance first with a tie-break? | Relevance first, the drop-down breaks the ties (Date ↓ / Name ↑ / Size ↑) | 2026-10-09 |
 | 7 | No words typed (`*`, a browsed folder): what does Relevance become? | "Date DESC ou Abc ASC ou Taille ASC" — the drop-down's order applies alone | 2026-10-09 |
 | 8 | Folder view's subfolders: first and A→Z always, or following the order? | Always first, A→Z | 2026-10-09 |
-| 9 | How coarse is the relevance before the drop-down's order takes over? | | 2026-10-09 |
-| 10 | Is the order remembered between sessions? | | 2026-10-09 |
-| 11 | Where does the drop-down go? | | 2026-10-09 |
-| 12 | Is the `index 3` format with the size fine? | | 2026-10-09 |
+| 9 | How coarse is the relevance before the drop-down's order takes over? | Three tiers: file name, subfolders only, content | 2026-10-09 |
+| 10 | Is the order remembered between sessions? | Remembered | 2026-10-09 |
+| 11 | Where does the drop-down go? | "En bas à droite de la ligne de taille de vignette (le slider)" — bottom right, at the end of the tile size row | 2026-10-09 |
+| 12 | Is the `index 3` format with the size fine? | Yes, the old index still read | 2026-10-09 |
 
 ---
 
