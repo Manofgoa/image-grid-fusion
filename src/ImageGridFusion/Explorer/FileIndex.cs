@@ -8,10 +8,10 @@ namespace ImageGridFusion.Explorer;
 /// The file explorer's index: every file under the base folder and its subfolders, cached in a text
 /// file of the <see cref="FolderName"/> folder next to the exe so the search never reads the disk.
 /// Three header lines — a version, the base folder, the scan's time — then one line per file: its
-/// relative path and, after a tab, its creation time (UTC, ISO 8601); further tab-separated columns
-/// are tolerated. See workfiles/20260926-file-explorer.md § Index File,
-/// workfiles/20260927-file-explorer-show-all.md § Index File and workfiles/20260926-ocr-search.md
-/// § Index Folder.
+/// relative path and, after a tab, its creation time (UTC, ISO 8601), then its size in bytes; further
+/// tab-separated columns are tolerated. See workfiles/20260926-file-explorer.md § Index File,
+/// workfiles/20260927-file-explorer-show-all.md § Index File, workfiles/20260926-ocr-search.md
+/// § Index Folder and workfiles/20261009-search-results-sort.md § Size Needs the Index.
 /// </summary>
 internal sealed class FileIndex
 {
@@ -19,7 +19,10 @@ internal sealed class FileIndex
 
     /// <summary>The folder next to the exe holding every indexing file: this index and the content texts.</summary>
     public const string FolderName = "index";
-    private const string Header = "ImageGridFusion index 2";
+    private const string Header = "ImageGridFusion index 3";
+
+    // The version before the sizes: still read, its sizes unknown until the scan writes the index again.
+    private const string SizelessHeader = "ImageGridFusion index 2";
     private const int ProgressInterval = 100;
 
     private readonly List<IndexEntry> _entries;
@@ -75,7 +78,7 @@ internal sealed class FileIndex
     /// <summary>
     /// Reads the cached index of <paramref name="baseFolder"/>; null when there is none, it cannot be
     /// read, it was scanned for another folder, or by an older version (without the dates) — the scan
-    /// run at every start writes it again.
+    /// run at every start writes it again. An index without the sizes is read, its sizes unknown.
     /// </summary>
     public static FileIndex? Load(string path, string baseFolder)
     {
@@ -90,7 +93,7 @@ internal sealed class FileIndex
         }
 
         string root = NormalizeFolder(baseFolder);
-        if (lines.Length < 3 || lines[0] != Header || !SameFolder(lines[1], root)
+        if (lines.Length < 3 || (lines[0] != Header && lines[0] != SizelessHeader) ||!SameFolder(lines[1], root)
             || !DateTime.TryParse(lines[2], CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var scannedAt))
         {
             return null;
@@ -106,7 +109,8 @@ internal sealed class FileIndex
                     && DateTime.TryParse(columns[1], CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var date)
                     ? date
                     : DateTime.MinValue;
-                entries.Add(new IndexEntry(columns[0], created));
+                long? size = columns.Length > 2 && long.TryParse(columns[2], NumberStyles.None, CultureInfo.InvariantCulture, out long bytes) ? bytes : null;
+                entries.Add(new IndexEntry(columns[0], created, size: size));
             }
         }
 
@@ -127,7 +131,9 @@ internal sealed class FileIndex
             {
                 writer.Write(entry.RelativePath);
                 writer.Write('\t');
-                writer.WriteLine(entry.Created.ToString("o", CultureInfo.InvariantCulture));
+                writer.Write(entry.Created.ToString("o", CultureInfo.InvariantCulture));
+                writer.Write('\t');
+                writer.WriteLine(entry.Size?.ToString(CultureInfo.InvariantCulture));
             }
         }
 

@@ -151,16 +151,18 @@ internal static class FileSearch
     }
 }
 
-/// <summary>A file of the index: its path relative to the base folder, its creation time, and the folded form the search matches.</summary>
+/// <summary>A file of the index: its path relative to the base folder, its creation time, its size, and the folded form the search matches.</summary>
 internal sealed class IndexEntry
 {
     private static readonly char[] Separators = ['\\', '/'];
 
-    public IndexEntry(string relativePath, DateTime created, FileStamp? stamp = null)
+    /// <param name="size">The file's size in bytes; <paramref name="stamp"/>'s when not given.</param>
+    public IndexEntry(string relativePath, DateTime created, FileStamp? stamp = null, long? size = null)
     {
         RelativePath = relativePath;
         Created = created;
         this.Stamp = stamp;
+        this.Size = size ?? stamp?.Size;
         Folded = FileSearch.Fold(relativePath);
         NameStart = Folded.LastIndexOfAny(Separators) + 1;
     }
@@ -175,6 +177,12 @@ internal sealed class IndexEntry
     /// file, which does not hold them — only a scanned index tells which content texts are stale.
     /// </summary>
     public FileStamp? Stamp { get; }
+
+    /// <summary>
+    /// The file's size in bytes; null when unknown — an entry loaded from an index file written before
+    /// the sizes were (<c>index 2</c>), until the scan replaces it. See workfiles/20261009-search-results-sort.md.
+    /// </summary>
+    public long? Size { get; }
 
     /// <summary>The relative path, folded once for every search.</summary>
     public string Folded { get; }
