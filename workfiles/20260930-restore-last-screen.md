@@ -169,6 +169,11 @@ and `CenterToScreen()` in `OnLoad`, `SaveWindowSize` — now guarded by `_savesW
 commits, and its `--new-instance` bullet gains the screen. No `workfiles/TODO-FEATURES.md` row
 matches this request. Line references refreshed. The behaviour agreed is unchanged.
 
+### Iteration 5 — 2026-10-10 — ✅ Implemented
+
+Go given for the code, the unit tests (not applicable) and the documentation. Branch: stays on
+`main`, the repository's standing choice (no worktree asked).
+
 ---
 
 ## Implementation Log
