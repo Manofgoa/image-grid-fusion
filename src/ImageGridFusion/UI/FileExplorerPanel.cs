@@ -75,7 +75,7 @@ internal sealed class FileExplorerPanel : Panel
     // The sort drop-down's width in logical pixels: its longest entry and the arrow.
     private const int SortWidth = 92;
 
-    private readonly TableLayoutPanel _content = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 7, Padding = new Padding(6, 4, 6, 6) };
+    private readonly TableLayoutPanel _content = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 8, Padding = new Padding(6, 4, 6, 6) };
     private readonly TableLayoutPanel _header = new() { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
     private readonly Label _title = new() { Text = "Files", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly Button _collapse = new() { Text = "»", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right };
@@ -120,6 +120,9 @@ internal sealed class FileExplorerPanel : Panel
     };
     private readonly Button _chooseFolder = new() { Text = "Choose folder…", Dock = DockStyle.Top, AutoSize = true };
     private readonly ContextMenuStrip _menu = new();
+
+    // The URL zone (workfiles/20261009-url-content.md), the last row: its media dragged like a tile.
+    private readonly UrlZone _urlZone = new() { Dock = DockStyle.Fill, Margin = Padding.Empty };
     private readonly ToolStripMenuItem _openLocation = new(OpenFileLocationText);
 
     // A file tile's copies (see workfiles/20261008-explorer-tile-copy-menu.md), hidden on a folder tile.
@@ -192,6 +195,7 @@ internal sealed class FileExplorerPanel : Panel
         _content.RowStyles.Add(new RowStyle(SizeType.Absolute, 20));
         _content.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         _content.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+        this._content.RowStyles.Add(new RowStyle(SizeType.Absolute, UrlZone.LogicalHeight));
         _header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _header.Controls.Add(_title, 0, 0);
@@ -238,6 +242,7 @@ internal sealed class FileExplorerPanel : Panel
         _content.Controls.Add(_captionRow, 0, 4);
         _content.Controls.Add(_listHost, 0, 5);
         _content.Controls.Add(_sizeRow, 0, 6);
+        this._content.Controls.Add(this._urlZone, 0, 7);
         Controls.Add(_content);
         Controls.Add(_expand);
         this._menu.Items.AddRange([this._copy, this._copyPng, this._copySeparator]);
@@ -286,6 +291,7 @@ internal sealed class FileExplorerPanel : Panel
         _grid.HeartClicked += (_, row) => ToggleFavorite(row);
         _grid.RowActivated += (_, row) => Activate(row);
         _grid.DragRequested += (_, row) => StartDrag(row);
+        this._urlZone.DragRequested += (_, path) => this.StartUrlDrag(path);
         _grid.MoreRequested += (_, _) => LoadMore();
         _grid.UpRequested += (_, _) => GoUp();
         _menu.Opening += (_, e) =>
@@ -659,7 +665,7 @@ internal sealed class FileExplorerPanel : Panel
     }
 
     /// <summary>The search box has the focus: its keys are its own, not the window's shortcuts.</summary>
-    public bool IsEditingText => _search.Focused;
+    public bool IsEditingText => _search.Focused || this._urlZone.IsEditingText;
 
     /// <summary>The tiles have the focus: Ctrl+C is theirs, <see cref="CopySelected"/>, not the grid's copy.</summary>
     public bool TilesFocused => this._grid.Focused;
@@ -879,7 +885,7 @@ internal sealed class FileExplorerPanel : Panel
         Width = IsHandleCreated ? LogicalToDeviceUnits(logical) : logical;
     }
 
-    /// <summary>The rows sized to the font and the DPI: the progress bar's, the status and caption lines, the slider's row, the invitation.</summary>
+    /// <summary>The rows sized to the font and the DPI: the progress bar's, the status and caption lines, the slider's row, the URL zone, the invitation.</summary>
     private void ApplyMetrics()
     {
         int line = Font.Height + LogicalToDeviceUnits(4);
@@ -887,6 +893,7 @@ internal sealed class FileExplorerPanel : Panel
         _content.RowStyles[3].Height = line;
         _content.RowStyles[4].Height = line;
         _content.RowStyles[6].Height = Font.Height * 2 + LogicalToDeviceUnits(4);
+        this._content.RowStyles[7].Height = this.LogicalToDeviceUnits(UrlZone.LogicalHeight);
         this._sort.Width = this.LogicalToDeviceUnits(SortWidth);
         _inviteText.Height = Font.Height * 4 + LogicalToDeviceUnits(8);
     }
@@ -1948,6 +1955,20 @@ internal sealed class FileExplorerPanel : Panel
             {
                 _draggingOwnTile = false;
             }
+        }
+    }
+
+    /// <summary>The URL zone's media dragged into a cell as a tile is: a file drag the panel refuses as a favorite.</summary>
+    private void StartUrlDrag(string path)
+    {
+        this._draggingOwnTile = true;
+        try
+        {
+            this._urlZone.DoDragDrop(new DataObject(DataFormats.FileDrop, new[] { path }), DragDropEffects.Copy);
+        }
+        finally
+        {
+            this._draggingOwnTile = false;
         }
     }
 
