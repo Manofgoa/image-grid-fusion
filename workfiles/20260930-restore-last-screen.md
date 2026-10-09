@@ -201,6 +201,10 @@ Not checked by the agent: the **save** — a `--new-instance` instance writes no
 agent launches no other — and two monitors **at different scales** (both monitors here are at 125 %).
 Left to the user's manual checks.
 
+### Iteration 7 — 2026-10-10 — ✅ Finished
+
+Confirmed finished by the user (Q&A #6), after testing the delivery launch.
+
 ---
 
 ## Implementation Log
@@ -227,6 +231,7 @@ Questions asked by the agent during design, with user responses.
 | 3 | The monitor is there but the remembered placement no longer fits it: bring it within the screen, center it, or keep it as is? | Bring it within the screen | 2026-09-30 |
 | 4 | Exploration depth: straightforward or tricky / long? | Straightforward | 2026-09-30 |
 | 5 | Nothing remembered yet: open under the mouse as today, or on the primary screen? | Primary screen | 2026-09-30 |
+| 6 | After the test, is the task finished? | Yes, finished | 2026-10-10 |
 
 ---
 
