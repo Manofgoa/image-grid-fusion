@@ -86,7 +86,7 @@ Un panneau repliable à droite de l'aperçu, ouvert au démarrage : une zone de 
 
 ## Effets
 
-- En haut de la fenêtre, la rangée d'options, puis les onglets qui pendent en dessous : une étiquette **Effects**, un onglet par effet — **Background**, **Crop**, **Zoom**, **Animations**, **Rotate**, **Flip**, **Frames**, **Black & white**, **Blur**, **Volume** — et, tout à droite, un bouton **Reset** aussi haut que les onglets. Ils agissent sur la cellule sélectionnée ; sans cellule sélectionnée, les deux rangées sont désactivées.
+- En haut de la fenêtre, la rangée d'options, puis les onglets qui pendent en dessous : une étiquette **Effects**, un onglet par effet — **Background**, **Crop**, **Zoom**, **Animations**, **Rotate**, **Flip**, **Frames**, **Colors**, **Blur**, **Volume** — et, tout à droite, un bouton **Reset** aussi haut que les onglets. Ils agissent sur la cellule sélectionnée ; sans cellule sélectionnée, les deux rangées sont désactivées.
 - Chaque onglet contient une case à cocher, cochée tant que son effet est activé pour la cellule sélectionnée. Cliquer dessus active ou désactive l'effet, et sélectionne l'onglet.
 - Cliquer sur un onglet ailleurs le sélectionne : ses options s'affichent dans la rangée au-dessus, jointe à lui. L'onglet sélectionné reste sélectionné quand une autre cellule est sélectionnée, ou aucune. La rangée d'options est toujours là, vide tant qu'aucun onglet n'est sélectionné.
 - Les choix des options — les remplissages de Background, les ratios de Crop, Contain et Fill du Zoom, les quarts de tour, les miroirs, les types de Blur — sont des **miniatures**, toutes de la même taille : chacune dessine ce qu'elle fait, son nom dessous, son info-bulle le disant ; celles qui sont enfoncées sont surlignées, celle survolée éclairée.
@@ -106,7 +106,7 @@ Un panneau repliable à droite de l'aperçu, ouvert au démarrage : une zone de 
 - **Opacity** : de 0 à 100 % (100 % par défaut), sur tout le fond — bords étendus compris.
 - **Remplissage** : quatre miniatures, **Color** par défaut.
   - **Color** : l'aplat de couleur autour de l'image.
-  - **Corner pixel**, **Miter** et **Background corners** étendent les **bords** de l'image : sa rangée de pixels du haut est étirée jusqu'en haut de la cellule, celle du bas jusqu'en bas, ses colonnes latérales jusqu'aux côtés — l'image telle que dessinée dans la cellule, donc recadrée, tournée, retournée, zoomée et en noir et blanc. Là où l'image est plus petite que sa cellule dans les deux sens, chaque mode remplit les quatre coins à sa façon : la couleur du pixel de coin de l'image ; un joint en onglet — chaque coin partagé sur sa diagonale, chaque moitié de la couleur unie du pixel de son bord voisin du coin de l'image, une ligne de 1 px de la couleur du pixel de coin tracée sur la diagonale à 50 % d'opacité ; ou la couleur du fond. Avec un angle fin, les bords étendus sont ceux du rectangle que couvre l'image tournée, ses coins débordant dessus.
+  - **Corner pixel**, **Miter** et **Background corners** étendent les **bords** de l'image : sa rangée de pixels du haut est étirée jusqu'en haut de la cellule, celle du bas jusqu'en bas, ses colonnes latérales jusqu'aux côtés — l'image telle que dessinée dans la cellule, donc recadrée, tournée, retournée, zoomée et avec ses couleurs ajustées. Là où l'image est plus petite que sa cellule dans les deux sens, chaque mode remplit les quatre coins à sa façon : la couleur du pixel de coin de l'image ; un joint en onglet — chaque coin partagé sur sa diagonale, chaque moitié de la couleur unie du pixel de son bord voisin du coin de l'image, une ligne de 1 px de la couleur du pixel de coin tracée sur la diagonale à 50 % d'opacité ; ou la couleur du fond. Avec un angle fin, les bords étendus sont ceux du rectangle que couvre l'image tournée, ses coins débordant dessus.
   - Les réglages de couleur comptent toujours : l'aplat reste sous l'image (ses pixels transparents le montrent), remplit les coins de Background corners, et c'est vers lui que va Blend.
 - Les réglages du remplissage tiennent sur deux lignes à côté des miniatures : ceux de la couleur (*Automatic color*, Opacity, *Color…*, qui montre la couleur actuelle dans un échantillon) au-dessus de ceux des bords étendus (Edges, Blend, Soften).
 - **Edges** : de 0 à 100 % (100 % par défaut) : l'opacité propre des bords étendus sur la couleur du fond, qui garde la sienne — à 0 %, les bandes ne montrent que la couleur du fond.
@@ -115,7 +115,7 @@ Un panneau repliable à droite de l'aperçu, ouvert au démarrage : une zone de 
 - Edges, Blend et Soften n'agissent que sur les bords étendus : désactivés avec le remplissage Color, leurs valeurs gardées.
 - La vue d'édition du Crop étend les bords de l'image entière qu'elle montre.
 - Le **bouton de couleur** est peint avec la couleur utilisée. Cliquer dessus ouvre la boîte de dialogue de couleur standard, sur cette couleur ; choisir une couleur décoche *Automatic color*. La cocher de nouveau abandonne la couleur choisie ; la décocher garde la couleur automatique du moment comme couleur choisie.
-- **Black & white** rend aussi le fond gris, quelle que soit sa couleur.
+- **Colors** ajuste aussi le fond, quelle que soit sa couleur.
 - **Désactivé**, ou sous 100 %, la cellule est transparente derrière son image : l'aperçu y montre des carreaux gris et blancs, comme les applications de dessin. Un PNG — enregistré, ou le format PNG d'une copie — conserve la transparence ; le bitmap copié, la vidéo MP4 et le GIF affichent du blanc à la place.
 - Remplacer l'image, le Reset propre à Background et le Reset des onglets le remettent activé, automatique, à 100 %, avec le remplissage Color, Edges à 100 %, Blend à 0 % et Soften décochée.
 
@@ -165,9 +165,15 @@ Un panneau repliable à droite de l'aperçu, ouvert au démarrage : une zone de 
 - Non figé, **Starts at** règle l'endroit où le contenu **commence à jouer** — le début de la découpe par défaut — dans l'aperçu et dans la vidéo exportée, son son compris ; son curseur ne couvre que les images découpées.
 - Figé, le contenu s'arrête sur l'image que choisit le curseur, dans l'aperçu et dans chaque export : une cellule figée est exportée comme cette image fixe, et une grille dont tous les contenus sont figés est copiée et enregistrée en PNG. Une vidéo figée n'a pas de son.
 
-### Black & white (noir et blanc)
+### Colors (couleurs)
 
-- Options : l'intensité, de 0 (les couleurs) à 100 % ; les bandes la suivent.
+- Options : quatre curseurs sur une ligne, chacun centré sur 0 — la valeur par défaut, qui laisse l'image inchangée :
+  - **Saturation**, de −100 % (noir et blanc) à +100 % (la saturation doublée) ;
+  - **Hue** (teinte), de −180° à +180°, les teintes tournées sur la roue chromatique ;
+  - **Brightness** (luminosité), de −100 % à +100 % : fortement assombrie ou éclaircie, jamais noir ou blanc uni ;
+  - **Contrast** (contraste), de −100 % (gris moyen uni) à +100 % (trois fois le contraste).
+- Le fond les suit, sa couleur automatique ou celle choisie.
+- Activé avec tous les curseurs à 0, il ne change rien tant qu'aucun curseur ne bouge ; en bouger un l'active.
 
 ### Blur (flou)
 

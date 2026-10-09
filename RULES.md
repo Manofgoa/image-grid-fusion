@@ -55,8 +55,8 @@ image's edges over the bands (origin: `workfiles/20261007-background-edge-extens
 
 - It reads the image **as drawn in the cell** — rendered alone at the cell's size
   (`Compositor.DrawBackground`), the outermost rows and columns of the rectangle it covers
-  (`EdgeExtension.Covered`) — never the bitmap: crop, orientation, fine angle, zoom and black &
-  white are extended with it, and a new effect drawn in the image is extended by itself.
+  (`EdgeExtension.Covered`) — never the bitmap: crop, orientation, fine angle, zoom and colors
+  are extended with it, and a new effect drawn in the image is extended by itself.
 - The flat fill stays under the image, fills the Background corners and is what Blend goes to; the
   **opacity covers the whole background**, the extended edges included, and the **edge opacity**
   covers the extended edges only, over the flat fill.
@@ -77,7 +77,7 @@ The Crop effect's geometry is **not in fractions of the cell**, and its kept par
   sizing, the free format's ratio and every gesture. They read `ImageLook.Shown` (`Frame.Size`) —
   cropped, then rotated — never the bitmap's oriented size. A new consumer does the same.
 - It comes right after the orientation and before the fitting rule: zoom, fine angle, background,
-  black & white and blur all apply to the cropped image.
+  colors and blur all apply to the cropped image.
 - Its **edit view** — the whole image fitted whole in the selected cell, the part cut off dimmed,
   its bars across the image and snapping onto its edges, a drag inside the kept part moving it, the
   wheel scaling it (§ On-Cell Handles › Resizable Zones) — is

@@ -17,25 +17,6 @@ public readonly record struct Frame(Bitmap Bitmap, BandColor BandColor, ImageLoo
 /// <summary>Draws the images into their cells, at full resolution or at any preview size.</summary>
 public static class Compositor
 {
-    /// <summary>Luminance weights of the black &amp; white effect.</summary>
-    private static readonly float[] Luminance = [0.299f, 0.587f, 0.114f];
-
-    /// <summary>Each channel moved <paramref name="intensity"/> of the way from itself to the luminance.</summary>
-    private static ColorMatrix GrayscaleMatrix(double intensity)
-    {
-        float t = (float)intensity;
-        var matrix = new ColorMatrix();
-        for (int row = 0; row < 3; row++)
-        {
-            for (int column = 0; column < 3; column++)
-            {
-                matrix[row, column] = t * Luminance[row] + (row == column ? 1 - t : 0);
-            }
-        }
-
-        return matrix;
-    }
-
     /// <summary>Renders the final image at <paramref name="ratio"/>, at the size given by <see cref="CanvasSizer"/>.</summary>
     public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders = null, SeamFade? seams = null) =>
         Render(images.Select(i => new Frame(i.Bitmap, i.BandColor, i.Look)).ToList(), layout, ratio, borders, seams);
@@ -152,9 +133,9 @@ public static class Compositor
         // TileFlipXY avoids the semi-transparent halo GDI+ leaves on the edges of scaled images.
         using var attributes = new ImageAttributes();
         attributes.SetWrapMode(WrapMode.TileFlipXY);
-        if (look.Grayscale is { } grayscale)
+        if (look.Colors is { IsNeutral: false } colors)
         {
-            attributes.SetColorMatrix(GrayscaleMatrix(grayscale));
+            attributes.SetColorMatrix(colors.Matrix());
         }
 
         var turned = FitCalculator.ComputeTurned(cell, frame.Size, look.ZoomAt(frame.Time, cell, frame.Size), look.FocusAt(frame.Time, cell, frame.Size), look.FineAngle);
@@ -199,7 +180,7 @@ public static class Compositor
         if (look.Background is { } background)
         {
             var automatic = background.Automatic ? frame.BandColor.For(bitmapPart, frame.Bitmap.Size) : background.Color;
-            DrawBackground(g, background, automatic, look.Grayscale, cell, EdgeExtension.Covered(fit.Destination, cell, turn is not null), DrawImage, fast, seams);
+            DrawBackground(g, background, automatic, look.Colors, cell, EdgeExtension.Covered(fit.Destination, cell, turn is not null), DrawImage, fast, seams);
         }
         else
         {
@@ -234,22 +215,22 @@ public static class Compositor
         }
 
         var fill = background.Fill(background.Automatic ? AutomaticBackground(frame, cell) : background.Color);
-        return look.Grayscale is { } gray ? Gray(fill, gray) : fill;
+        return look.Colors?.Apply(fill) ?? fill;
     }
 
     /// <summary>
     /// The background of <paramref name="cell"/>: the flat fill — <paramref name="automatic"/> or the
-    /// chosen color, at the opacity, turned gray by <paramref name="grayscale"/> — or, in an extending
+    /// chosen color, at the opacity, turned by <paramref name="colors"/> — or, in an extending
     /// mode with bands around the image's place <paramref name="covered"/>, the image's edges extended:
     /// read from the image alone, which <paramref name="drawImage"/> draws at the cell's size. The flat
     /// fill fades into the neighbours' along the <paramref name="seams"/>; an extending mode never does.
     /// </summary>
-    private static void DrawBackground(Graphics g, BackgroundEffect background, Color automatic, double? grayscale, Rectangle cell, Rectangle? covered, Action<Graphics> drawImage, bool fast, SeamField? seams)
+    private static void DrawBackground(Graphics g, BackgroundEffect background, Color automatic, ColorsEffect? colors, Rectangle cell, Rectangle? covered, Action<Graphics> drawImage, bool fast, SeamField? seams)
     {
         var fill = background.Fill(automatic);
-        if (grayscale is { } gray)
+        if (colors is not null)
         {
-            fill = Gray(fill, gray);
+            fill = colors.Apply(fill);
         }
 
         if (!background.Extends && seams?.Draw(g, cell) == true)
@@ -311,9 +292,9 @@ public static class Compositor
 
         using var attributes = new ImageAttributes();
         attributes.SetWrapMode(WrapMode.TileFlipXY);
-        if (look.Grayscale is { } grayscale)
+        if (look.Colors is { IsNeutral: false } colors)
         {
-            attributes.SetColorMatrix(GrayscaleMatrix(grayscale));
+            attributes.SetColorMatrix(colors.Matrix());
         }
 
         void DrawImage(Graphics target)
@@ -328,7 +309,7 @@ public static class Compositor
         if (look.Background is { } background)
         {
             var automatic = background.Automatic ? AutomaticBackground(frame, cell) : background.Color;
-            DrawBackground(g, background, automatic, look.Grayscale, cell, EdgeExtension.Covered(image, cell, turned: false), DrawImage, fast: false, seams: null);
+            DrawBackground(g, background, automatic, look.Colors, cell, EdgeExtension.Covered(image, cell, turned: false), DrawImage, fast: false, seams: null);
         }
 
         DrawImage(g);
@@ -394,13 +375,5 @@ public static class Compositor
         }
 
         g.DrawImage(bitmap, points, bitmapPart, GraphicsUnit.Pixel, attributes);
-    }
-
-    /// <summary>The band color as the black &amp; white effect turns the image: <paramref name="intensity"/> of the way to its luminance.</summary>
-    private static Color Gray(Color color, double intensity)
-    {
-        double luminance = Luminance[0] * color.R + Luminance[1] * color.G + Luminance[2] * color.B;
-        int Mix(int channel) => (int)Math.Round(channel + (luminance - channel) * intensity);
-        return Color.FromArgb(color.A, Mix(color.R), Mix(color.G), Mix(color.B));
     }
 }
