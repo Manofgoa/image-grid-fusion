@@ -420,7 +420,7 @@ internal sealed class MainForm : Form
         this._transportRow.Controls.Add(this._playButton, 0, 0);
         this._transportRow.Controls.Add(this._timeline, 1, 0);
         this._transportRow.Controls.Add(this._positionReadout, 2, 0);
-        this._transportRow.Controls.Add(_lengthReadout, 3, 0);
+        this._transportRow.Controls.Add(this._lengthReadout, 3, 0);
 
         _tabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _tabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
