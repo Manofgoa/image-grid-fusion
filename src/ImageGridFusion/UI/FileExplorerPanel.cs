@@ -69,6 +69,8 @@ internal sealed class FileExplorerPanel : Panel
     private const string SortNewestText = "Date ↓";
     private const string SortNameText = "Name A→Z";
     private const string SortSmallestText = "Size ↑";
+    private const string ThumbnailsViewText = "▦";
+    private const string DetailsViewText = "☰";
 
     // The sort drop-down's width in logical pixels: its longest entry and the arrow.
     private const int SortWidth = 92;
@@ -95,7 +97,7 @@ internal sealed class FileExplorerPanel : Panel
     private readonly Breadcrumb _breadcrumb = new() { Dock = DockStyle.Fill, Visible = false };
     private readonly Panel _listHost = new() { Dock = DockStyle.Fill, Margin = Padding.Empty, BorderStyle = BorderStyle.FixedSingle };
     private readonly ThumbnailGrid _grid = new() { Dock = DockStyle.Fill };
-    private readonly TableLayoutPanel _sizeRow = new() { ColumnCount = 4, RowCount = 1, Dock = DockStyle.Fill, Margin = Padding.Empty };
+    private readonly TableLayoutPanel _sizeRow = new() { ColumnCount = 6, RowCount = 1, Dock = DockStyle.Fill, Margin = Padding.Empty };
     private readonly Label _smallerGlyph = new() { Text = "▭", AutoSize = true, Anchor = AnchorStyles.Left, TextAlign = ContentAlignment.MiddleCenter, Margin = new Padding(0, 0, 4, 0) };
     // No ticks: the thumb then sits on the row's centre line, level with the glyphs at any DPI.
     private readonly TrackBar _size = new() { AutoSize = false, Dock = DockStyle.Fill, Margin = Padding.Empty, Minimum = ThumbnailGrid.MinTileSize, Maximum = ThumbnailGrid.MaxTileSize, TickStyle = TickStyle.None, SmallChange = 20, LargeChange = 100 };
@@ -104,6 +106,11 @@ internal sealed class FileExplorerPanel : Panel
     // The sort drop-down (workfiles/20261009-search-results-sort.md), at the end of the slider's row:
     // its entries in FileOrder's order.
     private readonly ComboBox _sort = new() { DropDownStyle = ComboBoxStyle.DropDownList, Anchor = AnchorStyles.Right, Margin = new Padding(8, 0, 0, 0) };
+
+    // The view buttons (workfiles/20261009-explorer-details-view.md), after the sort drop-down: the
+    // current view's pressed, toggled by hand (AutoCheck off) so one is always pressed.
+    private readonly CheckBox _thumbnailsView = new() { Text = ThumbnailsViewText, Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(6, 0, 0, 0), AutoCheck = false, Checked = true };
+    private readonly CheckBox _detailsView = new() { Text = DetailsViewText, Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(2, 0, 0, 0), AutoCheck = false };
     private readonly Panel _invite = new() { Dock = DockStyle.Fill, Visible = false };
     private readonly Label _inviteText = new()
     {
@@ -146,6 +153,11 @@ internal sealed class FileExplorerPanel : Panel
     private string? _activity;
     private int _pagesPerLoad = DefaultPagesPerLoad;
     private FileOrder _fileOrder = FileOrder.Newest;
+    private ExplorerView _view = ExplorerView.Thumbnails;
+
+    // The sizes of the files the index does not give — a favorite elsewhere, say — read from the disk
+    // once per list, for the Details view.
+    private readonly Dictionary<string, long?> _diskSizes = new(StringComparer.OrdinalIgnoreCase);
 
     // A tile of this panel being dragged: not a source of favorites, so the panel refuses it.
     private bool _draggingOwnTile;
@@ -200,11 +212,17 @@ internal sealed class FileExplorerPanel : Panel
         _sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         this._sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        this._sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        this._sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _sizeRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         _sizeRow.Controls.Add(_smallerGlyph, 0, 0);
         _sizeRow.Controls.Add(_size, 1, 0);
         _sizeRow.Controls.Add(_largerGlyph, 2, 0);
         this._sizeRow.Controls.Add(this._sort, 3, 0);
+        this._sizeRow.Controls.Add(this._thumbnailsView, 4, 0);
+        this._sizeRow.Controls.Add(this._detailsView, 5, 0);
+        this._thumbnailsView.Font = new Font("Segoe UI Symbol", this.Font.SizeInPoints);
+        this._detailsView.Font = new Font("Segoe UI Symbol", this.Font.SizeInPoints);
         this._sort.Items.AddRange([SortNewestText, SortNameText, SortSmallestText]);
         this._sort.SelectedIndex = (int)this._fileOrder;
 
@@ -228,6 +246,9 @@ internal sealed class FileExplorerPanel : Panel
         _grid.IsFavorite = _favorites.Contains;
         this._grid.ContentExcerpt = this.ExcerptOf;
         this._grid.ContentSpot = this.SpotOf;
+        this._grid.ContentWords = this.WordsOf;
+        this._grid.SizeOf = this.SizeOf;
+        this._grid.FolderFiles = this.FolderFiles;
 
         _toolTip.SetToolTip(_collapse, "Hide the file explorer");
         _toolTip.SetToolTip(_expand, "Show the file explorer");
@@ -237,10 +258,14 @@ internal sealed class FileExplorerPanel : Panel
         _toolTip.SetToolTip(_smallerGlyph, "Smaller tiles");
         _toolTip.SetToolTip(_largerGlyph, "Larger tiles");
         this.ApplySortTip();
+        this._toolTip.SetToolTip(this._thumbnailsView, "Thumbnails: tiles, as many per row as fit");
+        this._toolTip.SetToolTip(this._detailsView, "Details: one row per file — its name, its size, and the words a search found in its content");
         _collapse.Click += (_, _) => SetOpen(false);
         _expand.Click += (_, _) => SetOpen(true);
         _size.ValueChanged += (_, _) => OnSliderChanged();
         this._sort.SelectionChangeCommitted += (_, _) => this.ChangeOrder((FileOrder)this._sort.SelectedIndex);
+        this._thumbnailsView.Click += (_, _) => this.ChangeView(ExplorerView.Thumbnails);
+        this._detailsView.Click += (_, _) => this.ChangeView(ExplorerView.Details);
         _grid.SizeStepRequested += (_, direction) => StepSize(direction);
         _rescan.Click += (_, _) => Rescan();
         _chooseFolder.Click += (_, _) => ChooseFolderRequested?.Invoke(this, EventArgs.Empty);
@@ -298,6 +323,9 @@ internal sealed class FileExplorerPanel : Panel
 
     /// <summary>The user picked another order in the sort drop-down: <see cref="FileOrder"/> to remember.</summary>
     public event EventHandler? FileOrderChanged;
+
+    /// <summary>The user switched the view with its buttons: <see cref="View"/> to remember.</summary>
+    public event EventHandler? ViewChanged;
 
     /// <summary>A tile was double-clicked or entered: its file, to be added like Add images.</summary>
     public event EventHandler<string>? FileActivated;
@@ -409,6 +437,28 @@ internal sealed class FileExplorerPanel : Panel
             this._sort.SelectedIndex = (int)value;
             this.ApplySortTip();
             this.RefreshOrdered();
+        }
+    }
+
+    /// <summary>
+    /// How the lists show — tiles, or a row per file with its size and the words a search found in its
+    /// content — in every view; the list shown is laid out again at once. Setting it raises nothing.
+    /// </summary>
+    [DefaultValue(ExplorerView.Thumbnails)]
+    public ExplorerView View
+    {
+        get => this._view;
+        set
+        {
+            if (value == this._view || !Enum.IsDefined(value))
+            {
+                return;
+            }
+
+            this._view = value;
+            this._thumbnailsView.Checked = value == ExplorerView.Thumbnails;
+            this._detailsView.Checked = value == ExplorerView.Details;
+            this._grid.View = value;
         }
     }
 
@@ -904,6 +954,18 @@ internal sealed class FileExplorerPanel : Panel
         this.FileOrderChanged?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>A view button pressed by the user: applied, then reported to be remembered.</summary>
+    private void ChangeView(ExplorerView view)
+    {
+        if (view == this._view)
+        {
+            return;
+        }
+
+        this.View = view;
+        this.ViewChanged?.Invoke(this, EventArgs.Empty);
+    }
+
     /// <summary>
     /// The list shown ordered again in <see cref="FileOrder"/>, from its first load: a search, <c>*</c> or
     /// a browsed folder — the favorites keep their own order, so they are left as they are.
@@ -1323,6 +1385,8 @@ internal sealed class FileExplorerPanel : Panel
         bool everything = FileSearch.IsEverything(_search.Text);
         string[] words = FileSearch.Words(_search.Text);
         bool inviting = _baseFolder is null && (words.Length > 0 || _folderView);
+        this._grid.HighlightWords = words;
+        this._diskSizes.Clear();
         _invite.Visible = inviting;
         _grid.Visible = !inviting;
         if (_folderView)
@@ -1370,7 +1434,7 @@ internal sealed class FileExplorerPanel : Panel
             var found = this.Find(_index.Entries, words, everything);
             foreach (var (entry, contentWord) in found)
             {
-                rows.Add(new ExplorerRow(_index.FullPath(entry), entry.Name, ContentWord: contentWord));
+                rows.Add(new ExplorerRow(_index.FullPath(entry), entry.Name, ContentWord: contentWord, Size: entry.Size));
             }
 
             _caption.Text = everything
@@ -1464,7 +1528,7 @@ internal sealed class FileExplorerPanel : Panel
 
         foreach (var file in listing.Files)
         {
-            rows.Add(new ExplorerRow(Path.Combine(root, file.RelativePath), file.Name));
+            rows.Add(new ExplorerRow(Path.Combine(root, file.RelativePath), file.Name, Size: file.Size));
         }
 
         ShowRows(rows, keepPlace, select);
@@ -1531,7 +1595,7 @@ internal sealed class FileExplorerPanel : Panel
 
         foreach (var (file, contentWord) in foundFiles)
         {
-            rows.Add(new ExplorerRow(index.FullPath(file), file.Name, ContentWord: contentWord));
+            rows.Add(new ExplorerRow(index.FullPath(file), file.Name, ContentWord: contentWord, Size: file.Size));
         }
 
         int total = rows.Count;
@@ -1573,6 +1637,66 @@ internal sealed class FileExplorerPanel : Panel
         row.ContentWord is { } word && this._contents is { } contents && this._baseFolder is { } root
             ? contents.SpotOf(Path.GetRelativePath(root, row.FullPath), word)
             : null;
+
+    /// <summary>
+    /// A file's text as words and where the word the search found in it stands, for the Details view's
+    /// excerpt; null for a file not found by its content.
+    /// </summary>
+    private (string[] Words, int At)? WordsOf(ExplorerRow row) =>
+        row.ContentWord is { } word && this._contents is { } contents && this._baseFolder is { } root
+            ? contents.WordsAround(Path.GetRelativePath(root, row.FullPath), word)
+            : null;
+
+    /// <summary>
+    /// A file's size for the Details view: the index's or the folder listing's, else read from the disk
+    /// once per list; null when it cannot be read.
+    /// </summary>
+    private long? SizeOf(ExplorerRow row)
+    {
+        if (row.Size is { } size)
+        {
+            return size;
+        }
+
+        if (!this._diskSizes.TryGetValue(row.FullPath, out var read))
+        {
+            try
+            {
+                var info = new FileInfo(row.FullPath);
+                read = info.Exists ? info.Length : null;
+            }
+            catch (Exception ex) when (FileIndex.IsFileError(ex))
+            {
+                read = null;
+            }
+
+            this._diskSizes[row.FullPath] = read;
+        }
+
+        return read;
+    }
+
+    /// <summary>
+    /// The first files directly in a folder row's folder, as the index holds them, in <see cref="FileOrder"/>:
+    /// its strip in the Details view, <paramref name="max"/> at most; none before the index is there.
+    /// </summary>
+    private IReadOnlyList<string> FolderFiles(ExplorerRow row, int max)
+    {
+        if (!row.IsFolder || max <= 0 || this._index is not { } index || this._baseFolder is null)
+        {
+            return [];
+        }
+
+        this._tree ??= FolderTree.Of(index.Entries);
+        var files = this._tree.FilesIn(Path.GetRelativePath(this._baseFolder, row.FullPath), this._fileOrder);
+        var paths = new string[Math.Min(max, files.Count)];
+        for (int i = 0; i < paths.Length; i++)
+        {
+            paths[i] = index.FullPath(files[i]);
+        }
+
+        return paths;
+    }
 
     /// <summary>A folder's tile: its name, then every file below it as the index counts them, once the index is there.</summary>
     private ExplorerRow FolderRow(string fullPath)

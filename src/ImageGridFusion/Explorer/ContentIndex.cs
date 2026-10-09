@@ -96,6 +96,24 @@ internal sealed class ContentIndex
     /// </summary>
     public string? ExcerptOf(string relativePath, string foldedWord, int around)
     {
+        if (this.WordsAround(relativePath, foldedWord) is not var (words, at))
+        {
+            return null;
+        }
+
+        int from = Math.Max(0, at - around);
+        int to = Math.Min(words.Length - 1, at + around);
+        string excerpt = string.Join(' ', words, from, to - from + 1);
+        return $"{(from > 0 ? "… " : "")}{excerpt}{(to < words.Length - 1 ? " …" : "")}";
+    }
+
+    /// <summary>
+    /// A file's text as words, with the index of the first one holding <paramref name="foldedWord"/> —
+    /// accents and case ignored; null when the text does not hold it. The Details view fits as many of
+    /// them around it as its row holds.
+    /// </summary>
+    public (string[] Words, int At)? WordsAround(string relativePath, string foldedWord)
+    {
         if (!this._texts.TryGetValue(relativePath, out var text) || text.Text.Length == 0)
         {
             return null;
@@ -106,10 +124,7 @@ internal sealed class ContentIndex
         {
             if (FileSearch.Fold(words[i]).Contains(foldedWord, StringComparison.Ordinal))
             {
-                int from = Math.Max(0, i - around);
-                int to = Math.Min(words.Length - 1, i + around);
-                string excerpt = string.Join(' ', words, from, to - from + 1);
-                return $"{(from > 0 ? "… " : "")}{excerpt}{(to < words.Length - 1 ? " …" : "")}";
+                return (words, i);
             }
         }
 
