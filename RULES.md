@@ -295,6 +295,27 @@ Applies to whatever changes the grid's content (origin: `workfiles/20260927-vide
   every route into a cell goes through `GridPreview.Add`, so a new one starts the grid over by
   itself.
 
+### Transport
+
+The preview is played, paused and moved like a video (origin: `workfiles/20261009-playback-controls.md`):
+
+- **One clock**: `AnimationPlayer`'s `PlaybackClock`, read as `GridTime` — the frames, the Animations
+  motions, the Cascade, the soundtrack and the Fade all read it, so a pause or a seek moves them
+  together. A new consumer of the grid's time reads it there, never a stopwatch of its own.
+- **Seek** (`AnimationPlayer.Seek`) puts the grid where the exported video stands at that time: every
+  playing content from its starting point at the clock's origin, the soundtrack from its beginning;
+  `Restart` is a seek to 0. The clock **wraps at the end of the grid's loop**
+  (`Animation.VideoLength`) the same way, so the preview loops as the video does.
+- **Paused** — by the user (Play / Pause, Space) or **held** (`AnimationPlayer.Hold` / `Release`, a
+  counter): the clock stands still, nothing is heard, a frame is decoded only where a content was
+  moved or laid out again. The global pause never reuses a frozen content's `Playback.PausedAt`.
+- **Starting over while paused stays paused**, at 0.
+- A **Copy or an export holds the grid** from `MainForm.BeginExport` to `EndExport` — and around
+  the synchronous still render — then gives it back as it was. A drag of the timeline holds it too,
+  each scrub step sounding a short snippet of the mix there (`AnimationPlayer.Scrub`).
+- **Space** toggles Play / Pause over every control but a text field — a focused button included —
+  while the transport is enabled: with a video length, not exporting (`MainForm.ProcessCmdKey`).
+
 ## Undo History
 
 Applies to everything the user composes (origin: `workfiles/20261006-undo-redo.md`).
@@ -303,7 +324,7 @@ Applies to everything the user composes (origin: `workfiles/20261006-undo-redo.m
   that image's `ImageLook`, the `GridLayout` (separators included), the output format, the global
   effects. Only references and immutable values: a new piece of composed state joins the snapshot
   (`MainForm.CaptureState`) and the restore (`MainForm.RestoreState`), never a per-action inverse.
-- **Out of the history**: the selection, the selected tabs, the playback position, the app settings
+- **Out of the history**: the selection, the selected tabs, the playback position and its pause, the app settings
   (§ App Settings),
   the file explorer, the last video.
 - Steps are committed by `GridHistory` **once the state settles** — unchanged for ~300 ms, no mouse
@@ -332,8 +353,9 @@ a frozen one being a still, the cycle of an Animations effect counting as a loop
 for a grid of stills; none for a PNG.
 
 - The **export** (`GridExport.Job.Length`), the **preview's soundtrack loop**
-  (`AnimationPlayer.SyncSoundtrack`) and the bottom bar's **length readout** read it there. A new
-  consumer reads it there too, never re-derives it.
+  (`AnimationPlayer.SyncSoundtrack`), the **loop the preview wraps at** (`AnimationPlayer.LoopLength`)
+  and the transport's **length readout** and **timeline** read it there. A new consumer reads it
+  there too, never re-derives it.
 - The readout is refreshed **with the Copy / Save captions** (`MainForm.UpdateButtons`): what the
   buttons say they produce and the length shown never disagree.
 
