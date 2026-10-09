@@ -106,6 +106,10 @@ internal sealed class MainForm : Form
     private readonly bool _sizeRemembered;
     private bool _opened;
 
+    // The monitor the window opens on — the one it was last used on, else the primary one: a window
+    // larger than it stands mostly on another until it is shrunk, so it is not read from the window.
+    private readonly Screen _startScreen;
+
     // Off for an instance started with --new-instance: it reads the remembered size, never writes it.
     private readonly bool _savesWindowSize;
 
@@ -367,7 +371,11 @@ internal sealed class MainForm : Form
         this.SecondTitle = secondTitle;
         this.Text = secondTitle is null ? AppTitle : $"{AppTitle} — {secondTitle}";
         Icon = AppIcon.Load();
-        StartPosition = FormStartPosition.CenterScreen;
+        // The monitor it was last used on, else the primary screen — created there, so it takes that
+        // monitor's DPI from the start; centered on it at load.
+        this._startScreen = Screen.AllScreens.FirstOrDefault(s => s.DeviceName == AppSettings.WindowScreen) ?? Screen.PrimaryScreen!;
+        this.StartPosition = FormStartPosition.Manual;
+        this.Location = this._startScreen.WorkingArea.Location;
 
         // The size it had at its last use, else the default — logical pixels, scaled with the rest.
         var remembered = AppSettings.WindowClientSize;
@@ -1021,19 +1029,24 @@ internal sealed class MainForm : Form
     /// <summary>
     /// The window opens at the size it had at its last use, else at its default size made taller by
     /// the global effects' tabs row, so the preview keeps the size it had when the global effects
-    /// sat in a single row; either way within the working area of its screen, and centered again on it.
+    /// sat in a single row; either way within the working area of its screen — the monitor it was last
+    /// used on, else the primary one — and centered on it, wherever the mouse is.
     /// </summary>
     protected override void OnLoad(EventArgs e)
     {
         base.OnLoad(e);
         _opened = true;
 
-        var area = Screen.FromControl(this).WorkingArea;
+        var area = this._startScreen.WorkingArea;
         int height = _sizeRemembered ? Height : Height + _globalTabsRow.Height;
         Size = new Size(
             Math.Max(MinimumSize.Width, Math.Min(Width, area.Width)),
             Math.Max(MinimumSize.Height, Math.Min(height, area.Height)));
-        CenterToScreen();
+
+        // By hand: CenterToScreen centers on the screen under the mouse.
+        this.Location = new Point(
+            Math.Max(area.Left, area.Left + (area.Width - this.Width) / 2),
+            Math.Max(area.Top, area.Top + (area.Height - this.Height) / 2));
     }
 
     /// <summary>
@@ -1113,11 +1126,11 @@ internal sealed class MainForm : Form
     /// <summary>
     /// The ×, Alt+F4 and the taskbar's Close window only hide it: the app keeps running in the tray,
     /// grid unchanged. A real close (Quit, logoff, shutdown) during an export cancels it first; the
-    /// window closes once it has stopped. Either way, its size is remembered first.
+    /// window closes once it has stopped. Either way, its size and monitor are remembered first.
     /// </summary>
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
-        SaveWindowSize();
+        this.SaveWindowPlacement();
 
         if (e.CloseReason == CloseReason.UserClosing && !_closingForGood)
         {
@@ -3745,10 +3758,10 @@ internal sealed class MainForm : Form
 
     /// <summary>
     /// The window closes or hides: its normal size — the one before it was maximized or minimized — is
-    /// remembered between sessions, in logical pixels, once it was opened in this session (a hidden
-    /// start quit from the tray is not a use).
+    /// remembered between sessions, in logical pixels, with the monitor it stands on, once it was opened
+    /// in this session (a hidden start quit from the tray is not a use).
     /// </summary>
-    private void SaveWindowSize()
+    private void SaveWindowPlacement()
     {
         if (!_opened || !this._savesWindowSize)
         {
@@ -3757,13 +3770,16 @@ internal sealed class MainForm : Form
 
         // Maximized or minimized, the normal bounds minus the frame give the normal client size.
         var client = WindowState == FormWindowState.Normal ? ClientSize : RestoreBounds.Size - SizeFromClientSize(Size.Empty);
+
+        // The monitor holding most of the window; minimized, Windows answers with its normal position's.
+        string screen = Screen.FromControl(this).DeviceName;
         try
         {
-            AppSettings.SaveWindowClientSize(new Size(DeviceToLogicalUnits(client.Width), DeviceToLogicalUnits(client.Height)));
+            AppSettings.SaveWindowPlacement(new Size(DeviceToLogicalUnits(client.Width), DeviceToLogicalUnits(client.Height)), screen);
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            ShowStatus($"Window size not remembered: {ex.Message}", error: true);
+            ShowStatus($"Window placement not remembered: {ex.Message}", error: true);
         }
     }
 

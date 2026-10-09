@@ -10,7 +10,7 @@ namespace ImageGridFusion.UI;
 /// registry: the border color, whether the borders' Twitter corners are on by default, the file explorer's
 /// base folder, whether its panel is open, its width, its tile size, its pages per load, its view and
 /// open folder, its files' order, whether it searches the files' contents, the OCR result style, the window's
-/// size, the last folders of the file dialogs, and the maximum zoom (edited by hand only). Each save rewrites the whole file at once.
+/// size and screen, the last folders of the file dialogs, and the maximum zoom (edited by hand only). Each save rewrites the whole file at once.
 /// </summary>
 internal static class AppSettings
 {
@@ -34,6 +34,7 @@ internal static class AppSettings
     private const string MaxZoomName = "MaxZoom";
     private const string WindowWidthName = "WindowWidth";
     private const string WindowHeightName = "WindowHeight";
+    private const string WindowScreenName = "WindowScreen";
     private const string AddFolderName = "LastAddFolder";
     private const string SoundtrackFolderName = "LastSoundtrackFolder";
     private const string ExportFolderName = "LastExportFolder";
@@ -245,8 +246,15 @@ internal static class AppSettings
             ? new Size(width, height)
             : null;
 
-    /// <summary>Saves the window's client size, in logical pixels; throws an <see cref="IsSaveError"/> exception on failure.</summary>
-    public static void SaveWindowClientSize(Size size) => Save((WindowWidthName, size.Width), (WindowHeightName, size.Height));
+    /// <summary>The device name of the monitor the window was last used on (<c>\\.\DISPLAY2</c>); null when none was saved.</summary>
+    public static string? WindowScreen => Text(WindowScreenName);
+
+    /// <summary>
+    /// Saves the window's client size, in logical pixels, and the device name of its monitor, at once;
+    /// throws an <see cref="IsSaveError"/> exception on failure.
+    /// </summary>
+    public static void SaveWindowPlacement(Size size, string screen) =>
+        Save((WindowWidthName, size.Width), (WindowHeightName, size.Height), (WindowScreenName, screen));
 
     /// <summary>The folder of the files last picked in the Add images dialog; null when none was saved.</summary>
     public static string? AddFolder => Text(AddFolderName);
