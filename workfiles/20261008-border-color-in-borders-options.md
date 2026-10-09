@@ -176,6 +176,7 @@ says so rather than staying blank.
 | Code | 3 | 2026-10-09 | Color… button in the Borders options, ⚙ item removed, color in the undo history and the Resets |
 | Unit tests | 3 | 2026-10-09 | Not applicable — no test project |
 | README | 3 | 2026-10-09 | `README.md` / `README.fr.md`; also `GLOSSARY.md` / `GLOSSARY.fr.md` and `RULES.md` |
+| Merge | 3 | 2026-10-09 | `feature/border-color-in-borders-options` merged into `main` (`--no-ff`); task confirmed finished by the user |
 
 ---
 
