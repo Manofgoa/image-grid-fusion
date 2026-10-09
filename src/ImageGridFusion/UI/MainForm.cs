@@ -297,8 +297,12 @@ internal sealed class MainForm : Form
     private SoundFade _fade = SoundFade.Initial;
     private bool _fadeOn;
 
-    // The borders' options; their color is a setting of the ⚙ menu, remembered between sessions.
+    // The borders' options; the last color chosen is remembered between sessions.
     private readonly ComboBox _bordersStyle = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 90, Anchor = AnchorStyles.Left };
+    private readonly Button _bordersColor = new() { Text = "Color…", AutoSize = true, Anchor = AnchorStyles.Left, TextImageRelation = TextImageRelation.ImageBeforeText };
+
+    // The color the Color… button's swatch shows, so it is drawn again only when the borders' color changes.
+    private Color? _bordersSwatchColor;
     // In thousandths of the grid's shorter side: Control + wheel steps by 0.5 %.
     private readonly TrackBar _bordersThickness = OptionSlider((int)Math.Round(GridBorders.MinThickness * 1000), (int)Math.Round(GridBorders.MaxThickness * 1000), 5, controlStep: 5);
     private readonly Label _bordersThicknessLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
@@ -306,7 +310,6 @@ internal sealed class MainForm : Form
     private readonly Label _bordersOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _bordersOuterFrame = new() { Text = "Outer frame", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _bordersRounded = new() { Text = "Twitter corners", AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly ToolStripMenuItem _borderColor = new("Border color…");
     private readonly ToolStripMenuItem _twitterCornersDefault = new("Twitter corners by default");
 
     // Whether the borders' initial state has its Twitter corners: a setting of the ⚙ menu, remembered between sessions.
@@ -461,7 +464,7 @@ internal sealed class MainForm : Form
         _globalOptions[GlobalEffect.Soundtrack].Controls.AddRange([_soundtrackBrowse, _soundtrackFile, _soundtrackVolume, _soundtrackVolumeLabel]);
         _globalOptions[GlobalEffect.Fade].Controls.AddRange([_fadeDuration, _fadeDurationLabel, _fadeSquared, _fadeLinear]);
         _globalOptions[GlobalEffect.Borders].Controls.AddRange(
-            [_bordersStyle, _bordersThickness, _bordersThicknessLabel, _bordersOpacity, _bordersOpacityLabel, _bordersOuterFrame, _bordersRounded]);
+            [_bordersStyle, this._bordersColor, _bordersThickness, _bordersThicknessLabel, _bordersOpacity, _bordersOpacityLabel, _bordersOuterFrame, _bordersRounded]);
         this._globalOptions[GlobalEffect.Seams].Controls.AddRange([this._seamsDepth, this._seamsDepthLabel]);
         this._globalOptions[GlobalEffect.Cascade].Controls.AddRange([this._cascadePause, this._cascadePauseLabel]);
 
@@ -496,7 +499,7 @@ internal sealed class MainForm : Form
         _cancelButton.VisibleChanged += (_, _) => FitStatusWidth();
         _clearButton.Click += (_, _) => ClearAll();
         this._toolTip.SetToolTip(this._clearButton, "Removes every image and the global effects, and brings the format back to Twitter (Ctrl+N)");
-        _settingsMenu.Items.AddRange([_startWithWindows, _borderColor, _twitterCornersDefault, _explorerFolder, _explorerPages, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._ocrResultStyle, new ToolStripSeparator(), this._openAppFolder]);
+        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, _explorerFolder, _explorerPages, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._ocrResultStyle, new ToolStripSeparator(), this._openAppFolder]);
         for (int pages = FileExplorerPanel.MinPagesPerLoad; pages <= FileExplorerPanel.MaxPagesPerLoad; pages++)
         {
             int choice = pages;
@@ -517,8 +520,6 @@ internal sealed class MainForm : Form
         _toolTip.SetToolTip(_settingsButton, "Settings");
         _settingsButton.Click += (_, _) => ShowSettings();
         _startWithWindows.Click += (_, _) => ToggleStartWithWindows();
-        _borderColor.ToolTipText = "The color of the borders, remembered between sessions";
-        _borderColor.Click += (_, _) => PickBorderColor();
         _twitterCornersDefault.ToolTipText = "Whether the borders start with their Twitter corners, at start-up and after Clear all; remembered between sessions";
         _twitterCornersDefault.Click += (_, _) => ToggleTwitterCornersDefault();
         _explorerFolder.ToolTipText = "The folder the file explorer searches, with its subfolders; remembered between sessions";
@@ -724,7 +725,9 @@ internal sealed class MainForm : Form
             this._cascadePauseLabel.Text = PauseText(this._cascadePause.Value);
             this.ChangeCascade(cascade => cascade.WithPause(TimeSpan.FromSeconds(this._cascadePause.Value / 10.0)));
         };
-        _toolTip.SetToolTip(_bordersStyle, "Brackets at the grid's corners, or a gap between the cells; the borders' color is in the ⚙ settings");
+        _toolTip.SetToolTip(_bordersStyle, "Brackets at the grid's corners, or a gap between the cells");
+        this._toolTip.SetToolTip(this._bordersColor, "Chooses the borders' color, remembered between sessions");
+        this._bordersColor.Click += (_, _) => this.PickBorderColor();
         _toolTip.SetToolTip(_bordersThickness, "Width of the borders, as a share of the grid's shorter side");
         _toolTip.SetToolTip(_bordersOuterFrame, "Also draws the borders around the grid; the corner brackets already are its frame");
         _bordersStyle.SelectedIndexChanged += (_, _) => ChangeBorders(borders => borders with { Pattern = (BorderPattern)_bordersStyle.SelectedIndex });
@@ -818,7 +821,7 @@ internal sealed class MainForm : Form
             _blurIntensityIcon.Image?.Dispose();
             _backgroundOpacityIcon.Image?.Dispose();
 
-            _borderColor.Image?.Dispose();
+            this._bordersColor.Image?.Dispose();
             this._backgroundColor.Image?.Dispose();
             _colorDialog.Dispose();
         }
@@ -887,8 +890,12 @@ internal sealed class MainForm : Form
         }
     }
 
-    /// <summary>The ⚙ menu's Border color item shows the color as a swatch, drawn at the monitor's DPI.</summary>
-    private void UpdateBorderColorSwatch() => this.SetSwatch(this._borderColor, this._borders.Color);
+    /// <summary>The Borders' Color… button shows the borders' color as a swatch, drawn at the monitor's DPI.</summary>
+    private void UpdateBorderColorSwatch()
+    {
+        this._bordersSwatchColor = this._borders.Color;
+        this.SetSwatch(this._bordersColor, this._borders.Color);
+    }
 
     /// <summary>The ⚙ menu's Arrow color item shows the OCR arrow's color as a swatch, drawn at the monitor's DPI.</summary>
     private void UpdateOcrArrowColorSwatch() => this.SetSwatch(this._ocrArrowColor, this._explorer.ArrowStyle.Color);
@@ -1504,7 +1511,7 @@ internal sealed class MainForm : Form
 
     /// <summary>
     /// Puts back <paramref name="to"/>, the state <paramref name="from"/> stood for: the global effects —
-    /// the borders keeping the color of the ⚙ menu —, then the cells, the layout and the format.
+    /// the borders' color among them —, then the cells, the layout and the format.
     /// </summary>
     private void RestoreState(GridState from, GridState to)
     {
@@ -1514,7 +1521,7 @@ internal sealed class MainForm : Form
         this._soundtrackLevel = global.SoundtrackLevel;
         this._fade = global.Fade;
         this._fadeOn = global.FadeOn;
-        this._borders = global.Borders with { Color = this._borders.Color };
+        this._borders = global.Borders;
         this._bordersOn = global.BordersOn;
         this._seams = global.Seams;
         this._seamsOn = global.SeamsOn;
@@ -2057,7 +2064,7 @@ internal sealed class MainForm : Form
     private bool FormatInitial => _preview.Format == OutputFormat.Twitter;
 
     /// <summary>Whether the borders are as the app starts: off, with their initial settings.</summary>
-    private bool BordersInitial => !_bordersOn && _borders == GridBorders.Initial(_borders.Color, _roundedByDefault);
+    private bool BordersInitial => !_bordersOn && _borders == GridBorders.Initial(AppSettings.DefaultBorderColor, _roundedByDefault);
 
     /// <summary>Whether the soundtrack is in its initial state: no file, off, the level at 100 %.</summary>
     private bool SoundtrackInitial => _soundtrack is null && _soundtrackLevel == 1;
@@ -2462,8 +2469,6 @@ internal sealed class MainForm : Form
             item.Checked = (int)item.Tag! == this._explorer.ArrowStyle.Thickness;
         }
 
-        // Locked like the Global toolbar: an export keeps the borders it started with.
-        _borderColor.Enabled = !IsExporting;
         _settingsMenu.Show(_settingsButton, Point.Empty, ToolStripDropDownDirection.AboveRight);
     }
 
@@ -3051,7 +3056,7 @@ internal sealed class MainForm : Form
 
         if (effect is null or GlobalEffect.Borders)
         {
-            _borders = GridBorders.Initial(_borders.Color, _roundedByDefault);
+            _borders = GridBorders.Initial(AppSettings.DefaultBorderColor, _roundedByDefault);
             _bordersOn = false;
             _preview.Borders = ActiveBorders;
         }
@@ -3380,32 +3385,32 @@ internal sealed class MainForm : Form
     }
 
     /// <summary>
-    /// The ⚙ menu's Border color: the color dialog, preselected on the current color; the one chosen is
-    /// applied at once and remembered between sessions.
+    /// The Borders' Color…: the color dialog, preselected on the current color; the one chosen turns the
+    /// borders on like any of their options (RULES.md) and is remembered for the next start-up — a Reset,
+    /// Clear all or an undo changes the color in force, never the one remembered.
     /// </summary>
     private void PickBorderColor()
     {
-        if (IsExporting)
+        if (this.IsExporting)
         {
             return;
         }
 
-        _colorDialog.Color = _borders.Color;
-        if (_colorDialog.ShowDialog(this) != DialogResult.OK)
+        this._colorDialog.Color = this._borders.Color;
+        if (this._colorDialog.ShowDialog(this) != DialogResult.OK)
         {
             return;
         }
 
-        _borders = _borders with { Color = _colorDialog.Color };
-        UpdateBorderColorSwatch();
-        ApplyBorders();
+        var color = this._colorDialog.Color;
+        this.ChangeBorders(borders => borders with { Color = color });
         try
         {
-            AppSettings.SaveBorderColor(_borders.Color);
+            AppSettings.SaveBorderColor(color);
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            ShowStatus($"Border color not remembered: {ex.Message}", error: true);
+            this.ShowStatus($"Border color not remembered: {ex.Message}", error: true);
         }
     }
 
@@ -3636,6 +3641,11 @@ internal sealed class MainForm : Form
         _bordersOuterFrame.Checked = _borders.OuterFrame;
         _bordersRounded.Checked = _borders.Rounded;
         _syncingEffects = syncing;
+        if (this._bordersSwatchColor != this._borders.Color)
+        {
+            this.UpdateBorderColorSwatch();
+        }
+
         _bordersThicknessLabel.Text = ThicknessText(_bordersThickness.Value);
         _bordersOpacityLabel.Text = OpacityText(_bordersOpacity.Value);
         _bordersOuterFrame.Enabled = _borders.HasGap;
