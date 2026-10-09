@@ -1,6 +1,7 @@
 using System.Security;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using ImageGridFusion.Explorer;
 
 namespace ImageGridFusion.UI;
 
@@ -8,7 +9,7 @@ namespace ImageGridFusion.UI;
 /// The app's settings remembered between sessions, in <see cref="FileName"/> next to the exe — never the
 /// registry: the border color, whether the borders' Twitter corners are on by default, the file explorer's
 /// base folder, whether its panel is open, its width, its tile size, its pages per load, its view and
-/// open folder, whether it searches the files' contents, the OCR result style, the window's
+/// open folder, its files' order, whether it searches the files' contents, the OCR result style, the window's
 /// size, the last folders of the file dialogs, and the maximum zoom (edited by hand only). Each save rewrites the whole file at once.
 /// </summary>
 internal static class AppSettings
@@ -25,6 +26,7 @@ internal static class AppSettings
     private const string ExplorerFolderViewName = "ExplorerFolderView";
     private const string ExplorerOpenFolderName = "ExplorerOpenFolder";
     private const string ExplorerContentSearchName = "ExplorerContentSearch";
+    private const string ExplorerFileOrderName = "ExplorerFileOrder";
     private const string OcrArrowCurvedName = "OcrArrowCurved";
     private const string OcrArrowThicknessName = "OcrArrowThickness";
     private const string OcrArrowColorName = "OcrArrowColor";
@@ -183,6 +185,18 @@ internal static class AppSettings
     /// <summary>Saves the file explorer's view and open folder together; throws an <see cref="IsSaveError"/> exception on failure.</summary>
     public static void SaveExplorerFolderView(bool folderView, string openFolder) =>
         Save((ExplorerFolderViewName, folderView ? 1 : 0), (ExplorerOpenFolderName, openFolder));
+
+    /// <summary>
+    /// The file explorer's order of the files, its sort drop-down's — saved by name; <see cref="FileOrder.Newest"/>
+    /// when nothing was saved or the name is unknown. See workfiles/20261009-search-results-sort.md.
+    /// </summary>
+    public static FileOrder ExplorerFileOrder =>
+        Text(ExplorerFileOrderName) is { } name && Enum.TryParse(name, out FileOrder order) && order.ToString() == name
+            ? order
+            : FileOrder.Newest;
+
+    /// <summary>Saves the file explorer's order of the files; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveExplorerFileOrder(FileOrder order) => Save((ExplorerFileOrderName, order.ToString()));
 
     /// <summary>
     /// Whether the file explorer extracts the files' content texts — OCR included — for its search; false
