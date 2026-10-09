@@ -25,6 +25,15 @@ Agreed at scoping (Q1–Q4):
   when it is present.
 - A post with several media: the **first one only**.
 
+Agreed in design (Q5–Q8):
+
+- The zone is **one compact row** (layout B): a 56 px thumbnail left of the field and its button.
+- Downloads go to the **temp folder** (`%TEMP%\ImageGridFusion\`), not kept between sessions.
+- **yt-dlp** lives in a **subfolder next to the exe**; missing, the app **offers to install it
+  there with winget**.
+- **No extras**: no quoted post's media, no `og:image` / `og:video`, no link dropped on the zone,
+  no text cell for a media-less post.
+
 Components: `UI/FileExplorerPanel.cs` (the zone, a new row of `_content`), a new `Web/` folder
 (resolvers, download, yt-dlp), `UI/MainForm.cs` (`OnDragDrop` → `AddFilesAsync`, unchanged),
 `Imaging/ImageLoader.cs` and `Imaging/ShellThumbnail.cs` (the preview, reused).
@@ -36,8 +45,13 @@ Components: `UI/FileExplorerPanel.cs` (the zone, a new row of `_content`), a new
 ### Placement
 
 A new **last row** of the explorer's `_content` table (`FileExplorerPanel`, today 7 rows — row 6
-the tile size row), below the tile size slider and the sort drop-down. Its layout — the field, the
-button, the preview — is **open** (§ Open Questions, mockup).
+the tile size row), below the tile size slider and the sort drop-down, separated from it by a thin
+line. **One compact row** (layout B, ~65 logical px, its height DPI-scaled next to row 6's):
+
+- at the left, the **preview**, a 56 × 56 logical px box;
+- at its right, on a first line the **text field** and the **Load** button, on a second line the
+  **caption** — the state's text, or the file name and size once ready, cut with `…`, the whole
+  of it in the tooltip.
 
 ### Controls
 
@@ -45,15 +59,15 @@ button, the preview — is **open** (§ Open Questions, mockup).
   button. Ctrl+V, Ctrl+Z… are the field's own (a focused text field keeps its keys —
   `MainForm.ProcessCmdKey`'s whitelist).
 - A **Load** button, disabled while the field is blank.
-- A **preview** box showing, in turn:
+- The **preview** and the **caption** show, in turn:
 
-  | State | Shows |
-  |---|---|
-  | Empty | A dim hint: `Load a URL, then drag its media into a cell` |
-  | Resolving | A loader (`Looking for the media…`) |
-  | Downloading | The post's **poster** when the resolver gives one (X does), dimmed, under the loader and a progress `42 %` (or the size received when the length is unknown) |
-  | Ready | The media's **thumbnail** (`ShellThumbnail.TryLoad`, `ImageLoader` when Windows has none), a ▶ badge on a video, its file name and size below; tooltip `Drag into a cell` |
-  | Failed | The reason, in the status colour of the panel: `No photo or video in this post`, `Post not found or private`, `Site not supported — put yt-dlp.exe next to the app to load it`, a network error… |
+  | State | Preview | Caption |
+  |---|---|---|
+  | Empty | A dim 🔗 | `Load a URL, then drag its media into a cell` |
+  | Resolving | A loader | `Looking for the media…` |
+  | Downloading | The post's **poster** when the resolver gives one (X does), dimmed, under the loader | `Downloading… 42 %` (the size received when the length is unknown) |
+  | Ready | The media's **thumbnail** (`ShellThumbnail.TryLoad`, `ImageLoader` when Windows has none), a ▶ badge on a video; tooltip `Drag into a cell` | `x-brivael-2108570415463530561.mp4 · 4.2 MB` |
+  | Failed | A dim ⚠ | The reason: `No photo or video in this post`, `Post not found or private`, `Not a web address`, a network error… — and for a site only yt-dlp can load while it is missing, the **Install yt-dlp…** offer (§ yt-dlp) |
 
 - A new **Load** cancels the download in progress (`CancellationToken`); its partial file is
   deleted.
@@ -109,15 +123,37 @@ Checked on the example post (2026-10-09): the syndication endpoint answers witho
 
 ### yt-dlp
 
-- **Not shipped** with the app: the user puts it in place. Where it is looked for is **open**
-  (§ Open Questions).
+- **Not shipped** with the app. It is looked for in **one place only**: `yt-dlp\yt-dlp.exe`, a
+  subfolder next to the exe (`AppContext.BaseDirectory`, its name in one constant `FolderName`,
+  kebab-case — `../CLAUDE.md` § Folder Names). Neither the `PATH` nor a setting.
 - Run with `ProcessStartInfo.ArgumentList` (no shell), hidden window:
   `--no-playlist --newline -f "b[ext=mp4]/b" -o "<folder>/%(extractor)s-%(id)s.%(ext)s" -- <url>` —
   a **single-file** format, so no ffmpeg is needed to merge streams.
 - Its `[download]  42.3%` lines feed the progress; its exit code and last `ERROR:` line give the
   failure message.
-- Not found → the X and direct-link resolvers still work; any other site fails with
-  `Site not supported — put yt-dlp.exe next to the app to load it`.
+- Not found → the X and direct-link resolvers still work; any other site ends in **Failed** with
+  `This site needs yt-dlp` and an **Install yt-dlp…** link in the caption (§ Installing yt-dlp).
+
+#### Installing yt-dlp
+
+- **Install yt-dlp…** opens a confirmation showing the exact command it will run, and saying it
+  accepts winget's source and package agreements on the user's behalf:
+
+  ```
+  winget install --id yt-dlp.yt-dlp --exact --location "<exe folder>\yt-dlp" --skip-dependencies
+         --accept-package-agreements --accept-source-agreements --disable-interactivity
+  ```
+
+  The package is a **portable** one, so `--location` puts it in that folder; `--skip-dependencies`
+  leaves out `yt-dlp.FFmpeg` — the single-file format needs no ffmpeg.
+- **Yes** → run hidden (`ArgumentList`, no shell); the zone shows a loader and
+  `Installing yt-dlp…`; once winget exits with success and `yt-dlp.exe` is found in the folder (at
+  its root, else the first one below it), the **load is retried** by itself.
+- winget missing (`winget.exe` not found), or failing → **Failed** with the reason (winget's last
+  output line) and the folder where `yt-dlp.exe` can be put by hand.
+- An install is a user action: a `--new-instance` instance offers it too.
+- Updating yt-dlp is **not handled** (out of scope): a site it no longer reads fails with its own
+  error message.
 
 ### Download
 
@@ -127,7 +163,14 @@ Checked on the example post (2026-10-09): the syndication endpoint answers witho
 - File name: `x-<screen_name>-<id>.<ext>` for a post, the URL's last segment (sanitised) for a
   direct link, yt-dlp's template otherwise.
 - **Already there** — the same file name in the folder → reused, nothing downloaded.
-- Where the files go is **open** (§ Open Questions).
+- The files go to **`%TEMP%\ImageGridFusion\url-downloads\`** — a subfolder of the app's temp
+  folder (`MainForm.TempVideoFolder`), so that its cleanup is one folder whatever the extension
+  (`.png`, `.webm`, `.webp` included), its name in one constant `FolderName`.
+- **Emptied at start-up**, next to `CleanTempVideos` — a file in use is left for a later session.
+  A `--new-instance` instance **does not empty it** (RULES.md § Single Instance: no automatic
+  write of its own accord), so an agent's instance never deletes the user's downloads.
+- Accepted limit (Q6): a downloaded media made a favorite — a cell released on the explorer by its
+  ✥ handle — points to a temp file, gone after the next start-up.
 
 ---
 
@@ -136,9 +179,9 @@ Checked on the example post (2026-10-09): the syndication endpoint answers witho
 - **RULES.md** — a new § *Content From a URL*: one resolver chain (`Web/UrlResolver`), a new site
   adds a resolver; a downloaded media reaches a cell **as a file**, by the explorer's drag, never by
   a route of its own; the zone is out of the history; yt-dlp is optional and never shipped.
-- **GLOSSARY.md / GLOSSARY.fr.md** — *URL zone* (*zone URL*), *Resolver* (*résolveur*), and the
-  downloads folder if it is next to the exe.
-- **README.md / README.fr.md** — the feature in § Features, and yt-dlp as an optional companion.
+- **GLOSSARY.md / GLOSSARY.fr.md** — *URL zone* (*zone URL*), *Resolver* (*résolveur*).
+- **README.md / README.fr.md** — the feature in § Features, and yt-dlp as an optional companion
+  (the `yt-dlp\` folder, the **Install yt-dlp…** offer).
 - **TODO-FEATURES.md** — no row matches this request: nothing to mark.
 
 ---
@@ -148,7 +191,8 @@ Checked on the example post (2026-10-09): the syndication endpoint answers witho
 The repository has **no test project** (`src/ImageGridFusion/ImageGridFusion.csproj` only): **no
 unit test is created or updated**. The check is manual, in the running app — the example post
 (video), a photo post, a post without media, a deleted post, a direct `.jpg` / `.mp4` link, an HTML
-page with and without yt-dlp, a Load cancelled by another, the media dragged into two cells.
+page with and without yt-dlp, the yt-dlp install offer (accepted, cancelled), a Load cancelled by
+another, the media dragged into two cells, the downloads emptied at the next start-up.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
@@ -158,13 +202,14 @@ page with and without yt-dlp, a Load cancelled by another, the media dragged int
 
 ## Open Questions
 
-- [ ] Layout of the URL zone — A, B or C (mockup)?
-- [ ] Where do the downloaded files go — next to the exe (`downloads\`, kept) or in
-  `%TEMP%\ImageGridFusion\` (temporary)?
-- [ ] Where is `yt-dlp.exe` looked for — next to the exe, on the `PATH`, a path set in the ⚙ menu?
-- [ ] Which extras — the quoted post's media when the post has none, `og:image` / `og:video` for
+- [x] ~~Layout of the URL zone — A, B or C (mockup)?~~ → B, one compact row with a 56 px thumbnail
+- [x] ~~Where do the downloaded files go — next to the exe (`downloads\`, kept) or in
+  `%TEMP%\ImageGridFusion\` (temporary)?~~ → The temp folder (`url-downloads\` inside it)
+- [x] ~~Where is `yt-dlp.exe` looked for — next to the exe, on the `PATH`, a path set in the ⚙ menu?~~
+  → A subfolder next to the exe; missing, the app offers to install it there with winget
+- [x] ~~Which extras — the quoted post's media when the post has none, `og:image` / `og:video` for
   ordinary web pages, a link dragged from the browser onto the zone, a media-less post's text as a
-  text cell?
+  text cell?~~ → None
 
 ---
 
@@ -188,6 +233,20 @@ path, and a live check of the X syndication endpoint on the example post.
 - Proposed without a question (to confirm by reading): Enter loads; a new Load cancels the previous
   one; an already downloaded file is reused; the zone not persisted and out of the history; the
   preview stays draggable after a drop.
+
+### Iteration 2 — 2026-10-09
+
+Answers Q5–Q8, from a mockup of three layouts of the zone.
+
+- Layout B: one compact row — a 56 px preview left of the field, Load and a caption line.
+- Downloads in `%TEMP%\ImageGridFusion\url-downloads\`, emptied at start-up (not by a
+  `--new-instance` instance); a favorite made from one is an accepted limit.
+- yt-dlp looked for in `yt-dlp\` next to the exe only; missing, an **Install yt-dlp…** offer runs
+  `winget install --location` there (portable package, dependencies skipped) after a confirmation
+  showing the command, then retries the load.
+- No extras: quoted post, `og:` tags, link dropped on the zone, text of a media-less post — all out.
+- Proposed without a question (to confirm by reading): the `url-downloads\` subfolder rather than
+  the temp folder's root, so one cleanup covers every extension; yt-dlp updates not handled.
 
 ---
 
@@ -217,6 +276,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | How is the media behind the URL fetched? | Built-in (X / Twitter syndication API, direct links) + yt-dlp as an optional fallback | 2026-10-09 |
 | 3 | An X post with several media? | The first media only | 2026-10-09 |
 | 4 | Depth of the subject? | Straightforward — a single scout pass | 2026-10-09 |
+| 5 | Layout of the URL zone — A, B or C (mockup)? | B — one compact row | 2026-10-09 |
+| 6 | Where do the downloaded files go? | `%TEMP%\ImageGridFusion\` | 2026-10-09 |
+| 7 | Where is `yt-dlp.exe` looked for? | In a subfolder next to the exe; when not installed, offer to run a winget command putting it there | 2026-10-09 |
+| 8 | Which extras? | None | 2026-10-09 |
 
 ---
 
