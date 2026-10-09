@@ -11,11 +11,17 @@ namespace ImageGridFusion.Explorer;
 internal sealed class FolderTree
 {
     private readonly Dictionary<string, int> _counts;
+    private readonly IReadOnlyList<IndexEntry> _entries;
 
-    private FolderTree(Dictionary<string, int> counts, IReadOnlyList<IndexEntry> folders)
+    // The files directly in each folder, grouped on first use; then each folder's in an order, once sorted.
+    private Dictionary<string, List<IndexEntry>>? _filesIn;
+    private readonly Dictionary<(string Folder, FileOrder Order), IndexEntry[]> _sortedFilesIn = new();
+
+    private FolderTree(Dictionary<string, int> counts, IReadOnlyList<IndexEntry> folders, IReadOnlyList<IndexEntry> entries)
     {
         _counts = counts;
         Folders = folders;
+        this._entries = entries;
     }
 
     /// <summary>Every folder holding a file below it, relative to the base folder, the base folder itself aside.</summary>
@@ -38,7 +44,41 @@ internal sealed class FolderTree
         }
 
         var folders = counts.Keys.Select(folder => new IndexEntry(folder, DateTime.MinValue)).ToArray();
-        return new FolderTree(counts, folders);
+        return new FolderTree(counts, folders, entries);
+    }
+
+    /// <summary>
+    /// The files directly in a folder — its subfolders' left out — as the index holds them, in
+    /// <paramref name="order"/>: what a folder row's strip shows in the Details view (see
+    /// workfiles/20261009-explorer-details-view.md § A Folder Row). Grouped and sorted on first use, on
+    /// the UI thread.
+    /// </summary>
+    public IReadOnlyList<IndexEntry> FilesIn(string relativeFolder, FileOrder order)
+    {
+        if (this._sortedFilesIn.TryGetValue((relativeFolder, order), out var sorted))
+        {
+            return sorted;
+        }
+
+        if (this._filesIn is null)
+        {
+            this._filesIn = new Dictionary<string, List<IndexEntry>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in this._entries)
+            {
+                string folder = Parent(entry.RelativePath);
+                if (!this._filesIn.TryGetValue(folder, out var files))
+                {
+                    this._filesIn[folder] = files = [];
+                }
+
+                files.Add(entry);
+            }
+        }
+
+        sorted = this._filesIn.TryGetValue(relativeFolder, out var found) ? [.. found] : [];
+        Array.Sort(sorted, (a, b) => FileOrders.Compare(order, a, b));
+        this._sortedFilesIn[(relativeFolder, order)] = sorted;
+        return sorted;
     }
 
     /// <summary>The files below a folder, its subfolders' included; the whole index for the base folder ("").</summary>
