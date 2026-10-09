@@ -58,7 +58,10 @@ Out of scope: a column header, sorting by clicking a column, other columns (date
 - Placed in the tile size row (`_sizeRow`), **next to the Sort drop-down**.
 - **Two icon toggle buttons** (Q&A 9): a grid icon for **Thumbnails**, a list icon for
   **Details**; the current mode's button pressed, each with its tooltip (`Thumbnails`, `Details`).
-  One click switches.
+  One click switches. The glyphs are `▦` and `☰` (Segoe UI Symbol), the buttons the search row's
+  size (26 × 23), after the Sort drop-down (`FileExplorerPanel._thumbnailsView` / `_detailsView`).
+- The mode is the app setting `ExplorerView` (`AppSettings.ExplorerView`, saved by name, Thumbnails
+  when unknown), set in `MainForm` with the sort order and saved on `FileExplorerPanel.ViewChanged`.
 
 ### A Details Row
 
@@ -77,7 +80,12 @@ Disposition D of the mockup shown on 2026-10-09:
 - **Excerpt** on the line below, only when the file was found by its content.
 - The **heart** and the **light bulb** stay **on the thumbnail**, at a tile's corners, with the
   same clicks and tooltips (Q&A 11). The drag into a cell and the double-click work on the whole
-  row.
+  row. On a small thumbnail the medallions shrink with it, down to 14 logical px, their glyphs'
+  fonts scaled alike; the row is never shorter than the two medallions stacked.
+- The selected row gets a faint wash of the selection color, its name in that color; the hovered
+  row a fainter one. Rows are 4 logical px apart (the inset), not a tile's 8.
+- The name and the excerpt are drawn without padding, so they start on the same column; the name in
+  the panel's font, the size and the excerpt in the tiles' smaller one, grey.
 - The `Loading…` slot becomes a row of its own at the end of the list.
 
 ### A Folder Row
@@ -98,7 +106,13 @@ In the folder view, a folder in Details (Q&A 10):
   folder thumbnail's size**, side by side **as far right as the row goes**, never scrolling
   sideways: as many as fit.
 - The strip shows the files **directly in the folder** only, in the **sort order** chosen
-  (Q&A 13); a folder holding only subfolders has an empty strip.
+  (Q&A 13); a folder holding only subfolders has an empty strip. They are read **from the index**
+  (`FolderTree.FilesIn`, grouped and sorted once per folder and order), not the disk: a file
+  created since the last scan joins the strip after the next one.
+- Its thumbnails come from a cache of their own (`ThumbnailGrid._stripThumbnails`): loaded at
+  128 × 96, the largest a strip draws them, up to 1 000 kept, so resizing never reloads them and a
+  screen of strips never evicts itself. A file without a Shell thumbnail (a sound) leaves its box
+  empty.
 - The strip is **a picture only** (Q&A 14): its thumbnails have no tooltip, no drag, no click of
   their own — the whole row behaves as the folder.
 - No heart, no drag, a double-click opens it — as a folder tile.
@@ -125,7 +139,9 @@ In the folder view, a folder in Details (Q&A 10):
   a favorite elsewhere, a pasted favorite — reads it from the disk once.
 - **In French units, base 1024** (Q&A 7), as the user asked — a deliberate exception to the
   English UI: `812 octets`, `412 Ko`, `2,3 Mo`, `1,1 Go`; one decimal below 10 of a unit, none
-  above (`12 Ko`, `9,4 Mo`), the French decimal comma. An unknown size shows `—`.
+  above (`12 Ko`, `9,4 Mo`), the French decimal comma; `0 octet` and `1 octet` singular; a value
+  rounding up to 1 024 written in the next unit. An unknown size shows `—`
+  (`Explorer/FileSizes.cs`).
 
 ---
 
@@ -227,6 +243,30 @@ No open question left.
 Go given: **code, unit tests and documentation**, in a **worktree** on `feature/explorer-details-view`.
 The scope is frozen as the sections above stand. No test project (Q&A 12): checked by hand.
 
+### Iteration 5 — 2026-10-09 — 🧭 Implementation choices
+
+No project rule broken. The choices the frozen design left open, now in the sections above:
+
+- **View buttons**: `▦` / `☰` glyphs, 26 × 23, after Sort; the setting `ExplorerView` saved by name.
+- **Strip source**: the index (`FolderTree.FilesIn`), not the disk — consistent with the folder's
+  count, cheap per row; a file newer than the last scan is missing from the strip until the next.
+- **Strip cache**: a second `ThumbnailCache`, fixed 128 × 96 box, 1 000 entries
+  (`ThumbnailCache` takes its cap as an argument).
+- **Medallions** on a small Details thumbnail: shrunk to 14 logical px at least, the row kept tall
+  enough for both.
+- **Selection**: a faint wash over the whole row (stronger when selected), the name in the
+  selection color; rows 4 px apart.
+- **Excerpt**: one line, words added on each side in turn while the line holds them (the found
+  word near the middle), grey; cut with `…` when the found word alone is wider than the line.
+  `ContentIndex.WordsAround` gives the words; the tooltip's `ExcerptOf` now reads it too.
+- **Highlight**: `Explorer/HighlightSpans.cs`, the text folded one character at a time with
+  `FileSearch.Fold` so each folded letter maps back to its original one (a surrogate pair kept
+  whole); spans merged.
+- **Size text**: singular `octet` for 0 and 1; a rounding to 1 024 moves to the next unit.
+- **Checks**: the worktree's exe got copies of the main exe's `settings.json`, `favorites.txt` and
+  `index\` so it runs on real data; checked by window captures (favorites, a content search, the
+  folder view's base folder). Its copy starts in Details on the base folder.
+
 ---
 
 ## Implementation Log
@@ -236,10 +276,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README (EN + FR) | | | |
-| Glossary (EN + FR) | | | |
+| Code | 4 | 2026-10-09 | Explorer helpers; the Details view in `ThumbnailGrid` and the view buttons in `FileExplorerPanel`; the `ExplorerView` setting |
+| Unit tests | 4 | 2026-10-09 | No test project (Q&A 12) — none created; checked by hand in the app |
+| README (EN + FR) | 4 | 2026-10-09 | New **Details view** bullet after Sort; the settings file lists the display |
+| Glossary (EN + FR) | 4 | 2026-10-09 | New *Details view* row |
 
 ---
 
