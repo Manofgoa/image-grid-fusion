@@ -65,6 +65,8 @@ Components:
 - A checkbox **Inner lines** in the Borders' options, just before **Outer frame**, **checked by
   default**.
 - Enabled like Outer frame: in the line styles only, disabled in Corners, its setting kept.
+- **Outer frame** is **checked by default** too (`GridBorders.Initial`), so a line style starts with
+  its lines between the cells and around the grid.
 - The two checkboxes are independent: both may be unchecked (§ Rendering).
 - An ordinary option: acting on it turns the Borders on (`ChangeBorders`); the Borders' Reset, the
   Global Reset and *Clear all* bring it back checked; **not remembered** between sessions.
@@ -145,6 +147,13 @@ Scope frozen as the sections above stand.
   the cells touch without inner lines, are unchanged with neither, and are unchanged with both.
 - Spotted, not done (out of scope): the README documents no **Seams** global effect at all.
 
+### Iteration 5 — 2026-10-09 — ⚙️ Post-implementation — Outer frame checked by default
+
+User request: the **Outer frame** checkbox comes **checked by default**, like Inner lines.
+`GridBorders.Initial` sets `OuterFrame = true`: a line style picked for the first time, or after a
+Reset or *Clear all*, draws its lines between the cells and around the grid. The Corners style, the
+Borders' default, is unaffected. § UI and the README (EN + FR) updated.
+
 ---
 
 ## Implementation Log
@@ -154,9 +163,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 3 | 2026-10-09 | `GridBorders.InnerLines` / `IsLineStyle`; the Inner lines checkbox |
+| Code | 3, 5 | 2026-10-09 | `GridBorders.InnerLines` / `IsLineStyle`; the Inner lines checkbox; Outer frame checked by default (5) |
 | Unit tests | 3 | 2026-10-09 | Not applicable: no test project in the repository; checked offscreen (Iteration 4) |
-| README (EN + FR) | 3 | 2026-10-09 | The Inner lines option, the gap only with it |
+| README (EN + FR) | 3, 5 | 2026-10-09 | The Inner lines option, the gap only with it; Outer frame on by default (5) |
 | Glossary (EN + FR) | 3 | 2026-10-09 | Borders and Gap rows |
 
 ---
