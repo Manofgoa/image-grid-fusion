@@ -135,6 +135,11 @@ at the mouse, disappearing on hold, Shift, fine angle.
       `PanMagnet`, or no unit tests?~~ → No unit tests
 - [x] ~~Progressive opacity: which **minimum** opacity at the edge of the reach?~~ → 20 %
 - [x] ~~Does the **gap bar** fade with the guide, or stay at full opacity?~~ → Full opacity
+- [ ] The **arrow keys** now move the image with the same stops, their guides drawn on the selected
+      cell (`GridPreview.KeyPanned`): do they get the approach and the gap bar too — and where does
+      the bar go, with no mouse to follow?
+- [ ] The **position readout** (cross on the image's center, dashed line from the cell's center)
+      shows during the move: near the center stop, how do the gap bar and it share the cell?
 
 ---
 
@@ -169,6 +174,14 @@ in the order the requests were made.
 - Answers (Q&A #9–#11): no unit tests; minimum opacity 20 %; the gap bar stays at full opacity.
 - No open question left: the design is ready for the go.
 
+### Iteration 4 — 2026-10-10
+
+- The go question was dismissed on 2026-09-26; no code was written.
+- Re-read against the current code: `PaintGuideLines` / `GuidePen(opacity)` now draw guides at any
+  opacity, the halo fading with them — the progressive opacity reuses them. Two premises changed and
+  reopen the design: the arrow keys now move the image through the stops (`PanMagnet.Move`
+  `stepwise`, guides on the selected cell), and the position readout shows during the move.
+
 ---
 
 ## Implementation Log
@@ -202,7 +215,9 @@ Questions asked by the agent during design, with user responses.
 | 9 | Unit tests: create a test project for `PanMagnet`, or none? | No unit tests | 2026-09-26 |
 | 10 | Progressive opacity: which minimum opacity at the edge of the reach? | 20 % | 2026-09-26 |
 | 11 | Does the gap bar fade with the guide, or stay at full opacity? | Full opacity | 2026-09-26 |
+| 12 | Arrow keys: approach and gap bar too, and where does the bar go without a mouse? | | |
+| 13 | Gap bar and position readout near the center stop: how do they share the cell? | | |
 
 ---
 
-*Last updated: 2026-09-26*
+*Last updated: 2026-10-10*
