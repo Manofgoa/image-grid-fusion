@@ -15,13 +15,14 @@ public enum BorderPattern
 }
 
 /// <summary>
-/// The Borders global effect: a gap between the cells filled by a line style, with an optional outer
-/// frame, or brackets over the images at the grid's four corners; with <paramref name="Rounded"/>, the
+/// The Borders global effect: a line style drawn in a gap between the cells — with
+/// <paramref name="InnerLines"/> — and as an outer frame around the grid — with
+/// <paramref name="OuterFrame"/> — or brackets over the images at the grid's four corners; with <paramref name="Rounded"/>, the
 /// grid's outer corners rounded the way Twitter / X shows a posted image, the brackets and the frame
 /// following the curve; the corner brackets, drawn over the images, at <paramref name="Opacity"/>. Its
 /// width is a fraction of the canvas's shorter side, so the preview and every export size look the same.
 /// </summary>
-public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool OuterFrame, Color Color, bool Rounded, double Opacity)
+public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool InnerLines, bool OuterFrame, Color Color, bool Rounded, double Opacity)
 {
     public const double MinThickness = 0.001;
     public const double MaxThickness = 0.06;
@@ -39,10 +40,13 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool O
     public const double CornerRadiusShare = 0.03;
 
     /// <summary>The borders as the app starts and as Clear all leaves them, in <paramref name="color"/>, their corners <paramref name="rounded"/> or not.</summary>
-    public static GridBorders Initial(Color color, bool rounded) => new(BorderPattern.Corners, DefaultThickness, false, color, rounded, 1.0);
+    public static GridBorders Initial(Color color, bool rounded) => new(BorderPattern.Corners, DefaultThickness, true, false, color, rounded, 1.0);
 
-    /// <summary>Whether the cells shrink to leave a gap between them: every style but the corners.</summary>
-    public bool HasGap => Pattern != BorderPattern.Corners;
+    /// <summary>Whether the borders are drawn as a line style — inner lines, outer frame: every style but the corners.</summary>
+    public bool IsLineStyle => Pattern != BorderPattern.Corners;
+
+    /// <summary>Whether the cells shrink to leave a gap between them: a line style with its inner lines.</summary>
+    public bool HasGap => IsLineStyle && InnerLines;
 
     /// <summary>The border width on <paramref name="canvas"/>, in pixels, at least one.</summary>
     public int Width(Size canvas) => Math.Max(1, (int)Math.Round(Thickness * Math.Min(canvas.Width, canvas.Height)));
@@ -70,24 +74,26 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool O
     }
 
     /// <summary>
-    /// The cells as drawn: each shrinks by half the width on every edge it shares with a neighbour, and,
-    /// with the outer frame, by the whole width on the canvas edge. Unchanged in the corners style.
+    /// The cells as drawn: with the inner lines, each shrinks by half the width on every edge it shares
+    /// with a neighbour, and, with the outer frame, by the whole width on the canvas edge. Unchanged in the
+    /// corners style.
     /// </summary>
     public Rectangle[] Inset(Rectangle[] slots, Size canvas)
     {
-        if (!HasGap)
+        if (!IsLineStyle)
         {
             return slots;
         }
 
         int width = Width(canvas);
-        int half = width / 2;
+        int inner = InnerLines ? width : 0;
+        int half = inner / 2;
         int outer = OuterFrame ? width : 0;
         return slots.Select(s =>
         {
             // The cell before a boundary ends half a width short of it, the one after starts a width later.
-            int left = s.Left == 0 ? outer : s.Left - half + width;
-            int top = s.Top == 0 ? outer : s.Top - half + width;
+            int left = s.Left == 0 ? outer : s.Left - half + inner;
+            int top = s.Top == 0 ? outer : s.Top - half + inner;
             int right = s.Right >= canvas.Width ? canvas.Width - outer : s.Right - half;
             int bottom = s.Bottom >= canvas.Height ? canvas.Height - outer : s.Bottom - half;
             return new Rectangle(left, top, Math.Max(1, right - left), Math.Max(1, bottom - top));
@@ -100,7 +106,7 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool O
     /// </summary>
     public void Draw(Graphics g, Rectangle[] slots, Size canvas)
     {
-        if (!HasGap)
+        if (!IsLineStyle)
         {
             DrawOver(g, canvas);
             return;
@@ -144,7 +150,7 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool O
         int width = Width(canvas);
         float radius = Radius(canvas);
         using var brush = new SolidBrush(Color);
-        if (HasGap)
+        if (IsLineStyle)
         {
             if (OuterFrame && radius > 0)
             {
@@ -326,14 +332,14 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool O
     }
 
     /// <summary>
-    /// The stretches of gap to draw a line style along: one per boundary line, cells facing each other
-    /// over it merged into one stretch so a shared edge is drawn once; then the outer frame's sides. A
-    /// stretch runs along the drawn cells, so it stops where a crossing gap begins.
+    /// The stretches of gap to draw a line style along: with the inner lines, one per boundary line, cells
+    /// facing each other over it merged into one stretch so a shared edge is drawn once; then the outer
+    /// frame's sides. A stretch runs along the drawn cells, so it stops where a crossing gap begins.
     /// </summary>
     private IEnumerable<Band> Bands(Rectangle[] slots, Rectangle[] cells, Size canvas, int width)
     {
         int half = width / 2;
-        foreach (bool vertical in new[] { true, false })
+        foreach (bool vertical in InnerLines ? new[] { true, false } : [])
         {
             int end = vertical ? canvas.Width : canvas.Height;
             var lines = slots.Zip(cells)
