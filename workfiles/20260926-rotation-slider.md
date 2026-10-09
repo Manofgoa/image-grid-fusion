@@ -9,8 +9,9 @@
 
 ## Overview
 
-Today the Rotate effect's options are four quarter-turn buttons (**0°**, **90°**, **180°**,
-**270°**) and a fine-angle slider from −45° to +45°, added to the quarter turn. The user wants a
+Today the Rotate effect's options are four quarter-turn option thumbnails (**0°**, **90°**,
+**180°**, **270°**) and a fine-angle slider from −45° to +45°, added to the quarter turn;
+Ctrl+R / Ctrl+Shift+R turn the hovered or selected image a quarter turn. The user wants a
 single slider able to go all the way around the circle.
 
 Relevant components:
@@ -20,14 +21,16 @@ Relevant components:
 | `Composition/ImageLook.cs` | `Rotation` (0/90/180/270) + `FineAngle` (±`MaxFineAngle` = 45); `Rotate(quarterTurns)` turns the flips and the focus with the image; `WithRotation`, `WithFineAngle`; `KeptRotation` |
 | `Composition/FitCalculator.cs` | `ComputeTurned(cell, orientedSize, zoom, focus, fineAngle)` — the cover zoom and the turn transform around the cell's center |
 | `Composition/Compositor.cs` | `DrawCell`: orients the bitmap (quarter turn + flips), then applies the fine-angle turn |
-| `UI/MainForm.cs` | `_quarterTurns` (4 option buttons), `_fineAngle` (`OptionSlider(-45, 45, 5)`, 160 × 26 px), `_fineAngleLabel`, `SetFineAngle`, the sync of the options with the selected cell |
+| `UI/MainForm.cs` | `_quarterTurns` (a `QuarterTurnStrip`), `_fineAngle` (`OptionSlider(-45, 45, 5)`, 160 × 26 px), `_fineAngleLabel`, `SetFineAngle`, `TurnQuarter` (Ctrl+R / Ctrl+Shift+R, `workfiles/20260930-rotation-ctrl-r.md`), the sync of the options with the selected cell |
+| `UI/QuarterTurnStrip.cs` | The four quarter-turn option thumbnails (`ThumbnailStrip<int>`), the one the angle falls exactly on pressed |
 | `UI/GridPreview.cs` | Pan stops and zoom around the cursor, computed with `FineAngle` |
 
 ---
 
 ## Options Toolbar — Rotate
 
-- The four quarter-turn buttons are **removed**.
+- The four quarter-turn option thumbnails: see Open Questions (removed by Q&A #1, when they were
+  text buttons).
 - One slider, **−180° → +180°**, by 1°, centered on 0°; its label reads `Angle: +37°` (same format
   as today: sign, then degrees; `0°` without sign).
 - **No snapping**: the angle moves freely, degree by degree.
@@ -54,6 +57,10 @@ Relevant components:
 - `KeptRotation`, `TurnOn` / `TurnOff` / `Reset` keep working on (`Rotation`, `FineAngle`), unchanged.
 - `MaxFineAngle` stays (internal bound of the decomposition); the UI no longer uses it.
 
+## Ctrl+R / Ctrl+Shift+R
+
+- See Open Questions: what a quarter turn does to an angle that is not on a quarter.
+
 ## Cover
 
 - Unchanged behaviour, now on the whole circle: at any angle, the image turns around the center of
@@ -62,11 +69,14 @@ Relevant components:
 
 ## Documentation
 
-- **README** § *Rotate*: the options become one angle slider from −180° to +180° by 1°; the
-  quarter-turn buttons sentence goes; "at a fine angle" becomes "at any angle other than a quarter
-  turn".
-- **GLOSSARY**: *Fine angle* is replaced by **Angle** — the Rotate effect's angle, −180° to +180°,
-  the image zoomed to keep covering its cell.
+- **README** and **README.fr** (same commit, `../CLAUDE.md` § French Versions) § *Rotate*: the
+  options become one angle slider from −180° to +180° by 1°; the quarter-turn sentence follows the
+  Open Question; the 8 mentions of "fine angle" (Background edges, Crop, Zoom…) become "an angle
+  other than a quarter turn" where they speak to the user.
+- **GLOSSARY** and **GLOSSARY.fr**: a new **Angle** row — the Rotate effect's angle, −180° to +180°,
+  the image zoomed to keep covering its cell. *Fine angle* stays, redefined as the code's ±45° part
+  of the angle beyond its nearest quarter turn (`ImageLook.FineAngle`), so RULES.md, which names it
+  in the Crop and Zoom rules, stays true untouched.
 
 ---
 
@@ -87,6 +97,10 @@ MP4).
 ## Open Questions
 
 - [x] ~~Page step of the slider (click on the track, PageUp / PageDown): 15°, 45° or 90°?~~ → 15°
+- [ ] The four quarter-turn option thumbnails, now pictograms: removed as decided (Q&A #1), or kept
+      beside the slider as shortcuts to 0°, 90°, 180°, 270°?
+- [ ] Ctrl+R / Ctrl+Shift+R on an angle off a quarter (e.g. +37°): add ±90° keeping the rest
+      (+127°), or go to the next quarter turn that way (+90°)?
 - [x] ~~Width of the slider: 361 positions on today's 160 px leave ~0.4 px per degree with the
       mouse. Keep 160 px (the arrows give the exact degree), or widen it (e.g. 360 px, 1 px per degree)?~~
       → 360 px, 1 px per degree
@@ -126,6 +140,15 @@ kept part on the same content; the Crop's consumers read `ImageLook.Shown`, whic
 fine decomposition leaves unchanged. The rest of the rotation code (quarter-turn buttons, fine-angle
 slider, `WithRotation` / `WithFineAngle`) is as the design describes. No open question.
 
+### Iteration 5 — 2026-10-10
+
+Design re-checked against the code again. Two changes landed since: the quarter turns became option
+thumbnails (`QuarterTurnStrip`, `workfiles/20261007-effect-option-buttons.md`), and Ctrl+R /
+Ctrl+Shift+R turn an image a quarter turn, the fine angle back to 0°
+(`workfiles/20260930-rotation-ctrl-r.md`). Both reopen a question: whether the thumbnails go, and
+what a quarter turn does to a free angle. The documentation now includes the French README and
+glossary, and *Fine angle* is kept in the glossary as the code's term so RULES.md stays untouched.
+
 ---
 
 ## Implementation Log
@@ -156,8 +179,10 @@ Questions asked by the agent during design, with user responses.
 | 7 | Page step (a click on the slider's bar beside the thumb, PageUp / PageDown): 15°, 45° or 90°? | 15° | 2026-09-26 |
 | 8 | Go for the implementation? | No — the gate holds | 2026-09-26 |
 | 9 | Go for the implementation? | Dismissed — asked again | 2026-09-30 |
-| 10 | Go for the implementation? | | |
+| 10 | Go for the implementation? | Dismissed | 2026-09-30 |
+| 11 | Quarter-turn thumbnails: removed, or kept beside the slider? | | |
+| 12 | Ctrl+R on an angle off a quarter: +90° keeping the rest, or the next quarter turn? | | |
 
 ---
 
-*Last updated: 2026-09-30*
+*Last updated: 2026-10-10*
