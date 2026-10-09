@@ -222,6 +222,11 @@ The folder row's strip settled (Q&A 13–14): the files directly in the folder, 
 an empty strip for a folder of subfolders only; a picture only, the row behaving as the folder.
 No open question left.
 
+### Iteration 4 — 2026-10-09 — ✅ Implemented
+
+Go given: **code, unit tests and documentation**, in a **worktree** on `feature/explorer-details-view`.
+The scope is frozen as the sections above stand. No test project (Q&A 12): checked by hand.
+
 ---
 
 ## Implementation Log
