@@ -171,6 +171,11 @@ the number of words in the name kept for several words; the order remembered in 
 the drop-down at the end of the tile size row, bottom right, rather than either place proposed; the
 `index 3` format with the size, an `index 2` file still read. No Open Question left.
 
+### Iteration 4 — 2026-10-09 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree (`.claude/worktrees/search-results-sort`,
+branch `feature/search-results-sort`). Scope frozen as the sections above stand.
+
 ---
 
 ## Implementation Log
