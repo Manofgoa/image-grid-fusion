@@ -223,9 +223,14 @@ drafted by `workfiles/20260925-global-fade.md`). § Effects above covers the cel
 | Persistence | Not persisted | Not persisted |
 
 - A global effect may read an **app setting** kept outside its state and remembered between
-  sessions — the Borders' color, set from the ⚙ menu and stored in the settings file
+  sessions — the Twitter corners' default, set from the ⚙ menu and stored in the settings file
   (`UI/AppSettings.cs`, see § App Settings). The effect's own state stays not persisted (origin:
   `workfiles/20260926-cell-borders.md`).
+- An option of a global effect may **remember its last chosen value** as its start-up value — the
+  Borders' color, set from their options (origin: `workfiles/20261008-border-color-in-borders-options.md`).
+  It stays an ordinary option otherwise: the Resets and *Clear all* bring back its default, the undo
+  history covers it, and only a value chosen by the user is saved — never one a Reset, *Clear all* or
+  a restore puts back.
 - A global effect that changes the cells' geometry (the Borders' gap) does it in
   `Compositor.Cells` / `Compositor.Draw`, so the preview and every export shrink the cells alike;
   hit-testing keeps the **unshrunk slots**, so no dead zone appears between the cells.
@@ -299,7 +304,7 @@ Applies to everything the user composes (origin: `workfiles/20261006-undo-redo.m
   effects. Only references and immutable values: a new piece of composed state joins the snapshot
   (`MainForm.CaptureState`) and the restore (`MainForm.RestoreState`), never a per-action inverse.
 - **Out of the history**: the selection, the selected tabs, the playback position, the app settings
-  (§ App Settings — the Borders' color is left out of the step, a restore keeps the current one),
+  (§ App Settings),
   the file explorer, the last video.
 - Steps are committed by `GridHistory` **once the state settles** — unchanged for ~300 ms, no mouse
   button held, no gesture running (`GridPreview.InGesture`): no route commits its own step, so a new

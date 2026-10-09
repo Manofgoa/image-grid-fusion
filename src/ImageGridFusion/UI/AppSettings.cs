@@ -94,10 +94,10 @@ internal static class AppSettings
         File.Move(temporary, FilePath, overwrite: true);
     }
 
-    /// <summary>The border color before one is chosen.</summary>
+    /// <summary>The border color before one is chosen, and the one the Borders' Resets and Clear all bring back.</summary>
     public static readonly Color DefaultBorderColor = Color.HotPink;
 
-    /// <summary>The color of the borders; <see cref="DefaultBorderColor"/> when none was saved.</summary>
+    /// <summary>The last color chosen for the borders, theirs at start-up; <see cref="DefaultBorderColor"/> when none was saved.</summary>
     public static Color BorderColor => Int(BorderColorName) is int argb ? Color.FromArgb(argb) : DefaultBorderColor;
 
     /// <summary>Saves the border color; throws an <see cref="IsSaveError"/> exception on failure.</summary>

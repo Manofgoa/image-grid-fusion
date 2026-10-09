@@ -83,6 +83,8 @@ The color becomes part of the effect's state like its other settings (RULES.md �
   with the current one, and the `GlobalState` comment changes accordingly. `GridHistory.Describe`
   already labels a Borders change.
 - **Settings key**: unchanged (`BorderColor`), so a color saved by an earlier version is taken back.
+- **Swatch**: refreshed in `UpdateBorders` whenever the borders' color differs from the one it shows
+  (`_bordersSwatchColor`) — a pick, a Reset, *Clear all*, an undo — and redrawn at a DPI change.
 
 ---
 
@@ -92,7 +94,7 @@ The color becomes part of the effect's state like its other settings (RULES.md �
 |---|---|
 | `README.md` / `README.fr.md` | § Borders *Color* line: the Color… button of the Borders options; the overview bullet (line 46); § Undo: the borders' color no longer listed as not covered; the ⚙ menu paragraph no longer lists Border color; § Settings file keeps *border color* (still remembered) |
 | `GLOSSARY.md` / `GLOSSARY.fr.md` | *Borders*: its color set from its options and remembered, no longer an app setting of the ⚙ menu |
-| `RULES.md` | § Global Effects: the Borders' color is no longer the example of an app setting read by a global effect — reworded (a global effect's option may be remembered between sessions); § Undo History: the Borders' color no longer left out of the step |
+| `RULES.md` | § Global Effects: the app-setting bullet takes the Twitter corners' default as its example, and a new bullet says a global effect's option may remember its last chosen value (the Borders' color) while staying an ordinary option; § Undo History: the Borders' color no longer left out of the step |
 
 ---
 
@@ -141,6 +143,27 @@ color being the start-up one only; **only a color chosen in the dialog** is reme
 Consequence written into § Behaviour: with a remembered color other than hotpink, the Borders are
 not in their initial state at start-up, so their Resets and *Clear all* are enabled from the start.
 
+### Iteration 3 — 2026-10-09 — ✅ Implemented
+
+Go given: code, unit tests and documentation (no test project, so no test), in a worktree on
+`feature/border-color-in-borders-options`. Scope frozen as the design sections stand.
+
+### Iteration 4 — 2026-10-09 — 🧭 Implementation choices
+
+No rule broken. Choices the design did not state:
+
+- **Swatch refresh**: `UpdateBorders` (run by every `UpdateButtons`) redraws the Color… button's swatch
+  only when the borders' color differs from the one it shows (`_bordersSwatchColor`), so a Reset,
+  *Clear all* or an undo updates it without a bitmap drawn at each refresh.
+- **Picking the color in force again** (OK without changing it) still turns the Borders on and saves
+  it — it is a choice made in the dialog.
+- **RULES.md § Global Effects**: rather than rewording the app-setting bullet, it keeps its rule with
+  the Twitter corners' default as its example, and a new bullet states the remembered option
+  (default on Reset, in the undo history, only a user's choice saved).
+- **Comments** updated with the code: `GlobalState` (the color is now part of a step),
+  `AppSettings.DefaultBorderColor` / `BorderColor` (the Reset default, the start-up color), the
+  Borders' style tooltip no longer pointing at the ⚙ menu.
+
 ---
 
 ## Implementation Log
@@ -150,9 +173,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable — no test project |
-| README | | | |
+| Code | 3 | 2026-10-09 | Color… button in the Borders options, ⚙ item removed, color in the undo history and the Resets |
+| Unit tests | 3 | 2026-10-09 | Not applicable — no test project |
+| README | 3 | 2026-10-09 | `README.md` / `README.fr.md`; also `GLOSSARY.md` / `GLOSSARY.fr.md` and `RULES.md` |
 
 ---
 
@@ -169,7 +192,8 @@ Questions asked by the agent during design, with user responses.
 | 5 | What is the default brought back by the Resets and *Clear all*? | Hotpink; the remembered color is taken back at start-up only | 2026-10-08 |
 | 6 | Which changes overwrite the remembered color? | Only a color chosen in the Color… dialog | 2026-10-08 |
 | 7 | Where does the Color… button sit in the Borders options row? | Right after the style drop-down | 2026-10-08 |
+| 8 | Go for the implementation? Scope, and where? | Code, unit tests and documentation; in a worktree | 2026-10-09 |
 
 ---
 
-*Last updated: 2026-10-08*
+*Last updated: 2026-10-09*

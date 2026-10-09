@@ -6,8 +6,7 @@ namespace ImageGridFusion.UI;
 internal readonly record struct CellState(SourceImage Image, ImageLook Look);
 
 /// <summary>
-/// The global effects as a step holds them. The borders' color is an app setting of the ⚙ menu, not
-/// part of the history: it is left out, and a restore keeps the current one.
+/// The global effects as a step holds them, the borders' color among their settings.
 /// </summary>
 internal sealed record GlobalState(
     Soundtrack? Soundtrack,
