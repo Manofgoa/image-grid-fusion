@@ -18,14 +18,17 @@ a round badge reading *I SUPPORT THE CURRENT THING* on a circle, gives nothing.
 
 The work adds:
 
-- **Two more indexing passes**, run one after the other over **every image** once the Windows pass is
+- **More indexing passes**, run one after the other over **every image** once the Windows pass is
   done, each with **its own progress bar**: **RapidOCR** (PaddleOCR PP-OCRv5 models through ONNX
-  Runtime), then **Reshaped** (Windows OCR on reshaped copies of the image — the ring unrolled, the
-  colours inverted).
+  Runtime), then **Inverted** and **Ring** (Windows OCR on reshaped copies of the image — the colours
+  inverted, the ring unrolled).
 - **A spaces-ignored match in the search**: the typed word compared with the OCR text with its spaces
   removed, so letters the OCR read apart (`S U P P O R T`, `SUP PORT`) are found. Not an OCR pass: it
   works on the whole index at once, with no bar.
-- **The RapidOCR models downloaded on demand**, offered when the OCR is turned on in the ⚙ menu.
+- **Words found on odd shapes weigh less**: a file found only by the Ring pass ranks after the files
+  found on straight text.
+- **RapidOCR downloaded on demand** — its models and the native DLLs it runs on — offered when the OCR
+  is turned on in the ⚙ menu, and from a ⚙ menu item while missing.
 
 The search keeps working while the passes run, as it does today: the results are refreshed every few
 seconds as the texts arrive.
@@ -54,43 +57,48 @@ the CPU; models loaded in ~0.5 s.
 | # | Pass | Engine | Runs on | Needs |
 |---|---|---|---|---|
 | 1 | **Windows** | Windows OCR, fr + en — today's pass, unchanged | Images, a GIF's first frame, a PDF's first page — what `ContentExtractor.KindOf` calls `Image` / `Pdf` | Nothing new |
-| 2 | **RapidOCR** | `RapidOcrNet` (PP-OCRv5 latin: detection, orientation, recognition) | The same files, every one of them | The models in `ocr-models\` |
-| 3 | **Reshaped** | Windows OCR on reshaped copies (§ Reshaped Pass) | The same files, every one of them | Nothing new |
+| 2 | **RapidOCR** | `RapidOcrNet` (PP-OCRv5 latin: detection, orientation, recognition) | The same files, every one of them | RapidOCR downloaded (§ RapidOCR Download) |
+| 3 | **Inverted** | Windows OCR on the image's colours inverted (§ Reshaped Copies) | The same files, every one of them | Nothing new |
+| 4 | **Ring** | Windows OCR on the image's ring unrolled (§ Reshaped Copies) | The same files, every one of them | Nothing new |
 
-- **One worker, the passes in order**: pass 1 over every file that needs it, then pass 2, then pass 3.
+- **One worker, the passes in order**: pass 1 over every file that needs it, then pass 2, 3, 4.
   A rescan that brings new or changed files runs pass 1 on them first, then carries on. One loop, one
   save cadence, one pause rule (`FileExplorerPanel.Extract`): paused while the thumbnails load or the
   user types, saved every 50 files / 30 s and at the end, refreshed every few seconds.
 - **The texts add up**: each pass keeps its own text and word boxes; the search reads them all. A
   pass never replaces another's text.
 - **A changed file starts over**: when its stamp (size, last write) changes, pass 1 re-reads it and
-  its pass 2 and 3 texts are dropped, to be redone.
-- **Pass 2 without its models** is skipped: its files stay *not done*, its bar hidden, and it runs as
-  soon as the models are there (downloaded, then the extraction restarted).
+  its later passes' texts are dropped, to be redone.
+- **Pass 2 without RapidOCR** is skipped: its files stay *not done*, its bar hidden, and it runs as
+  soon as RapidOCR is there (downloaded, then the extraction restarted).
 - **Rebuild content** (⚙ menu, `_rebuildContent`) forgets and redoes every pass.
 - The RapidOCR engine is created when pass 2 starts and disposed when it ends (memory).
+- A first run over the user's 2 243 images: roughly 15 to 30 min in the background, the search usable
+  all along.
 
 ### RapidOCR Pass
 
-- `RapidOcr.InitModels(<paths in ocr-models\>)`, then `Detect(bitmap)` on the image decoded as the
+- `RapidOcr.InitModels(<paths in ocr-engine\>)`, then `Detect(bitmap)` on the image decoded as the
   Windows pass decodes it (EXIF orientation respected, downscaled past a maximum side).
 - **Noise filter**: a detected text block is kept when its characters' average score is **≥ 0.8** and it
-  holds **at least 2 letters or digits**. On the sample this drops `T` 0.52, `a` 0.56, `IV.` 0.68 and
-  keeps `TFIINFO`, `SUPPORT`, `HEN`.
+  holds **at least 2 letters or digits** (one constant each). On the sample this drops `T` 0.52, `a`
+  0.56, `IV.` 0.68 and keeps `TFIINFO`, `SUPPORT`, `HEN`.
 - Word boxes: the word-level polygons when RapidOCR gives them, else the block's polygon, each turned
   into its bounding rectangle in fractions of the image (the `WordBox` format).
 
-### Reshaped Pass
+### Reshaped Copies
 
 Windows OCR — the pass 1 engines — run on copies of the image, each copy's words mapped back to the
 image's coordinates:
 
-| Copy | What it catches | Mapping back |
-|---|---|---|
-| **Inverted**, upscaled ×2 (longer side capped) | Light text on a dark background (`T F 1 INFO` on the TF1 logo) | Scale |
-| **Ring unrolled**, clockwise, outer edge on top | Text along the top of a round badge | Each box's corners through the polar transform, bounding rectangle |
-| **Ring unrolled**, counter-clockwise, inner edge on top | Text along the bottom of a round badge | Same |
+| Pass | Copy | What it catches | Mapping back |
+|---|---|---|---|
+| Inverted | The colours **inverted**, upscaled ×2 (longer side capped) | Light text on a dark background (`T F 1 INFO` on the TF1 logo) | Scale |
+| Ring | The **ring unrolled**, clockwise, outer edge on top | Text along the top of a round badge | Each box's corners through the polar transform, bounding rectangle |
+| Ring | The **ring unrolled**, counter-clockwise, inner edge on top | Text along the bottom of a round badge | Same |
 
+- Both run on **every image**, whatever its shape; the Ring pass's noise (text read upside down,
+  shapes taken for letters) is what the ranking (§ Ranking) keeps out of the way.
 - The ring is the band between **0.68 and 1.0** of the image's inscribed circle, unrolled **twice
   around**, so a text across the seam shows whole once.
 - Boxes of the unrolled copies span an arc once mapped back: their bounding rectangle is large — the
@@ -98,17 +106,18 @@ image's coordinates:
 
 ### Index Format
 
-`index\files.content` goes to **`ImageGridFusion content 3`**:
+`indexiles.content` goes to **`ImageGridFusion content 3`**:
 
 ```
-relPath \t size \t ticks \t boxes1 \t text1 \t boxes2 \t text2 \t boxes3 \t text3
+relPath 	 size 	 ticks 	 boxes1 	 text1 	 boxes2 	 text2 	 boxes3 	 text3 	 boxes4 	 text4
 ```
 
 - `boxesN` / `textN`: as today's `boxes` / `text` for each pass. A pass **not done** writes `?` in its
   boxes column and nothing in its text; a pass done with no words writes an empty boxes column, as
   today. A file read as text keeps `-` and no later pass.
-- **Content 2 is read, not discarded**: its text and boxes become pass 1's, passes 2 and 3 *not done* —
-  the existing index is not re-read by Windows OCR. Content 1 is read as today (its images redone).
+- **Content 2 is read, not discarded**: its text and boxes become pass 1's, the later passes *not done*
+  — the existing index is not re-read by Windows OCR. Content 1 is read as today (its images redone).
+  A later version adding a pass reads content 3 the same way.
 - `ContentText` holds one immutable slot per pass; a pass finished swaps in a new `ContentText`
   (the search reads the dictionary from the UI thread). `MaxLength` and `MaxBoxes` apply per pass.
 - `ContentIndex.IsCurrent(entry, pass)` replaces `IsCurrent(entry)` in the queue.
@@ -118,12 +127,12 @@ relPath \t size \t ticks \t boxes1 \t text1 \t boxes2 \t text2 \t boxes3 \t text
 ## Progress Bars
 
 - **One bar per pass**, stacked in the explorer panel's progress row (today one `IndexingBar` in row 2
-  of `_content`): Windows, RapidOCR, Reshaped, top to bottom. The scan's sweeping bar stays the first
-  one.
+  of `_content`): Windows, RapidOCR, Inverted, Ring, top to bottom. The scan's sweeping bar stays the
+  first one.
 - Each bar shows its pass's share of the files **done over the whole index** — so while pass 2 runs,
-  bar 1 stands full and bar 3 at what was done before. A bar shows while its pass has files left or
-  runs, and hides once its pass is complete; pass 2's is hidden without the models.
-- The status line names the running pass: `OCR 2/3 · RapidOCR: 120/2 243 (20220321_132643.jpg)`.
+  bar 1 stands full and the later ones at what was done before. A bar shows while its pass has files
+  left or runs, and hides once its pass is complete; pass 2's is hidden without RapidOCR.
+- The status line names the running pass: `OCR 2/4 · RapidOCR: 120/2 243 (20220321_132643.jpg)`.
 
 ---
 
@@ -134,34 +143,64 @@ In the search, not in the index:
 - A query word not found in a pass's folded text is looked for in that text **with its whitespace
   removed** (`ContentText` keeps the stripped folded text next to `Folded`, computed once).
 - Only for query words of **3 characters or more** — shorter ones match everywhere once the spaces go.
-- A file found this way is in the **content tier, after** the files found by an ordinary content match
-  (`FileSearch.Rank`).
 - **Details view**: the excerpt is taken around the **run of consecutive words** whose concatenation
   holds the word (`ContentIndex.WordsAround` fallback), and the whole run is highlighted.
 - **Arrow**: `ContentIndex.SpotOf` falls back on the boxes of one pass, concatenating consecutive
   boxes' folded words until the word is found, and returns the **union of the boxes** holding the
   matched letters. `ThumbnailGrid.PaintArrow` is unchanged.
-- The arrow and the excerpt read every pass, pass 1 first.
 
 ---
 
-## OCR Models Download
+## Ranking
 
-- Folder: **`ocr-models\` next to the exe** (`OcrModels.FolderName`, § Folder Names of `../CLAUDE.md`),
-  holding the four files RapidOCR needs: `ch_PP-OCRv5_mobile_det.onnx`,
-  `ch_PP-LCNet_x0_25_textline_ori_cls_mobile.onnx`, `latin_PP-OCRv5_rec_mobile_infer.onnx`,
-  `ppocrv5_latin_dict.txt` (~13 MB). Available when all four are there (`OcrModels.Find`).
-- Source: the **`RapidOcrNet` package of the referenced version on nuget.org**
-  (`https://api.nuget.org/v3-flatcontainer/rapidocrnet/<version>/rapidocrnet.<version>.nupkg`), its
-  `models/v5/` entries extracted — the models always match the library. Downloaded with
-  `Web/Downloader` (partial file, renamed once complete).
-- The package's own build target copying `models\v5\` next to the exe is **switched off**: the models
-  are never shipped.
-- **When it is offered**: when *Search file contents (OCR)* is turned on in the ⚙ menu and the models
-  are missing — a Yes / No message saying what is downloaded, its size and where. **Yes**: downloaded,
-  the progress on the status line, then the extraction restarted so pass 2 runs. **No**: passes 1 and 3
-  only; offered again the next time the option is turned on.
-- A failed download says so in the status line; nothing half-written stays in `ocr-models\`.
+The content tier of `FileSearch.Rank` (after every path match, as today) is split by how the words were
+found, the more reliable first:
+
+| Rank | Found by |
+|---|---|
+| 1 | An ordinary match in a **straight-text** pass — Windows, RapidOCR, Inverted |
+| 2 | A spaces-ignored match in a straight-text pass |
+| 3 | The **Ring** pass only — words read on an odd shape (curved along a circle), ordinary or spaces-ignored |
+
+- A file takes the best rank any of its passes gives it; inside a rank, the order of today (the sort
+  order).
+- The excerpt and the arrow come from the pass that gave the rank, the earliest pass first.
+
+---
+
+## RapidOCR Download
+
+RapidOCR is **never shipped**: its models and the native DLLs it runs on are downloaded on demand.
+
+- Folder: **`ocr-engine\` next to the exe** (`OcrEngineFiles.FolderName`, § Folder Names of
+  `../CLAUDE.md`), holding:
+
+  | File | Taken from (nuget.org, the version the app references) | Size |
+  |---|---|---|
+  | `ch_PP-OCRv5_mobile_det.onnx`, `ch_PP-LCNet_x0_25_textline_ori_cls_mobile.onnx`, `latin_PP-OCRv5_rec_mobile_infer.onnx`, `ppocrv5_latin_dict.txt` | `RapidOcrNet` — `models/v5/` | ~13 MB |
+  | `onnxruntime.dll` | `Microsoft.ML.OnnxRuntime` — `runtimes/win-x64/native/` | 16 MB (less compressed) |
+  | `libSkiaSharp.dll` | `SkiaSharp.NativeAssets.Win32` — `runtimes/win-x64/native/` | 11 MB (less compressed) |
+
+- **Only the entries needed are downloaded**: a package is a zip; its central directory is read with
+  HTTP range requests, then each entry's compressed bytes alone — the ONNX Runtime package is 155 MB
+  for every platform, the DLL a few MB of it. Done in `Web/`, next to `Downloader` (partial file, renamed
+  once complete).
+- Each file is checked against its **SHA-256, a constant in the code** for the referenced versions;
+  a mismatch deletes it and fails the download.
+- **Loaded from there**: `NativeLibrary.SetDllImportResolver` on the ONNX Runtime and SkiaSharp
+  assemblies points `onnxruntime` and `libSkiaSharp` at `ocr-engine\`; the managed assemblies ship with
+  the exe (small). No code touches a SkiaSharp or ONNX Runtime type before the files are there.
+- **Not shipped**: the packages' native DLLs are kept out of the build output, and `RapidOcrNet`'s
+  build target copying `models5\` next to the exe is switched off.
+- Available when every file is there (`OcrEngineFiles.Find`).
+- **When it is offered**:
+  - when *Search file contents (OCR)* is turned on in the ⚙ menu and RapidOCR is missing — a Yes / No
+    message saying what is downloaded, its size and where;
+  - from a ⚙ menu item **Download the OCR engine…**, shown while it is missing (for a user whose OCR is
+    already on).
+- **Yes**: downloaded, the progress on the status line, then the extraction restarted so pass 2 runs.
+  **No**: passes 1, 3 and 4 only; offered again the next time.
+- A failed download says so in the status line; nothing half-written stays in `ocr-engine\`.
 
 ---
 
@@ -169,11 +208,12 @@ In the search, not in the index:
 
 - **RULES.md**: a new § *Content OCR Passes* — the passes, their order, the texts adding up, the format
   rule (a new pass adds its columns and is read as *not done* from an older file), the spaces-ignored
-  match, the models downloaded on demand and never shipped.
-- **GLOSSARY.md / GLOSSARY.fr.md**: *OCR pass* (*passe OCR*), *OCR models* (*modèles OCR*); the
+  match, RapidOCR downloaded on demand and never shipped, the ranking by pass.
+- **GLOSSARY.md / GLOSSARY.fr.md**: *OCR pass* (*passe OCR*), *OCR engine* (*moteur OCR*, the downloaded RapidOCR); the
   *Index* row mentions the passes.
-- **README.md / README.fr.md**: the content search reads several passes; the models offered when the OCR
-  is turned on; the third-party components (RapidOcrNet, PaddleOCR models, ONNX Runtime, SkiaSharp).
+- **README.md / README.fr.md**: the content search reads several passes; RapidOCR offered for download
+  when the OCR is turned on; the third-party components (RapidOcrNet, PaddleOCR models, ONNX Runtime,
+  SkiaSharp).
 
 ---
 
@@ -187,25 +227,32 @@ are checked by hand in the app.
 | The badge is found by `support` and `current` | Search after the passes ran |
 | `S U P P O R T`-like texts found by the spaces-ignored match, the arrow on the letters | A file whose pass text has split letters |
 | A content 2 index is read without redoing pass 1 | Start with the existing `files.content` |
-| Three bars filling one after the other, the status line naming the pass | Watch a first run |
-| The download offered when the OCR is turned on, No keeps passes 1 and 3 | ⚙ menu with `ocr-models\` absent |
+| Four bars filling one after the other, the status line naming the pass | Watch a first run |
+| The download offered when the OCR is turned on and from the ⚙ item, No keeping passes 1, 3 and 4 | ⚙ menu with `ocr-engine\` absent |
+| Only the needed entries downloaded, hashes checked, the DLLs loaded from `ocr-engine\` | Download, then pass 2 running |
+| A file found only by the Ring pass ranked after the straight-text ones | Search `support` |
 | Search results refreshed while the passes run | Search during the run |
 
 ---
 
 ## Open Questions
 
-- [ ] **Download scope**: the models only (~13 MB downloaded; ONNX Runtime and SkiaSharp's native
-      DLLs, ~28 MB, shipped with the exe), or the native DLLs downloaded too (the exe as light as
-      today, but the ONNX Runtime package is large and loading DLLs from a downloaded folder needs a
-      resolver)?
-- [ ] **OCR already on**: an existing user with the OCR on never toggles it — offer the download once
-      at start-up, add a ⚙ menu item *Download the OCR models…*, or only on the toggle?
-- [ ] **Reshaped pass on every image**: the unrolled ring only makes sense on a round badge and gives
-      upside-down junk elsewhere — run it on every image, or only on near-square images (ratio ≤ 1.25)?
-- [ ] **RapidOCR noise filter**: average score ≥ 0.8 and ≥ 2 letters or digits — right threshold?
-- [ ] **Spaces-ignored match**: 3 characters minimum, ranked after the ordinary content matches — right?
-- [ ] **Bars**: three bars of the same blue, or one colour per pass?
+Every question the design cannot settle on its own, listed before Iteration 1 —
+not only the blocking ones.
+
+- [x] ~~**Download scope**: the models only, or the native DLLs too?~~ → Models and native DLLs, only
+      the needed zip entries downloaded (§ RapidOCR Download)
+- [x] ~~**OCR already on**: how is the download offered?~~ → A ⚙ menu item while RapidOCR is missing,
+      on top of the offer when the OCR is turned on
+- [x] ~~**Reshaped copies on every image, or the ring on near-square images only?**~~ → Every copy on
+      every image; the ring's words rank last (§ Ranking)
+- [ ] **RapidOCR noise filter**: average score ≥ 0.8 and ≥ 2 letters or digits — right threshold? On the
+      sample, the noise scored ≤ 0.78 and the real finds ≥ 0.86.
+- [ ] **Spaces-ignored match**: 3 characters minimum — right?
+- [ ] **Ranking** (§ Ranking): straight-text ordinary matches, then spaces-ignored ones, then the Ring
+      pass only — and the Reshaped pass split into the Inverted and Ring passes, each with its bar, so
+      the ring's words can be weighed apart — right?
+- [ ] **Bars**: four bars of the same blue, or one colour per pass?
 
 ---
 
@@ -218,6 +265,22 @@ words, the arrow recomputed or at worst at the start, the search usable during i
 scratchpad prototype and the scoping answers: passes 2 and 3 on every image, the letters joined in the
 search rather than as a pass, the models downloaded on demand — offered when the OCR is turned on in
 the settings. Passes ordered RapidOCR then Reshaped, as advised.
+
+---
+
+### Iteration 2 — 2026-10-13
+
+Scoping answers and a new request:
+
+- RapidOCR's native DLLs (ONNX Runtime, SkiaSharp) are downloaded with its models rather than
+  shipped; only the zip entries needed are fetched, by HTTP ranges, each checked against a hash; the
+  folder becomes `ocr-engine\`.
+- A ⚙ menu item offers the download while RapidOCR is missing, for a user whose OCR is already on.
+- The reshaped copies run on every image.
+- **New request**: the words found on odd shapes (curved, etc.) weigh less in the search. The Reshaped
+  pass is split into **Inverted** and **Ring** so the ring's words are told apart; a new § Ranking
+  puts the files found by the Ring pass only after the straight-text ones, the spaces-ignored matches
+  in between.
 
 ---
 
@@ -244,12 +307,15 @@ the settings. Passes ordered RapidOCR then Reshaped, as advised.
 | 5 | How is RapidOCR delivered? | Downloaded on demand | 2026-10-13 |
 | 6 | When is the download offered? | When the OCR mode is turned on in the settings | 2026-10-13 |
 | 7 | Exploration depth? | Simple | 2026-10-13 |
-| 8 | Download scope: the models only, or the native DLLs too? | | |
-| 9 | OCR already on: how is the download offered? | | |
-| 10 | Reshaped pass on every image, or near-square images only? | | |
-| 11 | RapidOCR noise filter threshold? | | |
-| 12 | Spaces-ignored match: minimum length and ranking? | | |
-| 13 | Bars: one colour or one per pass? | | |
+| 8 | Download scope: the models only, or the native DLLs too? | Models and native DLLs | 2026-10-13 |
+| 9 | OCR already on: how is the download offered? | A ⚙ menu item | 2026-10-13 |
+| 10 | Reshaped pass on every image, or near-square images only? | Everything on every image | 2026-10-13 |
+| 11 | RapidOCR noise filter threshold? | Asked for help choosing — recommendation given, asked again | 2026-10-13 |
+| 12 | (User request) | The words found on odd shapes (curved, etc.) should weigh less, ranked lower when searched | 2026-10-13 |
+| 13 | RapidOCR noise filter: 0.8 and 2 characters? | | |
+| 14 | Spaces-ignored match: 3 characters minimum? | | |
+| 15 | Ranking by pass, the Reshaped pass split into Inverted and Ring? | | |
+| 16 | Bars: one colour or one per pass? | | |
 
 ---
 
