@@ -2129,9 +2129,9 @@ internal sealed class GridPreview : Control
         _wheelEnd.Start();
     }
     /// <summary>
-    /// Puts the selected image in a fit mode, from the options of the zoom effect, the image's center
-    /// kept where it is; <see cref="ZoomFit.None"/> leaves the mode for the free zoom it gave in the
-    /// cell, so nothing moves.
+    /// Puts the selected image in a fit mode, from the options of the zoom effect, the image recentered
+    /// in its cell — once, at the press: it can still be moved afterwards; <see cref="ZoomFit.None"/>
+    /// leaves the mode for the free zoom it gave in the cell, so nothing moves.
     /// </summary>
     public void FitSelected(ZoomFit fit)
     {
@@ -2146,7 +2146,9 @@ internal sealed class GridPreview : Control
         var look = image.Look;
         var fitted = fit == ZoomFit.None ? look.WithZoom(ZoomOf(image, cell)) : look.WithZoomFit(fit);
         var size = fitted.Shown(image.Bitmap.Size);
-        var focus = FitCalculator.FocusKeeping(cell, size, look.ZoomIn(cell, size), fitted.ZoomIn(cell, size), look.Focus, look.FineAngle, FitCalculator.ImageCenter);
+        var focus = fit == ZoomFit.None
+            ? FitCalculator.FocusKeeping(cell, size, look.ZoomIn(cell, size), fitted.ZoomIn(cell, size), look.Focus, look.FineAngle, FitCalculator.ImageCenter)
+            : FitCalculator.ImageCenter;
         this.SetLook(this._selected, fitted.WithFocus(focus));
         this.ShowZoomBadge(image);
     }
