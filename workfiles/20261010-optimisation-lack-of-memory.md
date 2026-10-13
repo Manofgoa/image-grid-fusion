@@ -367,6 +367,12 @@ defaults to 1920; the undo history gets the 512 MB budget for its parked images;
 the bounds and the clean message. The design sections only take those defaults; nothing else
 changes.
 
+### Iteration 3 — 2026-10-13 — ✅ Implemented
+
+Go given for the code, the tests (not applicable) and the documentation. The run stays on `main`,
+the standing decision for this app (no branch question asked). Scope frozen as § Design stands:
+§ 1, § 2.1–2.6, § 3, § 4.1, § Documentation Impact.
+
 ---
 
 ## Implementation Log
