@@ -2390,7 +2390,7 @@ internal sealed class MainForm : Form
             });
             try
             {
-                return await Task.Run(() => GridExport.RenderAnimation(job, format, path, progress, cancellation));
+                return await Task.Run(() => GridExport.RenderAnimation(job, format, path, progress, cancellation, ExportLogPath()));
             }
             catch (OperationCanceledException)
             {
@@ -2411,6 +2411,20 @@ internal sealed class MainForm : Form
                 EndExport();
             }
         }
+    }
+
+    /// <summary>
+    /// Where a Debug build logs the memory probe of an animated export
+    /// (workfiles/20261010-optimisation-lack-of-memory.md § 3): next to the exported files in the temp
+    /// folder, removed with them at the next start; <c>null</c> in a Release build, which only keeps the peak.
+    /// </summary>
+    private static string? ExportLogPath()
+    {
+#if DEBUG
+        return TempExportPath("log");
+#else
+        return null;
+#endif
     }
 
     private CancellationToken BeginExport(string message, bool cancellable)
@@ -2515,7 +2529,8 @@ internal sealed class MainForm : Form
             video.Frames,
             video.Length,
             SoundSummary(video),
-            encoding);
+            encoding,
+            video.PeakPrivateBytes);
 
     /// <summary>What the last video holds, for the status line and the tooltips — from what was kept, its file not read again.</summary>
     private static string AnimationSummary(string done, LastVideo last) =>
@@ -2527,7 +2542,8 @@ internal sealed class MainForm : Form
             last.Video.Frames,
             last.Video.Length,
             SoundSummary(last.Video),
-            last.Encoding);
+            last.Encoding,
+            last.Video.PeakPrivateBytes);
 
     /// <summary>The files whose sound is in the video, then the ones Windows could not re-encode.</summary>
     private static string SoundSummary(GridExport.Result video)
@@ -2540,7 +2556,12 @@ internal sealed class MainForm : Form
             : $"sound: {Names(video.MixedSounds)}{(failed.Length == 0 ? "" : $" ({failed})")}";
     }
 
-    private static string Summary(string done, string format, Size size, long bytes, int frames, TimeSpan length, string? sound, TimeSpan encoding)
+    /// <summary>
+    /// One line for the status line and the tooltips; <paramref name="peakBytes"/>, the most memory the
+    /// process held during an animated export, shows when it was sampled
+    /// (workfiles/20261010-optimisation-lack-of-memory.md § 3).
+    /// </summary>
+    private static string Summary(string done, string format, Size size, long bytes, int frames, TimeSpan length, string? sound, TimeSpan encoding, long peakBytes = 0)
     {
         var fields = new List<string>
         {
@@ -2557,6 +2578,11 @@ internal sealed class MainForm : Form
         }
 
         fields.Add($"encoded in {Seconds(encoding)}");
+        if (peakBytes > 0)
+        {
+            fields.Add($"peak {FileSize(peakBytes)}");
+        }
+
         return string.Join(" · ", fields);
     }
 
@@ -2599,7 +2625,7 @@ internal sealed class MainForm : Form
                 return;
             }
 
-            foreach (var file in new[] { "*.mp4", "*.gif", "*.jpg" }.SelectMany(pattern => Directory.EnumerateFiles(TempVideoFolder, pattern)))
+            foreach (var file in new[] { "*.mp4", "*.gif", "*.jpg", "*.log" }.SelectMany(pattern => Directory.EnumerateFiles(TempVideoFolder, pattern)))
             {
                 try
                 {

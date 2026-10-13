@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Drawing.Imaging;
 using ImageGridFusion.Composition;
 
@@ -184,21 +185,27 @@ internal static class GridExport
         Gif,
     }
 
-    /// <summary>What an export produced: the files whose sound was mixed in, and the ones left out, their sound not re-encodable.</summary>
-    public sealed record Result(Size Size, TimeSpan Length, int Frames, IReadOnlyList<string> MixedSounds, IReadOnlyList<string> FailedSounds);
+    /// <summary>
+    /// What an export produced: the files whose sound was mixed in, the ones left out, their sound not
+    /// re-encodable, and the most private memory the process held while it ran, sampled every few frames
+    /// (<see cref="MemoryProbe"/>; 0 for a still).
+    /// </summary>
+    public sealed record Result(Size Size, TimeSpan Length, int Frames, IReadOnlyList<string> MixedSounds, IReadOnlyList<string> FailedSounds, long PeakPrivateBytes = 0);
 
     /// <summary>
     /// Writes the animation to <paramref name="path"/> in <paramref name="format"/>: 30 fps, as long as
     /// the longest loop, the others starting over — or, for a grid of stills with a soundtrack, as long
     /// as the soundtrack. The canvas is sized once, from the frames at the
     /// start. Blocks: meant to run off the UI thread. Deletes the incomplete file when cancelled or failing.
+    /// With <paramref name="logPath"/>, the memory probe logs there what the export holds as it goes.
     /// </summary>
-    public static Result RenderAnimation(Job job, Format format, string path, IProgress<double>? progress, CancellationToken cancellation)
+    public static Result RenderAnimation(Job job, Format format, string path, IProgress<double>? progress, CancellationToken cancellation, string? logPath = null)
     {
         var readers = new AnimationReader?[job.Items.Count];
         var frames = new Frame[job.Items.Count];
         IFrameEncoder? encoder = null;
         bool finished = false;
+        using var probe = new MemoryProbe(logPath);
         try
         {
             for (int i = 0; i < job.Items.Count; i++)
@@ -206,12 +213,14 @@ internal static class GridExport
                 frames[i] = FirstFrame(job.Items[i], play: true, out readers[i]);
             }
 
+            probe.Sample(0, null, "readers open");
             var canvas = Animation.EvenSize(CanvasSizer.Compute(frames.Select(f => f.SizingSize).ToList(), job.Layout, job.Ratio, job.VideoMaxSide));
             using var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppRgb);
             using var g = Graphics.FromImage(bitmap);
             encoder = format == Format.Gif
                 ? GifEncoder.Create(path, canvas)
                 : VideoEncoder.Create(path, canvas, job.Length, job.Sounds, job.Fade);
+            probe.Sample(0, encoder, $"encoder created, canvas {canvas.Width} x {canvas.Height}");
 
             int count = Animation.FrameCount(job.Length);
             for (int k = 0; k < count; k++)
@@ -238,14 +247,20 @@ internal static class GridExport
                 g.Clear(Color.White);
                 Compositor.Draw(g, frames, job.Layout, canvas, job.Borders, job.Seams);
                 encoder.WriteFrame(bitmap, time, Animation.FrameTime(k + 1) - time);
+                if ((k + 1) % MemoryProbe.EveryFrames == 0)
+                {
+                    probe.Sample(k + 1, encoder);
+                }
+
                 progress?.Report((k + 1) / (double)count);
             }
 
             encoder.Finish();
+            probe.Sample(count, encoder, "finished");
             finished = true;
             return encoder is VideoEncoder video
-                ? new Result(canvas, job.Length, count, video.MixedSounds, video.FailedSounds)
-                : new Result(canvas, job.Length, count, [], []);
+                ? new Result(canvas, job.Length, count, video.MixedSounds, video.FailedSounds, probe.PeakPrivateBytes)
+                : new Result(canvas, job.Length, count, [], [], probe.PeakPrivateBytes);
         }
         finally
         {
@@ -308,5 +323,76 @@ internal static class GridExport
         {
             // Left behind: nothing more to do.
         }
+    }
+
+    /// <summary>
+    /// Watches the process's memory during an animated export (workfiles/20261010-optimisation-lack-of-memory.md
+    /// § 3): the peak goes into the result; given a log file, a line every <see cref="EveryFrames"/> frames —
+    /// the frame, the private bytes, the managed heap, the writer's statistics — says which holder
+    /// dominates: received − encoded climbing, the writer was queueing; private bytes high but flat, with
+    /// a jump when the readers open, the per-video readers; climbing with a flat gap, a leak elsewhere.
+    /// </summary>
+    private sealed class MemoryProbe : IDisposable
+    {
+        public const int EveryFrames = 30;
+
+        private readonly StreamWriter? _log;
+
+        public MemoryProbe(string? logPath)
+        {
+            if (logPath is null)
+            {
+                return;
+            }
+
+            try
+            {
+                this._log = new StreamWriter(logPath, append: false);
+                this._log.WriteLine("time\tframe\tprivate bytes\tmanaged bytes\treceived\tencoded\tprocessed\tqueued bytes\tsink requests\tnote");
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // No log: the export goes on without it.
+            }
+        }
+
+        /// <summary>The most private memory the process held at a sample.</summary>
+        public long PeakPrivateBytes { get; private set; }
+
+        /// <summary>Samples the memory at <paramref name="frame"/>, the writer's statistics read from <paramref name="encoder"/> when it is the video one.</summary>
+        public void Sample(int frame, IFrameEncoder? encoder, string note = "")
+        {
+            using var process = Process.GetCurrentProcess();
+            long privateBytes = process.PrivateMemorySize64;
+            this.PeakPrivateBytes = Math.Max(this.PeakPrivateBytes, privateBytes);
+            if (this._log is null)
+            {
+                return;
+            }
+
+            var statistics = (encoder as VideoEncoder)?.VideoStatistics;
+            try
+            {
+                this._log.WriteLine(string.Join(
+                    '\t',
+                    DateTime.Now.ToString("HH:mm:ss.fff"),
+                    frame,
+                    privateBytes,
+                    GC.GetTotalMemory(forceFullCollection: false),
+                    statistics?.SamplesReceived.ToString() ?? "",
+                    statistics?.SamplesEncoded.ToString() ?? "",
+                    statistics?.SamplesProcessed.ToString() ?? "",
+                    statistics?.ByteCountQueued.ToString() ?? "",
+                    statistics?.OutstandingSinkSampleRequests.ToString() ?? "",
+                    note));
+                this._log.Flush();
+            }
+            catch (IOException)
+            {
+                // A line lost: the export goes on.
+            }
+        }
+
+        public void Dispose() => this._log?.Dispose();
     }
 }
