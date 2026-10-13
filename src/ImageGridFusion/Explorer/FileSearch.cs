@@ -16,6 +16,13 @@ internal static class FileSearch
     /// <summary>The query listing every file of the index.</summary>
     public const string Everything = "*";
 
+    /// <summary>
+    /// The shortest query word looked for in a content text with its spaces removed — letters the OCR
+    /// read apart: a shorter one would match almost anywhere. See
+    /// workfiles/20261013-complementary-ocr-passes.md § Spaces-Ignored Match.
+    /// </summary>
+    public const int JoinedMinLength = 3;
+
     /// <summary>Whether the query is <see cref="Everything"/> alone, blanks around it ignored.</summary>
     public static bool IsEverything(string query) => query.Trim() == Everything;
 
@@ -48,16 +55,19 @@ internal static class FileSearch
 
     /// <summary>
     /// Every entry matching every word, best first — the explorer shows them load by load. A word
-    /// missing from the relative path may be found in the entry's folded content text, given by
-    /// <paramref name="contentOf"/> (null: none), the match then made by its content; with
-    /// <paramref name="byName"/> false, the path is not read and every word is looked for in the content
-    /// text only. Ranked by the entries matched by their path alone first, then by the words found in the
-    /// file name itself, then the position of the first word in the name, then the shorter name, then the
-    /// relative path. With an <paramref name="order"/> — the sort drop-down's, for files — only the
-    /// relevance tiers are kept (the path matches by the words found in the name, then the content
-    /// matches), each tier in that order: see workfiles/20261009-search-results-sort.md § Relevance Tiers.
+    /// missing from the relative path may be found in the entry's content text, how reliably given by
+    /// <paramref name="contentOf"/> (null: none, or no content search), the match then made by its
+    /// content; with <paramref name="byName"/> false, the path is not read and every word is looked for in
+    /// the content text only. Ranked by the entries matched by their path alone first, then by the words
+    /// found in the file name itself, then the content matches by their grade — the least reliable of
+    /// their words' (<see cref="ContentGrade"/>) — then the position of the first word in the name, then
+    /// the shorter name, then the relative path. With an <paramref name="order"/> — the sort drop-down's,
+    /// for files — only the relevance tiers are kept (the path matches by the words found in the name,
+    /// then the content matches by their grade), each tier in that order: see
+    /// workfiles/20261009-search-results-sort.md § Relevance Tiers and
+    /// workfiles/20261013-complementary-ocr-passes.md § Ranking.
     /// </summary>
-    public static IReadOnlyList<SearchMatch> Search(IReadOnlyList<IndexEntry> entries, string[] words, Func<IndexEntry, string?>? contentOf = null, bool byName = true, FileOrder? order = null)
+    public static IReadOnlyList<SearchMatch> Search(IReadOnlyList<IndexEntry> entries, string[] words, Func<IndexEntry, string, ContentGrade?>? contentOf = null, bool byName = true, FileOrder? order = null)
     {
         if (words.Length == 0)
         {
@@ -90,7 +100,7 @@ internal static class FileSearch
     }
 
     /// <summary>How well an entry matches; lower compares first.</summary>
-    private readonly record struct Rank(string? ContentWord, int NameHits, int FirstPosition, int NameLength, string Path) : IComparable<Rank>
+    private readonly record struct Rank(string? ContentWord, ContentGrade Grade, int NameHits, int FirstPosition, int NameLength, string Path) : IComparable<Rank>
     {
         /// <summary>Whether a word was found in the content text only.</summary>
         public bool ByContent => this.ContentWord is not null;
@@ -99,15 +109,14 @@ internal static class FileSearch
         /// Null when a word is missing from both the folded relative path — not read unless
         /// <paramref name="byName"/> — and the content text.
         /// </summary>
-        public static Rank? Of(IndexEntry entry, string[] words, Func<IndexEntry, string?>? contentOf, bool byName)
+        public static Rank? Of(IndexEntry entry, string[] words, Func<IndexEntry, string, ContentGrade?>? contentOf, bool byName)
         {
             string folded = entry.Folded;
             int nameStart = entry.NameStart;
             int nameHits = 0;
             int first = int.MaxValue;
-            string? content = null;
-            bool contentRead = false;
             string? contentWord = null;
+            var grade = ContentGrade.Sure;
             for (int i = 0; i < words.Length; i++)
             {
                 int inName = byName ? folded.IndexOf(words[i], nameStart, StringComparison.Ordinal) : -1;
@@ -121,37 +130,32 @@ internal static class FileSearch
                 }
                 else if (!byName || folded.IndexOf(words[i], StringComparison.Ordinal) < 0)
                 {
-                    if (!contentRead)
-                    {
-                        content = contentOf?.Invoke(entry);
-                        contentRead = true;
-                    }
-
-                    if (content is null || content.IndexOf(words[i], StringComparison.Ordinal) < 0)
+                    if (contentOf?.Invoke(entry, words[i]) is not { } found)
                     {
                         return null;
                     }
 
                     contentWord ??= words[i];
+                    grade = (ContentGrade)Math.Max((int)grade, (int)found);
                 }
             }
 
-            return new Rank(contentWord, nameHits, first, folded.Length - nameStart, entry.RelativePath);
+            return new Rank(contentWord, grade, nameHits, first, folded.Length - nameStart, entry.RelativePath);
         }
 
         /// <summary>
         /// The relevance tier only: the path matches first, the more words in the file name the
-        /// earlier, then every content match as one tier.
+        /// earlier, then the content matches, the more reliable grade the earlier.
         /// </summary>
         public int CompareTier(Rank other)
         {
             int order = this.ByContent.CompareTo(other.ByContent);
-            return order != 0 || this.ByContent ? order : other.NameHits.CompareTo(this.NameHits);
+            return order != 0 ? order : this.ByContent ? this.Grade.CompareTo(other.Grade) : other.NameHits.CompareTo(this.NameHits);
         }
 
         public int CompareTo(Rank other)
         {
-            int order = this.ByContent.CompareTo(other.ByContent);
+            int order = this.CompareTier(other);
             if (order == 0)
             {
                 order = other.NameHits.CompareTo(NameHits);
