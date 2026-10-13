@@ -19,7 +19,7 @@ internal static class GridExport
     /// </summary>
     public sealed class Job : IDisposable
     {
-        private Job(IReadOnlyList<Item> items, GridLayout layout, double ratio, GridBorders? borders, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack, SoundFade? fade, SeamFade? seams, CascadeSchedule? cascade)
+        private Job(IReadOnlyList<Item> items, GridLayout layout, double ratio, GridBorders? borders, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack, SoundFade? fade, SeamFade? seams, CascadeSchedule? cascade, int videoMaxSide)
         {
             Items = items;
             Layout = layout;
@@ -28,6 +28,7 @@ internal static class GridExport
             Fade = fade;
             this.Seams = seams;
             this.Cascade = cascade;
+            this.VideoMaxSide = videoMaxSide;
 
             // In the cascade, a content taking part counts by its turn, the others by their loops beside it.
             var beside = items
@@ -68,6 +69,12 @@ internal static class GridExport
         /// <summary>The turns of the Cascade; <c>null</c> while it is off.</summary>
         public CascadeSchedule? Cascade { get; }
 
+        /// <summary>
+        /// The longer side the canvas of a video export is clamped to: the Video size setting as the export
+        /// started (workfiles/20261010-optimisation-lack-of-memory.md § 2.3). A still keeps <see cref="CanvasSizer.MaxLongSide"/>.
+        /// </summary>
+        public int VideoMaxSide { get; }
+
         /// <summary>The sounds mixed into the video: each from the starting point of its video, at its volume; the soundtrack last.</summary>
         public IReadOnlyList<MixedSound> Sounds { get; }
 
@@ -78,9 +85,10 @@ internal static class GridExport
         /// The grid as it stands, at its <paramref name="ratio"/>, with its <paramref name="borders"/>,
         /// <paramref name="soundtrack"/> mixed over its sounds when one is on, the mix faded by
         /// <paramref name="fade"/> when it is on, the cells' fills faded by <paramref name="seams"/>, and the
-        /// videos playing one after the other with <paramref name="cascade"/> when it is on.
+        /// videos playing one after the other with <paramref name="cascade"/> when it is on; a video export's
+        /// canvas clamped to <paramref name="videoMaxSide"/>.
         /// </summary>
-        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders, Soundtrack? soundtrack = null, SoundFade? fade = null, SeamFade? seams = null, VideoCascade? cascade = null) => new(
+        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders, Soundtrack? soundtrack = null, SoundFade? fade = null, SeamFade? seams = null, VideoCascade? cascade = null, int videoMaxSide = CanvasSizer.MaxLongSide) => new(
             images.Select(i => i.Plays
                 ? new Item(null, i.BandColor, i.Pages, i.PlayedLength, i.DrawnLook, i.Page, i.StartTime, i.PlayedFrom, i.Sharpening) { Image = i }
                 : i.IsAnimated
@@ -93,7 +101,8 @@ internal static class GridExport
             soundtrack,
             fade,
             seams,
-            cascade is null ? null : CascadeSchedule.Of(images, cascade));
+            cascade is null ? null : CascadeSchedule.Of(images, cascade),
+            videoMaxSide);
 
         /// <summary>
         /// Content time the cell at <paramref name="index"/> shows at <paramref name="time"/> of the video:
@@ -188,7 +197,7 @@ internal static class GridExport
                 frames[i] = FirstFrame(job.Items[i], play: true, out readers[i]);
             }
 
-            var canvas = Animation.EvenSize(CanvasSizer.Compute(frames.Select(f => f.SizingSize).ToList(), job.Layout, job.Ratio));
+            var canvas = Animation.EvenSize(CanvasSizer.Compute(frames.Select(f => f.SizingSize).ToList(), job.Layout, job.Ratio, job.VideoMaxSide));
             using var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppRgb);
             using var g = Graphics.FromImage(bitmap);
             encoder = format == Format.Gif

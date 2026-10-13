@@ -2,8 +2,9 @@ namespace ImageGridFusion.Composition;
 
 /// <summary>
 /// Picks the canvas size at which no image is downscaled, at the output format's ratio, its longer
-/// side clamped to [1200, 4096]. Cell sizes are proportional to the canvas width, so each image's
-/// applied scale is linear in it.
+/// side clamped to [1200, 4096] — or to a lower maximum for a video export, the Video size setting
+/// (workfiles/20261010-optimisation-lack-of-memory.md § 2.3). Cell sizes are proportional to the canvas
+/// width, so each image's applied scale is linear in it.
 /// </summary>
 public static class CanvasSizer
 {
@@ -11,7 +12,8 @@ public static class CanvasSizer
     public const int MaxLongSide = 4096;
 
     /// <param name="ratio">The canvas's width ÷ height: the output format's.</param>
-    public static Size Compute(IReadOnlyList<Size> images, GridLayout layout, double ratio)
+    /// <param name="maxLongSide">The longer side's maximum: <see cref="MaxLongSide"/>, or the video size for a video export.</param>
+    public static Size Compute(IReadOnlyList<Size> images, GridLayout layout, double ratio, int maxLongSide = MaxLongSide)
     {
         if (layout.Count != images.Count)
         {
@@ -30,7 +32,7 @@ public static class CanvasSizer
         }
 
         double longSide = ratio >= 1 ? widest : widest / ratio;
-        int side = (int)Math.Round(Math.Clamp(longSide, MinLongSide, MaxLongSide));
+        int side = (int)Math.Round(Math.Clamp(longSide, MinLongSide, Math.Max(MinLongSide, Math.Min(maxLongSide, MaxLongSide))));
         return ratio >= 1 ? new Size(side, GridLayout.HeightFor(side, ratio)) : new Size(GridLayout.WidthFor(side, ratio), side);
     }
 

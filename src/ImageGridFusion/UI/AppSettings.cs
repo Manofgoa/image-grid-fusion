@@ -1,13 +1,14 @@
 using System.Security;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using ImageGridFusion.Composition;
 using ImageGridFusion.Explorer;
 
 namespace ImageGridFusion.UI;
 
 /// <summary>
 /// The app's settings remembered between sessions, in <see cref="FileName"/> next to the exe — never the
-/// registry: the border color, whether the borders' Twitter corners are on by default, the file explorer's
+/// registry: the border color, whether the borders' Twitter corners are on by default, the video size, the file explorer's
 /// base folder, whether its panel is open, its width, its tile size, its pages per load, its view and
 /// open folder, its files' order, whether it searches the files' contents, the OCR result style, the window's
 /// size and screen, the last folders of the file dialogs, and the maximum zoom (edited by hand only). Each save rewrites the whole file at once.
@@ -18,6 +19,7 @@ internal static class AppSettings
 
     private const string BorderColorName = "BorderColor";
     private const string TwitterCornersName = "TwitterCornersByDefault";
+    private const string VideoMaxSideName = "VideoMaxSide";
     private const string ExplorerFolderName = "ExplorerFolder";
     private const string ExplorerPanelOpenName = "ExplorerPanelOpen";
     private const string ExplorerWidthName = "ExplorerWidth";
@@ -114,6 +116,23 @@ internal static class AppSettings
 
     /// <summary>Saves whether the borders start with their Twitter corners; throws an <see cref="IsSaveError"/> exception on failure.</summary>
     public static void SaveTwitterCornersByDefault(bool on) => Save((TwitterCornersName, on ? 1 : 0));
+
+    /// <summary>The longer side a video export (MP4, GIF) is clamped to when nothing was saved: Full HD.</summary>
+    public const int DefaultVideoMaxSide = 1920;
+
+    /// <summary>The sizes the ⚙ menu offers for <see cref="VideoMaxSide"/>: Full HD, QHD, and 4K — the PNG's own maximum.</summary>
+    public static readonly int[] VideoMaxSides = [1920, 2560, CanvasSizer.MaxLongSide];
+
+    /// <summary>
+    /// The longer side an MP4 or GIF export is clamped to — every canvas-sized buffer of the export
+    /// shrinks with it — one of <see cref="VideoMaxSides"/>; <see cref="DefaultVideoMaxSide"/> when
+    /// nothing was saved or the value is none of them. A PNG keeps <see cref="CanvasSizer.MaxLongSide"/>.
+    /// See workfiles/20261010-optimisation-lack-of-memory.md § 2.3.
+    /// </summary>
+    public static int VideoMaxSide => Int(VideoMaxSideName) is int value && VideoMaxSides.Contains(value) ? value : DefaultVideoMaxSide;
+
+    /// <summary>Saves the video size; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveVideoMaxSide(int side) => Save((VideoMaxSideName, side));
 
     /// <summary>The folder the file explorer indexes, with its subfolders; null when none was saved.</summary>
     public static string? ExplorerFolder => Text(ExplorerFolderName);

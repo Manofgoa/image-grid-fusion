@@ -338,6 +338,9 @@ internal sealed class MainForm : Form
     private readonly CheckBox _bordersOuterFrame = new() { Text = "Outer frame", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _bordersRounded = new() { Text = "Twitter corners", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly ToolStripMenuItem _twitterCornersDefault = new("Twitter corners by default");
+
+    // The longer side an MP4 or GIF export is clamped to, one of AppSettings.VideoMaxSides (workfiles/20261010-optimisation-lack-of-memory.md § 2.3).
+    private readonly ToolStripMenuItem _videoSize = new("Video size");
     private readonly ToolStripMenuItem _guideApproach = new("Guides show from");
     private readonly ToolStripMenuItem _gapBarsFrom = new("Gap bars from");
     private readonly ToolStripMenuItem _gapBarsFromCenter = new("Image center");
@@ -574,7 +577,7 @@ internal sealed class MainForm : Form
         this._transportTimer.Tick += (_, _) => this.RefreshTransportPosition();
         this._transportTimer.Start();
         this._toolTip.SetToolTip(this._clearButton, "Removes every image and the global effects, and brings the format back to Twitter (Ctrl+N)");
-        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._ocrResultStyle, new ToolStripSeparator(), this._openAppFolder]);
+        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._ocrResultStyle, new ToolStripSeparator(), this._openAppFolder]);
         for (int pages = FileExplorerPanel.MinPagesPerLoad; pages <= FileExplorerPanel.MaxPagesPerLoad; pages++)
         {
             int choice = pages;
@@ -608,6 +611,15 @@ internal sealed class MainForm : Form
         _startWithWindows.Click += (_, _) => ToggleStartWithWindows();
         _twitterCornersDefault.ToolTipText = "Whether the borders start with their Twitter corners, at start-up and after Clear all; remembered between sessions";
         _twitterCornersDefault.Click += (_, _) => ToggleTwitterCornersDefault();
+        this._videoSize.ToolTipText = "The longer side an MP4 or GIF export is clamped to: smaller is lighter on memory and faster to encode; a PNG keeps 4096 px; remembered between sessions";
+        foreach (int side in AppSettings.VideoMaxSides)
+        {
+            int choice = side;
+            var item = new ToolStripMenuItem(VideoSizeLabel(choice)) { Tag = choice };
+            item.Click += (_, _) => this.SetVideoMaxSide(choice);
+            this._videoSize.DropDownItems.Add(item);
+        }
+
         _explorerFolder.ToolTipText = "The folder the file explorer searches, with its subfolders; remembered between sessions";
         _explorerFolder.Click += (_, _) => PickExplorerFolder();
         this._guideApproach.ToolTipText = "How far before its magnetic stop a moved image's guide shows, with a bar measuring the gap left; remembered between sessions";
@@ -2349,7 +2361,7 @@ internal sealed class MainForm : Form
         GridExport.Job job;
         try
         {
-            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, ActiveSoundtrack, ActiveFade, this.ActiveSeams, this.ActiveCascade);
+            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, ActiveSoundtrack, ActiveFade, this.ActiveSeams, this.ActiveCascade, AppSettings.VideoMaxSide);
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
@@ -2657,6 +2669,11 @@ internal sealed class MainForm : Form
     {
         _startWithWindows.Checked = StartupRegistration.IsEnabled;
         _twitterCornersDefault.Checked = _roundedByDefault;
+        foreach (ToolStripMenuItem item in this._videoSize.DropDownItems)
+        {
+            item.Checked = (int)item.Tag! == AppSettings.VideoMaxSide;
+        }
+
         foreach (ToolStripMenuItem item in _explorerPages.DropDownItems)
         {
             item.Checked = (int)item.Tag! == _explorer.PagesPerLoad;
@@ -3673,6 +3690,32 @@ internal sealed class MainForm : Form
 
         // The initial state moved: Clear all may now have something to reset, or nothing.
         UpdateButtons();
+    }
+
+    /// <summary>What the ⚙ menu calls a video size: the side, and the name of that resolution.</summary>
+    private static string VideoSizeLabel(int side) => side switch
+    {
+        1920 => "1920 px (Full HD)",
+        2560 => "2560 px (QHD)",
+        4096 => "4096 px (4K)",
+        _ => $"{side} px",
+    };
+
+    /// <summary>
+    /// The ⚙ menu's Video size: the longer side the next MP4 or GIF exports are clamped to, every
+    /// canvas-sized buffer of the export shrinking with it. Remembered between sessions.
+    /// </summary>
+    private void SetVideoMaxSide(int side)
+    {
+        try
+        {
+            AppSettings.SaveVideoMaxSide(side);
+            this.ShowStatus($"Video size: {VideoSizeLabel(side)} — the next MP4 or GIF exports are clamped to it.");
+        }
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
+        {
+            this.ShowStatus($"Video size not remembered: {ex.Message}", error: true);
+        }
     }
 
     /// <summary>
