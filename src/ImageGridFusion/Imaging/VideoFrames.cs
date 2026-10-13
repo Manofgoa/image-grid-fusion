@@ -109,11 +109,27 @@ public sealed class VideoFrames : PageSource, IHasSound
     /// <summary>The exact frame: at the nearest key frame, neighbour positions would repeat the same image.</summary>
     public override Bitmap Render(int page)
     {
-        using var frame = _composition
-            .GetThumbnailAsync(Time(page), _width, _height, VideoFramePrecision.NearestFrame)
-            .AsTask().GetAwaiter().GetResult();
-        using var image = Image.FromStream(frame.AsStream());
-        return ImageLoader.Copy(image);
+        // Serialized with Dispose: a render in progress keeps its clip.
+        lock (this._composition)
+        {
+            using var frame = _composition
+                .GetThumbnailAsync(Time(page), _width, _height, VideoFramePrecision.NearestFrame)
+                .AsTask().GetAwaiter().GetResult();
+            using var image = Image.FromStream(frame.AsStream());
+            return ImageLoader.Copy(image);
+        }
+    }
+
+    /// <summary>
+    /// Lets the clip go now rather than with a finalizer, so a video parked by the undo history keeps no
+    /// decoder of its own alive (workfiles/20261010-optimisation-lack-of-memory.md § 2.4).
+    /// </summary>
+    public override void Dispose()
+    {
+        lock (this._composition)
+        {
+            this._composition.Clips.Clear();
+        }
     }
 
     /// <summary>A lone frame shows the 10 % mark rather than the first one.</summary>

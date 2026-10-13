@@ -84,6 +84,13 @@ public abstract class PageSource : IDisposable
     /// <summary>Frames per second of a video, for its minutes : seconds : frame fields; <c>null</c> for a GIF, its frames numbered.</summary>
     public virtual double? FrameRate => null;
 
+    /// <summary>
+    /// What the source keeps in memory beyond its rendered pages, in bytes — a file read whole, for one:
+    /// what the undo history weighs a parked image by (workfiles/20261010-optimisation-lack-of-memory.md
+    /// § 2.4); 0 when it keeps nothing of note.
+    /// </summary>
+    public virtual long MemoryBytes => 0;
+
     public virtual void Dispose()
     {
     }

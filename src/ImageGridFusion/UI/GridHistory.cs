@@ -61,6 +61,13 @@ internal sealed class GridState(IReadOnlyList<CellState> cells, GridLayout? layo
 internal sealed class GridHistory : IDisposable
 {
     public const int Depth = 50;
+
+    /// <summary>
+    /// What the images only the history holds — parked, gone from the grid — may weigh all together:
+    /// past it, the oldest steps are dropped first (RULES.md § Undo History,
+    /// workfiles/20261010-optimisation-lack-of-memory.md § 2.4).
+    /// </summary>
+    public const long MaxParkedBytes = 512L << 20;
     private const int SettleDelay = 300;
     private const int PollInterval = 100;
 
@@ -274,7 +281,26 @@ internal sealed class GridHistory : IDisposable
             this._undo.RemoveAt(0);
         }
 
+        // The parked images kept within their budget: the oldest steps go first, until it is met or none is left.
+        while (this._undo.Count > 0 && this.ParkedBytes() > MaxParkedBytes)
+        {
+            dropped.Add(this._undo[0]);
+            this._undo.RemoveAt(0);
+        }
+
         this.DisposeDropped(dropped);
+    }
+
+    /// <summary>Bytes of the images the steps still hold that the grid no longer shows.</summary>
+    private long ParkedBytes()
+    {
+        var shown = this._committed!.Cells.Select(c => c.Image).ToHashSet();
+        return this._undo.Concat(this._redo)
+            .SelectMany(s => s.Cells)
+            .Select(c => c.Image)
+            .Distinct()
+            .Where(image => !shown.Contains(image))
+            .Sum(image => image.MemoryBytes);
     }
 
     private (GridState From, GridState To)? Step(List<GridState> from, List<GridState> to)

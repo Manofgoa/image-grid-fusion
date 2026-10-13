@@ -153,6 +153,9 @@ public sealed class PdfPages : PageSource
         }
     }
 
+    /// <summary>The whole file, kept in memory so it does not stay locked.</summary>
+    public override long MemoryBytes => (long)_stream.Size;
+
     public override void Dispose() => _stream.Dispose();
 
     private static bool HasPdfHeader(string path)

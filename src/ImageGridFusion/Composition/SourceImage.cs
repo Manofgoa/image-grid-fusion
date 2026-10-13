@@ -60,6 +60,12 @@ public sealed class SourceImage : IDisposable
 
     public bool IsDisposed { get; private set; }
 
+    /// <summary>
+    /// What the image holds in memory, in bytes: its bitmap's pixels, and what its pages keep — what the
+    /// undo history weighs the images it parks by (workfiles/20261010-optimisation-lack-of-memory.md § 2.4).
+    /// </summary>
+    public long MemoryBytes => this.IsDisposed ? 0 : (long)this.Bitmap.Width * this.Bitmap.Height * 4 + (this.Pages?.MemoryBytes ?? 0);
+
     /// <summary>Plays when shown: a video, an animated GIF, a PDF of several pages, a text longer than its cell.</summary>
     public bool IsAnimated => Pages is { LoopDuration: var loop } && loop > TimeSpan.Zero;
 

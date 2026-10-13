@@ -42,6 +42,9 @@ public sealed class GifFrames : PageSource
 
     public override bool HasFrames => true;
 
+    /// <summary>The whole file, kept in memory so it does not stay locked.</summary>
+    public override long MemoryBytes => _stream.Length;
+
     /// <summary>Returns null unless the file is a GIF GDI+ can decode with at least two frames.</summary>
     public static GifFrames? TryOpen(string path)
     {
