@@ -139,10 +139,11 @@ and to fail cleanly when even that is too much.
   the partial file is deleted (already done by `GridExport.RenderAnimation`'s `finally`), the last
   video and the previous copy stay as they were (already the case). `GridExport.Job.Capture` — the
   stills copied on the UI thread — moves inside the same `try`.
-- A **global last resort** in `Program.Main`: `Application.ThreadException` and
+- A **global last resort** in `Program.Main` (`UI/ErrorLog.cs`): `Application.ThreadException` and
   `AppDomain.CurrentDomain.UnhandledException` write the exception to `errors.log` next to the exe
   (the app's data lives beside it, RULES § App Settings) and show a plain message box naming the
-  error, the app staying up — never the .NET dialog again.
+  error, the app staying up — never the .NET dialog again. `ErrorLog.Describe` names a memory
+  shortage for the status line too.
 
 ### 2. Bound the Export's Memory
 
@@ -166,13 +167,16 @@ and to fail cleanly when even that is too much.
   112 bytes, `cb` set before the call) and `IMFSinkWriter.GetStatistics(int streamIndex,
   ref SinkWriterStatistics)` — the method is already declared in the right vtable slot; only its
   parameter changes.
-- `VideoEncoder.WriteFrame` **waits before allocating** while `SamplesReceived − SamplesEncoded >
-  MaxFramesInFlight` (3 — the inbox encoder works in slice mode, one picture at a time, no B-frames
-  by default), sleeping 1 ms between reads, and **gives up waiting after 2 s without progress** so a
-  slow or hardware encoder can never deadlock the export. The writer's default throttling stays on:
-  it is the only built-in limit — `MF_SINK_WRITER_DISABLE_THROTTLING` is never set.
-- Effect: at most 3 raw frames inside the writer, whatever its undocumented queue does — the unknown
-  of the table above becomes ≈ 3 × (canvas RGB32 + canvas NV12).
+- `VideoEncoder.WriteFrame` **waits before allocating** while the writer's **queued bytes**
+  (`ByteCountQueued`, "bytes waiting to be processed": written, not yet given to the encoder) exceed
+  **three frames' worth** (`QueuedFramesAtFirst` × W × H × 4), sleeping 1 ms between reads; a queue
+  that **does not drain for 2 s** gets twice the room, so a slow or hardware encoder can never
+  deadlock the export. The writer's default throttling stays on: it is the only built-in limit —
+  `MF_SINK_WRITER_DISABLE_THROTTLING` is never set. *(Revised 2026-10-13, see Iteration 4: the
+  design first counted the frames received and not encoded, which the encoder's own pipeline keeps
+  at about seventeen with the queue empty.)*
+- Effect: at most 3 raw frames inside the writer's queue, whatever its undocumented depth — the
+  unknown of the table above becomes ≈ 3 × canvas RGB32, plus the encoder's own converted pipeline.
 
 #### 2.3 Video size — an app setting
 
@@ -219,7 +223,7 @@ dominates, and stays useful afterwards:
   (`Process.PrivateMemorySize64`), shown in the export summary and the *Copy last* tooltips
   (`peak 2.3 GB`).
 - In **Debug builds only**, every 30 frames a line goes to
-  `%TEMP%\ImageGridFusion\export-<timestamp>.log`, next to the exported file: frame index, canvas
+  `%TEMP%\ImageGridFusion\fusion-<stamp>.log`, next to the exported file: frame index, canvas
   size, private bytes, managed heap, and the writer's statistics (received − encoded, encoded −
   processed, bytes queued, outstanding sink requests), plus one line after the readers open and one
   after the encoder is created. Reading it: received − encoded climbing → the writer was queueing
@@ -373,15 +377,57 @@ Go given for the code, the tests (not applicable) and the documentation. The run
 the standing decision for this app (no branch question asked). Scope frozen as § Design stands:
 § 1, § 2.1–2.6, § 3, § 4.1, § Documentation Impact.
 
+### Iteration 4 — 2026-10-13 — 🧭 Implementation choices
+
+No rule broken. The run stayed on `main`. What the design left open, or said otherwise:
+
+- **§ 2.2 revised after measuring**: the gate reads the writer's **queued bytes** (`ByteCountQueued`),
+  not the frames received and not encoded. The first checking export showed the inbox H.264 encoder
+  keeping a **constant 17 frames** received-not-encoded in its own pipeline while the writer's queue
+  stayed at **0 bytes**: the design's formula stalled the first 30 frames for 16 s, the limit growing
+  one frame per 2-second stall. The limit is three frames' worth of bytes, doubled when the queue
+  does not drain for 2 s. RULES § Export Memory says so.
+- **§ 1**: a new `UI/ErrorLog.cs` holds the handlers, the log and the message; `ErrorLog.Describe`
+  names the memory shortage ("Not enough memory. Close other applications, or lower the video size
+  (⚙ menu).") for the status line as well as the message box. Every instance writes `errors.log`, a
+  `--new-instance` one included: a crash's details are what a test instance is for.
+- **§ 2.1**: `AnimationPlayer.Suspend` / `Resume`, through `GridPreview.SuspendPlayback` /
+  `ResumePlayback`; the sound's voices and the soundtrack are released with the readers and reopened
+  with them; a playback `Sync` creates while suspended waits for `Resume` to start its loop.
+- **§ 2.3**: the ⚙ menu reads *1920 px (Full HD)*, *2560 px (QHD)*, *4096 px (4K)*; a choice is
+  confirmed in the status line.
+- **§ 2.4**: `SourceImage.MemoryBytes` = the bitmap's pixels + `PageSource.MemoryBytes` (a GIF: its
+  file; a PDF: its stream; a video: 0, its composition's size unknown); `VideoFrames.Dispose` clears
+  the composition's clips under a lock shared with `Render`.
+- **§ 2.5**: the GIF's size is `LastVideo.Bytes`, read once at its creation; no file read.
+- **§ 3**: the Debug log is `fusion-<stamp>.log`, the export's own stamp, cleaned with the videos;
+  the summaries read `peak 1.2 GB`.
+- **§ 4.1**: the full redraw happens on the running → stopped transition only (`_wasRunning`), never
+  on a seek while held; the crop edit view's guard is the selected cell's rectangle; the scaled frames
+  and the preview cache are `Format32bppPArgb` (`CutCorners` locks as ARGB, GDI+ converting); the
+  shared `ImageAttributes` is `[ThreadStatic]`; `EdgeExtension.Draw` computes at the image's size —
+  the blur's small one — with a flat-fill fallback when the covered rectangle vanishes at that scale.
+- **Documentation**: RULES gets a **§ Export Memory** section, not in the design's table: the rules a
+  later change must keep.
+- **Measured** on the checking instance (four clips of 6–15 s, 2 × 2, Twitter format, Video size
+  1920): canvas 1920 × 1004, 452 frames in 33 s (the first 30 in 8 s: the readers' first seek and the
+  encoder's start), private bytes 0.40 GB before the readers open, 0.55 GB with them, **1.2 GB flat**
+  during the encoding, queued bytes 0 throughout, the encoder's pipeline 17 frames; the MP4 written,
+  the app alive. The preview **resumed where it stood**: its transport read 12.0 s, held, during the
+  export, then 14.5 s and 3.5 s (the loop wrapped) once it ended. The clipboard step failed in those
+  tests — `Set-Clipboard` from PowerShell had no effect either, the clipboard being held by something
+  on the machine — not the code: the MP4 path on the clipboard is untouched, and the last video was
+  kept for *Copy last*.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | — | — | Not applicable: no test project (CONTRIBUTING § Build) |
-| README | | | README.md and README.fr.md, RULES.md, GLOSSARY.md and GLOSSARY.fr.md |
+| Code | 3–4 | 2026-10-13 | Eleven commits on `main`, one per deliverable unit, `9fb152e` to the gate's revision |
+| Unit tests | — | — | Not applicable: no test project (CONTRIBUTING § Build); checked by an export driven by UI Automation on the built app |
+| README | 4 | 2026-10-13 | README.md and README.fr.md (§ Animated content, § Canvas size, § Undo & redo, § Output, § Tray & startup), RULES.md (§ Output Format, § Transport, § Undo History, § Export Memory), GLOSSARY.md and GLOSSARY.fr.md (*Video size*, *Undo history*, *Last video*) |
 
 ---
 
@@ -400,4 +446,4 @@ the standing decision for this app (no branch question asked). Scope frozen as �
 
 ---
 
-*Last updated: 2026-10-13*
+*Last updated: 2026-10-13 — implemented*
