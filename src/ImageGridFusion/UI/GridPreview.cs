@@ -145,6 +145,9 @@ internal sealed class GridPreview : Control
     // The image panned or zoomed right now: drawn fast and painted at once, drawn again in full at the end.
     private SourceImage? _live;
 
+    // Whether the grid ran at the last playback change: stopping draws the animated cells in full once.
+    private bool _wasRunning = true;
+
     // The wheel has no release: its zoom ends once no notch came for a moment.
     private readonly System.Windows.Forms.Timer _wheelEnd = new() { Interval = WheelEndDelay };
 
@@ -906,7 +909,8 @@ internal sealed class GridPreview : Control
         if (_cache is null || _cache.Size != canvas.Size)
         {
             _cache?.Dispose();
-            _cache = new Bitmap(canvas.Width, canvas.Height);
+            // Premultiplied, as GDI+ blends: blitted at every frame, a straight-alpha cache would be converted each time.
+            _cache = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppPArgb);
             using (var cacheGraphics = Graphics.FromImage(_cache))
             {
                 Compositor.Draw(cacheGraphics, _images, _layout!, canvas.Size, _borders, this._player.GridTime, this._seams);
@@ -922,7 +926,8 @@ internal sealed class GridPreview : Control
         g.DrawImageUnscaled(_cache, canvas.Location);
 
         var cells = CellBounds();
-        if (!_dragging && _barsEffect == ImageEffect.Crop && ShownBars(_selected) is { } crop)
+        // Painted again only where the paint reaches its cell: a playing cell elsewhere repaints its strip alone.
+        if (!_dragging && _barsEffect == ImageEffect.Crop && ShownBars(_selected) is { } crop && e.ClipRectangle.IntersectsWith(cells[_selected]))
         {
             PaintCropEdit(g, canvas, cells[_selected], crop);
         }
@@ -1413,6 +1418,15 @@ internal sealed class GridPreview : Control
     {
         this._motionDrawn = TimeSpan.MaxValue;
         this._progressTimer.Start();
+
+        // The grid just paused, held or stopped: its cells were drawn fast while it ran.
+        bool running = this._player.Running;
+        if (this._wasRunning && !running)
+        {
+            this.RedrawAnimatedInFull();
+        }
+
+        this._wasRunning = running;
         this.PlaybackChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -1753,14 +1767,37 @@ internal sealed class GridPreview : Control
             return;
         }
 
+        // Fast while the grid runs — a frame arrives about 1:1, where bilinear comes close to the full
+        // render — and in full once it pauses or stops (OnPlaybackChanged); the exports keep the full render.
         bool live = image == _live;
-        var area = this.DrawIntoCache([index], canvas.Size, fast: live);
+        var area = this.DrawIntoCache([index], canvas.Size, fast: live || this._player.Running);
         area.Offset(canvas.Location);
         Invalidate(area);
         if (live)
         {
             Update();
         }
+    }
+
+    /// <summary>The grid paused, held or stopped: the animated cells, drawn fast while it ran, are drawn in full once.</summary>
+    private void RedrawAnimatedInFull()
+    {
+        var canvas = CanvasBounds();
+        if (_layout is null || _cache is null || _cache.Size != canvas.Size)
+        {
+            Invalidate();
+            return;
+        }
+
+        int[] indices = [.. Enumerable.Range(0, _images.Count).Where(i => _images[i].IsAnimated)];
+        if (indices.Length == 0)
+        {
+            return;
+        }
+
+        var area = this.DrawIntoCache(indices, canvas.Size, fast: false);
+        area.Offset(canvas.Location);
+        Invalidate(area);
     }
 
     /// <summary>What the borders draw over the images (the corner brackets), repainted within a cell just drawn again.</summary>

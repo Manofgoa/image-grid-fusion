@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using ImageGridFusion.Composition;
 
 namespace ImageGridFusion.UI;
@@ -20,6 +22,9 @@ namespace ImageGridFusion.UI;
 internal sealed class AnimationPlayer : IDisposable
 {
     private static readonly TimeSpan Interval = TimeSpan.FromMilliseconds(33);
+
+    /// <summary>A loop never waits less: a continuation posted at once would starve the paint messages.</summary>
+    private static readonly TimeSpan MinimumWait = TimeSpan.FromMilliseconds(1);
 
     // A scrub snippet: its gain ramps in and out in steps of this timer, and holds this many ticks between.
     private const int SnippetHoldTicks = 6;
@@ -604,6 +609,8 @@ internal sealed class AnimationPlayer : IDisposable
         try
         {
             playback.Reader = await Task.Run(pages.OpenAnimation, cancellation);
+            var pace = Stopwatch.StartNew();
+            var next = Interval;
             while (!cancellation.IsCancellationRequested && !image.IsDisposed)
             {
                 // Content time, within the part the frames effect leaves to play.
@@ -634,7 +641,19 @@ internal sealed class AnimationPlayer : IDisposable
                     }
                 }
 
-                await Task.Delay(Interval, cancellation);
+                // Paced on a deadline, so the decode, the scaling and the redraw do not add to the interval:
+                // about 30 frames a second when the work fits in it. Late by more than an interval, the
+                // deadline starts over from now — a slow source drops frames rather than bursting
+                // (workfiles/20261010-optimisation-lack-of-memory.md § 4.1).
+                next += Interval;
+                var wait = next - pace.Elapsed;
+                if (wait < -Interval)
+                {
+                    next = pace.Elapsed;
+                    wait = TimeSpan.Zero;
+                }
+
+                await Task.Delay(wait < MinimumWait ? MinimumWait : wait, cancellation);
             }
         }
         catch (OperationCanceledException)
@@ -676,7 +695,8 @@ internal sealed class AnimationPlayer : IDisposable
         using (frame)
         {
             // The frame is disposed whatever happens: a copy refused for want of memory leaves nothing behind.
-            var scaled = new Bitmap(Math.Max(1, (int)Math.Ceiling(frame.Width * scale)), Math.Max(1, (int)Math.Ceiling(frame.Height * scale)));
+            // Premultiplied, as GDI+ blends: drawn at every frame, a straight-alpha bitmap would be converted each time.
+            var scaled = new Bitmap(Math.Max(1, (int)Math.Ceiling(frame.Width * scale)), Math.Max(1, (int)Math.Ceiling(frame.Height * scale)), PixelFormat.Format32bppPArgb);
             try
             {
                 using var g = Graphics.FromImage(scaled);

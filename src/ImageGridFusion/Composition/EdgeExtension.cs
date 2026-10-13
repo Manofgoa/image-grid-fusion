@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
@@ -39,20 +40,53 @@ internal static class EdgeExtension
     /// <summary>
     /// Paints the background of <paramref name="cell"/> on <paramref name="g"/>: <paramref name="fill"/>,
     /// made opaque, under the image's place <paramref name="covered"/>, the extension around it read from
-    /// <paramref name="image"/> — the image alone, drawn at the cell's size — the whole at the opacity.
+    /// <paramref name="image"/> — the image alone, drawn at the cell's size, or smaller at the scale
+    /// <paramref name="g"/> draws at: everything is computed in its pixels, the result stretched over the
+    /// cell — the whole at the opacity.
     /// </summary>
     public static void Draw(Graphics g, Bitmap image, Rectangle cell, Rectangle covered, BackgroundEffect background, Color fill)
     {
-        var inside = covered with { X = covered.X - cell.X, Y = covered.Y - cell.Y };
-        int width = cell.Width;
-        int height = cell.Height;
+        int width = image.Width;
+        int height = image.Height;
+        double scaleX = width / (double)cell.Width;
+        double scaleY = height / (double)cell.Height;
+        var inside = Rectangle.Intersect(
+            Rectangle.FromLTRB(
+                (int)Math.Round((covered.Left - cell.X) * scaleX),
+                (int)Math.Round((covered.Top - cell.Y) * scaleY),
+                (int)Math.Round((covered.Right - cell.X) * scaleX),
+                (int)Math.Round((covered.Bottom - cell.Y) * scaleY)),
+            new Rectangle(0, 0, width, height));
+        if (inside.Width < 1 || inside.Height < 1)
+        {
+            // Too small to have edges at this scale: the flat fill alone, its opacity its own.
+            using var brush = new SolidBrush(fill);
+            g.FillRectangle(brush, cell);
+            return;
+        }
+
         var edges = Edges.Read(image, inside);
         var flat = new Pixel(255, fill.R, fill.G, fill.B);
         int flatArgb = flat.Argb;
-        var pixels = new int[width * height];
-        Array.Fill(pixels, flatArgb);
         double spread = background.Soften ? SoftenSpread : 0;
 
+        // Rented rather than allocated at every frame: its length is width × height, never the array's own.
+        var pixels = ArrayPool<int>.Shared.Rent(width * height);
+        try
+        {
+            Array.Fill(pixels, flatArgb, 0, width * height);
+            Extend(pixels, width, height, inside, edges, flat, flatArgb, spread, background);
+            Paint(g, pixels, width, height, cell, background);
+        }
+        finally
+        {
+            ArrayPool<int>.Shared.Return(pixels);
+        }
+    }
+
+    /// <summary>Fills <paramref name="pixels"/>, <paramref name="width"/> by <paramref name="height"/>, with the extension around <paramref name="inside"/>.</summary>
+    private static void Extend(int[] pixels, int width, int height, Rectangle inside, Edges edges, Pixel flat, int flatArgb, double spread, BackgroundEffect background)
+    {
         for (int y = 0; y < height; y++)
         {
             int dy = y < inside.Top ? inside.Top - y : y >= inside.Bottom ? y - inside.Bottom + 1 : 0;
@@ -108,7 +142,11 @@ internal static class EdgeExtension
                     : flatArgb;
             }
         }
+    }
 
+    /// <summary>Draws <paramref name="pixels"/>, <paramref name="width"/> by <paramref name="height"/>, stretched over <paramref name="cell"/> at the background's opacity.</summary>
+    private static void Paint(Graphics g, int[] pixels, int width, int height, Rectangle cell, BackgroundEffect background)
+    {
         using var back = new Bitmap(width, height, PixelFormat.Format32bppArgb);
         var data = back.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
         try
@@ -123,15 +161,16 @@ internal static class EdgeExtension
             back.UnlockBits(data);
         }
 
-        // TileFlipXY keeps the edges of the bitmap opaque, as for the image itself.
-        using var attributes = new ImageAttributes();
-        attributes.SetWrapMode(WrapMode.TileFlipXY);
-        if (background.Opacity < 1)
+        // TileFlipXY keeps the edges of the bitmap opaque, as for the image itself; the opacity needs
+        // attributes of its own, else the thread's shared ones serve.
+        using var faded = background.Opacity < 1 ? new ImageAttributes() : null;
+        if (faded is not null)
         {
-            attributes.SetColorMatrix(new ColorMatrix { Matrix33 = (float)background.Opacity });
+            faded.SetWrapMode(WrapMode.TileFlipXY);
+            faded.SetColorMatrix(new ColorMatrix { Matrix33 = (float)background.Opacity });
         }
 
-        g.DrawImage(back, cell, 0, 0, width, height, GraphicsUnit.Pixel, attributes);
+        g.DrawImage(back, cell, 0, 0, width, height, GraphicsUnit.Pixel, faded ?? Compositor.TileFlipAttributes);
     }
 
     /// <summary>
@@ -196,11 +235,25 @@ internal static class EdgeExtension
             var data = image.LockBits(new Rectangle(0, 0, image.Width, image.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
             try
             {
-                int stride = data.Stride / 4;
-                var pixels = new int[stride * image.Height];
-                Marshal.Copy(data.Scan0, pixels, 0, pixels.Length);
-                int[] Row(int y) => Enumerable.Range(inside.Left, inside.Width).Select(x => pixels[y * stride + x]).ToArray();
-                int[] Column(int x) => Enumerable.Range(inside.Top, inside.Height).Select(y => pixels[y * stride + x]).ToArray();
+                // The four lines read on their own, never the whole image copied: a cell-sized array at every frame.
+                int[] Row(int y)
+                {
+                    var row = new int[inside.Width];
+                    Marshal.Copy(data.Scan0 + y * data.Stride + inside.Left * 4, row, 0, row.Length);
+                    return row;
+                }
+
+                int[] Column(int x)
+                {
+                    var column = new int[inside.Height];
+                    for (int i = 0; i < column.Length; i++)
+                    {
+                        column[i] = Marshal.ReadInt32(data.Scan0 + (inside.Top + i) * data.Stride + x * 4);
+                    }
+
+                    return column;
+                }
+
                 return new(new Line(Row(inside.Top)), new Line(Row(inside.Bottom - 1)), new Line(Column(inside.Left)), new Line(Column(inside.Right - 1)));
             }
             finally

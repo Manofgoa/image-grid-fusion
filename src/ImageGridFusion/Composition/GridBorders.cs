@@ -112,8 +112,9 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool I
             return;
         }
 
-        // What the style leaves unpainted stays transparent, like a cell without background.
-        using var clip = g.Clip;
+        // What the style leaves unpainted stays transparent, like a cell without background. The state
+        // is saved and restored rather than the clip read back: that getter allocates a Region at every frame.
+        var state = g.Save();
         using var gap = new Region(new Rectangle(Point.Empty, canvas));
         var cells = Inset(slots, canvas);
         foreach (var cell in cells)
@@ -136,7 +137,7 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool I
             }
         }
 
-        g.Clip = clip;
+        g.Restore(state);
         DrawOver(g, canvas);
     }
 

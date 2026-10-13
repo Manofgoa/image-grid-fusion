@@ -25,6 +25,28 @@ public readonly record struct Frame(Bitmap Bitmap, BandColor BandColor, ImageLoo
 /// <summary>Draws the images into their cells, at full resolution or at any preview size.</summary>
 public static class Compositor
 {
+    [ThreadStatic]
+    private static ImageAttributes? _tileFlip;
+
+    /// <summary>
+    /// Attributes mirroring the edges (TileFlipXY avoids the semi-transparent halo GDI+ leaves on the
+    /// edges of scaled images), one per thread — GDI+ objects are used from one thread at a time — so a
+    /// cell drawn at every frame allocates none (workfiles/20261010-optimisation-lack-of-memory.md § 4.1).
+    /// </summary>
+    internal static ImageAttributes TileFlipAttributes
+    {
+        get
+        {
+            if (_tileFlip is null)
+            {
+                _tileFlip = new ImageAttributes();
+                _tileFlip.SetWrapMode(WrapMode.TileFlipXY);
+            }
+
+            return _tileFlip;
+        }
+    }
+
     /// <summary>Renders the final image at <paramref name="ratio"/>, at the size given by <see cref="CanvasSizer"/>.</summary>
     public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders = null, SeamFade? seams = null) =>
         Render(images.Select(i => new Frame(i.Bitmap, i.BandColor, i.DrawnLook, Sharpening: i.Sharpening)).ToList(), layout, ratio, borders, seams);
@@ -138,13 +160,9 @@ public static class Compositor
 
         var look = frame.Look ?? ImageLook.None;
 
-        // TileFlipXY avoids the semi-transparent halo GDI+ leaves on the edges of scaled images.
-        using var attributes = new ImageAttributes();
-        attributes.SetWrapMode(WrapMode.TileFlipXY);
-        if (look.Colors is { IsNeutral: false } colors)
-        {
-            attributes.SetColorMatrix(colors.Matrix());
-        }
+        // The Colors effect needs attributes of its own; neutral, the thread's shared ones serve.
+        using var colored = look.Colors is { IsNeutral: false } colors ? ColoredAttributes(colors) : null;
+        var attributes = colored ?? TileFlipAttributes;
 
         var turned = FitCalculator.ComputeTurned(cell, frame.Size, look.ZoomAt(frame.Time, cell, frame.Size), look.FocusAt(frame.Time, cell, frame.Size), look.FineAngle);
         var fit = turned.Fit;
@@ -197,11 +215,29 @@ public static class Compositor
 
         DrawImage(g);
 
-        // Every effect is drawn here, so the preview, the exports and a playing video all show it.
-        using var clip = g.Clip;
+        // Every effect is drawn here, so the preview, the exports and a playing video all show it. The
+        // state is saved and restored rather than the clip read back: that getter allocates a Region.
+        var blurState = g.Save();
         g.SetClip(cell, CombineMode.Intersect);
         BlurRenderer.Draw(g, frame, cell, fast, seams);
-        g.Clip = clip;
+        g.Restore(blurState);
+    }
+
+    /// <summary>Attributes mirroring the edges and applying <paramref name="colors"/>: the caller's to dispose.</summary>
+    private static ImageAttributes ColoredAttributes(ColorsEffect colors)
+    {
+        var attributes = new ImageAttributes();
+        attributes.SetWrapMode(WrapMode.TileFlipXY);
+        attributes.SetColorMatrix(colors.Matrix());
+        return attributes;
+    }
+
+    /// <summary>The scale <paramref name="g"/> draws at, 1 or below: the blur draws the cell into a smaller bitmap.</summary>
+    private static (double X, double Y) DrawScale(Graphics g)
+    {
+        using var transform = g.Transform;
+        var elements = transform.Elements;
+        return (Math.Clamp(Math.Abs(elements[0]), 0.01, 1), Math.Clamp(Math.Abs(elements[3]), 0.01, 1));
     }
 
     /// <summary>
@@ -253,12 +289,17 @@ public static class Compositor
             return;
         }
 
-        using var image = new Bitmap(cell.Width, cell.Height, PixelFormat.Format32bppPArgb);
+        // The image alone, at the cell's size — or at the scale g draws at: the blur's small bitmap gets
+        // its extension computed at its own size rather than the cell's, then shrunk.
+        var (scaleX, scaleY) = DrawScale(g);
+        var size = new Size(Math.Max(1, (int)Math.Ceiling(cell.Width * scaleX)), Math.Max(1, (int)Math.Ceiling(cell.Height * scaleY)));
+        using var image = new Bitmap(size.Width, size.Height, PixelFormat.Format32bppPArgb);
         using (var ig = Graphics.FromImage(image))
         {
             ig.InterpolationMode = fast ? InterpolationMode.Bilinear : InterpolationMode.HighQualityBicubic;
             ig.PixelOffsetMode = PixelOffsetMode.HighQuality;
             ig.CompositingQuality = fast ? CompositingQuality.HighSpeed : CompositingQuality.HighQuality;
+            ig.ScaleTransform((float)scaleX, (float)scaleY);
             ig.TranslateTransform(-cell.X, -cell.Y);
             drawImage(ig);
         }
@@ -298,12 +339,8 @@ public static class Compositor
         var size = look.Oriented(frame.Bitmap.Size);
         var image = UncroppedBounds(size, cell);
 
-        using var attributes = new ImageAttributes();
-        attributes.SetWrapMode(WrapMode.TileFlipXY);
-        if (look.Colors is { IsNeutral: false } colors)
-        {
-            attributes.SetColorMatrix(colors.Matrix());
-        }
+        using var colored = look.Colors is { IsNeutral: false } colors ? ColoredAttributes(colors) : null;
+        var attributes = colored ?? TileFlipAttributes;
 
         void DrawImage(Graphics target)
         {

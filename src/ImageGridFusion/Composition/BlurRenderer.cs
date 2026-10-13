@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
@@ -62,12 +63,7 @@ internal static class BlurRenderer
         g.PixelOffsetMode = pixelate ? PixelOffsetMode.Half : PixelOffsetMode.HighQuality;
 
         // TileFlipXY keeps the edges of the stretched bitmap opaque, as for the image itself.
-        using (var attributes = new ImageAttributes())
-        {
-            attributes.SetWrapMode(WrapMode.TileFlipXY);
-            g.DrawImage(small, cell, 0, 0, width, height, GraphicsUnit.Pixel, attributes);
-        }
-
+        g.DrawImage(small, cell, 0, 0, width, height, GraphicsUnit.Pixel, Compositor.TileFlipAttributes);
         g.Restore(state);
     }
 
@@ -76,19 +72,24 @@ internal static class BlurRenderer
     {
         var bounds = new Rectangle(Point.Empty, bitmap.Size);
         var data = bitmap.LockBits(bounds, ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
+        int stride = data.Stride;
+        int length = stride * bitmap.Height;
+
+        // Rented rather than allocated at every frame; their length is the array's own, never the rented one's.
+        var pixels = ArrayPool<byte>.Shared.Rent(length);
+        var blurred = ArrayPool<byte>.Shared.Rent(length);
         try
         {
-            int stride = data.Stride;
-            var pixels = new byte[stride * bitmap.Height];
-            Marshal.Copy(data.Scan0, pixels, 0, pixels.Length);
-            var blurred = new byte[pixels.Length];
+            Marshal.Copy(data.Scan0, pixels, 0, length);
             Pass(pixels, blurred, bitmap.Width, bitmap.Height, stride, horizontal: true);
             Pass(blurred, pixels, bitmap.Width, bitmap.Height, stride, horizontal: false);
-            Marshal.Copy(pixels, 0, data.Scan0, pixels.Length);
+            Marshal.Copy(pixels, 0, data.Scan0, length);
         }
         finally
         {
             bitmap.UnlockBits(data);
+            ArrayPool<byte>.Shared.Return(pixels);
+            ArrayPool<byte>.Shared.Return(blurred);
         }
     }
 
