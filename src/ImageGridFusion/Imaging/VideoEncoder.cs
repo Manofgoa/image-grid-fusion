@@ -19,19 +19,21 @@ internal sealed class VideoEncoder : IFrameEncoder
     private static readonly long SoundLead = TimeSpan.FromSeconds(1).Ticks;
 
     /// <summary>
-    /// Raw frames the writer may hold not yet encoded before a new one is written: the inbox encoder
-    /// works on one picture at a time, so three leave it never starved. An encoder holding more by
-    /// design (B-frames, a hardware queue) shows it by making no progress for <see cref="EncoderStall"/>,
-    /// and is given the room it holds (workfiles/20261010-optimisation-lack-of-memory.md § 2.2).
+    /// Raw frames' worth of bytes the writer may hold in its queue — written, not yet given to the
+    /// encoder — before a new frame is written: three, so a renderer faster than the encoder never
+    /// piles canvas-sized buffers up there. The frames the encoder itself keeps in its pipeline (the
+    /// inbox one holds about seventeen, received and not encoded by the statistics) are its working
+    /// set, converted and smaller, not the queue. A queue that does not drain for <see cref="EncoderStall"/>
+    /// is given twice the room rather than a deadlock (workfiles/20261010-optimisation-lack-of-memory.md § 2.2).
     /// </summary>
-    private const int FramesInFlightAtFirst = 3;
+    private const int QueuedFramesAtFirst = 3;
     private static readonly TimeSpan EncoderStall = TimeSpan.FromSeconds(2);
 
     private readonly IMFSinkWriter _writer;
     private readonly Size _size;
     private readonly int _videoStream;
     private readonly Mixer? _sound;
-    private int _framesInFlightLimit = FramesInFlightAtFirst;
+    private long _queuedBytesLimit;
     private bool _statisticsUnavailable;
 
     private VideoEncoder(IMFSinkWriter writer, Size size, int videoStream, Mixer? sound)
@@ -40,6 +42,7 @@ internal sealed class VideoEncoder : IFrameEncoder
         _size = size;
         _videoStream = videoStream;
         _sound = sound;
+        this._queuedBytesLimit = (long)QueuedFramesAtFirst * size.Width * 4 * size.Height;
     }
 
     /// <summary>Files whose sound went into the mix.</summary>
@@ -141,31 +144,30 @@ internal sealed class VideoEncoder : IFrameEncoder
     }
 
     /// <summary>
-    /// Waits until the writer holds at most <see cref="_framesInFlightLimit"/> raw frames not yet encoded,
-    /// so a renderer faster than the encoder never piles canvas-sized buffers up inside it — the writer's
-    /// own throttling bounds the rate, not the depth. An encoder making no progress for
-    /// <see cref="EncoderStall"/> holds that many frames by design: the limit grows to them, never a deadlock.
+    /// Waits until the writer's queue holds at most <see cref="_queuedBytesLimit"/> bytes not yet given
+    /// to the encoder, so a renderer faster than the encoder never piles canvas-sized buffers up there —
+    /// the writer's own throttling bounds the rate, not the depth. A queue that does not drain for
+    /// <see cref="EncoderStall"/> gets twice the room: a slow encoder, never a deadlock.
     /// </summary>
     private void WaitForEncoder()
     {
-        long encoded = -1;
+        long processed = -1;
         var stall = Stopwatch.StartNew();
         while (this.ReadStatistics() is { } statistics)
         {
-            long inFlight = statistics.SamplesReceived - statistics.SamplesEncoded;
-            if (inFlight <= this._framesInFlightLimit)
+            if ((uint)statistics.ByteCountQueued <= this._queuedBytesLimit)
             {
                 return;
             }
 
-            if (statistics.SamplesEncoded != encoded)
+            if (statistics.SamplesProcessed != processed)
             {
-                encoded = statistics.SamplesEncoded;
+                processed = statistics.SamplesProcessed;
                 stall.Restart();
             }
             else if (stall.Elapsed >= EncoderStall)
             {
-                this._framesInFlightLimit = (int)Math.Min(int.MaxValue, inFlight + 1);
+                this._queuedBytesLimit *= 2;
                 return;
             }
 

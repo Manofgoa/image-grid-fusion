@@ -431,10 +431,12 @@ What keeps an animated export within memory, whatever the grid holds (origin:
   allocation in `Compositor`, the effects or the readers follows suit; the neutral `ImageAttributes`
   is the thread's shared one (`Compositor.TileFlipAttributes`), and the clip is saved and restored,
   never read back (`Graphics.Clip` allocates a `Region`).
-- **The writer holds at most a few raw frames**: `VideoEncoder.WriteFrame` waits while the sink
-  writer's statistics (`MediaFoundation.Statistics`) show more than three frames received and not
-  encoded, the limit growing to what an encoder holds by design when it makes no progress for two
-  seconds. The writer's own throttling stays on: `MF_SINK_WRITER_DISABLE_THROTTLING` is never set.
+- **The writer's queue holds at most a few raw frames**: `VideoEncoder.WriteFrame` waits while the
+  sink writer's statistics (`MediaFoundation.Statistics`) show more than three frames' worth of bytes
+  queued — written, not yet given to the encoder — the limit doubling when the queue does not drain
+  for two seconds. The frames the encoder keeps in its own pipeline (about seventeen for the inbox
+  one, received and not encoded by the statistics) are its working set, converted and smaller, not
+  the queue. The writer's own throttling stays on: `MF_SINK_WRITER_DISABLE_THROTTLING` is never set.
 - **Fewer holders**: the preview's readers are closed during an export (§ Transport), the undo
   history's parked images are budgeted (§ Undo History), a video export's canvas is clamped to the
   Video size (§ Output Format), and a GIF heavier than 64 MB goes on the clipboard as its file only
