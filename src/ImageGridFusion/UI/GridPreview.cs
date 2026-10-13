@@ -950,11 +950,11 @@ internal sealed class GridPreview : Control
 
         if (_panning && !_dragging && _pressed >= 0 && _pressed < cells.Length)
         {
-            PaintPanGuides(g, cells[_pressed], _images[_pressed], this.PointToClient(Cursor.Position));
+            PaintPanGuides(g, cells[_pressed], _images[_pressed], dragged: true);
         }
         else if (this.KeyPanned() && this._selected < cells.Length)
         {
-            this.PaintPanGuides(g, cells[this._selected], this._images[this._selected], cursor: null);
+            this.PaintPanGuides(g, cells[this._selected], this._images[this._selected], dragged: false);
         }
 
         this.PaintReadouts(g, cells);
@@ -3370,18 +3370,18 @@ internal sealed class GridPreview : Control
     /// Guides of the magnetic stops of a moved image, dashed, in the green of the helper indicators: along
     /// the cell edge the image edge is aligned on, or through the center of the cell. A stop holding the
     /// image shows at full opacity; the nearest stop it comes within <see cref="ApproachReach"/> of shows
-    /// fainter the farther it is, with a gap bar measuring what is left — through <paramref name="cursor"/>
-    /// during a drag, through the image's center after an arrow key (null). See
+    /// fainter the farther it is, with a gap bar through the image's center measuring what is left — once
+    /// the drag has moved the image when <paramref name="dragged"/>, at once after an arrow key. See
     /// workfiles/20260926-guides-approach-gap-bar.md.
     /// </summary>
-    private void PaintPanGuides(Graphics g, Rectangle cell, SourceImage image, Point? cursor)
+    private void PaintPanGuides(Graphics g, Rectangle cell, SourceImage image, bool dragged)
     {
         var look = image.Look;
         var size = look.Shown(image.Bitmap.Size);
         var bounds = FitCalculator.ComputeTurned(cell, size, look.ZoomIn(cell, size), look.Focus, look.FineAngle).Bounds;
         var stops = FitCalculator.Stops(cell, bounds.Size);
-        bool approaching = !this._panFree && (cursor is null || this._panMoved);
-        var along = cursor ?? Point.Round(new PointF(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height / 2));
+        bool approaching = !this._panFree && (!dragged || this._panMoved);
+        var along = Point.Round(new PointF(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height / 2));
         int inset = LogicalToDeviceUnits(2);
         int left = cell.Left + inset;
         int right = cell.Right - 1 - inset;
