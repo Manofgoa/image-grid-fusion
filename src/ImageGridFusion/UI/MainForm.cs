@@ -1839,12 +1839,19 @@ internal sealed class MainForm : Form
     }
 
     /// <summary>Long edge of the light copy: chat apps recompress to about 1600 px anyway.</summary>
-    /// <summary>Puts a generated MP4 or GIF on the clipboard: its file, plus its bytes in the clipboard's GIF format for a GIF.</summary>
+    /// <summary>A GIF heavier than this goes on the clipboard as its file only: its bytes would be held two to three times over.</summary>
+    private const long ClipboardGifBytes = 64L << 20;
+
+    /// <summary>
+    /// Puts a generated MP4 or GIF on the clipboard: its file, plus its bytes in the clipboard's GIF
+    /// format for a GIF up to <see cref="ClipboardGifBytes"/> — the file is on disk already, and the
+    /// clipboard holds its path (workfiles/20261010-optimisation-lack-of-memory.md § 2.5).
+    /// </summary>
     private static void PutOnClipboard(LastVideo video)
     {
         var data = new DataObject();
         data.SetFileDropList(new StringCollection { video.FilePath });
-        if (video.Format == GridExport.Format.Gif)
+        if (video.Format == GridExport.Format.Gif && video.Bytes <= ClipboardGifBytes)
         {
             data.SetData("GIF", new MemoryStream(File.ReadAllBytes(video.FilePath)));
         }
