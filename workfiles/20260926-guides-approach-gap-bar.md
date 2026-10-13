@@ -282,6 +282,8 @@ in the order the requests were made.
   guide for an edge stop, the edge on the side of the move for the center stop. **Image center** is the
   default. The ⚙ menu gets **Gap bars from**, next to *Guides show from*. This replaces Iteration 7's
   edge bar drawn into the cell from the guide.
+- Staged apart from another session's uncommitted edits of `AppSettings.cs` and `MainForm.cs` (the
+  video size setting): only this iteration's changes went into its commit.
 
 ---
 
@@ -292,10 +294,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 7, 8, 9 | 2026-10-13 | `1465de2` approach distance setting (Iteration 9); `6d13a1c` gap bar through the image's center (Iteration 8); `9963110` — `PanMagnet.Approach`, `GridPreview.PaintPanGuides` / `PaintGapBars`; builds with 0 warnings |
+| Code | 7, 8, 9, 10 | 2026-10-13 | `45f16f4` gap bars from the image's center or edges (Iteration 10); `1465de2` approach distance setting (Iteration 9); `6d13a1c` gap bar through the image's center (Iteration 8); `9963110` — `PanMagnet.Approach`, `GridPreview.PaintPanGuides` / `PaintGapBars`; builds with 0 warnings |
 | Unit tests | 3 | 2026-09-26 | Not applicable — no test project, declined (Q&A #9) |
-| README | 7, 8, 9 | 2026-10-13 | Guides show from (Iteration 9); `77b004e` (Iteration 8); `18570a1` — `README.md` and `README.fr.md`, the guides paragraph |
-| RULES.md | 7, 8, 9 | 2026-10-13 | approach distance setting (Iteration 9); `f519d1c` (Iteration 8); `96463ac` — *On-Cell Helper Indicators › Guides Approach* |
+| README | 7, 8, 9, 10 | 2026-10-13 | `4ba3a7e` Gap bars from (Iteration 10); Guides show from (Iteration 9); `77b004e` (Iteration 8); `18570a1` — `README.md` and `README.fr.md`, the guides paragraph |
+| RULES.md | 7, 8, 9, 10 | 2026-10-13 | `87edd8f` the move left, Gap bars from (Iteration 10); approach distance setting (Iteration 9); `f519d1c` (Iteration 8); `96463ac` — *On-Cell Helper Indicators › Guides Approach* |
 
 ---
 
