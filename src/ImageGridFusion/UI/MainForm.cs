@@ -2409,8 +2409,9 @@ internal sealed class MainForm : Form
     private CancellationToken BeginExport(string message, bool cancellable)
     {
         _export = new CancellationTokenSource();
-        // The preview stands still while the export runs (workfiles/20261009-playback-controls.md).
-        this._preview.HoldPlayback();
+        // The preview stands still while the export runs (workfiles/20261009-playback-controls.md), its
+        // readers closed meanwhile: the export's own are the only ones open (workfiles/20261010-optimisation-lack-of-memory.md § 2.1).
+        this._preview.SuspendPlayback();
         _preview.Locked = true;
         _layouts.Enabled = false;
         _cancelButton.Visible = cancellable;
@@ -2423,7 +2424,7 @@ internal sealed class MainForm : Form
     {
         _export?.Dispose();
         _export = null;
-        this._preview.ReleasePlayback();
+        this._preview.ResumePlayback();
         _preview.Locked = false;
         _layouts.Enabled = true;
         _cancelButton.Visible = false;

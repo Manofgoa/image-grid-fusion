@@ -1384,6 +1384,15 @@ internal sealed class GridPreview : Control
     public void ReleasePlayback() => this._player.Release();
 
     /// <summary>
+    /// Holds the grid and closes its readers for a Copy or an export, so the export's own readers are the
+    /// only ones open; the cells keep their frames (workfiles/20261010-optimisation-lack-of-memory.md § 2.1).
+    /// </summary>
+    public void SuspendPlayback() => this._player.Suspend();
+
+    /// <summary>Ends a <see cref="SuspendPlayback"/>: the readers open again where the grid stood, and it plays on unless paused.</summary>
+    public void ResumePlayback() => this._player.Resume();
+
+    /// <summary>
     /// Moves the grid to <paramref name="time"/> of its loop; while the timeline is dragged
     /// (<paramref name="scrub"/>), the mix heard there sounds for a short snippet.
     /// </summary>

@@ -41,6 +41,9 @@ internal sealed class AnimationPlayer : IDisposable
     private bool _paused;
     private int _holds;
 
+    // Held with its readers closed, by a Copy or an export (Suspend): the playbacks stand stopped until Resume.
+    private bool _suspended;
+
     // While a scrub snippet sounds: the ticks left before its gain ramps out.
     private bool _snippet;
     private int _snippetTicks;
@@ -120,6 +123,54 @@ internal sealed class AnimationPlayer : IDisposable
     }
 
     /// <summary>
+    /// Holds the grid and closes its readers: every playback loop is cancelled, so its reader is released
+    /// where a decode may be in progress, the images keeping their shown frame and their position; the
+    /// sound's voices are released too. What a Copy or an export does, so its own readers are the only
+    /// ones open (workfiles/20261010-optimisation-lack-of-memory.md § 2.1). Ended by <see cref="Resume"/>.
+    /// </summary>
+    public void Suspend()
+    {
+        this.Hold();
+        if (this._suspended)
+        {
+            return;
+        }
+
+        this._suspended = true;
+        foreach (var playback in this._playbacks.Values)
+        {
+            playback.Stop();
+        }
+
+        this._sound.Follow([]);
+        this._sound.FollowSoundtrack(null);
+    }
+
+    /// <summary>
+    /// Ends a <see cref="Suspend"/>: every playback starts again where it stood — its reader opened anew,
+    /// the frame there decoded once — the sound's voices back; then the hold is released.
+    /// </summary>
+    public void Resume()
+    {
+        if (this._suspended)
+        {
+            this._suspended = false;
+            foreach (var (image, stopped) in this._playbacks.ToList())
+            {
+                stopped.Stop();
+                var playback = new Playback(image, stopped.Offset) { PausedAt = stopped.PausedAt, DisplaySize = stopped.DisplaySize };
+                this._playbacks[image] = playback;
+                _ = this.RunAsync(playback);
+            }
+
+            this._sound.Follow(this._images);
+            this.UpdateSoundtrack();
+        }
+
+        this.Release();
+    }
+
+    /// <summary>
     /// Moves the grid to <paramref name="time"/> of its loop, as the exported video shows it: every
     /// playing image from its starting point at the clock's origin, the soundtrack from its beginning;
     /// paused, the frames there are shown once. A frozen image stays where it stands.
@@ -195,7 +246,11 @@ internal sealed class AnimationPlayer : IDisposable
                     StandAtStart(playback);
                 }
 
-                _ = RunAsync(playback);
+                // Suspended, its loop starts with the others, on Resume.
+                if (!this._suspended)
+                {
+                    _ = RunAsync(playback);
+                }
             }
         }
 
