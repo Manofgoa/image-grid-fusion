@@ -71,11 +71,18 @@ Components:
   turned image's bounding box, as today.
 - **One stop per axis**: when two stops are within reach on an axis (an image larger than 80 % of the
   cell can be near both an edge and the center), the **nearest** one shows.
+- An edge stop counts **from inside the stops** only, where reaching it outward holds the image: an
+  image pushed beyond its stops shows no approach. An axis whose stops **coincide** (an image exactly
+  filling it) shows none either — the image has no room to come near anything, and its guide would
+  otherwise stay on for the whole drag. One computation: `PanMagnet.Approach` (Iteration 7).
 - The **edge guide's side** follows today's rule: the side an image covering the cell uncovers, the
   side a smaller image crosses.
 - The approach is shown **while the image is moved** — during a drag, everything going when the
   mouse is released, and after an **arrow key**, as long as its guides show today (`KeyPanned`):
   the arrow keys get the approach and the gap bar too (Q&A #12).
+- A drag shows it only **once the image has moved** (`GridPreview._panMoved`): a mere click on a
+  centered image does not flash its center guides. `Shift` is read from the last move
+  (`GridPreview._panFree`), so a free move shows nothing (Iteration 7).
 
 ### Progressive Opacity
 
@@ -90,15 +97,18 @@ Components:
 
 ## Gap Bar
 
-- A **segment perpendicular to the guide** (scoping answer), from the image (its edge, or its center
-  line for a center stop) to the guide. Its **length is the gap left**: it shrinks as the image gets
-  closer.
+- A **segment perpendicular to the guide** (scoping answer), starting on the guide. Its **length is
+  the gap left**: it shrinks as the image gets closer.
+  - Center stop: toward the image's center line, which it reaches.
+  - Edge stop: **into the cell** — an image covering the cell has its edge outside the cell, where the
+    bar would be clipped out of sight; drawn inward, the measure stays visible (Iteration 7).
 - It **disappears when the stop holds** the image (gap 0): only the guide stays, as today.
 - While the image is held and the drag goes on toward the resistance, no bar is drawn (the image
   does not move).
 - Drawing: a **helper indicator** (RULES.md) — fluorescent green `HelperColor` over the black
   `HelperHalo`, in `GridPreview.OnPaint` only, never in `Compositor`; **solid** (the guide is the
-  dashed one), with a short tick across each end so a short gap still reads as a measure.
+  dashed one), 2 px over a 4 px halo, with a short tick across each end (5 logical px each way,
+  `GapBarTick`) so a short gap still reads as a measure (`GridPreview.PaintGapBars`).
 - Position along the guide: **at the mouse** (Q&A #8) — at the cursor's height for a vertical guide,
   at its abscissa for a horizontal one, kept inside the cell (the bar and its ticks fully visible).
 - Moved by an **arrow key**, with no mouse to follow: through the **image's center** (Q&A #12), kept
@@ -113,8 +123,8 @@ Components:
 
 ## Rules and Documentation
 
-- `RULES.md`, *On-Cell Helper Indicators*: a guide shows **from an approach distance** in fractions
-  of the cell, with a **gap bar** at 90° while the stop is not reached.
+- `RULES.md`, *On-Cell Helper Indicators › Guides Approach*: a guide shows **from an approach
+  distance** in fractions of the cell, with a **gap bar** at 90° while the stop is not reached.
 - `README.md` and `README.fr.md`, in the same commit (`../CLAUDE.md` § French Versions): the pan's
   guides paragraph mentions the early display and the gap bar.
 
@@ -207,6 +217,22 @@ in the order the requests were made.
   no commit since Iteration 5 touches the guides.
 - Branch: stays on `main`, the standing choice for this repository.
 
+### Iteration 7 — 2026-10-13 — 🧭 Implementation choices
+
+- No rule broken.
+- **Edge gap bar drawn into the cell**, from the guide: for an image covering the cell, the edge
+  concerned lies outside the cell, and a bar running to it would be clipped out of sight.
+- **No approach outside the stops** (an image pushed beyond them, which leaves inward freely) and **none
+  on an axis whose stops coincide** (an image exactly filling it, whose guide would stay on for the
+  whole drag).
+- **A drag shows the approach once the image has moved**, not at the press: a click selecting a
+  centered image would otherwise flash its center guides.
+- **Shift** is read from the last move (`_panFree`), not from the keyboard at paint time.
+- With the arrow keys, the approach lasts as the held guides already did (`KeyPanned`): until another
+  gesture, cell or tab, or a change of the image's look.
+- Sizes: gap bar 2 px over a 4 px halo, ticks 5 logical px each way, kept inside the cell.
+- RULES.md gets a *Guides Approach* subsection under *On-Cell Helper Indicators*.
+
 ---
 
 ## Implementation Log
@@ -216,10 +242,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 7 | 2026-10-13 | `9963110` — `PanMagnet.Approach`, `GridPreview.PaintPanGuides` / `PaintGapBars`; builds with 0 warnings |
 | Unit tests | 3 | 2026-09-26 | Not applicable — no test project, declined (Q&A #9) |
-| README | | | |
-| RULES.md | | | |
+| README | 7 | 2026-10-13 | `18570a1` — `README.md` and `README.fr.md`, the guides paragraph |
+| RULES.md | 7 | 2026-10-13 | `96463ac` — *On-Cell Helper Indicators › Guides Approach* |
 
 ---
 
