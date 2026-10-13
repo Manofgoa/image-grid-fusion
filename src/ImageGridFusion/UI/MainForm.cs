@@ -1757,10 +1757,11 @@ internal sealed class MainForm : Form
                     ShowStatus(AnimationSummary($"Copied {last.FileName}", last) + kept);
                     NotifyIfAway($"{FormatName(animated)} copied", $"{last.FileName} is on the clipboard. If it gets overwritten, Copy last {FormatName(animated)} brings it back.", error: false);
                 }
-                catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException)
+                catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException or OutOfMemoryException)
                 {
-                    ShowStatus($"Copy failed: {ex.Message}", error: true);
-                    NotifyIfAway("Copy failed", last is null ? ex.Message : $"{ex.Message} Copy last {FormatName(animated)} puts {last.FileName} on the clipboard again.", error: true);
+                    string why = ErrorLog.Describe(ex);
+                    ShowStatus($"Copy failed: {why}", error: true);
+                    NotifyIfAway("Copy failed", last is null ? why : $"{why} Copy last {FormatName(animated)} puts {last.FileName} on the clipboard again.", error: true);
                 }
             }
 
@@ -1790,9 +1791,9 @@ internal sealed class MainForm : Form
             string kept = KeepPrevious(() => PreviousCopy.Keep(png.ToArray(), ".png", cellFiles));
             ShowStatus(StillSummary("Copied to the clipboard", "PNG", result.Size, png.Length, encoding) + kept);
         }
-        catch (ExternalException ex)
+        catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
-            ShowStatus($"Copy failed: {ex.Message}", error: true);
+            ShowStatus($"Copy failed: {ErrorLog.Describe(ex)}", error: true);
         }
     }
 
@@ -1846,9 +1847,9 @@ internal sealed class MainForm : Form
             PutOnClipboard(last);
             ShowStatus(AnimationSummary($"Copied again {last.FileName} (generated at {last.GeneratedAt:HH:mm})", last));
         }
-        catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException or OutOfMemoryException)
         {
-            ShowStatus($"Copy failed: {ex.Message}", error: true);
+            ShowStatus($"Copy failed: {ErrorLog.Describe(ex)}", error: true);
         }
     }
 
@@ -2124,9 +2125,9 @@ internal sealed class MainForm : Form
             string kept = KeepPrevious(() => PreviousCopy.KeepCopyOf(path, cellFiles));
             ShowStatus(StillSummary("Copied for sharing", "JPEG", light.Size, new FileInfo(path).Length, encoding) + kept);
         }
-        catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException or OutOfMemoryException)
         {
-            ShowStatus($"Copy failed: {ex.Message}", error: true);
+            ShowStatus($"Copy failed: {ErrorLog.Describe(ex)}", error: true);
         }
     }
 
@@ -2180,9 +2181,9 @@ internal sealed class MainForm : Form
             still.Save(dialog.FileName, ImageFormat.Png);
             ShowStatus(StillSummary(saved, "PNG", still.Size, new FileInfo(dialog.FileName).Length, clock.Elapsed));
         }
-        catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException or OutOfMemoryException)
         {
-            ShowStatus($"Save failed: {ex.Message}", error: true);
+            ShowStatus($"Save failed: {ErrorLog.Describe(ex)}", error: true);
         }
     }
 
@@ -2286,26 +2287,45 @@ internal sealed class MainForm : Form
                 Cursor.Current = Cursors.WaitCursor;
                 return Compositor.Render(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, this.ActiveSeams);
             }
+            catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
+            {
+                this.ShowStatus($"Export failed: {ErrorLog.Describe(ex)}", error: true);
+                return null;
+            }
             finally
             {
                 this._preview.ReleasePlayback();
             }
         }
 
-        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, seams: this.ActiveSeams);
-        BeginExport("Rendering the image…", cancellable: false);
+        // The stills are copied here, on the UI thread: a copy failing for want of memory fails like the export.
+        GridExport.Job job;
         try
         {
-            return await Task.Run(() => GridExport.RenderStill(job));
+            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, seams: this.ActiveSeams);
         }
-        catch (Exception ex) when (ex is ExternalException or InvalidOperationException)
+        catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
-            ShowStatus($"Export failed: {ex.Message}", error: true);
+            this.ShowStatus($"Export failed: {ErrorLog.Describe(ex)}", error: true);
             return null;
         }
-        finally
+
+        using (job)
         {
-            EndExport();
+            BeginExport("Rendering the image…", cancellable: false);
+            try
+            {
+                return await Task.Run(() => GridExport.RenderStill(job));
+            }
+            catch (Exception ex) when (ex is ExternalException or InvalidOperationException or OutOfMemoryException)
+            {
+                ShowStatus($"Export failed: {ErrorLog.Describe(ex)}", error: true);
+                return null;
+            }
+            finally
+            {
+                EndExport();
+            }
         }
     }
 
@@ -2316,35 +2336,52 @@ internal sealed class MainForm : Form
     /// </summary>
     private async Task<GridExport.Result?> ExportAnimationAsync(string path, GridExport.Format format)
     {
-        using var job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, ActiveSoundtrack, ActiveFade, this.ActiveSeams, this.ActiveCascade);
-        string what = format == GridExport.Format.Gif ? "GIF" : "video";
-        var cancellation = BeginExport($"Exporting the {what}… 0 %", cancellable: true);
-        var progress = new Progress<double>(done =>
-        {
-            // Reports still queued when the export ends are dropped: they would hide its outcome.
-            if (IsExporting)
-            {
-                ShowStatus($"Exporting the {what}… {done:P0}");
-            }
-        });
+        // The stills are copied here, on the UI thread: a copy failing for want of memory fails like the export.
+        GridExport.Job job;
         try
         {
-            return await Task.Run(() => GridExport.RenderAnimation(job, format, path, progress, cancellation));
+            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, ActiveSoundtrack, ActiveFade, this.ActiveSeams, this.ActiveCascade);
         }
-        catch (OperationCanceledException)
+        catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
-            ShowStatus(format == GridExport.Format.Gif ? "GIF export cancelled." : "Video export cancelled.");
+            this.ShowStatus($"Export failed: {ErrorLog.Describe(ex)}", error: true);
             return null;
         }
-        catch (Exception ex) when (ex is ExternalException or InvalidOperationException or IOException or UnauthorizedAccessException)
+
+        using (job)
         {
-            ShowStatus($"Export failed: {ex.Message}", error: true);
-            NotifyIfAway($"{FormatName(format)} export failed", ex.Message, error: true);
-            return null;
-        }
-        finally
-        {
-            EndExport();
+            string what = format == GridExport.Format.Gif ? "GIF" : "video";
+            var cancellation = BeginExport($"Exporting the {what}… 0 %", cancellable: true);
+            var progress = new Progress<double>(done =>
+            {
+                // Reports still queued when the export ends are dropped: they would hide its outcome.
+                if (IsExporting)
+                {
+                    ShowStatus($"Exporting the {what}… {done:P0}");
+                }
+            });
+            try
+            {
+                return await Task.Run(() => GridExport.RenderAnimation(job, format, path, progress, cancellation));
+            }
+            catch (OperationCanceledException)
+            {
+                ShowStatus(format == GridExport.Format.Gif ? "GIF export cancelled." : "Video export cancelled.");
+                return null;
+            }
+            catch (Exception ex) when (ex is ExternalException or InvalidOperationException or IOException or UnauthorizedAccessException or OutOfMemoryException)
+            {
+                // A memory shortage included: Media Foundation's E_OUTOFMEMORY is raised as an OutOfMemoryException,
+                // not a COMException (workfiles/20261010-optimisation-lack-of-memory.md § 1).
+                string why = ErrorLog.Describe(ex);
+                ShowStatus($"Export failed: {why}", error: true);
+                NotifyIfAway($"{FormatName(format)} export failed", why, error: true);
+                return null;
+            }
+            finally
+            {
+                EndExport();
+            }
         }
     }
 

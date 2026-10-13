@@ -55,6 +55,10 @@ internal static class Program
 
         ApplicationConfiguration.Initialize();
 
+        // An exception nothing caught is logged next to the exe and told in a plain message box, the app
+        // staying up — never the .NET dialog (workfiles/20261010-optimisation-lack-of-memory.md § 1).
+        ErrorLog.Install();
+
         // Writes of the app's own accord, left to the normal instance: a test instance never moves the user's settings.
         if (!newInstance)
         {
