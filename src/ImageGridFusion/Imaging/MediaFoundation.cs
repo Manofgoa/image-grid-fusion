@@ -115,6 +115,18 @@ internal static class MediaFoundation
     public static int? TryGetInt(IMFAttributes attributes, Guid key) =>
         attributes.GetUINT32(key, out int value) >= 0 ? value : null;
 
+    /// <summary>
+    /// The writer's statistics on <paramref name="stream"/>: the samples it received, encoded and passed
+    /// on to the file, what waits in its queue — what bounds the frames in flight
+    /// (workfiles/20261010-optimisation-lack-of-memory.md § 2.2).
+    /// </summary>
+    public static SinkWriterStatistics Statistics(IMFSinkWriter writer, int stream)
+    {
+        var statistics = new SinkWriterStatistics { Size = Marshal.SizeOf<SinkWriterStatistics>() };
+        writer.GetStatistics(stream, ref statistics);
+        return statistics;
+    }
+
     /// <summary>Releases a COM object now: samples and buffers come from small pools that run dry otherwise.</summary>
     public static void Release(object? comObject)
     {
@@ -159,6 +171,33 @@ internal struct PropVariant
     public long Value;
 
     public static PropVariant FromLong(long value) => new() { Type = VtI8, Value = value };
+}
+
+/// <summary>
+/// MF_SINK_WRITER_STATISTICS, as <see cref="IMFSinkWriter.GetStatistics"/> fills it: <see cref="Size"/>
+/// is set to the structure's size before the call. Received counts the samples given to the writer,
+/// Encoded those the encoder has turned out, Processed those passed on to the file: received − encoded
+/// is the raw frames the writer, its converter and the encoder still hold.
+/// </summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct SinkWriterStatistics
+{
+    public int Size;
+    public long LastTimestampReceived;
+    public long LastTimestampEncoded;
+    public long LastTimestampProcessed;
+    public long LastStreamTickReceived;
+    public long LastSinkSampleRequest;
+    public long SamplesReceived;
+    public long SamplesEncoded;
+    public long SamplesProcessed;
+    public long StreamTicksReceived;
+    public int ByteCountQueued;
+    public long ByteCountProcessed;
+    public int OutstandingSinkSampleRequests;
+    public int AverageSampleRateReceived;
+    public int AverageSampleRateEncoded;
+    public int AverageSampleRateProcessed;
 }
 
 [ComImport, Guid("2cd2d921-c447-44a7-a13c-4adabfc247e3"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -335,5 +374,5 @@ internal interface IMFSinkWriter
     void Flush(int streamIndex);
     void DoFinalize();
     void GetServiceForStream(int streamIndex, in Guid service, in Guid iid, out IntPtr value);
-    void GetStatistics(int streamIndex, IntPtr statistics);
+    void GetStatistics(int streamIndex, ref SinkWriterStatistics statistics);
 }

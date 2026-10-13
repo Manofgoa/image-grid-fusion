@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using ImageGridFusion.Composition;
@@ -17,10 +18,21 @@ internal sealed class VideoEncoder : IFrameEncoder
     /// <summary>Sound is written this far ahead of the video, so the file interleaves both.</summary>
     private static readonly long SoundLead = TimeSpan.FromSeconds(1).Ticks;
 
+    /// <summary>
+    /// Raw frames the writer may hold not yet encoded before a new one is written: the inbox encoder
+    /// works on one picture at a time, so three leave it never starved. An encoder holding more by
+    /// design (B-frames, a hardware queue) shows it by making no progress for <see cref="EncoderStall"/>,
+    /// and is given the room it holds (workfiles/20261010-optimisation-lack-of-memory.md § 2.2).
+    /// </summary>
+    private const int FramesInFlightAtFirst = 3;
+    private static readonly TimeSpan EncoderStall = TimeSpan.FromSeconds(2);
+
     private readonly IMFSinkWriter _writer;
     private readonly Size _size;
     private readonly int _videoStream;
     private readonly Mixer? _sound;
+    private int _framesInFlightLimit = FramesInFlightAtFirst;
+    private bool _statisticsUnavailable;
 
     private VideoEncoder(IMFSinkWriter writer, Size size, int videoStream, Mixer? sound)
     {
@@ -65,9 +77,16 @@ internal sealed class VideoEncoder : IFrameEncoder
         return silent;
     }
 
+    /// <summary>
+    /// The writer's statistics on the video stream, for the export's probe; <c>null</c> when the writer
+    /// does not give them.
+    /// </summary>
+    public SinkWriterStatistics? VideoStatistics => this.ReadStatistics();
+
     /// <summary>Writes a frame the size of the video, shown from <paramref name="time"/> for <paramref name="duration"/>.</summary>
     public void WriteFrame(Bitmap frame, TimeSpan time, TimeSpan duration)
     {
+        this.WaitForEncoder();
         int stride = _size.Width * 4;
         int length = stride * _size.Height;
         var buffer = MediaFoundation.CreateMemoryBuffer(length);
@@ -119,6 +138,58 @@ internal sealed class VideoEncoder : IFrameEncoder
     {
         _sound?.Dispose();
         MediaFoundation.Release(_writer);
+    }
+
+    /// <summary>
+    /// Waits until the writer holds at most <see cref="_framesInFlightLimit"/> raw frames not yet encoded,
+    /// so a renderer faster than the encoder never piles canvas-sized buffers up inside it — the writer's
+    /// own throttling bounds the rate, not the depth. An encoder making no progress for
+    /// <see cref="EncoderStall"/> holds that many frames by design: the limit grows to them, never a deadlock.
+    /// </summary>
+    private void WaitForEncoder()
+    {
+        long encoded = -1;
+        var stall = Stopwatch.StartNew();
+        while (this.ReadStatistics() is { } statistics)
+        {
+            long inFlight = statistics.SamplesReceived - statistics.SamplesEncoded;
+            if (inFlight <= this._framesInFlightLimit)
+            {
+                return;
+            }
+
+            if (statistics.SamplesEncoded != encoded)
+            {
+                encoded = statistics.SamplesEncoded;
+                stall.Restart();
+            }
+            else if (stall.Elapsed >= EncoderStall)
+            {
+                this._framesInFlightLimit = (int)Math.Min(int.MaxValue, inFlight + 1);
+                return;
+            }
+
+            Thread.Sleep(1);
+        }
+    }
+
+    /// <summary>The video stream's statistics; <c>null</c>, once and for all, when the writer refuses them.</summary>
+    private SinkWriterStatistics? ReadStatistics()
+    {
+        if (this._statisticsUnavailable)
+        {
+            return null;
+        }
+
+        try
+        {
+            return MediaFoundation.Statistics(this._writer, this._videoStream);
+        }
+        catch (COMException)
+        {
+            this._statisticsUnavailable = true;
+            return null;
+        }
     }
 
     private static VideoEncoder Open(string path, Size size, Mixer? sound)
