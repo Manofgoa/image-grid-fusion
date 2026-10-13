@@ -41,8 +41,7 @@ internal sealed class GridPreview : Control
     private const int SeparatorSnap = 6;
     private const int PanResistance = 24;
 
-    // A guide shows from this share of the cell before its stop, its opacity growing from the minimum.
-    private const float ApproachReach = 0.1f;
+    // A guide shows from GuideApproach percent of the cell before its stop, its opacity growing from the minimum.
     private const double ApproachMinOpacity = 0.2;
     private const int GapBarTick = 5;
     private const int ZoomBadgeHold = 1000;
@@ -398,6 +397,18 @@ internal sealed class GridPreview : Control
     /// </summary>
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public Action<SourceImage> ReleaseImage { get; set; } = image => image.Dispose();
+
+    /// <summary>The ⚙ menu's choices of <see cref="GuideApproach"/>, in percent of the cell.</summary>
+    public static readonly int[] GuideApproachChoices = [0, 5, 10, 15, 20, 25];
+
+    public const int DefaultGuideApproach = 10;
+
+    /// <summary>
+    /// How far before its magnetic stop a guide shows while an image is moved, in percent of the cell — an
+    /// app setting of the ⚙ menu; 0 shows a guide only once its stop holds the image.
+    /// </summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public int GuideApproach { get; set; } = DefaultGuideApproach;
 
     /// <summary>
     /// Whether a gesture is changing the grid right now — a cell pressed (pan, ✥ swap), a bar or a
@@ -3369,7 +3380,7 @@ internal sealed class GridPreview : Control
     /// <summary>
     /// Guides of the magnetic stops of a moved image, dashed, in the green of the helper indicators: along
     /// the cell edge the image edge is aligned on, or through the center of the cell. A stop holding the
-    /// image shows at full opacity; the nearest stop it comes within <see cref="ApproachReach"/> of shows
+    /// image shows at full opacity; the nearest stop it comes within <see cref="GuideApproach"/> of shows
     /// fainter the farther it is, with a gap bar through the image's center measuring what is left — once
     /// the drag has moved the image when <paramref name="dragged"/>, at once after an arrow key. See
     /// workfiles/20260926-guides-approach-gap-bar.md.
@@ -3380,7 +3391,9 @@ internal sealed class GridPreview : Control
         var size = look.Shown(image.Bitmap.Size);
         var bounds = FitCalculator.ComputeTurned(cell, size, look.ZoomIn(cell, size), look.Focus, look.FineAngle).Bounds;
         var stops = FitCalculator.Stops(cell, bounds.Size);
-        bool approaching = !this._panFree && (!dragged || this._panMoved);
+        bool approaching = this.GuideApproach > 0 && !this._panFree && (!dragged || this._panMoved);
+        float reachX = cell.Width * this.GuideApproach / 100f;
+        float reachY = cell.Height * this.GuideApproach / 100f;
         var along = Point.Round(new PointF(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height / 2));
         int inset = LogicalToDeviceUnits(2);
         int left = cell.Left + inset;
@@ -3406,10 +3419,10 @@ internal sealed class GridPreview : Control
             int x = GuideX(_panX.Held, _panX.Outward);
             guides.Add((new Point(x, cell.Top), new Point(x, cell.Bottom), 1));
         }
-        else if (approaching && PanMagnet.Approach(bounds.X, stops.Left, stops.Right, cell.X + (cell.Width - bounds.Width) / 2, cell.Width * ApproachReach) is { } near)
+        else if (approaching && PanMagnet.Approach(bounds.X, stops.Left, stops.Right, cell.X + (cell.Width - bounds.Width) / 2, reachX) is { } near)
         {
             int x = GuideX(near.Kind, near.Outward);
-            guides.Add((new Point(x, cell.Top), new Point(x, cell.Bottom), ApproachOpacity(near.Gap, cell.Width)));
+            guides.Add((new Point(x, cell.Top), new Point(x, cell.Bottom), ApproachOpacity(near.Gap, reachX)));
             int toward = near.Kind == PanStop.Center ? Math.Sign(bounds.X - near.Stop) : x == left ? 1 : -1;
             int y = this.GapBarAt(along.Y, cell.Top, cell.Bottom);
             bars.Add((new Point(x, y), new Point(x + toward * (int)Math.Round(near.Gap), y)));
@@ -3420,10 +3433,10 @@ internal sealed class GridPreview : Control
             int y = GuideY(_panY.Held, _panY.Outward);
             guides.Add((new Point(cell.Left, y), new Point(cell.Right, y), 1));
         }
-        else if (approaching && PanMagnet.Approach(bounds.Y, stops.Top, stops.Bottom, cell.Y + (cell.Height - bounds.Height) / 2, cell.Height * ApproachReach) is { } near)
+        else if (approaching && PanMagnet.Approach(bounds.Y, stops.Top, stops.Bottom, cell.Y + (cell.Height - bounds.Height) / 2, reachY) is { } near)
         {
             int y = GuideY(near.Kind, near.Outward);
-            guides.Add((new Point(cell.Left, y), new Point(cell.Right, y), ApproachOpacity(near.Gap, cell.Height)));
+            guides.Add((new Point(cell.Left, y), new Point(cell.Right, y), ApproachOpacity(near.Gap, reachY)));
             int toward = near.Kind == PanStop.Center ? Math.Sign(bounds.Y - near.Stop) : y == top ? 1 : -1;
             int x = this.GapBarAt(along.X, cell.Left, cell.Right);
             bars.Add((new Point(x, y), new Point(x, y + toward * (int)Math.Round(near.Gap))));
@@ -3437,9 +3450,9 @@ internal sealed class GridPreview : Control
         this.PaintGapBars(g, cell, bars);
     }
 
-    /// <summary>Opacity of a guide <paramref name="gap"/> pixels from its stop, on a cell side <paramref name="length"/> long: from the minimum at the reach to full at the stop.</summary>
-    private static double ApproachOpacity(float gap, int length) =>
-        1 - (1 - ApproachMinOpacity) * Math.Clamp(gap / (length * ApproachReach), 0, 1);
+    /// <summary>Opacity of a guide <paramref name="gap"/> pixels from its stop, shown from <paramref name="reach"/> pixels: from the minimum at the reach to full at the stop.</summary>
+    private static double ApproachOpacity(float gap, float reach) =>
+        1 - (1 - ApproachMinOpacity) * Math.Clamp(gap / reach, 0, 1);
 
     /// <summary>Where a gap bar crosses its guide: at <paramref name="at"/>, kept far enough inside the cell, between <paramref name="low"/> and <paramref name="high"/>, for its ticks to show.</summary>
     private int GapBarAt(int at, int low, int high)

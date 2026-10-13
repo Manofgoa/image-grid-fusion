@@ -338,6 +338,7 @@ internal sealed class MainForm : Form
     private readonly CheckBox _bordersOuterFrame = new() { Text = "Outer frame", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _bordersRounded = new() { Text = "Twitter corners", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly ToolStripMenuItem _twitterCornersDefault = new("Twitter corners by default");
+    private readonly ToolStripMenuItem _guideApproach = new("Guides show from");
 
     // Whether the borders' initial state has its Twitter corners: a setting of the ⚙ menu, remembered between sessions.
     private bool _roundedByDefault = AppSettings.TwitterCornersByDefault;
@@ -523,6 +524,7 @@ internal sealed class MainForm : Form
         _explorer.OpenWidth = AppSettings.ExplorerWidth;
         _explorer.TileSize = AppSettings.ExplorerTileSize;
         _explorer.PagesPerLoad = AppSettings.ExplorerPagesPerLoad;
+        this._preview.GuideApproach = AppSettings.GuideApproach;
         _explorer.ContentSearch = AppSettings.ExplorerContentSearch;
         this._explorer.FileOrder = AppSettings.ExplorerFileOrder;
         this._explorer.View = AppSettings.ExplorerView;
@@ -568,13 +570,20 @@ internal sealed class MainForm : Form
         this._transportTimer.Tick += (_, _) => this.RefreshTransportPosition();
         this._transportTimer.Start();
         this._toolTip.SetToolTip(this._clearButton, "Removes every image and the global effects, and brings the format back to Twitter (Ctrl+N)");
-        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, _explorerFolder, _explorerPages, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._ocrResultStyle, new ToolStripSeparator(), this._openAppFolder]);
+        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._guideApproach, _explorerFolder, _explorerPages, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._ocrResultStyle, new ToolStripSeparator(), this._openAppFolder]);
         for (int pages = FileExplorerPanel.MinPagesPerLoad; pages <= FileExplorerPanel.MaxPagesPerLoad; pages++)
         {
             int choice = pages;
             var item = new ToolStripMenuItem(choice.ToString()) { Tag = choice };
             item.Click += (_, _) => SetExplorerPagesPerLoad(choice);
             _explorerPages.DropDownItems.Add(item);
+        }
+
+        foreach (int percent in GridPreview.GuideApproachChoices)
+        {
+            var item = new ToolStripMenuItem(percent == 0 ? "At the stop only" : $"{percent} % of the cell") { Tag = percent };
+            item.Click += (_, _) => this.SetGuideApproach(percent);
+            this._guideApproach.DropDownItems.Add(item);
         }
 
         this._ocrResultStyle.DropDownItems.AddRange([this._ocrArrowCurved, this._ocrArrowThickness, this._ocrArrowColor]);
@@ -593,6 +602,7 @@ internal sealed class MainForm : Form
         _twitterCornersDefault.Click += (_, _) => ToggleTwitterCornersDefault();
         _explorerFolder.ToolTipText = "The folder the file explorer searches, with its subfolders; remembered between sessions";
         _explorerFolder.Click += (_, _) => PickExplorerFolder();
+        this._guideApproach.ToolTipText = "How far before its magnetic stop a moved image's guide shows, with a bar measuring the gap left; remembered between sessions";
         _explorerPages.ToolTipText = "How many screens of tiles the file explorer loads at a time, the next ones as the list scrolls; remembered between sessions";
         this._explorerContentSearch.ToolTipText = "Whether the file explorer's search also finds files by the text inside them — recognised in images and a PDF's first page, read in text and HTML files — extracted in the background after the files are indexed; remembered between sessions";
         this._explorerContentSearch.Click += (_, _) => this.ToggleExplorerContentSearch();
@@ -2606,6 +2616,11 @@ internal sealed class MainForm : Form
             item.Checked = (int)item.Tag! == _explorer.PagesPerLoad;
         }
 
+        foreach (ToolStripMenuItem item in this._guideApproach.DropDownItems)
+        {
+            item.Checked = (int)item.Tag! == this._preview.GuideApproach;
+        }
+
         this._explorerContentSearch.Checked = _explorer.ContentSearch;
         this._rebuildContent.Enabled = _explorer.CanRebuildContent;
         this._ocrArrowCurved.Checked = this._explorer.ArrowStyle.Curved;
@@ -3669,6 +3684,20 @@ internal sealed class MainForm : Form
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
             ShowStatus($"File explorer width not remembered: {ex.Message}", error: true);
+        }
+    }
+
+    /// <summary>The ⚙ menu's Guides show from: applied from the next move of an image, remembered between sessions.</summary>
+    private void SetGuideApproach(int percent)
+    {
+        this._preview.GuideApproach = percent;
+        try
+        {
+            AppSettings.SaveGuideApproach(percent);
+        }
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
+        {
+            this.ShowStatus($"Guides distance not remembered: {ex.Message}", error: true);
         }
     }
 

@@ -32,6 +32,7 @@ internal static class AppSettings
     private const string OcrArrowThicknessName = "OcrArrowThickness";
     private const string OcrArrowColorName = "OcrArrowColor";
     private const string MaxZoomName = "MaxZoom";
+    private const string GuideApproachName = "GuideApproach";
     private const string WindowWidthName = "WindowWidth";
     private const string WindowHeightName = "WindowHeight";
     private const string WindowScreenName = "WindowScreen";
@@ -155,6 +156,16 @@ internal static class AppSettings
 
     /// <summary>Saves the file explorer's pages per load; throws an <see cref="IsSaveError"/> exception on failure.</summary>
     public static void SaveExplorerPagesPerLoad(int pages) => Save((ExplorerPagesPerLoadName, pages));
+
+    /// <summary>
+    /// How far before its stop a guide shows, in percent of the cell — one of
+    /// <see cref="GridPreview.GuideApproachChoices"/>; the default when nothing was saved or the value is not one of them.
+    /// </summary>
+    public static int GuideApproach =>
+        Int(GuideApproachName) is int value && GridPreview.GuideApproachChoices.Contains(value) ? value : GridPreview.DefaultGuideApproach;
+
+    /// <summary>Saves how far before its stop a guide shows; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveGuideApproach(int percent) => Save((GuideApproachName, percent));
 
     /// <summary>The maximum zoom, in percent, when the file holds no whole number for it.</summary>
     public const int DefaultMaxZoom = 2000;
