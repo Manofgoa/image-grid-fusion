@@ -307,6 +307,11 @@ results weigh less: RapidOCR keeps every block scoring ≥ 0.6, those under 0.8 
 ranked with the Ring's words (rank 3); the index gets a fifth slot for them. The ranking now speaks
 of **sure** and **weak** slots.
 
+### Iteration 4 — 2026-10-13 — ✅ Implemented
+
+Go given: code, tests and documentation, in a dedicated worktree (`feature/complementary-ocr-passes`).
+The scope is the design sections as they stand in Iteration 3.
+
 ---
 
 ## Implementation Log
@@ -342,6 +347,7 @@ of **sure** and **weak** slots.
 | 15 | Ranking by pass, the Reshaped pass split into Inverted and Ring? | Yes, as proposed | 2026-10-13 |
 | 16 | Bars: one colour or one per pass? | One colour per pass | 2026-10-13 |
 | 17 | (User request) | Implement in a dedicated worktree | 2026-10-13 |
+| 18 | Start the implementation? Where? | Code, tests and docs — in a worktree | 2026-10-13 |
 
 ---
 
