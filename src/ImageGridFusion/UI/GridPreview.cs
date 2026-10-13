@@ -411,6 +411,13 @@ internal sealed class GridPreview : Control
     public int GuideApproach { get; set; } = DefaultGuideApproach;
 
     /// <summary>
+    /// Whether every gap bar starts on the image's edges rather than its center — an app setting of the ⚙
+    /// menu, the same point for every axis and every stop.
+    /// </summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool GapBarsFromEdges { get; set; }
+
+    /// <summary>
     /// Whether a gesture is changing the grid right now — a cell pressed (pan, ✥ swap), a bar or a
     /// separator dragged, a crop moved, a zoom by the wheel or the slider not yet at rest: the undo
     /// history commits nothing before it ends.
@@ -3410,8 +3417,9 @@ internal sealed class GridPreview : Control
         int GuideY(PanStop kind, int outward) =>
             kind == PanStop.Center ? midY : (outward > 0) == (bounds.Height >= cell.Height - 0.5f) ? top : bottom;
 
-        // A gap bar runs from the guide toward the image's center for the center stop, into the cell for an
-        // edge one — where an image covering the cell has its edge outside it, out of sight.
+        // A gap bar shows the move left: from one point of the image to where it will be once the stop holds
+        // it — its center line, or with GapBarsFromEdges its edge aligning on the guide for an edge stop, its
+        // edge on the side of the move for the center stop.
         var guides = new List<(Point From, Point To, double Opacity)>();
         var bars = new List<(Point From, Point To)>();
         if (_panX.Held != PanStop.None)
@@ -3423,9 +3431,9 @@ internal sealed class GridPreview : Control
         {
             int x = GuideX(near.Kind, near.Outward);
             guides.Add((new Point(x, cell.Top), new Point(x, cell.Bottom), ApproachOpacity(near.Gap, reachX)));
-            int toward = near.Kind == PanStop.Center ? Math.Sign(bounds.X - near.Stop) : x == left ? 1 : -1;
+            var (from, to) = this.GapBar(near, bounds.X, bounds.Width, x, x == left);
             int y = this.GapBarAt(along.Y, cell.Top, cell.Bottom);
-            bars.Add((new Point(x, y), new Point(x + toward * (int)Math.Round(near.Gap), y)));
+            bars.Add((new Point(from, y), new Point(to, y)));
         }
 
         if (_panY.Held != PanStop.None)
@@ -3437,9 +3445,9 @@ internal sealed class GridPreview : Control
         {
             int y = GuideY(near.Kind, near.Outward);
             guides.Add((new Point(cell.Left, y), new Point(cell.Right, y), ApproachOpacity(near.Gap, reachY)));
-            int toward = near.Kind == PanStop.Center ? Math.Sign(bounds.Y - near.Stop) : y == top ? 1 : -1;
+            var (from, to) = this.GapBar(near, bounds.Y, bounds.Height, y, y == top);
             int x = this.GapBarAt(along.X, cell.Left, cell.Right);
-            bars.Add((new Point(x, y), new Point(x, y + toward * (int)Math.Round(near.Gap))));
+            bars.Add((new Point(x, from), new Point(x, to)));
         }
 
         foreach (var (from, to, opacity) in guides)
@@ -3448,6 +3456,31 @@ internal sealed class GridPreview : Control
         }
 
         this.PaintGapBars(g, cell, bars);
+    }
+
+    /// <summary>
+    /// Where a gap bar starts and ends along its axis, for an image at <paramref name="position"/>,
+    /// <paramref name="length"/> long, approaching <paramref name="near"/> whose guide is at
+    /// <paramref name="guide"/> — on the low side of the cell when <paramref name="lowGuide"/>: from the point
+    /// of the image <see cref="GapBarsFromEdges"/> chooses to where it will be once the stop holds it.
+    /// </summary>
+    private (int From, int To) GapBar(PanApproach near, float position, float length, int guide, bool lowGuide)
+    {
+        float move = near.Stop - position;
+        if (!this.GapBarsFromEdges)
+        {
+            float center = position + length / 2;
+            return ((int)Math.Round(center), (int)Math.Round(center + move));
+        }
+
+        // The edge aligning on an edge stop's guide ends on that guide itself, as drawn.
+        if (near.Kind == PanStop.Edge)
+        {
+            return ((int)Math.Round(guide - move), guide);
+        }
+
+        float edge = move < 0 ? position : position + length;
+        return ((int)Math.Round(edge), (int)Math.Round(edge + move));
     }
 
     /// <summary>Opacity of a guide <paramref name="gap"/> pixels from its stop, shown from <paramref name="reach"/> pixels: from the minimum at the reach to full at the stop.</summary>
