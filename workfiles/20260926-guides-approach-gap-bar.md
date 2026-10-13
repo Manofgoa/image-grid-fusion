@@ -101,11 +101,19 @@ Components:
 
 ## Gap Bar
 
-- A **segment perpendicular to the guide** (scoping answer), starting on the guide. Its **length is
-  the gap left**: it shrinks as the image gets closer.
-  - Center stop: toward the image's center line, which it reaches.
-  - Edge stop: **into the cell** — an image covering the cell has its edge outside the cell, where the
-    bar would be clipped out of sight; drawn inward, the measure stays visible (Iteration 7).
+- A **segment perpendicular to the guide** (scoping answer) showing the **move left** (Iteration 10,
+  Q&A #14): it starts on **one point of the image** and ends where that point will be once the stop
+  holds the image. Its **length is the gap left**: it shrinks as the image gets closer.
+- The point is the **same for every axis and every stop**, an **app setting** of the ⚙ menu, **Gap bars
+  from** — remembered in `settings.json` (`GapBarsFromEdges`):
+
+  | Setting | Center stop | Edge stop |
+  |---|---|---|
+  | **Image center** (default) | The image's center line → the cell's center line | The image's center line → where it will be |
+  | **Image edges** | The image's edge on the side it moves toward → where it will be | The image's edge that aligns on the guide → the guide |
+
+- In *Image edges*, a bar whose edge lies outside the cell — an image overflowing it — is clipped out of
+  sight, like everything drawn on a cell; *Image center* always shows.
 - It **disappears when the stop holds** the image (gap 0): only the guide stays, as today.
 - While the image is held and the drag goes on toward the resistance, no bar is drawn (the image
   does not move).
@@ -269,6 +277,11 @@ in the order the requests were made.
 - Requested: a setting choosing the point every bar goes to — the image's **edges** or its **center**
   — the same for every axis and every stop. Its exact geometry is asked (Q&A #14) before the code is
   touched.
+- Answer (Q&A #14): every bar shows the **move left** — from the chosen point of the image to where that
+  point will be once the stop holds it, its length the gap. *Image edges*: the edge aligning on the
+  guide for an edge stop, the edge on the side of the move for the center stop. **Image center** is the
+  default. The ⚙ menu gets **Gap bars from**, next to *Guides show from*. This replaces Iteration 7's
+  edge bar drawn into the cell from the guide.
 
 ---
 
@@ -305,7 +318,7 @@ Questions asked by the agent during design, with user responses.
 | 11 | Does the gap bar fade with the guide, or stay at full opacity? | Full opacity | 2026-09-26 |
 | 12 | Arrow keys: approach and gap bar too, and where does the bar go without a mouse? | Yes, the bar through the image's center | 2026-10-10 |
 | 13 | Gap bar and position readout near the center stop: how do they share the cell? | Both shown | 2026-10-10 |
-| 14 | Edges or center setting: from which point of the image does every gap bar start, and where does it end? | | |
+| 14 | Edges or center setting: from which point of the image does every gap bar start, and where does it end? | The move left: from the chosen point of the image (its center, or its edge on the stop's side) to where it will be once held; Image center by default | 2026-10-13 |
 
 ---
 
