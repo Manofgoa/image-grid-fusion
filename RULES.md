@@ -497,10 +497,13 @@ value readouts (origin: `workfiles/20260925-zoom-range-and-percentage.md`).
 
 A guide shows **before** its stop is reached (origin: `workfiles/20260926-guides-approach-gap-bar.md`):
 
-- While an image is moved — a drag, the arrow keys — the **nearest stop** within **10 % of the cell**
-  on an axis (`ApproachReach`, of its width or height) shows its guide, whatever the direction of the
-  move: an edge stop from inside the stops only, none on an axis whose stops coincide, none while
-  `Shift` ignores them. One computation, `PanMagnet.Approach`.
+- While an image is moved — a drag, the arrow keys — the **nearest stop** within the **approach
+  distance** on an axis shows its guide, whatever the direction of the move: an edge stop from inside
+  the stops only, none on an axis whose stops coincide, none while `Shift` ignores them. One
+  computation, `PanMagnet.Approach`.
+- The approach distance is a share of the cell's width or height, **10 % by default**: an **app
+  setting** of the ⚙ menu, *Guides show from* (`GridPreview.GuideApproach`, `AppSettings.GuideApproach`),
+  0 % to 25 % by 5 — 0 showing a guide only once its stop holds the image.
 - Its **opacity grows linearly** with the closeness, from **20 %** at the reach to full at the stop, the
   halo fading with it (`GridPreview.PaintGuideLines`); a stop holding the image draws it as before.
 - A **gap bar** — solid, at 90° to the guide, a tick across each end, full opacity — measures the gap
