@@ -4,6 +4,8 @@
 > of its cell, instead of keeping it where it was moved.
 > This file is the source of truth for the planned work until implemented,
 > then the log of every adjustment made to it afterwards.
+>
+> **Taken over** by [20261013-arriving-image-shown-whole.md](20261013-arriving-image-shown-whole.md) (Iteration 2).
 
 ---
 
@@ -95,6 +97,12 @@ Animations keep their current rule; the position readout shows the recentering b
 RULES.md § Zoom Keeps the Image in Place, the README and the glossary (en / fr) follow. No test
 project in the repository: the Test Impact is empty, said so.
 
+### Iteration 2 — 2026-10-13 — Taken over
+
+Not implemented from here: the design is taken over unchanged by
+[20261013-arriving-image-shown-whole.md](20261013-arriving-image-shown-whole.md), which implements it
+together with the arrival zoom (an arriving image shown whole). Further changes are logged there.
+
 ---
 
 ## Implementation Log
@@ -123,4 +131,4 @@ Questions asked by the agent during design, with user responses.
 
 ---
 
-*Last updated: 2026-10-12*
+*Last updated: 2026-10-13*
