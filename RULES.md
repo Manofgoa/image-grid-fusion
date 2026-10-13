@@ -505,8 +505,8 @@ A guide shows **before** its stop is reached (origin: `workfiles/20260926-guides
   halo fading with it (`GridPreview.PaintGuideLines`); a stop holding the image draws it as before.
 - A **gap bar** — solid, at 90° to the guide, a tick across each end, full opacity — measures the gap
   left: from the guide toward the image's center for the center stop, into the cell for an edge one;
-  through the **mouse** during a drag, the **image's center** after an arrow key, kept inside the cell
-  (`GridPreview.PaintGapBars`). It goes once the stop holds the image.
+  through the **image's center** — during a drag and after an arrow key alike, never the mouse — kept
+  inside the cell (`GridPreview.PaintGapBars`). It goes once the stop holds the image.
 - A new guide follows the same rule.
 
 ### Position Readout
