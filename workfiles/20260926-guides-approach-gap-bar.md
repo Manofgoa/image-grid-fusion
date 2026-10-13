@@ -259,6 +259,17 @@ in the order the requests were made.
   setting of the grid).
 - RULES.md and both READMEs follow.
 
+### Iteration 10 — 2026-10-13 — ⚙️ Post-implementation — Every gap bar on the same point of the image
+
+- User request, after testing: *why do some axes' bars go to the image's edge and others to its
+  center? Make it configurable, edges or center, but every axis must go to the same place.*
+- Why it happened: a center stop's bar runs from the cell's center line to the **image's center
+  line**; an edge stop's bar runs from the cell's edge **into the cell**, which ends on the **image's
+  edge** for an image smaller than the cell — two different points of the image.
+- Requested: a setting choosing the point every bar goes to — the image's **edges** or its **center**
+  — the same for every axis and every stop. Its exact geometry is asked (Q&A #14) before the code is
+  touched.
+
 ---
 
 ## Implementation Log
@@ -294,6 +305,7 @@ Questions asked by the agent during design, with user responses.
 | 11 | Does the gap bar fade with the guide, or stay at full opacity? | Full opacity | 2026-09-26 |
 | 12 | Arrow keys: approach and gap bar too, and where does the bar go without a mouse? | Yes, the bar through the image's center | 2026-10-10 |
 | 13 | Gap bar and position readout near the center stop: how do they share the cell? | Both shown | 2026-10-10 |
+| 14 | Edges or center setting: from which point of the image does every gap bar start, and where does it end? | | |
 
 ---
 
