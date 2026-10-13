@@ -506,10 +506,15 @@ A guide shows **before** its stop is reached (origin: `workfiles/20260926-guides
   0 % to 25 % by 5 — 0 showing a guide only once its stop holds the image.
 - Its **opacity grows linearly** with the closeness, from **20 %** at the reach to full at the stop, the
   halo fading with it (`GridPreview.PaintGuideLines`); a stop holding the image draws it as before.
-- A **gap bar** — solid, at 90° to the guide, a tick across each end, full opacity — measures the gap
-  left: from the guide toward the image's center for the center stop, into the cell for an edge one;
-  through the **image's center** — during a drag and after an arrow key alike, never the mouse — kept
-  inside the cell (`GridPreview.PaintGapBars`). It goes once the stop holds the image.
+- A **gap bar** — solid, at 90° to the guide, a tick across each end, full opacity — shows the **move
+  left**: from one point of the image to where that point will be once the stop holds it, its length
+  the gap. The point is the **same for every axis and every stop**, an **app setting** of the ⚙ menu,
+  *Gap bars from* (`GridPreview.GapBarsFromEdges`): the image's **center** line (the default), or its
+  **edges** — the one aligning on an edge stop's guide, the one on the side of the move for the center
+  stop (`GridPreview.GapBar`).
+- The bar crosses its guide through the **image's center** — during a drag and after an arrow key
+  alike, never the mouse — kept inside the cell (`GridPreview.PaintGapBars`); a part outside the cell is
+  clipped. It goes once the stop holds the image.
 - A new guide follows the same rule.
 
 ### Position Readout
