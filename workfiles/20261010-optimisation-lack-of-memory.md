@@ -186,7 +186,7 @@ and to fail cleanly when even that is too much.
   canvas-sized buffer shrinks alike (canvas, input buffers, converter, encoder frames, the
   compositor's cell-sized temporaries), and the export gets faster in the same proportion. X /
   Twitter re-encodes anything above 1920 × 1200 anyway.
-- Default: see § Open Questions.
+- Default: **1920** — Open Question *Video size default*, answered 2026-10-13.
 
 #### 2.4 Undo history — a budget for the parked images
 
@@ -229,7 +229,7 @@ dominates, and stays useful afterwards:
 
 ### 4. Performance Leads
 
-#### 4.1 In scope — the preview's quick wins (if Open Question *Scope* keeps them)
+#### 4.1 In scope — the preview's quick wins
 
 | # | Change | Where | Effect |
 |---|---|---|---|
@@ -240,7 +240,7 @@ dominates, and stays useful afterwards:
 | 5 | **Hoisted per-frame allocations**: the `ImageAttributes` built once per cell per export, the `g.Clip` getter (a new `Region` each call) replaced by `Save` / `Restore`, the edge extension's cell-sized buffers rented from `ArrayPool` or allocated once per cell for an export | `Compositor.DrawCell`, `EdgeExtension`, `BlurRenderer`, `GridBorders` | Up to ≈ 1 GB/s of native and LOH churn removed per extending cell at 1080p; fewer full GCs pausing the UI |
 | 6 | **Blur over an extending background**: the inner `DrawCell` builds the extension at full cell size only to shrink it into the small blur bitmap — built at the small size instead | `Compositor.DrawCell` / `BlurRenderer` | Halves the most expensive per-cell work when both are on |
 
-#### 4.2 Candidates for later — not in this workfile unless Open Question *Scope* takes them
+#### 4.2 Candidates for later — not in this workfile (Open Question *Scope*, answered 2026-10-13)
 
 | Lead | What | Gain | Risk |
 |---|---|---|---|
@@ -263,7 +263,7 @@ is:
   video, the previous copy.
 - The one holder that could be spilled is the undo history's parked images (a temp file per parked
   bitmap, re-read on undo). § 2.4's budget is simpler and bounds the same memory; the spill variant
-  is offered in Open Question *Disk*.
+  was offered and declined (Open Question *Disk*, 2026-10-13).
 - When memory still runs short after § 2, the export ends with the message of § 1 — the user closes
   other applications or lowers the video size — instead of a crash.
 
@@ -326,16 +326,19 @@ a change by hand in the running app"). The run is checked by hand on the launche
 Every question the design cannot settle on its own, listed before Iteration 1 —
 not only the blocking ones.
 
-- [ ] **Scope** (the scoping batch's "?" on the preview): this workfile delivers § 1–3 plus § 4.1's
+- [x] ~~**Scope** (the scoping batch's "?" on the preview): this workfile delivers § 1–3 plus § 4.1's
       quick wins (recommended); or § 1–3 only, the preview untouched; or everything, § 4.2's larger
-      leads included (hardware encoder, NV12, display-sized decode)?
-- [ ] **Video size default**: 1920 (recommended — X / Twitter re-encodes above it, 4.5 × less memory
+      leads included (hardware encoder, NV12, display-sized decode)?~~ → § 1–3 plus § 4.1's quick
+      wins; § 4.2 stays a list of candidates for a later workfile (2026-10-13)
+- [x] ~~**Video size default**: 1920 (recommended — X / Twitter re-encodes above it, 4.5 × less memory
       per frame than today); 4096 (no change by default, the setting there for who needs it); or no
-      setting at all, 4096 for everyone?
-- [ ] **Undo history budget**: 512 MB of parked images, the oldest steps dropped first
-      (recommended); or 50 steps whatever they weigh?
-- [ ] **Disk**: no spill — the bounds (§ 2) plus the clean message (§ 1) (recommended); or spill the
-      parked history images to temp files instead of dropping steps?
+      setting at all, 4096 for everyone?~~ → 1920 by default, 2560 and 4096 in the ⚙ menu (2026-10-13)
+- [x] ~~**Undo history budget**: 512 MB of parked images, the oldest steps dropped first
+      (recommended); or 50 steps whatever they weigh?~~ → 512 MB of parked images, the oldest steps
+      dropped first (2026-10-13)
+- [x] ~~**Disk**: no spill — the bounds (§ 2) plus the clean message (§ 1) (recommended); or spill the
+      parked history images to temp files instead of dropping steps?~~ → No spill: the bounds of § 2
+      plus the clean message of § 1 (2026-10-13)
 
 ---
 
@@ -355,6 +358,14 @@ an export, a back-pressure gate on the writer's statistics, a *Video size* app s
 the parked images, the GIF's clipboard bytes capped, the one-shot leaks fixed (§ 2); a probe in the
 export result and a Debug log (§ 3); the disk spill not retained for frames (§ Why Not the Disk).
 Left open: § Open Questions.
+
+### Iteration 2 — 2026-10-13
+
+The four open questions answered, every recommendation taken (Q&A 5–8): the scope is § 1–3 plus
+§ 4.1's quick wins, § 4.2 staying candidates for a later workfile; the *Video size* setting
+defaults to 1920; the undo history gets the 512 MB budget for its parked images; no disk spill —
+the bounds and the clean message. The design sections only take those defaults; nothing else
+changes.
 
 ---
 
@@ -376,11 +387,11 @@ Left open: § Open Questions.
 | 2 | May the fix touch how the loaded videos are held in memory for the preview, or stay in the generation? | "?" — left to the exploration (→ Open Question *Scope*) | 2026-10-10 |
 | 3 | When memory stays insufficient once leaks and caches are fixed: disk, refuse, or degrade? | Spill to disk (→ § Why Not the Disk, Open Question *Disk*) | 2026-10-10 |
 | 4 | Straightforward, or tricky / long? | Tricky / long — two passes | 2026-10-10 |
-| 5 | Scope: § 1–3 + quick wins, § 1–3 only, or everything? | | 2026-10-10 |
-| 6 | Video size default: 1920, 4096, or no setting? | | 2026-10-10 |
-| 7 | Undo history: a 512 MB budget, or 50 steps whatever? | | 2026-10-10 |
-| 8 | Disk: no spill, or spill the parked history images? | | 2026-10-10 |
+| 5 | Scope: § 1–3 + quick wins, § 1–3 only, or everything? | § 1–3 plus § 4.1's quick wins | 2026-10-13 |
+| 6 | Video size default: 1920, 4096, or no setting? | 1920 by default | 2026-10-13 |
+| 7 | Undo history: a 512 MB budget, or 50 steps whatever? | The 512 MB budget | 2026-10-13 |
+| 8 | Disk: no spill, or spill the parked history images? | No spill | 2026-10-13 |
 
 ---
 
-*Last updated: 2026-10-10*
+*Last updated: 2026-10-13*
