@@ -462,7 +462,7 @@ internal sealed class GridPreview : Control
     /// cell); the others fill the free slots; the first excess image replaces the selected cell, else
     /// the last one; any further excess is disposed. Returns the number of images ignored. An
     /// arrival starts the grid over: every animated image from its starting point, the soundtrack
-    /// from its beginning (RULES.md).
+    /// from its beginning (RULES.md), and shows the arriving images whole (<see cref="ShowWhole"/>).
     /// </summary>
     public int Add(IReadOnlyList<SourceImage> images, int targetCell = -1)
     {
@@ -492,7 +492,7 @@ internal sealed class GridPreview : Control
             }
         }
 
-        OnImagesChanged();
+        this.OnImagesChanged(images.Where(this._images.Contains).ToList());
         if (ignored < images.Count)
         {
             _player.Restart();
@@ -1528,7 +1528,7 @@ internal sealed class GridPreview : Control
         _hovered = -1;
         _hoveringClose = false;
         _hoveringHandle = false;
-        OnImagesChanged();
+        this.OnImagesChanged(this._images.Skip(index).ToList());
 
         // A deletion starts the grid over, like an arrival (RULES.md).
         _player.Restart();
@@ -1548,7 +1548,12 @@ internal sealed class GridPreview : Control
         OnImagesChanged();
     }
 
-    private void OnImagesChanged()
+    /// <summary>
+    /// The images, their count or their order changed. <paramref name="arrived"/>, given by an arrival
+    /// or a deletion, are the images new in their cell: once the layout and the ratio settle, they are
+    /// shown whole, and so is every image whose zoom is still its arrival zoom.
+    /// </summary>
+    private void OnImagesChanged(IReadOnlyCollection<SourceImage>? arrived = null)
     {
         _cache?.Dispose();
         _cache = null;
@@ -1566,6 +1571,10 @@ internal sealed class GridPreview : Control
         FitPagesToCells();
         SyncPlayer();
         UpdateRatio();
+        if (arrived is not null)
+        {
+            this.ShowWhole(arrived);
+        }
 
         ImagesChanged?.Invoke(this, EventArgs.Empty);
         if (layoutReset)
@@ -2022,6 +2031,27 @@ internal sealed class GridPreview : Control
         if (image.IsFrozen && image.IsAnimated && _pageLoader.Target(image) != image.StartPage)
         {
             _pageLoader.Request(image, image.StartPage);
+        }
+    }
+
+    /// <summary>
+    /// Gives <paramref name="arrived"/>, and every image whose zoom is still its arrival zoom, the zoom
+    /// <see cref="ZoomFit.Contain"/> gives in its cell, as a free zoom (<see cref="ImageLook.WithArrivalZoom"/>):
+    /// the whole image shown. A text laying its zoom out keeps filling its cell, at 100 %.
+    /// </summary>
+    private void ShowWhole(IReadOnlyCollection<SourceImage> arrived)
+    {
+        var cells = this.CellBounds();
+        for (int i = 0; i < this._images.Count && i < cells.Length; i++)
+        {
+            var image = this._images[i];
+            if (image.LaysOutZoom || !(arrived.Contains(image) || image.Look.ZoomOnArrival))
+            {
+                continue;
+            }
+
+            var look = image.Look;
+            this.SetLook(i, look.WithArrivalZoom(FitCalculator.FitZoom(cells[i], look.Shown(image.Bitmap.Size), ZoomFit.Contain)));
         }
     }
 
