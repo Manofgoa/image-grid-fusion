@@ -9,6 +9,12 @@ internal enum PanStop
 }
 
 /// <summary>
+/// A magnetic stop an image comes near on one axis without being held by it: its kind, its position, the
+/// direction it resists (as <see cref="PanMagnet.Outward"/>) and the gap left to it, in pixels.
+/// </summary>
+internal readonly record struct PanApproach(PanStop Kind, float Stop, int Outward, float Gap);
+
+/// <summary>
 /// Magnetic stops of a pan along one axis, in positions of the image's leading edge (left or top):
 /// an edge stop holds the image when it moves outward, the center stop when it moves across it
 /// either way, until the drag has gone the resistance distance past it; the image then jumps to
@@ -41,6 +47,29 @@ internal sealed class PanMagnet
     /// as soon as it goes outward. What an arrow key does after each press, a stop holding it one press only.
     /// </summary>
     public void Settle() => this._excess = 0;
+
+    /// <summary>
+    /// The stop nearest an image at <paramref name="position"/>, when it lies within
+    /// <paramref name="reach"/> — whatever the direction of the move (see
+    /// workfiles/20260926-guides-approach-gap-bar.md). An edge stop counts from inside the stops only,
+    /// where reaching it outward holds the image; none on an axis whose stops coincide, the image having no
+    /// room to come near anything.
+    /// </summary>
+    public static PanApproach? Approach(float position, float low, float high, float center, float reach)
+    {
+        if (high - low < Epsilon || position < low - Epsilon || position > high + Epsilon)
+        {
+            return null;
+        }
+
+        var nearest = new[]
+        {
+            new PanApproach(PanStop.Edge, low, -1, position - low),
+            new PanApproach(PanStop.Edge, high, 1, high - position),
+            new PanApproach(PanStop.Center, center, 0, Math.Abs(position - center)),
+        }.MinBy(a => a.Gap);
+        return nearest.Gap <= reach ? nearest with { Gap = Math.Max(0, nearest.Gap) } : null;
+    }
 
     /// <summary>
     /// Position of the image once the drag moved it by <paramref name="delta"/> from

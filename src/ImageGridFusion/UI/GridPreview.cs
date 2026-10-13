@@ -40,6 +40,11 @@ internal sealed class GridPreview : Control
     private const int SeparatorReach = 4;
     private const int SeparatorSnap = 6;
     private const int PanResistance = 24;
+
+    // A guide shows from this share of the cell before its stop, its opacity growing from the minimum.
+    private const float ApproachReach = 0.1f;
+    private const double ApproachMinOpacity = 0.2;
+    private const int GapBarTick = 5;
     private const int ZoomBadgeHold = 1000;
     private const int ZoomBadgeFade = 300;
     private const int ZoomBadgeTick = 30;
@@ -108,6 +113,11 @@ internal sealed class GridPreview : Control
     private bool _hoveringHandle;
     private bool _panning;
     private Point _panPoint;
+
+    // Whether the drag has moved the image yet, and whether its last move ignored the stops (Shift):
+    // the guides of the stops it comes near show only once it moves, and never while free.
+    private bool _panMoved;
+    private bool _panFree;
     private readonly PanMagnet _panX = new();
     private readonly PanMagnet _panY = new();
 
@@ -940,11 +950,11 @@ internal sealed class GridPreview : Control
 
         if (_panning && !_dragging && _pressed >= 0 && _pressed < cells.Length)
         {
-            PaintPanGuides(g, cells[_pressed], _images[_pressed]);
+            PaintPanGuides(g, cells[_pressed], _images[_pressed], this.PointToClient(Cursor.Position));
         }
         else if (this.KeyPanned() && this._selected < cells.Length)
         {
-            this.PaintPanGuides(g, cells[this._selected], this._images[this._selected]);
+            this.PaintPanGuides(g, cells[this._selected], this._images[this._selected], cursor: null);
         }
 
         this.PaintReadouts(g, cells);
@@ -1080,6 +1090,7 @@ internal sealed class GridPreview : Control
         _panPoint = e.Location;
         _panX.Reset();
         _panY.Reset();
+        this._panMoved = false;
         Invalidate();
     }
 
@@ -2718,6 +2729,8 @@ internal sealed class GridPreview : Control
         var (heldX, heldY) = (_panX.Held, _panY.Held);
         float x = _panX.Move(bounds.X, delta.Width, stops.Left, stops.Right, cell.X + (cell.Width - bounds.Width) / 2, resistance, free, stepwise);
         float y = _panY.Move(bounds.Y, delta.Height, stops.Top, stops.Bottom, cell.Y + (cell.Height - bounds.Height) / 2, resistance, free, stepwise);
+        this._panMoved = true;
+        this._panFree = free;
 
         // Stored where it is drawn, so a drag past the covered share does not pile up out of sight.
         var focus = shown.FocusAt(cell, new PointF(x + bounds.Width / 2, y + bounds.Height / 2));
@@ -3354,18 +3367,21 @@ internal sealed class GridPreview : Control
     }
 
     /// <summary>
-    /// Guides of the magnetic stops holding a moved image, dashed, in the green of the helper indicators: along
-    /// the cell edge the image edge is aligned on, or through the center of the cell.
+    /// Guides of the magnetic stops of a moved image, dashed, in the green of the helper indicators: along
+    /// the cell edge the image edge is aligned on, or through the center of the cell. A stop holding the
+    /// image shows at full opacity; the nearest stop it comes within <see cref="ApproachReach"/> of shows
+    /// fainter the farther it is, with a gap bar measuring what is left — through <paramref name="cursor"/>
+    /// during a drag, through the image's center after an arrow key (null). See
+    /// workfiles/20260926-guides-approach-gap-bar.md.
     /// </summary>
-    private void PaintPanGuides(Graphics g, Rectangle cell, SourceImage image)
+    private void PaintPanGuides(Graphics g, Rectangle cell, SourceImage image, Point? cursor)
     {
-        if (_panX.Held == PanStop.None && _panY.Held == PanStop.None)
-        {
-            return;
-        }
-
-        var look = image.DrawnLook;
-        var drawn = FitCalculator.ComputeTurned(cell, look.Shown(image.Bitmap.Size), look.ZoomIn(cell, look.Shown(image.Bitmap.Size)), look.Focus, look.FineAngle).Bounds.Size;
+        var look = image.Look;
+        var size = look.Shown(image.Bitmap.Size);
+        var bounds = FitCalculator.ComputeTurned(cell, size, look.ZoomIn(cell, size), look.Focus, look.FineAngle).Bounds;
+        var stops = FitCalculator.Stops(cell, bounds.Size);
+        bool approaching = !this._panFree && (cursor is null || this._panMoved);
+        var along = cursor ?? Point.Round(new PointF(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height / 2));
         int inset = LogicalToDeviceUnits(2);
         int left = cell.Left + inset;
         int right = cell.Right - 1 - inset;
@@ -3376,28 +3392,107 @@ internal sealed class GridPreview : Control
 
         // The edge guide sits where the image would leave the cell: an image covering the cell uncovers
         // the side it moves away from, a smaller one crosses the side it moves toward.
+        int GuideX(PanStop kind, int outward) =>
+            kind == PanStop.Center ? midX : (outward > 0) == (bounds.Width >= cell.Width - 0.5f) ? left : right;
+        int GuideY(PanStop kind, int outward) =>
+            kind == PanStop.Center ? midY : (outward > 0) == (bounds.Height >= cell.Height - 0.5f) ? top : bottom;
+
+        // A gap bar runs from the guide toward the image's center for the center stop, into the cell for an
+        // edge one — where an image covering the cell has its edge outside it, out of sight.
+        var guides = new List<(Point From, Point To, double Opacity)>();
+        var bars = new List<(Point From, Point To)>();
+        if (_panX.Held != PanStop.None)
+        {
+            int x = GuideX(_panX.Held, _panX.Outward);
+            guides.Add((new Point(x, cell.Top), new Point(x, cell.Bottom), 1));
+        }
+        else if (approaching && PanMagnet.Approach(bounds.X, stops.Left, stops.Right, cell.X + (cell.Width - bounds.Width) / 2, cell.Width * ApproachReach) is { } near)
+        {
+            int x = GuideX(near.Kind, near.Outward);
+            guides.Add((new Point(x, cell.Top), new Point(x, cell.Bottom), ApproachOpacity(near.Gap, cell.Width)));
+            int toward = near.Kind == PanStop.Center ? Math.Sign(bounds.X - near.Stop) : x == left ? 1 : -1;
+            int y = this.GapBarAt(along.Y, cell.Top, cell.Bottom);
+            bars.Add((new Point(x, y), new Point(x + toward * (int)Math.Round(near.Gap), y)));
+        }
+
+        if (_panY.Held != PanStop.None)
+        {
+            int y = GuideY(_panY.Held, _panY.Outward);
+            guides.Add((new Point(cell.Left, y), new Point(cell.Right, y), 1));
+        }
+        else if (approaching && PanMagnet.Approach(bounds.Y, stops.Top, stops.Bottom, cell.Y + (cell.Height - bounds.Height) / 2, cell.Height * ApproachReach) is { } near)
+        {
+            int y = GuideY(near.Kind, near.Outward);
+            guides.Add((new Point(cell.Left, y), new Point(cell.Right, y), ApproachOpacity(near.Gap, cell.Height)));
+            int toward = near.Kind == PanStop.Center ? Math.Sign(bounds.Y - near.Stop) : y == top ? 1 : -1;
+            int x = this.GapBarAt(along.X, cell.Left, cell.Right);
+            bars.Add((new Point(x, y), new Point(x, y + toward * (int)Math.Round(near.Gap))));
+        }
+
+        foreach (var (from, to, opacity) in guides)
+        {
+            this.PaintGuideLines(g, cell, [(from, to)], opacity);
+        }
+
+        this.PaintGapBars(g, cell, bars);
+    }
+
+    /// <summary>Opacity of a guide <paramref name="gap"/> pixels from its stop, on a cell side <paramref name="length"/> long: from the minimum at the reach to full at the stop.</summary>
+    private static double ApproachOpacity(float gap, int length) =>
+        1 - (1 - ApproachMinOpacity) * Math.Clamp(gap / (length * ApproachReach), 0, 1);
+
+    /// <summary>Where a gap bar crosses its guide: at <paramref name="at"/>, kept far enough inside the cell, between <paramref name="low"/> and <paramref name="high"/>, for its ticks to show.</summary>
+    private int GapBarAt(int at, int low, int high)
+    {
+        int margin = this.LogicalToDeviceUnits(GapBarTick) + this.LogicalToDeviceUnits(2);
+        return low + margin >= high - 1 - margin ? (low + high) / 2 : Math.Clamp(at, low + margin, high - 1 - margin);
+    }
+
+    /// <summary>
+    /// Gap bars, solid in the green of the helper indicators over the black halo, each with a short tick
+    /// across both ends; a bar shorter than a pixel is not drawn.
+    /// </summary>
+    private void PaintGapBars(Graphics g, Rectangle cell, List<(Point From, Point To)> bars)
+    {
+        int tick = this.LogicalToDeviceUnits(GapBarTick);
         var lines = new List<(Point From, Point To)>();
-        if (_panX.Held == PanStop.Center)
+        foreach (var (from, to) in bars.Where(b => b.From != b.To))
         {
-            lines.Add((new Point(midX, cell.Top), new Point(midX, cell.Bottom)));
-        }
-        else if (_panX.Held == PanStop.Edge)
-        {
-            int x = (_panX.Outward > 0) == (drawn.Width >= cell.Width - 0.5f) ? left : right;
-            lines.Add((new Point(x, cell.Top), new Point(x, cell.Bottom)));
-        }
-
-        if (_panY.Held == PanStop.Center)
-        {
-            lines.Add((new Point(cell.Left, midY), new Point(cell.Right, midY)));
-        }
-        else if (_panY.Held == PanStop.Edge)
-        {
-            int y = (_panY.Outward > 0) == (drawn.Height >= cell.Height - 0.5f) ? top : bottom;
-            lines.Add((new Point(cell.Left, y), new Point(cell.Right, y)));
+            bool horizontal = from.Y == to.Y;
+            lines.Add((from, to));
+            foreach (var end in new[] { from, to })
+            {
+                lines.Add(horizontal
+                    ? (new Point(end.X, end.Y - tick), new Point(end.X, end.Y + tick))
+                    : (new Point(end.X - tick, end.Y), new Point(end.X + tick, end.Y)));
+            }
         }
 
-        this.PaintGuideLines(g, cell, lines, opacity: 1);
+        if (lines.Count == 0)
+        {
+            return;
+        }
+
+        var state = g.Save();
+        g.SetClip(cell, CombineMode.Intersect);
+        g.SmoothingMode = SmoothingMode.None;
+        using (var outline = new Pen(HelperHalo, this.LogicalToDeviceUnits(4)))
+        {
+            foreach (var (from, to) in lines)
+            {
+                g.DrawLine(outline, from, to);
+            }
+        }
+
+        using (var line = new Pen(HelperColor, this.LogicalToDeviceUnits(2)))
+        {
+            foreach (var (from, to) in lines)
+            {
+                g.DrawLine(line, from, to);
+            }
+        }
+
+        g.Restore(state);
     }
 
     /// <summary>Guide lines over a cell, dashed green over the black halo, at <paramref name="opacity"/>.</summary>
