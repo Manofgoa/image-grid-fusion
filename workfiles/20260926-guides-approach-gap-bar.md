@@ -201,6 +201,12 @@ in the order the requests were made.
 - The README's French version is updated with the English one (rule added since Iteration 1).
 - No open question left: the design is ready for the go.
 
+### Iteration 6 — 2026-10-13 — ✅ Implemented
+
+- Go given: code, tests and documentation (no unit tests, Q&A #9). Re-checked against the code first:
+  no commit since Iteration 5 touches the guides.
+- Branch: stays on `main`, the standing choice for this repository.
+
 ---
 
 ## Implementation Log
@@ -239,4 +245,4 @@ Questions asked by the agent during design, with user responses.
 
 ---
 
-*Last updated: 2026-10-10*
+*Last updated: 2026-10-13*
