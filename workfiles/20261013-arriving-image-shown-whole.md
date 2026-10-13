@@ -33,6 +33,8 @@ buttons), RULES.md, README (en / fr), GLOSSARY (en / fr).
 |---|---|
 | An image **arrives** — drop, Ctrl+V, Browse, files at launch, explorer tile, URL zone, an image replaced | **Free zoom = Contain's zoom** for its cell, centered; the Zoom effect **on**, Contain unpressed |
 | An image **shifts** into another cell after a deletion (its effects reset, RULES.md § Scope and State) | The same, for its new cell |
+| An image **already in the grid**, its zoom **untouched since its arrival**, whose cell changes shape because of an arrival or a deletion (new default layout, new Free ratio) | **Computed again** for its new cell, so it stays whole; its position as it stands |
+| The same image once its zoom was **touched** — wheel, slider, Contain / Fill, the Zoom's checkbox, a *Reset* | Unchanged — it is never computed again |
 | A swap, an undo / redo restore | Unchanged — the image keeps its look |
 | A later change of the cell's shape — separator, layout strip, format, crop, turn | Unchanged — a free zoom, it does not follow the cell (Contain pressed does) |
 | The Zoom effect's *Reset*, the effects toolbar's *Reset*, the effect turned off | As today: 100 %, the fitting rule — **not** the arrival zoom |
@@ -43,6 +45,12 @@ buttons), RULES.md, README (en / fr), GLOSSARY (en / fr).
 - **Value**: `FitCalculator.FitZoom(cell, look.Shown(bitmap), ZoomFit.Contain)` — relative to the
   fitting rule's 100 %, so below 100 % whenever the rule would crop; resolution-independent (shapes
   only), clamped by `ImageLook.WithZoom` to [MinZoom, MaxZoom].
+- **At 100 %** (the image already at its cell's ratio, within rounding): the Zoom effect is **left
+  off** — nothing to change; the image still counts as untouched, so a later arrival can zoom it out.
+- **Untouched** is a flag of the look (`ImageLook`, name to settle, e.g. `ZoomOnArrival`): set by the
+  arrival zoom, cleared by every other change of the zoom — `WithZoom`, `WithZoomFit`, the Zoom
+  effect toggled, its Reset, the toolbar's Reset. Part of the immutable look, it is in every undo step
+  by itself. A move (focus), a crop or a turn does not clear it.
 - **Texts** (`SourceImage.LaysOutZoom`) are left out: laid out to fill their cell, they keep 100 %,
   as Contain and Fill keep them.
 - **Undo**: the arrival is one step, as today (`GridHistory` commits once settled); the arrival zoom
@@ -51,10 +59,12 @@ buttons), RULES.md, README (en / fr), GLOSSARY (en / fr).
 
 ### Code
 
-- `GridPreview.Add`: remembers the indices of the cells that received an image; after
-  `OnImagesChanged`, sets their arrival zoom.
-- `GridPreview.RemoveAt`: after `OnImagesChanged`, sets the arrival zoom of the shifted images.
-- One helper, `this.ShowWhole(index)` (name to settle), computing the zoom on `this.CellBounds()[index]`.
+- `GridPreview.Add`: after `OnImagesChanged`, sets the arrival zoom of the cells that received an
+  image, and computes it again for every other image still flagged untouched.
+- `GridPreview.RemoveAt`: after `OnImagesChanged`, the same — the shifted images (their looks reset)
+  and the untouched ones.
+- One helper, `this.ShowWhole(index)` (name to settle), computing the zoom on `this.CellBounds()[index]`:
+  Contain's zoom ≈ 100 % → the Zoom effect off at 100 %, else on at that free zoom; the flag set.
 
 ---
 
@@ -86,7 +96,8 @@ Taken over from [20261012-contain-fill-recenters-image.md](20261012-contain-fill
   keeping the image's center and become the exception — a fit mode pressed recenters the image.
 - **RULES.md § Effects › Rendering** (or a new subsection): an arriving or shifted image gets
   Contain's zoom as a free zoom, its effects otherwise at their default state — the one place the
-  arrival state of the Zoom differs from its default state, which stays 100 %.
+  arrival state of the Zoom differs from its default state, which stays 100 % — computed again on an
+  arrival or a deletion while its zoom is untouched.
 - **README.md / README.fr.md**: § Fitting rules (an arriving image is shown whole, zoomed out by the
   Zoom effect), line 39 and § Zoom's Contain / Fill line (they recenter the image).
 - **GLOSSARY.md / GLOSSARY.fr.md**: *Fit mode* — pressing it recenters the image.
@@ -106,10 +117,11 @@ or updated. The behaviour is checked by hand in the launched app.
 
 ## Open Questions
 
-- [ ] An image already in the grid whose cell changes shape **because of** an arrival or a deletion
-  (a new default layout, a new Free ratio): is its zoom computed again, or left as it stands?
-- [ ] When Contain's zoom is 100 % (the image already at its cell's ratio): Zoom effect on at 100 %,
-  or left off?
+- [x] ~~An image already in the grid whose cell changes shape **because of** an arrival or a deletion
+  (a new default layout, a new Free ratio): is its zoom computed again, or left as it stands?~~ →
+  Computed again while its zoom is untouched since its arrival; never once touched.
+- [x] ~~When Contain's zoom is 100 % (the image already at its cell's ratio): Zoom effect on at 100 %,
+  or left off?~~ → Left off.
 
 ---
 
@@ -128,6 +140,12 @@ Zoom effect on, Contain unpressed, frozen afterwards; the Resets keep bringing b
 out. Explored directly (one scout pass, the questions chaining on `GridPreview.Add`): the layout and
 the Free ratio settle in `OnImagesChanged`, the Free ratio and the canvas sizing do not read the
 zoom. Two questions left open: the images already present whose cell changes shape, and the 100 % case.
+
+### Iteration 2 — 2026-10-13
+
+Open questions answered (Q&A 5–6): an image whose zoom is untouched since its arrival is computed
+again when an arrival or a deletion reshapes its cell — tracked by a flag of `ImageLook`, cleared by
+any other zoom change; at 100 % the Zoom effect stays off. Design complete.
 
 ---
 
@@ -154,8 +172,8 @@ Questions asked by the agent during design, with user responses.
 | 2 | "Like Contain without activating it": what becomes of an arriving image's zoom? | A free zoom set at arrival to Contain's zoom, the Zoom effect on, Contain unpressed; frozen afterwards; the Reset brings back 100 % | 2026-10-13 |
 | 3 | Which arrivals? | Every arrival route, and an image shifted after a deletion; not a swap nor an undo restore | 2026-10-13 |
 | 4 | Depth of the codebase exploration? | Straightforward — a single scout pass | 2026-10-13 |
-| 5 | An image already in the grid whose cell changes shape because of an arrival or a deletion: zoom computed again? | | |
-| 6 | Contain's zoom at 100 %: Zoom effect on at 100 %, or left off? | | |
+| 5 | An image already in the grid whose cell changes shape because of an arrival or a deletion: zoom computed again? | Yes, while its zoom is untouched since its arrival; never once touched | 2026-10-13 |
+| 6 | Contain's zoom at 100 %: Zoom effect on at 100 %, or left off? | Left off | 2026-10-13 |
 
 ---
 
