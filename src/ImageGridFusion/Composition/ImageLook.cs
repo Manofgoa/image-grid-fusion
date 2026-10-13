@@ -54,6 +54,9 @@ public sealed record ImageLook
     /// <summary>A fine angle goes this far either way from the quarter turn; beyond, the next quarter turn is nearer.</summary>
     public const int MaxFineAngle = 45;
 
+    // An arrival zoom this close to 100 % shows the image as the fitting rule does: the Zoom effect stays off.
+    private const double ArrivalZoomTolerance = 0.005;
+
     // Before None, which reads it: static fields are initialized in order.
     private static readonly PointF Center = new(0.5f, 0.5f);
 
@@ -103,6 +106,13 @@ public sealed record ImageLook
     /// the cell (<see cref="ZoomIn"/>) and <see cref="Zoom"/> is not read.
     /// </summary>
     public ZoomFit ZoomFit { get; private init; }
+
+    /// <summary>
+    /// The zoom is still the one the image arrived at (<see cref="WithArrivalZoom"/>), the whole image
+    /// shown in its cell: computed again when an arrival or a deletion reshapes the cell. Every other
+    /// change of the zoom — free, fit, the effect toggled or reset — clears it; a move does not.
+    /// </summary>
+    public bool ZoomOnArrival { get; private init; }
 
     /// <summary>
     /// Point of the oriented image kept at the center of the cell, in fractions of its width and
@@ -188,7 +198,9 @@ public sealed record ImageLook
         switch (effect)
         {
             case ImageEffect.Zoom when KeptZoom is { } zoom:
-                return Activated(effect) with { Zoom = zoom.Zoom, Focus = zoom.Focus, ZoomFit = zoom.Fit, KeptZoom = null };
+                return Activated(effect) with { Zoom = zoom.Zoom, Focus = zoom.Focus, ZoomFit = zoom.Fit, KeptZoom = null, ZoomOnArrival = false };
+            case ImageEffect.Zoom:
+                return Activate(effect) with { ZoomOnArrival = false };
             case ImageEffect.Rotate when KeptRotation is { } rotation:
                 return WithRotation(rotation.Rotation) with { FineAngle = rotation.FineAngle, KeptRotation = null };
             case ImageEffect.Flip when KeptFlip is { } flip:
@@ -280,7 +292,7 @@ public sealed record ImageLook
         {
             ImageEffect.Background => this with { Background = null },
             ImageEffect.Crop => this with { Crop = null },
-            ImageEffect.Zoom => this with { Zoom = 1, Focus = Center, ZoomFit = ZoomFit.None },
+            ImageEffect.Zoom => this with { Zoom = 1, Focus = Center, ZoomFit = ZoomFit.None, ZoomOnArrival = false },
             ImageEffect.Rotate => WithRotation(0),
             ImageEffect.Flip => (FlipX ? ToggleFlipX() : this) is var flipped && flipped.FlipY ? flipped.ToggleFlipY() : flipped,
             ImageEffect.Frames => this with { Frames = null },
@@ -357,10 +369,20 @@ public sealed record ImageLook
     /// The focus is kept as it is; the gesture converts it so the image keeps a point in place (see <see cref="FitCalculator.FocusKeeping"/>).
     /// A free zoom: it leaves the fit mode.
     /// </summary>
-    public ImageLook WithZoom(double zoom) => Activated(ImageEffect.Zoom) with { Zoom = Math.Clamp(zoom, MinZoom, MaxZoom), ZoomFit = ZoomFit.None, KeptZoom = null };
+    public ImageLook WithZoom(double zoom) =>
+        Activated(ImageEffect.Zoom) with { Zoom = Math.Clamp(zoom, MinZoom, MaxZoom), ZoomFit = ZoomFit.None, KeptZoom = null, ZoomOnArrival = false };
 
     /// <summary>Puts the image in a fit mode, the focus kept as it is; <see cref="Zoom"/> is left as it was, unread while the mode is on.</summary>
-    public ImageLook WithZoomFit(ZoomFit fit) => Activated(ImageEffect.Zoom) with { ZoomFit = fit, KeptZoom = null };
+    public ImageLook WithZoomFit(ZoomFit fit) => Activated(ImageEffect.Zoom) with { ZoomFit = fit, KeptZoom = null, ZoomOnArrival = false };
+
+    /// <summary>
+    /// The zoom an image arriving in a cell — or shifting into another one — is shown whole at
+    /// (<see cref="ZoomFit.Contain"/>'s, given as <paramref name="zoom"/>), as a free zoom, the focus kept
+    /// as it is; flagged <see cref="ZoomOnArrival"/>. At 100 %, an effect that is off is left off: nothing
+    /// to change.
+    /// </summary>
+    public ImageLook WithArrivalZoom(double zoom) =>
+        (Math.Abs(zoom - 1) < ArrivalZoomTolerance && !this.IsActive(ImageEffect.Zoom) ? this : this.WithZoom(zoom)) with { ZoomOnArrival = true };
 
     /// <summary>Unclamped: how far the image may go depends on its cell, and is applied where the image is placed.</summary>
     public ImageLook WithFocus(PointF focus) => Activated(ImageEffect.Zoom) with { Focus = focus, KeptZoom = null };

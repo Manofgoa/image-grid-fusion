@@ -45,11 +45,12 @@ buttons), RULES.md, README (en / fr), GLOSSARY (en / fr).
 - **Value**: `FitCalculator.FitZoom(cell, look.Shown(bitmap), ZoomFit.Contain)` — relative to the
   fitting rule's 100 %, so below 100 % whenever the rule would crop; resolution-independent (shapes
   only), clamped by `ImageLook.WithZoom` to [MinZoom, MaxZoom].
-- **At 100 %** (the image already at its cell's ratio, within rounding): the Zoom effect is **left
+- **At 100 %** (the image already at its cell's ratio, within 0.5 %): the Zoom effect is **left
   off** — nothing to change; the image still counts as untouched, so a later arrival can zoom it out.
-- **Untouched** is a flag of the look (`ImageLook`, name to settle, e.g. `ZoomOnArrival`): set by the
-  arrival zoom, cleared by every other change of the zoom — `WithZoom`, `WithZoomFit`, the Zoom
-  effect toggled, its Reset, the toolbar's Reset. Part of the immutable look, it is in every undo step
+  An untouched image whose Zoom effect is already on (an earlier arrival zoom, a move) stays on, at 100 %.
+- **Untouched** is a flag of the look, `ImageLook.ZoomOnArrival`: set by the arrival zoom
+  (`ImageLook.WithArrivalZoom`), cleared by every other change of the zoom — `WithZoom`,
+  `WithZoomFit`, the Zoom effect turned on or off, its Reset, the toolbar's Reset (`WithoutEffects`). Part of the immutable look, it is in every undo step
   by itself. A move (focus), a crop or a turn does not clear it.
 - **Texts** (`SourceImage.LaysOutZoom`) are left out: laid out to fill their cell, they keep 100 %,
   as Contain and Fill keep them.
@@ -59,12 +60,13 @@ buttons), RULES.md, README (en / fr), GLOSSARY (en / fr).
 
 ### Code
 
-- `GridPreview.Add`: after `OnImagesChanged`, sets the arrival zoom of the cells that received an
-  image, and computes it again for every other image still flagged untouched.
-- `GridPreview.RemoveAt`: after `OnImagesChanged`, the same — the shifted images (their looks reset)
-  and the untouched ones.
-- One helper, `this.ShowWhole(index)` (name to settle), computing the zoom on `this.CellBounds()[index]`:
-  Contain's zoom ≈ 100 % → the Zoom effect off at 100 %, else on at that free zoom; the flag set.
+- `GridPreview.Add` passes the images of the call that ended in the grid, `GridPreview.RemoveAt` the
+  shifted ones (their looks reset), to `OnImagesChanged(arrived)`.
+- `OnImagesChanged`, once the layout and the ratio settle and **before** `ImagesChanged` is raised (so
+  the options toolbar shows the arrival zoom), calls `GridPreview.ShowWhole(arrived)`: for those
+  images and every image flagged untouched, texts aside, `SetLook(i, look.WithArrivalZoom(FitZoom(cell,
+  Shown, Contain)))` on `CellBounds()[i]`. The focus is kept — centered on an arrival, as a moved
+  untouched image stands otherwise.
 
 ---
 
@@ -147,6 +149,28 @@ Open questions answered (Q&A 5–6): an image whose zoom is untouched since its 
 again when an arrival or a deletion reshapes its cell — tracked by a flag of `ImageLook`, cleared by
 any other zoom change; at 100 % the Zoom effect stays off. Design complete.
 
+### Iteration 3 — 2026-10-13 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree (`.claude/worktrees/arriving-image-shown-whole`,
+branch `feature/arriving-image-shown-whole`).
+
+### Iteration 4 — 2026-10-13 — 🧭 Implementation choices
+
+No project rule broken. Choices the design left open:
+
+- **Names**: the flag `ImageLook.ZoomOnArrival`, the look's `WithArrivalZoom(zoom)`, the preview's
+  `ShowWhole(arrived)`.
+- **Where**: inside `OnImagesChanged(arrived)`, before `ImagesChanged` is raised, rather than after it
+  in `Add` / `RemoveAt` — the options toolbar then reads the arrival zoom at once.
+- **100 % tolerance**: 0.5 %. An untouched image whose Zoom effect is already on stays on at 100 %
+  rather than being turned off — turning it off would reset its focus (a moved image jumping back).
+- **Focus kept** on a recomputation: an untouched image moved by the user keeps its position as it
+  stands; a new or shifted image is centered by its fresh look.
+- **Arrived set**: the images of the call that end up in the grid; an excess image disposed counts
+  for nothing.
+- **RULES.md**: a new subsection, § Effects › Rendering › Arrival Zoom, holds the arrival rule; § Zoom
+  Keeps the Image in Place names the fit modes as its exception.
+
 ---
 
 ## Implementation Log
@@ -156,9 +180,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project in the repository — does not apply |
-| README | | | |
+| Code | 3 | 2026-10-13 | `ImageLook.ZoomOnArrival` / `WithArrivalZoom`, `GridPreview.ShowWhole`, `FitSelected` recentering |
+| Unit tests | 3 | 2026-10-13 | No test project in the repository — does not apply |
+| README | 3 | 2026-10-13 | README / README.fr, GLOSSARY / GLOSSARY.fr; RULES.md § Effects › Rendering › Arrival Zoom and § Zoom Keeps the Image in Place |
 
 ---
 
