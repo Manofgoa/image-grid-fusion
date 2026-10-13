@@ -147,6 +147,11 @@ Open questions answered (Q&A 5–6): an image whose zoom is untouched since its 
 again when an arrival or a deletion reshapes its cell — tracked by a flag of `ImageLook`, cleared by
 any other zoom change; at 100 % the Zoom effect stays off. Design complete.
 
+### Iteration 3 — 2026-10-13 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree (`.claude/worktrees/arriving-image-shown-whole`,
+branch `feature/arriving-image-shown-whole`).
+
 ---
 
 ## Implementation Log
