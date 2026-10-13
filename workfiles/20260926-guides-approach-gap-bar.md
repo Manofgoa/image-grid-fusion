@@ -109,10 +109,10 @@ Components:
   `HelperHalo`, in `GridPreview.OnPaint` only, never in `Compositor`; **solid** (the guide is the
   dashed one), 2 px over a 4 px halo, with a short tick across each end (5 logical px each way,
   `GapBarTick`) so a short gap still reads as a measure (`GridPreview.PaintGapBars`).
-- Position along the guide: **at the mouse** (Q&A #8) — at the cursor's height for a vertical guide,
-  at its abscissa for a horizontal one, kept inside the cell (the bar and its ticks fully visible).
-- Moved by an **arrow key**, with no mouse to follow: through the **image's center** (Q&A #12), kept
-  inside the cell the same way.
+- Position along the guide: through the **image's center** (Iteration 8), during a drag and after an
+  arrow key alike — at its height for a vertical guide, at its abscissa for a horizontal one — kept
+  inside the cell (the bar and its ticks fully visible). The mouse plays no part: the bar follows the
+  image it measures.
 - The **position readout** stays shown alongside (Q&A #13): it tells the offset from the cell's center,
   the bar the gap left to a stop — the solid bar, perpendicular to its guide, stays distinct from the
   readout's dashed line at 50 %.
@@ -134,7 +134,7 @@ Components:
 
 **No unit tests** (Q&A #9): the repository has no test project and none is created for this task.
 The behaviour is validated by hand in the app — reach at 10 %, nearest stop, opacity ramp, gap bar
-at the mouse or through the image's center with the arrow keys, disappearing on hold, Shift, fine
+through the image's center, disappearing on hold, Shift, fine
 angle, the position readout alongside.
 
 | Behaviour to pin | Test file | Create / Update |
@@ -151,14 +151,15 @@ angle, the position readout alongside.
 - [x] ~~While approaching, is the guide drawn **like the held guide**, or **distinguished** (e.g. dimmer)
       so the moment the stop holds stays visible?~~ → Opacity growing progressively with the closeness
 - [x] ~~Where along the guide is the gap bar drawn: at the **mouse position**, or in the **middle of the
-      cell**?~~ → At the mouse
+      cell**?~~ → At the mouse *(revised 2026-10-13, see Iteration 8: through the image's center)*
 - [x] ~~Unit tests: with no test project in the repository, create one for the approach logic of
       `PanMagnet`, or no unit tests?~~ → No unit tests
 - [x] ~~Progressive opacity: which **minimum** opacity at the edge of the reach?~~ → 20 %
 - [x] ~~Does the **gap bar** fade with the guide, or stay at full opacity?~~ → Full opacity
 - [x] ~~The **arrow keys** now move the image with the same stops, their guides drawn on the selected
       cell (`GridPreview.KeyPanned`): do they get the approach and the gap bar too — and where does
-      the bar go, with no mouse to follow?~~ → Yes, the bar through the image's center
+      the bar go, with no mouse to follow?~~ → Yes, the bar through the image's center *(revised
+      2026-10-13, see Iteration 8: the drag too)*
 - [x] ~~The **position readout** (cross on the image's center, dashed line from the cell's center)
       shows during the move: near the center stop, how do the gap bar and it share the cell?~~ → Both
       shown
@@ -232,6 +233,14 @@ in the order the requests were made.
   gesture, cell or tab, or a change of the image's look.
 - Sizes: gap bar 2 px over a 4 px halo, ticks 5 logical px each way, kept inside the cell.
 - RULES.md gets a *Guides Approach* subsection under *On-Cell Helper Indicators*.
+
+### Iteration 8 — 2026-10-13 — ⚙️ Post-implementation — Gap bar through the image
+
+- User request, after testing: the bars must be placed **relative to the image**, not to the mouse
+  position.
+- Changed: the gap bar crosses its guide through the **image's center** during a drag too, as it
+  already did after an arrow key; the mouse no longer places it. Revises Q&A #8.
+- RULES.md and both READMEs follow.
 
 ---
 
