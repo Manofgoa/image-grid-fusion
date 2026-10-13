@@ -294,7 +294,11 @@ Portrait 4:5, Story 9:16, Landscape 16:9 — given by `GridPreview.CanvasRatio`.
 - The **preview canvas**, the **canvas sizing** (`CanvasSizer.Compute`), the **exports** (the ratio
   captured in `GridExport.Job` when they start), the **text pages** and the **layout strip** read it.
   A new consumer reads it there too, never a constant: `GridLayout` holds no ratio.
-- The export's **longer side** is clamped to **[1200, 4096]** px, the other side following the ratio.
+- The export's **longer side** is clamped to **[1200, 4096]** px, the other side following the ratio —
+  a **video export** (MP4, GIF) to [1200, the **Video size**], an app setting of the ⚙ menu
+  (`AppSettings.VideoMaxSide`: 1920 by default, 2560 or 4096), captured in `GridExport.Job` as the
+  export starts, so every canvas-sized buffer of the export shrinks with it (origin:
+  `workfiles/20261010-optimisation-lack-of-memory.md`).
 - The Borders' **Twitter corners** apply in the **Twitter format only**: elsewhere their option is
   disabled, its setting kept, and nothing is rounded.
 
@@ -332,6 +336,11 @@ The preview is played, paused and moved like a video (origin: `workfiles/2026100
 - A **Copy or an export holds the grid** from `MainForm.BeginExport` to `EndExport` — and around
   the synchronous still render — then gives it back as it was. A drag of the timeline holds it too,
   each scrub step sounding a short snippet of the mix there (`AnimationPlayer.Scrub`).
+- An export **closes the preview's readers** meanwhile (`AnimationPlayer.Suspend` / `Resume`, through
+  `GridPreview.SuspendPlayback` / `ResumePlayback`): the cells keep their frames and their position,
+  the sound's voices are released too, and the readers open again where the grid stood when the
+  export ends — so the export's own readers are the only ones open (origin:
+  `workfiles/20261010-optimisation-lack-of-memory.md`).
 - **Space** toggles Play / Pause over every control but a text field — a focused button included —
   while the transport is enabled: with a video length, not exporting (`MainForm.ProcessCmdKey`).
 
@@ -350,8 +359,11 @@ Applies to everything the user composes (origin: `workfiles/20261006-undo-redo.m
   button held, no gesture running (`GridPreview.InGesture`): no route commits its own step, so a new
   route is covered by itself, and a gesture is one step. A new gesture that changes the grid without
   a mouse button held sets its state in `InGesture`.
-- **50 steps** kept. An image leaving the grid goes through `GridPreview.ReleaseImage`, never
-  `Dispose` directly: the history keeps it alive while a step holds it.
+- **50 steps** kept — fewer when the images they **park**, gone from the grid, weigh more than
+  **512 MB** together (`GridHistory.MaxParkedBytes`; an image weighs its bitmap plus the file its
+  pages keep whole, `SourceImage.MemoryBytes`): the oldest steps are dropped first (origin:
+  `workfiles/20261010-optimisation-lack-of-memory.md`). An image leaving the grid goes through
+  `GridPreview.ReleaseImage`, never `Dispose` directly: the history keeps it alive while a step holds it.
 - A restore follows § Preview Playback: images that differ start the grid over, a swap, a layout or
   an effect change does not. It selects the cell the step touches when it touches exactly one.
 - A restore **shows briefly the helper indicators of the values it changed** (§ On-Cell Helper
@@ -407,6 +419,34 @@ and `SourceImage.PlayedLength`, the whole content untrimmed or for a PDF or a te
   content's time reads it there, never `PageSource.LoopDuration`.
 - A video's pages are its **frames**, at the file's frame rate (`VideoFrames`), so the trim and the
   starting point stand on any of them; the starting point stays inside the trim (`SourceImage.StartPage`).
+
+## Export Memory
+
+What keeps an animated export within memory, whatever the grid holds (origin:
+`workfiles/20261010-optimisation-lack-of-memory.md`):
+
+- **Nothing accumulates per frame**: one canvas bitmap for the whole export, one Media Foundation
+  buffer in flight, and every `Bitmap`, `Graphics`, `Region`, `ImageAttributes`, sample and buffer of
+  the per-frame draw path released by `using` or `finally` — on the exception paths too. A new
+  allocation in `Compositor`, the effects or the readers follows suit; the neutral `ImageAttributes`
+  is the thread's shared one (`Compositor.TileFlipAttributes`), and the clip is saved and restored,
+  never read back (`Graphics.Clip` allocates a `Region`).
+- **The writer holds at most a few raw frames**: `VideoEncoder.WriteFrame` waits while the sink
+  writer's statistics (`MediaFoundation.Statistics`) show more than three frames received and not
+  encoded, the limit growing to what an encoder holds by design when it makes no progress for two
+  seconds. The writer's own throttling stays on: `MF_SINK_WRITER_DISABLE_THROTTLING` is never set.
+- **Fewer holders**: the preview's readers are closed during an export (§ Transport), the undo
+  history's parked images are budgeted (§ Undo History), a video export's canvas is clamped to the
+  Video size (§ Output Format), and a GIF heavier than 64 MB goes on the clipboard as its file only
+  (`MainForm.ClipboardGifBytes`).
+- **A shortage never crashes**: `OutOfMemoryException` — Media Foundation's `E_OUTOFMEMORY` is raised
+  as one, never as a `COMException` — is in the `catch` filters of every export, Copy and Save path,
+  named by `ErrorLog.Describe`; what nothing catches goes to `errors.log` next to the exe and a plain
+  message box (`ErrorLog`, installed by `Program.Main`), the app staying up — never the .NET dialog.
+- **The probe**: every animated export samples the process's private bytes every 30 frames
+  (`GridExport.MemoryProbe`), its peak in `GridExport.Result.PeakPrivateBytes` and the summaries; a
+  Debug build logs the samples with the managed heap and the writer's statistics to a
+  `fusion-<stamp>.log` in the temp folder, cleaned with the exports at the next start.
 
 ## Command-Line Arguments
 
