@@ -56,7 +56,11 @@ Components:
   **fraction of the cell** (scoping answer) on the axis concerned: of the cell's **width** for the
   horizontal axis, of its **height** for the vertical axis. It thus survives resizing and layout
   changes, like the effects' geometry.
-- Value: **10 %** of the cell (Q&A #5), the order of the pan's 10 % margin.
+- Value: **10 %** of the cell by default (Q&A #5), the order of the pan's 10 % margin — an **app
+  setting** of the ⚙ menu (Iteration 9): **Guides show from**, a submenu of choices, **At the stop
+  only** (0, the guides as before this task, held only), 5 %, **10 %**, 15 %, 20 %, 25 %. Applied at
+  once, remembered between sessions in `settings.json` (`GuideApproach`, in percent; an unknown value
+  falls back to 10 %), out of the undo history like every app setting.
 - **Position only** (Q&A #6): the guide shows while the stop is within reach, whatever the direction
   of the drag — moving away from it inside the reach keeps it shown, so micro-moves never make it
   flicker.
@@ -240,6 +244,19 @@ in the order the requests were made.
   position.
 - Changed: the gap bar crosses its guide through the **image's center** during a drag too, as it
   already did after an arrow key; the mouse no longer places it. Revises Q&A #8.
+- RULES.md and both READMEs follow.
+
+### Iteration 9 — 2026-10-13 — ⚙️ Post-implementation — Approach distance setting
+
+- User request, after testing: make the bars' distance configurable in a settings menu, persisted.
+- Changed: the approach distance becomes an **app setting** of the ⚙ menu, **Guides show from**,
+  following the pattern of *File explorer pages per load*: a submenu of ticked choices — At the stop
+  only (0), 5 %, 10 % (the default), 15 %, 20 %, 25 % — applied at once, saved in `settings.json`
+  (`GuideApproach`), an unknown value falling back to 10 %.
+- Choices taken without asking (autonomous run): the submenu rather than a numeric field, as the
+  other numeric settings of the menu; its steps; the *At the stop only* choice, bringing back the
+  guides as they were before this task; its place, after *Twitter corners by default* (the other
+  setting of the grid).
 - RULES.md and both READMEs follow.
 
 ---
