@@ -17,6 +17,18 @@
     <EmbeddedResource Include="app.ico" LogicalName="ImageGridFusion.app.ico" />
   </ItemGroup>
 
+  <!--
+    RapidOCR, the file explorer's second OCR pass (workfiles/20261013-complementary-ocr-passes.md § RapidOCR Download):
+    the managed assemblies only. Its models (RapidOcrNet's build target) and the native DLLs of ONNX Runtime and
+    SkiaSharp are never shipped: downloaded on demand into ocr-engine\ (Explorer/OcrEngineFiles.cs, which pins
+    these same versions and the files' hashes — change them together).
+  -->
+  <ItemGroup>
+    <PackageReference Include="RapidOcrNet" Version="4.2.0" ExcludeAssets="build;buildTransitive" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.29.0" ExcludeAssets="native;build;buildTransitive" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.119.1" ExcludeAssets="all" />
+  </ItemGroup>
+
   <!-- dotnet publish -c Release: one small .exe, precompiled for fast startup; needs the .NET 10 Desktop Runtime. -->
   <PropertyGroup>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
