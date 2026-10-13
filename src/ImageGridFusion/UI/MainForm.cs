@@ -43,6 +43,7 @@ internal sealed class MainForm : Form
     private readonly ToolStripMenuItem _contentCaption = new("File contents") { Enabled = false };
     private readonly ToolStripMenuItem _explorerContentSearch = new("Search file contents (OCR)");
     private readonly ToolStripMenuItem _rebuildContent = new("Rebuild content index");
+    private readonly ToolStripMenuItem _downloadOcrEngine = new("Download the OCR engine…");
     // How the light bulb's arrow to the word found is drawn: a submenu of the group, the thickness a
     // submenu of exclusive choices, remembered between sessions. See workfiles/20261007-ocr-result-style.md.
     private readonly ToolStripMenuItem _ocrResultStyle = new("OCR result style");
@@ -568,7 +569,7 @@ internal sealed class MainForm : Form
         this._transportTimer.Tick += (_, _) => this.RefreshTransportPosition();
         this._transportTimer.Start();
         this._toolTip.SetToolTip(this._clearButton, "Removes every image and the global effects, and brings the format back to Twitter (Ctrl+N)");
-        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, _explorerFolder, _explorerPages, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._ocrResultStyle, new ToolStripSeparator(), this._openAppFolder]);
+        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, _explorerFolder, _explorerPages, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._downloadOcrEngine, this._ocrResultStyle, new ToolStripSeparator(), this._openAppFolder]);
         for (int pages = FileExplorerPanel.MinPagesPerLoad; pages <= FileExplorerPanel.MaxPagesPerLoad; pages++)
         {
             int choice = pages;
@@ -598,6 +599,8 @@ internal sealed class MainForm : Form
         this._explorerContentSearch.Click += (_, _) => this.ToggleExplorerContentSearch();
         this._rebuildContent.ToolTipText = "Forgets the text found in every file and extracts it all again — after installing an OCR language, for instance";
         this._rebuildContent.Click += (_, _) => _explorer.RebuildContentIndex();
+        this._downloadOcrEngine.ToolTipText = "Downloads RapidOCR, a second OCR engine reading the stylised, curved or inverted text Windows OCR misses — shown while it is not downloaded";
+        this._downloadOcrEngine.Click += (_, _) => this.OfferOcrEngineDownload();
         this._ocrResultStyle.ToolTipText = "How the arrow from a tile's light bulb to the word the OCR found is drawn; remembered between sessions";
         this._ocrArrowCurved.ToolTipText = "Whether the arrow is a slight curve arriving straight down — or up — onto the word, rather than a straight line; remembered between sessions";
         this._ocrArrowCurved.Click += (_, _) => this.SetOcrArrow(this._explorer.ArrowStyle with { Curved = !this._explorer.ArrowStyle.Curved });
@@ -2608,6 +2611,8 @@ internal sealed class MainForm : Form
 
         this._explorerContentSearch.Checked = _explorer.ContentSearch;
         this._rebuildContent.Enabled = _explorer.CanRebuildContent;
+        this._downloadOcrEngine.Visible = !OcrEngineFiles.IsAvailable;
+        this._downloadOcrEngine.Enabled = !this._explorer.DownloadingOcrEngine;
         this._ocrArrowCurved.Checked = this._explorer.ArrowStyle.Curved;
         foreach (ToolStripMenuItem item in this._ocrArrowThickness.DropDownItems)
         {
@@ -3702,6 +3707,34 @@ internal sealed class MainForm : Form
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
             this.ShowStatus($"File content search not remembered: {ex.Message}", error: true);
+        }
+
+        if (enable && !OcrEngineFiles.IsAvailable && !this._explorer.DownloadingOcrEngine)
+        {
+            this.OfferOcrEngineDownload();
+        }
+    }
+
+    /// <summary>
+    /// Offers to download the OCR engine — RapidOCR, the content search's second pass — saying what, how
+    /// much and where; on Yes, the file explorer downloads it. Offered when the content search is turned
+    /// on, and from the ⚙ menu while it is missing. See workfiles/20261013-complementary-ocr-passes.md
+    /// § RapidOCR Download.
+    /// </summary>
+    private void OfferOcrEngineDownload()
+    {
+        var answer = MessageBox.Show(
+            this,
+            "Download RapidOCR, a second OCR engine? It reads the stylised, curved or inverted text Windows OCR misses, "
+            + "in a pass of its own after it.\n\n"
+            + $"About 25 MB — its models and the ONNX Runtime and SkiaSharp libraries it runs on — taken from nuget.org into:\n\n{OcrEngineFiles.Folder}\n\n"
+            + "Without it, the content search still reads the images with Windows OCR.",
+            "Download the OCR engine",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question);
+        if (answer == DialogResult.Yes)
+        {
+            _ = this._explorer.DownloadOcrEngineAsync();
         }
     }
 
