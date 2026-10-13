@@ -251,10 +251,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 7 | 2026-10-13 | `9963110` — `PanMagnet.Approach`, `GridPreview.PaintPanGuides` / `PaintGapBars`; builds with 0 warnings |
+| Code | 7, 8 | 2026-10-13 | `6d13a1c` gap bar through the image's center (Iteration 8); `9963110` — `PanMagnet.Approach`, `GridPreview.PaintPanGuides` / `PaintGapBars`; builds with 0 warnings |
 | Unit tests | 3 | 2026-09-26 | Not applicable — no test project, declined (Q&A #9) |
-| README | 7 | 2026-10-13 | `18570a1` — `README.md` and `README.fr.md`, the guides paragraph |
-| RULES.md | 7 | 2026-10-13 | `96463ac` — *On-Cell Helper Indicators › Guides Approach* |
+| README | 7, 8 | 2026-10-13 | `77b004e` (Iteration 8); `18570a1` — `README.md` and `README.fr.md`, the guides paragraph |
+| RULES.md | 7, 8 | 2026-10-13 | `f519d1c` (Iteration 8); `96463ac` — *On-Cell Helper Indicators › Guides Approach* |
 
 ---
 
