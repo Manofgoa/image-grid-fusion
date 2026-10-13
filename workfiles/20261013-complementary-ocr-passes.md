@@ -25,8 +25,9 @@ The work adds:
 - **A spaces-ignored match in the search**: the typed word compared with the OCR text with its spaces
   removed, so letters the OCR read apart (`S U P P O R T`, `SUP PORT`) are found. Not an OCR pass: it
   works on the whole index at once, with no bar.
-- **Words found on odd shapes weigh less**: a file found only by the Ring pass ranks after the files
-  found on straight text.
+- **Less reliable words weigh less**: a file found only by words read on an odd shape (the Ring pass)
+  or read with a low confidence (RapidOCR's *unsure* words) ranks after the files found on sure,
+  straight text.
 - **RapidOCR downloaded on demand** — its models and the native DLLs it runs on — offered when the OCR
   is turned on in the ⚙ menu, and from a ⚙ menu item while missing.
 
@@ -80,9 +81,17 @@ the CPU; models loaded in ~0.5 s.
 
 - `RapidOcr.InitModels(<paths in ocr-engine\>)`, then `Detect(bitmap)` on the image decoded as the
   Windows pass decodes it (EXIF orientation respected, downscaled past a maximum side).
-- **Noise filter**: a detected text block is kept when its characters' average score is **≥ 0.8** and it
-  holds **at least 2 letters or digits** (one constant each). On the sample this drops `T` 0.52, `a`
-  0.56, `IV.` 0.68 and keeps `TFIINFO`, `SUPPORT`, `HEN`.
+- **Two confidence levels**, from the block's characters' average score (one constant each):
+
+  | Score | The block is | On the sample |
+  |---|---|---|
+  | **≥ 0.8** | **Sure** — the pass's text | `TFIINFO` 1.00, `SUPPORT` 1.00, `HEN` 1.00, `FHOMAS` 0.86 |
+  | **0.6 to 0.8** | **Unsure** — kept apart, ranked low (§ Ranking) | `SERY` 0.78, `QEHL` 0.73, `IV.` 0.68 |
+  | **< 0.6** | Dropped | `T` 0.52, `a` 0.56, `TILMA` 0.57, `HIMA` 0.58 |
+
+  A block also needs **at least 2 letters or digits**. On the sample the noise scored ≤ 0.78 and the
+  real finds ≥ 0.86: the sure level holds the finds, the unsure one keeps the doubtful without letting
+  them push the sure ones down.
 - Word boxes: the word-level polygons when RapidOCR gives them, else the block's polygon, each turned
   into its bounding rectangle in fractions of the image (the `WordBox` format).
 
@@ -109,16 +118,18 @@ image's coordinates:
 `indexiles.content` goes to **`ImageGridFusion content 3`**:
 
 ```
-relPath 	 size 	 ticks 	 boxes1 	 text1 	 boxes2 	 text2 	 boxes3 	 text3 	 boxes4 	 text4
+relPath 	 size 	 ticks 	 boxes1 	 text1 	 boxes2 	 text2 	 boxes2u 	 text2u 	 boxes3 	 text3 	 boxes4 	 text4
 ```
 
-- `boxesN` / `textN`: as today's `boxes` / `text` for each pass. A pass **not done** writes `?` in its
+- One **slot** (boxes + text) per source of words: Windows, RapidOCR sure, RapidOCR unsure (`2u`,
+  written with the sure one by pass 2), Inverted, Ring.
+- `boxesN` / `textN`: as today's `boxes` / `text` for each slot. A pass **not done** writes `?` in its
   boxes column and nothing in its text; a pass done with no words writes an empty boxes column, as
   today. A file read as text keeps `-` and no later pass.
 - **Content 2 is read, not discarded**: its text and boxes become pass 1's, the later passes *not done*
   — the existing index is not re-read by Windows OCR. Content 1 is read as today (its images redone).
   A later version adding a pass reads content 3 the same way.
-- `ContentText` holds one immutable slot per pass; a pass finished swaps in a new `ContentText`
+- `ContentText` holds one immutable slot per source; a pass finished swaps in a new `ContentText`
   (the search reads the dictionary from the UI thread). `MaxLength` and `MaxBoxes` apply per pass.
 - `ContentIndex.IsCurrent(entry, pass)` replaces `IsCurrent(entry)` in the queue.
 
@@ -132,6 +143,8 @@ relPath 	 size 	 ticks 	 boxes1 	 text1 	 boxes2 	 text2 	 boxes3 	 text3 	 boxe
 - Each bar shows its pass's share of the files **done over the whole index** — so while pass 2 runs,
   bar 1 stands full and the later ones at what was done before. A bar shows while its pass has files
   left or runs, and hides once its pass is complete; pass 2's is hidden without RapidOCR.
+- **One colour per pass**, the bars being 3 px high and unlabelled; a tooltip over the row names each
+  bar's pass, its colour and its count. The scan's sweeping bar keeps today's blue.
 - The status line names the running pass: `OCR 2/4 · RapidOCR: 120/2 243 (20220321_132643.jpg)`.
 
 ---
@@ -158,13 +171,15 @@ found, the more reliable first:
 
 | Rank | Found by |
 |---|---|
-| 1 | An ordinary match in a **straight-text** pass — Windows, RapidOCR, Inverted |
-| 2 | A spaces-ignored match in a straight-text pass |
-| 3 | The **Ring** pass only — words read on an odd shape (curved along a circle), ordinary or spaces-ignored |
+| 1 | An ordinary match in a **sure** slot — Windows, RapidOCR sure, Inverted |
+| 2 | A spaces-ignored match in a sure slot |
+| 3 | A **weak** slot only, ordinary or spaces-ignored — **Ring** (words read on an odd shape, curved along a circle) or **RapidOCR unsure** (score 0.6 to 0.8) |
 
 - A file takes the best rank any of its passes gives it; inside a rank, the order of today (the sort
   order).
-- The excerpt and the arrow come from the pass that gave the rank, the earliest pass first.
+- The excerpt and the arrow come from the slot that gave the rank, the earliest slot first.
+- A new source of words declares itself sure or weak; a new pass with an odd reshaping or a doubtful
+  engine is weak.
 
 ---
 
@@ -230,7 +245,8 @@ are checked by hand in the app.
 | Four bars filling one after the other, the status line naming the pass | Watch a first run |
 | The download offered when the OCR is turned on and from the ⚙ item, No keeping passes 1, 3 and 4 | ⚙ menu with `ocr-engine\` absent |
 | Only the needed entries downloaded, hashes checked, the DLLs loaded from `ocr-engine\` | Download, then pass 2 running |
-| A file found only by the Ring pass ranked after the straight-text ones | Search `support` |
+| A file found only by the Ring pass or by unsure words ranked after the sure ones | Search `support`, then a word only an unsure block holds |
+| One colour per bar, the tooltip naming them | Hover the bars during a run |
 | Search results refreshed while the passes run | Search during the run |
 
 ---
@@ -246,13 +262,12 @@ not only the blocking ones.
       on top of the offer when the OCR is turned on
 - [x] ~~**Reshaped copies on every image, or the ring on near-square images only?**~~ → Every copy on
       every image; the ring's words rank last (§ Ranking)
-- [ ] **RapidOCR noise filter**: average score ≥ 0.8 and ≥ 2 letters or digits — right threshold? On the
-      sample, the noise scored ≤ 0.78 and the real finds ≥ 0.86.
-- [ ] **Spaces-ignored match**: 3 characters minimum — right?
-- [ ] **Ranking** (§ Ranking): straight-text ordinary matches, then spaces-ignored ones, then the Ring
-      pass only — and the Reshaped pass split into the Inverted and Ring passes, each with its bar, so
-      the ring's words can be weighed apart — right?
-- [ ] **Bars**: four bars of the same blue, or one colour per pass?
+- [x] ~~**RapidOCR noise filter**: average score ≥ 0.8 and ≥ 2 letters or digits?~~ → Wide but weighed:
+      ≥ 0.8 sure, 0.6 to 0.8 unsure and ranked low, < 0.6 dropped; ≥ 2 letters or digits
+- [x] ~~**Spaces-ignored match**: 3 characters minimum?~~ → Yes
+- [x] ~~**Ranking**: sure ordinary, then spaces-ignored, then the Ring pass only — the Reshaped pass split
+      into Inverted and Ring?~~ → Yes; RapidOCR's unsure words join the Ring in rank 3
+- [x] ~~**Bars**: one colour or one per pass?~~ → One colour per pass, a tooltip naming them
 
 ---
 
@@ -284,6 +299,16 @@ Scoping answers and a new request:
 
 ---
 
+### Iteration 3 — 2026-10-13
+
+Answers: 3 characters minimum for the spaces-ignored match, the ranking by pass with the Ring pass
+apart, one colour per bar. On the noise filter, the user asked for a wide filter whose less precise
+results weigh less: RapidOCR keeps every block scoring ≥ 0.6, those under 0.8 in an **unsure** slot
+ranked with the Ring's words (rank 3); the index gets a fifth slot for them. The ranking now speaks
+of **sure** and **weak** slots.
+
+---
+
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
@@ -312,10 +337,11 @@ Scoping answers and a new request:
 | 10 | Reshaped pass on every image, or near-square images only? | Everything on every image | 2026-10-13 |
 | 11 | RapidOCR noise filter threshold? | Asked for help choosing — recommendation given, asked again | 2026-10-13 |
 | 12 | (User request) | The words found on odd shapes (curved, etc.) should weigh less, ranked lower when searched | 2026-10-13 |
-| 13 | RapidOCR noise filter: 0.8 and 2 characters? | | |
-| 14 | Spaces-ignored match: 3 characters minimum? | | |
-| 15 | Ranking by pass, the Reshaped pass split into Inverted and Ring? | | |
-| 16 | Bars: one colour or one per pass? | | |
+| 13 | RapidOCR noise filter: 0.8 and 2 characters? | Can't it be wide, the less precise results weighing less? | 2026-10-13 |
+| 14 | Spaces-ignored match: 3 characters minimum? | Yes | 2026-10-13 |
+| 15 | Ranking by pass, the Reshaped pass split into Inverted and Ring? | Yes, as proposed | 2026-10-13 |
+| 16 | Bars: one colour or one per pass? | One colour per pass | 2026-10-13 |
+| 17 | (User request) | Implement in a dedicated worktree | 2026-10-13 |
 
 ---
 
