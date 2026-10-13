@@ -138,7 +138,16 @@ internal sealed class VideoReader : AnimationReader
             _reader.ReadSample(MediaFoundation.FirstVideoStream, 0, out _, out int flags, out long timestamp, out var sample);
             if ((flags & MediaFoundation.CurrentMediaTypeChangedFlag) != 0)
             {
-                _format = ReadFormat();
+                try
+                {
+                    _format = ReadFormat();
+                }
+                catch
+                {
+                    // The sample just read is not kept: released rather than leaked.
+                    MediaFoundation.Release(sample);
+                    throw;
+                }
             }
 
             if ((flags & MediaFoundation.EndOfStreamFlag) != 0)
@@ -161,9 +170,11 @@ internal sealed class VideoReader : AnimationReader
     private Bitmap ToBitmap(IMFSample sample)
     {
         sample.ConvertToContiguousBuffer(out var buffer);
-        var bitmap = new Bitmap(_format.Visible.Width, _format.Visible.Height, PixelFormat.Format32bppRgb);
+        Bitmap? bitmap = null;
         try
         {
+            // Inside the try: a bitmap refused for want of memory leaves no buffer behind.
+            bitmap = new Bitmap(_format.Visible.Width, _format.Visible.Height, PixelFormat.Format32bppRgb);
             IntPtr scan0;
             int pitch;
             var buffer2D = buffer as IMF2DBuffer;
@@ -213,7 +224,7 @@ internal sealed class VideoReader : AnimationReader
         }
         catch
         {
-            bitmap.Dispose();
+            bitmap?.Dispose();
             throw;
         }
         finally

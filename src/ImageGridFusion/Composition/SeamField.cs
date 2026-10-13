@@ -183,20 +183,29 @@ public sealed class SeamField
         }
 
         var bitmap = new Bitmap(strip.Width, strip.Height, PixelFormat.Format32bppPArgb);
-        var data = bitmap.LockBits(new Rectangle(Point.Empty, strip.Size), ImageLockMode.WriteOnly, PixelFormat.Format32bppPArgb);
         try
         {
-            for (int y = 0; y < strip.Height; y++)
+            var data = bitmap.LockBits(new Rectangle(Point.Empty, strip.Size), ImageLockMode.WriteOnly, PixelFormat.Format32bppPArgb);
+            try
             {
-                Marshal.Copy(pixels, y * strip.Width, data.Scan0 + y * data.Stride, strip.Width);
+                for (int y = 0; y < strip.Height; y++)
+                {
+                    Marshal.Copy(pixels, y * strip.Width, data.Scan0 + y * data.Stride, strip.Width);
+                }
             }
-        }
-        finally
-        {
-            bitmap.UnlockBits(data);
-        }
+            finally
+            {
+                bitmap.UnlockBits(data);
+            }
 
-        return bitmap;
+            return bitmap;
+        }
+        catch
+        {
+            // Never returned: disposed rather than leaked.
+            bitmap.Dispose();
+            throw;
+        }
     }
 
     /// <summary>A channel rounded and kept within 0 and <paramref name="max"/>: a premultiplied color never exceeds its alpha.</summary>

@@ -673,16 +673,24 @@ internal sealed class AnimationPlayer : IDisposable
             return frame;
         }
 
-        var scaled = new Bitmap(Math.Max(1, (int)Math.Ceiling(frame.Width * scale)), Math.Max(1, (int)Math.Ceiling(frame.Height * scale)));
         using (frame)
-        using (var g = Graphics.FromImage(scaled))
         {
-            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-            g.DrawImage(frame, new Rectangle(Point.Empty, scaled.Size));
+            // The frame is disposed whatever happens: a copy refused for want of memory leaves nothing behind.
+            var scaled = new Bitmap(Math.Max(1, (int)Math.Ceiling(frame.Width * scale)), Math.Max(1, (int)Math.Ceiling(frame.Height * scale)));
+            try
+            {
+                using var g = Graphics.FromImage(scaled);
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                g.DrawImage(frame, new Rectangle(Point.Empty, scaled.Size));
+                return scaled;
+            }
+            catch
+            {
+                scaled.Dispose();
+                throw;
+            }
         }
-
-        return scaled;
     }
 
     private sealed class Playback(SourceImage image, TimeSpan offset)

@@ -157,7 +157,16 @@ internal static class GridExport
         if (!play || !item.Plays)
         {
             var page = item.Source.Render(item.Page);
-            return new Frame(page, BandColor.Of(page), item.Look, Sharpening: item.Sharpening);
+            try
+            {
+                return new Frame(page, BandColor.Of(page), item.Look, Sharpening: item.Sharpening);
+            }
+            catch
+            {
+                // Its band color failing, the page is disposed rather than leaked.
+                page.Dispose();
+                throw;
+            }
         }
 
         reader = item.Source.OpenAnimation();
