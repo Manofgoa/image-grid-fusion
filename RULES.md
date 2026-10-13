@@ -183,16 +183,35 @@ future one included, gets the same wheel (origin: `workfiles/20261007-crop-wheel
   resolved against the cell and `ImageLook.Shown` — never `ImageLook.Zoom` directly, which is the
   free zoom only. A new reader of the zoom does the same (origin: `workfiles/20261007-zoom-fit.md`).
 
+#### Arrival Zoom
+
+An image arriving in a cell is **shown whole** (origin: `workfiles/20261013-arriving-image-shown-whole.md`):
+
+- An image **arriving** — by any route, `GridPreview.Add` — or **shifting** into another cell after a
+  deletion gets the zoom **Contain** gives in its cell (`FitCalculator.FitZoom`) as a **free zoom**,
+  centered, Contain unpressed (`ImageLook.WithArrivalZoom`), once the layout and the ratio have
+  settled (`GridPreview.ShowWhole`, from `OnImagesChanged`). At 100 % the Zoom effect stays off.
+- The one place the arrival state of the Zoom differs from its **default state**: its *Reset*, the
+  toolbar's *Reset* and the effect turned off still bring back 100 %, the fitting rule.
+- While its zoom is **untouched** since it arrived (`ImageLook.ZoomOnArrival`), an image is computed
+  again when an arrival or a deletion reshapes its cell. Any other change of the zoom — wheel,
+  slider, Contain / Fill, the checkbox, a *Reset* — clears the flag; a move does not. A separator, the
+  layout strip or the format never compute it again: a free zoom does not follow the cell.
+- A text laying its zoom out (`SourceImage.LaysOutZoom`) keeps filling its cell, at 100 %.
+
 #### Zoom Keeps the Image in Place
 
 A zoom grows or shrinks the image around **one point of it that stays where it is** — nothing else
-moves it (origin: `workfiles/20261007-zoom-keeps-image-in-place.md`):
+moves it but the fit modes, below (origin: `workfiles/20261007-zoom-keeps-image-in-place.md`):
 
 - The **wheel** — Alt + wheel over a resizable zone included — keeps the **image point under the
   cursor** (`FitCalculator.ImagePointAt`, clamped into the image: over a band, its nearest edge point).
-- The routes **without a cursor** — the Zoom effect's slider, Contain / Fill, the Animations' Zoom
-  motion — keep the **image's center** (`FitCalculator.ImageCenter`): the position readout's value
+- The routes **without a cursor** — the Zoom effect's slider, the Animations' Zoom motion, a fit mode
+  unpressed — keep the **image's center** (`FitCalculator.ImageCenter`): the position readout's value
   does not change. A new route keeps the point under the cursor if it has one, the center otherwise.
+- **Contain / Fill pressed recenter the image** (`GridPreview.FitSelected`): the focus becomes its
+  center, the image's center on the cell's — once, at the press: a drag or the arrow keys move it
+  afterwards, the mode staying pressed (origin: `workfiles/20261013-arriving-image-shown-whole.md`).
 - One computation, `FitCalculator.FocusKeeping`: the stored position stays `ImageLook.Focus`,
   converted from the zoom shown before to the zoom after. The gestures store the converted focus;
   the motion is drawn with `ImageLook.FocusAt` (time 0's position, the stored focus untouched), read
