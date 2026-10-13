@@ -493,6 +493,22 @@ value readouts (origin: `workfiles/20260925-zoom-range-and-percentage.md`).
 - Interaction feedback is not a helper indicator and keeps its own colours: selection outline,
   drop-target highlight, hover outline, dimmed cell being dragged.
 
+### Guides Approach
+
+A guide shows **before** its stop is reached (origin: `workfiles/20260926-guides-approach-gap-bar.md`):
+
+- While an image is moved — a drag, the arrow keys — the **nearest stop** within **10 % of the cell**
+  on an axis (`ApproachReach`, of its width or height) shows its guide, whatever the direction of the
+  move: an edge stop from inside the stops only, none on an axis whose stops coincide, none while
+  `Shift` ignores them. One computation, `PanMagnet.Approach`.
+- Its **opacity grows linearly** with the closeness, from **20 %** at the reach to full at the stop, the
+  halo fading with it (`GridPreview.PaintGuideLines`); a stop holding the image draws it as before.
+- A **gap bar** — solid, at 90° to the guide, a tick across each end, full opacity — measures the gap
+  left: from the guide toward the image's center for the center stop, into the cell for an edge one;
+  through the **mouse** during a drag, the **image's center** after an arrow key, kept inside the cell
+  (`GridPreview.PaintGapBars`). It goes once the stop holds the image.
+- A new guide follows the same rule.
+
 ### Position Readout
 
 The offset of an image from its cell's center, shown while it changes (origin:
