@@ -101,30 +101,28 @@ Components:
 
 ## Gap Bar
 
-- A **segment perpendicular to the guide** (scoping answer) showing the **move left** (Iteration 10,
-  Q&A #14): it starts on **one point of the image** and ends where that point will be once the stop
-  holds the image. Its **length is the gap left**: it shrinks as the image gets closer.
-- The point is the **same for every axis and every stop**, an **app setting** of the ⚙ menu, **Gap bars
-  from** — remembered in `settings.json` (`GapBarsFromEdges`):
+- A **segment perpendicular to the guide** (scoping answer) **linking the anchor to the image**
+  (Iteration 11, Q&A #15): from the **point of the image that will snap** onto the stop to the **guide**
+  itself. Its **length is the gap left**: it shrinks as the image gets closer.
 
-  | Setting | Center stop | Edge stop |
+  | Stop | From | To |
   |---|---|---|
-  | **Image center** (default) | The image's center line → the cell's center line | The image's center line → where it will be |
-  | **Image edges** | The image's edge on the side it moves toward → where it will be | The image's edge that aligns on the guide → the guide |
+  | Edge stop | The image's edge that will align on the cell's edge | The edge guide |
+  | Center stop | The image's center line | The center guide |
 
-- In *Image edges*, a bar whose edge lies outside the cell — an image overflowing it — is clipped out of
-  sight, like everything drawn on a cell; *Image center* always shows.
+- No setting: the anchor decides the point (the *Gap bars from* setting of Iteration 10 is removed).
+- An image overflowing the cell has the edge that will snap **outside the cell**: the bar is drawn
+  there too, beyond the cell, up to the image's real edge — it always reaches both the anchor and the
+  image (Iteration 11, Q&A #16 left to the agent).
 - It **disappears when the stop holds** the image (gap 0): only the guide stays, as today.
 - While the image is held and the drag goes on toward the resistance, no bar is drawn (the image
   does not move).
 - Drawing: a **helper indicator** (RULES.md) — fluorescent green `HelperColor` over the black
   `HelperHalo`, in `GridPreview.OnPaint` only, never in `Compositor`; **solid** (the guide is the
-  dashed one), 2 px over a 4 px halo, with a short tick across each end (5 logical px each way,
-  `GapBarTick`) so a short gap still reads as a measure (`GridPreview.PaintGapBars`).
+  dashed one), 2 px over a 4 px halo, **no end ticks** (Iteration 11) (`GridPreview.PaintGapBars`).
 - Position along the guide: through the **image's center** (Iteration 8), during a drag and after an
   arrow key alike — at its height for a vertical guide, at its abscissa for a horizontal one — kept
-  inside the cell (the bar and its ticks fully visible). The mouse plays no part: the bar follows the
-  image it measures.
+  inside the cell. The mouse plays no part: the bar follows the image it measures.
 - The **position readout** stays shown alongside (Q&A #13): it tells the offset from the cell's center,
   the bar the gap left to a stop — the solid bar, perpendicular to its guide, stays distinct from the
   readout's dashed line at 50 %.
@@ -296,6 +294,13 @@ in the order the requests were made.
 - Direction: the bar must **link the anchor** — the guide on the cell — **to the point of the image that
   will snap onto it**. Its geometry and the fate of the *Gap bars from* setting are asked (Q&A #15, #16)
   before the code is touched.
+- Answers: the bar runs from the point of the image that will snap — its edge for an edge stop, its
+  center line for the center stop — **to the guide**; the *Gap bars from* setting is **removed**
+  (Q&A #15). The small ticks across the bar's ends are useless: **removed**. The bar showing where the
+  anchor is must **reach the anchor** (Q&A #16).
+- Q&A #16 (an image overflowing the cell) was not settled by the answer: the agent draws the bar
+  **beyond the cell** up to the image's real edge, as the answer asks the bar to reach both ends —
+  reported, to be revised if it looks wrong.
 
 ---
 
@@ -333,9 +338,9 @@ Questions asked by the agent during design, with user responses.
 | 12 | Arrow keys: approach and gap bar too, and where does the bar go without a mouse? | Yes, the bar through the image's center | 2026-10-10 |
 | 13 | Gap bar and position readout near the center stop: how do they share the cell? | Both shown | 2026-10-10 |
 | 14 | Edges or center setting: from which point of the image does every gap bar start, and where does it end? | The move left: from the chosen point of the image (its center, or its edge on the stop's side) to where it will be once held; Image center by default | 2026-10-13 |
-| 15 | Which point of the image does the bar link to the guide, and what becomes of the *Gap bars from* setting? | | |
-| 16 | An image overflowing the cell has the edge that will snap outside the cell: where does its bar go? | | |
+| 15 | Which point of the image does the bar link to the guide, and what becomes of the *Gap bars from* setting? | The point that will snap (edge for an edge stop, center for the center stop) to the guide; the setting removed | 2026-10-14 |
+| 16 | An image overflowing the cell has the edge that will snap outside the cell: where does its bar go? | "I don't understand: at the edges there is the small 90° stroke — useless, remove it. But the stroke showing where the anchor is should go all the way to the anchor" — ticks removed; overflow: drawn beyond the cell (agent's choice) | 2026-10-14 |
 
 ---
 
-*Last updated: 2026-10-13*
+*Last updated: 2026-10-14*
