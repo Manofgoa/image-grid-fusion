@@ -37,7 +37,7 @@ tile under it). Docs: `README.md` / `README.fr.md` § file explorer.
 ## What Is Copied
 
 - The row's **`ExplorerRow.FullPath`**, **raw**: `C:\Images\photo.png`, no quotes, as **text** on
-  the clipboard (`DataObject.SetText` / Unicode text) — pastable in a text field, a terminal, a chat.
+  the clipboard (`Clipboard.SetText`, Unicode text; `FileExplorerPanel.CopySelectedPath`) — pastable in a text field, a terminal, a chat.
 - A folder: its full path, without a trailing `\`.
 - The tile's file or folder is checked first with `Exists`, as Copy and Open file location do: a
   missing one is removed from the index and the list, the status line saying so, and nothing is
@@ -95,6 +95,17 @@ The entry goes in the copies' group, after Copy PNG, the separator shown on fold
 proposed). No preference on a keyboard shortcut at first, then confirmed by the user: no shortcut, the menu
 only. No open question left.
 
+### Iteration 3 — 2026-10-14 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree on `feature/copy-full-path`
+(`.claude/worktrees/copy-full-path`). The scope is the design sections as they stand.
+
+### Iteration 4 — 2026-10-14 — 🧭 Implementation choices
+
+No divergent choice: the entry, its place, the separator on folder tiles, the raw text copy, the
+`Exists` check and the status line messages are as designed. The text goes through
+`Clipboard.SetText`, the plain form of the Unicode text format the design named. No rule broken.
+
 ---
 
 ## Implementation Log
@@ -104,9 +115,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
+| Code | 3 | 2026-10-14 | `FileExplorerPanel`: the `Copy full path` entry, its `Opening` visibility, `CopySelectedPath` — built, 0 warnings |
+| Unit tests | 3 | 2026-10-14 | Not applicable: no testable logic (see § Test Impact) |
+| README | 3 | 2026-10-14 | `README.md` and `README.fr.md` § file explorer: Copy full path on file tiles and folder tiles |
 
 ---
 
