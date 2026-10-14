@@ -32,6 +32,7 @@ tile under it). Docs: `README.md` / `README.fr.md` § file explorer.
 - It acts on the **tile right-clicked**, which the right-click selects (existing behaviour), like
   the other entries.
 - On a folder tile, the separator now shows too, between Copy full path and Open in Explorer.
+- **No keyboard shortcut**: the menu is the only way in.
 
 ## What Is Copied
 
@@ -64,9 +65,11 @@ launched app.
   and rows.
 - [x] ~~Path format?~~ → Raw, no quotes.
 - [x] ~~Label?~~ → `Copy full path`.
-- [ ] Place in the menu: after Copy PNG (in the copies' group, before the separator), or with Open
-  file location after the separator?
-- [ ] A keyboard shortcut (e.g. `Ctrl+Shift+C` with the tiles focused), or the menu only?
+- [x] ~~Place in the menu: after Copy PNG (in the copies' group, before the separator), or with Open
+  file location after the separator?~~ → In the copies' group, after Copy PNG; on a folder tile, the
+  separator shows between it and Open in Explorer.
+- [x] ~~A keyboard shortcut (e.g. `Ctrl+Shift+C` with the tiles focused), or the menu only?~~ → No
+  preference given: the menu only, the proposed default.
 
 ---
 
@@ -85,6 +88,11 @@ handler hiding the copies on a folder tile, `ExplorerRow.FullPath` holding the a
 `Exists` guarding the other entries, `ShowTransient` for feedback, and no tested logic in that
 menu. Proposed: the entry in the copies' group, the separator shown on folder tiles too, the path
 as text, `Copied path: …` in the status line, no shortcut.
+
+### Iteration 2 — 2026-10-14
+
+The entry goes in the copies' group, after Copy PNG, the separator shown on folder tiles too (as
+proposed). No preference on a keyboard shortcut: the menu only, as proposed. No open question left.
 
 ---
 
@@ -111,8 +119,8 @@ Questions asked by the agent during design, with user responses.
 | 2 | Path format: raw or quoted? | Raw | 2026-10-14 |
 | 3 | Label? | Copy full path | 2026-10-14 |
 | 4 | Is the subject simple, or tricky / long? | Simple | 2026-10-14 |
-| 5 | Place in the menu? | | |
-| 6 | A keyboard shortcut, or the menu only? | | |
+| 5 | Place in the menu? | With the copies, after Copy PNG | 2026-10-14 |
+| 6 | A keyboard shortcut, or the menu only? | No preference — the menu only, the proposed default | 2026-10-14 |
 
 ---
 
