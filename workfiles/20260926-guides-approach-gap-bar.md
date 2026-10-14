@@ -285,6 +285,18 @@ in the order the requests were made.
 - Staged apart from another session's uncommitted edits of `AppSettings.cs` and `MainForm.cs` (the
   video size setting): only this iteration's changes went into its commit.
 
+### Iteration 11 — 2026-10-14 — ⚙️ Post-implementation — The bar links the anchor to the image
+
+- User report, with a screenshot (an image zoomed out, near the cell's bottom-left corner, *Image
+  center* setting): two bars float from the image's center toward where it will be — touching neither
+  the guide nor the image's edge that is about to snap. *"What can this guide be for? I want a guide when
+  approaching an anchor point."*
+- Why: in *Image center*, an edge stop's bar starts on the image's center line, far from the edge
+  coming near the cell's edge — the move is measured, but nothing shows **which anchor** is coming.
+- Direction: the bar must **link the anchor** — the guide on the cell — **to the point of the image that
+  will snap onto it**. Its geometry and the fate of the *Gap bars from* setting are asked (Q&A #15, #16)
+  before the code is touched.
+
 ---
 
 ## Implementation Log
@@ -321,6 +333,8 @@ Questions asked by the agent during design, with user responses.
 | 12 | Arrow keys: approach and gap bar too, and where does the bar go without a mouse? | Yes, the bar through the image's center | 2026-10-10 |
 | 13 | Gap bar and position readout near the center stop: how do they share the cell? | Both shown | 2026-10-10 |
 | 14 | Edges or center setting: from which point of the image does every gap bar start, and where does it end? | The move left: from the chosen point of the image (its center, or its edge on the stop's side) to where it will be once held; Image center by default | 2026-10-13 |
+| 15 | Which point of the image does the bar link to the guide, and what becomes of the *Gap bars from* setting? | | |
+| 16 | An image overflowing the cell has the edge that will snap outside the cell: where does its bar go? | | |
 
 ---
 
