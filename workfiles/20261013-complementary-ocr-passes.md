@@ -132,6 +132,11 @@ relPath 	 size 	 ticks 	 boxes1 	 text1 	 boxes2 	 text2 	 boxes2u 	 text2u 	 bo
 - `ContentText` holds one immutable slot per source; a pass finished swaps in a new `ContentText`
   (the search reads the dictionary from the UI thread). `MaxLength` and `MaxBoxes` apply per pass.
 - `ContentIndex.IsCurrent(entry, pass)` replaces `IsCurrent(entry)` in the queue.
+- **Loading stays cheap**: the file is parsed once, at start-up, off the UI thread. The folded forms the
+  search compares are computed **on demand** — a word box's when the arrow first needs it, a slot's text
+  folded once, its spaces-ignored form when a word is first looked for that way — never all at load
+  time; the file keeps the original words only. The file list shows **without waiting for the content
+  texts**, loaded alongside.
 
 ---
 
@@ -355,6 +360,19 @@ RapidOCR reads `SUPPORT` (sure) and the Ring pass `I SUPPORT` and `TH CURRENT TH
 spots on the top and bottom bands; `S U P P O R T` found by *support* as a joined match, the arrow over
 the letters' union, the highlight over the run; a content 2 index (3 008 entries) read in 63 ms.
 
+### Iteration 6 — 2026-10-14 — ⚙️ Post-implementation — Index load
+
+Asked whether a line-per-file index is the most efficient, or JSON with named properties parsed once:
+the file is already parsed once at start-up and the search never reads the disk; JSON would be larger
+and slower to parse and to save, its gain extensibility only — kept in columns. Measuring it showed a
+real cost this work brought: the content 3 index the user's run wrote (5.3 MB, 114 000 word boxes) loads
+in **717 ms**, against 63 ms for the content 2 one (2.1 MB, 43 000 boxes) — the folding (accents and case
+dropped) computed at load time for every box, and twice for every slot's text, while the file list waits
+for it. Of the two fixes offered — the folded forms stored in the file (~8 MB), or computed on demand —
+the user chose **on demand**: a box folded when the arrow first needs it, a slot's text folded once and
+its spaces-ignored form when first needed, the file list shown without waiting for the texts
+(§ Index Format).
+
 ---
 
 ## Implementation Log
@@ -391,7 +409,11 @@ the letters' union, the highlight over the run; a content 2 index (3 008 entries
 | 16 | Bars: one colour or one per pass? | One colour per pass | 2026-10-13 |
 | 17 | (User request) | Implement in a dedicated worktree | 2026-10-13 |
 | 18 | Start the implementation? Where? | Code, tests and docs — in a worktree | 2026-10-13 |
+| 19 | (User) Why is `5va6bj.jpg` (*SAUCE ?*) not found by *sauce*? | Answered: RapidOCR had not run, the engine not downloaded yet; RapidOCR reads `SAUCE ? imgflip.com` (sure) | 2026-10-14 |
+| 20 | (User) A menu item to index the new files only? | Answered: already so — the scan lists the changes, each pass reads only the files it has not read at their stamp | 2026-10-14 |
+| 21 | (User) Is the line-per-file index the most efficient — JSON, one parse? | Answered: parsed once already; JSON larger and slower; the 717 ms load found and explained | 2026-10-14 |
+| 22 | Fix the load: folded forms stored, or computed on demand? | On demand (B) | 2026-10-14 |
 
 ---
 
-*Last updated: 2026-10-13*
+*Last updated: 2026-10-14*
