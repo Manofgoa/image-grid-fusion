@@ -118,6 +118,11 @@ The feedback goes to the explorer's status line with the tile menu's messages, t
 keeping `name · size`; the preview's tooltip in the `Ready` state becomes
 `Drag into a cell · right-click for more`. No open question left.
 
+### Iteration 3 — 2026-10-14 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree on `feature/url-zone-context-menu`
+(`.claude/worktrees/url-zone-context-menu`). The scope is the design sections as they stand.
+
 ---
 
 ## Implementation Log
