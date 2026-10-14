@@ -35,6 +35,7 @@ internal static class AppSettings
     private const string OcrArrowColorName = "OcrArrowColor";
     private const string MaxZoomName = "MaxZoom";
     private const string GuideApproachName = "GuideApproach";
+    private const string GapBarsFromEdgesName = "GapBarsFromEdges";
     private const string WindowWidthName = "WindowWidth";
     private const string WindowHeightName = "WindowHeight";
     private const string WindowScreenName = "WindowScreen";
@@ -185,6 +186,12 @@ internal static class AppSettings
 
     /// <summary>Saves how far before its stop a guide shows; throws an <see cref="IsSaveError"/> exception on failure.</summary>
     public static void SaveGuideApproach(int percent) => Save((GuideApproachName, percent));
+
+    /// <summary>Whether the guides' gap bars run from the image's edges rather than its center; its center when nothing was saved.</summary>
+    public static bool GapBarsFromEdges => Int(GapBarsFromEdgesName) is int value && value != 0;
+
+    /// <summary>Saves where the guides' gap bars start; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveGapBarsFromEdges(bool edges) => Save((GapBarsFromEdgesName, edges ? 1 : 0));
 
     /// <summary>The maximum zoom, in percent, when the file holds no whole number for it.</summary>
     public const int DefaultMaxZoom = 2000;

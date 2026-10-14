@@ -413,6 +413,13 @@ internal sealed class GridPreview : Control
     public int GuideApproach { get; set; } = DefaultGuideApproach;
 
     /// <summary>
+    /// Whether every gap bar runs from the image's edge nearest its guide rather than from the image's
+    /// center — an app setting of the ⚙ menu, the same point for every axis and every stop.
+    /// </summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool GapBarsFromEdges { get; set; }
+
+    /// <summary>
     /// Whether a gesture is changing the grid right now — a cell pressed (pan, ✥ swap), a bar or a
     /// separator dragged, a crop moved, a zoom by the wheel or the slider not yet at rest: the undo
     /// history commits nothing before it ends.
@@ -2794,10 +2801,11 @@ internal sealed class GridPreview : Control
         var middle = new PointF(moved.Bounds.X + moved.Bounds.Width / 2, moved.Bounds.Y + moved.Bounds.Height / 2);
         SetLook(index, look.WithFocus(moved.FocusAt(cell, middle)));
 
-        // A guide can appear or go while the image stays put, and a gap bar may run beyond the cell.
+        // A guide can appear or go while the image stays put, and a gap bar may run far beyond the cell,
+        // to the center of an image much larger than it.
         if (this.GuideApproach > 0 && !free || _panX.Held != heldX || _panY.Held != heldY)
         {
-            this.Invalidate(this.GuideArea(cell));
+            this.Invalidate();
         }
     }
 
@@ -3470,7 +3478,7 @@ internal sealed class GridPreview : Control
             int x = GuideX(near.Kind, near.Outward);
             guides.Add((new Point(x, cell.Top), new Point(x, cell.Bottom), ApproachOpacity(near.Gap, reachX)));
             int y = this.GapBarAt(along.Y, cell.Top, cell.Bottom);
-            bars.Add((new Point(GapBarStart(near, bounds.X, x), y), new Point(x, y)));
+            bars.Add((new Point(this.GapBarStart(bounds.X, bounds.Width, x), y), new Point(x, y)));
         }
 
         if (_panY.Held != PanStop.None)
@@ -3483,7 +3491,7 @@ internal sealed class GridPreview : Control
             int y = GuideY(near.Kind, near.Outward);
             guides.Add((new Point(cell.Left, y), new Point(cell.Right, y), ApproachOpacity(near.Gap, reachY)));
             int x = this.GapBarAt(along.X, cell.Left, cell.Right);
-            bars.Add((new Point(x, GapBarStart(near, bounds.Y, y)), new Point(x, y)));
+            bars.Add((new Point(x, this.GapBarStart(bounds.Y, bounds.Height, y)), new Point(x, y)));
         }
 
         foreach (var (from, to, opacity) in guides)
@@ -3495,25 +3503,21 @@ internal sealed class GridPreview : Control
     }
 
     /// <summary>
-    /// Where a gap bar starts along its axis: on the point of an image at <paramref name="position"/> that
-    /// will snap onto <paramref name="near"/>, whose guide is at <paramref name="guide"/> — the move left
-    /// short of the guide, the bar ending on the guide itself.
+    /// Where a gap bar starts along its axis, for an image at <paramref name="position"/>,
+    /// <paramref name="length"/> long, the bar ending on the guide at <paramref name="guide"/>: the same point
+    /// of the image for every axis and every stop — its center line, or with <see cref="GapBarsFromEdges"/>
+    /// its edge nearest the guide.
     /// </summary>
-    private static int GapBarStart(PanApproach near, float position, int guide) =>
-        (int)Math.Round(guide - (near.Stop - position));
-
-    /// <summary>
-    /// The area the guides of a moved image in <paramref name="cell"/> may cover: the cell, and around it
-    /// the reach of the gap bars running to an overflowing image's edge, halo included.
-    /// </summary>
-    private Rectangle GuideArea(Rectangle cell)
+    private int GapBarStart(float position, float length, int guide)
     {
-        int halo = this.LogicalToDeviceUnits(4);
-        var area = Rectangle.Inflate(
-            cell,
-            (int)Math.Ceiling(cell.Width * this.GuideApproach / 100f) + halo,
-            (int)Math.Ceiling(cell.Height * this.GuideApproach / 100f) + halo);
-        return Rectangle.Intersect(area, this.ClientRectangle);
+        if (!this.GapBarsFromEdges)
+        {
+            return (int)Math.Round(position + length / 2);
+        }
+
+        float low = position;
+        float high = position + length;
+        return (int)Math.Round(Math.Abs(low - guide) <= Math.Abs(high - guide) ? low : high);
     }
 
     /// <summary>Opacity of a guide <paramref name="gap"/> pixels from its stop, shown from <paramref name="reach"/> pixels: from the minimum at the reach to full at the stop.</summary>
