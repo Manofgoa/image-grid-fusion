@@ -334,10 +334,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 7, 8, 9, 10, 11 | 2026-10-14 | `05d0d26` the bar links the snapping point to the guide, no ticks, setting removed (Iteration 11); `45f16f4` gap bars from the image's center or edges (Iteration 10); `1465de2` approach distance setting (Iteration 9); `6d13a1c` gap bar through the image's center (Iteration 8); `9963110` — `PanMagnet.Approach`, `GridPreview.PaintPanGuides` / `PaintGapBars`; builds with 0 warnings |
+| Code | 7, 8, 9, 10, 11, 12 | 2026-10-14 | `4c557f4` one point of the image for every bar, Gap bars from back (Iteration 12); `05d0d26` the bar links the snapping point to the guide, no ticks, setting removed (Iteration 11); `45f16f4` gap bars from the image's center or edges (Iteration 10); `1465de2` approach distance setting (Iteration 9); `6d13a1c` gap bar through the image's center (Iteration 8); `9963110` — `PanMagnet.Approach`, `GridPreview.PaintPanGuides` / `PaintGapBars`; builds with 0 warnings |
 | Unit tests | 3 | 2026-09-26 | Not applicable — no test project, declined (Q&A #9) |
-| README | 7, 8, 9, 10, 11 | 2026-10-14 | `7856f4b` (Iteration 11); `4ba3a7e` Gap bars from (Iteration 10); Guides show from (Iteration 9); `77b004e` (Iteration 8); `18570a1` — `README.md` and `README.fr.md`, the guides paragraph |
-| RULES.md | 7, 8, 9, 10, 11 | 2026-10-14 | `bf393a7` (Iteration 11); `87edd8f` the move left, Gap bars from (Iteration 10); approach distance setting (Iteration 9); `f519d1c` (Iteration 8); `96463ac` — *On-Cell Helper Indicators › Guides Approach* |
+| README | 7, 8, 9, 10, 11, 12 | 2026-10-14 | Gap bars from back (Iteration 12); `7856f4b` (Iteration 11); `4ba3a7e` Gap bars from (Iteration 10); Guides show from (Iteration 9); `77b004e` (Iteration 8); `18570a1` — `README.md` and `README.fr.md`, the guides paragraph |
+| RULES.md | 7, 8, 9, 10, 11, 12 | 2026-10-14 | one point for every bar (Iteration 12); `bf393a7` (Iteration 11); `87edd8f` the move left, Gap bars from (Iteration 10); approach distance setting (Iteration 9); `f519d1c` (Iteration 8); `96463ac` — *On-Cell Helper Indicators › Guides Approach* |
 
 ---
 
