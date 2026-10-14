@@ -59,7 +59,12 @@ The **same behaviour as on a file tile**, on the zone's downloaded file (`UrlZon
 
 ## Feedback
 
-*Pending — Open Questions.*
+- Every entry reports in the **explorer's status line** (`ShowTransient`), with the tile menu's
+  messages: `Copied: <name>`, `Copied as PNG: <name> (<w> × <h>)`, `Copied path: <full path>`,
+  `No image to copy: <name>`, `Copy failed: <message>`, `Explorer could not be opened: <message>`.
+  The zone's caption keeps `name · size` — it changes only for a file gone (`GoneCaption`).
+- The preview's **tooltip** in the `Ready` state says the menu is there:
+  `Drag into a cell · right-click for more`.
 
 ---
 
@@ -83,11 +88,11 @@ by hand in the launched app.
 - [x] ~~Open dir: the folder alone, or the file selected?~~ → The file selected, as Open file location.
 - [x] ~~Every downloaded media, or X / Twitter only?~~ → Every media the zone loaded, whatever the
   resolver.
-- [ ] Where does the feedback (`Copied: …`, `Copy failed: …`) show: the **explorer's status line**,
+- [x] ~~Where does the feedback (`Copied: …`, `Copy failed: …`) show: the **explorer's status line**,
   as for a tile (`ShowTransient`), or the **zone's caption**, replacing its `name · size` for a few
-  seconds?
-- [ ] The preview's tooltip, `Drag into a cell`: unchanged, or mentioning the menu
-  (`Drag into a cell · right-click for more`)?
+  seconds?~~ → The explorer's status line, as for a tile.
+- [x] ~~The preview's tooltip, `Drag into a cell`: unchanged, or mentioning the menu
+  (`Drag into a cell · right-click for more`)?~~ → Mentioning the menu.
 
 ---
 
@@ -106,6 +111,12 @@ loads; the subject is simple, explored in one pass. Exploration found the previe
 the selected row. Proposed: a `ContextMenuStrip` on the preview, opened in the `Ready` state only, the
 tile actions made path-based and shared, one event from the zone to the panel, no shortcut. Left
 open: where the feedback shows, and the tooltip.
+
+### Iteration 2 — 2026-10-14
+
+The feedback goes to the explorer's status line with the tile menu's messages, the zone's caption
+keeping `name · size`; the preview's tooltip in the `Ready` state becomes
+`Drag into a cell · right-click for more`. No open question left.
 
 ---
 
@@ -132,8 +143,8 @@ Questions asked by the agent during design, with user responses.
 | 2 | Open dir: the file selected, or the folder alone? | The file selected | 2026-10-14 |
 | 3 | Every downloaded media, or X / Twitter only? | Every media loaded | 2026-10-14 |
 | 4 | Is the subject simple, or tricky / long? | Simple | 2026-10-14 |
-| 5 | Where does the feedback show? | | |
-| 6 | The preview's tooltip: unchanged, or mentioning the menu? | | |
+| 5 | Where does the feedback show? | The explorer's status line | 2026-10-14 |
+| 6 | The preview's tooltip: unchanged, or mentioning the menu? | Mentioning the menu | 2026-10-14 |
 
 ---
 
