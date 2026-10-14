@@ -37,6 +37,12 @@ internal static class FileSearch
     /// <summary>Folds a text for matching: the accents dropped, then lower case.</summary>
     public static string Fold(string text)
     {
+        // Plain ASCII has no accent to drop: most OCR text, folded without decomposing it.
+        if (System.Text.Ascii.IsValid(text))
+        {
+            return text.ToLowerInvariant();
+        }
+
         string decomposed = text.Normalize(NormalizationForm.FormD);
         var folded = new StringBuilder(decomposed.Length);
         foreach (char c in decomposed)

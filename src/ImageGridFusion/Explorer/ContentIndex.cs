@@ -86,7 +86,7 @@ internal sealed class ContentIndex
                     for (int i = 0; i < slots; i++)
                     {
                         string boxes = columns[3 + 2 * i];
-                        read[i] = boxes == NotDone ? null : new SlotText(columns[4 + 2 * i], ParseBoxes(boxes));
+                        read[i] = boxes == NotDone ? null : SlotText.Read(columns[4 + 2 * i], boxes);
                     }
 
                     contents._texts[columns[0]] = new ContentText(new FileStamp(size, new DateTime(ticks, DateTimeKind.Utc)), read);
@@ -214,7 +214,7 @@ internal sealed class ContentIndex
 
         return this._texts.TryGetValue(entry.RelativePath, out var text) && text.Stamp == stamp
             && text.Slots[(int)OcrPasses.SlotsOf(pass)[0]] is { } slot
-            && (slot.Boxes is not null || !recognised);
+            && (slot.HasBoxes || !recognised);
     }
 
     /// <summary>
@@ -301,7 +301,7 @@ internal sealed class ContentIndex
                     foreach (var slot in text.Slots)
                     {
                         writer.Write('\t');
-                        writer.Write(slot is null ? NotDone : FormatBoxes(slot.Boxes));
+                        writer.Write(slot is null ? NotDone : slot.BoxesColumn);
                         writer.Write('\t');
                         writer.Write(slot?.Text);
                     }
@@ -334,7 +334,7 @@ internal sealed class ContentIndex
 
             bool inWords = slot.Folded.Contains(foldedWord, StringComparison.Ordinal);
             // Only the OCR reads letters apart: a text read as text is not joined.
-            bool inJoined = !inWords && canJoin && slot.Boxes is not null && slot.Joined.Contains(foldedWord, StringComparison.Ordinal);
+            bool inJoined = !inWords && canJoin && slot.HasBoxes && slot.Joined.Contains(foldedWord, StringComparison.Ordinal);
             if (OcrPasses.IsWeak((ContentSlot)i))
             {
                 weak ??= inWords || inJoined ? (slot, inJoined, ContentGrade.Weak) : null;
@@ -474,25 +474,67 @@ internal sealed class ContentIndex
         }
     }
 
-    /// <summary>One slot's text, its folded form and that form without its spaces computed once, and its words' boxes.</summary>
-    private sealed class SlotText(string text, WordBox[]? boxes)
+    /// <summary>
+    /// One slot's text, its folded form computed once, that form without its spaces computed when first
+    /// looked into, and its words' boxes — read from the file, they stay as the file writes them until
+    /// the arrow first needs them, and are written back so. See
+    /// workfiles/20261013-complementary-ocr-passes.md § Index Format.
+    /// </summary>
+    private sealed class SlotText
     {
-        public string Text { get; } = text;
+        // The boxes as the file holds them, decoded when first needed; or the boxes recognised.
+        private readonly string? _column;
+        private WordBox[]? _boxes;
+        private string? _joined;
 
-        public string Folded { get; } = FileSearch.Fold(text);
+        public SlotText(string text, WordBox[]? boxes)
+        {
+            this.Text = text;
+            this.Folded = FileSearch.Fold(text);
+            this._boxes = boxes;
+            this.HasBoxes = boxes is not null;
+        }
 
-        public string Joined { get; } = FileSearch.Fold(text).Replace(" ", "", StringComparison.Ordinal);
+        private SlotText(string text, string column)
+        {
+            this.Text = text;
+            this.Folded = FileSearch.Fold(text);
+            this._column = column;
+            this.HasBoxes = column != NoBoxes;
+        }
 
-        public WordBox[]? Boxes { get; } = boxes;
+        public string Text { get; }
+
+        public string Folded { get; }
+
+        // Computed again at worst by two threads at once, to the same value — as the boxes below.
+        public string Joined => this._joined ??= this.Folded.Replace(" ", "", StringComparison.Ordinal);
+
+        /// <summary>Whether an OCR read the slot — its boxes, maybe none — rather than a text read as text.</summary>
+        public bool HasBoxes { get; }
+
+        public WordBox[]? Boxes => this.HasBoxes ? this._boxes ??= ParseBoxes(this._column!) : null;
+
+        /// <summary>The boxes as the file writes them.</summary>
+        public string BoxesColumn => this._column ?? FormatBoxes(this._boxes);
+
+        /// <summary>A slot as the file holds it: its text, and its boxes column left undecoded.</summary>
+        public static SlotText Read(string text, string column) => new(text, column);
     }
 }
 
-/// <summary>A word the OCR recognised and its box, in fractions of the image as recognised; its folded form computed once.</summary>
+/// <summary>
+/// A word the OCR recognised and its box, in fractions of the image as recognised; its folded form
+/// computed when the arrow first needs it — never at load time, for the hundred thousand boxes an index holds.
+/// </summary>
 internal sealed class WordBox(string word, RectangleF bounds)
 {
+    private string? _folded;
+
     public string Word { get; } = word;
 
     public RectangleF Bounds { get; } = bounds;
 
-    public string Folded { get; } = FileSearch.Fold(word);
+    // Computed again at worst by two threads at once, to the same value.
+    public string Folded => this._folded ??= FileSearch.Fold(this.Word);
 }

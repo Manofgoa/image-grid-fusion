@@ -1125,11 +1125,15 @@ internal sealed class FileExplorerPanel : Panel
     private async Task LoadAndScanAsync(string folder, CancellationToken cancellation)
     {
         ShowStatus("Loading the index…");
-        var (loaded, tree, contents) = await Task.Run(() =>
+
+        // The content texts load alongside: the file list shows without waiting for them
+        // (workfiles/20261013-complementary-ocr-passes.md § Index Format).
+        var contentsLoad = Task.Run(() => ContentIndex.Load(ContentIndex.DefaultPath, folder));
+        var (loaded, tree) = await Task.Run(() =>
         {
             FileIndex.MoveLegacy();
             var index = FileIndex.Load(FileIndex.DefaultPath, folder);
-            return (index, index is null ? null : FolderTree.Of(index.Entries), ContentIndex.Load(ContentIndex.DefaultPath, folder));
+            return (index, index is null ? null : FolderTree.Of(index.Entries));
         });
         if (cancellation.IsCancellationRequested || IsDisposed)
         {
@@ -1137,9 +1141,20 @@ internal sealed class FileExplorerPanel : Panel
         }
 
         SetIndex(loaded, tree);
-        this._contents ??= contents;
         SetSummary(loaded is null ? "No index yet" : Summary(loaded));
         RefreshRows(keepPlace: true);
+        var contents = await contentsLoad;
+        if (cancellation.IsCancellationRequested || IsDisposed)
+        {
+            return;
+        }
+
+        if (this._contents is null)
+        {
+            this._contents = contents;
+            this.RefreshContentResults();
+        }
+
         await ScanAsync(folder, cancellation);
     }
 
