@@ -69,7 +69,7 @@ launched app.
   file location after the separator?~~ → In the copies' group, after Copy PNG; on a folder tile, the
   separator shows between it and Open in Explorer.
 - [x] ~~A keyboard shortcut (e.g. `Ctrl+Shift+C` with the tiles focused), or the menu only?~~ → No
-  preference given: the menu only, the proposed default.
+  shortcut: the menu only (confirmed by the user after a first « no preference »).
 
 ---
 
@@ -92,7 +92,8 @@ as text, `Copied path: …` in the status line, no shortcut.
 ### Iteration 2 — 2026-10-14
 
 The entry goes in the copies' group, after Copy PNG, the separator shown on folder tiles too (as
-proposed). No preference on a keyboard shortcut: the menu only, as proposed. No open question left.
+proposed). No preference on a keyboard shortcut at first, then confirmed by the user: no shortcut, the menu
+only. No open question left.
 
 ---
 
@@ -120,7 +121,7 @@ Questions asked by the agent during design, with user responses.
 | 3 | Label? | Copy full path | 2026-10-14 |
 | 4 | Is the subject simple, or tricky / long? | Simple | 2026-10-14 |
 | 5 | Place in the menu? | With the copies, after Copy PNG | 2026-10-14 |
-| 6 | A keyboard shortcut, or the menu only? | No preference — the menu only, the proposed default | 2026-10-14 |
+| 6 | A keyboard shortcut, or the menu only? | No preference at first, then « Pas de raccourci clavier »: the menu only | 2026-10-14 |
 
 ---
 
