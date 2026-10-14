@@ -95,6 +95,11 @@ The entry goes in the copies' group, after Copy PNG, the separator shown on fold
 proposed). No preference on a keyboard shortcut at first, then confirmed by the user: no shortcut, the menu
 only. No open question left.
 
+### Iteration 3 — 2026-10-14 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree on `feature/copy-full-path`
+(`.claude/worktrees/copy-full-path`). The scope is the design sections as they stand.
+
 ---
 
 ## Implementation Log
