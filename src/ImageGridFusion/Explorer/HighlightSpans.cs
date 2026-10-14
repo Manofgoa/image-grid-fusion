@@ -34,6 +34,18 @@ internal static class HighlightSpans
                 int end = at + word.Length < folded.Length ? origin[at + word.Length] : text.Length;
                 spans.Add((start, end));
             }
+
+            // Letters the OCR read apart, as the search finds them: the spaces removed, the span running
+            // from the first letter to the last (workfiles/20261013-complementary-ocr-passes.md § Spaces-Ignored Match).
+            if (word.Length >= FileSearch.JoinedMinLength)
+            {
+                var (joined, from) = Joined(folded, origin);
+                for (int at = joined.IndexOf(word, StringComparison.Ordinal); at >= 0; at = joined.IndexOf(word, at + 1, StringComparison.Ordinal))
+                {
+                    int last = from[at + word.Length - 1];
+                    spans.Add((from[at], last + (char.IsSurrogatePair(text, last) ? 2 : 1)));
+                }
+            }
         }
 
         spans.Sort((a, b) => a.Start.CompareTo(b.Start));
@@ -52,6 +64,23 @@ internal static class HighlightSpans
         }
 
         return merged;
+    }
+
+    /// <summary>The folded text without its white space, with where each of its characters comes from in the original text.</summary>
+    private static (string Joined, int[] Origin) Joined(string folded, int[] origin)
+    {
+        var joined = new System.Text.StringBuilder(folded.Length);
+        var from = new List<int>(folded.Length);
+        for (int i = 0; i < folded.Length; i++)
+        {
+            if (!char.IsWhiteSpace(folded[i]))
+            {
+                joined.Append(folded[i]);
+                from.Add(origin[i]);
+            }
+        }
+
+        return (joined.ToString(), [.. from]);
     }
 
     /// <summary>The text folded one character at a time — a surrogate pair kept whole — with where each folded character comes from.</summary>

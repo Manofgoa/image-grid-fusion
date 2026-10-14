@@ -132,6 +132,14 @@ relPath 	 size 	 ticks 	 boxes1 	 text1 	 boxes2 	 text2 	 boxes2u 	 text2u 	 bo
 - `ContentText` holds one immutable slot per source; a pass finished swaps in a new `ContentText`
   (the search reads the dictionary from the UI thread). `MaxLength` and `MaxBoxes` apply per pass.
 - `ContentIndex.IsCurrent(entry, pass)` replaces `IsCurrent(entry)` in the queue.
+- **Loading stays cheap**: the file is parsed once, at start-up, off the UI thread. The folded forms the
+  search compares are computed **on demand** — a word box's when the arrow first needs it, a slot's text
+  folded once, its spaces-ignored form when a word is first looked for that way — never all at load
+  time; the file keeps the original words only. The **boxes themselves stay undecoded** until the arrow
+  needs them, and a save writes an undecoded column back as it was read. Plain ASCII is folded without
+  decomposing it. The file list shows **without waiting for the content texts**, loaded alongside.
+  Measured on the user's 5.3 MB index: 166 ms → **43 ms** (median of 12 loads; reading and splitting
+  the lines alone, 12–16 ms).
 
 ---
 
@@ -143,8 +151,13 @@ relPath 	 size 	 ticks 	 boxes1 	 text1 	 boxes2 	 text2 	 boxes2u 	 text2u 	 bo
 - Each bar shows its pass's share of the files **done over the whole index** — so while pass 2 runs,
   bar 1 stands full and the later ones at what was done before. A bar shows while its pass has files
   left or runs, and hides once its pass is complete; pass 2's is hidden without RapidOCR.
-- **One colour per pass**, the bars being 3 px high and unlabelled; a tooltip over the row names each
-  bar's pass, its colour and its count. The scan's sweeping bar keeps today's blue.
+- **One colour per pass**, the bars being 3 px high and unlabelled — Windows blue, RapidOCR purple,
+  Inverted orange, Ring green; a tooltip over the row names each bar's pass, its colour and its count.
+  The scan's sweeping bar keeps today's blue: it is the Windows pass's bar, the first slot, the scan
+  and the extraction never running at once.
+- The progress row is **four bars tall while the content search is on**, one bar otherwise
+  (`FileExplorerPanel.ApplyMetrics`): turning the setting on or off moves the list by 9 px, nothing else
+  does.
 - The status line names the running pass: `OCR 2/4 · RapidOCR: 120/2 243 (20220321_132643.jpg)`.
 
 ---
@@ -155,7 +168,10 @@ In the search, not in the index:
 
 - A query word not found in a pass's folded text is looked for in that text **with its whitespace
   removed** (`ContentText` keeps the stripped folded text next to `Folded`, computed once).
-- Only for query words of **3 characters or more** — shorter ones match everywhere once the spaces go.
+- Only for query words of **3 characters or more** — shorter ones match everywhere once the spaces go
+  (`FileSearch.JoinedMinLength`).
+- Only in the texts an **OCR** read (a slot with boxes): a text or HTML file read as text is not joined —
+  its spaces are real, *the rapist* is not *therapist*.
 - **Details view**: the excerpt is taken around the **run of consecutive words** whose concatenation
   holds the word (`ContentIndex.WordsAround` fallback), and the whole run is highlighted.
 - **Arrow**: `ContentIndex.SpotOf` falls back on the boxes of one pass, concatenating consecutive
@@ -204,10 +220,15 @@ RapidOCR is **never shipped**: its models and the native DLLs it runs on are dow
   a mismatch deletes it and fails the download.
 - **Loaded from there**: `NativeLibrary.SetDllImportResolver` on the ONNX Runtime and SkiaSharp
   assemblies points `onnxruntime` and `libSkiaSharp` at `ocr-engine\`; the managed assemblies ship with
-  the exe (small). No code touches a SkiaSharp or ONNX Runtime type before the files are there.
+  the exe (small). No code touches a SkiaSharp or ONNX Runtime type before the files are there, and the
+  resolvers are set **before anything touches them** (`RapidRecognizer`'s constructor, `RapidOcr` created
+  after): the user's `PATH` holds Git Credential Manager's own `libSkiaSharp.dll` (2.88), which the
+  default probing loads otherwise — SkiaSharp 3.119 then refuses it.
+- A RapidOCR that fails to start (a DLL or a model that does not load) is said in the status line, its
+  pass skipped and left *not done*.
 - **Not shipped**: the packages' native DLLs are kept out of the build output, and `RapidOcrNet`'s
-  build target copying `models5\` next to the exe is switched off.
-- Available when every file is there (`OcrEngineFiles.Find`).
+  build target copying `models\v5\` next to the exe is switched off.
+- Available when every file is there (`OcrEngineFiles.IsAvailable`).
 - **When it is offered**:
   - when *Search file contents (OCR)* is turned on in the ⚙ menu and RapidOCR is missing — a Yes / No
     message saying what is downloaded, its size and where;
@@ -268,6 +289,8 @@ not only the blocking ones.
 - [x] ~~**Ranking**: sure ordinary, then spaces-ignored, then the Ring pass only — the Reshaped pass split
       into Inverted and Ring?~~ → Yes; RapidOCR's unsure words join the Ring in rank 3
 - [x] ~~**Bars**: one colour or one per pass?~~ → One colour per pass, a tooltip naming them
+- [ ] *(Found during the run, out of scope)* README § Planned still lists "OCR over the indexed images",
+      done long ago (`workfiles/20260926-ocr-search.md`) — remove the line from both READMEs?
 
 ---
 
@@ -312,17 +335,70 @@ of **sure** and **weak** slots.
 Go given: code, tests and documentation, in a dedicated worktree (`feature/complementary-ocr-passes`).
 The scope is the design sections as they stand in Iteration 3.
 
+### Iteration 5 — 2026-10-13 — 🧭 Implementation choices
+
+No rule broken. Choices the design did not state:
+
+- **The libSkiaSharp on the PATH**: Git Credential Manager ships a `libSkiaSharp.dll` 2.88 on the
+  user's `PATH`, which SkiaSharp 3.119 loaded and refused while `RapidOcr` was created in a field
+  initializer — before the resolvers were set. `RapidOcr` is now created in `RapidRecognizer`'s
+  constructor, after `OcrEngineFiles.ResolveNativeLibraries` (§ RapidOCR Download).
+- **The spaces-ignored match reads OCR texts only**, not a text or HTML file read as text, whose spaces
+  are real (§ Spaces-Ignored Match).
+- **The progress row**: four bars tall while the content search is on, one otherwise; the scan's bar is
+  the Windows pass's, the first slot (§ Progress Bars). Colours: blue, purple, orange, green.
+- **A RapidOCR failing to start** is said in the status line and its pass skipped (§ RapidOCR Download).
+- **The search API**: `FileSearch.Search` takes a `(entry, word) → ContentGrade?` instead of the folded
+  text, `ContentIndex.GradeOf` replacing `FoldedOf`; `ContentIndex.Set` takes the pass and one result per
+  slot; `IsCurrent` takes the pass.
+- **The reshaped copies' sizes**: the Inverted copy upscaled ×2 up to a 2 400 px long side, bilinear; the
+  Ring strips at most 200 px high (the band upscaled ×2 at most), two turns within Windows OCR's longest
+  side, skipped under 24 px; a box carried back along its arc through 7 points of each edge.
+- **RapidOCR's options**: `RapidOcrOptions.Default` with the word boxes on and its own line filter at 0.6,
+  the block's average character score deciding sure / unsure.
+- **The download offer** says about 25 MB; checked: the six files came down in ~2 s, hashes matching.
+
+Checked in a scratchpad harness calling the built code: the engine downloaded and loaded; on the badge,
+RapidOCR reads `SUPPORT` (sure) and the Ring pass `I SUPPORT` and `TH CURRENT THING` (weak), the arrow
+spots on the top and bottom bands; `S U P P O R T` found by *support* as a joined match, the arrow over
+the letters' union, the highlight over the run; a content 2 index (3 008 entries) read in 63 ms.
+
+### Iteration 6 — 2026-10-14 — ⚙️ Post-implementation — Index load
+
+Asked whether a line-per-file index is the most efficient, or JSON with named properties parsed once:
+the file is already parsed once at start-up and the search never reads the disk; JSON would be larger
+and slower to parse and to save, its gain extensibility only — kept in columns. Measuring it showed a
+real cost this work brought: the content 3 index the user's run wrote (5.3 MB, 114 000 word boxes) loads
+in **717 ms**, against 63 ms for the content 2 one (2.1 MB, 43 000 boxes) — the folding (accents and case
+dropped) computed at load time for every box, and twice for every slot's text, while the file list waits
+for it. Of the two fixes offered — the folded forms stored in the file (~8 MB), or computed on demand —
+the user chose **on demand**: a box folded when the arrow first needs it, a slot's text folded once and
+its spaces-ignored form when first needed, the file list shown without waiting for the texts
+(§ Index Format).
+
+### Iteration 7 — 2026-10-14 — 🧭 Implementation choices
+
+- **The 717 ms were a cold start**: measured properly (12 loads, the median, a warm process), the
+  content 3 index loaded in **166 ms** before the fix. Folding on demand brought it to 105 ms; the rest
+  was decoding the 114 000 boxes' numbers, which only the arrow reads — so, in the same spirit, **the
+  boxes stay undecoded** until the arrow needs them, and a save writes them back as read (checked: the
+  3 010 lines rewritten identical). **43 ms** now.
+- **Plain ASCII** — most OCR text — is folded without the Unicode decomposition (`FileSearch.Fold`).
+- **RULES § Content OCR Passes** gets *Loading stays cheap*, so a new per-box value follows it.
+- Checked in the scratchpad harness against the new build: grades, arrows, joined match, highlight,
+  save and reload unchanged.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project in the repository — does not apply |
-| RULES | | | |
-| README | | | |
-| Glossary | | | |
+| Code | 4, 7 | 2026-10-13, 2026-10-14 | Engine download, passes + index + search + bars, ⚙ offer — three commits; the index load on demand (Iteration 7) |
+| Unit tests | 4 | 2026-10-13 | No test project in the repository — does not apply; checked in a scratchpad harness (Iteration 5) |
+| RULES | 4, 7 | 2026-10-13, 2026-10-14 | § Content OCR Passes; *Loading stays cheap* (Iteration 7) |
+| README | 4 | 2026-10-13 | README.md / README.fr.md: OCR passes, letters read apart, ranking, Tech |
+| Glossary | 4 | 2026-10-13 | OCR pass, OCR engine, spaces-ignored match; Index row — both languages |
 
 ---
 
@@ -348,7 +424,11 @@ The scope is the design sections as they stand in Iteration 3.
 | 16 | Bars: one colour or one per pass? | One colour per pass | 2026-10-13 |
 | 17 | (User request) | Implement in a dedicated worktree | 2026-10-13 |
 | 18 | Start the implementation? Where? | Code, tests and docs — in a worktree | 2026-10-13 |
+| 19 | (User) Why is `5va6bj.jpg` (*SAUCE ?*) not found by *sauce*? | Answered: RapidOCR had not run, the engine not downloaded yet; RapidOCR reads `SAUCE ? imgflip.com` (sure) | 2026-10-14 |
+| 20 | (User) A menu item to index the new files only? | Answered: already so — the scan lists the changes, each pass reads only the files it has not read at their stamp | 2026-10-14 |
+| 21 | (User) Is the line-per-file index the most efficient — JSON, one parse? | Answered: parsed once already; JSON larger and slower; the 717 ms load found and explained | 2026-10-14 |
+| 22 | Fix the load: folded forms stored, or computed on demand? | On demand (B) | 2026-10-14 |
 
 ---
 
-*Last updated: 2026-10-13*
+*Last updated: 2026-10-14*

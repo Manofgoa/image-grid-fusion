@@ -91,7 +91,19 @@ internal sealed class FileExplorerPanel : Panel
     private readonly CheckBox _byContent = new() { Text = "💡", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0), Checked = true, AutoCheck = false };
     private readonly TextBox _search = new() { PlaceholderText = SearchPlaceholder, Anchor = AnchorStyles.Left | AnchorStyles.Right };
     private readonly Button _rescan = new() { Text = "↻", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right, Enabled = false };
-    private readonly IndexingBar _progress = new() { Dock = DockStyle.Fill };
+    // One bar per OCR pass (workfiles/20261013-complementary-ocr-passes.md § Progress Bars), stacked in
+    // the progress row in the passes' order, each in its colour; the first — the Windows pass's, blue —
+    // is the scan's too. Only the first shows while the content search is off.
+    private static readonly Color[] PassColors = [IndexingBar.DefaultColor, Color.FromArgb(136, 23, 152), Color.FromArgb(202, 80, 16), Color.FromArgb(16, 124, 16)];
+    private static readonly string[] PassColorNames = ["blue", "purple", "orange", "green"];
+    private readonly TableLayoutPanel _bars = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = PassColors.Length, Margin = Padding.Empty, Padding = Padding.Empty };
+    private readonly IndexingBar[] _passBars = PassColors.Select(color => new IndexingBar { Dock = DockStyle.Fill, BarColor = color }).ToArray();
+
+    // Each pass's files done and files it reads, as the extraction last reported them; -1: not known yet.
+    private readonly (int Done, int Needed)[] _passCounts = PassColors.Select(_ => (-1, -1)).ToArray();
+
+    /// <summary>The scan's bar: the first one, the Windows pass's.</summary>
+    private IndexingBar _progress => this._passBars[0];
     private readonly Label _status = new() { Dock = DockStyle.Fill, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, Margin = Padding.Empty };
     private readonly Panel _captionRow = new() { Dock = DockStyle.Fill, Margin = Padding.Empty };
     private readonly Label _caption = new() { Dock = DockStyle.Fill, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, Margin = Padding.Empty };
@@ -159,6 +171,10 @@ internal sealed class FileExplorerPanel : Panel
     private long _lastKeystroke;
     private string? _activity;
     private int _pagesPerLoad = DefaultPagesPerLoad;
+
+    // The OCR engine's download running, and what it says after the activity (workfiles/20261013-complementary-ocr-passes.md § RapidOCR Download).
+    private CancellationTokenSource? _engineDownload;
+    private string? _engineActivity;
     private FileOrder _fileOrder = FileOrder.Newest;
     private ExplorerView _view = ExplorerView.Thumbnails;
 
@@ -241,7 +257,14 @@ internal sealed class FileExplorerPanel : Panel
         _listHost.Controls.Add(_invite);
         _content.Controls.Add(_header, 0, 0);
         _content.Controls.Add(_searchRow, 0, 1);
-        _content.Controls.Add(this._progress, 0, 2);
+        this._bars.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        for (int i = 0; i < this._passBars.Length; i++)
+        {
+            this._bars.RowStyles.Add(new RowStyle(SizeType.Absolute, IndexingBar.Thickness));
+            this._bars.Controls.Add(this._passBars[i], 0, i);
+        }
+
+        _content.Controls.Add(this._bars, 0, 2);
         _content.Controls.Add(_status, 0, 3);
         _content.Controls.Add(_captionRow, 0, 4);
         _content.Controls.Add(_listHost, 0, 5);
@@ -511,6 +534,7 @@ internal sealed class FileExplorerPanel : Panel
             }
 
             this.ApplyCriteriaTips();
+            this.ApplyMetrics();
         }
     }
 
@@ -539,6 +563,66 @@ internal sealed class FileExplorerPanel : Panel
         }
 
         this.Rescan();
+    }
+
+    /// <summary>Whether the OCR engine (RapidOCR) is being downloaded.</summary>
+    public bool DownloadingOcrEngine => this._engineDownload is not null;
+
+    /// <summary>
+    /// Downloads the OCR engine (<see cref="OcrEngineFiles"/>), its progress after the status line's
+    /// summary, then starts the extraction again so the RapidOCR pass runs; a failure said in the status
+    /// line. Nothing when it is already being downloaded. See
+    /// workfiles/20261013-complementary-ocr-passes.md § RapidOCR Download.
+    /// </summary>
+    public async Task DownloadOcrEngineAsync()
+    {
+        if (this._engineDownload is not null)
+        {
+            return;
+        }
+
+        var download = new CancellationTokenSource();
+        this._engineDownload = download;
+        var progress = new Progress<double>(share =>
+        {
+            if (this._engineDownload == download && !this.IsDisposed)
+            {
+                this.SetEngineActivity($"Downloading the OCR engine… {share:P0}");
+            }
+        });
+        try
+        {
+            await OcrEngineFiles.DownloadAsync(progress, download.Token);
+            this._engineDownload = null;
+            if (!this.IsDisposed)
+            {
+                this.SetEngineActivity(null);
+                this.ShowTransient("OCR engine downloaded: RapidOCR reads the images next");
+                this.ApplyBarTips();
+                this.StartExtraction();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Web.UrlLoadException ex)
+        {
+            this._engineDownload = null;
+            if (!this.IsDisposed)
+            {
+                this.SetEngineActivity(null);
+                this.ShowTransient($"OCR engine not downloaded: {ex.Message}", error: true);
+            }
+        }
+        finally
+        {
+            if (this._engineDownload == download)
+            {
+                this._engineDownload = null;
+            }
+
+            download.Dispose();
+        }
     }
 
     /// <summary>
@@ -841,6 +925,7 @@ internal sealed class FileExplorerPanel : Panel
         if (disposing)
         {
             _scan?.Cancel();
+            this._engineDownload?.Cancel();
             _transient.Dispose();
             _toolTip.Dispose();
             _menu.Dispose();
@@ -915,7 +1000,13 @@ internal sealed class FileExplorerPanel : Panel
     private void ApplyMetrics()
     {
         int line = Font.Height + LogicalToDeviceUnits(4);
-        _content.RowStyles[2].Height = this.LogicalToDeviceUnits(IndexingBar.Thickness);
+        int bar = this.LogicalToDeviceUnits(IndexingBar.Thickness);
+        foreach (RowStyle row in this._bars.RowStyles)
+        {
+            row.Height = bar;
+        }
+
+        _content.RowStyles[2].Height = bar * (this._contentSearch ? this._passBars.Length : 1);
         _content.RowStyles[3].Height = line;
         _content.RowStyles[4].Height = line;
         _content.RowStyles[6].Height = Font.Height * 2 + LogicalToDeviceUnits(4);
@@ -1060,11 +1151,15 @@ internal sealed class FileExplorerPanel : Panel
     private async Task LoadAndScanAsync(string folder, CancellationToken cancellation)
     {
         ShowStatus("Loading the index…");
-        var (loaded, tree, contents) = await Task.Run(() =>
+
+        // The content texts load alongside: the file list shows without waiting for them
+        // (workfiles/20261013-complementary-ocr-passes.md § Index Format).
+        var contentsLoad = Task.Run(() => ContentIndex.Load(ContentIndex.DefaultPath, folder));
+        var (loaded, tree) = await Task.Run(() =>
         {
             FileIndex.MoveLegacy();
             var index = FileIndex.Load(FileIndex.DefaultPath, folder);
-            return (index, index is null ? null : FolderTree.Of(index.Entries), ContentIndex.Load(ContentIndex.DefaultPath, folder));
+            return (index, index is null ? null : FolderTree.Of(index.Entries));
         });
         if (cancellation.IsCancellationRequested || IsDisposed)
         {
@@ -1072,9 +1167,20 @@ internal sealed class FileExplorerPanel : Panel
         }
 
         SetIndex(loaded, tree);
-        this._contents ??= contents;
         SetSummary(loaded is null ? "No index yet" : Summary(loaded));
         RefreshRows(keepPlace: true);
+        var contents = await contentsLoad;
+        if (cancellation.IsCancellationRequested || IsDisposed)
+        {
+            return;
+        }
+
+        if (this._contents is null)
+        {
+            this._contents = contents;
+            this.RefreshContentResults();
+        }
+
         await ScanAsync(folder, cancellation);
     }
 
@@ -1204,8 +1310,8 @@ internal sealed class FileExplorerPanel : Panel
     }
 
     /// <summary>
-    /// Extracts the content texts off the UI thread, one file at a time: the bar and the status line
-    /// following it, the search shown refreshed every few seconds and at the end.
+    /// Extracts the content texts off the UI thread, pass after pass, one file at a time: each pass's
+    /// bar and the status line following it, the search shown refreshed every few seconds and at the end.
     /// </summary>
     private async Task ExtractAsync(FileIndex index, ContentIndex contents, CancellationToken cancellation)
     {
@@ -1217,17 +1323,34 @@ internal sealed class FileExplorerPanel : Panel
                 return;
             }
 
-            this._progress.ShowProgress(p.Total == 0 ? 1 : (double)p.Done / p.Total);
             if (p.Refresh)
             {
                 this.RefreshContentResults();
                 return;
             }
 
-            // The file's rank in the pass, then its name — none for a file that has no text to find.
+            int bar = (int)p.Pass;
+            this._passCounts[bar] = (p.PassDone, p.PassNeeded);
+            if (p.Finished)
+            {
+                this._passBars[bar].HideProgress();
+            }
+            else
+            {
+                this._passBars[bar].ShowProgress(p.PassNeeded == 0 ? 1 : (double)p.PassDone / p.PassNeeded);
+            }
+
+            this.ApplyBarTips();
+            if (p.Note is { } note)
+            {
+                this.ShowTransient(note, error: true);
+            }
+
+            // The pass, the file's rank in it, then its name — none for a file that has no text to find.
+            string doing = $"OCR {bar + 1}/{OcrPasses.All.Length} · {OcrPasses.NameOf(p.Pass)}: {p.Done + 1:N0}/{p.Total:N0}";
             this.SetActivity(p.File is null ? null
-                : p.Kind == ContentKind.None ? $"OCR: {p.Done + 1:N0}/{p.Total:N0}"
-                : $"OCR: {p.Done + 1:N0}/{p.Total:N0} ({Path.GetFileName(p.File)})");
+                : p.Kind == ContentKind.None ? doing
+                : $"{doing} ({Path.GetFileName(p.File)})");
         });
         try
         {
@@ -1242,9 +1365,13 @@ internal sealed class FileExplorerPanel : Panel
             if (!this.IsDisposed)
             {
                 this.SetActivity(null);
-                if (!this._scanning)
+                for (int i = 0; i < this._passBars.Length; i++)
                 {
-                    this._progress.HideProgress();
+                    // The first bar is the scan's too.
+                    if (i > 0 || !this._scanning)
+                    {
+                        this._passBars[i].HideProgress();
+                    }
                 }
 
                 if (!cancellation.IsCancellationRequested)
@@ -1256,57 +1383,90 @@ internal sealed class FileExplorerPanel : Panel
     }
 
     /// <summary>
-    /// The extraction's worker: the texts of the files gone from the index dropped, then every file
-    /// whose text is missing or older than the file extracted, waiting between two while the search
-    /// is busy; the texts saved every 50 files — no sooner than 5 s after the previous save — every half
-    /// minute whatever the count, and at the end, so a pass cut short resumes where it stopped.
+    /// The extraction's worker: the texts of the files gone from the index dropped, then each OCR pass
+    /// in turn (<see cref="OcrPasses.All"/>) over every file it has not read yet — the Windows pass over
+    /// every file whose text is missing or older than the file, the later ones over the images and PDFs
+    /// the Windows pass read — waiting between two files while the search is busy; the texts saved every
+    /// 50 files — no sooner than 5 s after the previous save — every half minute whatever the count, and
+    /// at the end, so a pass cut short resumes where it stopped. Every bar is set first, the passes
+    /// complete hidden; RapidOCR's pass is skipped without its engine. See
+    /// workfiles/20261013-complementary-ocr-passes.md § Indexing Passes.
     /// </summary>
     private void Extract(FileIndex index, ContentIndex contents, IProgress<ExtractionProgress> progress, CancellationToken cancellation)
     {
         bool changed = contents.RetainOnly(index.Entries);
-        var queue = index.Entries.Where(e => e.Stamp is not null && !contents.IsCurrent(e)).ToArray();
-        var extractor = new ContentExtractor();
-        int done = 0;
+        using var extractor = new ContentExtractor();
         int unsaved = 0;
         long saved = Environment.TickCount64;
         long refreshed = saved;
         try
         {
-            foreach (var entry in queue)
+            foreach (var pass in OcrPasses.All)
+            {
+                var read = Read(index, pass);
+                int done = read.Count(e => contents.IsCurrent(e, pass));
+                bool runs = done < read.Length && (pass != OcrPass.Rapid || OcrEngineFiles.IsAvailable);
+                progress.Report(new ExtractionProgress(pass, 0, 0, done, read.Length, null, ContentKind.None, false, Finished: !runs));
+            }
+
+            foreach (var pass in OcrPasses.All)
             {
                 cancellation.ThrowIfCancellationRequested();
-                if (this.ExtractionPaused())
+                var read = Read(index, pass);
+                var queue = read.Where(e => (pass == OcrPass.Windows || contents.IsCurrent(e, OcrPass.Windows)) && !contents.IsCurrent(e, pass)).ToArray();
+                int before = read.Length - queue.Length;
+                if (queue.Length == 0)
                 {
-                    progress.Report(new ExtractionProgress(done, queue.Length, null, ContentKind.None, false));
-                    while (this.ExtractionPaused())
+                    progress.Report(new ExtractionProgress(pass, 0, 0, before, read.Length, null, ContentKind.None, false, Finished: true));
+                    continue;
+                }
+
+                if (pass == OcrPass.Rapid && extractor.StartRapid() is { } why)
+                {
+                    // Not downloaded: offered from the ⚙ menu; failing to load: said, the pass waiting.
+                    string? note = OcrEngineFiles.IsAvailable ? $"RapidOCR could not start: {why}" : null;
+                    progress.Report(new ExtractionProgress(pass, 0, queue.Length, before, read.Length, null, ContentKind.None, false, Finished: true, note));
+                    continue;
+                }
+
+                for (int done = 0; done < queue.Length; done++)
+                {
+                    cancellation.ThrowIfCancellationRequested();
+                    if (this.ExtractionPaused())
                     {
-                        cancellation.WaitHandle.WaitOne(PausePoll);
-                        cancellation.ThrowIfCancellationRequested();
+                        progress.Report(new ExtractionProgress(pass, done, queue.Length, before + done, read.Length, null, ContentKind.None, false, false));
+                        while (this.ExtractionPaused())
+                        {
+                            cancellation.WaitHandle.WaitOne(PausePoll);
+                            cancellation.ThrowIfCancellationRequested();
+                        }
+                    }
+
+                    var entry = queue[done];
+                    string path = index.FullPath(entry);
+                    var kind = ContentExtractor.KindOf(path);
+                    progress.Report(new ExtractionProgress(pass, done, queue.Length, before + done, read.Length, path, kind, false, false));
+                    contents.Set(entry.RelativePath, entry.Stamp!.Value, pass, extractor.Extract(path, pass));
+                    changed = true;
+                    unsaved++;
+
+                    long now = Environment.TickCount64;
+                    if (now - saved >= ContentSaveInterval || (unsaved >= ContentSaveEvery && now - saved >= ContentSaveFloor))
+                    {
+                        TrySave(contents);
+                        saved = now;
+                        unsaved = 0;
+                    }
+
+                    if (now - refreshed >= ContentRefreshInterval)
+                    {
+                        refreshed = now;
+                        progress.Report(new ExtractionProgress(pass, done, queue.Length, before + done, read.Length, null, ContentKind.None, true, false));
                     }
                 }
 
-                string path = index.FullPath(entry);
-                var kind = ContentExtractor.KindOf(path);
-                progress.Report(new ExtractionProgress(done, queue.Length, path, kind, false));
-                var (text, boxes) = extractor.Extract(path);
-                contents.Set(entry.RelativePath, entry.Stamp!.Value, text, boxes);
-                changed = true;
-                done++;
-                unsaved++;
-
-                long now = Environment.TickCount64;
-                if (now - saved >= ContentSaveInterval || (unsaved >= ContentSaveEvery && now - saved >= ContentSaveFloor))
-                {
-                    TrySave(contents);
-                    saved = now;
-                    unsaved = 0;
-                }
-
-                if (now - refreshed >= ContentRefreshInterval)
-                {
-                    refreshed = now;
-                    progress.Report(new ExtractionProgress(done, queue.Length, null, ContentKind.None, true));
-                }
+                extractor.StopRapid();
+                progress.Report(new ExtractionProgress(pass, queue.Length, queue.Length, read.Length, read.Length, null, ContentKind.None, false, Finished: true));
             }
         }
         finally
@@ -1315,6 +1475,31 @@ internal sealed class FileExplorerPanel : Panel
             {
                 TrySave(contents);
             }
+        }
+    }
+
+    /// <summary>The scanned files a pass reads: every one for the Windows pass, the images and PDFs for the later ones.</summary>
+    private static IndexEntry[] Read(FileIndex index, OcrPass pass) =>
+        index.Entries.Where(e => e.Stamp is not null
+            && (pass == OcrPass.Windows || ContentExtractor.KindOf(e.RelativePath) is ContentKind.Image or ContentKind.Pdf)).ToArray();
+
+    /// <summary>The bars' tooltip: each pass, its colour, and how far it has gone.</summary>
+    private void ApplyBarTips()
+    {
+        var lines = OcrPasses.All.Select(pass =>
+        {
+            int i = (int)pass;
+            var (done, needed) = this._passCounts[i];
+            string state = pass == OcrPass.Rapid && !OcrEngineFiles.IsAvailable ? "not downloaded"
+                : needed < 0 ? "not started"
+                : $"{done:N0}/{needed:N0}";
+            return $"{OcrPasses.NameOf(pass)} ({PassColorNames[i]}): {state}";
+        });
+        string tip = "OCR passes\n" + string.Join('\n', lines);
+        this._toolTip.SetToolTip(this._bars, tip);
+        foreach (var bar in this._passBars)
+        {
+            this._toolTip.SetToolTip(bar, tip);
         }
     }
 
@@ -1377,7 +1562,23 @@ internal sealed class FileExplorerPanel : Panel
     private void ShowSummary()
     {
         _transient.Stop();
-        Show(this._activity is null ? this._summary : $"{this._summary} · {this._activity}", this._summaryError);
+        string[] parts = [this._summary, .. new[] { this._activity, this._engineActivity }.OfType<string>()];
+        Show(string.Join(" · ", parts), this._summaryError);
+    }
+
+    /// <summary>Where the OCR engine's download stands, after the activity on the status line; null for nothing.</summary>
+    private void SetEngineActivity(string? activity)
+    {
+        if (activity == this._engineActivity)
+        {
+            return;
+        }
+
+        this._engineActivity = activity;
+        if (!this._transient.Enabled)
+        {
+            this.ShowSummary();
+        }
     }
 
     /// <summary>A progress text, kept until the next status.</summary>
@@ -1656,7 +1857,7 @@ internal sealed class FileExplorerPanel : Panel
         }
 
         var contents = this._byContent.Checked ? this._contents : null;
-        return FileSearch.Search(entries, words, contents is null ? null : e => contents.FoldedOf(e.RelativePath), this._byName.Checked, this._fileOrder);
+        return FileSearch.Search(entries, words, contents is null ? null : (e, word) => contents.GradeOf(e.RelativePath, word), this._byName.Checked, this._fileOrder);
     }
 
     /// <summary>The words around the one the search found in a tile's content text, 4 on each side.</summary>
@@ -2113,4 +2314,11 @@ internal sealed class FileExplorerPanel : Panel
 /// Where the content extraction stands: the files done out of those to do, the file it reads now
 /// (null while it waits or between two), how it has it, and whether the search shown is to be refreshed.
 /// </summary>
-internal readonly record struct ExtractionProgress(int Done, int Total, string? File, ContentKind Kind, bool Refresh);
+/// <summary>
+/// Where an OCR pass stands: the file it reads — its rank <paramref name="Done"/> among the
+/// <paramref name="Total"/> the pass reads this time, null while it waits — the files done out of
+/// those the pass reads in the whole index, for its bar; <paramref name="Refresh"/>: the search shown
+/// to run again; <paramref name="Finished"/>: the pass complete or skipped, its bar hidden;
+/// <paramref name="Note"/>: a trouble to say.
+/// </summary>
+internal readonly record struct ExtractionProgress(OcrPass Pass, int Done, int Total, int PassDone, int PassNeeded, string? File, ContentKind Kind, bool Refresh, bool Finished, string? Note = null);

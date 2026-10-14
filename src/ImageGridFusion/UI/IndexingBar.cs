@@ -1,23 +1,26 @@
 namespace ImageGridFusion.UI;
 
 /// <summary>
-/// The file explorer's indexing progress, in the 3 px row under its search box: a blue bar on a
-/// transparent track, as long as the job has gone — the scan, the content extraction, any indexing job —
-/// or a short segment sweeping the track while the job's total is not known yet; hidden while no job
-/// runs, its row kept so nothing moves. See workfiles/20260926-ocr-search.md § Progress Bar.
+/// The file explorer's indexing progress, in a 3 px row under its search box: a bar on a transparent
+/// track — blue unless told otherwise, one colour per OCR pass — as long as the job has gone — the
+/// scan, an OCR pass, any indexing job — or a short segment sweeping the track while the job's total is
+/// not known yet; hidden while no job runs, its row kept so nothing moves. See
+/// workfiles/20260926-ocr-search.md § Progress Bar and workfiles/20261013-complementary-ocr-passes.md
+/// § Progress Bars.
 /// </summary>
 internal sealed class IndexingBar : Control
 {
     /// <summary>The row's height, in logical pixels.</summary>
     public const int Thickness = 3;
 
+    /// <summary>The bar's colour unless told otherwise: the scan's, and the Windows OCR pass's.</summary>
+    public static readonly Color DefaultColor = Color.FromArgb(0, 120, 215);
+
     private const int SweepInterval = 30;
 
     // The sweeping segment's length, and how far it moves per tick, as fractions of the track.
     private const double SweepLength = 0.25;
     private const double SweepStep = 0.02;
-
-    private static readonly Color BarColor = Color.FromArgb(0, 120, 215);
 
     private readonly System.Windows.Forms.Timer _sweep = new() { Interval = SweepInterval };
     private double? _fraction;
@@ -40,6 +43,10 @@ internal sealed class IndexingBar : Control
             this.Invalidate();
         };
     }
+
+    /// <summary>The bar's colour.</summary>
+    [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+    public Color BarColor { get; init; } = DefaultColor;
 
     /// <summary>A job gone <paramref name="fraction"/> of its way, 0 to 1.</summary>
     public void ShowProgress(double fraction)
@@ -89,7 +96,7 @@ internal sealed class IndexingBar : Control
             bar = new Rectangle(x, 0, length, this.ClientSize.Height);
         }
 
-        using var brush = new SolidBrush(BarColor);
+        using var brush = new SolidBrush(this.BarColor);
         e.Graphics.FillRectangle(brush, bar);
     }
 

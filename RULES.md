@@ -508,6 +508,41 @@ What the URL zone loads (origin: `workfiles/20261009-url-content.md`), `Web/`:
 - The zone — its URL, its preview — is **not persisted** and is **out of the undo history**; a newer
   load cancels the one running, its partial file deleted.
 
+## Content OCR Passes
+
+How the content search reads the images and PDF pages (origin:
+`workfiles/20261013-complementary-ocr-passes.md`), `Explorer/OcrPass.cs`:
+
+- **The passes, in order** (`OcrPasses.All`), each over every image and PDF the index holds, one after
+  the other in one worker (`FileExplorerPanel.Extract`): **Windows** (Windows OCR), **Rapid** (RapidOCR),
+  **Inverted** (Windows OCR on the colours inverted), **Ring** (Windows OCR on the inscribed circle's band
+  unrolled). One pause rule, one save cadence. A new pass is added there, with its bar.
+- **The words add up**: each pass fills its own **slots** (`ContentSlot`) and never touches another's; a
+  changed file starts over from the Windows pass, its later slots dropped. A slot not filled yet is a pass
+  **not done**.
+- **The index format**: `files.content` holds every slot; a version adding a slot reads the older one,
+  its new slots *not done* — never discarded, so a pass already done is not redone.
+- **Loading stays cheap**: the file is parsed once, off the UI thread, and nothing is derived for every
+  word box at load time — a box is decoded and folded when the arrow first needs it, written back
+  undecoded otherwise (`ContentIndex.SlotText`); the file list shows without waiting for the texts. A
+  new per-box or per-word value follows the same rule.
+- **Sure or weak**: a slot is **weak** when its words are less reliable — read on an odd shape (Ring), or
+  with a low confidence (RapidOCR's *unsure* block, score 0.6 to 0.8) — `OcrPasses.IsWeak`. A new slot
+  declares itself. The search ranks the content matches by `ContentGrade`: a sure slot holding the word,
+  then a sure slot holding it once its spaces are removed (**spaces-ignored match**, query words of
+  `FileSearch.JoinedMinLength` characters or more, OCR texts only), then a weak slot. The excerpt and the
+  arrow come from the slot that gave the grade (`ContentIndex.Find`).
+- **RapidOCR is never shipped**: its models and the native DLLs of ONNX Runtime and SkiaSharp are kept
+  out of the build and downloaded on demand into **`ocr-engine\` next to the exe** (`OcrEngineFiles`) —
+  only the zip entries needed, by HTTP ranges (`Web/RemoteZip`), each checked against its SHA-256 —
+  offered when the content search is turned on and from the ⚙ menu while missing; nothing is downloaded
+  without that **Yes**. The package versions in `ImageGridFusion.csproj` and in `OcrEngineFiles` change
+  together, the hashes with them.
+- The native DLLs are resolved from that folder (`OcrEngineFiles.ResolveNativeLibraries`) **before any
+  code touches ONNX Runtime or SkiaSharp**: another `libSkiaSharp.dll` on the `PATH` would be loaded
+  otherwise.
+- Without the engine the RapidOCR pass is skipped, its bar hidden; the others run.
+
 ## App Settings
 
 Apply to every setting remembered between sessions (origin:
