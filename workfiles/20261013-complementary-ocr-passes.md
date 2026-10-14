@@ -135,8 +135,11 @@ relPath 	 size 	 ticks 	 boxes1 	 text1 	 boxes2 	 text2 	 boxes2u 	 text2u 	 bo
 - **Loading stays cheap**: the file is parsed once, at start-up, off the UI thread. The folded forms the
   search compares are computed **on demand** — a word box's when the arrow first needs it, a slot's text
   folded once, its spaces-ignored form when a word is first looked for that way — never all at load
-  time; the file keeps the original words only. The file list shows **without waiting for the content
-  texts**, loaded alongside.
+  time; the file keeps the original words only. The **boxes themselves stay undecoded** until the arrow
+  needs them, and a save writes an undecoded column back as it was read. Plain ASCII is folded without
+  decomposing it. The file list shows **without waiting for the content texts**, loaded alongside.
+  Measured on the user's 5.3 MB index: 166 ms → **43 ms** (median of 12 loads; reading and splitting
+  the lines alone, 12–16 ms).
 
 ---
 
@@ -373,15 +376,27 @@ the user chose **on demand**: a box folded when the arrow first needs it, a slot
 its spaces-ignored form when first needed, the file list shown without waiting for the texts
 (§ Index Format).
 
+### Iteration 7 — 2026-10-14 — 🧭 Implementation choices
+
+- **The 717 ms were a cold start**: measured properly (12 loads, the median, a warm process), the
+  content 3 index loaded in **166 ms** before the fix. Folding on demand brought it to 105 ms; the rest
+  was decoding the 114 000 boxes' numbers, which only the arrow reads — so, in the same spirit, **the
+  boxes stay undecoded** until the arrow needs them, and a save writes them back as read (checked: the
+  3 010 lines rewritten identical). **43 ms** now.
+- **Plain ASCII** — most OCR text — is folded without the Unicode decomposition (`FileSearch.Fold`).
+- **RULES § Content OCR Passes** gets *Loading stays cheap*, so a new per-box value follows it.
+- Checked in the scratchpad harness against the new build: grades, arrows, joined match, highlight,
+  save and reload unchanged.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 4 | 2026-10-13 | Engine download, passes + index + search + bars, ⚙ offer — three commits |
+| Code | 4, 7 | 2026-10-13, 2026-10-14 | Engine download, passes + index + search + bars, ⚙ offer — three commits; the index load on demand (Iteration 7) |
 | Unit tests | 4 | 2026-10-13 | No test project in the repository — does not apply; checked in a scratchpad harness (Iteration 5) |
-| RULES | 4 | 2026-10-13 | § Content OCR Passes |
+| RULES | 4, 7 | 2026-10-13, 2026-10-14 | § Content OCR Passes; *Loading stays cheap* (Iteration 7) |
 | README | 4 | 2026-10-13 | README.md / README.fr.md: OCR passes, letters read apart, ranking, Tech |
 | Glossary | 4 | 2026-10-13 | OCR pass, OCR engine, spaces-ignored match; Index row — both languages |
 
