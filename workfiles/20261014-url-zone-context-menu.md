@@ -54,8 +54,10 @@ The **same behaviour as on a file tile**, on the zone's downloaded file (`UrlZon
   zone with its file.
 - **The file gone** (the temp folder emptied by hand): nothing is done, and the zone shows
   `GoneCaption` — *The downloaded file is gone: load it again* — as its drag already does.
-- The zone raises **one event** carrying the file and the entry chosen; `FileExplorerPanel` handles
-  it with the shared actions, like `DragRequested`.
+- The zone raises **one event**, `UrlZone.FileActionRequested`, carrying the file and the entry
+  chosen (`UrlZone.FileAction`); `FileExplorerPanel.RunUrlFileActionAsync` handles it with the shared
+  actions (`CopyFile`, `CopyPngAsync`, `CopyPath`, `OpenInExplorer`), like `DragRequested`.
+- The labels are `FileExplorerPanel`'s constants, made `internal` for the zone.
 
 ## Feedback
 
@@ -123,6 +125,19 @@ keeping `name · size`; the preview's tooltip in the `Ready` state becomes
 Go given: code, unit tests and documentation, in a worktree on `feature/url-zone-context-menu`
 (`.claude/worktrees/url-zone-context-menu`). The scope is the design sections as they stand.
 
+### Iteration 4 — 2026-10-14 — 🧭 Implementation choices
+
+- The shared label constants are `FileExplorerPanel`'s, made `internal` (they were `private`); the
+  zone's menu reads them.
+- The event is `UrlZone.FileActionRequested`, an `EventHandler<(string Path, FileAction Action)>`;
+  `UrlZone.FileAction` lists the four entries.
+- The path-based actions keep the tile methods as thin wrappers (selected row, `Exists`, then the
+  action), so the tile menu and `Ctrl+C` on the tiles are unchanged.
+- The code is **one commit**: the path-based actions and the zone's menu do not build apart (the panel
+  handles the zone's event type).
+
+No rule broken.
+
 ---
 
 ## Implementation Log
@@ -132,9 +147,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
+| Code | 3 | 2026-10-14 | `UrlZone`: the preview's menu, its `Ready`-only opening, `FileActionRequested`, the tooltip; `FileExplorerPanel`: the actions made path-based, `RunUrlFileActionAsync` — built, 0 warnings |
+| Unit tests | 3 | 2026-10-14 | Not applicable: no testable logic (see § Test Impact) |
+| README | 3 | 2026-10-14 | `README.md` and `README.fr.md` § File explorer › URL zone: the preview's right-click menu |
 
 ---
 
