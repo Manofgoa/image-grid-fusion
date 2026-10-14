@@ -480,6 +480,10 @@ How the content search reads the images and PDF pages (origin:
   **not done**.
 - **The index format**: `files.content` holds every slot; a version adding a slot reads the older one,
   its new slots *not done* — never discarded, so a pass already done is not redone.
+- **Loading stays cheap**: the file is parsed once, off the UI thread, and nothing is derived for every
+  word box at load time — a box is decoded and folded when the arrow first needs it, written back
+  undecoded otherwise (`ContentIndex.SlotText`); the file list shows without waiting for the texts. A
+  new per-box or per-word value follows the same rule.
 - **Sure or weak**: a slot is **weak** when its words are less reliable — read on an odd shape (Ring), or
   with a low confidence (RapidOCR's *unsure* block, score 0.6 to 0.8) — `OcrPasses.IsWeak`. A new slot
   declares itself. The search ranks the content matches by `ContentGrade`: a sure slot holding the word,
