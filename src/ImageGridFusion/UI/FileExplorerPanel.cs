@@ -66,6 +66,7 @@ internal sealed class FileExplorerPanel : Panel
     private const string OpenInExplorerText = "Open in Explorer";
     private const string CopyText = "Copy";
     private const string CopyPngText = "Copy PNG";
+    private const string CopyFullPathText = "Copy full path";
     private const string SortNewestText = "Date ↓";
     private const string SortNameText = "Name A→Z";
     private const string SortSmallestText = "Size ↑";
@@ -128,6 +129,9 @@ internal sealed class FileExplorerPanel : Panel
     // A file tile's copies (see workfiles/20261008-explorer-tile-copy-menu.md), hidden on a folder tile.
     private readonly ToolStripMenuItem _copy = new(CopyText) { ShortcutKeyDisplayString = "Ctrl+C" };
     private readonly ToolStripMenuItem _copyPng = new(CopyPngText);
+
+    // Any tile's full path, as text (see workfiles/20261014-copy-full-path.md), a folder's too.
+    private readonly ToolStripMenuItem _copyFullPath = new(CopyFullPathText);
     private readonly ToolStripSeparator _copySeparator = new();
     private readonly ToolTip _toolTip = new();
     private readonly System.Windows.Forms.Timer _transient = new() { Interval = TransientDuration };
@@ -245,7 +249,7 @@ internal sealed class FileExplorerPanel : Panel
         this._content.Controls.Add(this._urlZone, 0, 7);
         Controls.Add(_content);
         Controls.Add(_expand);
-        this._menu.Items.AddRange([this._copy, this._copyPng, this._copySeparator]);
+        this._menu.Items.AddRange([this._copy, this._copyPng, this._copyFullPath, this._copySeparator]);
         _menu.Items.Add(_openLocation);
         _grid.ContextMenuStrip = _menu;
         _grid.IsFavorite = _favorites.Contains;
@@ -302,11 +306,11 @@ internal sealed class FileExplorerPanel : Panel
             bool file = row is { IsFolder: false };
             this._copy.Visible = file;
             this._copyPng.Visible = file;
-            this._copySeparator.Visible = file;
         };
         _openLocation.Click += (_, _) => OpenLocation();
         this._copy.Click += (_, _) => this.CopySelected();
         this._copyPng.Click += async (_, _) => await this.CopySelectedPngAsync();
+        this._copyFullPath.Click += (_, _) => this.CopySelectedPath();
         _transient.Tick += (_, _) => ShowSummary();
 
         // Files dropped anywhere on the panel, open or collapsed, become favorites (see
@@ -740,6 +744,28 @@ internal sealed class FileExplorerPanel : Panel
             {
                 this.ShowTransient($"Copy failed: {ex.Message}", error: true);
             }
+        }
+    }
+
+    /// <summary>
+    /// Copy full path: the selected tile's full path — a file's or a folder's — on the clipboard as
+    /// text, raw, without quotes. A missing one is dropped by <see cref="Exists"/>, nothing copied.
+    /// </summary>
+    private void CopySelectedPath()
+    {
+        if (this._grid.SelectedRow is not { } row || !this.Exists(row))
+        {
+            return;
+        }
+
+        try
+        {
+            Clipboard.SetText(row.FullPath);
+            this.ShowTransient($"Copied path: {row.FullPath}");
+        }
+        catch (ExternalException ex)
+        {
+            this.ShowTransient($"Copy failed: {ex.Message}", error: true);
         }
     }
 
