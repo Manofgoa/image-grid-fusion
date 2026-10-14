@@ -101,19 +101,22 @@ Components:
 
 ## Gap Bar
 
-- A **segment perpendicular to the guide** (scoping answer) **linking the anchor to the image**
-  (Iteration 11, Q&A #15): from the **point of the image that will snap** onto the stop to the **guide**
-  itself. Its **length is the gap left**: it shrinks as the image gets closer.
+- A **segment perpendicular to the guide** (scoping answer) **linking the image to the anchor**: from
+  **one point of the image** to the **guide** itself (Iteration 12). It shrinks as the image gets closer.
+- That point is **the same for every axis and every stop** — never the edges for one stop and the
+  center for another — chosen by an **app setting** of the ⚙ menu, **Gap bars from**, remembered in
+  `settings.json` (`GapBarsFromEdges`):
 
-  | Stop | From | To |
+  | Setting | Every bar runs from | To |
   |---|---|---|
-  | Edge stop | The image's edge that will align on the cell's edge | The edge guide |
-  | Center stop | The image's center line | The center guide |
+  | **Image center** (default) | The image's center line | The guide — edge or center |
+  | **Image edges** | The image's edge nearest the guide | The guide — edge or center |
 
-- No setting: the anchor decides the point (the *Gap bars from* setting of Iteration 10 is removed).
-- An image overflowing the cell has the edge that will snap **outside the cell**: the bar is drawn
-  there too, beyond the cell, up to the image's real edge — it always reaches both the anchor and the
-  image (Iteration 11, Q&A #16 left to the agent).
+- A bar's length is the gap left when its point is the one that snaps (an edge for an edge stop, the
+  center for the center stop); otherwise it also spans the part of the image between that point and the
+  snapping one.
+- It is **not clipped to its cell**: the image's edge or center may lie outside the cell (an image
+  overflowing it), and the bar runs there.
 - It **disappears when the stop holds** the image (gap 0): only the guide stays, as today.
 - While the image is held and the drag goes on toward the resistance, no bar is drawn (the image
   does not move).
@@ -304,6 +307,23 @@ in the order the requests were made.
 - Code: the bar runs from `GapBarStart` (the guide minus the move left) to the guide, unclipped;
   each move of an image approaching a stop invalidates the cell and the bars' reach around it
   (`GridPreview.GuideArea`), so a bar beyond the cell leaves no trace.
+
+### Iteration 12 — 2026-10-14 — ⚙️ Post-implementation — One point of the image for every bar, by a setting
+
+- User report, with two screenshots (a center stop's bars from the image's center, an edge stop's
+  from the image's edges): *why are the edges used in one case and the center in the other? It makes
+  no sense — I already said so, why is it not fixed? It must be EITHER the edges OR the center, the
+  CHOICE by an option.*
+- Why it happened: Iteration 11 took the point that snaps — edges for an edge stop, center for the
+  center stop — and removed the setting; the agent's recommendation (Q&A #15) said so, but it
+  contradicted Iteration 10's request (every axis on the same point) instead of refining it. Error of
+  the agent, not of the request.
+- Changed: every bar runs from **the same point of the image** — its center line, or its edge nearest
+  the guide — **to the guide**, whatever the stop; the choice is the ⚙ menu's **Gap bars from** again,
+  *Image center* by default (Q&A #14). Iteration 11's other answers stay: the bar reaches the guide, no
+  end ticks, drawn beyond the cell when its point is outside it.
+- A bar beyond the cell can now reach far (the center of an image much larger than the cell): each move
+  of an image approaching a stop invalidates the whole preview instead of the cell's surroundings.
 
 ---
 
