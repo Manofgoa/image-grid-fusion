@@ -120,13 +120,13 @@ internal static class AppSettings
     /// <summary>The longer side a video export (MP4, GIF) is clamped to when nothing was saved: Full HD.</summary>
     public const int DefaultVideoMaxSide = 1920;
 
-    /// <summary>The sizes the ⚙ menu offers for <see cref="VideoMaxSide"/>: Full HD, QHD, and 4K — the PNG's own maximum.</summary>
-    public static readonly int[] VideoMaxSides = [1920, 2560, CanvasSizer.MaxLongSide];
+    /// <summary>The sizes the ⚙ menu offers for <see cref="VideoMaxSide"/>: Full HD, QHD, and 4K — <see cref="CanvasSizer.MaxSharedLongSide"/>.</summary>
+    public static readonly int[] VideoMaxSides = [1920, 2560, CanvasSizer.MaxSharedLongSide];
 
     /// <summary>
     /// The longer side an MP4 or GIF export is clamped to — every canvas-sized buffer of the export
     /// shrinks with it — one of <see cref="VideoMaxSides"/>; <see cref="DefaultVideoMaxSide"/> when
-    /// nothing was saved or the value is none of them. A PNG keeps <see cref="CanvasSizer.MaxLongSide"/>.
+    /// nothing was saved or the value is none of them. A PNG has its own cap, <see cref="CanvasSizer.MaxLongSide"/>.
     /// See workfiles/20261010-optimisation-lack-of-memory.md § 2.3.
     /// </summary>
     public static int VideoMaxSide => Int(VideoMaxSideName) is int value && VideoMaxSides.Contains(value) ? value : DefaultVideoMaxSide;
