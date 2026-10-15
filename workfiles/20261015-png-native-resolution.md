@@ -244,6 +244,11 @@ Open Question 9 answered (Q&A 8): the position readout rule stays as written —
 another image's zoom shows the readouts whose pixel values change. § Position Readout updated; no
 open question left.
 
+### Iteration 5 — 2026-10-15 — ✅ Implemented
+
+Go given: code, tests and documentation, in a worktree (`.claude/worktrees/png-native-resolution`,
+branch `feature/png-native-resolution`). Scope frozen on the design sections as of Iteration 4.
+
 ---
 
 ## Implementation Log
