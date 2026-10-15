@@ -28,6 +28,7 @@ internal sealed class UrlZone : Panel
     private const string InstallingCaption = "Installing yt-dlp…";
     private const string InstallLink = "Install yt-dlp…";
     private const string GoneCaption = "The downloaded file is gone: load it again";
+    private const string ReadyTooltip = "Drag into a cell · right-click for more";
 
     private readonly TableLayoutPanel _layout = new() { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 2, Margin = Padding.Empty };
     private readonly UrlPreview _preview = new() { Dock = DockStyle.Fill, Margin = Padding.Empty };
@@ -36,6 +37,9 @@ internal sealed class UrlZone : Panel
     private readonly Button _load = new() { Text = "Load", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Anchor = AnchorStyles.Right, Enabled = false, Margin = Padding.Empty };
     private readonly LinkLabel _caption = new() { Dock = DockStyle.Fill, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, Margin = Padding.Empty };
     private readonly ToolTip _toolTip = new();
+
+    // A file tile's menu on the ready media (see workfiles/20261014-url-zone-context-menu.md).
+    private readonly ContextMenuStrip _menu = new();
 
     // The load running — a newer one cancels it; the downloaded media once ready; the URL the yt-dlp
     // install offer was made for; where the preview was pressed, for its drag.
@@ -69,6 +73,15 @@ internal sealed class UrlZone : Panel
         this._preview.MouseDown += OnPreviewMouseDown;
         this._preview.MouseMove += OnPreviewMouseMove;
         this._preview.MouseUp += (_, _) => this._pressedAt = null;
+        this._menu.Items.AddRange([
+            this.MenuItem(FileExplorerPanel.CopyText, FileAction.Copy),
+            this.MenuItem(FileExplorerPanel.CopyPngText, FileAction.CopyPng),
+            this.MenuItem(FileExplorerPanel.CopyFullPathText, FileAction.CopyFullPath),
+            new ToolStripSeparator(),
+            this.MenuItem(FileExplorerPanel.OpenFileLocationText, FileAction.OpenFileLocation),
+        ]);
+        this._menu.Opening += (_, e) => e.Cancel = this._preview.State != PreviewState.Ready;
+        this._preview.ContextMenuStrip = this._menu;
 
         this.ApplyMetrics();
         this.ShowEmpty();
@@ -76,6 +89,18 @@ internal sealed class UrlZone : Panel
 
     /// <summary>The ready media was dragged past the threshold: its file, to be dragged like a tile's.</summary>
     public event EventHandler<string>? DragRequested;
+
+    /// <summary>An entry of the ready media's menu was chosen: its file, still there, and the entry.</summary>
+    public event EventHandler<(string Path, FileAction Action)>? FileActionRequested;
+
+    /// <summary>The entries of the ready media's menu, a file tile's.</summary>
+    public enum FileAction
+    {
+        Copy,
+        CopyPng,
+        CopyFullPath,
+        OpenFileLocation,
+    }
 
     /// <summary>The URL field has the focus: the keys editing text are its own.</summary>
     public bool IsEditingText => this._url.Focused;
@@ -106,6 +131,7 @@ internal sealed class UrlZone : Panel
         {
             this._loading?.Cancel();
             this._toolTip.Dispose();
+            this._menu.Dispose();
         }
 
         base.Dispose(disposing);
@@ -354,7 +380,7 @@ internal sealed class UrlZone : Panel
     {
         this._path = path;
         this._preview.Display(PreviewState.Ready, thumbnail, VideoFrames.IsVideoFile(path));
-        this._toolTip.SetToolTip(this._preview, "Drag into a cell");
+        this._toolTip.SetToolTip(this._preview, ReadyTooltip);
         long size = new FileInfo(path).Length;
         this.SetCaption($"{Path.GetFileName(path)} · {Megabytes(size)}", error: false);
     }
@@ -382,6 +408,22 @@ internal sealed class UrlZone : Panel
         this._caption.Links.Clear();
         this._caption.ForeColor = error ? Color.Firebrick : dim ? SystemColors.GrayText : SystemColors.ControlText;
         this._toolTip.SetToolTip(this._caption, text);
+    }
+
+    private ToolStripMenuItem MenuItem(string text, FileAction action) =>
+        new(text, null, (_, _) => this.RequestFileAction(action));
+
+    /// <summary>A menu entry on the downloaded file, gone from the temp folder: nothing done, the zone saying so.</summary>
+    private void RequestFileAction(FileAction action)
+    {
+        if (this._path is { } path && File.Exists(path))
+        {
+            this.FileActionRequested?.Invoke(this, (path, action));
+        }
+        else
+        {
+            this.ShowFailed(GoneCaption);
+        }
     }
 
     private void OnPreviewMouseDown(object? sender, MouseEventArgs e) =>

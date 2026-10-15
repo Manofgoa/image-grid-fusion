@@ -62,11 +62,13 @@ internal sealed class FileExplorerPanel : Panel
 
     private const string SearchPlaceholder = "Search files… (Ctrl+F, * for all)";
     private const string FolderSearchPlaceholder = "Search this folder… (Ctrl+F, * for all)";
-    private const string OpenFileLocationText = "Open file location";
     private const string OpenInExplorerText = "Open in Explorer";
-    private const string CopyText = "Copy";
-    private const string CopyPngText = "Copy PNG";
-    private const string CopyFullPathText = "Copy full path";
+
+    // A file tile's menu labels, the URL zone's preview menu showing the same ones.
+    internal const string OpenFileLocationText = "Open file location";
+    internal const string CopyText = "Copy";
+    internal const string CopyPngText = "Copy PNG";
+    internal const string CopyFullPathText = "Copy full path";
     private const string SortNewestText = "Date ↓";
     private const string SortNameText = "Name A→Z";
     private const string SortSmallestText = "Size ↑";
@@ -319,6 +321,7 @@ internal sealed class FileExplorerPanel : Panel
         _grid.RowActivated += (_, row) => Activate(row);
         _grid.DragRequested += (_, row) => StartDrag(row);
         this._urlZone.DragRequested += (_, path) => this.StartUrlDrag(path);
+        this._urlZone.FileActionRequested += async (_, request) => await this.RunUrlFileActionAsync(request.Path, request.Action);
         _grid.MoreRequested += (_, _) => LoadMore();
         _grid.UpRequested += (_, _) => GoUp();
         _menu.Opening += (_, e) =>
@@ -769,12 +772,18 @@ internal sealed class FileExplorerPanel : Panel
             return;
         }
 
+        this.CopyFile(row.FullPath);
+    }
+
+    /// <summary>Copy: the file at <paramref name="path"/> on the clipboard, as Ctrl+C in the Explorer puts it.</summary>
+    private void CopyFile(string path)
+    {
         try
         {
             var data = new DataObject();
-            data.SetFileDropList(new StringCollection { row.FullPath });
+            data.SetFileDropList(new StringCollection { path });
             Clipboard.SetDataObject(data, copy: true);
-            this.ShowTransient($"Copied: {Path.GetFileName(row.FullPath)}");
+            this.ShowTransient($"Copied: {Path.GetFileName(path)}");
         }
         catch (ExternalException ex)
         {
@@ -794,7 +803,12 @@ internal sealed class FileExplorerPanel : Panel
             return;
         }
 
-        string path = row.FullPath;
+        await this.CopyPngAsync(row.FullPath);
+    }
+
+    /// <summary>Copy PNG: the image of the file at <paramref name="path"/>, as <see cref="CopySelectedPngAsync"/> copies a tile's.</summary>
+    private async Task CopyPngAsync(string path)
+    {
         string name = Path.GetFileName(path);
         var image = await Task.Run(() => ImageLoader.TryLoadFile(path));
         if (this.IsDisposed)
@@ -842,14 +856,43 @@ internal sealed class FileExplorerPanel : Panel
             return;
         }
 
+        this.CopyPath(row.FullPath);
+    }
+
+    /// <summary>Copy full path: <paramref name="path"/> on the clipboard as text, raw, without quotes.</summary>
+    private void CopyPath(string path)
+    {
         try
         {
-            Clipboard.SetText(row.FullPath);
-            this.ShowTransient($"Copied path: {row.FullPath}");
+            Clipboard.SetText(path);
+            this.ShowTransient($"Copied path: {path}");
         }
         catch (ExternalException ex)
         {
             this.ShowTransient($"Copy failed: {ex.Message}", error: true);
+        }
+    }
+
+    /// <summary>
+    /// The URL zone's preview menu (see workfiles/20261014-url-zone-context-menu.md): a file tile's
+    /// entry, on the zone's downloaded file — which the zone checked is still there.
+    /// </summary>
+    private async Task RunUrlFileActionAsync(string path, UrlZone.FileAction action)
+    {
+        switch (action)
+        {
+            case UrlZone.FileAction.Copy:
+                this.CopyFile(path);
+                break;
+            case UrlZone.FileAction.CopyPng:
+                await this.CopyPngAsync(path);
+                break;
+            case UrlZone.FileAction.CopyFullPath:
+                this.CopyPath(path);
+                break;
+            case UrlZone.FileAction.OpenFileLocation:
+                this.OpenInExplorer(path, folder: false);
+                break;
         }
     }
 
@@ -2246,9 +2289,15 @@ internal sealed class FileExplorerPanel : Panel
             return;
         }
 
+        this.OpenInExplorer(row.FullPath, row.IsFolder);
+    }
+
+    /// <summary>The Explorer opened on the folder at <paramref name="path"/>, or on a file's folder, the file selected.</summary>
+    private void OpenInExplorer(string path, bool folder)
+    {
         try
         {
-            Process.Start("explorer.exe", row.IsFolder ? $"\"{row.FullPath}\"" : $"/select,\"{row.FullPath}\"")?.Dispose();
+            Process.Start("explorer.exe", folder ? $"\"{path}\"" : $"/select,\"{path}\"")?.Dispose();
         }
         catch (Win32Exception ex)
         {
