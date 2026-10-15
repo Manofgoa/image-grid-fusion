@@ -294,10 +294,24 @@ Portrait 4:5, Story 9:16, Landscape 16:9 — given by `GridPreview.CanvasRatio`.
 - The **preview canvas**, the **canvas sizing** (`CanvasSizer.Compute`), the **exports** (the ratio
   captured in `GridExport.Job` when they start), the **text pages** and the **layout strip** read it.
   A new consumer reads it there too, never a constant: `GridLayout` holds no ratio.
-- The export's **longer side** is clamped to **[1200, 4096]** px, the other side following the ratio —
-  a **video export** (MP4, GIF) to [1200, the **Video size**], an app setting of the ⚙ menu
-  (`AppSettings.VideoMaxSide`: 1920 by default, 2560 or 4096), captured in `GridExport.Job` as the
-  export starts, so every canvas-sized buffer of the export shrinks with it (origin:
+- The **canvas sizing** (`CanvasSizer.Compute`) gives the smallest canvas where **no image is
+  downscaled as drawn in its cell**, read through `SizedImage` (`SourceImage.Sizing`, `Frame.Sizing`):
+  its zoom (`ImageLook.ZoomAt` at time 0), its fine angle's cover scale, the cells shrunk by the
+  Borders' gap (`Compositor.Cells`). A content that sharpens (`PageSource.Sharpens`: PDF, thumbnail,
+  text) is read at zoom 1, unturned, so it never widens the canvas on its own. One rule for every
+  export and the position readout, the cap alone differing (origin:
+  `workfiles/20261015-png-native-resolution.md`).
+- The **longer side** is clamped to [1200, cap], the other side following the ratio:
+
+  | Export | Cap |
+  |---|---|
+  | PNG — Copy / Save | 8192 (`CanvasSizer.MaxLongSide`) |
+  | PNG — a *PNG max size* entry | The entry's: 1280, 1920, 2560, 3840 or 7680 |
+  | JPEG for sharing | 4096 (`CanvasSizer.MaxSharedLongSide`), then reduced to 2560 |
+  | MP4 / GIF | The **Video size**, an app setting of the ⚙ menu (`AppSettings.VideoMaxSide`: 1920 by default, 2560 or 4096) |
+
+  The cap is captured in `GridExport.Job` as the export starts (`VideoMaxSide`, `StillMaxSide`), so
+  every canvas-sized buffer of a video export shrinks with it (origin:
   `workfiles/20261010-optimisation-lack-of-memory.md`).
 - The Borders' **Twitter corners** apply in the **Twitter format only**: elsewhere their option is
   disabled, its setting kept, and nothing is rounded.
