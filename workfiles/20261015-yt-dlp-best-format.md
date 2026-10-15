@@ -185,6 +185,10 @@ The user's own yt-dlp could not be run here (none found under the repository's b
 | 2 | "The largest possible": up to where? | Capped at the Video size | 2026-10-15 |
 | 3 | Which sites does the format choice cover? | Every yt-dlp site | 2026-10-15 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward | 2026-10-15 |
+| 5 | Deno: optional companion of its own, or installed together with ffmpeg? | | 2026-10-15 |
+| 6 | Companions' placement: under `yt-dlp\` or folders of their own? | | 2026-10-15 |
+| 7 | When is the companions' install offered? | | 2026-10-15 |
+| 8 | Codecs above 1920: largest first or H.264 first? | | 2026-10-15 |
 
 ---
 
