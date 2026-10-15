@@ -161,7 +161,9 @@ its values follow the new canvas by themselves.
 
 The readout shows for an image "whose offset changes, whatever changed it — … the export canvas".
 Since the zoom now sizes the canvas, **zooming one image out can rescale the canvas, so every other
-image's offset in pixels changes** and their readouts would flash too — **TBD (Open Question 9)**.
+image's offset in pixels changes** — and their readouts **show**, the rule kept as written: an image
+off its cell's center shows its new value while another image's zoom rescales the PNG. RULES.md
+§ Position Readout is unchanged.
 
 ---
 
@@ -201,9 +203,10 @@ testable is created or updated. The behaviours below are checked by hand in the 
   zoom-aware one, under their Video size cap
 - [x] ~~8. Show the native size anywhere — the Copy / Save buttons' tooltip (`PNG 6144 × 3215`)?~~ → In
   the Copy / Save tooltips
-- [ ] 9. Position readout: a zoom rescaling the native canvas changes every image's offset in pixels —
+- [x] ~~9. Position readout: a zoom rescaling the native canvas changes every image's offset in pixels —
   do the other images' readouts flash then (the rule as written), or does a **pure rescale of the
-  canvas** (same ratio, nothing moved in its cell) no longer show a readout?
+  canvas** (same ratio, nothing moved in its cell) no longer show a readout?~~ → The rule as written:
+  they show
 
 ---
 
@@ -235,6 +238,12 @@ cap alone differing (§ Cap now a table); the native size in the Copy / Save too
 Tooltip). Emerging from the one rule: a zoom can now rescale the canvas, so every image's position
 readout would flash — Open Question 9 added.
 
+### Iteration 4 — 2026-10-15
+
+Open Question 9 answered (Q&A 8): the position readout rule stays as written — a canvas rescaled by
+another image's zoom shows the readouts whose pixel values change. § Position Readout updated; no
+open question left.
+
 ---
 
 ## Implementation Log
@@ -263,7 +272,7 @@ Questions asked by the agent during design, with user responses.
 | 5 | (User clarification) | The submenu comes **in addition to** the current menu items, and for the PNG only | 2026-10-15 |
 | 6 | Open Questions 1–4 (submenu behaviour, what the names limit, cap or exact size, list) | An immediate action; the longer side; a cap, the native size kept below it; 720p to 8K, each entry showing the size it gives | 2026-10-15 |
 | 7 | Open Questions 5–8 (JPEG for sharing, texts / PDF, videos, size shown) | JPEG for sharing keeps 4096; texts / PDF as today; videos take the same zoom-aware rule under Video size; the native size in the Copy / Save tooltips | 2026-10-15 |
-| 8 | Open Question 9 (position readouts on a pure canvas rescale) | | |
+| 8 | Open Question 9 (position readouts on a pure canvas rescale) | First ask dismissed, explained again: the rule as written — the other images' readouts show | 2026-10-15 |
 
 ---
 
