@@ -102,15 +102,32 @@ stays**; a submenu is **added** to each menu, for the PNG only:
 Copy ▾                          Save ▾
   GIF                             GIF
   MP4                             MP4
-  JPEG for sharing                PNG max size ▸  720p
-  PNG max size ▸  720p            ─────────────   1080p
-  ─────────────   1080p           Save last…      2K
-  Copy last…      2K                              4K
-                  4K
+  JPEG for sharing                PNG max size ▸  720p — 1280 × 670
+  PNG max size ▸  720p — …        ─────────────   1080p — 1920 × 1005
+  ─────────────   1080p — …       Save last…      2K — 2560 × 1340
+  Copy last…      2K — …                          4K — 3840 × 2010
+                  4K — …                          8K — 7680 × 4019
+                  8K — …
 ```
 
 - The main button (*Copy PNG* / *Save PNG*) keeps producing the **native** size (§ Native Sizing Rule).
-- Behaviour of an entry, what its name limits, its exact list and labels — **TBD (Open Questions 1–4)**.
+- An entry is an **action**: it Copies / Saves the PNG **right away** at that limit, like the GIF and
+  MP4 items. Nothing is remembered; the main button stays native.
+- Its name limits the canvas's **longer side**, whatever the output format:
+
+  | Entry | Longer side |
+  |---|---|
+  | 720p | 1280 |
+  | 1080p | 1920 |
+  | 2K | 2560 |
+  | 4K | 3840 |
+  | 8K | 7680 |
+
+- It is a **cap**: the PNG is `min(native, entry)` — never enlarged past the native need. An entry at
+  or above the native size gives the native size.
+- Each entry **shows the size it will give**, `1080p — 1920 × 1005`, computed when the menu opens (the
+  menus' `Opening` already refreshes the last video's tooltips): entries above the native size show the
+  same native size.
 - Wiring: `RenderStillAsync` passes the chosen cap into `GridExport.Job.Capture` / `RenderStill` (a
   still cap distinct from `videoMaxSide`), down to `CanvasSizer.Compute`.
 
@@ -141,14 +158,15 @@ testable is created or updated. The behaviours below are checked by hand in the 
 
 ## Open Questions
 
-- [ ] 1. A submenu entry (e.g. *1080p*): an **action** — Copy / Save the PNG at that limit right away,
-  like the GIF and MP4 items — or a **remembered choice** the main button then uses?
-- [ ] 2. What does *720p / 1080p / 2K / 4K* limit: the canvas's **longer side** (1280 / 1920 / 2560 /
-  3840), its **height** (720 / 1080 / 1440 / 2160), or its **shorter side**?
-- [ ] 3. When the native size is **smaller** than the entry: keep the native size (a cap only), or
-  **upscale** to exactly the entry's size?
-- [ ] 4. The list: 720p, 1080p, 2K (1440p), 4K (2160p) — and 8K? Each entry showing the size it will
-  give (`1080p — 1920 × 1005`)?
+- [x] ~~1. A submenu entry (e.g. *1080p*): an **action** — Copy / Save the PNG at that limit right away,
+  like the GIF and MP4 items — or a **remembered choice** the main button then uses?~~ → An action;
+  nothing remembered, the main button stays native
+- [x] ~~2. What does *720p / 1080p / 2K / 4K* limit: the canvas's **longer side** (1280 / 1920 / 2560 /
+  3840), its **height** (720 / 1080 / 1440 / 2160), or its **shorter side**?~~ → The longer side
+- [x] ~~3. When the native size is **smaller** than the entry: keep the native size (a cap only), or
+  **upscale** to exactly the entry's size?~~ → Keep the native size: a cap only
+- [x] ~~4. The list: 720p, 1080p, 2K (1440p), 4K (2160p) — and 8K? Each entry showing the size it will
+  give (`1080p — 1920 × 1005`)?~~ → 720p, 1080p, 2K, 4K and 8K (7680), each showing the size it gives
 - [ ] 5. *JPEG for sharing* (Copy menu): keeps the 4096 cap, or follows the PNG's 8192?
 - [ ] 6. Texts, PDF pages (rendered sharper, `Sharpening`): kept as today — they never widen the
   canvas — or counted at their rendered resolution?
@@ -171,6 +189,12 @@ Initial design from the user's request and the scoping batch (Q&A 1–4) plus it
 PNG only, zoom-aware native sizing (zoom, fine angle, Borders gap, motion at time 0), the PNG cap raised
 to 8192 with the video list decoupled from it, and a *PNG max size* submenu added to the Copy and Save
 menus, every existing item kept. Exploration: two read-only scouts (canvas sizing; Copy / Save menus).
+
+### Iteration 2 — 2026-10-15
+
+Open Questions 1–4 answered (Q&A 6): a submenu entry is an immediate Copy / Save, the main button
+staying native; its name caps the longer side (1280 / 1920 / 2560 / 3840 / 7680, 8K added); a cap
+only, never an upscale; each entry shows the size it gives. § Copy / Save Submenu updated.
 
 ---
 
@@ -198,7 +222,7 @@ Questions asked by the agent during design, with user responses.
 | 3 | Does the sizing replace the current behaviour or become an option? | In Copy / Save, a submenu to force a maximum size from a useful list — 720p, 1080p, 2K, 4K… | 2026-10-15 |
 | 4 | Is the subject simple or tricky / long? | No preference — a single scout pass taken | 2026-10-15 |
 | 5 | (User clarification) | The submenu comes **in addition to** the current menu items, and for the PNG only | 2026-10-15 |
-| 6 | Open Questions 1–4 (submenu behaviour, what the names limit, cap or exact size, list) | | |
+| 6 | Open Questions 1–4 (submenu behaviour, what the names limit, cap or exact size, list) | An immediate action; the longer side; a cap, the native size kept below it; 720p to 8K, each entry showing the size it gives | 2026-10-15 |
 | 7 | Open Questions 5–8 (JPEG for sharing, texts / PDF, videos, size shown) | | |
 
 ---
