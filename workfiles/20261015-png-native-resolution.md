@@ -17,13 +17,15 @@ canvas so the most demanding image is drawn at least 1:1.
 image at zoom 1 — no Zoom effect (`ImageLook.ZoomIn`), no fine angle, no Borders gap — and clamps the
 longer side to [1200, 4096]. This workfile:
 
-- makes the sizing **zoom-aware** (and fine-angle / Borders aware) for the PNG;
+- makes the sizing **zoom-aware** (and fine-angle / Borders aware) — one rule for every export, only
+  the cap differing;
 - raises the PNG's **cap to 8192 px**;
 - adds, **in addition to the existing menu items** of the Copy and Save split buttons, a **submenu
-  forcing a maximum size** for the PNG — 720p, 1080p, 2K, 4K….
+  forcing a maximum size** for the PNG — 720p, 1080p, 2K, 4K, 8K;
+- shows the PNG's native size in the Copy / Save tooltips.
 
-Out of scope (user, 2026-10-15): the MP4 / GIF exports keep their **Video size** cap; the submenu is
-for the PNG only.
+Out of scope (user, 2026-10-15): the MP4 / GIF exports keep their **Video size** cap and *JPEG for
+sharing* its 4096 cap; the submenu is for the PNG only.
 
 Relevant components: `Composition/CanvasSizer.cs`, `Composition/FitCalculator.cs`
 (`Scale`, `DrawnSize`, `ComputeTurned`), `Composition/Compositor.cs` (`Render`, `Cells`),
@@ -69,7 +71,8 @@ drawnScale(W) = FitCalculator.Scale(cell(W), shown) × look.ZoomIn(cell(W), show
 - `shown` = `ImageLook.Shown` (the crop's kept part, turned and flipped) — the kept part stands for the
   whole image, so no crop factor;
 - `ZoomIn` = the Zoom effect's free zoom or fit mode; for an Animations motion, the zoom **at time 0**,
-  the starting state the PNG shows (`ImageLook.ZoomAt(0, …)`);
+  the starting state the PNG shows (`ImageLook.ZoomAt(0, …)`) — also the motion's smallest zoom (it
+  zooms in), so the most demanding for a video;
 - `turned.Scale` = the fine angle's cover scale (`FitCalculator.ComputeTurned`).
 
 The canvas is the **smallest one where every such image has `drawnScale ≥ 1`**, then clamped to
@@ -80,15 +83,32 @@ again at the result (one or two passes absorb the borders).
 - A **zoomed-in** image needs a smaller canvas (each source pixel already drawn bigger); a **zoomed-out**
   one a larger canvas.
 - An image larger than the cap allows is still downscaled — the cap wins.
-- Contents without a fixed resolution — **TBD (Open Question 6)**.
+- **Texts and PDF pages** (contents with pages, rendered sharper on demand) are sized **as today**:
+  their shown size at zoom 1 divided by `Sharpening`, so they never widen the canvas — they render
+  sharp again at their cell's size.
+- **One rule for every export**: the PNG, *JPEG for sharing*, the MP4 / GIF and the position readout
+  all call it; only the cap differs (§ Cap). A zoomed-in video now exports smaller — and faster.
 
 ### Cap
 
-- The **PNG cap** becomes **8192 px** on the longer side (a 8192 × 4287 Twitter canvas is ~140 MB of
-  ARGB; `OutOfMemoryException` is already caught on every Copy / Save path — RULES.md § Export Memory).
+| Export | Longer side clamped to |
+|---|---|
+| PNG — Copy / Save main button | [1200, **8192**] |
+| PNG — a *PNG max size* entry | [1200, min(8192, the entry)] |
+| *JPEG for sharing* | [1200, 4096] — unchanged |
+| MP4 / GIF | [1200, the Video size] — unchanged |
+
+- 8192 × 4287 (Twitter) is ~140 MB of ARGB; `OutOfMemoryException` is already caught on every Copy /
+  Save path (RULES.md § Export Memory).
 - The **video** keeps its own list: `AppSettings.VideoMaxSides` stops reading the PNG cap and keeps
-  4096 as its own constant, so the ⚙ menu's Video size choices do not change.
-- *JPEG for sharing* — **TBD (Open Question 5)**.
+  4096 as its own constant, so the ⚙ menu's Video size choices do not change; *JPEG for sharing* reads
+  that same 4096 constant.
+
+### Native Size Tooltip
+
+While the Copy / Save main buttons produce a PNG, their tooltip gives the native size it will have —
+`PNG 6144 × 3215` — computed when the tooltip shows, so a zoom or a separator moved since is counted.
+The *PNG max size* entries give their own (§ Copy / Save Submenu).
 
 ---
 
@@ -137,8 +157,11 @@ Copy ▾                          Save ▾
 
 `GridPreview.ExportOffsets` gives the offsets "in the pixels of the PNG export of the grid as it stands"
 (RULES.md § Position Readout): it calls the same sizing as the PNG, with its default (native) cap, so
-its values follow the new canvas by themselves. A zoom changing the native canvas then changes the
-readout of every image — a consequence to accept, see Open Question 8.
+its values follow the new canvas by themselves.
+
+The readout shows for an image "whose offset changes, whatever changed it — … the export canvas".
+Since the zoom now sizes the canvas, **zooming one image out can rescale the canvas, so every other
+image's offset in pixels changes** and their readouts would flash too — **TBD (Open Question 9)**.
 
 ---
 
@@ -152,6 +175,9 @@ testable is created or updated. The behaviours below are checked by hand in the 
 | A zoomed-out image widens the PNG; a zoomed-in one no longer does | — (manual check) | — |
 | The PNG's longer side reaches 8192 px, never more | — (manual check) | — |
 | The Video size choices of the ⚙ menu are unchanged (1920 / 2560 / 4096) | — (manual check) | — |
+| A zoomed-in video exports smaller, still within its Video size | — (manual check) | — |
+| *JPEG for sharing* stays within 4096; a PDF page or a text never widens the PNG | — (manual check) | — |
+| The Copy / Save tooltip gives the PNG's size, the one the saved file has | — (manual check) | — |
 | A submenu entry gives a PNG within its limit; the existing menu items still work | — (manual check) | — |
 
 ---
@@ -167,12 +193,17 @@ testable is created or updated. The behaviours below are checked by hand in the 
   **upscale** to exactly the entry's size?~~ → Keep the native size: a cap only
 - [x] ~~4. The list: 720p, 1080p, 2K (1440p), 4K (2160p) — and 8K? Each entry showing the size it will
   give (`1080p — 1920 × 1005`)?~~ → 720p, 1080p, 2K, 4K and 8K (7680), each showing the size it gives
-- [ ] 5. *JPEG for sharing* (Copy menu): keeps the 4096 cap, or follows the PNG's 8192?
-- [ ] 6. Texts, PDF pages (rendered sharper, `Sharpening`): kept as today — they never widen the
-  canvas — or counted at their rendered resolution?
-- [ ] 7. MP4 / GIF: keep today's zoom-blind sizing exactly, or use the same zoom-aware rule under their
-  Video size cap (one sizing rule, a zoomed-in video then exported smaller)?
-- [ ] 8. Show the native size anywhere — the Copy / Save buttons' tooltip (`PNG 6144 × 3215`)?
+- [x] ~~5. *JPEG for sharing* (Copy menu): keeps the 4096 cap, or follows the PNG's 8192?~~ → Keeps 4096
+- [x] ~~6. Texts, PDF pages (rendered sharper, `Sharpening`): kept as today — they never widen the
+  canvas — or counted at their rendered resolution?~~ → As today: they never widen the canvas
+- [x] ~~7. MP4 / GIF: keep today's zoom-blind sizing exactly, or use the same zoom-aware rule under their
+  Video size cap (one sizing rule, a zoomed-in video then exported smaller)?~~ → One rule, the
+  zoom-aware one, under their Video size cap
+- [x] ~~8. Show the native size anywhere — the Copy / Save buttons' tooltip (`PNG 6144 × 3215`)?~~ → In
+  the Copy / Save tooltips
+- [ ] 9. Position readout: a zoom rescaling the native canvas changes every image's offset in pixels —
+  do the other images' readouts flash then (the rule as written), or does a **pure rescale of the
+  canvas** (same ratio, nothing moved in its cell) no longer show a readout?
 
 ---
 
@@ -195,6 +226,14 @@ menus, every existing item kept. Exploration: two read-only scouts (canvas sizin
 Open Questions 1–4 answered (Q&A 6): a submenu entry is an immediate Copy / Save, the main button
 staying native; its name caps the longer side (1280 / 1920 / 2560 / 3840 / 7680, 8K added); a cap
 only, never an upscale; each entry shows the size it gives. § Copy / Save Submenu updated.
+
+### Iteration 3 — 2026-10-15
+
+Open Questions 5–8 answered (Q&A 7): *JPEG for sharing* keeps 4096; texts and PDF pages sized as today;
+the MP4 / GIF take the same zoom-aware rule under their Video size cap — one rule for every export, the
+cap alone differing (§ Cap now a table); the native size in the Copy / Save tooltips (§ Native Size
+Tooltip). Emerging from the one rule: a zoom can now rescale the canvas, so every image's position
+readout would flash — Open Question 9 added.
 
 ---
 
@@ -223,7 +262,8 @@ Questions asked by the agent during design, with user responses.
 | 4 | Is the subject simple or tricky / long? | No preference — a single scout pass taken | 2026-10-15 |
 | 5 | (User clarification) | The submenu comes **in addition to** the current menu items, and for the PNG only | 2026-10-15 |
 | 6 | Open Questions 1–4 (submenu behaviour, what the names limit, cap or exact size, list) | An immediate action; the longer side; a cap, the native size kept below it; 720p to 8K, each entry showing the size it gives | 2026-10-15 |
-| 7 | Open Questions 5–8 (JPEG for sharing, texts / PDF, videos, size shown) | | |
+| 7 | Open Questions 5–8 (JPEG for sharing, texts / PDF, videos, size shown) | JPEG for sharing keeps 4096; texts / PDF as today; videos take the same zoom-aware rule under Video size; the native size in the Copy / Save tooltips | 2026-10-15 |
+| 8 | Open Question 9 (position readouts on a pure canvas rescale) | | |
 
 ---
 
