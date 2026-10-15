@@ -62,13 +62,16 @@ One selector for **every site** yt-dlp resolves, YouTube included.
   -f "b[width<=?S][height<=?S]/b"
   ```
 
-  When the site offers no single file at all (YouTube's usual case), the load fails with
-  **This video needs ffmpeg** and the **Install ffmpeg…** offer (§ Companions).
-- **Codecs** — see Open Questions: the reader is Media Foundation (`Imaging/VideoReader.cs`). H.264
-  and AAC always decode; VP9 needs the *VP9 Video Extensions* (usually preinstalled), AV1 the *AV1
-  Video Extension* (not always there). yt-dlp's default order prefers AV1 > VP9 > H.264 at equal
-  resolution, so a sort is passed (`-S`) to rank the codecs Windows reads first; the sound prefers
-  AAC (`m4a`).
+  When the site offers no single file at all (YouTube's usual case), the load fails with the
+  companions' offer (§ Companions › When They Are Offered).
+- **Codecs — the largest first**: the resolution ranks first, whatever the codec, so at a Video size
+  of 2560 or 4096 a 1440p or 2160p VP9 / AV1 track beats YouTube's 1080p H.264. **At equal
+  resolution**, the codecs Windows reads most surely come first: **H.264 > VP9 > AV1** — the reader is
+  Media Foundation (`Imaging/VideoReader.cs`): H.264 always decodes, VP9 needs the *VP9 Video
+  Extensions* (usually preinstalled), AV1 the *AV1 Video Extension* (not always there). yt-dlp's own
+  order is the reverse (AV1 > VP9 > H.264), so a sort is passed (`-S`, resolution first, then that
+  codec order); the sound prefers AAC (`m4a`). The exact `-S` string is checked against yt-dlp's
+  ranking with `--list-formats` / `--simulate` during the run.
 
 ---
 
@@ -79,21 +82,35 @@ One selector for **every site** yt-dlp resolves, YouTube included.
   RULES.md § Content From a URL).
 - **ffmpeg** (`yt-dlp.FFmpeg`, yt-dlp's own builds) — merges the video and sound tracks. Passed
   explicitly with `--ffmpeg-location`.
-- **Not shipped**, like yt-dlp: each looked for in its own folder only (its executable at the root,
-  else the first one below it, as `YtDlp.Find` does — the zips nest a `bin\`), each folder name in one
-  constant `FolderName` (kebab-case). Placement: see Open Questions.
-- **Installed with winget**, the command shown and confirmed first, nothing installed without that
-  **Yes**:
+- **Not shipped**, like yt-dlp: each looked for in **its own folder next to the exe** only —
+  **`deno\`** and **`ffmpeg\`**, siblings of `yt-dlp\` — its executable at the root, else the first one
+  below it, as `YtDlp.Find` does (the zips nest a `bin\`); each folder name in one constant
+  `FolderName` (kebab-case).
+- **One batch, "the yt-dlp companions"**: Deno and ffmpeg are offered **together**, in one
+  confirmation showing the winget command of each one missing (a companion already there is left
+  out), nothing installed without that **Yes**:
 
   ```
-  winget install --id DenoLand.Deno --exact --location "<deno folder>" --accept-package-agreements
+  winget install --id DenoLand.Deno --exact --location "<exe folder>\deno" --accept-package-agreements
          --accept-source-agreements --disable-interactivity
-  winget install --id yt-dlp.FFmpeg --exact --location "<ffmpeg folder>" --accept-package-agreements
+  winget install --id yt-dlp.FFmpeg --exact --location "<exe folder>\ffmpeg" --accept-package-agreements
          --accept-source-agreements --disable-interactivity
   ```
 
-- Each companion is **optional**: missing, its option is left out of yt-dlp's arguments and yt-dlp
-  does what it can without it. When to offer them: see Open Questions.
+- Each companion stays **optional** at load time: missing, its option is left out of yt-dlp's
+  arguments and yt-dlp does what it can without it.
+- An install is a user action: a `--new-instance` instance offers it too (as yt-dlp's).
+
+### When They Are Offered
+
+Every current install has yt-dlp without its companions. The offer comes from four places:
+
+| Where | When | Shows |
+|---|---|---|
+| **A failed load** | A yt-dlp load fails while a companion is missing | The reason, then an **Install yt-dlp companions…** link in the caption, as **Install yt-dlp…** is; once installed, the load is **retried** by itself |
+| **A load that succeeded** | A yt-dlp load succeeds while a companion is missing — the file may be smaller than the site offers | A hint in the caption, with the same link; once installed, the load is retried (a new file name, § Downloaded File) |
+| **The ⚙ menu** | yt-dlp is there and a companion is missing | An **Install yt-dlp companions…** entry, as the OCR engine's; hidden once both are there |
+| **A fresh yt-dlp install** | The **Install yt-dlp…** offer | The same confirmation lists the companions' commands after yt-dlp's |
 
 ---
 
@@ -138,16 +155,20 @@ Questions.
   without it.
 - [x] ~~"The largest possible": up to where?~~ → **Up to the Video size** (`AppSettings.VideoMaxSide`).
 - [x] ~~Which sites?~~ → **Every site** yt-dlp resolves, one selector.
-- [ ] **Deno** — YouTube needs it to list its formats at all. Optional companion like ffmpeg, or
-  installed together with it?
-- [ ] **Placement** — the companions in subfolders of `yt-dlp\` (`yt-dlp\deno\`, `yt-dlp\ffmpeg\`), one
-  folder for the whole yt-dlp route, or folders of their own next to the exe (`deno\`, `ffmpeg\`)?
-- [ ] **When to offer the install** — yt-dlp already installed without its companions (every current
+- [x] ~~**Deno** — YouTube needs it to list its formats at all. Optional companion like ffmpeg, or
+  installed together with it?~~ → **With ffmpeg, one batch**: "the yt-dlp companions", one
+  confirmation showing both winget commands.
+- [x] ~~**Placement** — the companions in subfolders of `yt-dlp\` (`yt-dlp\deno\`, `yt-dlp\ffmpeg\`), one
+  folder for the whole yt-dlp route, or folders of their own next to the exe (`deno\`, `ffmpeg\`)?~~ →
+  **Folders of their own**: `deno\` and `ffmpeg\` next to the exe.
+- [x] ~~**When to offer the install** — yt-dlp already installed without its companions (every current
   install): offered only when a load fails for want of them, also as a caption hint when a load
   succeeded with a smaller file, and / or from the ⚙ menu (as the OCR engine is)? And a fresh yt-dlp
-  install: the companions in the same confirmation?
-- [ ] **Codecs above 1920** — at 2560 or 4096, YouTube's H.264 stops at 1080p: the **largest first**,
-  whatever the codec (VP9 / AV1, which may not decode on every machine), or **H.264 first**?
+  install: the companions in the same confirmation?~~ → **All four**: on a failed load, as a hint on a
+  load that succeeded without them, from the ⚙ menu, and in a fresh yt-dlp install's confirmation.
+- [x] ~~**Codecs above 1920** — at 2560 or 4096, YouTube's H.264 stops at 1080p: the **largest first**,
+  whatever the codec (VP9 / AV1, which may not decode on every machine), or **H.264 first**?~~ →
+  **The largest first**, H.264 > VP9 > AV1 at equal resolution.
 - [ ] **Progress with two tracks** — the percentage restarting for the sound track, plus a *Merging…*
   step: acceptable as is, or one percentage for the whole?
 - [ ] **Tests** — create a test project to pin the selector, or none?
@@ -164,6 +185,14 @@ since 2025.11, and `yt-dlp.yt-dlp`'s winget manifest declares `DenoLand.Deno` an
 dependencies, both skipped today. The design adds Deno next to ffmpeg; its status is an Open Question.
 The user's own yt-dlp could not be run here (none found under the repository's builds), so
 `--list-formats` for the failing video was not checked.
+
+### Iteration 2 — 2026-10-15
+
+Four Open Questions answered. Deno and ffmpeg become **one batch**, "the yt-dlp companions", offered
+in one confirmation; they live in **folders of their own** next to the exe (`deno\`, `ffmpeg\`); the
+offer comes from **four places** — a failed load, a hint on a load that succeeded without them, the
+⚙ menu, a fresh yt-dlp install (§ When They Are Offered); the format ranks the **resolution first**,
+H.264 > VP9 > AV1 at equal resolution.
 
 ---
 
@@ -185,10 +214,12 @@ The user's own yt-dlp could not be run here (none found under the repository's b
 | 2 | "The largest possible": up to where? | Capped at the Video size | 2026-10-15 |
 | 3 | Which sites does the format choice cover? | Every yt-dlp site | 2026-10-15 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward | 2026-10-15 |
-| 5 | Deno: optional companion of its own, or installed together with ffmpeg? | | 2026-10-15 |
-| 6 | Companions' placement: under `yt-dlp\` or folders of their own? | | 2026-10-15 |
-| 7 | When is the companions' install offered? | | 2026-10-15 |
-| 8 | Codecs above 1920: largest first or H.264 first? | | 2026-10-15 |
+| 5 | Deno: optional companion of its own, or installed together with ffmpeg? | With ffmpeg, one batch | 2026-10-15 |
+| 6 | Companions' placement: under `yt-dlp\` or folders of their own? | Folders of their own (`deno\`, `ffmpeg\`) | 2026-10-15 |
+| 7 | When is the companions' install offered? | On a failed load, as a hint on a smaller success, from the ⚙ menu, with a fresh yt-dlp install | 2026-10-15 |
+| 8 | Codecs above 1920: largest first or H.264 first? | Largest first | 2026-10-15 |
+| 9 | Progress with two tracks: as is, or one percentage? | | 2026-10-15 |
+| 10 | Tests: create a test project, or none? | | 2026-10-15 |
 
 ---
 
