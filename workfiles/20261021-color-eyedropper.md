@@ -160,6 +160,18 @@ Questions asked by the agent during design, with user responses.
 | 2 | What does the eyedropper read ("the thumbnails")? | The cells of the preview | 2026-10-21 |
 | 3 | How is the eyedropper used? | Button, then click: hover previews, click takes, Escape / right click cancels | 2026-10-21 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward — a single exploration pass | 2026-10-21 |
+| 5 | Hover preview: applied live to the option, or shown beside the cursor only? | | |
+| 6 | Loupe beside the cursor, or the eyedropper cursor only? | | |
+| 7 | Sample size: one pixel, or a small square's average? | | |
+| 8 | Source: the cell as composed, or the image alone? | | |
+| 9 | Snapshot at arming time, or live reading? | | |
+| 10 | Playing contents held while armed? | | |
+| 11 | Transparent spots: ignored, or read as shown? | | |
+| 12 | One pick, or armed until Escape? | | |
+| 13 | Button form and placement? | | |
+| 14 | Keyboard shortcut to arm it? | | |
+| 15 | OCR arrow color: eyedropper too? | | |
+| 16 | Windows dialog: anything to change? | | |
 
 ---
 
