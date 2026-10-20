@@ -57,7 +57,10 @@ The screenshot's case (Twitter format, 1200 × 628): 16:9 + 4:3 → widths 57 % 
 
 - One button moves the **vertical separators** only (cells side by side resized: images the same
   height); the other the **horizontal separators** only (stacked cells resized: images the same
-  width). Which name and icon each one carries: Open Questions.
+  width). Which one moves which separators: Open Questions.
+- **Placement**: on the **mirror toggle's row**, at the top of the strip — three icon buttons side
+  by side, the mirror, then the two Auto buttons, each the same size; no text on them, their names
+  in their tooltips. The row keeps the mirror toggle's height.
 - A button whose orientation has **no separator** in the current layout (*Two columns* has no
   horizontal one) is **disabled**, its tooltip saying why — the mirror toggle's rule.
 - Disabled, like the rest of the strip, while there is no image and while exporting.
@@ -102,7 +105,8 @@ Questions.
 ## Open Questions
 
 - [ ] Which button moves which separators, and their names / icons ("Auto vertical", "Auto horizontal")?
-- [ ] Where do the two buttons go in the layout strip?
+- [x] ~~Where do the two buttons go in the layout strip?~~ → On the mirror toggle's row, icons only,
+  names in the tooltips (option B)
 - [ ] On layouts where a cell spans several rows or columns (Big left, Featured…), keep the principle
   (each cell shaped like its image), or force strictly equal heights across all images?
 - [ ] Create a test project for the geometry, or no tests?
@@ -118,6 +122,11 @@ the separators of one orientation move so each cell's shape is as close as possi
 which gives equal heights in a row and equal widths in a column. Two one-shot buttons, disabled when
 their orientation has no separator; the arrival zoom recomputed for every image. Texts left out, the
 10 % minimum and the Borders' gap honoured.
+
+### Iteration 2 — 2026-10-21
+
+Placement settled (Q&A 6, option B of the four sketched): the two Auto buttons join the mirror
+toggle on its row, three icon buttons side by side, their names in the tooltips.
 
 ---
 
@@ -140,10 +149,10 @@ their orientation has no separator; the arrival zoom recomputed for every image.
 | 3 | What happens to each image's zoom? | Recomputed as on arrival (Contain's zoom as a free zoom, centered) | 2026-10-15 |
 | 4 | Straightforward or tricky / long? | Straightforward | 2026-10-15 |
 | 5 | Which button moves which separators, and their names / icons? | | |
-| 6 | Where do the buttons go in the strip? | | |
+| 6 | Where do the buttons go in the strip? | B — on the mirror toggle's row, icons only | 2026-10-21 |
 | 7 | Spanning cells: shapes like the images, or strictly equal heights? | | |
 | 8 | Test project for the geometry? | | |
 
 ---
 
-*Last updated: 2026-10-15*
+*Last updated: 2026-10-21*
