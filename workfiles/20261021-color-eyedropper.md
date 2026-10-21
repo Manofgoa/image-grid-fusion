@@ -206,6 +206,11 @@ Every open question answered (Q&A 5–23):
 - Added by the design to close the gesture: the other disarming events (tab change, selection change,
   window deactivated, export) cancel like Escape.
 
+### Iteration 3 — 2026-10-21 — ✅ Implemented
+
+Go given: **code, unit tests and documentation**, in the **current checkout**. Branch Gate: the run
+stays on `main`, the standing choice of this repository (every run lands on `main`).
+
 ---
 
 ## Implementation Log
