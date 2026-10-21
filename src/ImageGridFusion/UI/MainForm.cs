@@ -227,8 +227,8 @@ internal sealed class MainForm : Form
     private readonly TrackBar _backgroundOpacity = OptionSlider(0, 100, 10);
     private readonly Label _backgroundOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
 
-    // A native button, the swatch of the background color in use before its text (shared RULES.md § Colour Items).
-    private readonly Button _backgroundColor = new() { Text = "Color…", AutoSize = true, Anchor = AnchorStyles.Left, TextImageRelation = TextImageRelation.ImageBeforeText };
+    // The eyedropper, then a native button, the swatch of the background color in use before its text (shared RULES.md § Colour Items).
+    private readonly ColorSplitButton _backgroundColor = new();
 
     // The color the Color… button's swatch shows: drawn again only when it changes, or the DPI does.
     private Color? _backgroundSwatchColor;
@@ -326,7 +326,7 @@ internal sealed class MainForm : Form
 
     // The borders' options; the last color chosen is remembered between sessions.
     private readonly ComboBox _bordersStyle = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 90, Anchor = AnchorStyles.Left };
-    private readonly Button _bordersColor = new() { Text = "Color…", AutoSize = true, Anchor = AnchorStyles.Left, TextImageRelation = TextImageRelation.ImageBeforeText };
+    private readonly ColorSplitButton _bordersColor = new();
 
     // The color the Color… button's swatch shows, so it is drawn again only when the borders' color changes.
     private Color? _bordersSwatchColor;
@@ -766,14 +766,15 @@ internal sealed class MainForm : Form
         };
         _mute.CheckedChanged += (_, _) => ChangeLook(ImageEffect.Volume, look => look.WithVolume(look.Volume!.WithMuted(_mute.Checked)));
         _toolTip.SetToolTip(_backgroundAutomatic, "The color computed from the edges of the part of the image shown");
-        _toolTip.SetToolTip(_backgroundColor, "Chooses the background color; Automatic color is then unchecked");
+        _toolTip.SetToolTip(_backgroundColor.Dialog, "Chooses the background color in the color dialog; Automatic color is then unchecked");
+        this._toolTip.SetToolTip(this._backgroundColor.Eyedropper, "Takes the background color from the preview: click a cell; Escape or a right click cancels");
         _backgroundAutomatic.CheckedChanged += (_, _) => SetBackgroundAutomatic();
         _backgroundOpacity.ValueChanged += (_, _) =>
         {
             _backgroundOpacityLabel.Text = OpacityText(_backgroundOpacity.Value);
             ChangeLook(ImageEffect.Background, look => look.WithBackground(look.Background!.WithOpacity(_backgroundOpacity.Value / 100.0)));
         };
-        _backgroundColor.Click += (_, _) => PickBackgroundColor();
+        _backgroundColor.Dialog.Click += (_, _) => PickBackgroundColor();
         this._toolTip.SetToolTip(this._backgroundEdgeOpacity, "The extended edges' opacity over the background color, which keeps its own");
         this._backgroundEdgeOpacity.ValueChanged += (_, _) =>
         {
@@ -831,8 +832,9 @@ internal sealed class MainForm : Form
             this.ChangeCascade(cascade => cascade.WithPause(TimeSpan.FromSeconds(this._cascadePause.Value / 10.0)));
         };
         _toolTip.SetToolTip(_bordersStyle, "Brackets at the grid's corners, or a gap between the cells");
-        this._toolTip.SetToolTip(this._bordersColor, "Chooses the borders' color, remembered between sessions");
-        this._bordersColor.Click += (_, _) => this.PickBorderColor();
+        this._toolTip.SetToolTip(this._bordersColor.Dialog, "Chooses the borders' color in the color dialog, remembered between sessions");
+        this._toolTip.SetToolTip(this._bordersColor.Eyedropper, "Takes the borders' color from the preview: click a cell; Escape or a right click cancels");
+        this._bordersColor.Dialog.Click += (_, _) => this.PickBorderColor();
         _toolTip.SetToolTip(_bordersThickness, "Width of the borders, as a share of the grid's shorter side");
         _toolTip.SetToolTip(_bordersOuterFrame, "Also draws the borders around the grid; the corner brackets already are its frame");
         _bordersStyle.SelectedIndexChanged += (_, _) => ChangeBorders(borders => borders with { Pattern = (BorderPattern)_bordersStyle.SelectedIndex });
@@ -928,8 +930,6 @@ internal sealed class MainForm : Form
             _blurIntensityIcon.Image?.Dispose();
             _backgroundOpacityIcon.Image?.Dispose();
 
-            this._bordersColor.Image?.Dispose();
-            this._backgroundColor.Image?.Dispose();
             _colorDialog.Dispose();
         }
 
@@ -948,7 +948,8 @@ internal sealed class MainForm : Form
     private void UpdateEffectIcons()
     {
         int size = LogicalToDeviceUnits(16);
-        Image?[] previous = [_resetButton.Image, _effectResetButton.Image, _globalResetButton.Image, _globalEffectResetButton.Image, _fadeSquared.Image, _fadeLinear.Image, _blurIntensityIcon.Image, _backgroundOpacityIcon.Image];
+        Image?[] previous = [_resetButton.Image, _effectResetButton.Image, _globalResetButton.Image, _globalEffectResetButton.Image, _fadeSquared.Image, _fadeLinear.Image, _blurIntensityIcon.Image, _backgroundOpacityIcon.Image,
+            this._backgroundColor.Eyedropper.Image, this._bordersColor.Eyedropper.Image];
         foreach (var effect in Enum.GetValues<ImageEffect>())
         {
             _effectTabs.SetIcon(effect, effect switch
@@ -982,6 +983,8 @@ internal sealed class MainForm : Form
         _blurIntensityIcon.Size = new Size(size, size);
         _backgroundOpacityIcon.Image = EffectIcons.Opacity(size);
         _backgroundOpacityIcon.Size = new Size(size, size);
+        this._backgroundColor.Eyedropper.Image = EffectIcons.Eyedropper(size);
+        this._bordersColor.Eyedropper.Image = EffectIcons.Eyedropper(size);
         foreach (var image in previous)
         {
             image?.Dispose();
@@ -991,7 +994,7 @@ internal sealed class MainForm : Form
         this.UpdateOcrArrowColorSwatch();
         if (this._backgroundSwatchColor is { } backgroundSwatch)
         {
-            this.SetSwatch(this._backgroundColor, backgroundSwatch);
+            this.SetSwatch(this._backgroundColor.Dialog, backgroundSwatch);
         }
     }
 
@@ -999,7 +1002,7 @@ internal sealed class MainForm : Form
     private void UpdateBorderColorSwatch()
     {
         this._bordersSwatchColor = this._borders.Color;
-        this.SetSwatch(this._bordersColor, this._borders.Color);
+        this.SetSwatch(this._bordersColor.Dialog, this._borders.Color);
     }
 
     /// <summary>The ⚙ menu's Arrow color item shows the OCR arrow's color as a swatch, drawn at the monitor's DPI.</summary>
@@ -3104,7 +3107,7 @@ internal sealed class MainForm : Form
         if (color != this._backgroundSwatchColor)
         {
             this._backgroundSwatchColor = color;
-            this.SetSwatch(this._backgroundColor, color);
+            this.SetSwatch(this._backgroundColor.Dialog, color);
         }
     }
 

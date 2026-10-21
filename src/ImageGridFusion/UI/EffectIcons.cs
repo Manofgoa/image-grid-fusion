@@ -363,6 +363,28 @@ internal static class EffectIcons
         g.FillRectangle(fill, bar);
     });
 
+    /// <summary>An eyedropper lying corner to corner: its tip at the bottom left, a glass tube, a dark bulb at the top right.</summary>
+    public static Bitmap Eyedropper(int size) => Draw(size, (g, s) =>
+    {
+        using (var tip = new Pen(Color.FromArgb(60, 60, 60), Math.Max(1, s * 0.08f)) { StartCap = LineCap.Round })
+        {
+            g.DrawLine(tip, s * 0.1f, s * 0.9f, s * 0.3f, s * 0.7f);
+        }
+
+        using (var tube = new Pen(Color.FromArgb(0, 150, 230), s * 0.2f))
+        {
+            g.DrawLine(tube, s * 0.28f, s * 0.72f, s * 0.6f, s * 0.4f);
+        }
+
+        using (var collar = new Pen(Color.FromArgb(60, 60, 60), s * 0.3f))
+        {
+            g.DrawLine(collar, s * 0.56f, s * 0.44f, s * 0.64f, s * 0.36f);
+        }
+
+        using var bulb = new SolidBrush(Color.FromArgb(40, 40, 40));
+        g.FillEllipse(bulb, s * 0.58f, s * 0.08f, s * 0.34f, s * 0.34f);
+    });
+
     /// <summary>Grey and white squares over <paramref name="area"/>, four to the icon's width.</summary>
     private static void Checker(Graphics g, RectangleF area, int size)
     {
