@@ -135,6 +135,30 @@ The Crop effect's geometry is **not in fractions of the cell**, and its kept par
   - Out of it: plain on / off checkboxes (Freeze, Mute, Automatic color, Soften), the Color… button,
     the sliders and a drop-down of a single value (the Animations' Type).
 
+### Color Options
+
+Every color option of an effect — the Background's, the Borders', a future one — takes its color two
+ways (origin: `workfiles/20261021-color-eyedropper.md`):
+
+- A **split button** (`UI/ColorSplitButton`): the **eyedropper** part, pressed while armed, then the
+  **Color…** part, its swatch before its text (shared RULES.md § Colour Items), opening the shared
+  standard dialog (`UI/SharedColorDialog`) — fully expanded, its custom colors remembered in the
+  settings file, each eyedropper pick written into the first empty slot, then round them.
+- The eyedropper (`GridPreview.ArmEyedropper`) **holds the grid** and reads a **snapshot** of the cells
+  as composed (`Compositor.Draw` at the preview's size, Twitter corners cut), taken when armed: what
+  the preview alone draws is never read. A sample square holding a fully transparent pixel reads
+  nothing.
+- While armed it owns the app's mouse and keyboard (`GridPreview.EyedropperFilter`): a left press over
+  the preview picks, any other press or key cancels, each swallowed with its release; leaving the
+  window, a resize, an image change or an export cancels too. It is a **gesture** (`InGesture`): a
+  pick is one undo step, a cancel none.
+- The option follows the color under the cursor **live**, at most every 33 ms, the cells drawn fast
+  meanwhile and in full once it ends; the loupe is repainted on its own area only.
+- The **Sample** slider after the split button (1–5 px, one per option, 1 px at each launch) is an
+  eyedropper setting, **the exception** to "acting on any option activates the effect": it activates
+  nothing, is out of the undo history, and no Reset touches it.
+- A pick or a dialog's OK go through the **same setter**: a new color option gets both routes from it.
+
 ### On-Cell Handles
 
 - An effect's handles (e.g. the blur bars) are drawn on the **selected cell** only, while that
