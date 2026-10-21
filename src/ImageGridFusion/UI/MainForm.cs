@@ -239,8 +239,8 @@ internal sealed class MainForm : Form
     private readonly Label _backgroundBlendLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _backgroundSoften = new() { Text = "Soften", AutoSize = true, Anchor = AnchorStyles.Left };
 
-    // One dialog for the whole session, so its custom colors stay from one pick to the next.
-    private readonly ColorDialog _colorDialog = new() { AnyColor = true };
+    // One dialog for the whole session, its custom colors remembered between sessions.
+    private readonly SharedColorDialog _colorDialog;
 
     // The selected tab belongs to the toolbar: it stays selected on every cell, and with none.
     private ImageEffect? _selectedEffect;
@@ -376,6 +376,7 @@ internal sealed class MainForm : Form
         this._savesWindowSize = savesWindowSize;
         this._history = new GridHistory(this.CaptureState, () => this._preview.InGesture);
         this._preview.ReleaseImage = this._history.Release;
+        this._colorDialog = new SharedColorDialog(message => this.ShowStatus($"Custom colors not remembered: {message}", error: true));
         this.WriteMaxZoom();
 
         SuspendLayout();
@@ -3086,10 +3087,9 @@ internal sealed class MainForm : Form
             return;
         }
 
-        _colorDialog.Color = BackgroundShown(background);
-        if (_colorDialog.ShowDialog(this) == DialogResult.OK)
+        if (_colorDialog.Show(this, BackgroundShown(background)) is { } color)
         {
-            ChangeLook(ImageEffect.Background, look => look.WithBackground(look.Background!.WithColor(_colorDialog.Color)));
+            ChangeLook(ImageEffect.Background, look => look.WithBackground(look.Background!.WithColor(color)));
         }
     }
 
@@ -3691,13 +3691,11 @@ internal sealed class MainForm : Form
             return;
         }
 
-        this._colorDialog.Color = this._borders.Color;
-        if (this._colorDialog.ShowDialog(this) != DialogResult.OK)
+        if (this._colorDialog.Show(this, this._borders.Color) is not { } color)
         {
             return;
         }
 
-        var color = this._colorDialog.Color;
         this.ChangeBorders(borders => borders with { Color = color });
         try
         {
@@ -3910,13 +3908,10 @@ internal sealed class MainForm : Form
     /// <summary>The ⚙ menu's Arrow color…: the standard color dialog, the color chosen applied at once and remembered between sessions.</summary>
     private void PickOcrArrowColor()
     {
-        this._colorDialog.Color = this._explorer.ArrowStyle.Color;
-        if (this._colorDialog.ShowDialog(this) != DialogResult.OK)
+        if (this._colorDialog.Show(this, this._explorer.ArrowStyle.Color) is { } color)
         {
-            return;
+            this.SetOcrArrow(this._explorer.ArrowStyle with { Color = color });
         }
-
-        this.SetOcrArrow(this._explorer.ArrowStyle with { Color = this._colorDialog.Color });
     }
 
     /// <summary>

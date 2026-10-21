@@ -11,7 +11,7 @@ namespace ImageGridFusion.UI;
 /// registry: the border color, whether the borders' Twitter corners are on by default, the video size, the file explorer's
 /// base folder, whether its panel is open, its width, its tile size, its pages per load, its view and
 /// open folder, its files' order, whether it searches the files' contents, the OCR result style, the window's
-/// size and screen, the last folders of the file dialogs, and the maximum zoom (edited by hand only). Each save rewrites the whole file at once.
+/// size and screen, the last folders of the file dialogs, the color dialog's custom colors, and the maximum zoom (edited by hand only). Each save rewrites the whole file at once.
 /// </summary>
 internal static class AppSettings
 {
@@ -42,6 +42,8 @@ internal static class AppSettings
     private const string AddFolderName = "LastAddFolder";
     private const string SoundtrackFolderName = "LastSoundtrackFolder";
     private const string ExportFolderName = "LastExportFolder";
+    private const string CustomColorsName = "CustomColors";
+    private const string CustomColorsNextName = "CustomColorsNext";
 
     /// <summary>
     /// The names the settings had as registry values, in the same types (DWORD → int, string → string):
@@ -313,4 +315,22 @@ internal static class AppSettings
 
     /// <summary>Saves the exports' folder; throws an <see cref="IsSaveError"/> exception on failure.</summary>
     public static void SaveExportFolder(string folder) => Save((ExportFolderName, folder));
+
+    /// <summary>
+    /// The color dialog's custom colors, as the dialog holds them (COLORREF, <c>0x00BBGGRR</c>); null when none
+    /// were saved, or the value is not <see cref="SharedColorDialog.SlotCount"/> numbers.
+    /// </summary>
+    public static int[]? CustomColors =>
+        Values[CustomColorsName] is JsonArray { Count: SharedColorDialog.SlotCount } array
+        && array.All(node => node is JsonValue value && value.TryGetValue(out int _))
+            ? [.. array.Select(node => node!.GetValue<int>())]
+            : null;
+
+    /// <summary>The custom slot the eyedropper writes into once none is free; 0 when none was saved or out of range.</summary>
+    public static int CustomColorsNext =>
+        Int(CustomColorsNextName) is int next && next is >= 0 and < SharedColorDialog.SlotCount ? next : 0;
+
+    /// <summary>Saves the color dialog's custom colors and the next slot, at once; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveCustomColors(int[] colors, int next) =>
+        Save((CustomColorsName, new JsonArray([.. colors.Select(color => (JsonNode?)color)])), (CustomColorsNextName, next));
 }
