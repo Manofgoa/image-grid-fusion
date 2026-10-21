@@ -11,7 +11,7 @@ namespace ImageGridFusion.UI;
 /// Preview of the composed result, and the surface to select, remove and swap its images.
 /// Owns the images it shows.
 /// </summary>
-internal sealed class GridPreview : Control
+internal sealed partial class GridPreview : Control
 {
     private const float GhostScale = 0.4f;
     private const float GhostOpacity = 0.7f;
@@ -426,7 +426,7 @@ internal sealed class GridPreview : Control
     /// </summary>
     public bool InGesture =>
         this._pressed >= 0 || this._draggedBar is not null || this._draggedCorner is not null || this._draggedSeparator is not null
-        || this._movedCrop is not null || this._live is not null || this._wheelEnd.Enabled;
+        || this._movedCrop is not null || this._live is not null || this._wheelEnd.Enabled || this._eyedropper is not null;
 
     /// <summary>
     /// Whether the wheel was turned over the grid with Alt held since the last call, cleared by it: the
@@ -878,6 +878,7 @@ internal sealed class GridPreview : Control
             _ghost?.Dispose();
             _checkerboard?.Dispose();
             _checkerTile?.Dispose();
+            this._eyedropper?.Snapshot.Dispose();
         }
 
         base.Dispose(disposing);
@@ -901,6 +902,7 @@ internal sealed class GridPreview : Control
             PaintEmptyState(g, canvas);
             g.FillRectangle(highlight, _externalTarget);
             PaintHoverOutline(g, HoverOutlineBounds(canvas, []));
+            this.PaintEyedropper(g);
             return;
         }
 
@@ -998,6 +1000,8 @@ internal sealed class GridPreview : Control
         {
             PaintGhost(g, _ghost, GhostBounds());
         }
+
+        this.PaintEyedropper(g);
     }
 
     protected override void OnMouseDown(MouseEventArgs e)
@@ -1119,6 +1123,12 @@ internal sealed class GridPreview : Control
     protected override void OnMouseMove(MouseEventArgs e)
     {
         base.OnMouseMove(e);
+        if (this._eyedropper is not null)
+        {
+            this.HoverEyedropper(e.Location);
+            return;
+        }
+
         if (_draggedSeparator is { } separator)
         {
             DragSeparator(separator, e.Location);
@@ -1259,6 +1269,11 @@ internal sealed class GridPreview : Control
     protected override void OnMouseWheel(MouseEventArgs e)
     {
         base.OnMouseWheel(e);
+        if (this._eyedropper is not null)
+        {
+            return;
+        }
+
         int index = CellAt(e.Location);
         if (index < 0 || _locked || _pressed >= 0 || _draggedBar is not null || _draggedSeparator is not null || _movedCrop is not null
             || this._draggedCorner is not null)
@@ -1324,6 +1339,12 @@ internal sealed class GridPreview : Control
     protected override void OnMouseLeave(EventArgs e)
     {
         base.OnMouseLeave(e);
+        if (this._eyedropper is not null)
+        {
+            this.HoverEyedropper(null);
+            return;
+        }
+
         if ((_hovered >= 0 || _hoveringCanvas || _hoveringDropZone) && !_dragging && !_panning && _draggedBar is null && this._draggedCorner is null
             && _draggedSeparator is null)
         {
@@ -1344,6 +1365,7 @@ internal sealed class GridPreview : Control
     protected override void OnResize(EventArgs e)
     {
         base.OnResize(e);
+        this.CancelEyedropper();
         UpdateDisplaySizes();
     }
 
@@ -1606,6 +1628,8 @@ internal sealed class GridPreview : Control
     /// </summary>
     private void OnImagesChanged(IReadOnlyCollection<SourceImage>? arrived = null)
     {
+        // The snapshot no longer shows the grid.
+        this.CancelEyedropper();
         _cache?.Dispose();
         _cache = null;
         Invalidate();
@@ -2816,6 +2840,7 @@ internal sealed class GridPreview : Control
             return;
         }
 
+        this.CancelEyedropper();
         _selected = index;
         _hoveredBar = null;
         this._hoveredCorner = null;
