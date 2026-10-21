@@ -3191,8 +3191,8 @@ internal sealed class MainForm : Form
 
     /// <summary>
     /// Arms the preview's eyedropper for a color option, its button pressed meanwhile: <paramref name="preview"/>
-    /// shows a color read, <paramref name="restore"/> the option as it was; a pick restores it, then
-    /// <paramref name="take"/> applies the color — one undo step — and the dialog's custom colors get it.
+    /// shows a color read, <paramref name="restore"/> the option as it was; a pick has <paramref name="take"/>
+    /// apply the color — one undo step — and the dialog's custom colors get it.
     /// </summary>
     private void ArmEyedropper(ColorSplitButton button, TrackBar sample, Action<Color> preview, Action restore, Action<Color> take)
     {
@@ -3212,8 +3212,8 @@ internal sealed class MainForm : Form
             },
             color =>
             {
+                // Taken over the color previewed, without restoring first: the cell is drawn once.
                 button.Eyedropper.Checked = false;
-                restore();
                 take(color);
                 this._colorDialog.Add(color);
             },

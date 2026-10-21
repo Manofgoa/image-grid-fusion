@@ -914,7 +914,8 @@ internal sealed partial class GridPreview : Control
             _cache = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppPArgb);
             using (var cacheGraphics = Graphics.FromImage(_cache))
             {
-                Compositor.Draw(cacheGraphics, _images, _layout!, canvas.Size, _borders, this._player.GridTime, this._seams);
+                // Fast while the eyedropper previews a color, drawn in full once it ends.
+                Compositor.Draw(cacheGraphics, _images, _layout!, canvas.Size, _borders, this._player.GridTime, this._seams, fast: this._eyedropper is not null);
             }
 
             this._seamFills = this.SeamsOf(Compositor.Cells(_layout!, canvas.Size, _borders))?.Fills;
@@ -1793,7 +1794,7 @@ internal sealed partial class GridPreview : Control
         // Fast while the grid runs — a frame arrives about 1:1, where bilinear comes close to the full
         // render — and in full once it pauses or stops (OnPlaybackChanged); the exports keep the full render.
         bool live = image == _live;
-        var area = this.DrawIntoCache([index], canvas.Size, fast: live || this._player.Running);
+        var area = this.DrawIntoCache([index], canvas.Size, fast: live || this._player.Running || this._eyedropper is not null);
         area.Offset(canvas.Location);
         Invalidate(area);
         if (live)

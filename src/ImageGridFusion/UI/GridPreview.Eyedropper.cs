@@ -23,8 +23,12 @@ internal sealed partial class GridPreview
     private const int LoupeOffset = 24;
     private const int LoupeCaption = 22;
 
+    // How often, at most, the color under the cursor is applied to the option: each application draws the cell again.
+    private const int EyedropperPreviewInterval = 33;
+
     private Eyedropper? _eyedropper;
     private EyedropperFilter? _eyedropperFilter;
+    private System.Windows.Forms.Timer? _eyedropperPreview;
     private static readonly Dictionary<int, Cursor> EyedropperCursors = [];
 
     /// <summary>Whether the eyedropper is armed: it owns the preview's mouse until a pick or a cancel.</summary>
@@ -109,8 +113,13 @@ internal sealed partial class GridPreview
         }
 
         this._eyedropper = null;
+        this._eyedropperPreview?.Stop();
         ended.Snapshot.Dispose();
         this._player.Release();
+
+        // Drawn fast meanwhile: the grid drawn again in full.
+        this._cache?.Dispose();
+        this._cache = null;
         var cursor = this.PointToClient(MousePosition);
         if (this.ClientRectangle.Contains(cursor))
         {
@@ -125,21 +134,82 @@ internal sealed partial class GridPreview
         return ended;
     }
 
-    /// <summary>The cursor moved over the preview: the loupe follows it, the option is told the color read there.</summary>
+    /// <summary>
+    /// The cursor moved over the preview: the loupe follows it at once, only its area painted again; the
+    /// option is told the color read there at most every <see cref="EyedropperPreviewInterval"/> ms, the
+    /// last one winning — the mouse moves far more often than a cell can be drawn.
+    /// </summary>
     private void HoverEyedropper(Point? location)
     {
         var eyedropper = this._eyedropper!;
+        this.InvalidateLoupe(eyedropper.At);
         eyedropper.At = location;
-        var color = location is { } at ? eyedropper.ColorAt(at) : null;
-        this.Cursor = color is null && location is not null ? Cursors.No : this.EyedropperCursor();
-        if (color != eyedropper.Hovered)
+        eyedropper.Hovered = location is { } at ? eyedropper.ColorAt(at) : null;
+        this.Cursor = eyedropper.Hovered is null && location is not null ? Cursors.No : this.EyedropperCursor();
+        this.InvalidateLoupe(location);
+        if (eyedropper.Hovered != eyedropper.Applied && this._eyedropperPreview?.Enabled != true)
         {
-            eyedropper.Hovered = color;
-            eyedropper.HoveredChanged(color);
+            this.ApplyHovered();
+            this._eyedropperPreview ??= this.NewPreviewTimer();
+            this._eyedropperPreview.Start();
         }
-
-        this.Invalidate();
     }
+
+    /// <summary>The option given the color under the cursor, if it is not the one it shows.</summary>
+    private void ApplyHovered()
+    {
+        if (this._eyedropper is { } eyedropper && eyedropper.Hovered != eyedropper.Applied)
+        {
+            eyedropper.Applied = eyedropper.Hovered;
+            eyedropper.HoveredChanged(eyedropper.Hovered);
+        }
+    }
+
+    /// <summary>Applies the color the cursor reached meanwhile, then waits for the next one.</summary>
+    private System.Windows.Forms.Timer NewPreviewTimer()
+    {
+        var timer = new System.Windows.Forms.Timer { Interval = EyedropperPreviewInterval };
+        timer.Tick += (_, _) =>
+        {
+            if (this._eyedropper is { } eyedropper && eyedropper.Hovered != eyedropper.Applied)
+            {
+                this.ApplyHovered();
+            }
+            else
+            {
+                timer.Stop();
+            }
+        };
+        return timer;
+    }
+
+    /// <summary>Paints again where the loupe stands for a cursor at <paramref name="location"/>.</summary>
+    private void InvalidateLoupe(Point? location)
+    {
+        if (location is { } at)
+        {
+            var bounds = this.LoupeBounds(at);
+            bounds.Inflate(2, 2);
+            this.Invalidate(bounds);
+        }
+    }
+
+    /// <summary>
+    /// The loupe's view and its caption below, for a cursor at <paramref name="at"/>: below right of it,
+    /// flipped to the other side near an edge, kept inside the preview.
+    /// </summary>
+    private (Rectangle View, Rectangle Caption) LoupeParts(Point at)
+    {
+        int side = LoupePixels * this.LogicalToDeviceUnits(LoupeZoom);
+        int caption = this.LogicalToDeviceUnits(LoupeCaption);
+        int offset = this.LogicalToDeviceUnits(LoupeOffset);
+        int x = at.X + offset + side > this.ClientSize.Width ? at.X - offset - side : at.X + offset;
+        int y = at.Y + offset + side + caption > this.ClientSize.Height ? at.Y - offset - side - caption : at.Y + offset;
+        var view = new Rectangle(Math.Max(0, x), Math.Max(0, y), side, side);
+        return (view, new Rectangle(view.X, view.Bottom, side, caption));
+    }
+
+    private Rectangle LoupeBounds(Point at) => Rectangle.Union(this.LoupeParts(at).View, this.LoupeParts(at).Caption);
 
     /// <summary>
     /// The loupe beside the cursor: the snapshot's pixels around it enlarged, the sample square outlined in
@@ -153,14 +223,9 @@ internal sealed partial class GridPreview
         }
 
         int zoom = this.LogicalToDeviceUnits(LoupeZoom);
-        int side = LoupePixels * zoom;
-        int caption = this.LogicalToDeviceUnits(LoupeCaption);
-        int offset = this.LogicalToDeviceUnits(LoupeOffset);
-
-        // Below right of the cursor, flipped to the other side near an edge, kept inside the preview.
-        int x = at.X + offset + side > this.ClientSize.Width ? at.X - offset - side : at.X + offset;
-        int y = at.Y + offset + side + caption > this.ClientSize.Height ? at.Y - offset - side - caption : at.Y + offset;
-        var view = new Rectangle(Math.Max(0, x), Math.Max(0, y), side, side);
+        var (view, label) = this.LoupeParts(at);
+        int side = view.Width;
+        int caption = label.Height;
 
         var state = g.Save();
         g.SmoothingMode = SmoothingMode.None;
@@ -191,7 +256,6 @@ internal sealed partial class GridPreview
             g.DrawRectangle(helper, square);
         }
 
-        var label = new Rectangle(view.X, view.Bottom, side, caption);
         using (var back = new SolidBrush(Color.FromArgb(40, 40, 40)))
         {
             g.FillRectangle(back, label);
@@ -310,8 +374,11 @@ internal sealed partial class GridPreview
         /// <summary>Where the cursor is over the preview; null outside it.</summary>
         public Point? At { get; set; }
 
-        /// <summary>The color last told to the owner; null where nothing is read.</summary>
+        /// <summary>The color under the cursor, the loupe's; null where nothing is read.</summary>
         public Color? Hovered { get; set; }
+
+        /// <summary>The color last told to the owner; null where nothing is read.</summary>
+        public Color? Applied { get; set; }
 
         public Point SnapshotPoint(Point location) => new(location.X - origin.X, location.Y - origin.Y);
 

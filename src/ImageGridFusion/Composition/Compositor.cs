@@ -125,23 +125,24 @@ public static class Compositor
 
     /// <summary>
     /// Draws the grid in the rectangle (0, 0, canvas) of <paramref name="g"/>; image i goes into cell i of
-    /// the layout, its motion at <paramref name="time"/> on the clock of the grid.
+    /// the layout, its motion at <paramref name="time"/> on the clock of the grid; <paramref name="fast"/> as
+    /// <see cref="DrawCell"/> takes it.
     /// </summary>
-    public static void Draw(Graphics g, IReadOnlyList<SourceImage> images, GridLayout layout, Size canvas, GridBorders? borders = null, TimeSpan time = default, SeamFade? seams = null) =>
-        Draw(g, images.Select(i => new Frame(i.Bitmap, i.BandColor, i.DrawnLook, time, i.Sharpening)).ToList(), layout, canvas, borders, seams);
+    public static void Draw(Graphics g, IReadOnlyList<SourceImage> images, GridLayout layout, Size canvas, GridBorders? borders = null, TimeSpan time = default, SeamFade? seams = null, bool fast = false) =>
+        Draw(g, images.Select(i => new Frame(i.Bitmap, i.BandColor, i.DrawnLook, time, i.Sharpening)).ToList(), layout, canvas, borders, seams, fast);
 
     /// <summary>
     /// Draws the grid in the rectangle (0, 0, canvas) of <paramref name="g"/>; frame i goes into cell i of
     /// the layout. The borders and the seams, global effects, are drawn here too, at the grid level.
     /// </summary>
-    public static void Draw(Graphics g, IReadOnlyList<Frame> frames, GridLayout layout, Size canvas, GridBorders? borders = null, SeamFade? seams = null)
+    public static void Draw(Graphics g, IReadOnlyList<Frame> frames, GridLayout layout, Size canvas, GridBorders? borders = null, SeamFade? seams = null, bool fast = false)
     {
         var slots = layout.Cells(canvas);
         var cells = borders?.Inset(slots, canvas) ?? slots;
         var field = SeamField.Of(frames, cells, seams, borders);
         for (int i = 0; i < frames.Count; i++)
         {
-            DrawCell(g, frames[i], cells[i], seams: field);
+            DrawCell(g, frames[i], cells[i], fast, field);
         }
 
         borders?.Draw(g, slots, canvas);
