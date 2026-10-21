@@ -48,6 +48,7 @@ Each word used here has one meaning, given in the [Glossary](GLOSSARY.md).
 - **Undo** with `Ctrl+Z`, as many times as needed, and **redo** with `Ctrl+Y` or `Ctrl+Shift+Z`: images added, replaced, deleted or swapped, effects, layout, separators, format and global effects (see Undo & redo)
 - Effects per cell, from the effect tabs at the top of the window (see Effects), and the format and global effects for the whole grid, from the Global tabs at the bottom, above the bottom bar (see Global)
   - **Borders** on the grid, off at start-up: hotpink brackets at its four corners, or a solid, dashed, dotted or double line in a gap between the cells, around the grid as an outer frame, or both; the grid's corners rounded the way Twitter / X shows images; their color is set from their options, the last one chosen remembered (see Borders)
+  - **Colors picked** with an **eyedropper** on the preview's cells — a loupe showing the pixels and the hex value — or in the standard color dialog, which remembers its custom colors (see Picking a color)
 - Copy to clipboard (`Ctrl+C`) or save (`Ctrl+S`): a PNG, or an MP4 video when the grid holds content that plays or a soundtrack is on; the ▾ arrow next to each button forces a looping GIF or an MP4 video; Copy's also offers a light JPEG for sharing in chat apps that cap image size (WhatsApp: 16 MB)
 - Lives in the notification area: closing the window only hides it, the tray icon brings it back, and it can start with Windows (see Tray & startup)
 - The window remembers its size and its monitor between launches — never its maximized state: it opens un-maximized, centered on the monitor it was last used on (the primary screen when that one is gone), at the size it last had, shrunk to fit a smaller screen (see Tray & startup)
@@ -113,13 +114,13 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
   - **Color**: the flat fill around the image.
   - **Corner pixel**, **Miter** and **Background corners** extend the image's **edges**: its top row of pixels is stretched up to the top of the cell, its bottom row down to the bottom, its side columns out to the sides — the image as drawn in the cell, so cropped, rotated, flipped, zoomed and with its colors adjusted. Where the image is smaller than its cell both ways, each mode fills the four corners its own way: the color of the image's corner pixel; a mitered joint — each corner split on its diagonal, each half the flat color of its edge's pixel next to the image's corner, a 1 px line in the corner pixel's color drawn over the diagonal at 50 % opacity; or the background color. With a fine angle, the edges extended are those of the rectangle the turned image covers, its corners spilling over them.
   - The color settings still count: the flat fill stays under the image (its transparent pixels show it), fills the Background corners, and is what Blend goes to.
-- The fill's settings sit on two lines beside the thumbnails: the color's (*Automatic color*, Opacity, *Color…*, showing the color in use as a swatch) over the extended edges' (Edges, Blend, Soften).
+- The fill's settings sit on two lines beside the thumbnails: the color's (*Automatic color*, Opacity, the eyedropper and *Color…* showing the color in use as a swatch, Sample) over the extended edges' (Edges, Blend, Soften).
 - **Edges**: from 0 to 100 % (default 100 %): the extended edges' own opacity over the background color, which keeps its own — at 0 %, the bands show the background color only.
 - **Blend**: from 0 to 100 % (default 0 %): the extended edges blend into the background color with the distance from the image, reaching that share of it at the cell's edge — at 100 %, they vanish there.
 - **Soften** (unchecked by default): blurs the extended edges, more with the distance from the image, the image itself staying sharp.
 - Edges, Blend and Soften act on the extended edges only: disabled with the Color fill, their values kept.
 - The Crop's edit view extends the edges of the whole image it shows.
-- The **color button** is painted with the color in use. Clicking it opens the standard color dialog, on that color; choosing a color unchecks *Automatic color*. Checking it again drops the chosen color; unchecking it keeps the automatic color of the moment as the chosen one.
+- The **color button** is split in two: its **eyedropper** takes the color from the preview, its **Color…** part, painted with the color in use, opens the standard color dialog on that color (see Picking a color); a color chosen either way unchecks *Automatic color*. Checking it again drops the chosen color; unchecking it keeps the automatic color of the moment as the chosen one.
 - **Colors** adjusts the background too, whatever its color.
 - **Off**, or below 100 %, the cell is transparent behind its image: the preview shows grey and white squares there, as drawing apps do. A PNG — saved, or the PNG format of a copy — keeps the transparency; the copied bitmap, the MP4 video and the GIF show white instead.
 - Replacing the image, the Background's own Reset and the tabs' Reset bring it back on, automatic, at 100 %, with the Color fill, Edges at 100 %, Blend at 0 % and Soften unchecked.
@@ -239,7 +240,7 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 - **Off at start-up**, and back to that state with **Clear all** and the Resets. Check the **Borders** tab to turn them on — in the **Corners** style the first time — or off, their settings kept.
 - Options:
   - the **style**: **Corners** (the app's signature, the default), **Solid**, **Dashed**, **Dotted** or **Double**;
-  - **Color…**, with a swatch of the color in use, opens the standard color dialog: the color chosen applies at once, turns the Borders on, and is remembered for the next start-up, in the settings file (see Tray & startup). Hotpink by default — the color the Resets and **Clear all** bring back, the remembered one left as it is;
+  - the **eyedropper**, then **Color…** with a swatch of the color in use, take a color from the preview or in the standard color dialog (see Picking a color), the eyedropper's Sample after them: the color chosen applies at once, turns the Borders on, and is remembered for the next start-up, in the settings file (see Tray & startup). Hotpink by default — the color the Resets and **Clear all** bring back, the remembered one left as it is;
   - the **thickness**, from 0.1 to 6 % of the grid's shorter side (default 0.6 %), so the preview and every export size look the same;
   - **Opacity**, from 10 to 100 % (full by default): the corner brackets' opacity, as they lie over the images. Enabled in the Corners style only;
   - **Inner lines**, off by default: also draws the style between the cells, in a gap. Unchecked, the cells touch, as without Borders, and only the outer frame is drawn — nothing at all without it. Disabled in the Corners style;
@@ -264,6 +265,21 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 - The **video length** is the whole cascade — every turn and its pause — unless an Animations cycle, or a content playing alongside, lasts longer; the soundtrack loops or is cut on it, and the Fade fades the cascade's start and end. The **progress line** shows on the content playing its turn only.
 - While **no video nor animated GIF plays**, the Cascade's checkbox and option are disabled, the checkbox's tooltip saying why; its settings are kept.
 - The preview, the MP4 video and the GIF play it alike; a PNG shows every content on its starting point, as without it.
+
+## Picking a color
+
+Every color option of an effect — the Background's and the Borders' — offers two routes, side by side in its options: the **eyedropper** first, then **Color…**.
+
+- **Eyedropper**: click it, then click a cell of the preview to take its color. Meanwhile:
+  - the grid stands still, and the eyedropper reads the cells as they stood when it was clicked, as the export draws them — images, backgrounds, effects, borders — never the green helpers nor the selection outline;
+  - the option takes the color under the cursor live, and a **loupe** beside the cursor shows the pixels around it enlarged, the square read outlined, the color and its hex value (`#3A7BD5`);
+  - the **Sample** slider after it, 1 to 5 px, sets the side of the square averaged — 1 px reads the pixel under the cursor. One per color option, back to 1 px at each launch: it turns nothing on, no Reset touches it, and it is not undone;
+  - an empty cell, a gap between the cells or a transparent pixel reads nothing: the cursor says so, the option shows its own color again, and a click there does nothing;
+  - a click on another cell than the selected one reads that cell without selecting it;
+  - **Escape**, a right click, any other key or click, or leaving the window cancels: the option keeps the color it had.
+- A color taken applies as one chosen in the dialog does, turns the effect on, is one step of the undo history, and joins the dialog's custom colors.
+- **Color…** opens the standard color dialog, fully expanded, on the color in use. Its 16 **custom colors** are remembered between sessions, in the settings file (see Tray & startup); each color taken with the eyedropper goes into the first empty one, then round them again from the first, the others left in place.
+- The OCR arrow's color, in the ⚙ menu, keeps the dialog only.
 
 ## Previews
 

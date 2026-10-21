@@ -48,6 +48,7 @@ Chaque mot employé ici a un seul sens, donné dans le [glossaire](GLOSSARY.fr.m
 - **Annuler** avec `Ctrl+Z`, autant de fois que nécessaire, et **rétablir** avec `Ctrl+Y` ou `Ctrl+Shift+Z` : images ajoutées, remplacées, supprimées ou échangées, effets, disposition, séparateurs, format et effets globaux (voir Annuler et rétablir)
 - Des effets par cellule, depuis les onglets d'effets en haut de la fenêtre (voir Effets), et le format et les effets globaux pour toute la grille, depuis les onglets Global en bas, au-dessus de la barre du bas (voir Global)
   - Des **Borders** (bordures) sur la grille, désactivées au démarrage : des crochets rose vif (hotpink) aux quatre coins, ou un trait plein, tireté, pointillé ou double dans un espace entre les cellules, autour de la grille comme cadre extérieur, ou les deux ; les coins de la grille arrondis comme Twitter / X affiche les images ; leur couleur se règle depuis leurs options, la dernière choisie mémorisée (voir Borders)
+  - Des **couleurs prélevées** à la **pipette** sur les cellules de l'aperçu — une loupe montrant les pixels et la valeur hexadécimale — ou choisies dans la boîte de dialogue de couleur standard, qui mémorise ses couleurs personnalisées (voir Choisir une couleur)
 - Copier dans le presse-papiers (`Ctrl+C`) ou enregistrer (`Ctrl+S`) : un PNG, ou une vidéo MP4 quand la grille contient un contenu qui se joue ou qu'une bande son est activée ; la flèche ▾ à côté de chaque bouton force un GIF en boucle ou une vidéo MP4 ; celle de Copy propose aussi un JPEG léger pour partager dans les applications de messagerie qui limitent la taille des images (WhatsApp : 16 Mo)
 - Vit dans la zone de notification : fermer la fenêtre ne fait que la masquer, l'icône de la zone de notification la ramène, et l'application peut démarrer avec Windows (voir Zone de notification et démarrage)
 - La fenêtre mémorise sa taille et son écran d'un lancement à l'autre — jamais son état agrandi : elle s'ouvre non agrandie, centrée sur l'écran où elle a servi en dernier (l'écran principal s'il n'est plus là), à la taille qu'elle avait en dernier, réduite pour tenir sur un écran plus petit (voir Zone de notification et démarrage)
@@ -113,13 +114,13 @@ Un panneau repliable à droite de l'aperçu, ouvert au démarrage : une zone de 
   - **Color** : l'aplat de couleur autour de l'image.
   - **Corner pixel**, **Miter** et **Background corners** étendent les **bords** de l'image : sa rangée de pixels du haut est étirée jusqu'en haut de la cellule, celle du bas jusqu'en bas, ses colonnes latérales jusqu'aux côtés — l'image telle que dessinée dans la cellule, donc recadrée, tournée, retournée, zoomée et avec ses couleurs ajustées. Là où l'image est plus petite que sa cellule dans les deux sens, chaque mode remplit les quatre coins à sa façon : la couleur du pixel de coin de l'image ; un joint en onglet — chaque coin partagé sur sa diagonale, chaque moitié de la couleur unie du pixel de son bord voisin du coin de l'image, une ligne de 1 px de la couleur du pixel de coin tracée sur la diagonale à 50 % d'opacité ; ou la couleur du fond. Avec un angle fin, les bords étendus sont ceux du rectangle que couvre l'image tournée, ses coins débordant dessus.
   - Les réglages de couleur comptent toujours : l'aplat reste sous l'image (ses pixels transparents le montrent), remplit les coins de Background corners, et c'est vers lui que va Blend.
-- Les réglages du remplissage tiennent sur deux lignes à côté des miniatures : ceux de la couleur (*Automatic color*, Opacity, *Color…*, qui montre la couleur actuelle dans un échantillon) au-dessus de ceux des bords étendus (Edges, Blend, Soften).
+- Les réglages du remplissage tiennent sur deux lignes à côté des miniatures : ceux de la couleur (*Automatic color*, Opacity, la pipette et *Color…* qui montre la couleur actuelle dans un échantillon, Sample) au-dessus de ceux des bords étendus (Edges, Blend, Soften).
 - **Edges** : de 0 à 100 % (100 % par défaut) : l'opacité propre des bords étendus sur la couleur du fond, qui garde la sienne — à 0 %, les bandes ne montrent que la couleur du fond.
 - **Blend** : de 0 à 100 % (0 % par défaut) : les bords étendus s'estompent dans la couleur du fond avec la distance à l'image, jusqu'à cette part au bord de la cellule — à 100 %, ils y disparaissent.
 - **Soften** (décochée par défaut) : floute les bords étendus, d'autant plus loin de l'image, l'image elle-même restant nette.
 - Edges, Blend et Soften n'agissent que sur les bords étendus : désactivés avec le remplissage Color, leurs valeurs gardées.
 - La vue d'édition du Crop étend les bords de l'image entière qu'elle montre.
-- Le **bouton de couleur** est peint avec la couleur utilisée. Cliquer dessus ouvre la boîte de dialogue de couleur standard, sur cette couleur ; choisir une couleur décoche *Automatic color*. La cocher de nouveau abandonne la couleur choisie ; la décocher garde la couleur automatique du moment comme couleur choisie.
+- Le **bouton de couleur** est scindé en deux : sa **pipette** prélève la couleur dans l'aperçu, sa partie **Color…**, peinte avec la couleur utilisée, ouvre la boîte de dialogue de couleur standard sur cette couleur (voir Choisir une couleur) ; une couleur choisie de l'une ou l'autre façon décoche *Automatic color*. La cocher de nouveau abandonne la couleur choisie ; la décocher garde la couleur automatique du moment comme couleur choisie.
 - **Colors** ajuste aussi le fond, quelle que soit sa couleur.
 - **Désactivé**, ou sous 100 %, la cellule est transparente derrière son image : l'aperçu y montre des carreaux gris et blancs, comme les applications de dessin. Un PNG — enregistré, ou le format PNG d'une copie — conserve la transparence ; le bitmap copié, la vidéo MP4 et le GIF affichent du blanc à la place.
 - Remplacer l'image, le Reset propre à Background et le Reset des onglets le remettent activé, automatique, à 100 %, avec le remplissage Color, Edges à 100 %, Blend à 0 % et Soften décochée.
@@ -239,7 +240,7 @@ Un panneau repliable à droite de l'aperçu, ouvert au démarrage : une zone de 
 - **Désactivées au démarrage**, et revenues à cet état avec **Clear all** et les Reset. Cocher l'onglet **Borders** pour les activer — dans le style **Corners** la première fois — ou les désactiver, leurs réglages conservés.
 - Options :
   - le **style** : **Corners** (la signature de l'application, le défaut), **Solid**, **Dashed**, **Dotted** ou **Double** ;
-  - **Color…**, avec un échantillon de la couleur en vigueur, ouvre la boîte de dialogue de couleur standard : la couleur choisie s'applique aussitôt, active les Borders et est mémorisée pour le prochain démarrage, dans le fichier de paramètres (voir Zone de notification et démarrage). Rose vif (hotpink) par défaut — la couleur que les Reset et **Clear all** remettent, la couleur mémorisée restant telle quelle ;
+  - la **pipette**, puis **Color…** avec un échantillon de la couleur en vigueur, prélèvent une couleur dans l'aperçu ou la font choisir dans la boîte de dialogue de couleur standard (voir Choisir une couleur), le Sample de la pipette après eux : la couleur choisie s'applique aussitôt, active les Borders et est mémorisée pour le prochain démarrage, dans le fichier de paramètres (voir Zone de notification et démarrage). Rose vif (hotpink) par défaut — la couleur que les Reset et **Clear all** remettent, la couleur mémorisée restant telle quelle ;
   - l'**épaisseur** (thickness), de 0,1 à 6 % du plus petit côté de la grille (0,6 % par défaut), pour que l'aperçu et chaque taille d'export se ressemblent ;
   - **Opacity**, de 10 à 100 % (pleine par défaut) : l'opacité des crochets d'angle, tels qu'ils recouvrent les images. Activée dans le style Corners seulement ;
   - **Inner lines**, désactivé par défaut : dessine aussi le style entre les cellules, dans un espace. Décoché, les cellules se touchent, comme sans Borders, et seul le cadre extérieur est dessiné — rien du tout sans lui. Désactivé dans le style Corners ;
@@ -264,6 +265,21 @@ Un panneau repliable à droite de l'aperçu, ouvert au démarrage : une zone de 
 - La **durée de la vidéo** est toute la cascade — chaque tour et sa pause — sauf si un cycle Animations, ou un contenu qui joue à côté, dure plus longtemps ; la bande son boucle ou est coupée dessus, et le Fade fait le fondu du début et de la fin de la cascade. La **ligne de progression** ne s'affiche que sur le contenu qui joue son tour.
 - Tant qu'**aucune vidéo ni aucun GIF animé ne joue**, la case à cocher et l'option de la Cascade sont désactivées, l'info-bulle de la case en donnant la raison ; ses réglages sont conservés.
 - L'aperçu, la vidéo MP4 et le GIF la jouent pareil ; un PNG montre chaque contenu sur son point de départ, comme sans elle.
+
+## Choisir une couleur
+
+Chaque option de couleur d'un effet — celle du Background et celle des Borders — offre deux voies, côte à côte dans ses options : la **pipette** d'abord, puis **Color…**.
+
+- **Pipette** : cliquer dessus, puis cliquer une cellule de l'aperçu pour prélever sa couleur. Pendant ce temps :
+  - la grille s'arrête, et la pipette lit les cellules telles qu'elles étaient au clic, comme l'export les dessine — images, fonds, effets, bordures — jamais les indicateurs verts ni le contour de sélection ;
+  - l'option prend en direct la couleur sous le curseur, et une **loupe** à côté du curseur montre les pixels autour agrandis, le carré lu encadré, la couleur et sa valeur hexadécimale (`#3A7BD5`) ;
+  - le curseur **Sample** qui la suit, de 1 à 5 px, règle le côté du carré moyenné — 1 px lit le pixel sous le curseur. Un par option de couleur, revenu à 1 px à chaque lancement : il n'active rien, aucun Reset n'y touche, et il ne s'annule pas ;
+  - une cellule vide, un espace entre les cellules ou un pixel transparent ne donnent rien : le curseur l'indique, l'option remontre sa propre couleur, et un clic à cet endroit ne fait rien ;
+  - un clic sur une autre cellule que la cellule sélectionnée la lit sans la sélectionner ;
+  - **Échap**, un clic droit, toute autre touche ou tout autre clic, ou quitter la fenêtre annulent : l'option garde la couleur qu'elle avait.
+- Une couleur prélevée s'applique comme une couleur choisie dans la boîte de dialogue, active l'effet, forme une étape de l'historique d'annulation, et rejoint les couleurs personnalisées de la boîte de dialogue.
+- **Color…** ouvre la boîte de dialogue de couleur standard, dépliée, sur la couleur utilisée. Ses 16 **couleurs personnalisées** sont mémorisées d'une session à l'autre, dans le fichier de paramètres (voir Zone de notification et démarrage) ; chaque couleur prélevée à la pipette va dans la première case vide, puis de nouveau à partir de la première, les autres laissées en place.
+- La couleur de la flèche OCR, dans le menu ⚙, garde la boîte de dialogue seule.
 
 ## Aperçus
 
