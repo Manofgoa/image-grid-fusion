@@ -82,15 +82,22 @@ click takes it. The Windows dialog stays, as the second route, and gains remembe
 - Over a cell, the cursor is an **eyedropper**, and the color read (the average of the sample square)
   is previewed **two ways at once**:
   - **Applied live** to the option: the selected cell's background, or the borders, take it in the
-    preview — not committed (§ Undo).
+    preview — not committed (§ Undo). At most every **33 ms**, the last color reached winning, and the
+    cells **drawn fast** (bilinear) while armed, in full once it ends: the mouse moves far more often
+    than a cell can be drawn in full.
   - A **loupe** beside the cursor: the snapshot's pixels around it enlarged, the **sample square
     outlined**, the color read as a swatch with its **hex value** (`#RRGGBB`). It is kept inside the
-    preview, flipping to the other side of the cursor near an edge. Preview only, never in the exports.
+    preview, flipping to the other side of the cursor near an edge, **repainted on its own area only**.
+    15 × 15 snapshot pixels, 8 logical px each, the sample square outlined in the helpers' green over
+    their black halo, a dark caption below. Preview only, never in the exports.
+  - The cursor is an **eyedropper** drawn with a white halo, its tip on the hot spot.
 - **Transparent spots are ignored**: an empty cell, a gap between cells, a cell without background
   where the image does not cover it, a transparent pixel of a PNG — any sample square holding a pixel
   of alpha 0 in the snapshot. Nothing is read: the option shows its **original color** again, the
   loupe shows the pixels with `—` for the hex, the cursor is the *no* cursor, a click does nothing.
 - Outside the cells (the preview's margins) the same: nothing read, the original color shown.
+- A sample square holding **semi-transparent** pixels (an antialiased edge) is averaged weighted by their
+  opacity, the result opaque.
 
 ### Taking
 
@@ -104,9 +111,11 @@ click takes it. The Windows dialog stays, as the second route, and gains remembe
 ### Cancelling
 
 - **Escape** or a **right click**: disarmed, the option back to the color it had, nothing changed.
-- The same when the eyedropper is disarmed by anything else: the eyedropper part clicked again, a
-  click outside the preview, another effect tab selected, the selected cell changing (keyboard),
-  the window deactivated, an export starting.
+- The same when the eyedropper is disarmed by anything else: **any other press** — a click outside the
+  preview, the eyedropper part clicked again, a middle click — or **any other key** (the modifiers
+  aside), each **swallowed** with its release so nothing else acts on it; a press on the window's frame
+  (cancelled, the window still moving); the window deactivated, resized; an image arriving or leaving;
+  an export starting.
 
 ### Undo
 
@@ -126,8 +135,21 @@ they share it:
   every closing of the dialog (they may be edited in it). A save failure says so in the status line;
   an unreadable value falls back to the empty slots.
 - **Picked colors added**: each color taken with the eyedropper is written into the **next free
-  slot**; once the 16 are filled, the writing goes round them again from the first, never reordering
+  slot** — a white one, the dialog's empty value; once the 16 are filled, the writing goes round them again from the first, never reordering
   them. The position of the next slot is remembered with the colors.
+
+---
+
+## Code Map
+
+| Piece | Where |
+|---|---|
+| Split button | `UI/ColorSplitButton.cs` |
+| Eyedropper icon (button and cursor) | `EffectIcons.Eyedropper` |
+| Eyedropper, snapshot, loupe, message filter | `UI/GridPreview.Eyedropper.cs` (`GridPreview` made `partial`) |
+| Fast drawing while armed | `Compositor.Draw(…, fast)`, `GridPreview.OnPaint` / `RedrawCell` |
+| Background / Borders wiring, Sample sliders | `MainForm.ArmBackgroundEyedropper` / `ArmBordersEyedropper` / `ArmEyedropper` |
+| Shared dialog, custom colors | `UI/SharedColorDialog.cs`, `AppSettings.CustomColors` / `CustomColorsNext` |
 
 ---
 
@@ -211,6 +233,47 @@ Every open question answered (Q&A 5–23):
 Go given: **code, unit tests and documentation**, in the **current checkout**. Branch Gate: the run
 stays on `main`, the standing choice of this repository (every run lands on `main`).
 
+### Iteration 4 — 2026-10-21 — Slowness reported during the run
+
+The user, testing the first build: *it works, but it is very slow — why, can it be optimised?*
+
+- **Why**: every mouse move (100+ a second) applied the color under the cursor at once, and each
+  application drew the selected cell again **in full quality** (high-quality bicubic from the full-size
+  image — a 4K wallpaper in the test), the whole grid for the Borders, synchronously; the whole preview
+  was repainted for the loupe on top.
+- **Fix**, within the run: the cells drawn **fast** while the eyedropper is armed and in full once at
+  the end; the live color applied **at most every 33 ms**, the last one winning, the loupe and its hex
+  following the cursor at once; only the loupe's area repainted; a pick no longer restores the option
+  before taking the color (one drawing instead of two).
+
+### Iteration 5 — 2026-10-21 — 🧭 Implementation choices
+
+No rule broken. The choices the design left open:
+
+- **Presses and keys while armed are swallowed**: a press anywhere but a left one over the preview, and
+  any key but the modifiers, cancel **and** are eaten with their release, so a click on a button or a tab
+  only cancels (the design said a click outside cancels; it did not say whether it also acts). A press
+  on the window's frame cancels and goes on, so the window still moves. Done by a message filter
+  installed while armed (`GridPreview.EyedropperFilter`).
+- **A left click on a spot reading nothing** keeps the eyedropper armed.
+- **Loupe**: 15 × 15 snapshot pixels at 8 logical px each, below right of the cursor, a dark caption
+  with the swatch and `#RRGGBB` (upper case); the sample square outlined in the helpers' green over their
+  halo (RULES.md § On-Cell Helper Indicators).
+- **Cursor**: the eyedropper icon drawn with a white halo, its tip on the hot spot; the *no* cursor over
+  a spot reading nothing.
+- **Semi-transparent pixels** are averaged weighted by their opacity.
+- **Free custom slot** = a white one, the dialog's empty value: a picked white fills a slot that still
+  looks free.
+- **Sample slider**: 70 px wide, its label `Sample: 1 px`, its tooltip saying it is not remembered.
+- **Tooltips**: the Color… parts now say *in the color dialog*; the eyedropper parts say how to use them.
+- **Crop edit view**: with the Crop tab selected while the Borders' eyedropper is armed, the selected cell
+  shows its edit view (the uncropped image) while the loupe shows the composed, cropped cell — the
+  snapshot is the truth.
+- **RULES.md § Color Options** added, so a future color option follows the same rule.
+- Checked by hand: the options row (split button, Sample) and the hover by screenshots; the pick, the
+  live preview and the speed by the user's own test of the first build — the second build, faster, is
+  not checked by the agent beyond its launch.
+
 ---
 
 ## Implementation Log
@@ -220,9 +283,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project (manual checks) |
-| README | | | |
+| Code | 3, 4 | 2026-10-21 | Dialog, split button, eyedropper, wiring; speed-up in Iteration 4 |
+| Unit tests | 3 | 2026-10-21 | No test project: manual checks (the user's test, the agent's screenshots) |
+| README | 3 | 2026-10-21 | README / README.fr § Picking a color, GLOSSARY / GLOSSARY.fr *Eyedropper*, RULES.md § Color Options |
 
 ---
 
