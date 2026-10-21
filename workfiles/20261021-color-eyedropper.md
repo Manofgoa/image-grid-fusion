@@ -169,14 +169,16 @@ Questions asked by the agent during design, with user responses.
 | 11 | Transparent spots: ignored, or read as shown? | Ignored | 2026-10-21 |
 | 12 | One pick, or armed until Escape? | Disarmed after one click | 2026-10-21 |
 | 13 | Button form and placement? | A split button: eyedropper part, then the Color… dialog part | 2026-10-21 |
-| 14 | Keyboard shortcut to arm it? | | |
 | 15 | OCR arrow color: eyedropper too? | No, the dialog only | 2026-10-21 |
 | 16 | Windows dialog: anything to change? | Checked together: nothing changes, custom colors remembered, picked colors added, opened full — clarified in #18 | 2026-10-21 |
 | 17 | Where does the sample size slider sit, and is it remembered? | In the effect's options, next to the eyedropper; remembered: see #19 | 2026-10-21 |
-| 18 | Windows dialog: "nothing changes" was checked with the three changes — which holds? | | |
-| 19 | Sample size value: shared by every eyedropper, remembered between sessions? | | |
-| 20 | Sample size default value? | | |
-| 21 | Does moving the sample size slider activate the effect, and is it in the undo history? | | |
+| 18 | Windows dialog: "nothing changes" was checked with the three changes — which holds? | The three changes | 2026-10-21 |
+| 19 | Sample size value: shared by every eyedropper, remembered between sessions? | Not remembered, 1 px by default (shared or not: see #22) | 2026-10-21 |
+| 20 | Sample size default value? | 1 px | 2026-10-21 |
+| 21 | Does moving the sample size slider activate the effect, and is it in the undo history? | No: an eyedropper setting — activates nothing, out of the history, not reset | 2026-10-21 |
+| 14 | Keyboard shortcut to arm it? *(asked again)* | | |
+| 22 | Sample size: one value for every eyedropper, or one per color option? | | |
+| 23 | Picked colors added to the dialog's custom colors: in which order, how many? | | |
 
 ---
 
