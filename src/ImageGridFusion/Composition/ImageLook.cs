@@ -384,6 +384,12 @@ public sealed record ImageLook
     public ImageLook WithArrivalZoom(double zoom) =>
         (Math.Abs(zoom - 1) < ArrivalZoomTolerance && !this.IsActive(ImageEffect.Zoom) ? this : this.WithZoom(zoom)) with { ZoomOnArrival = true };
 
+    /// <summary>
+    /// <see cref="WithArrivalZoom"/>, the image centered in its cell: what the layout strip's Auto gives
+    /// every image once the cells are resized.
+    /// </summary>
+    public ImageLook WithArrivalZoomCentered(double zoom) => this.WithArrivalZoom(zoom) with { Focus = Center };
+
     /// <summary>Unclamped: how far the image may go depends on its cell, and is applied where the image is placed.</summary>
     public ImageLook WithFocus(PointF focus) => Activated(ImageEffect.Zoom) with { Focus = focus, KeptZoom = null };
 
