@@ -18,7 +18,7 @@ Chaque mot employé ici a un seul sens, donné dans le [glossaire](GLOSSARY.fr.m
   - Sans image, la grille vide fait la même chose : un clic permet de choisir des fichiers (un **+** et un curseur en forme de main montrent qu'elle est cliquable), on peut y déposer des fichiers, ou les coller
 - Un panneau **explorateur de fichiers** à droite de l'aperçu : saisir quelques lettres pour trouver un fichier dans un dossier de base et ses sous-dossiers — depuis un index mis en cache à côté de l'exe, donc la réponse suit la frappe — ou saisir `*` pour parcourir tous les fichiers, le plus récent d'abord — ou par nom ou par taille —, ou les parcourir dossier par dossier avec 📁 ; les voir sous forme de tuiles de vignettes, chargées quelques écrans à la fois au fil du défilement, les mettre en favoris avec le cœur — ou déposer sur le panneau des fichiers depuis l'Explorateur, ou une cellule par sa poignée ✥ — et les faire glisser dans une cellule (voir Explorateur de fichiers)
 - Une **zone URL** en bas de l'explorateur de fichiers : coller le lien d'un **post X / Twitter** — ou d'une image, d'une vidéo, d'un autre site grâce à yt-dlp — cliquer sur **Load**, et faire glisser le média dans une cellule (voir Explorateur de fichiers)
-- Plusieurs dispositions par nombre d'images, à choisir dans une bande de miniatures — d'autres sous son groupe **More** — plus une bascule miroir ; faire glisser le séparateur entre deux cellules pour les redimensionner (voir Dispositions)
+- Plusieurs dispositions par nombre d'images, à choisir dans une bande de miniatures — d'autres sous son groupe **More** — plus une bascule miroir et deux boutons **Auto** qui donnent aux cellules la forme de leurs images ; faire glisser le séparateur entre deux cellules pour les redimensionner (voir Dispositions)
 - Pas de liste d'images : l'aperçu de la grille *est* l'interface
   - Cliquer sur une cellule pour la sélectionner, `Esc` pour la désélectionner ; les onglets d'effets agissent sur la cellule sélectionnée (voir Effets)
     - La cellule sélectionnée affiche, en vert fluo en bas à gauche, après une icône de dossier, le nom du fichier d'où vient son image — raccourci au milieu s'il est trop large, l'extension conservée ; le survoler donne le chemin complet. Jamais dans les exports
@@ -352,7 +352,7 @@ Une rangée sous l'aperçu, au-dessus des onglets Global, joue la grille comme u
 
 Chaque nombre d'images offre plusieurs dispositions, choisies en cliquant sur une miniature dans la bande à gauche de l'aperçu. La bande est toujours affichée, pour que l'aperçu garde sa taille : avec une seule image, elle contient la seule disposition de ce nombre, et sans image la même miniature grisée. La première disposition de chaque nombre est celle par défaut ; l'application démarre dessus, et y revient chaque fois que le nombre d'images change.
 
-Depuis le haut, la bande contient la bascule miroir (voir Miroir), les dispositions en dessous, puis un en-tête **More ▸** : cliquer dessus affiche les dispositions supplémentaires de ce nombre (voir Autres dispositions), cliquer sur **More ▾** les masque de nouveau. Elle démarre repliée, et se replie de nouveau chaque fois que le nombre d'images change ; repliée alors qu'une des dispositions supplémentaires est active, elle garde la miniature de celle-ci affichée. Une bande plus haute que la fenêtre défile, avec la molette de la souris ou sa barre de défilement ; les miniatures gardent leur taille.
+Depuis le haut, la bande contient la bascule miroir (voir Miroir) et les deux boutons Auto à côté d'elle (voir Tailles automatiques), les dispositions en dessous, puis un en-tête **More ▸** : cliquer dessus affiche les dispositions supplémentaires de ce nombre (voir Autres dispositions), cliquer sur **More ▾** les masque de nouveau. Elle démarre repliée, et se replie de nouveau chaque fois que le nombre d'images change ; repliée alors qu'une des dispositions supplémentaires est active, elle garde la miniature de celle-ci affichée. Une bande plus haute que la fenêtre défile, avec la molette de la souris ou sa barre de défilement ; les miniatures gardent leur taille.
 
 L'image **1** prend toujours la cellule vedette (la grande) ; les autres images suivent dans l'ordre de lecture (gauche→droite, haut→bas). Les ratios des cellules sont donnés pour un canevas 1,91:1 (le format Twitter) : en dessous de 1, cela convient aux portraits et aux captures d'écran de téléphone, autour de 1,9 aux paysages, au-dessus de 3 aux panoramas.
 
@@ -487,6 +487,17 @@ Faire glisser le **séparateur** entre deux cellules pour donner plus de place �
 - Les tailles appartiennent à la grille, pas aux images : échanger deux cellules ou remplacer une image les conserve ; choisir une autre disposition ou changer le nombre d'images repart sur les tailles propres de la disposition. Elles ne sont pas conservées d'un lancement à l'autre.
 - Sur la cellule sélectionnée, une barre de Blur ou de Crop posée sur son bord — ou l'un de leurs coins qui s'y trouve — est saisie avant le séparateur ; le séparateur reste accessible depuis la cellule voisine, ou une fois cet onglet désélectionné ou son effet désactivé.
 - Un texte est remis en page pour sa nouvelle cellule une fois le séparateur relâché. Pas pendant un export.
+
+### Tailles automatiques
+
+Les deux boutons à côté de la bascule miroir déplacent les séparateurs à votre place, pour que chaque cellule prenne la forme de son image et que les images, montrées entières, s'alignent :
+
+- **↔ Auto** déplace les séparateurs verticaux : les cellules côte à côte prennent des largeurs proportionnelles aux ratios de leurs images, qui, montrées entières, ont alors **la même hauteur**. Une vidéo 16:9 à côté d'une photo 4:3 au format Twitter : 57 % / 43 %, toutes deux hautes de 386 px, avec les mêmes bandes au-dessus et en dessous.
+- **↕ Auto** déplace les séparateurs horizontaux : les cellules empilées prennent les hauteurs correspondantes, et leurs images ont **la même largeur**.
+- Sur une disposition dont une cellule couvre plusieurs lignes ou colonnes (*Big left*, *Featured*…), chaque cellule prend au plus près la forme de sa propre image : les cellules côte à côte s'alignent, et une grande cellule garde une grande image.
+- Après le clic, chaque image est **montrée entière** dans sa nouvelle cellule, centrée — comme à son arrivée (voir Zoom) : son propre zoom et sa position sont remplacés. Un texte est laissé de côté : il ne pèse pas dans les tailles, et prend la cellule qu'on lui laisse.
+- L'image compte telle qu'elle est vue — recadrée, tournée — et l'espace des Borders est pris en compte ; le minimum de 10 % des séparateurs tient, donc un ratio extrême est approché, pas atteint. Au format **Free**, le canevas prend ensuite la forme d'ensemble des images : côte à côte, les bandes disparaissent.
+- Un bouton est désactivé quand la disposition n'a aucun séparateur dans son sens — ↕ sur *Two columns* — son info-bulle le disant. Un clic est une étape de l'historique d'annulation ; cliquer sur la miniature active remet les tailles propres de la disposition.
 
 ## Règles d'ajustement
 

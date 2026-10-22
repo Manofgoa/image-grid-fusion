@@ -42,8 +42,10 @@ Relevant components:
 
 An image shown whole in a cell leaves no band when the cell has the image's shape. Auto moves the
 separators of **one orientation** so that every cell's shape is **as close as possible to its image's
-shape** (`ImageLook.Shown`): it minimises, over the cells, the squared difference between the log of
-the cell's ratio and the log of its image's ratio.
+shape** (`ImageLook.Shown`): it minimises, over the cells, the **variance of the log of the cell's ratio
+divided by its image's** — zero when every cell is the same multiple of its image's shape, the
+canvas's own shape being the common multiple no separator can change (`Composition/LayoutAutoSize`,
+each separator searched along its range in turn, rounds until nothing moves).
 
 In a row of cells side by side, that gives **widths proportional to the images' ratios**: every image,
 shown whole, gets the **same height** — the canvas's height when the row is wide enough, a smaller
@@ -89,9 +91,11 @@ heights; a big cell keeps a big image.
 - The separators move in **one step** (`GridPreview.ApplySizes`): one undo step, the text pages laid
   out again, the Free ratio computed again — in a single row, the Free format then tends to the
   images' combined ratio, the bands vanishing.
-- Every image but a text gets the **arrival zoom** in its new cell (`ShowWhole`'s computation, applied
-  to all of them): centered, Contain unpressed, `ZoomOnArrival` set again. Its own zoom and position
-  are replaced.
+- Every image but a text gets the **arrival zoom** in its new cell (`GridPreview.ShowWhole` over all of
+  them, `centered: true` → `ImageLook.WithArrivalZoomCentered`): centered, Contain unpressed,
+  `ZoomOnArrival` set again. Its own zoom and position are replaced.
+- In the **Free** format the new sizes give another ratio, reshaping the cells: the computation runs
+  again on the new canvas, three passes at most (`GridPreview.AutoSizeCells`).
 - The active thumbnail keeps drawing the layout's own proportions; clicking it, or the effects Reset,
   still brings the separators back.
 
@@ -142,15 +146,38 @@ Last questions settled (Q&A 5, 7, 8): ↔ Auto moves the vertical separators (sa
 horizontal ones (same width); the principle — each cell shaped like its image — holds on layouts
 with spanning cells too; no test project. No open question left.
 
+### Iteration 4 — 2026-10-22 — ✅ Implemented
+
+Go given: code and documentation (no tests, Q&A 8), in a worktree on `feature/layout-auto-size`.
+
+### Iteration 5 — 2026-10-22 — 🧭 Implementation choices
+
+- **The mismatch measure changed** (divergent: the design's measure cannot work as written). The sum
+  of the squared log differences does not give equal heights: a throwaway check gave 370 / 406 px on
+  the screenshot's 16:9 + 4:3. The variance of the log of the cell's ratio divided by its image's
+  does: 386 / 386 px, the design's figure. Checked by hand on six cases (scratch program, not kept):
+  two columns, a portrait image limited by the canvas, three columns with a text left in place, two
+  rows (equal widths), Grid, Big left.
+- **Text detection** as the Free format does it (`Pages is { PageSize: not null }`), for the sizes;
+  the zoom left alone where `LaysOutZoom`, as `ShowWhole` does.
+- **Names**: `LayoutAutoSize.Fitted`, `GridPreview.AutoSizeCells` (`AutoSize` is taken by `Control`),
+  `LayoutStrip.AutoSizeClicked` (`true` for ↔), `ImageLook.WithArrivalZoomCentered`; `ShowWhole` got a
+  `centered` parameter.
+- **The button row** spans the strip's whole width with 4 px margins and 2 px gaps — the thumbnails'
+  12 px margins would leave the three buttons too narrow at the strip's 80 px; the Auto icon is a
+  double arrow between two end bars, turned upright for ↕.
+- **Free format**: up to three passes, the ratio moving with the sizes.
+- No project rule broken.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 5 | 2026-10-22 | `LayoutAutoSize`, `GridPreview.AutoSizeCells`, the strip's buttons |
 | Unit tests | 3 | 2026-10-22 | Declined — no test project (Q&A 8) |
-| README | | | |
+| README | 5 | 2026-10-22 | § Auto sizes, the features line and the strip's description, EN + FR |
 
 ---
 

@@ -899,6 +899,7 @@ internal sealed class MainForm : Form
         _layouts.LayoutPicked += (_, layout) => _preview.SetLayout(layout);
         _layouts.MirrorToggled += (_, _) => _preview.SetLayout(_preview.ActiveLayout!.Mirrored());
         _layouts.ActiveLayoutClicked += (_, _) => _preview.ResetCellSizes();
+        _layouts.AutoSizeClicked += (_, vertical) => this._preview.AutoSizeCells(vertical);
         DragEnter += OnDragEnter;
         DragDrop += OnDragDrop;
         _preview.DragEnter += OnDragEnter;
