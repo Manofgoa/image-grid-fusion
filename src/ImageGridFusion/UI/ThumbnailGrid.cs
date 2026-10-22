@@ -860,13 +860,17 @@ internal sealed class ThumbnailGrid : ScrollableControl
     /// A tile's picture, in the tile's box or a Details row's thumbnail: the thumbnail — or a drawn
     /// folder — over the checkerboard showing its transparency, a folder's name on its front flap on a
     /// tile, its border, the heart in its medallion, and the light bulb with its arrow for a file found by
-    /// its content.
+    /// its content. A folder sits on the panel's background, without checkerboard nor resting border —
+    /// see workfiles/20261022-folder-tile-cleanup.md.
     /// </summary>
     private void PaintPicture(Graphics g, int index, bool selected)
     {
         var row = _rows[index];
         var tile = Scrolled(TileBounds(index));
-        Checkerboard.Fill(g, tile);
+        if (!row.IsFolder)
+        {
+            Checkerboard.Fill(g, tile);
+        }
 
         // Loaded at its bucket's size: scaled to the tile — enlarged when smaller — its proportions kept,
         // centered. A folder Windows has no thumbnail for gets a drawn folder.
@@ -896,9 +900,11 @@ internal sealed class ThumbnailGrid : ScrollableControl
             this.PaintFolderName(g, row.Name, front);
         }
 
-        var border = selected ? SystemColors.Highlight : index == _hovered ? SystemColors.HotTrack : SystemColors.ControlDark;
-        using (var pen = new Pen(border, selected ? 2 : 1))
+        // A folder at rest has no border: only the hover and the selection outline it.
+        if (selected || index == _hovered || !row.IsFolder)
         {
+            var border = selected ? SystemColors.Highlight : index == _hovered ? SystemColors.HotTrack : SystemColors.ControlDark;
+            using var pen = new Pen(border, selected ? 2 : 1);
             g.DrawRectangle(pen, selected ? Rectangle.Inflate(tile, -1, -1) : new Rectangle(tile.X, tile.Y, tile.Width - 1, tile.Height - 1));
         }
 
