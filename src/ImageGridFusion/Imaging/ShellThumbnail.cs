@@ -17,6 +17,9 @@ public static class ShellThumbnail
     // The highest value of each channel still taken for the black around an opaque folder.
     private const int NearBlack = 8;
 
+    // The lowest alpha of a folder's visible part: below it, its faint shadow and the empty margin.
+    private const int VisibleAlpha = 32;
+
     /// <summary>
     /// Returns null when Windows has no thumbnail for the file. <paramref name="side"/> is the size
     /// asked for, a bigger one accepted: the cells' previews take the largest, the file explorer's
@@ -55,18 +58,71 @@ public static class ShellThumbnail
     /// <summary>
     /// A folder's thumbnail, asked at <see cref="FolderSide"/>: at some other sizes Windows gives some
     /// folders an opaque one, black where the folder is transparent. Should it still come opaque, the
-    /// black joined to its edges is made transparent; the black inside the picture stays. See
+    /// black joined to its edges is made transparent; the black inside the picture stays. Then trimmed
+    /// to its visible part, so the folder fills its tile. See
     /// workfiles/20261022-explorer-transparency-checkerboard.md.
     /// </summary>
     public static Bitmap? TryLoadFolder(string path)
     {
         var bitmap = TryLoad(path, FolderSide);
-        if (bitmap is not null)
+        if (bitmap is null)
         {
-            ClearOuterBlack(bitmap);
+            return null;
         }
 
-        return bitmap;
+        ClearOuterBlack(bitmap);
+        return Trim(bitmap);
+    }
+
+    /// <summary>
+    /// <paramref name="bitmap"/> cut to the rectangle holding its pixels of <see cref="VisibleAlpha"/> or
+    /// more, disposed when cut; as it is when nothing is to cut or nothing shows.
+    /// </summary>
+    private static Bitmap Trim(Bitmap bitmap)
+    {
+        int width = bitmap.Width;
+        int height = bitmap.Height;
+        int[] pixels = new int[width * height];
+        var data = bitmap.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+        try
+        {
+            for (int y = 0; y < height; y++)
+            {
+                Marshal.Copy(data.Scan0 + y * data.Stride, pixels, y * width, width);
+            }
+        }
+        finally
+        {
+            bitmap.UnlockBits(data);
+        }
+
+        int left = width;
+        int top = height;
+        int right = -1;
+        int bottom = -1;
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                if ((int)((uint)pixels[y * width + x] >> 24) >= VisibleAlpha)
+                {
+                    left = Math.Min(left, x);
+                    right = Math.Max(right, x);
+                    top = Math.Min(top, y);
+                    bottom = Math.Max(bottom, y);
+                }
+            }
+        }
+
+        var visible = Rectangle.FromLTRB(left, top, right + 1, bottom + 1);
+        if (right < 0 || visible.Size == bitmap.Size)
+        {
+            return bitmap;
+        }
+
+        var trimmed = bitmap.Clone(visible, PixelFormat.Format32bppArgb);
+        bitmap.Dispose();
+        return trimmed;
     }
 
     /// <summary>
