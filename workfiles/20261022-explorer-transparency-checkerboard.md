@@ -88,7 +88,8 @@ spinner's veil and the play badge are drawn over it as today.
 - `GLOSSARY.md` — the *Tile* row: its thumbnail drawn over white and grey squares showing its
   transparency.
 - `GLOSSARY.fr.md` — the same row, in French, in the same commit.
-- README: untouched (it does not describe the tiles' background).
+- README: untouched by the checkerboard (it does not describe the tiles' background); its folder view
+  paragraph (EN + FR) follows § Folder Tiles, with the glossary's *Folder tile* row (EN + FR).
 
 ---
 
@@ -104,9 +105,9 @@ Origin: Iterations 7, 8 and 9, asked after the checkerboard was delivered.
 - **The folder's name in bold on its front flap** (Thumbnails view): the folder's own name — not the
   file count — centered on the lower part of the folder, its yellow front flap (from 58 % to 96 % of
   the picture's height, 8 % in from each side; the drawn folder's front panel), on **two lines at
-  most**, cut with `…`. Bold, in the panel's font, its size scaled to the flap — half the flap's height
-  per line at most, never under the tile name's size — **almost black over a white halo**, legible on
-  the yellow as on a photo.
+  most**, cut with `…`. Bold, in the panel's font, drawn as a path (`ThumbnailGrid.PaintFolderName`),
+  its size a **third of the flap's height**, never under the tile names' size — **almost black over a
+  white halo** — legible on the yellow as on a photo.
 - **Under the tile, the file count alone** — `140 files`, `1 file` — in place of `name (140)`: the name
   is on the folder. Until the index gives the count, the name stays there. The Details view keeps
   `name (140)` on its row. `ExplorerRow` carries the count apart (`Count`), its `Name` the bare name.
@@ -214,6 +215,27 @@ Asked by the user while Iterations 7–8 were being coded, reversing Q&A 16: und
 file count replaces the folder's name. The name is on the folder itself (Iteration 8); the Details
 view keeps both on its row.
 
+### Iteration 10 — 2026-10-22 — 🧭 Implementation choices
+
+For Iterations 7–9:
+
+- **Visible part**: alpha 32 or more (`ShellThumbnail.VisibleAlpha`), so the folder's faint shadow does
+  not keep a margin; a thumbnail with nothing visible is kept whole.
+- **Name size**: a third of the flap's height, not half per line as § Folder Tiles first said — two
+  lines then fill about 80 % of the flap and a long name wraps instead of shrinking.
+- **Flap of Windows' folder**: from 58 % to 96 % of the trimmed picture's height, 8 % in from each side
+  — measured on the Windows 11 folder; a folder with a custom icon gets its name at the same place.
+- **Drawn folder**: 90 % of the tile's height at 4:3, or 90 % of its width when narrower; its name on
+  its front panel, 8 % in from each side and 5 % from top and bottom.
+- **Count**: `ExplorerRow.Count` added, `Name` holding the bare folder name; the Details row reads
+  `NameAndCount`, unchanged on screen. Before the index counts, the name stays under the tile.
+- **Docs**: the README's folder view paragraph (EN + FR) and the glossary's *Folder tile* row (EN + FR)
+  described "name then count": updated.
+- **Not checked on screen by the agent**: the checking launch opened in a folder without subfolders,
+  and going up would have changed the remembered open folder.
+
+No rule broken.
+
 ---
 
 ## Implementation Log
@@ -226,8 +248,9 @@ says so rather than staying blank.
 | Code | 3 | 2026-10-22 | `UI/Checkerboard.cs`; `ThumbnailGrid` (tiles, Details thumbnails, strips, Loading…), `UrlZone.UrlPreview`; built, 0 warning |
 | Unit tests | 3 | 2026-10-22 | Not applicable — no test project, painting only |
 | Code — folders at 256 px, black around cleared | 5, 6 | 2026-10-22 | `ShellThumbnail.TryLoadFolder` / `ClearOuterBlack`, called by `ThumbnailCache`; built, 0 warning |
-| Glossary (EN + FR) | 3 | 2026-10-22 | *Tile* row |
-| README | | | Not applicable — it does not describe the tiles' background |
+| Code — folders trimmed, name on the flap, count below | 7, 8, 9 | 2026-10-22 | `ShellThumbnail.Trim`; `ThumbnailGrid.PaintFolderName` / `FolderFlap`, `PaintFolderGlyph` grown; `ExplorerRow.Count`; built, 0 warning |
+| Glossary (EN + FR) | 3, 9 | 2026-10-22 | *Tile* row; *Folder tile* row |
+| README | 9 | 2026-10-22 | Folder view paragraph (EN + FR) — the checkerboard itself needed none |
 
 ---
 
