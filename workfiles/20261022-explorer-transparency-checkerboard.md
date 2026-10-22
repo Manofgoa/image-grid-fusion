@@ -92,6 +92,26 @@ spinner's veil and the play badge are drawn over it as today.
 
 ---
 
+## Folder Tiles
+
+Origin: Iterations 7 and 8, asked after the checkerboard was delivered.
+
+- **The folder fills its tile**: Windows' folder thumbnail is **trimmed to its visible part** — the
+  pixels whose alpha is above 32, the faint shadow left out — in `ShellThumbnail.TryLoadFolder`, after the
+  black around is cleared; the trimmed picture is then scaled to the tile like any thumbnail, its
+  proportions kept, so the folder takes the tile's full height. The **drawn folder** (no Windows
+  thumbnail) grows the same way: 90 % of the tile, at its 4:3 shape.
+- **The folder's name in bold on its front flap** (Thumbnails view): the folder's own name — not the
+  file count — centered on the lower part of the folder, its yellow front flap (from 58 % to 96 % of
+  the picture's height, 8 % in from each side; the drawn folder's front panel), on **two lines at
+  most**, cut with `…`. Bold, in the panel's font, its size scaled to the flap — half the flap's height
+  per line at most, never under the tile name's size — **almost black over a white halo**, legible on
+  the yellow as on a photo.
+- The name and the file count **stay under the tile** as before.
+- Thumbnails view only: a Details row's thumbnail is a quarter of the tile and its name is next to it.
+
+---
+
 ## Test Impact
 
 No unit test project exists in the repository (`src/` holds the app only), and the change is pure
@@ -174,6 +194,18 @@ Applied to folders whose thumbnail comes fully opaque (the case Windows lost the
 pixels joined to the edges become transparent, a flood from the border; the black inside the folder's
 picture stays. Files left alone — their black borders are content.
 
+### Iteration 7 — 2026-10-22 — ⚙️ Post-implementation — Bigger folder icons
+
+Asked by the user once the folder fix was tested (Q&A 12): the folder icons have too much margin
+around them. Decided (Q&A 13): Windows' thumbnail is trimmed to its visible part, then fitted to the
+tile; the drawn folder grows the same way. See § Folder Tiles.
+
+### Iteration 8 — 2026-10-22 — ⚙️ Post-implementation — Folder name in bold on the folder
+
+Asked in the same message: the folder's name drawn in bold over the folder. Decided (Q&A 14–16): on the
+front flap, two lines at most; almost black over a white halo; the name and count kept under the tile.
+See § Folder Tiles.
+
 ---
 
 ## Implementation Log
@@ -208,6 +240,11 @@ Questions asked by the agent during design, with user responses.
 | 9 | Task finished? | Not yet — some folders have a black background (screenshot) | 2026-10-22 |
 | 10 | How to fix the opaque folder thumbnails — ask another size on an opaque one, always 256 for folders, or nothing? | Folders always asked at 256 px | 2026-10-22 |
 | 11 | (user's request) | And black detected around the thumbnail is removed | 2026-10-22 |
+| 12 | Task finished? | "Not bad" — the folder icons have too much margin; draw the folder's name in bold over it | 2026-10-22 |
+| 13 | How to enlarge the folder icon — trim the empty margin, or a fixed zoom? | Trim the empty margin | 2026-10-22 |
+| 14 | Where to draw the bold name — front flap, center, bottom band? | On the front flap | 2026-10-22 |
+| 15 | Which style — dark over a light halo, white over a black one? | Dark over a light halo | 2026-10-22 |
+| 16 | The name under the tile — kept, or only the count? | Kept | 2026-10-22 |
 
 ---
 
