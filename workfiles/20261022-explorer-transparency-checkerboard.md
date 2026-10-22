@@ -31,8 +31,9 @@ transparency reaches the paint, it is only hidden by the grey under it.
 
 **Folders are asked at 256 px.** For some folders, Windows' thumbnail at 384–512 px comes **opaque**,
 its transparent areas painted black — the same folder at 256 or 1024 px keeps its alpha. Windows
-gives a folder's thumbnail at 256 px whatever the size asked, so `ThumbnailCache` asks a folder at
-**256 px** (`FolderSide`) whatever the tile's bucket: nothing is lost, and the alpha comes with it.
+gives a folder's thumbnail at 256 px whatever the size asked, so `ThumbnailCache` asks a folder —
+a path `Directory.Exists` finds — through `ShellThumbnail.TryLoadFolder`, at **256 px**
+(`ShellThumbnail.FolderSide`) whatever the tile's bucket: nothing is lost, and the alpha comes with it.
 
 **The black around an opaque folder is cleared.** Should a folder's thumbnail still come fully opaque,
 the black **joined to its edges** — pixels near black (each channel ≤ 8), reached from the border
@@ -184,6 +185,7 @@ says so rather than staying blank.
 |---|---|---|---|
 | Code | 3 | 2026-10-22 | `UI/Checkerboard.cs`; `ThumbnailGrid` (tiles, Details thumbnails, strips, Loading…), `UrlZone.UrlPreview`; built, 0 warning |
 | Unit tests | 3 | 2026-10-22 | Not applicable — no test project, painting only |
+| Code — folders at 256 px, black around cleared | 5, 6 | 2026-10-22 | `ShellThumbnail.TryLoadFolder` / `ClearOuterBlack`, called by `ThumbnailCache`; built, 0 warning |
 | Glossary (EN + FR) | 3 | 2026-10-22 | *Tile* row |
 | README | | | Not applicable — it does not describe the tiles' background |
 
