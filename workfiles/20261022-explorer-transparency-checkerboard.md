@@ -56,16 +56,19 @@ spinner's veil and the play badge are drawn over it as today.
   definition for both.
 - **Finer, scaled to the box**: the square's side follows the box it fills, so a tile shows about the
   same number of squares whatever the tile size — proposed: **the box's height / 16, at least 3 device
-  px** (a 75 px high tile → ~5 px squares, a 750 px one → ~47 px): about 12 rows of squares in every
-  box.
+  px** (a 75 px high tile → ~5 px squares, a 750 px one → ~47 px): 16 rows of squares in every box.
+- **Sharp squares**: filled with the nearest texel, sampled at the pixels' centers, whatever the
+  caller's interpolation — the explorer draws in high-quality bicubic.
 - **Anchored on the box's top-left corner**: each box starts with a white square, so the pattern does
   not slide with the scroll and every tile looks the same.
-- **One helper**, shared by the explorer and the URL zone: a new `UI/Checkerboard.cs` —
+- **One helper**, shared by the explorer and the URL zone: `UI/Checkerboard.cs` —
   `Checkerboard.Fill(Graphics g, Rectangle box)` computing the square from the box and filling it,
-  its `TextureBrush` cached per square size (a handful of sizes in practice: tiles, Details
-  thumbnails, strips, the Loading… slot, the URL preview), disposed with its tile bitmap.
+  its `TextureBrush` cached per square size (a handful of sizes in use: tiles, Details thumbnails,
+  strips, the Loading… slot, the URL preview), kept for the app's life — the brush holds its own copy
+  of the tile — the cache emptied past 32 sizes, as the tile size slider moves.
 - The preview's own checkerboard (`GridPreview.PaintCheckerboard`, 8 logical px, anchored on the
-  canvas, cut by the Twitter corners) is **not changed** — only its grey constant is shared.
+  canvas, cut by the Twitter corners) is **not changed** — only its grey is shared:
+  `Checkerboard.Grey`, read by the preview and the eyedropper's loupe.
 
 ---
 
@@ -128,6 +131,22 @@ mentions the checkerboard. No open question left.
 Go given (Q&A 8): code, tests and documentation, in the current checkout. Branch Gate: stays on
 `main`, the standing choice for this repository.
 
+### Iteration 4 — 2026-10-22 — 🧭 Implementation choices
+
+- **Rows of squares**: height / 16 gives **16 rows** per box, not ~12 as the design text and the
+  question's description said — a miscount; the formula chosen by the user is kept as is.
+- **Sharp squares**: `Checkerboard.Fill` sets nearest-neighbour interpolation and the half pixel
+  offset for its fill, then restores the caller's modes — the explorer paints in high-quality
+  bicubic, which would blur the squares' edges.
+- **Brush lifetime**: the brushes live in a static cache for the app's life, not disposed with a tile
+  bitmap (the brush copies it, the bitmap is disposed at once); the cache is emptied past 32 sizes.
+- **Shared grey**: `GridPreview.CheckerGrey` removed; the preview and the eyedropper's loupe read
+  `Checkerboard.Grey`.
+- **Commits**: the helper (with the shared grey), then its four uses, then the glossary — three
+  commits.
+
+No rule broken.
+
 ---
 
 ## Implementation Log
@@ -137,9 +156,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable — no test project, painting only |
-| Glossary (EN + FR) | | | |
+| Code | 3 | 2026-10-22 | `UI/Checkerboard.cs`; `ThumbnailGrid` (tiles, Details thumbnails, strips, Loading…), `UrlZone.UrlPreview`; built, 0 warning |
+| Unit tests | 3 | 2026-10-22 | Not applicable — no test project, painting only |
+| Glossary (EN + FR) | 3 | 2026-10-22 | *Tile* row |
 | README | | | Not applicable — it does not describe the tiles' background |
 
 ---
