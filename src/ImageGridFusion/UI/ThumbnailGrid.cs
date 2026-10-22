@@ -91,6 +91,9 @@ internal sealed class ThumbnailGrid : ScrollableControl
     // The tile whose light bulb the pointer is over, its tooltip then the excerpt; -1 for none.
     private int _bulbTip = -1;
     private IReadOnlyList<ExplorerRow> _rows = [];
+
+    // The folders whose name starts with words a sibling shares, by full path: drawn split on their flap.
+    private Dictionary<string, SplitName> _splitNames = [];
     private bool _hasMore;
     private bool _moreAsked;
     private int _tileSize = DefaultTileSize;
@@ -238,6 +241,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         string? selected = SelectedRow?.FullPath;
         int scroll = -AutoScrollPosition.Y;
         _rows = rows;
+        this._splitNames = SharedPrefix.Of(rows.Where(row => row.IsFolder).Select(row => row.FullPath));
         _hasMore = hasMore;
         _moreAsked = false;
         _pressed = -1;
@@ -860,13 +864,17 @@ internal sealed class ThumbnailGrid : ScrollableControl
     /// A tile's picture, in the tile's box or a Details row's thumbnail: the thumbnail — or a drawn
     /// folder — over the checkerboard showing its transparency, a folder's name on its front flap on a
     /// tile, its border, the heart in its medallion, and the light bulb with its arrow for a file found by
-    /// its content.
+    /// its content. A folder sits on the panel's background, without checkerboard nor resting border —
+    /// see workfiles/20261022-folder-tile-cleanup.md.
     /// </summary>
     private void PaintPicture(Graphics g, int index, bool selected)
     {
         var row = _rows[index];
         var tile = Scrolled(TileBounds(index));
-        Checkerboard.Fill(g, tile);
+        if (!row.IsFolder)
+        {
+            Checkerboard.Fill(g, tile);
+        }
 
         // Loaded at its bucket's size: scaled to the tile — enlarged when smaller — its proportions kept,
         // centered. A folder Windows has no thumbnail for gets a drawn folder.
@@ -893,12 +901,14 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
         if (!this.Details && flap is { } front)
         {
-            this.PaintFolderName(g, row.Name, front);
+            this.PaintFolderName(g, row, front);
         }
 
-        var border = selected ? SystemColors.Highlight : index == _hovered ? SystemColors.HotTrack : SystemColors.ControlDark;
-        using (var pen = new Pen(border, selected ? 2 : 1))
+        // A folder at rest has no border: only the hover and the selection outline it.
+        if (selected || index == _hovered || !row.IsFolder)
         {
+            var border = selected ? SystemColors.Highlight : index == _hovered ? SystemColors.HotTrack : SystemColors.ControlDark;
+            using var pen = new Pen(border, selected ? 2 : 1);
             g.DrawRectangle(pen, selected ? Rectangle.Inflate(tile, -1, -1) : new Rectangle(tile.X, tile.Y, tile.Width - 1, tile.Height - 1));
         }
 
@@ -992,18 +1002,22 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
     /// <summary>
     /// A folder's name in bold on its front <paramref name="flap"/>: centered, two lines at most, cut with
-    /// "…", a third of the flap's height — never under the tile names' size — almost black over a white
-    /// halo, legible on the yellow as on a photo. See workfiles/20261022-explorer-transparency-checkerboard.md.
+    /// "…", a third of the flap's height — never under the tile names' size — almost black over a soft
+    /// white shadow. A prefix shared with a sibling (<see cref="SharedPrefix"/>) goes small on the flap's
+    /// first line, followed by "›", the rest of the name large below it. See
+    /// workfiles/20261022-explorer-transparency-checkerboard.md and workfiles/20261022-folder-tile-cleanup.md.
     /// </summary>
-    private void PaintFolderName(Graphics g, string name, Rectangle flap)
+    private void PaintFolderName(Graphics g, ExplorerRow row, Rectangle flap)
     {
-        if (flap.Width <= 0 || flap.Height <= 0 || name.Length == 0)
+        if (flap.Width <= 0 || flap.Height <= 0 || row.Name.Length == 0)
         {
             return;
         }
 
         float minimum = this._nameFont.SizeInPoints * g.DpiY / 72f;
         float em = Math.Max(minimum, flap.Height / 3f);
+        var smoothing = g.SmoothingMode;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
         using var format = new StringFormat(StringFormatFlags.LineLimit)
         {
             Alignment = StringAlignment.Center,
@@ -1011,21 +1025,66 @@ internal sealed class ThumbnailGrid : ScrollableControl
             Trimming = StringTrimming.EllipsisCharacter,
         };
         using var path = new GraphicsPath();
-        path.AddString(name, this._nameFont.FontFamily, (int)FontStyle.Bold, em, flap, format);
-
-        var smoothing = g.SmoothingMode;
-        g.SmoothingMode = SmoothingMode.AntiAlias;
-        using (var halo = new Pen(Color.FromArgb(230, Color.White), Math.Max(2f, em / 5f)) { LineJoin = LineJoin.Round })
+        if (!this._splitNames.TryGetValue(row.FullPath, out var split))
         {
-            g.DrawPath(halo, path);
+            path.AddString(row.Name, this._nameFont.FontFamily, (int)FontStyle.Bold, em, flap, format);
+            PaintShadowed(g, path, em);
+            g.SmoothingMode = smoothing;
+            return;
         }
 
-        using (var text = new SolidBrush(Color.FromArgb(32, 32, 32)))
+        // The rest laid out in the flap below the small line, then the two moved to sit together — the
+        // small line right above the rest's letters — centered on the flap.
+        float small = Math.Max(minimum, flap.Height / 7f);
+        int line = Math.Min(flap.Height / 2, (int)Math.Ceiling(small * 1.3f));
+        float gap = small * 0.15f;
+        path.AddString(split.Rest, this._nameFont.FontFamily, (int)FontStyle.Bold, em, Rectangle.FromLTRB(flap.X, flap.Y + line, flap.Right, flap.Bottom), format);
+        var rest = path.GetBounds();
+        float block = line + gap + rest.Height;
+        float top = flap.Y + Math.Max(0f, (flap.Height - block) / 2f);
+        using (var shift = new Matrix())
         {
-            g.FillPath(text, path);
+            shift.Translate(0f, top + line + gap - rest.Top);
+            path.Transform(shift);
         }
 
+        using var single = new StringFormat(StringFormatFlags.NoWrap | StringFormatFlags.LineLimit)
+        {
+            Alignment = StringAlignment.Center,
+            LineAlignment = StringAlignment.Center,
+            Trimming = StringTrimming.EllipsisCharacter,
+        };
+        using var prefix = new GraphicsPath();
+        prefix.AddString($"{split.Prefix} ›", this._nameFont.FontFamily, (int)FontStyle.Bold, small, new RectangleF(flap.X, top, flap.Width, line), single);
+        PaintShadowed(g, prefix, small);
+        PaintShadowed(g, path, em);
         g.SmoothingMode = smoothing;
+    }
+
+    /// <summary>
+    /// Text drawn as a <paramref name="path"/>, almost black over a soft white shadow offset down-right —
+    /// a sharp core with a fainter spread around it, GDI+ having no blur — both scaled to its
+    /// <paramref name="em"/> size.
+    /// </summary>
+    private static void PaintShadowed(Graphics g, GraphicsPath path, float em)
+    {
+        float offset = Math.Max(1f, em / 16f);
+        using (var shadow = (GraphicsPath)path.Clone())
+        {
+            using var shift = new Matrix();
+            shift.Translate(offset, offset);
+            shadow.Transform(shift);
+            using (var spread = new Pen(Color.FromArgb(70, Color.White), offset * 2f) { LineJoin = LineJoin.Round })
+            {
+                g.DrawPath(spread, shadow);
+            }
+
+            using var core = new SolidBrush(Color.FromArgb(180, Color.White));
+            g.FillPath(core, shadow);
+        }
+
+        using var text = new SolidBrush(Color.FromArgb(32, 32, 32));
+        g.FillPath(text, path);
     }
 
     private static string FileCount(int count) => count == 1 ? "1 file" : $"{count:N0} files";

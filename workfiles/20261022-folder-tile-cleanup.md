@@ -58,8 +58,9 @@ docs that describe the folder tile (`GLOSSARY.md` / `GLOSSARY.fr.md` *Folder til
 - **The white halo goes** (`PaintFolderName`'s `halo` pen).
 - **A light drop shadow** replaces it: the text stays **almost black** (32, 32, 32), over a **soft
   white shadow** offset down-right under the letters — the best contrast on the flap's yellow. GDI+
-  has no blur: the softness is obtained by drawing the shadow path a few times at low opacity around
-  its offset, or from a small bitmap scaled up — an implementation choice.
+  has no blur: the shadow is the text's path offset by a sixteenth of its size (at least 1 px), filled
+  white at 70 % opacity, with a fainter spread around it (a white pen twice the offset wide, 27 %) —
+  `ThumbnailGrid.PaintShadowed`, used by the name and the prefix alike.
 
 ---
 
@@ -82,10 +83,19 @@ Alpha
   parent folder** — in the folder view, the open folder's subfolders; in a search, the folders found
   under the same parent. Two folders of different parents never share a prefix.
 - Each folder shows **its own text** for the prefix (its own case), never another's.
-- **The small line**: one line, cut with `…`, in the tile names' size or a fraction of the large size
-  (implementation choice), with the same shadow as the name.
+- **The small line**: one line, cut with `…`, a seventh of the flap's height — never under the tile
+  names' size — its line 1.3 times that, at most half the flap, with the same shadow as the name.
 - **The large part**: the rest of the name, the separator after the prefix dropped (`Outils RS - Alpha`
-  → `Alpha`), on the space left — two lines at most, cut with `…`, as today.
+  → `Alpha`), at the same size as an unsplit name (a third of the flap's height) — two lines at most,
+  cut with `…`; the space being smaller, it usually holds one.
+- **Together**: the small line sits **right above** the large part, a small gap between them (15 % of
+  the small size), and the two are **centered together** on the flap — never the small line pinned to
+  the flap's top.
+- **One computation**, `Explorer/SharedPrefix.Of` (full paths in, split names by path out), run by
+  `ThumbnailGrid.SetRows` over the folders of the rows it is given: a sibling not loaded yet (a later
+  load) gives its prefix once it is.
+- A sibling sharing **all** the words of a folder's name gives it nothing, another may still:
+  `Outils RS` next to `Outils RS 2` and `Outils Divers` shows `Outils ›` over `RS`.
 - A folder sharing no prefix is drawn as today (whole name, large).
 - Thumbnails view only; the tile's text under it (the file count) is unchanged; the Details row keeps
   `name (140)`.
@@ -159,6 +169,35 @@ Last open questions settled (Q&A 7, 11, 12): the Details view's folder thumbnail
 treatment; the prefix is shared among siblings only — the shown folders with the same parent; the
 glossary and the README (EN + FR) describe it. No open question left.
 
+### Iteration 4 — 2026-10-22 — ✅ Implemented
+
+Go given (Q&A 13): code, tests and documentation, in a worktree —
+`.claude/worktrees/folder-tile-cleanup`, branch `feature/folder-tile-cleanup`, created from `main`.
+
+### Iteration 5 — 2026-10-22 — 🧭 Implementation choices
+
+- **Shadow**: the path offset by em / 16 (≥ 1 px), filled white at alpha 180, with a white pen of
+  twice the offset at alpha 70 around it for the softness — no bitmap blur (`PaintShadowed`).
+- **Small line size**: flap height / 7, never under the tile names' size; its line 1.3 em, at most half
+  the flap. The large part keeps the unsplit size (flap height / 3) in the area left below it.
+- **Where the prefix is computed**: `Explorer/SharedPrefix` (pure, path-based, so `Explorer` does not
+  depend on the UI's `ExplorerRow`), called in `ThumbnailGrid.SetRows`; each load recomputes it over
+  every folder loaded so far.
+- **A sibling sharing the whole name** gives no prefix (the rule "leaving at least one word"), but
+  another sibling sharing fewer words still may — the case is written in § Shared Prefix.
+- **Hover / selection**: the folder's border is drawn only while hovered or selected, in both views
+  (`PaintPicture` serves the tile and the Details thumbnail).
+- **Commits**: background and border; the prefix logic; the shadow and the prefix painting (one commit,
+  both in `PaintFolderName`); the glossary; the README — five code / doc commits.
+
+No rule broken.
+
+### Iteration 6 — 2026-10-22 — ⚙️ Post-implementation — Prefix closer to the name
+
+Asked by the user after testing (Q&A 14): `Outils RS ›` sat too high, pinned to the top of the flap,
+far from `Alpha`. The small line now sits right above the large part, a small gap between them, the
+two centered together on the flap.
+
 ---
 
 ## Implementation Log
@@ -168,9 +207,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project — none planned |
-| README | | | |
+| Code | 4 | 2026-10-22 | Background and border, `SharedPrefix`, shadow and prefix painting |
+| Unit tests | 4 | 2026-10-22 | Not applicable — no test project in the repository |
+| README | 4 | 2026-10-22 | Folder view paragraph, EN + FR |
+| Glossary | 4 | 2026-10-22 | *Folder tile* row, EN + FR |
 
 ---
 
@@ -192,7 +232,8 @@ Questions asked by the agent during design, with user responses.
 | 10 | Prefix word separators: spaces only, or also `-`, `_`, `.`? | Spaces, `-`, `_`, `.` | 2026-10-22 |
 | 11 | Prefix computed over the folders shown together in the list? | Siblings on disk only (same parent) | 2026-10-22 |
 | 12 | README sentence about the prefix (EN + FR), or glossary only? | Glossary and README | 2026-10-22 |
-| 13 | Go for implementation: scope and where? | | |
+| 13 | Go for implementation: scope and where? | Code, tests and documentation; worktree | 2026-10-22 |
+| 14 | Merge the branch into `main`? Is the task finished? | *(user, instead)* The prefix is pinned too high: bring it closer to its name | 2026-10-22 |
 
 ---
 
