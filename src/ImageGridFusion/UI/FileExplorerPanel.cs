@@ -1975,7 +1975,7 @@ internal sealed class FileExplorerPanel : Panel
         return paths;
     }
 
-    /// <summary>A folder's tile: its name, then every file below it as the index counts them, once the index is there.</summary>
+    /// <summary>A folder's tile: its name, and every file below it as the index counts them, once the index is there.</summary>
     private ExplorerRow FolderRow(string fullPath)
     {
         string name = Path.GetFileName(fullPath);
@@ -1986,7 +1986,7 @@ internal sealed class FileExplorerPanel : Panel
 
         _tree ??= FolderTree.Of(_index.Entries);
         int count = _tree.CountBelow(Path.GetRelativePath(_baseFolder, fullPath), _index.Count);
-        return new ExplorerRow(fullPath, $"{name} ({count:N0})", IsFolder: true);
+        return new ExplorerRow(fullPath, name, IsFolder: true, Count: count);
     }
 
     private static string Folders(int count) => count == 1 ? "1 folder" : $"{count:N0} folders";

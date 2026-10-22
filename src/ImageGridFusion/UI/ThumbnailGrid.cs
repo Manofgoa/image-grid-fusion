@@ -9,13 +9,16 @@ namespace ImageGridFusion.UI;
 
 /// <summary>
 /// A tile of the explorer's grid: a file — a favorite, a search result, a file of the open folder — or,
-/// in the folder view, a folder (<paramref name="IsFolder"/>), its name then carrying its file count.
-/// <paramref name="ContentWord"/>: for a search result found thanks to its content text, the first
+/// in the folder view, a folder (<paramref name="IsFolder"/>), with the number of files below it once the
+/// index counts them (<paramref name="Count"/>). <paramref name="ContentWord"/>: for a search result found thanks to its content text, the first
 /// query word found there, folded. <paramref name="Size"/>: the file's size in bytes when the list
 /// knows it — the index's, the folder listing's.
 /// </summary>
-internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false, string? ContentWord = null, long? Size = null)
+internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false, string? ContentWord = null, long? Size = null, int? Count = null)
 {
+    /// <summary>The name with the file count after it, as a Details row shows a folder.</summary>
+    public string NameAndCount => this.Count is { } count ? $"{this.Name} ({count:N0})" : this.Name;
+
     /// <summary>Whether the search found it thanks to its content text: it shows the light bulb.</summary>
     public bool ByContent => this.ContentWord is not null;
 }
@@ -650,9 +653,11 @@ internal sealed class ThumbnailGrid : ScrollableControl
         var row = _rows[index];
         bool selected = index == _selected;
         this.PaintPicture(g, index, selected);
+
+        // A folder's name is drawn on the folder: its file count goes below.
         TextRenderer.DrawText(
             g,
-            row.Name,
+            row.IsFolder && row.Count is { } count ? FileCount(count) : row.Name,
             _nameFont,
             Scrolled(NameBounds(index)),
             selected ? SystemColors.Highlight : SystemColors.GrayText,
@@ -698,7 +703,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
         TextRenderer.DrawText(
             g,
-            row.Name,
+            row.NameAndCount,
             this.Font,
             new Rectangle(left, cell.Y, nameWidth, this.LineH),
             selected ? SystemColors.Highlight : SystemColors.ControlText,
@@ -853,8 +858,9 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
     /// <summary>
     /// A tile's picture, in the tile's box or a Details row's thumbnail: the thumbnail — or a drawn
-    /// folder — over the checkerboard showing its transparency, its border, the heart in its medallion,
-    /// and the light bulb with its arrow for a file found by its content.
+    /// folder — over the checkerboard showing its transparency, a folder's name on its front flap on a
+    /// tile, its border, the heart in its medallion, and the light bulb with its arrow for a file found by
+    /// its content.
     /// </summary>
     private void PaintPicture(Graphics g, int index, bool selected)
     {
@@ -866,9 +872,10 @@ internal sealed class ThumbnailGrid : ScrollableControl
         // centered. A folder Windows has no thumbnail for gets a drawn folder.
         bool known = _thumbnails.TryGet(row.FullPath, out var image);
         Rectangle? drawn = null;
+        Rectangle? flap = null;
         if (known && image is null && row.IsFolder)
         {
-            PaintFolderGlyph(g, tile);
+            flap = PaintFolderGlyph(g, tile);
         }
         else if (image is not null)
         {
@@ -878,6 +885,15 @@ internal sealed class ThumbnailGrid : ScrollableControl
             var target = new Rectangle(tile.X + (tile.Width - width) / 2, tile.Y + (tile.Height - height) / 2, width, height);
             g.DrawImage(image, target, new Rectangle(0, 0, image.Width, image.Height), GraphicsUnit.Pixel);
             drawn = target;
+            if (row.IsFolder)
+            {
+                flap = FolderFlap(target);
+            }
+        }
+
+        if (!this.Details && flap is { } front)
+        {
+            this.PaintFolderName(g, row.Name, front);
         }
 
         var border = selected ? SystemColors.Highlight : index == _hovered ? SystemColors.HotTrack : SystemColors.ControlDark;
@@ -929,11 +945,20 @@ internal sealed class ThumbnailGrid : ScrollableControl
         }
     }
 
-    /// <summary>A manila folder centered in the tile, its tab at the top left, half the tile's height.</summary>
-    private static void PaintFolderGlyph(Graphics g, Rectangle tile)
+    /// <summary>
+    /// A manila folder centered in the tile, its tab at the top left, 90 % of the tile at its 4:3 shape;
+    /// returns where its name goes, on its front panel.
+    /// </summary>
+    private static Rectangle PaintFolderGlyph(Graphics g, Rectangle tile)
     {
-        int height = Math.Max(8, tile.Height / 2);
+        int height = Math.Max(8, tile.Height * 9 / 10);
         int width = height * 4 / 3;
+        if (width > tile.Width * 9 / 10)
+        {
+            width = Math.Max(8, tile.Width * 9 / 10);
+            height = width * 3 / 4;
+        }
+
         var body = new Rectangle(tile.X + (tile.Width - width) / 2, tile.Y + (tile.Height - height) / 2 + height / 10, width, height - height / 10);
         var tab = new Rectangle(body.X, body.Y - height / 8, width * 2 / 5, height / 8 + 2);
         var smoothing = g.SmoothingMode;
@@ -944,13 +969,66 @@ internal sealed class ThumbnailGrid : ScrollableControl
             g.FillRectangle(back, body);
         }
 
+        var panel = new Rectangle(body.X, body.Y + body.Height / 5, body.Width, body.Height - body.Height / 5);
         using (var front = new SolidBrush(Color.FromArgb(247, 205, 95)))
         {
-            g.FillRectangle(front, new Rectangle(body.X, body.Y + body.Height / 5, body.Width, body.Height - body.Height / 5));
+            g.FillRectangle(front, panel);
+        }
+
+        g.SmoothingMode = smoothing;
+        return Rectangle.Inflate(panel, -panel.Width * 8 / 100, -panel.Height * 5 / 100);
+    }
+
+    /// <summary>
+    /// The front flap of Windows' folder thumbnail, trimmed to the folder
+    /// (<see cref="ShellThumbnail.TryLoadFolder"/>) and drawn in <paramref name="folder"/>: its lower part,
+    /// from 58 % to 96 % of its height, 8 % in from each side.
+    /// </summary>
+    private static Rectangle FolderFlap(Rectangle folder) => Rectangle.FromLTRB(
+        folder.X + folder.Width * 8 / 100,
+        folder.Y + folder.Height * 58 / 100,
+        folder.Right - folder.Width * 8 / 100,
+        folder.Y + folder.Height * 96 / 100);
+
+    /// <summary>
+    /// A folder's name in bold on its front <paramref name="flap"/>: centered, two lines at most, cut with
+    /// "…", a third of the flap's height — never under the tile names' size — almost black over a white
+    /// halo, legible on the yellow as on a photo. See workfiles/20261022-explorer-transparency-checkerboard.md.
+    /// </summary>
+    private void PaintFolderName(Graphics g, string name, Rectangle flap)
+    {
+        if (flap.Width <= 0 || flap.Height <= 0 || name.Length == 0)
+        {
+            return;
+        }
+
+        float minimum = this._nameFont.SizeInPoints * g.DpiY / 72f;
+        float em = Math.Max(minimum, flap.Height / 3f);
+        using var format = new StringFormat(StringFormatFlags.LineLimit)
+        {
+            Alignment = StringAlignment.Center,
+            LineAlignment = StringAlignment.Center,
+            Trimming = StringTrimming.EllipsisCharacter,
+        };
+        using var path = new GraphicsPath();
+        path.AddString(name, this._nameFont.FontFamily, (int)FontStyle.Bold, em, flap, format);
+
+        var smoothing = g.SmoothingMode;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        using (var halo = new Pen(Color.FromArgb(230, Color.White), Math.Max(2f, em / 5f)) { LineJoin = LineJoin.Round })
+        {
+            g.DrawPath(halo, path);
+        }
+
+        using (var text = new SolidBrush(Color.FromArgb(32, 32, 32)))
+        {
+            g.FillPath(text, path);
         }
 
         g.SmoothingMode = smoothing;
     }
+
+    private static string FileCount(int count) => count == 1 ? "1 file" : $"{count:N0} files";
 
     // The drawn tile, from LayoutRows(): the row's width shared by as many tiles as fit at the tile size, at 4:3.
     private int TileW => _tileW;
