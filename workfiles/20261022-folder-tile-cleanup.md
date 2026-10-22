@@ -86,8 +86,11 @@ Alpha
 - **The small line**: one line, cut with `…`, a seventh of the flap's height — never under the tile
   names' size — its line 1.3 times that, at most half the flap, with the same shadow as the name.
 - **The large part**: the rest of the name, the separator after the prefix dropped (`Outils RS - Alpha`
-  → `Alpha`), centered in the flap below the small line, at the same size as an unsplit name (a third
-  of the flap's height) — two lines at most, cut with `…`; the space being smaller, it usually holds one.
+  → `Alpha`), at the same size as an unsplit name (a third of the flap's height) — two lines at most,
+  cut with `…`; the space being smaller, it usually holds one.
+- **Together**: the small line sits **right above** the large part, a small gap between them (15 % of
+  the small size), and the two are **centered together** on the flap — never the small line pinned to
+  the flap's top.
 - **One computation**, `Explorer/SharedPrefix.Of` (full paths in, split names by path out), run by
   `ThumbnailGrid.SetRows` over the folders of the rows it is given: a sibling not loaded yet (a later
   load) gives its prefix once it is.
@@ -189,6 +192,12 @@ Go given (Q&A 13): code, tests and documentation, in a worktree —
 
 No rule broken.
 
+### Iteration 6 — 2026-10-22 — ⚙️ Post-implementation — Prefix closer to the name
+
+Asked by the user after testing (Q&A 14): `Outils RS ›` sat too high, pinned to the top of the flap,
+far from `Alpha`. The small line now sits right above the large part, a small gap between them, the
+two centered together on the flap.
+
 ---
 
 ## Implementation Log
@@ -224,6 +233,7 @@ Questions asked by the agent during design, with user responses.
 | 11 | Prefix computed over the folders shown together in the list? | Siblings on disk only (same parent) | 2026-10-22 |
 | 12 | README sentence about the prefix (EN + FR), or glossary only? | Glossary and README | 2026-10-22 |
 | 13 | Go for implementation: scope and where? | Code, tests and documentation; worktree | 2026-10-22 |
+| 14 | Merge the branch into `main`? Is the task finished? | *(user, instead)* The prefix is pinned too high: bring it closer to its name | 2026-10-22 |
 
 ---
 
