@@ -1546,7 +1546,8 @@ internal sealed class ThumbnailGrid : ScrollableControl
                 Bitmap? image = null;
                 try
                 {
-                    using var thumbnail = ShellThumbnail.TryLoad(path, side);
+                    // A folder at its own size, the only one Windows always gives with its transparency.
+                    using var thumbnail = Directory.Exists(path) ? ShellThumbnail.TryLoadFolder(path) : ShellThumbnail.TryLoad(path, side);
                     image = thumbnail is null ? null : Fit(thumbnail, box);
                 }
                 catch (Exception ex) when (ex is ExternalException or ArgumentException or OutOfMemoryException)

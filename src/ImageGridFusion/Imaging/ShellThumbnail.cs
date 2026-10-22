@@ -11,6 +11,12 @@ public static class ShellThumbnail
 {
     internal const int RequestedSide = 1024;
 
+    /// <summary>The side Windows gives a folder's thumbnail, whatever the size asked.</summary>
+    internal const int FolderSide = 256;
+
+    // The highest value of each channel still taken for the black around an opaque folder.
+    private const int NearBlack = 8;
+
     /// <summary>
     /// Returns null when Windows has no thumbnail for the file. <paramref name="side"/> is the size
     /// asked for, a bigger one accepted: the cells' previews take the largest, the file explorer's
@@ -45,6 +51,111 @@ public static class ShellThumbnail
             }
         }
     }
+
+    /// <summary>
+    /// A folder's thumbnail, asked at <see cref="FolderSide"/>: at some other sizes Windows gives some
+    /// folders an opaque one, black where the folder is transparent. Should it still come opaque, the
+    /// black joined to its edges is made transparent; the black inside the picture stays. See
+    /// workfiles/20261022-explorer-transparency-checkerboard.md.
+    /// </summary>
+    public static Bitmap? TryLoadFolder(string path)
+    {
+        var bitmap = TryLoad(path, FolderSide);
+        if (bitmap is not null)
+        {
+            ClearOuterBlack(bitmap);
+        }
+
+        return bitmap;
+    }
+
+    /// <summary>
+    /// On a fully opaque <paramref name="bitmap"/>, the near-black pixels reached from its border through
+    /// near-black pixels only become transparent. One with any transparency is left as it is.
+    /// </summary>
+    private static void ClearOuterBlack(Bitmap bitmap)
+    {
+        int width = bitmap.Width;
+        int height = bitmap.Height;
+        int[] pixels = new int[width * height];
+        var bounds = new Rectangle(0, 0, width, height);
+        var data = bitmap.LockBits(bounds, ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
+        try
+        {
+            for (int y = 0; y < height; y++)
+            {
+                Marshal.Copy(data.Scan0 + y * data.Stride, pixels, y * width, width);
+            }
+
+            foreach (int pixel in pixels)
+            {
+                if ((uint)pixel >> 24 != 0xFF)
+                {
+                    return;
+                }
+            }
+
+            // A cleared pixel is 0, fully transparent: never visited twice.
+            var queue = new Queue<int>();
+            void Visit(int i)
+            {
+                if (pixels[i] != 0 && IsNearBlack(pixels[i]))
+                {
+                    pixels[i] = 0;
+                    queue.Enqueue(i);
+                }
+            }
+
+            for (int x = 0; x < width; x++)
+            {
+                Visit(x);
+                Visit((height - 1) * width + x);
+            }
+
+            for (int y = 0; y < height; y++)
+            {
+                Visit(y * width);
+                Visit(y * width + width - 1);
+            }
+
+            while (queue.Count > 0)
+            {
+                int i = queue.Dequeue();
+                int x = i % width;
+                if (x > 0)
+                {
+                    Visit(i - 1);
+                }
+
+                if (x < width - 1)
+                {
+                    Visit(i + 1);
+                }
+
+                if (i >= width)
+                {
+                    Visit(i - width);
+                }
+
+                if (i < (height - 1) * width)
+                {
+                    Visit(i + width);
+                }
+            }
+
+            for (int y = 0; y < height; y++)
+            {
+                Marshal.Copy(pixels, y * width, data.Scan0 + y * data.Stride, width);
+            }
+        }
+        finally
+        {
+            bitmap.UnlockBits(data);
+        }
+    }
+
+    private static bool IsNearBlack(int argb) =>
+        (argb & 0xFF) <= NearBlack && ((argb >> 8) & 0xFF) <= NearBlack && ((argb >> 16) & 0xFF) <= NearBlack;
 
     /// <summary>
     /// Copies the bitmap, keeping its alpha channel: <see cref="Image.FromHbitmap(IntPtr)"/> takes the
