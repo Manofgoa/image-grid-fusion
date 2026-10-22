@@ -18,7 +18,7 @@ Each word used here has one meaning, given in the [Glossary](GLOSSARY.md).
   - With no image, the empty grid does the same: click it to pick files (a **+** and a hand cursor show it is clickable), drop files onto it, or paste them
 - A **file explorer** panel at the right of the preview: type a few letters to find a file in a base folder and its subfolders — from an index cached next to the exe, so it answers as you type — or type `*` to browse every file, the newest first — or by name or size —, or browse it folder by folder with 📁; see them as thumbnail tiles, loaded a few screens at a time as you scroll, heart them as favorites — or drop files from Explorer, or a cell by its ✥ handle, onto the panel — and drag them into a cell (see File explorer)
 - A **URL zone** at the bottom of the file explorer: paste the link of an **X / Twitter post** — or of an image, a video, another site through yt-dlp — click **Load**, and drag the media into a cell (see File explorer)
-- Several layouts per image count, picked from a strip of thumbnails — more of them under its **More** group — plus a mirror toggle; drag the separator between two cells to resize them (see Layouts)
+- Several layouts per image count, picked from a strip of thumbnails — more of them under its **More** group — plus a mirror toggle and two **Auto** buttons shaping the cells after their images; drag the separator between two cells to resize them (see Layouts)
 - No image list: the grid preview *is* the interface
   - Click a cell to select it, `Esc` to deselect; the effect tabs act on the selected cell (see Effects)
     - The selected cell shows, in fluorescent green at its bottom left, after a folder icon, the name of the file its image came from — shortened in the middle when too wide, the extension kept; hover it for the full path. Never in the exports
@@ -352,7 +352,7 @@ A row under the preview, above the Global tabs, plays the grid like a video play
 
 Each image count offers several layouts, picked by clicking a thumbnail in the strip on the left of the preview. The strip is always shown, so the preview keeps its size: with a single image it holds that count's only layout, and with no image the same thumbnail greyed out. The first layout of each count is the default; the app starts on it, and goes back to it whenever the number of images changes.
 
-From the top, the strip holds the mirror toggle (see Mirror), the layouts below, then a **More ▸** header: click it to show that count's extra layouts (see More layouts), click **More ▾** to hide them again. It starts collapsed, and collapses again whenever the number of images changes; collapsed while one of the extra layouts is active, it keeps that one's thumbnail shown. A strip taller than the window scrolls, with the mouse wheel or its scrollbar; the thumbnails keep their size.
+From the top, the strip holds the mirror toggle (see Mirror) and the two Auto buttons beside it (see Auto sizes), the layouts below, then a **More ▸** header: click it to show that count's extra layouts (see More layouts), click **More ▾** to hide them again. It starts collapsed, and collapses again whenever the number of images changes; collapsed while one of the extra layouts is active, it keeps that one's thumbnail shown. A strip taller than the window scrolls, with the mouse wheel or its scrollbar; the thumbnails keep their size.
 
 Image **1** always takes the featured (big) cell; the other images follow in reading order (left→right, top→bottom). Cell ratios are given for a 1.91:1 canvas (the Twitter format): below 1 suits portraits and phone screenshots, around 1.9 landscapes, above 3 panoramas.
 
@@ -487,6 +487,17 @@ Drag the **separator** between two cells to give one of them more room: the curs
 - The sizes belong to the grid, not to the images: swapping two cells or replacing an image keeps them; picking another layout or changing the number of images starts again on the layout's own sizes. They are not kept between two launches.
 - On the selected cell, a Blur or Crop bar lying on its edge — or one of their corners there — is grabbed before the separator; the separator stays reachable from the neighbour cell, or once that tab is unselected or its effect is off.
 - A text is laid out again for its new cell once the separator is released. Not while exporting.
+
+### Auto sizes
+
+The two buttons beside the mirror toggle move the separators for you, so that every cell takes the shape of its image and the images, shown whole, line up:
+
+- **↔ Auto** moves the vertical separators: the cells side by side get widths proportional to their images' ratios, so their images, shown whole, are **the same height**. A 16:9 video beside a 4:3 photo in the Twitter format: 57 % / 43 %, both 386 px high, with the same bands above and below.
+- **↕ Auto** moves the horizontal separators: the stacked cells get heights to match, so their images are **the same width**.
+- On a layout with a cell spanning several rows or columns (*Big left*, *Featured*…), each cell is shaped as close as it can be to its own image: the cells side by side line up, and a big cell keeps a big image.
+- After the click, every image is **shown whole** in its new cell, centered — as when it arrived (see Zoom): its own zoom and position are replaced. A text is left out: it does not weigh in the sizes, and takes the cell it is given.
+- The image counts as it is seen — cropped, turned — and the gap of the Borders is taken into account; the 10 % minimum of the separators holds, so an extreme ratio is approached, not reached. In the **Free** format, the canvas then takes the images' combined shape: side by side, the bands vanish.
+- A button is disabled when the layout has no separator in its direction — ↕ on *Two columns* — its tooltip saying so. One click is one step of the undo history; clicking the active thumbnail puts the layout's own sizes back.
 
 ## Fitting rules
 
