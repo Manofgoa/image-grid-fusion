@@ -34,6 +34,11 @@ its transparent areas painted black — the same folder at 256 or 1024 px keeps 
 gives a folder's thumbnail at 256 px whatever the size asked, so `ThumbnailCache` asks a folder at
 **256 px** (`FolderSide`) whatever the tile's bucket: nothing is lost, and the alpha comes with it.
 
+**The black around an opaque folder is cleared.** Should a folder's thumbnail still come fully opaque,
+the black **joined to its edges** — pixels near black (each channel ≤ 8), reached from the border
+through black pixels only — is made transparent; black inside the picture, behind the folder's outline,
+stays. Folders only: a file's opaque thumbnail (a JPEG with black borders) is its real content.
+
 ---
 
 ## Where the Checkerboard Goes
@@ -161,6 +166,13 @@ transparent; asked at 256 or 1024 px, the same folder keeps its alpha. The other
 every size. The tiles were at the 512 bucket, hence the black. Decided (Q&A 10): folders are always
 asked at 256 px — their real size — whatever the tile's bucket.
 
+### Iteration 6 — 2026-10-22 — ⚙️ Post-implementation — Black around a folder cleared
+
+Asked by the user while Iteration 5 was being coded: black detected around the thumbnail is removed.
+Applied to folders whose thumbnail comes fully opaque (the case Windows lost the alpha): the near-black
+pixels joined to the edges become transparent, a flood from the border; the black inside the folder's
+picture stays. Files left alone — their black borders are content.
+
 ---
 
 ## Implementation Log
@@ -193,6 +205,7 @@ Questions asked by the agent during design, with user responses.
 | 8 | Go for implementation? (scope, where) | Code, tests and documentation — current checkout (`main`) | 2026-10-22 |
 | 9 | Task finished? | Not yet — some folders have a black background (screenshot) | 2026-10-22 |
 | 10 | How to fix the opaque folder thumbnails — ask another size on an opaque one, always 256 for folders, or nothing? | Folders always asked at 256 px | 2026-10-22 |
+| 11 | (user's request) | And black detected around the thumbnail is removed | 2026-10-22 |
 
 ---
 
