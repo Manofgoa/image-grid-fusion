@@ -142,6 +142,10 @@ Last questions settled (Q&A 5, 7, 8): ↔ Auto moves the vertical separators (sa
 horizontal ones (same width); the principle — each cell shaped like its image — holds on layouts
 with spanning cells too; no test project. No open question left.
 
+### Iteration 4 — 2026-10-22 — ✅ Implemented
+
+Go given: code and documentation (no tests, Q&A 8), in a worktree on `feature/layout-auto-size`.
+
 ---
 
 ## Implementation Log
