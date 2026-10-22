@@ -42,7 +42,7 @@ Every thumbnail box of the file explorer:
 | A Details row's thumbnail (file or folder) | ✅ whole box |
 | A folder row's strip thumbnails (Details view) | ✅ each strip box |
 | The Loading… slot (both views) | ✅ whole slot, "Loading…" text over it |
-| The URL zone's preview | ✅ whole preview — see Open Questions for its empty / failed states |
+| The URL zone's preview | ✅ whole preview, in every state — empty (🔗), failed (⚠), busy, ready |
 | A tile whose thumbnail is not loaded yet, or has none | ✅ the box shows the checkerboard alone |
 
 The borders, the heart and bulb medallions, the selection and hover outlines, the bulb's arrow, the
@@ -56,7 +56,8 @@ spinner's veil and the play badge are drawn over it as today.
   definition for both.
 - **Finer, scaled to the box**: the square's side follows the box it fills, so a tile shows about the
   same number of squares whatever the tile size — proposed: **the box's height / 16, at least 3 device
-  px** (a 75 px high tile → ~5 px squares, a 750 px one → ~47 px). *(See Open Questions.)*
+  px** (a 75 px high tile → ~5 px squares, a 750 px one → ~47 px): about 12 rows of squares in every
+  box.
 - **Anchored on the box's top-left corner**: each box starts with a white square, so the pattern does
   not slide with the scroll and every tile looks the same.
 - **One helper**, shared by the explorer and the URL zone: a new `UI/Checkerboard.cs` —
@@ -65,6 +66,15 @@ spinner's veil and the play badge are drawn over it as today.
   thumbnails, strips, the Loading… slot, the URL preview), disposed with its tile bitmap.
 - The preview's own checkerboard (`GridPreview.PaintCheckerboard`, 8 logical px, anchored on the
   canvas, cut by the Twitter corners) is **not changed** — only its grey constant is shared.
+
+---
+
+## Documentation
+
+- `GLOSSARY.md` — the *Tile* row: its thumbnail drawn over white and grey squares showing its
+  transparency.
+- `GLOSSARY.fr.md` — the same row, in French, in the same commit.
+- README: untouched (it does not describe the tiles' background).
 
 ---
 
@@ -82,12 +92,9 @@ Windows thumbnail, a folder without one, the Details view, the Loading… slot a
 
 ## Open Questions
 
-- [ ] Square size: the box's height / 16 with a 3 px minimum (proportional, ~12 rows of squares in
-  every box), or another factor / a fixed small size?
-- [ ] URL zone preview with no image — empty (🔗) and failed (⚠) states: checkerboard too, or the
-  plain window background (no image, so no transparency to show)?
-- [ ] Documentation: add the checkerboard to the glossary's *Tile* row (EN + FR), or leave the docs
-  untouched (a visual detail)?
+- [x] ~~Square size: the box's height / 16 with a 3 px minimum, or another factor / a fixed small size?~~ → Height / 16, at least 3 px
+- [x] ~~URL zone preview with no image — empty (🔗) and failed (⚠) states: checkerboard too, or plain?~~ → Checkerboard too, in every state
+- [x] ~~Documentation: add the checkerboard to the glossary's *Tile* row (EN + FR)?~~ → Yes, EN + FR
 
 ---
 
@@ -110,6 +117,12 @@ The exploration found the four fills to replace (`PaintPicture`, `PaintStrip`, `
 one shared `Checkerboard` helper, white + the preview's grey, square = box height / 16 (min 3 px),
 anchored per box.
 
+### Iteration 2 — 2026-10-22
+
+Open questions settled (Q&A 5–7): squares at the box's height / 16, at least 3 px; the URL preview
+shows the checkerboard in every state, empty and failed included; the glossary's *Tile* row (EN + FR)
+mentions the checkerboard. No open question left.
+
 ---
 
 ## Implementation Log
@@ -121,7 +134,8 @@ says so rather than staying blank.
 |---|---|---|---|
 | Code | | | |
 | Unit tests | | | Not applicable — no test project, painting only |
-| README | | | |
+| Glossary (EN + FR) | | | |
+| README | | | Not applicable — it does not describe the tiles' background |
 
 ---
 
@@ -135,9 +149,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | What surface of the tile does it cover — the image's rectangle only, or the whole 4:3 box? | The whole 4:3 box | 2026-10-22 |
 | 3 | Which pattern — the preview's, or finer, scaled to the tile? | Finer, scaled to the tile | 2026-10-22 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward | 2026-10-22 |
-| 5 | Square size factor? | | |
-| 6 | URL preview's empty / failed states: checkerboard or plain? | | |
-| 7 | Documentation: glossary *Tile* row updated? | | |
+| 5 | Square size factor? | Height / 16, at least 3 px | 2026-10-22 |
+| 6 | URL preview's empty / failed states: checkerboard or plain? | Checkerboard too | 2026-10-22 |
+| 7 | Documentation: glossary *Tile* row updated? | Yes, EN + FR | 2026-10-22 |
+| 8 | Go for implementation? (scope, where) | | |
 
 ---
 
