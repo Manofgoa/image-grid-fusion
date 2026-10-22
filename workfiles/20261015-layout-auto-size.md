@@ -53,11 +53,18 @@ heights proportional to the inverse ratios, every image the **same width**.
 The screenshot's case (Twitter format, 1200 × 628): 16:9 + 4:3 → widths 57 % / 43 %; both images
 386 px high, with the same bands above and below.
 
+The principle holds on **every layout**, those whose cells span several rows or columns included
+(Big left, Featured…): each cell is shaped as close as possible to its image — the fewest bands —
+never strictly equal heights across all the images. Cells side by side in one band get equal
+heights; a big cell keeps a big image.
+
 ### The Two Buttons
 
-- One button moves the **vertical separators** only (cells side by side resized: images the same
-  height); the other the **horizontal separators** only (stacked cells resized: images the same
-  width). Which one moves which separators: Open Questions.
+- **↔ Auto** moves the **vertical separators** only: the cells side by side are resized, their
+  images get the **same height**.
+- **↕ Auto** moves the **horizontal separators** only: the stacked cells are resized, their images
+  get the **same width**.
+- Each is named by what it changes, its arrow the direction its separators move.
 - **Placement**: on the **mirror toggle's row**, at the top of the strip — three icon buttons side
   by side, the mirror, then the two Auto buttons, each the same size; no text on them, their names
   in their tooltips. The row keeps the mirror toggle's height.
@@ -92,24 +99,25 @@ The screenshot's case (Twitter format, 1200 × 628): 16:9 + 4:3 → widths 57 % 
 
 ## Test Impact
 
-The app has **no test project**. The geometry (the separator positions Auto computes) is a pure
-function in `Composition/` that a test could pin. Whether a test project is created for it: Open
-Questions.
+The app has **no test project**, and none is created for this work (Q&A 8): the geometry is
+checked by hand in the app. It stays a pure function in `Composition/`, testable later.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| *(pending Q8)* | | |
+| — none: no test project, declined | — | — |
 
 ---
 
 ## Open Questions
 
-- [ ] Which button moves which separators, and their names / icons ("Auto vertical", "Auto horizontal")?
+- [x] ~~Which button moves which separators, and their names / icons ("Auto vertical", "Auto horizontal")?~~
+  → ↔ Auto moves the vertical separators (same height), ↕ Auto the horizontal ones (same width)
 - [x] ~~Where do the two buttons go in the layout strip?~~ → On the mirror toggle's row, icons only,
   names in the tooltips (option B)
-- [ ] On layouts where a cell spans several rows or columns (Big left, Featured…), keep the principle
-  (each cell shaped like its image), or force strictly equal heights across all images?
-- [ ] Create a test project for the geometry, or no tests?
+- [x] ~~On layouts where a cell spans several rows or columns (Big left, Featured…), keep the principle
+  (each cell shaped like its image), or force strictly equal heights across all images?~~ → The
+  principle: each cell shaped like its image
+- [x] ~~Create a test project for the geometry, or no tests?~~ → No tests
 
 ---
 
@@ -128,6 +136,12 @@ their orientation has no separator; the arrival zoom recomputed for every image.
 Placement settled (Q&A 6, option B of the four sketched): the two Auto buttons join the mirror
 toggle on its row, three icon buttons side by side, their names in the tooltips.
 
+### Iteration 3 — 2026-10-22
+
+Last questions settled (Q&A 5, 7, 8): ↔ Auto moves the vertical separators (same height), ↕ Auto the
+horizontal ones (same width); the principle — each cell shaped like its image — holds on layouts
+with spanning cells too; no test project. No open question left.
+
 ---
 
 ## Implementation Log
@@ -135,7 +149,7 @@ toggle on its row, three icon buttons side by side, their names in the tooltips.
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
 | Code | | | |
-| Unit tests | | | |
+| Unit tests | 3 | 2026-10-22 | Declined — no test project (Q&A 8) |
 | README | | | |
 
 ---
@@ -148,11 +162,11 @@ toggle on its row, three icon buttons side by side, their names in the tooltips.
 | 2 | One-shot action or persistent mode? | One-shot action | 2026-10-15 |
 | 3 | What happens to each image's zoom? | Recomputed as on arrival (Contain's zoom as a free zoom, centered) | 2026-10-15 |
 | 4 | Straightforward or tricky / long? | Straightforward | 2026-10-15 |
-| 5 | Which button moves which separators, and their names / icons? | | |
+| 5 | Which button moves which separators, and their names / icons? | ↔ Auto: vertical separators, same height; ↕ Auto: horizontal ones, same width | 2026-10-22 |
 | 6 | Where do the buttons go in the strip? | B — on the mirror toggle's row, icons only | 2026-10-21 |
-| 7 | Spanning cells: shapes like the images, or strictly equal heights? | | |
-| 8 | Test project for the geometry? | | |
+| 7 | Spanning cells: shapes like the images, or strictly equal heights? | Shapes like the images | 2026-10-22 |
+| 8 | Test project for the geometry? | No tests | 2026-10-22 |
 
 ---
 
-*Last updated: 2026-10-21*
+*Last updated: 2026-10-22*
