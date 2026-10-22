@@ -94,7 +94,7 @@ spinner's veil and the play badge are drawn over it as today.
 
 ## Folder Tiles
 
-Origin: Iterations 7 and 8, asked after the checkerboard was delivered.
+Origin: Iterations 7, 8 and 9, asked after the checkerboard was delivered.
 
 - **The folder fills its tile**: Windows' folder thumbnail is **trimmed to its visible part** — the
   pixels whose alpha is above 32, the faint shadow left out — in `ShellThumbnail.TryLoadFolder`, after the
@@ -107,7 +107,9 @@ Origin: Iterations 7 and 8, asked after the checkerboard was delivered.
   most**, cut with `…`. Bold, in the panel's font, its size scaled to the flap — half the flap's height
   per line at most, never under the tile name's size — **almost black over a white halo**, legible on
   the yellow as on a photo.
-- The name and the file count **stay under the tile** as before.
+- **Under the tile, the file count alone** — `140 files`, `1 file` — in place of `name (140)`: the name
+  is on the folder. Until the index gives the count, the name stays there. The Details view keeps
+  `name (140)` on its row. `ExplorerRow` carries the count apart (`Count`), its `Name` the bare name.
 - Thumbnails view only: a Details row's thumbnail is a quarter of the tile and its name is next to it.
 
 ---
@@ -206,6 +208,12 @@ Asked in the same message: the folder's name drawn in bold over the folder. Deci
 front flap, two lines at most; almost black over a white halo; the name and count kept under the tile.
 See § Folder Tiles.
 
+### Iteration 9 — 2026-10-22 — ⚙️ Post-implementation — File count under a folder tile
+
+Asked by the user while Iterations 7–8 were being coded, reversing Q&A 16: under a folder's tile, the
+file count replaces the folder's name. The name is on the folder itself (Iteration 8); the Details
+view keeps both on its row.
+
 ---
 
 ## Implementation Log
@@ -245,6 +253,7 @@ Questions asked by the agent during design, with user responses.
 | 14 | Where to draw the bold name — front flap, center, bottom band? | On the front flap | 2026-10-22 |
 | 15 | Which style — dark over a light halo, white over a black one? | Dark over a light halo | 2026-10-22 |
 | 16 | The name under the tile — kept, or only the count? | Kept | 2026-10-22 |
+| 17 | (user's request) | Under the tile, show the file count in place of the folder's name | 2026-10-22 |
 
 ---
 
