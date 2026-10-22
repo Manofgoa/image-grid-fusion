@@ -64,8 +64,12 @@ For each cell holding an image with a fixed resolution, the **drawn scale** of o
 canvas `W` px wide:
 
 ```
-drawnScale(W) = FitCalculator.Scale(cell(W), shown) × look.ZoomIn(cell(W), shown) × turned.Scale
+drawnScale(W) = turned.Fit.Image.Width / shown.Width × turned.Scale
+turned        = FitCalculator.ComputeTurned(cell(W), shown, look.ZoomAt(0, …), look.FocusAt(0, …), look.FineAngle)
 ```
+
+— that is `FitCalculator.Scale(cell, shown) × zoom × turned.Scale`, the focus counted for the fine
+angle's cover scale (`CanvasSizer.DrawnScale`).
 
 - `cell(W)` from `Compositor.Cells(layout, canvas, borders)` — the Borders' gap included;
 - `shown` = `ImageLook.Shown` (the crop's kept part, turned and flipped) — the kept part stands for the
@@ -77,17 +81,23 @@ drawnScale(W) = FitCalculator.Scale(cell(W), shown) × look.ZoomIn(cell(W), show
 
 The canvas is the **smallest one where every such image has `drawnScale ≥ 1`**, then clamped to
 `[1200, cap]`. `drawnScale` is linear in `W` but for the Borders' rounding and their 1 px minimum: it is
-computed on a reference canvas (`CanvasSizer.Smallest(ratio)`), the needed width derived, then checked
-again at the result (one or two passes absorb the borders).
+computed on a reference canvas (`CanvasSizer.Smallest(ratio)`), the needed long side derived, then
+computed again at the candidate, up to three passes; the result is rounded **up**.
+
+The images reach it as `SizedImage(Shown, Look, Sharpens)` — `SourceImage.Sizing` (its `DrawnLook`)
+and `Frame.Sizing` — the `Sharpens` flag carried by `SourceImage.Sharpens` (`PageSource.Sharpens`),
+`Frame.Sharpens` and `GridExport.Item.Sharpens`.
 
 - A **zoomed-in** image needs a smaller canvas (each source pixel already drawn bigger); a **zoomed-out**
   one a larger canvas.
 - An image larger than the cap allows is still downscaled — the cap wins.
-- **Texts and PDF pages** (contents with pages, rendered sharper on demand) are sized **as today**:
-  their shown size at zoom 1 divided by `Sharpening`, so they never widen the canvas — they render
-  sharp again at their cell's size.
+- **Texts, PDF pages and thumbnails** (`PageSource.Sharpens`, rendered sharper on demand) are sized
+  **as today**: their shown size at zoom 1, unturned, divided by `Sharpening`, so they never widen the
+  canvas — they render sharp again at their cell's size. A video or an animated GIF, also a page
+  source, does not sharpen: it is read as drawn, like a still.
 - **One rule for every export**: the PNG, *JPEG for sharing*, the MP4 / GIF and the position readout
-  all call it; only the cap differs (§ Cap). A zoomed-in video now exports smaller — and faster.
+  all call it, the Borders' gap now counted for the video too; only the cap differs (§ Cap). A
+  zoomed-in video now exports smaller — and faster.
 
 ### Cap
 
@@ -95,8 +105,12 @@ again at the result (one or two passes absorb the borders).
 |---|---|
 | PNG — Copy / Save main button | [1200, **8192**] |
 | PNG — a *PNG max size* entry | [1200, min(8192, the entry)] |
-| *JPEG for sharing* | [1200, 4096] — unchanged |
+| *JPEG for sharing* | [1200, 4096] — unchanged; then reduced to 2560 as before (`SharingMaxEdge`) |
 | MP4 / GIF | [1200, the Video size] — unchanged |
+
+`CanvasSizer.MaxLongSide` is the PNG's 8192, `CanvasSizer.MaxSharedLongSide` the 4096 of the videos
+and of *JPEG for sharing*; the cap reaches the render through `MainForm.RenderStillAsync(maxLongSide)`,
+`Compositor.Render(…, maxLongSide)` and `GridExport.Job.StillMaxSide` (next to `VideoMaxSide`).
 
 - 8192 × 4287 (Twitter) is ~140 MB of ARGB; `OutOfMemoryException` is already caught on every Copy /
   Save path (RULES.md § Export Memory).
@@ -107,8 +121,9 @@ again at the result (one or two passes absorb the borders).
 ### Native Size Tooltip
 
 While the Copy / Save main buttons produce a PNG, their tooltip gives the native size it will have —
-`PNG 6144 × 3215` — computed when the tooltip shows, so a zoom or a separator moved since is counted.
-The *PNG max size* entries give their own (§ Copy / Save Submenu).
+`PNG 6144 × 3215` — computed again as the mouse enters either button and with the buttons' captions
+(`MainForm.RefreshPngSizeTooltips`), so a zoom or a separator moved since is counted. No tooltip while
+they produce a video. The *PNG max size* entries give their own (§ Copy / Save Submenu).
 
 ---
 
@@ -145,11 +160,15 @@ Copy ▾                          Save ▾
 
 - It is a **cap**: the PNG is `min(native, entry)` — never enlarged past the native need. An entry at
   or above the native size gives the native size.
-- Each entry **shows the size it will give**, `1080p — 1920 × 1005`, computed when the menu opens (the
-  menus' `Opening` already refreshes the last video's tooltips): entries above the native size show the
-  same native size.
-- Wiring: `RenderStillAsync` passes the chosen cap into `GridExport.Job.Capture` / `RenderStill` (a
-  still cap distinct from `videoMaxSide`), down to `CanvasSizer.Compute`.
+- Each entry **shows the size it will give**, `1080p — 1920 × 1005`, computed when the menu opens
+  (`MainForm.RefreshPngMaxSizes`, on the menus' `Opening`): entries above the native size show the same
+  native size. Its tooltip says what it caps.
+- The submenu sits after *JPEG for sharing* in Copy's menu, after *MP4 Video* in Save's, before the
+  separator; it is enabled whenever the grid holds images, so **Save's ▾ arrow is now enabled with any
+  image**, no longer only while something plays.
+- Wiring: an entry calls `Copy(null, side)` / `SaveAs(null, side)`; `RenderStillAsync(maxLongSide)`
+  passes the cap into `Compositor.Render` or `GridExport.Job.Capture(stillMaxSide:)` / `RenderStill`,
+  down to `CanvasSizer.Compute`.
 
 ---
 
@@ -244,6 +263,33 @@ Open Question 9 answered (Q&A 8): the position readout rule stays as written —
 another image's zoom shows the readouts whose pixel values change. § Position Readout updated; no
 open question left.
 
+### Iteration 5 — 2026-10-15 — ✅ Implemented
+
+Go given: code, tests and documentation, in a worktree (`.claude/worktrees/png-native-resolution`,
+branch `feature/png-native-resolution`). Scope frozen on the design sections as of Iteration 4.
+
+### Iteration 6 — 2026-10-15 — 🧭 Implementation choices
+
+No project rule broken. Choices the frozen design did not state:
+
+- **`SizedImage`** (`Shown`, `Look`, `Sharpens`) replaces the list of sizes `CanvasSizer.Compute` read;
+  the "sharpens" flag is carried by new `SourceImage.Sharpens`, `Frame.Sharpens` and
+  `GridExport.Item.Sharpens` — `Frame` alone could not tell a PDF page from a still.
+- **"Texts and PDF pages as today"** is keyed on `PageSource.Sharpens` (PDF, thumbnail, text): videos
+  and animated GIFs, page sources too, are read as drawn.
+- The canvas is **rounded up** after up to three passes: a zoom-1 grid can come out 1 px wider than
+  before (3249 instead of 3248), so no image ends a fraction under 1:1.
+- The **video** sizing now counts the Borders' gap too — part of the one rule.
+- *JPEG for sharing* is **rendered** at 4096 at most, then reduced to 2560 as before: its file is
+  unchanged, only the intermediate render is no longer the PNG's.
+- **Save's ▾ arrow** is enabled with any image (its PNG max size entries), no longer only while
+  something plays.
+- Constants: `CanvasSizer.MaxLongSide` = 8192, `CanvasSizer.MaxSharedLongSide` = 4096; the still cap in
+  `GridExport.Job.StillMaxSide`.
+- Tooltips: the main buttons' refreshed on mouse enter and with their captions, none while producing a
+  video; each submenu entry also has a tooltip saying what it caps.
+- **RULES.md § Output Format** rewritten for the one rule and its caps table.
+
 ---
 
 ## Implementation Log
@@ -253,9 +299,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project — does not apply |
-| README | | | |
+| Code | 5 | 2026-10-15 | Sizing rule and caps; Copy / Save submenu and tooltip. Checked by a throwaway console program in the scratchpad (not in the repo): zoom 1 as before (3249 vs 3248.4), zoom 0.5 doubles, zoom 2 halves, a sharpening content ignores its zoom, fine angle, 1080p and 8192 caps. The UI itself not driven: checked by hand by the user |
+| Unit tests | 5 | 2026-10-15 | No test project — does not apply |
+| README | 5 | 2026-10-15 | README / README.fr (Animated content, Canvas size, Output), GLOSSARY / GLOSSARY.fr (Video size; Native size and PNG max size added), RULES.md § Output Format |
 
 ---
 

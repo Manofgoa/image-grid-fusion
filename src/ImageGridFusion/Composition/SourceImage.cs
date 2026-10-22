@@ -55,8 +55,11 @@ public sealed class SourceImage : IDisposable
     /// <summary>How many times its unzoomed resolution the page shown is rendered at (<see cref="PageSource.Sharpening"/>).</summary>
     public double Sharpening => this.Pages?.Sharpening ?? 1;
 
-    /// <summary>The size the canvas sizing reads: the image as drawn, at its unzoomed resolution.</summary>
-    public Size SizingSize => Frame.Unsharpened(this.Look.Shown(this.Bitmap.Size), this.Sharpening);
+    /// <summary>Whether its pages render again at any resolution (<see cref="PageSource.Sharpens"/>): a PDF, a thumbnail, a text.</summary>
+    public bool Sharpens => this.Pages?.Sharpens ?? false;
+
+    /// <summary>What the canvas sizing reads: the image as drawn, at its unzoomed resolution, with the look it is drawn with.</summary>
+    public SizedImage Sizing => new(Frame.Unsharpened(this.Look.Shown(this.Bitmap.Size), this.Sharpening), this.DrawnLook, this.Sharpens);
 
     public bool IsDisposed { get; private set; }
 

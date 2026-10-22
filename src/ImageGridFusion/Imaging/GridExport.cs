@@ -20,7 +20,7 @@ internal static class GridExport
     /// </summary>
     public sealed class Job : IDisposable
     {
-        private Job(IReadOnlyList<Item> items, GridLayout layout, double ratio, GridBorders? borders, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack, SoundFade? fade, SeamFade? seams, CascadeSchedule? cascade, int videoMaxSide)
+        private Job(IReadOnlyList<Item> items, GridLayout layout, double ratio, GridBorders? borders, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack, SoundFade? fade, SeamFade? seams, CascadeSchedule? cascade, int videoMaxSide, int stillMaxSide)
         {
             Items = items;
             Layout = layout;
@@ -30,6 +30,7 @@ internal static class GridExport
             this.Seams = seams;
             this.Cascade = cascade;
             this.VideoMaxSide = videoMaxSide;
+            this.StillMaxSide = stillMaxSide;
 
             // In the cascade, a content taking part counts by its turn, the others by their loops beside it.
             var beside = items
@@ -72,9 +73,15 @@ internal static class GridExport
 
         /// <summary>
         /// The longer side the canvas of a video export is clamped to: the Video size setting as the export
-        /// started (workfiles/20261010-optimisation-lack-of-memory.md § 2.3). A still keeps <see cref="CanvasSizer.MaxLongSide"/>.
+        /// started (workfiles/20261010-optimisation-lack-of-memory.md § 2.3). A still reads <see cref="StillMaxSide"/>.
         /// </summary>
         public int VideoMaxSide { get; }
+
+        /// <summary>
+        /// The longer side the canvas of a still is clamped to: <see cref="CanvasSizer.MaxLongSide"/>, or a
+        /// PNG max size entry's, or a JPEG for sharing's (workfiles/20261015-png-native-resolution.md).
+        /// </summary>
+        public int StillMaxSide { get; }
 
         /// <summary>The sounds mixed into the video: each from the starting point of its video, at its volume; the soundtrack last.</summary>
         public IReadOnlyList<MixedSound> Sounds { get; }
@@ -87,14 +94,14 @@ internal static class GridExport
         /// <paramref name="soundtrack"/> mixed over its sounds when one is on, the mix faded by
         /// <paramref name="fade"/> when it is on, the cells' fills faded by <paramref name="seams"/>, and the
         /// videos playing one after the other with <paramref name="cascade"/> when it is on; a video export's
-        /// canvas clamped to <paramref name="videoMaxSide"/>.
+        /// canvas clamped to <paramref name="videoMaxSide"/>, a still's to <paramref name="stillMaxSide"/>.
         /// </summary>
-        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders, Soundtrack? soundtrack = null, SoundFade? fade = null, SeamFade? seams = null, VideoCascade? cascade = null, int videoMaxSide = CanvasSizer.MaxLongSide) => new(
+        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders, Soundtrack? soundtrack = null, SoundFade? fade = null, SeamFade? seams = null, VideoCascade? cascade = null, int videoMaxSide = CanvasSizer.MaxSharedLongSide, int stillMaxSide = CanvasSizer.MaxLongSide) => new(
             images.Select(i => i.Plays
-                ? new Item(null, i.BandColor, i.Pages, i.PlayedLength, i.DrawnLook, i.Page, i.StartTime, i.PlayedFrom, i.Sharpening) { Image = i }
+                ? new Item(null, i.BandColor, i.Pages, i.PlayedLength, i.DrawnLook, i.Page, i.StartTime, i.PlayedFrom, i.Sharpening, i.Sharpens) { Image = i }
                 : i.IsAnimated
-                ? new Item(null, i.BandColor, i.Pages, TimeSpan.Zero, i.DrawnLook, i.StartPage, TimeSpan.Zero, Sharpening: i.Sharpening)
-                : new Item(new Bitmap(i.Bitmap), i.BandColor, null, TimeSpan.Zero, i.DrawnLook, 0, TimeSpan.Zero, Sharpening: i.Sharpening)).ToList(),
+                ? new Item(null, i.BandColor, i.Pages, TimeSpan.Zero, i.DrawnLook, i.StartPage, TimeSpan.Zero, Sharpening: i.Sharpening, Sharpens: i.Sharpens)
+                : new Item(new Bitmap(i.Bitmap), i.BandColor, null, TimeSpan.Zero, i.DrawnLook, 0, TimeSpan.Zero, Sharpening: i.Sharpening, Sharpens: i.Sharpens)).ToList(),
             layout,
             ratio,
             borders,
@@ -103,7 +110,8 @@ internal static class GridExport
             fade,
             seams,
             cascade is null ? null : CascadeSchedule.Of(images, cascade),
-            videoMaxSide);
+            videoMaxSide,
+            stillMaxSide);
 
         /// <summary>
         /// Content time the cell at <paramref name="index"/> shows at <paramref name="time"/> of the video:
@@ -132,7 +140,7 @@ internal static class GridExport
     /// The loop is the part its frames effect leaves to play, beginning at <paramref name="From"/> in
     /// the content (workfiles/20261008-video-trim.md).
     /// </summary>
-    public sealed record Item(Bitmap? Still, BandColor BandColor, PageSource? Source, TimeSpan Loop, ImageLook Look, int Page, TimeSpan Start, TimeSpan From = default, double Sharpening = 1)
+    public sealed record Item(Bitmap? Still, BandColor BandColor, PageSource? Source, TimeSpan Loop, ImageLook Look, int Page, TimeSpan Start, TimeSpan From = default, double Sharpening = 1, bool Sharpens = false)
     {
         public bool Plays => Source is not null && Loop > TimeSpan.Zero;
 
@@ -152,7 +160,7 @@ internal static class GridExport
         reader = null;
         if (item.Source is null)
         {
-            return new Frame(item.Still!, item.BandColor, item.Look, Sharpening: item.Sharpening);
+            return new Frame(item.Still!, item.BandColor, item.Look, Sharpening: item.Sharpening, Sharpens: item.Sharpens);
         }
 
         if (!play || !item.Plays)
@@ -160,7 +168,7 @@ internal static class GridExport
             var page = item.Source.Render(item.Page);
             try
             {
-                return new Frame(page, BandColor.Of(page), item.Look, Sharpening: item.Sharpening);
+                return new Frame(page, BandColor.Of(page), item.Look, Sharpening: item.Sharpening, Sharpens: item.Sharpens);
             }
             catch
             {
@@ -172,7 +180,7 @@ internal static class GridExport
 
         reader = item.Source.OpenAnimation();
         var first = reader.FrameAt(item.ContentTime(TimeSpan.Zero)) ?? throw new InvalidOperationException("A source has no frame to show.");
-        return new Frame(first, item.BandColor, item.Look, Sharpening: item.Sharpening);
+        return new Frame(first, item.BandColor, item.Look, Sharpening: item.Sharpening, Sharpens: item.Sharpens);
     }
 
     /// <summary>The file an animated export writes.</summary>
@@ -214,7 +222,7 @@ internal static class GridExport
             }
 
             probe.Sample(0, null, "readers open");
-            var canvas = Animation.EvenSize(CanvasSizer.Compute(frames.Select(f => f.SizingSize).ToList(), job.Layout, job.Ratio, job.VideoMaxSide));
+            var canvas = Animation.EvenSize(CanvasSizer.Compute(frames.Select(f => f.Sizing).ToList(), job.Layout, job.Ratio, job.Borders, job.VideoMaxSide));
             using var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppRgb);
             using var g = Graphics.FromImage(bitmap);
             encoder = format == Format.Gif
@@ -296,16 +304,16 @@ internal static class GridExport
                 var item = job.Items[i];
                 if (item.Source is null)
                 {
-                    frames[i] = new Frame(item.Still!, item.BandColor, item.Look, Sharpening: item.Sharpening);
+                    frames[i] = new Frame(item.Still!, item.BandColor, item.Look, Sharpening: item.Sharpening, Sharpens: item.Sharpens);
                     continue;
                 }
 
                 var frame = item.Source.Render(item.Page);
                 owned.Add(frame);
-                frames[i] = new Frame(frame, BandColor.Of(frame), item.Look, Sharpening: item.Sharpening);
+                frames[i] = new Frame(frame, BandColor.Of(frame), item.Look, Sharpening: item.Sharpening, Sharpens: item.Sharpens);
             }
 
-            return Compositor.Render(frames, job.Layout, job.Ratio, job.Borders, job.Seams);
+            return Compositor.Render(frames, job.Layout, job.Ratio, job.Borders, job.Seams, job.StillMaxSide);
         }
         finally
         {

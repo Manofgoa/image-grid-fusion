@@ -2501,7 +2501,7 @@ internal sealed partial class GridPreview : Control
 
     /// <summary>
     /// Every image's offset from its cell's center in the PNG export of the grid as it stands — its canvas
-    /// and cells as <see cref="Compositor.Render(IReadOnlyList{Frame}, GridLayout, double, GridBorders?, SeamFade?)"/>
+    /// and cells as <see cref="Compositor.Render(IReadOnlyList{Frame}, GridLayout, double, GridBorders?, SeamFade?, int)"/>
     /// gives them —, x to the right, y downward; <c>null</c> without a layout holding the images.
     /// </summary>
     private Point[]? ExportOffsets()
@@ -2511,7 +2511,7 @@ internal sealed partial class GridPreview : Control
             return null;
         }
 
-        var canvas = CanvasSizer.Compute(this._images.Select(i => i.SizingSize).ToList(), layout, this.CanvasRatio);
+        var canvas = CanvasSizer.Compute(this._images.Select(i => i.Sizing).ToList(), layout, this.CanvasRatio, this._borders);
         var cells = Compositor.Cells(layout, canvas, this._borders);
         return this._images.Select((image, i) => CenterOffset(cells[i], image)).ToArray();
     }

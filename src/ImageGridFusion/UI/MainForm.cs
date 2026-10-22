@@ -82,11 +82,13 @@ internal sealed class MainForm : Form
     private readonly ToolStripMenuItem _copyGif = new("GIF");
     private readonly ToolStripMenuItem _copyMp4 = new("MP4 Video");
     private readonly ToolStripMenuItem _copyForSharing = new("JPEG for sharing");
+    private readonly ToolStripMenuItem _copyPngMaxSize = new("PNG max size");
     private readonly Button _saveButton = SplitMain("Save…");
     private readonly Button _saveArrow = SplitArrow();
     private readonly ContextMenuStrip _saveMenu = new();
     private readonly ToolStripMenuItem _saveGif = new("GIF");
     private readonly ToolStripMenuItem _saveMp4 = new("MP4 Video");
+    private readonly ToolStripMenuItem _savePngMaxSize = new("PNG max size");
 
     // The last video Copy generated, offered back without generating it again (see LastVideo).
     private readonly Button _copyLastButton = new() { Text = "Copy last video", AutoSize = true, Enabled = false };
@@ -671,10 +673,12 @@ internal sealed class MainForm : Form
         _copyGif.Click += (_, _) => Copy(GridExport.Format.Gif);
         _copyMp4.Click += (_, _) => Copy(GridExport.Format.Mp4);
         _copyForSharing.Click += (_, _) => CopyForSharing();
-        _copyMenu.Items.AddRange([_copyGif, _copyMp4, _copyForSharing, new ToolStripSeparator(), _copyLast]);
+        this.AddPngMaxSizes(this._copyPngMaxSize, side => this.Copy(null, side));
+        _copyMenu.Items.AddRange([_copyGif, _copyMp4, _copyForSharing, this._copyPngMaxSize, new ToolStripSeparator(), _copyLast]);
         _saveGif.Click += (_, _) => SaveAs(GridExport.Format.Gif);
         _saveMp4.Click += (_, _) => SaveAs(GridExport.Format.Mp4);
-        _saveMenu.Items.AddRange([_saveGif, _saveMp4, new ToolStripSeparator(), _saveLast]);
+        this.AddPngMaxSizes(this._savePngMaxSize, side => this.SaveAs(null, side));
+        _saveMenu.Items.AddRange([_saveGif, _saveMp4, this._savePngMaxSize, new ToolStripSeparator(), _saveLast]);
 
         // The last video's tooltips say whether the grid has changed since: refreshed as they are about to show.
         _copyLastButton.Click += (_, _) => CopyLastVideo();
@@ -685,6 +689,12 @@ internal sealed class MainForm : Form
         _copyLastButton.MouseEnter += (_, _) => RefreshLastVideoTooltips();
         _copyMenu.Opening += (_, _) => RefreshLastVideoTooltips();
         _saveMenu.Opening += (_, _) => RefreshLastVideoTooltips();
+
+        // The PNG sizes follow the grid as it stands — a zoom, a separator: computed as they are about to show.
+        this._copyMenu.Opening += (_, _) => this.RefreshPngMaxSizes(this._copyPngMaxSize);
+        this._saveMenu.Opening += (_, _) => this.RefreshPngMaxSizes(this._savePngMaxSize);
+        this._copyButton.MouseEnter += (_, _) => this.RefreshPngSizeTooltips();
+        this._saveButton.MouseEnter += (_, _) => this.RefreshPngSizeTooltips();
         _copyArrow.Click += (_, _) => _copyMenu.Show(_copyButton, Point.Empty, ToolStripDropDownDirection.AboveRight);
         _saveArrow.Click += (_, _) => _saveMenu.Show(_saveButton, Point.Empty, ToolStripDropDownDirection.AboveRight);
         _cancelButton.Click += (_, _) => _export?.Cancel();
@@ -1776,12 +1786,13 @@ internal sealed class MainForm : Form
     private void CopyToClipboard() => Copy(AdaptedFormat);
 
     /// <summary>
-    /// Copies the grid: a still image, or — <paramref name="format"/> given — an MP4 video or a GIF,
+    /// Copies the grid: a still image, its longer side at most <paramref name="stillMaxSide"/>, or —
+    /// <paramref name="format"/> given — an MP4 video or a GIF,
     /// written to the temp folder and put on the clipboard as a file; a GIF also as its bytes, in the
     /// clipboard's GIF format that some apps paste directly. The video or GIF becomes the last video,
     /// offered back by Copy last and Save last.
     /// </summary>
-    private async void Copy(GridExport.Format? format)
+    private async void Copy(GridExport.Format? format, int stillMaxSide = CanvasSizer.MaxLongSide)
     {
         if (_preview.Images.Count == 0 || IsExporting)
         {
@@ -1821,7 +1832,7 @@ internal sealed class MainForm : Form
         }
 
         var clock = Stopwatch.StartNew();
-        using var result = await RenderStillAsync();
+        using var result = await this.RenderStillAsync(stillMaxSide);
         if (result is null)
         {
             return;
@@ -2159,7 +2170,7 @@ internal sealed class MainForm : Form
 
         var cellFiles = this.CellFiles();
         var clock = Stopwatch.StartNew();
-        using var result = await RenderStillAsync();
+        using var result = await this.RenderStillAsync(CanvasSizer.MaxSharedLongSide);
         if (result is null)
         {
             return;
@@ -2190,11 +2201,55 @@ internal sealed class MainForm : Form
         }
     }
 
+    /// <summary>
+    /// The PNG max size entries of the Copy and Save menus: each caps the PNG's longer side, the PNG
+    /// keeping its native size below it (workfiles/20261015-png-native-resolution.md).
+    /// </summary>
+    private static readonly (string Name, int LongSide)[] PngMaxSizes = [("720p", 1280), ("1080p", 1920), ("2K", 2560), ("4K", 3840), ("8K", 7680)];
+
+    /// <summary>Fills <paramref name="menu"/> with one entry per <see cref="PngMaxSizes"/>, each running <paramref name="export"/> with its cap.</summary>
+    private void AddPngMaxSizes(ToolStripMenuItem menu, Action<int> export)
+    {
+        foreach (var (name, side) in PngMaxSizes)
+        {
+            var item = new ToolStripMenuItem(name) { ToolTipText = $"A PNG whose longer side is at most {side} px; a grid needing less keeps its own size" };
+            item.Click += (_, _) => export(side);
+            menu.DropDownItems.Add(item);
+        }
+    }
+
+    /// <summary>Names each entry of <paramref name="menu"/> with the size its PNG will have, the grid as it stands.</summary>
+    private void RefreshPngMaxSizes(ToolStripMenuItem menu)
+    {
+        for (int i = 0; i < PngMaxSizes.Length; i++)
+        {
+            var (name, side) = PngMaxSizes[i];
+            menu.DropDownItems[i].Text = this.PngSize(side) is { } size ? $"{name} — {size.Width} × {size.Height}" : name;
+        }
+    }
+
+    /// <summary>The Copy and Save tooltips: the size of the PNG they produce, none while they produce a video.</summary>
+    private void RefreshPngSizeTooltips()
+    {
+        string? text = !this.ProducesVideo && this.PngSize(CanvasSizer.MaxLongSide) is { } size ? $"PNG {size.Width} × {size.Height}" : null;
+        this._toolTip.SetToolTip(this._copyButton, text);
+        this._toolTip.SetToolTip(this._saveButton, text);
+    }
+
+    /// <summary>The size of the PNG the grid gives as it stands, its longer side at most <paramref name="maxLongSide"/>; <c>null</c> without images.</summary>
+    private Size? PngSize(int maxLongSide) =>
+        this._preview.Images.Count == 0 || this._preview.ActiveLayout is not { } layout || layout.Count != this._preview.Images.Count
+            ? null
+            : CanvasSizer.Compute(this._preview.Images.Select(i => i.Sizing).ToList(), layout, this._preview.CanvasRatio, this.ActiveBorders, maxLongSide);
+
     /// <summary>Saves the grid in the format its content suits: a PNG, or an MP4 video while a content plays or a soundtrack is on.</summary>
     private void Save() => SaveAs(AdaptedFormat);
 
-    /// <summary>Saves the grid as a PNG, or — <paramref name="format"/> given — as an MP4 video or a GIF.</summary>
-    private async void SaveAs(GridExport.Format? format)
+    /// <summary>
+    /// Saves the grid as a PNG, its longer side at most <paramref name="stillMaxSide"/>, or —
+    /// <paramref name="format"/> given — as an MP4 video or a GIF.
+    /// </summary>
+    private async void SaveAs(GridExport.Format? format, int stillMaxSide = CanvasSizer.MaxLongSide)
     {
         if (_preview.Images.Count == 0 || IsExporting)
         {
@@ -2229,7 +2284,7 @@ internal sealed class MainForm : Form
             return;
         }
 
-        using var still = await RenderStillAsync();
+        using var still = await this.RenderStillAsync(stillMaxSide);
         if (still is null)
         {
             return;
@@ -2332,10 +2387,10 @@ internal sealed class MainForm : Form
 
     /// <summary>
     /// Renders the still: the images as shown, or, for animated content, the page each one shows (a
-    /// frozen one, its frame), at full size — off the UI thread, the grid locked meanwhile. Returns
-    /// null on failure.
+    /// frozen one, its frame), at full size — no image downscaled, its longer side at most
+    /// <paramref name="maxLongSide"/> — off the UI thread, the grid locked meanwhile. Returns null on failure.
     /// </summary>
-    private async Task<Bitmap?> RenderStillAsync()
+    private async Task<Bitmap?> RenderStillAsync(int maxLongSide)
     {
         if (!_preview.Images.Any(i => i.IsAnimated))
         {
@@ -2344,7 +2399,7 @@ internal sealed class MainForm : Form
             try
             {
                 Cursor.Current = Cursors.WaitCursor;
-                return Compositor.Render(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, this.ActiveSeams);
+                return Compositor.Render(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, this.ActiveSeams, maxLongSide);
             }
             catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
             {
@@ -2361,7 +2416,7 @@ internal sealed class MainForm : Form
         GridExport.Job job;
         try
         {
-            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, seams: this.ActiveSeams);
+            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, seams: this.ActiveSeams, stillMaxSide: maxLongSide);
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
@@ -2789,7 +2844,7 @@ internal sealed class MainForm : Form
         _saveButton.Enabled = any;
 
         // The main parts name what they produce; the menus force a GIF or a video, pointless when nothing
-        // plays — Copy's menu stays open for its light JPEG.
+        // plays — the menus stay open for Copy's light JPEG and their PNG max sizes.
         string format = ProducesVideo ? "MP4" : "PNG";
         _copyButton.Text = $"Copy {format}";
         _saveButton.Text = $"Save {format}…";
@@ -2799,7 +2854,9 @@ internal sealed class MainForm : Form
         _copyGif.Enabled = HasAnimation;
         _copyMp4.Enabled = HasAnimation;
         _copyForSharing.Enabled = any;
-        _saveArrow.Enabled = (any && HasAnimation) || last;
+        this._copyPngMaxSize.Enabled = any;
+        this._savePngMaxSize.Enabled = any;
+        _saveArrow.Enabled = any || last;
         _saveGif.Enabled = HasAnimation;
         _saveMp4.Enabled = HasAnimation;
         string lastName = _lastVideo is { } video ? FormatName(video.Format) : "video";
@@ -2811,6 +2868,7 @@ internal sealed class MainForm : Form
         _saveLast.Text = $"Save last {lastName}…";
         RefreshLength();
         RefreshLastVideoTooltips();
+        this.RefreshPngSizeTooltips();
         UpdateEffects();
         UpdateGlobalEffects();
     }

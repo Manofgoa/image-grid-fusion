@@ -7,15 +7,16 @@ namespace ImageGridFusion.Composition;
 /// What a cell shows: a bitmap, what colors its bands, the actions on the image, if any, and the
 /// <see cref="Time"/> on the clock of the grid the motion of its Animations effect is drawn at — 0, its
 /// starting state, for a still export. <see cref="Sharpening"/> is how many times its unzoomed
-/// resolution the bitmap was rendered at (<see cref="PageSource.Sharpening"/>).
+/// resolution the bitmap was rendered at (<see cref="PageSource.Sharpening"/>); <see cref="Sharpens"/>,
+/// whether its content renders again at any resolution (<see cref="PageSource.Sharpens"/>).
 /// </summary>
-public readonly record struct Frame(Bitmap Bitmap, BandColor BandColor, ImageLook? Look = null, TimeSpan Time = default, double Sharpening = 1)
+public readonly record struct Frame(Bitmap Bitmap, BandColor BandColor, ImageLook? Look = null, TimeSpan Time = default, double Sharpening = 1, bool Sharpens = false)
 {
     /// <summary>Size of the image as drawn: its crop's kept part, rotated by its look — what the fitting rule reads.</summary>
     public Size Size => (Look ?? ImageLook.None).Shown(Bitmap.Size);
 
     /// <summary>What the canvas sizing reads: <see cref="Size"/> at the unzoomed resolution, so a sharper page never widens the export on its own.</summary>
-    public Size SizingSize => Unsharpened(this.Size, this.Sharpening);
+    public SizedImage Sizing => new(Unsharpened(this.Size, this.Sharpening), this.Look ?? ImageLook.None, this.Sharpens);
 
     public static Size Unsharpened(Size size, double sharpening) => sharpening <= 1
         ? size
@@ -48,17 +49,17 @@ public static class Compositor
     }
 
     /// <summary>Renders the final image at <paramref name="ratio"/>, at the size given by <see cref="CanvasSizer"/>.</summary>
-    public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders = null, SeamFade? seams = null) =>
-        Render(images.Select(i => new Frame(i.Bitmap, i.BandColor, i.DrawnLook, Sharpening: i.Sharpening)).ToList(), layout, ratio, borders, seams);
+    public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders = null, SeamFade? seams = null, int maxLongSide = CanvasSizer.MaxLongSide) =>
+        Render(images.Select(i => new Frame(i.Bitmap, i.BandColor, i.DrawnLook, Sharpening: i.Sharpening, Sharpens: i.Sharpens)).ToList(), layout, ratio, borders, seams, maxLongSide);
 
     /// <summary>
-    /// Renders frames at <paramref name="ratio"/>, at the size given by <see cref="CanvasSizer"/>; frame i
-    /// goes into cell i. With an alpha channel, transparent where a cell, or the gap between the cells,
-    /// has no fill: a PNG keeps it.
+    /// Renders frames at <paramref name="ratio"/>, at the size given by <see cref="CanvasSizer"/>, its longer
+    /// side at most <paramref name="maxLongSide"/>; frame i goes into cell i. With an alpha channel,
+    /// transparent where a cell, or the gap between the cells, has no fill: a PNG keeps it.
     /// </summary>
-    public static Bitmap Render(IReadOnlyList<Frame> frames, GridLayout layout, double ratio, GridBorders? borders = null, SeamFade? seams = null)
+    public static Bitmap Render(IReadOnlyList<Frame> frames, GridLayout layout, double ratio, GridBorders? borders = null, SeamFade? seams = null, int maxLongSide = CanvasSizer.MaxLongSide)
     {
-        var canvas = CanvasSizer.Compute(frames.Select(f => f.SizingSize).ToList(), layout, ratio);
+        var canvas = CanvasSizer.Compute(frames.Select(f => f.Sizing).ToList(), layout, ratio, borders, maxLongSide);
         var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppArgb);
         using var g = Graphics.FromImage(bitmap);
         Draw(g, frames, layout, canvas, borders, seams);
@@ -129,7 +130,7 @@ public static class Compositor
     /// <see cref="DrawCell"/> takes it.
     /// </summary>
     public static void Draw(Graphics g, IReadOnlyList<SourceImage> images, GridLayout layout, Size canvas, GridBorders? borders = null, TimeSpan time = default, SeamFade? seams = null, bool fast = false) =>
-        Draw(g, images.Select(i => new Frame(i.Bitmap, i.BandColor, i.DrawnLook, time, i.Sharpening)).ToList(), layout, canvas, borders, seams, fast);
+        Draw(g, images.Select(i => new Frame(i.Bitmap, i.BandColor, i.DrawnLook, time, i.Sharpening, i.Sharpens)).ToList(), layout, canvas, borders, seams, fast);
 
     /// <summary>
     /// Draws the grid in the rectangle (0, 0, canvas) of <paramref name="g"/>; frame i goes into cell i of
