@@ -512,7 +512,7 @@ internal sealed class UrlZone : Panel
         {
             var g = e.Graphics;
             var box = new Rectangle(0, 0, this.Width - 1, this.Height - 1);
-            g.Clear(SystemColors.Window);
+            Checkerboard.Fill(g, this.ClientRectangle);
             if (this._image is not null)
             {
                 var at = new Point((this.Width - this._image.Width) / 2, (this.Height - this._image.Height) / 2);

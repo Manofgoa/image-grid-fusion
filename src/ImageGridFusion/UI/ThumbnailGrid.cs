@@ -630,13 +630,10 @@ internal sealed class ThumbnailGrid : ScrollableControl
         }
     }
 
-    /// <summary>The Loading… slot: a tile's box with the text alone — no thumbnail, heart nor name.</summary>
+    /// <summary>The Loading… slot: a tile's box, its checkerboard and the text alone — no thumbnail, heart nor name.</summary>
     private void PaintLoading(Graphics g, Rectangle slot)
     {
-        using (var fill = new SolidBrush(SystemColors.ControlLight))
-        {
-            g.FillRectangle(fill, slot);
-        }
+        Checkerboard.Fill(g, slot);
 
         g.DrawRectangle(SystemPens.ControlDark, new Rectangle(slot.X, slot.Y, slot.Width - 1, slot.Height - 1));
         TextRenderer.DrawText(
@@ -831,10 +828,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
             string path = files[i];
             this._stripOwners[path] = row.FullPath;
             var box = new Rectangle(area.X + i * (width + gap), area.Y, width, height);
-            using (var fill = new SolidBrush(SystemColors.ControlLight))
-            {
-                g.FillRectangle(fill, box);
-            }
+            Checkerboard.Fill(g, box);
 
             if (this._stripThumbnails.TryGet(path, out var image) && image is not null)
             {
@@ -859,17 +853,14 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
     /// <summary>
     /// A tile's picture, in the tile's box or a Details row's thumbnail: the thumbnail — or a drawn
-    /// folder — its border, the heart in its medallion, and the light bulb with its arrow for a file
-    /// found by its content.
+    /// folder — over the checkerboard showing its transparency, its border, the heart in its medallion,
+    /// and the light bulb with its arrow for a file found by its content.
     /// </summary>
     private void PaintPicture(Graphics g, int index, bool selected)
     {
         var row = _rows[index];
         var tile = Scrolled(TileBounds(index));
-        using (var fill = new SolidBrush(SystemColors.ControlLight))
-        {
-            g.FillRectangle(fill, tile);
-        }
+        Checkerboard.Fill(g, tile);
 
         // Loaded at its bucket's size: scaled to the tile — enlarged when smaller — its proportions kept,
         // centered. A folder Windows has no thumbnail for gets a drawn folder.
