@@ -123,6 +123,11 @@ Open questions settled (Q&A 5–7): squares at the box's height / 16, at least 3
 shows the checkerboard in every state, empty and failed included; the glossary's *Tile* row (EN + FR)
 mentions the checkerboard. No open question left.
 
+### Iteration 3 — 2026-10-22 — ✅ Implemented
+
+Go given (Q&A 8): code, tests and documentation, in the current checkout. Branch Gate: stays on
+`main`, the standing choice for this repository.
+
 ---
 
 ## Implementation Log
@@ -152,7 +157,7 @@ Questions asked by the agent during design, with user responses.
 | 5 | Square size factor? | Height / 16, at least 3 px | 2026-10-22 |
 | 6 | URL preview's empty / failed states: checkerboard or plain? | Checkerboard too | 2026-10-22 |
 | 7 | Documentation: glossary *Tile* row updated? | Yes, EN + FR | 2026-10-22 |
-| 8 | Go for implementation? (scope, where) | | |
+| 8 | Go for implementation? (scope, where) | Code, tests and documentation — current checkout (`main`) | 2026-10-22 |
 
 ---
 
