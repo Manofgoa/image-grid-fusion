@@ -39,7 +39,7 @@ docs that describe the folder tile (`GLOSSARY.md` / `GLOSSARY.fr.md` *Folder til
 |---|---|---|
 | A folder's tile (Thumbnails view) | Checkerboard over the whole box | **Nothing painted**: the panel's background shows around the folder |
 | A folder's tile, resting | 1 px `ControlDark` frame | **No frame** |
-| A folder's tile, hovered / selected | `HotTrack` 1 px / `Highlight` 2 px frame | See Open Questions |
+| A folder's tile, hovered / selected | `HotTrack` 1 px / `Highlight` 2 px frame | **Kept** — interaction feedback |
 | A file's tile, the Loading… slot, the URL zone | Checkerboard + frame | Unchanged |
 | A Details folder row's thumbnail | Checkerboard + frame | See Open Questions |
 | A Details folder row's strip (files inside) | Checkerboard + frame per box | Unchanged — they are files |
@@ -56,17 +56,17 @@ docs that describe the folder tile (`GLOSSARY.md` / `GLOSSARY.fr.md` *Folder til
   centered, bold, drawn as a path, a third of the flap's height, never under the tile names' size, two
   lines at most, cut with `…`.
 - **The white halo goes** (`PaintFolderName`'s `halo` pen).
-- **A light drop shadow** replaces it: a soft shadow offset down-right under the letters. Its colors
-  (text and shadow) — see Open Questions. GDI+ has no blur: the softness is obtained by drawing the
-  shadow path a few times at low opacity around its offset, or from a small bitmap scaled up — an
-  implementation choice.
+- **A light drop shadow** replaces it: the text stays **almost black** (32, 32, 32), over a **soft
+  white shadow** offset down-right under the letters — the best contrast on the flap's yellow. GDI+
+  has no blur: the softness is obtained by drawing the shadow path a few times at low opacity around
+  its offset, or from a small bitmap scaled up — an implementation choice.
 
 ---
 
 ## Shared Prefix
 
 When several folders of the shown list start with the same words, the shared part is drawn **small at
-the top**, followed by `›`, and the rest **large** below it:
+the top of the front flap**, followed by `›`, and the rest **large** below it, both on the flap:
 
 ```
 Outils RS ›
@@ -75,8 +75,10 @@ Alpha
 
 - **The prefix**: for each folder, the **longest run of whole leading words** it shares with at least
   one other folder of the list, compared ignoring case, **leaving at least one word** of its own name —
-  `Outils RS` itself next to `Outils RS 2` gets no prefix. Word separators, the list it is computed
-  over, where the small line sits — see Open Questions.
+  `Outils RS` itself next to `Outils RS 2` gets no prefix.
+- **Words** are separated by spaces, `-`, `_` and `.` (a run of them counts as one separator):
+  `Outils RS - Alpha` and `Outils_RS_Beta` share `Outils RS`. The list it is computed over — see Open
+  Questions.
 - Each folder shows **its own text** for the prefix (its own case), never another's.
 - **The small line**: one line, cut with `…`, in the tile names' size or a fraction of the large size
   (implementation choice), with the same shadow as the name.
@@ -113,11 +115,11 @@ a prefix (`Outils RS …`), siblings sharing none, the hovered and selected tile
 
 ## Open Questions
 
-- [ ] Hover and selection frames of a folder tile: kept (interaction feedback), or removed too?
+- [x] ~~Hover and selection frames of a folder tile: kept (interaction feedback), or removed too?~~ → Kept; only the resting frame goes
 - [ ] Details view: a folder row's thumbnail without checkerboard and frame too, or unchanged?
-- [ ] The shadow's colors: almost-black text with a soft light shadow, or white text with a soft dark shadow?
-- [ ] Where the small prefix line sits: at the top of the front flap above the large name, or on the folder's tab (top left)?
-- [ ] Word separators for the prefix: spaces only, or also `-`, `_`, `.`?
+- [x] ~~The shadow's colors: almost-black text with a soft light shadow, or white text with a soft dark shadow?~~ → Almost-black text, soft white shadow
+- [x] ~~Where the small prefix line sits: at the top of the front flap above the large name, or on the folder's tab (top left)?~~ → Top of the front flap
+- [x] ~~Word separators for the prefix: spaces only, or also `-`, `_`, `.`?~~ → Spaces, `-`, `_`, `.`
 - [ ] The list the prefix is computed over: the folders shown together in the list (folder view and its search alike)?
 - [ ] README: one sentence about the shared prefix in the folder view paragraph (EN + FR), or glossary only?
 
@@ -142,6 +144,12 @@ the shared part small at the top, `Outils RS ›`, and the rest large below.
 The scout found the three pieces in `ThumbnailGrid.PaintPicture` (checkerboard, frame) and
 `PaintFolderName` (halo), and the folder rows built by `FileExplorerPanel` (folder view, folder view
 search). No backlog row of `TODO-FEATURES.md` matches. Seven open questions listed above.
+
+### Iteration 2 — 2026-10-22
+
+Four open questions settled (Q&A 6, 8–10), from a mockup of three variants: the hover and selection
+frames stay, only the resting frame goes; the name stays almost black over a soft white shadow; the
+shared prefix sits at the top of the front flap; words split on spaces, `-`, `_` and `.`.
 
 ---
 
@@ -169,11 +177,11 @@ Questions asked by the agent during design, with user responses.
 | 3 | How to make the name legible without the halo: contrasting color alone, light drop shadow, name under the tile? | Light drop shadow | 2026-10-22 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward | 2026-10-22 |
 | 5 | *(user, unprompted)* Folders starting alike | Show the shared prefix small at the top (`Outils RS ›`), the rest large | 2026-10-22 |
-| 6 | Hover and selection frames of a folder tile: kept or removed? | | |
+| 6 | Hover and selection frames of a folder tile: kept or removed? | Kept | 2026-10-22 |
 | 7 | Details view folder thumbnail: same treatment or unchanged? | | |
-| 8 | Shadow colors: dark text + light shadow, or white text + dark shadow? | | |
-| 9 | Small prefix line: top of the front flap, or on the folder's tab? | | |
-| 10 | Prefix word separators: spaces only, or also `-`, `_`, `.`? | | |
+| 8 | Shadow colors: dark text + light shadow, or white text + dark shadow? | Dark text, light shadow (mockup A) | 2026-10-22 |
+| 9 | Small prefix line: top of the front flap, or on the folder's tab? | Top of the front flap | 2026-10-22 |
+| 10 | Prefix word separators: spaces only, or also `-`, `_`, `.`? | Spaces, `-`, `_`, `.` | 2026-10-22 |
 | 11 | Prefix computed over the folders shown together in the list? | | |
 | 12 | README sentence about the prefix (EN + FR), or glossary only? | | |
 
