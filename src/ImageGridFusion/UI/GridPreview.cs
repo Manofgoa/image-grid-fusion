@@ -617,6 +617,41 @@ internal sealed partial class GridPreview : Control
         }
     }
 
+    /// <summary>
+    /// The layout strip's Auto: moves the vertical (<paramref name="vertical"/>) or horizontal separators so
+    /// every cell is shaped like its image (<see cref="LayoutAutoSize"/>) — side by side the images get the
+    /// same height, stacked the same width — then shows every image whole, centered, as on its arrival.
+    /// Texts are left out and keep filling their cell. One step of the undo history.
+    /// </summary>
+    public void AutoSizeCells(bool vertical)
+    {
+        if (this._layout is null || this._locked || this._images.Count == 0)
+        {
+            return;
+        }
+
+        // In the free format the new sizes give another ratio, which reshapes the cells again.
+        for (int pass = 0; pass < 3; pass++)
+        {
+            var canvas = this.CanvasBounds();
+            if (canvas.IsEmpty)
+            {
+                return;
+            }
+
+            var shown = this._images.Select(i => i.Pages is { PageSize: not null } ? (Size?)null : i.Look.Shown(i.Size)).ToList();
+            var layout = LayoutAutoSize.Fitted(this._layout, vertical, shown, l => Compositor.Cells(l, canvas.Size, this._borders));
+            if (layout.SameAs(this._layout))
+            {
+                break;
+            }
+
+            this.ApplySizes(layout);
+        }
+
+        this.ShowWhole(this._images, centered: true);
+    }
+
     /// <summary>Gives the selected image a new look: an effect toggled or tuned from the toolbars.</summary>
     public void SetSelectedLook(ImageLook look)
     {
@@ -2135,9 +2170,10 @@ internal sealed partial class GridPreview : Control
     /// <summary>
     /// Gives <paramref name="arrived"/>, and every image whose zoom is still its arrival zoom, the zoom
     /// <see cref="ZoomFit.Contain"/> gives in its cell, as a free zoom (<see cref="ImageLook.WithArrivalZoom"/>):
-    /// the whole image shown. A text laying its zoom out keeps filling its cell, at 100 %.
+    /// the whole image shown, centered in its cell when <paramref name="centered"/>, its focus kept otherwise.
+    /// A text laying its zoom out keeps filling its cell, at 100 %.
     /// </summary>
-    private void ShowWhole(IReadOnlyCollection<SourceImage> arrived)
+    private void ShowWhole(IReadOnlyCollection<SourceImage> arrived, bool centered = false)
     {
         var cells = this.CellBounds();
         for (int i = 0; i < this._images.Count && i < cells.Length; i++)
@@ -2149,7 +2185,8 @@ internal sealed partial class GridPreview : Control
             }
 
             var look = image.Look;
-            this.SetLook(i, look.WithArrivalZoom(FitCalculator.FitZoom(cells[i], look.Shown(image.Bitmap.Size), ZoomFit.Contain)));
+            double zoom = FitCalculator.FitZoom(cells[i], look.Shown(image.Bitmap.Size), ZoomFit.Contain);
+            this.SetLook(i, centered ? look.WithArrivalZoomCentered(zoom) : look.WithArrivalZoom(zoom));
         }
     }
 

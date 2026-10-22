@@ -5,7 +5,7 @@ using ImageGridFusion.Composition;
 namespace ImageGridFusion.UI;
 
 /// <summary>
-/// Vertical strip holding the mirror toggle, then one schematic thumbnail per basic layout of the
+/// Vertical strip holding the mirror toggle and the two Auto buttons, then one schematic thumbnail per basic layout of the
 /// current image count, then a "More" header over the advanced ones, collapsed by default.
 /// Scrolls vertically when taller than the window. Always shown, so the preview keeps its size: with
 /// no image, it shows the single-image thumbnail greyed out and does not react to the mouse.
@@ -43,9 +43,14 @@ internal sealed class LayoutStrip : ScrollableControl
 
     public event EventHandler? MirrorToggled;
 
+    /// <summary>Raised with <c>true</c> by ↔ Auto (the vertical separators), <c>false</c> by ↕ Auto (the horizontal ones).</summary>
+    public event EventHandler<bool>? AutoSizeClicked;
+
     private enum ItemKind
     {
         Mirror,
+        AutoRow,
+        AutoColumn,
         Layout,
         AdvancedHeader,
     }
@@ -90,6 +95,17 @@ internal sealed class LayoutStrip : ScrollableControl
 
     private bool MirrorEnabled => _active is { MirrorAxis: not MirrorAxis.None };
 
+    /// <summary>Whether an Auto button has something to move: a separator of its orientation in the active layout.</summary>
+    private bool AutoEnabled(bool vertical) => this._active?.Separators().Any(s => s.Vertical == vertical) == true;
+
+    private bool Clickable(Item item) => item.Kind switch
+    {
+        ItemKind.Mirror => this.MirrorEnabled,
+        ItemKind.AutoRow => this.AutoEnabled(true),
+        ItemKind.AutoColumn => this.AutoEnabled(false),
+        _ => true,
+    };
+
     protected override void Dispose(bool disposing)
     {
         if (disposing)
@@ -120,6 +136,12 @@ internal sealed class LayoutStrip : ScrollableControl
                 case ItemKind.Mirror:
                     PaintButton(g, item.Bounds, _active?.IsMirrored == true, MirrorEnabled && i == _hovered);
                     PaintMirrorIcon(g, item.Bounds);
+                    break;
+                case ItemKind.AutoRow:
+                case ItemKind.AutoColumn:
+                    bool vertical = item.Kind == ItemKind.AutoRow;
+                    this.PaintButton(g, item.Bounds, false, this.AutoEnabled(vertical) && i == _hovered);
+                    this.PaintAutoIcon(g, item.Bounds, vertical);
                     break;
                 case ItemKind.AdvancedHeader:
                     PaintButton(g, item.Bounds, false, i == _hovered);
@@ -183,6 +205,14 @@ internal sealed class LayoutStrip : ScrollableControl
                 MirrorToggled?.Invoke(this, EventArgs.Empty);
             }
         }
+        else if (item.Kind is ItemKind.AutoRow or ItemKind.AutoColumn)
+        {
+            bool vertical = item.Kind == ItemKind.AutoRow;
+            if (this.AutoEnabled(vertical))
+            {
+                this.AutoSizeClicked?.Invoke(this, vertical);
+            }
+        }
         else if (item.Kind == ItemKind.AdvancedHeader)
         {
             _expanded = !_expanded;
@@ -208,7 +238,7 @@ internal sealed class LayoutStrip : ScrollableControl
     }
 
     /// <summary>
-    /// Items stacked from the top: the mirror toggle, the basic thumbnails at the canvas ratio, then
+    /// Items stacked from the top: the mirror toggle and the two Auto buttons on one row, the basic thumbnails at the canvas ratio, then
     /// the "More" header over the advanced thumbnails — all of them expanded, only the active one
     /// collapsed. No header when the image count has no advanced layout. The items keep the size the
     /// whole strip gives them: a scrollbar only pushes them left into the margin.
@@ -229,7 +259,22 @@ internal sealed class LayoutStrip : ScrollableControl
             y += itemHeight + gapAfter;
         }
 
-        Add(ItemKind.Mirror, null, LogicalToDeviceUnits(28), spacing + LogicalToDeviceUnits(6));
+        // The mirror and the two Auto buttons share the first row, three equal buttons over the strip's
+        // whole width, narrower margins than the thumbnails' so their icons fit.
+        int rowLeft = this.LogicalToDeviceUnits(4);
+        int rowWidth = Math.Max(3, ClientSize.Width - (2 * rowLeft));
+        int buttonGap = this.LogicalToDeviceUnits(2);
+        int buttonWidth = Math.Max(1, (rowWidth - (2 * buttonGap)) / 3);
+        int buttonHeight = this.LogicalToDeviceUnits(28);
+        ItemKind[] row = [ItemKind.Mirror, ItemKind.AutoRow, ItemKind.AutoColumn];
+        for (int k = 0; k < row.Length; k++)
+        {
+            int x = rowLeft + (k * (buttonWidth + buttonGap));
+            int w = k == row.Length - 1 ? rowLeft + rowWidth - x : buttonWidth;
+            items.Add(new Item(row[k], null, new Rectangle(x, y, w, buttonHeight)));
+        }
+
+        y += buttonHeight + spacing + this.LogicalToDeviceUnits(6);
         foreach (var layout in _layouts.Where(l => !l.IsAdvanced))
         {
             Add(ItemKind.Layout, layout, thumbnailHeight, spacing);
@@ -270,11 +315,17 @@ internal sealed class LayoutStrip : ScrollableControl
         }
 
         _hovered = index;
-        bool clickable = index >= 0 && (_items[index].Kind != ItemKind.Mirror || MirrorEnabled);
+        bool clickable = index >= 0 && this.Clickable(_items[index]);
         Cursor = clickable ? Cursors.Hand : Cursors.Default;
         _toolTip.SetToolTip(this, index < 0 ? null : _items[index].Kind switch
         {
             ItemKind.Mirror => MirrorTip(),
+            ItemKind.AutoRow => this.AutoEnabled(true)
+                ? "↔ Auto — resize the cells side by side so their images, shown whole, get the same height"
+                : "↔ Auto (no cells side by side in this layout)",
+            ItemKind.AutoColumn => this.AutoEnabled(false)
+                ? "↕ Auto — resize the stacked cells so their images, shown whole, get the same width"
+                : "↕ Auto (no stacked cells in this layout)",
             ItemKind.AdvancedHeader => _expanded ? "Hide the extra layouts" : "Show more layouts",
             _ => _items[index].Layout!.Name,
         });
@@ -360,6 +411,38 @@ internal sealed class LayoutStrip : ScrollableControl
         using var brush = new SolidBrush(color);
         g.FillPolygon(brush, new PointF[] { new(-gap, -half), new(-gap, half), new(-gap - depth, 0) });
         g.FillPolygon(brush, new PointF[] { new(gap, -half), new(gap, half), new(gap + depth, 0) });
+        g.Restore(state);
+    }
+
+    /// <summary>
+    /// A double arrow between two end bars, across the separators the button moves: left ↔ right for the
+    /// vertical ones, turned upright for the horizontal ones.
+    /// </summary>
+    private void PaintAutoIcon(Graphics g, Rectangle bounds, bool vertical)
+    {
+        var color = !this.AutoEnabled(vertical) ? DisabledColor : ForeColor;
+        float cx = bounds.X + bounds.Width / 2f, cy = bounds.Y + bounds.Height / 2f;
+        float half = this.LogicalToDeviceUnits(7), bar = this.LogicalToDeviceUnits(5), head = this.LogicalToDeviceUnits(3);
+
+        var state = g.Save();
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.TranslateTransform(cx, cy);
+        if (!vertical)
+        {
+            g.RotateTransform(90);
+        }
+
+        using (var pen = new Pen(color, this.LogicalToDeviceUnits(1)))
+        {
+            g.DrawLine(pen, -half, -bar, -half, bar);
+            g.DrawLine(pen, half, -bar, half, bar);
+            g.DrawLine(pen, -half + head, 0, half - head, 0);
+        }
+
+        using var brush = new SolidBrush(color);
+        float tip = half - this.LogicalToDeviceUnits(1);
+        g.FillPolygon(brush, new PointF[] { new(-tip, 0), new(-tip + head, -head), new(-tip + head, head) });
+        g.FillPolygon(brush, new PointF[] { new(tip, 0), new(tip - head, -head), new(tip - head, head) });
         g.Restore(state);
     }
 
