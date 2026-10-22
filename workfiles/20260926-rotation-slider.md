@@ -161,6 +161,12 @@ The quarter-turn thumbnails stay beside the slider as shortcuts (Q&A #11, revisi
 last one labelled −90° to match the slider's range. Ctrl+R / Ctrl+Shift+R go to the next quarter
 turn that way (Q&A #12). No open question remains.
 
+### Iteration 7 — 2026-10-22
+
+Design re-checked against the code: the changes since (Colors replacing Black & white, the arrival
+zoom, documents laid out for their zoom) leave the rotation code as the design describes it. No
+open question.
+
 ---
 
 ## Implementation Log
@@ -194,8 +200,9 @@ Questions asked by the agent during design, with user responses.
 | 10 | Go for the implementation? | Dismissed | 2026-09-30 |
 | 11 | Quarter-turn thumbnails: removed, or kept beside the slider? | Kept beside the slider | 2026-10-10 |
 | 12 | Ctrl+R on an angle off a quarter: +90° keeping the rest, or the next quarter turn? | The next quarter turn | 2026-10-10 |
-| 13 | Go for the implementation? | | |
+| 13 | Go for the implementation? | Dismissed | 2026-10-10 |
+| 14 | Go for the implementation? | | |
 
 ---
 
-*Last updated: 2026-10-10*
+*Last updated: 2026-10-22*
