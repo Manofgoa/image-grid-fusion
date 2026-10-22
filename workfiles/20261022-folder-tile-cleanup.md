@@ -159,6 +159,11 @@ Last open questions settled (Q&A 7, 11, 12): the Details view's folder thumbnail
 treatment; the prefix is shared among siblings only — the shown folders with the same parent; the
 glossary and the README (EN + FR) describe it. No open question left.
 
+### Iteration 4 — 2026-10-22 — ✅ Implemented
+
+Go given (Q&A 13): code, tests and documentation, in a worktree —
+`.claude/worktrees/folder-tile-cleanup`, branch `feature/folder-tile-cleanup`, created from `main`.
+
 ---
 
 ## Implementation Log
@@ -192,7 +197,7 @@ Questions asked by the agent during design, with user responses.
 | 10 | Prefix word separators: spaces only, or also `-`, `_`, `.`? | Spaces, `-`, `_`, `.` | 2026-10-22 |
 | 11 | Prefix computed over the folders shown together in the list? | Siblings on disk only (same parent) | 2026-10-22 |
 | 12 | README sentence about the prefix (EN + FR), or glossary only? | Glossary and README | 2026-10-22 |
-| 13 | Go for implementation: scope and where? | | |
+| 13 | Go for implementation: scope and where? | Code, tests and documentation; worktree | 2026-10-22 |
 
 ---
 
