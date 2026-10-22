@@ -1016,28 +1016,8 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
         float minimum = this._nameFont.SizeInPoints * g.DpiY / 72f;
         float em = Math.Max(minimum, flap.Height / 3f);
-        string name = row.Name;
-        var area = flap;
         var smoothing = g.SmoothingMode;
         g.SmoothingMode = SmoothingMode.AntiAlias;
-        if (this._splitNames.TryGetValue(row.FullPath, out var split))
-        {
-            float small = Math.Max(minimum, flap.Height / 7f);
-            int line = Math.Min(flap.Height / 2, (int)Math.Ceiling(small * 1.3f));
-            var top = new Rectangle(flap.X, flap.Y, flap.Width, line);
-            using var single = new StringFormat(StringFormatFlags.NoWrap | StringFormatFlags.LineLimit)
-            {
-                Alignment = StringAlignment.Center,
-                LineAlignment = StringAlignment.Center,
-                Trimming = StringTrimming.EllipsisCharacter,
-            };
-            using var prefix = new GraphicsPath();
-            prefix.AddString($"{split.Prefix} ›", this._nameFont.FontFamily, (int)FontStyle.Bold, small, top, single);
-            PaintShadowed(g, prefix, small);
-            name = split.Rest;
-            area = Rectangle.FromLTRB(flap.X, top.Bottom, flap.Right, flap.Bottom);
-        }
-
         using var format = new StringFormat(StringFormatFlags.LineLimit)
         {
             Alignment = StringAlignment.Center,
@@ -1045,7 +1025,38 @@ internal sealed class ThumbnailGrid : ScrollableControl
             Trimming = StringTrimming.EllipsisCharacter,
         };
         using var path = new GraphicsPath();
-        path.AddString(name, this._nameFont.FontFamily, (int)FontStyle.Bold, em, area, format);
+        if (!this._splitNames.TryGetValue(row.FullPath, out var split))
+        {
+            path.AddString(row.Name, this._nameFont.FontFamily, (int)FontStyle.Bold, em, flap, format);
+            PaintShadowed(g, path, em);
+            g.SmoothingMode = smoothing;
+            return;
+        }
+
+        // The rest laid out in the flap below the small line, then the two moved to sit together — the
+        // small line right above the rest's letters — centered on the flap.
+        float small = Math.Max(minimum, flap.Height / 7f);
+        int line = Math.Min(flap.Height / 2, (int)Math.Ceiling(small * 1.3f));
+        float gap = small * 0.15f;
+        path.AddString(split.Rest, this._nameFont.FontFamily, (int)FontStyle.Bold, em, Rectangle.FromLTRB(flap.X, flap.Y + line, flap.Right, flap.Bottom), format);
+        var rest = path.GetBounds();
+        float block = line + gap + rest.Height;
+        float top = flap.Y + Math.Max(0f, (flap.Height - block) / 2f);
+        using (var shift = new Matrix())
+        {
+            shift.Translate(0f, top + line + gap - rest.Top);
+            path.Transform(shift);
+        }
+
+        using var single = new StringFormat(StringFormatFlags.NoWrap | StringFormatFlags.LineLimit)
+        {
+            Alignment = StringAlignment.Center,
+            LineAlignment = StringAlignment.Center,
+            Trimming = StringTrimming.EllipsisCharacter,
+        };
+        using var prefix = new GraphicsPath();
+        prefix.AddString($"{split.Prefix} ›", this._nameFont.FontFamily, (int)FontStyle.Bold, small, new RectangleF(flap.X, top, flap.Width, line), single);
+        PaintShadowed(g, prefix, small);
         PaintShadowed(g, path, em);
         g.SmoothingMode = smoothing;
     }
