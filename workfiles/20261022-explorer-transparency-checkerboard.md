@@ -29,6 +29,11 @@ Already right, nothing to change: `Imaging/ShellThumbnail` copies Windows' thumb
 alpha channel**, and `ThumbnailCache.Fit` / `UrlZone.Fit` draw into 32-bit ARGB bitmaps — the
 transparency reaches the paint, it is only hidden by the grey under it.
 
+**Folders are asked at 256 px.** For some folders, Windows' thumbnail at 384–512 px comes **opaque**,
+its transparent areas painted black — the same folder at 256 or 1024 px keeps its alpha. Windows
+gives a folder's thumbnail at 256 px whatever the size asked, so `ThumbnailCache` asks a folder at
+**256 px** (`FolderSide`) whatever the tile's bucket: nothing is lost, and the alpha comes with it.
+
 ---
 
 ## Where the Checkerboard Goes
@@ -147,6 +152,15 @@ Go given (Q&A 8): code, tests and documentation, in the current checkout. Branch
 
 No rule broken.
 
+### Iteration 5 — 2026-10-22 — ⚙️ Post-implementation — Folders with a black background
+
+Reported by the user (screenshot, Q&A 9): some folder tiles show a black square behind the folder
+instead of the checkerboard. Probed with Windows' `IShellItemImageFactory`: for those folders, the
+thumbnail asked at 384 or 512 px comes back 256 × 256 and **fully opaque**, black where the folder is
+transparent; asked at 256 or 1024 px, the same folder keeps its alpha. The other folders keep it at
+every size. The tiles were at the 512 bucket, hence the black. Decided (Q&A 10): folders are always
+asked at 256 px — their real size — whatever the tile's bucket.
+
 ---
 
 ## Implementation Log
@@ -177,6 +191,8 @@ Questions asked by the agent during design, with user responses.
 | 6 | URL preview's empty / failed states: checkerboard or plain? | Checkerboard too | 2026-10-22 |
 | 7 | Documentation: glossary *Tile* row updated? | Yes, EN + FR | 2026-10-22 |
 | 8 | Go for implementation? (scope, where) | Code, tests and documentation — current checkout (`main`) | 2026-10-22 |
+| 9 | Task finished? | Not yet — some folders have a black background (screenshot) | 2026-10-22 |
+| 10 | How to fix the opaque folder thumbnails — ask another size on an opaque one, always 256 for folders, or nothing? | Folders always asked at 256 px | 2026-10-22 |
 
 ---
 
