@@ -60,7 +60,6 @@ internal sealed partial class GridPreview : Control
     private static readonly TimeSpan MotionInterval = TimeSpan.FromSeconds(1.0 / Animation.FramesPerSecond);
 
     private static readonly Color HoverOutlineColor = Color.FromArgb(128, Color.White);
-    private static readonly Color CheckerGrey = Color.FromArgb(204, 204, 204);
 
     // Helper indicators drawn over a cell (see RULES.md): fluorescent green over a black halo, so they
     // show on any image.
@@ -1904,7 +1903,7 @@ internal sealed partial class GridPreview : Control
             _checkerTile = new Bitmap(2 * square, 2 * square);
             using (var tile = Graphics.FromImage(_checkerTile))
             {
-                using var grey = new SolidBrush(CheckerGrey);
+                using var grey = new SolidBrush(Checkerboard.Grey);
                 tile.Clear(Color.White);
                 tile.FillRectangle(grey, square, 0, square, square);
                 tile.FillRectangle(grey, 0, square, square, square);

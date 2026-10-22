@@ -229,7 +229,7 @@ internal sealed partial class GridPreview
 
         var state = g.Save();
         g.SmoothingMode = SmoothingMode.None;
-        using (var checker = new HatchBrush(HatchStyle.LargeCheckerBoard, CheckerGrey, Color.White))
+        using (var checker = new HatchBrush(HatchStyle.LargeCheckerBoard, Checkerboard.Grey, Color.White))
         {
             g.FillRectangle(checker, view);
         }
