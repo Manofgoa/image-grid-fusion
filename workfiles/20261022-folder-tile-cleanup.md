@@ -41,7 +41,7 @@ docs that describe the folder tile (`GLOSSARY.md` / `GLOSSARY.fr.md` *Folder til
 | A folder's tile, resting | 1 px `ControlDark` frame | **No frame** |
 | A folder's tile, hovered / selected | `HotTrack` 1 px / `Highlight` 2 px frame | **Kept** — interaction feedback |
 | A file's tile, the Loading… slot, the URL zone | Checkerboard + frame | Unchanged |
-| A Details folder row's thumbnail | Checkerboard + frame | See Open Questions |
+| A Details folder row's thumbnail | Checkerboard + frame | **Same as the tile**: no checkerboard, no resting frame; hover / selection frames kept |
 | A Details folder row's strip (files inside) | Checkerboard + frame per box | Unchanged — they are files |
 
 - Applies to both pictures of a folder: **Windows' thumbnail** and the **drawn folder**.
@@ -77,8 +77,10 @@ Alpha
   one other folder of the list, compared ignoring case, **leaving at least one word** of its own name —
   `Outils RS` itself next to `Outils RS 2` gets no prefix.
 - **Words** are separated by spaces, `-`, `_` and `.` (a run of them counts as one separator):
-  `Outils RS - Alpha` and `Outils_RS_Beta` share `Outils RS`. The list it is computed over — see Open
-  Questions.
+  `Outils RS - Alpha` and `Outils_RS_Beta` share `Outils RS`.
+- **Siblings only**: a folder is compared with the folders of the shown list that have the **same
+  parent folder** — in the folder view, the open folder's subfolders; in a search, the folders found
+  under the same parent. Two folders of different parents never share a prefix.
 - Each folder shows **its own text** for the prefix (its own case), never another's.
 - **The small line**: one line, cut with `…`, in the tile names' size or a fraction of the large size
   (implementation choice), with the same shadow as the name.
@@ -95,8 +97,8 @@ Alpha
 - `GLOSSARY.md` *Folder tile* row: the folder over the panel's background, its name on the front flap
   under a light shadow, a prefix shared with other folders drawn small above the rest.
 - `GLOSSARY.fr.md`: the same row in French, same commit.
-- README: its folder view paragraph does not describe the tile's drawing — untouched unless the prefix
-  is worth a sentence (see Open Questions).
+- `README.md` folder view paragraph: one sentence — sibling folders starting alike show the shared
+  part small above the rest of the name. `README.fr.md`: the same sentence in French, same commit.
 
 ---
 
@@ -116,12 +118,12 @@ a prefix (`Outils RS …`), siblings sharing none, the hovered and selected tile
 ## Open Questions
 
 - [x] ~~Hover and selection frames of a folder tile: kept (interaction feedback), or removed too?~~ → Kept; only the resting frame goes
-- [ ] Details view: a folder row's thumbnail without checkerboard and frame too, or unchanged?
+- [x] ~~Details view: a folder row's thumbnail without checkerboard and frame too, or unchanged?~~ → Same treatment; the strip's file thumbnails keep their checkerboard
 - [x] ~~The shadow's colors: almost-black text with a soft light shadow, or white text with a soft dark shadow?~~ → Almost-black text, soft white shadow
 - [x] ~~Where the small prefix line sits: at the top of the front flap above the large name, or on the folder's tab (top left)?~~ → Top of the front flap
 - [x] ~~Word separators for the prefix: spaces only, or also `-`, `_`, `.`?~~ → Spaces, `-`, `_`, `.`
-- [ ] The list the prefix is computed over: the folders shown together in the list (folder view and its search alike)?
-- [ ] README: one sentence about the shared prefix in the folder view paragraph (EN + FR), or glossary only?
+- [x] ~~The list the prefix is computed over: the folders shown together in the list (folder view and its search alike)?~~ → Siblings only: the shown folders with the same parent
+- [x] ~~README: one sentence about the shared prefix in the folder view paragraph (EN + FR), or glossary only?~~ → Glossary and README, EN + FR
 
 ---
 
@@ -151,6 +153,12 @@ Four open questions settled (Q&A 6, 8–10), from a mockup of three variants: th
 frames stay, only the resting frame goes; the name stays almost black over a soft white shadow; the
 shared prefix sits at the top of the front flap; words split on spaces, `-`, `_` and `.`.
 
+### Iteration 3 — 2026-10-22
+
+Last open questions settled (Q&A 7, 11, 12): the Details view's folder thumbnail gets the same
+treatment; the prefix is shared among siblings only — the shown folders with the same parent; the
+glossary and the README (EN + FR) describe it. No open question left.
+
 ---
 
 ## Implementation Log
@@ -178,12 +186,13 @@ Questions asked by the agent during design, with user responses.
 | 4 | Is the subject straightforward or tricky / long? | Straightforward | 2026-10-22 |
 | 5 | *(user, unprompted)* Folders starting alike | Show the shared prefix small at the top (`Outils RS ›`), the rest large | 2026-10-22 |
 | 6 | Hover and selection frames of a folder tile: kept or removed? | Kept | 2026-10-22 |
-| 7 | Details view folder thumbnail: same treatment or unchanged? | | |
+| 7 | Details view folder thumbnail: same treatment or unchanged? | Same treatment | 2026-10-22 |
 | 8 | Shadow colors: dark text + light shadow, or white text + dark shadow? | Dark text, light shadow (mockup A) | 2026-10-22 |
 | 9 | Small prefix line: top of the front flap, or on the folder's tab? | Top of the front flap | 2026-10-22 |
 | 10 | Prefix word separators: spaces only, or also `-`, `_`, `.`? | Spaces, `-`, `_`, `.` | 2026-10-22 |
-| 11 | Prefix computed over the folders shown together in the list? | | |
-| 12 | README sentence about the prefix (EN + FR), or glossary only? | | |
+| 11 | Prefix computed over the folders shown together in the list? | Siblings on disk only (same parent) | 2026-10-22 |
+| 12 | README sentence about the prefix (EN + FR), or glossary only? | Glossary and README | 2026-10-22 |
+| 13 | Go for implementation: scope and where? | | |
 
 ---
 
