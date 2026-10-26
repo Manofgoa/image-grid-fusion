@@ -72,10 +72,13 @@ kept settings of an effect turned off (`Kept*`).
 
 - **Zoom untouched since arrival is not saved**: an arrived image carries the arrival zoom
   (`ImageLook.ZoomOnArrival`) — it is the default behaviour, not a choice, so it counts as off.
-  Applied, the preset then gets a fresh arrival zoom in its new cell.
+  Applied, the preset then gets a fresh arrival zoom in its new cell. An image **moved** while its
+  zoom is still the arrival one is saved as an arrival zoom with its focus: applied, the new cell
+  computes the arrival zoom, the focus kept.
 - **Background**: on by default (RULES.md § The Background Exception), so turning it off is a
   choice: saved when on, like the others, **and saved as off** when off — the preset then arrives
-  without a fill. The one effect whose *off* is saved.
+  without a fill. The one effect whose *off* is saved. On at its default settings, it is not written:
+  the file arrives with that default anyway.
 
 ### Applying
 
@@ -138,7 +141,9 @@ description, the date it was saved, its effects). The order — newest first —
   by `Explorer/Favorites.cs` only, rewritten whole through a `.tmp` file as today.
 - **Migration, once**: with no `favorites.json` and a `favorites.txt`, the paths are read in their
   order as file favorites, the JSON written, then `favorites.txt` deleted. A `--new-instance`
-  instance migrates nothing (RULES.md § Single Instance): it reads `favorites.txt` as it is.
+  instance migrates nothing (RULES.md § Single Instance): it reads `favorites.txt` as it is — and
+  writes `favorites.json` on a change of favorites, from what it read; the normal instance then finds
+  the JSON already there and only deletes the old file.
 - Effects are written by hand under named keys, as `settings.json` is (`System.Text.Json`,
   `JsonObject`), never by serializing `ImageLook`. A format version leaves room for later effects.
 - A file favorite stays **unique per path**, as today; presets are identified by their own id.
@@ -146,9 +151,12 @@ description, the date it was saved, its effects). The order — newest first —
 ### Tiles
 
 - Shown in the favorites list (search box empty), among the file favorites, newest first.
-- **Two lines** under the thumbnail: the file's name, then the **first line of the description**,
-  greyed (none when the description is empty); the whole description in the tile's **tooltip**.
-- A **★ FX** badge at the thumbnail's top-left corner, the heart medallion keeping its corner.
+- **Two lines** under the thumbnail: the file's name, grey as every tile's, then the **first line of
+  the description** in the text color (none when the description is empty); the whole description
+  in the tile's **tooltip**, above the path. A list holding presets gives every tile the second
+  line's height, so the rows stay even.
+- A **★ FX** badge — pale blue, dark blue text — at the thumbnail's **top-right** corner: the heart's
+  medallion holds the top-left one.
 - The **heart**, full, deletes the preset — after a confirmation (*Delete this preset?*, its
   description quoted), since the description would be lost. A file favorite's heart is unchanged.
 - The tile's context menu adds **Edit description…** on a preset — the description only.
@@ -171,7 +179,9 @@ description, the date it was saved, its effects). The order — newest first —
 - The description is folded with `FileSearch.Fold` at save time; every query word must be found in
   the name, the path or the description (AND, as today).
 - A preset found by its description ranks in **its own tier**, after the path matches and before the
-  content matches (`ContentGrade.Description`, ahead of Sure, so `CompareTier` barely changes).
+  content matches: every match carries its tier as a number (`SearchMatch.Tier`, `PresetMatch.Tier`)
+  and the presets (`FileSearch.SearchPresets`, newest first) are merged into the files' list, ahead of
+  the files of their tier. The caption counts them with the files; `*` lists files only.
 - Details view: a preset found by its description shows the **words around** the one found, the
   search's words highlighted in yellow, as a content match does (`HighlightSpans`, the excerpt's
   windowing generalized to take another source than `ContentIndex`).
@@ -248,6 +258,34 @@ turned off saved as off. No question left open.
 Go given: **Code, unit tests and documentation**, in the **current checkout** — `main`, the standing
 choice for this repository (no Branch Gate question). Scope frozen as the sections above stand.
 
+### Iteration 4 — 2026-10-26 — 🧭 Implementation choices
+
+No rule broken. Choices the frozen design did not state, the domain sections updated:
+
+- **Badge corner**: the ★ FX badge sits at the thumbnail's **top-right** corner — the heart's medallion
+  already holds the top-left one, which the design took for the other.
+- **Description line color**: the text color, not grey — every tile's name is already grey, so a
+  grey description would not read apart from it.
+- **Even rows**: a list holding presets gives every tile the second line's height.
+- **Moved on arrival**: an image moved while its zoom is still the arrival one saves an arrival zoom
+  with its focus (the design only said an untouched arrival zoom is not saved).
+- **Background at its defaults** is not written: the file arrives with that default anyway.
+- **Migration after a test instance**: a `favorites.json` already there (written by a `--new-instance`
+  instance from the `favorites.txt` it read) is kept, the old file only deleted.
+- **Search merge**: tiers as numbers on every match (`SearchMatch.Tier`), the presets placed ahead of
+  the files of their tier; the caption counts them.
+- **The effects' JSON** is written by each effect record (`ToJson` / `FromJson`, read through
+  `PresetJson`): their settings are private-init, only the record can build itself back.
+- **Dialog for a cell without a file**: it names *Pasted image* / *Pasted text — saved into
+  favorites-from-pasted*; the file is saved only on **Save** (or **File only**), never on Cancel.
+- **Checked**: no test project — a throwaway console harness in the session's scratchpad (not in the
+  repository) ran 30 checks: the JSON round trip of every effect, the moved arrival zoom, the
+  Background off and colored, `favorites.txt` read with its duplicate dropped, presets added,
+  reloaded, described, removed, a file favorite removed leaving its presets, the description search
+  accents folded, the file-name search. It found one bug, fixed: the focus written as floats did not
+  read back from an unparsed JSON object (`93488bb`). The UI itself — dialog, tiles, drag — is left to
+  the user's hand test.
+
 ---
 
 ## Implementation Log
@@ -257,9 +295,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable — no test project in the repository |
-| README | | | |
+| Code | 3, 4 | 2026-10-26 | `LookPreset` and the effects' JSON, `Favorites` in `favorites.json`, tiles, search, dialog, ★ Preset…, ✥ release, drop and activation (`7a91a91`…`5bf6747`) |
+| Unit tests | 4 | 2026-10-26 | Not applicable — no test project in the repository; a throwaway harness ran 30 checks (Iteration 4) |
+| README | 4 | 2026-10-26 | README + README.fr, GLOSSARY + GLOSSARY.fr, RULES.md § Effect Presets |
 
 ---
 
