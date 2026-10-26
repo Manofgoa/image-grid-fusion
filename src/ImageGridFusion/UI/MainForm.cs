@@ -146,7 +146,7 @@ internal sealed class MainForm : Form
     {
         Dock = DockStyle.Top,
         AutoSize = true,
-        ColumnCount = 4,
+        ColumnCount = 5,
         RowCount = 1,
         Padding = new Padding(8, 0, 8, 8),
     };
@@ -162,6 +162,15 @@ internal sealed class MainForm : Form
         Anchor = AnchorStyles.Right | AnchorStyles.Top,
         Margin = new Padding(3, 0, 0, 0),
         TextImageRelation = TextImageRelation.ImageBeforeText,
+    };
+
+    // Left of the Reset, as tall as it: the selected cell's effects saved as an effect preset.
+    private readonly Button _presetButton = new()
+    {
+        Text = "★ Preset…",
+        AutoSize = true,
+        Anchor = AnchorStyles.Right | AnchorStyles.Top,
+        Margin = new Padding(3, 0, 0, 0),
     };
 
     // One row of options per effect, in the options row; only the selected tab's shows.
@@ -456,11 +465,13 @@ internal sealed class MainForm : Form
         _tabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _tabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _tabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        _tabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _tabsRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _effectsLabel.Font = new Font(Font, FontStyle.Bold);
         _tabsRow.Controls.Add(_effectsLabel, 0, 0);
         _tabsRow.Controls.Add(_effectTabs, 1, 0);
-        _tabsRow.Controls.Add(_resetButton, 3, 0);
+        this._tabsRow.Controls.Add(this._presetButton, 3, 0);
+        _tabsRow.Controls.Add(_resetButton, 4, 0);
         _optionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _optionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _optionsRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
@@ -668,6 +679,7 @@ internal sealed class MainForm : Form
 
         // A double-clicked row is added like a file from the Add images picker.
         _explorer.FileActivated += async (_, path) => await AddFilesAsync([path]);
+        this._explorer.PresetActivated += async (_, preset) => await this.AddFilesAsync([preset.Path], look: FileExplorerPanel.PresetLookOf(preset.Effects));
         _copyButton.Click += (_, _) => CopyToClipboard();
         _saveButton.Click += (_, _) => Save();
         _copyGif.Click += (_, _) => Copy(GridExport.Format.Gif);
@@ -710,6 +722,14 @@ internal sealed class MainForm : Form
         _toolTip.SetToolTip(_resetButton, "Brings every effect of the cell back to its defaults, and the cells to their layout's sizes");
         _effectResetButton.Click += (_, _) => ResetSelectedEffect();
         _resetButton.Click += (_, _) => ResetEffects();
+        this._toolTip.SetToolTip(this._presetButton, "Saves the effects turned on in the cell as a favorite of its file, with a description to find it again");
+        this._presetButton.Click += (_, _) =>
+        {
+            if (this._preview.SelectedImage is { } image)
+            {
+                this.SavePreset(image, fromHandle: false);
+            }
+        };
         _zoom.ValueChanged += (_, _) => SetZoom();
         this._zoom.Wheel = this.StepZoom;
         this._zoomFit.Picked += (_, fit) => this.SetZoomFit(fit);
@@ -923,7 +943,15 @@ internal sealed class MainForm : Form
         {
             if (_explorer.ContainsScreenPoint(released.ScreenPoint))
             {
-                AddToFavorites(released.Image);
+                // A cell with effects offers them as a preset; without, its file becomes a favorite, as ever.
+                if (LookPreset.HasEffects(released.Image.Look))
+                {
+                    this.SavePreset(released.Image, fromHandle: true);
+                }
+                else
+                {
+                    AddToFavorites(released.Image);
+                }
             }
         };
         _explorer.MessageWhileCollapsed += (_, message) => ShowStatus(message.Text, message.Error);
@@ -1383,7 +1411,7 @@ internal sealed class MainForm : Form
         int target = sender == _preview ? DropCell(e) : -1;
         if (e.Data?.GetData(DataFormats.FileDrop) is string[] paths)
         {
-            await AddFilesAsync(paths, target);
+            await AddFilesAsync(paths, target, FileExplorerPanel.PresetLookOf(e.Data));
         }
         else if (e.Data is not null && TextData.TryGet(e.Data) is { } text)
         {
@@ -1398,6 +1426,19 @@ internal sealed class MainForm : Form
     /// </summary>
     private void AddToFavorites(SourceImage image)
     {
+        if (this.FileOf(image, "Not added to favorites") is { } path)
+        {
+            _explorer.AddFavorites([path]);
+        }
+    }
+
+    /// <summary>
+    /// The image's file, for a favorite or an effect preset: an image without one is saved first into
+    /// favorites-from-pasted and adopts that file. Null, the status line saying why after
+    /// <paramref name="refused"/>, when it cannot be saved.
+    /// </summary>
+    private string? FileOf(SourceImage image, string refused)
+    {
         if (image.FilePath is null)
         {
             string? saved;
@@ -1409,21 +1450,45 @@ internal sealed class MainForm : Form
             }
             catch (Exception ex) when (FileIndex.IsFileError(ex) || ex is ExternalException)
             {
-                _explorer.Report($"Not added to favorites: the image could not be saved: {ex.Message}", error: true);
-                return;
+                _explorer.Report($"{refused}: the image could not be saved: {ex.Message}", error: true);
+                return null;
             }
 
             if (saved is null)
             {
-                _explorer.Report("Not added to favorites: this image has no file and cannot be saved", error: true);
-                return;
+                _explorer.Report($"{refused}: this image has no file and cannot be saved", error: true);
+                return null;
             }
 
             image.AdoptFile(saved);
             _preview.RefreshSourceName();
         }
 
-        _explorer.AddFavorites([image.FilePath!]);
+        return image.FilePath;
+    }
+
+    /// <summary>
+    /// The effects of <paramref name="image"/>'s cell saved as an effect preset of its file, described in
+    /// the preset dialog — from the effects toolbar's ★ Preset… button, or from the ✥ handle released over
+    /// the file explorer (<paramref name="fromHandle"/>), whose <b>File only</b> makes a plain favorite.
+    /// See workfiles/20261026-effect-preset-favorites.md § Creating a Preset.
+    /// </summary>
+    private void SavePreset(SourceImage image, bool fromHandle)
+    {
+        var look = image.Look;
+        string name = image.FilePath is { } file ? Path.GetFileName(file)
+            : image.TextOrigin is not null ? "Pasted text — saved into favorites-from-pasted"
+            : "Pasted image — saved into favorites-from-pasted";
+        using var dialog = new EffectPresetDialog(name, LookPreset.Describe(look), "", fromHandle ? EffectPresetDialog.Purpose.SaveOrFileOnly : EffectPresetDialog.Purpose.Save);
+        var answer = dialog.ShowDialog(this);
+        if (answer == DialogResult.Ignore)
+        {
+            this.AddToFavorites(image);
+        }
+        else if (answer == DialogResult.OK && this.FileOf(image, "Effect preset not saved") is { } path)
+        {
+            this._explorer.AddPreset(path, look, dialog.Description);
+        }
     }
 
     private int DropCell(DragEventArgs e) => _preview.CellAt(_preview.PointToClient(new Point(e.X, e.Y)));
@@ -1564,9 +1629,10 @@ internal sealed class MainForm : Form
 
     /// <summary>
     /// Loads files in the given order, off the UI thread, and only as many as can be placed:
-    /// the target cell, the free slots, and one excess file for the replace rule.
+    /// the target cell, the free slots, and one excess file for the replace rule. With
+    /// <paramref name="look"/> — an effect preset's — they arrive with its effects.
     /// </summary>
-    private async Task AddFilesAsync(string[] paths, int targetCell = -1)
+    private async Task AddFilesAsync(string[] paths, int targetCell = -1, ImageLook? look = null)
     {
         if (RefuseWhileExporting())
         {
@@ -1598,6 +1664,14 @@ internal sealed class MainForm : Form
 
             return (loaded, unreadable, paths.Length - attempted);
         });
+        if (look is not null)
+        {
+            foreach (var image in images)
+            {
+                image.Look = look;
+            }
+        }
+
         int ignored = notLoaded + _preview.Add(images, targetCell);
 
         var messages = new List<string>();
@@ -3330,6 +3404,7 @@ internal sealed class MainForm : Form
         _effectTabs.Selected = _selectedEffect;
         _effectTabs.Enabled = enabled;
         _resetButton.Enabled = enabled && (ResetLook(effect: null) != look || _preview.ActiveLayout?.IsResized == true);
+        this._presetButton.Enabled = enabled;
         if (look is not null)
         {
             // The automatic color is computed only while the tab shows: it changes with every zoom or move.
