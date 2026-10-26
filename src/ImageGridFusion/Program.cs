@@ -1,4 +1,5 @@
 using ImageGridFusion.Composition;
+using ImageGridFusion.Explorer;
 using ImageGridFusion.UI;
 using ImageGridFusion.Web;
 
@@ -64,6 +65,7 @@ internal static class Program
         {
             RegistryMigration.Run();
             StartupRegistration.Refresh();
+            Favorites.Migrate();
             _ = Task.Run(UrlDownloads.Clean);
         }
 

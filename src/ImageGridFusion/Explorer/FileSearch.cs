@@ -102,14 +102,75 @@ internal static class FileSearch
             matches.Sort((a, b) => a.Rank.CompareTo(b.Rank));
         }
 
-        return matches.Select(m => new SearchMatch(m.Entry, m.Rank.ContentWord)).ToArray();
+        return matches.Select(m => new SearchMatch(m.Entry, m.Rank.ContentWord, m.Rank.Tier(words.Length))).ToArray();
     }
+
+    /// <summary>
+    /// The effect presets matching every word, by their file's name or their description — the search's
+    /// <c>Aa</c> criterion — newest first within a tier, the tiers numbered as <see cref="SearchMatch.Tier"/>
+    /// numbers the files': a preset whose file's name holds every word ranks with the files matched by
+    /// their name, one found by its description ranks after every path match and before the content
+    /// matches. See workfiles/20261026-effect-preset-favorites.md § Search.
+    /// </summary>
+    public static IReadOnlyList<PresetMatch> SearchPresets(IEnumerable<Favorite> presets, string[] words)
+    {
+        if (words.Length == 0)
+        {
+            return [];
+        }
+
+        var matches = new List<PresetMatch>();
+        foreach (var favorite in presets)
+        {
+            if (favorite.Preset is not { } preset)
+            {
+                continue;
+            }
+
+            string name = Fold(Path.GetFileName(favorite.FullPath));
+            string description = preset.Folded;
+            int nameHits = 0;
+            string? descriptionWord = null;
+            bool matched = true;
+            foreach (string word in words)
+            {
+                if (name.Contains(word, StringComparison.Ordinal))
+                {
+                    nameHits++;
+                }
+                else if (description.Contains(word, StringComparison.Ordinal))
+                {
+                    descriptionWord ??= word;
+                }
+                else
+                {
+                    matched = false;
+                    break;
+                }
+            }
+
+            if (matched)
+            {
+                matches.Add(new PresetMatch(favorite, descriptionWord, descriptionWord is null ? words.Length - nameHits : DescriptionTier(words.Length)));
+            }
+        }
+
+        // Stable: the newest first within a tier, as given.
+        return [.. matches.OrderBy(match => match.Tier)];
+    }
+
+    // The tiers: the path matches 0 (every word in the name) to words (none in the name), the
+    // description matches next, then the content matches by their grade.
+    private static int DescriptionTier(int words) => words + 1;
 
     /// <summary>How well an entry matches; lower compares first.</summary>
     private readonly record struct Rank(string? ContentWord, ContentGrade Grade, int NameHits, int FirstPosition, int NameLength, string Path) : IComparable<Rank>
     {
         /// <summary>Whether a word was found in the content text only.</summary>
         public bool ByContent => this.ContentWord is not null;
+
+        /// <summary>Its relevance tier as a number, lower first, comparable with a preset's (<see cref="SearchPresets"/>).</summary>
+        public int Tier(int words) => this.ByContent ? DescriptionTier(words) + 1 + (int)this.Grade : words - this.NameHits;
 
         /// <summary>
         /// Null when a word is missing from both the folded relative path — not read unless
@@ -226,13 +287,21 @@ internal sealed class IndexEntry
 
 /// <summary>
 /// An entry the search found; <paramref name="ContentWord"/>: the first query word found in its content
-/// text only — null when its path holds every word.
+/// text only — null when its path holds every word. <paramref name="Tier"/>: its relevance tier, lower
+/// first — the order a search keeps whatever the sort drop-down says, comparable with a preset's.
 /// </summary>
-internal readonly record struct SearchMatch(IndexEntry Entry, string? ContentWord)
+internal readonly record struct SearchMatch(IndexEntry Entry, string? ContentWord, int Tier = 0)
 {
     /// <summary>Whether the entry was found thanks to its content text.</summary>
     public bool ByContent => this.ContentWord is not null;
 }
+
+/// <summary>
+/// An effect preset the search found; <paramref name="DescriptionWord"/>: the first query word found in
+/// its description only — null when its file's name holds every word. <paramref name="Tier"/>: as
+/// <see cref="SearchMatch.Tier"/>.
+/// </summary>
+internal readonly record struct PresetMatch(Favorite Favorite, string? DescriptionWord, int Tier);
 
 /// <summary>What tells a file changed since its content text was extracted: its size and last write, in UTC.</summary>
 internal readonly record struct FileStamp(long Size, DateTime Written);

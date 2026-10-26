@@ -12,10 +12,18 @@ namespace ImageGridFusion.UI;
 /// in the folder view, a folder (<paramref name="IsFolder"/>), with the number of files below it once the
 /// index counts them (<paramref name="Count"/>). <paramref name="ContentWord"/>: for a search result found thanks to its content text, the first
 /// query word found there, folded. <paramref name="Size"/>: the file's size in bytes when the list
-/// knows it — the index's, the folder listing's.
+/// knows it — the index's, the folder listing's. <paramref name="Preset"/>: an effect preset of the file,
+/// its own tile; <paramref name="DescriptionWord"/>: for a preset a search found by its description, the
+/// first query word found there, folded.
 /// </summary>
-internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false, string? ContentWord = null, long? Size = null, int? Count = null)
+internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false, string? ContentWord = null, long? Size = null, int? Count = null, EffectPreset? Preset = null, string? DescriptionWord = null)
 {
+    /// <summary>What tells a tile from the others: a file's presets share its path.</summary>
+    public string Key => this.Preset?.Id ?? this.FullPath;
+
+    /// <summary>The tile's tooltip: its path, after a preset's description.</summary>
+    public string Tip => this.Preset is { Description.Length: > 0 } preset ? $"{preset.Description.Trim()}\n\n{this.FullPath}" : this.FullPath;
+
     /// <summary>The name with the file count after it, as a Details row shows a folder.</summary>
     public string NameAndCount => this.Count is { } count ? $"{this.Name} ({count:N0})" : this.Name;
 
@@ -57,6 +65,10 @@ internal sealed class ThumbnailGrid : ScrollableControl
     // The excerpt's highlight: emoji-selector's opaque yellow, behind the search's words.
     private static readonly Color HighlightColor = Color.FromArgb(255, 255, 0);
 
+    // An effect preset's ★ FX badge.
+    private static readonly Color PresetBadgeFill = Color.FromArgb(230, 241, 251);
+    private static readonly Color PresetBadgeText = Color.FromArgb(12, 68, 124);
+
     private const TextFormatFlags ExcerptFlags = TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
 
     // The light bulb of a tile found by its content: amber, the glyph drawn in one color.
@@ -79,7 +91,10 @@ internal sealed class ThumbnailGrid : ScrollableControl
     // to a width; the medallions' size and fonts, shrunk with the thumbnail.
     private readonly ThumbnailCache _stripThumbnails;
     private readonly Dictionary<string, string> _stripOwners = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<(string Path, int Width), string?> _excerpts = new();
+    private readonly Dictionary<(string Key, int Width), string?> _excerpts = new();
+
+    // The list holds effect presets: every tile gets a second line under its name, for a preset's description.
+    private bool _presetLines;
     private ExplorerView _view = ExplorerView.Thumbnails;
     private string[] _highlightWords = [];
     private int _rowW = 1;
@@ -238,9 +253,10 @@ internal sealed class ThumbnailGrid : ScrollableControl
     /// </summary>
     public void SetRows(IReadOnlyList<ExplorerRow> rows, bool hasMore, bool keepPlace)
     {
-        string? selected = SelectedRow?.FullPath;
+        string? selected = SelectedRow?.Key;
         int scroll = -AutoScrollPosition.Y;
         _rows = rows;
+        this._presetLines = rows.Any(row => row.Preset is not null);
         this._splitNames = SharedPrefix.Of(rows.Where(row => row.IsFolder).Select(row => row.FullPath));
         _hasMore = hasMore;
         _moreAsked = false;
@@ -248,7 +264,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         _hovered = -1;
         if (keepPlace)
         {
-            _selected = selected is null ? -1 : IndexOf(selected);
+            _selected = selected is null ? -1 : this.IndexOfKey(selected);
             UpdateExtent();
             AutoScrollPosition = new Point(0, scroll);
         }
@@ -339,7 +355,14 @@ internal sealed class ThumbnailGrid : ScrollableControl
     }
 
     /// <summary>Repaints a tile, e.g. when its heart changed.</summary>
-    public void InvalidateRow(ExplorerRow row) => InvalidateTileOf(row.FullPath);
+    public void InvalidateRow(ExplorerRow row)
+    {
+        int index = this.IndexOfKey(row.Key);
+        if (index >= 0)
+        {
+            this.Invalidate(this.Scrolled(this.CellBounds(index)));
+        }
+    }
 
     protected override void Dispose(bool disposing)
     {
@@ -637,6 +660,25 @@ internal sealed class ThumbnailGrid : ScrollableControl
         }
     }
 
+    /// <summary>
+    /// An effect preset's badge, <c>★ FX</c>, at the thumbnail's top-right corner — the heart has the
+    /// top-left one: a pale blue label, its text dark blue.
+    /// </summary>
+    private void PaintPresetBadge(Graphics g, Rectangle tile)
+    {
+        const string Badge = "★ FX";
+        const TextFormatFlags Flags = TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
+        var text = TextRenderer.MeasureText(g, Badge, this._nameFont, Size.Empty, Flags);
+        int pad = this.LogicalToDeviceUnits(3);
+        int inset = this.LogicalToDeviceUnits(MedallionInset);
+        var badge = new Rectangle(tile.Right - inset - text.Width - 2 * pad, tile.Y + inset, text.Width + 2 * pad, text.Height + pad);
+        using var fill = new SolidBrush(PresetBadgeFill);
+        g.FillRectangle(fill, badge);
+        using var border = new Pen(PresetBadgeText);
+        g.DrawRectangle(border, badge.X, badge.Y, badge.Width - 1, badge.Height - 1);
+        TextRenderer.DrawText(g, Badge, this._nameFont, badge, PresetBadgeText, Flags | TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+    }
+
     /// <summary>The Loading… slot: a tile's box, its checkerboard and the text alone — no thumbnail, heart nor name.</summary>
     private void PaintLoading(Graphics g, Rectangle slot)
     {
@@ -666,6 +708,19 @@ internal sealed class ThumbnailGrid : ScrollableControl
             Scrolled(NameBounds(index)),
             selected ? SystemColors.Highlight : SystemColors.GrayText,
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+
+        // A preset: its description's first line under the file's name, the whole description in the tooltip.
+        if (row.Preset is { } preset)
+        {
+            var name = this.Scrolled(this.NameBounds(index));
+            TextRenderer.DrawText(
+                g,
+                preset.FirstLine,
+                this._nameFont,
+                new Rectangle(name.X, name.Bottom, name.Width, this.SmallLineH),
+                SystemColors.ControlText,
+                TextFormatFlags.Left | TextFormatFlags.Top | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+        }
     }
 
     /// <summary>
@@ -718,9 +773,19 @@ internal sealed class ThumbnailGrid : ScrollableControl
         {
             this.PaintStrip(g, row, below);
         }
-        else if (row.ByContent)
+        else if (row.ByContent || row.DescriptionWord is not null)
         {
             this.PaintExcerpt(g, row, new Rectangle(below.X, below.Y, below.Width, this.SmallLineH));
+        }
+        else if (row.Preset is { } preset)
+        {
+            TextRenderer.DrawText(
+                g,
+                preset.FirstLine,
+                this._nameFont,
+                new Rectangle(below.X, below.Y, below.Width, this.SmallLineH),
+                SystemColors.GrayText,
+                LineFlags | TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
         }
     }
 
@@ -764,7 +829,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
     /// </summary>
     private string? ExcerptOf(ExplorerRow row, int width)
     {
-        var key = (row.FullPath, width);
+        var key = (row.Key, width);
         if (this._excerpts.TryGetValue(key, out string? cached))
         {
             return cached;
@@ -916,7 +981,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         if (!row.IsFolder)
         {
             var heart = Scrolled(HeartBounds(index));
-            bool favorite = IsFavorite(row.FullPath);
+            bool favorite = row.Preset is not null || IsFavorite(row.FullPath);
             var smoothing = g.SmoothingMode;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.FillEllipse(Brushes.White, heart);
@@ -929,6 +994,11 @@ internal sealed class ThumbnailGrid : ScrollableControl
                 heart,
                 favorite ? Color.Crimson : SystemColors.GrayText,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        }
+
+        if (row.Preset is not null)
+        {
+            this.PaintPresetBadge(g, tile);
         }
 
         // A search result found thanks to its content text: a light bulb in a medallion, under the heart.
@@ -1112,7 +1182,10 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
     private int CellW => TileW + GapPx;
 
-    private int CellH => this.Details ? this._rowH + this.RowGapPx : TileH + NameH + GapPx;
+    private int CellH => this.Details ? this._rowH + this.RowGapPx : TileH + this.CaptionH + GapPx;
+
+    // Under a tile: its name, and a preset's description line when the list holds presets.
+    private int CaptionH => this.NameH + (this._presetLines ? this.SmallLineH : 0);
 
     private Font HeartFont => this.Details && this._detailsHeartFont is { } font ? font : this._heartFont;
 
@@ -1138,7 +1211,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         }
 
         var tile = TileBounds(index);
-        return new Rectangle(tile.X, tile.Y, tile.Width, TileH + NameH);
+        return new Rectangle(tile.X, tile.Y, tile.Width, TileH + this.CaptionH);
     }
 
     private Rectangle HeartBounds(int index)
@@ -1179,7 +1252,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         }
         else
         {
-            this._toolTip.SetToolTip(this, index >= 0 ? this._rows[index].FullPath : null);
+            this._toolTip.SetToolTip(this, index >= 0 ? this._rows[index].Tip : null);
         }
     }
 
@@ -1334,7 +1407,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         }
 
         int column = x / CellW;
-        if (column >= _perRow || x % CellW >= TileW || y % CellH >= TileH + NameH)
+        if (column >= _perRow || x % CellW >= TileW || y % CellH >= TileH + this.CaptionH)
         {
             return -1;
         }
@@ -1358,12 +1431,28 @@ internal sealed class ThumbnailGrid : ScrollableControl
         return -1;
     }
 
+    private int IndexOfKey(string key)
+    {
+        for (int i = 0; i < this._rows.Count; i++)
+        {
+            if (string.Equals(this._rows[i].Key, key, StringComparison.OrdinalIgnoreCase))
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    // Every tile of the path: a file's presets show its thumbnail too.
     private void InvalidateTileOf(string path)
     {
-        int index = IndexOf(path);
-        if (index >= 0)
+        for (int i = 0; i < this._rows.Count; i++)
         {
-            Invalidate(Scrolled(CellBounds(index)));
+            if (string.Equals(this._rows[i].FullPath, path, StringComparison.OrdinalIgnoreCase))
+            {
+                this.Invalidate(this.Scrolled(this.CellBounds(i)));
+            }
         }
     }
 
@@ -1488,7 +1577,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
             Invalidate(Scrolled(CellBounds(index)));
         }
 
-        _toolTip.SetToolTip(this, index >= 0 ? _rows[index].FullPath : null);
+        _toolTip.SetToolTip(this, index >= 0 ? _rows[index].Tip : null);
         this._bulbTip = -1;
     }
 

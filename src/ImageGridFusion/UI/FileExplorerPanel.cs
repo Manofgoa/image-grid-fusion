@@ -147,6 +147,7 @@ internal sealed class FileExplorerPanel : Panel
     // Any tile's full path, as text (see workfiles/20261014-copy-full-path.md), a folder's too.
     private readonly ToolStripMenuItem _copyFullPath = new(CopyFullPathText);
     private readonly ToolStripSeparator _copySeparator = new();
+    private readonly ToolStripMenuItem _editDescription = new("Edit description…");
     private readonly ToolTip _toolTip = new();
     private readonly System.Windows.Forms.Timer _transient = new() { Interval = TransientDuration };
     private readonly Favorites _favorites = new(Favorites.DefaultPath);
@@ -274,7 +275,7 @@ internal sealed class FileExplorerPanel : Panel
         this._content.Controls.Add(this._urlZone, 0, 7);
         Controls.Add(_content);
         Controls.Add(_expand);
-        this._menu.Items.AddRange([this._copy, this._copyPng, this._copyFullPath, this._copySeparator]);
+        this._menu.Items.AddRange([this._editDescription, this._copy, this._copyPng, this._copyFullPath, this._copySeparator]);
         _menu.Items.Add(_openLocation);
         _grid.ContextMenuStrip = _menu;
         _grid.IsFavorite = _favorites.Contains;
@@ -332,7 +333,9 @@ internal sealed class FileExplorerPanel : Panel
             bool file = row is { IsFolder: false };
             this._copy.Visible = file;
             this._copyPng.Visible = file;
+            this._editDescription.Visible = row?.Preset is not null;
         };
+        this._editDescription.Click += (_, _) => this.EditDescription();
         _openLocation.Click += (_, _) => OpenLocation();
         this._copy.Click += (_, _) => this.CopySelected();
         this._copyPng.Click += async (_, _) => await this.CopySelectedPngAsync();
@@ -365,6 +368,57 @@ internal sealed class FileExplorerPanel : Panel
 
     /// <summary>A tile was double-clicked or entered: its file, to be added like Add images.</summary>
     public event EventHandler<string>? FileActivated;
+
+    /// <summary>An effect preset's tile double-clicked or entered: its file and its effects (<see cref="PresetDataFormat"/>'s text), added like Add images.</summary>
+    public event EventHandler<(string Path, string Effects)>? PresetActivated;
+
+    /// <summary>
+    /// The drag format carrying an effect preset's effects beside its file, as the JSON text
+    /// <c>LookPreset.ToJson</c> wrote: a drop into a cell reads it (<see cref="PresetLookOf"/>).
+    /// </summary>
+    public const string PresetDataFormat = "ImageGridFusion.EffectPreset";
+
+    /// <summary>The effects a dropped preset tile carries; null for any other drop, or effects that cannot be read.</summary>
+    public static ImageLook? PresetLookOf(IDataObject? data) =>
+        data?.GetDataPresent(PresetDataFormat) == true && data.GetData(PresetDataFormat) is string effects ? PresetLookOf(effects) : null;
+
+    /// <summary>The look effects saved as JSON text give; null when they cannot be read.</summary>
+    public static ImageLook? PresetLookOf(string effects)
+    {
+        try
+        {
+            return System.Text.Json.Nodes.JsonNode.Parse(effects) is System.Text.Json.Nodes.JsonObject json ? LookPreset.FromJson(json) : null;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Saves the effects <paramref name="look"/> holds as a preset of <paramref name="fullPath"/>, the
+    /// newest favorite, described by <paramref name="description"/>; the status line says so.
+    /// </summary>
+    public void AddPreset(string fullPath, ImageLook look, string description)
+    {
+        string? error = null;
+        try
+        {
+            this._favorites.AddPreset(fullPath, EffectPreset.New(description, LookPreset.ToJson(look)));
+        }
+        catch (Exception ex) when (FileIndex.IsFileError(ex))
+        {
+            error = ex.Message;
+        }
+
+        if (this.ShowingFavorites)
+        {
+            this.RefreshRows(keepPlace: true);
+        }
+
+        string name = Path.GetFileName(fullPath);
+        this.Report(error is null ? $"Effect preset saved: {name}" : $"Effect preset saved for the session, not written: {error}", error is not null);
+    }
 
     /// <summary>The invitation's button: the base folder is to be chosen, as from the ⚙ menu.</summary>
     public event EventHandler? ChooseFolderRequested;
@@ -1695,9 +1749,9 @@ internal sealed class FileExplorerPanel : Panel
         var rows = new List<ExplorerRow>();
         if (words.Length == 0)
         {
-            foreach (string path in _favorites.Newest)
+            foreach (var favorite in _favorites.Newest)
             {
-                rows.Add(new ExplorerRow(path, Path.GetFileName(path)));
+                rows.Add(new ExplorerRow(favorite.FullPath, Path.GetFileName(favorite.FullPath), Preset: favorite.Preset));
             }
 
             _caption.Text = $"Favorites ({_favorites.Count})";
@@ -1709,18 +1763,35 @@ internal sealed class FileExplorerPanel : Panel
         else
         {
             var found = this.Find(_index.Entries, words, everything);
-            foreach (var (entry, contentWord) in found)
+
+            // The effect presets found go with the files of their tier, ahead of them; never in *.
+            IReadOnlyList<PresetMatch> presets = everything || !this._byName.Checked ? [] : FileSearch.SearchPresets(this._favorites.Presets, words);
+            int next = 0;
+            foreach (var match in found)
             {
-                rows.Add(new ExplorerRow(_index.FullPath(entry), entry.Name, ContentWord: contentWord, Size: entry.Size));
+                for (; next < presets.Count && presets[next].Tier <= match.Tier; next++)
+                {
+                    rows.Add(PresetRow(presets[next]));
+                }
+
+                rows.Add(new ExplorerRow(_index.FullPath(match.Entry), match.Entry.Name, ContentWord: match.ContentWord, Size: match.Entry.Size));
             }
+
+            for (; next < presets.Count; next++)
+            {
+                rows.Add(PresetRow(presets[next]));
+            }
+
+            static ExplorerRow PresetRow(PresetMatch match) =>
+                new(match.Favorite.FullPath, Path.GetFileName(match.Favorite.FullPath), Preset: match.Favorite.Preset, DescriptionWord: match.DescriptionWord);
 
             _caption.Text = everything
                 ? $"All files ({found.Count:N0})"
-                : found.Count switch
+                : rows.Count switch
                 {
                     0 => "No result",
                     1 => "1 result",
-                    _ => $"{found.Count:N0} results",
+                    _ => $"{rows.Count:N0} results",
                 };
         }
 
@@ -1870,7 +1941,7 @@ internal sealed class FileExplorerPanel : Panel
             rows.Add(FolderRow(index.FullPath(folder)));
         }
 
-        foreach (var (file, contentWord) in foundFiles)
+        foreach (var (file, contentWord, _) in foundFiles)
         {
             rows.Add(new ExplorerRow(index.FullPath(file), file.Name, ContentWord: contentWord, Size: file.Size));
         }
@@ -1919,10 +1990,20 @@ internal sealed class FileExplorerPanel : Panel
     /// A file's text as words and where the word the search found in it stands, for the Details view's
     /// excerpt; null for a file not found by its content.
     /// </summary>
-    private (string[] Words, int At)? WordsOf(ExplorerRow row) =>
-        row.ContentWord is { } word && this._contents is { } contents && this._baseFolder is { } root
+    private (string[] Words, int At)? WordsOf(ExplorerRow row)
+    {
+        if (row.DescriptionWord is { } found && row.Preset is { } preset)
+        {
+            // A preset found by its description: the words around the first one holding the word found.
+            string[] words = preset.Description.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            int at = Array.FindIndex(words, word => FileSearch.Fold(word).Contains(found, StringComparison.Ordinal));
+            return at >= 0 ? (words, at) : null;
+        }
+
+        return row.ContentWord is { } word && this._contents is { } contents && this._baseFolder is { } root
             ? contents.WordsAround(Path.GetRelativePath(root, row.FullPath), word)
             : null;
+    }
 
     /// <summary>
     /// A file's size for the Details view: the index's or the folder listing's, else read from the disk
@@ -2205,13 +2286,21 @@ internal sealed class FileExplorerPanel : Panel
         {
             Navigate(Path.GetRelativePath(_baseFolder!, row.FullPath));
         }
+        else if (row.Preset is { } preset)
+        {
+            this.PresetActivated?.Invoke(this, (row.FullPath, preset.Effects.ToJsonString()));
+        }
         else
         {
             FileActivated?.Invoke(this, row.FullPath);
         }
     }
 
-    /// <summary>A file tile dragged past the threshold becomes a file drag, like one from the Explorer; a folder tile does not drag.</summary>
+    /// <summary>
+    /// A file tile dragged past the threshold becomes a file drag, like one from the Explorer; a folder tile
+    /// does not drag. A preset's carries its effects beside the file (<see cref="PresetDataFormat"/>):
+    /// another app gets the file alone.
+    /// </summary>
     private void StartDrag(ExplorerRow row)
     {
         if (!row.IsFolder && Exists(row))
@@ -2219,7 +2308,13 @@ internal sealed class FileExplorerPanel : Panel
             _draggingOwnTile = true;
             try
             {
-                _grid.DoDragDrop(new DataObject(DataFormats.FileDrop, new[] { row.FullPath }), DragDropEffects.Copy);
+                var data = new DataObject(DataFormats.FileDrop, new[] { row.FullPath });
+                if (row.Preset is { } preset)
+                {
+                    data.SetData(PresetDataFormat, preset.Effects.ToJsonString());
+                }
+
+                _grid.DoDragDrop(data, DragDropEffects.Copy);
             }
             finally
             {
@@ -2248,6 +2343,12 @@ internal sealed class FileExplorerPanel : Panel
     /// </summary>
     private void ToggleFavorite(ExplorerRow row)
     {
+        if (row.Preset is { } preset)
+        {
+            this.DeletePreset(row, preset);
+            return;
+        }
+
         bool added = true;
         try
         {
@@ -2258,7 +2359,48 @@ internal sealed class FileExplorerPanel : Panel
             ShowTransient($"Favorites not saved: {ex.Message}", error: true);
         }
 
-        if (!added && PastedFavorites.Holds(row.FullPath))
+        this.AfterFavoriteRemoved(row, added);
+    }
+
+    /// <summary>
+    /// A preset's heart: the preset deleted once the user confirms — its description would be lost —
+    /// then its file recycled if it was pasted and nothing else holds it.
+    /// </summary>
+    private void DeletePreset(ExplorerRow row, EffectPreset preset)
+    {
+        string described = preset.Description.Trim().Length > 0 ? $"\n\n« {preset.Description.Trim()} »" : "";
+        if (MessageBox.Show(
+                this.FindForm(),
+                $"Delete this effect preset of {row.Name}?{described}",
+                "Delete effect preset",
+                MessageBoxButtons.OKCancel,
+                MessageBoxIcon.Question,
+                MessageBoxDefaultButton.Button2) != DialogResult.OK)
+        {
+            return;
+        }
+
+        bool removed = false;
+        try
+        {
+            removed = this._favorites.RemovePreset(preset.Id);
+        }
+        catch (Exception ex) when (FileIndex.IsFileError(ex))
+        {
+            this.ShowTransient($"Favorites not saved: {ex.Message}", error: true);
+            removed = true;
+        }
+
+        this.AfterFavoriteRemoved(row, added: !removed);
+    }
+
+    /// <summary>
+    /// A favorite or a preset gone: a file of <see cref="PastedFavorites.Folder"/> no favorite holds any
+    /// more goes to the Recycle Bin, and the list follows.
+    /// </summary>
+    private void AfterFavoriteRemoved(ExplorerRow row, bool added)
+    {
+        if (!added && PastedFavorites.Holds(row.FullPath) && !this._favorites.Uses(row.FullPath))
         {
             try
             {
@@ -2271,15 +2413,43 @@ internal sealed class FileExplorerPanel : Panel
             }
         }
 
-        if (ShowingFavorites)
+        if (ShowingFavorites || (!added && row.Preset is not null))
         {
-            // The favorites list: the tile leaves it, the place kept — once the grid is done with the click.
+            // The favorites list, or a search showing a deleted preset: the tile leaves it, the place kept —
+            // once the grid is done with the click.
             BeginInvoke(() => RefreshRows(keepPlace: true));
         }
         else
         {
             _grid.InvalidateRow(row);
         }
+    }
+
+    /// <summary>The selected preset's description edited in the preset dialog — its effects stay as saved.</summary>
+    private void EditDescription()
+    {
+        if (this._grid.SelectedRow is not { Preset: { } preset } row
+            || PresetLookOf(preset.Effects.ToJsonString()) is not { } look)
+        {
+            return;
+        }
+
+        using var dialog = new EffectPresetDialog(row.Name, LookPreset.Describe(look), preset.Description, EffectPresetDialog.Purpose.Edit);
+        if (dialog.ShowDialog(this.FindForm()) != DialogResult.OK)
+        {
+            return;
+        }
+
+        try
+        {
+            this._favorites.Describe(preset.Id, dialog.Description);
+        }
+        catch (Exception ex) when (FileIndex.IsFileError(ex))
+        {
+            this.ShowTransient($"Favorites not saved: {ex.Message}", error: true);
+        }
+
+        this.RefreshRows(keepPlace: true);
     }
 
     private void OpenLocation()
@@ -2327,6 +2497,13 @@ internal sealed class FileExplorerPanel : Panel
         if (File.Exists(row.FullPath))
         {
             return true;
+        }
+
+        // A preset is kept, its description never dropped silently: only its heart removes it.
+        if (row.Preset is not null)
+        {
+            this.ShowTransient($"File not found: {row.FullPath} — the preset is kept, its heart deletes it", error: true);
+            return false;
         }
 
         string? error = null;
