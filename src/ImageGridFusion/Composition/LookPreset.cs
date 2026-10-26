@@ -49,8 +49,9 @@ internal static class LookPreset
                         ["arrival"] = look.ZoomOnArrival,
                         ["zoom"] = look.Zoom,
                         ["fit"] = look.ZoomFit.ToString(),
-                        ["focusX"] = look.Focus.X,
-                        ["focusY"] = look.Focus.Y,
+                        // As doubles: a value built from a float does not read back as one before it is parsed.
+                        ["focusX"] = (double)look.Focus.X,
+                        ["focusY"] = (double)look.Focus.Y,
                     };
                     break;
                 case ImageEffect.Animations:
