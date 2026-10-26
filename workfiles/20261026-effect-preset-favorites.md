@@ -243,6 +243,11 @@ dialog offering **File only**; the description searched under **Aa**; a preset w
 kept until its heart removes it; **Edit description…** editing the description only; the Background
 turned off saved as off. No question left open.
 
+### Iteration 3 — 2026-10-26 — ✅ Implemented
+
+Go given: **Code, unit tests and documentation**, in the **current checkout** — `main`, the standing
+choice for this repository (no Branch Gate question). Scope frozen as the sections above stand.
+
 ---
 
 ## Implementation Log
