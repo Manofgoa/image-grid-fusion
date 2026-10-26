@@ -233,6 +233,14 @@ Questions asked by the agent during design, with user responses.
 | 2 | Which effects does a preset save? | Only the turned-on effects | 2026-10-26 |
 | 3 | How is a preset saved from a cell? | Dedicated button + ✥ | 2026-10-26 |
 | 4 | Is the subject straightforward or tricky / long to explore? | Straightforward | 2026-10-26 |
+| 5 | Storage: one `favorites.json` replacing `favorites.txt`, or a separate presets file? | | 2026-10-26 |
+| 6 | How does a preset tile look (variants A / B / C of the mockup)? | | 2026-10-26 |
+| 7 | The heart on a preset tile: delete with confirmation, or no heart and a menu entry? | | 2026-10-26 |
+| 8 | ✥ released with effects: does the dialog also offer **File only**? | | 2026-10-26 |
+| 9 | Which search criterion covers the description? | | 2026-10-26 |
+| 10 | A preset whose file is gone: kept or dropped? | | 2026-10-26 |
+| 11 | Editing a preset: description only, or also **Update effects**? | | 2026-10-26 |
+| 12 | The Background off in the cell: saved as off, or ignored? | | 2026-10-26 |
 
 ---
 
