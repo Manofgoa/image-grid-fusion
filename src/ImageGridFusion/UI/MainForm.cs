@@ -1428,7 +1428,7 @@ internal sealed class MainForm : Form
     {
         if (this.FileOf(image, "Not added to favorites") is { } path)
         {
-            _explorer.AddFavorites([path]);
+            this._explorer.AddFavorites([path]);
         }
     }
 

@@ -58,16 +58,16 @@ internal sealed class Favorites
 
     private static string OldPath(string path) => Path.Combine(Path.GetDirectoryName(path)!, OldFileName);
 
-    public int Count => _entries.Count;
+    public int Count => this._entries.Count;
 
     /// <summary>The favorites, the most recently added first.</summary>
     public IEnumerable<Favorite> Newest
     {
         get
         {
-            for (int i = _entries.Count - 1; i >= 0; i--)
+            for (int i = this._entries.Count - 1; i >= 0; i--)
             {
-                yield return _entries[i];
+                yield return this._entries[i];
             }
         }
     }
@@ -80,9 +80,9 @@ internal sealed class Favorites
 
     /// <summary>Whether a favorite or a preset holds the file: a pasted favorite's file is recycled only once none does.</summary>
     public bool Uses(string fullPath) =>
-        _entries.Any(entry => string.Equals(entry.FullPath, fullPath, StringComparison.OrdinalIgnoreCase));
+        this._entries.Any(entry => string.Equals(entry.FullPath, fullPath, StringComparison.OrdinalIgnoreCase));
 
-    public Favorite? Preset(string id) => _entries.FirstOrDefault(entry => entry.Preset?.Id == id);
+    public Favorite? Preset(string id) => this._entries.FirstOrDefault(entry => entry.Preset?.Id == id);
 
     /// <summary>
     /// Moves an older version's <see cref="OldFileName"/> into <see cref="FileName"/>, once, then deletes
@@ -122,17 +122,17 @@ internal sealed class Favorites
     /// </summary>
     public void Load()
     {
-        _entries.Clear();
-        _set.Clear();
+        this._entries.Clear();
+        this._set.Clear();
         try
         {
-            if (File.Exists(_path))
+            if (File.Exists(this._path))
             {
-                this.Read(JsonNode.Parse(File.ReadAllText(_path)) as JsonObject);
+                this.Read(JsonNode.Parse(File.ReadAllText(this._path)) as JsonObject);
             }
             else
             {
-                foreach (string line in File.ReadAllLines(OldPath(_path)))
+                foreach (string line in File.ReadAllLines(OldPath(this._path)))
                 {
                     this.Append(new Favorite(line));
                 }
@@ -178,9 +178,9 @@ internal sealed class Favorites
     // A file favorite already there is skipped, as a duplicate line was.
     private void Append(Favorite favorite)
     {
-        if (favorite.FullPath.Length > 0 && (favorite.Preset is not null || _set.Add(favorite.FullPath)))
+        if (favorite.FullPath.Length > 0 && (favorite.Preset is not null || this._set.Add(favorite.FullPath)))
         {
-            _entries.Add(favorite);
+            this._entries.Add(favorite);
         }
     }
 
@@ -195,7 +195,7 @@ internal sealed class Favorites
         if (added)
         {
             _set.Add(fullPath);
-            _entries.Add(new Favorite(fullPath));
+            this._entries.Add(new Favorite(fullPath));
         }
 
         Save();
@@ -213,7 +213,7 @@ internal sealed class Favorites
         {
             Drop(fullPath);
             _set.Add(fullPath);
-            _entries.Add(new Favorite(fullPath));
+            this._entries.Add(new Favorite(fullPath));
         }
 
         Save();
@@ -222,32 +222,32 @@ internal sealed class Favorites
     /// <summary>Adds an effect preset of <paramref name="fullPath"/>, the newest, and writes the file. Throws like <see cref="Toggle"/>.</summary>
     public void AddPreset(string fullPath, EffectPreset preset)
     {
-        _entries.Add(new Favorite(fullPath, preset));
-        Save();
+        this._entries.Add(new Favorite(fullPath, preset));
+        this.Save();
     }
 
     /// <summary>Gives a preset a new description, in its place, and writes the file. Throws like <see cref="Toggle"/>.</summary>
     public void Describe(string id, string description)
     {
-        int index = _entries.FindIndex(entry => entry.Preset?.Id == id);
+        int index = this._entries.FindIndex(entry => entry.Preset?.Id == id);
         if (index < 0)
         {
             return;
         }
 
-        _entries[index] = _entries[index] with { Preset = _entries[index].Preset! with { Description = description } };
-        Save();
+        this._entries[index] = this._entries[index] with { Preset = this._entries[index].Preset! with { Description = description } };
+        this.Save();
     }
 
     /// <summary>Removes a preset, writing the file; false when there was none. Throws like <see cref="Toggle"/>.</summary>
     public bool RemovePreset(string id)
     {
-        if (_entries.RemoveAll(entry => entry.Preset?.Id == id) == 0)
+        if (this._entries.RemoveAll(entry => entry.Preset?.Id == id) == 0)
         {
             return false;
         }
 
-        Save();
+        this.Save();
         return true;
     }
 
@@ -270,14 +270,14 @@ internal sealed class Favorites
             return false;
         }
 
-        _entries.RemoveAll(entry => entry.Preset is null && string.Equals(entry.FullPath, fullPath, StringComparison.OrdinalIgnoreCase));
+        this._entries.RemoveAll(entry => entry.Preset is null && string.Equals(entry.FullPath, fullPath, StringComparison.OrdinalIgnoreCase));
         return true;
     }
 
     private void Save()
     {
         var entries = new JsonArray();
-        foreach (var entry in _entries)
+        foreach (var entry in this._entries)
         {
             var json = new JsonObject { ["path"] = entry.FullPath };
             if (entry.Preset is { } preset)
