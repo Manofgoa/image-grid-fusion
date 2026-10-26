@@ -10,7 +10,8 @@ Apply to **every effect**, the blur being the first one
 ### Scope and State
 
 - An effect belongs to a **cell + image** pair. Its state lives on the image's immutable state,
-  next to `ImageLook`, and is **not persisted**.
+  next to `ImageLook`, and is **not persisted** — an effect preset keeps a copy, never the cell's
+  state (§ Effect Presets).
 - Its geometry is stored in **fractions of the cell**, so it survives resizing and layout changes
   — the Crop aside (§ The Crop Exception).
 - Its **settings** and its **on / off** state are independent: turning an effect off **keeps its
@@ -87,8 +88,8 @@ The Crop effect's geometry is **not in fractions of the cell**, and its kept par
 ### Effects Toolbar
 
 - An **always-visible row of tabs**, hanging down from the options toolbar above it: an **Effects**
-  label, one **effect tab** per effect, then, at the far right, a **Reset** button (not an effect)
-  **as tall as the tabs**. Every action on the image is an effect: the cell itself only keeps the
+  label, one **effect tab** per effect, then a **★ Preset…** button and, at the far right, a **Reset**
+  button — neither an effect — **as tall as the tabs** (★ Preset…: § Effect Presets). Every action on the image is an effect: the cell itself only keeps the
   **×**, the **✥** swap handle, and the wheel and drag gestures (origin:
   `workfiles/20260925-toolbar.md`, `workfiles/20260925-ui-cleanup.md`).
 - The **separators** between cells resize the **grid**, not an image: they are no effect and have
@@ -246,6 +247,36 @@ moves it but the fit modes, below (origin: `workfiles/20261007-zoom-keeps-image-
   only push a zoom gives the image.
 - With a fine angle, the cover scale depends on where the image stands; where no position draws the
   point exactly where it was (an image moved far off its cell), the closest one is taken.
+
+### Effect Presets
+
+A cell's effects saved as a favorite of its file, with a description, to bring the file back into a
+cell with them (origin: `workfiles/20261026-effect-preset-favorites.md`):
+
+- **What is saved** has one definition, `LookPreset.Saved`: the effects **turned on** — never the
+  settings an effect turned off keeps — the **Background turned off** too (on by default, off is a
+  choice), and the **Zoom** only once changed since the image arrived, or the image moved meanwhile
+  (then saved as an arrival zoom, its focus kept). Nothing else is a preset: the cell's slot, the
+  global effects, the layout.
+- **A new effect adds its key** to `LookPreset.ToJson` / `FromJson` and its line to
+  `LookPreset.Describe`, its settings written by hand under named keys by the effect itself
+  (`ToJson` / `FromJson` on its record, read through `PresetJson`, a missing or foreign value giving
+  its default) — never by serializing `ImageLook`.
+- **Restored in order**: the orientation first (a turn or a flip turns the crop and the focus along),
+  then the crop, then the others, the zoom and its focus last. The look is set on the loaded image
+  before `GridPreview.Add` (`MainForm.AddFilesAsync`, its `look`): otherwise an ordinary arrival —
+  the grid starts over, one undo step. `GridPreview.ShowWhole` leaves a zoom of its own to an
+  arriving image.
+- **Linked to its file**: a preset is applied by bringing its file into a cell — a drag carries its
+  effects beside the file (`FileExplorerPanel.PresetDataFormat`), another app getting the file
+  alone — never to another image. A file has any number of presets, each identified by its own id.
+- Kept in **`favorites.json`** with the favorites (`Explorer/Favorites.cs`), an older `favorites.txt`
+  migrated once by the normal instance (`Favorites.Migrate`). A preset is **never dropped silently**:
+  its file gone, it stays until its heart deletes it, after a confirmation.
+- **Searched** under **Aa** (`FileSearch.SearchPresets`), by its file's name or its description: the
+  description matches in their own tier, after the path matches and before the content matches
+  (`SearchMatch.Tier`).
+- Out of the undo history: saving, editing or deleting a preset is the favorites' business.
 
 ## Global Effects
 
