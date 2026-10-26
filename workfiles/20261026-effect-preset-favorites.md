@@ -73,8 +73,9 @@ kept settings of an effect turned off (`Kept*`).
 - **Zoom untouched since arrival is not saved**: an arrived image carries the arrival zoom
   (`ImageLook.ZoomOnArrival`) — it is the default behaviour, not a choice, so it counts as off.
   Applied, the preset then gets a fresh arrival zoom in its new cell.
-- **Background**: on by default (RULES.md § The Background Exception). Saved when on, like the
-  others; its *off* state is the subject of an open question.
+- **Background**: on by default (RULES.md § The Background Exception), so turning it off is a
+  choice: saved when on, like the others, **and saved as off** when off — the preset then arrives
+  without a fill. The one effect whose *off* is saved.
 
 ### Applying
 
@@ -108,6 +109,8 @@ does (`MainForm.AddFilesAsync`), then sets the image's look to the saved effects
 - A cell **with effects** — at least one effect turned on beyond the default state (Background at
   its defaults and an untouched arrival zoom don't count) — opens the same dialog.
 - A cell without effects makes a file favorite, as today.
+- Here the dialog has a third button, **File only**: the plain file favorite of today, its effects
+  not saved.
 
 ### The Dialog
 
@@ -118,7 +121,9 @@ A small modal dialog:
   `Crop — 16:9`), read-only.
 - A multi-line **Description** text box, focused, optional (empty allowed), `Enter` a new line,
   `Ctrl+Enter` validating.
-- **Save** / **Cancel**.
+- **Save** / **Cancel** — **Save** / **File only** / **Cancel** when opened by the ✥ handle.
+- **Edit description…** reopens it on an existing preset: the description only, the effects list
+  read-only, **Save** / **Cancel**.
 
 ---
 
@@ -128,19 +133,31 @@ A small modal dialog:
 
 Favorites become a list of **entries**: a file favorite (a path) or a preset (an id, a path, a
 description, the date it was saved, its effects). The order — newest first — covers both kinds.
-The file holding them is the subject of an open question.
 
-Effects are written by hand under named keys, as `settings.json` is (`System.Text.Json`,
-`JsonObject`), never by serializing `ImageLook`. A format version leaves room for later effects.
+- They live in **one `favorites.json`** next to the exe, replacing `favorites.txt`, read and written
+  by `Explorer/Favorites.cs` only, rewritten whole through a `.tmp` file as today.
+- **Migration, once**: with no `favorites.json` and a `favorites.txt`, the paths are read in their
+  order as file favorites, the JSON written, then `favorites.txt` deleted. A `--new-instance`
+  instance migrates nothing (RULES.md § Single Instance): it reads `favorites.txt` as it is.
+- Effects are written by hand under named keys, as `settings.json` is (`System.Text.Json`,
+  `JsonObject`), never by serializing `ImageLook`. A format version leaves room for later effects.
+- A file favorite stays **unique per path**, as today; presets are identified by their own id.
 
 ### Tiles
 
 - Shown in the favorites list (search box empty), among the file favorites, newest first.
-- How a preset tile looks — badge, description shown or not — is the subject of an open question.
-- The tile's context menu adds **Edit description…** (the dialog, description only) on a preset.
+- **Two lines** under the thumbnail: the file's name, then the **first line of the description**,
+  greyed (none when the description is empty); the whole description in the tile's **tooltip**.
+- A **★ FX** badge at the thumbnail's top-left corner, the heart medallion keeping its corner.
+- The **heart**, full, deletes the preset — after a confirmation (*Delete this preset?*, its
+  description quoted), since the description would be lost. A file favorite's heart is unchanged.
+- The tile's context menu adds **Edit description…** on a preset — the description only.
 - **Copy**, **Copy PNG**, **Copy full path**, **Open file location** act on its file, as on any tile.
 - A preset whose file is the one of a **pasted favorite** keeps that file: the file goes to the
   Recycle Bin only once no favorite and no preset uses it any more.
+- A preset whose **file is gone** is **kept**: its tile shows the missing thumbnail, its drag or
+  double-click says the file is missing in the status line, and only its heart removes it — a
+  description is never dropped silently. (A file favorite whose file is gone keeps today's rule.)
 
 ### Search
 
@@ -148,6 +165,9 @@ Effects are written by hand under named keys, as `settings.json` is (`System.Tex
   next to the index's (`FileSearch.Search` reads `_index.Entries` only today): a preset may point to
   a file outside the base folder.
 - A preset matches by its **file's name** (the name tier, as the file does) or by its **description**.
+- The description is searched under the **Aa** criterion — the user's own words, like a name. With
+  💡 alone, the presets are not searched: they hold no content of their own (their file is still
+  found by its content, as a file).
 - The description is folded with `FileSearch.Fold` at save time; every query word must be found in
   the name, the path or the description (AND, as today).
 - A preset found by its description ranks in **its own tier**, after the path matches and before the
@@ -180,19 +200,24 @@ as a preset, a restart reading the file back.
 - [x] ~~Which effects does a preset save?~~ → The turned-on effects only.
 - [x] ~~How is a preset created?~~ → A dedicated button of the effects toolbar, and the ✥ handle
   released over the explorer when the cell has effects.
-- [ ] Storage: one `favorites.json` replacing `favorites.txt` (migrated once), or `favorites.txt`
-  kept for the files plus a separate presets file?
-- [ ] How does a preset tile look (badge, description shown on the tile or only in its tooltip)?
-- [ ] The heart on a preset tile: clicking it deletes the preset (with a confirmation), or no heart
-  and a **Delete preset** entry in the context menu?
-- [ ] The ✥ released over the explorer with effects: does the dialog also offer **File only** (a
-  plain file favorite, as today), next to Save and Cancel?
-- [ ] Which search criterion covers the description: **Aa** (name), **💡** (content), or both?
-- [ ] A preset whose file is gone: kept (its drag saying the file is missing), or dropped like a
-  file favorite whose file is gone?
-- [ ] Editing a preset: the description only, or also **Update effects** from the selected cell?
-- [ ] The Background turned off in the cell: saved as off (the preset arrives without a fill), or
-  ignored like any effect off (it arrives with its default fill)?
+- [x] ~~Storage: one `favorites.json` replacing `favorites.txt` (migrated once), or `favorites.txt`
+  kept for the files plus a separate presets file?~~ → One `favorites.json`, `favorites.txt` migrated
+  once.
+- [x] ~~How does a preset tile look (badge, description shown on the tile or only in its tooltip)?~~
+  → Variant C: ★ FX badge, the file's name then the description's first line, greyed; the whole
+  description in the tooltip.
+- [x] ~~The heart on a preset tile: clicking it deletes the preset (with a confirmation), or no heart
+  and a **Delete preset** entry in the context menu?~~ → The heart deletes it, after a confirmation.
+- [x] ~~The ✥ released over the explorer with effects: does the dialog also offer **File only** (a
+  plain file favorite, as today), next to Save and Cancel?~~ → Yes: Save / File only / Cancel.
+- [x] ~~Which search criterion covers the description: **Aa** (name), **💡** (content), or both?~~
+  → **Aa**.
+- [x] ~~A preset whose file is gone: kept (its drag saying the file is missing), or dropped like a
+  file favorite whose file is gone?~~ → Kept; only its heart removes it.
+- [x] ~~Editing a preset: the description only, or also **Update effects** from the selected
+  cell?~~ → The description only.
+- [x] ~~The Background turned off in the cell: saved as off (the preset arrives without a fill), or
+  ignored like any effect off (it arrives with its default fill)?~~ → Saved as off.
 
 ---
 
@@ -207,6 +232,16 @@ cell has effects; applied by bringing its tile into a cell, the look set before 
 searchable by its file's name and its description, the description in a tier of its own between the
 path and the content matches. Exploration: one scout pass, three read-only agents (favorites store,
 search, effect state). Eight questions left open.
+
+### Iteration 2 — 2026-10-26
+
+The eight open questions answered (Q&A 5–12), every one on the recommended option: one
+`favorites.json` replacing `favorites.txt`, migrated once (a `--new-instance` instance migrating
+nothing); preset tiles in variant C of the mockup (★ FX badge, file name over the description's first
+line, the whole description in the tooltip); the heart deleting a preset after a confirmation; the ✥
+dialog offering **File only**; the description searched under **Aa**; a preset whose file is gone
+kept until its heart removes it; **Edit description…** editing the description only; the Background
+turned off saved as off. No question left open.
 
 ---
 
@@ -233,14 +268,14 @@ Questions asked by the agent during design, with user responses.
 | 2 | Which effects does a preset save? | Only the turned-on effects | 2026-10-26 |
 | 3 | How is a preset saved from a cell? | Dedicated button + ✥ | 2026-10-26 |
 | 4 | Is the subject straightforward or tricky / long to explore? | Straightforward | 2026-10-26 |
-| 5 | Storage: one `favorites.json` replacing `favorites.txt`, or a separate presets file? | | 2026-10-26 |
-| 6 | How does a preset tile look (variants A / B / C of the mockup)? | | 2026-10-26 |
-| 7 | The heart on a preset tile: delete with confirmation, or no heart and a menu entry? | | 2026-10-26 |
-| 8 | ✥ released with effects: does the dialog also offer **File only**? | | 2026-10-26 |
-| 9 | Which search criterion covers the description? | | 2026-10-26 |
-| 10 | A preset whose file is gone: kept or dropped? | | 2026-10-26 |
-| 11 | Editing a preset: description only, or also **Update effects**? | | 2026-10-26 |
-| 12 | The Background off in the cell: saved as off, or ignored? | | 2026-10-26 |
+| 5 | Storage: one `favorites.json` replacing `favorites.txt`, or a separate presets file? | One `favorites.json`, migrated once | 2026-10-26 |
+| 6 | How does a preset tile look (variants A / B / C of the mockup)? | C — two lines: file name, then the description's first line | 2026-10-26 |
+| 7 | The heart on a preset tile: delete with confirmation, or no heart and a menu entry? | Deletes, with a confirmation | 2026-10-26 |
+| 8 | ✥ released with effects: does the dialog also offer **File only**? | Yes — Save preset / File only / Cancel | 2026-10-26 |
+| 9 | Which search criterion covers the description? | Aa | 2026-10-26 |
+| 10 | A preset whose file is gone: kept or dropped? | Kept | 2026-10-26 |
+| 11 | Editing a preset: description only, or also **Update effects**? | The description only | 2026-10-26 |
+| 12 | The Background off in the cell: saved as off, or ignored? | Saved as off | 2026-10-26 |
 
 ---
 
