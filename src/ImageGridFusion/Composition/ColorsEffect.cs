@@ -1,4 +1,5 @@
 using System.Drawing.Imaging;
+using System.Text.Json.Nodes;
 
 namespace ImageGridFusion.Composition;
 
@@ -134,4 +135,20 @@ public sealed record ColorsEffect
         double offset = 0.5 * (1 - contrast) + 0.5 * this.Brightness;
         return (linear, offset);
     }
+
+    /// <summary>Its settings as an effect preset saves them (<see cref="LookPreset"/>).</summary>
+    internal JsonObject ToJson() => new()
+    {
+        ["saturation"] = this.Saturation,
+        ["hue"] = this.Hue,
+        ["brightness"] = this.Brightness,
+        ["contrast"] = this.Contrast,
+    };
+
+    /// <summary>The settings <see cref="ToJson"/> wrote.</summary>
+    internal static ColorsEffect FromJson(JsonObject json) => Default
+        .WithSaturation(PresetJson.Double(json, "saturation", Default.Saturation))
+        .WithHue(PresetJson.Int(json, "hue", Default.Hue))
+        .WithBrightness(PresetJson.Double(json, "brightness", Default.Brightness))
+        .WithContrast(PresetJson.Double(json, "contrast", Default.Contrast));
 }

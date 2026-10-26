@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 namespace ImageGridFusion.Composition;
 
 /// <summary>
@@ -33,4 +35,18 @@ public sealed record VolumeEffect
     public VolumeEffect WithMuted(bool muted) => muted
         ? this with { IsMuted = true }
         : this with { IsMuted = false, Level = Level == 0 ? 1 : Level };
+
+    /// <summary>Its settings as an effect preset saves them (<see cref="LookPreset"/>).</summary>
+    internal JsonObject ToJson() => new()
+    {
+        ["level"] = this.Level,
+        ["muted"] = this.IsMuted,
+    };
+
+    /// <summary>The settings <see cref="ToJson"/> wrote.</summary>
+    internal static VolumeEffect FromJson(JsonObject json) => new()
+    {
+        Level = Math.Clamp(PresetJson.Double(json, "level", Default.Level), 0, MaxLevel),
+        IsMuted = PresetJson.Bool(json, "muted", Default.IsMuted),
+    };
 }

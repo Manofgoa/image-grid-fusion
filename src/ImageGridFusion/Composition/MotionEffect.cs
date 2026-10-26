@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 namespace ImageGridFusion.Composition;
 
 /// <summary>The kinds of motion the Animations effect offers.</summary>
@@ -43,4 +45,16 @@ public sealed record MotionEffect
     public MotionEffect WithKind(MotionKind kind) => this with { Kind = kind };
 
     public MotionEffect WithCycle(TimeSpan cycle) => this with { Cycle = cycle < MinCycle ? MinCycle : cycle > MaxCycle ? MaxCycle : cycle };
+
+    /// <summary>Its settings as an effect preset saves them (<see cref="LookPreset"/>).</summary>
+    internal JsonObject ToJson() => new()
+    {
+        ["kind"] = this.Kind.ToString(),
+        ["cycleSeconds"] = this.Cycle.TotalSeconds,
+    };
+
+    /// <summary>The settings <see cref="ToJson"/> wrote.</summary>
+    internal static MotionEffect FromJson(JsonObject json) =>
+        new MotionEffect { Kind = PresetJson.Enum(json, "kind", Default.Kind) }
+            .WithCycle(TimeSpan.FromSeconds(PresetJson.Double(json, "cycleSeconds", Default.Cycle.TotalSeconds)));
 }

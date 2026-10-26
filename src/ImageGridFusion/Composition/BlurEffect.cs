@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 namespace ImageGridFusion.Composition;
 
 /// <summary>How the bands around the sharp rectangle are blurred.</summary>
@@ -93,4 +95,30 @@ public sealed record BlurEffect
         cell.Y + (int)Math.Round(Top * cell.Height),
         cell.X + (int)Math.Round(Right * cell.Width),
         cell.Y + (int)Math.Round(Bottom * cell.Height));
+
+    /// <summary>Its settings as an effect preset saves them (<see cref="LookPreset"/>): the sharp rectangle in fractions of the cell.</summary>
+    internal JsonObject ToJson() => new()
+    {
+        ["left"] = this.Left,
+        ["top"] = this.Top,
+        ["right"] = this.Right,
+        ["bottom"] = this.Bottom,
+        ["kind"] = this.Kind.ToString(),
+        ["intensity"] = this.Intensity,
+    };
+
+    /// <summary>The settings <see cref="ToJson"/> wrote; a rectangle out of order gives the default one.</summary>
+    internal static BlurEffect FromJson(JsonObject json)
+    {
+        double left = Math.Clamp(PresetJson.Double(json, "left", Default.Left), 0, 1);
+        double top = Math.Clamp(PresetJson.Double(json, "top", Default.Top), 0, 1);
+        double right = Math.Clamp(PresetJson.Double(json, "right", Default.Right), 0, 1);
+        double bottom = Math.Clamp(PresetJson.Double(json, "bottom", Default.Bottom), 0, 1);
+        var blur = left < right && top < bottom ? new BlurEffect { Left = left, Top = top, Right = right, Bottom = bottom } : Default;
+        return blur with
+        {
+            Kind = PresetJson.Enum(json, "kind", Default.Kind),
+            Intensity = Math.Clamp(PresetJson.Double(json, "intensity", Default.Intensity), 0, 1),
+        };
+    }
 }

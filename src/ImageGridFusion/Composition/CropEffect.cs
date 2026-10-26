@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 namespace ImageGridFusion.Composition;
 
 /// <summary>
@@ -255,6 +257,31 @@ public sealed record CropEffect
     public static bool IsListed(double? ratio) => ratio is not { } r || Ratios.Any(listed => Same(listed, r));
 
     public static bool Same(double a, double b) => Math.Abs(a - b) < RatioTolerance;
+
+    /// <summary>
+    /// Its settings as an effect preset saves them (<see cref="LookPreset"/>): the kept part in fractions
+    /// of the image as loaded, so it keeps the same content on the same file.
+    /// </summary>
+    internal JsonObject ToJson() => new()
+    {
+        ["left"] = this.Left,
+        ["top"] = this.Top,
+        ["right"] = this.Right,
+        ["bottom"] = this.Bottom,
+        ["ratio"] = this.Ratio,
+    };
+
+    /// <summary>The settings <see cref="ToJson"/> wrote; a kept part out of order gives the default one.</summary>
+    internal static CropEffect FromJson(JsonObject json)
+    {
+        double left = Math.Clamp(PresetJson.Double(json, "left", Default.Left), 0, 1);
+        double top = Math.Clamp(PresetJson.Double(json, "top", Default.Top), 0, 1);
+        double right = Math.Clamp(PresetJson.Double(json, "right", Default.Right), 0, 1);
+        double bottom = Math.Clamp(PresetJson.Double(json, "bottom", Default.Bottom), 0, 1);
+        var crop = left < right && top < bottom ? new CropEffect { Left = left, Top = top, Right = right, Bottom = bottom } : Default;
+        double ratio = PresetJson.Double(json, "ratio", 0);
+        return ratio > 0 ? crop with { Ratio = ratio } : crop;
+    }
 
     /// <summary>A point of the image as loaded, where <paramref name="look"/> shows it: turned clockwise, then flipped.</summary>
     private static PointF ToSeen(PointF point, ImageLook look)

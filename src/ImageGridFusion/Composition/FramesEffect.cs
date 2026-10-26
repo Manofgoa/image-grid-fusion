@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 namespace ImageGridFusion.Composition;
 
 /// <summary>
@@ -51,5 +53,27 @@ public sealed record FramesEffect
         var trimmed = this with { First = first, Last = last >= count - 1 ? null : last };
         int start = this.PageOf(count);
         return start < first || start > last ? trimmed.AtPage(Math.Clamp(start, first, last), count) : trimmed;
+    }
+
+    /// <summary>Its settings as an effect preset saves them (<see cref="LookPreset"/>): the trim in frames, clamped to the file when read.</summary>
+    internal JsonObject ToJson() => new()
+    {
+        ["position"] = this.Position,
+        ["frozen"] = this.Frozen,
+        ["first"] = this.First,
+        ["last"] = this.Last,
+    };
+
+    /// <summary>The settings <see cref="ToJson"/> wrote.</summary>
+    internal static FramesEffect FromJson(JsonObject json)
+    {
+        int first = Math.Max(0, PresetJson.Int(json, "first", Default.First));
+        return new FramesEffect
+        {
+            Position = Math.Clamp(PresetJson.Double(json, "position", Default.Position), 0, 1),
+            Frozen = PresetJson.Bool(json, "frozen", Default.Frozen),
+            First = first,
+            Last = PresetJson.NullableInt(json, "last") is { } last ? Math.Max(first, last) : null,
+        };
     }
 }

@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 namespace ImageGridFusion.Composition;
 
 /// <summary>How the background fills the cell around its image: a flat color, or the image's edges extended.</summary>
@@ -82,4 +84,34 @@ public sealed record BackgroundEffect
 
     /// <summary>The fill, given the <paramref name="automatic"/> band color: the color in use at the opacity.</summary>
     public Color Fill(Color automatic) => Color.FromArgb((int)Math.Round(255 * Opacity), Automatic ? automatic : Color);
+
+    /// <summary>Its settings as an effect preset saves them (<see cref="LookPreset"/>), the color as <c>#RRGGBB</c>.</summary>
+    internal JsonObject ToJson() => new()
+    {
+        ["automatic"] = this.Automatic,
+        ["color"] = this.Automatic ? null : $"#{this.Color.R:X2}{this.Color.G:X2}{this.Color.B:X2}",
+        ["opacity"] = this.Opacity,
+        ["mode"] = this.Mode.ToString(),
+        ["blend"] = this.Blend,
+        ["soften"] = this.Soften,
+        ["edgeOpacity"] = this.EdgeOpacity,
+    };
+
+    /// <summary>The settings <see cref="ToJson"/> wrote; an unreadable color gives the automatic one.</summary>
+    internal static BackgroundEffect FromJson(JsonObject json)
+    {
+        bool automatic = PresetJson.Bool(json, "automatic", Default.Automatic);
+        var background = new BackgroundEffect
+        {
+            Opacity = Math.Clamp(PresetJson.Double(json, "opacity", Default.Opacity), 0, 1),
+            Mode = PresetJson.Enum(json, "mode", Default.Mode),
+            Blend = Math.Clamp(PresetJson.Double(json, "blend", Default.Blend), 0, 1),
+            Soften = PresetJson.Bool(json, "soften", Default.Soften),
+            EdgeOpacity = Math.Clamp(PresetJson.Double(json, "edgeOpacity", Default.EdgeOpacity), 0, 1),
+        };
+        return !automatic && json["color"] is JsonValue value && value.TryGetValue(out string? hex)
+            && hex.StartsWith('#') && int.TryParse(hex.AsSpan(1), System.Globalization.NumberStyles.HexNumber, null, out int rgb)
+                ? background.WithColor(Color.FromArgb(rgb))
+                : background;
+    }
 }
