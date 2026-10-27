@@ -87,7 +87,7 @@ Components touched (from the exploration):
 - Its own folder, **`vision-engine\`** (`VisionEngineFiles.FolderName`); ONNX Runtime's native DLL stays
   the OCR engine's, in `ocr-engine\`, fetched with it when missing, as the face engine does.
 - **Two parts, two availabilities**: SigLIP 2 (~380 MB) and Florence-2 (~275 MB) — each its own
-  `IsAvailable`, so the captions can be left out (*see Open Questions*).
+  `IsAvailable`, each downloaded by its own setting (§ Engine Offer).
 - Each `InferenceSession` is created after `OcrEngineFiles.ResolveNativeLibraries()`.
 - The **text model** stays loaded while the explorer searches (a query each keystroke burst), released
   after a while unused (*see Open Questions*); the vision model and Florence-2 are loaded by their pass
@@ -108,7 +108,8 @@ Two passes of the extraction worker, same pause rule, same save cadence, each it
 - Over every **image and PDF** entry of the index, like the OCR passes; videos left out.
 - A changed file (size or date) is analysed again; a file gone from the index drops its data.
 - Where they run among the passes (OCR, faces): *see Open Questions*.
-- Without their engine part, a pass is skipped and its bar hidden; the others run.
+- A pass runs only while **its setting is on** and its engine part present (§ Engine Offer);
+  otherwise it is skipped and its bar hidden; the others run.
 - They are **passes**, not OCR: the worker's loop over `OcrPasses.All` takes them, but their names in
   the code (`OcrPass`, `OcrPasses`) — renamed or kept: *see Open Questions*.
 
@@ -189,8 +190,27 @@ Two new **text slots** of `files.content`, appended after the OCR slots:
 
 ## Engine Offer
 
-- When and how the download is offered, and whether the analysis is opt-in: *see Open Questions*.
-- The ⚙ menu offers the missing parts while missing, as for the OCR engine.
+**Opt-in**, like the face analysis — two **independent app settings** of the ⚙ menu, **off by
+default** (`AppSettings.VisualAnalysis`, `AppSettings.Captions`):
+
+| Setting | Turns on | Downloads when missing |
+|---|---|---|
+| *Visual analysis* | The Vision pass, the tags, the similarity tier, *Find similar images* | SigLIP 2 (~380 MB) |
+| *Captions* | The Caption pass | Florence-2 (~275 MB) |
+
+- Each is usable without the other; turning one on offers its own engine part when missing — the
+  download shown and confirmed first, nothing fetched without that **Yes**. A **No** leaves the setting
+  off.
+- A setting turned off stops its pass and its search; what is already indexed is kept (how it is
+  forgotten follows the face analysis's answer).
+- A `--new-instance` instance reads the settings, writes none of its own accord.
+
+### Order With the Face Detection
+
+Implemented **after** `20261027-face-detection.md` (Q&A 6): its direct-download engine route
+(`FaceEngineFiles`: pinned URL, SHA-256, `Downloader.DownloadAsync`) and its binary index pattern
+(`index\files.faces`) are generalized for the vision engine and `index\files.vision`, rather than
+written twice.
 
 ---
 
@@ -228,9 +248,9 @@ The behaviours to pin, whatever the answer:
 
 Every question the design cannot settle on its own, listed before Iteration 1.
 
-- [ ] **Order with the face detection** — implemented after it, sharing its direct-download engine route (`FaceEngineFiles` generalized), or independently first?
-- [ ] **Opt-in / offer** — the analysis off by default, turned on from the ⚙ menu (like the faces), or offered when 💡 is turned on (like RapidOCR)?
-- [ ] **Captions** — part of the same offer, or a separate opt-in (heavy: ~275 MB, 2–6 s an image)? They are **English only**: acceptable, knowing a French query finds them only through the tags and the similarity tier?
+- [x] ~~**Order with the face detection** — implemented after it, sharing its direct-download engine route (`FaceEngineFiles` generalized), or independently first?~~ → After it (Q&A 6)
+- [x] ~~**Opt-in / offer** — the analysis off by default, turned on from the ⚙ menu (like the faces), or offered when 💡 is turned on (like RapidOCR)?~~ → Off by default, turned on from the ⚙ menu (Q&A 7)
+- [x] ~~**Captions** — part of the same offer, or a separate opt-in (heavy: ~275 MB, 2–6 s an image)? They are **English only**: acceptable, knowing a French query finds them only through the tags and the similarity tier?~~ → Two independent ⚙ settings, *Visual analysis* and *Captions*, each its own download (Q&A 8)
 - [ ] **Pass order** — where Vision and Caption run among Windows OCR, faces, RapidOCR, Inverted, Ring?
 - [ ] **Vocabulary** — size (a few hundred concepts, ~1 000, more) and source (curated by hand, generated from an existing list such as RAM++'s 4 585 tags translated)? Editable by the user?
 - [ ] **Tags and caption: sure or weak?** — sure ranks them with the OCR's sure words; weak puts them in the last content grade.
@@ -271,6 +291,18 @@ Deepening: SigLIP 2's Apache 2.0 license confirmed on the base model; its tokeni
 ids is unproven — the implementation starts by checking it, a tokenizer of our own reading
 `tokenizer.json` being the fallback.
 
+### Iteration 2 — 2026-10-27
+
+From the user's answers (Q&A 6–9):
+
+- Implemented **after the face detection**, generalizing its direct-download route and binary index
+  pattern instead of duplicating them.
+- **Opt-in**: two independent ⚙ settings, off by default — *Visual analysis* (SigLIP 2: tags,
+  similarity, similar images) and *Captions* (Florence-2) — each downloading its own engine part.
+  The answer "offer both options" was read as these two settings.
+- The tag vocabulary: the user asked for advice — recommended: ~1 000 curated bilingual concepts
+  shipped, plus a user file adding concepts (Q&A 10, pending).
+
 ---
 
 ## Implementation Log
@@ -299,10 +331,14 @@ Questions asked by the agent during design, with user responses.
 | 3 | Which language are the searches typed in? | French and English | 2026-10-27 |
 | 4 | How do the results appear in the explorer (under 💡, new criterion, Themes view)? | Under 💡 (content) | 2026-10-27 |
 | 5 | Is the subject straightforward or tricky / long? | Tricky / long | 2026-10-27 |
-| 6 | Order with the face detection: after it (sharing its download route), or independently first? | | 2026-10-27 |
-| 7 | Opt-in: off by default (⚙ menu), or offered when 💡 is turned on? | | 2026-10-27 |
-| 8 | Captions: same offer, or a separate opt-in? English only acceptable? | | 2026-10-27 |
-| 9 | Tag vocabulary: size, source, editable? | | 2026-10-27 |
+| 6 | Order with the face detection: after it (sharing its download route), or independently first? | After the face detection | 2026-10-27 |
+| 7 | Opt-in: off by default (⚙ menu), or offered when 💡 is turned on? | Off by default, turned on from the ⚙ menu | 2026-10-27 |
+| 8 | Captions: same offer, or a separate opt-in? English only acceptable? | "Offer both options" — read as two independent ⚙ settings, *Visual analysis* and *Captions*, each its own download | 2026-10-27 |
+| 9 | Tag vocabulary: size, source, editable? | "Advise me" — recommendation asked in Q&A 10 | 2026-10-27 |
+| 10 | Tag vocabulary — recommended: ~1 000 curated concepts shipped, plus a user file next to the exe adding concepts. Agreed? | | 2026-10-27 |
+| 11 | Tags and caption: sure, weak, or a grade of their own? | | 2026-10-27 |
+| 12 | Tags matched as whole words, or by substring like the OCR texts? | | 2026-10-27 |
+| 13 | Similarity tier under a user sort order: always by score, or sorted like the others? | | 2026-10-27 |
 
 ---
 

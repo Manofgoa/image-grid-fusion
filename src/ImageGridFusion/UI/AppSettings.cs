@@ -26,6 +26,8 @@ internal static class AppSettings
     private const string ExplorerTileSizeName = "ExplorerTileSize";
     private const string ExplorerPagesPerLoadName = "ExplorerPagesPerLoad";
     private const string ExplorerFolderViewName = "ExplorerFolderView";
+    private const string ExplorerModeName = "ExplorerMode";
+    private const string FaceAnalysisName = "FaceAnalysis";
     private const string ExplorerOpenFolderName = "ExplorerOpenFolder";
     private const string ExplorerContentSearchName = "ExplorerContentSearch";
     private const string ExplorerFileOrderName = "ExplorerFileOrder";
@@ -217,15 +219,34 @@ internal static class AppSettings
     /// <summary>Saves the maximum zoom, in percent; throws an <see cref="IsSaveError"/> exception on failure.</summary>
     public static void SaveMaxZoom(int percent) => Save((MaxZoomName, percent));
 
-    /// <summary>Whether the file explorer shows its folder view; false — the search view — when nothing was saved.</summary>
-    public static bool ExplorerFolderView => Int(ExplorerFolderViewName) is int value && value != 0;
+    /// <summary>
+    /// What the file explorer lists — its views drop-down's — saved by name; read from the older
+    /// folder-view flag when it was not saved, the search view when neither was. See
+    /// workfiles/20261027-face-detection.md § People View.
+    /// </summary>
+    public static ExplorerMode ExplorerMode =>
+        Text(ExplorerModeName) is { } name && Enum.TryParse(name, out ExplorerMode mode) && mode.ToString() == name ? mode
+        : Int(ExplorerFolderViewName) is int value && value != 0 ? ExplorerMode.Folders
+        : ExplorerMode.Favorites;
 
     /// <summary>The folder the file explorer's folder view has open, relative to the base folder; "" — the base folder — when none was saved.</summary>
     public static string ExplorerOpenFolder => Text(ExplorerOpenFolderName) ?? "";
 
-    /// <summary>Saves the file explorer's view and open folder together; throws an <see cref="IsSaveError"/> exception on failure.</summary>
-    public static void SaveExplorerFolderView(bool folderView, string openFolder) =>
-        Save((ExplorerFolderViewName, folderView ? 1 : 0), (ExplorerOpenFolderName, openFolder));
+    /// <summary>
+    /// Saves what the file explorer lists and its open folder together — the older folder-view flag
+    /// too, for an older version; throws an <see cref="IsSaveError"/> exception on failure.
+    /// </summary>
+    public static void SaveExplorerMode(ExplorerMode mode, string openFolder) =>
+        Save((ExplorerModeName, mode.ToString()), (ExplorerFolderViewName, mode == ExplorerMode.Folders ? 1 : 0), (ExplorerOpenFolderName, openFolder));
+
+    /// <summary>
+    /// Whether the file explorer finds the faces in the indexed images and groups them into people — the
+    /// ⚙ menu's Face analysis; false, opt-in, when nothing was saved. See workfiles/20261027-face-detection.md § Privacy.
+    /// </summary>
+    public static bool FaceAnalysis => Int(FaceAnalysisName) is int value && value != 0;
+
+    /// <summary>Saves whether the file explorer analyses the faces; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveFaceAnalysis(bool on) => Save((FaceAnalysisName, on ? 1 : 0));
 
     /// <summary>
     /// The file explorer's order of the files, its sort drop-down's — saved by name; <see cref="FileOrder.Newest"/>
