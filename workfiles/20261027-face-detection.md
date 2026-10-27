@@ -103,7 +103,8 @@ text file loaded whole and scanned by every search, and mean nothing to its exce
 
 - Two faces are the **same person** when the cosine similarity of their embeddings reaches a
   **threshold** — SFace's published value, 0.363, as the starting point, tuned on real data during
-  implementation (`FaceGrouping.SameThreshold`).
+  implementation (`FaceGrouping.SameThreshold`). A **fixed constant**, not a setting: merging and
+  removing a face correct its mistakes.
 - Grouping is computed **from the face index and the user's decisions**, in the background, every
   time either changes — never stored as groups: what is stored are the faces and the decisions.
 - **A decision is stored on faces, never on a computed group** (phase 2):
@@ -154,7 +155,7 @@ All by **drag and drop** inside the People view, or the **context menu** (right 
 |---|---|---|
 | **Name** | *Rename…* on a group tile, or F2 | The group keeps that name |
 | **Add a face** | Drag an ungrouped face's tile — or a file tile inside another group — onto a group tile | That face joins the group (pinned to it); dropped on a group, it leaves the one it was in |
-| **Merge** | Drag a group tile onto another group tile | The dragged group becomes a **sub-group** of the target; the target keeps its name, takes the dragged one's if it has none. A group with sub-groups dragged onto another brings them along: they all become sub-groups of the target, flat — a group holds sub-groups one level deep |
+| **Merge** | Drag a group tile onto another group tile, then **confirm** (*Merge X into Y?*) | The dragged group becomes a **sub-group** of the target; the target keeps its name, takes the dragged one's if it has none. A group with sub-groups dragged onto another brings them along: they all become sub-groups of the target, flat — a group holds sub-groups one level deep |
 | **Un-merge** | *Un-merge* on a sub-group tile, inside an opened group | The sub-group becomes a group of its own again, as it was before the merge — its name, its faces |
 | **Remove a face** | *Not <name>* on a file inside an opened group | That file's face of this group excluded from it; it goes back to the automatic grouping, never to this group again |
 | **Hide** | *Hide* on a group tile | The group leaves the view; a *Show hidden* entry of the view lists them, *Unhide* brings one back |
@@ -189,7 +190,8 @@ All by **drag and drop** inside the People view, or the **context menu** (right 
 - The face analysis is **opt-in**: **off by default**, an app setting turned on from the ⚙ menu
   (*Face analysis*, `AppSettings.FaceAnalysis`) — and offered by the People view while off. Turning it
   on offers the face engine's download when it is missing; the pass starts once both are there.
-- How the data is forgotten: *see Open Questions*.
+- **Forget faces…**, an entry of the ⚙ menu, deletes `index\files.faces` and `people.json` after a
+  confirmation, and turns the face analysis off; the face engine's files stay.
 
 ---
 
@@ -204,20 +206,20 @@ All by **drag and drop** inside the People view, or the **context menu** (right 
 
 ## Test Impact
 
-The repository has **no test project** (`CONTRIBUTING.md`: a change is checked by hand in the
-running app). Whether this work creates one for its pure logic: *see Open Questions*. The behaviours
-to pin, whatever the answer:
+**No unit test**: the repository has no test project (`CONTRIBUTING.md`: a change is checked by
+hand in the running app), and this work does not create one (Q&A 14). The behaviours below are
+**checked by hand** in the running app instead:
 
-| Behaviour to pin | Test file | Create / Update |
+| Behaviour to check | Test file | Create / Update |
 |---|---|---|
-| YuNet output decoded into boxes, landmarks and scores (priors per stride, threshold, NMS) | — (pending the Open Question) | — |
-| Alignment: the similarity transform puts the 5 landmarks on SFace's template | — | — |
-| Face index round-trip (version, stamps, zero-face files, embeddings) | — | — |
-| Grouping: threshold, pinned faces first, exclusions honoured, a dropped face joins its group | — | — |
-| Merge as a link: sub-groups one level deep, a composite merged brings its sub-groups, un-merge restores the group as it was | — | — |
-| `people.json` round-trip, tolerant load | — | — |
-| Person tier: rank between description and content, no duplicate file | — | — |
-| Remembered view: the older folder-view flag read as the folder view | — | — |
+| Faces found on frontal photos, a group photo, a PDF's first page; none on a landscape | — (by hand) | — |
+| The same person grouped across several photos; an ungrouped face listed after the groups, cropped | — (by hand) | — |
+| A face dropped onto a group joins it; *Not <name>* removes it and it never comes back there | — (by hand) | — |
+| A group dropped onto another asks, then shows inside it as a sub-group, every file of both listed; *Un-merge* restores it with its name | — (by hand) | — |
+| A name survives a rescan (↻) and a restart; a hidden group stays hidden | — (by hand) | — |
+| A name typed in the search finds the person's files, after the name matches, before the content | — (by hand) | — |
+| The view drop-down remembered; an older settings file's folder view read back | — (by hand) | — |
+| *Forget faces…* deletes both files and turns the analysis off | — (by hand) | — |
 
 ---
 
@@ -232,10 +234,10 @@ Every question the design cannot settle on its own, listed before Iteration 1.
 - [x] ~~**Single-file persons** — shown like the others, gathered in a last *Others* tile, or not shown?~~ → Groups shown as "face folders"; the ungrouped faces listed after them as individual files (Q&A 7)
 - [x] ~~**Merge gesture** — drag a person tile onto another (with a confirmation) plus *Merge with…* in the context menu, or multi-select then *Merge*?~~ → Drag a group onto another; a merged group shows as a sub-group, every file of both listed; *Un-merge* on a sub-group; a face dragged onto a group joins it (Q&A 7–8)
 - [x] ~~**Ungrouped face tile** — the whole file, as any file tile, or the face cropped from it (the file's name below)? A file holding two ungrouped faces gives two tiles either way.~~ → The face cropped from its file (Q&A 15)
-- [ ] **Merge confirmation** — a drop of a group onto another merges at once (un-merge being one right click away), or asks first?
-- [ ] **Forgetting** — a ⚙ entry *Forget faces…* deleting `files.faces` and `people.json` after a confirmation?
-- [ ] **Grouping threshold** — a fixed constant tuned during implementation, or an app setting of the ⚙ menu?
-- [ ] **Test project** — create one for the pure logic (decoder, alignment, face index, grouping, `people.json`, tier), or keep the hand checks only?
+- [x] ~~**Merge confirmation** — a drop of a group onto another merges at once (un-merge being one right click away), or asks first?~~ → Asks first (Q&A 16)
+- [x] ~~**Forgetting** — a ⚙ entry *Forget faces…* deleting `files.faces` and `people.json` after a confirmation?~~ → Yes, it also turns the analysis off (Q&A 12)
+- [x] ~~**Grouping threshold** — a fixed constant tuned during implementation, or an app setting of the ⚙ menu?~~ → A fixed constant (Q&A 13)
+- [x] ~~**Test project** — create one for the pure logic (decoder, alignment, face index, grouping, `people.json`, tier), or keep the hand checks only?~~ → Hand checks only (Q&A 14)
 
 ---
 
@@ -282,6 +284,13 @@ turned on from the ⚙ menu; the models go into **`face-engine\`**, ONNX Runtime
 `ocr-engine\` and fetched with them when missing; the face pass runs **right after the Windows OCR
 pass**; an ungrouped face's tile shows **the face cropped** from its file.
 
+### Iteration 4 — 2026-10-27
+
+Last questions settled (Q&A 12–14, 16): a ⚙ **Forget faces…** entry deletes the face data and turns
+the analysis off; the grouping threshold is a **fixed constant**; a group dropped onto another
+**asks before merging**; **no test project** — the Test Impact lists the hand checks instead. No Open
+Question left.
+
 ---
 
 ## Implementation Log
@@ -293,7 +302,7 @@ says so rather than staying blank.
 |---|---|---|---|
 | Code — phase 1 | | | |
 | Code — phase 2 | | | |
-| Unit tests | | | Pending the *Test project* question |
+| Unit tests | 4 | 2026-10-27 | Declined — no test project (Q&A 14); hand checks in § Test Impact |
 | RULES.md | | | |
 | GLOSSARY (EN + FR) | | | |
 | README (EN + FR) | | | |
@@ -317,11 +326,11 @@ Questions asked by the agent during design, with user responses.
 | 9 | Opt-in: off by default (⚙ menu), or on once the engine is downloaded? | Off by default | 2026-10-27 |
 | 10 | Engine folder: `face-engine\` or `ocr-engine\`? | `face-engine\` | 2026-10-27 |
 | 11 | Pass order: right after the Windows OCR pass, or after every OCR pass? | Right after the Windows pass | 2026-10-27 |
-| 12 | Forgetting: a ⚙ *Forget faces…* entry? | | 2026-10-27 |
-| 13 | Grouping threshold: fixed constant or ⚙ setting? | | 2026-10-27 |
-| 14 | Test project for the pure logic, or hand checks only? | | 2026-10-27 |
+| 12 | Forgetting: a ⚙ *Forget faces…* entry? | Yes, a ⚙ entry | 2026-10-27 |
+| 13 | Grouping threshold: fixed constant or ⚙ setting? | Fixed constant | 2026-10-27 |
+| 14 | Test project for the pure logic, or hand checks only? | Hand checks only | 2026-10-27 |
 | 15 | Ungrouped face tile: the whole file, or the face cropped from it? | The face cropped | 2026-10-27 |
-| 16 | Merge drop: at once, or asking first? | | 2026-10-27 |
+| 16 | Merge drop: at once, or asking first? | Asking first | 2026-10-27 |
 
 ---
 
