@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using ImageGridFusion.Composition;
 using ImageGridFusion.Explorer;
 using ImageGridFusion.Imaging;
+using ImageGridFusion.Web;
 
 namespace ImageGridFusion.UI;
 
@@ -65,6 +66,8 @@ internal sealed class MainForm : Form
     private readonly ToolStripMenuItem _ocrArrowCurved = new("Curved arrow");
     private readonly ToolStripMenuItem _ocrArrowThickness = new("Arrow thickness");
     private readonly ToolStripMenuItem _ocrArrowColor = new("Arrow color…");
+    // The URL zone's yt-dlp companions, offered while yt-dlp is there without them (workfiles/20261015-yt-dlp-best-format.md § When They Are Offered).
+    private readonly ToolStripMenuItem _installYtDlpCompanions = new("Install yt-dlp companions…");
     // The ⚙ menu's last item, an action rather than a setting: Explorer on the running exe's folder.
     private readonly ToolStripMenuItem _openAppFolder = new("Open app folder");
     private readonly Button _clearButton = new() { Text = "Clear all", AutoSize = true };
@@ -616,7 +619,7 @@ internal sealed class MainForm : Form
         this._transportTimer.Tick += (_, _) => this.RefreshTransportPosition();
         this._transportTimer.Start();
         this._toolTip.SetToolTip(this._clearButton, "Removes every image and the global effects, and brings the format back to Twitter (Ctrl+N)");
-        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._downloadOcrEngine, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._downloadFaceEngine, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._downloadVisionEngine, this._captions, this._downloadCaptionEngine, this._forgetVisual, new ToolStripSeparator(), this._openAppFolder]);
+        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, this._installYtDlpCompanions, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._downloadOcrEngine, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._downloadFaceEngine, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._downloadVisionEngine, this._captions, this._downloadCaptionEngine, this._forgetVisual, new ToolStripSeparator(), this._openAppFolder]);
         for (int pages = FileExplorerPanel.MinPagesPerLoad; pages <= FileExplorerPanel.MaxPagesPerLoad; pages++)
         {
             int choice = pages;
@@ -692,6 +695,8 @@ internal sealed class MainForm : Form
         this._ocrArrowThickness.ToolTipText = "The width of the arrow's colored line, its dark outline not counted; 0 draws no arrow; remembered between sessions";
         this._ocrArrowColor.ToolTipText = "The color of the arrow, its dark outline staying dark; remembered between sessions";
         this._ocrArrowColor.Click += (_, _) => this.PickOcrArrowColor();
+        this._installYtDlpCompanions.ToolTipText = "Installs Deno and ffmpeg with winget, each in its own folder next to this exe: the URL zone's yt-dlp then loads the largest formats — shown while yt-dlp is there without them";
+        this._installYtDlpCompanions.Click += async (_, _) => await this._explorer.OfferYtDlpCompanionsAsync();
         this._openAppFolder.ToolTipText = "Opens Explorer on the folder of this exe, the exe selected — where settings.json and the app's other files live";
         this._openAppFolder.Click += (_, _) => this.ShowInExplorer(Environment.ProcessPath ?? Application.ExecutablePath);
         _explorer.OpenChanged += (_, _) =>
@@ -812,7 +817,9 @@ internal sealed class MainForm : Form
                 return;
             }
 
-            this.ChangeFrames(frames => frames.WithTrim(this._trimFrom.Value, this._trimTo.Value, this.FrameCount));
+            // From brings the starting point back to it, 0 of the played part, rather than carrying it
+            // along; To leaves it alone (workfiles/20261008-video-trim.md, Iteration 7).
+            this.ChangeFrames(frames => frames.WithTrim(this._trimFrom.Value, this._trimTo.Value, this.FrameCount).AtPage(this._trimFrom.Value, this.FrameCount));
         };
         this._trimTo.ValueChanged += (_, _) =>
         {
@@ -2940,6 +2947,8 @@ internal sealed class MainForm : Form
         this._gapBarsFromCenter.Checked = !this._preview.GapBarsFromEdges;
         this._gapBarsFromEdges.Checked = this._preview.GapBarsFromEdges;
 
+        this._installYtDlpCompanions.Visible = YtDlp.Find() is not null && YtDlpCompanions.Missing.Count > 0;
+        this._installYtDlpCompanions.Enabled = !this._explorer.InstallingYtDlpCompanions;
         this._explorerContentSearch.Checked = _explorer.ContentSearch;
         this._rebuildContent.Enabled = _explorer.CanRebuildContent;
         this._downloadOcrEngine.Visible = !OcrEngineFiles.IsAvailable;

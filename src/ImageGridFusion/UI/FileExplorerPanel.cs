@@ -730,6 +730,12 @@ internal sealed partial class FileExplorerPanel : Panel
         this.Rescan();
     }
 
+    /// <summary>Whether yt-dlp's companions are being installed by the URL zone.</summary>
+    public bool InstallingYtDlpCompanions => this._urlZone.InstallingCompanions;
+
+    /// <summary>The URL zone's offer to install yt-dlp's companions, from the ⚙ menu.</summary>
+    public Task OfferYtDlpCompanionsAsync() => this._urlZone.OfferCompanionsAsync();
+
     /// <summary>Whether the OCR engine (RapidOCR) is being downloaded.</summary>
     public bool DownloadingOcrEngine => this._engineDownload is not null;
 

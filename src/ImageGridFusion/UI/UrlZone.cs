@@ -25,8 +25,9 @@ internal sealed class UrlZone : Panel
     private const string Placeholder = "Paste a URL (X post, image, video…)";
     private const string EmptyCaption = "Load a URL, then drag its media into a cell";
     private const string ResolvingCaption = "Looking for the media…";
-    private const string InstallingCaption = "Installing yt-dlp…";
     private const string InstallLink = "Install yt-dlp…";
+    private const string CompanionsLink = "Install yt-dlp companions…";
+    private const string MergingCaption = "Joining the video and its sound…";
     private const string GoneCaption = "The downloaded file is gone: load it again";
     private const string ReadyTooltip = "Drag into a cell · right-click for more";
 
@@ -41,11 +42,13 @@ internal sealed class UrlZone : Panel
     // A file tile's menu on the ready media (see workfiles/20261014-url-zone-context-menu.md).
     private readonly ContextMenuStrip _menu = new();
 
-    // The load running — a newer one cancels it; the downloaded media once ready; the URL the yt-dlp
-    // install offer was made for; where the preview was pressed, for its drag.
+    // The load running — a newer one cancels it; the downloaded media once ready; the URL an install
+    // offer was made for, loaded again once installed, and what it offers; where the preview was
+    // pressed, for its drag.
     private CancellationTokenSource? _loading;
     private string? _path;
     private Uri? _installFor;
+    private InstallOffer _offer;
     private Point? _pressedAt;
 
     public UrlZone()
@@ -69,7 +72,7 @@ internal sealed class UrlZone : Panel
         this._url.TextChanged += (_, _) => this._load.Enabled = this._url.Text.Trim().Length > 0;
         this._url.KeyDown += OnUrlKeyDown;
         this._load.Click += async (_, _) => await this.LoadAsync();
-        this._caption.LinkClicked += async (_, _) => await this.OfferInstallAsync();
+        this._caption.LinkClicked += async (_, _) => await (this._offer == InstallOffer.Companions ? this.OfferCompanionsAsync() : this.OfferInstallAsync());
         this._preview.MouseDown += OnPreviewMouseDown;
         this._preview.MouseMove += OnPreviewMouseMove;
         this._preview.MouseUp += (_, _) => this._pressedAt = null;
@@ -104,6 +107,58 @@ internal sealed class UrlZone : Panel
 
     /// <summary>The URL field has the focus: the keys editing text are its own.</summary>
     public bool IsEditingText => this._url.Focused;
+
+    /// <summary>yt-dlp's companions are being installed, from the zone's link or the ⚙ menu.</summary>
+    public bool InstallingCompanions { get; private set; }
+
+    /// <summary>
+    /// The companions' offer — the zone's link, the ⚙ menu: a confirmation showing the winget command of
+    /// each one missing, then their install and, when the offer was made for a URL, its load again;
+    /// otherwise the media the zone held comes back. See workfiles/20261015-yt-dlp-best-format.md
+    /// § When They Are Offered.
+    /// </summary>
+    public async Task OfferCompanionsAsync()
+    {
+        var missing = YtDlpCompanions.Missing;
+        if (missing.Count == 0 || this.InstallingCompanions)
+        {
+            return;
+        }
+
+        string names = YtDlpCompanions.Names(missing);
+        var answer = MessageBox.Show(
+            this.FindForm(),
+            "yt-dlp loads the largest formats with its companions: Deno, the JavaScript runtime YouTube's formats need, "
+            + "and ffmpeg, which joins a video track and its sound.\n\n"
+            + $"Install {names} with winget, each in its own folder next to the app? The app will run:\n\n{YtDlpCompanions.Commands(missing)}\n\n"
+            + "This accepts winget's source and package agreements on your behalf.",
+            "Install yt-dlp companions",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question);
+        if (answer != DialogResult.Yes)
+        {
+            return;
+        }
+
+        Uri? url = this._installFor;
+        string? held = this._path;
+        this.InstallingCompanions = true;
+        try
+        {
+            await this.RunAsync(url, $"Installing {names}…", async (target, progress, token) =>
+            {
+                progress.Report(new InstallingStep(names));
+                await YtDlpCompanions.InstallAsync(missing, token);
+                return target is not null ? await UrlResolver.LoadAsync(target, progress, token)
+                    : held is not null && File.Exists(held) ? held
+                    : throw new CompanionsInstalledException(names);
+            });
+        }
+        finally
+        {
+            this.InstallingCompanions = false;
+        }
+    }
 
     protected override void OnPaint(PaintEventArgs e)
     {
@@ -168,7 +223,7 @@ internal sealed class UrlZone : Panel
             return Task.CompletedTask;
         }
 
-        return this.RunAsync(url, ResolvingCaption, UrlResolver.LoadAsync);
+        return this.RunAsync(url, ResolvingCaption, (target, progress, token) => UrlResolver.LoadAsync(target!, progress, token));
     }
 
     /// <summary>
@@ -182,10 +237,16 @@ internal sealed class UrlZone : Panel
             return;
         }
 
+        // The companions missing are installed with it, in the same confirmation.
+        var companions = YtDlpCompanions.Missing;
+        string commands = string.Join("\n\n", [YtDlp.InstallCommand, .. companions.Select(t => t.InstallCommand)]);
+        string with = companions.Count == 0 ? ""
+            : $"\n\nWith its companions, {YtDlpCompanions.Names(companions)}, each in its own folder next to the app: "
+              + "Deno, the JavaScript runtime YouTube's formats need, and ffmpeg, which joins a video track and its sound.";
         var answer = MessageBox.Show(
             this.FindForm(),
             "This site's media is loaded with yt-dlp, which isn't installed.\n\n"
-            + $"Install it in {YtDlp.Folder} with winget? The app will run:\n\n{YtDlp.InstallCommand}\n\n"
+            + $"Install it in {YtDlp.Folder} with winget?{with}\n\nThe app will run:\n\n{commands}\n\n"
             + "This accepts winget's source and package agreements on your behalf.",
             "Install yt-dlp",
             MessageBoxButtons.YesNo,
@@ -195,11 +256,17 @@ internal sealed class UrlZone : Panel
             return;
         }
 
-        await this.RunAsync(url, InstallingCaption, async (target, progress, token) =>
+        await this.RunAsync(url, "Installing yt-dlp…", async (target, progress, token) =>
         {
-            progress.Report(new InstallingStep());
+            progress.Report(new InstallingStep("yt-dlp"));
             await YtDlp.InstallAsync(token);
-            return await UrlResolver.LoadAsync(target, progress, token);
+            if (companions.Count > 0)
+            {
+                progress.Report(new InstallingStep(YtDlpCompanions.Names(companions)));
+                await YtDlpCompanions.InstallAsync(companions, token);
+            }
+
+            return await UrlResolver.LoadAsync(target!, progress, token);
         });
     }
 
@@ -207,7 +274,7 @@ internal sealed class UrlZone : Panel
     /// Runs one load — cancelling the one before — showing its steps, then its thumbnail or why it failed.
     /// Only the latest load touches the zone.
     /// </summary>
-    private async Task RunAsync(Uri url, string caption, Func<Uri, IProgress<UrlLoadStep>, CancellationToken, Task<string>> load)
+    private async Task RunAsync(Uri? url, string caption, Func<Uri?, IProgress<UrlLoadStep>, CancellationToken, Task<string>> load)
     {
         this.CancelLoad();
         var cts = new CancellationTokenSource();
@@ -216,10 +283,14 @@ internal sealed class UrlZone : Panel
         this._installFor = null;
         this.ShowBusy(caption);
         int side = this.LogicalToDeviceUnits(PreviewSide);
+
+        // yt-dlp loaded it without a companion: the file may be smaller than the site offers.
+        bool withoutCompanions = false;
         var progress = new Progress<UrlLoadStep>(step =>
         {
             if (this._loading == cts)
             {
+                withoutCompanions |= step is YtDlpStep { CompanionsMissing: true };
                 this.OnStep(step, cts);
             }
         });
@@ -234,14 +305,27 @@ internal sealed class UrlZone : Panel
             }
 
             this.ShowReady(path, thumbnail);
+            if (withoutCompanions && url is not null && YtDlpCompanions.Missing.Count > 0)
+            {
+                this.ShowCompanionsHint(url, path);
+            }
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested)
         {
             // A newer load took over, or the zone closed.
         }
-        catch (YtDlpMissingException) when (this._loading == cts)
+        catch (YtDlpMissingException) when (this._loading == cts && url is not null)
         {
             this.ShowInstallOffer(url);
+        }
+        catch (YtDlpCompanionsMissingException e) when (this._loading == cts && url is not null)
+        {
+            this.ShowCompanionsOffer(url, e.Message);
+        }
+        catch (CompanionsInstalledException e) when (this._loading == cts)
+        {
+            this.ShowEmpty();
+            this.SetCaption(e.Message, error: false);
         }
         catch (UrlLoadException e) when (this._loading == cts)
         {
@@ -275,8 +359,11 @@ internal sealed class UrlZone : Panel
             case ResolvingStep:
                 this.SetCaption(ResolvingCaption, error: false);
                 break;
-            case InstallingStep:
-                this.SetCaption(InstallingCaption, error: false);
+            case InstallingStep installing:
+                this.SetCaption($"Installing {installing.Name}…", error: false);
+                break;
+            case MergingStep:
+                this.SetCaption(MergingCaption, error: false);
                 break;
             case PosterStep poster:
                 _ = this.ShowPosterAsync(poster.Url, cts);
@@ -398,7 +485,30 @@ internal sealed class UrlZone : Panel
     {
         this.ShowFailed($"{InstallLink} This site needs yt-dlp");
         this._installFor = url;
+        this._offer = InstallOffer.YtDlp;
         this._caption.Links.Add(0, InstallLink.Length);
+    }
+
+    /// <summary>yt-dlp failed without a companion: the caption's link offers to install them, then loads this URL again.</summary>
+    private void ShowCompanionsOffer(Uri url, string reason)
+    {
+        this.ShowFailed($"{CompanionsLink} {reason}");
+        this._installFor = url;
+        this._offer = InstallOffer.Companions;
+        this._caption.Links.Add(0, CompanionsLink.Length);
+    }
+
+    /// <summary>
+    /// The media is ready, loaded by yt-dlp without a companion: the caption's link offers to install
+    /// them for a larger format, then loads this URL again; its file stays draggable meanwhile.
+    /// </summary>
+    private void ShowCompanionsHint(Uri url, string path)
+    {
+        long size = new FileInfo(path).Length;
+        this.SetCaption($"{CompanionsLink} for a larger format · {Path.GetFileName(path)} · {Megabytes(size)}", error: false);
+        this._installFor = url;
+        this._offer = InstallOffer.Companions;
+        this._caption.Links.Add(0, CompanionsLink.Length);
     }
 
     /// <summary>The caption's text, no link in it, its whole text in its tooltip.</summary>
@@ -452,6 +562,16 @@ internal sealed class UrlZone : Panel
             this.ShowFailed(GoneCaption);
         }
     }
+
+    /// <summary>What the caption's link offers to install.</summary>
+    private enum InstallOffer
+    {
+        YtDlp,
+        Companions,
+    }
+
+    /// <summary>The companions installed from the ⚙ menu with no URL to load again: the zone says so.</summary>
+    private sealed class CompanionsInstalledException(string names) : Exception($"{names} installed: yt-dlp now loads the largest formats");
 
     private enum PreviewState
     {
