@@ -399,6 +399,90 @@ internal sealed partial class FileExplorerPanel
         }
     }
 
+    /// <summary>
+    /// What the index holds of a file, for its tile's tooltip: its caption, its tags, the beginning of the
+    /// text read in it — Windows OCR's, else RapidOCR's — and the people its faces belong to; null for a
+    /// file outside the base folder. See workfiles/20261027-image-content-analysis.md § Tile Tooltip.
+    /// </summary>
+    private TileIndex? IndexedContentOf(ExplorerRow row)
+    {
+        if (this._baseFolder is not { } root)
+        {
+            return null;
+        }
+
+        string relative = Path.GetRelativePath(root, row.FullPath);
+        if (relative.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(relative))
+        {
+            return null;
+        }
+
+        var contents = this._contents;
+        string? text = contents?.TextOf(relative, ContentSlot.Windows) ?? contents?.TextOf(relative, ContentSlot.Rapid);
+        return new TileIndex(
+            contents?.TextOf(relative, ContentSlot.Caption),
+            contents?.TextOf(relative, ContentSlot.Tags),
+            text is null ? null : $"« {Cut(text, TipTextLength)} »",
+            this.PeopleOf(row.FullPath, relative));
+
+        static string Cut(string text, int length)
+        {
+            if (text.Length <= length)
+            {
+                return text;
+            }
+
+            int space = text.LastIndexOf(' ', length);
+            return text[..(space > length / 2 ? space : length)] + "…";
+        }
+    }
+
+    /// <summary>
+    /// The people a file's faces belong to: the named ones A→Z — a face of an unnamed group merged into a
+    /// named person by that person's name — then the faces of no named person counted; the hidden people
+    /// left out; null for a file without a face.
+    /// </summary>
+    private string? PeopleOf(string fullPath, string relative)
+    {
+        if (this._faces is not { } faces)
+        {
+            return null;
+        }
+
+        var names = new SortedSet<string>(StringComparer.CurrentCultureIgnoreCase);
+        int unnamed = 0;
+        foreach (var face in faces.FacesOf(relative))
+        {
+            if (this._snapshot.OwnerOf.TryGetValue(FaceKeys.Of(fullPath, face.Bounds), out var group))
+            {
+                var top = group.Parent ?? group;
+                if (group.Hidden || top.Hidden)
+                {
+                    continue;
+                }
+
+                string name = group.Name.Length > 0 ? group.Name : top.Name;
+                if (name.Length > 0)
+                {
+                    names.Add(name);
+                    continue;
+                }
+            }
+
+            unnamed++;
+        }
+
+        string named = string.Join(", ", names);
+        return (names.Count, unnamed) switch
+        {
+            (0, 0) => null,
+            (0, 1) => "1 unnamed face",
+            (0, _) => $"{unnamed} unnamed faces",
+            (_, 0) => named,
+            _ => $"{named} (+ {unnamed} unnamed)",
+        };
+    }
+
     /// <summary>A text's embedding by the text model — loaded when first needed, one call at a time. From any thread.</summary>
     private float[] EmbedText(string text)
     {

@@ -94,7 +94,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
     // The sizes the thumbnails are asked from the Shell at: the smallest not below the drawn tile width.
     private static readonly int[] Buckets = [256, 512, 1024];
 
-    private readonly ToolTip _toolTip = new();
+    private readonly IndexToolTip _toolTip;
     private readonly ThumbnailCache _thumbnails;
     private Font _heartFont;
     private Font _nameFont;
@@ -146,6 +146,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
     public ThumbnailGrid()
     {
+        this._toolTip = new IndexToolTip(this);
         SetStyle(
             ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer |
             ControlStyles.UserPaint | ControlStyles.ResizeRedraw,
@@ -222,6 +223,14 @@ internal sealed class ThumbnailGrid : ScrollableControl
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public Func<ExplorerRow, string?> ContentExcerpt { get; set; } = _ => null;
+
+    /// <summary>
+    /// What the index holds of a file — its caption, tags, text read, people — shown in its tile's tooltip
+    /// after its path; null for nothing. See workfiles/20261027-image-content-analysis.md § Tile Tooltip.
+    /// </summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Func<ExplorerRow, TileIndex?> IndexedContent { get; set; } = _ => null;
 
     /// <summary>
     /// Where the OCR recognised the word a search found in a tile's content, in fractions of its image —
@@ -332,7 +341,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         }
 
         this._excerpts.Clear();
-        _toolTip.SetToolTip(this, null);
+        _toolTip.Set(null);
         this._bulbTip = -1;
     }
 
@@ -1468,6 +1477,9 @@ internal sealed class ThumbnailGrid : ScrollableControl
         return new Rectangle(heart.X, heart.Bottom + inset, heart.Width, heart.Height);
     }
 
+    /// <summary>A tile's indexed content for its tooltip: a file's only, groups and folders none.</summary>
+    private TileIndex? IndexOf(ExplorerRow row) => row.IsFile ? this.IndexedContent(row) : null;
+
     private bool OnBulb(int index, Point client) => index >= 0 && this._rows[index].ByContent && this.BulbBounds(index).Contains(this.Unscrolled(client));
 
     /// <summary>
@@ -1486,11 +1498,11 @@ internal sealed class ThumbnailGrid : ScrollableControl
         if (bulb >= 0)
         {
             string? excerpt = this.ContentExcerpt(this._rows[bulb]);
-            this._toolTip.SetToolTip(this, excerpt is null ? "Found in its content" : $"Found in its content: {excerpt}");
+            this._toolTip.Set(excerpt is null ? "Found in its content" : $"Found in its content: {excerpt}");
         }
         else
         {
-            this._toolTip.SetToolTip(this, index >= 0 ? this._rows[index].Tip : null);
+            this._toolTip.Set(index >= 0 ? this._rows[index].Tip : null, index >= 0 ? this.IndexOf(this._rows[index]) : null);
         }
     }
 
@@ -1815,7 +1827,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
             Invalidate(Scrolled(CellBounds(index)));
         }
 
-        _toolTip.SetToolTip(this, index >= 0 ? _rows[index].Tip : null);
+        this._toolTip.Set(index >= 0 ? _rows[index].Tip : null, index >= 0 ? this.IndexOf(_rows[index]) : null);
         this._bulbTip = -1;
     }
 

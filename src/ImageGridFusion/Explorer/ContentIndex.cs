@@ -278,6 +278,10 @@ internal sealed class ContentIndex
 
     public void Remove(string relativePath) => this._texts.TryRemove(relativePath, out _);
 
+    /// <summary>A file's text in one slot — the tile's tooltip shows it; null when the slot is not done or holds none.</summary>
+    public string? TextOf(string relativePath, ContentSlot slot) =>
+        this._texts.TryGetValue(relativePath, out var text) && text.Slots[(int)slot] is { Text.Length: > 0 } found ? found.Text : null;
+
     /// <summary>The tags and the captions of every file forgotten — back to not done — the words read kept; true when any was dropped.</summary>
     public bool ForgetSeen()
     {
