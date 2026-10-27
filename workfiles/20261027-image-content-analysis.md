@@ -412,6 +412,11 @@ From the user's answers (Q&A 18–21) — every open question settled:
 - **One `ContentPass`** holding every pass, the faces included (revising Q&A 17): the rename and the
   face pass's move into it come first, in a commit changing no behaviour.
 
+### Iteration 7 — 2026-10-27 — ✅ Implemented
+
+Go given: code, unit tests and documentation (the tests being hand checks, Q&A 20), in a worktree on
+`feature/image-content-analysis`. The scope is frozen as the sections above stand.
+
 ---
 
 ## Implementation Log
