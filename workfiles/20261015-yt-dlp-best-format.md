@@ -119,9 +119,13 @@ Every current install has yt-dlp without its companions. The offer comes from fo
 - The name carries the height: `%(extractor)s-%(id)s-%(height)sp.%(ext)s` — the **same file already
   there is reused** (RULES.md § Content From a URL), and a video first loaded without ffmpeg at 360p
   is then downloaded again at its larger size once ffmpeg is there, instead of reusing the small one.
-- With ffmpeg, yt-dlp downloads two files then merges them: the percentage runs once per track; the
-  merged file is the one `--print after_move:filepath` gives, as today. Progress display: see Open
-  Questions.
+- With ffmpeg, yt-dlp downloads two files then merges them; the merged file is the one
+  `--print after_move:filepath` gives, as today.
+- **One gauge for the whole load**: 0 to 100 % over both tracks, each weighted by its size — the
+  bytes downloaded over the bytes of every track, read from yt-dlp's progress (a `--progress-template`
+  giving the downloaded and total bytes, an estimate when the total is unknown) — never restarting at
+  0 for the sound track. Then a **Merging…** step while ffmpeg joins them. A single-file load is one
+  track: the gauge as today.
 
 ---
 
@@ -138,13 +142,13 @@ Every current install has yt-dlp without its companions. The offer comes from fo
 
 ## Test Impact
 
-The repository has **no test project** (`ImageGridFusion.slnx` holds the app only). The selector built
-from the Video size and the companions present is a pure function that could be pinned — see Open
-Questions.
+**No unit test**: the repository has no test project (`ImageGridFusion.slnx` holds the app only) and
+none is created for this work. The selector is checked by hand on the failing video
+(`XJ-pcvL2yqI`): without the companions, with them, at each Video size.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| *(pending the test-project question)* | | |
+| — (none: no test project, checked by hand) | — | — |
 
 ---
 
@@ -169,9 +173,11 @@ Questions.
 - [x] ~~**Codecs above 1920** — at 2560 or 4096, YouTube's H.264 stops at 1080p: the **largest first**,
   whatever the codec (VP9 / AV1, which may not decode on every machine), or **H.264 first**?~~ →
   **The largest first**, H.264 > VP9 > AV1 at equal resolution.
-- [ ] **Progress with two tracks** — the percentage restarting for the sound track, plus a *Merging…*
-  step: acceptable as is, or one percentage for the whole?
-- [ ] **Tests** — create a test project to pin the selector, or none?
+- [x] ~~**Progress with two tracks** — the percentage restarting for the sound track, plus a *Merging…*
+  step: acceptable as is, or one percentage for the whole?~~ → **One gauge** over both tracks, weighted
+  by their sizes, then *Merging…*.
+- [x] ~~**Tests** — create a test project to pin the selector, or none?~~ → **None**: checked by hand on
+  the failing video.
 
 ---
 
@@ -193,6 +199,12 @@ in one confirmation; they live in **folders of their own** next to the exe (`den
 offer comes from **four places** — a failed load, a hint on a load that succeeded without them, the
 ⚙ menu, a fresh yt-dlp install (§ When They Are Offered); the format ranks the **resolution first**,
 H.264 > VP9 > AV1 at equal resolution.
+
+### Iteration 3 — 2026-10-27
+
+The last two Open Questions answered: **one gauge** for the whole load, both tracks weighted by their
+sizes, then a *Merging…* step (§ Downloaded File); **no test project**, the selector checked by hand
+(§ Test Impact). No Open Question left: the design is complete.
 
 ---
 
@@ -218,9 +230,9 @@ H.264 > VP9 > AV1 at equal resolution.
 | 6 | Companions' placement: under `yt-dlp\` or folders of their own? | Folders of their own (`deno\`, `ffmpeg\`) | 2026-10-15 |
 | 7 | When is the companions' install offered? | On a failed load, as a hint on a smaller success, from the ⚙ menu, with a fresh yt-dlp install | 2026-10-15 |
 | 8 | Codecs above 1920: largest first or H.264 first? | Largest first | 2026-10-15 |
-| 9 | Progress with two tracks: as is, or one percentage? | | 2026-10-15 |
-| 10 | Tests: create a test project, or none? | | 2026-10-15 |
+| 9 | Progress with two tracks: as is, or one percentage? | One gauge, weighted by the tracks' sizes | 2026-10-15 |
+| 10 | Tests: create a test project, or none? | None, checked by hand | 2026-10-15 |
 
 ---
 
-*Last updated: 2026-10-15*
+*Last updated: 2026-10-27*
