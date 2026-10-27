@@ -263,6 +263,15 @@ Questions asked by the agent during design, with user responses.
 | 3 | Which engine? | YuNet + SFace (ONNX, MIT / Apache 2.0), downloaded on demand | 2026-10-27 |
 | 4 | What else, beyond naming and merging? | Removing a face, search by name, hiding a person (videos and GIFs left out) | 2026-10-27 |
 | 5 | Is the subject straightforward or tricky / long? | Tricky / long | 2026-10-27 |
+| 6 | How is the People view reached (👤 button, 📁 cycling, drop-down)? | | 2026-10-27 |
+| 7 | Single-file persons: shown, gathered in *Others*, or not shown? | | 2026-10-27 |
+| 8 | Merge gesture: drag a tile onto another + *Merge with…*, or multi-select + *Merge*? | | 2026-10-27 |
+| 9 | Opt-in: off by default (⚙ menu), or on once the engine is downloaded? | | 2026-10-27 |
+| 10 | Engine folder: `face-engine\` or `ocr-engine\`? | | 2026-10-27 |
+| 11 | Pass order: right after the Windows OCR pass, or after every OCR pass? | | 2026-10-27 |
+| 12 | Forgetting: a ⚙ *Forget faces…* entry? | | 2026-10-27 |
+| 13 | Grouping threshold: fixed constant or ⚙ setting? | | 2026-10-27 |
+| 14 | Test project for the pure logic, or hand checks only? | | 2026-10-27 |
 
 ---
 
