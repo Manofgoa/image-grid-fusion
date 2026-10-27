@@ -27,7 +27,7 @@ Four results, all requested (Q&A 2):
 Queries in **French and English** (Q&A 3); the results appear **under 💡**, no new criterion or view
 (Q&A 4).
 
-Sibling of `20261027-face-detection.md` (designed, not implemented): the faces answer **who**, this
+Sibling of `20261027-face-detection.md` (implemented, RULES.md § People): the faces answer **who**, this
 answers **what**. Both add a pass to the extraction worker, a model engine downloaded on demand
 next to the exe, and an index file of vectors of their own. The models are not shared — YuNet and
 SFace know nothing of scenes.
@@ -43,10 +43,12 @@ Components touched (from the exploration):
 | Pass worker — sequential, one thread, passes in `OcrPasses.All` order, pause rule, save cadence, bars | `UI/FileExplorerPanel.Extract` (~l.1492), `ExtractAsync`, `ExtractionPaused`, `TrySave`, `PassColors` / `PassColorNames` / `_passBars` |
 | Pass / slot declarations | `Explorer/OcrPass.cs` — `OcrPass`, `ContentSlot`, `OcrPasses.All`, `SlotCount` (5), `SlotsOf`, `IsWeak`, `NameOf` |
 | Content index format | `Explorer/ContentIndex` — header `ImageGridFusion content 3`, `3 + 2 × slots` columns, `Find`, `SlotText` |
-| Per-file extraction, engine lifecycle | `Explorer/ContentExtractor` — `Extract(path, pass)`, `Decode`, `StartRapid` / `StopRapid` |
-| ONNX Runtime | `Microsoft.ML.OnnxRuntime 1.29.0`, CPU only, natives in `ocr-engine\` (`OcrEngineFiles.ResolveNativeLibraries`) |
-| Engine download | `OcrEngineFiles` reads NuGet packages only (`RemoteZip`); direct files go through `Web/Downloader.DownloadAsync` — the face engine's route |
-| Search tiers | `Explorer/FileSearch` — `Rank` (no score field), `Tier()` (path 0..n, description n+1, content n+2+grade), `CompareTier`, `SearchMatch` |
+| Per-file extraction, engine lifecycle | `Explorer/ContentExtractor` — `Extract(path, pass)`, `DecodePixels` (the pixels the OCR and the faces read), `StartRapid` / `StopRapid` |
+| The face pass — the model for a non-OCR pass | `FileExplorerPanel.ExtractFaces`, called after the Windows OCR pass inside the loop over `OcrPasses.All`, under its own setting; reported as `ExtractionProgress(OcrPass.Windows, …, FacePass: true)`; bars by setting (`LayoutBars`); extraction runs while the content search **or** the face analysis is on |
+| ONNX Runtime | `Microsoft.ML.OnnxRuntime 1.29.0`, CPU only, natives in `ocr-engine\` (`OcrEngineFiles.ResolveNativeLibraries`, `HasRuntime`) |
+| Engine download | `OcrEngineFiles` reads NuGet packages (`RemoteZip`), `DownloadAsync(…, only)` fetching `onnxruntime.dll` alone; `FaceEngineFiles` downloads pinned direct URLs with their SHA-256 — its loop, `HashMatches` and `EngineFile` private to it |
+| Vector index model | `Explorer/FaceIndex` (`index\files.faces`): binary, versioned, per file its stamp, `RetainOnly`, `IsCurrent` |
+| Search tiers | `Explorer/FileSearch` — `Rank` (no score field), `Tier()`: path 0..n, `DescriptionTier` n+1, `PersonTier` n+2, content `PersonTier + 1 + grade`; `CompareTier`, `SearchMatch` |
 | Explorer search entry point | `FileExplorerPanel.RefreshRows` (~l.1713), `Find` (~l.1984), `WithFavorites` (~l.1956) |
 | Tile context menu | `FileExplorerPanel._menu` (l.137, items l.278, `Opening` l.328) — the grid (`GridPreview`) has none |
 
@@ -82,8 +84,12 @@ Components touched (from the exploration):
 ## Vision Engine
 
 - **Never shipped**, downloaded on demand next to the exe — each file from a **pinned URL** with its
-  **SHA-256**, through `Downloader.DownloadAsync` into `<name>.~downloading`, then moved into place —
-  the face engine's route (`FaceEngineFiles`). Nothing is downloaded without the user's **Yes**.
+  **SHA-256**, into `<name>.~downloading`, then moved into place — the face engine's route. Nothing is
+  downloaded without the user's **Yes**.
+- **One download loop for both engines**: `FaceEngineFiles`' loop, `HashMatches` and `EngineFile` move
+  into a shared `Explorer/DirectEngineDownload` (the folder, the files, the runtime's share of the
+  progress as parameters), called by `FaceEngineFiles` and `VisionEngineFiles` — in a commit of its own,
+  changing no behaviour of the face engine.
 - Its own folder, **`vision-engine\`** (`VisionEngineFiles.FolderName`); ONNX Runtime's native DLL stays
   the OCR engine's, in `ocr-engine\`, fetched with it when missing, as the face engine does.
 - **Two parts, two availabilities**: SigLIP 2 (~380 MB) and Florence-2 (~275 MB) — each its own
@@ -103,14 +109,17 @@ Two passes of the extraction worker, same pause rule, same save cadence, each it
 
 | Pass | Per file | Writes |
 |---|---|---|
-| **Vision** | The pixels `ContentExtractor.Decode` gives, resized to 256 × 256, through SigLIP 2's vision model → one embedding (768 floats, normalized) | The embedding in `index\files.vision`; the **tags** slot of `files.content` (§ Tags) |
+| **Vision** | The pixels `ContentExtractor.DecodePixels` gives, resized to 256 × 256, through SigLIP 2's vision model → one embedding (768 floats, normalized) | The embedding in `index\files.vision`; the **tags** slot of `files.content` (§ Tags) |
 | **Caption** | The same pixels at 768 × 768 through Florence-2 (`<CAPTION>` task), greedy decoding | The **caption** slot of `files.content` |
 
 - Over every **image and PDF** entry of the index, like the OCR passes; videos left out.
 - A changed file (size or date) is analysed again; a file gone from the index drops its data.
 - Where they run among the passes (OCR, faces): *see Open Questions*.
 - A pass runs only while **its setting is on** and its engine part present (§ Engine Offer);
-  otherwise it is skipped and its bar hidden; the others run.
+  otherwise it is skipped and its bar hidden; the others run. The extraction runs while the content
+  search, the face analysis, *Visual analysis* **or** *Captions* is on (today: the first two).
+- Built on the **face pass's model** (`ExtractFaces`): a method of its own per pass, its own setting,
+  its own bar shown by setting (`LayoutBars`), its vector index saved with `TrySave` like `FaceIndex`.
 - They are **passes**, not OCR: the worker's loop takes them. `OcrPass` / `OcrPasses` are **renamed**
   `ContentPass` / `ContentPasses` (Q&A 17), in a commit of their own changing no behaviour, before the
   new passes join; `OcrPass.cs` becomes `ContentPass.cs`.
@@ -187,8 +196,9 @@ Two new **text slots** of `files.content`, appended after the OCR slots:
   by score**, the best first — counted among the files in the search's scope (below the open folder in
   the folder view).
   - A file already found in an earlier tier is not repeated.
-  - `Rank` gains a score (`Similarity`), `Tier()` a value after the content grades, `CompareTier` orders
-    by score inside it; `SearchMatch` carries the score.
+  - `Rank` gains a score (`Similarity`), `Tier()` a value after the content grades (`PersonTier + 1 +
+    grade`, the Seen grades included), `CompareTier` orders by score inside it; `SearchMatch` carries the
+    score.
   - With a user sort order (Date, Name, Size), the other tiers are sorted by it; the similarity tier
     keeps **its score order**, always — the exception (Q&A 13).
   - Its tier number stays above every favorite's tier (`WithFavorites` interleaves by tier).
@@ -361,6 +371,26 @@ From the user's answers (Q&A 14–17):
 - New question, from the face detection's design: **forgetting** the visual analysis, like *Forget
   faces…*.
 
+### Iteration 5 — 2026-10-27
+
+The face detection is delivered; the user asked whether it calls for adjustments here. Read from its
+🧭 choices, RULES.md § People and its code:
+
+- **The face pass is not an `OcrPasses` value**: `ExtractFaces` runs after the Windows pass inside the
+  loop, under its own setting, reported with a `FacePass` flag on `ExtractionProgress`. The Vision and
+  Caption passes follow that model. The rename decided in Q&A 17 loses its first reason — the passes no
+  longer join `OcrPasses` — so it is asked again with the alternative it opens: every pass, the faces
+  included, a value of one `ContentPass` (Q&A 21).
+- **The download loop** is private to `FaceEngineFiles`: moved into a shared `DirectEngineDownload` used
+  by both engines, rather than copied.
+- The pixels are `ContentExtractor.DecodePixels`; the vector index follows `FaceIndex`; the content
+  tiers now come after `PersonTier`.
+- The extraction runs while the content search or the face analysis is on: *Visual analysis* and
+  *Captions* join that condition.
+- The face run checked the app from a **copy of the build in the scratchpad** — turning an opt-in on in
+  the bin's instance would write the user's settings and analyse their base folder (⚠️ reported as a
+  rule broken). This run will face the same: noted here so the go covers it.
+
 ---
 
 ## Implementation Log
@@ -404,6 +434,7 @@ Questions asked by the agent during design, with user responses.
 | 18 | Pass order: where do Vision and Caption run among Windows OCR, faces, RapidOCR, Inverted, Ring? | | 2026-10-27 |
 | 19 | Forgetting: a ⚙ *Forget visual analysis…* entry, like the faces'? | | 2026-10-27 |
 | 20 | Test project, or hand checks only like the face detection? | | 2026-10-27 |
+| 21 | The face pass stays outside `OcrPasses` (a flag on `ExtractionProgress`): rename `OcrPass` to `ContentPass` **and** make every pass — faces, vision, caption — one of its values, or follow the face pass's model and keep `OcrPass`? | | 2026-10-27 |
 
 ---
 
