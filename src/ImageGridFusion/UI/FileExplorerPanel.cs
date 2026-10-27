@@ -1956,6 +1956,16 @@ internal sealed partial class FileExplorerPanel : Panel
                 visionChanged = true;
                 progress.Report(new ExtractionProgress(ContentPass.Vision, 0, queue.Length, before, imageRead.Length, null, ContentKind.None, true, false));
             }
+            else
+            {
+                // Tags lost while the embeddings stayed — the content texts rebuilt, an older files.content:
+                // computed again from the embeddings, no image read.
+                foreach (var entry in imageRead.Where(e => vision.IsCurrent(e) && !contents.IsCurrent(e, ContentPass.Vision)))
+                {
+                    contents.Set(entry.RelativePath, entry.Stamp!.Value, ContentPass.Vision, [new ContentResult(vision.EmbeddingOf(entry.RelativePath) is { } embedding ? tags.TagsOf(embedding) : "", null)]);
+                    changed = true;
+                }
+            }
 
             if (queue.Length == 0)
             {
