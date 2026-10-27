@@ -62,7 +62,9 @@ internal sealed class FileExplorerPanel : Panel
 
     private const string SearchPlaceholder = "Search files… (Ctrl+F, * for all)";
     private const string FolderSearchPlaceholder = "Search this folder… (Ctrl+F, * for all)";
+    private const string PeopleSearchPlaceholder = "Search the people by name… (Ctrl+F)";
     private const string OpenInExplorerText = "Open in Explorer";
+    private const string FolderInviteText = "No base folder yet. The search looks through one folder and its subfolders: choose it to index your files.";
 
     // A file tile's menu labels, the URL zone's preview menu showing the same ones.
     internal const string OpenFileLocationText = "Open file location";
@@ -84,7 +86,9 @@ internal sealed class FileExplorerPanel : Panel
     private readonly Button _collapse = new() { Text = "»", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right };
     private readonly Button _expand = new() { Text = "«", Dock = DockStyle.Fill, Visible = false, Margin = Padding.Empty };
     private readonly TableLayoutPanel _searchRow = new() { ColumnCount = 5, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
-    private readonly CheckBox _folderToggle = new() { Text = "📁", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0) };
+    // The views drop-down (workfiles/20261027-face-detection.md § People View): its entries in
+    // ExplorerMode's order.
+    private readonly ComboBox _modes = new() { DropDownStyle = ComboBoxStyle.DropDownList, Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0) };
 
     // The search criteria (workfiles/20261007-search-options.md): pressed, the search looks in the
     // relative paths, in the content texts; both at start-up, never none, not remembered. Toggled by
@@ -93,11 +97,13 @@ internal sealed class FileExplorerPanel : Panel
     private readonly CheckBox _byContent = new() { Text = "💡", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0), Checked = true, AutoCheck = false };
     private readonly TextBox _search = new() { PlaceholderText = SearchPlaceholder, Anchor = AnchorStyles.Left | AnchorStyles.Right };
     private readonly Button _rescan = new() { Text = "↻", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right, Enabled = false };
-    // One bar per OCR pass (workfiles/20261013-complementary-ocr-passes.md § Progress Bars), stacked in
-    // the progress row in the passes' order, each in its colour; the first — the Windows pass's, blue —
-    // is the scan's too. Only the first shows while the content search is off.
-    private static readonly Color[] PassColors = [IndexingBar.DefaultColor, Color.FromArgb(136, 23, 152), Color.FromArgb(202, 80, 16), Color.FromArgb(16, 124, 16)];
-    private static readonly string[] PassColorNames = ["blue", "purple", "orange", "green"];
+    // One bar per OCR pass (workfiles/20261013-complementary-ocr-passes.md § Progress Bars), then the
+    // face pass's (workfiles/20261027-face-detection.md § Face Pass), each in its colour, stacked in the
+    // progress row in the order the passes run; the first — the Windows pass's, blue — is the scan's too.
+    // The OCR passes' show while the content search is on, the face pass's while the face analysis is.
+    private static readonly Color[] PassColors = [IndexingBar.DefaultColor, Color.FromArgb(136, 23, 152), Color.FromArgb(202, 80, 16), Color.FromArgb(16, 124, 16), Color.FromArgb(214, 0, 120)];
+    private static readonly string[] PassColorNames = ["blue", "purple", "orange", "green", "pink"];
+    private const int FaceBar = 4;
     private readonly TableLayoutPanel _bars = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = PassColors.Length, Margin = Padding.Empty, Padding = Padding.Empty };
     private readonly IndexingBar[] _passBars = PassColors.Select(color => new IndexingBar { Dock = DockStyle.Fill, BarColor = color }).ToArray();
 
@@ -131,7 +137,7 @@ internal sealed class FileExplorerPanel : Panel
     {
         Dock = DockStyle.Top,
         TextAlign = ContentAlignment.MiddleLeft,
-        Text = "No base folder yet. The search looks through one folder and its subfolders: choose it to index your files.",
+        Text = FolderInviteText,
     };
     private readonly Button _chooseFolder = new() { Text = "Choose folder…", Dock = DockStyle.Top, AutoSize = true };
     private readonly ContextMenuStrip _menu = new();
@@ -148,9 +154,19 @@ internal sealed class FileExplorerPanel : Panel
     private readonly ToolStripMenuItem _copyFullPath = new(CopyFullPathText);
     private readonly ToolStripSeparator _copySeparator = new();
     private readonly ToolStripMenuItem _editDescription = new("Edit description…");
+
+    // A face group's entries, and a file's inside a group (workfiles/20261027-face-detection.md § Decisions).
+    private readonly ToolStripMenuItem _openGroupItem = new("Open");
+    private readonly ToolStripMenuItem _renameGroup = new("Rename…") { ShortcutKeyDisplayString = "F2" };
+    private readonly ToolStripMenuItem _hideGroup = new("Hide");
+    private readonly ToolStripMenuItem _unhideGroup = new("Unhide");
+    private readonly ToolStripMenuItem _unmergeGroup = new("Un-merge");
+    private readonly ToolStripMenuItem _notThisPerson = new("Not this person");
+    private readonly ToolStripSeparator _peopleSeparator = new();
     private readonly ToolTip _toolTip = new();
     private readonly System.Windows.Forms.Timer _transient = new() { Interval = TransientDuration };
     private readonly Favorites _favorites = new(Favorites.DefaultPath);
+    private readonly People _peopleStore = new(People.DefaultPath);
 
     private bool _open = true;
     private int _openWidth = DefaultOpenWidth;
@@ -203,6 +219,26 @@ internal sealed class FileExplorerPanel : Panel
     private bool _clearingSearch;
     private bool _syncingToggle;
 
+    // The People view (workfiles/20261027-face-detection.md): whether it shows, the group open in it —
+    // HiddenGroups for the hidden ones — the faces found, whether they are looked for (the ⚙ setting), the
+    // groups as last computed and whether a computation runs or waits, the index's entries by full path,
+    // the face engine's download, and what the invitation's button does.
+    private const string HiddenGroups = "hidden";
+    private const string GroupDataFormat = "ImageGridFusion.FaceGroup";
+    private const string FaceDataFormat = "ImageGridFusion.Face";
+    private bool _peopleView;
+    private string? _openGroup;
+    private string? _openGroupFace;
+    private FaceIndex? _faces;
+    private bool _faceAnalysis;
+    private PeopleSnapshot _snapshot = PeopleSnapshot.Empty;
+    private bool _grouping;
+    private bool _groupAgain;
+    private int _groupedAt = -1;
+    private Dictionary<string, IndexEntry>? _entriesByPath;
+    private CancellationTokenSource? _faceEngineDownload;
+    private InviteAction _inviteAction = InviteAction.ChooseFolder;
+
     public FileExplorerPanel()
     {
         _title.Font = new Font(Font, FontStyle.Bold);
@@ -228,7 +264,9 @@ internal sealed class FileExplorerPanel : Panel
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        _searchRow.Controls.Add(_folderToggle, 0, 0);
+        this._modes.Items.AddRange(["Favorites", "Folders", "People"]);
+        this._modes.SelectedIndex = (int)ExplorerMode.Favorites;
+        this._searchRow.Controls.Add(this._modes, 0, 0);
         this._searchRow.Controls.Add(this._byName, 1, 0);
         this._searchRow.Controls.Add(this._byContent, 2, 0);
         _searchRow.Controls.Add(_search, 3, 0);
@@ -264,9 +302,9 @@ internal sealed class FileExplorerPanel : Panel
         for (int i = 0; i < this._passBars.Length; i++)
         {
             this._bars.RowStyles.Add(new RowStyle(SizeType.Absolute, IndexingBar.Thickness));
-            this._bars.Controls.Add(this._passBars[i], 0, i);
         }
 
+        this.LayoutBars();
         _content.Controls.Add(this._bars, 0, 2);
         _content.Controls.Add(_status, 0, 3);
         _content.Controls.Add(_captionRow, 0, 4);
@@ -275,6 +313,7 @@ internal sealed class FileExplorerPanel : Panel
         this._content.Controls.Add(this._urlZone, 0, 7);
         Controls.Add(_content);
         Controls.Add(_expand);
+        this._menu.Items.AddRange([this._openGroupItem, this._renameGroup, this._hideGroup, this._unhideGroup, this._unmergeGroup, this._notThisPerson, this._peopleSeparator]);
         this._menu.Items.AddRange([this._editDescription, this._copy, this._copyPng, this._copyFullPath, this._copySeparator]);
         _menu.Items.Add(_openLocation);
         _grid.ContextMenuStrip = _menu;
@@ -288,7 +327,7 @@ internal sealed class FileExplorerPanel : Panel
         _toolTip.SetToolTip(_collapse, "Hide the file explorer");
         _toolTip.SetToolTip(_expand, "Show the file explorer");
         _toolTip.SetToolTip(_rescan, "Rescan the folder");
-        _toolTip.SetToolTip(_folderToggle, FolderToggleTip());
+        this._toolTip.SetToolTip(this._modes, "What the list shows: the favorites and the search over every file, the base folder folder by folder, or the people the faces were grouped into");
         this.ApplyCriteriaTips();
         _toolTip.SetToolTip(_smallerGlyph, "Smaller tiles");
         _toolTip.SetToolTip(_largerGlyph, "Larger tiles");
@@ -303,7 +342,7 @@ internal sealed class FileExplorerPanel : Panel
         this._detailsView.Click += (_, _) => this.ChangeView(ExplorerView.Details);
         _grid.SizeStepRequested += (_, direction) => StepSize(direction);
         _rescan.Click += (_, _) => Rescan();
-        _chooseFolder.Click += (_, _) => ChooseFolderRequested?.Invoke(this, EventArgs.Empty);
+        this._chooseFolder.Click += (_, _) => this.RunInvite();
         _search.TextChanged += (_, _) =>
         {
             Interlocked.Exchange(ref this._lastKeystroke, Environment.TickCount64);
@@ -313,7 +352,7 @@ internal sealed class FileExplorerPanel : Panel
             }
         };
         _search.KeyDown += OnSearchKeyDown;
-        _folderToggle.CheckedChanged += (_, _) => SetFolderView(_folderToggle.Checked);
+        this._modes.SelectionChangeCommitted += (_, _) => this.ChangeMode((ExplorerMode)this._modes.SelectedIndex);
         this._byName.Click += (_, _) => this.ToggleCriterion(this._byName, this._byContent);
         this._byContent.Click += (_, _) => this.ToggleCriterion(this._byContent, this._byName);
         _breadcrumb.UpRequested += (_, _) => GoUp();
@@ -325,16 +364,38 @@ internal sealed class FileExplorerPanel : Panel
         this._urlZone.FileActionRequested += async (_, request) => await this.RunUrlFileActionAsync(request.Path, request.Action);
         _grid.MoreRequested += (_, _) => LoadMore();
         _grid.UpRequested += (_, _) => GoUp();
+        this._grid.RenameRequested += (_, row) => this.RenameGroup(row);
         _menu.Opening += (_, e) =>
         {
             var row = _grid.RowAt(_grid.PointToClient(MousePosition));
             e.Cancel = row is null;
             _openLocation.Text = row?.IsFolder == true ? OpenInExplorerText : OpenFileLocationText;
-            bool file = row is { IsFolder: false };
+            bool file = row is { IsFile: true };
+            bool group = row is { IsGroup: true } && row.GroupId != HiddenGroups;
+            var shown = group ? this._snapshot.ById.GetValueOrDefault(row!.GroupId!) : null;
             this._copy.Visible = file;
             this._copyPng.Visible = file;
+            this._copyFullPath.Visible = !(row?.IsGroup ?? false);
+            this._copySeparator.Visible = !(row?.IsGroup ?? false);
+            this._openLocation.Visible = !(row?.IsGroup ?? false);
             this._editDescription.Visible = row?.Preset is not null;
+            this._openGroupItem.Visible = row?.IsGroup == true && shown?.Parent is null;
+            this._renameGroup.Visible = group;
+            this._hideGroup.Visible = group && shown is { Hidden: false, Parent: null };
+            this._unhideGroup.Visible = group && shown is { Hidden: true, Parent: null };
+            this._unmergeGroup.Visible = group && shown?.Parent is not null;
+            this._notThisPerson.Visible = file && row!.FaceKey is not null && this._openGroup is { } open && open != HiddenGroups;
+            this._notThisPerson.Text = this._notThisPerson.Visible && this._snapshot.ById.GetValueOrDefault(this._openGroup!) is { } opened
+                ? $"Not {GroupName(opened)}"
+                : "Not this person";
+            this._peopleSeparator.Visible = row?.IsGroup == true || this._notThisPerson.Visible;
         };
+        this._openGroupItem.Click += (_, _) => { if (this._grid.SelectedRow is { } row) { this.Activate(row); } };
+        this._renameGroup.Click += (_, _) => { if (this._grid.SelectedRow is { } row) { this.RenameGroup(row); } };
+        this._hideGroup.Click += (_, _) => this.SetGroupHidden(this._grid.SelectedRow, hidden: true);
+        this._unhideGroup.Click += (_, _) => this.SetGroupHidden(this._grid.SelectedRow, hidden: false);
+        this._unmergeGroup.Click += (_, _) => this.UnmergeGroup(this._grid.SelectedRow);
+        this._notThisPerson.Click += (_, _) => this.RemoveFace(this._grid.SelectedRow);
         this._editDescription.Click += (_, _) => this.EditDescription();
         _openLocation.Click += (_, _) => OpenLocation();
         this._copy.Click += (_, _) => this.CopySelected();
@@ -580,17 +641,12 @@ internal sealed class FileExplorerPanel : Panel
                 return;
             }
 
+            // Started again either way: the face pass may run without the OCR passes.
             this._contentSearch = value;
-            if (value)
-            {
-                this.StartExtraction();
-            }
-            else
-            {
-                this.StopExtraction();
-            }
-
+            this.StopExtraction();
+            this.StartExtraction();
             this.ApplyCriteriaTips();
+            this.LayoutBars();
             this.ApplyMetrics();
         }
     }
@@ -683,34 +739,172 @@ internal sealed class FileExplorerPanel : Panel
     }
 
     /// <summary>
-    /// Whether the folder view shows — the open folder's subfolders and files — rather than the search
-    /// view — the favorites, <c>*</c> or the matches. Setting it raises nothing.
+    /// What the list shows — the views drop-down's: the search view — the favorites, <c>*</c> or the
+    /// matches — the folder view — the open folder's subfolders and files — or the People view — the
+    /// face groups, then the faces close to no other. Setting it raises nothing.
     /// </summary>
-    [DefaultValue(false)]
-    public bool FolderView
+    [DefaultValue(ExplorerMode.Favorites)]
+    public ExplorerMode Mode
     {
-        get => _folderView;
+        get => this._peopleView ? ExplorerMode.People : this._folderView ? ExplorerMode.Folders : ExplorerMode.Favorites;
         set
         {
-            if (value == _folderView)
+            if (value == this.Mode || !Enum.IsDefined(value))
             {
                 return;
             }
 
-            _folderView = value;
-            _syncingToggle = true;
+            this._folderView = value == ExplorerMode.Folders;
+            this._peopleView = value == ExplorerMode.People;
+            this._openGroup = null;
+            this._syncingToggle = true;
             try
             {
-                _folderToggle.Checked = value;
+                this._modes.SelectedIndex = (int)value;
             }
             finally
             {
-                _syncingToggle = false;
+                this._syncingToggle = false;
             }
 
-            ApplyView();
-            RefreshRows();
+            this.ApplyView();
+            this.RefreshRows();
         }
+    }
+
+    /// <summary>Whether the folder view shows.</summary>
+    public bool FolderView => this._folderView;
+
+    /// <summary>
+    /// Whether the faces are looked for in the indexed images and PDFs and grouped into people — the ⚙
+    /// menu's Face analysis, off by default: on, the face pass runs with the extraction, once the face
+    /// engine is there; turned off, it stops, the faces already found kept. Setting it raises nothing.
+    /// See workfiles/20261027-face-detection.md § Privacy.
+    /// </summary>
+    [DefaultValue(false)]
+    public bool FaceAnalysis
+    {
+        get => this._faceAnalysis;
+        set
+        {
+            if (value == this._faceAnalysis)
+            {
+                return;
+            }
+
+            this._faceAnalysis = value;
+            this.StopExtraction();
+            this.StartExtraction();
+            this.LayoutBars();
+            this.ApplyMetrics();
+            if (this._peopleView)
+            {
+                this.RefreshRows(keepPlace: true);
+            }
+        }
+    }
+
+    /// <summary>Whether the face engine is being downloaded.</summary>
+    public bool DownloadingFaceEngine => this._faceEngineDownload is not null;
+
+    /// <summary>The People view's invitation was answered: the face analysis to turn on, as from the ⚙ menu.</summary>
+    public event EventHandler? FaceAnalysisRequested;
+
+    /// <summary>The People view's invitation was answered: the face engine to download, as from the ⚙ menu.</summary>
+    public event EventHandler? FaceEngineRequested;
+
+    /// <summary>
+    /// Downloads the face engine (<see cref="FaceEngineFiles"/>), its progress after the status line's
+    /// summary, then starts the extraction again so the face pass runs; a failure said in the status line.
+    /// Nothing when it is already being downloaded. See workfiles/20261027-face-detection.md § Face Engine.
+    /// </summary>
+    public async Task DownloadFaceEngineAsync()
+    {
+        if (this._faceEngineDownload is not null)
+        {
+            return;
+        }
+
+        var download = new CancellationTokenSource();
+        this._faceEngineDownload = download;
+        var progress = new Progress<double>(share =>
+        {
+            if (this._faceEngineDownload == download && !this.IsDisposed)
+            {
+                this.SetEngineActivity($"Downloading the face engine… {share:P0}");
+            }
+        });
+        try
+        {
+            await FaceEngineFiles.DownloadAsync(progress, download.Token);
+            this._faceEngineDownload = null;
+            if (!this.IsDisposed)
+            {
+                this.SetEngineActivity(null);
+                this.ShowTransient("Face engine downloaded: the faces are looked for next");
+                this.ApplyBarTips();
+                this.StopExtraction();
+                this.StartExtraction();
+                this.RefreshPeopleIfShown();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Web.UrlLoadException ex)
+        {
+            this._faceEngineDownload = null;
+            if (!this.IsDisposed)
+            {
+                this.SetEngineActivity(null);
+                this.ShowTransient($"Face engine not downloaded: {ex.Message}", error: true);
+            }
+        }
+        finally
+        {
+            if (this._faceEngineDownload == download)
+            {
+                this._faceEngineDownload = null;
+            }
+
+            download.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Forgets every face found and every decision on the people — <c>files.faces</c> and
+    /// <c>people.json</c> deleted — the extraction going on without the face pass, which the caller turns
+    /// off. The status line says what could not be deleted. See workfiles/20261027-face-detection.md § Privacy.
+    /// </summary>
+    public void ForgetFaces()
+    {
+        this.StopExtraction();
+        this._faces?.Clear();
+        string? error = null;
+        try
+        {
+            FaceIndex.Delete(FaceIndex.DefaultPath);
+        }
+        catch (Exception ex) when (FileIndex.IsFileError(ex))
+        {
+            error = ex.Message;
+        }
+
+        try
+        {
+            this._peopleStore.Clear();
+        }
+        catch (Exception ex) when (FileIndex.IsFileError(ex))
+        {
+            error ??= ex.Message;
+        }
+
+        this._snapshot = PeopleSnapshot.Empty;
+        this._openGroup = null;
+        this.Regroup();
+        this.StartExtraction();
+        this.RefreshPeopleIfShown();
+        this.Report(error is null ? "Faces forgotten: every face found and every person deleted" : $"Faces forgotten, not every file deleted: {error}", error is not null);
     }
 
     /// <summary>
@@ -821,7 +1015,7 @@ internal sealed class FileExplorerPanel : Panel
     /// </summary>
     public void CopySelected()
     {
-        if (this._grid.SelectedRow is not { IsFolder: false } row || !this.Exists(row))
+        if (this._grid.SelectedRow is not { IsFile: true } row || !this.Exists(row))
         {
             return;
         }
@@ -852,7 +1046,7 @@ internal sealed class FileExplorerPanel : Panel
     /// </summary>
     private async Task CopySelectedPngAsync()
     {
-        if (this._grid.SelectedRow is not { IsFolder: false } row || !this.Exists(row))
+        if (this._grid.SelectedRow is not { IsFile: true } row || !this.Exists(row))
         {
             return;
         }
@@ -972,6 +1166,7 @@ internal sealed class FileExplorerPanel : Panel
     public void Start(string? baseFolder)
     {
         _favorites.Load();
+        this._peopleStore.Load();
         SetBaseFolder(baseFolder);
     }
 
@@ -982,6 +1177,10 @@ internal sealed class FileExplorerPanel : Panel
         SetIndex(null, null);
         this.StopExtraction();
         this._contents = null;
+        this._faces = null;
+        this._snapshot = PeopleSnapshot.Empty;
+        this._groupedAt = -1;
+        this._openGroup = null;
         this._indexScanned = false;
         this._scanning = false;
         this._activity = null;
@@ -1051,6 +1250,16 @@ internal sealed class FileExplorerPanel : Panel
     protected override void OnDragOver(DragEventArgs e)
     {
         base.OnDragOver(e);
+
+        // The People view's own tiles: a face or a group over a group it may join.
+        if (this._draggingOwnTile && this.PeopleDropTarget(e) is { } target)
+        {
+            e.Effect = DragDropEffects.Move;
+            this._grid.DropTargetKey = target.Key;
+            return;
+        }
+
+        this._grid.DropTargetKey = null;
         bool files = !_draggingOwnTile && e.Data?.GetDataPresent(DataFormats.FileDrop) == true;
         e.Effect = files ? DragDropEffects.Copy : DragDropEffects.None;
         ShowDropFrame(files);
@@ -1059,6 +1268,7 @@ internal sealed class FileExplorerPanel : Panel
     protected override void OnDragLeave(EventArgs e)
     {
         base.OnDragLeave(e);
+        this._grid.DropTargetKey = null;
         ShowDropFrame(false);
     }
 
@@ -1066,6 +1276,16 @@ internal sealed class FileExplorerPanel : Panel
     {
         base.OnDragDrop(e);
         ShowDropFrame(false);
+        this._grid.DropTargetKey = null;
+        if (this._draggingOwnTile && this.PeopleDropTarget(e) is { } target)
+        {
+            // Once the drag is over: a merge asks first, which a drop in progress cannot show.
+            string? group = e.Data?.GetData(GroupDataFormat) as string;
+            string? face = e.Data?.GetData(FaceDataFormat) as string;
+            this.BeginInvoke(() => this.DropOnGroup(group, face, target));
+            return;
+        }
+
         if (!_draggingOwnTile && e.Data?.GetData(DataFormats.FileDrop) is string[] paths)
         {
             AddFavorites(paths);
@@ -1103,7 +1323,7 @@ internal sealed class FileExplorerPanel : Panel
             row.Height = bar;
         }
 
-        _content.RowStyles[2].Height = bar * (this._contentSearch ? this._passBars.Length : 1);
+        _content.RowStyles[2].Height = bar * this.BarsShown;
         _content.RowStyles[3].Height = line;
         _content.RowStyles[4].Height = line;
         _content.RowStyles[6].Height = Font.Height * 2 + LogicalToDeviceUnits(4);
@@ -1193,7 +1413,7 @@ internal sealed class FileExplorerPanel : Panel
     /// </summary>
     private void RefreshOrdered()
     {
-        if (this._folderView || FileSearch.Words(this._search.Text).Length > 0)
+        if (this._folderView || (this._peopleView && this._openGroup is not null) || FileSearch.Words(this._search.Text).Length > 0)
         {
             this.RefreshRows();
         }
@@ -1252,6 +1472,7 @@ internal sealed class FileExplorerPanel : Panel
         // The content texts load alongside: the file list shows without waiting for them
         // (workfiles/20261013-complementary-ocr-passes.md § Index Format).
         var contentsLoad = Task.Run(() => ContentIndex.Load(ContentIndex.DefaultPath, folder));
+        var facesLoad = Task.Run(() => FaceIndex.Load(FaceIndex.DefaultPath, folder));
         var (loaded, tree) = await Task.Run(() =>
         {
             FileIndex.MoveLegacy();
@@ -1276,6 +1497,18 @@ internal sealed class FileExplorerPanel : Panel
         {
             this._contents = contents;
             this.RefreshContentResults();
+        }
+
+        var faces = await facesLoad;
+        if (cancellation.IsCancellationRequested || IsDisposed)
+        {
+            return;
+        }
+
+        if (this._faces is null)
+        {
+            this._faces = faces;
+            this.Regroup();
         }
 
         await ScanAsync(folder, cancellation);
@@ -1316,6 +1549,7 @@ internal sealed class FileExplorerPanel : Panel
             }
         });
         var known = this._contents;
+        var knownFaces = this._faces;
         bool scanned = false;
         try
         {
@@ -1325,7 +1559,7 @@ internal sealed class FileExplorerPanel : Panel
                 return;
             }
 
-            var (index, tree, saveError, contents) = await Task.Run(
+            var (index, tree, saveError, contents, faces) = await Task.Run(
                 () =>
                 {
                     var scanned = FileIndex.Scan(folder, progress, cancellation);
@@ -1340,7 +1574,7 @@ internal sealed class FileExplorerPanel : Panel
                     }
 
                     // A rescan that cut the cached index's loading short loads the texts itself.
-                    return (scanned, FolderTree.Of(scanned.Entries), error, known ?? ContentIndex.Load(ContentIndex.DefaultPath, folder));
+                    return (scanned, FolderTree.Of(scanned.Entries), error, known ?? ContentIndex.Load(ContentIndex.DefaultPath, folder), knownFaces ?? FaceIndex.Load(FaceIndex.DefaultPath, folder));
                 },
                 cancellation);
             if (cancellation.IsCancellationRequested || IsDisposed)
@@ -1350,6 +1584,8 @@ internal sealed class FileExplorerPanel : Panel
 
             SetIndex(index, tree);
             this._contents ??= contents;
+            this._faces ??= faces;
+            this.Regroup();
             this._indexScanned = true;
             scanned = true;
             SetSummary(saveError is null ? Summary(index) : $"{Summary(index)} · not saved: {saveError}", error: saveError is not null);
@@ -1389,15 +1625,15 @@ internal sealed class FileExplorerPanel : Panel
     /// </summary>
     private void StartExtraction()
     {
-        if (!this._contentSearch || !this._indexScanned || this._scanning || this._index is not { } index
-            || this._contents is not { } contents || this._scan is not { IsCancellationRequested: false } scan)
+        if (!(this._contentSearch || this._faceAnalysis) || !this._indexScanned || this._scanning || this._index is not { } index
+            || this._contents is not { } contents || this._faces is not { } faces || this._scan is not { IsCancellationRequested: false } scan)
         {
             return;
         }
 
         this.StopExtraction();
         this._extraction = CancellationTokenSource.CreateLinkedTokenSource(scan.Token);
-        _ = this.ExtractAsync(index, contents, this._extraction.Token);
+        _ = this.ExtractAsync(index, contents, faces, this._contentSearch, this._faceAnalysis, this._extraction.Token);
     }
 
     private void StopExtraction()
@@ -1410,7 +1646,7 @@ internal sealed class FileExplorerPanel : Panel
     /// Extracts the content texts off the UI thread, pass after pass, one file at a time: each pass's
     /// bar and the status line following it, the search shown refreshed every few seconds and at the end.
     /// </summary>
-    private async Task ExtractAsync(FileIndex index, ContentIndex contents, CancellationToken cancellation)
+    private async Task ExtractAsync(FileIndex index, ContentIndex contents, FaceIndex faces, bool ocr, bool faceAnalysis, CancellationToken cancellation)
     {
         bool finished = false;
         var progress = new Progress<ExtractionProgress>(p =>
@@ -1422,11 +1658,19 @@ internal sealed class FileExplorerPanel : Panel
 
             if (p.Refresh)
             {
-                this.RefreshContentResults();
+                if (p.FacePass)
+                {
+                    this.Regroup();
+                }
+                else
+                {
+                    this.RefreshContentResults();
+                }
+
                 return;
             }
 
-            int bar = (int)p.Pass;
+            int bar = p.FacePass ? FaceBar : (int)p.Pass;
             this._passCounts[bar] = (p.PassDone, p.PassNeeded);
             if (p.Finished)
             {
@@ -1444,14 +1688,20 @@ internal sealed class FileExplorerPanel : Panel
             }
 
             // The pass, the file's rank in it, then its name — none for a file that has no text to find.
-            string doing = $"OCR {bar + 1}/{OcrPasses.All.Length} · {OcrPasses.NameOf(p.Pass)}: {p.Done + 1:N0}/{p.Total:N0}";
+            string doing = p.FacePass
+                ? $"Faces: {p.Done + 1:N0}/{p.Total:N0}"
+                : $"OCR {bar + 1}/{OcrPasses.All.Length} · {OcrPasses.NameOf(p.Pass)}: {p.Done + 1:N0}/{p.Total:N0}";
             this.SetActivity(p.File is null ? null
                 : p.Kind == ContentKind.None ? doing
                 : $"{doing} ({Path.GetFileName(p.File)})");
+            if (p.FacePass && p.Finished)
+            {
+                this.Regroup();
+            }
         });
         try
         {
-            await Task.Run(() => this.Extract(index, contents, progress, cancellation), cancellation);
+            await Task.Run(() => this.Extract(index, contents, faces, ocr, faceAnalysis, progress, cancellation), cancellation);
         }
         catch (OperationCanceledException)
         {
@@ -1474,96 +1724,66 @@ internal sealed class FileExplorerPanel : Panel
                 if (!cancellation.IsCancellationRequested)
                 {
                     this.RefreshContentResults();
+                    this.Regroup();
                 }
             }
         }
     }
 
     /// <summary>
-    /// The extraction's worker: the texts of the files gone from the index dropped, then each OCR pass
-    /// in turn (<see cref="OcrPasses.All"/>) over every file it has not read yet — the Windows pass over
+    /// The extraction's worker: the texts and faces of the files gone from the index dropped, then each OCR
+    /// pass in turn (<see cref="OcrPasses.All"/>) over every file it has not read yet — the Windows pass over
     /// every file whose text is missing or older than the file, the later ones over the images and PDFs
-    /// the Windows pass read — waiting between two files while the search is busy; the texts saved every
-    /// 50 files — no sooner than 5 s after the previous save — every half minute whatever the count, and
-    /// at the end, so a pass cut short resumes where it stopped. Every bar is set first, the passes
-    /// complete hidden; RapidOCR's pass is skipped without its engine. See
-    /// workfiles/20261013-complementary-ocr-passes.md § Indexing Passes.
+    /// the Windows pass read — the face pass right after the Windows one, over every image and PDF it has
+    /// not analysed (workfiles/20261027-face-detection.md § Face Pass); the OCR passes while the content
+    /// search is on (<paramref name="ocr"/>), the face pass while the face analysis is
+    /// (<paramref name="faceAnalysis"/>) and its engine is there; waiting between two files while the
+    /// search is busy; the texts and the faces each saved every 50 files — no sooner than 5 s after the
+    /// previous save — every half minute whatever the count, and at the end, so a pass cut short resumes
+    /// where it stopped. Every bar is set first, the passes complete hidden; RapidOCR's pass is skipped
+    /// without its engine. See workfiles/20261013-complementary-ocr-passes.md § Indexing Passes.
     /// </summary>
-    private void Extract(FileIndex index, ContentIndex contents, IProgress<ExtractionProgress> progress, CancellationToken cancellation)
+    private void Extract(FileIndex index, ContentIndex contents, FaceIndex faces, bool ocr, bool faceAnalysis, IProgress<ExtractionProgress> progress, CancellationToken cancellation)
     {
         bool changed = contents.RetainOnly(index.Entries);
+        bool facesChanged = faces.RetainOnly(index.Entries);
         using var extractor = new ContentExtractor();
         int unsaved = 0;
         long saved = Environment.TickCount64;
         long refreshed = saved;
+        var faceRead = ReadFaces(index);
+        bool facesRun = faceAnalysis && FaceEngineFiles.IsAvailable;
         try
         {
-            foreach (var pass in OcrPasses.All)
+            if (ocr)
             {
-                var read = Read(index, pass);
-                int done = read.Count(e => contents.IsCurrent(e, pass));
-                bool runs = done < read.Length && (pass != OcrPass.Rapid || OcrEngineFiles.IsAvailable);
-                progress.Report(new ExtractionProgress(pass, 0, 0, done, read.Length, null, ContentKind.None, false, Finished: !runs));
+                foreach (var pass in OcrPasses.All)
+                {
+                    var read = Read(index, pass);
+                    int done = read.Count(e => contents.IsCurrent(e, pass));
+                    bool runs = done < read.Length && (pass != OcrPass.Rapid || OcrEngineFiles.IsAvailable);
+                    progress.Report(new ExtractionProgress(pass, 0, 0, done, read.Length, null, ContentKind.None, false, Finished: !runs));
+                }
+            }
+
+            if (faceAnalysis)
+            {
+                int done = faceRead.Count(faces.IsCurrent);
+                progress.Report(new ExtractionProgress(OcrPass.Windows, 0, 0, done, faceRead.Length, null, ContentKind.None, false, Finished: !facesRun || done == faceRead.Length, FacePass: true));
             }
 
             foreach (var pass in OcrPasses.All)
             {
                 cancellation.ThrowIfCancellationRequested();
-                var read = Read(index, pass);
-                var queue = read.Where(e => (pass == OcrPass.Windows || contents.IsCurrent(e, OcrPass.Windows)) && !contents.IsCurrent(e, pass)).ToArray();
-                int before = read.Length - queue.Length;
-                if (queue.Length == 0)
+                if (ocr)
                 {
-                    progress.Report(new ExtractionProgress(pass, 0, 0, before, read.Length, null, ContentKind.None, false, Finished: true));
-                    continue;
+                    RunPass(pass);
                 }
 
-                if (pass == OcrPass.Rapid && extractor.StartRapid() is { } why)
+                if (pass == OcrPass.Windows && facesRun)
                 {
-                    // Not downloaded: offered from the ⚙ menu; failing to load: said, the pass waiting.
-                    string? note = OcrEngineFiles.IsAvailable ? $"RapidOCR could not start: {why}" : null;
-                    progress.Report(new ExtractionProgress(pass, 0, queue.Length, before, read.Length, null, ContentKind.None, false, Finished: true, note));
-                    continue;
+                    facesChanged |= this.ExtractFaces(index, faces, faceRead, progress, cancellation);
                 }
-
-                for (int done = 0; done < queue.Length; done++)
-                {
-                    cancellation.ThrowIfCancellationRequested();
-                    if (this.ExtractionPaused())
-                    {
-                        progress.Report(new ExtractionProgress(pass, done, queue.Length, before + done, read.Length, null, ContentKind.None, false, false));
-                        while (this.ExtractionPaused())
-                        {
-                            cancellation.WaitHandle.WaitOne(PausePoll);
-                            cancellation.ThrowIfCancellationRequested();
-                        }
-                    }
-
-                    var entry = queue[done];
-                    string path = index.FullPath(entry);
-                    var kind = ContentExtractor.KindOf(path);
-                    progress.Report(new ExtractionProgress(pass, done, queue.Length, before + done, read.Length, path, kind, false, false));
-                    contents.Set(entry.RelativePath, entry.Stamp!.Value, pass, extractor.Extract(path, pass));
-                    changed = true;
-                    unsaved++;
-
-                    long now = Environment.TickCount64;
-                    if (now - saved >= ContentSaveInterval || (unsaved >= ContentSaveEvery && now - saved >= ContentSaveFloor))
-                    {
-                        TrySave(contents);
-                        saved = now;
-                        unsaved = 0;
-                    }
-
-                    if (now - refreshed >= ContentRefreshInterval)
-                    {
-                        refreshed = now;
-                        progress.Report(new ExtractionProgress(pass, done, queue.Length, before + done, read.Length, null, ContentKind.None, true, false));
-                    }
-                }
-
-                extractor.StopRapid();
-                progress.Report(new ExtractionProgress(pass, queue.Length, queue.Length, read.Length, read.Length, null, ContentKind.None, false, Finished: true));
             }
         }
         finally
@@ -1572,13 +1792,197 @@ internal sealed class FileExplorerPanel : Panel
             {
                 TrySave(contents);
             }
+
+            if (facesChanged)
+            {
+                TrySave(faces);
+            }
+        }
+
+        void RunPass(OcrPass pass)
+        {
+            var read = Read(index, pass);
+            var queue = read.Where(e => (pass == OcrPass.Windows || contents.IsCurrent(e, OcrPass.Windows)) && !contents.IsCurrent(e, pass)).ToArray();
+            int before = read.Length - queue.Length;
+            if (queue.Length == 0)
+            {
+                progress.Report(new ExtractionProgress(pass, 0, 0, before, read.Length, null, ContentKind.None, false, Finished: true));
+                return;
+            }
+
+            if (pass == OcrPass.Rapid && extractor.StartRapid() is { } why)
+            {
+                // Not downloaded: offered from the ⚙ menu; failing to load: said, the pass waiting.
+                string? note = OcrEngineFiles.IsAvailable ? $"RapidOCR could not start: {why}" : null;
+                progress.Report(new ExtractionProgress(pass, 0, queue.Length, before, read.Length, null, ContentKind.None, false, Finished: true, note));
+                return;
+            }
+
+            for (int done = 0; done < queue.Length; done++)
+            {
+                cancellation.ThrowIfCancellationRequested();
+                if (this.ExtractionPaused())
+                {
+                    progress.Report(new ExtractionProgress(pass, done, queue.Length, before + done, read.Length, null, ContentKind.None, false, false));
+                    this.WaitWhilePaused(cancellation);
+                }
+
+                var entry = queue[done];
+                string path = index.FullPath(entry);
+                var kind = ContentExtractor.KindOf(path);
+                progress.Report(new ExtractionProgress(pass, done, queue.Length, before + done, read.Length, path, kind, false, false));
+                contents.Set(entry.RelativePath, entry.Stamp!.Value, pass, extractor.Extract(path, pass));
+                changed = true;
+                unsaved++;
+
+                long now = Environment.TickCount64;
+                if (now - saved >= ContentSaveInterval || (unsaved >= ContentSaveEvery && now - saved >= ContentSaveFloor))
+                {
+                    TrySave(contents);
+                    saved = now;
+                    unsaved = 0;
+                }
+
+                if (now - refreshed >= ContentRefreshInterval)
+                {
+                    refreshed = now;
+                    progress.Report(new ExtractionProgress(pass, done, queue.Length, before + done, read.Length, null, ContentKind.None, true, false));
+                }
+            }
+
+            extractor.StopRapid();
+            progress.Report(new ExtractionProgress(pass, queue.Length, queue.Length, read.Length, read.Length, null, ContentKind.None, false, Finished: true));
         }
     }
+
+    /// <summary>
+    /// The face pass: every image and PDF the face index lacks, or holds from an older version of the file,
+    /// analysed in turn — its faces recorded, none included — with the OCR passes' pause rule and save
+    /// cadence, the groups computed again every few seconds; true when any face was recorded. A failure of
+    /// the engine to load is said, the pass waiting for a working one. See
+    /// workfiles/20261027-face-detection.md § Face Pass.
+    /// </summary>
+    private bool ExtractFaces(FileIndex index, FaceIndex faces, IndexEntry[] read, IProgress<ExtractionProgress> progress, CancellationToken cancellation)
+    {
+        var queue = read.Where(e => !faces.IsCurrent(e)).ToArray();
+        int before = read.Length - queue.Length;
+        if (queue.Length == 0)
+        {
+            progress.Report(new ExtractionProgress(OcrPass.Windows, 0, 0, before, read.Length, null, ContentKind.None, false, Finished: true, FacePass: true));
+            return false;
+        }
+
+        FaceAnalyzer analyzer;
+        try
+        {
+            analyzer = new FaceAnalyzer();
+        }
+        catch (Exception ex)
+        {
+            // A DLL that does not load, a model that does not parse: the pass waits for a working engine.
+            progress.Report(new ExtractionProgress(OcrPass.Windows, 0, queue.Length, before, read.Length, null, ContentKind.None, false, Finished: true, $"The face engine could not start: {ex.Message}", FacePass: true));
+            return false;
+        }
+
+        using (analyzer)
+        {
+            int unsaved = 0;
+            long saved = Environment.TickCount64;
+            long refreshed = saved;
+            for (int done = 0; done < queue.Length; done++)
+            {
+                cancellation.ThrowIfCancellationRequested();
+                if (this.ExtractionPaused())
+                {
+                    progress.Report(new ExtractionProgress(OcrPass.Windows, done, queue.Length, before + done, read.Length, null, ContentKind.None, false, false, FacePass: true));
+                    this.WaitWhilePaused(cancellation);
+                }
+
+                var entry = queue[done];
+                string path = index.FullPath(entry);
+                progress.Report(new ExtractionProgress(OcrPass.Windows, done, queue.Length, before + done, read.Length, path, ContentKind.Image, false, false, FacePass: true));
+                FaceBox[] found;
+                try
+                {
+                    found = ContentExtractor.DecodePixels(path) is var (pixels, width, height) ? analyzer.Analyze(pixels, width, height) : [];
+                }
+                catch (Exception ex) when (ex is Microsoft.ML.OnnxRuntime.OnnxRuntimeException or OutOfMemoryException or ArgumentException)
+                {
+                    // As an unreadable file: no face, not analysed again until it changes.
+                    found = [];
+                }
+
+                faces.Set(entry.RelativePath, entry.Stamp!.Value, found);
+                unsaved++;
+
+                long now = Environment.TickCount64;
+                if (now - saved >= ContentSaveInterval || (unsaved >= ContentSaveEvery && now - saved >= ContentSaveFloor))
+                {
+                    TrySave(faces);
+                    saved = now;
+                    unsaved = 0;
+                }
+
+                if (now - refreshed >= ContentRefreshInterval)
+                {
+                    refreshed = now;
+                    progress.Report(new ExtractionProgress(OcrPass.Windows, done, queue.Length, before + done, read.Length, null, ContentKind.None, true, false, FacePass: true));
+                }
+            }
+        }
+
+        progress.Report(new ExtractionProgress(OcrPass.Windows, queue.Length, queue.Length, read.Length, read.Length, null, ContentKind.None, false, Finished: true, FacePass: true));
+        return true;
+    }
+
+    /// <summary>Waits while the extraction is paused (<see cref="ExtractionPaused"/>), looking again every 200 ms.</summary>
+    private void WaitWhilePaused(CancellationToken cancellation)
+    {
+        while (this.ExtractionPaused())
+        {
+            cancellation.WaitHandle.WaitOne(PausePoll);
+            cancellation.ThrowIfCancellationRequested();
+        }
+    }
+
+    /// <summary>The scanned files the face pass reads: the images and PDFs.</summary>
+    private static IndexEntry[] ReadFaces(FileIndex index) =>
+        index.Entries.Where(e => e.Stamp is not null && ContentExtractor.KindOf(e.RelativePath) is ContentKind.Image or ContentKind.Pdf).ToArray();
 
     /// <summary>The scanned files a pass reads: every one for the Windows pass, the images and PDFs for the later ones.</summary>
     private static IndexEntry[] Read(FileIndex index, OcrPass pass) =>
         index.Entries.Where(e => e.Stamp is not null
             && (pass == OcrPass.Windows || ContentExtractor.KindOf(e.RelativePath) is ContentKind.Image or ContentKind.Pdf)).ToArray();
+
+    /// <summary>
+    /// The bars as the settings stand, in the order the passes run: the Windows pass's — the scan's too —
+    /// always, the face pass's while the face analysis is on, the later OCR passes' while the content search is.
+    /// </summary>
+    private void LayoutBars()
+    {
+        var shown = new List<int> { 0 };
+        if (this._faceAnalysis)
+        {
+            shown.Add(FaceBar);
+        }
+
+        if (this._contentSearch)
+        {
+            shown.AddRange([1, 2, 3]);
+        }
+
+        this._bars.SuspendLayout();
+        this._bars.Controls.Clear();
+        for (int row = 0; row < shown.Count; row++)
+        {
+            this._bars.Controls.Add(this._passBars[shown[row]], 0, row);
+        }
+
+        this._bars.ResumeLayout();
+    }
+
+    /// <summary>The bars shown: <see cref="LayoutBars"/>'s count.</summary>
+    private int BarsShown => 1 + (this._faceAnalysis ? 1 : 0) + (this._contentSearch ? 3 : 0);
 
     /// <summary>The bars' tooltip: each pass, its colour, and how far it has gone.</summary>
     private void ApplyBarTips()
@@ -1591,8 +1995,15 @@ internal sealed class FileExplorerPanel : Panel
                 : needed < 0 ? "not started"
                 : $"{done:N0}/{needed:N0}";
             return $"{OcrPasses.NameOf(pass)} ({PassColorNames[i]}): {state}";
-        });
-        string tip = "OCR passes\n" + string.Join('\n', lines);
+        }).ToList();
+        if (this._faceAnalysis)
+        {
+            var (done, needed) = this._passCounts[FaceBar];
+            string state = !FaceEngineFiles.IsAvailable ? "not downloaded" : needed < 0 ? "not started" : $"{done:N0}/{needed:N0}";
+            lines.Insert(1, $"Faces ({PassColorNames[FaceBar]}): {state}");
+        }
+
+        string tip = "Indexing passes\n" + string.Join('\n', lines);
         this._toolTip.SetToolTip(this._bars, tip);
         foreach (var bar in this._passBars)
         {
@@ -1610,6 +2021,18 @@ internal sealed class FileExplorerPanel : Panel
         try
         {
             contents.Save(ContentIndex.DefaultPath);
+        }
+        catch (Exception ex) when (FileIndex.IsFileError(ex))
+        {
+        }
+    }
+
+    /// <summary>Saves the faces found, a failure left for the next save.</summary>
+    private static void TrySave(FaceIndex faces)
+    {
+        try
+        {
+            faces.Save(FaceIndex.DefaultPath);
         }
         catch (Exception ex) when (FileIndex.IsFileError(ex))
         {
@@ -1715,9 +2138,16 @@ internal sealed class FileExplorerPanel : Panel
         int version = ++_listVersion;
         bool everything = FileSearch.IsEverything(_search.Text);
         string[] words = FileSearch.Words(_search.Text);
-        bool inviting = _baseFolder is null && (words.Length > 0 || _folderView);
         this._grid.HighlightWords = words;
         this._diskSizes.Clear();
+        if (this._peopleView)
+        {
+            this.RefreshPeopleRows(keepPlace, select, words);
+            return;
+        }
+
+        bool inviting = _baseFolder is null && (words.Length > 0 || _folderView);
+        this.SetInvite(InviteAction.ChooseFolder);
         _invite.Visible = inviting;
         _grid.Visible = !inviting;
         if (_folderView)
@@ -1947,23 +2377,44 @@ internal sealed class FileExplorerPanel : Panel
     {
         var rows = new List<ExplorerRow>(found.Count);
         var shown = new HashSet<string>(found.Select(match => index.FullPath(match.Entry)), StringComparer.OrdinalIgnoreCase);
-        IReadOnlyList<FavoriteMatch> favorites = everything || !this._byName.Checked
-            ? []
-            : [.. FileSearch.SearchFavorites(this._favorites.Newest, words).Where(match => match.Favorite.Preset is not null || shown.Add(match.Favorite.FullPath))];
+        var extras = new List<(int Tier, ExplorerRow Row)>();
+        if (!everything && this._byName.Checked)
+        {
+            foreach (var match in FileSearch.SearchFavorites(this._favorites.Newest, words))
+            {
+                if (match.Favorite.Preset is not null || shown.Add(match.Favorite.FullPath))
+                {
+                    extras.Add((match.Tier, FavoriteRow(match)));
+                }
+            }
+
+            // The files of the people named so, in the folder view those below the open folder
+            // (workfiles/20261027-face-detection.md § Search by Name).
+            foreach (var (path, tier) in FileSearch.SearchPeople(this.NamedPeople(), words))
+            {
+                if (this.EntryOf(path) is { } entry && (!this._folderView || FolderTree.IsUnder(entry.RelativePath, this._openFolder)) && shown.Add(path))
+                {
+                    extras.Add((tier, new ExplorerRow(path, entry.Name, Size: entry.Size)));
+                }
+            }
+        }
+
+        // Stable: the favorites' order, then the people's, within a tier.
+        var ordered = extras.OrderBy(extra => extra.Tier).ToList();
         int next = 0;
         foreach (var match in found)
         {
-            for (; next < favorites.Count && favorites[next].Tier <= match.Tier; next++)
+            for (; next < ordered.Count && ordered[next].Tier <= match.Tier; next++)
             {
-                rows.Add(FavoriteRow(favorites[next]));
+                rows.Add(ordered[next].Row);
             }
 
             rows.Add(new ExplorerRow(index.FullPath(match.Entry), match.Entry.Name, ContentWord: match.ContentWord, Size: match.Entry.Size));
         }
 
-        for (; next < favorites.Count; next++)
+        for (; next < ordered.Count; next++)
         {
-            rows.Add(FavoriteRow(favorites[next]));
+            rows.Add(ordered[next].Row);
         }
 
         return rows;
@@ -1971,6 +2422,15 @@ internal sealed class FileExplorerPanel : Panel
         static ExplorerRow FavoriteRow(FavoriteMatch match) =>
             new(match.Favorite.FullPath, Path.GetFileName(match.Favorite.FullPath), Preset: match.Favorite.Preset, DescriptionWord: match.DescriptionWord);
     }
+
+    /// <summary>
+    /// The named groups that show — the hidden ones left out — with their files: a group's and its
+    /// sub-groups', a sub-group's of its own, so a name merged into another person still finds its files.
+    /// </summary>
+    private IEnumerable<(string Name, IEnumerable<string> Files)> NamedPeople() =>
+        this._snapshot.Groups.SelectMany(group => group.SubGroups.Prepend(group))
+            .Where(group => group.Name.Length > 0)
+            .Select(group => (group.Name, (group.Parent is null ? group.AllFaces : group.Faces).Select(face => face.FullPath)));
 
     /// <summary>
     /// The files of a search: every one for <c>*</c>, in <see cref="FileOrder"/>; else those matching
@@ -2101,32 +2561,32 @@ internal sealed class FileExplorerPanel : Panel
     {
         _index = index;
         _tree = tree;
+        this._entriesByPath = null;
+        this._groupedAt = -1;
     }
 
     /// <summary>Whether the list is the favorites: the search view with a blank box.</summary>
-    private bool ShowingFavorites => !_folderView && FileSearch.Words(_search.Text).Length == 0;
+    private bool ShowingFavorites => !_folderView && !this._peopleView && FileSearch.Words(_search.Text).Length == 0;
 
-    /// <summary>The 📁 toggle was pressed or released by the user: the other view shows, remembered.</summary>
-    private void SetFolderView(bool on)
+    /// <summary>Another view picked in the drop-down by the user: it shows, remembered.</summary>
+    private void ChangeMode(ExplorerMode mode)
     {
-        if (_syncingToggle || on == _folderView)
+        if (this._syncingToggle || mode == this.Mode)
         {
             return;
         }
 
-        _folderView = on;
-        ApplyView();
-        RefreshRows();
-        FolderViewChanged?.Invoke(this, EventArgs.Empty);
+        this.Mode = mode;
+        this.FolderViewChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>What the view changes around the grid: the caption or the breadcrumb, the search box's hint, the toggle's tooltip.</summary>
+    /// <summary>What the view changes around the grid: the caption or the breadcrumb, the search box's hint.</summary>
     private void ApplyView()
     {
-        _caption.Visible = !_folderView;
-        _breadcrumb.Visible = _folderView;
-        _search.PlaceholderText = _folderView ? FolderSearchPlaceholder : SearchPlaceholder;
-        _toolTip.SetToolTip(_folderToggle, FolderToggleTip());
+        bool trail = _folderView || this._peopleView;
+        _caption.Visible = !trail;
+        _breadcrumb.Visible = trail;
+        _search.PlaceholderText = this._peopleView ? PeopleSearchPlaceholder : _folderView ? FolderSearchPlaceholder : SearchPlaceholder;
     }
 
     /// <summary>
@@ -2168,10 +2628,6 @@ internal sealed class FileExplorerPanel : Panel
         return note is null ? $"{what}: {state}" : $"{what}: {state}\n{note}";
     }
 
-    private string FolderToggleTip() => _folderView
-        ? "Back to the favorites and the search over every file"
-        : "Browse the base folder, folder by folder";
-
     /// <summary>Opens a folder of the folder view — its content from the top, the search box cleared — and remembers it.</summary>
     private void Navigate(string relative, string? select = null)
     {
@@ -2196,7 +2652,11 @@ internal sealed class FileExplorerPanel : Panel
     /// <summary>↑, Backspace or Alt+↑: the parent folder, the folder just left selected.</summary>
     private void GoUp()
     {
-        if (_folderView && _baseFolder is not null && _openFolder.Length > 0)
+        if (this._peopleView && this._openGroup is not null)
+        {
+            this.OpenGroup(null);
+        }
+        else if (_folderView && _baseFolder is not null && _openFolder.Length > 0)
         {
             Navigate(FolderTree.Parent(_openFolder), Path.Combine(_baseFolder, _openFolder));
         }
@@ -2205,6 +2665,16 @@ internal sealed class FileExplorerPanel : Panel
     /// <summary>A folder of the breadcrumb clicked (0: the base folder), the one below it on the way to the open folder selected.</summary>
     private void OpenFolderAtDepth(int depth)
     {
+        if (this._peopleView)
+        {
+            if (depth == 0)
+            {
+                this.OpenGroup(null);
+            }
+
+            return;
+        }
+
         if (_baseFolder is null)
         {
             return;
@@ -2296,7 +2766,15 @@ internal sealed class FileExplorerPanel : Panel
             return;
         }
 
-        if (row.IsFolder)
+        if (row.IsGroup)
+        {
+            // A sub-group is a part of the group open: its files are listed there already.
+            if (row.GroupId == HiddenGroups || this._snapshot.ById.GetValueOrDefault(row.GroupId!) is { Parent: null })
+            {
+                this.OpenGroup(row.GroupId);
+            }
+        }
+        else if (row.IsFolder)
         {
             Navigate(Path.GetRelativePath(_baseFolder!, row.FullPath));
         }
@@ -2317,6 +2795,28 @@ internal sealed class FileExplorerPanel : Panel
     /// </summary>
     private void StartDrag(ExplorerRow row)
     {
+        // A face group dragged onto another merges into it: inside the panel only.
+        if (row.IsGroup)
+        {
+            if (row.GroupId != HiddenGroups)
+            {
+                this._draggingOwnTile = true;
+                try
+                {
+                    var group = new DataObject();
+                    group.SetData(GroupDataFormat, row.GroupId);
+                    this._grid.DoDragDrop(group, DragDropEffects.Move);
+                }
+                finally
+                {
+                    this._draggingOwnTile = false;
+                    this._grid.DropTargetKey = null;
+                }
+            }
+
+            return;
+        }
+
         if (!row.IsFolder && Exists(row))
         {
             _draggingOwnTile = true;
@@ -2328,11 +2828,18 @@ internal sealed class FileExplorerPanel : Panel
                     data.SetData(PresetDataFormat, preset.Effects.ToJsonString());
                 }
 
-                _grid.DoDragDrop(data, DragDropEffects.Copy);
+                // A face's tile also drops onto a face group, joining it.
+                if (row.FaceKey is { } face)
+                {
+                    data.SetData(FaceDataFormat, face);
+                }
+
+                _grid.DoDragDrop(data, DragDropEffects.Copy | DragDropEffects.Move);
             }
             finally
             {
                 _draggingOwnTile = false;
+                this._grid.DropTargetKey = null;
             }
         }
     }
@@ -2495,6 +3002,12 @@ internal sealed class FileExplorerPanel : Panel
     /// </summary>
     private bool Exists(ExplorerRow row)
     {
+        // A group stands for faces, not a file: its files are checked when they are used.
+        if (row.IsGroup)
+        {
+            return true;
+        }
+
         if (row.IsFolder)
         {
             if (Directory.Exists(row.FullPath))
@@ -2548,6 +3061,433 @@ internal sealed class FileExplorerPanel : Panel
         ShowTransient(error is null ? "File not found — removed from the index" : $"File not found — removed from the index, not saved: {error}", error: error is not null);
         return false;
     }
+
+    /// <summary>What the invitation's button does: the base folder chosen, the face analysis turned on, the face engine downloaded.</summary>
+    private enum InviteAction
+    {
+        ChooseFolder,
+        TurnOnFaces,
+        DownloadFaceEngine,
+    }
+
+    /// <summary>The invitation's text and button for <paramref name="action"/>.</summary>
+    private void SetInvite(InviteAction action)
+    {
+        if (action == this._inviteAction)
+        {
+            return;
+        }
+
+        this._inviteAction = action;
+        (this._inviteText.Text, this._chooseFolder.Text) = action switch
+        {
+            InviteAction.TurnOnFaces => ("The face analysis is off. Turned on, it looks for the faces in the base folder's images and PDFs — on this computer only — and groups them into people.", "Turn on face analysis…"),
+            InviteAction.DownloadFaceEngine => ("The face analysis needs its engine: two models of about 40 MB, downloaded once next to the app.", "Download the face engine…"),
+            _ => (FolderInviteText, "Choose folder…"),
+        };
+    }
+
+    /// <summary>The invitation's button: what it offers asked of the window, as from the ⚙ menu.</summary>
+    private void RunInvite()
+    {
+        switch (this._inviteAction)
+        {
+            case InviteAction.TurnOnFaces:
+                this.FaceAnalysisRequested?.Invoke(this, EventArgs.Empty);
+                break;
+            case InviteAction.DownloadFaceEngine:
+                this.FaceEngineRequested?.Invoke(this, EventArgs.Empty);
+                break;
+            default:
+                this.ChooseFolderRequested?.Invoke(this, EventArgs.Empty);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// The People view's list (workfiles/20261027-face-detection.md § People View): the face groups — named
+    /// A→Z, then the others, the larger first — a tile for the hidden ones, then the faces close to no other,
+    /// each a file tile showing its face; a search keeping the groups whose name holds its words. A group
+    /// open: the groups merged into it, then every file of it and of them, in the sort order — a search
+    /// keeping the files it finds there. While nothing was found yet, the invitation says what is missing.
+    /// </summary>
+    private void RefreshPeopleRows(bool keepPlace, string? select, string[] words)
+    {
+        var snapshot = this._snapshot;
+        bool nothing = snapshot.Groups.Count == 0 && snapshot.Hidden.Count == 0 && snapshot.Ungrouped.Count == 0;
+        InviteAction? invite = this._baseFolder is null ? InviteAction.ChooseFolder
+            : !nothing ? null
+            : !this._faceAnalysis ? InviteAction.TurnOnFaces
+            : !FaceEngineFiles.IsAvailable ? InviteAction.DownloadFaceEngine
+            : null;
+        if (invite is { } action)
+        {
+            this.SetInvite(action);
+        }
+
+        this._invite.Visible = invite is not null;
+        this._grid.Visible = invite is null;
+        if (invite is not null)
+        {
+            this.ShowRows([], keepPlace, null);
+            this.ShowPeopleBreadcrumb(null, "");
+            return;
+        }
+
+        if (this._openGroup is HiddenGroups)
+        {
+            var hidden = snapshot.Hidden.Where(group => NameHolds(group, words)).Select(GroupRow).ToList();
+            this.ShowRows(hidden, keepPlace, select);
+            this.ShowPeopleBreadcrumb("Hidden", Groups(hidden.Count));
+            return;
+        }
+
+        if (this._openGroup is { } id)
+        {
+            // An unnamed group's id is its first face's: followed by the face it was opened by.
+            if (snapshot.ById.GetValueOrDefault(id) is not { Parent: null } && this._openGroupFace is { } face
+                && snapshot.OwnerOf.GetValueOrDefault(face) is { } owner)
+            {
+                this._openGroup = id = (owner.Parent ?? owner).Id;
+            }
+
+            if (snapshot.ById.GetValueOrDefault(id) is not { Parent: null } open)
+            {
+                // Gone with a new grouping — its faces moved elsewhere: back to the people.
+                this._openGroup = null;
+            }
+            else
+            {
+                var rows = open.SubGroups.Select(GroupRow).ToList();
+                var files = this.GroupFiles(open, words);
+                rows.AddRange(files);
+                this.ShowRows(rows, keepPlace, select);
+                this.ShowPeopleBreadcrumb(GroupName(open), open.SubGroups.Count > 0 ? $"{Groups(open.SubGroups.Count)}, {Files(files.Count)}" : Files(files.Count));
+                return;
+            }
+        }
+
+        var list = snapshot.Groups.Where(group => NameHolds(group, words)).Select(GroupRow).ToList();
+        int groups = list.Count;
+        if (words.Length == 0)
+        {
+            if (snapshot.Hidden.Count > 0)
+            {
+                var best = snapshot.Hidden[0].Best;
+                list.Add(new ExplorerRow(best.FullPath, $"Hidden ({snapshot.Hidden.Count:N0})", GroupId: HiddenGroups, Face: best.Face.Bounds));
+            }
+
+            foreach (var face in snapshot.Ungrouped)
+            {
+                list.Add(new ExplorerRow(face.FullPath, Path.GetFileName(face.FullPath), Size: this.EntryOf(face.FullPath)?.Size, Face: face.Face.Bounds, FaceKey: face.Key));
+            }
+        }
+
+        this.ShowRows(list, keepPlace, select);
+        string looking = this._faceAnalysis && this._extraction is not null ? " · looking for faces…" : "";
+        this.ShowPeopleBreadcrumb(null, words.Length > 0 ? Groups(groups) : $"{Groups(groups)}, {Faces(snapshot.Ungrouped.Count)} alone{looking}");
+
+        static string Faces(int count) => count == 1 ? "1 face" : $"{count:N0} faces";
+    }
+
+    private static string Groups(int count) => count == 1 ? "1 group" : $"{count:N0} groups";
+
+    /// <summary>A group's name, or <c>Unnamed</c>.</summary>
+    private static string GroupName(FaceGroup group) => group.Name.Length > 0 ? group.Name : "Unnamed";
+
+    /// <summary>Whether a group's name holds every word of a search, accents and case ignored; any group without one.</summary>
+    private static bool NameHolds(FaceGroup group, string[] words)
+    {
+        string folded = FileSearch.Fold(group.Name);
+        return words.All(word => folded.Contains(word, StringComparison.Ordinal));
+    }
+
+    /// <summary>A group's tile: its best face's picture, its name, its files counted.</summary>
+    private static ExplorerRow GroupRow(FaceGroup group) =>
+        new(group.Best.FullPath, GroupName(group), Count: group.FileCount, GroupId: group.Id, Face: group.Best.Face.Bounds);
+
+    /// <summary>
+    /// The files of a group and of its sub-groups, once each — the face it stands for, the first found in
+    /// it — in the sort order; those a search finds there when <paramref name="words"/> are typed.
+    /// </summary>
+    private List<ExplorerRow> GroupFiles(FaceGroup group, string[] words)
+    {
+        var faceOf = new Dictionary<string, FaceRef>(StringComparer.OrdinalIgnoreCase);
+        foreach (var face in group.AllFaces)
+        {
+            faceOf.TryAdd(face.FullPath, face);
+        }
+
+        var entries = faceOf.Keys.Select(this.EntryOf).OfType<IndexEntry>().ToArray();
+        IEnumerable<IndexEntry> listed = words.Length > 0
+            ? this.Find(entries, words, FileSearch.IsEverything(this._search.Text)).Select(match => match.Entry)
+            : FileSearch.All(entries, this._fileOrder);
+        return [.. listed.Select(entry =>
+        {
+            string path = this._index!.FullPath(entry);
+            return new ExplorerRow(path, entry.Name, Size: entry.Size, FaceKey: faceOf[path].Key);
+        })];
+    }
+
+    /// <summary>The index's entry of a file, by its full path; null for one the index does not hold.</summary>
+    private IndexEntry? EntryOf(string fullPath)
+    {
+        if (this._index is not { } index)
+        {
+            return null;
+        }
+
+        this._entriesByPath ??= index.Entries.ToDictionary(index.FullPath, StringComparer.OrdinalIgnoreCase);
+        return this._entriesByPath.GetValueOrDefault(fullPath);
+    }
+
+    /// <summary>The breadcrumb in the People view: <c>People</c>, then the group open, <paramref name="trailing"/> after it.</summary>
+    private void ShowPeopleBreadcrumb(string? open, string trailing) =>
+        this._breadcrumb.SetPath(open is null ? ["People"] : ["People", open], trailing);
+
+    /// <summary>Opens a group of the People view — or the hidden ones, or none — from the top, the search box cleared.</summary>
+    private void OpenGroup(string? id)
+    {
+        string? left = this._openGroup;
+        this._openGroup = id;
+        this._openGroupFace = id is null ? null : this._snapshot.ById.GetValueOrDefault(id)?.Best.Key;
+        if (this._search.TextLength > 0)
+        {
+            this._clearingSearch = true;
+            try
+            {
+                this._search.Text = "";
+            }
+            finally
+            {
+                this._clearingSearch = false;
+            }
+        }
+
+        this.RefreshRows();
+        if (id is null && left is not null)
+        {
+            this._grid.SelectKey("group:" + left);
+        }
+    }
+
+    /// <summary>The People view's list again, its place kept, when it shows.</summary>
+    private void RefreshPeopleIfShown()
+    {
+        if (this._peopleView)
+        {
+            this.RefreshRows(keepPlace: true);
+        }
+    }
+
+    /// <summary>
+    /// The groups computed again off the UI thread — from the faces found and the people's decisions — then
+    /// the People view refreshed; unless nothing changed since the last time (<paramref name="force"/>: a
+    /// decision did). One computation at a time, a change meanwhile computing again once it ends.
+    /// </summary>
+    private void Regroup(bool force = false) => _ = this.RegroupAsync(force);
+
+    private async Task RegroupAsync(bool force)
+    {
+        if (this._faces is not { } faces || this._index is not { } index)
+        {
+            return;
+        }
+
+        if (this._grouping)
+        {
+            this._groupAgain = true;
+            return;
+        }
+
+        int changes = faces.Changes;
+        if (!force && changes == this._groupedAt)
+        {
+            return;
+        }
+
+        this._grouping = true;
+        var people = this._peopleStore.Snapshot();
+        PeopleSnapshot snapshot;
+        try
+        {
+            snapshot = await Task.Run(() =>
+            {
+                var entries = index.Entries.ToDictionary(entry => entry.RelativePath, StringComparer.OrdinalIgnoreCase);
+                var found = new List<FaceRef>();
+                foreach (var (relative, boxes) in faces.WithFaces())
+                {
+                    if (entries.TryGetValue(relative, out var entry))
+                    {
+                        string path = index.FullPath(entry);
+                        found.AddRange(boxes.Select(box => new FaceRef(path, box, entry.Created)));
+                    }
+                }
+
+                return FaceGrouping.Compute(found, people);
+            });
+        }
+        finally
+        {
+            this._grouping = false;
+        }
+
+        if (this.IsDisposed || faces != this._faces || index != this._index)
+        {
+            return;
+        }
+
+        this._snapshot = snapshot;
+        this._groupedAt = changes;
+        this.RefreshPeopleIfShown();
+        if (this._groupAgain)
+        {
+            this._groupAgain = false;
+            this.Regroup(force: true);
+        }
+    }
+
+    /// <summary>The person behind a group — created from its faces, pinned, for a group only the grouping made.</summary>
+    private Person PersonOf(FaceGroup group) =>
+        group.PersonId is { } id && this._peopleStore.Find(id) is { } person
+            ? person
+            : this._peopleStore.Create(group.Faces.Select(face => (face.Key, face.Face.Embedding)));
+
+    /// <summary>The people's decisions written, the status line saying <paramref name="done"/>, the groups computed again.</summary>
+    private void SavePeople(string done)
+    {
+        string? error = null;
+        try
+        {
+            this._peopleStore.Save();
+        }
+        catch (Exception ex) when (FileIndex.IsFileError(ex))
+        {
+            error = ex.Message;
+        }
+
+        this.Report(error is null ? done : $"{done} — for the session, not saved: {error}", error is not null);
+        this.Regroup(force: true);
+    }
+
+    /// <summary>The group a tile stands for; null for any other tile, and the hidden ones' tile.</summary>
+    private FaceGroup? GroupOf(ExplorerRow? row) =>
+        row is { IsGroup: true } && row.GroupId != HiddenGroups ? this._snapshot.ById.GetValueOrDefault(row.GroupId!) : null;
+
+    /// <summary>Rename… or F2 on a group's tile: its name asked, kept.</summary>
+    private void RenameGroup(ExplorerRow row)
+    {
+        if (this.GroupOf(row) is not { } group)
+        {
+            return;
+        }
+
+        using var dialog = new NameDialog("Rename", "The person's name:", group.Name);
+        if (dialog.ShowDialog(this.FindForm()) != DialogResult.OK)
+        {
+            return;
+        }
+
+        var person = this.PersonOf(group);
+        person.Name = dialog.Value;
+        this.SavePeople(person.Name.Length > 0 ? $"Named: {person.Name}" : "Name removed");
+    }
+
+    /// <summary>Hide or Unhide on a group's tile: it leaves the view for the hidden ones' tile, or comes back.</summary>
+    private void SetGroupHidden(ExplorerRow? row, bool hidden)
+    {
+        if (this.GroupOf(row) is not { Parent: null } group)
+        {
+            return;
+        }
+
+        this.PersonOf(group).Hidden = hidden;
+        this.SavePeople(hidden ? $"Hidden: {GroupName(group)}" : $"Shown again: {GroupName(group)}");
+    }
+
+    /// <summary>Un-merge on a sub-group's tile: a group of its own again, as it was before the merge.</summary>
+    private void UnmergeGroup(ExplorerRow? row)
+    {
+        if (this.GroupOf(row) is not { Parent: { } parent } group || group.PersonId is not { } id || this._peopleStore.Find(id) is not { } person)
+        {
+            return;
+        }
+
+        person.MergedInto = null;
+        this.SavePeople($"Un-merged: {GroupName(group)} out of {GroupName(parent)}");
+    }
+
+    /// <summary>
+    /// Not <c>name</c> on a file inside an open group: its face of that group — or of the sub-group it
+    /// belongs to — excluded from it for good, back to the automatic grouping.
+    /// </summary>
+    private void RemoveFace(ExplorerRow? row)
+    {
+        if (row?.FaceKey is not { } key || this._snapshot.OwnerOf.GetValueOrDefault(key) is not { } owner)
+        {
+            return;
+        }
+
+        People.Exclude(key, this.PersonOf(owner));
+        this.SavePeople($"{row.Name}: not {GroupName(owner)}");
+    }
+
+    /// <summary>
+    /// The group tile a drag of the People view's own tiles would drop onto: for a group, another group of
+    /// the top level — not the one it is in — for a face, any group but its own; null for none.
+    /// </summary>
+    private ExplorerRow? PeopleDropTarget(DragEventArgs e)
+    {
+        if (!this._peopleView || e.Data is not { } data
+            || this._grid.RowAt(this._grid.PointToClient(new Point(e.X, e.Y))) is not { } row
+            || this.GroupOf(row) is not { } target)
+        {
+            return null;
+        }
+
+        if (data.GetData(GroupDataFormat) is string id)
+        {
+            return id != target.Id && target.Parent is null && this._snapshot.ById.GetValueOrDefault(id)?.Parent != target ? row : null;
+        }
+
+        return data.GetData(FaceDataFormat) is string key && this._snapshot.OwnerOf.GetValueOrDefault(key) != target ? row : null;
+    }
+
+    /// <summary>
+    /// A drop onto a group's tile: a group merged into it once the user confirms, shown inside it as a
+    /// sub-group; a face added to it, out of the group it was in.
+    /// </summary>
+    private void DropOnGroup(string? groupId, string? faceKey, ExplorerRow targetRow)
+    {
+        if (this.GroupOf(targetRow) is not { } target)
+        {
+            return;
+        }
+
+        if (groupId is not null && this._snapshot.ById.GetValueOrDefault(groupId) is { } source)
+        {
+            if (MessageBox.Show(
+                    this.FindForm(),
+                    $"Merge « {GroupName(source)} » into « {GroupName(target)} »?\n\nIt shows inside it as a sub-group, every file of both listed there. Un-merge, on its tile there, brings it back as it was.",
+                    "Merge groups",
+                    MessageBoxButtons.OKCancel,
+                    MessageBoxIcon.Question) != DialogResult.OK)
+            {
+                return;
+            }
+
+            var into = this.PersonOf(target);
+            this._peopleStore.Merge(this.PersonOf(source), into);
+            this.SavePeople($"Merged: {GroupName(source)} into {GroupName(target)}");
+            return;
+        }
+
+        if (faceKey is not null && this._snapshot.FaceByKey.GetValueOrDefault(faceKey) is { } face)
+        {
+            this._peopleStore.Pin(faceKey, face.Face.Embedding, this.PersonOf(target));
+            this.SavePeople($"{Path.GetFileName(face.FullPath)} added to {GroupName(target)}");
+        }
+    }
 }
 
 /// <summary>
@@ -2559,6 +3499,6 @@ internal sealed class FileExplorerPanel : Panel
 /// <paramref name="Total"/> the pass reads this time, null while it waits — the files done out of
 /// those the pass reads in the whole index, for its bar; <paramref name="Refresh"/>: the search shown
 /// to run again; <paramref name="Finished"/>: the pass complete or skipped, its bar hidden;
-/// <paramref name="Note"/>: a trouble to say.
+/// <paramref name="Note"/>: a trouble to say; <paramref name="FacePass"/>: the face pass's, not an OCR pass's.
 /// </summary>
-internal readonly record struct ExtractionProgress(OcrPass Pass, int Done, int Total, int PassDone, int PassNeeded, string? File, ContentKind Kind, bool Refresh, bool Finished, string? Note = null);
+internal readonly record struct ExtractionProgress(OcrPass Pass, int Done, int Total, int PassDone, int PassNeeded, string? File, ContentKind Kind, bool Refresh, bool Finished, string? Note = null, bool FacePass = false);

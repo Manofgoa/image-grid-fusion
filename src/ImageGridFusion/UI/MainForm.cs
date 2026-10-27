@@ -44,6 +44,11 @@ internal sealed class MainForm : Form
     private readonly ToolStripMenuItem _explorerContentSearch = new("Search file contents (OCR)");
     private readonly ToolStripMenuItem _rebuildContent = new("Rebuild content index");
     private readonly ToolStripMenuItem _downloadOcrEngine = new("Download the OCR engine…");
+    // The faces' group of the ⚙ menu (workfiles/20261027-face-detection.md § Privacy): a caption, then its entries.
+    private readonly ToolStripMenuItem _facesCaption = new("People") { Enabled = false };
+    private readonly ToolStripMenuItem _faceAnalysis = new("Face analysis");
+    private readonly ToolStripMenuItem _downloadFaceEngine = new("Download the face engine…");
+    private readonly ToolStripMenuItem _forgetFaces = new("Forget faces…");
     // How the light bulb's arrow to the word found is drawn: a submenu of the group, the thickness a
     // submenu of exclusive choices, remembered between sessions. See workfiles/20261007-ocr-result-style.md.
     private readonly ToolStripMenuItem _ocrResultStyle = new("OCR result style");
@@ -558,7 +563,8 @@ internal sealed class MainForm : Form
         this._explorer.View = AppSettings.ExplorerView;
         this._explorer.ArrowStyle = AppSettings.OcrArrow;
         _explorer.OpenFolder = AppSettings.ExplorerOpenFolder;
-        _explorer.FolderView = AppSettings.ExplorerFolderView;
+        this._explorer.FaceAnalysis = AppSettings.FaceAnalysis;
+        this._explorer.Mode = AppSettings.ExplorerMode;
         _explorerSplitter.Visible = _explorer.Open;
         ApplyExplorerSplitterBounds();
         Controls.Add(_preview);
@@ -598,7 +604,7 @@ internal sealed class MainForm : Form
         this._transportTimer.Tick += (_, _) => this.RefreshTransportPosition();
         this._transportTimer.Start();
         this._toolTip.SetToolTip(this._clearButton, "Removes every image and the global effects, and brings the format back to Twitter (Ctrl+N)");
-        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._downloadOcrEngine, this._ocrResultStyle, new ToolStripSeparator(), this._openAppFolder]);
+        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._downloadOcrEngine, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._downloadFaceEngine, this._forgetFaces, new ToolStripSeparator(), this._openAppFolder]);
         for (int pages = FileExplorerPanel.MinPagesPerLoad; pages <= FileExplorerPanel.MaxPagesPerLoad; pages++)
         {
             int choice = pages;
@@ -652,6 +658,12 @@ internal sealed class MainForm : Form
         this._rebuildContent.Click += (_, _) => _explorer.RebuildContentIndex();
         this._downloadOcrEngine.ToolTipText = "Downloads RapidOCR, a second OCR engine reading the stylised, curved or inverted text Windows OCR misses — shown while it is not downloaded";
         this._downloadOcrEngine.Click += (_, _) => this.OfferOcrEngineDownload();
+        this._faceAnalysis.ToolTipText = "Whether the file explorer looks for the faces in the base folder's images and PDFs and groups them into people, for its People view — on this computer only; off until turned on, remembered between sessions";
+        this._faceAnalysis.Click += (_, _) => this.ToggleFaceAnalysis();
+        this._downloadFaceEngine.ToolTipText = "Downloads the face engine — two models of the OpenCV Zoo, YuNet and SFace — the face analysis runs on; shown while it is not downloaded";
+        this._downloadFaceEngine.Click += (_, _) => this.OfferFaceEngineDownload();
+        this._forgetFaces.ToolTipText = "Deletes every face found and every person named, hidden or merged — files.faces and people.json — and turns the face analysis off";
+        this._forgetFaces.Click += (_, _) => this.ForgetFaces();
         this._ocrResultStyle.ToolTipText = "How the arrow from a tile's light bulb to the word the OCR found is drawn; remembered between sessions";
         this._ocrArrowCurved.ToolTipText = "Whether the arrow is a slight curve arriving straight down — or up — onto the word, rather than a straight line; remembered between sessions";
         this._ocrArrowCurved.Click += (_, _) => this.SetOcrArrow(this._explorer.ArrowStyle with { Curved = !this._explorer.ArrowStyle.Curved });
@@ -676,6 +688,14 @@ internal sealed class MainForm : Form
         this._explorer.FileOrderChanged += (_, _) => this.SaveExplorerFileOrder();
         this._explorer.ViewChanged += (_, _) => this.SaveExplorerView();
         _explorer.ChooseFolderRequested += (_, _) => PickExplorerFolder();
+        this._explorer.FaceAnalysisRequested += (_, _) =>
+        {
+            if (!this._explorer.FaceAnalysis)
+            {
+                this.ToggleFaceAnalysis();
+            }
+        };
+        this._explorer.FaceEngineRequested += (_, _) => this.OfferFaceEngineDownload();
 
         // A double-clicked row is added like a file from the Add images picker.
         _explorer.FileActivated += async (_, path) => await AddFilesAsync([path]);
@@ -2887,6 +2907,9 @@ internal sealed class MainForm : Form
         this._rebuildContent.Enabled = _explorer.CanRebuildContent;
         this._downloadOcrEngine.Visible = !OcrEngineFiles.IsAvailable;
         this._downloadOcrEngine.Enabled = !this._explorer.DownloadingOcrEngine;
+        this._faceAnalysis.Checked = this._explorer.FaceAnalysis;
+        this._downloadFaceEngine.Visible = !FaceEngineFiles.IsAvailable;
+        this._downloadFaceEngine.Enabled = !this._explorer.DownloadingFaceEngine;
         this._ocrArrowCurved.Checked = this._explorer.ArrowStyle.Curved;
         foreach (ToolStripMenuItem item in this._ocrArrowThickness.DropDownItems)
         {
@@ -4177,6 +4200,78 @@ internal sealed class MainForm : Form
         }
     }
 
+    /// <summary>
+    /// The ⚙ menu's Face analysis: the file explorer starts or stops looking for the faces — those already
+    /// found kept — and the choice is remembered between sessions; turned on without its engine, its
+    /// download is offered. See workfiles/20261027-face-detection.md § Privacy.
+    /// </summary>
+    private void ToggleFaceAnalysis()
+    {
+        bool enable = !this._explorer.FaceAnalysis;
+        this._explorer.FaceAnalysis = enable;
+        this._faceAnalysis.Checked = enable;
+        try
+        {
+            AppSettings.SaveFaceAnalysis(enable);
+        }
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
+        {
+            this.ShowStatus($"Face analysis not remembered: {ex.Message}", error: true);
+        }
+
+        if (enable && !FaceEngineFiles.IsAvailable && !this._explorer.DownloadingFaceEngine)
+        {
+            this.OfferFaceEngineDownload();
+        }
+    }
+
+    /// <summary>
+    /// Offers to download the face engine, saying what, how much and where; on Yes, the file explorer
+    /// downloads it. Offered when the face analysis is turned on, from the ⚙ menu and from the People view
+    /// while it is missing. See workfiles/20261027-face-detection.md § Face Engine.
+    /// </summary>
+    private void OfferFaceEngineDownload()
+    {
+        string runtime = OcrEngineFiles.HasRuntime ? "" : $"\n\nThe ONNX Runtime library they run on (about 13 MB, from nuget.org) goes into:\n\n{OcrEngineFiles.Folder}";
+        var answer = MessageBox.Show(
+            this,
+            "Download the face engine? Two models of the OpenCV Zoo — YuNet, finding the faces, and SFace, telling them apart — "
+            + "let the file explorer group the faces of the base folder's images into people. Everything stays on this computer.\n\n"
+            + $"About 40 MB, taken from huggingface.co into:\n\n{FaceEngineFiles.Folder}{runtime}",
+            "Download the face engine",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question);
+        if (answer == DialogResult.Yes)
+        {
+            _ = this._explorer.DownloadFaceEngineAsync();
+        }
+    }
+
+    /// <summary>
+    /// The ⚙ menu's Forget faces…: once confirmed, every face found and every decision on the people
+    /// deleted, and the face analysis turned off — remembered. See workfiles/20261027-face-detection.md § Privacy.
+    /// </summary>
+    private void ForgetFaces()
+    {
+        if (MessageBox.Show(
+                this,
+                "Forget every face found and every person named, hidden or merged? The face analysis is turned off; turned on again, it looks for the faces from the start.\n\nThe face engine stays downloaded.",
+                "Forget faces",
+                MessageBoxButtons.OKCancel,
+                MessageBoxIcon.Warning,
+                MessageBoxDefaultButton.Button2) != DialogResult.OK)
+        {
+            return;
+        }
+
+        if (this._explorer.FaceAnalysis)
+        {
+            this.ToggleFaceAnalysis();
+        }
+
+        this._explorer.ForgetFaces();
+    }
+
     /// <summary>The ⚙ menu's Arrow color…: the standard color dialog, the color chosen applied at once and remembered between sessions.</summary>
     private void PickOcrArrowColor()
     {
@@ -4209,7 +4304,7 @@ internal sealed class MainForm : Form
     {
         try
         {
-            AppSettings.SaveExplorerFolderView(_explorer.FolderView, _explorer.OpenFolder);
+            AppSettings.SaveExplorerMode(this._explorer.Mode, _explorer.OpenFolder);
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
