@@ -157,10 +157,12 @@ internal static class YtDlp
             yield return $"deno:{deno}";
         }
 
+        // ffmpeg only from its own folder too: given its folder even when it is not there, yt-dlp looks
+        // for no other one on the PATH, and goes on without it.
+        yield return "--ffmpeg-location";
+        yield return ffmpeg is not null ? Path.GetDirectoryName(ffmpeg)! : YtDlpCompanions.Ffmpeg.Folder;
         if (ffmpeg is not null)
         {
-            yield return "--ffmpeg-location";
-            yield return Path.GetDirectoryName(ffmpeg)!;
             yield return "--merge-output-format";
             yield return "mp4";
         }
