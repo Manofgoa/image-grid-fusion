@@ -299,8 +299,10 @@ C:\Photos\2024\vacances\IMG_0412.jpg
 - **The light bulb's own tooltip** (*Found in its content: …*) is unchanged.
 - **The tags' text**: the Tags slot writes its concepts separated by ` · ` so the tooltip shows them apart;
   `VisionTags.RuleVersion` changes, so the stored tags are computed again from the embeddings by
-  themselves (§ Tags). The search ignores the `·`.
-- Groups and folders keep their tooltip.
+  themselves (§ Tags). The search ignores the `·`. A word the same in both languages (*selfie*,
+  *portrait*) is written once.
+- Groups and folders keep their tooltip; a file outside the base folder (a favorite elsewhere) shows its
+  path alone.
 
 ---
 
@@ -532,6 +534,32 @@ ones counted; a tooltip drawn by the app; the explorer's tiles only. The app dra
 the tiles' light bulb — a Segoe UI Emoji glyph in one colour, GDI drawing no full-colour emoji. The tags
 are written concept by concept (` · `) so the tooltip shows them apart (§ Tile Tooltip).
 
+### Iteration 10 — 2026-10-27 — 🧭 Implementation choices
+
+Go given for Iteration 9: code, unit tests and documentation, in a worktree on `feature/tile-tooltip`.
+
+⚠️ Rule broken — the agent's checking launch uses the bin's exe (`CLAUDE.md` § Launch)
+   The checks ran again from the scratchpad copy of the build, the face analysis turned on there too.
+   Why: as in Iteration 8 — the opt-in settings would be written into the user's settings file.
+   Autonomous run: reported instead of asked.
+
+- **`UI/IndexToolTip`**, the explorer's tooltip for every tile, drawn by the app (`ToolTip.OwnerDraw`): the
+  status font, the system tooltip's background and border, 420 logical px wide at most. The light bulb's
+  own tooltip goes through it too, unchanged in content.
+- **Icons and colours**: 💡 the tiles' bulb colour, 🏷 blue, 📝 green, 👨‍🦰 orange; the face glyph checked once
+  — 👨‍🦰 when the font draws it as one glyph, 👤 otherwise (on this machine: one glyph).
+- **The text read** is cut at 200 characters, at a word, between « ».
+- **The people**: `Marie, Paul (+ 1 unnamed)`, `1 unnamed face`, `3 unnamed faces` — in English, as the app's
+  UI; a face of an unnamed group merged into a named person takes that person's name.
+- **Not in the frozen design, added**: a word the same in both languages written once in the tags
+  (*selfie selfie*), seen in the first capture — `VisionTags.RuleVersion` 3, the tags computed again by
+  themselves.
+
+Checked by hand (the copy): the tags rewritten as `visage face · autoportrait self-portrait · … · selfie ·
+portrait · chapeau hat` from the embeddings, no image read; the tooltip of *lena.jpg* — path, 💡 caption, 🏷
+tags, 👨‍🦰 *1 unnamed face* — and of *aero1.jpg*. **Not seen on screen**: the 📝 line (*messi5.jpg*, the
+capture tooling lost the window's focus), a named person (no face named in the copy).
+
 ---
 
 ## Implementation Log
@@ -546,6 +574,9 @@ says so rather than staying blank.
 | RULES.md | 8 | 2026-10-27 | § Image Content Analysis; § Content OCR Passes |
 | GLOSSARY (EN + FR) | 8 | 2026-10-27 | Visual analysis, Vision pass and engine, Tag, Caption and Caption pass, Similarity tier, Similar images |
 | README (EN + FR) | 8 | 2026-10-27 | What the images show |
+| Code — tile tooltip | 10 | 2026-10-27 | `IndexToolTip`, tags concept by concept, a shared word written once |
+| Hand checks — tile tooltip | 10 | 2026-10-27 | In the scratchpad copy; the 📝 line and a named person not seen on screen |
+| RULES, GLOSSARY, README (EN + FR) — tile tooltip | 10 | 2026-10-27 | § Image Content Analysis; Tile tooltip; what the index knows of a file |
 
 ---
 
