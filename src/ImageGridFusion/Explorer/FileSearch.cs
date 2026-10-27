@@ -106,29 +106,24 @@ internal static class FileSearch
     }
 
     /// <summary>
-    /// The effect presets matching every word, by their file's name or their description — the search's
-    /// <c>Aa</c> criterion — newest first within a tier, the tiers numbered as <see cref="SearchMatch.Tier"/>
-    /// numbers the files': a preset whose file's name holds every word ranks with the files matched by
-    /// their name, one found by its description ranks after every path match and before the content
-    /// matches. See workfiles/20261026-effect-preset-favorites.md § Search.
+    /// The favorites matching every word — a file by its name, an effect preset by its file's name or
+    /// its description: the search's <c>Aa</c> criterion — newest first within a tier, the tiers
+    /// numbered as <see cref="SearchMatch.Tier"/> numbers the files': one whose name holds every word
+    /// ranks with the files matched by their name, a preset found by its description after every path
+    /// match and before the content matches. See workfiles/20261026-effect-preset-favorites.md § Search.
     /// </summary>
-    public static IReadOnlyList<PresetMatch> SearchPresets(IEnumerable<Favorite> presets, string[] words)
+    public static IReadOnlyList<FavoriteMatch> SearchFavorites(IEnumerable<Favorite> favorites, string[] words)
     {
         if (words.Length == 0)
         {
             return [];
         }
 
-        var matches = new List<PresetMatch>();
-        foreach (var favorite in presets)
+        var matches = new List<FavoriteMatch>();
+        foreach (var favorite in favorites)
         {
-            if (favorite.Preset is not { } preset)
-            {
-                continue;
-            }
-
             string name = Fold(Path.GetFileName(favorite.FullPath));
-            string description = preset.Folded;
+            string description = favorite.Preset?.Folded ?? "";
             int nameHits = 0;
             string? descriptionWord = null;
             bool matched = true;
@@ -151,7 +146,7 @@ internal static class FileSearch
 
             if (matched)
             {
-                matches.Add(new PresetMatch(favorite, descriptionWord, descriptionWord is null ? words.Length - nameHits : DescriptionTier(words.Length)));
+                matches.Add(new FavoriteMatch(favorite, descriptionWord, descriptionWord is null ? words.Length - nameHits : DescriptionTier(words.Length)));
             }
         }
 
@@ -169,7 +164,7 @@ internal static class FileSearch
         /// <summary>Whether a word was found in the content text only.</summary>
         public bool ByContent => this.ContentWord is not null;
 
-        /// <summary>Its relevance tier as a number, lower first, comparable with a preset's (<see cref="SearchPresets"/>).</summary>
+        /// <summary>Its relevance tier as a number, lower first, comparable with a favorite's (<see cref="SearchFavorites"/>).</summary>
         public int Tier(int words) => this.ByContent ? DescriptionTier(words) + 1 + (int)this.Grade : words - this.NameHits;
 
         /// <summary>
@@ -297,11 +292,11 @@ internal readonly record struct SearchMatch(IndexEntry Entry, string? ContentWor
 }
 
 /// <summary>
-/// An effect preset the search found; <paramref name="DescriptionWord"/>: the first query word found in
-/// its description only — null when its file's name holds every word. <paramref name="Tier"/>: as
+/// A favorite the search found — a file, or an effect preset; <paramref name="DescriptionWord"/>: the
+/// first query word a preset holds in its description only — null when its file's name holds every word. <paramref name="Tier"/>: as
 /// <see cref="SearchMatch.Tier"/>.
 /// </summary>
-internal readonly record struct PresetMatch(Favorite Favorite, string? DescriptionWord, int Tier);
+internal readonly record struct FavoriteMatch(Favorite Favorite, string? DescriptionWord, int Tier);
 
 /// <summary>What tells a file changed since its content text was extracted: its size and last write, in UTC.</summary>
 internal readonly record struct FileStamp(long Size, DateTime Written);

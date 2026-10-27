@@ -1764,26 +1764,7 @@ internal sealed class FileExplorerPanel : Panel
         {
             var found = this.Find(_index.Entries, words, everything);
 
-            // The effect presets found go with the files of their tier, ahead of them; never in *.
-            IReadOnlyList<PresetMatch> presets = everything || !this._byName.Checked ? [] : FileSearch.SearchPresets(this._favorites.Presets, words);
-            int next = 0;
-            foreach (var match in found)
-            {
-                for (; next < presets.Count && presets[next].Tier <= match.Tier; next++)
-                {
-                    rows.Add(PresetRow(presets[next]));
-                }
-
-                rows.Add(new ExplorerRow(_index.FullPath(match.Entry), match.Entry.Name, ContentWord: match.ContentWord, Size: match.Entry.Size));
-            }
-
-            for (; next < presets.Count; next++)
-            {
-                rows.Add(PresetRow(presets[next]));
-            }
-
-            static ExplorerRow PresetRow(PresetMatch match) =>
-                new(match.Favorite.FullPath, Path.GetFileName(match.Favorite.FullPath), Preset: match.Favorite.Preset, DescriptionWord: match.DescriptionWord);
+            rows.AddRange(this.WithFavorites(found, _index, words, everything));
 
             _caption.Text = everything
                 ? $"All files ({found.Count:N0})"
@@ -1941,10 +1922,7 @@ internal sealed class FileExplorerPanel : Panel
             rows.Add(FolderRow(index.FullPath(folder)));
         }
 
-        foreach (var (file, contentWord, _) in foundFiles)
-        {
-            rows.Add(new ExplorerRow(index.FullPath(file), file.Name, ContentWord: contentWord, Size: file.Size));
-        }
+        rows.AddRange(this.WithFavorites(foundFiles, index, words, everything));
 
         int total = rows.Count;
         string trailing = everything
@@ -1956,6 +1934,42 @@ internal sealed class FileExplorerPanel : Panel
                 _ => $"{total:N0} results",
             };
         return (rows, trailing);
+    }
+
+    /// <summary>
+    /// The files a search found, with the favorites matching the words merged in by tier, ahead of the
+    /// files of theirs (<see cref="FileSearch.SearchFavorites"/>): every effect preset — by its file's name
+    /// or its description — and the file favorites not found already, wherever they are, in the folder
+    /// view too. Under the Aa criterion only; never in <c>*</c>. See
+    /// workfiles/20261026-effect-preset-favorites.md, Iteration 6.
+    /// </summary>
+    private List<ExplorerRow> WithFavorites(IReadOnlyList<SearchMatch> found, FileIndex index, string[] words, bool everything)
+    {
+        var rows = new List<ExplorerRow>(found.Count);
+        var shown = new HashSet<string>(found.Select(match => index.FullPath(match.Entry)), StringComparer.OrdinalIgnoreCase);
+        IReadOnlyList<FavoriteMatch> favorites = everything || !this._byName.Checked
+            ? []
+            : [.. FileSearch.SearchFavorites(this._favorites.Newest, words).Where(match => match.Favorite.Preset is not null || shown.Add(match.Favorite.FullPath))];
+        int next = 0;
+        foreach (var match in found)
+        {
+            for (; next < favorites.Count && favorites[next].Tier <= match.Tier; next++)
+            {
+                rows.Add(FavoriteRow(favorites[next]));
+            }
+
+            rows.Add(new ExplorerRow(index.FullPath(match.Entry), match.Entry.Name, ContentWord: match.ContentWord, Size: match.Entry.Size));
+        }
+
+        for (; next < favorites.Count; next++)
+        {
+            rows.Add(FavoriteRow(favorites[next]));
+        }
+
+        return rows;
+
+        static ExplorerRow FavoriteRow(FavoriteMatch match) =>
+            new(match.Favorite.FullPath, Path.GetFileName(match.Favorite.FullPath), Preset: match.Favorite.Preset, DescriptionWord: match.DescriptionWord);
     }
 
     /// <summary>

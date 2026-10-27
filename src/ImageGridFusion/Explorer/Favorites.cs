@@ -72,9 +72,6 @@ internal sealed class Favorites
         }
     }
 
-    /// <summary>The effect presets, the most recently added first: what a search goes through beside the index.</summary>
-    public IEnumerable<Favorite> Presets => this.Newest.Where(favorite => favorite.Preset is not null);
-
     /// <summary>Whether the file itself is a favorite — its presets aside.</summary>
     public bool Contains(string fullPath) => _set.Contains(fullPath);
 
