@@ -56,28 +56,26 @@ Components touched (from the exploration):
 
 ## Models
 
-| Need | Model | Files (int8) | License | Language |
+| Need | Model | Files | License | Language |
 |---|---|---|---|---|
-| Embeddings → free-text search, similar images, tags | **SigLIP 2 base** (`onnx-community/siglip2-base-patch16-256-ONNX`): a vision model and a text model sharing one space | vision ~95 MB, text ~283 MB | Apache 2.0 (the base model's, `google/siglip2-base-patch16-256`; the ONNX copy states none) | Multilingual — French queries work |
-| Caption | **Florence-2 base** (`onnx-community/Florence-2-base`): vision encoder, token embeddings, encoder, decoder with its cache | ~275 MB | MIT | **English only** |
+| Embeddings → free-text search, similar images, tags | **SigLIP 2 base** (`onnx-community/siglip2-base-patch16-256-ONNX`): a vision model and a text model sharing one space | vision uint8 ~95 MB, text int8 ~283 MB, `tokenizer.model` 4 MB | Apache 2.0 (the base model's, `google/siglip2-base-patch16-256`; the ONNX copy states none) | Multilingual — French queries work |
+| Caption | **Florence-2 base** (`onnx-community/Florence-2-base`): vision encoder (uint8), token embeddings, encoder, decoder without cache (int8), `vocab.json` | ~275 MB | MIT | **English only** |
 
 - **Rejected**: jina-clip-v2 (CC BY-NC, non-commercial), M-CLIP (no official ONNX, two models to
   pair), RAM++ for the tags (a third model, English tags, unofficial exports — the tags come from
   SigLIP 2 instead, § Tags).
-- **CPU only**, like RapidOCR. Estimates: SigLIP 2 ~80–200 ms an image, ~20–50 ms a query; Florence-2
-  ~2–6 s an image — the heaviest pass of the app by far.
-- **Tokenizers** — no tokenizer package is referenced today; `Microsoft.ML.Tokenizers` is the candidate:
+- **CPU only**, like RapidOCR, 2 threads per session. Measured: SigLIP 2 ~85 ms an image, ~17 ms a query;
+  Florence-2 ~4.5 s an image (its vision encoder ~3.5 s) — the heaviest pass of the app by far. The vision
+  encoders are the **uint8** exports: the int8 ones gave the same results about twice as slowly.
+- **Tokenizers** — `Microsoft.ML.Tokenizers` 2.0.1:
   - SigLIP 2's text model takes **Gemma's SentencePiece** tokens (256k vocabulary, BPE with byte
     fallback): the query **lowercased**, no BOS, **EOS (id 1) appended**, truncated so EOS stays last,
     right-padded with **0** to **64** tokens. Read through `SentencePieceTokenizer.Create` from the binary
-    `tokenizer.model` — downloaded from `google/siglip2-base-patch16-256`, the ONNX copy may hold only
-    `tokenizer.json` — the BOS / EOS / padding set by our code, not the library's options.
-  - **Unproven**: no evidence the library reproduces Gemma's ids (no dummy prefix, user-defined tokens).
-    The implementation **starts with that check** — ~50 French and English strings against reference ids
-    produced once with Python `transformers` and kept as test data. Failing it, a small BPE tokenizer of
-    our own reads `tokenizer.json` (its merges and vocabulary) — the fallback, reported as a divergent
-    choice.
-  - Florence-2 takes a BART BPE (vocabulary + merges): `Microsoft.ML.Tokenizers`' BPE tokenizer.
+    `tokenizer.model`, downloaded from `google/siglip2-base-patch16-256`.
+  - **Checked first**: 52 French and English strings — accents, capitals, emoji, CJK, Cyrillic, Arabic,
+    several spaces — give the reference ids of Hugging Face's `tokenizers`, 52 out of 52. No fallback.
+  - Florence-2: its `<CAPTION>` prompt's ids are written in the code, and its byte-level BPE is only
+    decoded, by its `vocab.json` — no tokenizer needed.
 
 ---
 
@@ -110,7 +108,7 @@ Two passes of the extraction worker, same pause rule, same save cadence, each it
 | Pass | Per file | Writes |
 |---|---|---|
 | **Vision** | The pixels `ContentExtractor.DecodePixels` gives, resized to 256 × 256, through SigLIP 2's vision model → one embedding (768 floats, normalized) | The embedding in `index\files.vision`; the **tags** slot of `files.content` (§ Tags) |
-| **Caption** | The same pixels at 768 × 768 through Florence-2 (`<CAPTION>` task), greedy decoding | The **caption** slot of `files.content` |
+| **Caption** | The same pixels squashed to 768 × 768 over white through Florence-2 (`<CAPTION>` task), greedy decoding — the first token forced to BOS, no trigram twice, at most 48 tokens (`Captioner`) | The **caption** slot of `files.content` |
 
 - Over every **image and PDF** entry of the index, like the OCR passes; videos left out.
 - A changed file (size or date) is analysed again; a file gone from the index drops its data.
@@ -139,8 +137,8 @@ a text file loaded whole and scanned by every search (the face index's reasoning
 - Binary, versioned header, base folder, the model's id (a model change empties it); per file: path,
   size, ticks, embedding. A file absent is *not done*.
 - Saved atomically (temp file then move), loaded off the UI thread.
-- Held in memory as one contiguous `float[]` (768 × files: ~3 MB per 1 000 images), so a query is a
-  single scan of dot products.
+- Held in memory as one `float[]` per file (768 floats: ~3 MB per 1 000 images); a query is a scan of
+  dot products over them (`Embeddings.Dot`, vectorized).
 
 ---
 
@@ -148,18 +146,22 @@ a text file loaded whole and scanned by every search (the face index's reasoning
 
 - Computed **from the embeddings**, never by a model of their own: a **bilingual vocabulary** of
   concepts (*chien* / *dog*, *plage* / *beach*…), each concept's text embedding computed once
-  (*a photo of a dog*), compared with every image's.
-- A concept above its **threshold** is a tag of the image; the slot holds the French and English
-  words of its tags.
+  (*a photo of dog.*, unless the line gives its own prompt), compared with every image's.
+- **The rule**, tuned on sample images: a concept is a tag of the image when its cosine reaches
+  **max(0.105, the image's best − 0.02)**, at most **6** tags, the closest first (`VisionTags.Floor`,
+  `Spread`, `MaxTags`); the slot holds the French and English words of its tags.
 - **The vocabulary** (Q&A 10):
-  - **~1 000 curated concepts**, French and English, shipped with the app (an embedded resource):
-    objects, animals, scenes, places, weather, kinds of pictures (screenshot, document, drawing,
-    meme…); each line a concept, its French and English words, optionally the prompt it is embedded
-    with.
-  - **A user file** next to the exe (`vision-tags.txt`, created empty with a comment line saying its
-    format) **adds** concepts, in the same format; read at start-up and when it changes.
+  - **1 018 curated concepts**, French and English, shipped with the app (`Explorer/VisionTags.txt`, an
+    embedded resource): animals, people, clothes, food, nature, city, home and objects, technology,
+    transport, sports and leisure, kinds of pictures (screenshot, document, drawing, meme…), colors,
+    health and science, work, events; each line `French words | English words [| prompt]`, synonyms
+    separated by commas.
+  - **A user file** next to the exe (`vision-tags.txt`, created with its explanation and an example when
+    the user turns *Visual analysis* on — never by a `--new-instance` of its own accord) **adds** concepts,
+    in the same format; read when the extraction starts (each scan, ↻, a setting turned on).
   - Each concept's text embedding cached next to the index, keyed by its prompt. **A vocabulary change
-    recomputes the tags from the stored embeddings** — no image read again, a few seconds.
+    recomputes the tags from the stored embeddings** — no image read again, a few seconds. Tags lost while
+    the embeddings stay (the content rebuilt, an older `files.content`) are computed again the same way.
 
 ---
 
@@ -179,8 +181,10 @@ Two new **text slots** of `files.content`, appended after the OCR slots:
 - **Word matching** (Q&A 12): by **substring**, as the OCR texts — *rat* finds *pirate* — but a word
   found **whole** ranks higher than one found inside another (§ Search Under 💡). The same for the
   tags and the caption.
-- `ContentIndex.Find` returns on the first sure slot today: it looks at the Seen slots only when no
-  OCR slot holds the word, so a file is graded by its best OCR match first.
+- `ContentIndex.Find` looks at the Seen slots only when no OCR slot holds the word, so a file is graded
+  by its best OCR match first.
+- The Tags and Caption slots need no Windows pass: a file not read yet, or changed, starts over with them
+  alone; the Windows pass keeps them while the file is unchanged.
 
 ---
 
@@ -199,18 +203,18 @@ Two new **text slots** of `files.content`, appended after the OCR slots:
   found by *rat*.
 - **Similarity tier** — a new tier **after every content grade**: the query, as a whole sentence, run
   through SigLIP 2's text model → a query embedding; every image's dot product with it; the **N
-  closest** images listed in it (Q&A 14 — a constant, `VisionSearch.TopCount`, 100 to start with), **ordered
+  closest** images listed in it (Q&A 14 — a constant, `FileExplorerPanel.SimilarCount`, 100), **ordered
   by score**, the best first — counted among the files in the search's scope (below the open folder in
   the folder view).
   - A file already found in an earlier tier is not repeated.
-  - `Rank` gains a score (`Similarity`), `Tier()` a value after the content grades (`PersonTier + 1 +
-    grade`, the Seen grades included), `CompareTier` orders by score inside it; `SearchMatch` carries the
-    score.
+  - `FileSearch.SearchSimilar` gives them, numbered `FileSearch.SimilarityTier` (after the content grades,
+    `PersonTier + 1 + grade`, the Seen grades included), appended after the word matches; `SearchMatch`
+    carries the score.
   - With a user sort order (Date, Name, Size), the other tiers are sorted by it; the similarity tier
     keeps **its score order**, always — the exception (Q&A 13).
   - Its tier number stays above every favorite's tier (`WithFavorites` interleaves by tier).
-  - The query embedding is computed off the UI thread, once the typing pauses (the search's own
-    debounce), and only while 💡 is on.
+  - The query embedding is computed off the UI thread **300 ms after the typing pauses**, then the search
+    shown runs again with it; only while 💡 and *Visual analysis* are on.
 - In the search view and in the folder view alike (below the open folder), as every search.
 
 ---
@@ -222,15 +226,15 @@ Three ways in (Q&A 15), one search:
 | From | Gesture |
 |---|---|
 | A file tile of the explorer | *Find similar images* in its context menu (`_menu`), file rows only |
-| A cell of the grid | *Find similar images* in a **new context menu of the cell** (`GridPreview` has none today), cells holding an image only; forwarded to the explorer by `MainForm`, like `ShowInExplorerClicked` |
+| A cell of the grid | *Find similar images* in a **new context menu of the cell** (`MainForm._cellMenu`, on a right button released over a cell holding an image), forwarded to the explorer with the cell's image |
 | A drop onto the search box | An image dropped on it — a file from the Explorer, a tile, a cell by its ✥ handle — searches what resembles it instead of becoming a favorite (the panel's drop) |
 
 - The source's embedding is the index's when the file has one; otherwise — a file not indexed, a pasted
   image, a cell without a file — it is **computed on the spot** from the pixels the cell or the file
   gives, the vision model loaded for that image.
-- It runs a **similarity search**: the search view shows the **N closest** images (the same `TopCount`),
-  best first, the source itself first when indexed; the caption line says `Similar to <name>` with a ×
-  that clears it.
+- It runs a **similarity search**: the explorer opens on the **search view**, its box emptied, and shows
+  the **N closest** images (the same `SimilarCount`), best first, the source itself first when indexed;
+  the caption line says `Similar to <name>` with a × that clears it.
 - Typing in the search box clears it and searches as usual.
 - Only while *Visual analysis* is on and SigLIP 2 present: otherwise the menu entries are hidden and a
   drop onto the search box is the panel's ordinary drop.
@@ -417,6 +421,60 @@ From the user's answers (Q&A 18–21) — every open question settled:
 Go given: code, unit tests and documentation (the tests being hand checks, Q&A 20), in a worktree on
 `feature/image-content-analysis`. The scope is frozen as the sections above stand.
 
+### Iteration 8 — 2026-10-27 — 🧭 Implementation choices
+
+⚠️ Rule broken — the agent's checking launch uses the bin's exe (`CLAUDE.md` § Launch)
+   The checks ran from a copy of the build in the scratchpad, with its own `settings.json` (both
+   settings on), its own index and the engines copied in, over 12 OpenCV sample images.
+   Why: turning the opt-in settings on in the bin's instance writes the user's settings file and
+   analyses their base folder — as the face detection's run found (Iteration 5).
+   Autonomous run: reported instead of asked.
+
+Choices the frozen design left open, or that diverge from it (the sections above describe the code):
+
+- **Branch Gate**: skipped — the worktree's branch is dedicated.
+- **The tokenizer check passed**: `Microsoft.ML.Tokenizers` 2.0.1 gives Hugging Face's ids on 52 strings
+  out of 52 — the fallback tokenizer was not written. The reference ids came from the `tokenizers`
+  library in a scratchpad venv; they are not kept in the repository (no test project, Q&A 20).
+- **uint8 vision encoders** instead of int8, for SigLIP 2 and Florence-2: the same rankings, tags and
+  captions, about twice as fast on the CPU (SigLIP ~85 ms an image instead of ~200; Florence ~4.5 s
+  instead of ~7). The model id changes with it (`siglip2-base-patch16-256 uint8`).
+- **Florence-2's decoder without cache** (`decoder_model`, not the merged one): every step decodes the
+  whole caption again — ~0.7 s of the ~4.5 s — for a much simpler loop. Greedy, where Florence's own
+  generation uses 3 beams. Its prompt's ids are written in the code; its BPE is only decoded, by hand
+  from `vocab.json`.
+- **The tags' rule** (`max(0.105, best − 0.02)`, 6 at most, prompt `a photo of <word>.`), tuned on the
+  sample images; **1 018 concepts** in the vocabulary.
+- **The user's vocabulary** is read when the extraction starts — each scan, ↻, a setting turned on — not
+  watched while the app runs; the file is created when the user turns *Visual analysis* on.
+- **The similarity tier** is a function of its own (`FileSearch.SearchSimilar`) appended after the word
+  matches, rather than a score inside `Rank`; `SearchMatch` carries the score. The embeddings are kept one
+  array per file, not one contiguous array: a scan of 10 000 is a few milliseconds.
+- **The query** is embedded 300 ms after the typing pauses; the text model is checked every minute and
+  released after 5 minutes unused, one call at a time (a lock).
+- **Images drawn over white** before they are embedded or described: a transparent part reads as white.
+- **Find similar images** opens the explorer on the search view and empties its box; an image without an
+  embedding loads the vision model for it (~0.3 s), released after.
+- **A No to an engine offer turns its setting off again** — from the ⚙ entry *Download …* too while the
+  setting is on.
+- **Bars**: teal for the Vision pass, gold for the Caption pass.
+- **Found and fixed during the checks**: tags lost while the embeddings stay — *Rebuild content index*, an
+  older `files.content` — were never computed again; they are now, from the embeddings.
+
+Found during the run, not implemented:
+
+- A `--new-instance` instance wrote `"MaxZoom": 2000` into its `settings.json` of its own accord — an
+  existing behaviour, against RULES.md § Single Instance (no write of its own accord).
+
+Checked by hand (the copy): the Vision and Caption passes over the 12 images — tags in both languages,
+English captions, `files.content` version 4, `files.vision`, the concepts' cache; a search *papillon*
+(the butterfly first, by its tag, then the similarity tier) and *un singe* (the mandrill first, by
+similarity alone); a version-3 `files.content` completed as version 4 — the OCR's words kept, the tags
+computed again from the embeddings, the captions written; no `vision-tags.txt` written by the copy.
+**Not checked in the app**: the engines' download and offers (the files were copied in), the ⚙ entries,
+*Forget visual analysis…*, *Find similar images* from a tile, a cell or a drop, the Details view's
+caption excerpt, a large base folder's timings.
+
 ---
 
 ## Implementation Log
@@ -426,11 +484,11 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | 6 | 2026-10-27 | Declined: hand checks only (Q&A 20) |
-| RULES.md | | | |
-| GLOSSARY (EN + FR) | | | |
-| README (EN + FR) | | | |
+| Code | 7–8 | 2026-10-27 | `ContentPass` refactoring, shared direct download, vision engine, Vision pass, `files.content` v4, similarity tier, similar images, settings, Caption pass |
+| Unit tests | 6 | 2026-10-27 | Declined: hand checks only (Q&A 20) — done in Iteration 8 |
+| RULES.md | 8 | 2026-10-27 | § Image Content Analysis; § Content OCR Passes |
+| GLOSSARY (EN + FR) | 8 | 2026-10-27 | Visual analysis, Vision pass and engine, Tag, Caption and Caption pass, Similarity tier, Similar images |
+| README (EN + FR) | 8 | 2026-10-27 | What the images show |
 
 ---
 
