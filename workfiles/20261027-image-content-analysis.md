@@ -1,0 +1,309 @@
+# Image Content Analysis
+
+> Working document — what the indexed images *show* (scenes, objects, a description), analysed
+> offline by vision models and searched under 💡, in French and English, plus "find similar images".
+> This file is the source of truth for the planned work until implemented,
+> then the log of every adjustment made to it afterwards.
+
+---
+
+## Overview
+
+The content search (💡) reads today the **text** of the images and PDF pages (the OCR passes,
+RULES.md § Content OCR Passes). This work adds what they **show**: a photo of a dog on a beach is
+found by *chien plage*, *dog on a beach* or *un chien qui court sur le sable*, though it holds no
+text. Everything runs **offline** — vision models run locally through ONNX Runtime, already used
+by RapidOCR; the only network access is the models' one-time download.
+
+Four results, all requested (Q&A 2):
+
+| Result | What it gives | Searched as |
+|---|---|---|
+| **Free-text search** | An **embedding** per image (a vector), compared with the query's | A similarity tier under 💡, after the text matches |
+| **Tags** | Words per image, in **French and English** (*chien* / *dog*, *plage* / *beach*) | Text, like an OCR slot |
+| **Caption** | One generated sentence per image (*a dog running on a beach*) | Text, like an OCR slot; shown in the Details view |
+| **Similar images** | The images closest to a given one | A search of its own, from a tile's context menu |
+
+Queries in **French and English** (Q&A 3); the results appear **under 💡**, no new criterion or view
+(Q&A 4).
+
+Sibling of `20261027-face-detection.md` (designed, not implemented): the faces answer **who**, this
+answers **what**. Both add a pass to the extraction worker, a model engine downloaded on demand
+next to the exe, and an index file of vectors of their own. The models are not shared — YuNet and
+SFace know nothing of scenes.
+
+What it is not: no object boxes drawn on the cells, no effect on the grid, no editing of tags by
+hand (*see Open Questions*); videos and animated content are out — a GIF's first frame and a PDF's
+first page are read, as the OCR reads them.
+
+Components touched (from the exploration):
+
+| Area | Where |
+|---|---|
+| Pass worker — sequential, one thread, passes in `OcrPasses.All` order, pause rule, save cadence, bars | `UI/FileExplorerPanel.Extract` (~l.1492), `ExtractAsync`, `ExtractionPaused`, `TrySave`, `PassColors` / `PassColorNames` / `_passBars` |
+| Pass / slot declarations | `Explorer/OcrPass.cs` — `OcrPass`, `ContentSlot`, `OcrPasses.All`, `SlotCount` (5), `SlotsOf`, `IsWeak`, `NameOf` |
+| Content index format | `Explorer/ContentIndex` — header `ImageGridFusion content 3`, `3 + 2 × slots` columns, `Find`, `SlotText` |
+| Per-file extraction, engine lifecycle | `Explorer/ContentExtractor` — `Extract(path, pass)`, `Decode`, `StartRapid` / `StopRapid` |
+| ONNX Runtime | `Microsoft.ML.OnnxRuntime 1.29.0`, CPU only, natives in `ocr-engine\` (`OcrEngineFiles.ResolveNativeLibraries`) |
+| Engine download | `OcrEngineFiles` reads NuGet packages only (`RemoteZip`); direct files go through `Web/Downloader.DownloadAsync` — the face engine's route |
+| Search tiers | `Explorer/FileSearch` — `Rank` (no score field), `Tier()` (path 0..n, description n+1, content n+2+grade), `CompareTier`, `SearchMatch` |
+| Explorer search entry point | `FileExplorerPanel.RefreshRows` (~l.1713), `Find` (~l.1984), `WithFavorites` (~l.1956) |
+| Tile context menu | `FileExplorerPanel._menu` (l.137, items l.278, `Opening` l.328) — the grid (`GridPreview`) has none |
+
+---
+
+## Models
+
+| Need | Model | Files (int8) | License | Language |
+|---|---|---|---|---|
+| Embeddings → free-text search, similar images, tags | **SigLIP 2 base** (`onnx-community/siglip2-base-patch16-256-ONNX`): a vision model and a text model sharing one space | vision ~95 MB, text ~283 MB | Apache 2.0 (the base model's, `google/siglip2-base-patch16-256`; the ONNX copy states none) | Multilingual — French queries work |
+| Caption | **Florence-2 base** (`onnx-community/Florence-2-base`): vision encoder, token embeddings, encoder, decoder with its cache | ~275 MB | MIT | **English only** |
+
+- **Rejected**: jina-clip-v2 (CC BY-NC, non-commercial), M-CLIP (no official ONNX, two models to
+  pair), RAM++ for the tags (a third model, English tags, unofficial exports — the tags come from
+  SigLIP 2 instead, § Tags).
+- **CPU only**, like RapidOCR. Estimates: SigLIP 2 ~80–200 ms an image, ~20–50 ms a query; Florence-2
+  ~2–6 s an image — the heaviest pass of the app by far.
+- **Tokenizers** — no tokenizer package is referenced today; `Microsoft.ML.Tokenizers` is the candidate:
+  - SigLIP 2's text model takes **Gemma's SentencePiece** tokens (256k vocabulary, BPE with byte
+    fallback): the query **lowercased**, no BOS, **EOS (id 1) appended**, truncated so EOS stays last,
+    right-padded with **0** to **64** tokens. Read through `SentencePieceTokenizer.Create` from the binary
+    `tokenizer.model` — downloaded from `google/siglip2-base-patch16-256`, the ONNX copy may hold only
+    `tokenizer.json` — the BOS / EOS / padding set by our code, not the library's options.
+  - **Unproven**: no evidence the library reproduces Gemma's ids (no dummy prefix, user-defined tokens).
+    The implementation **starts with that check** — ~50 French and English strings against reference ids
+    produced once with Python `transformers` and kept as test data. Failing it, a small BPE tokenizer of
+    our own reads `tokenizer.json` (its merges and vocabulary) — the fallback, reported as a divergent
+    choice.
+  - Florence-2 takes a BART BPE (vocabulary + merges): `Microsoft.ML.Tokenizers`' BPE tokenizer.
+
+---
+
+## Vision Engine
+
+- **Never shipped**, downloaded on demand next to the exe — each file from a **pinned URL** with its
+  **SHA-256**, through `Downloader.DownloadAsync` into `<name>.~downloading`, then moved into place —
+  the face engine's route (`FaceEngineFiles`). Nothing is downloaded without the user's **Yes**.
+- Its own folder, **`vision-engine\`** (`VisionEngineFiles.FolderName`); ONNX Runtime's native DLL stays
+  the OCR engine's, in `ocr-engine\`, fetched with it when missing, as the face engine does.
+- **Two parts, two availabilities**: SigLIP 2 (~380 MB) and Florence-2 (~275 MB) — each its own
+  `IsAvailable`, so the captions can be left out (*see Open Questions*).
+- Each `InferenceSession` is created after `OcrEngineFiles.ResolveNativeLibraries()`.
+- The **text model** stays loaded while the explorer searches (a query each keystroke burst), released
+  after a while unused (*see Open Questions*); the vision model and Florence-2 are loaded by their pass
+  only, released when it ends — the `StartRapid` / `StopRapid` lifecycle.
+
+---
+
+## Passes
+
+Two passes of the extraction worker, same pause rule, same save cadence, each its own progress bar
+(new colours in `PassColors`), its tooltip saying how many files are done:
+
+| Pass | Per file | Writes |
+|---|---|---|
+| **Vision** | The pixels `ContentExtractor.Decode` gives, resized to 256 × 256, through SigLIP 2's vision model → one embedding (768 floats, normalized) | The embedding in `index\files.vision`; the **tags** slot of `files.content` (§ Tags) |
+| **Caption** | The same pixels at 768 × 768 through Florence-2 (`<CAPTION>` task), greedy decoding | The **caption** slot of `files.content` |
+
+- Over every **image and PDF** entry of the index, like the OCR passes; videos left out.
+- A changed file (size or date) is analysed again; a file gone from the index drops its data.
+- Where they run among the passes (OCR, faces): *see Open Questions*.
+- Without their engine part, a pass is skipped and its bar hidden; the others run.
+- They are **passes**, not OCR: the worker's loop over `OcrPasses.All` takes them, but their names in
+  the code (`OcrPass`, `OcrPasses`) — renamed or kept: *see Open Questions*.
+
+### Vision Index
+
+Its **own file**, `index\files.vision`, never a slot of `files.content` — 768 floats a file would bloat
+a text file loaded whole and scanned by every search (the face index's reasoning):
+
+- Binary, versioned header, base folder, the model's id (a model change empties it); per file: path,
+  size, ticks, embedding. A file absent is *not done*.
+- Saved atomically (temp file then move), loaded off the UI thread.
+- Held in memory as one contiguous `float[]` (768 × files: ~3 MB per 1 000 images), so a query is a
+  single scan of dot products.
+
+---
+
+## Tags
+
+- Computed **from the embeddings**, never by a model of their own: a **bilingual vocabulary** of
+  concepts (*chien* / *dog*, *plage* / *beach*…), each concept's text embedding computed once
+  (*a photo of a dog*), compared with every image's.
+- A concept above its **threshold** is a tag of the image; the slot holds the French and English
+  words of its tags.
+- The vocabulary is a file shipped with the app (`Explorer/VisionTags.txt` or embedded resource);
+  its concepts' embeddings cached next to the index. **A vocabulary change recomputes the tags from
+  the stored embeddings** — no image read again.
+- The vocabulary's size and source, and whether the user can edit it: *see Open Questions*.
+
+---
+
+## Content Index
+
+Two new **text slots** of `files.content`, appended after the OCR slots:
+
+| Slot | Filled by | Sure / weak |
+|---|---|---|
+| **Tags** | The Vision pass | *See Open Questions* |
+| **Caption** | The Caption pass | *See Open Questions* |
+
+- `ContentSlot` gains two values at its end, `SlotCount` goes from 5 to 7, the header becomes
+  `ImageGridFusion content 4`; a version 3 file is read with 5 slots, its two new ones *not done* —
+  never discarded (RULES.md § Content OCR Passes › The index format).
+- No boxes: the slots use the box-less format of the text files — no arrow, no spaces-ignored match.
+- **Word matching**: `ContentIndex.Find` matches by substring; a short query word would match inside
+  a tag (*rat* in *pirate*). Tags matched as **whole words**: *see Open Questions*.
+
+---
+
+## Search Under 💡
+
+- **Text**: the tags and the caption are found by the content search as the OCR's words are, in the
+  content tiers, their excerpt in the Details view.
+- **Similarity tier** — a new tier **after every content grade**: the query, as a whole sentence, run
+  through SigLIP 2's text model → a query embedding; every image's dot product with it; the images
+  above a **threshold** listed in it, **ordered by score**, the best first.
+  - A file already found in an earlier tier is not repeated.
+  - `Rank` gains a score (`Similarity`), `Tier()` a value after the content grades, `CompareTier` orders
+    by score inside it; `SearchMatch` carries the score.
+  - With a user sort order (Date, Name, Size), the other tiers are sorted by it; the similarity tier
+    keeps **its score order** — the exception (*see Open Questions*).
+  - Its tier number stays above every favorite's tier (`WithFavorites` interleaves by tier).
+  - The query embedding is computed off the UI thread, once the typing pauses (the search's own
+    debounce), and only while 💡 is on.
+- In the search view and in the folder view alike (below the open folder), as every search.
+
+---
+
+## Similar Images
+
+- **Find similar images** in the file tile context menu (`_menu`), file rows only, shown when the file
+  has an embedding.
+- It runs a **similarity search** from that file's embedding: the search view shows the closest images,
+  best first, the file itself first; the caption line says `Similar to <name>` with a × that clears it.
+- Typing in the search box clears it and searches as usual.
+- From a cell of the grid, or by dropping an image onto the search box: *see Open Questions*.
+
+---
+
+## Engine Offer
+
+- When and how the download is offered, and whether the analysis is opt-in: *see Open Questions*.
+- The ⚙ menu offers the missing parts while missing, as for the OCR engine.
+
+---
+
+## Documentation
+
+- `RULES.md`: a new **Image Content Analysis** section (engine, passes, vision index, tags from the
+  embeddings, the slots, the similarity tier, similar images), and a line in § Content OCR Passes for the
+  new passes' place.
+- `GLOSSARY.md` + `GLOSSARY.fr.md`: Vision pass, Caption pass, Vision engine, Tag, Caption, Similarity
+  tier, Similar images.
+- `README.md` + `README.fr.md`: searching what the images show; similar images.
+
+---
+
+## Test Impact
+
+The repository has **no test project** (`CONTRIBUTING.md`: a change is checked by hand in the running
+app); whether one is created is the face detection workfile's open question too (*see Open Questions*).
+The behaviours to pin, whatever the answer:
+
+| Behaviour to pin | Test file | Create / Update |
+|---|---|---|
+| SigLIP 2 tokenization of a few French and English strings equals the reference ids | — (pending the Open Question) | — |
+| Image preprocessing (resize, normalization) gives the reference tensor | — | — |
+| Vision index round-trip (version, model id, stamps, embeddings) | — | — |
+| `files.content` v3 read as v4: the two new slots *not done* | — | — |
+| Tags from embeddings: threshold per concept, both languages written, a vocabulary change recomputes | — | — |
+| Similarity tier: after every content grade, ordered by score, no duplicate file, kept under a user sort order | — | — |
+| Tags matched as whole words (if decided) | — | — |
+| Florence-2 decoding loop: a reference image gives the reference caption | — | — |
+
+---
+
+## Open Questions
+
+Every question the design cannot settle on its own, listed before Iteration 1.
+
+- [ ] **Order with the face detection** — implemented after it, sharing its direct-download engine route (`FaceEngineFiles` generalized), or independently first?
+- [ ] **Opt-in / offer** — the analysis off by default, turned on from the ⚙ menu (like the faces), or offered when 💡 is turned on (like RapidOCR)?
+- [ ] **Captions** — part of the same offer, or a separate opt-in (heavy: ~275 MB, 2–6 s an image)? They are **English only**: acceptable, knowing a French query finds them only through the tags and the similarity tier?
+- [ ] **Pass order** — where Vision and Caption run among Windows OCR, faces, RapidOCR, Inverted, Ring?
+- [ ] **Vocabulary** — size (a few hundred concepts, ~1 000, more) and source (curated by hand, generated from an existing list such as RAM++'s 4 585 tags translated)? Editable by the user?
+- [ ] **Tags and caption: sure or weak?** — sure ranks them with the OCR's sure words; weak puts them in the last content grade.
+- [ ] **Whole-word match for tags** — tags matched as whole words (no *rat* in *pirate*), or the substring rule of the OCR texts?
+- [ ] **Similarity under a user sort order** — the similarity tier always by score, or sorted like the others?
+- [ ] **Similarity threshold** — a fixed constant tuned during implementation, a top-N, or an app setting?
+- [ ] **Similar images: other entry points** — also from a cell of the grid (it has no context menu today), or by dropping an image onto the search box?
+- [ ] **Text model lifetime** — kept loaded while the app runs (~300 MB in memory), or released after a while unused?
+- [ ] **Code names** — rename `OcrPass` / `OcrPasses` to `ContentPass` now that passes are not all OCR, or keep the names?
+- [ ] **Test project** — shared with the face detection workfile's question.
+
+---
+
+## Design Iterations
+
+Chronological log of design refinements, of the choices the implementation run
+took on its own — flagged `🧭 Implementation choices` — and of every adjustment
+requested afterwards — flagged `⚙️ Post-implementation`. One entry per request,
+in the order the requests were made.
+
+### Iteration 1 — 2026-10-27
+
+Initial design. Offline is possible: vision models run locally through ONNX Runtime, already used
+by RapidOCR. The user asked to take into account the OCR already there and the face detection being
+designed (Q&A 1), then chose all four results — free-text search, tags, caption, similar images — in
+French and English, under 💡 (Q&A 2–4); the subject is tricky / long (Q&A 5).
+
+From the exploration: one model, **SigLIP 2 multilingual**, covers the free-text search, the similar
+images and — compared with a bilingual vocabulary — the tags; **Florence-2** gives the captions, in
+English. The embeddings get their own binary index, as the faces do; the tags and the caption are two
+new text slots of `files.content` (version 4); the similarity is a new tier after the content grades,
+ordered by score — `Rank` has no score today. The worker is sequential, so two passes join its list;
+the download follows the face engine's direct-file route, `OcrEngineFiles` reading NuGet packages only.
+A "Find similar images" entry joins the tile context menu.
+
+Deepening: SigLIP 2's Apache 2.0 license confirmed on the base model; its tokenizer's rules known
+(lowercase, EOS appended, padded with 0 to 64), but whether `Microsoft.ML.Tokenizers` reproduces Gemma's
+ids is unproven — the implementation starts by checking it, a tokenizer of our own reading
+`tokenizer.json` being the fallback.
+
+---
+
+## Implementation Log
+
+Which delivery steps are done, and in which iteration. A step that does not apply
+says so rather than staying blank.
+
+| Step | Iteration | Date | Notes |
+|---|---|---|---|
+| Code | | | |
+| Unit tests | | | Pending the *Test project* question |
+| RULES.md | | | |
+| GLOSSARY (EN + FR) | | | |
+| README (EN + FR) | | | |
+
+---
+
+## Q&A Log
+
+Questions asked by the agent during design, with user responses.
+
+| # | Question | Answer | Date |
+|---|---|---|---|
+| 1 | What should the analysis produce? Search language? Integration? Depth? | Dismissed; answered by a message: take into account the OCR already there, and the face detection being designed, which will bring face detection libraries | 2026-10-27 |
+| 2 | What should the analysis produce (free-text search, tags, caption, similar image)? | All four | 2026-10-27 |
+| 3 | Which language are the searches typed in? | French and English | 2026-10-27 |
+| 4 | How do the results appear in the explorer (under 💡, new criterion, Themes view)? | Under 💡 (content) | 2026-10-27 |
+| 5 | Is the subject straightforward or tricky / long? | Tricky / long | 2026-10-27 |
+| 6 | Order with the face detection: after it (sharing its download route), or independently first? | | 2026-10-27 |
+| 7 | Opt-in: off by default (⚙ menu), or offered when 💡 is turned on? | | 2026-10-27 |
+| 8 | Captions: same offer, or a separate opt-in? English only acceptable? | | 2026-10-27 |
+| 9 | Tag vocabulary: size, source, editable? | | 2026-10-27 |
+
+---
+
+*Last updated: 2026-10-27*
