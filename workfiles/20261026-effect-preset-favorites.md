@@ -298,6 +298,20 @@ The same message asked that the search look into the presets' descriptions too: 
 under **Aa** (checked on a copy of the user's favorites: *déplaisant*, *extrêmement*, *vous trouve*
 all find the preset). Nothing changed there; the user retests.
 
+### Iteration 6 — 2026-10-27 — ⚙️ Post-implementation — Favorites and presets found in the folder view
+
+The user's retest: the preset was not found because the explorer was in the **folder view**, whose
+search the design kept to the disk. Request: *even in the folder view, the favorites **and** the
+presets must be found*.
+
+- A search in the **folder view** now goes through the favorites too, as the search view does: the
+  presets by their file's name or description, and the **file favorites** by their name — **wherever
+  they are**, below the open folder or not — merged into the files by tier.
+- The **file favorites** join the search view's results the same way: one not already found as a
+  file of the index (outside the base folder, dropped from the Explorer) shows by its name. A file
+  found both ways shows once.
+- Under **Aa** only, as before; `*` still lists files only.
+
 ---
 
 ## Implementation Log
