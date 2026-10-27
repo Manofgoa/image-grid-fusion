@@ -286,6 +286,18 @@ No rule broken. Choices the frozen design did not state, the domain sections upd
   read back from an unparsed JSON object (`93488bb`). The UI itself — dialog, tiles, drag — is left to
   the user's hand test.
 
+### Iteration 5 — 2026-10-27 — ⚙️ Post-implementation — Badge drawn centered
+
+The user's test: the ★ FX badge looked badly drawn — uneven margins, its content not centered (the ★
+drawn by a fallback font, the text box's leading and descent counted as content). It is now drawn as
+shapes: a five-pointed star polygon as tall as the letters' capitals, then *FX* as a glyph outline,
+both measured on their ink, centered together with even margins all round, anti-aliased.
+
+The same message asked that the search look into the presets' descriptions too: it already does — a
+*contains* match on every word, accents and case folded, in the file's name or the description,
+under **Aa** (checked on a copy of the user's favorites: *déplaisant*, *extrêmement*, *vous trouve*
+all find the preset). Nothing changed there; the user retests.
+
 ---
 
 ## Implementation Log
@@ -322,4 +334,4 @@ Questions asked by the agent during design, with user responses.
 
 ---
 
-*Last updated: 2026-10-26*
+*Last updated: 2026-10-27*
