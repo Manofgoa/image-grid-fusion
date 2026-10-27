@@ -722,6 +722,14 @@ What the indexed images **show**, analysed offline and searched under 💡 in Fr
   menu** (`MainForm.ShowCellMenu`), or an image dropped onto the search box, a cell by its ✥ handle
   included — listed in the search view, `Similar to <name>` and its × on the caption line; typing gives the
   search back. An image without an embedding is embedded on the spot.
+- **The tile's tooltip shows what the index holds** of a file (`ThumbnailGrid.IndexedContent`,
+  `FileExplorerPanel.IndexedContentOf`), after its path: 💡 the caption, 🏷 the tags concept by concept
+  (`VisionTags.ConceptSeparator`, a word the same in both languages written once), 📝 the beginning of the
+  text read — Windows OCR's, else RapidOCR's — and 👨‍🦰 the people its faces belong to, the named ones,
+  then the unnamed counted, the hidden ones left out; each line only when known. Drawn by the app
+  (`UI/IndexToolTip`): each icon a Segoe UI Emoji glyph in a colour of its own, as the tiles' light bulb —
+  GDI draws no full-colour emoji. The explorer's tiles only; a new kind of indexed content adds its line
+  there.
 - Everything stays on this machine; out of the undo history.
 
 ## App Settings
