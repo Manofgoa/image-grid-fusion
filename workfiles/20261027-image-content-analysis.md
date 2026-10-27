@@ -33,7 +33,7 @@ next to the exe, and an index file of vectors of their own. The models are not s
 SFace know nothing of scenes.
 
 What it is not: no object boxes drawn on the cells, no effect on the grid, no editing of tags by
-hand (*see Open Questions*); videos and animated content are out — a GIF's first frame and a PDF's
+hand on an image (the user adds concepts to the vocabulary, § Tags); videos and animated content are out — a GIF's first frame and a PDF's
 first page are read, as the OCR reads them.
 
 Components touched (from the exploration):
@@ -114,15 +114,22 @@ Two passes of the extraction worker, same pause rule, same save cadence, each it
 
 - Over every **image and PDF** entry of the index, like the OCR passes; videos left out.
 - A changed file (size or date) is analysed again; a file gone from the index drops its data.
-- Where they run among the passes (OCR, faces): *see Open Questions*.
+- **Order** (Q&A 18): Windows OCR → faces → **Vision** → RapidOCR → Inverted → Ring → **Caption** — the
+  visual search fills early, the slowest pass comes last.
 - A pass runs only while **its setting is on** and its engine part present (§ Engine Offer);
   otherwise it is skipped and its bar hidden; the others run. The extraction runs while the content
   search, the face analysis, *Visual analysis* **or** *Captions* is on (today: the first two).
-- Built on the **face pass's model** (`ExtractFaces`): a method of its own per pass, its own setting,
-  its own bar shown by setting (`LayoutBars`), its vector index saved with `TrySave` like `FaceIndex`.
-- They are **passes**, not OCR: the worker's loop takes them. `OcrPass` / `OcrPasses` are **renamed**
-  `ContentPass` / `ContentPasses` (Q&A 17), in a commit of their own changing no behaviour, before the
-  new passes join; `OcrPass.cs` becomes `ContentPass.cs`.
+- The face pass's mechanics carry over: its own bar shown by setting (`LayoutBars`), the vector index
+  saved with `TrySave` like `FaceIndex`.
+- **One `ContentPass` for every pass** (Q&A 17, 21): `OcrPass` / `OcrPasses` become `ContentPass` /
+  `ContentPasses` (`OcrPass.cs` → `ContentPass.cs`), and **every pass is one of its values** — the OCR
+  ones, `Faces`, `Vision`, `Caption` — in the order above. Each declares its slots of `files.content`
+  (none for the faces), its setting and its engine; the worker walks `ContentPasses.All` once, and the
+  `FacePass` flag of `ExtractionProgress` gives way to the pass itself.
+  - First, in a commit of its own changing no behaviour: the rename, and the face pass made a value of
+    it — then the new passes join.
+  - `IsWeak` and the grades keep reading the OCR slots only; `files.content`'s slots stay indexed by
+    `ContentSlot`, not by pass.
 
 ### Vision Index
 
@@ -243,8 +250,10 @@ default** (`AppSettings.VisualAnalysis`, `AppSettings.Captions`):
 - Each is usable without the other; turning one on offers its own engine part when missing — the
   download shown and confirmed first, nothing fetched without that **Yes**. A **No** leaves the setting
   off.
-- A setting turned off stops its pass and its search; what is already indexed is kept (how it is
-  forgotten follows the face analysis's answer).
+- A setting turned off stops its pass and its search; what is already indexed is kept.
+- **Forget visual analysis…** (Q&A 19), a ⚙ entry like *Forget faces…*: after a confirmation, deletes
+  `index\files.vision` and the cached concept embeddings, empties the Tags and Caption slots of
+  `files.content` (back to *not done*), and turns both settings off. The engine and `vision-tags.txt` stay.
 - A `--new-instance` instance reads the settings, writes none of its own accord.
 
 ### Order With the Face Detection
@@ -269,20 +278,22 @@ written twice.
 
 ## Test Impact
 
-The repository has **no test project** (`CONTRIBUTING.md`: a change is checked by hand in the running
-app); whether one is created is the face detection workfile's open question too (*see Open Questions*).
-The behaviours to pin, whatever the answer:
+**No unit tests** (Q&A 20): the repository has no test project (`CONTRIBUTING.md`: a change is checked
+by hand in the running app), and none is created — as for the face detection. The behaviours below are
+**checked by hand** during the run, from a copy of the build (Iteration 5), and reported:
 
-| Behaviour to pin | Test file | Create / Update |
+| Behaviour to pin | Checked by | Create / Update |
 |---|---|---|
-| SigLIP 2 tokenization of a few French and English strings equals the reference ids | — (pending the Open Question) | — |
-| Image preprocessing (resize, normalization) gives the reference tensor | — | — |
-| Vision index round-trip (version, model id, stamps, embeddings) | — | — |
-| `files.content` v3 read as v4: the two new slots *not done* | — | — |
-| Tags from embeddings: threshold per concept, both languages written, a vocabulary change recomputes | — | — |
-| Similarity tier: after every content grade, ordered by score, no duplicate file, kept under a user sort order | — | — |
-| Tags matched as whole words (if decided) | — | — |
-| Florence-2 decoding loop: a reference image gives the reference caption | — | — |
+| SigLIP 2 tokenization of ~50 French and English strings equals the reference ids (`transformers`) | A one-off check, first thing of the run | — |
+| Image preprocessing (resize, normalization) gives the reference embedding on a sample image | A one-off check | — |
+| Vision index round-trip (version, model id, stamps, embeddings) | Restart of the copy | — |
+| `files.content` v3 read as v4: the two new slots *not done*, nothing redone | The user's v3 index, copied | — |
+| Tags from embeddings: both languages written, a concept added to `vision-tags.txt` recomputes them | In the app | — |
+| Seen grades: a whole word before a word found inside another, both after every OCR grade | In the app | — |
+| Similarity tier: after every content grade, the N closest by score, no duplicate file, kept under a user sort order | In the app | — |
+| Similar images from a tile, a cell (with and without a file) and a drop onto the search box | In the app | — |
+| Florence-2 decoding loop: a sample image gives a sensible caption | In the app | — |
+| The `ContentPass` refactoring changes nothing of the OCR and face passes | In the app, before the new passes | — |
 
 ---
 
@@ -293,7 +304,6 @@ Every question the design cannot settle on its own, listed before Iteration 1.
 - [x] ~~**Order with the face detection** — implemented after it, sharing its direct-download engine route (`FaceEngineFiles` generalized), or independently first?~~ → After it (Q&A 6)
 - [x] ~~**Opt-in / offer** — the analysis off by default, turned on from the ⚙ menu (like the faces), or offered when 💡 is turned on (like RapidOCR)?~~ → Off by default, turned on from the ⚙ menu (Q&A 7)
 - [x] ~~**Captions** — part of the same offer, or a separate opt-in (heavy: ~275 MB, 2–6 s an image)? They are **English only**: acceptable, knowing a French query finds them only through the tags and the similarity tier?~~ → Two independent ⚙ settings, *Visual analysis* and *Captions*, each its own download (Q&A 8)
-- [ ] **Pass order** — where Vision and Caption run among Windows OCR, faces, RapidOCR, Inverted, Ring?
 - [x] ~~**Vocabulary** — size (a few hundred concepts, ~1 000, more) and source (curated by hand, generated from an existing list such as RAM++'s 4 585 tags translated)? Editable by the user?~~ → ~1 000 curated bilingual concepts shipped, plus a user file next to the exe adding concepts (Q&A 9–10)
 - [x] ~~**Tags and caption: sure or weak?** — sure ranks them with the OCR's sure words; weak puts them in the last content grade.~~ → A grade of their own, after every OCR grade (Q&A 11)
 - [x] ~~**Whole-word match for tags** — tags matched as whole words (no *rat* in *pirate*), or the substring rule of the OCR texts?~~ → Substring, a whole word ranking higher (Q&A 12)
@@ -301,9 +311,10 @@ Every question the design cannot settle on its own, listed before Iteration 1.
 - [x] ~~**Similarity threshold** — a fixed constant tuned during implementation, a top-N, or an app setting?~~ → Top N (Q&A 14)
 - [x] ~~**Similar images: other entry points** — also from a cell of the grid (it has no context menu today), or by dropping an image onto the search box?~~ → The tile menu, a grid cell's context menu and a drop onto the search box (Q&A 15)
 - [x] ~~**Text model lifetime** — kept loaded while the app runs (~300 MB in memory), or released after a while unused?~~ → Released after a while unused (Q&A 16)
-- [x] ~~**Code names** — rename `OcrPass` / `OcrPasses` to `ContentPass` now that passes are not all OCR, or keep the names?~~ → Renamed (Q&A 17)
-- [ ] **Forgetting** — a ⚙ entry *Forget visual analysis…* deleting `files.vision` and emptying the Seen slots after a confirmation, turning both settings off — like the faces' *Forget faces…*?
-- [ ] **Test project** — the face detection chose hand checks only; the same here, or a test project (the tokenizer check against reference ids would be its first test)?
+- [x] ~~**Code names** — rename `OcrPass` / `OcrPasses` to `ContentPass` now that passes are not all OCR, or keep the names?~~ → Renamed (Q&A 17) *(revised 2026-10-27, see Iteration 6: one `ContentPass` holding every pass, the faces included — Q&A 21)*
+- [x] ~~**Pass order** — where do Vision and Caption run among Windows OCR, faces, RapidOCR, Inverted, Ring?~~ → Vision right after the faces, Caption last (Q&A 18)
+- [x] ~~**Forgetting** — a ⚙ entry *Forget visual analysis…* deleting `files.vision` and emptying the Seen slots after a confirmation, turning both settings off — like the faces' *Forget faces…*?~~ → Yes (Q&A 19)
+- [x] ~~**Test project** — the face detection chose hand checks only; the same here, or a test project (the tokenizer check against reference ids would be its first test)?~~ → Hand checks only (Q&A 20)
 
 ---
 
@@ -391,6 +402,16 @@ The face detection is delivered; the user asked whether it calls for adjustments
   the bin's instance would write the user's settings and analyse their base folder (⚠️ reported as a
   rule broken). This run will face the same: noted here so the go covers it.
 
+### Iteration 6 — 2026-10-27
+
+From the user's answers (Q&A 18–21) — every open question settled:
+
+- **Pass order**: Windows OCR → faces → Vision → RapidOCR → Inverted → Ring → Caption.
+- **Forget visual analysis…** in the ⚙ menu, like *Forget faces…*.
+- **Hand checks only**, no test project — the Test Impact table lists what is checked by hand.
+- **One `ContentPass`** holding every pass, the faces included (revising Q&A 17): the rename and the
+  face pass's move into it come first, in a commit changing no behaviour.
+
 ---
 
 ## Implementation Log
@@ -401,7 +422,7 @@ says so rather than staying blank.
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
 | Code | | | |
-| Unit tests | | | Pending the *Test project* question |
+| Unit tests | 6 | 2026-10-27 | Declined: hand checks only (Q&A 20) |
 | RULES.md | | | |
 | GLOSSARY (EN + FR) | | | |
 | README (EN + FR) | | | |
@@ -431,10 +452,10 @@ Questions asked by the agent during design, with user responses.
 | 15 | Similar images: other entry points than the tile menu (a grid cell, a drop onto the search box)? | All three: the tile menu, a grid cell's context menu, a drop onto the search box | 2026-10-27 |
 | 16 | Text model lifetime: kept loaded while the app runs, or released after a while unused? | Released after a while unused | 2026-10-27 |
 | 17 | Rename `OcrPass` / `OcrPasses` to `ContentPass`, or keep the names? | Rename | 2026-10-27 |
-| 18 | Pass order: where do Vision and Caption run among Windows OCR, faces, RapidOCR, Inverted, Ring? | | 2026-10-27 |
-| 19 | Forgetting: a ⚙ *Forget visual analysis…* entry, like the faces'? | | 2026-10-27 |
-| 20 | Test project, or hand checks only like the face detection? | | 2026-10-27 |
-| 21 | The face pass stays outside `OcrPasses` (a flag on `ExtractionProgress`): rename `OcrPass` to `ContentPass` **and** make every pass — faces, vision, caption — one of its values, or follow the face pass's model and keep `OcrPass`? | | 2026-10-27 |
+| 18 | Pass order: where do Vision and Caption run among Windows OCR, faces, RapidOCR, Inverted, Ring? | Vision early (after the faces), Caption last | 2026-10-27 |
+| 19 | Forgetting: a ⚙ *Forget visual analysis…* entry, like the faces'? | Yes, like the faces | 2026-10-27 |
+| 20 | Test project, or hand checks only like the face detection? | Hand checks only | 2026-10-27 |
+| 21 | The face pass stays outside `OcrPasses` (a flag on `ExtractionProgress`): rename `OcrPass` to `ContentPass` **and** make every pass — faces, vision, caption — one of its values, or follow the face pass's model and keep `OcrPass`? | One `ContentPass`, every pass a value of it, the faces included | 2026-10-27 |
 
 ---
 
