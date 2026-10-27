@@ -368,6 +368,10 @@ Questions asked by the agent during design, with user responses.
 | 11 | Tags and caption: sure, weak, or a grade of their own? | A grade of their own, after every OCR grade, before the similarity tier | 2026-10-27 |
 | 12 | Tags matched as whole words, or by substring like the OCR texts? | First asking: substring. Asked again: **substring, but a whole word ranks higher** | 2026-10-27 |
 | 13 | Similarity tier under a user sort order: always by score, or sorted like the others? | First asking: no preference. Asked again: always by score | 2026-10-27 |
+| 14 | Similarity threshold: fixed constant, top-N, or ⚙ setting? | | 2026-10-27 |
+| 15 | Similar images: other entry points than the tile menu (a grid cell, a drop onto the search box)? | | 2026-10-27 |
+| 16 | Text model lifetime: kept loaded while the app runs, or released after a while unused? | | 2026-10-27 |
+| 17 | Rename `OcrPass` / `OcrPasses` to `ContentPass`, or keep the names? | | 2026-10-27 |
 
 ---
 
