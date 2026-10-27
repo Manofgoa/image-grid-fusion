@@ -273,9 +273,11 @@ cell with them (origin: `workfiles/20261026-effect-preset-favorites.md`):
 - Kept in **`favorites.json`** with the favorites (`Explorer/Favorites.cs`), an older `favorites.txt`
   migrated once by the normal instance (`Favorites.Migrate`). A preset is **never dropped silently**:
   its file gone, it stays until its heart deletes it, after a confirmation.
-- **Searched** under **Aa** (`FileSearch.SearchPresets`), by its file's name or its description: the
+- **Searched** under **Aa** (`FileSearch.SearchFavorites`), by its file's name or its description: the
   description matches in their own tier, after the path matches and before the content matches
-  (`SearchMatch.Tier`).
+  (`SearchMatch.Tier`). Every search goes through the favorites — the search view's and the folder
+  view's alike (`FileExplorerPanel.WithFavorites`): the presets, and the file favorites it would not
+  reach otherwise, wherever they are.
 - Out of the undo history: saving, editing or deleting a preset is the favorites' business.
 
 ## Global Effects
