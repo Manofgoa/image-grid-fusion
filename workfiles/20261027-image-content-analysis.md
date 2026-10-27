@@ -89,9 +89,10 @@ Components touched (from the exploration):
 - **Two parts, two availabilities**: SigLIP 2 (~380 MB) and Florence-2 (~275 MB) — each its own
   `IsAvailable`, each downloaded by its own setting (§ Engine Offer).
 - Each `InferenceSession` is created after `OcrEngineFiles.ResolveNativeLibraries()`.
-- The **text model** stays loaded while the explorer searches (a query each keystroke burst), released
-  after a while unused (*see Open Questions*); the vision model and Florence-2 are loaded by their pass
-  only, released when it ends — the `StartRapid` / `StopRapid` lifecycle.
+- The **text model** (~300 MB in memory) is loaded at the first search needing it, and **released after
+  a few minutes without one** (Q&A 16) — ~1 s to load it again; the vision model and Florence-2 are
+  loaded by their pass only, released when it ends — the `StartRapid` / `StopRapid` lifecycle. A similar
+  image search from an image not in the index loads the vision model for that one image.
 
 ---
 
@@ -110,8 +111,9 @@ Two passes of the extraction worker, same pause rule, same save cadence, each it
 - Where they run among the passes (OCR, faces): *see Open Questions*.
 - A pass runs only while **its setting is on** and its engine part present (§ Engine Offer);
   otherwise it is skipped and its bar hidden; the others run.
-- They are **passes**, not OCR: the worker's loop over `OcrPasses.All` takes them, but their names in
-  the code (`OcrPass`, `OcrPasses`) — renamed or kept: *see Open Questions*.
+- They are **passes**, not OCR: the worker's loop takes them. `OcrPass` / `OcrPasses` are **renamed**
+  `ContentPass` / `ContentPasses` (Q&A 17), in a commit of their own changing no behaviour, before the
+  new passes join; `OcrPass.cs` becomes `ContentPass.cs`.
 
 ### Vision Index
 
@@ -180,8 +182,10 @@ Two new **text slots** of `files.content`, appended after the OCR slots:
   So *chien* written in an image comes before a photo of a dog, and a dog tagged *chien* before a pirate
   found by *rat*.
 - **Similarity tier** — a new tier **after every content grade**: the query, as a whole sentence, run
-  through SigLIP 2's text model → a query embedding; every image's dot product with it; the images
-  above a **threshold** listed in it, **ordered by score**, the best first.
+  through SigLIP 2's text model → a query embedding; every image's dot product with it; the **N
+  closest** images listed in it (Q&A 14 — a constant, `VisionSearch.TopCount`, 100 to start with), **ordered
+  by score**, the best first — counted among the files in the search's scope (below the open folder in
+  the folder view).
   - A file already found in an earlier tier is not repeated.
   - `Rank` gains a score (`Similarity`), `Tier()` a value after the content grades, `CompareTier` orders
     by score inside it; `SearchMatch` carries the score.
@@ -196,12 +200,23 @@ Two new **text slots** of `files.content`, appended after the OCR slots:
 
 ## Similar Images
 
-- **Find similar images** in the file tile context menu (`_menu`), file rows only, shown when the file
-  has an embedding.
-- It runs a **similarity search** from that file's embedding: the search view shows the closest images,
-  best first, the file itself first; the caption line says `Similar to <name>` with a × that clears it.
+Three ways in (Q&A 15), one search:
+
+| From | Gesture |
+|---|---|
+| A file tile of the explorer | *Find similar images* in its context menu (`_menu`), file rows only |
+| A cell of the grid | *Find similar images* in a **new context menu of the cell** (`GridPreview` has none today), cells holding an image only; forwarded to the explorer by `MainForm`, like `ShowInExplorerClicked` |
+| A drop onto the search box | An image dropped on it — a file from the Explorer, a tile, a cell by its ✥ handle — searches what resembles it instead of becoming a favorite (the panel's drop) |
+
+- The source's embedding is the index's when the file has one; otherwise — a file not indexed, a pasted
+  image, a cell without a file — it is **computed on the spot** from the pixels the cell or the file
+  gives, the vision model loaded for that image.
+- It runs a **similarity search**: the search view shows the **N closest** images (the same `TopCount`),
+  best first, the source itself first when indexed; the caption line says `Similar to <name>` with a ×
+  that clears it.
 - Typing in the search box clears it and searches as usual.
-- From a cell of the grid, or by dropping an image onto the search box: *see Open Questions*.
+- Only while *Visual analysis* is on and SigLIP 2 present: otherwise the menu entries are hidden and a
+  drop onto the search box is the panel's ordinary drop.
 
 ---
 
@@ -273,11 +288,12 @@ Every question the design cannot settle on its own, listed before Iteration 1.
 - [x] ~~**Tags and caption: sure or weak?** — sure ranks them with the OCR's sure words; weak puts them in the last content grade.~~ → A grade of their own, after every OCR grade (Q&A 11)
 - [x] ~~**Whole-word match for tags** — tags matched as whole words (no *rat* in *pirate*), or the substring rule of the OCR texts?~~ → Substring, a whole word ranking higher (Q&A 12)
 - [x] ~~**Similarity under a user sort order** — the similarity tier always by score, or sorted like the others?~~ → Always by score (Q&A 13)
-- [ ] **Similarity threshold** — a fixed constant tuned during implementation, a top-N, or an app setting?
-- [ ] **Similar images: other entry points** — also from a cell of the grid (it has no context menu today), or by dropping an image onto the search box?
-- [ ] **Text model lifetime** — kept loaded while the app runs (~300 MB in memory), or released after a while unused?
-- [ ] **Code names** — rename `OcrPass` / `OcrPasses` to `ContentPass` now that passes are not all OCR, or keep the names?
-- [ ] **Test project** — shared with the face detection workfile's question.
+- [x] ~~**Similarity threshold** — a fixed constant tuned during implementation, a top-N, or an app setting?~~ → Top N (Q&A 14)
+- [x] ~~**Similar images: other entry points** — also from a cell of the grid (it has no context menu today), or by dropping an image onto the search box?~~ → The tile menu, a grid cell's context menu and a drop onto the search box (Q&A 15)
+- [x] ~~**Text model lifetime** — kept loaded while the app runs (~300 MB in memory), or released after a while unused?~~ → Released after a while unused (Q&A 16)
+- [x] ~~**Code names** — rename `OcrPass` / `OcrPasses` to `ContentPass` now that passes are not all OCR, or keep the names?~~ → Renamed (Q&A 17)
+- [ ] **Forgetting** — a ⚙ entry *Forget visual analysis…* deleting `files.vision` and emptying the Seen slots after a confirmation, turning both settings off — like the faces' *Forget faces…*?
+- [ ] **Test project** — the face detection chose hand checks only; the same here, or a test project (the tokenizer check against reference ids would be its first test)?
 
 ---
 
@@ -332,6 +348,19 @@ kept):
   for the tags; applied to the caption too, both sharing the grades.
 - The similarity tier keeps **its score order** under a user sort order.
 
+### Iteration 4 — 2026-10-27
+
+From the user's answers (Q&A 14–17):
+
+- The similarity tier and the similar images list the **N closest** (`TopCount`, 100 to start with —
+  the value is a proposal, tuned during implementation), no threshold.
+- *Find similar images* from **three places**: the tile menu, a **new context menu of the grid's cells**,
+  and an image **dropped onto the search box**; an image with no embedding is embedded on the spot.
+- The text model is **released after a few minutes unused**.
+- `OcrPass` / `OcrPasses` **renamed** `ContentPass` / `ContentPasses`, in a commit of their own.
+- New question, from the face detection's design: **forgetting** the visual analysis, like *Forget
+  faces…*.
+
 ---
 
 ## Implementation Log
@@ -368,10 +397,13 @@ Questions asked by the agent during design, with user responses.
 | 11 | Tags and caption: sure, weak, or a grade of their own? | A grade of their own, after every OCR grade, before the similarity tier | 2026-10-27 |
 | 12 | Tags matched as whole words, or by substring like the OCR texts? | First asking: substring. Asked again: **substring, but a whole word ranks higher** | 2026-10-27 |
 | 13 | Similarity tier under a user sort order: always by score, or sorted like the others? | First asking: no preference. Asked again: always by score | 2026-10-27 |
-| 14 | Similarity threshold: fixed constant, top-N, or ⚙ setting? | | 2026-10-27 |
-| 15 | Similar images: other entry points than the tile menu (a grid cell, a drop onto the search box)? | | 2026-10-27 |
-| 16 | Text model lifetime: kept loaded while the app runs, or released after a while unused? | | 2026-10-27 |
-| 17 | Rename `OcrPass` / `OcrPasses` to `ContentPass`, or keep the names? | | 2026-10-27 |
+| 14 | Similarity threshold: fixed constant, top-N, or ⚙ setting? | Top N | 2026-10-27 |
+| 15 | Similar images: other entry points than the tile menu (a grid cell, a drop onto the search box)? | All three: the tile menu, a grid cell's context menu, a drop onto the search box | 2026-10-27 |
+| 16 | Text model lifetime: kept loaded while the app runs, or released after a while unused? | Released after a while unused | 2026-10-27 |
+| 17 | Rename `OcrPass` / `OcrPasses` to `ContentPass`, or keep the names? | Rename | 2026-10-27 |
+| 18 | Pass order: where do Vision and Caption run among Windows OCR, faces, RapidOCR, Inverted, Ring? | | 2026-10-27 |
+| 19 | Forgetting: a ⚙ *Forget visual analysis…* entry, like the faces'? | | 2026-10-27 |
+| 20 | Test project, or hand checks only like the face detection? | | 2026-10-27 |
 
 ---
 
