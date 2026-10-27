@@ -14,15 +14,29 @@ namespace ImageGridFusion.UI;
 /// query word found there, folded. <paramref name="Size"/>: the file's size in bytes when the list
 /// knows it — the index's, the folder listing's. <paramref name="Preset"/>: an effect preset of the file,
 /// its own tile; <paramref name="DescriptionWord"/>: for a preset a search found by its description, the
-/// first query word found there, folded.
+/// first query word found there, folded. In the People view (workfiles/20261027-face-detection.md):
+/// <paramref name="GroupId"/>, a face group's tile — its best face's file in <paramref name="FullPath"/>,
+/// its files counted in <paramref name="Count"/>; <paramref name="Face"/>, the face whose picture the tile
+/// shows, cut out of the file; <paramref name="FaceKey"/>, the face the tile stands for — dragged onto a
+/// group, removed from one.
 /// </summary>
-internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false, string? ContentWord = null, long? Size = null, int? Count = null, EffectPreset? Preset = null, string? DescriptionWord = null)
+internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false, string? ContentWord = null, long? Size = null, int? Count = null, EffectPreset? Preset = null, string? DescriptionWord = null, string? GroupId = null, RectangleF? Face = null, string? FaceKey = null)
 {
-    /// <summary>What tells a tile from the others: a file's presets share its path.</summary>
-    public string Key => this.Preset?.Id ?? this.FullPath;
+    /// <summary>What tells a tile from the others: a file's presets share its path, and its faces.</summary>
+    public string Key => this.GroupId is { } group ? "group:" + group : this.FaceKey ?? this.Preset?.Id ?? this.FullPath;
 
-    /// <summary>The tile's tooltip: its path, after a preset's description.</summary>
-    public string Tip => this.Preset is { Description.Length: > 0 } preset ? $"{preset.Description.Trim()}\n\n{this.FullPath}" : this.FullPath;
+    /// <summary>A face group's tile: no heart, opened rather than added.</summary>
+    public bool IsGroup => this.GroupId is not null;
+
+    /// <summary>A file's tile — its heart, its copies, its drag into a cell — rather than a folder's or a group's.</summary>
+    public bool IsFile => !this.IsFolder && !this.IsGroup;
+
+    /// <summary>What its picture is asked for by: its file's thumbnail, or a face cut out of it.</summary>
+    public string ThumbnailKey => this.Face is { } face ? FaceCrops.Key(this.FullPath, face) : this.FullPath;
+
+    /// <summary>The tile's tooltip: its path, after a preset's description; a group's name and files.</summary>
+    public string Tip => this.IsGroup ? $"{this.Name}\n{(this.Count == 1 ? "1 file" : $"{this.Count:N0} files")}"
+        : this.Preset is { Description.Length: > 0 } preset ? $"{preset.Description.Trim()}\n\n{this.FullPath}" : this.FullPath;
 
     /// <summary>The name with the file count after it, as a Details row shows a folder.</summary>
     public string NameAndCount => this.Count is { } count ? $"{this.Name} ({count:N0})" : this.Name;
@@ -127,6 +141,8 @@ internal sealed class ThumbnailGrid : ScrollableControl
     private int _hovered = -1;
     private int _pressed = -1;
     private Point _pressedAt;
+    private string? _dropTarget;
+    private Font? _groupFont;
 
     public ThumbnailGrid()
     {
@@ -164,6 +180,38 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
     /// <summary>Backspace or Alt+↑: the parent folder is asked for.</summary>
     public event EventHandler? UpRequested;
+
+    /// <summary>F2 on the selected tile: its renaming is asked for — a face group's.</summary>
+    public event EventHandler<ExplorerRow>? RenameRequested;
+
+    /// <summary>
+    /// The tile a drag hovers as its drop target — a face group, in the People view — outlined and
+    /// tinted; null for none. See workfiles/20261027-face-detection.md § Decisions.
+    /// </summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public string? DropTargetKey
+    {
+        get => this._dropTarget;
+        set
+        {
+            if (value == this._dropTarget)
+            {
+                return;
+            }
+
+            foreach (string? key in new[] { this._dropTarget, value })
+            {
+                int index = key is null ? -1 : this.IndexOfKey(key);
+                if (index >= 0)
+                {
+                    this.Invalidate(this.Scrolled(this.CellBounds(index)));
+                }
+            }
+
+            this._dropTarget = value;
+        }
+    }
 
     /// <summary>Whether a file is a favorite: its heart is drawn full.</summary>
     [Browsable(false)]
@@ -359,6 +407,16 @@ internal sealed class ThumbnailGrid : ScrollableControl
         }
     }
 
+    /// <summary>Selects the tile of a key (<see cref="ExplorerRow.Key"/>), scrolled into view; nothing when it is not loaded.</summary>
+    public void SelectKey(string key)
+    {
+        int index = this.IndexOfKey(key);
+        if (index >= 0)
+        {
+            this.Select(index);
+        }
+    }
+
     /// <summary>Repaints a tile, e.g. when its heart changed.</summary>
     public void InvalidateRow(ExplorerRow row)
     {
@@ -382,6 +440,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
             this._bulbFont.Dispose();
             this._detailsHeartFont?.Dispose();
             this._detailsBulbFont?.Dispose();
+            this._groupFont?.Dispose();
         }
 
         base.Dispose(disposing);
@@ -421,6 +480,8 @@ internal sealed class ThumbnailGrid : ScrollableControl
         var bulb = this._bulbFont;
         this._bulbFont = this.MakeBulbFont();
         bulb.Dispose();
+        this._groupFont?.Dispose();
+        this._groupFont = null;
 
         // A Details row is as tall as its two lines of text at least: laid out again, its medallions'
         // fonts made again from the new ones.
@@ -447,6 +508,13 @@ internal sealed class ThumbnailGrid : ScrollableControl
             e.Handled = true;
             e.SuppressKeyPress = true;
             UpRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
+        if (e.KeyData == Keys.F2 && this.SelectedRow is { } renamed)
+        {
+            e.Handled = true;
+            this.RenameRequested?.Invoke(this, renamed);
             return;
         }
 
@@ -782,6 +850,19 @@ internal sealed class ThumbnailGrid : ScrollableControl
         bool selected = index == _selected;
         this.PaintPicture(g, index, selected);
 
+        // A face group's name in bold under its picture, its file count on it.
+        if (row.IsGroup)
+        {
+            TextRenderer.DrawText(
+                g,
+                row.Name,
+                this.GroupFont,
+                this.Scrolled(this.NameBounds(index)),
+                selected ? SystemColors.Highlight : SystemColors.ControlText,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+            return;
+        }
+
         // A folder's name is drawn on the folder: its file count goes below.
         TextRenderer.DrawText(
             g,
@@ -834,7 +915,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         const TextFormatFlags LineFlags = TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding;
         var line = new Rectangle(left, cell.Y, width, this.LineH);
         int nameWidth = width;
-        if (!row.IsFolder)
+        if (row.IsFile)
         {
             string size = FileSizes.Text(this.SizeOf(row));
             int sizeWidth = TextRenderer.MeasureText(g, size, this._nameFont, Size.Empty, LineFlags).Width;
@@ -1018,6 +1099,12 @@ internal sealed class ThumbnailGrid : ScrollableControl
     {
         var row = _rows[index];
         var tile = Scrolled(TileBounds(index));
+        if (row.IsGroup)
+        {
+            this.PaintGroupPicture(g, index, tile, selected);
+            return;
+        }
+
         if (!row.IsFolder)
         {
             Checkerboard.Fill(g, tile);
@@ -1025,7 +1112,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
         // Loaded at its bucket's size: scaled to the tile — enlarged when smaller — its proportions kept,
         // centered. A folder Windows has no thumbnail for gets a drawn folder.
-        bool known = _thumbnails.TryGet(row.FullPath, out var image);
+        bool known = _thumbnails.TryGet(row.ThumbnailKey, out var image);
         Rectangle? drawn = null;
         Rectangle? flap = null;
         if (known && image is null && row.IsFolder)
@@ -1058,6 +1145,8 @@ internal sealed class ThumbnailGrid : ScrollableControl
             using var pen = new Pen(border, selected ? 2 : 1);
             g.DrawRectangle(pen, selected ? Rectangle.Inflate(tile, -1, -1) : new Rectangle(tile.X, tile.Y, tile.Width - 1, tile.Height - 1));
         }
+
+        this.PaintDropTarget(g, row, tile);
 
         // Favorites never hold folders: a folder tile has no heart.
         if (!row.IsFolder)
@@ -1106,6 +1195,73 @@ internal sealed class ThumbnailGrid : ScrollableControl
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         }
     }
+
+    /// <summary>
+    /// A face group's picture — a tile meaning "a group", not drawn as a folder: its best face over two
+    /// cards stacked behind it, up and to the right, and its file count in a dark label at its bottom
+    /// right. Outlined while hovered or selected, as a file; no heart. See
+    /// workfiles/20261027-face-detection.md § People View.
+    /// </summary>
+    private void PaintGroupPicture(Graphics g, int index, Rectangle tile, bool selected)
+    {
+        var row = this._rows[index];
+        int step = Math.Max(2, this.LogicalToDeviceUnits(4));
+        var picture = new Rectangle(tile.X, tile.Y + 2 * step, tile.Width - 2 * step, tile.Height - 2 * step);
+        for (int card = 2; card >= 1; card--)
+        {
+            var back = picture with { X = picture.X + card * step, Y = picture.Y - card * step };
+            g.FillRectangle(card == 2 ? SystemBrushes.ControlLight : SystemBrushes.Control, back);
+            g.DrawRectangle(SystemPens.ControlDark, new Rectangle(back.X, back.Y, back.Width - 1, back.Height - 1));
+        }
+
+        g.FillRectangle(SystemBrushes.ControlDark, picture);
+        if (this._thumbnails.TryGet(row.ThumbnailKey, out var image) && image is not null)
+        {
+            // Covering the card, its middle kept: the crop is cut at the tile's own shape already.
+            double scale = Math.Max((double)picture.Width / image.Width, (double)picture.Height / image.Height);
+            double w = picture.Width / scale;
+            double h = picture.Height / scale;
+            var source = new RectangleF((float)((image.Width - w) / 2), (float)((image.Height - h) / 2), (float)w, (float)h);
+            g.DrawImage(image, picture, source, GraphicsUnit.Pixel);
+        }
+
+        var border = selected ? SystemColors.Highlight : index == this._hovered ? SystemColors.HotTrack : SystemColors.ControlDark;
+        using (var pen = new Pen(border, selected ? 2 : 1))
+        {
+            g.DrawRectangle(pen, selected ? Rectangle.Inflate(picture, -1, -1) : new Rectangle(picture.X, picture.Y, picture.Width - 1, picture.Height - 1));
+        }
+
+        if (row.Count is { } count)
+        {
+            string text = FileCount(count);
+            const TextFormatFlags Flags = TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding;
+            var size = TextRenderer.MeasureText(g, text, this._nameFont, Size.Empty, Flags);
+            int pad = this.LogicalToDeviceUnits(3);
+            int inset = this.LogicalToDeviceUnits(MedallionInset);
+            var label = new Rectangle(picture.Right - inset - size.Width - 2 * pad, picture.Bottom - inset - size.Height - pad, size.Width + 2 * pad, size.Height + pad);
+            using var fill = new SolidBrush(Color.FromArgb(200, 24, 24, 24));
+            g.FillRectangle(fill, label);
+            TextRenderer.DrawText(g, text, this._nameFont, label, Color.White, Flags | TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+        }
+
+        this.PaintDropTarget(g, row, picture);
+    }
+
+    /// <summary>The tile a drag would drop onto: a thick highlight outline over a faint tint.</summary>
+    private void PaintDropTarget(Graphics g, ExplorerRow row, Rectangle picture)
+    {
+        if (this._dropTarget is null || row.Key != this._dropTarget)
+        {
+            return;
+        }
+
+        using var tint = new SolidBrush(Color.FromArgb(60, SystemColors.Highlight));
+        g.FillRectangle(tint, picture);
+        using var pen = new Pen(SystemColors.Highlight, this.LogicalToDeviceUnits(3)) { Alignment = PenAlignment.Inset };
+        g.DrawRectangle(pen, picture);
+    }
+
+    private Font GroupFont => this._groupFont ??= new Font(this._nameFont, FontStyle.Bold);
 
     /// <summary>
     /// A manila folder centered in the tile, its tab at the top left, 90 % of the tile at its 4:3 shape;
@@ -1498,7 +1654,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         return index < _rows.Count ? index : -1;
     }
 
-    private bool OnHeart(int index, Point client) => index >= 0 && !_rows[index].IsFolder && HeartBounds(index).Contains(Unscrolled(client));
+    private bool OnHeart(int index, Point client) => index >= 0 && _rows[index].IsFile && HeartBounds(index).Contains(Unscrolled(client));
 
     private int IndexOf(string path)
     {
@@ -1526,12 +1682,12 @@ internal sealed class ThumbnailGrid : ScrollableControl
         return -1;
     }
 
-    // Every tile of the path: a file's presets show its thumbnail too.
-    private void InvalidateTileOf(string path)
+    // Every tile of the thumbnail: a file's presets show its thumbnail too.
+    private void InvalidateTileOf(string key)
     {
         for (int i = 0; i < this._rows.Count; i++)
         {
-            if (string.Equals(this._rows[i].FullPath, path, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(this._rows[i].ThumbnailKey, key, StringComparison.OrdinalIgnoreCase))
             {
                 this.Invalidate(this.Scrolled(this.CellBounds(i)));
             }
@@ -1843,6 +1999,9 @@ internal sealed class ThumbnailGrid : ScrollableControl
                     if (_disposed || _queue.Count == 0)
                     {
                         _working = false;
+
+                        // The faces' last file decoded: its memory given back once the tiles are loaded.
+                        FaceCrops.Release();
                         return;
                     }
 
@@ -1854,9 +2013,17 @@ internal sealed class ThumbnailGrid : ScrollableControl
                 Bitmap? image = null;
                 try
                 {
-                    // A folder at its own size, the only one Windows always gives with its transparency.
-                    using var thumbnail = Directory.Exists(path) ? ShellThumbnail.TryLoadFolder(path) : ShellThumbnail.TryLoad(path, side);
-                    image = thumbnail is null ? null : Fit(thumbnail, box);
+                    // A face cut out of its file, read from the full image; a folder at its own size, the
+                    // only one Windows always gives with its transparency.
+                    if (FaceCrops.TryParse(path, out string file, out var face))
+                    {
+                        image = FaceCrops.Load(file, face, box);
+                    }
+                    else
+                    {
+                        using var thumbnail = Directory.Exists(path) ? ShellThumbnail.TryLoadFolder(path) : ShellThumbnail.TryLoad(path, side);
+                        image = thumbnail is null ? null : Fit(thumbnail, box);
+                    }
                 }
                 catch (Exception ex) when (ex is ExternalException or ArgumentException or OutOfMemoryException)
                 {
