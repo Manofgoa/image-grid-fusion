@@ -613,6 +613,51 @@ How the content search reads the images and PDF pages (origin:
   code touches ONNX Runtime or SkiaSharp**: another `libSkiaSharp.dll` on the `PATH` would be loaded
   otherwise.
 - Without the engine the RapidOCR pass is skipped, its bar hidden; the others run.
+- The **face pass** runs in the same worker, right after the Windows pass and before RapidOCR — § People.
+
+## People
+
+The faces of the indexed images grouped into people, in the file explorer's **People view** (origin:
+`workfiles/20261027-face-detection.md`):
+
+- **Opt-in**: the face analysis is **off by default**, an app setting of the ⚙ menu (*Face analysis*,
+  `AppSettings.FaceAnalysis`); every face, embedding and decision stays on this machine. *Forget faces…*
+  deletes `index\files.faces` and `people.json` after a confirmation and turns the analysis off.
+- **The face engine is never shipped**: YuNet (detection, MIT) and SFace (recognition, Apache 2.0), two
+  OpenCV Zoo models, downloaded on demand into **`face-engine\` next to the exe** (`FaceEngineFiles`) —
+  pinned URLs, each checked against its SHA-256 — offered when the analysis is turned on, from the ⚙ menu
+  and from the People view while missing; nothing downloaded without that **Yes**. They run on the OCR
+  engine's ONNX Runtime DLL, fetched into `ocr-engine\` with them when missing. The non-commercial models
+  (InsightFace) are never used.
+- **The face pass** (`FileExplorerPanel.ExtractFaces`): over every image and PDF of the index — the pixels
+  the OCR reads (`ContentExtractor.DecodePixels`), videos left out — with the OCR passes' pause rule and
+  save cadence, its own bar. Per file: YuNet on the image fitted into 640 × 640, faces from
+  `FaceAnalyzer.MinScore` and `MinFaceSide` kept, each aligned from its 5 landmarks onto SFace's template
+  and embedded (`FaceAnalyzer`).
+- **The face index** is a file of its own, `index\files.faces` (`FaceIndex`), never a slot of
+  `files.content`: binary, versioned, per file its stamp and its faces; a file with no face is kept, so it
+  is not analysed again until it changes.
+- **Groups are computed, never stored** (`FaceGrouping.Compute`): from the faces and the user's decisions,
+  every time either changes, off the UI thread. Two faces are one person from
+  `FaceGrouping.SameThreshold` — a fixed constant, no setting. A group of one face is no group: that face
+  is listed alone.
+- **A decision is stored on faces, never on a computed group** (`People`, `people.json` next to the exe):
+  a person's **pinned** faces — key and a copy of the embedding, so it survives its files moving — its
+  **excluded** faces, its name, hidden flag, and the person it was **merged into**. A merge is a link
+  (`mergedInto`), each person keeping its faces: un-merging restores it exactly; sub-groups are one level
+  deep. Acting on an unnamed group first makes it a person, its faces pinned. A face key is its file's
+  full path and its box rounded (`FaceKeys`).
+- **The view**: a third view of the file explorer, picked in its **views drop-down** (`ExplorerMode`,
+  saved by name, the older folder-view flag read as before): the groups — named A→Z, then the larger
+  first — a tile for the hidden ones, then the faces alone as file tiles showing the face cut out of their
+  file (`FaceCrops`). A group opened lists its sub-groups, then every file of it and of them.
+- **Decisions by drag and drop and context menu**: a face onto a group joins it; a group onto another
+  merges after a confirmation; *Un-merge* on a sub-group; *Not <name>* on a file of an open group; *Hide*
+  / *Unhide*; *Rename…* or F2. User actions write `people.json`, a `--new-instance` too. Out of the undo
+  history.
+- **Search by name**: under **Aa**, a person's name finds their files in their own tier — after the
+  presets' descriptions, before the content matches (`FileSearch.SearchPeople`) — the hidden people left
+  out, in the folder view those below the open folder.
 
 ## App Settings
 
