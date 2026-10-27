@@ -1,0 +1,1052 @@
+# Image Grid Fusion — the tags' vocabulary (workfiles/20261027-image-content-analysis.md § Tags).
+# One concept a line: its French words | its English words [| the prompt it is embedded with].
+# Several words of a language are separated by commas; the first English word makes the prompt
+# "a photo of <word>." unless a prompt is given. A line starting with # is a comment.
+
+# Animals
+chien | dog
+chiot | puppy
+chat | cat
+chaton | kitten
+cheval | horse
+poney | pony
+vache | cow
+taureau | bull
+veau | calf
+mouton | sheep
+agneau | lamb
+chèvre | goat
+cochon | pig
+âne | donkey
+lapin | rabbit
+hamster | hamster
+cochon d'inde | guinea pig
+souris | mouse | a photo of a mouse, the animal.
+rat | rat
+écureuil | squirrel
+hérisson | hedgehog
+renard | fox
+loup | wolf
+ours | bear
+ours polaire | polar bear
+panda | panda
+koala | koala
+kangourou | kangaroo
+singe | monkey
+gorille | gorilla
+chimpanzé | chimpanzee
+lion | lion
+tigre | tiger
+léopard | leopard
+guépard | cheetah
+éléphant | elephant
+girafe | giraffe
+zèbre | zebra
+rhinocéros | rhinoceros
+hippopotame | hippopotamus
+chameau | camel
+lama | llama
+cerf | deer
+élan | moose
+sanglier | wild boar
+blaireau | badger
+raton laveur | raccoon
+chauve-souris | bat | a photo of a bat, the animal.
+oiseau | bird
+oiseaux | birds
+moineau | sparrow
+pigeon | pigeon
+corbeau | crow
+mouette | seagull
+aigle | eagle
+hibou, chouette | owl
+perroquet | parrot
+pingouin, manchot | penguin
+canard | duck
+cygne | swan
+oie | goose
+poule | chicken | a photo of a chicken, the bird.
+coq | rooster
+dinde | turkey | a photo of a turkey, the bird.
+paon | peacock
+flamant rose | flamingo
+colibri | hummingbird
+poisson | fish
+poisson rouge | goldfish
+requin | shark
+baleine | whale
+dauphin | dolphin
+phoque | seal | a photo of a seal, the animal.
+pieuvre | octopus
+méduse | jellyfish
+crabe | crab
+homard | lobster
+crevette | shrimp
+tortue | turtle
+grenouille | frog
+serpent | snake
+lézard | lizard
+crocodile | crocodile
+dinosaure | dinosaur
+insecte | insect
+papillon | butterfly
+abeille | bee
+guêpe | wasp
+fourmi | ant
+coccinelle | ladybug
+araignée | spider
+toile d'araignée | spider web
+escargot | snail
+libellule | dragonfly
+moustique | mosquito
+mouche | fly | a photo of a fly, the insect.
+scarabée | beetle
+ver | worm
+animal | animal
+animaux | animals
+animal de compagnie | pet
+troupeau | herd
+aquarium | aquarium
+zoo | zoo
+
+# People
+personne | person
+gens, foule | people, crowd
+homme | man
+femme | woman
+garçon | boy
+fille | girl
+enfant | child
+enfants | children
+bébé | baby
+adolescent | teenager
+personne âgée | elderly person
+couple | couple
+famille | family
+amis | friends
+selfie | selfie
+portrait | portrait
+visage | face
+sourire | smile
+yeux | eyes
+main | hand
+mains | hands
+pied | foot
+cheveux | hair
+barbe | beard
+tatouage | tattoo
+groupe de personnes | group of people
+mariage | wedding
+mariée | bride
+marié | groom
+fête | party
+anniversaire | birthday
+concert | concert
+spectacle | show, performance
+réunion | meeting
+conférence | conference
+manifestation | protest
+défilé | parade
+danseur, danse | dancer, dancing
+musicien | musician
+chanteur | singer
+sportif, athlète | athlete
+policier | police officer
+pompier | firefighter
+médecin | doctor
+infirmière | nurse
+soldat | soldier
+cuisinier | cook, chef
+ouvrier | worker
+astronaute | astronaut
+clown | clown
+mannequin | fashion model
+bodybuilder | bodybuilder
+déguisement | costume
+uniforme | uniform
+
+# Clothes and accessories
+vêtements | clothes
+robe | dress
+jupe | skirt
+pantalon | trousers, pants
+jean | jeans
+short | shorts
+chemise | shirt
+t-shirt | t-shirt
+pull | sweater
+veste | jacket
+manteau | coat
+costume | suit | a photo of a suit, the clothing.
+cravate | tie
+chapeau | hat
+casquette | cap
+bonnet | beanie
+casque | helmet
+lunettes | glasses
+lunettes de soleil | sunglasses
+chaussures | shoes
+baskets | sneakers
+bottes | boots
+sandales | sandals
+talons hauts | high heels
+chaussettes | socks
+gants | gloves
+écharpe | scarf
+sac à main | handbag
+sac à dos | backpack
+valise | suitcase
+montre | watch | a photo of a wristwatch.
+bijoux | jewelry
+collier | necklace
+bague | ring | a photo of a ring, the jewelry.
+boucles d'oreilles | earrings
+bracelet | bracelet
+maillot de bain | swimsuit
+pyjama | pajamas
+masque | mask
+perruque | wig
+parapluie | umbrella
+couronne | crown
+maquillage | makeup
+
+# Food and drink
+nourriture | food
+repas | meal
+petit déjeuner | breakfast
+déjeuner, dîner | lunch, dinner
+pain | bread
+baguette | baguette
+croissant | croissant
+fromage | cheese
+beurre | butter
+œuf, œufs | egg, eggs
+lait | milk
+yaourt | yogurt
+viande | meat
+steak | steak
+poulet rôti | roast chicken
+jambon | ham
+saucisse | sausage
+bacon | bacon
+poisson cuisiné | fish dish
+sushi | sushi
+pâtes | pasta
+spaghetti | spaghetti
+riz | rice
+nouilles | noodles
+soupe | soup
+salade | salad
+sandwich | sandwich
+hamburger, burger | hamburger, burger
+frites | french fries
+pizza | pizza
+tacos | tacos
+hot-dog | hot dog
+kebab | kebab
+crêpe | crepe, pancake
+gaufre | waffle
+gâteau | cake
+gâteau d'anniversaire | birthday cake
+tarte | pie
+cupcake | cupcake
+cookie, biscuit | cookie
+chocolat | chocolate
+bonbons | candy
+glace | ice cream
+donut | donut
+dessert | dessert
+fruits | fruit
+pomme | apple
+poire | pear
+banane | banana
+orange | orange | a photo of an orange, the fruit.
+citron | lemon
+fraise | strawberry
+cerise | cherry
+raisin | grapes
+pastèque | watermelon
+melon | melon
+ananas | pineapple
+mangue | mango
+pêche | peach
+abricot | apricot
+kiwi | kiwi
+noix de coco | coconut
+avocat | avocado
+myrtilles | blueberries
+framboise | raspberry
+légumes | vegetables
+tomate | tomato
+carotte | carrot
+pomme de terre | potato
+oignon | onion
+ail | garlic
+salade verte, laitue | lettuce
+chou | cabbage
+brocoli | broccoli
+concombre | cucumber
+poivron | bell pepper
+piment | chili pepper
+champignon | mushroom
+maïs | corn
+petits pois | peas
+haricots | beans
+courgette | zucchini
+aubergine | eggplant
+citrouille | pumpkin
+noix | nuts
+épices | spices
+sauce | sauce
+miel | honey
+confiture | jam
+boisson | drink
+eau | water | a photo of a glass of water.
+café | coffee
+thé | tea
+jus | juice
+soda | soda
+bière | beer
+vin | wine
+vin rouge | red wine
+champagne | champagne
+cocktail | cocktail
+whisky | whisky
+bouteille | bottle
+verre | glass | a photo of a drinking glass.
+tasse | cup
+mug | mug
+assiette | plate
+bol | bowl
+fourchette | fork
+couteau | knife
+cuillère | spoon
+baguettes | chopsticks
+casserole | pan
+poêle | frying pan
+four | oven
+barbecue | barbecue
+pique-nique | picnic
+restaurant | restaurant
+cuisine | kitchen
+marché | market
+supermarché | supermarket
+boulangerie | bakery
+recette | recipe
+
+# Nature and landscapes
+paysage | landscape
+nature | nature
+montagne | mountain
+montagnes | mountains
+colline | hill
+volcan | volcano
+falaise | cliff
+rocher | rock
+grotte | cave
+canyon | canyon
+désert | desert
+dune | sand dune
+plage | beach
+sable | sand
+mer | sea
+océan | ocean
+vague, vagues | wave, waves
+côte | coast
+île | island
+lac | lake
+rivière | river
+cascade | waterfall
+étang | pond
+marais | swamp
+glacier | glacier
+forêt | forest
+jungle | jungle
+bois | woods
+arbre | tree
+arbres | trees
+palmier | palm tree
+sapin | fir tree
+feuille, feuilles | leaf, leaves
+branche | branch
+tronc | tree trunk
+racines | roots
+herbe | grass
+prairie | meadow
+champ | field
+champ de blé | wheat field
+vigne | vineyard
+jardin | garden
+parc | park
+fleur | flower
+fleurs | flowers
+bouquet | bouquet
+rose | rose | a photo of a rose, the flower.
+tulipe | tulip
+tournesol | sunflower
+marguerite | daisy
+lavande | lavender
+orchidée | orchid
+lys | lily
+cactus | cactus
+plante | plant
+plante verte | houseplant
+mousse | moss
+champignons | mushrooms in the forest
+ciel | sky
+nuage | cloud
+nuages | clouds
+ciel bleu | blue sky
+soleil | sun
+lever de soleil | sunrise
+coucher de soleil | sunset
+crépuscule | dusk
+nuit | night
+lune | moon
+étoiles | stars
+ciel étoilé | starry sky
+voie lactée | milky way
+aurore boréale | aurora, northern lights
+arc-en-ciel | rainbow
+pluie | rain
+orage, tempête | storm
+éclair | lightning
+brouillard | fog
+neige | snow
+glace | ice
+givre | frost
+tornade | tornado
+inondation | flood
+incendie, feu | fire
+fumée | smoke
+flamme | flame
+paysage d'hiver | winter landscape
+automne | autumn
+printemps | spring
+été | summer
+hiver | winter
+eau | water
+reflet | reflection
+sous l'eau | underwater
+récif de corail | coral reef
+espace | outer space
+planète | planet
+terre | earth | a photo of the planet earth.
+galaxie | galaxy
+nébuleuse | nebula
+éclipse | eclipse
+
+# City and buildings
+ville | city
+rue | street
+route | road
+autoroute | highway
+pont | bridge
+tunnel | tunnel
+carrefour | intersection
+trottoir | sidewalk
+place | square | a photo of a town square.
+quartier | neighborhood
+village | village
+campagne | countryside
+banlieue | suburb
+bâtiment | building
+immeuble | apartment building
+gratte-ciel | skyscraper
+maison | house
+chalet | chalet
+cabane | cabin
+ferme | farm
+grange | barn
+château | castle
+palais | palace
+église | church
+cathédrale | cathedral
+mosquée | mosque
+temple | temple
+synagogue | synagogue
+monument | monument
+statue | statue
+tour | tower
+tour eiffel | eiffel tower
+phare | lighthouse
+moulin | windmill
+ruines | ruins
+pyramide | pyramid
+musée | museum
+école | school
+université | university
+hôpital | hospital
+gare | train station
+aéroport | airport
+port | harbor
+stade | stadium
+usine | factory
+centrale | power plant
+chantier | construction site
+magasin | shop, store
+vitrine | shop window
+centre commercial | shopping mall
+bar | bar | a photo of a bar, the place.
+café, terrasse | cafe
+hôtel | hotel
+bureau | office
+parking | parking lot
+station-service | gas station
+fontaine | fountain
+mur | wall
+graffiti | graffiti
+porte | door
+fenêtre | window
+toit | roof
+escalier | stairs
+balcon | balcony
+clôture | fence
+jardin public | public garden
+cimetière | cemetery
+architecture | architecture
+skyline | skyline
+ville la nuit | city at night
+paris | paris
+new york | new york
+londres | london
+venise | venice
+rome | rome
+tokyo | tokyo
+
+# Home and objects
+intérieur | interior
+salon | living room
+chambre | bedroom
+salle de bain | bathroom
+toilettes | toilet
+salle à manger | dining room
+bureau, espace de travail | desk, workspace
+grenier | attic
+cave | cellar
+garage | garage
+meuble | furniture
+canapé | sofa
+fauteuil | armchair
+chaise | chair
+table | table
+lit | bed
+armoire | wardrobe
+étagère | shelf
+bibliothèque | bookshelf
+lampe | lamp
+lustre | chandelier
+bougie | candle
+miroir | mirror
+tapis | rug
+rideaux | curtains
+coussin | cushion
+couverture | blanket
+oreiller | pillow
+horloge | clock
+réveil | alarm clock
+vase | vase
+cadre | picture frame
+tableau, peinture | painting
+poster, affiche | poster
+plante en pot | potted plant
+cheminée | fireplace
+radiateur | radiator
+réfrigérateur, frigo | refrigerator
+micro-ondes | microwave
+lave-linge | washing machine
+aspirateur | vacuum cleaner
+fer à repasser | iron | a photo of a clothes iron.
+évier | sink
+baignoire | bathtub
+douche | shower
+serviette | towel
+brosse à dents | toothbrush
+savon | soap
+parfum | perfume
+clé, clés | key, keys
+cadenas | padlock
+boîte | box
+carton | cardboard box
+sac | bag
+panier | basket
+jouet | toy
+jouets | toys
+peluche, nounours | teddy bear
+poupée | doll
+lego | lego
+ballon | balloon
+puzzle | jigsaw puzzle
+jeu de société | board game
+cartes à jouer | playing cards
+dés | dice
+échecs, échiquier | chess, chessboard
+livre | book
+livres | books
+cahier | notebook
+stylo | pen
+crayon | pencil
+ciseaux | scissors
+règle | ruler
+gomme | eraser
+pinceau | paintbrush
+peinture | paint
+outils | tools
+marteau | hammer
+tournevis | screwdriver
+clé à molette | wrench
+perceuse | drill
+scie | saw
+échelle | ladder
+corde | rope
+chaîne | chain
+seau | bucket
+balai | broom
+poubelle | trash can
+déchets | garbage
+argent, billets | money, banknotes
+pièces | coins
+carte bancaire | credit card
+cadeau | gift, present
+ruban | ribbon
+drapeau | flag
+sapin de noël | christmas tree
+décoration de noël | christmas decoration
+guirlande | garland
+lanterne | lantern
+feu d'artifice | fireworks
+citrouille d'halloween | jack-o'-lantern
+œufs de pâques | easter eggs
+
+# Technology
+ordinateur | computer
+ordinateur portable | laptop
+écran | screen, monitor
+clavier | keyboard
+souris d'ordinateur | computer mouse
+téléphone | phone
+smartphone | smartphone
+tablette | tablet
+télévision | television
+télécommande | remote control
+appareil photo | camera
+caméra | video camera
+objectif | camera lens
+drone | drone
+robot | robot
+console de jeu | game console
+manette | game controller
+casque audio | headphones
+écouteurs | earbuds
+enceinte | speaker | a photo of a loudspeaker.
+microphone | microphone
+câble | cable
+prise | power outlet
+batterie | battery
+ampoule | light bulb
+circuit électronique | circuit board
+processeur | processor, chip
+serveur | server | a photo of computer servers.
+imprimante | printer
+projecteur | projector
+montre connectée | smartwatch
+vélo électrique | electric bike
+panneau solaire | solar panel
+éolienne | wind turbine
+antenne | antenna
+satellite | satellite
+fusée | rocket
+radar | radar
+
+# Transport
+véhicule | vehicle
+voiture | car
+voiture de sport | sports car
+voiture ancienne | vintage car
+voiture électrique | electric car
+taxi | taxi
+camion | truck
+camionnette | van
+bus | bus
+car | coach bus
+tramway | tram
+train | train
+métro | subway
+moto | motorcycle
+scooter | scooter
+vélo | bicycle
+trottinette | kick scooter
+skateboard | skateboard
+avion | airplane
+hélicoptère | helicopter
+montgolfière | hot air balloon
+bateau | boat
+voilier | sailboat
+yacht | yacht
+paquebot | cruise ship
+cargo | cargo ship
+kayak, canoë | kayak, canoe
+sous-marin | submarine
+tracteur | tractor
+ambulance | ambulance
+camion de pompiers | fire truck
+voiture de police | police car
+pneu | tire
+volant | steering wheel
+embouteillage | traffic jam
+feu de circulation | traffic light
+panneau de signalisation | road sign
+plaque d'immatriculation | license plate
+piste | runway
+rails | railway tracks
+parking vélo | bike rack
+station de ski | ski resort
+
+# Sports and leisure
+sport | sport
+football | soccer
+ballon de football | soccer ball
+football américain | american football
+rugby | rugby
+basket | basketball
+tennis | tennis
+badminton | badminton
+volley | volleyball
+handball | handball
+golf | golf
+baseball | baseball
+hockey | hockey
+cyclisme | cycling
+course à pied | running
+marathon | marathon
+natation | swimming
+piscine | swimming pool
+plongée | diving
+surf | surfing
+voile | sailing
+ski | skiing
+snowboard | snowboarding
+patinage | ice skating
+escalade | climbing
+randonnée | hiking
+camping | camping
+tente | tent
+pêche | fishing
+chasse | hunting
+équitation | horse riding
+boxe | boxing
+judo, karaté | martial arts
+yoga | yoga
+musculation | weightlifting
+salle de sport | gym
+gymnastique | gymnastics
+danse classique | ballet
+course automobile | car racing
+formule 1 | formula one
+jeu vidéo | video game
+bowling | bowling
+billard | billiards
+fléchettes | darts
+trophée | trophy
+médaille | medal
+terrain de sport | sports field
+plage de sable | sandy beach
+vacances | vacation
+voyage | travel
+tourisme | tourism
+parc d'attractions | amusement park
+grande roue | ferris wheel
+manège | carousel
+cirque | circus
+cinéma | cinema
+théâtre | theater
+festival | festival
+carnaval | carnival
+musique | music
+guitare | guitar
+guitare électrique | electric guitar
+piano | piano
+violon | violin
+batterie | drum kit
+trompette | trumpet
+saxophone | saxophone
+flûte | flute
+harpe | harp
+accordéon | accordion
+dj | dj
+vinyle | vinyl record
+partition | sheet music
+lecture | reading
+peinture artistique | art painting
+dessin | drawing
+sculpture | sculpture
+photographie | photography
+jardinage | gardening
+bricolage | diy
+couture | sewing
+tricot | knitting
+cuisine maison | home cooking
+
+# Kinds of pictures
+photo | photo
+photo de famille | family photo
+photo de groupe | group photo
+photo de vacances | holiday photo
+photo ancienne | old photo
+photo en noir et blanc | black and white photo
+photo floue | blurry photo
+photo de nuit | night photo
+photo aérienne | aerial photo
+vue aérienne | aerial view
+panorama | panorama
+gros plan | close-up
+macro | macro photo
+silhouette | silhouette
+ombre | shadow
+capture d'écran | screenshot
+capture d'écran de téléphone | phone screenshot
+capture d'écran de site web | website screenshot
+capture d'écran de code | code screenshot
+capture d'écran de jeu | game screenshot
+capture d'écran de discussion | chat screenshot
+tweet | tweet | a screenshot of a tweet.
+publication | social media post
+mème | meme
+gif | animated gif
+emoji | emoji
+dessin animé | cartoon
+bande dessinée | comic
+manga | manga
+anime | anime
+illustration | illustration
+dessin au crayon | pencil drawing
+croquis | sketch
+aquarelle | watercolor painting
+peinture à l'huile | oil painting
+art numérique | digital art
+image de synthèse, 3d | 3d render
+pixel art | pixel art
+fond d'écran | wallpaper
+motif | pattern
+texture | texture
+logo | logo
+icône | icon
+pictogramme | pictogram
+affiche de film | movie poster
+couverture de livre | book cover
+pochette d'album | album cover
+infographie | infographic
+graphique | chart
+diagramme | diagram
+schéma | schema
+tableau de données | table of data
+tableur | spreadsheet
+carte | map
+plan | floor plan
+document | document
+texte | text
+page de texte | page of text
+lettre | letter | a photo of a handwritten letter.
+écriture manuscrite | handwriting
+facture | invoice
+reçu, ticket de caisse | receipt
+formulaire | form
+contrat | contract
+carte de visite | business card
+carte d'identité | id card
+passeport | passport
+billet | ticket
+menu | menu | a photo of a restaurant menu.
+étiquette | label
+code-barres | barcode
+qr code | qr code
+présentation | presentation slide
+tableau blanc | whiteboard
+tableau noir | blackboard
+post-it | sticky note
+calendrier | calendar
+journal | newspaper
+magazine | magazine
+publicité | advertisement
+panneau | sign
+enseigne | storefront sign
+citation | quote | an image of a quote.
+code informatique | source code
+terminal | terminal | a screenshot of a command line terminal.
+interface | user interface
+site web | website
+application mobile | mobile app
+carte du monde | world map
+plan de ville | city map
+radiographie | x-ray
+échographie | ultrasound
+microscope | microscope image
+dessin d'enfant | child's drawing
+collage | collage
+photomontage | photomontage
+grille d'images | image grid
+avant après | before and after
+noir et blanc | black and white
+sépia | sepia
+couleurs vives | vivid colors
+pastel | pastel colors
+minimaliste | minimalist
+abstrait | abstract
+symétrie | symmetry
+flou | blur
+bokeh | bokeh
+lumière | light
+néon | neon lights
+contre-jour | backlight
+paysage urbain | cityscape
+paysage marin | seascape
+nature morte | still life
+autoportrait | self-portrait
+mode | fashion
+défilé de mode | fashion show
+mariage photo | wedding photo
+bébé photo | baby photo
+animal photo | animal photo
+photo de produit | product photo
+photo de nourriture | food photo
+photo de voyage | travel photo
+photo de rue | street photography
+photo de sport | sports photo
+photo de concert | concert photo
+
+# Colors
+rouge | red
+orange, couleur orange | orange color
+jaune | yellow
+vert | green
+bleu | blue
+violet | purple
+rose, couleur rose | pink
+marron | brown
+noir | black
+blanc | white
+gris | gray
+doré | golden
+argenté | silver
+multicolore | colorful
+
+# Health and science
+médicament, pilules | medicine, pills
+seringue | syringe
+masque chirurgical | surgical mask
+ambulance urgence | emergency
+laboratoire | laboratory
+science | science
+expérience scientifique | science experiment
+molécule | molecule
+squelette | skeleton
+crâne | skull
+cerveau | brain
+cœur | heart
+adn | dna
+virus | virus
+bactérie | bacteria
+fauteuil roulant | wheelchair
+béquilles | crutches
+bandage | bandage
+thermomètre | thermometer
+balance | scale | a photo of a weighing scale.
+salle de classe | classroom
+élève | student
+professeur | teacher
+diplôme | diploma
+remise de diplôme | graduation
+mathématiques | mathematics
+équation | equation
+globe | globe
+télescope | telescope
+
+# Work and economy
+travail | work
+bureau d'entreprise | corporate office
+ordinateur au bureau | computer at the office
+réunion d'équipe | team meeting
+poignée de main | handshake
+entretien | interview
+graphique boursier | stock chart
+cryptomonnaie, bitcoin | cryptocurrency, bitcoin
+argent liquide | cash
+banque | bank
+magasin en ligne | online shop
+panier d'achat | shopping cart
+livraison | delivery
+colis | parcel
+entrepôt | warehouse
+ferme agricole | farmland
+agriculture | agriculture
+récolte | harvest
+pêcheur | fisherman
+artisan | craftsman
+atelier | workshop
+construction | construction
+grue | crane | a photo of a construction crane.
+béton | concrete
+briques | bricks
+bois de chauffage | firewood
+mine | mine
+pétrole | oil | a photo of an oil rig.
+électricité | electricity
+pylône | power line pylon
+
+# Events and feelings
+noël | christmas
+halloween | halloween
+pâques | easter
+nouvel an | new year
+saint-valentin | valentine's day
+fête nationale | national day
+pique-nique en famille | family picnic
+naissance | birth
+funérailles | funeral
+amour | love
+bisou | kiss
+câlin | hug
+joie | joy
+rire | laughter
+tristesse | sadness
+colère | anger
+peur | fear
+surprise | surprise
+fatigue | tiredness
+sommeil | sleeping
+pleurer | crying
+chaos | chaos
+calme | calm
+solitude | loneliness
+victoire | victory
+guerre | war
+paix | peace
+religion | religion
+prière | prayer
+politique | politics
+élection | election
+tribunal | court
+prison | prison
+police | police
+armée | army
+char | tank | a photo of a military tank.
+arme | weapon
+pistolet | gun
+épée | sword
+bouclier | shield
+armure | armor
+chevalier | knight
+pirate | pirate
+viking | viking
+sorcière | witch
+fantôme | ghost
+zombie | zombie
+dragon | dragon
+licorne | unicorn
+super-héros | superhero
+extraterrestre | alien
+vampire | vampire
+ange | angel
+diable | devil
+fée | fairy
+magicien | magician

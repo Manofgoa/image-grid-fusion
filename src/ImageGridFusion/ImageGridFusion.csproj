@@ -17,6 +17,11 @@
     <EmbeddedResource Include="app.ico" LogicalName="ImageGridFusion.app.ico" />
   </ItemGroup>
 
+  <!-- The tags' vocabulary (workfiles/20261027-image-content-analysis.md § Tags). -->
+  <ItemGroup>
+    <EmbeddedResource Include="Explorer\VisionTags.txt" LogicalName="ImageGridFusion.Explorer.VisionTags.txt" />
+  </ItemGroup>
+
   <!--
     RapidOCR, the file explorer's second OCR pass (workfiles/20261013-complementary-ocr-passes.md § RapidOCR Download):
     the managed assemblies only. Its models (RapidOcrNet's build target) and the native DLLs of ONNX Runtime and
@@ -27,6 +32,11 @@
     <PackageReference Include="RapidOcrNet" Version="4.2.0" ExcludeAssets="build;buildTransitive" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.29.0" ExcludeAssets="native;build;buildTransitive" />
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.119.1" ExcludeAssets="all" />
+  </ItemGroup>
+
+  <!-- SigLIP 2's tokenizer, Gemma's SentencePiece (workfiles/20261027-image-content-analysis.md § Models): managed only, its model downloaded with the vision engine. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML.Tokenizers" Version="2.0.1" />
   </ItemGroup>
 
   <!-- dotnet publish -c Release: one small .exe, precompiled for fast startup; needs the .NET 10 Desktop Runtime. -->
