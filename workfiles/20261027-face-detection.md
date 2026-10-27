@@ -21,7 +21,7 @@ Delivered in **two phases** of this one workfile:
 | Phase | Delivers |
 |---|---|
 | 1 | The face engine (downloaded on demand), the face pass over the index, the automatic grouping, the People view (person tiles, a person opened as a list of files) |
-| 2 | Naming, merging, removing a face, hiding a person — the decisions kept in `people.json` — and the search by name |
+| 2 | Naming, adding a face to a group, merging and un-merging, removing a face, hiding a person — by drag and drop and context menu, the decisions kept in `people.json` — and the search by name |
 
 What it is not: no face recognition against a known database, no tagging inside the cells, no
 effect on the grid; videos and animated content are out (a GIF's first frame and a PDF's first
@@ -102,11 +102,12 @@ text file loaded whole and scanned by every search, and mean nothing to its exce
   implementation (`FaceGrouping.SameThreshold`).
 - Grouping is computed **from the face index and the user's decisions**, in the background, every
   time either changes — never stored as groups: what is stored are the faces and the decisions.
-- **A decision is stored on faces, never on a group** (phase 2):
-  - a **pinned face** belongs to a person the user acted on (named, merged, hidden) — its face key,
-    its person id, and a copy of its embedding, so the person survives its file moving or the index
-    being rebuilt;
-  - an **excluded face** never joins that person again (the face removed from it).
+- **A decision is stored on faces, never on a computed group** (phase 2):
+  - a **pinned face** belongs to a person the user acted on (named, merged, hidden, a face dropped on
+    it) — its face key, its person id, and a copy of its embedding, so the person survives its file
+    moving or the index being rebuilt;
+  - an **excluded face** never joins that person again (the face removed from it);
+  - a **merge** is a link between two persons (`mergedInto`), each keeping its own pinned faces.
 - The computation: the persons with pinned faces first, each face of the index joining the closest
   one above the threshold (never one it is excluded from); the remaining faces grouped among
   themselves (agglomerative, average linkage) into **unnamed people**.
@@ -117,34 +118,49 @@ text file loaded whole and scanned by every search, and mean nothing to its exce
 
 ## People View
 
-- A **third view** of the file explorer, beside the search view and the folder view; how it is
-  reached: *see Open Questions*. The current view is remembered between sessions, saved by name like
-  `ExplorerView` — an older settings file's folder-view flag read as before.
-- **Person tile**: the person's best face (largest box × score) cropped square from its file with a
-  margin, filling the tile; below it, the name in bold — or *Unnamed* — and the number of files.
-  Order: named people A→Z, then unnamed people by number of files, descending.
-- **Opened** (double-click): the person's files, in the sort order, like an open folder — the
-  breadcrumb `People › <name>`, ↑ back to the people; the files are ordinary tiles (drag into a cell,
-  heart, Details view).
-- Persons seen in a single file: *see Open Questions*.
+- A **third view** of the file explorer, beside the search view and the folder view, reached by a
+  **drop-down of the three views** — *Favorites* / *Folders* / *People* — replacing the 📁 toggle
+  button at the start of the search row. The current view is remembered between sessions, saved by
+  name like `ExplorerView` — an older settings file's folder-view flag read as before.
+- The view lists **face groups first, then the ungrouped faces**:
+  - a **face group** (*dossier visage*) — a person seen in two faces or more — is drawn **like a
+    folder tile in what it means, not in its look**: a tile saying it gathers several files (the
+    person's best face — largest box × score — cropped from its file, filling the tile, a stack /
+    count badge showing it is a group), its name in bold — or *Unnamed* — and its number of files
+    below. Named groups A→Z first, then unnamed groups by number of files, descending.
+  - an **ungrouped face** — a face no other face is close to — is listed **after the groups, as an
+    individual file**: an ordinary file tile (drag into a cell, heart, Details view); its look —
+    whole file or face crop: *see Open Questions*.
+- **Opened** (double-click on a group): like an open folder — the breadcrumb `People › <name>`, ↑ back
+  to the people. It lists:
+  - the groups **merged into it**, as **sub-groups** (one sub-group tile each), first;
+  - then **every file of the group and of all its sub-groups**, as ordinary file tiles, in the sort
+    order — so the merged person's whole content is seen at once.
 - While the face pass has not run (engine missing, or the analysis turned off), the view says why
   and offers what is missing.
-- Searching in the People view filters the person tiles by name; inside an opened person, it searches
-  that person's files, as the folder view searches below its open folder.
+- Searching in the People view filters the groups by name; inside an opened group, it searches that
+  group's files, as the folder view searches below its open folder.
 
 ### Decisions (Phase 2)
 
+All by **drag and drop** inside the People view, or the **context menu** (right click):
+
 | Action | Gesture | Effect |
 |---|---|---|
-| **Name** | *Rename…* on a person tile (context menu), or F2 | The person keeps that name; its faces pinned |
-| **Merge** | *see Open Questions* | Every face of the first person pinned to the second; the name of the target kept, the other's if the target has none |
-| **Remove a face** | *Not <name>* on a file inside an opened person (context menu) | That file's face of this person excluded from it; it goes back to the automatic grouping, never to this person again |
-| **Hide** | *Hide* on a person tile | The person leaves the view; a *Show hidden* toggle in the view lists them, *Unhide* brings one back |
+| **Name** | *Rename…* on a group tile, or F2 | The group keeps that name |
+| **Add a face** | Drag an ungrouped face's tile — or a file tile inside another group — onto a group tile | That face joins the group (pinned to it); dropped on a group, it leaves the one it was in |
+| **Merge** | Drag a group tile onto another group tile | The dragged group becomes a **sub-group** of the target; the target keeps its name, takes the dragged one's if it has none. A group with sub-groups dragged onto another brings them along: they all become sub-groups of the target, flat — a group holds sub-groups one level deep |
+| **Un-merge** | *Un-merge* on a sub-group tile, inside an opened group | The sub-group becomes a group of its own again, as it was before the merge — its name, its faces |
+| **Remove a face** | *Not <name>* on a file inside an opened group | That file's face of this group excluded from it; it goes back to the automatic grouping, never to this group again |
+| **Hide** | *Hide* on a group tile | The group leaves the view; a *Show hidden* entry of the view lists them, *Unhide* brings one back |
 
+- A merge is **kept as a link**, never as faces moved: each group keeps its own faces, the merged one
+  pointing at its target (`mergedInto`), so un-merging restores it exactly.
 - Kept in **`people.json`**, next to the exe, through its own store (`Explorer/People.cs`), on the
-  model of `favorites.json`: a version and a `people` array — id, name, hidden, pinned faces (face key
-  + embedding), excluded face keys — temp-file-then-move save, tolerant load (a bad entry skipped).
-  Written on each user action, by a `--new-instance` too (user actions, as for the favorites).
+  model of `favorites.json`: a version and a `people` array — id, name, hidden, `mergedInto`, pinned
+  faces (face key + embedding), excluded face keys — temp-file-then-move save, tolerant load (a bad
+  entry skipped). Written on each user action, by a `--new-instance` too (user actions, as for the
+  favorites).
 - Out of the undo history (the grid's), like the favorites.
 
 ---
@@ -189,7 +205,8 @@ to pin, whatever the answer:
 | YuNet output decoded into boxes, landmarks and scores (priors per stride, threshold, NMS) | — (pending the Open Question) | — |
 | Alignment: the similarity transform puts the 5 landmarks on SFace's template | — | — |
 | Face index round-trip (version, stamps, zero-face files, embeddings) | — | — |
-| Grouping: threshold, pinned faces first, exclusions honoured, merge = faces re-pinned | — | — |
+| Grouping: threshold, pinned faces first, exclusions honoured, a dropped face joins its group | — | — |
+| Merge as a link: sub-groups one level deep, a composite merged brings its sub-groups, un-merge restores the group as it was | — | — |
 | `people.json` round-trip, tolerant load | — | — |
 | Person tier: rank between description and content, no duplicate file | — | — |
 | Remembered view: the older folder-view flag read as the folder view | — | — |
@@ -203,9 +220,11 @@ Every question the design cannot settle on its own, listed before Iteration 1.
 - [ ] **Opt-in** — is the face analysis off by default, turned on from the ⚙ menu (and offered by the People view), or on as soon as the engine is downloaded?
 - [ ] **Engine folder** — the models in their own `face-engine\` (ONNX Runtime's DLL still taken from `ocr-engine\`, downloaded with them if missing), or everything in `ocr-engine\`?
 - [ ] **Pass order** — the face pass right after the Windows OCR pass (People available early), or after every OCR pass?
-- [ ] **Reaching the view** — a 👤 button next to 📁, the 📁 button cycling through three views, or a drop-down of the three views?
-- [ ] **Single-file persons** — shown like the others, gathered in a last *Others* tile, or not shown?
-- [ ] **Merge gesture** — drag a person tile onto another (with a confirmation) plus *Merge with…* in the context menu, or multi-select then *Merge*?
+- [x] ~~**Reaching the view** — a 👤 button next to 📁, the 📁 button cycling through three views, or a drop-down of the three views?~~ → A drop-down of the three views (Q&A 6)
+- [x] ~~**Single-file persons** — shown like the others, gathered in a last *Others* tile, or not shown?~~ → Groups shown as "face folders"; the ungrouped faces listed after them as individual files (Q&A 7)
+- [x] ~~**Merge gesture** — drag a person tile onto another (with a confirmation) plus *Merge with…* in the context menu, or multi-select then *Merge*?~~ → Drag a group onto another; a merged group shows as a sub-group, every file of both listed; *Un-merge* on a sub-group; a face dragged onto a group joins it (Q&A 7–8)
+- [ ] **Ungrouped face tile** — the whole file, as any file tile, or the face cropped from it (the file's name below)? A file holding two ungrouped faces gives two tiles either way.
+- [ ] **Merge confirmation** — a drop of a group onto another merges at once (un-merge being one right click away), or asks first?
 - [ ] **Forgetting** — a ⚙ entry *Forget faces…* deleting `files.faces` and `people.json` after a confirmation?
 - [ ] **Grouping threshold** — a fixed constant tuned during implementation, or an app setting of the ⚙ menu?
 - [ ] **Test project** — create one for the pure logic (decoder, alignment, face index, grouping, `people.json`, tier), or keep the hand checks only?
@@ -233,6 +252,20 @@ already referenced and its natives downloaded with the OCR engine; a direct down
 decisions follow `favorites.json`'s model; the search by name is one more tier. Proposed: the user's
 decisions are stored **on faces** (pinned / excluded), never on groups, so a regrouping never loses a
 name or a merge.
+
+### Iteration 2 — 2026-10-27
+
+The People view's shape, from the user's answers (Q&A 6–8):
+
+- Reached by a **drop-down** of the three views (Favorites / Folders / People), replacing the 📁 toggle.
+- **Face groups** drawn as tiles meaning "a group", listed first; the **ungrouped faces** after them,
+  as individual files — the *Others* tile is dropped.
+- Everything by **drag and drop**: a face onto a group adds it, a group onto another **merges** it.
+- A merged group shows **inside its target as a sub-group**, and every file of both is listed too;
+  **Un-merge** on a sub-group's context menu restores it. So a merge is now stored as a **link**
+  (`mergedInto`), each group keeping its faces — no longer as faces re-pinned to the target.
+- New questions: the ungrouped face's tile (whole file or face crop), and whether a merge drop asks
+  first.
 
 ---
 
@@ -263,15 +296,17 @@ Questions asked by the agent during design, with user responses.
 | 3 | Which engine? | YuNet + SFace (ONNX, MIT / Apache 2.0), downloaded on demand | 2026-10-27 |
 | 4 | What else, beyond naming and merging? | Removing a face, search by name, hiding a person (videos and GIFs left out) | 2026-10-27 |
 | 5 | Is the subject straightforward or tricky / long? | Tricky / long | 2026-10-27 |
-| 6 | How is the People view reached (👤 button, 📁 cycling, drop-down)? | | 2026-10-27 |
-| 7 | Single-file persons: shown, gathered in *Others*, or not shown? | | 2026-10-27 |
-| 8 | Merge gesture: drag a tile onto another + *Merge with…*, or multi-select + *Merge*? | | 2026-10-27 |
+| 6 | How is the People view reached (👤 button, 📁 cycling, drop-down)? | C — a drop-down of the views | 2026-10-27 |
+| 7 | Single-file persons: shown, gathered in *Others*, or not shown? | The groups show as "folders" (not the folder look, just a way to understand they gather); the other faces are listed after them as individual files; drag and drop into an existing face folder includes it in the group; a folder dragged onto another merges them; inside a folder, merged groups show as sub-folders *and* all the contents of both as files; right click on a sub-folder → un-merge | 2026-10-27 |
+| 8 | Merge gesture: drag a tile onto another + *Merge with…*, or multi-select + *Merge*? | See Q&A 7 | 2026-10-27 |
 | 9 | Opt-in: off by default (⚙ menu), or on once the engine is downloaded? | | 2026-10-27 |
 | 10 | Engine folder: `face-engine\` or `ocr-engine\`? | | 2026-10-27 |
 | 11 | Pass order: right after the Windows OCR pass, or after every OCR pass? | | 2026-10-27 |
 | 12 | Forgetting: a ⚙ *Forget faces…* entry? | | 2026-10-27 |
 | 13 | Grouping threshold: fixed constant or ⚙ setting? | | 2026-10-27 |
 | 14 | Test project for the pure logic, or hand checks only? | | 2026-10-27 |
+| 15 | Ungrouped face tile: the whole file, or the face cropped from it? | | 2026-10-27 |
+| 16 | Merge drop: at once, or asking first? | | 2026-10-27 |
 
 ---
 
