@@ -169,9 +169,10 @@ description, the date it was saved, its effects). The order — newest first —
 
 ### Search
 
-- A non-empty search in the **search view** also goes through the presets, injected as extra entries
-  next to the index's (`FileSearch.Search` reads `_index.Entries` only today): a preset may point to
-  a file outside the base folder.
+- A non-empty search — in the **search view** and in the **folder view** alike — also goes through
+  the favorites (`FileSearch.SearchFavorites`), merged into the index's matches: every preset, and
+  every file favorite not found already, wherever it is — outside the base folder or the open folder
+  (Iteration 6).
 - A preset matches by its **file's name** (the name tier, as the file does) or by its **description**.
 - The description is searched under the **Aa** criterion — the user's own words, like a name. With
   💡 alone, the presets are not searched: they hold no content of their own (their file is still
@@ -185,7 +186,7 @@ description, the date it was saved, its effects). The order — newest first —
 - Details view: a preset found by its description shows the **words around** the one found, the
   search's words highlighted in yellow, as a content match does (`HighlightSpans`, the excerpt's
   windowing generalized to take another source than `ContentIndex`).
-- The folder view lists the disk: presets don't appear there, neither browsed nor searched.
+- The folder view **browsed** lists the disk: presets don't appear there; its **search** finds them (Iteration 6).
 
 ---
 
