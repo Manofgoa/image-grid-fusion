@@ -817,7 +817,9 @@ internal sealed class MainForm : Form
                 return;
             }
 
-            this.ChangeFrames(frames => frames.WithTrim(this._trimFrom.Value, this._trimTo.Value, this.FrameCount));
+            // From brings the starting point back to it, 0 of the played part, rather than carrying it
+            // along; To leaves it alone (workfiles/20261008-video-trim.md, Iteration 7).
+            this.ChangeFrames(frames => frames.WithTrim(this._trimFrom.Value, this._trimTo.Value, this.FrameCount).AtPage(this._trimFrom.Value, this.FrameCount));
         };
         this._trimTo.ValueChanged += (_, _) =>
         {
