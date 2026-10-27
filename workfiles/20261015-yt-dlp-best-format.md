@@ -69,9 +69,10 @@ One selector for **every site** yt-dlp resolves, YouTube included.
   resolution**, the codecs Windows reads most surely come first: **H.264 > VP9 > AV1** — the reader is
   Media Foundation (`Imaging/VideoReader.cs`): H.264 always decodes, VP9 needs the *VP9 Video
   Extensions* (usually preinstalled), AV1 the *AV1 Video Extension* (not always there). yt-dlp's own
-  order is the reverse (AV1 > VP9 > H.264), so a sort is passed (`-S`, resolution first, then that
-  codec order); the sound prefers AAC (`m4a`). The exact `-S` string is checked against yt-dlp's
-  ranking with `--list-formats` / `--simulate` during the run.
+  order is the reverse (AV1 > VP9 > H.264), so a sort is passed: `-S "res,+codec:avc:m4a"`
+  (`YtDlp.SortOrder`) — the resolution first, then yt-dlp's reversed codec order, H.264 > H.265 > VP9 >
+  AV1, and AAC for the sound. It replaces the former `[ext=mp4]` preference: at equal resolution the
+  H.264 / AAC format is the MP4 one. The selector is `YtDlp.FormatSelector(maxSide, merge)`.
 
 ---
 
@@ -79,9 +80,15 @@ One selector for **every site** yt-dlp resolves, YouTube included.
 
 - **Deno** (`DenoLand.Deno`) — yt-dlp's JavaScript runtime, needed for YouTube's formats. Passed
   explicitly: `--js-runtimes deno:<deno.exe>`, never looked for on the `PATH` (the yt-dlp rule:
-  RULES.md § Content From a URL).
+  RULES.md § Content From a URL): `--no-js-runtimes` always comes first, clearing yt-dlp's default
+  runtimes, so a Deno or a Node on the `PATH` is never used.
 - **ffmpeg** (`yt-dlp.FFmpeg`, yt-dlp's own builds) — merges the video and sound tracks. Passed
-  explicitly with `--ffmpeg-location`.
+  explicitly with `--ffmpeg-location`, **always**: its folder even while it is missing, so yt-dlp
+  looks for no other one on the `PATH` and goes on without it.
+- **`Web/WingetTool`**: one tool installed with winget into its folder next to the exe — its lookup,
+  its install command, its install, the hidden process runner. yt-dlp (`YtDlp.Tool`) and the two
+  companions (`YtDlpCompanions.Deno`, `.Ffmpeg`) are three of them; the folder names are constants,
+  `YtDlp.FolderName`, `YtDlpCompanions.DenoFolderName` and `FfmpegFolderName`.
 - **Not shipped**, like yt-dlp: each looked for in **its own folder next to the exe** only —
   **`deno\`** and **`ffmpeg\`**, siblings of `yt-dlp\` — its executable at the root, else the first one
   below it, as `YtDlp.Find` does (the zips nest a `bin\`); each folder name in one constant
@@ -109,23 +116,34 @@ Every current install has yt-dlp without its companions. The offer comes from fo
 |---|---|---|
 | **A failed load** | A yt-dlp load fails while a companion is missing | The reason, then an **Install yt-dlp companions…** link in the caption, as **Install yt-dlp…** is; once installed, the load is **retried** by itself |
 | **A load that succeeded** | A yt-dlp load succeeds while a companion is missing — the file may be smaller than the site offers | A hint in the caption, with the same link; once installed, the load is retried (a new file name, § Downloaded File) |
-| **The ⚙ menu** | yt-dlp is there and a companion is missing | An **Install yt-dlp companions…** entry, as the OCR engine's; hidden once both are there |
-| **A fresh yt-dlp install** | The **Install yt-dlp…** offer | The same confirmation lists the companions' commands after yt-dlp's |
+| **The ⚙ menu** | yt-dlp is there and a companion is missing | An **Install yt-dlp companions…** entry after *File explorer pages per load*, as the OCR engine's; hidden once both are there, disabled while they install. It runs in the URL zone: the URL of a hint or a failure shown there is loaded again; otherwise the media the zone held comes back, or the caption says `Deno and ffmpeg installed: yt-dlp now loads the largest formats` |
+| **A fresh yt-dlp install** | The **Install yt-dlp…** offer | The same confirmation lists the companions' commands after yt-dlp's; they are installed right after it |
+
+- The hint reads `Install yt-dlp companions… for a larger format · <file> · <size>`, in the caption's
+  ordinary color, the media staying draggable.
 
 ---
 
 ## Downloaded File
 
-- The name carries the height: `%(extractor)s-%(id)s-%(height)sp.%(ext)s` — the **same file already
-  there is reused** (RULES.md § Content From a URL), and a video first loaded without ffmpeg at 360p
-  is then downloaded again at its larger size once ffmpeg is there, instead of reusing the small one.
+- The name carries the height: `%(extractor)s-%(id)s%(height&-{}p|)s.%(ext)s` (`youtube-XJ-pcvL2yqI-1080p.mp4`,
+  no suffix for a media without a height) — the **same file already there is reused** (RULES.md
+  § Content From a URL), and a video first loaded without ffmpeg at 360p is then downloaded again at
+  its larger size once ffmpeg is there, instead of reusing the small one.
 - With ffmpeg, yt-dlp downloads two files then merges them; the merged file is the one
   `--print after_move:filepath` gives, as today.
 - **One gauge for the whole load**: 0 to 100 % over both tracks, each weighted by its size — the
-  bytes downloaded over the bytes of every track, read from yt-dlp's progress (a `--progress-template`
-  giving the downloaded and total bytes, an estimate when the total is unknown) — never restarting at
-  0 for the sound track. Then a **Merging…** step while ffmpeg joins them. A single-file load is one
-  track: the gauge as today.
+  bytes downloaded over the bytes of every track — never restarting at 0 for the sound track, never
+  going back (`YtDlp.TrackGauge`). Two lines of the app's own, told from yt-dlp's by their marks:
+  - `--print before_dl:[igf-tracks] …` — the format ids (`137+140`) and each track's size
+    (`filesize`, else `filesize_approx`);
+  - `--progress-template download:[igf-progress] …` — the status, the track's format id, the bytes
+    downloaded, its total (or estimate).
+
+  A track's size unknown, each track counts for an equal share. A single-file load is one track.
+- **Joining the video and its sound…** while ffmpeg merges them, from the moment the last track's
+  progress says `finished` — yt-dlp's own `[Merger]` line is not printed: `--print` implies
+  `--quiet`.
 
 ---
 
@@ -178,6 +196,12 @@ none is created for this work. The selector is checked by hand on the failing vi
   by their sizes, then *Merging…*.
 - [x] ~~**Tests** — create a test project to pin the selector, or none?~~ → **None**: checked by hand on
   the failing video.
+- [ ] **A package winget already installed elsewhere** *(found during the run, Iteration 5)* — winget
+  keeps one install per package id: Deno or ffmpeg installed by the user with winget before, or yt-dlp
+  installed for another copy of the app (a worktree build, another folder), and `winget install
+  --location` may answer *already installed* without putting anything in the app's folder — the
+  install then fails with `winget couldn't install … put … in <folder>`. Handle it (`--force`, a
+  download of the release itself as the OCR engine does), or keep the hand-made fallback?
 
 ---
 
@@ -211,15 +235,38 @@ sizes, then a *Merging…* step (§ Downloaded File); **no test project**, the s
 Go given: **code, tests and documentation** (no unit test — § Test Impact), in a **worktree** on
 `feature/yt-dlp-best-format`, created from `main` at the design's last commit.
 
+### Iteration 5 — 2026-10-27 — 🧭 Implementation choices
+
+- **`Web/WingetTool`** — one class for a tool installed with winget into its folder (lookup, command,
+  install, hidden process runner); yt-dlp moved onto it, the companions are two more
+  (§ Companions).
+- **`--no-js-runtimes` always**, then Deno's own `--js-runtimes deno:<path>`; **`--ffmpeg-location`
+  always**, ffmpeg's folder even while it is missing — so neither is ever taken from the `PATH`
+  (§ Companions).
+- **The sort `res,+codec:avc:m4a`** — yt-dlp's reversed codec order puts H.265 between H.264 and VP9,
+  and replaces the former `[ext=mp4]` preference (§ Format Selection).
+- **The gauge's two lines** — a `before_dl` print of the tracks' ids and sizes, a progress template of
+  the app's own; equal shares when a size is unknown (§ Downloaded File).
+- **The join step** starts from the last track's `finished` progress, not from yt-dlp's `[Merger]`
+  line, which `--print`'s implied `--quiet` hides; its caption is *Joining the video and its sound…*.
+- **The name's height** — `%(height&-{}p|)s`, so a media without a height gets no `-NAp`.
+- **The ⚙ entry** sits after *File explorer pages per load* and runs in the URL zone; with no URL to
+  load again, the media the zone held comes back, or the caption says the companions are installed
+  (§ When They Are Offered).
+- **Not verified** ⚠️: running yt-dlp was refused by the session's safety check (auto mode), so the
+  format selector, the templates and the gauge were never run against YouTube; the options were
+  checked against yt-dlp 2026.08.19's README only. The winget installs of Deno and ffmpeg were not run
+  either. Found meanwhile: an Open Question on packages winget already installed elsewhere.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
+| Code | 4, 5 | 2026-10-27 | Built, 0 warning; never run against YouTube (§ Iteration 5) |
+| Unit tests | 4 | 2026-10-27 | None — no test project, by decision (§ Test Impact) |
+| README | 4 | 2026-10-27 | README / README.fr.md, GLOSSARY / GLOSSARY.fr.md, RULES.md § Content From a URL |
 
 ---
 
