@@ -319,6 +319,10 @@ Every question the design cannot settle on its own, listed before Iteration 1.
 - [x] ~~**Pass order** — where do Vision and Caption run among Windows OCR, faces, RapidOCR, Inverted, Ring?~~ → Vision right after the faces, Caption last (Q&A 18)
 - [x] ~~**Forgetting** — a ⚙ entry *Forget visual analysis…* deleting `files.vision` and emptying the Seen slots after a confirmation, turning both settings off — like the faces' *Forget faces…*?~~ → Yes (Q&A 19)
 - [x] ~~**Test project** — the face detection chose hand checks only; the same here, or a test project (the tokenizer check against reference ids would be its first test)?~~ → Hand checks only (Q&A 20)
+- [ ] **Tooltip content** (Iteration 9) — which of the index's content a tile's tooltip shows: the caption, the tags, the text read?
+- [ ] **Tooltip faces** — the named people only, or the unnamed faces counted too?
+- [ ] **Tooltip icons** — a tooltip of our own drawing 💡 and 👨‍🦰 in colour, or the standard one, the emoji as Windows draws them there?
+- [ ] **Tooltip on the cells** — the same tooltip over the grid's cells, or the explorer's tiles only?
 
 ---
 
@@ -475,6 +479,19 @@ computed again from the embeddings, the captions written; no `vision-tags.txt` w
 *Forget visual analysis…*, *Find similar images* from a tile, a cell or a drop, the Details view's
 caption excerpt, a large base folder's timings.
 
+### Iteration 9 — 2026-10-27 — ⚙️ Post-implementation — Indexed content in the tile's tooltip
+
+The user asked whether the caption can be seen. Today it shows only when a search found the file by it:
+in the light bulb's tooltip (*Found in its content: …*, the words around the one found) and in the
+Details view's excerpt; a tile's own tooltip is its path, after a preset's description. Requested:
+
+- a **tooltip on the tile showing what the index holds of it** — the caption, with the light bulb's icon
+  if possible;
+- in the same idea, **the person** when a face of the file belongs to an identified one, with a face icon
+  (👨‍🦰).
+
+Pending the answers to Q&A 22–25 (*see Open Questions*).
+
 ---
 
 ## Implementation Log
@@ -519,6 +536,10 @@ Questions asked by the agent during design, with user responses.
 | 19 | Forgetting: a ⚙ *Forget visual analysis…* entry, like the faces'? | Yes, like the faces | 2026-10-27 |
 | 20 | Test project, or hand checks only like the face detection? | Hand checks only | 2026-10-27 |
 | 21 | The face pass stays outside `OcrPasses` (a flag on `ExtractionProgress`): rename `OcrPass` to `ContentPass` **and** make every pass — faces, vision, caption — one of its values, or follow the face pass's model and keep `OcrPass`? | One `ContentPass`, every pass a value of it, the faces included | 2026-10-27 |
+| 22 | Tile tooltip: which indexed content shows — caption, tags, the text read (OCR)? | | 2026-10-27 |
+| 23 | Tile tooltip: which faces show — the named people only, or the unnamed ones counted too? | | 2026-10-27 |
+| 24 | Tile tooltip: the icons drawn (a tooltip of our own) or the plain tooltip, emoji drawn as Windows can? | | 2026-10-27 |
+| 25 | Besides the explorer's tiles, the same tooltip on the grid's cells? | | 2026-10-27 |
 
 ---
 
