@@ -95,6 +95,11 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
     // The list holds effect presets: every tile gets a second line under its name, for a preset's description.
     private bool _presetLines;
+
+    // The ★ FX badge, drawn for the name font and the resolution it was drawn at.
+    private Bitmap? _presetBadge;
+    private Font? _presetBadgeFont;
+    private float _presetBadgeDpi;
     private ExplorerView _view = ExplorerView.Thumbnails;
     private string[] _highlightWords = [];
     private int _rowW = 1;
@@ -373,6 +378,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
             _toolTip.Dispose();
             _heartFont.Dispose();
             _nameFont.Dispose();
+            this._presetBadge?.Dispose();
             this._bulbFont.Dispose();
             this._detailsHeartFont?.Dispose();
             this._detailsBulbFont?.Dispose();
@@ -668,34 +674,77 @@ internal sealed class ThumbnailGrid : ScrollableControl
     /// </summary>
     private void PaintPresetBadge(Graphics g, Rectangle tile)
     {
-        float emSize = this._nameFont.SizeInPoints * g.DpiY / 72;
+        // Drawn once, kept until the name font or the resolution changes.
+        if (this._presetBadge is null || !ReferenceEquals(this._presetBadgeFont, this._nameFont) || this._presetBadgeDpi != g.DpiY)
+        {
+            this._presetBadge?.Dispose();
+            this._presetBadge = this.PresetBadge(g.DpiY);
+            this._presetBadgeFont = this._nameFont;
+            this._presetBadgeDpi = g.DpiY;
+        }
+
+        var badge = this._presetBadge;
+        int inset = this.LogicalToDeviceUnits(MedallionInset);
+
+        // Copied pixel for pixel: the grid paints with a half-pixel offset and bicubic interpolation.
+        var offset = g.PixelOffsetMode;
+        var interpolation = g.InterpolationMode;
+        g.PixelOffsetMode = PixelOffsetMode.Half;
+        g.InterpolationMode = InterpolationMode.NearestNeighbor;
+        g.DrawImage(badge, new Rectangle(tile.Right - inset - badge.Width, tile.Y + inset, badge.Width, badge.Height));
+        g.PixelOffsetMode = offset;
+        g.InterpolationMode = interpolation;
+    }
+
+    /// <summary>
+    /// The ★ FX badge as a bitmap, in pixel-edge coordinates: the capitals of <c>FX</c> scaled to a whole
+    /// number of pixels and set on whole rows, the star as tall as them, the content centered with equal
+    /// margins left and right, top and bottom, a 1 px border inside the bitmap.
+    /// </summary>
+    internal Bitmap PresetBadge(float dpi)
+    {
+        float emSize = this._nameFont.SizeInPoints * dpi / 72;
         using var text = new GraphicsPath();
         text.AddString("FX", this._nameFont.FontFamily, (int)FontStyle.Bold, emSize, PointF.Empty, StringFormat.GenericTypographic);
         var ink = text.GetBounds();
-        float height = ink.Height;
+        int height = Math.Max(5, (int)Math.Round(ink.Height));
+        float scale = height / ink.Height;
+        using (var fit = new Matrix())
+        {
+            fit.Scale(scale, scale);
+            fit.Translate(-ink.X, -ink.Y);
+            text.Transform(fit);
+        }
 
-        // A five-pointed star standing on two points: its height is 1 + cos 36° times its outer radius.
-        float radius = height / (1 + MathF.Cos(MathF.PI / 5));
+        float textWidth = ink.Width * scale;
+
+        // A five-pointed star centered on the letters' middle, as a font centers ★: its tip a little above
+        // the capitals, its two lower points level with their base.
+        float radius = height * 0.6f;
         float starWidth = 2 * radius * MathF.Sin(2 * MathF.PI / 5);
-        float gap = height * 0.4f;
-        float content = starWidth + gap + ink.Width;
-        int padX = Math.Max(2, (int)Math.Round(height * 0.5f));
-        int padY = Math.Max(2, (int)Math.Round(height * 0.4f));
-        int inset = this.LogicalToDeviceUnits(MedallionInset);
-        int width = (int)Math.Ceiling(content) + 2 * padX;
-        int badgeHeight = (int)Math.Ceiling(height) + 2 * padY;
-        var badge = new Rectangle(tile.Right - inset - width, tile.Y + inset, width, badgeHeight);
 
+        // The content on whole pixels: the star from the left margin, the text up to the right one, the
+        // gap taking the fraction — equal margins on every side.
+        int pad = Math.Max(3, (int)Math.Round(height * 0.5f));
+        int content = (int)Math.Round(starWidth + height * 0.4f + textWidth);
+        float gap = content - starWidth - textWidth;
+        int width = content + 2 * pad;
+        int badgeHeight = height + 2 * pad;
+
+        var bitmap = new Bitmap(width, badgeHeight);
+        using var g = Graphics.FromImage(bitmap);
+        g.PixelOffsetMode = PixelOffsetMode.Half;
         using var fill = new SolidBrush(PresetBadgeFill);
-        g.FillRectangle(fill, badge);
         using var ink2 = new SolidBrush(PresetBadgeText);
-        using var border = new Pen(PresetBadgeText);
-        g.DrawRectangle(border, badge.X, badge.Y, badge.Width - 1, badge.Height - 1);
+        g.FillRectangle(fill, 0, 0, width, badgeHeight);
+        g.FillRectangle(ink2, 0, 0, width, 1);
+        g.FillRectangle(ink2, 0, badgeHeight - 1, width, 1);
+        g.FillRectangle(ink2, 0, 0, 1, badgeHeight);
+        g.FillRectangle(ink2, width - 1, 0, 1, badgeHeight);
 
-        float left = badge.X + (badge.Width - content) / 2;
-        float top = badge.Y + (badge.Height - height) / 2;
+        float left = pad;
         var star = new PointF[10];
-        var center = new PointF(left + starWidth / 2, top + radius);
+        var center = new PointF(left + starWidth / 2, pad + height / 2f);
         for (int i = 0; i < star.Length; i++)
         {
             float r = i % 2 == 0 ? radius : radius * 0.4f;
@@ -704,14 +753,12 @@ internal sealed class ThumbnailGrid : ScrollableControl
         }
 
         using var place = new Matrix();
-        place.Translate(left + starWidth + gap - ink.X, top - ink.Y);
+        place.Translate(left + starWidth + gap, pad);
         text.Transform(place);
-
-        var smoothing = g.SmoothingMode;
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.FillPolygon(ink2, star);
         g.FillPath(ink2, text);
-        g.SmoothingMode = smoothing;
+        return bitmap;
     }
 
     /// <summary>The Loading… slot: a tile's box, its checkerboard and the text alone — no thumbnail, heart nor name.</summary>
