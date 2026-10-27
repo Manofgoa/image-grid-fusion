@@ -24,7 +24,7 @@ namespace ImageGridFusion.UI;
 /// open folder's subfolders and files as the disk holds them, a folder tile opening its folder, the
 /// breadcrumb in the caption's line going back up, the search limited to the open folder.
 /// </summary>
-internal sealed class FileExplorerPanel : Panel
+internal sealed partial class FileExplorerPanel : Panel
 {
     // In logical pixels: the strip, and what the panel adds around its grid (paddings, the list's
     // border, the grid's insets, a vertical scrollbar).
@@ -49,6 +49,13 @@ internal sealed class FileExplorerPanel : Panel
     // refreshes the search shown.
     private const int KeystrokePause = 1000;
     private const int PausePoll = 200;
+
+    // The image content analysis (workfiles/20261027-image-content-analysis.md § Search Under 💡): the
+    // closest images a similarity lists, how long the typing pauses before the query is embedded, how long
+    // the text model stays loaded without a search.
+    private const int SimilarCount = 100;
+    private const int QueryDelayMs = 300;
+    private const int TextEncoderIdleMs = 5 * 60 * 1000;
     private const int ContentSaveInterval = 30000;
     private const int ContentRefreshInterval = 5000;
 
@@ -101,12 +108,16 @@ internal sealed class FileExplorerPanel : Panel
     private readonly TextBox _search = new() { PlaceholderText = SearchPlaceholder, Anchor = AnchorStyles.Left | AnchorStyles.Right };
     private readonly Button _rescan = new() { Text = "↻", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right, Enabled = false };
     // One bar per pass (ContentPass, its index) — the OCR passes' (workfiles/20261013-complementary-ocr-passes.md
-    // § Progress Bars), the face pass's (workfiles/20261027-face-detection.md § Face Pass) — each in its
-    // colour, stacked in the progress row in the order the passes run; the first — the Windows pass's,
-    // blue — is the scan's too. The OCR passes' show while the content search is on, the face pass's while
-    // the face analysis is.
-    private static readonly Color[] PassColors = [IndexingBar.DefaultColor, Color.FromArgb(214, 0, 120), Color.FromArgb(136, 23, 152), Color.FromArgb(202, 80, 16), Color.FromArgb(16, 124, 16)];
-    private static readonly string[] PassColorNames = ["blue", "pink", "purple", "orange", "green"];
+    // § Progress Bars), the face pass's (workfiles/20261027-face-detection.md § Face Pass), the Vision and
+    // Caption passes' (workfiles/20261027-image-content-analysis.md § Passes) — each in its colour, stacked
+    // in the progress row in the order the passes run; the first — the Windows pass's, blue — is the
+    // scan's too. The OCR passes' show while the content search is on, the others while their own setting is.
+    private static readonly Color[] PassColors =
+    [
+        IndexingBar.DefaultColor, Color.FromArgb(214, 0, 120), Color.FromArgb(0, 153, 153), Color.FromArgb(136, 23, 152), Color.FromArgb(202, 80, 16), Color.FromArgb(16, 124, 16), Color.FromArgb(193, 156, 0),
+    ];
+
+    private static readonly string[] PassColorNames = ["blue", "pink", "teal", "purple", "orange", "green", "gold"];
     private readonly TableLayoutPanel _bars = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = PassColors.Length, Margin = Padding.Empty, Padding = Padding.Empty };
     private readonly IndexingBar[] _passBars = PassColors.Select(color => new IndexingBar { Dock = DockStyle.Fill, BarColor = color }).ToArray();
 
@@ -243,6 +254,25 @@ internal sealed class FileExplorerPanel : Panel
     private CancellationTokenSource? _faceEngineDownload;
     private InviteAction _inviteAction = InviteAction.ChooseFolder;
 
+    // The image content analysis (workfiles/20261027-image-content-analysis.md): the embeddings, the ⚙
+    // settings, the engines' downloads; the text model loaded for the searches and released when unused;
+    // the query whose embedding is known, and the one being computed; the image a similar images search
+    // started from.
+    private VisionIndex? _vision;
+    private bool _visualAnalysis;
+    private bool _captions;
+    private CancellationTokenSource? _visionEngineDownload;
+    private CancellationTokenSource? _captionEngineDownload;
+    private readonly object _textEncoderLock = new();
+    private TextEncoder? _textEncoder;
+    private readonly System.Windows.Forms.Timer _textEncoderIdle = new() { Interval = 60 * 1000, Enabled = true };
+    private long _textEncoderUsedAt;
+    private (string Query, float[] Embedding)? _queryEmbedding;
+    private string? _queryPending;
+    private SimilarSource? _similarTo;
+    private readonly Button _similarClear = new() { Text = "×", Dock = DockStyle.Right, Width = 22, FlatStyle = FlatStyle.Flat, Visible = false, Margin = Padding.Empty };
+    private readonly ToolStripMenuItem _findSimilar = new("Find similar images");
+
     public FileExplorerPanel()
     {
         _title.Font = new Font(Font, FontStyle.Bold);
@@ -277,6 +307,8 @@ internal sealed class FileExplorerPanel : Panel
         _searchRow.Controls.Add(_rescan, 4, 0);
         _captionRow.Controls.Add(_caption);
         _captionRow.Controls.Add(_breadcrumb);
+        this._captionRow.Controls.Add(this._similarClear);
+        this._similarClear.FlatAppearance.BorderSize = 0;
         _sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -318,7 +350,7 @@ internal sealed class FileExplorerPanel : Panel
         Controls.Add(_content);
         Controls.Add(_expand);
         this._menu.Items.AddRange([this._openGroupItem, this._renameGroup, this._hideGroup, this._unhideGroup, this._unmergeGroup, this._notThisPerson, this._peopleSeparator]);
-        this._menu.Items.AddRange([this._editDescription, this._copy, this._copyPng, this._copyFullPath, this._copySeparator]);
+        this._menu.Items.AddRange([this._editDescription, this._findSimilar, this._copy, this._copyPng, this._copyFullPath, this._copySeparator]);
         _menu.Items.Add(_openLocation);
         _grid.ContextMenuStrip = _menu;
         _grid.IsFavorite = _favorites.Contains;
@@ -352,9 +384,24 @@ internal sealed class FileExplorerPanel : Panel
             Interlocked.Exchange(ref this._lastKeystroke, Environment.TickCount64);
             if (!_clearingSearch)
             {
+                this._similarTo = null;
                 RefreshRows();
             }
         };
+        this._search.AllowDrop = true;
+        this._search.DragEnter += (_, e) => e.Effect = this.CanFindSimilar && SimilarDropOf(e.Data) is not null ? DragDropEffects.Copy : DragDropEffects.None;
+        this._search.DragOver += (_, e) => e.Effect = this.CanFindSimilar && SimilarDropOf(e.Data) is not null ? DragDropEffects.Copy : DragDropEffects.None;
+        this._search.DragDrop += (_, e) => this.DropOnSearch(e.Data);
+        this._similarClear.Click += (_, _) => this.ClearSimilar();
+        this._findSimilar.Click += (_, _) =>
+        {
+            if (this._grid.SelectedRow is { IsFile: true } row)
+            {
+                _ = this.FindSimilarAsync(row.FullPath);
+            }
+        };
+        this._textEncoderIdle.Tick += (_, _) => this.ReleaseTextEncoder();
+        this._toolTip.SetToolTip(this._similarClear, "Back to the search");
         _search.KeyDown += OnSearchKeyDown;
         this._modes.SelectionChangeCommitted += (_, _) => this.ChangeMode((ExplorerMode)this._modes.SelectedIndex);
         this._byName.Click += (_, _) => this.ToggleCriterion(this._byName, this._byContent);
@@ -383,6 +430,7 @@ internal sealed class FileExplorerPanel : Panel
             this._copySeparator.Visible = !(row?.IsGroup ?? false);
             this._openLocation.Visible = !(row?.IsGroup ?? false);
             this._editDescription.Visible = row?.Preset is not null;
+            this._findSimilar.Visible = file && this.CanFindSimilar && ContentExtractor.KindOf(row!.FullPath) is ContentKind.Image or ContentKind.Pdf;
             this._openGroupItem.Visible = row?.IsGroup == true && shown?.Parent is null;
             this._renameGroup.Visible = group;
             this._hideGroup.Visible = group && shown is { Hidden: false, Parent: null };
@@ -761,6 +809,7 @@ internal sealed class FileExplorerPanel : Panel
             this._folderView = value == ExplorerMode.Folders;
             this._peopleView = value == ExplorerMode.People;
             this._openGroup = null;
+            this._similarTo = null;
             this._syncingToggle = true;
             try
             {
@@ -1182,6 +1231,8 @@ internal sealed class FileExplorerPanel : Panel
         this.StopExtraction();
         this._contents = null;
         this._faces = null;
+        this._vision = null;
+        this._similarTo = null;
         this._snapshot = PeopleSnapshot.Empty;
         this._groupedAt = -1;
         this._openGroup = null;
@@ -1226,6 +1277,10 @@ internal sealed class FileExplorerPanel : Panel
         {
             _scan?.Cancel();
             this._engineDownload?.Cancel();
+            this._visionEngineDownload?.Cancel();
+            this._captionEngineDownload?.Cancel();
+            this._textEncoderIdle.Dispose();
+            this.ReleaseTextEncoder(force: true);
             _transient.Dispose();
             _toolTip.Dispose();
             _menu.Dispose();
@@ -1478,6 +1533,7 @@ internal sealed class FileExplorerPanel : Panel
         // (workfiles/20261013-complementary-ocr-passes.md § Index Format).
         var contentsLoad = Task.Run(() => ContentIndex.Load(ContentIndex.DefaultPath, folder));
         var facesLoad = Task.Run(() => FaceIndex.Load(FaceIndex.DefaultPath, folder));
+        var visionLoad = Task.Run(() => VisionIndex.Load(VisionIndex.DefaultPath, folder));
         var (loaded, tree) = await Task.Run(() =>
         {
             FileIndex.MoveLegacy();
@@ -1514,6 +1570,18 @@ internal sealed class FileExplorerPanel : Panel
         {
             this._faces = faces;
             this.Regroup();
+        }
+
+        var vision = await visionLoad;
+        if (cancellation.IsCancellationRequested || IsDisposed)
+        {
+            return;
+        }
+
+        if (this._vision is null)
+        {
+            this._vision = vision;
+            this.RefreshContentResults();
         }
 
         await ScanAsync(folder, cancellation);
@@ -1555,6 +1623,7 @@ internal sealed class FileExplorerPanel : Panel
         });
         var known = this._contents;
         var knownFaces = this._faces;
+        var knownVision = this._vision;
         bool scanned = false;
         try
         {
@@ -1564,7 +1633,7 @@ internal sealed class FileExplorerPanel : Panel
                 return;
             }
 
-            var (index, tree, saveError, contents, faces) = await Task.Run(
+            var (index, tree, saveError, contents, faces, vision) = await Task.Run(
                 () =>
                 {
                     var scanned = FileIndex.Scan(folder, progress, cancellation);
@@ -1579,7 +1648,8 @@ internal sealed class FileExplorerPanel : Panel
                     }
 
                     // A rescan that cut the cached index's loading short loads the texts itself.
-                    return (scanned, FolderTree.Of(scanned.Entries), error, known ?? ContentIndex.Load(ContentIndex.DefaultPath, folder), knownFaces ?? FaceIndex.Load(FaceIndex.DefaultPath, folder));
+                    return (scanned, FolderTree.Of(scanned.Entries), error, known ?? ContentIndex.Load(ContentIndex.DefaultPath, folder), knownFaces ?? FaceIndex.Load(FaceIndex.DefaultPath, folder),
+                        knownVision ?? VisionIndex.Load(VisionIndex.DefaultPath, folder));
                 },
                 cancellation);
             if (cancellation.IsCancellationRequested || IsDisposed)
@@ -1590,6 +1660,7 @@ internal sealed class FileExplorerPanel : Panel
             SetIndex(index, tree);
             this._contents ??= contents;
             this._faces ??= faces;
+            this._vision ??= vision;
             this.Regroup();
             this._indexScanned = true;
             scanned = true;
@@ -1630,15 +1701,16 @@ internal sealed class FileExplorerPanel : Panel
     /// </summary>
     private void StartExtraction()
     {
-        if (!(this._contentSearch || this._faceAnalysis) || !this._indexScanned || this._scanning || this._index is not { } index
-            || this._contents is not { } contents || this._faces is not { } faces || this._scan is not { IsCancellationRequested: false } scan)
+        if (!(this._contentSearch || this._faceAnalysis || this._visualAnalysis || this._captions) || !this._indexScanned || this._scanning || this._index is not { } index
+            || this._contents is not { } contents || this._faces is not { } faces || this._vision is not { } vision || this._scan is not { IsCancellationRequested: false } scan)
         {
             return;
         }
 
         this.StopExtraction();
         this._extraction = CancellationTokenSource.CreateLinkedTokenSource(scan.Token);
-        _ = this.ExtractAsync(index, contents, faces, this._contentSearch, this._faceAnalysis, this._extraction.Token);
+        var passes = new ExtractionSettings(this._contentSearch, this._faceAnalysis, this._visualAnalysis, this._captions);
+        _ = this.ExtractAsync(index, contents, faces, vision, passes, this._extraction.Token);
     }
 
     private void StopExtraction()
@@ -1651,7 +1723,7 @@ internal sealed class FileExplorerPanel : Panel
     /// Extracts the content texts off the UI thread, pass after pass, one file at a time: each pass's
     /// bar and the status line following it, the search shown refreshed every few seconds and at the end.
     /// </summary>
-    private async Task ExtractAsync(FileIndex index, ContentIndex contents, FaceIndex faces, bool ocr, bool faceAnalysis, CancellationToken cancellation)
+    private async Task ExtractAsync(FileIndex index, ContentIndex contents, FaceIndex faces, VisionIndex vision, ExtractionSettings passes, CancellationToken cancellation)
     {
         bool finished = false;
         var progress = new Progress<ExtractionProgress>(p =>
@@ -1713,7 +1785,7 @@ internal sealed class FileExplorerPanel : Panel
         });
         try
         {
-            await Task.Run(() => this.Extract(index, contents, faces, ocr, faceAnalysis, progress, cancellation), cancellation);
+            await Task.Run(() => this.Extract(index, contents, faces, vision, passes, progress, cancellation), cancellation);
         }
         catch (OperationCanceledException)
         {
@@ -1748,58 +1820,73 @@ internal sealed class FileExplorerPanel : Panel
     /// pass in turn (<see cref="ContentPasses.All"/>) over every file it has not read yet — the Windows pass over
     /// every file whose text is missing or older than the file, the later ones over the images and PDFs
     /// the Windows pass read — the face pass right after the Windows one, over every image and PDF it has
-    /// not analysed (workfiles/20261027-face-detection.md § Face Pass); the OCR passes while the content
-    /// search is on (<paramref name="ocr"/>), the face pass while the face analysis is
-    /// (<paramref name="faceAnalysis"/>) and its engine is there; waiting between two files while the
-    /// search is busy; the texts and the faces each saved every 50 files — no sooner than 5 s after the
-    /// previous save — every half minute whatever the count, and at the end, so a pass cut short resumes
-    /// where it stopped. Every bar is set first, the passes complete hidden; RapidOCR's pass is skipped
-    /// without its engine. See workfiles/20261013-complementary-ocr-passes.md § Indexing Passes.
+    /// not analysed (workfiles/20261027-face-detection.md § Face Pass), the Vision pass right after it, over
+    /// every image and PDF it has not embedded, the tags of every image computed again first when the
+    /// vocabulary changed (workfiles/20261027-image-content-analysis.md § Passes); the OCR passes while the
+    /// content search is on, each other pass while its own setting is (<paramref name="passes"/>) and its
+    /// engine is there; waiting between two files while the search is busy; the texts, the faces and the
+    /// embeddings each saved every 50 files — no sooner than 5 s after the previous save — every half minute
+    /// whatever the count, and at the end, so a pass cut short resumes where it stopped. Every bar is set
+    /// first, the passes complete hidden; RapidOCR's pass is skipped without its engine. See
+    /// workfiles/20261013-complementary-ocr-passes.md § Indexing Passes.
     /// </summary>
-    private void Extract(FileIndex index, ContentIndex contents, FaceIndex faces, bool ocr, bool faceAnalysis, IProgress<ExtractionProgress> progress, CancellationToken cancellation)
+    private void Extract(FileIndex index, ContentIndex contents, FaceIndex faces, VisionIndex vision, ExtractionSettings passes, IProgress<ExtractionProgress> progress, CancellationToken cancellation)
     {
         bool changed = contents.RetainOnly(index.Entries);
         bool facesChanged = faces.RetainOnly(index.Entries);
+        bool visionChanged = vision.RetainOnly(index.Entries);
         using var extractor = new ContentExtractor();
         int unsaved = 0;
         long saved = Environment.TickCount64;
         long refreshed = saved;
-        var faceRead = ReadFaces(index);
-        bool facesRun = faceAnalysis && FaceEngineFiles.IsAvailable;
+        var imageRead = ReadImages(index);
+        bool facesRun = passes.Faces && FaceEngineFiles.IsAvailable;
+        bool visionRun = passes.Vision && VisionEngineFiles.IsAvailable;
         try
         {
             foreach (var pass in ContentPasses.All)
             {
-                if (pass == ContentPass.Faces)
+                switch (pass)
                 {
-                    if (faceAnalysis)
+                    case ContentPass.Faces when passes.Faces:
                     {
-                        int done = faceRead.Count(faces.IsCurrent);
-                        progress.Report(new ExtractionProgress(pass, 0, 0, done, faceRead.Length, null, ContentKind.None, false, Finished: !facesRun || done == faceRead.Length));
+                        int done = imageRead.Count(faces.IsCurrent);
+                        progress.Report(new ExtractionProgress(pass, 0, 0, done, imageRead.Length, null, ContentKind.None, false, Finished: !facesRun || done == imageRead.Length));
+                        break;
                     }
-                }
-                else if (ocr)
-                {
-                    var read = Read(index, pass);
-                    int done = read.Count(e => contents.IsCurrent(e, pass));
-                    bool runs = done < read.Length && (pass != ContentPass.Rapid || OcrEngineFiles.IsAvailable);
-                    progress.Report(new ExtractionProgress(pass, 0, 0, done, read.Length, null, ContentKind.None, false, Finished: !runs));
+
+                    case ContentPass.Vision when passes.Vision:
+                    {
+                        int done = imageRead.Count(vision.IsCurrent);
+                        progress.Report(new ExtractionProgress(pass, 0, 0, done, imageRead.Length, null, ContentKind.None, false, Finished: !visionRun || done == imageRead.Length));
+                        break;
+                    }
+
+                    case ContentPass.Windows or ContentPass.Rapid or ContentPass.Inverted or ContentPass.Ring when passes.Ocr:
+                    {
+                        var read = Read(index, pass);
+                        int done = read.Count(e => contents.IsCurrent(e, pass));
+                        bool runs = done < read.Length && (pass != ContentPass.Rapid || OcrEngineFiles.IsAvailable);
+                        progress.Report(new ExtractionProgress(pass, 0, 0, done, read.Length, null, ContentKind.None, false, Finished: !runs));
+                        break;
+                    }
                 }
             }
 
             foreach (var pass in ContentPasses.All)
             {
                 cancellation.ThrowIfCancellationRequested();
-                if (pass == ContentPass.Faces)
+                switch (pass)
                 {
-                    if (facesRun)
-                    {
-                        facesChanged |= this.ExtractFaces(index, faces, faceRead, progress, cancellation);
-                    }
-                }
-                else if (ocr)
-                {
-                    RunPass(pass);
+                    case ContentPass.Faces when facesRun:
+                        facesChanged |= this.ExtractFaces(index, faces, imageRead, progress, cancellation);
+                        break;
+                    case ContentPass.Vision when visionRun:
+                        RunVision();
+                        break;
+                    case ContentPass.Windows or ContentPass.Rapid or ContentPass.Inverted or ContentPass.Ring when passes.Ocr:
+                        RunPass(pass);
+                        break;
                 }
             }
         }
@@ -1814,6 +1901,117 @@ internal sealed class FileExplorerPanel : Panel
             {
                 TrySave(faces);
             }
+
+            if (visionChanged)
+            {
+                TrySave(vision);
+            }
+        }
+
+        // The Vision pass: the vocabulary's concepts embedded — from their cache, else by the text model —
+        // the tags of the images already embedded computed again when the vocabulary changed, then every
+        // image not embedded yet embedded and tagged. A failure of the engine to load is said, the pass
+        // waiting for a working one.
+        void RunVision()
+        {
+            var queue = imageRead.Where(e => !vision.IsCurrent(e)).ToArray();
+            int before = imageRead.Length - queue.Length;
+            VisionTags tags;
+            try
+            {
+                tags = VisionTags.Load();
+                if (!tags.Embedded)
+                {
+                    progress.Report(new ExtractionProgress(ContentPass.Vision, 0, queue.Length, before, imageRead.Length, null, ContentKind.None, false, false));
+                    tags.Embed(this.EmbedText, cancellation);
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                progress.Report(new ExtractionProgress(ContentPass.Vision, 0, queue.Length, before, imageRead.Length, null, ContentKind.None, false, Finished: true, $"The vision engine could not start: {ex.Message}"));
+                return;
+            }
+
+            if (vision.TagsKey != tags.Key)
+            {
+                foreach (var (relative, stamp, embedding) in vision.WithEmbeddings())
+                {
+                    cancellation.ThrowIfCancellationRequested();
+                    contents.Set(relative, stamp, ContentPass.Vision, [new ContentResult(tags.TagsOf(embedding), null)]);
+                }
+
+                vision.TagsKey = tags.Key;
+                changed = true;
+                visionChanged = true;
+                progress.Report(new ExtractionProgress(ContentPass.Vision, 0, queue.Length, before, imageRead.Length, null, ContentKind.None, true, false));
+            }
+
+            if (queue.Length == 0)
+            {
+                progress.Report(new ExtractionProgress(ContentPass.Vision, 0, 0, before, imageRead.Length, null, ContentKind.None, false, Finished: true));
+                return;
+            }
+
+            VisionEncoder encoder;
+            try
+            {
+                encoder = new VisionEncoder();
+            }
+            catch (Exception ex)
+            {
+                progress.Report(new ExtractionProgress(ContentPass.Vision, 0, queue.Length, before, imageRead.Length, null, ContentKind.None, false, Finished: true, $"The vision engine could not start: {ex.Message}"));
+                return;
+            }
+
+            using (encoder)
+            {
+                for (int done = 0; done < queue.Length; done++)
+                {
+                    cancellation.ThrowIfCancellationRequested();
+                    if (this.ExtractionPaused())
+                    {
+                        progress.Report(new ExtractionProgress(ContentPass.Vision, done, queue.Length, before + done, imageRead.Length, null, ContentKind.None, false, false));
+                        this.WaitWhilePaused(cancellation);
+                    }
+
+                    var entry = queue[done];
+                    string path = index.FullPath(entry);
+                    progress.Report(new ExtractionProgress(ContentPass.Vision, done, queue.Length, before + done, imageRead.Length, path, ContentKind.Image, false, false));
+                    float[] embedding;
+                    try
+                    {
+                        embedding = ContentExtractor.DecodePixels(path) is var (pixels, width, height) ? encoder.Embed(pixels, width, height) : [];
+                    }
+                    catch (Exception ex) when (ex is Microsoft.ML.OnnxRuntime.OnnxRuntimeException or OutOfMemoryException or ArgumentException or System.Runtime.InteropServices.ExternalException)
+                    {
+                        // As an unreadable file: no embedding, not analysed again until it changes.
+                        embedding = [];
+                    }
+
+                    vision.Set(entry.RelativePath, entry.Stamp!.Value, embedding);
+                    contents.Set(entry.RelativePath, entry.Stamp!.Value, ContentPass.Vision, [new ContentResult(embedding.Length > 0 ? tags.TagsOf(embedding) : "", null)]);
+                    visionChanged = true;
+                    changed = true;
+                    unsaved++;
+
+                    long now = Environment.TickCount64;
+                    if (now - saved >= ContentSaveInterval || (unsaved >= ContentSaveEvery && now - saved >= ContentSaveFloor))
+                    {
+                        TrySave(vision);
+                        TrySave(contents);
+                        saved = now;
+                        unsaved = 0;
+                    }
+
+                    if (now - refreshed >= ContentRefreshInterval)
+                    {
+                        refreshed = now;
+                        progress.Report(new ExtractionProgress(ContentPass.Vision, done, queue.Length, before + done, imageRead.Length, null, ContentKind.None, true, false));
+                    }
+                }
+            }
+
+            progress.Report(new ExtractionProgress(ContentPass.Vision, queue.Length, queue.Length, imageRead.Length, imageRead.Length, null, ContentKind.None, false, Finished: true));
         }
 
         void RunPass(ContentPass pass)
@@ -1962,8 +2160,8 @@ internal sealed class FileExplorerPanel : Panel
         }
     }
 
-    /// <summary>The scanned files the face pass reads: the images and PDFs.</summary>
-    private static IndexEntry[] ReadFaces(FileIndex index) =>
+    /// <summary>The scanned files the face and Vision passes read: the images and PDFs.</summary>
+    private static IndexEntry[] ReadImages(FileIndex index) =>
         index.Entries.Where(e => e.Stamp is not null && ContentExtractor.KindOf(e.RelativePath) is ContentKind.Image or ContentKind.Pdf).ToArray();
 
     /// <summary>The scanned files a pass reads: every one for the Windows pass, the images and PDFs for the later ones.</summary>
@@ -1993,12 +2191,21 @@ internal sealed class FileExplorerPanel : Panel
 
     /// <summary>The passes whose bar shows, in the order they run: the Windows pass — the scan — always, each other while its setting is on.</summary>
     private ContentPass[] ShownPasses() =>
-        ContentPasses.All.Where(pass => pass == ContentPass.Windows || (pass == ContentPass.Faces ? this._faceAnalysis : this._contentSearch)).ToArray();
+        ContentPasses.All.Where(pass => pass == ContentPass.Windows || this.PassOn(pass)).ToArray();
+
+    /// <summary>Whether a pass runs as the settings stand: an OCR pass while the content search is on, any other while its own setting is.</summary>
+    private bool PassOn(ContentPass pass) => pass switch
+    {
+        ContentPass.Faces => this._faceAnalysis,
+        ContentPass.Vision => this._visualAnalysis,
+        ContentPass.Caption => this._captions,
+        _ => this._contentSearch,
+    };
 
     /// <summary>The bars' tooltip: each pass, its colour, and how far it has gone.</summary>
     private void ApplyBarTips()
     {
-        var lines = ContentPasses.All.Where(pass => pass != ContentPass.Faces || this._faceAnalysis).Select(pass =>
+        var lines = ContentPasses.All.Where(pass => ContentPasses.IsOcr(pass) || this.PassOn(pass)).Select(pass =>
         {
             int i = (int)pass;
             var (done, needed) = this._passCounts[i];
@@ -2006,6 +2213,8 @@ internal sealed class FileExplorerPanel : Panel
             {
                 ContentPass.Rapid => !OcrEngineFiles.IsAvailable,
                 ContentPass.Faces => !FaceEngineFiles.IsAvailable,
+                ContentPass.Vision => !VisionEngineFiles.IsAvailable,
+                ContentPass.Caption => !CaptionEngineFiles.IsAvailable,
                 _ => false,
             };
             string state = missing ? "not downloaded"
@@ -2032,6 +2241,18 @@ internal sealed class FileExplorerPanel : Panel
         try
         {
             contents.Save(ContentIndex.DefaultPath);
+        }
+        catch (Exception ex) when (FileIndex.IsFileError(ex))
+        {
+        }
+    }
+
+    /// <summary>Saves the embeddings, a failure left for the next save.</summary>
+    private static void TrySave(VisionIndex vision)
+    {
+        try
+        {
+            vision.Save(VisionIndex.DefaultPath);
         }
         catch (Exception ex) when (FileIndex.IsFileError(ex))
         {
@@ -2188,7 +2409,13 @@ internal sealed class FileExplorerPanel : Panel
         }
 
         var rows = new List<ExplorerRow>();
-        if (words.Length == 0)
+        this._similarClear.Visible = words.Length == 0 && this._similarTo is not null && !inviting;
+        if (this._similarClear.Visible)
+        {
+            rows.AddRange(this.SimilarRows(this._similarTo!));
+            this._caption.Text = $"Similar to {this._similarTo!.Name} ({rows.Count:N0})";
+        }
+        else if (words.Length == 0)
         {
             foreach (var favorite in _favorites.Newest)
             {
@@ -2456,7 +2683,8 @@ internal sealed class FileExplorerPanel : Panel
         }
 
         var contents = this._byContent.Checked ? this._contents : null;
-        return FileSearch.Search(entries, words, contents is null ? null : (e, word) => contents.GradeOf(e.RelativePath, word), this._byName.Checked, this._fileOrder);
+        var found = FileSearch.Search(entries, words, contents is null ? null : (e, word) => contents.GradeOf(e.RelativePath, word), this._byName.Checked, this._fileOrder);
+        return this._byContent.Checked ? this.WithSimilar(found, entries, words) : found;
     }
 
     /// <summary>The words around the one the search found in a tile's content text, 4 on each side.</summary>

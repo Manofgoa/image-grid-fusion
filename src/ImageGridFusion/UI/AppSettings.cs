@@ -28,6 +28,8 @@ internal static class AppSettings
     private const string ExplorerFolderViewName = "ExplorerFolderView";
     private const string ExplorerModeName = "ExplorerMode";
     private const string FaceAnalysisName = "FaceAnalysis";
+    private const string VisualAnalysisName = "VisualAnalysis";
+    private const string CaptionsName = "Captions";
     private const string ExplorerOpenFolderName = "ExplorerOpenFolder";
     private const string ExplorerContentSearchName = "ExplorerContentSearch";
     private const string ExplorerFileOrderName = "ExplorerFileOrder";
@@ -247,6 +249,22 @@ internal static class AppSettings
 
     /// <summary>Saves whether the file explorer analyses the faces; throws an <see cref="IsSaveError"/> exception on failure.</summary>
     public static void SaveFaceAnalysis(bool on) => Save((FaceAnalysisName, on ? 1 : 0));
+
+    /// <summary>
+    /// Whether the file explorer computes the images' embeddings and tags, for the searches by what the
+    /// images show — the ⚙ menu's Visual analysis; false, opt-in, when nothing was saved. See
+    /// workfiles/20261027-image-content-analysis.md § Engine Offer.
+    /// </summary>
+    public static bool VisualAnalysis => Int(VisualAnalysisName) is int value && value != 0;
+
+    /// <summary>Saves whether the file explorer analyses what the images show; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveVisualAnalysis(bool on) => Save((VisualAnalysisName, on ? 1 : 0));
+
+    /// <summary>Whether the file explorer writes a caption for every image — the ⚙ menu's Captions; false, opt-in, when nothing was saved.</summary>
+    public static bool Captions => Int(CaptionsName) is int value && value != 0;
+
+    /// <summary>Saves whether the file explorer writes the images' captions; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveCaptions(bool on) => Save((CaptionsName, on ? 1 : 0));
 
     /// <summary>
     /// The file explorer's order of the files, its sort drop-down's — saved by name; <see cref="FileOrder.Newest"/>

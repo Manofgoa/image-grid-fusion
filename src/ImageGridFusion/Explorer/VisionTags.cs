@@ -103,9 +103,9 @@ internal sealed class VisionTags
 
     /// <summary>
     /// Gives every concept its embedding: from the cache when it holds its prompt, else computed by
-    /// <paramref name="text"/> — the cache written again when any was. Stops when cancelled.
+    /// <paramref name="text"/> — the text model's — the cache written again when any was. Stops when cancelled.
     /// </summary>
-    public void Embed(TextEncoder text, CancellationToken cancellation)
+    public void Embed(Func<string, float[]> text, CancellationToken cancellation)
     {
         var cached = ReadCache();
         bool computed = false;
@@ -123,7 +123,7 @@ internal sealed class VisionTags
             }
             else
             {
-                concept.Embedding = text.Embed(concept.Prompt);
+                concept.Embedding = text(concept.Prompt);
                 cached[concept.Prompt] = concept.Embedding;
                 computed = true;
             }
