@@ -45,6 +45,9 @@ Settled by the user (Q&A 1–10):
 
 - **The starting point stays**, and **coexists** with the trim: the image loops from the start to
   the end, but begins playing at its starting point, which is kept **inside [start, end]**.
+- **Changing From brings the starting point back to it** — 0 of the played part, the frozen frame
+  too — instead of carrying it along; **changing To leaves it alone**, unless To goes before it, which
+  stops it at To (Iteration 7).
 - **Overflow carries over**, like a clock: frame 23 at 24 fps + ↑ → frame 0 of the next second;
   second 59 + ↑ → second 0 of the next minute; and back the same way with ↓. A value never leaves its
   allowed range (§ Frames Options — UI).
@@ -219,6 +222,13 @@ No project rule broken. Choices the frozen design did not state, or that it stat
   the starting point.
 - **RULES.md** gets a § Video Length › Played Part (the one definition of what a content plays).
 
+### Iteration 7 — 2026-10-27 — ⚙️ Post-implementation — From resets the starting point
+
+Asked by the user: moving **From** carried *Starts at* along — its slider covers [From, To] only, and
+`FramesEffect.WithTrim` pushed the starting point once From passed it. Now changing From (slider,
+fields, wheel) brings the starting point back to From, 0 of the played part, frozen or not; changing
+**To** does nothing to it but stop it at To when To goes before it, as before.
+
 ---
 
 ## Implementation Log
@@ -253,4 +263,4 @@ Questions asked by the agent during design, with user responses.
 
 ---
 
-*Last updated: 2026-10-08*
+*Last updated: 2026-10-27*
