@@ -12,12 +12,12 @@ internal static class VisionEngineFiles
     /// <summary>The models' folder next to the exe.</summary>
     public const string FolderName = "vision-engine";
 
-    public const string VisionModel = "siglip2_vision_model_int8.onnx";
+    public const string VisionModel = "siglip2_vision_model_uint8.onnx";
     public const string TextModel = "siglip2_text_model_int8.onnx";
     public const string Tokenizer = "siglip2_tokenizer.model";
 
     /// <summary>What the embeddings come from: a change of model makes the stored ones meaningless.</summary>
-    public const string EmbeddingModelId = "siglip2-base-patch16-256 int8";
+    public const string EmbeddingModelId = "siglip2-base-patch16-256 uint8";
 
     // ONNX Runtime's share of the whole download, when it is fetched too: about 13 MB of 395.
     private const double RuntimeShare = 0.03;
@@ -28,7 +28,7 @@ internal static class VisionEngineFiles
 
     private static readonly EngineFile[] EmbeddingFiles =
     [
-        new(VisionModel, OnnxRevision + "vision_model_int8.onnx", "8243a496e524bf8fa19830ff42a40a4bae2e97acc2e288d4ae97601edf954977", 94_737_653),
+        new(VisionModel, OnnxRevision + "vision_model_quantized.onnx", "f2eb8ccfa3dc0b3761d9ea9a39554fe0f2be71b247ad7f68a80720ec88895650", 94_737_653),
         new(TextModel, OnnxRevision + "text_model_int8.onnx", "6f59b39d880c413042314b79302b74d0dd93b273caf8fbfdb1eb2df61a7fefd4", 283_438_275),
         new(Tokenizer, BaseRevision + "tokenizer.model", "61a7b147390c64585d6c3543dd6fc636906c9af3865a5548f27f31aee1d4c8e2", 4_241_003),
     ];
