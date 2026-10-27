@@ -22,7 +22,8 @@ internal static class OcrEngineFiles
     public const string Recognition = "latin_PP-OCRv5_rec_mobile_infer.onnx";
     public const string Dictionary = "ppocrv5_latin_dict.txt";
 
-    private const string OnnxRuntime = "onnxruntime.dll";
+    /// <summary>ONNX Runtime's native DLL — the face engine runs on it too (<see cref="FaceEngineFiles"/>).</summary>
+    public const string OnnxRuntime = "onnxruntime.dll";
     private const string SkiaSharp = "libSkiaSharp.dll";
     private const string PartialSuffix = ".~downloading";
 
@@ -49,6 +50,9 @@ internal static class OcrEngineFiles
     /// <summary>Whether every file of the engine is there.</summary>
     public static bool IsAvailable => Files.All(f => File.Exists(PathOf(f.Name)));
 
+    /// <summary>Whether ONNX Runtime's native DLL is there, whatever else is missing.</summary>
+    public static bool HasRuntime => File.Exists(PathOf(OnnxRuntime));
+
     public static string PathOf(string name) => Path.Combine(Folder, name);
 
     /// <summary>
@@ -73,13 +77,14 @@ internal static class OcrEngineFiles
     /// <summary>
     /// Downloads the files missing from <see cref="Folder"/>, reporting the share done, 0 to 1. A file
     /// is written through a partial file and moved into place once its hash is checked: a failed or
-    /// cancelled download leaves nothing half-written. Throws a <see cref="UrlLoadException"/> when it
-    /// cannot.
+    /// cancelled download leaves nothing half-written. <paramref name="only"/>: the names of the files to
+    /// download, the others left — ONNX Runtime alone for the face engine. Throws a
+    /// <see cref="UrlLoadException"/> when it cannot.
     /// </summary>
-    public static async Task DownloadAsync(IProgress<double> progress, CancellationToken token)
+    public static async Task DownloadAsync(IProgress<double> progress, CancellationToken token, IReadOnlyCollection<string>? only = null)
     {
         Directory.CreateDirectory(Folder);
-        var missing = Files.Where(f => !File.Exists(PathOf(f.Name))).ToArray();
+        var missing = Files.Where(f => !File.Exists(PathOf(f.Name)) && (only is null || only.Contains(f.Name))).ToArray();
         var packages = new Dictionary<Uri, IReadOnlyDictionary<string, RemoteZipEntry>>();
         var entries = new List<(EngineFile File, Uri Url, RemoteZipEntry Entry)>();
         foreach (var file in missing)

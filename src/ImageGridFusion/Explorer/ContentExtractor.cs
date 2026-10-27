@@ -167,6 +167,31 @@ internal sealed class ContentExtractor : IDisposable
         }
     }
 
+    /// <summary>
+    /// The pixels the OCR reads in an image or a PDF's first page — BGRA premultiplied, row after row,
+    /// oriented as its EXIF says — for the face pass and the face tiles; null for another file, or one
+    /// that cannot be decoded. See workfiles/20261027-face-detection.md § Face Pass.
+    /// </summary>
+    public static (byte[] Pixels, int Width, int Height)? DecodePixels(string path)
+    {
+        var kind = KindOf(path);
+        if (kind is not (ContentKind.Image or ContentKind.Pdf))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var bitmap = Decode(path, kind);
+            return bitmap is null ? null : (Pixels(bitmap), bitmap.PixelWidth, bitmap.PixelHeight);
+        }
+        catch (Exception)
+        {
+            // As the passes: WinRT reports unreadable or damaged files with assorted exception types.
+            return null;
+        }
+    }
+
     private static ContentResult[] Empty(int slots) => Enumerable.Range(0, slots).Select(_ => ContentResult.Empty).ToArray();
 
     private ContentResult ExtractWindows(string path, ContentKind kind)
