@@ -313,6 +313,22 @@ presets must be found*.
   found both ways shows once.
 - Under **Aa** only, as before; `*` still lists files only.
 
+### Iteration 7 — 2026-10-27 — ⚙️ Post-implementation — Badge as a cached, pixel-exact image
+
+The user's second look at the badge: a border bleeding right and below, unequal left and right
+margins, neither the star nor the text centered vertically. Causes: the grid paints with a half-pixel
+offset (`PixelOffsetMode.HighQuality`), which shifted the fill and the border; the content stood on
+fractional positions. The user asked for it to be made an image kept by the app.
+
+- The badge is drawn **once into a bitmap** (`ThumbnailGrid.PresetBadge`), kept by the grid until its
+  name font or the resolution changes, and copied pixel for pixel onto each preset tile.
+- In it: the capitals of *FX* scaled to a whole number of pixels on whole rows, the 1 px border inside
+  the bitmap, the star from the left margin and the text up to the right one, the gap taking the
+  fraction — equal margins on every side; the star centered on the letters' middle, as a font
+  centers ★, its tip a pixel above the capitals, its lower points on their base.
+- Checked offline at 96, 120 and 144 DPI: margins 3 / 3 / 5 px on each side, star and letters
+  sharing their rows.
+
 ---
 
 ## Implementation Log
