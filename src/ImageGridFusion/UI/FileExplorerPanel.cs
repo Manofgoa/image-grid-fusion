@@ -1842,6 +1842,7 @@ internal sealed partial class FileExplorerPanel : Panel
         var imageRead = ReadImages(index);
         bool facesRun = passes.Faces && FaceEngineFiles.IsAvailable;
         bool visionRun = passes.Vision && VisionEngineFiles.IsAvailable;
+        bool captionsRun = passes.Captions && CaptionEngineFiles.IsAvailable;
         try
         {
             foreach (var pass in ContentPasses.All)
@@ -1859,6 +1860,13 @@ internal sealed partial class FileExplorerPanel : Panel
                     {
                         int done = imageRead.Count(vision.IsCurrent);
                         progress.Report(new ExtractionProgress(pass, 0, 0, done, imageRead.Length, null, ContentKind.None, false, Finished: !visionRun || done == imageRead.Length));
+                        break;
+                    }
+
+                    case ContentPass.Caption when passes.Captions:
+                    {
+                        int done = imageRead.Count(e => contents.IsCurrent(e, pass));
+                        progress.Report(new ExtractionProgress(pass, 0, 0, done, imageRead.Length, null, ContentKind.None, false, Finished: !captionsRun || done == imageRead.Length));
                         break;
                     }
 
@@ -1883,6 +1891,9 @@ internal sealed partial class FileExplorerPanel : Panel
                         break;
                     case ContentPass.Vision when visionRun:
                         RunVision();
+                        break;
+                    case ContentPass.Caption when captionsRun:
+                        RunCaptions();
                         break;
                     case ContentPass.Windows or ContentPass.Rapid or ContentPass.Inverted or ContentPass.Ring when passes.Ocr:
                         RunPass(pass);
@@ -2012,6 +2023,77 @@ internal sealed partial class FileExplorerPanel : Panel
             }
 
             progress.Report(new ExtractionProgress(ContentPass.Vision, queue.Length, queue.Length, imageRead.Length, imageRead.Length, null, ContentKind.None, false, Finished: true));
+        }
+
+        // The Caption pass, the last one: every image not described yet described by Florence-2, a few
+        // seconds each. A failure of the engine to load is said, the pass waiting for a working one.
+        void RunCaptions()
+        {
+            var queue = imageRead.Where(e => !contents.IsCurrent(e, ContentPass.Caption)).ToArray();
+            int before = imageRead.Length - queue.Length;
+            if (queue.Length == 0)
+            {
+                progress.Report(new ExtractionProgress(ContentPass.Caption, 0, 0, before, imageRead.Length, null, ContentKind.None, false, Finished: true));
+                return;
+            }
+
+            Captioner captioner;
+            try
+            {
+                captioner = new Captioner();
+            }
+            catch (Exception ex)
+            {
+                progress.Report(new ExtractionProgress(ContentPass.Caption, 0, queue.Length, before, imageRead.Length, null, ContentKind.None, false, Finished: true, $"The caption engine could not start: {ex.Message}"));
+                return;
+            }
+
+            using (captioner)
+            {
+                for (int done = 0; done < queue.Length; done++)
+                {
+                    cancellation.ThrowIfCancellationRequested();
+                    if (this.ExtractionPaused())
+                    {
+                        progress.Report(new ExtractionProgress(ContentPass.Caption, done, queue.Length, before + done, imageRead.Length, null, ContentKind.None, false, false));
+                        this.WaitWhilePaused(cancellation);
+                    }
+
+                    var entry = queue[done];
+                    string path = index.FullPath(entry);
+                    progress.Report(new ExtractionProgress(ContentPass.Caption, done, queue.Length, before + done, imageRead.Length, path, ContentKind.Image, false, false));
+                    string caption;
+                    try
+                    {
+                        caption = ContentExtractor.DecodePixels(path) is var (pixels, width, height) ? captioner.Describe(pixels, width, height) : "";
+                    }
+                    catch (Exception ex) when (ex is Microsoft.ML.OnnxRuntime.OnnxRuntimeException or OutOfMemoryException or ArgumentException or System.Runtime.InteropServices.ExternalException)
+                    {
+                        // As an unreadable file: no caption, not described again until it changes.
+                        caption = "";
+                    }
+
+                    contents.Set(entry.RelativePath, entry.Stamp!.Value, ContentPass.Caption, [new ContentResult(caption, null)]);
+                    changed = true;
+                    unsaved++;
+
+                    long now = Environment.TickCount64;
+                    if (now - saved >= ContentSaveInterval || (unsaved >= ContentSaveEvery && now - saved >= ContentSaveFloor))
+                    {
+                        TrySave(contents);
+                        saved = now;
+                        unsaved = 0;
+                    }
+
+                    if (now - refreshed >= ContentRefreshInterval)
+                    {
+                        refreshed = now;
+                        progress.Report(new ExtractionProgress(ContentPass.Caption, done, queue.Length, before + done, imageRead.Length, null, ContentKind.None, true, false));
+                    }
+                }
+            }
+
+            progress.Report(new ExtractionProgress(ContentPass.Caption, queue.Length, queue.Length, imageRead.Length, imageRead.Length, null, ContentKind.None, false, Finished: true));
         }
 
         void RunPass(ContentPass pass)
