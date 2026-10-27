@@ -31,7 +31,7 @@ internal sealed record ContentResult(string Text, IReadOnlyList<WordBox>? Boxes)
 
 /// <summary>
 /// Extracts a file's content text for the file explorer's search, on the calling thread, one pass at a
-/// time (<see cref="OcrPass"/>): Windows' own text recognition (<see cref="OcrEngine"/>) on a still
+/// time (<see cref="ContentPass"/>): Windows' own text recognition (<see cref="OcrEngine"/>) on a still
 /// image — a GIF's first frame — or a PDF's first page, in French and in English when Windows has those
 /// languages, the text of a text or HTML file read; RapidOCR on the same pixels; Windows OCR again on
 /// the colours inverted, then on the ring of the image unrolled into strips. Never throws for a file it
@@ -127,19 +127,19 @@ internal sealed class ContentExtractor : IDisposable
 
     /// <summary>
     /// What <paramref name="pass"/> reads in the file — one result per slot of the pass
-    /// (<see cref="OcrPasses.SlotsOf"/>): its content text, as raw as it came, and its words' boxes when
+    /// (<see cref="ContentPasses.SlotsOf"/>): its content text, as raw as it came, and its words' boxes when
     /// an OCR read it; no text when it has none, or it cannot be read. The passes after the Windows one
     /// read images and PDFs only; RapidOCR's needs <see cref="StartRapid"/> first.
     /// </summary>
-    public IReadOnlyList<ContentResult> Extract(string path, OcrPass pass)
+    public IReadOnlyList<ContentResult> Extract(string path, ContentPass pass)
     {
         var kind = KindOf(path);
-        if (pass == OcrPass.Windows)
+        if (pass == ContentPass.Windows)
         {
             return [this.ExtractWindows(path, kind)];
         }
 
-        int slots = OcrPasses.SlotsOf(pass).Length;
+        int slots = ContentPasses.SlotsOf(pass).Length;
         if (kind is not (ContentKind.Image or ContentKind.Pdf))
         {
             return Empty(slots);
@@ -155,8 +155,8 @@ internal sealed class ContentExtractor : IDisposable
 
             return pass switch
             {
-                OcrPass.Rapid => this.RecognizeRapid(bitmap),
-                OcrPass.Inverted => [this.RecognizeInverted(bitmap)],
+                ContentPass.Rapid => this.RecognizeRapid(bitmap),
+                ContentPass.Inverted => [this.RecognizeInverted(bitmap)],
                 _ => [this.RecognizeRing(bitmap)],
             };
         }

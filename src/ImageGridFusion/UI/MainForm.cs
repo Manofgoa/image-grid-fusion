@@ -49,6 +49,16 @@ internal sealed class MainForm : Form
     private readonly ToolStripMenuItem _faceAnalysis = new("Face analysis");
     private readonly ToolStripMenuItem _downloadFaceEngine = new("Download the face engine…");
     private readonly ToolStripMenuItem _forgetFaces = new("Forget faces…");
+    // The image content analysis' group of the ⚙ menu (workfiles/20261027-image-content-analysis.md § Engine Offer).
+    private readonly ToolStripMenuItem _visualCaption = new("Image content") { Enabled = false };
+    private readonly ToolStripMenuItem _visualAnalysis = new("Visual analysis");
+    private readonly ToolStripMenuItem _downloadVisionEngine = new("Download the vision engine…");
+    private readonly ToolStripMenuItem _captions = new("Captions");
+    private readonly ToolStripMenuItem _downloadCaptionEngine = new("Download the caption engine…");
+    private readonly ToolStripMenuItem _forgetVisual = new("Forget visual analysis…");
+    // A cell's context menu, shown while the visual analysis can run: the images like its own.
+    private readonly ContextMenuStrip _cellMenu = new();
+    private readonly ToolStripMenuItem _findSimilarCell = new("Find similar images");
     // How the light bulb's arrow to the word found is drawn: a submenu of the group, the thickness a
     // submenu of exclusive choices, remembered between sessions. See workfiles/20261007-ocr-result-style.md.
     private readonly ToolStripMenuItem _ocrResultStyle = new("OCR result style");
@@ -564,6 +574,8 @@ internal sealed class MainForm : Form
         this._explorer.ArrowStyle = AppSettings.OcrArrow;
         _explorer.OpenFolder = AppSettings.ExplorerOpenFolder;
         this._explorer.FaceAnalysis = AppSettings.FaceAnalysis;
+        this._explorer.VisualAnalysis = AppSettings.VisualAnalysis;
+        this._explorer.Captions = AppSettings.Captions;
         this._explorer.Mode = AppSettings.ExplorerMode;
         _explorerSplitter.Visible = _explorer.Open;
         ApplyExplorerSplitterBounds();
@@ -604,7 +616,7 @@ internal sealed class MainForm : Form
         this._transportTimer.Tick += (_, _) => this.RefreshTransportPosition();
         this._transportTimer.Start();
         this._toolTip.SetToolTip(this._clearButton, "Removes every image and the global effects, and brings the format back to Twitter (Ctrl+N)");
-        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._downloadOcrEngine, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._downloadFaceEngine, this._forgetFaces, new ToolStripSeparator(), this._openAppFolder]);
+        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._downloadOcrEngine, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._downloadFaceEngine, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._downloadVisionEngine, this._captions, this._downloadCaptionEngine, this._forgetVisual, new ToolStripSeparator(), this._openAppFolder]);
         for (int pages = FileExplorerPanel.MinPagesPerLoad; pages <= FileExplorerPanel.MaxPagesPerLoad; pages++)
         {
             int choice = pages;
@@ -664,6 +676,16 @@ internal sealed class MainForm : Form
         this._downloadFaceEngine.Click += (_, _) => this.OfferFaceEngineDownload();
         this._forgetFaces.ToolTipText = "Deletes every face found and every person named, hidden or merged — files.faces and people.json — and turns the face analysis off";
         this._forgetFaces.Click += (_, _) => this.ForgetFaces();
+        this._visualAnalysis.ToolTipText = "Whether the file explorer looks at what the base folder's images and PDFs show — tags in French and English, and the images closest to a search or to another image — on this computer only; off until turned on, remembered between sessions";
+        this._visualAnalysis.Click += (_, _) => this.ToggleVisualAnalysis();
+        this._downloadVisionEngine.ToolTipText = "Downloads the vision engine — SigLIP 2 — the visual analysis runs on; shown while it is not downloaded";
+        this._downloadVisionEngine.Click += (_, _) => this.OfferVisionEngineDownload();
+        this._captions.ToolTipText = "Whether the file explorer writes a sentence in English saying what every image shows, found by the search and shown in the Details view — slow: a few seconds an image; off until turned on, remembered between sessions";
+        this._captions.Click += (_, _) => this.ToggleCaptions();
+        this._downloadCaptionEngine.ToolTipText = "Downloads the caption engine — Florence-2 — the captions are written with; shown while it is not downloaded";
+        this._downloadCaptionEngine.Click += (_, _) => this.OfferCaptionEngineDownload();
+        this._forgetVisual.ToolTipText = "Deletes every embedding, tag and caption — files.vision and the tags and captions of files.content — and turns the visual analysis and the captions off";
+        this._forgetVisual.Click += (_, _) => this.ForgetVisualAnalysis();
         this._ocrResultStyle.ToolTipText = "How the arrow from a tile's light bulb to the word the OCR found is drawn; remembered between sessions";
         this._ocrArrowCurved.ToolTipText = "Whether the arrow is a slight curve arriving straight down — or up — onto the word, rather than a straight line; remembered between sessions";
         this._ocrArrowCurved.Click += (_, _) => this.SetOcrArrow(this._explorer.ArrowStyle with { Curved = !this._explorer.ArrowStyle.Curved });
@@ -961,7 +983,12 @@ internal sealed class MainForm : Form
         _preview.SwapDragMoved += (_, point) => _explorer.ShowDropFrame(point is { } at && _explorer.ContainsScreenPoint(at));
         _preview.ReleasedOffGrid += (_, released) =>
         {
-            if (_explorer.ContainsScreenPoint(released.ScreenPoint))
+            // Onto the search box, it looks for similar images (workfiles/20261027-image-content-analysis.md § Similar Images).
+            if (this._explorer.CanFindSimilar && this._explorer.SearchBoxContainsScreenPoint(released.ScreenPoint))
+            {
+                this.FindSimilar(released.Image);
+            }
+            else if (_explorer.ContainsScreenPoint(released.ScreenPoint))
             {
                 // A cell with effects offers them as a preset; without, its file becomes a favorite, as ever.
                 if (LookPreset.HasEffects(released.Image.Look))
@@ -974,6 +1001,15 @@ internal sealed class MainForm : Form
                 }
             }
         };
+        this._preview.MouseUp += (_, e) => this.ShowCellMenu(e);
+        this._findSimilarCell.Click += (_, _) =>
+        {
+            if (this._cellMenu.Tag is SourceImage image && this._preview.Images.Contains(image))
+            {
+                this.FindSimilar(image);
+            }
+        };
+        this._cellMenu.Items.Add(this._findSimilarCell);
         _explorer.MessageWhileCollapsed += (_, message) => ShowStatus(message.Text, message.Error);
         this._explorer.SearchEscaped += (_, _) => this._preview.Focus();
         _layouts.DragEnter += OnDragEnter;
@@ -991,6 +1027,7 @@ internal sealed class MainForm : Form
             this._history.Dispose();
             this._transportTimer.Dispose();
             _settingsMenu.Dispose();
+            this._cellMenu.Dispose();
             _copyMenu.Dispose();
             _saveMenu.Dispose();
             _toolTip.Dispose();
@@ -2910,6 +2947,12 @@ internal sealed class MainForm : Form
         this._faceAnalysis.Checked = this._explorer.FaceAnalysis;
         this._downloadFaceEngine.Visible = !FaceEngineFiles.IsAvailable;
         this._downloadFaceEngine.Enabled = !this._explorer.DownloadingFaceEngine;
+        this._visualAnalysis.Checked = this._explorer.VisualAnalysis;
+        this._downloadVisionEngine.Visible = !VisionEngineFiles.IsAvailable;
+        this._downloadVisionEngine.Enabled = !this._explorer.DownloadingVisionEngine;
+        this._captions.Checked = this._explorer.Captions;
+        this._downloadCaptionEngine.Visible = !CaptionEngineFiles.IsAvailable;
+        this._downloadCaptionEngine.Enabled = !this._explorer.DownloadingCaptionEngine;
         this._ocrArrowCurved.Checked = this._explorer.ArrowStyle.Curved;
         foreach (ToolStripMenuItem item in this._ocrArrowThickness.DropDownItems)
         {
@@ -4270,6 +4313,164 @@ internal sealed class MainForm : Form
         }
 
         this._explorer.ForgetFaces();
+    }
+
+    /// <summary>
+    /// A right click on a cell holding an image, while the visual analysis can run: its context menu,
+    /// Find similar images. See workfiles/20261027-image-content-analysis.md § Similar Images.
+    /// </summary>
+    private void ShowCellMenu(MouseEventArgs e)
+    {
+        if (e.Button != MouseButtons.Right || !this._explorer.CanFindSimilar)
+        {
+            return;
+        }
+
+        int cell = this._preview.CellAt(e.Location);
+        if (cell < 0 || cell >= this._preview.Images.Count)
+        {
+            return;
+        }
+
+        this._cellMenu.Tag = this._preview.Images[cell];
+        this._cellMenu.Show(this._preview, e.Location);
+    }
+
+    /// <summary>The file explorer lists the images closest to a cell's: its file's, else its frame's.</summary>
+    private void FindSimilar(SourceImage image)
+    {
+        string name = image.FilePath is { } path ? Path.GetFileName(path) : "the cell's image";
+        _ = this._explorer.FindSimilarAsync(image.Bitmap, name, image.FilePath);
+    }
+
+    /// <summary>
+    /// The ⚙ menu's Visual analysis: the file explorer starts or stops looking at what the images show —
+    /// what was found kept — and the choice is remembered between sessions; turned on, the user's tags file
+    /// is created next to the exe when missing, and without its engine, its download is offered. See
+    /// workfiles/20261027-image-content-analysis.md § Engine Offer.
+    /// </summary>
+    private void ToggleVisualAnalysis()
+    {
+        bool enable = !this._explorer.VisualAnalysis;
+        this._explorer.VisualAnalysis = enable;
+        this._visualAnalysis.Checked = enable;
+        try
+        {
+            AppSettings.SaveVisualAnalysis(enable);
+            if (enable)
+            {
+                VisionTags.CreateUserFile();
+            }
+        }
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
+        {
+            this.ShowStatus($"Visual analysis not remembered: {ex.Message}", error: true);
+        }
+
+        if (enable && !VisionEngineFiles.IsAvailable && !this._explorer.DownloadingVisionEngine)
+        {
+            this.OfferVisionEngineDownload();
+        }
+    }
+
+    /// <summary>The ⚙ menu's Captions: as <see cref="ToggleVisualAnalysis"/>, for the captions and their engine.</summary>
+    private void ToggleCaptions()
+    {
+        bool enable = !this._explorer.Captions;
+        this._explorer.Captions = enable;
+        this._captions.Checked = enable;
+        try
+        {
+            AppSettings.SaveCaptions(enable);
+        }
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
+        {
+            this.ShowStatus($"Captions not remembered: {ex.Message}", error: true);
+        }
+
+        if (enable && !CaptionEngineFiles.IsAvailable && !this._explorer.DownloadingCaptionEngine)
+        {
+            this.OfferCaptionEngineDownload();
+        }
+    }
+
+    /// <summary>
+    /// Offers to download the vision engine, saying what, how much and where; on Yes, the file explorer
+    /// downloads it; on No, the visual analysis is turned off again. See
+    /// workfiles/20261027-image-content-analysis.md § Engine Offer.
+    /// </summary>
+    private void OfferVisionEngineDownload()
+    {
+        string runtime = OcrEngineFiles.HasRuntime ? "" : $"\n\nThe ONNX Runtime library it runs on (about 13 MB, from nuget.org) goes into:\n\n{OcrEngineFiles.Folder}";
+        var answer = MessageBox.Show(
+            this,
+            "Download the vision engine? SigLIP 2, a model telling what an image shows, lets the file explorer tag the base folder's images "
+            + "in French and English and find them by what they show, or by their likeness to another image. Everything stays on this computer.\n\n"
+            + $"About {VisionEngineFiles.DownloadMegabytes} MB, taken from huggingface.co into:\n\n{VisionEngineFiles.Folder}{runtime}",
+            "Download the vision engine",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question);
+        if (answer == DialogResult.Yes)
+        {
+            _ = this._explorer.DownloadVisionEngineAsync();
+        }
+        else if (this._explorer.VisualAnalysis && !VisionEngineFiles.IsAvailable)
+        {
+            this.ToggleVisualAnalysis();
+        }
+    }
+
+    /// <summary>As <see cref="OfferVisionEngineDownload"/>, for the caption engine and the captions.</summary>
+    private void OfferCaptionEngineDownload()
+    {
+        string runtime = OcrEngineFiles.HasRuntime ? "" : $"\n\nThe ONNX Runtime library it runs on (about 13 MB, from nuget.org) goes into:\n\n{OcrEngineFiles.Folder}";
+        var answer = MessageBox.Show(
+            this,
+            "Download the caption engine? Florence-2, a model describing an image in a sentence, lets the file explorer write in English what every image of the base folder shows — "
+            + "a few seconds an image. Everything stays on this computer.\n\n"
+            + $"About {CaptionEngineFiles.DownloadMegabytes} MB, taken from huggingface.co into:\n\n{VisionEngineFiles.Folder}{runtime}",
+            "Download the caption engine",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question);
+        if (answer == DialogResult.Yes)
+        {
+            _ = this._explorer.DownloadCaptionEngineAsync();
+        }
+        else if (this._explorer.Captions && !CaptionEngineFiles.IsAvailable)
+        {
+            this.ToggleCaptions();
+        }
+    }
+
+    /// <summary>
+    /// The ⚙ menu's Forget visual analysis…: once confirmed, every embedding, tag and caption deleted, and
+    /// the visual analysis and the captions turned off — remembered. See
+    /// workfiles/20261027-image-content-analysis.md § Engine Offer.
+    /// </summary>
+    private void ForgetVisualAnalysis()
+    {
+        if (MessageBox.Show(
+                this,
+                "Forget what the images show — every embedding, tag and caption? The visual analysis and the captions are turned off; turned on again, they look at the images from the start.\n\nThe engines and your tags file (vision-tags.txt) stay.",
+                "Forget visual analysis",
+                MessageBoxButtons.OKCancel,
+                MessageBoxIcon.Warning,
+                MessageBoxDefaultButton.Button2) != DialogResult.OK)
+        {
+            return;
+        }
+
+        if (this._explorer.VisualAnalysis)
+        {
+            this.ToggleVisualAnalysis();
+        }
+
+        if (this._explorer.Captions)
+        {
+            this.ToggleCaptions();
+        }
+
+        this._explorer.ForgetVisualAnalysis();
     }
 
     /// <summary>The ⚙ menu's Arrow color…: the standard color dialog, the color chosen applied at once and remembered between sessions.</summary>

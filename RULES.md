@@ -582,12 +582,15 @@ What the URL zone loads (origin: `workfiles/20261009-url-content.md`), `Web/`:
 ## Content OCR Passes
 
 How the content search reads the images and PDF pages (origin:
-`workfiles/20261013-complementary-ocr-passes.md`), `Explorer/OcrPass.cs`:
+`workfiles/20261013-complementary-ocr-passes.md`), `Explorer/ContentPass.cs`:
 
-- **The passes, in order** (`OcrPasses.All`), each over every image and PDF the index holds, one after
-  the other in one worker (`FileExplorerPanel.Extract`): **Windows** (Windows OCR), **Rapid** (RapidOCR),
-  **Inverted** (Windows OCR on the colours inverted), **Ring** (Windows OCR on the inscribed circle's band
-  unrolled). One pause rule, one save cadence. A new pass is added there, with its bar.
+- **The passes, in order** (`ContentPasses.All`), each over every image and PDF the index holds, one after
+  the other in one worker (`FileExplorerPanel.Extract`): **Windows** (Windows OCR), **Faces**, **Vision**,
+  **Rapid** (RapidOCR), **Inverted** (Windows OCR on the colours inverted), **Ring** (Windows OCR on the
+  inscribed circle's band unrolled), **Caption**. The OCR ones (`ContentPasses.Ocr`) run while the content
+  search is on, each other one while its own setting is (§ People, § Image Content Analysis). One pause
+  rule, one save cadence. A new pass is a value of `ContentPass`, in its place, with its bar — never a
+  flag beside it (origin: `workfiles/20261027-image-content-analysis.md`).
 - **The words add up**: each pass fills its own **slots** (`ContentSlot`) and never touches another's; a
   changed file starts over from the Windows pass, its later slots dropped. A slot not filled yet is a pass
   **not done**.
@@ -598,10 +601,11 @@ How the content search reads the images and PDF pages (origin:
   undecoded otherwise (`ContentIndex.SlotText`); the file list shows without waiting for the texts. A
   new per-box or per-word value follows the same rule.
 - **Sure or weak**: a slot is **weak** when its words are less reliable — read on an odd shape (Ring), or
-  with a low confidence (RapidOCR's *unsure* block, score 0.6 to 0.8) — `OcrPasses.IsWeak`. A new slot
+  with a low confidence (RapidOCR's *unsure* block, score 0.6 to 0.8) — `ContentPasses.IsWeak`. A new slot
   declares itself. The search ranks the content matches by `ContentGrade`: a sure slot holding the word,
   then a sure slot holding it once its spaces are removed (**spaces-ignored match**, query words of
-  `FileSearch.JoinedMinLength` characters or more, OCR texts only), then a weak slot. The excerpt and the
+  `FileSearch.JoinedMinLength` characters or more, OCR texts only), then a weak slot, then the **seen**
+  slots — the tags and the caption (`ContentPasses.IsSeen`, § Image Content Analysis). The excerpt and the
   arrow come from the slot that gave the grade (`ContentIndex.Find`).
 - **RapidOCR is never shipped**: its models and the native DLLs of ONNX Runtime and SkiaSharp are kept
   out of the build and downloaded on demand into **`ocr-engine\` next to the exe** (`OcrEngineFiles`) —
@@ -613,7 +617,8 @@ How the content search reads the images and PDF pages (origin:
   code touches ONNX Runtime or SkiaSharp**: another `libSkiaSharp.dll` on the `PATH` would be loaded
   otherwise.
 - Without the engine the RapidOCR pass is skipped, its bar hidden; the others run.
-- The **face pass** runs in the same worker, right after the Windows pass and before RapidOCR — § People.
+- The **face pass** runs in the same worker, right after the Windows pass — § People — then the **Vision**
+  pass, before RapidOCR, and the **Caption** pass last — § Image Content Analysis.
 
 ## People
 
@@ -658,6 +663,52 @@ The faces of the indexed images grouped into people, in the file explorer's **Pe
 - **Search by name**: under **Aa**, a person's name finds their files in their own tier — after the
   presets' descriptions, before the content matches (`FileSearch.SearchPeople`) — the hidden people left
   out, in the folder view those below the open folder.
+
+## Image Content Analysis
+
+What the indexed images **show**, analysed offline and searched under 💡 in French and English (origin:
+`workfiles/20261027-image-content-analysis.md`):
+
+- **Opt-in, two settings** of the ⚙ menu, off by default, independent: *Visual analysis*
+  (`AppSettings.VisualAnalysis`: the Vision pass, the tags, the similarity tier, *Find similar images*) and
+  *Captions* (`AppSettings.Captions`: the Caption pass). Each offers its engine's download when turned on
+  without it — a **No** turns it off again. *Forget visual analysis…* deletes `index\files.vision` and the
+  concepts' cache, empties the Tags and Caption slots, and turns both off; the engines and the user's
+  vocabulary stay.
+- **The engines are never shipped**: **SigLIP 2 base** (Apache 2.0 — its vision model, its text model and
+  Gemma's SentencePiece tokenizer, `VisionEngineFiles`) and **Florence-2 base** (MIT, `CaptionEngineFiles`),
+  downloaded on demand into **`vision-engine\` next to the exe** from pinned revisions, each file checked
+  against its SHA-256 — one download loop for every direct engine, `DirectEngineDownload`, the face
+  engine's included. They run on the OCR engine's ONNX Runtime DLL, on the CPU. The vision encoders are
+  the **uint8** exports, about twice as fast as the int8 ones on the CPU for the same results.
+- **The Vision pass** (`FileExplorerPanel.Extract`, `RunVision`): over every image and PDF — the pixels
+  `ContentExtractor.DecodePixels` gives — each squashed to 256 × 256 over white through SigLIP 2's vision
+  model (`VisionEncoder`): an **embedding**, 768 values of length 1, kept in **`index\files.vision`**
+  (`VisionIndex`), a file of its own — binary, versioned, its model's id (another model empties it); a file
+  that cannot be read is kept without one, so it is not read again until it changes.
+- **The tags come from the embeddings**, never from a model of their own (`VisionTags`): a bilingual
+  vocabulary — `Explorer/VisionTags.txt`, embedded, ~1 000 concepts, plus the user's `vision-tags.txt` next
+  to the exe, created when the analysis is turned on — each concept's text embedding cached in
+  `index\vision-concepts.bin`; an image's tags are the concepts within reach of its best one
+  (`VisionTags.Floor`, `Spread`, `MaxTags`), their French and English words written into the **Tags** slot.
+  A vocabulary or rule change gives another `VisionTags.Key`: the tags are computed again from the stored
+  embeddings, no image read; tags lost while the embeddings stay are computed again the same way.
+- **The Caption pass**, last (`RunCaptions`, `Captioner`): Florence-2's `<CAPTION>` task — one sentence in
+  English, greedy, no trigram twice — into the **Caption** slot. A few seconds an image.
+- **`files.content` version 4**: the Tags and Caption slots after the OCR ones, written as text, without
+  boxes; a version-3 file is read with its OCR slots, the two new ones *not done*. They need no Windows
+  pass; the Windows pass keeps them while the file is unchanged.
+- **Searched under 💡**, after every word read: the tags and the caption in two grades of their own —
+  **Seen**, the query word found whole, then **Seen inside**, found inside a longer word — then the
+  **similarity tier** (`FileSearch.SimilarityTier`): the query embedded by the text model (`TextEncoder`,
+  lowercased, EOS appended, padded to 64), the **N closest images** (`SimilarCount`, 100) of the search's
+  scope not found already, the closest first — **always by score**, whatever the sort order. The text model
+  is loaded at the first search needing it and released after 5 minutes without one.
+- **Find similar images**: the same N closest to an image — from a tile's context menu, a **cell's context
+  menu** (`MainForm.ShowCellMenu`), or an image dropped onto the search box, a cell by its ✥ handle
+  included — listed in the search view, `Similar to <name>` and its × on the caption line; typing gives the
+  search back. An image without an embedding is embedded on the spot.
+- Everything stays on this machine; out of the undo history.
 
 ## App Settings
 

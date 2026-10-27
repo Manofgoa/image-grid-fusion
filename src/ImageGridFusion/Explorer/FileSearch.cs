@@ -187,6 +187,33 @@ internal static class FileSearch
 
     private static int PersonTier(int words) => DescriptionTier(words) + 1;
 
+    /// <summary>
+    /// The tier of the images found by their similarity to the query — after every content grade, the tags
+    /// and the captions included — numbered as <see cref="SearchMatch.Tier"/> numbers the files'. See
+    /// workfiles/20261027-image-content-analysis.md § Search Under 💡.
+    /// </summary>
+    public static int SimilarityTier(int words) => PersonTier(words) + 1 + (int)ContentGrade.SeenInside + 1;
+
+    /// <summary>
+    /// The <paramref name="count"/> entries whose embedding — given by <paramref name="embeddingOf"/>, null
+    /// for none — is the closest to <paramref name="query"/>, the closest first, those in
+    /// <paramref name="excluded"/> left out; each in the similarity tier for <paramref name="words"/> query words.
+    /// </summary>
+    public static IReadOnlyList<SearchMatch> SearchSimilar(IReadOnlyList<IndexEntry> entries, Func<IndexEntry, float[]?> embeddingOf, float[] query, int count, int words, IReadOnlySet<IndexEntry>? excluded = null)
+    {
+        var scored = new List<(IndexEntry Entry, float Score)>();
+        foreach (var entry in entries)
+        {
+            if ((excluded is null || !excluded.Contains(entry)) && embeddingOf(entry) is { } embedding)
+            {
+                scored.Add((entry, Embeddings.Dot(embedding, query)));
+            }
+        }
+
+        int tier = SimilarityTier(words);
+        return scored.OrderByDescending(s => s.Score).Take(count).Select(s => new SearchMatch(s.Entry, null, tier, s.Score)).ToArray();
+    }
+
     /// <summary>How well an entry matches; lower compares first.</summary>
     private readonly record struct Rank(string? ContentWord, ContentGrade Grade, int NameHits, int FirstPosition, int NameLength, string Path) : IComparable<Rank>
     {
@@ -311,10 +338,11 @@ internal sealed class IndexEntry
 
 /// <summary>
 /// An entry the search found; <paramref name="ContentWord"/>: the first query word found in its content
-/// text only — null when its path holds every word. <paramref name="Tier"/>: its relevance tier, lower
-/// first — the order a search keeps whatever the sort drop-down says, comparable with a preset's.
+/// text only — null when its path holds every word, or it was found by its similarity. <paramref name="Tier"/>:
+/// its relevance tier, lower first — the order a search keeps whatever the sort drop-down says, comparable
+/// with a preset's. <paramref name="Similarity"/>: how close its image is to the query, for an entry found so.
 /// </summary>
-internal readonly record struct SearchMatch(IndexEntry Entry, string? ContentWord, int Tier = 0)
+internal readonly record struct SearchMatch(IndexEntry Entry, string? ContentWord, int Tier = 0, float? Similarity = null)
 {
     /// <summary>Whether the entry was found thanks to its content text.</summary>
     public bool ByContent => this.ContentWord is not null;
