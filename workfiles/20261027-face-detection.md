@@ -74,9 +74,10 @@ directly — no new package:
   saying how many files are done and how many faces were found.
 - Over every **image and PDF** entry of the index — the pixels `ContentExtractor.Decode` gives
   (an image, a GIF's first frame, a PDF's first page). Videos are left out.
-- Per file: YuNet on the decoded image (resized to its input), the boxes above a **score threshold**
-  kept, after non-maximum suppression; faces smaller than a **minimum size** (constant, ~40 px on the
-  decoded image) dropped — SFace is unreliable below; each kept face aligned from its 5 landmarks
+- Per file: YuNet on the decoded image fitted into its fixed 640 × 640 input, the boxes from a **score
+  threshold** of 0.75 kept (`FaceAnalyzer.MinScore`: a clear face scores above 0.9, a small one about 0.8,
+  a crowd's noise below 0.6), after non-maximum suppression, 64 at most; faces narrower than 40 px on the
+  decoded image (`FaceAnalyzer.MinFaceSide`) dropped — SFace is unreliable below; each kept face aligned from its 5 landmarks
   (similarity transform onto SFace's template) and embedded.
 - A changed file (size or date, `ContentIndex.IsCurrent`'s rule) is analysed again; a file gone
   from the index drops its faces.
@@ -91,7 +92,8 @@ Its **own file**, `index\files.faces`, never a slot of `files.content` — the e
 text file loaded whole and scanned by every search, and mean nothing to its excerpt and arrow:
 
 - Binary, versioned header, base folder; per file: path, size, ticks (the stamp), then its faces —
-  box and landmarks in fractions of the image, score, embedding (128 floats). A file analysed with no
+  box in fractions of the image, score, embedding (128 floats). The landmarks serve the alignment only
+  and are not kept. A file analysed with no
   face is stored with zero faces (done), a file not analysed yet is absent (not done).
 - Saved atomically (temp file then move), loaded off the UI thread, like the content index.
 - A **face key** identifies a face across sessions: its file's path and its box rounded — stable
@@ -113,9 +115,10 @@ text file loaded whole and scanned by every search, and mean nothing to its exce
     moving or the index being rebuilt;
   - an **excluded face** never joins that person again (the face removed from it);
   - a **merge** is a link between two persons (`mergedInto`), each keeping its own pinned faces.
-- The computation: the persons with pinned faces first, each face of the index joining the closest
-  one above the threshold (never one it is excluded from); the remaining faces grouped among
-  themselves (agglomerative, average linkage) into **unnamed people**.
+- The computation (`FaceGrouping.Compute`): a pinned face stays with its person; any other joins the
+  person whose pinned faces' mean is closest above the threshold (never one it is excluded from), else
+  the closest group of the others by their running mean, else starts one; those groups are then merged
+  when their means are that close. A group of a single face is a **face alone**.
 - An unnamed person has no stable id: naming, hiding or merging it pins its current faces to a new
   person id.
 
@@ -132,7 +135,9 @@ text file loaded whole and scanned by every search, and mean nothing to its exce
     folder tile in what it means, not in its look**: a tile saying it gathers several files (the
     person's best face — largest box × score — cropped from its file, filling the tile, a stack /
     count badge showing it is a group), its name in bold — or *Unnamed* — and its number of files
-    below. Named groups A→Z first, then unnamed groups by number of files, descending.
+    below. Named groups A→Z first, then unnamed groups by number of files, descending. Drawn: the face
+    over two cards stacked up and to the right, `12 files` in a dark label at its bottom right.
+  - a **Hidden (n)** tile after the groups while some are hidden, opened like a group, listing them.
   - an **ungrouped face** — a face no other face is close to — is listed **after the groups, as an
     individual file**: a file tile (drag into a cell, heart, Details view) whose picture is **the face
     cropped from its file**, the file's name below — so the face dragged is the one seen, even in a
@@ -158,7 +163,7 @@ All by **drag and drop** inside the People view, or the **context menu** (right 
 | **Merge** | Drag a group tile onto another group tile, then **confirm** (*Merge X into Y?*) | The dragged group becomes a **sub-group** of the target; the target keeps its name, takes the dragged one's if it has none. A group with sub-groups dragged onto another brings them along: they all become sub-groups of the target, flat — a group holds sub-groups one level deep |
 | **Un-merge** | *Un-merge* on a sub-group tile, inside an opened group | The sub-group becomes a group of its own again, as it was before the merge — its name, its faces |
 | **Remove a face** | *Not <name>* on a file inside an opened group | That file's face of this group excluded from it; it goes back to the automatic grouping, never to this group again |
-| **Hide** | *Hide* on a group tile | The group leaves the view; a *Show hidden* entry of the view lists them, *Unhide* brings one back |
+| **Hide** | *Hide* on a group tile | The group leaves the view for the *Hidden (n)* tile, which lists them; *Unhide* there brings one back |
 
 - A merge is **kept as a link**, never as faces moved: each group keeps its own faces, the merged one
   pointing at its target (`mergedInto`), so un-merging restores it exactly.
@@ -298,6 +303,52 @@ Go given: **code and documentation** (no unit tests, per Q&A 14), in the **curre
 
 ---
 
+### Iteration 6 — 2026-10-27 — 🧭 Implementation choices
+
+⚠️ Rule broken — the agent's checking launch uses the bin's exe (`CLAUDE.md` § Launch)
+   The checks ran from a copy of the build in the scratchpad, with its own `settings.json`, index and
+   `people.json`, the face analysis turned on there.
+   Why: turning the analysis on in the bin's instance writes the user's settings file — an opt-in the
+   user never gave — and analyses their base folder.
+   Autonomous run: reported instead of asked.
+
+Other choices the frozen design left open:
+
+- **Branch Gate**: not asked — this repository's standing choice is `main`.
+- **Detection threshold** 0.75 and **minimum face** 40 px, after the sample images: 0.85 missed a real
+  face scored 0.83. The **grouping threshold** stays SFace's 0.363: no labelled photos of the user's to
+  tune it on; on the samples the same person scores 0.87–0.98, two people about 0.
+- **Grouping**: running means (pinned faces' for a person, members' for the others) then a merge of the
+  close groups, rather than agglomerative clustering — linear in the faces, no N × N matrix.
+- **Landmarks** not stored: only the alignment reads them.
+- **Hidden groups**: a *Hidden (n)* tile, opened like a group.
+- **Face pictures** (`UI/FaceCrops`): cut out of the full image at the tile's 4:3 shape, 1.9 times the
+  face's height, the last file decoded kept while a photo's faces load.
+- **An open unnamed group follows its face**: its id is its first face's, which a regrouping may
+  change — the view reopens the group holding the face it was opened by.
+- **Drops**: a group drops onto a top-level group only; a sub-group takes faces. A merge's confirmation
+  shows once the drag is over.
+- **Context menu**: *Open*, *Rename…* (F2), *Hide* / *Unhide*, *Un-merge*, *Not <name>*; a group's tile
+  has no copies nor *Open file location*.
+- **Remembered view**: `ExplorerMode` by name, the older `ExplorerFolderView` flag written too.
+- **ONNX Runtime** for the face engine: `OcrEngineFiles.DownloadAsync` takes a filter, fetching
+  `onnxruntime.dll` alone.
+- **Extraction**: it runs while either the content search or the face analysis is on; each pass runs
+  only under its own setting, and the bars show by setting (`LayoutBars`).
+
+Found during the run, not implemented:
+
+- A parallel session committed with `-a` and took this run's unfinished code into its workfile commits
+  (`c130f6d`, `d36cd3a`); asked to commit its own workfile only, it did not do it again. History left as is.
+
+Checked: the build, the engine on sample images (lena, astronaut, messi5), the grouping and every
+decision offline on real embeddings — auto groups, naming and reload, merge then un-merge, a face
+removed then dropped on another group, hiding — and the People view in the app (two groups, their
+face pictures, counts). **Not checked in the app**: the drags, the menus, the rename dialog, the search
+by name, the engine download, *Forget faces…*.
+
+---
+
 ## Implementation Log
 
 Which delivery steps are done, and in which iteration. A step that does not apply
@@ -305,12 +356,12 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code — phase 1 | | | |
-| Code — phase 2 | | | |
+| Code — phase 1 | 5, 6 | 2026-10-27 | Engine, face index, pass, grouping, People view |
+| Code — phase 2 | 5, 6 | 2026-10-27 | Decisions (`people.json`), drag and drop, menus, search by name, *Forget faces…* |
 | Unit tests | 4 | 2026-10-27 | Declined — no test project (Q&A 14); hand checks in § Test Impact |
-| RULES.md | | | |
-| GLOSSARY (EN + FR) | | | |
-| README (EN + FR) | | | |
+| RULES.md | 6 | 2026-10-27 | § People |
+| GLOSSARY (EN + FR) | 6 | 2026-10-27 | People view, Face group, Face alone, Face pass, Face engine |
+| README (EN + FR) | 6 | 2026-10-27 | People view bullet, views drop-down |
 
 ---
 
