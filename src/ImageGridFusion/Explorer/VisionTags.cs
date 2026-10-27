@@ -27,7 +27,7 @@ internal sealed class VisionTags
     private const int MaxTags = 6;
 
     // Changes when the rule above or the slot's format changes, so the stored tags are computed again.
-    private const string RuleVersion = "2";
+    private const string RuleVersion = "3";
 
     /// <summary>What separates the concepts in the Tags slot — the tile's tooltip shows them apart; the search ignores it.</summary>
     public const string ConceptSeparator = " · ";
@@ -187,7 +187,8 @@ internal sealed class VisionTags
             }
 
             string prompt = parts.Length > 2 && parts[2].Trim() is { Length: > 0 } given ? given : $"a photo of {english[0]}.";
-            yield return new Concept(string.Join(' ', french.Concat(english)), prompt);
+            // A word the same in both languages (selfie, portrait) is written once.
+            yield return new Concept(string.Join(' ', french.Concat(english).Distinct(StringComparer.OrdinalIgnoreCase)), prompt);
         }
 
         static string[] Words(string part) => part.Split(',').Select(w => w.Trim()).Where(w => w.Length > 0).ToArray();
