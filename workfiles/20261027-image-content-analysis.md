@@ -269,6 +269,41 @@ written twice.
 
 ---
 
+## Tile Tooltip
+
+What the index holds of a file, shown over its **tile in the file explorer** — the grid's cells keep no
+tooltip (Q&A 25) — whatever brought the tile there (Iteration 9):
+
+```
+C:\Photos\2024\vacances\IMG_0412.jpg
+
+💡 A dog running on a beach.
+🏷 chien dog · plage beach · mer sea
+📝 « Plage du Prado — été 2024 »
+👨‍🦰 Marie, Paul (+ 1 unnamed)
+```
+
+- **The lines** (Q&A 22–23), each only when the index holds it, in this order, after what the tooltip says
+  today (a preset's description, the path):
+  | Icon | Line |
+  |---|---|
+  | 💡 | The **caption** |
+  | 🏷 | The **tags**, concept by concept — French then English words, concepts separated by ` · ` |
+  | 📝 | The **text read** — the Windows OCR slot's, else RapidOCR's sure one — its beginning, cut at about 200 characters with `…` |
+  | 👨‍🦰 | The **people** a face of the file belongs to, named ones by name (A→Z, hidden ones left out), then `+ n unnamed` for the faces of unnamed groups and faces alone |
+- **Drawn by the app** (Q&A 24): an owner-drawn tooltip (`ToolTip.OwnerDraw`), the system tooltip's colours
+  and font, each icon a **Segoe UI Emoji glyph drawn in a colour of its own** — as the tiles' light bulb
+  is drawn (`ThumbnailGrid.BulbColor`): GDI draws emoji glyphs in one colour, full-colour emoji would need
+  DirectWrite. The face icon is 👨‍🦰 when the system font draws it as one glyph, 👤 otherwise. The lines
+  wrap at a maximum width; the same delays as today.
+- **The light bulb's own tooltip** (*Found in its content: …*) is unchanged.
+- **The tags' text**: the Tags slot writes its concepts separated by ` · ` so the tooltip shows them apart;
+  `VisionTags.RuleVersion` changes, so the stored tags are computed again from the embeddings by
+  themselves (§ Tags). The search ignores the `·`.
+- Groups and folders keep their tooltip.
+
+---
+
 ## Documentation
 
 - `RULES.md`: a new **Image Content Analysis** section (engine, passes, vision index, tags from the
@@ -298,6 +333,8 @@ by hand in the running app), and none is created — as for the face detection. 
 | Similar images from a tile, a cell (with and without a file) and a drop onto the search box | In the app | — |
 | Florence-2 decoding loop: a sample image gives a sensible caption | In the app | — |
 | The `ContentPass` refactoring changes nothing of the OCR and face passes | In the app, before the new passes | — |
+| Tile tooltip: caption, tags by concept, text read cut, named people then the unnamed count, each line only when known; the icons drawn | In the app (Iteration 9) | — |
+| Tags rewritten with ` · ` once, from the embeddings, without reading an image; a search still finds them | In the app (Iteration 9) | — |
 
 ---
 
@@ -319,10 +356,10 @@ Every question the design cannot settle on its own, listed before Iteration 1.
 - [x] ~~**Pass order** — where do Vision and Caption run among Windows OCR, faces, RapidOCR, Inverted, Ring?~~ → Vision right after the faces, Caption last (Q&A 18)
 - [x] ~~**Forgetting** — a ⚙ entry *Forget visual analysis…* deleting `files.vision` and emptying the Seen slots after a confirmation, turning both settings off — like the faces' *Forget faces…*?~~ → Yes (Q&A 19)
 - [x] ~~**Test project** — the face detection chose hand checks only; the same here, or a test project (the tokenizer check against reference ids would be its first test)?~~ → Hand checks only (Q&A 20)
-- [ ] **Tooltip content** (Iteration 9) — which of the index's content a tile's tooltip shows: the caption, the tags, the text read?
-- [ ] **Tooltip faces** — the named people only, or the unnamed faces counted too?
-- [ ] **Tooltip icons** — a tooltip of our own drawing 💡 and 👨‍🦰 in colour, or the standard one, the emoji as Windows draws them there?
-- [ ] **Tooltip on the cells** — the same tooltip over the grid's cells, or the explorer's tiles only?
+- [x] ~~**Tooltip content** (Iteration 9) — which of the index's content a tile's tooltip shows: the caption, the tags, the text read?~~ → All three (Q&A 22)
+- [x] ~~**Tooltip faces** — the named people only, or the unnamed faces counted too?~~ → The named ones, then the unnamed counted (Q&A 23)
+- [x] ~~**Tooltip icons** — a tooltip of our own drawing 💡 and 👨‍🦰 in colour, or the standard one, the emoji as Windows draws them there?~~ → Drawn by the app, each glyph in a colour of its own (Q&A 24)
+- [x] ~~**Tooltip on the cells** — the same tooltip over the grid's cells, or the explorer's tiles only?~~ → The tiles only (Q&A 25)
 
 ---
 
@@ -490,7 +527,10 @@ Details view's excerpt; a tile's own tooltip is its path, after a preset's descr
 - in the same idea, **the person** when a face of the file belongs to an identified one, with a face icon
   (👨‍🦰).
 
-Pending the answers to Q&A 22–25 (*see Open Questions*).
+Answers (Q&A 22–25): the caption, the tags and the text read; the named people, then the unnamed
+ones counted; a tooltip drawn by the app; the explorer's tiles only. The app draws the icons as it draws
+the tiles' light bulb — a Segoe UI Emoji glyph in one colour, GDI drawing no full-colour emoji. The tags
+are written concept by concept (` · `) so the tooltip shows them apart (§ Tile Tooltip).
 
 ---
 
@@ -536,10 +576,10 @@ Questions asked by the agent during design, with user responses.
 | 19 | Forgetting: a ⚙ *Forget visual analysis…* entry, like the faces'? | Yes, like the faces | 2026-10-27 |
 | 20 | Test project, or hand checks only like the face detection? | Hand checks only | 2026-10-27 |
 | 21 | The face pass stays outside `OcrPasses` (a flag on `ExtractionProgress`): rename `OcrPass` to `ContentPass` **and** make every pass — faces, vision, caption — one of its values, or follow the face pass's model and keep `OcrPass`? | One `ContentPass`, every pass a value of it, the faces included | 2026-10-27 |
-| 22 | Tile tooltip: which indexed content shows — caption, tags, the text read (OCR)? | | 2026-10-27 |
-| 23 | Tile tooltip: which faces show — the named people only, or the unnamed ones counted too? | | 2026-10-27 |
-| 24 | Tile tooltip: the icons drawn (a tooltip of our own) or the plain tooltip, emoji drawn as Windows can? | | 2026-10-27 |
-| 25 | Besides the explorer's tiles, the same tooltip on the grid's cells? | | 2026-10-27 |
+| 22 | Tile tooltip: which indexed content shows — caption, tags, the text read (OCR)? | All three | 2026-10-27 |
+| 23 | Tile tooltip: which faces show — the named people only, or the unnamed ones counted too? | The named people, then the unnamed ones counted | 2026-10-27 |
+| 24 | Tile tooltip: the icons drawn (a tooltip of our own) or the plain tooltip, emoji drawn as Windows can? | Drawn by the app | 2026-10-27 |
+| 25 | Besides the explorer's tiles, the same tooltip on the grid's cells? | The tiles only | 2026-10-27 |
 
 ---
 
