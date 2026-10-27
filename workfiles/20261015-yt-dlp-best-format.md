@@ -206,6 +206,11 @@ The last two Open Questions answered: **one gauge** for the whole load, both tra
 sizes, then a *Merging…* step (§ Downloaded File); **no test project**, the selector checked by hand
 (§ Test Impact). No Open Question left: the design is complete.
 
+### Iteration 4 — 2026-10-27 — ✅ Implemented
+
+Go given: **code, tests and documentation** (no unit test — § Test Impact), in a **worktree** on
+`feature/yt-dlp-best-format`, created from `main` at the design's last commit.
+
 ---
 
 ## Implementation Log
