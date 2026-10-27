@@ -154,9 +154,38 @@ internal static class FileSearch
         return [.. matches.OrderBy(match => match.Tier)];
     }
 
+    /// <summary>
+    /// The files of the people whose name holds every word — accents and case ignored — in their own tier,
+    /// after the presets found by their description and before the content matches, numbered as
+    /// <see cref="SearchMatch.Tier"/> numbers the files'; each file once, in the people's order. See
+    /// workfiles/20261027-face-detection.md § Search by Name.
+    /// </summary>
+    public static IReadOnlyList<(string FullPath, int Tier)> SearchPeople(IEnumerable<(string Name, IEnumerable<string> Files)> people, string[] words)
+    {
+        if (words.Length == 0)
+        {
+            return [];
+        }
+
+        var found = new List<(string FullPath, int Tier)>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, files) in people)
+        {
+            string folded = Fold(name);
+            if (folded.Length > 0 && words.All(word => folded.Contains(word, StringComparison.Ordinal)))
+            {
+                found.AddRange(files.Where(seen.Add).Select(file => (file, PersonTier(words.Length))));
+            }
+        }
+
+        return found;
+    }
+
     // The tiers: the path matches 0 (every word in the name) to words (none in the name), the
-    // description matches next, then the content matches by their grade.
+    // description matches next, the people's files after them, then the content matches by their grade.
     private static int DescriptionTier(int words) => words + 1;
+
+    private static int PersonTier(int words) => DescriptionTier(words) + 1;
 
     /// <summary>How well an entry matches; lower compares first.</summary>
     private readonly record struct Rank(string? ContentWord, ContentGrade Grade, int NameHits, int FirstPosition, int NameLength, string Path) : IComparable<Rank>
@@ -165,7 +194,7 @@ internal static class FileSearch
         public bool ByContent => this.ContentWord is not null;
 
         /// <summary>Its relevance tier as a number, lower first, comparable with a favorite's (<see cref="SearchFavorites"/>).</summary>
-        public int Tier(int words) => this.ByContent ? DescriptionTier(words) + 1 + (int)this.Grade : words - this.NameHits;
+        public int Tier(int words) => this.ByContent ? PersonTier(words) + 1 + (int)this.Grade : words - this.NameHits;
 
         /// <summary>
         /// Null when a word is missing from both the folded relative path — not read unless
