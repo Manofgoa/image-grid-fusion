@@ -57,8 +57,10 @@ directly — no new package:
   OCR Passes) — each file from a **pinned URL** with its **SHA-256** checked, through
   `Downloader.DownloadAsync` (a direct file, not a zip entry), into `<name>.~downloading` then moved
   into place. Nothing is downloaded without the user's **Yes**.
-- The models need ONNX Runtime's native DLL, which the OCR engine downloads into `ocr-engine\`:
-  *see Open Questions* for where the models go and how the two downloads combine.
+- The models go into their own **`face-engine\`** next to the exe (`FaceEngineFiles.FolderName`).
+  They need ONNX Runtime's native DLL, which stays the OCR engine's, in `ocr-engine\`: when it is
+  missing, the face engine's download fetches it there too, through `OcrEngineFiles`, in the same
+  confirmed offer.
 - Its own availability check (`FaceEngineFiles.IsAvailable`), separate from `OcrEngineFiles`, so a
   missing face model never re-offers the OCR engine and the other way round.
 - The InsightFace models (ArcFace, buffalo) are **not** used: their license is non-commercial.
@@ -78,8 +80,10 @@ directly — no new package:
   (similarity transform onto SFace's template) and embedded.
 - A changed file (size or date, `ContentIndex.IsCurrent`'s rule) is analysed again; a file gone
   from the index drops its faces.
-- Runs only while the face engine is present; without it, the pass is skipped and its bar hidden.
-- Its place among the passes: *see Open Questions*.
+- Runs only while the **face analysis is on** (§ Privacy) and the face engine present; otherwise the
+  pass is skipped and its bar hidden.
+- It runs **right after the Windows OCR pass**, before RapidOCR, Inverted and Ring — the slower ones —
+  so the People view fills early. The order of the OCR passes among themselves is unchanged.
 
 ### Face Index
 
@@ -129,8 +133,9 @@ text file loaded whole and scanned by every search, and mean nothing to its exce
     count badge showing it is a group), its name in bold — or *Unnamed* — and its number of files
     below. Named groups A→Z first, then unnamed groups by number of files, descending.
   - an **ungrouped face** — a face no other face is close to — is listed **after the groups, as an
-    individual file**: an ordinary file tile (drag into a cell, heart, Details view); its look —
-    whole file or face crop: *see Open Questions*.
+    individual file**: a file tile (drag into a cell, heart, Details view) whose picture is **the face
+    cropped from its file**, the file's name below — so the face dragged is the one seen, even in a
+    file holding several. A file with two ungrouped faces gives two tiles.
 - **Opened** (double-click on a group): like an open folder — the breadcrumb `People › <name>`, ↑ back
   to the people. It lists:
   - the groups **merged into it**, as **sub-groups** (one sub-group tile each), first;
@@ -181,7 +186,10 @@ All by **drag and drop** inside the People view, or the **context menu** (right 
 - Every face, embedding and decision stays **on this machine**, in `index\files.faces` and
   `people.json` next to the exe; nothing is sent anywhere — the only network access is the models'
   download.
-- Whether the analysis is opt-in, and how the data is forgotten: *see Open Questions*.
+- The face analysis is **opt-in**: **off by default**, an app setting turned on from the ⚙ menu
+  (*Face analysis*, `AppSettings.FaceAnalysis`) — and offered by the People view while off. Turning it
+  on offers the face engine's download when it is missing; the pass starts once both are there.
+- How the data is forgotten: *see Open Questions*.
 
 ---
 
@@ -217,13 +225,13 @@ to pin, whatever the answer:
 
 Every question the design cannot settle on its own, listed before Iteration 1.
 
-- [ ] **Opt-in** — is the face analysis off by default, turned on from the ⚙ menu (and offered by the People view), or on as soon as the engine is downloaded?
-- [ ] **Engine folder** — the models in their own `face-engine\` (ONNX Runtime's DLL still taken from `ocr-engine\`, downloaded with them if missing), or everything in `ocr-engine\`?
-- [ ] **Pass order** — the face pass right after the Windows OCR pass (People available early), or after every OCR pass?
+- [x] ~~**Opt-in** — is the face analysis off by default, turned on from the ⚙ menu (and offered by the People view), or on as soon as the engine is downloaded?~~ → Off by default, turned on from the ⚙ menu (Q&A 9)
+- [x] ~~**Engine folder** — the models in their own `face-engine\` (ONNX Runtime's DLL still taken from `ocr-engine\`, downloaded with them if missing), or everything in `ocr-engine\`?~~ → `face-engine\` (Q&A 10)
+- [x] ~~**Pass order** — the face pass right after the Windows OCR pass (People available early), or after every OCR pass?~~ → Right after the Windows OCR pass (Q&A 11)
 - [x] ~~**Reaching the view** — a 👤 button next to 📁, the 📁 button cycling through three views, or a drop-down of the three views?~~ → A drop-down of the three views (Q&A 6)
 - [x] ~~**Single-file persons** — shown like the others, gathered in a last *Others* tile, or not shown?~~ → Groups shown as "face folders"; the ungrouped faces listed after them as individual files (Q&A 7)
 - [x] ~~**Merge gesture** — drag a person tile onto another (with a confirmation) plus *Merge with…* in the context menu, or multi-select then *Merge*?~~ → Drag a group onto another; a merged group shows as a sub-group, every file of both listed; *Un-merge* on a sub-group; a face dragged onto a group joins it (Q&A 7–8)
-- [ ] **Ungrouped face tile** — the whole file, as any file tile, or the face cropped from it (the file's name below)? A file holding two ungrouped faces gives two tiles either way.
+- [x] ~~**Ungrouped face tile** — the whole file, as any file tile, or the face cropped from it (the file's name below)? A file holding two ungrouped faces gives two tiles either way.~~ → The face cropped from its file (Q&A 15)
 - [ ] **Merge confirmation** — a drop of a group onto another merges at once (un-merge being one right click away), or asks first?
 - [ ] **Forgetting** — a ⚙ entry *Forget faces…* deleting `files.faces` and `people.json` after a confirmation?
 - [ ] **Grouping threshold** — a fixed constant tuned during implementation, or an app setting of the ⚙ menu?
@@ -267,6 +275,13 @@ The People view's shape, from the user's answers (Q&A 6–8):
 - New questions: the ungrouped face's tile (whole file or face crop), and whether a merge drop asks
   first.
 
+### Iteration 3 — 2026-10-27
+
+Engine, pass and privacy settled (Q&A 9–11, 15): the face analysis is **opt-in**, off by default,
+turned on from the ⚙ menu; the models go into **`face-engine\`**, ONNX Runtime's DLL staying in
+`ocr-engine\` and fetched with them when missing; the face pass runs **right after the Windows OCR
+pass**; an ungrouped face's tile shows **the face cropped** from its file.
+
 ---
 
 ## Implementation Log
@@ -299,13 +314,13 @@ Questions asked by the agent during design, with user responses.
 | 6 | How is the People view reached (👤 button, 📁 cycling, drop-down)? | C — a drop-down of the views | 2026-10-27 |
 | 7 | Single-file persons: shown, gathered in *Others*, or not shown? | The groups show as "folders" (not the folder look, just a way to understand they gather); the other faces are listed after them as individual files; drag and drop into an existing face folder includes it in the group; a folder dragged onto another merges them; inside a folder, merged groups show as sub-folders *and* all the contents of both as files; right click on a sub-folder → un-merge | 2026-10-27 |
 | 8 | Merge gesture: drag a tile onto another + *Merge with…*, or multi-select + *Merge*? | See Q&A 7 | 2026-10-27 |
-| 9 | Opt-in: off by default (⚙ menu), or on once the engine is downloaded? | | 2026-10-27 |
-| 10 | Engine folder: `face-engine\` or `ocr-engine\`? | | 2026-10-27 |
-| 11 | Pass order: right after the Windows OCR pass, or after every OCR pass? | | 2026-10-27 |
+| 9 | Opt-in: off by default (⚙ menu), or on once the engine is downloaded? | Off by default | 2026-10-27 |
+| 10 | Engine folder: `face-engine\` or `ocr-engine\`? | `face-engine\` | 2026-10-27 |
+| 11 | Pass order: right after the Windows OCR pass, or after every OCR pass? | Right after the Windows pass | 2026-10-27 |
 | 12 | Forgetting: a ⚙ *Forget faces…* entry? | | 2026-10-27 |
 | 13 | Grouping threshold: fixed constant or ⚙ setting? | | 2026-10-27 |
 | 14 | Test project for the pure logic, or hand checks only? | | 2026-10-27 |
-| 15 | Ungrouped face tile: the whole file, or the face cropped from it? | | 2026-10-27 |
+| 15 | Ungrouped face tile: the whole file, or the face cropped from it? | The face cropped | 2026-10-27 |
 | 16 | Merge drop: at once, or asking first? | | 2026-10-27 |
 
 ---
