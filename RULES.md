@@ -574,8 +574,22 @@ What the URL zone loads (origin: `workfiles/20261009-url-content.md`), `Web/`:
   The same file name already there is reused, not downloaded again.
 - **yt-dlp is never shipped**: looked for in `yt-dlp\` next to the exe only (`YtDlp.Folder`), never on
   the `PATH`. Missing, the zone offers to install it there with winget — the command shown and
-  confirmed first; nothing is installed without that **Yes**. It is asked for a single-file format,
-  so no ffmpeg is needed.
+  confirmed first; nothing is installed without that **Yes**.
+- **Its companions, Deno and ffmpeg, neither** (origin: `workfiles/20261015-yt-dlp-best-format.md`):
+  Deno, the JavaScript runtime YouTube's formats need, and ffmpeg, joining a video track and its sound
+  — each in its own folder next to the exe, `deno\` and `ffmpeg\` (`YtDlpCompanions`), passed to yt-dlp
+  explicitly (`--js-runtimes`, `--ffmpeg-location`), never looked for on the `PATH` (`--no-js-runtimes`).
+  Offered **together**, one confirmation showing the winget command of each one missing: on a yt-dlp
+  load that fails without them, as a hint on one that succeeded without them, from the ⚙ menu while
+  yt-dlp is there without them, and in a fresh yt-dlp install's confirmation. A tool installed with
+  winget goes through `Web/WingetTool`.
+- **The largest format up to the Video size** (`YtDlp.FormatSelector`, `AppSettings.VideoMaxSide`, read
+  when the load starts), for every site: its longer side capped, the largest of all when every one is
+  larger; the resolution first, H.264 > VP9 > AV1 at equal resolution, AAC for the sound
+  (`YtDlp.SortOrder`). With ffmpeg, the best video track plus the best sound, merged into an MP4;
+  without it, the largest single file. The file's name carries its height, so a larger format is not
+  taken for the one already there; one gauge runs over all its tracks, then *Joining…* while ffmpeg
+  merges them.
 - The zone — its URL, its preview — is **not persisted** and is **out of the undo history**; a newer
   load cancels the one running, its partial file deleted.
 
