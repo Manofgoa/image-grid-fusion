@@ -80,6 +80,9 @@ internal sealed class FileExplorerPanel : Panel
     // The sort drop-down's width in logical pixels: its longest entry and the arrow.
     private const int SortWidth = 92;
 
+    // The views drop-down's width in logical pixels: its longest entry and the arrow.
+    private const int ModesWidth = 84;
+
     private readonly TableLayoutPanel _content = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 8, Padding = new Padding(6, 4, 6, 6) };
     private readonly TableLayoutPanel _header = new() { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
     private readonly Label _title = new() { Text = "Files", AutoSize = true, Anchor = AnchorStyles.Left };
@@ -234,6 +237,7 @@ internal sealed class FileExplorerPanel : Panel
     private PeopleSnapshot _snapshot = PeopleSnapshot.Empty;
     private bool _grouping;
     private bool _groupAgain;
+    private bool _facePassRunning;
     private int _groupedAt = -1;
     private Dictionary<string, IndexEntry>? _entriesByPath;
     private CancellationTokenSource? _faceEngineDownload;
@@ -1329,6 +1333,7 @@ internal sealed class FileExplorerPanel : Panel
         _content.RowStyles[6].Height = Font.Height * 2 + LogicalToDeviceUnits(4);
         this._content.RowStyles[7].Height = this.LogicalToDeviceUnits(UrlZone.LogicalHeight);
         this._sort.Width = this.LogicalToDeviceUnits(SortWidth);
+        this._modes.Width = this.LogicalToDeviceUnits(ModesWidth);
         _inviteText.Height = Font.Height * 4 + LogicalToDeviceUnits(8);
     }
 
@@ -1694,6 +1699,12 @@ internal sealed class FileExplorerPanel : Panel
             this.SetActivity(p.File is null ? null
                 : p.Kind == ContentKind.None ? doing
                 : $"{doing} ({Path.GetFileName(p.File)})");
+            if (p.FacePass && p.Finished != !this._facePassRunning)
+            {
+                this._facePassRunning = !p.Finished;
+                this.RefreshPeopleIfShown();
+            }
+
             if (p.FacePass && p.Finished)
             {
                 this.Regroup();
@@ -1709,6 +1720,7 @@ internal sealed class FileExplorerPanel : Panel
         finally
         {
             finished = true;
+            this._facePassRunning = false;
             if (!this.IsDisposed)
             {
                 this.SetActivity(null);
@@ -3184,7 +3196,7 @@ internal sealed class FileExplorerPanel : Panel
         }
 
         this.ShowRows(list, keepPlace, select);
-        string looking = this._faceAnalysis && this._extraction is not null ? " · looking for faces…" : "";
+        string looking = this._facePassRunning ? " · looking for faces…" : "";
         this.ShowPeopleBreadcrumb(null, words.Length > 0 ? Groups(groups) : $"{Groups(groups)}, {Faces(snapshot.Ungrouped.Count)} alone{looking}");
 
         static string Faces(int count) => count == 1 ? "1 face" : $"{count:N0} faces";
