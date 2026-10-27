@@ -291,6 +291,11 @@ the analysis off; the grouping threshold is a **fixed constant**; a group droppe
 **asks before merging**; **no test project** — the Test Impact lists the hand checks instead. No Open
 Question left.
 
+### Iteration 5 — 2026-10-27 — ✅ Implemented
+
+Go given: **code and documentation** (no unit tests, per Q&A 14), in the **current checkout**, on
+`main` — the standing choice of this repository at the Branch Gate. Phases 1 then 2.
+
 ---
 
 ## Implementation Log
