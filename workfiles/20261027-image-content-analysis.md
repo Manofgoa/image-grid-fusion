@@ -133,10 +133,15 @@ a text file loaded whole and scanned by every search (the face index's reasoning
   (*a photo of a dog*), compared with every image's.
 - A concept above its **threshold** is a tag of the image; the slot holds the French and English
   words of its tags.
-- The vocabulary is a file shipped with the app (`Explorer/VisionTags.txt` or embedded resource);
-  its concepts' embeddings cached next to the index. **A vocabulary change recomputes the tags from
-  the stored embeddings** — no image read again.
-- The vocabulary's size and source, and whether the user can edit it: *see Open Questions*.
+- **The vocabulary** (Q&A 10):
+  - **~1 000 curated concepts**, French and English, shipped with the app (an embedded resource):
+    objects, animals, scenes, places, weather, kinds of pictures (screenshot, document, drawing,
+    meme…); each line a concept, its French and English words, optionally the prompt it is embedded
+    with.
+  - **A user file** next to the exe (`vision-tags.txt`, created empty with a comment line saying its
+    format) **adds** concepts, in the same format; read at start-up and when it changes.
+  - Each concept's text embedding cached next to the index, keyed by its prompt. **A vocabulary change
+    recomputes the tags from the stored embeddings** — no image read again, a few seconds.
 
 ---
 
@@ -144,24 +149,36 @@ a text file loaded whole and scanned by every search (the face index's reasoning
 
 Two new **text slots** of `files.content`, appended after the OCR slots:
 
-| Slot | Filled by | Sure / weak |
+| Slot | Filled by | Grade |
 |---|---|---|
-| **Tags** | The Vision pass | *See Open Questions* |
-| **Caption** | The Caption pass | *See Open Questions* |
+| **Tags** | The Vision pass | **Seen** — their own, after every OCR grade (§ Search Under 💡) |
+| **Caption** | The Caption pass | **Seen** |
 
 - `ContentSlot` gains two values at its end, `SlotCount` goes from 5 to 7, the header becomes
   `ImageGridFusion content 4`; a version 3 file is read with 5 slots, its two new ones *not done* —
   never discarded (RULES.md § Content OCR Passes › The index format).
 - No boxes: the slots use the box-less format of the text files — no arrow, no spaces-ignored match.
-- **Word matching**: `ContentIndex.Find` matches by substring; a short query word would match inside
-  a tag (*rat* in *pirate*). Tags matched as **whole words**: *see Open Questions*.
+- **Word matching** (Q&A 12): by **substring**, as the OCR texts — *rat* finds *pirate* — but a word
+  found **whole** ranks higher than one found inside another (§ Search Under 💡). The same for the
+  tags and the caption.
+- `ContentIndex.Find` returns on the first sure slot today: it looks at the Seen slots only when no
+  OCR slot holds the word, so a file is graded by its best OCR match first.
 
 ---
 
 ## Search Under 💡
 
-- **Text**: the tags and the caption are found by the content search as the OCR's words are, in the
-  content tiers, their excerpt in the Details view.
+- **Text**: the tags and the caption are found by the content search as the OCR's words are, their
+  excerpt in the Details view, in **two grades of their own after every OCR grade** (Q&A 11–12):
+
+  | Grade (`ContentGrade`) | Found |
+  |---|---|
+  | Sure, Joined, Weak | The OCR's words, as today |
+  | **Seen, whole word** | A tag or the caption holding the query word as a whole word (*chien*) |
+  | **Seen, inside a word** | A tag or the caption holding it inside a longer word (*rat* in *pirate*) |
+
+  So *chien* written in an image comes before a photo of a dog, and a dog tagged *chien* before a pirate
+  found by *rat*.
 - **Similarity tier** — a new tier **after every content grade**: the query, as a whole sentence, run
   through SigLIP 2's text model → a query embedding; every image's dot product with it; the images
   above a **threshold** listed in it, **ordered by score**, the best first.
@@ -169,7 +186,7 @@ Two new **text slots** of `files.content`, appended after the OCR slots:
   - `Rank` gains a score (`Similarity`), `Tier()` a value after the content grades, `CompareTier` orders
     by score inside it; `SearchMatch` carries the score.
   - With a user sort order (Date, Name, Size), the other tiers are sorted by it; the similarity tier
-    keeps **its score order** — the exception (*see Open Questions*).
+    keeps **its score order**, always — the exception (Q&A 13).
   - Its tier number stays above every favorite's tier (`WithFavorites` interleaves by tier).
   - The query embedding is computed off the UI thread, once the typing pauses (the search's own
     debounce), and only while 💡 is on.
@@ -252,10 +269,10 @@ Every question the design cannot settle on its own, listed before Iteration 1.
 - [x] ~~**Opt-in / offer** — the analysis off by default, turned on from the ⚙ menu (like the faces), or offered when 💡 is turned on (like RapidOCR)?~~ → Off by default, turned on from the ⚙ menu (Q&A 7)
 - [x] ~~**Captions** — part of the same offer, or a separate opt-in (heavy: ~275 MB, 2–6 s an image)? They are **English only**: acceptable, knowing a French query finds them only through the tags and the similarity tier?~~ → Two independent ⚙ settings, *Visual analysis* and *Captions*, each its own download (Q&A 8)
 - [ ] **Pass order** — where Vision and Caption run among Windows OCR, faces, RapidOCR, Inverted, Ring?
-- [ ] **Vocabulary** — size (a few hundred concepts, ~1 000, more) and source (curated by hand, generated from an existing list such as RAM++'s 4 585 tags translated)? Editable by the user?
-- [ ] **Tags and caption: sure or weak?** — sure ranks them with the OCR's sure words; weak puts them in the last content grade.
-- [ ] **Whole-word match for tags** — tags matched as whole words (no *rat* in *pirate*), or the substring rule of the OCR texts?
-- [ ] **Similarity under a user sort order** — the similarity tier always by score, or sorted like the others?
+- [x] ~~**Vocabulary** — size (a few hundred concepts, ~1 000, more) and source (curated by hand, generated from an existing list such as RAM++'s 4 585 tags translated)? Editable by the user?~~ → ~1 000 curated bilingual concepts shipped, plus a user file next to the exe adding concepts (Q&A 9–10)
+- [x] ~~**Tags and caption: sure or weak?** — sure ranks them with the OCR's sure words; weak puts them in the last content grade.~~ → A grade of their own, after every OCR grade (Q&A 11)
+- [x] ~~**Whole-word match for tags** — tags matched as whole words (no *rat* in *pirate*), or the substring rule of the OCR texts?~~ → Substring, a whole word ranking higher (Q&A 12)
+- [x] ~~**Similarity under a user sort order** — the similarity tier always by score, or sorted like the others?~~ → Always by score (Q&A 13)
 - [ ] **Similarity threshold** — a fixed constant tuned during implementation, a top-N, or an app setting?
 - [ ] **Similar images: other entry points** — also from a cell of the grid (it has no context menu today), or by dropping an image onto the search box?
 - [ ] **Text model lifetime** — kept loaded while the app runs (~300 MB in memory), or released after a while unused?
@@ -303,6 +320,18 @@ From the user's answers (Q&A 6–9):
 - The tag vocabulary: the user asked for advice — recommended: ~1 000 curated bilingual concepts
   shipped, plus a user file adding concepts (Q&A 10, pending).
 
+### Iteration 3 — 2026-10-27
+
+From the user's answers (Q&A 10–13; the batch asked twice at the user's request, the second answers
+kept):
+
+- **Vocabulary**: ~1 000 curated bilingual concepts shipped, plus `vision-tags.txt` next to the exe
+  adding the user's own.
+- The tags and the caption get **grades of their own** after every OCR grade: *Seen, whole word*, then
+  *Seen, inside a word* — matching stays by substring, a whole word ranking higher. The rule was asked
+  for the tags; applied to the caption too, both sharing the grades.
+- The similarity tier keeps **its score order** under a user sort order.
+
 ---
 
 ## Implementation Log
@@ -335,10 +364,10 @@ Questions asked by the agent during design, with user responses.
 | 7 | Opt-in: off by default (⚙ menu), or offered when 💡 is turned on? | Off by default, turned on from the ⚙ menu | 2026-10-27 |
 | 8 | Captions: same offer, or a separate opt-in? English only acceptable? | "Offer both options" — read as two independent ⚙ settings, *Visual analysis* and *Captions*, each its own download | 2026-10-27 |
 | 9 | Tag vocabulary: size, source, editable? | "Advise me" — recommendation asked in Q&A 10 | 2026-10-27 |
-| 10 | Tag vocabulary — recommended: ~1 000 curated concepts shipped, plus a user file next to the exe adding concepts. Agreed? | | 2026-10-27 |
-| 11 | Tags and caption: sure, weak, or a grade of their own? | | 2026-10-27 |
-| 12 | Tags matched as whole words, or by substring like the OCR texts? | | 2026-10-27 |
-| 13 | Similarity tier under a user sort order: always by score, or sorted like the others? | | 2026-10-27 |
+| 10 | Tag vocabulary — recommended: ~1 000 curated concepts shipped, plus a user file next to the exe adding concepts. Agreed? | Agreed (asked twice, the user asking for the batch again; same answer) | 2026-10-27 |
+| 11 | Tags and caption: sure, weak, or a grade of their own? | A grade of their own, after every OCR grade, before the similarity tier | 2026-10-27 |
+| 12 | Tags matched as whole words, or by substring like the OCR texts? | First asking: substring. Asked again: **substring, but a whole word ranks higher** | 2026-10-27 |
+| 13 | Similarity tier under a user sort order: always by score, or sorted like the others? | First asking: no preference. Asked again: always by score | 2026-10-27 |
 
 ---
 
