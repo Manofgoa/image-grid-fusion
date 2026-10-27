@@ -100,13 +100,13 @@ internal sealed class FileExplorerPanel : Panel
     private readonly CheckBox _byContent = new() { Text = "💡", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0), Checked = true, AutoCheck = false };
     private readonly TextBox _search = new() { PlaceholderText = SearchPlaceholder, Anchor = AnchorStyles.Left | AnchorStyles.Right };
     private readonly Button _rescan = new() { Text = "↻", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right, Enabled = false };
-    // One bar per OCR pass (workfiles/20261013-complementary-ocr-passes.md § Progress Bars), then the
-    // face pass's (workfiles/20261027-face-detection.md § Face Pass), each in its colour, stacked in the
-    // progress row in the order the passes run; the first — the Windows pass's, blue — is the scan's too.
-    // The OCR passes' show while the content search is on, the face pass's while the face analysis is.
-    private static readonly Color[] PassColors = [IndexingBar.DefaultColor, Color.FromArgb(136, 23, 152), Color.FromArgb(202, 80, 16), Color.FromArgb(16, 124, 16), Color.FromArgb(214, 0, 120)];
-    private static readonly string[] PassColorNames = ["blue", "purple", "orange", "green", "pink"];
-    private const int FaceBar = 4;
+    // One bar per pass (ContentPass, its index) — the OCR passes' (workfiles/20261013-complementary-ocr-passes.md
+    // § Progress Bars), the face pass's (workfiles/20261027-face-detection.md § Face Pass) — each in its
+    // colour, stacked in the progress row in the order the passes run; the first — the Windows pass's,
+    // blue — is the scan's too. The OCR passes' show while the content search is on, the face pass's while
+    // the face analysis is.
+    private static readonly Color[] PassColors = [IndexingBar.DefaultColor, Color.FromArgb(214, 0, 120), Color.FromArgb(136, 23, 152), Color.FromArgb(202, 80, 16), Color.FromArgb(16, 124, 16)];
+    private static readonly string[] PassColorNames = ["blue", "pink", "purple", "orange", "green"];
     private readonly TableLayoutPanel _bars = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = PassColors.Length, Margin = Padding.Empty, Padding = Padding.Empty };
     private readonly IndexingBar[] _passBars = PassColors.Select(color => new IndexingBar { Dock = DockStyle.Fill, BarColor = color }).ToArray();
 
@@ -1661,9 +1661,10 @@ internal sealed class FileExplorerPanel : Panel
                 return;
             }
 
+            bool facePass = p.Pass == ContentPass.Faces;
             if (p.Refresh)
             {
-                if (p.FacePass)
+                if (facePass)
                 {
                     this.Regroup();
                 }
@@ -1675,7 +1676,7 @@ internal sealed class FileExplorerPanel : Panel
                 return;
             }
 
-            int bar = p.FacePass ? FaceBar : (int)p.Pass;
+            int bar = (int)p.Pass;
             this._passCounts[bar] = (p.PassDone, p.PassNeeded);
             if (p.Finished)
             {
@@ -1693,19 +1694,19 @@ internal sealed class FileExplorerPanel : Panel
             }
 
             // The pass, the file's rank in it, then its name — none for a file that has no text to find.
-            string doing = p.FacePass
-                ? $"Faces: {p.Done + 1:N0}/{p.Total:N0}"
-                : $"OCR {bar + 1}/{OcrPasses.All.Length} · {OcrPasses.NameOf(p.Pass)}: {p.Done + 1:N0}/{p.Total:N0}";
+            string doing = ContentPasses.IsOcr(p.Pass)
+                ? $"OCR {Array.IndexOf(ContentPasses.Ocr, p.Pass) + 1}/{ContentPasses.Ocr.Length} · {ContentPasses.NameOf(p.Pass)}: {p.Done + 1:N0}/{p.Total:N0}"
+                : $"{ContentPasses.NameOf(p.Pass)}: {p.Done + 1:N0}/{p.Total:N0}";
             this.SetActivity(p.File is null ? null
                 : p.Kind == ContentKind.None ? doing
                 : $"{doing} ({Path.GetFileName(p.File)})");
-            if (p.FacePass && p.Finished != !this._facePassRunning)
+            if (facePass && p.Finished != !this._facePassRunning)
             {
                 this._facePassRunning = !p.Finished;
                 this.RefreshPeopleIfShown();
             }
 
-            if (p.FacePass && p.Finished)
+            if (facePass && p.Finished)
             {
                 this.Regroup();
             }
@@ -1744,7 +1745,7 @@ internal sealed class FileExplorerPanel : Panel
 
     /// <summary>
     /// The extraction's worker: the texts and faces of the files gone from the index dropped, then each OCR
-    /// pass in turn (<see cref="OcrPasses.All"/>) over every file it has not read yet — the Windows pass over
+    /// pass in turn (<see cref="ContentPasses.All"/>) over every file it has not read yet — the Windows pass over
     /// every file whose text is missing or older than the file, the later ones over the images and PDFs
     /// the Windows pass read — the face pass right after the Windows one, over every image and PDF it has
     /// not analysed (workfiles/20261027-face-detection.md § Face Pass); the OCR passes while the content
@@ -1767,34 +1768,38 @@ internal sealed class FileExplorerPanel : Panel
         bool facesRun = faceAnalysis && FaceEngineFiles.IsAvailable;
         try
         {
-            if (ocr)
+            foreach (var pass in ContentPasses.All)
             {
-                foreach (var pass in OcrPasses.All)
+                if (pass == ContentPass.Faces)
+                {
+                    if (faceAnalysis)
+                    {
+                        int done = faceRead.Count(faces.IsCurrent);
+                        progress.Report(new ExtractionProgress(pass, 0, 0, done, faceRead.Length, null, ContentKind.None, false, Finished: !facesRun || done == faceRead.Length));
+                    }
+                }
+                else if (ocr)
                 {
                     var read = Read(index, pass);
                     int done = read.Count(e => contents.IsCurrent(e, pass));
-                    bool runs = done < read.Length && (pass != OcrPass.Rapid || OcrEngineFiles.IsAvailable);
+                    bool runs = done < read.Length && (pass != ContentPass.Rapid || OcrEngineFiles.IsAvailable);
                     progress.Report(new ExtractionProgress(pass, 0, 0, done, read.Length, null, ContentKind.None, false, Finished: !runs));
                 }
             }
 
-            if (faceAnalysis)
-            {
-                int done = faceRead.Count(faces.IsCurrent);
-                progress.Report(new ExtractionProgress(OcrPass.Windows, 0, 0, done, faceRead.Length, null, ContentKind.None, false, Finished: !facesRun || done == faceRead.Length, FacePass: true));
-            }
-
-            foreach (var pass in OcrPasses.All)
+            foreach (var pass in ContentPasses.All)
             {
                 cancellation.ThrowIfCancellationRequested();
-                if (ocr)
+                if (pass == ContentPass.Faces)
+                {
+                    if (facesRun)
+                    {
+                        facesChanged |= this.ExtractFaces(index, faces, faceRead, progress, cancellation);
+                    }
+                }
+                else if (ocr)
                 {
                     RunPass(pass);
-                }
-
-                if (pass == OcrPass.Windows && facesRun)
-                {
-                    facesChanged |= this.ExtractFaces(index, faces, faceRead, progress, cancellation);
                 }
             }
         }
@@ -1811,10 +1816,10 @@ internal sealed class FileExplorerPanel : Panel
             }
         }
 
-        void RunPass(OcrPass pass)
+        void RunPass(ContentPass pass)
         {
             var read = Read(index, pass);
-            var queue = read.Where(e => (pass == OcrPass.Windows || contents.IsCurrent(e, OcrPass.Windows)) && !contents.IsCurrent(e, pass)).ToArray();
+            var queue = read.Where(e => (pass == ContentPass.Windows || contents.IsCurrent(e, ContentPass.Windows)) && !contents.IsCurrent(e, pass)).ToArray();
             int before = read.Length - queue.Length;
             if (queue.Length == 0)
             {
@@ -1822,7 +1827,7 @@ internal sealed class FileExplorerPanel : Panel
                 return;
             }
 
-            if (pass == OcrPass.Rapid && extractor.StartRapid() is { } why)
+            if (pass == ContentPass.Rapid && extractor.StartRapid() is { } why)
             {
                 // Not downloaded: offered from the ⚙ menu; failing to load: said, the pass waiting.
                 string? note = OcrEngineFiles.IsAvailable ? $"RapidOCR could not start: {why}" : null;
@@ -1880,7 +1885,7 @@ internal sealed class FileExplorerPanel : Panel
         int before = read.Length - queue.Length;
         if (queue.Length == 0)
         {
-            progress.Report(new ExtractionProgress(OcrPass.Windows, 0, 0, before, read.Length, null, ContentKind.None, false, Finished: true, FacePass: true));
+            progress.Report(new ExtractionProgress(ContentPass.Faces, 0, 0, before, read.Length, null, ContentKind.None, false, Finished: true));
             return false;
         }
 
@@ -1892,7 +1897,7 @@ internal sealed class FileExplorerPanel : Panel
         catch (Exception ex)
         {
             // A DLL that does not load, a model that does not parse: the pass waits for a working engine.
-            progress.Report(new ExtractionProgress(OcrPass.Windows, 0, queue.Length, before, read.Length, null, ContentKind.None, false, Finished: true, $"The face engine could not start: {ex.Message}", FacePass: true));
+            progress.Report(new ExtractionProgress(ContentPass.Faces, 0, queue.Length, before, read.Length, null, ContentKind.None, false, Finished: true, $"The face engine could not start: {ex.Message}"));
             return false;
         }
 
@@ -1906,13 +1911,13 @@ internal sealed class FileExplorerPanel : Panel
                 cancellation.ThrowIfCancellationRequested();
                 if (this.ExtractionPaused())
                 {
-                    progress.Report(new ExtractionProgress(OcrPass.Windows, done, queue.Length, before + done, read.Length, null, ContentKind.None, false, false, FacePass: true));
+                    progress.Report(new ExtractionProgress(ContentPass.Faces, done, queue.Length, before + done, read.Length, null, ContentKind.None, false, false));
                     this.WaitWhilePaused(cancellation);
                 }
 
                 var entry = queue[done];
                 string path = index.FullPath(entry);
-                progress.Report(new ExtractionProgress(OcrPass.Windows, done, queue.Length, before + done, read.Length, path, ContentKind.Image, false, false, FacePass: true));
+                progress.Report(new ExtractionProgress(ContentPass.Faces, done, queue.Length, before + done, read.Length, path, ContentKind.Image, false, false));
                 FaceBox[] found;
                 try
                 {
@@ -1938,12 +1943,12 @@ internal sealed class FileExplorerPanel : Panel
                 if (now - refreshed >= ContentRefreshInterval)
                 {
                     refreshed = now;
-                    progress.Report(new ExtractionProgress(OcrPass.Windows, done, queue.Length, before + done, read.Length, null, ContentKind.None, true, false, FacePass: true));
+                    progress.Report(new ExtractionProgress(ContentPass.Faces, done, queue.Length, before + done, read.Length, null, ContentKind.None, true, false));
                 }
             }
         }
 
-        progress.Report(new ExtractionProgress(OcrPass.Windows, queue.Length, queue.Length, read.Length, read.Length, null, ContentKind.None, false, Finished: true, FacePass: true));
+        progress.Report(new ExtractionProgress(ContentPass.Faces, queue.Length, queue.Length, read.Length, read.Length, null, ContentKind.None, false, Finished: true));
         return true;
     }
 
@@ -1962,9 +1967,9 @@ internal sealed class FileExplorerPanel : Panel
         index.Entries.Where(e => e.Stamp is not null && ContentExtractor.KindOf(e.RelativePath) is ContentKind.Image or ContentKind.Pdf).ToArray();
 
     /// <summary>The scanned files a pass reads: every one for the Windows pass, the images and PDFs for the later ones.</summary>
-    private static IndexEntry[] Read(FileIndex index, OcrPass pass) =>
+    private static IndexEntry[] Read(FileIndex index, ContentPass pass) =>
         index.Entries.Where(e => e.Stamp is not null
-            && (pass == OcrPass.Windows || ContentExtractor.KindOf(e.RelativePath) is ContentKind.Image or ContentKind.Pdf)).ToArray();
+            && (pass == ContentPass.Windows || ContentExtractor.KindOf(e.RelativePath) is ContentKind.Image or ContentKind.Pdf)).ToArray();
 
     /// <summary>
     /// The bars as the settings stand, in the order the passes run: the Windows pass's — the scan's too —
@@ -1972,48 +1977,42 @@ internal sealed class FileExplorerPanel : Panel
     /// </summary>
     private void LayoutBars()
     {
-        var shown = new List<int> { 0 };
-        if (this._faceAnalysis)
-        {
-            shown.Add(FaceBar);
-        }
-
-        if (this._contentSearch)
-        {
-            shown.AddRange([1, 2, 3]);
-        }
-
+        var shown = this.ShownPasses();
         this._bars.SuspendLayout();
         this._bars.Controls.Clear();
-        for (int row = 0; row < shown.Count; row++)
+        for (int row = 0; row < shown.Length; row++)
         {
-            this._bars.Controls.Add(this._passBars[shown[row]], 0, row);
+            this._bars.Controls.Add(this._passBars[(int)shown[row]], 0, row);
         }
 
         this._bars.ResumeLayout();
     }
 
     /// <summary>The bars shown: <see cref="LayoutBars"/>'s count.</summary>
-    private int BarsShown => 1 + (this._faceAnalysis ? 1 : 0) + (this._contentSearch ? 3 : 0);
+    private int BarsShown => this.ShownPasses().Length;
+
+    /// <summary>The passes whose bar shows, in the order they run: the Windows pass — the scan — always, each other while its setting is on.</summary>
+    private ContentPass[] ShownPasses() =>
+        ContentPasses.All.Where(pass => pass == ContentPass.Windows || (pass == ContentPass.Faces ? this._faceAnalysis : this._contentSearch)).ToArray();
 
     /// <summary>The bars' tooltip: each pass, its colour, and how far it has gone.</summary>
     private void ApplyBarTips()
     {
-        var lines = OcrPasses.All.Select(pass =>
+        var lines = ContentPasses.All.Where(pass => pass != ContentPass.Faces || this._faceAnalysis).Select(pass =>
         {
             int i = (int)pass;
             var (done, needed) = this._passCounts[i];
-            string state = pass == OcrPass.Rapid && !OcrEngineFiles.IsAvailable ? "not downloaded"
+            bool missing = pass switch
+            {
+                ContentPass.Rapid => !OcrEngineFiles.IsAvailable,
+                ContentPass.Faces => !FaceEngineFiles.IsAvailable,
+                _ => false,
+            };
+            string state = missing ? "not downloaded"
                 : needed < 0 ? "not started"
                 : $"{done:N0}/{needed:N0}";
-            return $"{OcrPasses.NameOf(pass)} ({PassColorNames[i]}): {state}";
-        }).ToList();
-        if (this._faceAnalysis)
-        {
-            var (done, needed) = this._passCounts[FaceBar];
-            string state = !FaceEngineFiles.IsAvailable ? "not downloaded" : needed < 0 ? "not started" : $"{done:N0}/{needed:N0}";
-            lines.Insert(1, $"Faces ({PassColorNames[FaceBar]}): {state}");
-        }
+            return $"{ContentPasses.NameOf(pass)} ({PassColorNames[i]}): {state}";
+        });
 
         string tip = "Indexing passes\n" + string.Join('\n', lines);
         this._toolTip.SetToolTip(this._bars, tip);
@@ -3507,10 +3506,10 @@ internal sealed class FileExplorerPanel : Panel
 /// (null while it waits or between two), how it has it, and whether the search shown is to be refreshed.
 /// </summary>
 /// <summary>
-/// Where an OCR pass stands: the file it reads — its rank <paramref name="Done"/> among the
+/// Where a pass stands: the file it reads — its rank <paramref name="Done"/> among the
 /// <paramref name="Total"/> the pass reads this time, null while it waits — the files done out of
 /// those the pass reads in the whole index, for its bar; <paramref name="Refresh"/>: the search shown
-/// to run again; <paramref name="Finished"/>: the pass complete or skipped, its bar hidden;
-/// <paramref name="Note"/>: a trouble to say; <paramref name="FacePass"/>: the face pass's, not an OCR pass's.
+/// — or the people, for the face pass — to run again; <paramref name="Finished"/>: the pass complete or
+/// skipped, its bar hidden; <paramref name="Note"/>: a trouble to say.
 /// </summary>
-internal readonly record struct ExtractionProgress(OcrPass Pass, int Done, int Total, int PassDone, int PassNeeded, string? File, ContentKind Kind, bool Refresh, bool Finished, string? Note = null, bool FacePass = false);
+internal readonly record struct ExtractionProgress(ContentPass Pass, int Done, int Total, int PassDone, int PassNeeded, string? File, ContentKind Kind, bool Refresh, bool Finished, string? Note = null);

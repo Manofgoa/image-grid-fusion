@@ -60,7 +60,7 @@ internal sealed class ContentIndex
         {
             using var reader = new StreamReader(path, Encoding.UTF8);
             string? header = reader.ReadLine();
-            int slots = header == Header ? OcrPasses.SlotCount : header == HeaderOneSlot ? 1 : header == HeaderWithoutBoxes ? 0 : -1;
+            int slots = header == Header ? ContentPasses.SlotCount : header == HeaderOneSlot ? 1 : header == HeaderWithoutBoxes ? 0 : -1;
             if (slots < 0 || reader.ReadLine() is not { } folder
                 || !string.Equals(Path.TrimEndingDirectorySeparator(folder), contents.BaseFolder, StringComparison.OrdinalIgnoreCase))
             {
@@ -77,7 +77,7 @@ internal sealed class ContentIndex
                     && long.TryParse(columns[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out long ticks)
                     && ticks >= DateTime.MinValue.Ticks && ticks <= DateTime.MaxValue.Ticks)
                 {
-                    var read = new SlotText?[OcrPasses.SlotCount];
+                    var read = new SlotText?[ContentPasses.SlotCount];
                     if (slots == 0)
                     {
                         read[0] = new SlotText(columns[3], null);
@@ -199,7 +199,7 @@ internal sealed class ContentIndex
     /// text extracted — with the boxes of its words for a file the OCR reads; for a later pass, its slots
     /// filled, or a file it does not read. False for an entry without a stamp.
     /// </summary>
-    public bool IsCurrent(IndexEntry entry, OcrPass pass)
+    public bool IsCurrent(IndexEntry entry, ContentPass pass)
     {
         if (entry.Stamp is not { } stamp)
         {
@@ -207,31 +207,31 @@ internal sealed class ContentIndex
         }
 
         bool recognised = ContentExtractor.KindOf(entry.RelativePath) is ContentKind.Image or ContentKind.Pdf;
-        if (pass != OcrPass.Windows && !recognised)
+        if (pass != ContentPass.Windows && !recognised)
         {
             return true;
         }
 
         return this._texts.TryGetValue(entry.RelativePath, out var text) && text.Stamp == stamp
-            && text.Slots[(int)OcrPasses.SlotsOf(pass)[0]] is { } slot
+            && text.Slots[(int)ContentPasses.SlotsOf(pass)[0]] is { } slot
             && (slot.HasBoxes || !recognised);
     }
 
     /// <summary>
     /// Records what a pass extracted from a file at its stamp — one result per slot of the pass
-    /// (<see cref="OcrPasses.SlotsOf"/>): white space collapsed into single spaces, then cut to
+    /// (<see cref="ContentPasses.SlotsOf"/>): white space collapsed into single spaces, then cut to
     /// <see cref="MaxLength"/>, "" for a slot with none; the boxes of its words, the first
     /// <see cref="MaxBoxes"/> kept, null for a file read as text. The Windows pass starts the file over,
     /// the later passes' slots dropped; a later pass is ignored when the file changed since the Windows
     /// pass read it.
     /// </summary>
-    public void Set(string relativePath, FileStamp stamp, OcrPass pass, IReadOnlyList<ContentResult> results)
+    public void Set(string relativePath, FileStamp stamp, ContentPass pass, IReadOnlyList<ContentResult> results)
     {
-        var slots = OcrPasses.SlotsOf(pass);
+        var slots = ContentPasses.SlotsOf(pass);
         ContentText updated;
-        if (pass == OcrPass.Windows)
+        if (pass == ContentPass.Windows)
         {
-            updated = new ContentText(stamp, new SlotText?[OcrPasses.SlotCount]);
+            updated = new ContentText(stamp, new SlotText?[ContentPasses.SlotCount]);
         }
         else if (!this._texts.TryGetValue(relativePath, out var current) || current.Stamp != stamp)
         {
@@ -335,7 +335,7 @@ internal sealed class ContentIndex
             bool inWords = slot.Folded.Contains(foldedWord, StringComparison.Ordinal);
             // Only the OCR reads letters apart: a text read as text is not joined.
             bool inJoined = !inWords && canJoin && slot.HasBoxes && slot.Joined.Contains(foldedWord, StringComparison.Ordinal);
-            if (OcrPasses.IsWeak((ContentSlot)i))
+            if (ContentPasses.IsWeak((ContentSlot)i))
             {
                 weak ??= inWords || inJoined ? (slot, inJoined, ContentGrade.Weak) : null;
             }
