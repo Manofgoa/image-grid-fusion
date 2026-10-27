@@ -56,6 +56,9 @@ internal sealed partial class FileExplorerPanel : Panel
     private const int SimilarCount = 100;
     private const int QueryDelayMs = 300;
     private const int TextEncoderIdleMs = 5 * 60 * 1000;
+
+    // The most characters of the text read a tile's tooltip shows (workfiles/20261027-image-content-analysis.md § Tile Tooltip).
+    private const int TipTextLength = 200;
     private const int ContentSaveInterval = 30000;
     private const int ContentRefreshInterval = 5000;
 
@@ -401,6 +404,7 @@ internal sealed partial class FileExplorerPanel : Panel
             }
         };
         this._textEncoderIdle.Tick += (_, _) => this.ReleaseTextEncoder();
+        this._grid.IndexedContent = this.IndexedContentOf;
         this._toolTip.SetToolTip(this._similarClear, "Back to the search");
         _search.KeyDown += OnSearchKeyDown;
         this._modes.SelectionChangeCommitted += (_, _) => this.ChangeMode((ExplorerMode)this._modes.SelectedIndex);
