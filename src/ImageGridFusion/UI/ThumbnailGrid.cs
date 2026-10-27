@@ -662,21 +662,56 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
     /// <summary>
     /// An effect preset's badge, <c>★ FX</c>, at the thumbnail's top-right corner — the heart has the
-    /// top-left one: a pale blue label, its text dark blue.
+    /// top-left one: a pale blue label, its content dark blue. Drawn as shapes measured on their ink —
+    /// a star as tall as the letters' capitals, then <c>FX</c> in bold — so the content is centered with
+    /// even margins: text boxes count their leading and descent, and a fallback font draws the ★.
     /// </summary>
     private void PaintPresetBadge(Graphics g, Rectangle tile)
     {
-        const string Badge = "★ FX";
-        const TextFormatFlags Flags = TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
-        var text = TextRenderer.MeasureText(g, Badge, this._nameFont, Size.Empty, Flags);
-        int pad = this.LogicalToDeviceUnits(3);
+        float emSize = this._nameFont.SizeInPoints * g.DpiY / 72;
+        using var text = new GraphicsPath();
+        text.AddString("FX", this._nameFont.FontFamily, (int)FontStyle.Bold, emSize, PointF.Empty, StringFormat.GenericTypographic);
+        var ink = text.GetBounds();
+        float height = ink.Height;
+
+        // A five-pointed star standing on two points: its height is 1 + cos 36° times its outer radius.
+        float radius = height / (1 + MathF.Cos(MathF.PI / 5));
+        float starWidth = 2 * radius * MathF.Sin(2 * MathF.PI / 5);
+        float gap = height * 0.4f;
+        float content = starWidth + gap + ink.Width;
+        int padX = Math.Max(2, (int)Math.Round(height * 0.5f));
+        int padY = Math.Max(2, (int)Math.Round(height * 0.4f));
         int inset = this.LogicalToDeviceUnits(MedallionInset);
-        var badge = new Rectangle(tile.Right - inset - text.Width - 2 * pad, tile.Y + inset, text.Width + 2 * pad, text.Height + pad);
+        int width = (int)Math.Ceiling(content) + 2 * padX;
+        int badgeHeight = (int)Math.Ceiling(height) + 2 * padY;
+        var badge = new Rectangle(tile.Right - inset - width, tile.Y + inset, width, badgeHeight);
+
         using var fill = new SolidBrush(PresetBadgeFill);
         g.FillRectangle(fill, badge);
+        using var ink2 = new SolidBrush(PresetBadgeText);
         using var border = new Pen(PresetBadgeText);
         g.DrawRectangle(border, badge.X, badge.Y, badge.Width - 1, badge.Height - 1);
-        TextRenderer.DrawText(g, Badge, this._nameFont, badge, PresetBadgeText, Flags | TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
+        float left = badge.X + (badge.Width - content) / 2;
+        float top = badge.Y + (badge.Height - height) / 2;
+        var star = new PointF[10];
+        var center = new PointF(left + starWidth / 2, top + radius);
+        for (int i = 0; i < star.Length; i++)
+        {
+            float r = i % 2 == 0 ? radius : radius * 0.4f;
+            float angle = -MathF.PI / 2 + i * MathF.PI / 5;
+            star[i] = new PointF(center.X + r * MathF.Cos(angle), center.Y + r * MathF.Sin(angle));
+        }
+
+        using var place = new Matrix();
+        place.Translate(left + starWidth + gap - ink.X, top - ink.Y);
+        text.Transform(place);
+
+        var smoothing = g.SmoothingMode;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.FillPolygon(ink2, star);
+        g.FillPath(ink2, text);
+        g.SmoothingMode = smoothing;
     }
 
     /// <summary>The Loading… slot: a tile's box, its checkerboard and the text alone — no thumbnail, heart nor name.</summary>
