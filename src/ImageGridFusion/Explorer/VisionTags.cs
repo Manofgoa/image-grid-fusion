@@ -26,8 +26,11 @@ internal sealed class VisionTags
     private const float Spread = 0.02f;
     private const int MaxTags = 6;
 
-    // Changes when the rule above changes, so the stored tags are computed again.
-    private const string RuleVersion = "1";
+    // Changes when the rule above or the slot's format changes, so the stored tags are computed again.
+    private const string RuleVersion = "2";
+
+    /// <summary>What separates the concepts in the Tags slot — the tile's tooltip shows them apart; the search ignores it.</summary>
+    public const string ConceptSeparator = " · ";
 
     private const string CacheMagic = "ImageGridFusion vision concepts";
     private const string ResourceName = "ImageGridFusion.Explorer.VisionTags.txt";
@@ -135,7 +138,7 @@ internal sealed class VisionTags
         }
     }
 
-    /// <summary>The tags of an image, its French and English words, the closest concept first; "" for none. Every concept embedded first.</summary>
+    /// <summary>The tags of an image, its French and English words concept by concept (<see cref="ConceptSeparator"/>), the closest concept first; "" for none. Every concept embedded first.</summary>
     public string TagsOf(float[] embedding)
     {
         var scored = this._concepts.Where(c => c.Embedding is not null)
@@ -148,7 +151,7 @@ internal sealed class VisionTags
         }
 
         float least = Math.Max(Floor, scored[0].Score - Spread);
-        return string.Join(' ', scored.TakeWhile(s => s.Score >= least).Take(MaxTags).Select(s => s.Concept.Words));
+        return string.Join(ConceptSeparator, scored.TakeWhile(s => s.Score >= least).Take(MaxTags).Select(s => s.Concept.Words));
     }
 
     /// <summary>Deletes the concepts' cache; a missing one is no error. Throws like <see cref="File.Delete"/>.</summary>
