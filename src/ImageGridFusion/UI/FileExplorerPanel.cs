@@ -237,10 +237,12 @@ internal sealed partial class FileExplorerPanel : Panel
     private bool _syncingToggle;
 
     // The People view (workfiles/20261027-face-detection.md): whether it shows, the group open in it —
-    // HiddenGroups for the hidden ones — the faces found, whether they are looked for (the ⚙ setting), the
-    // groups as last computed and whether a computation runs or waits, the index's entries by full path,
-    // the face engine's download, and what the invitation's button does.
+    // HiddenGroups for the hidden ones, LowQualityFaces for the low-quality faces — the faces found, whether
+    // they are looked for (the ⚙ setting) and how strictly they are grouped, the groups as last computed and
+    // whether a computation runs or waits, the index's entries by full path, the face engine's download, and
+    // what the invitation's button does.
     private const string HiddenGroups = "hidden";
+    private const string LowQualityFaces = "low-quality";
     private const string GroupDataFormat = "ImageGridFusion.FaceGroup";
     private const string FaceDataFormat = "ImageGridFusion.Face";
     private bool _peopleView;
@@ -248,6 +250,7 @@ internal sealed partial class FileExplorerPanel : Panel
     private string? _openGroupFace;
     private FaceIndex? _faces;
     private bool _faceAnalysis;
+    private int _faceGrouping = FaceGrouping.DefaultLevel;
     private PeopleSnapshot _snapshot = PeopleSnapshot.Empty;
     private bool _grouping;
     private bool _groupAgain;
@@ -426,7 +429,7 @@ internal sealed partial class FileExplorerPanel : Panel
             e.Cancel = row is null;
             _openLocation.Text = row?.IsFolder == true ? OpenInExplorerText : OpenFileLocationText;
             bool file = row is { IsFile: true };
-            bool group = row is { IsGroup: true } && row.GroupId != HiddenGroups;
+            bool group = row is { IsGroup: true } && !IsPeopleTile(row.GroupId);
             var shown = group ? this._snapshot.ById.GetValueOrDefault(row!.GroupId!) : null;
             this._copy.Visible = file;
             this._copyPng.Visible = file;
@@ -440,7 +443,7 @@ internal sealed partial class FileExplorerPanel : Panel
             this._hideGroup.Visible = group && shown is { Hidden: false, Parent: null };
             this._unhideGroup.Visible = group && shown is { Hidden: true, Parent: null };
             this._unmergeGroup.Visible = group && shown?.Parent is not null;
-            this._notThisPerson.Visible = file && row!.FaceKey is not null && this._openGroup is { } open && open != HiddenGroups;
+            this._notThisPerson.Visible = file && row!.FaceKey is not null && this._openGroup is { } open && !IsPeopleTile(open);
             this._notThisPerson.Text = this._notThisPerson.Visible && this._snapshot.ById.GetValueOrDefault(this._openGroup!) is { } opened
                 ? $"Not {GroupName(opened)}"
                 : "Not this person";
@@ -864,6 +867,27 @@ internal sealed partial class FileExplorerPanel : Panel
             {
                 this.RefreshRows(keepPlace: true);
             }
+        }
+    }
+
+    /// <summary>
+    /// How strictly the faces are grouped — a level of <see cref="FaceGrouping.Thresholds"/>, the ⚙ menu's
+    /// Face grouping: set, the groups are computed again at once. Setting it raises nothing. See
+    /// workfiles/20261028-face-grouping-accuracy.md § Strictness Setting.
+    /// </summary>
+    [DefaultValue(FaceGrouping.DefaultLevel)]
+    public int FaceGroupingLevel
+    {
+        get => this._faceGrouping;
+        set
+        {
+            if (value == this._faceGrouping)
+            {
+                return;
+            }
+
+            this._faceGrouping = value;
+            this.Regroup(force: true);
         }
     }
 
@@ -3110,7 +3134,7 @@ internal sealed partial class FileExplorerPanel : Panel
         if (row.IsGroup)
         {
             // A sub-group is a part of the group open: its files are listed there already.
-            if (row.GroupId == HiddenGroups || this._snapshot.ById.GetValueOrDefault(row.GroupId!) is { Parent: null })
+            if (IsPeopleTile(row.GroupId) || this._snapshot.ById.GetValueOrDefault(row.GroupId!) is { Parent: null })
             {
                 this.OpenGroup(row.GroupId);
             }
@@ -3139,7 +3163,7 @@ internal sealed partial class FileExplorerPanel : Panel
         // A face group dragged onto another merges into it: inside the panel only.
         if (row.IsGroup)
         {
-            if (row.GroupId != HiddenGroups)
+            if (!IsPeopleTile(row.GroupId))
             {
                 this._draggingOwnTile = true;
                 try
@@ -3447,15 +3471,16 @@ internal sealed partial class FileExplorerPanel : Panel
 
     /// <summary>
     /// The People view's list (workfiles/20261027-face-detection.md § People View): the face groups — named
-    /// A→Z, then the others, the larger first — a tile for the hidden ones, then the faces close to no other,
-    /// each a file tile showing its face; a search keeping the groups whose name holds its words. A group
+    /// A→Z, then the others, the larger first — a tile for the hidden ones, a tile for the low-quality faces
+    /// (workfiles/20261028-face-grouping-accuracy.md § Low Quality Tile), then the clear faces close to no
+    /// other, each a file tile showing its face; a search keeping the groups whose name holds its words. A group
     /// open: the groups merged into it, then every file of it and of them, in the sort order — a search
     /// keeping the files it finds there. While nothing was found yet, the invitation says what is missing.
     /// </summary>
     private void RefreshPeopleRows(bool keepPlace, string? select, string[] words)
     {
         var snapshot = this._snapshot;
-        bool nothing = snapshot.Groups.Count == 0 && snapshot.Hidden.Count == 0 && snapshot.Ungrouped.Count == 0;
+        bool nothing = snapshot.Groups.Count == 0 && snapshot.Hidden.Count == 0 && snapshot.Ungrouped.Count == 0 && snapshot.LowQuality.Count == 0;
         InviteAction? invite = this._baseFolder is null ? InviteAction.ChooseFolder
             : !nothing ? null
             : !this._faceAnalysis ? InviteAction.TurnOnFaces
@@ -3480,6 +3505,15 @@ internal sealed partial class FileExplorerPanel : Panel
             var hidden = snapshot.Hidden.Where(group => NameHolds(group, words)).Select(GroupRow).ToList();
             this.ShowRows(hidden, keepPlace, select);
             this.ShowPeopleBreadcrumb("Hidden", Groups(hidden.Count));
+            return;
+        }
+
+        if (this._openGroup is LowQualityFaces)
+        {
+            // A search in the People view looks for names: a face without a person has none.
+            List<ExplorerRow> poor = words.Length > 0 ? [] : [.. snapshot.LowQuality.Select(this.FaceRow)];
+            this.ShowRows(poor, keepPlace, select);
+            this.ShowPeopleBreadcrumb("Low quality", Faces(poor.Count));
             return;
         }
 
@@ -3518,20 +3552,27 @@ internal sealed partial class FileExplorerPanel : Panel
                 list.Add(new ExplorerRow(best.FullPath, $"Hidden ({snapshot.Hidden.Count:N0})", GroupId: HiddenGroups, Face: best.Face.Bounds));
             }
 
-            foreach (var face in snapshot.Ungrouped)
+            if (snapshot.LowQuality.Count > 0)
             {
-                list.Add(new ExplorerRow(face.FullPath, Path.GetFileName(face.FullPath), Size: this.EntryOf(face.FullPath)?.Size, Face: face.Face.Bounds, FaceKey: face.Key));
+                var best = snapshot.LowQuality.MaxBy(face => face.Quality)!;
+                list.Add(new ExplorerRow(best.FullPath, $"Low quality ({snapshot.LowQuality.Count:N0})", GroupId: LowQualityFaces, Face: best.Face.Bounds));
             }
+
+            list.AddRange(snapshot.Ungrouped.Select(this.FaceRow));
         }
 
         this.ShowRows(list, keepPlace, select);
         string looking = this._facePassRunning ? " · looking for faces…" : "";
         this.ShowPeopleBreadcrumb(null, words.Length > 0 ? Groups(groups) : $"{Groups(groups)}, {Faces(snapshot.Ungrouped.Count)} alone{looking}");
-
-        static string Faces(int count) => count == 1 ? "1 face" : $"{count:N0} faces";
     }
 
     private static string Groups(int count) => count == 1 ? "1 group" : $"{count:N0} groups";
+
+    private static string Faces(int count) => count == 1 ? "1 face" : $"{count:N0} faces";
+
+    /// <summary>A face close to no other: a file tile showing the face cut out of its file.</summary>
+    private ExplorerRow FaceRow(FaceRef face) =>
+        new(face.FullPath, Path.GetFileName(face.FullPath), Size: this.EntryOf(face.FullPath)?.Size, Face: face.Face.Bounds, FaceKey: face.Key);
 
     /// <summary>A group's name, or <c>Unnamed</c>.</summary>
     private static string GroupName(FaceGroup group) => group.Name.Length > 0 ? group.Name : "Unnamed";
@@ -3649,6 +3690,7 @@ internal sealed partial class FileExplorerPanel : Panel
 
         this._grouping = true;
         var people = this._peopleStore.Snapshot();
+        float threshold = FaceGrouping.ThresholdOf(this._faceGrouping);
         PeopleSnapshot snapshot;
         try
         {
@@ -3665,7 +3707,7 @@ internal sealed partial class FileExplorerPanel : Panel
                     }
                 }
 
-                return FaceGrouping.Compute(found, people);
+                return FaceGrouping.Compute(found, people, threshold);
             });
         }
         finally
@@ -3720,9 +3762,12 @@ internal sealed partial class FileExplorerPanel : Panel
         this.Regroup(force: true);
     }
 
-    /// <summary>The group a tile stands for; null for any other tile, and the hidden ones' tile.</summary>
+    /// <summary>The group a tile stands for; null for any other tile, the hidden ones' and the low-quality faces' tiles included.</summary>
     private FaceGroup? GroupOf(ExplorerRow? row) =>
-        row is { IsGroup: true } && row.GroupId != HiddenGroups ? this._snapshot.ById.GetValueOrDefault(row.GroupId!) : null;
+        row is { IsGroup: true } && !IsPeopleTile(row.GroupId) ? this._snapshot.ById.GetValueOrDefault(row.GroupId!) : null;
+
+    /// <summary>Whether a tile's group id is the hidden ones' or the low-quality faces' tile: opened, never a person.</summary>
+    private static bool IsPeopleTile(string? groupId) => groupId is HiddenGroups or LowQualityFaces;
 
     /// <summary>Rename… or F2 on a group's tile: its name asked, kept.</summary>
     private void RenameGroup(ExplorerRow row)
