@@ -70,7 +70,23 @@ rate fine for one pair becomes many false merges.
 `FaceBox(Bounds, Score, Embedding)` in `files.faces` version 1: the box in fractions of the image, the
 YuNet score, the embedding (128 values, length 1). **No landmarks, no size in pixels.** The score and
 the relative size are usable as they are; a pose (frontality) needs the landmarks, a size in pixels the
-decoded image's size — both a face index version 2 and the face pass run again (Open Question 1).
+decoded image's size — both a face index version 2 and the face pass run again (agreed, § Face Index
+Version 2).
+
+---
+
+## Face Index Version 2
+
+Agreed (Q&A 5): each face carries what its quality needs, the face pass run once again over the index.
+
+- `FaceBox` gains its **five landmarks** (in fractions of the image, as its box) and its **side in
+  pixels** — the shorter side of its box in the pixels the face pass analysed (`DecodePixels`' size),
+  which is what the embedding was made from.
+- `files.faces` **version 2** (`FaceIndex.Version`): a version-1 file is rejected as today, so the face
+  pass starts over and every image is analysed again, with its own bar, as on a first run.
+- The detection is unchanged (same model, `MinScore`, `MinFaceSide`, NMS): the boxes come out the same,
+  so the **face keys** of `people.json` — path and rounded box (`FaceKeys`) — still match, and the
+  user's pins and exclusions survive the re-analysis.
 
 ---
 
@@ -108,14 +124,27 @@ the face's own threshold (§ Quality); `Excluded` is kept as it is.
 Each face gets a **quality** `q` in (0, 1], weighing it in the scoring (Q&A 2: *quality taken into
 account in the scoring* — no hard filter):
 
-- **What it reads**: the YuNet score and the face's size, from what `files.faces` holds today; the pose
-  (from the landmarks) and the size in pixels if a version 2 stores them (Open Question 1).
+- **What it reads** (`FaceQuality.Of`): the YuNet score, the face's **side in pixels** and its **pose** —
+  how frontal it is, from the landmarks (the nose's offset from the eyes' midpoint, relative to the
+  eyes' distance) — each mapped to (0, 1] and multiplied. The curves are set by the calibration.
 - **Its weight**: a face adds `q × embedding` to the sums and `q` to `W`, so a poor face pulls a group's
   average less than a clear one.
 - **Its threshold**: a face needs `threshold + QualityMargin × (1 − q)` to join a seed, a group or a
-  person — the poorer the face, the closer it must be. A face reaching none stays a **face alone**
-  (Open Question 3).
+  person — the poorer the face, the closer it must be.
 - `FaceRef.Quality` (the representative face, `FaceGroup.Best`) reads the same quality.
+
+### Low Quality Tile
+
+Agreed (Q&A 7): the poor faces close to no one are set apart.
+
+- A face that joins no group nor person **and** whose quality is under a floor
+  (`FaceQuality.LowFloor`) is a **low-quality face**; a clear face close to no one stays a **face
+  alone**, as today.
+- The People view shows a **Low quality (n)** tile while some exist, after the groups and the *Hidden*
+  tile, before the faces alone, drawn and opened as the *Hidden* tile is: opened, it lists them as face
+  tiles (the face cut out of its file), the breadcrumb `People › Low quality`.
+- They keep the faces alone's actions: dragged onto a group, a low-quality face joins it (pinned).
+- A search in the People view filters by name and leaves them out, as it does the faces alone.
 
 ---
 
@@ -123,9 +152,10 @@ account in the scoring* — no hard filter):
 
 An app setting of the ⚙ menu (§ App Settings of RULES.md), next to *Face analysis*:
 
-- *Face grouping* › a few levels, one checked (Open Question 2), each giving the **grouping
-  threshold** (`FaceGrouping.Thresholds`, the default level in the middle). Stored in `settings.json`
-  (`AppSettings.FaceGrouping`), read at start-up.
+- *Face grouping* › **five levels**, one checked (Q&A 6): *Very loose*, *Loose*, *Normal* (the
+  default), *Strict*, *Very strict* — each giving the **grouping threshold** (`FaceGrouping.Thresholds`),
+  the stricter the higher. Stored in `settings.json` (`AppSettings.FaceGrouping`, by its level's
+  index, an unknown value giving *Normal*), read at start-up — the `GuideApproach` pattern.
 - Changing it regroups at once (`FileExplorerPanel.Regroup(force: true)`), the People view refreshed.
 - The user's decisions are stored on faces: a stricter level never undoes a pin, an exclusion or a merge.
   A person's faces the grouping added (not pinned) follow the level.
@@ -144,7 +174,11 @@ faces, not guessed:
   groups, the faces alone, and — using the **named people as ground truth** — how often faces pinned to
   two different people land in one group (false merges) or one person's pinned faces land apart
   (splits).
-- On which data: Open Question 4.
+- On the user's data (Q&A 8): their `files.faces` (version 2, once the face pass has run again) and
+  `people.json`, next to the exe, **read-only**, nothing of them copied into the repository; their named
+  people, several with several pinned faces, are the ground truth.
+- *Normal* is set where the false merges become rare without splitting the named people much; the
+  other levels spread around it. The values chosen and the harness's figures go into the run's 🧭 entry.
 
 ---
 
@@ -159,22 +193,25 @@ by the calibration harness and by hand.
 | A face's average similarity to a cluster equals the mean of its pairwise similarities | Throwaway harness (scratchpad) | Create |
 | A poorer face needs a higher similarity to join; its weight pulls the sum less | Throwaway harness (scratchpad) | Create |
 | A stricter level gives fewer false merges on the named people, pins and exclusions untouched | Throwaway harness (scratchpad), on real faces | Create |
+| A frontal, large, sure face scores a higher quality than a turned, small or unsure one | Throwaway harness (scratchpad) | Create |
+| `files.faces` version 2 round-trips landmarks and pixel side; a version-1 file restarts the face pass | Throwaway harness (scratchpad) | Create |
+| The face keys of `people.json` still match after the re-analysis | By hand, in the app (pins kept) | — |
 | The ⚙ level is saved, read back at start-up, and regroups at once | By hand, in the app | — |
+| The Low quality tile lists the poor faces close to no one; one dragged onto a group joins it | By hand, in the app | — |
 
 ---
 
 ## Open Questions
 
-- [ ] 1. Store each face's **landmarks and size in pixels** (face index version 2, the face pass run
-  again over every image) so the quality reads the pose and the true size — or keep the quality to the
-  score and the relative size, no re-analysis?
-- [ ] 2. The strictness levels: **how many, and their names** (e.g. *Loose / Normal / Strict*), the
-  default being the middle one?
-- [ ] 3. A face too poor to reach any threshold: listed as a **face alone** as today, or kept out of the
-  People view (a *Low quality* tile, or not listed)?
-- [ ] 4. Calibration data: may the run read **your `files.faces` and `people.json`** (next to the exe,
-  read-only, nothing copied into the repository)? Are there **named people** enough among them — a few
-  persons with several pinned faces each — to serve as ground truth?
+- [x] ~~1. Store each face's landmarks and size in pixels (face index version 2, the face pass run
+  again over every image), or keep the quality to the score and the relative size?~~ → Store them:
+  version 2, the face pass run again (§ Face Index Version 2)
+- [x] ~~2. The strictness levels: how many, and their names?~~ → Five: Very loose, Loose, Normal (the
+  default), Strict, Very strict
+- [x] ~~3. A face too poor to reach any threshold: face alone, or kept out of the view?~~ → A **Low
+  quality** tile (§ Low Quality Tile)
+- [x] ~~4. May the calibration read the user's `files.faces` and `people.json`; are there enough named
+  people?~~ → Yes, read-only; enough named people
 
 ---
 
@@ -197,6 +234,18 @@ faces, which often put different people together; how to improve and refine the 
 - Proposed: average similarity from weighted sums, strict seeds then average-linkage merging, a quality
   weight and threshold margin per face, a ⚙ strictness level, thresholds calibrated on the named people.
 - Four questions left open.
+
+### Iteration 2 — 2026-10-28
+
+The four open questions answered (Q&A 5–8):
+
+- **Face index version 2**: each face stores its landmarks and its side in pixels; the face pass runs
+  again once; the face keys stay valid. The quality reads the score, the pixel side and the pose.
+- **Five strictness levels**, *Normal* by default.
+- **Low quality tile** for the poor faces close to no one; the clear ones stay faces alone.
+- **Calibration on the user's data**, read-only, the named people as ground truth.
+
+No question left open: the design is ready for the go.
 
 ---
 
@@ -223,10 +272,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | Which levers are accepted to improve the grouping? | Threshold + algorithm; quality taken into account in the scoring; a strictness setting (not a model change) | 2026-10-28 |
 | 3 | And the similar-image search? | A separate workfile, later | 2026-10-28 |
 | 4 | Is the subject straightforward or tricky / long to explore? | Tricky / long | 2026-10-28 |
-| 5 | Store landmarks and pixel size (index v2, face pass re-run) for the quality, or score and relative size only? | | |
-| 6 | The strictness levels: how many, and their names? | | |
-| 7 | A face too poor to reach any threshold: face alone, or kept out of the view? | | |
-| 8 | May the calibration read the user's `files.faces` and `people.json`; are there enough named people? | | |
+| 5 | Store landmarks and pixel size (index v2, face pass re-run) for the quality, or score and relative size only? | Store them, re-analyse | 2026-10-28 |
+| 6 | The strictness levels: how many, and their names? | Five levels | 2026-10-28 |
+| 7 | A face too poor to reach any threshold: face alone, or kept out of the view? | A *Low quality* tile | 2026-10-28 |
+| 8 | May the calibration read the user's `files.faces` and `people.json`; are there enough named people? | Yes, enough named people | 2026-10-28 |
 
 ---
 
