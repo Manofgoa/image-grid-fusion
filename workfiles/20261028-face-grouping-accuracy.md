@@ -247,6 +247,12 @@ The four open questions answered (Q&A 5–8):
 
 No question left open: the design is ready for the go.
 
+### Iteration 3 — 2026-10-28 — ✅ Implemented
+
+Go given: **code, unit tests and documentation**, in a **worktree** —
+`.claude/worktrees/face-grouping-accuracy`, branch `feature/face-grouping-accuracy`, created from `main`
+at `f8af91f`. The Branch Gate is skipped: the worktree's branch is dedicated.
+
 ---
 
 ## Implementation Log
