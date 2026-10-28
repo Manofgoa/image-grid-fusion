@@ -57,8 +57,8 @@ Components: `UI/FileExplorerPanel.cs` (tile menu `_menu`, `_menu.Opening`, `Open
 ## Group Title
 
 - A group open in the People view (not the people list, not the *Hidden* tile) shows a **title at the
-  top of its list**: the group's name, or *Unnamed*, in a larger bold font, scrolled with the list
-  away from no tile — a strip above the tiles, in the Thumbnails and Details views alike. Hovered, it
+  top of its list**: the group's name, or *Unnamed*, in a larger bold font — a strip of its own
+  above the tiles, staying in place while they scroll, in the Thumbnails and Details views alike. Hovered, it
   shows a hand cursor and the tooltip *Click to rename*.
 - **Clicked** → a popup like JavaScript's `prompt()` asks the name — the existing `NameDialog`
   (*"The person's name:"*, the current name selected, OK / Cancel) — then the same path as *Rename…*
