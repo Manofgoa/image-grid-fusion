@@ -105,8 +105,9 @@ internal sealed class PeopleSnapshot(IReadOnlyList<FaceGroup> groups, IReadOnlyL
 /// stays with it; any other joins the person closest to it when it reaches the threshold and is not
 /// excluded from that person, else the closest seed above a stricter threshold (<see cref="SeedMargin"/>),
 /// else starts one — the clearest faces first; the seeds are then merged two by two, the closest pair
-/// first, while a pair reaches the threshold: average linkage, which never unites two groups through a
-/// third. A group of a single face is no group: that face is listed alone, or apart when poor.
+/// first, while a pair reaches the threshold — the poorer side's margin included: average linkage, which
+/// never unites two groups through a third. A group of a single face is no group: that face is listed
+/// alone, or apart when poor.
 /// </summary>
 internal static class FaceGrouping
 {
@@ -297,65 +298,53 @@ internal static class FaceGrouping
 
     /// <summary>
     /// The seeds merged two by two, the closest pair on average first, while a pair reaches the threshold:
-    /// average linkage, followed along a nearest-neighbour chain — each cluster's closest pushed until two
-    /// are each other's closest, then merged. A merge never brings a third cluster closer than the closer of
-    /// the two was, so a cluster whose closest is under the threshold never merges again and is final.
+    /// average linkage. The poorer side of a pair — its best face — needs the quality margin as a face does,
+    /// so a poor face alone in its seed joins no group it would not have joined as a face. Only the pairs
+    /// within reach are queued; a merge queues the merged cluster's pairs again, the older ones dropped.
     /// </summary>
     private static List<Cluster> MergeAverage(List<Cluster> seeds, float threshold)
     {
-        var final = new List<Cluster>();
-        var active = new bool[seeds.Count];
-        Array.Fill(active, true);
-        int left = seeds.Count;
-        int first = 0;
-        var chain = new List<int>();
-        while (left > 0)
+        var alive = new bool[seeds.Count];
+        Array.Fill(alive, true);
+        var version = new int[seeds.Count];
+        var pairs = new PriorityQueue<(int A, int B, int VersionA, int VersionB), float>();
+        for (int a = 0; a < seeds.Count; a++)
         {
-            if (chain.Count == 0)
+            for (int b = a + 1; b < seeds.Count; b++)
             {
-                while (!active[first])
-                {
-                    first++;
-                }
-
-                chain.Add(first);
-            }
-
-            // The previous link wins a tie, so the chain never runs in a circle.
-            int at = chain[^1];
-            int previous = chain.Count >= 2 ? chain[^2] : -1;
-            int closest = previous;
-            float best = previous >= 0 ? seeds[at].SimilarityTo(seeds[previous]) : float.NegativeInfinity;
-            for (int i = 0; i < seeds.Count; i++)
-            {
-                if (i != at && active[i] && seeds[at].SimilarityTo(seeds[i]) is var similarity && similarity > best)
-                {
-                    best = similarity;
-                    closest = i;
-                }
-            }
-
-            if (closest < 0 || best < threshold)
-            {
-                active[at] = false;
-                left--;
-                final.Add(seeds[at]);
-                chain.RemoveAt(chain.Count - 1);
-            }
-            else if (closest == previous)
-            {
-                seeds[at].Merge(seeds[previous]);
-                active[previous] = false;
-                left--;
-                chain.RemoveRange(chain.Count - 2, 2);
-            }
-            else
-            {
-                chain.Add(closest);
+                Offer(a, b);
             }
         }
 
-        return final;
+        while (pairs.TryDequeue(out var pair, out _))
+        {
+            if (!alive[pair.A] || !alive[pair.B] || version[pair.A] != pair.VersionA || version[pair.B] != pair.VersionB)
+            {
+                continue;
+            }
+
+            seeds[pair.A].Merge(seeds[pair.B]);
+            alive[pair.B] = false;
+            version[pair.A]++;
+            for (int other = 0; other < seeds.Count; other++)
+            {
+                if (other != pair.A && alive[other])
+                {
+                    Offer(pair.A, other);
+                }
+            }
+        }
+
+        return [.. seeds.Where((_, i) => alive[i])];
+
+        void Offer(int a, int b)
+        {
+            float score = seeds[a].SimilarityTo(seeds[b]) - QualityMargin * (1 - Math.Min(seeds[a].Quality, seeds[b].Quality));
+            if (score >= threshold)
+            {
+                pairs.Enqueue((a, b, version[a], version[b]), -score);
+            }
+        }
     }
 
     /// <summary>
@@ -380,13 +369,16 @@ internal static class FaceGrouping
 
         public List<FaceRef> Faces { get; } = [];
 
+        /// <summary>Its best face's quality: a cluster holding a clear face needs no margin.</summary>
+        public float Quality { get; private set; }
+
         /// <summary>A person's pinned faces, each of weight 1 — the user put them there; null for none.</summary>
         public static Cluster? Of(IEnumerable<float[]> embeddings)
         {
             Cluster? cluster = null;
             foreach (var embedding in embeddings)
             {
-                cluster ??= new Cluster(embedding.Length);
+                cluster ??= new Cluster(embedding.Length) { Quality = 1 };
                 cluster.Accumulate(embedding, 1);
             }
 
@@ -396,12 +388,14 @@ internal static class FaceGrouping
         public void Add(FaceRef face)
         {
             this.Faces.Add(face);
+            this.Quality = Math.Max(this.Quality, face.Quality);
             this.Accumulate(face.Face.Embedding, face.Quality);
         }
 
         public void Merge(Cluster other)
         {
             this.Faces.AddRange(other.Faces);
+            this.Quality = Math.Max(this.Quality, other.Quality);
             for (int i = 0; i < this._sum.Length; i++)
             {
                 this._sum[i] += other._sum[i];
