@@ -93,6 +93,9 @@ internal sealed partial class FileExplorerPanel : Panel
     // The views drop-down's width in logical pixels: its longest entry and the arrow.
     private const int ModesWidth = 84;
 
+    // The width of a face in the People submenu of a file's tile, in logical pixels, at the tiles' 4:3.
+    private const int PhotoFaceWidth = 40;
+
     private readonly TableLayoutPanel _content = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 8, Padding = new Padding(6, 4, 6, 6) };
     private readonly TableLayoutPanel _header = new() { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
     private readonly Label _title = new() { Text = "Files", AutoSize = true, Anchor = AnchorStyles.Left };
@@ -180,6 +183,12 @@ internal sealed partial class FileExplorerPanel : Panel
     private readonly ToolStripMenuItem _unmergeGroup = new("Un-merge");
     private readonly ToolStripMenuItem _notThisPerson = new("Not this person");
     private readonly ToolStripSeparator _peopleSeparator = new();
+
+    // A file's people, each opening its group, and the title of the group open, clicked to rename it
+    // (workfiles/20261028-open-people-from-image.md).
+    private readonly ToolStripMenuItem _photoPeople = new("People");
+    private readonly ToolStripSeparator _photoPeopleSeparator = new();
+    private readonly Label _groupTitle = new() { Dock = DockStyle.Top, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, Cursor = Cursors.Hand, Visible = false, Padding = new Padding(6, 0, 6, 0) };
     private readonly ToolTip _toolTip = new();
     private readonly System.Windows.Forms.Timer _transient = new() { Interval = TransientDuration };
     private readonly Favorites _favorites = new(Favorites.DefaultPath);
@@ -254,6 +263,9 @@ internal sealed partial class FileExplorerPanel : Panel
     private bool _facePassRunning;
     private int _groupedAt = -1;
     private Dictionary<string, IndexEntry>? _entriesByPath;
+
+    // The person just created for a face alone, opened once the groups computed again hold it.
+    private string? _openAfterRegroup;
     private CancellationTokenSource? _faceEngineDownload;
     private InviteAction _inviteAction = InviteAction.ChooseFolder;
 
@@ -279,6 +291,7 @@ internal sealed partial class FileExplorerPanel : Panel
     public FileExplorerPanel()
     {
         _title.Font = new Font(Font, FontStyle.Bold);
+        this._groupTitle.Font = new Font(this.Font.FontFamily, this.Font.SizeInPoints + 4f, FontStyle.Bold);
         _smallerGlyph.Font = new Font("Segoe UI Symbol", Font.SizeInPoints);
         _largerGlyph.Font = new Font("Segoe UI Symbol", Font.SizeInPoints + 6f);
         ApplyWidth();
@@ -335,6 +348,7 @@ internal sealed partial class FileExplorerPanel : Panel
         _invite.Controls.Add(_inviteText);
         _listHost.Controls.Add(_grid);
         _listHost.Controls.Add(_invite);
+        this._listHost.Controls.Add(this._groupTitle);
         _content.Controls.Add(_header, 0, 0);
         _content.Controls.Add(_searchRow, 0, 1);
         this._bars.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -352,7 +366,7 @@ internal sealed partial class FileExplorerPanel : Panel
         this._content.Controls.Add(this._urlZone, 0, 7);
         Controls.Add(_content);
         Controls.Add(_expand);
-        this._menu.Items.AddRange([this._openGroupItem, this._renameGroup, this._hideGroup, this._unhideGroup, this._unmergeGroup, this._notThisPerson, this._peopleSeparator]);
+        this._menu.Items.AddRange([this._photoPeople, this._photoPeopleSeparator, this._openGroupItem, this._renameGroup, this._hideGroup, this._unhideGroup, this._unmergeGroup, this._notThisPerson, this._peopleSeparator]);
         this._menu.Items.AddRange([this._editDescription, this._findSimilar, this._copy, this._copyPng, this._copyFullPath, this._copySeparator]);
         _menu.Items.Add(_openLocation);
         _grid.ContextMenuStrip = _menu;
@@ -445,6 +459,8 @@ internal sealed partial class FileExplorerPanel : Panel
                 ? $"Not {GroupName(opened)}"
                 : "Not this person";
             this._peopleSeparator.Visible = row?.IsGroup == true || this._notThisPerson.Visible;
+            this.FillPhotoPeople(file ? row : null);
+            this._photoPeopleSeparator.Visible = this._photoPeople.Visible;
         };
         this._openGroupItem.Click += (_, _) => { if (this._grid.SelectedRow is { } row) { this.Activate(row); } };
         this._renameGroup.Click += (_, _) => { if (this._grid.SelectedRow is { } row) { this.RenameGroup(row); } };
@@ -452,6 +468,8 @@ internal sealed partial class FileExplorerPanel : Panel
         this._unhideGroup.Click += (_, _) => this.SetGroupHidden(this._grid.SelectedRow, hidden: false);
         this._unmergeGroup.Click += (_, _) => this.UnmergeGroup(this._grid.SelectedRow);
         this._notThisPerson.Click += (_, _) => this.RemoveFace(this._grid.SelectedRow);
+        this._groupTitle.Click += (_, _) => this.RenameOpenGroup();
+        this._toolTip.SetToolTip(this._groupTitle, "Click to rename");
         this._editDescription.Click += (_, _) => this.EditDescription();
         _openLocation.Click += (_, _) => OpenLocation();
         this._copy.Click += (_, _) => this.CopySelected();
@@ -1400,6 +1418,7 @@ internal sealed partial class FileExplorerPanel : Panel
         this._sort.Width = this.LogicalToDeviceUnits(SortWidth);
         this._modes.Width = this.LogicalToDeviceUnits(ModesWidth);
         _inviteText.Height = Font.Height * 4 + LogicalToDeviceUnits(8);
+        this._groupTitle.Height = this._groupTitle.Font.Height + this.LogicalToDeviceUnits(10);
     }
 
     /// <summary>The frame in the content's padding, around everything the open panel shows.</summary>
@@ -2480,6 +2499,7 @@ internal sealed partial class FileExplorerPanel : Panel
             return;
         }
 
+        this.ShowGroupTitle(null);
         bool inviting = _baseFolder is null && (words.Length > 0 || _folderView);
         this.SetInvite(InviteAction.ChooseFolder);
         _invite.Visible = inviting;
@@ -3470,6 +3490,7 @@ internal sealed partial class FileExplorerPanel : Panel
         this._grid.Visible = invite is null;
         if (invite is not null)
         {
+            this.ShowGroupTitle(null);
             this.ShowRows([], keepPlace, null);
             this.ShowPeopleBreadcrumb(null, "");
             return;
@@ -3477,6 +3498,7 @@ internal sealed partial class FileExplorerPanel : Panel
 
         if (this._openGroup is HiddenGroups)
         {
+            this.ShowGroupTitle(null);
             var hidden = snapshot.Hidden.Where(group => NameHolds(group, words)).Select(GroupRow).ToList();
             this.ShowRows(hidden, keepPlace, select);
             this.ShowPeopleBreadcrumb("Hidden", Groups(hidden.Count));
@@ -3499,6 +3521,7 @@ internal sealed partial class FileExplorerPanel : Panel
             }
             else
             {
+                this.ShowGroupTitle(open);
                 var rows = open.SubGroups.Select(GroupRow).ToList();
                 var files = this.GroupFiles(open, words);
                 rows.AddRange(files);
@@ -3508,6 +3531,7 @@ internal sealed partial class FileExplorerPanel : Panel
             }
         }
 
+        this.ShowGroupTitle(null);
         var list = snapshot.Groups.Where(group => NameHolds(group, words)).Select(GroupRow).ToList();
         int groups = list.Count;
         if (words.Length == 0)
@@ -3586,9 +3610,21 @@ internal sealed partial class FileExplorerPanel : Panel
     private void ShowPeopleBreadcrumb(string? open, string trailing) =>
         this._breadcrumb.SetPath(open is null ? ["People"] : ["People", open], trailing);
 
+    /// <summary>The title at the top of the list: the group open's name, or <c>Unnamed</c>; none for <c>null</c>.</summary>
+    private void ShowGroupTitle(FaceGroup? group)
+    {
+        if (group is not null)
+        {
+            this._groupTitle.Text = GroupName(group);
+        }
+
+        this._groupTitle.Visible = group is not null;
+    }
+
     /// <summary>Opens a group of the People view — or the hidden ones, or none — from the top, the search box cleared.</summary>
     private void OpenGroup(string? id)
     {
+        this._openAfterRegroup = null;
         string? left = this._openGroup;
         this._openGroup = id;
         this._openGroupFace = id is null ? null : this._snapshot.ById.GetValueOrDefault(id)?.Best.Key;
@@ -3689,7 +3725,15 @@ internal sealed partial class FileExplorerPanel : Panel
 
         this._snapshot = snapshot;
         this._groupedAt = changes;
-        this.RefreshPeopleIfShown();
+        if (this._openAfterRegroup is { } created && this._peopleView && snapshot.ById.ContainsKey(created))
+        {
+            this.OpenGroup(created);
+        }
+        else
+        {
+            this.RefreshPeopleIfShown();
+        }
+
         if (this._groupAgain)
         {
             this._groupAgain = false;
@@ -3732,7 +3776,23 @@ internal sealed partial class FileExplorerPanel : Panel
             return;
         }
 
+        this.Rename(group);
+    }
+
+    /// <summary>The title of the group open clicked: its name asked, kept, as Rename… does.</summary>
+    private void RenameOpenGroup()
+    {
+        if (this._openGroup is { } id && id != HiddenGroups && this._snapshot.ById.GetValueOrDefault(id) is { } group)
+        {
+            this.Rename(group);
+        }
+    }
+
+    /// <summary>A group's name asked in a popup centered on the explorer, then kept.</summary>
+    private void Rename(FaceGroup group)
+    {
         using var dialog = new NameDialog("Rename", "The person's name:", group.Name);
+        dialog.CenterOn(this);
         if (dialog.ShowDialog(this.FindForm()) != DialogResult.OK)
         {
             return;
@@ -3741,6 +3801,105 @@ internal sealed partial class FileExplorerPanel : Panel
         var person = this.PersonOf(group);
         person.Name = dialog.Value;
         this.SavePeople(person.Name.Length > 0 ? $"Named: {person.Name}" : "Name removed");
+    }
+
+    /// <summary>
+    /// The People submenu of a file's tile: one entry per person of its faces (<see cref="PhotoPeople"/>) —
+    /// its face cut out of the file, loaded off the UI thread, its name and its files; hidden for a file
+    /// without one, and while the face analysis is off.
+    /// </summary>
+    private void FillPhotoPeople(ExplorerRow? row)
+    {
+        var old = this._photoPeople.DropDownItems.Cast<ToolStripItem>().ToArray();
+        this._photoPeople.DropDownItems.Clear();
+        foreach (var item in old)
+        {
+            item.Image?.Dispose();
+            item.Dispose();
+        }
+
+        IReadOnlyList<PhotoPerson> people = [];
+        if (row is not null && this._faceAnalysis && this._faces is { } faces && this._baseFolder is { } root)
+        {
+            string relative = Path.GetRelativePath(root, row.FullPath);
+            if (!relative.StartsWith("..", StringComparison.Ordinal) && !Path.IsPathRooted(relative))
+            {
+                people = PhotoPeople.Of(this._snapshot, row.FullPath, faces.FacesOf(relative));
+            }
+        }
+
+        this._photoPeople.Visible = people.Count > 0;
+        if (people.Count == 0)
+        {
+            return;
+        }
+
+        var box = new Size(this.LogicalToDeviceUnits(PhotoFaceWidth), this.LogicalToDeviceUnits(PhotoFaceWidth * 3 / 4));
+        var entries = people.Select(person =>
+        {
+            // A blank picture meanwhile, so the entries keep their height when the faces come.
+            var entry = new ToolStripMenuItem(PhotoPersonText(person), new Bitmap(box.Width, box.Height)) { ImageScaling = ToolStripItemImageScaling.None };
+            entry.Click += (_, _) => this.OpenPhotoPerson(person);
+            return entry;
+        }).ToArray();
+        this._photoPeople.DropDownItems.AddRange(entries);
+        _ = this.LoadPhotoFacesAsync(entries, people, box);
+    }
+
+    /// <summary>An entry of the People submenu: <c>Alice (12 files)</c>, <c>Unnamed (1 file)</c>, <c>(hidden)</c> after a hidden one.</summary>
+    private static string PhotoPersonText(PhotoPerson person) =>
+        $"{(person.Name.Length > 0 ? person.Name : "Unnamed")} ({Files(person.FileCount)}){(person.Hidden ? " (hidden)" : "")}";
+
+    /// <summary>The faces of the People submenu cut out of their file one after the other, each shown as it comes.</summary>
+    private async Task LoadPhotoFacesAsync(ToolStripMenuItem[] entries, IReadOnlyList<PhotoPerson> people, Size box)
+    {
+        for (int i = 0; i < entries.Length; i++)
+        {
+            var face = people[i].Face;
+            Bitmap? picture = null;
+            try
+            {
+                picture = await Task.Run(() => FaceCrops.Load(face.FullPath, face.Face.Bounds, box));
+            }
+            catch (Exception ex) when (ex is ExternalException or ArgumentException or OutOfMemoryException)
+            {
+            }
+
+            if (picture is null)
+            {
+                continue;
+            }
+
+            if (entries[i].IsDisposed)
+            {
+                picture.Dispose();
+                continue;
+            }
+
+            var blank = entries[i].Image;
+            entries[i].Image = picture;
+            blank?.Dispose();
+        }
+
+        FaceCrops.Release();
+    }
+
+    /// <summary>
+    /// An entry of the People submenu clicked: the People view shows, the person's group open; a face
+    /// alone first made a person of its own — its face pinned, saved — opened once the groups hold it.
+    /// </summary>
+    private void OpenPhotoPerson(PhotoPerson person)
+    {
+        this.ChangeMode(ExplorerMode.People);
+        if (person.Group is { } group)
+        {
+            this.OpenGroup(group.Id);
+            return;
+        }
+
+        var created = this._peopleStore.Create([(person.Face.Key, person.Face.Face.Embedding)]);
+        this._openAfterRegroup = created.Id;
+        this.SavePeople("New person: Unnamed");
     }
 
     /// <summary>Hide or Unhide on a group's tile: it leaves the view for the hidden ones' tile, or comes back.</summary>
