@@ -3673,8 +3673,17 @@ internal sealed partial class FileExplorerPanel : Panel
             this._grouping = false;
         }
 
-        if (this.IsDisposed || faces != this._faces || index != this._index)
+        if (this.IsDisposed)
         {
+            return;
+        }
+
+        if (faces != this._faces || index != this._index)
+        {
+            // Replaced meanwhile — the rescan at start-up replaces the cached index: the groups computed
+            // again on what replaced them, never left empty.
+            this._groupAgain = false;
+            this.Regroup(force: true);
             return;
         }
 
