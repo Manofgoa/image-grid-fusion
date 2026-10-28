@@ -674,6 +674,13 @@ The faces of the indexed images grouped into people, in the file explorer's **Pe
   merges after a confirmation; *Un-merge* on a sub-group; *Not <name>* on a file of an open group; *Hide*
   / *Unhide*; *Rename…* or F2. User actions write `people.json`, a `--new-instance` too. Out of the undo
   history.
+- **From a photo** (origin: `workfiles/20261028-open-people-from-image.md`): a file tile's **People**
+  submenu lists its people — one definition, `PhotoPeople.Of`: a group per face, a sub-group's counting
+  for its top group, named as the tooltip names it; a face alone; the hidden last, marked — each entry
+  its face cut out of the photo, its name or *Unnamed*, its files; clicked, the People view opens its
+  group. A face alone is made a person (`People.Create`, saved) and opened once the groups hold it.
+- **The group open's title**, at the top of its list, is clicked to rename it — the same route as
+  *Rename…* (`FileExplorerPanel.Rename`), its `NameDialog` centered on the explorer.
 - **Search by name**: under **Aa**, a person's name finds their files in their own tier — after the
   presets' descriptions, before the content matches (`FileSearch.SearchPeople`) — the hidden people left
   out, in the folder view those below the open folder.
