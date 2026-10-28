@@ -48,6 +48,8 @@ internal sealed class MainForm : Form
     // The faces' group of the ⚙ menu (workfiles/20261027-face-detection.md § Privacy): a caption, then its entries.
     private readonly ToolStripMenuItem _facesCaption = new("People") { Enabled = false };
     private readonly ToolStripMenuItem _faceAnalysis = new("Face analysis");
+    // How strictly the faces are grouped (workfiles/20261028-face-grouping-accuracy.md): a submenu of exclusive levels.
+    private readonly ToolStripMenuItem _faceGrouping = new("Face grouping");
     private readonly ToolStripMenuItem _downloadFaceEngine = new("Download the face engine…");
     private readonly ToolStripMenuItem _forgetFaces = new("Forget faces…");
     // The image content analysis' group of the ⚙ menu (workfiles/20261027-image-content-analysis.md § Engine Offer).
@@ -577,6 +579,7 @@ internal sealed class MainForm : Form
         this._explorer.ArrowStyle = AppSettings.OcrArrow;
         _explorer.OpenFolder = AppSettings.ExplorerOpenFolder;
         this._explorer.FaceAnalysis = AppSettings.FaceAnalysis;
+        this._explorer.FaceGroupingLevel = AppSettings.FaceGrouping;
         this._explorer.VisualAnalysis = AppSettings.VisualAnalysis;
         this._explorer.Captions = AppSettings.Captions;
         this._explorer.Mode = AppSettings.ExplorerMode;
@@ -619,7 +622,7 @@ internal sealed class MainForm : Form
         this._transportTimer.Tick += (_, _) => this.RefreshTransportPosition();
         this._transportTimer.Start();
         this._toolTip.SetToolTip(this._clearButton, "Removes every image and the global effects, and brings the format back to Twitter (Ctrl+N)");
-        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, this._installYtDlpCompanions, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._downloadOcrEngine, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._downloadFaceEngine, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._downloadVisionEngine, this._captions, this._downloadCaptionEngine, this._forgetVisual, new ToolStripSeparator(), this._openAppFolder]);
+        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, this._installYtDlpCompanions, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._downloadOcrEngine, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._downloadFaceEngine, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._downloadVisionEngine, this._captions, this._downloadCaptionEngine, this._forgetVisual, new ToolStripSeparator(), this._openAppFolder]);
         for (int pages = FileExplorerPanel.MinPagesPerLoad; pages <= FileExplorerPanel.MaxPagesPerLoad; pages++)
         {
             int choice = pages;
@@ -633,6 +636,15 @@ internal sealed class MainForm : Form
             var item = new ToolStripMenuItem(percent == 0 ? "At the stop only" : $"{percent} % of the cell") { Tag = percent };
             item.Click += (_, _) => this.SetGuideApproach(percent);
             this._guideApproach.DropDownItems.Add(item);
+        }
+
+        string[] faceGroupingLevels = ["Very loose", "Loose", "Normal", "Strict", "Very strict"];
+        for (int level = 0; level < faceGroupingLevels.Length; level++)
+        {
+            int chosen = level;
+            var item = new ToolStripMenuItem(faceGroupingLevels[level]) { Tag = level };
+            item.Click += (_, _) => this.SetFaceGrouping(chosen);
+            this._faceGrouping.DropDownItems.Add(item);
         }
 
         this._gapBarsFrom.DropDownItems.AddRange([this._gapBarsFromCenter, this._gapBarsFromEdges]);
@@ -675,6 +687,7 @@ internal sealed class MainForm : Form
         this._downloadOcrEngine.Click += (_, _) => this.OfferOcrEngineDownload();
         this._faceAnalysis.ToolTipText = "Whether the file explorer looks for the faces in the base folder's images and PDFs and groups them into people, for its People view — on this computer only; off until turned on, remembered between sessions";
         this._faceAnalysis.Click += (_, _) => this.ToggleFaceAnalysis();
+        this._faceGrouping.ToolTipText = "How alike faces must be to be grouped as one person in the People view — stricter mixes fewer people, looser splits fewer; your names, merges and removed faces are kept; remembered between sessions";
         this._downloadFaceEngine.ToolTipText = "Downloads the face engine — two models of the OpenCV Zoo, YuNet and SFace — the face analysis runs on; shown while it is not downloaded";
         this._downloadFaceEngine.Click += (_, _) => this.OfferFaceEngineDownload();
         this._forgetFaces.ToolTipText = "Deletes every face found and every person named, hidden or merged — files.faces and people.json — and turns the face analysis off";
@@ -2954,6 +2967,12 @@ internal sealed class MainForm : Form
         this._downloadOcrEngine.Visible = !OcrEngineFiles.IsAvailable;
         this._downloadOcrEngine.Enabled = !this._explorer.DownloadingOcrEngine;
         this._faceAnalysis.Checked = this._explorer.FaceAnalysis;
+        this._faceGrouping.Enabled = this._explorer.FaceAnalysis;
+        foreach (ToolStripMenuItem item in this._faceGrouping.DropDownItems)
+        {
+            item.Checked = (int)item.Tag! == this._explorer.FaceGroupingLevel;
+        }
+
         this._downloadFaceEngine.Visible = !FaceEngineFiles.IsAvailable;
         this._downloadFaceEngine.Enabled = !this._explorer.DownloadingFaceEngine;
         this._visualAnalysis.Checked = this._explorer.VisualAnalysis;
@@ -4174,6 +4193,20 @@ internal sealed class MainForm : Form
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
             this.ShowStatus($"Guides distance not remembered: {ex.Message}", error: true);
+        }
+    }
+
+    /// <summary>The ⚙ menu's Face grouping: the people grouped again at once, remembered between sessions.</summary>
+    private void SetFaceGrouping(int level)
+    {
+        this._explorer.FaceGroupingLevel = level;
+        try
+        {
+            AppSettings.SaveFaceGrouping(level);
+        }
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
+        {
+            this.ShowStatus($"Face grouping not remembered: {ex.Message}", error: true);
         }
     }
 

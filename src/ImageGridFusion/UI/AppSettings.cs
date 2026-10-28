@@ -28,6 +28,7 @@ internal static class AppSettings
     private const string ExplorerFolderViewName = "ExplorerFolderView";
     private const string ExplorerModeName = "ExplorerMode";
     private const string FaceAnalysisName = "FaceAnalysis";
+    private const string FaceGroupingName = "FaceGrouping";
     private const string VisualAnalysisName = "VisualAnalysis";
     private const string CaptionsName = "Captions";
     private const string ExplorerOpenFolderName = "ExplorerOpenFolder";
@@ -249,6 +250,17 @@ internal static class AppSettings
 
     /// <summary>Saves whether the file explorer analyses the faces; throws an <see cref="IsSaveError"/> exception on failure.</summary>
     public static void SaveFaceAnalysis(bool on) => Save((FaceAnalysisName, on ? 1 : 0));
+
+    /// <summary>
+    /// How strictly the faces are grouped into people — the ⚙ menu's Face grouping, a level of
+    /// <see cref="Explorer.FaceGrouping.Thresholds"/>; Normal when nothing was saved or the value is not a
+    /// level. See workfiles/20261028-face-grouping-accuracy.md § Strictness Setting.
+    /// </summary>
+    public static int FaceGrouping =>
+        Int(FaceGroupingName) is int value && value >= 0 && value < Explorer.FaceGrouping.Thresholds.Length ? value : Explorer.FaceGrouping.DefaultLevel;
+
+    /// <summary>Saves how strictly the faces are grouped; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveFaceGrouping(int level) => Save((FaceGroupingName, level));
 
     /// <summary>
     /// Whether the file explorer computes the images' embeddings and tags, for the searches by what the
