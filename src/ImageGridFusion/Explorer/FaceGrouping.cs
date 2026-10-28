@@ -116,7 +116,7 @@ internal static class FaceGrouping
     /// loose to Very strict, an app setting of the ⚙ menu (<c>AppSettings.FaceGrouping</c>). Set on real
     /// faces (workfiles/20261028-face-grouping-accuracy.md § Calibration).
     /// </summary>
-    public static readonly float[] Thresholds = [0.30f, 0.34f, 0.38f, 0.42f, 0.46f];
+    public static readonly float[] Thresholds = [0.28f, 0.32f, 0.36f, 0.40f, 0.44f];
 
     /// <summary>The level of <see cref="Thresholds"/> at first: Normal.</summary>
     public const int DefaultLevel = 2;
@@ -125,7 +125,7 @@ internal static class FaceGrouping
     public const float SeedMargin = 0.08f;
 
     /// <summary>What the poorest face needs above the threshold, a perfect one nothing, linear between.</summary>
-    public const float QualityMargin = 0.12f;
+    public const float QualityMargin = 0.06f;
 
     /// <summary>The threshold of a strictness level, the default one for a level out of range.</summary>
     public static float ThresholdOf(int level) => Thresholds[level >= 0 && level < Thresholds.Length ? level : DefaultLevel];
