@@ -2172,7 +2172,8 @@ internal sealed partial class GridPreview : Control
     /// <see cref="ZoomFit.Contain"/> gives in its cell, as a free zoom (<see cref="ImageLook.WithArrivalZoom"/>):
     /// the whole image shown, centered in its cell when <paramref name="centered"/>, its focus kept otherwise.
     /// A text laying its zoom out keeps filling its cell, at 100 %; an image arriving with a zoom of its
-    /// own keeps it.
+    /// own keeps it — but not on the layout strip's Auto (<paramref name="centered"/>), which replaces
+    /// every image's own zoom and position.
     /// </summary>
     private void ShowWhole(IReadOnlyCollection<SourceImage> arrived, bool centered = false)
     {
@@ -2180,9 +2181,9 @@ internal sealed partial class GridPreview : Control
         for (int i = 0; i < this._images.Count && i < cells.Length; i++)
         {
             var image = this._images[i];
-            // An image arriving with a zoom of its own — an effect preset's — keeps it.
+            // An image arriving with a zoom of its own — an effect preset's — keeps it; Auto replaces it.
             if (image.LaysOutZoom || !(arrived.Contains(image) || image.Look.ZoomOnArrival)
-                || (image.Look.IsActive(ImageEffect.Zoom) && !image.Look.ZoomOnArrival))
+                || (!centered && image.Look.IsActive(ImageEffect.Zoom) && !image.Look.ZoomOnArrival))
             {
                 continue;
             }

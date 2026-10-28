@@ -169,6 +169,16 @@ Go given: code and documentation (no tests, Q&A 8), in a worktree on `feature/la
 - **Free format**: up to three passes, the ratio moving with the sizes.
 - No project rule broken.
 
+### Iteration 6 — 2026-10-28 — 🔧 Adjustment: Auto replaces a zoom of the user's own
+
+Reported: ↔ Auto seemed to do nothing on two side-by-side photos zoomed by hand — they stayed smaller
+than their cells, off-center. The effect presets (`workfiles/20261026-effect-preset-favorites.md`)
+had added to `GridPreview.ShowWhole` an exception keeping an image's own zoom (the Zoom effect on,
+`ZoomOnArrival` cleared) for an image arriving with a preset's zoom; Auto calls `ShowWhole` over every
+image, so it skipped every image zoomed by the user, against § After the Click ("its own zoom and
+position are replaced"). The exception now holds for arrivals only (`centered: false`); Auto
+(`centered: true`) gives every image but a text its arrival zoom again, centered.
+
 ---
 
 ## Implementation Log
@@ -178,6 +188,7 @@ Go given: code and documentation (no tests, Q&A 8), in a worktree on `feature/la
 | Code | 5 | 2026-10-22 | `LayoutAutoSize`, `GridPreview.AutoSizeCells`, the strip's buttons |
 | Unit tests | 3 | 2026-10-22 | Declined — no test project (Q&A 8) |
 | README | 5 | 2026-10-22 | § Auto sizes, the features line and the strip's description, EN + FR |
+| Code | 6 | 2026-10-28 | `GridPreview.ShowWhole`: a zoom of the user's own replaced by Auto, kept on arrival only |
 
 ---
 
@@ -196,4 +207,4 @@ Go given: code and documentation (no tests, Q&A 8), in a worktree on `feature/la
 
 ---
 
-*Last updated: 2026-10-22*
+*Last updated: 2026-10-28*
