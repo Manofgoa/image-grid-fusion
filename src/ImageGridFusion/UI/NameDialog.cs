@@ -42,6 +42,23 @@ internal sealed class NameDialog : Form
         };
     }
 
+    /// <summary>
+    /// Opens centered on <paramref name="control"/> — the file explorer — rather than on its owner, kept
+    /// within the working area of its screen.
+    /// </summary>
+    public void CenterOn(Control control)
+    {
+        this.StartPosition = FormStartPosition.Manual;
+        this.Load += (_, _) =>
+        {
+            var area = control.RectangleToScreen(control.ClientRectangle);
+            var screen = Screen.FromRectangle(area).WorkingArea;
+            int x = Math.Clamp(area.Left + (area.Width - this.Width) / 2, screen.Left, Math.Max(screen.Left, screen.Right - this.Width));
+            int y = Math.Clamp(area.Top + (area.Height - this.Height) / 2, screen.Top, Math.Max(screen.Top, screen.Bottom - this.Height));
+            this.Location = new Point(x, y);
+        };
+    }
+
     /// <summary>The text typed, trimmed.</summary>
     public string Value => this._text.Text.Trim();
 }

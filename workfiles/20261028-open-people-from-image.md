@@ -30,7 +30,9 @@ Components: `UI/FileExplorerPanel.cs` (tile menu `_menu`, `_menu.Opening`, `Open
 - **Where**: the context menu of a **file tile** of the file explorer only — not the cells' menu.
   Every view where a file tile shows (search, folder, People — an open group's files included).
 - **When**: the file has at least one face in the face index (`FaceIndex.FacesOf`); hidden otherwise,
-  and while the face analysis is off. Its text: **People**, before the people items of the menu.
+  and while the face analysis is off. Its text: **People**, **first** in the menu, followed by a
+  separator. One computation, `Explorer/PhotoPeople.Of`; a face found after the last grouping is left
+  out until the groups are computed again.
 - **Entries**: one per **person** of the file, found as the tooltip finds them
   (`PeopleSnapshot.OwnerOf` on `FaceKeys.Of(path, box)`):
   - a face in a **group** → that group; a face in a **sub-group** → the **top group** it was merged
@@ -44,13 +46,16 @@ Components: `UI/FileExplorerPanel.cs` (tile menu `_menu`, `_menu.Opening`, `Open
 - **An entry shows**: the **face cut out of this photo** as its image (the face that put the person
   in the list, `FaceCrops`), then the name or *Unnamed*, then the person's file count —
   `Alice (12 files)`, `Unnamed (1 file)`. Order: the named A→Z, then the unnamed the larger first
-  (`FaceGrouping`'s order), the hidden ones last in the same order.
-- **Clicked**: the explorer switches to the **People view** (`ExplorerMode.People`) and opens the
-  group (`OpenGroup`), the search box cleared.
+  (`FaceGrouping`'s order), the hidden ones last in the same order. The faces are **40 × 30** logical
+  px, cut out off the UI thread one after the other, a blank picture of that size meanwhile so the
+  entries keep their height.
+- **Clicked**: the explorer switches to the **People view** (`ChangeMode`, remembered as if picked in
+  the views drop-down) and opens the group (`OpenGroup`), the search box cleared.
 - **A face alone, clicked**: its **person is created at once** — the face pinned to it, as `PersonOf`
-  does for an unnamed group — and `people.json` saved; the groups computed again, its group of one
-  face (a person with a face stays a group, `FaceGrouping.Compute`) is then opened. It stays a person
-  even if it is never named.
+  does for an unnamed group — and `people.json` saved (status line *New person: Unnamed*); once the
+  groups computed again hold it (`_openAfterRegroup`, checked in `RegroupAsync`), its group of one face
+  (a person with a face stays a group, `FaceGrouping.Compute`) is opened. Opening another group
+  meanwhile cancels that. It stays a person even if it is never named.
 
 ---
 
@@ -58,13 +63,14 @@ Components: `UI/FileExplorerPanel.cs` (tile menu `_menu`, `_menu.Opening`, `Open
 
 - A group open in the People view (not the people list, not the *Hidden* tile) shows a **title at the
   top of its list**: the group's name, or *Unnamed*, in a larger bold font — a strip of its own
-  above the tiles, staying in place while they scroll, in the Thumbnails and Details views alike. Hovered, it
+  above the tiles, staying in place while they scroll, in the Thumbnails and Details views alike
+  (`_groupTitle`, a label docked at the top of the list's host, its font 4 pt larger than the panel's). Hovered, it
   shows a hand cursor and the tooltip *Click to rename*.
 - **Clicked** → a popup like JavaScript's `prompt()` asks the name — the existing `NameDialog`
   (*"The person's name:"*, the current name selected, OK / Cancel) — then the same path as *Rename…*
   (`RenameGroup`: `PersonOf`, `person.Name`, `SavePeople`).
 - The popup opens **centered on the explorer panel**, not on the whole window — for the title and
-  for *Rename…* / F2 alike (one `RenameGroup`).
+  for *Rename…* / F2 alike: one `FileExplorerPanel.Rename(FaceGroup)`, `NameDialog.CenterOn`.
 
 ---
 
@@ -121,17 +127,37 @@ the name or *Unnamed* and the file count; the name popup centered on the explore
 F2 included. The sub-group naming follows the tooltip's (`PeopleOf`). No test project in the
 repository: Test Impact says so. Documentation section added.
 
+### Iteration 3 — 2026-10-28 — ✅ Implemented
+
+Go given: code, tests and documentation, in a worktree (`feature/open-people-from-image`).
+
+### Iteration 4 — 2026-10-28 — 🧭 Implementation choices
+
+No rule broken. Choices the frozen design left open:
+
+- The **People** submenu comes **first** in the tile menu, with its own separator.
+- The computation is a pure function, `Explorer/PhotoPeople.Of` (record `PhotoPerson`); a face not in
+  the last grouping is left out.
+- Entry faces at **40 × 30** logical px, loaded off the UI thread, a blank placeholder meanwhile.
+- Opening from the submenu goes through `ChangeMode`: the People view is **remembered** as if picked.
+- A face alone opens **after the regrouping** that holds its new person (`_openAfterRegroup`); opening
+  another group meanwhile cancels it; status line *New person: Unnamed*.
+- The title is a label docked at the top of the list's host, the panel's font + 4 pt, bold; hidden in
+  the people list, the *Hidden* tile, the invitation and the other views.
+- `RenameGroup` now calls `Rename(FaceGroup)`, shared with the title; `NameDialog.CenterOn` places the
+  popup on the explorer, kept inside the screen's working area.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project in the repository |
-| README (EN + FR) | | | |
-| Glossary (EN + FR) | | | |
-| RULES.md | | | |
+| Code | 3 | 2026-10-28 | `PhotoPeople`, `NameDialog.CenterOn`, `FileExplorerPanel` |
+| Unit tests | 3 | 2026-10-28 | None — no test project in the repository |
+| README (EN + FR) | 3 | 2026-10-28 | § People view |
+| Glossary (EN + FR) | 3 | 2026-10-28 | *Face group* |
+| RULES.md | 3 | 2026-10-28 | § People › From a photo, the group open's title |
 
 ---
 
