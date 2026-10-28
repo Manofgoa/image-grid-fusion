@@ -121,6 +121,10 @@ the name or *Unnamed* and the file count; the name popup centered on the explore
 F2 included. The sub-group naming follows the tooltip's (`PeopleOf`). No test project in the
 repository: Test Impact says so. Documentation section added.
 
+### Iteration 3 — 2026-10-28 — ✅ Implemented
+
+Go given: code, tests and documentation, in a worktree (`feature/open-people-from-image`).
+
 ---
 
 ## Implementation Log
