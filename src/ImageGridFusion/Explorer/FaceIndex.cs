@@ -8,16 +8,18 @@ namespace ImageGridFusion.Explorer;
 /// indexing folder — a file of its own, never a slot of the content texts: the embeddings would weigh on
 /// a text every search reads. Binary: a header, a version, the base folder, then per file its relative
 /// path, the size and last write (UTC ticks) it was analysed at, and its faces — box in fractions of the
-/// image, score, embedding. A file analysed without a face is kept with none, so it is not analysed again
-/// until it changes; a file absent is not analysed yet. Read on the UI thread while the pass writes it
-/// from a worker. See workfiles/20261027-face-detection.md § Face Index.
+/// image, score, embedding, then its five landmarks and its side in pixels. A file analysed
+/// without a face is kept with none, so it is not analysed again until it changes; a file absent is not
+/// analysed yet. Read on the UI thread while the pass writes it from a worker. An older version is
+/// rejected, so the face pass analyses every file again. See workfiles/20261027-face-detection.md § Face
+/// Index and workfiles/20261028-face-grouping-accuracy.md § Face Index Version 2.
 /// </summary>
 internal sealed class FaceIndex
 {
     public const string FileName = "files.faces";
 
     private const string Magic = "ImageGridFusion faces";
-    private const int Version = 1;
+    private const int Version = 2;
 
     private readonly ConcurrentDictionary<string, FaceFile> _files = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _saving = new();
@@ -69,7 +71,14 @@ internal sealed class FaceIndex
                         embedding[v] = reader.ReadSingle();
                     }
 
-                    boxes[f] = new FaceBox(bounds, score, embedding);
+                    var landmarks = new PointF[reader.ReadInt32()];
+                    for (int n = 0; n < landmarks.Length; n++)
+                    {
+                        landmarks[n] = new PointF(reader.ReadSingle(), reader.ReadSingle());
+                    }
+
+                    float side = reader.ReadSingle();
+                    boxes[f] = new FaceBox(bounds, score, embedding, landmarks, side);
                 }
 
                 if (ticks >= DateTime.MinValue.Ticks && ticks <= DateTime.MaxValue.Ticks)
@@ -182,6 +191,15 @@ internal sealed class FaceIndex
                         {
                             writer.Write(value);
                         }
+
+                        writer.Write(face.Landmarks.Length);
+                        foreach (var point in face.Landmarks)
+                        {
+                            writer.Write(point.X);
+                            writer.Write(point.Y);
+                        }
+
+                        writer.Write(face.Side);
                     }
                 }
             }

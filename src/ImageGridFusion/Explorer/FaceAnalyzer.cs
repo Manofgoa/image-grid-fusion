@@ -5,10 +5,12 @@ namespace ImageGridFusion.Explorer;
 
 /// <summary>
 /// A face found in an image: its box in fractions of the image as decoded — oriented as its EXIF says —
-/// YuNet's score, and SFace's embedding, 128 values of length 1: two faces are the same person when
-/// their dot product reaches <see cref="FaceGrouping.SameThreshold"/>.
+/// YuNet's score, SFace's embedding, 128 values of length 1 — two faces are the same person when their
+/// dot product reaches the grouping threshold (<see cref="FaceGrouping.Thresholds"/>) — and, in pixels
+/// of the image as analysed, its five landmarks — eyes, nose and mouth's corners, as YuNet gives them —
+/// and the shorter side of its box: what <see cref="FaceQuality"/> reads.
 /// </summary>
-internal sealed record FaceBox(RectangleF Bounds, float Score, float[] Embedding);
+internal sealed record FaceBox(RectangleF Bounds, float Score, float[] Embedding, PointF[] Landmarks, float Side);
 
 /// <summary>
 /// The face pass's engine, from the downloaded models (<see cref="FaceEngineFiles"/>): YuNet finds the
@@ -93,7 +95,12 @@ internal sealed class FaceAnalyzer : IDisposable
             }
 
             var embedding = this.Embed(Align(pixels, width, height, found.Landmarks));
-            faces.Add(new FaceBox(new RectangleF(bounds.X / width, bounds.Y / height, bounds.Width / width, bounds.Height / height), found.Score, embedding));
+            faces.Add(new FaceBox(
+                new RectangleF(bounds.X / width, bounds.Y / height, bounds.Width / width, bounds.Height / height),
+                found.Score,
+                embedding,
+                found.Landmarks,
+                Math.Min(bounds.Width, bounds.Height)));
         }
 
         return [.. faces];
