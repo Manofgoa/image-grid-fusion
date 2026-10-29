@@ -67,7 +67,11 @@ Every line is vertical (a position on x) or horizontal (on y), in the control's 
 - **Magnetic**, like an image in its cell (Q&A #1): a dragged layer **snaps** a reference onto a line it
   comes near, on each axis independently; **Shift** held ignores every line (no snap, no guide), as for
   the cells' pan.
-- The **snapping model** — proximity or resistance — is an open question.
+- **By proximity** (Q&A #6): the layer follows the mouse from where the drag started (the raw position,
+  kept apart from the shown one); on each axis, when one of its three references comes within **6 logical
+  px** of a line (`LogicalToDeviceUnits`), the layer is shifted by that gap onto the nearest such line; it
+  leaves it as soon as the raw position is farther. No resistance: the cells' `PanMagnet` is not used — it
+  holds one image between two edges and a center, not many lines.
 - A snapped layer's center stays inside the grid (`LayerPlacement.MovedBy`'s clamp).
 
 ### Showing
@@ -76,11 +80,14 @@ Every line is vertical (a position on x) or horizontal (on y), in the control's 
   within the approach distance (*Guides show from*, the ⚙ menu's setting) shows its guide, its opacity
   growing from 20 % at the reach to full at the line, with a **gap bar** from the layer's point (its center
   line, or the edge nearest the guide with *Gap bars from* edges) to the guide; 0 % shows a guide only once
-  the layer rests on its line. The base of the distance — the grid, the cell — is an open question.
+  the layer rests on its line. The distance is a share of the **moved layer's bounding rectangle** — its
+  width for the vertical lines, its height for the horizontal ones (Q&A #7): a small layer sees only the
+  lines close by, a large one sees them coming from farther.
 - **Resting**: every line a reference of the layer lies exactly on (within half a pixel) shows, at full
   opacity — the grid's and cells' lines — or at the fainter one — the other layers' — **all of them**, not
   only the one it snapped to: a layer whose left and right both line up shows both.
-- The extent of a line — the whole grid, or only the stretch it aligns — is an open question.
+- **Every line crosses the whole grid**, from edge to edge, whatever its source — grid, cell or other
+  layer (Q&A #8) — clipped to the canvas.
 - Drawn in the helper indicators' dashed green over the black halo (`GuidePen`, `PaintGuideLines`), in
   the **preview only**, while the drag lasts; gone on release.
 
@@ -88,6 +95,7 @@ Every line is vertical (a position on x) or horizontal (on y), in the control's 
 
 - The **layer edit view**: the layer is a cell there, the cells' own guides apply, untouched.
 - The **rotation** gesture: no guide; Shift's 15° steps stay its only snap.
+- The **wheel** — the 5 % size notches, Shift's 5° turns: no snap, no guide; the drag only (Q&A #9).
 - Hidden layers: neither lines nor snapped.
 - The undo history: unchanged — a drag is one step, snapped or not.
 
@@ -109,10 +117,10 @@ There is no test project (CONTRIBUTING.md): the change is checked by hand in the
 - [x] ~~Which grid references give a guide?~~ → The grid's center and edges, and every cell's edges and center (Q&A #2)
 - [x] ~~What is a rotated layer's top / middle / bottom?~~ → Its bounding rectangle, its middle the layer's center (Q&A #3)
 - [x] ~~Rotation icon: which style on the knob?~~ → None on the knob: the mouse cursor becomes a rotation cursor over it (Q&A #5)
-- [ ] Snapping model: by proximity (the layer follows the mouse, snapped while a reference is within a few pixels of a line) or by resistance (held on a line until dragged 24 px past it, as the cells' pan)?
-- [ ] Approach distance: a share of the grid, of the cell under the layer, or a fixed number of pixels?
-- [ ] Extent of a guide: across the whole grid, or only the stretch it aligns (the moved layer to the farthest aligned one, a cell's line along that cell)?
-- [ ] Wheel resize of a layer: snap / show guides too, or the drag only?
+- [x] ~~Snapping model: by proximity or by resistance?~~ → By proximity, within 6 px (Q&A #6)
+- [x] ~~Approach distance: a share of the grid, of the cell under the layer, or a fixed number of pixels?~~ → A share of the moved layer's bounding rectangle (Q&A #7)
+- [x] ~~Extent of a guide: across the whole grid, or only the stretch it aligns?~~ → The whole grid, for every line (Q&A #8)
+- [x] ~~Wheel resize of a layer: snap / show guides too, or the drag only?~~ → The drag only (Q&A #9)
 
 ---
 
@@ -138,6 +146,12 @@ Asked to choose among three icons drawn on the knob, the user wants the **cursor
 image, not the green drawing (Q&A #5): § Rotation Icon becomes § Rotation Cursor — a rotation cursor
 over the knob and while it is dragged, the knob unchanged. The four other questions were not answered
 and are asked again.
+
+### Iteration 3 — 2026-10-29
+
+The four questions answered (Q&A #6–9): the layer snaps by proximity, within 6 px; the approach distance
+is a share of the moved layer's bounding rectangle; every guide crosses the whole grid; the drag alone
+snaps and shows guides, the wheel staying free. No open question left.
 
 ---
 
@@ -165,10 +179,11 @@ Questions asked by the agent during design, with user responses.
 | 3 | What counts as a rotated layer's top / middle / bottom? | Its bounding rectangle, as seen on screen | 2026-10-29 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward | 2026-10-29 |
 | 5 | Rotation icon: which style on the knob? | The cursor takes the rotation image, not the green drawing | 2026-10-29 |
-| 6 | Snapping model: proximity or resistance? | | |
-| 7 | Approach distance: a share of the grid, of the cell, or fixed pixels? | | |
-| 8 | Extent of a guide: the whole grid or the stretch it aligns? | | |
-| 9 | Wheel resize: snap and guides too, or the drag only? | | |
+| 6 | Snapping model: proximity or resistance? | By proximity | 2026-10-29 |
+| 7 | Approach distance: a share of the grid, of the cell, or fixed pixels? | The moved layer's box | 2026-10-29 |
+| 8 | Extent of a guide: the whole grid or the stretch it aligns? | The whole grid | 2026-10-29 |
+| 9 | Wheel resize: snap and guides too, or the drag only? | The drag only | 2026-10-29 |
+| 10 | Go for the implementation: scope, and where? | | |
 
 ---
 
