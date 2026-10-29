@@ -1,6 +1,7 @@
 # Text Layer Alignment
 
-> Working document — the alignment of a text layer's lines: left, center, right or justified.
+> Working document — the alignment of a text layer's lines: left, center, right or justified; and its
+> size, automatic or a box the lines wrap in.
 > This file is the source of truth for the planned work until implemented,
 > then the log of every adjustment made to it afterwards.
 
@@ -87,10 +88,39 @@ preset carries it.
 
 ---
 
+## Size Mode
+
+A text layer's size is **Automatic** — its box fits the text, the lines ending where the user typed a
+line break, as above — or a **Box**: a width of its own, the lines **wrapped** within it (Iterations 5–7).
+
+- **On the layer**, never in the style: `Layer.TextBox`, the box's width **in lines** (the text's line
+  height), `null` for Automatic — the default, a new text's size. Applying a text style leaves it as it
+  is; a text style does not keep it. In lines, so the wheel resizing the layer keeps the same wrapping,
+  and the format changing never rewraps it. Part of the `Layer`: the undo history covers it.
+- **Turned on** by a **Box** checkbox in the Layers options, after the four alignment buttons: the box
+  starts **half the grid wide**, the layer's center kept. Unchecked, the size goes back to Automatic.
+- **Resized by its width only**, directly on the working surface: while the Layers tab is selected and
+  a text layer in Box mode is selected, a **handle** on the middle of its left and right edges — a
+  helper indicator (RULES.md § On-Cell Helper Indicators), green, white while hovered or dragged —
+  dragged along the box's own axis (turned with it), the **opposite edge staying where it is**. Its
+  height follows the lines the wrapping gives. At least one line wide. The drag is a gesture — one step
+  of the undo history — the text drawn again at each move.
+- **Wrapping**: DirectWrite's word wrapping within the box's width (`EMERGENCY_BREAK`): at the spaces,
+  and a **word longer than the box is cut** between two letters. A typed line break still ends a line.
+- **Alignment in a box**: the lines stand left, centered or right **within the box's width**, not the
+  widest line's. **Justified** is DirectWrite's own (`JUSTIFIED`): every wrapped line stretched to the
+  box, the last line of a paragraph left-aligned, **each typed line break ending a paragraph** — not the
+  blank-line rule of the Automatic size, which no longer applies here.
+- The **background box** covers the box's width.
+
+---
+
 ## Documentation
 
-- `GLOSSARY.md` / `GLOSSARY.fr.md`: the *Text layer* entry names the alignment among its settings.
-- `README.md` / `README.fr.md`: the text layers' description, where it lists their settings.
+- `GLOSSARY.md` / `GLOSSARY.fr.md`: the *Text layer* entry names the alignment and the size mode among
+  its settings; the *Text style* entry, that the size mode is not part of it.
+- `README.md` / `README.fr.md`: the text layers' description, where it lists their settings, and the
+  layers' gestures, the box's handles among them.
 
 ---
 
@@ -189,6 +219,13 @@ si la taille est automatique ou avec une taille de boîte. »*
 - Q&A 9–11 were answered "see previous answer": they concerned the block, now the Box mode, and are
   asked again for it (Q&A 14–18).
 
+### Iteration 7 — 2026-10-29 — ⚙️ Post-implementation — The Box mode designed
+
+Q&A 14–19 answered: the box is resized by its width only, starts half the grid wide, wraps at the
+spaces and cuts a word longer than it; justified in a box, each typed line break ends a paragraph; the
+size mode and the box's width belong to the layer, not to the style; a **Box** checkbox chooses the
+mode, unchecked (Automatic) by default. § Size Mode describes it.
+
 ---
 
 ## Implementation Log
@@ -224,11 +261,12 @@ Questions asked by the agent during design, with user responses.
 | 11 | Justified with wrapping: what ends a paragraph? | "See previous answer" — asked again as Q&A 16 | 2026-10-29 |
 | 12 | A word longer than the block? | Not asked — asked as Q&A 17 | 2026-10-29 |
 | 13 | The alignment and the block: in the text style, or on the layer? | Not asked — asked as Q&A 18 | 2026-10-29 |
-| 14 | Box mode: resized by its width only, or its width and height? | | 2026-10-29 |
-| 15 | Box mode: the box's size when it is turned on? | | 2026-10-29 |
-| 16 | Box mode, justified: what ends a paragraph? | | 2026-10-29 |
-| 17 | Box mode: a word longer than the box? | | 2026-10-29 |
-| 18 | The size mode and the box: in the text style, or on the layer? | | 2026-10-29 |
+| 14 | Box mode: resized by its width only, or its width and height? | Width only | 2026-10-29 |
+| 15 | Box mode: the box's size when it is turned on? | Half the grid | 2026-10-29 |
+| 16 | Box mode, justified: what ends a paragraph? | Each typed line break | 2026-10-29 |
+| 17 | Box mode: a word longer than the box? | Cut | 2026-10-29 |
+| 18 | The size mode and the box: in the text style, or on the layer? | On the layer | 2026-10-29 |
+| 19 | Which control chooses the size mode? | A "Box" checkbox | 2026-10-29 |
 
 ---
 
