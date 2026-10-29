@@ -161,6 +161,11 @@ Open questions answered (Q&A #8–#12), the domain sections updated:
 - A turned layer is copied turned, as placed.
 - A cell copy is kept in `previous\` like any Copy.
 
+### Iteration 3 — 2026-10-29 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree (`feature/copy-single-cell`). No unit
+tests — the solution has no test project.
+
 ---
 
 ## Implementation Log
