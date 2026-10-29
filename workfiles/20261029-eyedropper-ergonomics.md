@@ -99,7 +99,7 @@ Color…**.
 | Color option | Today | After |
 |---|---|---|
 | Background | `BackgroundEffect.Opacity`, its icon, slider and label **before** the split button | Moved right after Color… — same value, same range (0–100 %) |
-| Borders | `GridBorders.Opacity` (10–100 %), after Thickness, the **brackets only** — disabled for the line styles | Moved right after Color…; its reach on the line styles: open question |
+| Borders | `GridBorders.Opacity` (10–100 %), after Thickness, the **brackets only** — disabled for the line styles | Moved right after Color…, and now **every style**: the brackets, the outer frame and the inner lines — a translucent line letting the image under it, or the canvas in a gap, show through (Q&A 9) |
 | Text layer's box | `LayerTextStyle.BackgroundOpacity` (0–100 %), at the end of the box's line | Right after Color… (already there once the Sample leaves) |
 | Text layer's text | — | **New**: the letters' opacity |
 | Text layer's outline | — | **New**: the outline's opacity |
@@ -118,7 +118,8 @@ Color…**.
   key and read by `FromJson` (a missing or foreign value giving 1), and listed in `TextStyleStrip`'s
   tooltip. A text style saves them like the other settings.
 - **Drawing** (`TextRaster`): the letters' brush, the outline's brush and the shadow's color take their
-  alpha. How a translucent text and its outline overlap: open question.
+  alpha. **The outline is cut out under the letters** (Q&A 10): only its part outside them is drawn, so a
+  translucent text reads as one color, the outline staying around it; the shadow stays under both.
 
 ---
 
@@ -166,12 +167,10 @@ export, a text style saved and applied with the new opacities.
 - [x] ~~Which color options get it: only those with an opacity today, moved, or **every** color option?~~
   → Every color option: moved for the Background, the Borders and the box, new for the text, its outline
   and its shadow.
-- [ ] **The Borders' opacity on the line styles**: today it covers the corner brackets only, disabled for
-  the line styles. Does it now also cover the outer frame and the inner lines (a translucent line letting
-  the image under it, or the canvas in a gap, show through)? (Recommended: yes — every use of the color.)
-- [ ] **A translucent text over its outline**: the outline is drawn under the letters; with the letters
-  below 100 %, does the outline show through them, or is it cut out under the letters so only its outer
-  part shows? (Recommended: cut out — the text reads as one color, the outline staying around it.)
+- [x] ~~**The Borders' opacity on the line styles**: does it now also cover the outer frame and the inner
+  lines?~~ → Yes: every style.
+- [x] ~~**A translucent text over its outline**: does the outline show through the letters, or is it cut
+  out under them?~~ → Cut out under the letters.
 
 ---
 
@@ -217,6 +216,15 @@ Answers to Q&A 5–8, and RULES.md § Icons, merged into `main` meanwhile (`work
 - Two questions raised by the generalisation: the Borders' opacity on the line styles, a translucent text
   over its outline.
 
+### Iteration 4 — 2026-10-29
+
+Answers to Q&A 9–10 — no open question left:
+
+- **The Borders' opacity covers every style** — brackets, outer frame, inner lines — no longer disabled for
+  the line styles (`MainForm` ~5330 enable rule dropped, `GridBorders` draws the lines at it, its tooltip
+  reworded).
+- **A translucent text's outline is cut out under its letters** (`TextRaster.PaintText`).
+
 ---
 
 ## Implementation Log
@@ -246,8 +254,8 @@ Questions asked by the agent during design, with user responses.
 | 6 | A right click on the eyedropper part: opens the sample menu too? | No, only the ▾ | 2026-10-29 |
 | 7 | The opacity at the right of the color choice, for every color: designed in this workfile, or in its own? | In this workfile | 2026-10-29 |
 | 8 | Which color options get an opacity at the right of Color…: those that have one today, moved, or every one? | Every color option | 2026-10-29 |
-| 9 | The Borders' opacity: does it now cover the line styles' frame and inner lines too? | | |
-| 10 | A translucent text: does its outline show through the letters, or is it cut out under them? | | |
+| 9 | The Borders' opacity: does it now cover the line styles' frame and inner lines too? | Yes, every style | 2026-10-29 |
+| 10 | A translucent text: does its outline show through the letters, or is it cut out under them? | Cut out under the letters | 2026-10-29 |
 
 ---
 
