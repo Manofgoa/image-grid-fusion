@@ -53,8 +53,10 @@ preset carries it.
 
 - Every line is **stretched to the widest line's width** by widening its spaces, **except the last
   line of a paragraph**, aligned **left** — the usual rule (Word, DirectWrite).
-- A **paragraph**: see Open Questions.
-- A line with **no space** (a single word, an emoji alone) cannot be stretched: see Open Questions.
+- A **paragraph** ends at a **blank line** or at the end of the text: the lines between two blank
+  lines are stretched, the last one of each left-aligned. A blank line itself draws nothing.
+- A line with **no space** (a single word, an emoji alone) cannot be stretched: it is **left-aligned**,
+  as a paragraph's last line is — its letters are never spread.
 - **Technical risk**: the text layers never wrap (`NO_WRAP`), every line ends with a line break typed
   by the user, and DirectWrite does not justify a line ending a paragraph — `JUSTIFIED` alone would
   likely leave every line left-aligned. The implementation checks it first; if so, the lines are
@@ -104,11 +106,10 @@ The behaviours below are checked by hand at launch.
 
 ## Open Questions
 
-- [ ] **Paragraph** (justified): what ends a paragraph — a **blank line** (the lines between two blank
-      lines stretched, the last one of each left-aligned), or only **the end of the text** (every line
-      stretched but the very last)?
-- [ ] **Line without a space** (justified): left-aligned as the last line is, or its **letters spread**
-      to the full width?
+- [x] ~~**Paragraph** (justified): what ends a paragraph — a blank line, or only the end of the
+      text?~~ → A blank line (or the end of the text)
+- [x] ~~**Line without a space** (justified): left-aligned as the last line is, or its letters spread
+      to the full width?~~ → Left-aligned
 
 ---
 
@@ -126,6 +127,11 @@ it; Center by default, as today; in justified, the last line of a paragraph is l
 buttons after Bold. The box keeps its size whatever the alignment. Justification of lines ended by a
 typed line break is a DirectWrite risk, with two fallbacks the implementation picks from. Two
 questions left: what a paragraph is, and a line without a space.
+
+### Iteration 2 — 2026-10-29
+
+Q&A 6–7 answered: in justified, a paragraph ends at a blank line (or the text's end), and a line
+without a space is left-aligned, its letters never spread. No open question left.
 
 ---
 
@@ -154,8 +160,8 @@ Questions asked by the agent during design, with user responses.
 | 3 | Which control in the Layers options? | Four icon buttons | 2026-10-29 |
 | 4 | Is the exploration straightforward, or tricky / long? | Straightforward | 2026-10-29 |
 | 5 | *(given by the user, unasked)* Default alignment | Center | 2026-10-29 |
-| 6 | Justified: what ends a paragraph — a blank line, or the end of the text only? | | 2026-10-29 |
-| 7 | Justified: a line without a space — left-aligned, or its letters spread? | | 2026-10-29 |
+| 6 | Justified: what ends a paragraph — a blank line, or the end of the text only? | A blank line | 2026-10-29 |
+| 7 | Justified: a line without a space — left-aligned, or its letters spread? | Left-aligned | 2026-10-29 |
 
 ---
 
