@@ -162,6 +162,34 @@ rule for a colour item, untouched).
 
 ---
 
+## Other Controls
+
+*(Iterations 7–8, post-implementation.)* The same icons beyond the menus: the tabs, the buttons, the
+drop-downs and the options' small icons — **emoji first, over the app's drawings too**: a drawing is
+kept only where no emoji says the thing. The arrows and symbols become emoji where one exists. All
+drawn in full color (`MenuIcon`, Direct2D), at the control's DPI size. Approved on a preview.
+
+| Where | Control | Icon (✎ = drawing kept) |
+|---|---|---|
+| Effect tabs | Background, Crop, Cutout, Zoom, Animations, Rotate, Flip, Frames, Colors, Blur, Volume | 🖼️, ✎, ✂️, 🔍, ✨, 🔃, 🪞, 🎞️, 🎨, 💧, 🔊 |
+| Effects toolbar | ★ Preset…, Reset | ⭐ Preset…, ↩️ |
+| Global tabs | Format, Soundtrack, Fade, Borders, Seams, Cascade, Layers | ✎, 🎵, ✎, ✎, ✎, ⏭️, 📑 |
+| Global / options toolbars | Every Reset | ↩️ |
+| Layer list | Add image, Paste, Add text, Copy, Duplicate, Edit, Done, Delete, To back, Lower, Raise, To front | 🖼️, 📋, 🔤, 📄, ✎, ✏️, ✅, ❌, ⏬, 🔽, 🔼, ⏫ — the adds' green plus gone |
+| Bottom bar | Clear all, ⚙, Copy PNG, its ▾, Copy last video, Save PNG…, its ▾ | 🧹, ⚙️, 📋, 🔽, 🕘, 💾, 🔽 |
+| Transport | Play / Pause | ▶️ / ⏸️ |
+| File explorer | Aa (name search), 💡 (content search), ↻, » / «, × (*Similar to*), ▦, ☰, Choose folder…, Load (URL zone), Browse… (Soundtrack) | 🔠, 💡, 🔄, ⏩ / ⏪, ✖️, 🔳, 📃, 📁, ⬇️, 📂 |
+| Views drop-down | Folders, People, Favorites | 📁, 👥, ❤️ — full color, no longer one tint |
+| Sort drop-down | Date ↓, Name A→Z, Size ↑ | 📅 Date ⬇️, 🔠 Name A→Z, 📦 Size ⬆️ |
+| Animations' Type | Zoom | 🔍 |
+| Kept drawings | Crop, Format, Fade, Borders, Seams, Duplicate, the eyedropper, the Fade curves, the intensity and opacity icons, the text alignments, the option thumbnails | ✎ |
+| No icon | The font drop-down (each font in its face), the Borders style drop-down, the Color… part (its swatch) | — |
+
+**The menus follow**: one icon per action — the layer menu's *Delete* becomes ❌ with the layer
+list's; *Twitter corners by default* and the layer menu's *Duplicate* keep the drawings kept.
+
+---
+
 ## RULES.md
 
 A new section, `## Menus` › `### Menu Icons` (origin: this workfile):
@@ -272,6 +300,14 @@ The user asks for the same logic, **emoji first**, on the icons of the **buttons
 Favorites) given as an example of icons that look poor. Scope to be settled (inventory, then a
 scoping batch) before any code.
 
+### Iteration 8 — 2026-10-29 — ⚙️ Post-implementation — Every control, emoji first
+
+Scoped with the user: every control — drop-downs, buttons with a glyph, text buttons, tabs and the
+options' small icons; **emoji over the app's drawings** wherever one fits, a drawing kept only where
+none says the thing; the arrows and symbols as emoji where one exists. The control-by-control
+preview approved as shown: § Other Controls. `RULES.md` § Menus widens to every control, the
+criterion now emoji first.
+
 ---
 
 ## Implementation Log
@@ -305,7 +341,8 @@ scoping batch) before any code.
 | 13 | Adjustment: which controls get emoji-first icons? | Drop-downs, buttons with an emoji glyph, text buttons, tabs and the options' small icons | 2026-10-29 |
 | 14 | Adjustment: the icons the app already draws (tabs, Reset, layer list…): kept or replaced? | Replaced where an emoji fits — validated first on a preview | 2026-10-29 |
 | 15 | Adjustment: the arrows and symbols (▾ » « × ▦ ☰ ↓): text or emoji? | Emoji where one exists | 2026-10-29 |
-| 16 | Adjustment: the preview of every control's icon (emoji, or the drawing kept): approved? | | 2026-10-29 |
+| 16 | Adjustment: the preview of every control's icon (emoji, or the drawing kept): approved? | Approved as shown | 2026-10-29 |
+| 17 | Go for the adjustment? | | 2026-10-29 |
 
 ---
 
