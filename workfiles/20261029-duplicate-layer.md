@@ -222,6 +222,12 @@ No project rule broken. Choices the frozen design left open:
 - **RULES.md is not updated**: the frozen documentation scope was the README and the glossary. A rule that a
   layer never shares a `SourceImage` with another one would belong in § Layers — offered as a follow-up.
 
+### Iteration 5 — 2026-10-29 — Merged
+
+`feature/duplicate-layer` merged into `main` (`--no-ff`), the user agreeing to merge although the checkout held
+two other sessions' uncommitted workfiles, which the merge left untouched; the worktree and the branch removed.
+Task finished, confirmed by the user.
+
 ---
 
 ## Implementation Log
