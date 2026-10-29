@@ -30,20 +30,30 @@ public static class Animation
     /// effect (workfiles/20261008-video-cascade.md). <see cref="GridLength(IEnumerable{SourceImage})"/>
     /// while it is off (<c>null</c>).
     /// </summary>
-    public static TimeSpan GridLength(IEnumerable<SourceImage> images, VideoCascade? cascade)
+    /// <remarks>
+    /// The <paramref name="layers"/>' contents count by their loops, beside the cells: they take no turn in the
+    /// cascade (workfiles/20261029-layers.md § Image Layer).
+    /// </remarks>
+    public static TimeSpan GridLength(IEnumerable<SourceImage> images, VideoCascade? cascade, IEnumerable<SourceImage>? layers = null)
     {
+        var layered = layers is null ? TimeSpan.Zero : GridLength(layers);
+        TimeSpan cells;
         if (cascade is null)
         {
-            return GridLength(images);
+            cells = GridLength(images);
+        }
+        else
+        {
+            var list = images.ToList();
+            var beside = list
+                .Select(i => LoopOf(CascadeSchedule.TakesPart(i) || !i.Plays ? TimeSpan.Zero : i.PlayedLength, i.Look))
+                .DefaultIfEmpty(TimeSpan.Zero)
+                .Max();
+            var whole = CascadeSchedule.Of(list, cascade).Length;
+            cells = whole > beside ? whole : beside;
         }
 
-        var list = images.ToList();
-        var beside = list
-            .Select(i => LoopOf(CascadeSchedule.TakesPart(i) || !i.Plays ? TimeSpan.Zero : i.PlayedLength, i.Look))
-            .DefaultIfEmpty(TimeSpan.Zero)
-            .Max();
-        var whole = CascadeSchedule.Of(list, cascade).Length;
-        return whole > beside ? whole : beside;
+        return layered > cells ? layered : cells;
     }
 
     /// <summary>
@@ -71,9 +81,12 @@ public static class Animation
     public static TimeSpan VideoLength(TimeSpan gridLength, Soundtrack? soundtrack) =>
         soundtrack?.LoopIn(gridLength) ?? gridLength;
 
-    /// <summary>The <see cref="VideoLength(TimeSpan, Soundtrack?)"/> of <paramref name="images"/> as they stand, the Cascade <paramref name="cascade"/> on unless <c>null</c>.</summary>
-    public static TimeSpan VideoLength(IEnumerable<SourceImage> images, Soundtrack? soundtrack, VideoCascade? cascade = null) =>
-        VideoLength(GridLength(images, cascade), soundtrack);
+    /// <summary>
+    /// The <see cref="VideoLength(TimeSpan, Soundtrack?)"/> of <paramref name="images"/> as they stand, the Cascade
+    /// <paramref name="cascade"/> on unless <c>null</c>, the contents of the <paramref name="layers"/> beside them.
+    /// </summary>
+    public static TimeSpan VideoLength(IEnumerable<SourceImage> images, Soundtrack? soundtrack, VideoCascade? cascade = null, IEnumerable<SourceImage>? layers = null) =>
+        VideoLength(GridLength(images, cascade, layers), soundtrack);
 
     /// <summary>Number of frames of a video of <paramref name="length"/>, the last one possibly shown shorter.</summary>
     public static int FrameCount(TimeSpan length) => Math.Max(1, (int)Math.Ceiling(length.TotalSeconds * FramesPerSecond - 1e-6));

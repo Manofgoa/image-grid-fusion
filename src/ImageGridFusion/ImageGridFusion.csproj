@@ -10,6 +10,8 @@
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <RootNamespace>ImageGridFusion</RootNamespace>
     <ApplicationIcon>app.ico</ApplicationIcon>
+    <!-- Direct2D and DirectWrite called through their COM tables (Imaging/TextRaster.cs): the layers' color emojis. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <!-- Also embedded, so the window and the tray icon load it without going through the exe's resources. -->

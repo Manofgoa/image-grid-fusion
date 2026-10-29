@@ -12,4 +12,5 @@ public enum GlobalEffect
     Borders,
     Seams,
     Cascade,
+    Layers,
 }

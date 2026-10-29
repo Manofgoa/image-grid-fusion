@@ -20,9 +20,11 @@ internal static class GridExport
     /// </summary>
     public sealed class Job : IDisposable
     {
-        private Job(IReadOnlyList<Item> items, GridLayout layout, double ratio, GridBorders? borders, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack, SoundFade? fade, SeamFade? seams, CascadeSchedule? cascade, int videoMaxSide, int stillMaxSide)
+        private Job(IReadOnlyList<Item> items, int cellCount, IReadOnlyList<LayerPlacement> layerPlaces, GridLayout layout, double ratio, GridBorders? borders, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack, SoundFade? fade, SeamFade? seams, CascadeSchedule? cascade, int videoMaxSide, int stillMaxSide)
         {
             Items = items;
+            this.CellCount = cellCount;
+            this.LayerPlaces = layerPlaces;
             Layout = layout;
             Ratio = ratio;
             Borders = borders;
@@ -52,7 +54,14 @@ internal static class GridExport
             Sounds = (soundtrack is null ? sounds : sounds.Append(new MixedSound(soundtrack.Path, soundtrack.Duration, TimeSpan.Zero, soundtrack.Level))).ToList();
         }
 
+        /// <summary>The cells, then the layers over them (<see cref="CellCount"/> tells them apart): every content that plays or shows.</summary>
         public IReadOnlyList<Item> Items { get; }
+
+        /// <summary>How many of the <see cref="Items"/> are cells; the others are the layers, in their stacking order.</summary>
+        public int CellCount { get; }
+
+        /// <summary>Where each layer stands on the grid, the first one for item <see cref="CellCount"/>.</summary>
+        public IReadOnlyList<LayerPlacement> LayerPlaces { get; }
 
         public GridLayout Layout { get; }
 
@@ -94,24 +103,46 @@ internal static class GridExport
         /// <paramref name="soundtrack"/> mixed over its sounds when one is on, the mix faded by
         /// <paramref name="fade"/> when it is on, the cells' fills faded by <paramref name="seams"/>, and the
         /// videos playing one after the other with <paramref name="cascade"/> when it is on; a video export's
-        /// canvas clamped to <paramref name="videoMaxSide"/>, a still's to <paramref name="stillMaxSide"/>.
+        /// canvas clamped to <paramref name="videoMaxSide"/>, a still's to <paramref name="stillMaxSide"/>; the
+        /// <paramref name="layers"/> over everything, playing beside the cells, never taking a turn in the cascade.
         /// </summary>
-        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders, Soundtrack? soundtrack = null, SoundFade? fade = null, SeamFade? seams = null, VideoCascade? cascade = null, int videoMaxSide = CanvasSizer.MaxSharedLongSide, int stillMaxSide = CanvasSizer.MaxLongSide) => new(
-            images.Select(i => i.Plays
-                ? new Item(null, i.BandColor, i.Pages, i.PlayedLength, i.DrawnLook, i.Page, i.StartTime, i.PlayedFrom, i.Sharpening, i.Sharpens) { Image = i }
-                : i.IsAnimated
-                ? new Item(null, i.BandColor, i.Pages, TimeSpan.Zero, i.DrawnLook, i.StartPage, TimeSpan.Zero, Sharpening: i.Sharpening, Sharpens: i.Sharpens)
-                : new Item(new Bitmap(i.Bitmap), i.BandColor, null, TimeSpan.Zero, i.DrawnLook, 0, TimeSpan.Zero, Sharpening: i.Sharpening, Sharpens: i.Sharpens)).ToList(),
-            layout,
-            ratio,
-            borders,
-            Animation.Heard(images),
-            soundtrack,
-            fade,
-            seams,
-            cascade is null ? null : CascadeSchedule.Of(images, cascade),
-            videoMaxSide,
-            stillMaxSide);
+        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders, Soundtrack? soundtrack = null, SoundFade? fade = null, SeamFade? seams = null, VideoCascade? cascade = null, int videoMaxSide = CanvasSizer.MaxSharedLongSide, int stillMaxSide = CanvasSizer.MaxLongSide, GridLayers? layers = null)
+        {
+            var layered = layers?.Items ?? [];
+            var contents = images.Concat(layered.Select(l => l.Image)).ToList();
+            return new(
+                contents.Select(ItemOf).ToList(),
+                images.Count,
+                [.. layered.Select(l => l.Place)],
+                layout,
+                ratio,
+                borders,
+                Animation.Heard(contents),
+                soundtrack,
+                fade,
+                seams,
+                cascade is null ? null : CascadeSchedule.Of(images, cascade),
+                videoMaxSide,
+                stillMaxSide);
+        }
+
+        private static Item ItemOf(SourceImage i) => i.Plays
+            ? new Item(null, i.BandColor, i.Pages, i.PlayedLength, i.DrawnLook, i.Page, i.StartTime, i.PlayedFrom, i.Sharpening, i.Sharpens) { Image = i }
+            : i.IsAnimated
+            ? new Item(null, i.BandColor, i.Pages, TimeSpan.Zero, i.DrawnLook, i.StartPage, TimeSpan.Zero, Sharpening: i.Sharpening, Sharpens: i.Sharpens)
+            : new Item(new Bitmap(i.Bitmap), i.BandColor, null, TimeSpan.Zero, i.DrawnLook, 0, TimeSpan.Zero, Sharpening: i.Sharpening, Sharpens: i.Sharpens);
+
+        /// <summary>The cells' part of <paramref name="frames"/>, one per item.</summary>
+        public ArraySegment<Frame> Cells(Frame[] frames) => new(frames, 0, this.CellCount);
+
+        /// <summary>The layers' frames, written into <paramref name="layers"/> from <paramref name="frames"/>, one per item.</summary>
+        public void Layers(Frame[] frames, LayerFrame[] layers)
+        {
+            for (int i = 0; i < layers.Length; i++)
+            {
+                layers[i] = new LayerFrame(frames[this.CellCount + i], this.LayerPlaces[i]);
+            }
+        }
 
         /// <summary>
         /// Content time the cell at <paramref name="index"/> shows at <paramref name="time"/> of the video:
@@ -222,7 +253,10 @@ internal static class GridExport
             }
 
             probe.Sample(0, null, "readers open");
-            var canvas = Animation.EvenSize(CanvasSizer.Compute(frames.Select(f => f.Sizing).ToList(), job.Layout, job.Ratio, job.Borders, job.VideoMaxSide));
+
+            // The layers never size the canvas; their frames are rewritten into this array at each frame.
+            var layers = new LayerFrame[job.LayerPlaces.Count];
+            var canvas = Animation.EvenSize(CanvasSizer.Compute(job.Cells(frames).Select(f => f.Sizing).ToList(), job.Layout, job.Ratio, job.Borders, job.VideoMaxSide));
             using var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppRgb);
             using var g = Graphics.FromImage(bitmap);
             encoder = format == Format.Gif
@@ -253,7 +287,8 @@ internal static class GridExport
                 // Neither format keeps an alpha channel: a cell without background is flattened on white,
                 // cleared at each frame so the previous one does not show through.
                 g.Clear(Color.White);
-                Compositor.Draw(g, frames, job.Layout, canvas, job.Borders, job.Seams);
+                job.Layers(frames, layers);
+                Compositor.Draw(g, job.Cells(frames), job.Layout, canvas, job.Borders, job.Seams, layers: layers);
                 encoder.WriteFrame(bitmap, time, Animation.FrameTime(k + 1) - time);
                 if ((k + 1) % MemoryProbe.EveryFrames == 0)
                 {
@@ -313,7 +348,9 @@ internal static class GridExport
                 frames[i] = new Frame(frame, BandColor.Of(frame), item.Look, Sharpening: item.Sharpening, Sharpens: item.Sharpens);
             }
 
-            return Compositor.Render(frames, job.Layout, job.Ratio, job.Borders, job.Seams, job.StillMaxSide);
+            var layers = new LayerFrame[job.LayerPlaces.Count];
+            job.Layers(frames, layers);
+            return Compositor.Render(job.Cells(frames), job.Layout, job.Ratio, job.Borders, job.Seams, job.StillMaxSide, layers);
         }
         finally
         {

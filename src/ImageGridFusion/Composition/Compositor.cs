@@ -23,6 +23,9 @@ public readonly record struct Frame(Bitmap Bitmap, BandColor BandColor, ImageLoo
         : new Size(Math.Max(1, (int)Math.Round(size.Width / sharpening)), Math.Max(1, (int)Math.Round(size.Height / sharpening)));
 }
 
+/// <summary>A layer as drawn: its frame, and where it stands on the grid (workfiles/20261029-layers.md).</summary>
+public readonly record struct LayerFrame(Frame Frame, LayerPlacement Place);
+
 /// <summary>Draws the images into their cells, at full resolution or at any preview size.</summary>
 public static class Compositor
 {
@@ -49,20 +52,28 @@ public static class Compositor
     }
 
     /// <summary>Renders the final image at <paramref name="ratio"/>, at the size given by <see cref="CanvasSizer"/>.</summary>
-    public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders = null, SeamFade? seams = null, int maxLongSide = CanvasSizer.MaxLongSide) =>
-        Render(images.Select(i => new Frame(i.Bitmap, i.BandColor, i.DrawnLook, Sharpening: i.Sharpening, Sharpens: i.Sharpens)).ToList(), layout, ratio, borders, seams, maxLongSide);
+    public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders = null, SeamFade? seams = null, int maxLongSide = CanvasSizer.MaxLongSide, GridLayers? layers = null) =>
+        Render(
+            images.Select(i => new Frame(i.Bitmap, i.BandColor, i.DrawnLook, Sharpening: i.Sharpening, Sharpens: i.Sharpens)).ToList(),
+            layout,
+            ratio,
+            borders,
+            seams,
+            maxLongSide,
+            layers?.Items.Select(l => new LayerFrame(l.FrameAt(TimeSpan.Zero), l.Place)).ToList());
 
     /// <summary>
     /// Renders frames at <paramref name="ratio"/>, at the size given by <see cref="CanvasSizer"/>, its longer
-    /// side at most <paramref name="maxLongSide"/>; frame i goes into cell i. With an alpha channel,
-    /// transparent where a cell, or the gap between the cells, has no fill: a PNG keeps it.
+    /// side at most <paramref name="maxLongSide"/>; frame i goes into cell i, the <paramref name="layers"/>
+    /// over them — they never size the canvas. With an alpha channel, transparent where a cell, or the gap
+    /// between the cells, has no fill: a PNG keeps it.
     /// </summary>
-    public static Bitmap Render(IReadOnlyList<Frame> frames, GridLayout layout, double ratio, GridBorders? borders = null, SeamFade? seams = null, int maxLongSide = CanvasSizer.MaxLongSide)
+    public static Bitmap Render(IReadOnlyList<Frame> frames, GridLayout layout, double ratio, GridBorders? borders = null, SeamFade? seams = null, int maxLongSide = CanvasSizer.MaxLongSide, IReadOnlyList<LayerFrame>? layers = null)
     {
         var canvas = CanvasSizer.Compute(frames.Select(f => f.Sizing).ToList(), layout, ratio, borders, maxLongSide);
         var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppArgb);
         using var g = Graphics.FromImage(bitmap);
-        Draw(g, frames, layout, canvas, borders, seams);
+        Draw(g, frames, layout, canvas, borders, seams, layers: layers);
         return bitmap;
     }
 
@@ -129,14 +140,23 @@ public static class Compositor
     /// the layout, its motion at <paramref name="time"/> on the clock of the grid; <paramref name="fast"/> as
     /// <see cref="DrawCell"/> takes it.
     /// </summary>
-    public static void Draw(Graphics g, IReadOnlyList<SourceImage> images, GridLayout layout, Size canvas, GridBorders? borders = null, TimeSpan time = default, SeamFade? seams = null, bool fast = false) =>
-        Draw(g, images.Select(i => new Frame(i.Bitmap, i.BandColor, i.DrawnLook, time, i.Sharpening, i.Sharpens)).ToList(), layout, canvas, borders, seams, fast);
+    public static void Draw(Graphics g, IReadOnlyList<SourceImage> images, GridLayout layout, Size canvas, GridBorders? borders = null, TimeSpan time = default, SeamFade? seams = null, bool fast = false, GridLayers? layers = null) =>
+        Draw(
+            g,
+            images.Select(i => new Frame(i.Bitmap, i.BandColor, i.DrawnLook, time, i.Sharpening, i.Sharpens)).ToList(),
+            layout,
+            canvas,
+            borders,
+            seams,
+            fast,
+            layers?.Items.Select(l => new LayerFrame(l.FrameAt(time), l.Place)).ToList());
 
     /// <summary>
     /// Draws the grid in the rectangle (0, 0, canvas) of <paramref name="g"/>; frame i goes into cell i of
-    /// the layout. The borders and the seams, global effects, are drawn here too, at the grid level.
+    /// the layout. The borders, the seams and the layers, global effects, are drawn here too, at the grid
+    /// level — the layers last, over everything.
     /// </summary>
-    public static void Draw(Graphics g, IReadOnlyList<Frame> frames, GridLayout layout, Size canvas, GridBorders? borders = null, SeamFade? seams = null, bool fast = false)
+    public static void Draw(Graphics g, IReadOnlyList<Frame> frames, GridLayout layout, Size canvas, GridBorders? borders = null, SeamFade? seams = null, bool fast = false, IReadOnlyList<LayerFrame>? layers = null)
     {
         var slots = layout.Cells(canvas);
         var cells = borders?.Inset(slots, canvas) ?? slots;
@@ -147,6 +167,52 @@ public static class Compositor
         }
 
         borders?.Draw(g, slots, canvas);
+        if (layers is not null)
+        {
+            DrawLayers(g, layers, canvas, fast);
+        }
+    }
+
+    /// <summary>
+    /// Draws <paramref name="layers"/> over the grid, the first one first: each a floating cell drawn by
+    /// <see cref="DrawCell"/> into its box, turned by its angle — so every cell effect shows on a layer
+    /// too (workfiles/20261029-layers.md § Cell Effects on a Layer).
+    /// </summary>
+    public static void DrawLayers(Graphics g, IReadOnlyList<LayerFrame> layers, Size canvas, bool fast = false)
+    {
+        foreach (var layer in layers)
+        {
+            DrawLayer(g, layer, canvas, fast);
+        }
+    }
+
+    /// <summary>One layer into its box; <paramref name="upright"/> leaves its angle aside — the preview's edit view of its bars.</summary>
+    public static void DrawLayer(Graphics g, LayerFrame layer, Size canvas, bool fast = false, bool upright = false)
+    {
+        var box = LayerCell(layer, canvas);
+        if (box.Width < 1 || box.Height < 1)
+        {
+            return;
+        }
+
+        var state = g.Save();
+        var center = layer.Place.Center(canvas);
+        g.TranslateTransform(center.X, center.Y);
+        if (!upright)
+        {
+            g.RotateTransform((float)layer.Place.Angle);
+        }
+
+        DrawCell(g, layer.Frame, box, fast);
+        g.Restore(state);
+    }
+
+    /// <summary>The cell a layer is drawn into, in its own space: its box, centered on the origin.</summary>
+    public static Rectangle LayerCell(LayerFrame layer, Size canvas)
+    {
+        var size = layer.Place.BoxSize(layer.Frame.Size, canvas);
+        int width = (int)Math.Round(size.Width), height = (int)Math.Round(size.Height);
+        return new Rectangle(-width / 2, -height / 2, width, height);
     }
 
     /// <summary>
@@ -234,12 +300,17 @@ public static class Compositor
         return attributes;
     }
 
-    /// <summary>The scale <paramref name="g"/> draws at, 1 or below: the blur draws the cell into a smaller bitmap.</summary>
+    /// <summary>
+    /// The scale <paramref name="g"/> draws at, 1 or below: the blur draws the cell into a smaller bitmap.
+    /// Read from the axes' lengths, so a layer's turn does not count as a scale.
+    /// </summary>
     private static (double X, double Y) DrawScale(Graphics g)
     {
         using var transform = g.Transform;
         var elements = transform.Elements;
-        return (Math.Clamp(Math.Abs(elements[0]), 0.01, 1), Math.Clamp(Math.Abs(elements[3]), 0.01, 1));
+        double x = Math.Sqrt(elements[0] * elements[0] + elements[1] * elements[1]);
+        double y = Math.Sqrt(elements[2] * elements[2] + elements[3] * elements[3]);
+        return (Math.Clamp(x, 0.01, 1), Math.Clamp(y, 0.01, 1));
     }
 
     /// <summary>
