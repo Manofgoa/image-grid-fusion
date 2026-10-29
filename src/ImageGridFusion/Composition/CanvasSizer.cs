@@ -86,7 +86,7 @@ public static class CanvasSizer
     /// cannot be drawn. A content that sharpens is read at zoom 1, unturned: it never widens the canvas
     /// on its own, rendering sharp again at its cell's size.
     /// </summary>
-    private static double DrawnScale(Rectangle cell, SizedImage image)
+    internal static double DrawnScale(Rectangle cell, SizedImage image)
     {
         var shown = image.Shown;
         if (cell.Width <= 0 || cell.Height <= 0 || shown.Width <= 0 || shown.Height <= 0)
