@@ -270,6 +270,12 @@ only once the dialog closes — **Cancel bringing the previous color back**. Sec
 added: the dialog's hook reads its RGB fields, the option previews through the eyedropper's route, OK is
 one undo step, Cancel restores.
 
+### Iteration 7 — 2026-10-29 — ✅ Implemented
+
+Go given: **code, unit tests and documentation**, in a **worktree** (`.claude/worktrees/eyedropper-ergonomics`,
+branch `feature/eyedropper-ergonomics`, from `main` at `b240e84`). The scope is frozen as the sections above
+stand.
+
 ---
 
 ## Implementation Log
