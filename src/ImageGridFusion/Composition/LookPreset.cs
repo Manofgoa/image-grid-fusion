@@ -43,6 +43,9 @@ internal static class LookPreset
                 case ImageEffect.Crop:
                     json["crop"] = look.Crop!.ToJson();
                     break;
+                case ImageEffect.Cutout:
+                    json["cutout"] = look.Cutout!.ToJson();
+                    break;
                 case ImageEffect.Zoom:
                     json["zoom"] = new JsonObject
                     {
@@ -108,6 +111,8 @@ internal static class LookPreset
             look = look.WithCrop(CropEffect.FromJson(crop));
         }
 
+        look = json["cutout"] is JsonObject cutout ? look.WithCutout(CutoutEffect.FromJson(cutout)) : look;
+
         if (json.TryGetPropertyValue("background", out var background))
         {
             look = look.WithBackground(background is JsonObject settings ? BackgroundEffect.FromJson(settings) : null);
@@ -150,6 +155,7 @@ internal static class LookPreset
         ImageEffect.Background => look.Background is not { } background ? "off, no fill"
             : $"{(background.Automatic ? "automatic color" : $"#{background.Color.R:X2}{background.Color.G:X2}{background.Color.B:X2}")}, {Percent(background.Opacity)}, {background.Mode}",
         ImageEffect.Crop => look.Crop!.SeenRatio(look) is { } ratio ? $"ratio {RatioName(ratio)}" : "free",
+        ImageEffect.Cutout => look.Cutout!.Describe(),
         ImageEffect.Zoom => look.ZoomOnArrival ? "image moved, whole at arrival"
             : look.ZoomFit != ZoomFit.None ? look.ZoomFit.ToString() : Percent(look.Zoom),
         ImageEffect.Animations => $"{look.Motion!.Kind}, every {look.Motion.Cycle.TotalSeconds.ToString("0.#", CultureInfo.InvariantCulture)} s",
@@ -164,7 +170,8 @@ internal static class LookPreset
         ImageEffect.Frames => Frames(look.Frames!),
         ImageEffect.Colors => $"saturation {Signed(look.Colors!.Saturation)}, hue {look.Colors.Hue:+0;-0;0}°, brightness {Signed(look.Colors.Brightness)}, contrast {Signed(look.Colors.Contrast)}",
         ImageEffect.Blur => $"{look.Blur!.Kind}, {Percent(look.Blur.Intensity)}",
-        _ => look.Volume!.IsMuted ? "muted" : Percent(look.Volume.Level),
+        ImageEffect.Volume => look.Volume!.IsMuted ? "muted" : Percent(look.Volume.Level),
+        _ => "",
     };
 
     private static string Frames(FramesEffect frames)

@@ -6,6 +6,15 @@ namespace ImageGridFusion.Composition;
 /// </summary>
 public sealed class SourceImage : IDisposable
 {
+    // The masks kept for an undo or a redo between two picks to be instant (workfiles/20261029-cutout.md § The Mask).
+    private const int KeptMasks = 6;
+
+    // The Cutout's masks computed so far, the latest first, each for a page and a mask key (CutoutEffect.MaskKey).
+    private readonly List<(int Page, string Key, CutoutMask Mask)> _masks = [];
+
+    // The image cut out as its look's Cutout effect says, for a page; drawn while they still match.
+    private (int Page, CutoutEffect Effect, Bitmap Bitmap)? _cut;
+
     public SourceImage(Bitmap bitmap, string? filePath, PageSource? pages = null, int page = 0)
     {
         Bitmap = bitmap;
@@ -38,6 +47,47 @@ public sealed class SourceImage : IDisposable
 
     public Size Size => Bitmap.Size;
 
+    /// <summary>Whether the Cutout effect applies to it: a still — a video, a GIF or a content of several pages plays.</summary>
+    public bool CutsOut => !this.IsAnimated;
+
+    /// <summary>
+    /// The bitmap the image is drawn from — by the preview, the exports and the layers: cut out while
+    /// its Cutout effect is on and its cut-out ready, else <see cref="Bitmap"/>. Same size as it.
+    /// </summary>
+    public Bitmap DrawnBitmap =>
+        this.Look.Cutout is { } effect && this.CutsOut && this._cut is { } cut && cut.Page == this.Page && cut.Effect.Equals(effect) && cut.Bitmap.Size == this.Bitmap.Size
+            ? cut.Bitmap
+            : this.Bitmap;
+
+    /// <summary>The Cutout on, its cut-out not ready yet: the image is drawn uncut meanwhile.</summary>
+    public bool CutoutPending => this.Look.Cutout is not null && this.CutsOut && ReferenceEquals(this.DrawnBitmap, this.Bitmap);
+
+    /// <summary>The image the Cutout's model last read, while a pick reads it again (<see cref="PickEmbedding"/>).</summary>
+    public PickEmbedding? PickEmbedding { get; set; }
+
+    /// <summary>The mask computed for the page shown and <paramref name="key"/> (<see cref="CutoutEffect.MaskKey"/>); <c>null</c> when none is kept.</summary>
+    public CutoutMask? MaskFor(string key) =>
+        this._masks.FirstOrDefault(m => m.Page == this.Page && m.Key == key).Mask;
+
+    /// <summary>Keeps a mask computed for <paramref name="page"/>, the oldest ones dropped past a few.</summary>
+    public void KeepMask(int page, string key, CutoutMask mask)
+    {
+        this._masks.RemoveAll(m => m.Page == page && m.Key == key);
+        this._masks.Insert(0, (page, key, mask));
+        if (this._masks.Count > KeptMasks)
+        {
+            this._masks.RemoveRange(KeptMasks, this._masks.Count - KeptMasks);
+        }
+    }
+
+    /// <summary>Takes <paramref name="bitmap"/>, the image cut out as <paramref name="effect"/> says on <paramref name="page"/>, disposing the previous one.</summary>
+    public void SetCut(int page, CutoutEffect effect, Bitmap bitmap)
+    {
+        var previous = this._cut?.Bitmap;
+        this._cut = (page, effect, bitmap);
+        previous?.Dispose();
+    }
+
     /// <summary>
     /// A text laying its content out for its zoom: its pages hold the zoom, so it is drawn at 100 %,
     /// filling its cell. Not while cropped — a cropped text keeps its layout and zooms like an image
@@ -67,7 +117,9 @@ public sealed class SourceImage : IDisposable
     /// What the image holds in memory, in bytes: its bitmap's pixels, and what its pages keep — what the
     /// undo history weighs the images it parks by (workfiles/20261010-optimisation-lack-of-memory.md § 2.4).
     /// </summary>
-    public long MemoryBytes => this.IsDisposed ? 0 : (long)this.Bitmap.Width * this.Bitmap.Height * 4 + (this.Pages?.MemoryBytes ?? 0);
+    public long MemoryBytes => this.IsDisposed ? 0 : (long)this.Bitmap.Width * this.Bitmap.Height * 4 + (this.Pages?.MemoryBytes ?? 0)
+        + (this._cut is { } cut ? (long)cut.Bitmap.Width * cut.Bitmap.Height * 4 : 0)
+        + this._masks.Sum(m => m.Mask.MemoryBytes) + (this.PickEmbedding?.MemoryBytes ?? 0);
 
     /// <summary>Plays when shown: a video, an animated GIF, a PDF of several pages, a text longer than its cell.</summary>
     public bool IsAnimated => Pages is { LoopDuration: var loop } && loop > TimeSpan.Zero;
@@ -178,6 +230,7 @@ public sealed class SourceImage : IDisposable
 
         IsDisposed = true;
         Bitmap.Dispose();
+        this._cut?.Bitmap.Dispose();
         Pages?.Dispose();
     }
 }

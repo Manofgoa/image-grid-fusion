@@ -131,7 +131,7 @@ internal static class GridExport
             ? new Item(null, i.BandColor, i.Pages, i.PlayedLength, i.DrawnLook, i.Page, i.StartTime, i.PlayedFrom, i.Sharpening, i.Sharpens) { Image = i }
             : i.IsAnimated
             ? new Item(null, i.BandColor, i.Pages, TimeSpan.Zero, i.DrawnLook, i.StartPage, TimeSpan.Zero, Sharpening: i.Sharpening, Sharpens: i.Sharpens)
-            : new Item(new Bitmap(i.Bitmap), i.BandColor, null, TimeSpan.Zero, i.DrawnLook, 0, TimeSpan.Zero, Sharpening: i.Sharpening, Sharpens: i.Sharpens);
+            : new Item(new Bitmap(i.DrawnBitmap), i.BandColor, null, TimeSpan.Zero, i.DrawnLook, 0, TimeSpan.Zero, Sharpening: i.Sharpening, Sharpens: i.Sharpens);
 
         /// <summary>The cells' part of <paramref name="frames"/>, one per item.</summary>
         public ArraySegment<Frame> Cells(Frame[] frames) => new(frames, 0, this.CellCount);

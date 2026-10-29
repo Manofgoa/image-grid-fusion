@@ -60,6 +60,7 @@ internal sealed partial class MainForm : Form
     private readonly ToolStripMenuItem _downloadVisionEngine = new("Download the vision engine…");
     private readonly ToolStripMenuItem _captions = new("Captions");
     private readonly ToolStripMenuItem _downloadCaptionEngine = new("Download the caption engine…");
+    private readonly ToolStripMenuItem _downloadCutoutEngine = new("Download the cutout engine…");
     private readonly ToolStripMenuItem _forgetVisual = new("Forget visual analysis…");
     // A cell's context menu, shown while the visual analysis can run: the images like its own.
     private readonly ContextMenuStrip _cellMenu = new();
@@ -252,6 +253,31 @@ internal sealed partial class MainForm : Form
     private readonly PictureBox _blurIntensityIcon = new() { SizeMode = PictureBoxSizeMode.CenterImage, Anchor = AnchorStyles.Left };
     private readonly TrackBar _blurIntensity = OptionSlider(0, 100, 10);
     private readonly Label _blurIntensityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CutoutModeStrip _cutoutMode = new() { Anchor = AnchorStyles.Left };
+    private readonly TrackBar _cutoutGrow = CutoutSlider(-100, 100);
+    private readonly Label _cutoutGrowLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly TrackBar _cutoutSoften = CutoutSlider(0, 100);
+    private readonly Label _cutoutSoftenLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _cutoutInvert = new() { Text = "Invert", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CutoutReachStrip _cutoutReach = new() { Anchor = AnchorStyles.Left };
+    private readonly CutoutBackgroundStrip _cutoutBackground = new() { Anchor = AnchorStyles.Left };
+
+    // Each treatment's own slider, its treatment's name in its label (workfiles/20261029-cutout.md § The Background Kept).
+    private readonly Dictionary<CutoutBackground, (TrackBar Slider, Label Label)> _cutoutAmounts = new()
+    {
+        [CutoutBackground.Opacity] = (CutoutSlider(0, 100), new Label { AutoSize = true, Anchor = AnchorStyles.Left }),
+        [CutoutBackground.Color] = (CutoutSlider(0, 100), new Label { AutoSize = true, Anchor = AnchorStyles.Left }),
+        [CutoutBackground.Blur] = (CutoutSlider(0, 100), new Label { AutoSize = true, Anchor = AnchorStyles.Left }),
+        [CutoutBackground.Pixelate] = (CutoutSlider(0, 100), new Label { AutoSize = true, Anchor = AnchorStyles.Left }),
+    };
+    private readonly ColorSplitButton _cutoutColor = new();
+    private readonly TrackBar _cutoutSample = SampleSlider();
+    private readonly Label _cutoutSampleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private Color? _cutoutSwatchColor;
+
+    // The Cutout's cut-outs, computed off the UI thread, and its engine's download while it runs (workfiles/20261029-cutout.md).
+    private readonly CutoutService _cutouts = new();
+    private CancellationTokenSource? _cutoutEngineDownload;
     private readonly TrackBar _volume = OptionSlider(0, (int)(VolumeEffect.MaxLevel * 100), 10);
     private readonly Label _volumeLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _mute = new() { Text = "Mute", AutoSize = true, Anchor = AnchorStyles.Left };
@@ -510,6 +536,22 @@ internal sealed partial class MainForm : Form
         backgroundLines.Controls.AddRange([backgroundColorLine, backgroundEdgesLine]);
         _options[ImageEffect.Background].Controls.AddRange([this._backgroundFill, backgroundLines]);
         _options[ImageEffect.Crop].Controls.Add(this._crop);
+        // The edge and the opacity on a first line, the other treatments on a second, as the Background's two lines.
+        var cutoutEdgeLine = OptionLine();
+        var (opacity, opacityLabel) = this._cutoutAmounts[CutoutBackground.Opacity];
+        cutoutEdgeLine.Controls.AddRange([this._cutoutGrow, this._cutoutGrowLabel, this._cutoutSoften, this._cutoutSoftenLabel, this._cutoutInvert, opacity, opacityLabel]);
+        var cutoutBackgroundLine = OptionLine();
+        cutoutBackgroundLine.Controls.AddRange([this._cutoutColor, this._cutoutSample, this._cutoutSampleLabel]);
+        foreach (var treatment in (CutoutBackground[])[CutoutBackground.Color, CutoutBackground.Blur, CutoutBackground.Pixelate])
+        {
+            var (slider, label) = this._cutoutAmounts[treatment];
+            cutoutBackgroundLine.Controls.AddRange([slider, label]);
+        }
+
+        var cutoutLines = OptionLine();
+        cutoutLines.FlowDirection = FlowDirection.TopDown;
+        cutoutLines.Controls.AddRange([cutoutEdgeLine, cutoutBackgroundLine]);
+        this._options[ImageEffect.Cutout].Controls.AddRange([this._cutoutMode, this._cutoutReach, this._cutoutBackground, cutoutLines]);
         _options[ImageEffect.Zoom].Controls.AddRange([_zoom, _zoomLabel, this._zoomFit]);
         this._motionKind.Items.AddRange(Enum.GetNames<MotionKind>());
         this._motionKind.SelectedIndex = (int)MotionEffect.Default.Kind;
@@ -539,6 +581,8 @@ internal sealed partial class MainForm : Form
         this._hueLabel.MinimumSize = new Size(TextRenderer.MeasureText(HueText(-ColorsEffect.MaxHue), this._hueLabel.Font).Width, 0);
         this._brightnessLabel.MinimumSize = new Size(TextRenderer.MeasureText(SignedPercentText("Brightness", -100), this._brightnessLabel.Font).Width, 0);
         this._contrastLabel.MinimumSize = new Size(TextRenderer.MeasureText(SignedPercentText("Contrast", -100), this._contrastLabel.Font).Width, 0);
+        this._cutoutGrowLabel.MinimumSize = new Size(TextRenderer.MeasureText(GrowText(-100), this._cutoutGrowLabel.Font).Width, 0);
+        this._cutoutSoftenLabel.MinimumSize = new Size(TextRenderer.MeasureText(SoftenText(100), this._cutoutSoftenLabel.Font).Width, 0);
         _options[ImageEffect.Blur].Controls.AddRange([this._blurKind, _blurIntensityIcon, _blurIntensity, _blurIntensityLabel]);
         _options[ImageEffect.Volume].Controls.AddRange([_mute, _volume, _volumeLabel]);
         _globalTabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -626,7 +670,7 @@ internal sealed partial class MainForm : Form
         this._transportTimer.Tick += (_, _) => this.RefreshTransportPosition();
         this._transportTimer.Start();
         this._toolTip.SetToolTip(this._clearButton, "Removes every image and the global effects, and brings the format back to Twitter (Ctrl+N)");
-        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, this._installYtDlpCompanions, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._downloadOcrEngine, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._downloadFaceEngine, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._similarImages, this._downloadVisionEngine, this._captions, this._downloadCaptionEngine, this._forgetVisual, new ToolStripSeparator(), this._openAppFolder]);
+        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, this._installYtDlpCompanions, this._downloadCutoutEngine, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._downloadOcrEngine, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._downloadFaceEngine, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._similarImages, this._downloadVisionEngine, this._captions, this._downloadCaptionEngine, this._forgetVisual, new ToolStripSeparator(), this._openAppFolder]);
         for (int pages = FileExplorerPanel.MinPagesPerLoad; pages <= FileExplorerPanel.MaxPagesPerLoad; pages++)
         {
             int choice = pages;
@@ -708,6 +752,8 @@ internal sealed partial class MainForm : Form
         this._captions.Click += (_, _) => this.ToggleCaptions();
         this._downloadCaptionEngine.ToolTipText = "Downloads the caption engine — Florence-2 — the captions are written with; shown while it is not downloaded";
         this._downloadCaptionEngine.Click += (_, _) => this.OfferCaptionEngineDownload();
+        this._downloadCutoutEngine.ToolTipText = "Downloads the cutout engine — IS-Net and MobileSAM — the Cutout effect runs on; shown while it is not downloaded";
+        this._downloadCutoutEngine.Click += (_, _) => this.OfferCutoutEngineDownload();
         this._forgetVisual.ToolTipText = "Deletes every embedding, tag and caption — files.vision and the tags and captions of files.content — and turns the visual analysis and the captions off";
         this._forgetVisual.Click += (_, _) => this.ForgetVisualAnalysis();
         this._ocrResultStyle.ToolTipText = "How the arrow from a tile's light bulb to the word the OCR found is drawn; remembered between sessions";
@@ -865,6 +911,52 @@ internal sealed partial class MainForm : Form
 
         // The kind already shown is picked too: choosing it still turns the blur on.
         this._blurKind.Picked += (_, kind) => this.SetBlurKind(kind);
+        this._cutoutMode.Picked += (_, mode) => this.PickCutoutMode(mode);
+        this._cutoutGrow.ValueChanged += (_, _) =>
+        {
+            this._cutoutGrowLabel.Text = GrowText(this._cutoutGrow.Value);
+            this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithGrow(this._cutoutGrow.Value / 100.0)));
+        };
+        this._cutoutSoften.ValueChanged += (_, _) =>
+        {
+            this._cutoutSoftenLabel.Text = SoftenText(this._cutoutSoften.Value);
+            this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithSoften(this._cutoutSoften.Value / 100.0)));
+        };
+        this._cutoutInvert.CheckedChanged += (_, _) => this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithInvert(this._cutoutInvert.Checked)));
+        this._toolTip.SetToolTip(this._cutoutGrow, "Pushes the edge out, or eats it in, to leave no fringe of the old background");
+        this._toolTip.SetToolTip(this._cutoutSoften, "Fades the edge over a few pixels");
+        this._toolTip.SetToolTip(this._cutoutInvert, "Keeps what the cutout leaves out instead");
+        this._preview.Cutouts = this._cutouts;
+        this._cutouts.Failed += (_, message) => this.ShowStatus(message, error: true);
+        this._preview.CutoutPicked += (_, pick) => this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithPoint(pick.Point, pick.Add)));
+        this._preview.CutoutPickEnded += (_, _) => this._cutoutMode.Armed = false;
+        this._cutoutReach.Picked += (_, reach) => this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithReach(reach)));
+
+        // Transparent turns every treatment off; another thumbnail toggles its own.
+        this._cutoutBackground.Picked += (_, treatment) => this.ChangeLook(
+            ImageEffect.Cutout,
+            look => look.WithCutout(look.Cutout!.WithTreatment(treatment, treatment == CutoutBackground.Transparent || !look.Cutout.Has(treatment))));
+        foreach (var (treatment, (slider, label)) in this._cutoutAmounts)
+        {
+            label.MinimumSize = new Size(TextRenderer.MeasureText(AmountText(treatment, 100), label.Font).Width, 0);
+            this._toolTip.SetToolTip(slider, treatment switch
+            {
+                CutoutBackground.Opacity => "The part left out's opacity",
+                CutoutBackground.Color => "The mask color's opacity over the part left out",
+                CutoutBackground.Blur => "How strongly the part left out is blurred",
+                _ => "The size of the squares the part left out is drawn in",
+            });
+            slider.ValueChanged += (_, _) =>
+            {
+                label.Text = AmountText(treatment, slider.Value);
+                this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithAmount(treatment, slider.Value / 100.0)));
+            };
+        }
+
+        this._toolTip.SetToolTip(this._cutoutColor.Dialog, "Chooses the color masking the part left out, in the color dialog");
+        this._toolTip.SetToolTip(this._cutoutColor.Eyedropper, "Takes the mask's color from the preview: click a cell; Escape or a right click cancels");
+        this._cutoutColor.Dialog.Click += (_, _) => this.PickCutoutColor();
+        this._cutoutColor.Eyedropper.Click += (_, _) => this.ArmCutoutEyedropper();
         _blurIntensity.ValueChanged += (_, _) => SetBlurIntensity();
         _volume.ValueChanged += (_, _) =>
         {
@@ -944,7 +1036,7 @@ internal sealed partial class MainForm : Form
         this._toolTip.SetToolTip(this._bordersColor.Eyedropper, "Takes the borders' color from the preview: click a cell; Escape or a right click cancels");
         this._bordersColor.Dialog.Click += (_, _) => this.PickBorderColor();
         this._bordersColor.Eyedropper.Click += (_, _) => this.ArmBordersEyedropper();
-        foreach (var (slider, label) in ((TrackBar, Label)[])[(this._backgroundSample, this._backgroundSampleLabel), (this._bordersSample, this._bordersSampleLabel)])
+        foreach (var (slider, label) in ((TrackBar, Label)[])[(this._backgroundSample, this._backgroundSampleLabel), (this._bordersSample, this._bordersSampleLabel), (this._cutoutSample, this._cutoutSampleLabel)])
         {
             label.Text = SampleText(slider.Value);
             label.MinimumSize = new Size(TextRenderer.MeasureText(SampleText(GridPreview.MaxEyedropperSample), label.Font).Width, 0);
@@ -1064,6 +1156,8 @@ internal sealed partial class MainForm : Form
         {
             // Before the preview, which disposes the images it shows: the history disposes the others.
             this._history.Dispose();
+            this._cutoutEngineDownload?.Cancel();
+            this._cutouts.Dispose();
             this._transportTimer.Dispose();
             _settingsMenu.Dispose();
             this._cellMenu.Dispose();
@@ -1100,13 +1194,14 @@ internal sealed partial class MainForm : Form
     {
         int size = LogicalToDeviceUnits(16);
         Image?[] previous = [_resetButton.Image, _effectResetButton.Image, _globalResetButton.Image, _globalEffectResetButton.Image, _fadeSquared.Image, _fadeLinear.Image, _blurIntensityIcon.Image, _backgroundOpacityIcon.Image,
-            this._backgroundColor.Eyedropper.Image, this._bordersColor.Eyedropper.Image];
+            this._backgroundColor.Eyedropper.Image, this._bordersColor.Eyedropper.Image, this._cutoutColor.Eyedropper.Image];
         foreach (var effect in Enum.GetValues<ImageEffect>())
         {
             _effectTabs.SetIcon(effect, effect switch
             {
                 ImageEffect.Background => EffectIcons.Background(size),
                 ImageEffect.Crop => EffectIcons.Crop(size),
+                ImageEffect.Cutout => EffectIcons.Cutout(size),
                 ImageEffect.Zoom => EffectIcons.Zoom(size),
                 ImageEffect.Animations => EffectIcons.Animations(size),
                 ImageEffect.Rotate => EffectIcons.Rotate(size),
@@ -1138,6 +1233,7 @@ internal sealed partial class MainForm : Form
         _backgroundOpacityIcon.Size = new Size(size, size);
         this._backgroundColor.Eyedropper.Image = EffectIcons.Eyedropper(size);
         this._bordersColor.Eyedropper.Image = EffectIcons.Eyedropper(size);
+        this._cutoutColor.Eyedropper.Image = EffectIcons.Eyedropper(size);
         foreach (var image in previous)
         {
             image?.Dispose();
@@ -1148,6 +1244,11 @@ internal sealed partial class MainForm : Form
         if (this._backgroundSwatchColor is { } backgroundSwatch)
         {
             this.SetSwatch(this._backgroundColor.Dialog, backgroundSwatch);
+        }
+
+        if (this._cutoutSwatchColor is { } cutoutSwatch)
+        {
+            this.SetSwatch(this._cutoutColor.Dialog, cutoutSwatch);
         }
     }
 
@@ -1428,6 +1529,9 @@ internal sealed partial class MainForm : Form
                 this.TogglePlayback();
                 return true;
             // A layer's edit view closes first; then the selected layer: the two selections are exclusive (workfiles/20261029-layers.md).
+            case Keys.Escape when this._preview.CutoutPickArmed:
+                this._preview.CancelCutoutPick();
+                return true;
             case Keys.Escape when this._preview.EditingLayer:
                 this._preview.EndLayerEdit();
                 return true;
@@ -2626,6 +2730,7 @@ internal sealed partial class MainForm : Form
     /// </summary>
     private async Task<Bitmap?> RenderStillAsync(int maxLongSide)
     {
+        await this.WaitForCutoutsAsync();
         if (!_preview.Images.Concat(this.ActiveLayerImages).Any(i => i.IsAnimated))
         {
             // Rendered at once on the UI thread, the grid held all the same: its motions and soundtrack stand still.
@@ -2684,6 +2789,7 @@ internal sealed partial class MainForm : Form
     /// </summary>
     private async Task<GridExport.Result?> ExportAnimationAsync(string path, GridExport.Format format)
     {
+        await this.WaitForCutoutsAsync();
         // The stills are copied here, on the UI thread: a copy failing for want of memory fails like the export.
         GridExport.Job job;
         try
@@ -3068,6 +3174,8 @@ internal sealed partial class MainForm : Form
         this._downloadVisionEngine.Visible = !VisionEngineFiles.IsAvailable;
         this._downloadVisionEngine.Enabled = !this._explorer.DownloadingVisionEngine;
         this._captions.Checked = this._explorer.Captions;
+        this._downloadCutoutEngine.Visible = !CutoutEngineFiles.IsAvailable;
+        this._downloadCutoutEngine.Enabled = this._cutoutEngineDownload is null;
         this._downloadCaptionEngine.Visible = !CaptionEngineFiles.IsAvailable;
         this._downloadCaptionEngine.Enabled = !this._explorer.DownloadingCaptionEngine;
         this._ocrArrowCurved.Checked = this._explorer.ArrowStyle.Curved;
@@ -3225,7 +3333,7 @@ internal sealed partial class MainForm : Form
     private void ToggleEffect(ImageEffect effect)
     {
         _selectedEffect = effect;
-        if (_preview.SelectedImage?.Look is { } look)
+        if (_preview.SelectedImage?.Look is { } look && (effect != ImageEffect.Cutout || look.IsActive(effect) || this.CutoutEngineReady()))
         {
             _preview.SetSelectedLook(look.IsActive(effect) ? look.TurnOff(effect) : look.TurnOn(effect));
         }
@@ -3405,6 +3513,194 @@ internal sealed partial class MainForm : Form
     private void SetCropWhole() =>
         this.ChangeLook(ImageEffect.Crop, look => look.Crop is { } crop ? look.WithCrop(crop.Whole()) : look);
 
+    /// <summary>
+    /// The Cutout's modes: Subject brings the main subject back; Pick turns the effect on and waits for a
+    /// click on the selected cell — a layer is picked on in its edit view.
+    /// </summary>
+    private void PickCutoutMode(CutoutMode mode)
+    {
+        if (mode == CutoutMode.Subject)
+        {
+            this._preview.CancelCutoutPick();
+            this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithSubject()));
+            return;
+        }
+
+        this.ChangeLook(ImageEffect.Cutout, look => look);
+        if (this._preview.SelectedImage?.Look.IsActive(ImageEffect.Cutout) == true)
+        {
+            this._preview.ArmCutoutPick();
+            this._cutoutMode.Armed = this._preview.CutoutPickArmed;
+        }
+    }
+
+    private static string AmountText(CutoutBackground treatment, int value) => treatment switch
+    {
+        CutoutBackground.Opacity => $"Opacity: {value} %",
+        CutoutBackground.Color => $"Color: {value} %",
+        CutoutBackground.Blur => $"Blur: {value} %",
+        _ => $"Pixels: {value} %",
+    };
+
+    /// <summary>A slider of the Cutout's options, narrower than the others: its two lines hold seven of them.</summary>
+    private static StepSlider CutoutSlider(int minimum, int maximum)
+    {
+        var slider = OptionSlider(minimum, maximum, 10);
+        slider.Width = 110;
+        return slider;
+    }
+
+    /// <summary>The standard color dialog, on the mask's color: a color chosen turns the Color treatment on.</summary>
+    private void PickCutoutColor()
+    {
+        if (this.IsExporting || this._preview.SelectedImage?.Look.TurnOn(ImageEffect.Cutout).Cutout is not { } cutout)
+        {
+            return;
+        }
+
+        if (this._colorDialog.Show(this, cutout.Color) is { } color)
+        {
+            this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithTreatment(CutoutBackground.Color, on: true).WithColor(color)));
+        }
+    }
+
+    /// <summary>
+    /// The mask's eyedropper: the part left out follows the color under the cursor; a click takes it as the
+    /// dialog's OK does, and a cancel gives the cell its look back (RULES.md § Color Options).
+    /// </summary>
+    private void ArmCutoutEyedropper()
+    {
+        if (this.IsExporting || this._preview.SelectedImage is not { } image || !(image.Look.IsActive(ImageEffect.Cutout) || this.CutoutEngineReady()))
+        {
+            return;
+        }
+
+        var original = image.Look;
+        var on = original.TurnOn(ImageEffect.Cutout);
+        this.ArmEyedropper(
+            this._cutoutColor,
+            this._cutoutSample,
+            color => this._preview.SetSelectedLook(on.WithCutout(on.Cutout!.WithTreatment(CutoutBackground.Color, on: true).WithColor(color))),
+            () =>
+            {
+                if (this._preview.SelectedImage == image)
+                {
+                    this._preview.SetSelectedLook(original);
+                }
+            },
+            color => this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithTreatment(CutoutBackground.Color, on: true).WithColor(color))));
+    }
+
+    private static string GrowText(int value) => $"Grow: {value * CutoutEffect.MaxEdge:+0.0;-0.0;0.0} %";
+
+    private static string SoftenText(int value) => $"Soften: {value * CutoutEffect.MaxEdge:0.0} %";
+
+    /// <summary>
+    /// Whether the Cutout can be turned on: its engine downloaded or downloading — else offered, the
+    /// effect left off on a No, as a global effect's file picker cancelled (RULES.md § Global Toolbar).
+    /// </summary>
+    private bool CutoutEngineReady()
+    {
+        if (CutoutEngineFiles.IsAvailable || this._cutoutEngineDownload is not null || this.OfferCutoutEngineDownload())
+        {
+            return true;
+        }
+
+        this.UpdateEffects();
+        return false;
+    }
+
+    /// <summary>
+    /// Offers to download the cutout engine, saying what, how much and where; on Yes, downloads it, the
+    /// images waiting for it cut out once it is there. Returns whether it was accepted.
+    /// </summary>
+    private bool OfferCutoutEngineDownload()
+    {
+        string runtime = OcrEngineFiles.HasRuntime ? "" : $"\n\nThe ONNX Runtime library it runs on (about 13 MB, from nuget.org) goes into:\n\n{OcrEngineFiles.Folder}";
+        var answer = MessageBox.Show(
+            this,
+            "Download the cutout engine? IS-Net finds an image's main subject, MobileSAM the object under a click: the Cutout effect keeps it and makes the rest transparent. "
+            + "Everything stays on this computer; a cutout takes a few seconds.\n\n"
+            + $"About {CutoutEngineFiles.DownloadMegabytes} MB, taken from github.com and huggingface.co into:\n\n{CutoutEngineFiles.Folder}{runtime}",
+            "Download the cutout engine",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question);
+        if (answer != DialogResult.Yes)
+        {
+            return false;
+        }
+
+        _ = this.DownloadCutoutEngineAsync();
+        return true;
+    }
+
+    /// <summary>Downloads the cutout engine, its progress in the status line; the cells waiting for it are cut out next.</summary>
+    private async Task DownloadCutoutEngineAsync()
+    {
+        if (this._cutoutEngineDownload is not null)
+        {
+            return;
+        }
+
+        var cancellation = new CancellationTokenSource();
+        this._cutoutEngineDownload = cancellation;
+        var progress = new Progress<double>(share =>
+        {
+            if (this._cutoutEngineDownload == cancellation && !this.IsDisposed)
+            {
+                this.ShowStatus($"Downloading the cutout engine… {share:P0}");
+            }
+        });
+        try
+        {
+            await CutoutEngineFiles.DownloadAsync(progress, cancellation.Token);
+            if (!this.IsDisposed)
+            {
+                this.ShowStatus("The cutout engine downloaded: the images are cut out next");
+                this._preview.Invalidate();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (UrlLoadException ex)
+        {
+            if (!this.IsDisposed)
+            {
+                this.ShowStatus($"Couldn't download the cutout engine: {ex.Message}", error: true);
+                this._preview.Invalidate();
+            }
+        }
+        finally
+        {
+            this._cutoutEngineDownload = null;
+            cancellation.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// The cut-outs an export draws, waited for before it captures the grid — locked meanwhile, the status
+    /// line saying so; one that fails is drawn uncut (workfiles/20261029-cutout.md § While a Mask Is Computed).
+    /// </summary>
+    private async Task WaitForCutoutsAsync()
+    {
+        var images = this._preview.Images.Concat(this.ActiveLayerImages).ToList();
+        if (!CutoutEngineFiles.IsAvailable || !images.Any(i => i.CutoutPending))
+        {
+            return;
+        }
+
+        this.BeginExport("Cutting out the images…", cancellable: false);
+        try
+        {
+            await this._cutouts.WhenReadyAsync(images);
+        }
+        finally
+        {
+            this.EndExport();
+        }
+    }
+
     private void SetBlurKind(BlurKind kind) =>
         ChangeLook(ImageEffect.Blur, look => look.Blur is { } blur ? look.WithBlur(blur.WithKind(kind)) : look);
 
@@ -3577,7 +3873,7 @@ internal sealed partial class MainForm : Form
     /// </summary>
     private void ChangeLook(ImageEffect effect, Func<ImageLook, ImageLook> change)
     {
-        if (!_syncingEffects && _preview.SelectedImage?.Look is { } look)
+        if (!_syncingEffects && _preview.SelectedImage?.Look is { } look && (effect != ImageEffect.Cutout || look.IsActive(effect) || this.CutoutEngineReady()))
         {
             _preview.SetSelectedLook(change(look.TurnOn(effect)));
         }
@@ -3680,6 +3976,26 @@ internal sealed partial class MainForm : Form
                 this._contrast.Value = (int)Math.Round(colors.Contrast * 100);
             }
 
+            if (look.TurnOn(ImageEffect.Cutout).Cutout is { } cutout)
+            {
+                this._cutoutMode.Mode = cutout.Mode;
+                this._cutoutGrow.Value = (int)Math.Round(cutout.Grow * 100);
+                this._cutoutSoften.Value = (int)Math.Round(cutout.Soften * 100);
+                this._cutoutInvert.Checked = cutout.Invert;
+                this._cutoutReach.Selected = cutout.Reach;
+                this._cutoutBackground.Treatments = cutout.Treatments;
+                foreach (var (treatment, (slider, _)) in this._cutoutAmounts)
+                {
+                    slider.Value = (int)Math.Round(cutout.AmountOf(treatment) * 100);
+                }
+
+                if (cutout.Color != this._cutoutSwatchColor)
+                {
+                    this._cutoutSwatchColor = cutout.Color;
+                    this.SetSwatch(this._cutoutColor.Dialog, cutout.Color);
+                }
+            }
+
             if (look.TurnOn(ImageEffect.Blur).Blur is { } blur)
             {
                 this._blurKind.Selected = blur.Kind;
@@ -3700,6 +4016,13 @@ internal sealed partial class MainForm : Form
         UpdateFramesLabel();
         this.UpdateColorsLabels();
         _blurIntensityLabel.Text = $"Intensity: {_blurIntensity.Value}%";
+        this._cutoutGrowLabel.Text = GrowText(this._cutoutGrow.Value);
+        this._cutoutSoftenLabel.Text = SoftenText(this._cutoutSoften.Value);
+        foreach (var (treatment, (slider, label)) in this._cutoutAmounts)
+        {
+            label.Text = AmountText(treatment, slider.Value);
+        }
+
         _volumeLabel.Text = VolumeText(_volume.Value);
         _backgroundOpacityLabel.Text = OpacityText(_backgroundOpacity.Value);
         this._backgroundBlendLabel.Text = BlendText(this._backgroundBlend.Value);
@@ -3725,6 +4048,23 @@ internal sealed partial class MainForm : Form
         _preview.BarsEffect = _selectedEffect is ImageEffect.Blur or ImageEffect.Crop && look?.IsActive(_selectedEffect.Value) == true
             ? _selectedEffect
             : null;
+
+        // Each treatment's slider, and the mask's color, act while their treatment is on: disabled otherwise, their values kept.
+        var treatments = this._cutoutBackground.Treatments;
+        foreach (var (treatment, (slider, label)) in this._cutoutAmounts)
+        {
+            slider.Enabled = label.Enabled = treatments.Contains(treatment);
+        }
+
+        this._cutoutColor.Enabled = this._cutoutSample.Enabled = this._cutoutSampleLabel.Enabled = treatments.Contains(CutoutBackground.Color);
+
+        // The pick's points show, and Pick stays armed, while the Cutout tab is selected and its effect on.
+        bool picking = usable && _selectedEffect == ImageEffect.Cutout && look?.IsActive(ImageEffect.Cutout) == true;
+        this._preview.ShowsCutoutPoints = picking;
+        if (!picking)
+        {
+            this._preview.CancelCutoutPick();
+        }
     }
 
     /// <summary>A click on a global tab shows its options, and activates nothing.</summary>
@@ -4818,6 +5158,7 @@ internal sealed partial class MainForm : Form
     {
         ImageEffect.Frames when image is { IsAnimated: false } => "Frames only applies to videos, animated GIFs and content of several pages",
         ImageEffect.Volume when image is { HasSound: false } => "Volume only applies to videos with a sound track",
+        ImageEffect.Cutout when image is { CutsOut: false } => "Cutout works on still images only for now: not on videos, animated GIFs nor content of several pages",
         _ => null,
     };
 
