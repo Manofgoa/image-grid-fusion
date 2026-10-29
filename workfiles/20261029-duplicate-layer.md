@@ -117,8 +117,11 @@ Three ways, chosen by the user (Q&A 1); no keyboard shortcut.
   at the press: a Ctrl + click alone copies nothing. Ctrl released during the drag changes nothing.
 - The whole gesture is **one undo step**: `InGesture` holds until the mouse is released **and** the copy's
   content has arrived (a file reloaded off the UI thread).
-- Ctrl over the selected layer shows the **copy cursor** (`Cursors.SizeAll` with a +, or the system's
-  drag-copy cursor), so the gesture can be found.
+- The drag starts past the system's drag size (`SystemInformation.DragSize`) from the press; the layer
+  itself moves from the first pixel, as before.
+- Ctrl over the selected layer shows the **copy cursor** — the four arrows of a move with a plus in a white
+  square, drawn by the app (`GridPreview.LayerCopyCursor`) — so the gesture can be found; it follows Ctrl on
+  the next mouse move.
 
 ---
 
@@ -194,6 +197,31 @@ The seven open questions answered (Q&A 5 to 11):
 Go given (Q&A 12): code, unit tests and documentation, in a worktree on `feature/duplicate-layer`. The
 scope is frozen as the sections above stand.
 
+### Iteration 4 — 2026-10-29 — 🧭 Implementation choices
+
+No project rule broken. Choices the frozen design left open:
+
+- **Where the code lives**: `GridLayers.Inserting` and `GridLayers.IndexOf` (the original found by its
+  content, wherever it stands when the copy arrives); `LayerPlacement.Beside(step)` for the offset; in the
+  preview `InsertLayerCopy` (above, selected), `PlaceDraggedCopy` (under, the selection and the pressed layer
+  shifted up) and `LayerForMenu`; the event `LayerCopyDragged`; in the form `LayerCopyAsync`, shared by the
+  three routes.
+- **A copy not laid**: when its original was removed or undone while the file was being read again, an
+  export started, or the edit view opened, the copy is not laid and its content is disposed — it never
+  entered the layers, so `ReleaseImage` is not involved.
+- **The offset** is computed from the original as it stood when Duplicate was clicked.
+- **The drag threshold** of Ctrl + drag is the system's drag size (`SystemInformation.DragSize`), measured
+  from the press; the layer itself moves from the first pixel, as before.
+- **The copy cursor** is drawn by the app — four black arrows outlined in white, with a plus in a white
+  square at its bottom right — through the eyedropper's `CreateCursor`, one per DPI. It shows over the selected
+  layer while Ctrl is held and **updates on a mouse move**: pressing Ctrl without moving the mouse leaves the
+  cursor as it was until the next move.
+- **The menu's items mirror the list's buttons**: Duplicate and Delete enabled as the buttons are. A right
+  press on a row selects its layer, as a left press does; the menu opens on release.
+- **The status line** says *Layer duplicated.* after each copy.
+- **RULES.md is not updated**: the frozen documentation scope was the README and the glossary. A rule that a
+  layer never shares a `SourceImage` with another one would belong in § Layers — offered as a follow-up.
+
 ---
 
 ## Implementation Log
@@ -203,10 +231,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 3, 4 | 2026-10-29 | Preview routes and Ctrl + drag, the Duplicate button and the copy's content, the context menu |
 | Unit tests | — | — | Does not apply: no test project in the repository |
-| README | | | `README.md` and `README.fr.md`, § Layers |
-| Glossary | | | `GLOSSARY.md` and `GLOSSARY.fr.md`, *Layer list* and *Layer* rows |
+| README | 3 | 2026-10-29 | `README.md` and `README.fr.md`, § Layers |
+| Glossary | 3 | 2026-10-29 | `GLOSSARY.md` and `GLOSSARY.fr.md`, *Layer list* and *Layer* rows |
 
 ---
 
