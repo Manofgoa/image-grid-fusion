@@ -35,7 +35,9 @@ the black halo. The cursor over it is `Cursors.Hand` (`LayerMouseMove`).
 - The **cursor** over the knob, and for as long as the knob is dragged, is a **rotation cursor**: a
   circular arrow, drawn like the system cursors — white with a black outline — its hot spot at its
   center (Q&A #5).
-- Windows has no such cursor: the app makes it, at the monitor's DPI so it stays sharp, once.
+- Windows has no such cursor: the app draws it (`GridPreview.RotationCursor`) — three quarters of a circle
+  clockwise, its arrowhead at the top right, 32 logical px — at the monitor's DPI so it stays sharp, once per
+  size, through the eyedropper's `CreateCursor`.
 - The **green knob is not touched**: no icon drawn on it, same size, same hit area, same colours (green,
   white while hovered or dragged), same gesture (Shift snapping to 15°).
 
@@ -89,7 +91,11 @@ Every line is vertical (a position on x) or horizontal (on y), in the control's 
 - **Every line crosses the whole grid**, from edge to edge, whatever its source — grid, cell or other
   layer (Q&A #8) — clipped to the canvas.
 - Drawn in the helper indicators' dashed green over the black halo (`GuidePen`, `PaintGuideLines`), in
-  the **preview only**, while the drag lasts; gone on release.
+  the **preview only**, while the drag lasts — from its first move — and gone on release
+  (`GridPreview.PaintLayerGuides`). Another layer's line is drawn at **half** the opacity it would have
+  (`FaintGuideOpacity`). A line on the grid's edge is drawn 2 px inside it, as the cells' edge guides.
+- A **resting** axis draws no gap bar; an approaching one draws it crossing the guide at the layer's center,
+  kept inside the grid (`GapBarAt`).
 
 ### Out of Scope
 
@@ -158,6 +164,28 @@ snaps and shows guides, the wheel staying free. No open question left.
 Go given (Q&A #10): code, unit tests and documentation — no unit tests, there is no test project — in a
 worktree on `feature/layer-ergonomics`.
 
+### Iteration 5 — 2026-10-29 — 🧭 Implementation choices
+
+No rule broken. Choices the design left open:
+
+- **The rotation cursor is drawn by the app** at run time, 32 logical px (the size of a system cursor),
+  rather than shipped as a `.cur` file: sharp at every DPI, one per size, through the eyedropper's
+  `CreateCursor`.
+- **The snap keeps a raw position**: the drag moves an unsnapped center (`_layerRawX`, `_layerRawY`), and
+  the shown place is that one snapped, so a layer leaves a line as soon as the mouse is farther than 6 px —
+  the proximity model. The snapped center is still clamped inside the grid.
+- **One snap per axis**, onto the line nearest any of the three references; the lines merge within half a
+  pixel (`LayerSnap.Merge`), as the cells' stops do.
+- **The guides show from the drag's first move**, as the cells' approach does after a drag moved the image;
+  nothing at the press itself.
+- **The faint opacity is half** the normal one, at rest and while approaching.
+- **The whole preview is repainted at each move** of a drag (from the cache, cheap), the guides crossing the
+  whole grid, and once more on release to clear them.
+- **The geometry is a class of its own**, `UI/LayerSnap`, beside `PanMagnet`: the cells' magnet holds one
+  image between two edges and a center, not many lines.
+- **Not checked by hand**: the build passes and the cursor's drawing was rendered and looked at; the drag,
+  the snap and the guides are left to the user's test.
+
 ---
 
 ## Implementation Log
@@ -167,9 +195,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project |
-| README | | | |
+| Code | 4 | 2026-10-29 | Rotation cursor; placement guides (`LayerSnap`, `GridPreview.LayerGuides.cs`) |
+| Unit tests | 4 | 2026-10-29 | None: there is no test project |
+| README | 4 | 2026-10-29 | README, GLOSSARY (a *Layer guide* entry, the Layer entry), both languages; RULES § Layers |
 
 ---
 
