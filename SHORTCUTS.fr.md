@@ -129,6 +129,7 @@ Tant que ses tuiles ont le focus.
 |---|---|
 | <kbd>Enter</kbd> | OK |
 | <kbd>Escape</kbd> | Annuler, ou fermer cette liste |
+| <kbd>↑</kbd> <kbd>↓</kbd>, <kbd>PageUp</kbd> <kbd>PageDown</kbd>, <kbd>Home</kbd> <kbd>End</kbd> dans cette liste | La faire défiler |
 | <kbd>Ctrl</kbd>+<kbd>Enter</kbd> dans la description d'un preset | Enregistrer le preset — <kbd>Enter</kbd> seul commence une nouvelle ligne |
 
 ## Windows
