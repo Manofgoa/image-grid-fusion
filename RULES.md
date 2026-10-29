@@ -109,6 +109,14 @@ The Cutout effect's state holds no pixel, and its mask is computed outside `Comp
 - Its edge options, Grow and Soften, are shares of the image's **longer side**, so a bitmap rendered at
   another size looks the same.
 - On stills only (`SourceImage.CutsOut`): a content that plays has its checkbox disabled.
+- **The part left out** is transparent, or kept with one treatment — opacity, a color mask, a blur or
+  squares — built into the cut-out with it (`CutoutMask.Apply`), its strengths shares of the longer side
+  too. A new treatment is a value of `CutoutBackground`, its case in `CutoutMask.Treated`.
+- **The Pick view** and the **hover outline** are the preview's only (`GridPreview.Cutout.cs`), like the
+  crop's edit view: the whole image drawn see-through over the selected cell while the Cutout tab is
+  selected in Pick mode; the object a click would pick outlined in the helper color while Pick is armed —
+  one decode at a time, the last cursor place decoded next, the outline placed by `Compositor.DrawCell`
+  with the image's look.
 - **The cutout engine is never shipped**: IS-Net (the subject) and MobileSAM (a click),
   `Imaging/CutoutEngineFiles`, downloaded in one go into **`cutout-engine\` next to the exe** from
   pinned URLs, each checked against its SHA-256 (`DirectEngineDownload`) — offered when the effect is
