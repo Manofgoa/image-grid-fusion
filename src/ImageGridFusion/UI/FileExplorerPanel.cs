@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using ImageGridFusion.Composition;
 using ImageGridFusion.Explorer;
@@ -292,9 +293,14 @@ internal sealed partial class FileExplorerPanel : Panel
     // The image content analysis (workfiles/20261027-image-content-analysis.md): the embeddings, the ⚙
     // settings, the engines' downloads; the text model loaded for the searches and released when unused;
     // the query whose embedding is known, and the one being computed; the image a similar images search
-    // started from.
+    // started from. How far a result must stand out (the ⚙ level), the vocabulary's concepts the texts' results
+    // are read against, and each image's spread over them, by its embedding
+    // (workfiles/20261029-similar-images-accuracy.md).
     private VisionIndex? _vision;
     private bool _visualAnalysis;
+    private int _similarImages = VisionSimilarity.DefaultLevel;
+    private IReadOnlyList<float[]>? _concepts;
+    private readonly ConditionalWeakTable<float[], StrongBox<VisionSimilarity.Spread>> _spreads = new();
     private bool _captions;
     private CancellationTokenSource? _visionEngineDownload;
     private CancellationTokenSource? _captionEngineDownload;
@@ -2607,7 +2613,7 @@ internal sealed partial class FileExplorerPanel : Panel
         if (this._similarClear.Visible)
         {
             rows.AddRange(this.SimilarRows(this._similarTo!));
-            this._caption.Text = $"Similar to {this._similarTo!.Name} ({rows.Count:N0})";
+            this._caption.Text = rows.Count == 0 ? $"Similar to {this._similarTo!.Name} — nothing close enough" : $"Similar to {this._similarTo!.Name} ({rows.Count:N0})";
         }
         else if (words.Length == 0)
         {
@@ -2841,7 +2847,7 @@ internal sealed partial class FileExplorerPanel : Panel
                 rows.Add(ordered[next].Row);
             }
 
-            rows.Add(new ExplorerRow(index.FullPath(match.Entry), match.Entry.Name, ContentWord: match.ContentWord, Size: match.Entry.Size));
+            rows.Add(new ExplorerRow(index.FullPath(match.Entry), match.Entry.Name, ContentWord: match.ContentWord, Size: match.Entry.Size, Closeness: Closeness(match)));
         }
 
         for (; next < ordered.Count; next++)

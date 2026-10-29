@@ -55,6 +55,8 @@ internal sealed class MainForm : Form
     // The image content analysis' group of the ⚙ menu (workfiles/20261027-image-content-analysis.md § Engine Offer).
     private readonly ToolStripMenuItem _visualCaption = new("Image content") { Enabled = false };
     private readonly ToolStripMenuItem _visualAnalysis = new("Visual analysis");
+    // How far an image found by its similarity must stand out (workfiles/20261029-similar-images-accuracy.md): a submenu of exclusive levels.
+    private readonly ToolStripMenuItem _similarImages = new("Similar images");
     private readonly ToolStripMenuItem _downloadVisionEngine = new("Download the vision engine…");
     private readonly ToolStripMenuItem _captions = new("Captions");
     private readonly ToolStripMenuItem _downloadCaptionEngine = new("Download the caption engine…");
@@ -581,6 +583,7 @@ internal sealed class MainForm : Form
         this._explorer.FaceAnalysis = AppSettings.FaceAnalysis;
         this._explorer.FaceGroupingLevel = AppSettings.FaceGrouping;
         this._explorer.VisualAnalysis = AppSettings.VisualAnalysis;
+        this._explorer.SimilarImagesLevel = AppSettings.SimilarImages;
         this._explorer.Captions = AppSettings.Captions;
         this._explorer.Mode = AppSettings.ExplorerMode;
         _explorerSplitter.Visible = _explorer.Open;
@@ -622,7 +625,7 @@ internal sealed class MainForm : Form
         this._transportTimer.Tick += (_, _) => this.RefreshTransportPosition();
         this._transportTimer.Start();
         this._toolTip.SetToolTip(this._clearButton, "Removes every image and the global effects, and brings the format back to Twitter (Ctrl+N)");
-        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, this._installYtDlpCompanions, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._downloadOcrEngine, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._downloadFaceEngine, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._downloadVisionEngine, this._captions, this._downloadCaptionEngine, this._forgetVisual, new ToolStripSeparator(), this._openAppFolder]);
+        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, this._installYtDlpCompanions, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._downloadOcrEngine, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._downloadFaceEngine, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._similarImages, this._downloadVisionEngine, this._captions, this._downloadCaptionEngine, this._forgetVisual, new ToolStripSeparator(), this._openAppFolder]);
         for (int pages = FileExplorerPanel.MinPagesPerLoad; pages <= FileExplorerPanel.MaxPagesPerLoad; pages++)
         {
             int choice = pages;
@@ -638,13 +641,16 @@ internal sealed class MainForm : Form
             this._guideApproach.DropDownItems.Add(item);
         }
 
-        string[] faceGroupingLevels = ["Very loose", "Loose", "Normal", "Strict", "Very strict"];
-        for (int level = 0; level < faceGroupingLevels.Length; level++)
+        string[] strictnessLevels = ["Very loose", "Loose", "Normal", "Strict", "Very strict"];
+        for (int level = 0; level < strictnessLevels.Length; level++)
         {
             int chosen = level;
-            var item = new ToolStripMenuItem(faceGroupingLevels[level]) { Tag = level };
+            var item = new ToolStripMenuItem(strictnessLevels[level]) { Tag = level };
             item.Click += (_, _) => this.SetFaceGrouping(chosen);
             this._faceGrouping.DropDownItems.Add(item);
+            var similar = new ToolStripMenuItem(strictnessLevels[level]) { Tag = level };
+            similar.Click += (_, _) => this.SetSimilarImages(chosen);
+            this._similarImages.DropDownItems.Add(similar);
         }
 
         this._gapBarsFrom.DropDownItems.AddRange([this._gapBarsFromCenter, this._gapBarsFromEdges]);
@@ -694,6 +700,7 @@ internal sealed class MainForm : Form
         this._forgetFaces.Click += (_, _) => this.ForgetFaces();
         this._visualAnalysis.ToolTipText = "Whether the file explorer looks at what the base folder's images and PDFs show — tags in French and English, and the images closest to a search or to another image — on this computer only; off until turned on, remembered between sessions";
         this._visualAnalysis.Click += (_, _) => this.ToggleVisualAnalysis();
+        this._similarImages.ToolTipText = "How clearly an image must stand out to be listed by Find similar images and at the end of a 💡 search — stricter shows fewer, closer images; remembered between sessions";
         this._downloadVisionEngine.ToolTipText = "Downloads the vision engine — SigLIP 2 — the visual analysis runs on; shown while it is not downloaded";
         this._downloadVisionEngine.Click += (_, _) => this.OfferVisionEngineDownload();
         this._captions.ToolTipText = "Whether the file explorer writes a sentence in English saying what every image shows, found by the search and shown in the Details view — slow: a few seconds an image; off until turned on, remembered between sessions";
@@ -2988,6 +2995,12 @@ internal sealed class MainForm : Form
         this._downloadFaceEngine.Visible = !FaceEngineFiles.IsAvailable;
         this._downloadFaceEngine.Enabled = !this._explorer.DownloadingFaceEngine;
         this._visualAnalysis.Checked = this._explorer.VisualAnalysis;
+        this._similarImages.Enabled = this._explorer.VisualAnalysis;
+        foreach (ToolStripMenuItem item in this._similarImages.DropDownItems)
+        {
+            item.Checked = (int)item.Tag! == this._explorer.SimilarImagesLevel;
+        }
+
         this._downloadVisionEngine.Visible = !VisionEngineFiles.IsAvailable;
         this._downloadVisionEngine.Enabled = !this._explorer.DownloadingVisionEngine;
         this._captions.Checked = this._explorer.Captions;
@@ -4219,6 +4232,20 @@ internal sealed class MainForm : Form
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
             this.ShowStatus($"Face grouping not remembered: {ex.Message}", error: true);
+        }
+    }
+
+    /// <summary>The ⚙ menu's Similar images: the list shown searched again at once, remembered between sessions.</summary>
+    private void SetSimilarImages(int level)
+    {
+        this._explorer.SimilarImagesLevel = level;
+        try
+        {
+            AppSettings.SaveSimilarImages(level);
+        }
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
+        {
+            this.ShowStatus($"Similar images not remembered: {ex.Message}", error: true);
         }
     }
 

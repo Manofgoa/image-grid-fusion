@@ -751,14 +751,30 @@ What the indexed images **show**, analysed offline and searched under 💡 in Fr
   pass; the Windows pass keeps them while the file is unchanged.
 - **Searched under 💡**, after every word read: the tags and the caption in two grades of their own —
   **Seen**, the query word found whole, then **Seen inside**, found inside a longer word — then the
-  **similarity tier** (`FileSearch.SimilarityTier`): the query embedded by the text model (`TextEncoder`,
-  lowercased, EOS appended, padded to 64), the **N closest images** (`SimilarCount`, 100) of the search's
-  scope not found already, the closest first — **always by score**, whatever the sort order. The text model
-  is loaded at the first search needing it and released after 5 minutes without one.
-- **Find similar images**: the same N closest to an image — from a tile's context menu, a **cell's context
-  menu** (`MainForm.ShowCellMenu`), or an image dropped onto the search box, a cell by its ✥ handle
-  included — listed in the search view, `Similar to <name>` and its × on the caption line; typing gives the
-  search back. An image without an embedding is embedded on the spot.
+  **similarity tier** (`FileSearch.SimilarityTier`): the query — the text typed, lowercased, **its accents
+  kept**, never `FileSearch.Words` — embedded by the text model (`TextEncoder`, EOS appended, padded to 64),
+  the images of the search's scope not found already that **stand out** (below), at most `SimilarCount`
+  (100), the farthest first — **always**, whatever the sort order. The text model is loaded at the first
+  search needing it and released after 5 minutes without one.
+- **Find similar images**: the images standing out for an image, **itself left out** — from a tile's context
+  menu, a **cell's context menu** (`MainForm.ShowCellMenu`), or an image dropped onto the search box, a cell
+  by its ✥ handle included — listed in the search view, `Similar to <name>` and its × on the caption line,
+  `— nothing close enough` when none stands out; typing gives the search back. An image without an
+  embedding is embedded on the spot.
+- **Standing out, never the N closest** (origin: `workfiles/20261029-similar-images-accuracy.md`): SigLIP 2's
+  cosines are high for every pair of images and low for every text, so a score is read against the
+  query's own scores over the index — `z = (score − mean) / spread` (`FileSearch.SearchSimilar`,
+  `VisionSimilarity.Spread`) — and kept from the **strictness level**'s cutoff (`VisionSimilarity.Cutoffs`),
+  an app setting of the ⚙ menu (*Similar images*, `AppSettings.SimilarImages`): Very loose, Loose,
+  **Normal** (the default), Strict, Very strict, one for both features. A **text's** result must also stand
+  out of the image's own scores for the vocabulary's concepts (`VisionTags.ConceptEmbeddings`) by the
+  cutoff plus `VisionSimilarity.TextMargin` — an image matching any text is not a match — each image's
+  spread kept with its embedding (`FileExplorerPanel.SpreadOf`). The margin is set so that nonsense
+  queries find nothing at Normal: a new reader of the similarity goes through `SearchSimilar`.
+- **The closeness** of every such result — how far it stands out, 0 % at one spread, 100 % at five
+  (`VisionSimilarity.Closeness`), the same for an image and a text, never the raw cosine — is carried by
+  `ExplorerRow.Closeness` and shown on the tile (a dark label at its bottom left), before the size in the
+  Details row, and in the tooltip.
 - **The tile's tooltip shows what the index holds** of a file (`ThumbnailGrid.IndexedContent`,
   `FileExplorerPanel.IndexedContentOf`), after its path: 💡 the caption, 🏷 the tags concept by concept
   (`VisionTags.ConceptSeparator`, a word the same in both languages written once), 📝 the beginning of the

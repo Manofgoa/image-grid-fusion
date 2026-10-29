@@ -71,6 +71,12 @@ internal sealed class VisionTags
     /// <summary>Whether every concept has its embedding.</summary>
     public bool Embedded => this._concepts.All(c => c.Embedding is not null);
 
+    /// <summary>
+    /// The concepts' embeddings — those embedded — a broad set of texts each image is read against, so a
+    /// text search tells an image matching its text from one matching any text (<see cref="VisionSimilarity"/>).
+    /// </summary>
+    public IReadOnlyList<float[]> ConceptEmbeddings => [.. this._concepts.Where(c => c.Embedding is not null).Select(c => c.Embedding!)];
+
     /// <summary>The vocabulary shipped, then the user's additions — a line it cannot read skipped, a missing file none.</summary>
     public static VisionTags Load()
     {

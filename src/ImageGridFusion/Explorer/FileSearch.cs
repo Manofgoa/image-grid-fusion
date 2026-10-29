@@ -195,23 +195,59 @@ internal static class FileSearch
     public static int SimilarityTier(int words) => PersonTier(words) + 1 + (int)ContentGrade.SeenInside + 1;
 
     /// <summary>
-    /// The <paramref name="count"/> entries whose embedding — given by <paramref name="embeddingOf"/>, null
-    /// for none — is the closest to <paramref name="query"/>, the closest first, those in
-    /// <paramref name="excluded"/> left out; each in the similarity tier for <paramref name="words"/> query words.
+    /// At most <paramref name="count"/> entries whose embedding — given by <paramref name="embeddingOf"/>,
+    /// null for none — stands out of the query's scores over every entry by <paramref name="cutoff"/> spreads,
+    /// those in <paramref name="excluded"/> left out; each in the similarity tier for <paramref name="words"/>
+    /// query words. For a text query, <paramref name="spreadOf"/> gives each image's spread over the
+    /// vocabulary's concepts: it must also stand out of it by the cutoff plus
+    /// <see cref="VisionSimilarity.TextMargin"/>, and that is how far it stands out. The farthest first.
+    /// See workfiles/20261029-similar-images-accuracy.md.
     /// </summary>
-    public static IReadOnlyList<SearchMatch> SearchSimilar(IReadOnlyList<IndexEntry> entries, Func<IndexEntry, float[]?> embeddingOf, float[] query, int count, int words, IReadOnlySet<IndexEntry>? excluded = null)
+    public static IReadOnlyList<SearchMatch> SearchSimilar(IReadOnlyList<IndexEntry> entries, Func<IndexEntry, float[]?> embeddingOf, float[] query, int count, int words, float cutoff, IReadOnlySet<IndexEntry>? excluded = null, Func<IndexEntry, float[], VisionSimilarity.Spread>? spreadOf = null)
     {
-        var scored = new List<(IndexEntry Entry, float Score)>();
+        var scored = new List<(IndexEntry Entry, float[] Embedding, float Score)>();
+        double sum = 0, squares = 0;
         foreach (var entry in entries)
         {
-            if ((excluded is null || !excluded.Contains(entry)) && embeddingOf(entry) is { } embedding)
+            if (embeddingOf(entry) is { } embedding)
             {
-                scored.Add((entry, Embeddings.Dot(embedding, query)));
+                float score = Embeddings.Dot(embedding, query);
+                scored.Add((entry, embedding, score));
+                sum += score;
+                squares += (double)score * score;
             }
         }
 
+        if (scored.Count == 0)
+        {
+            return [];
+        }
+
+        double mean = sum / scored.Count;
+        var spread = new VisionSimilarity.Spread((float)mean, (float)Math.Sqrt(Math.Max(0, squares / scored.Count - mean * mean)));
+        var kept = new List<(IndexEntry Entry, float Score, float Standing)>();
+        foreach (var (entry, embedding, score) in scored)
+        {
+            float standing = spread.Of(score);
+            if (standing < cutoff || (excluded is not null && excluded.Contains(entry)))
+            {
+                continue;
+            }
+
+            if (spreadOf is not null)
+            {
+                standing = spreadOf(entry, embedding).Of(score);
+                if (standing < cutoff + VisionSimilarity.TextMargin)
+                {
+                    continue;
+                }
+            }
+
+            kept.Add((entry, score, standing));
+        }
+
         int tier = SimilarityTier(words);
-        return scored.OrderByDescending(s => s.Score).Take(count).Select(s => new SearchMatch(s.Entry, null, tier, s.Score)).ToArray();
+        return kept.OrderByDescending(s => s.Standing).Take(count).Select(s => new SearchMatch(s.Entry, null, tier, s.Score, s.Standing)).ToArray();
     }
 
     /// <summary>How well an entry matches; lower compares first.</summary>
@@ -340,9 +376,10 @@ internal sealed class IndexEntry
 /// An entry the search found; <paramref name="ContentWord"/>: the first query word found in its content
 /// text only — null when its path holds every word, or it was found by its similarity. <paramref name="Tier"/>:
 /// its relevance tier, lower first — the order a search keeps whatever the sort drop-down says, comparable
-/// with a preset's. <paramref name="Similarity"/>: how close its image is to the query, for an entry found so.
+/// with a preset's. <paramref name="Similarity"/>: how close its image is to the query, for an entry found so;
+/// <paramref name="Standing"/>: how far that stands out, in spreads (<see cref="VisionSimilarity"/>).
 /// </summary>
-internal readonly record struct SearchMatch(IndexEntry Entry, string? ContentWord, int Tier = 0, float? Similarity = null)
+internal readonly record struct SearchMatch(IndexEntry Entry, string? ContentWord, int Tier = 0, float? Similarity = null, float? Standing = null)
 {
     /// <summary>Whether the entry was found thanks to its content text.</summary>
     public bool ByContent => this.ContentWord is not null;

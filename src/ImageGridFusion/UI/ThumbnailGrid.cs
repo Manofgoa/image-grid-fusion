@@ -18,9 +18,10 @@ namespace ImageGridFusion.UI;
 /// <paramref name="GroupId"/>, a face group's tile — its best face's file in <paramref name="FullPath"/>,
 /// its files counted in <paramref name="Count"/>; <paramref name="Face"/>, the face whose picture the tile
 /// shows, cut out of the file; <paramref name="FaceKey"/>, the face the tile stands for — dragged onto a
-/// group, removed from one.
+/// group, removed from one. <paramref name="Closeness"/>: for an image found by its similarity, how far it
+/// stands out of the others, 0 to 1 (<see cref="VisionSimilarity.Closeness"/>).
 /// </summary>
-internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false, string? ContentWord = null, long? Size = null, int? Count = null, EffectPreset? Preset = null, string? DescriptionWord = null, string? GroupId = null, RectangleF? Face = null, string? FaceKey = null)
+internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false, string? ContentWord = null, long? Size = null, int? Count = null, EffectPreset? Preset = null, string? DescriptionWord = null, string? GroupId = null, RectangleF? Face = null, string? FaceKey = null, float? Closeness = null)
 {
     /// <summary>What tells a tile from the others: a file's presets share its path, and its faces.</summary>
     public string Key => this.GroupId is { } group ? "group:" + group : this.FaceKey ?? this.Preset?.Id ?? this.FullPath;
@@ -34,9 +35,13 @@ internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder =
     /// <summary>What its picture is asked for by: its file's thumbnail, or a face cut out of it.</summary>
     public string ThumbnailKey => this.Face is { } face ? FaceCrops.Key(this.FullPath, face) : this.FullPath;
 
-    /// <summary>The tile's tooltip: its path, after a preset's description; a group's name and files.</summary>
+    /// <summary>The tile's tooltip: its path, after a preset's description, then its closeness; a group's name and files.</summary>
     public string Tip => this.IsGroup ? $"{this.Name}\n{(this.Count == 1 ? "1 file" : $"{this.Count:N0} files")}"
-        : this.Preset is { Description.Length: > 0 } preset ? $"{preset.Description.Trim()}\n\n{this.FullPath}" : this.FullPath;
+        : (this.Preset is { Description.Length: > 0 } preset ? $"{preset.Description.Trim()}\n\n{this.FullPath}" : this.FullPath)
+            + (this.ClosenessText is { } closeness ? $"\n≈ {closeness} close" : "");
+
+    /// <summary>The closeness as shown — <c>87 %</c> — for an image found by its similarity; null for any other row.</summary>
+    public string? ClosenessText => this.Closeness is { } closeness ? $"{Math.Round(closeness * 100):0} %" : null;
 
     /// <summary>The name with the file count after it, as a Details row shows a folder.</summary>
     public string NameAndCount => this.Count is { } count ? $"{this.Name} ({count:N0})" : this.Name;
@@ -926,7 +931,8 @@ internal sealed class ThumbnailGrid : ScrollableControl
         int nameWidth = width;
         if (row.IsFile)
         {
-            string size = FileSizes.Text(this.SizeOf(row));
+            // An image found by its similarity shows its closeness before its size.
+            string size = row.ClosenessText is { } closeness ? $"{closeness} · {FileSizes.Text(this.SizeOf(row))}" : FileSizes.Text(this.SizeOf(row));
             int sizeWidth = TextRenderer.MeasureText(g, size, this._nameFont, Size.Empty, LineFlags).Width;
             TextRenderer.DrawText(g, size, this._nameFont, line, SystemColors.GrayText, LineFlags | TextFormatFlags.Right);
             nameWidth = Math.Max(0, width - sizeWidth - this.GapPx);
@@ -1203,6 +1209,27 @@ internal sealed class ThumbnailGrid : ScrollableControl
                 BulbColor,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         }
+
+        // An image found by its similarity: its closeness in a dark label at its bottom left, the Details
+        // row writing it before the size (workfiles/20261029-similar-images-accuracy.md § Closeness Shown).
+        if (!this.Details && row.ClosenessText is { } closeness)
+        {
+            this.PaintCornerLabel(g, closeness, tile, right: false);
+        }
+    }
+
+    /// <summary>A short text in a dark label at a bottom corner of a picture: a group's file count, a result's closeness.</summary>
+    private void PaintCornerLabel(Graphics g, string text, Rectangle picture, bool right)
+    {
+        const TextFormatFlags Flags = TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding;
+        var size = TextRenderer.MeasureText(g, text, this._nameFont, Size.Empty, Flags);
+        int pad = this.LogicalToDeviceUnits(3);
+        int inset = this.LogicalToDeviceUnits(MedallionInset);
+        int x = right ? picture.Right - inset - size.Width - 2 * pad : picture.X + inset;
+        var label = new Rectangle(x, picture.Bottom - inset - size.Height - pad, size.Width + 2 * pad, size.Height + pad);
+        using var fill = new SolidBrush(Color.FromArgb(200, 24, 24, 24));
+        g.FillRectangle(fill, label);
+        TextRenderer.DrawText(g, text, this._nameFont, label, Color.White, Flags | TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
     }
 
     /// <summary>
@@ -1242,15 +1269,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
         if (row.Count is { } count)
         {
-            string text = FileCount(count);
-            const TextFormatFlags Flags = TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding;
-            var size = TextRenderer.MeasureText(g, text, this._nameFont, Size.Empty, Flags);
-            int pad = this.LogicalToDeviceUnits(3);
-            int inset = this.LogicalToDeviceUnits(MedallionInset);
-            var label = new Rectangle(picture.Right - inset - size.Width - 2 * pad, picture.Bottom - inset - size.Height - pad, size.Width + 2 * pad, size.Height + pad);
-            using var fill = new SolidBrush(Color.FromArgb(200, 24, 24, 24));
-            g.FillRectangle(fill, label);
-            TextRenderer.DrawText(g, text, this._nameFont, label, Color.White, Flags | TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            this.PaintCornerLabel(g, FileCount(count), picture, right: true);
         }
 
         this.PaintDropTarget(g, row, picture);
