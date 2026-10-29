@@ -308,6 +308,11 @@ none says the thing; the arrows and symbols as emoji where one exists. The contr
 preview approved as shown: § Other Controls. `RULES.md` § Menus widens to every control, the
 criterion now emoji first.
 
+### Iteration 9 — 2026-10-29 — ✅ Implemented — Every control, emoji first
+
+Go given for the adjustment: code, tests and documentation, in a new worktree
+(`.claude/worktrees/control-icons`, branch `feature/control-icons`, from `feature/menu-icons`).
+
 ---
 
 ## Implementation Log
@@ -342,7 +347,7 @@ criterion now emoji first.
 | 14 | Adjustment: the icons the app already draws (tabs, Reset, layer list…): kept or replaced? | Replaced where an emoji fits — validated first on a preview | 2026-10-29 |
 | 15 | Adjustment: the arrows and symbols (▾ » « × ▦ ☰ ↓): text or emoji? | Emoji where one exists | 2026-10-29 |
 | 16 | Adjustment: the preview of every control's icon (emoji, or the drawing kept): approved? | Approved as shown | 2026-10-29 |
-| 17 | Go for the adjustment? | | 2026-10-29 |
+| 17 | Go for the adjustment? | Code, tests and documentation, in a new worktree | 2026-10-29 |
 
 ---
 
