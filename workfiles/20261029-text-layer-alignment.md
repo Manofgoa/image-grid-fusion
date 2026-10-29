@@ -175,6 +175,20 @@ de lignes sont calculés au sein de cette surface. »*
   working surface**, the lines **wrapped within it**.
 - Design questions asked before any code: Q&A 8–13.
 
+### Iteration 6 — 2026-10-29 — ⚙️ Post-implementation — Alignment kept, a size mode apart
+
+The user, answering Q&A 8, takes back part of Iteration 5: *« Centrée mais en fait je me suis trompé,
+on doit pouvoir aligner à gauche/droite même sans taille de boîte ! Il faut une option pour déterminer
+si la taille est automatique ou avec une taille de boîte. »*
+
+- **No `None` alignment**: the four alignments stay as delivered, Center by default, and apply with or
+  without a box.
+- A **size option** apart from the alignment: **Automatic** — the box fits the text, as delivered — or
+  **Box** — the text block of Iteration 5: a size of its own, resized on the working surface, the lines
+  wrapped within it.
+- Q&A 9–11 were answered "see previous answer": they concerned the block, now the Box mode, and are
+  asked again for it (Q&A 14–18).
+
 ---
 
 ## Implementation Log
@@ -204,12 +218,17 @@ Questions asked by the agent during design, with user responses.
 | 5 | *(given by the user, unasked)* Default alignment | Center | 2026-10-29 |
 | 6 | Justified: what ends a paragraph — a blank line, or the end of the text only? | A blank line | 2026-10-29 |
 | 7 | Justified: a line without a space — left-aligned, or its letters spread? | Left-aligned | 2026-10-29 |
-| 8 | None: how do the lines stand within the text? | | 2026-10-29 |
-| 9 | The block: its width only, or its width and height? | | 2026-10-29 |
-| 10 | The block's width when an alignment is chosen? | | 2026-10-29 |
-| 11 | Justified with wrapping: what ends a paragraph? | | 2026-10-29 |
-| 12 | A word longer than the block? | | 2026-10-29 |
-| 13 | The alignment and the block: in the text style, or on the layer? | | 2026-10-29 |
+| 8 | None: how do the lines stand within the text? | Centered — then: no None; the alignment works without a box too, a separate option chooses an automatic size or a box size (Iteration 6) | 2026-10-29 |
+| 9 | The block: its width only, or its width and height? | "See previous answer" — asked again as Q&A 14 | 2026-10-29 |
+| 10 | The block's width when an alignment is chosen? | "See previous answer" — asked again as Q&A 15 | 2026-10-29 |
+| 11 | Justified with wrapping: what ends a paragraph? | "See previous answer" — asked again as Q&A 16 | 2026-10-29 |
+| 12 | A word longer than the block? | Not asked — asked as Q&A 17 | 2026-10-29 |
+| 13 | The alignment and the block: in the text style, or on the layer? | Not asked — asked as Q&A 18 | 2026-10-29 |
+| 14 | Box mode: resized by its width only, or its width and height? | | 2026-10-29 |
+| 15 | Box mode: the box's size when it is turned on? | | 2026-10-29 |
+| 16 | Box mode, justified: what ends a paragraph? | | 2026-10-29 |
+| 17 | Box mode: a word longer than the box? | | 2026-10-29 |
+| 18 | The size mode and the box: in the text style, or on the layer? | | 2026-10-29 |
 
 ---
 
