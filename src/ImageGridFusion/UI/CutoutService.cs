@@ -88,6 +88,60 @@ internal sealed class CutoutService : IDisposable
         }
     }
 
+    /// <summary>
+    /// The object a pick of <paramref name="points"/> would keep in <paramref name="image"/>, at half the
+    /// size MobileSAM reads it at — what the hover outlines (workfiles/20261029-cutout.md § Hover
+    /// Outline). The image's embedding is read first when it has none; without a point, that is all, and
+    /// the result <c>null</c>, as when the engine is missing or fails.
+    /// </summary>
+    public async Task<CutoutMask?> PreviewAsync(SourceImage image, IReadOnlyList<CutoutPoint> points)
+    {
+        if (this._disposed || !CutoutEngineFiles.IsAvailable)
+        {
+            return null;
+        }
+
+        await this._gate.WaitAsync();
+        try
+        {
+            if (this._disposed || image.IsDisposed || !image.CutsOut)
+            {
+                return null;
+            }
+
+            int page = image.Page;
+            var embedding = image.PickEmbedding is { } kept && kept.Page == page ? kept : null;
+            using var copy = embedding is null ? new Bitmap(image.Bitmap) : null;
+            try
+            {
+                var (read, mask) = await Task.Run(() =>
+                {
+                    this._engine ??= new CutoutEngine();
+                    var read = embedding ?? this._engine.Embed(copy!, page);
+                    return (read, points.Count == 0 ? null : this._engine.Pick(read, points, scale: 0.5));
+                });
+                if (!image.IsDisposed && image.Page == page)
+                {
+                    image.PickEmbedding = read;
+                }
+
+                return mask;
+            }
+            catch (Exception e) when (e is Microsoft.ML.OnnxRuntime.OnnxRuntimeException or OutOfMemoryException or IOException or UnauthorizedAccessException or DllNotFoundException or ArgumentException)
+            {
+                return null;
+            }
+            finally
+            {
+                this._usedAt = Environment.TickCount64;
+            }
+        }
+        finally
+        {
+            this._gate.Release();
+        }
+    }
+
     public void Dispose()
     {
         this._disposed = true;

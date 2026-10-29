@@ -94,14 +94,16 @@ internal sealed class CutoutEngine : IDisposable
 
     /// <summary>
     /// The object under <paramref name="points"/> — the included ones on it, the others off it — at the
-    /// size the image was read at. One point: the best of the multi-mask decoder's four; several: the
-    /// single-mask decoder, as Segment Anything advises.
+    /// size the image was read at times <paramref name="scale"/>: a hover's outline asks for less. One
+    /// point: the best of the multi-mask decoder's four; several: the single-mask decoder, as Segment
+    /// Anything advises.
     /// </summary>
-    public CutoutMask Pick(PickEmbedding embedding, IReadOnlyList<CutoutPoint> points)
+    public CutoutMask Pick(PickEmbedding embedding, IReadOnlyList<CutoutPoint> points, double scale = 1)
     {
         bool single = points.Count > 1;
         var decoder = single ? (this._single ??= Load(CutoutEngineFiles.PickSingle)) : (this._multi ??= Load(CutoutEngineFiles.PickMulti));
         var read = embedding.Read;
+        var size = new Size(Math.Max(1, (int)Math.Round(read.Width * scale)), Math.Max(1, (int)Math.Round(read.Height * scale)));
 
         // A padding point closes the prompt when no box is given.
         var coords = new DenseTensor<float>([1, points.Count + 1, 2]);
@@ -121,7 +123,7 @@ internal sealed class CutoutEngine : IDisposable
             NamedOnnxValue.CreateFromTensor("point_labels", labels),
             NamedOnnxValue.CreateFromTensor("mask_input", new DenseTensor<float>([1, 1, MaskInputSide, MaskInputSide])),
             NamedOnnxValue.CreateFromTensor("has_mask_input", new DenseTensor<float>(new float[] { 0 }, [1])),
-            NamedOnnxValue.CreateFromTensor("orig_im_size", new DenseTensor<float>(new float[] { read.Height, read.Width }, [2])),
+            NamedOnnxValue.CreateFromTensor("orig_im_size", new DenseTensor<float>(new float[] { size.Height, size.Width }, [2])),
         };
         using var results = decoder.Run(inputs);
         var masks = results.First(r => r.Name == "masks").AsTensor<float>();
@@ -132,16 +134,16 @@ internal sealed class CutoutEngine : IDisposable
             best = scores[0, m] > scores[0, best] ? m : best;
         }
 
-        var alpha = new byte[read.Width * read.Height];
-        for (int y = 0; y < read.Height; y++)
+        // The best mask's plane, read straight from the buffer: the tensor's indexer is slow per pixel.
+        int plane = masks.Dimensions[2] * masks.Dimensions[3];
+        var values = masks.ToArray();
+        var alpha = new byte[plane];
+        for (int i = 0; i < plane; i++)
         {
-            for (int x = 0; x < read.Width; x++)
-            {
-                alpha[y * read.Width + x] = Opacity(masks[0, best, y, x]);
-            }
+            alpha[i] = Opacity(values[best * plane + i]);
         }
 
-        return new CutoutMask(read.Width, read.Height, alpha);
+        return new CutoutMask(masks.Dimensions[3], masks.Dimensions[2], alpha);
     }
 
     private static InferenceSession Load(string model)
