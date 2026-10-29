@@ -19,7 +19,7 @@ internal static class VisionSimilarity
     public const int DefaultLevel = 2;
 
     /// <summary>What a text's result needs above the cutoff against the image's concepts: a nonsense query finds nothing at Normal.</summary>
-    public const float TextMargin = 1.0f;
+    public const float TextMargin = 2.5f;
 
     // How far a result stands out at 0 % of closeness, and at 100 %.
     private const float NoCloseness = 1f;
