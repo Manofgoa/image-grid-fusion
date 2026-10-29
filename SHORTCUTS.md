@@ -109,7 +109,7 @@ While its tiles have the focus.
 | <kbd>Backspace</kbd>, <kbd>Alt</kbd>+<kbd>↑</kbd> | Go to the parent folder |
 | <kbd>F2</kbd> | Rename the selected group, in the People view |
 | <kbd>Ctrl</kbd>+<kbd>C</kbd> | Copy the selected file |
-| <kbd>Ctrl</kbd>+<kbd>Wheel</kbd> | Larger or smaller tiles |
+| <kbd>Ctrl</kbd>+<kbd>Wheel</kbd> | Larger or smaller tiles, 15 % a notch |
 | <kbd>Wheel</kbd> | Scroll the list |
 
 ## Search Box and URL Zone

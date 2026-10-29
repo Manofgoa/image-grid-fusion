@@ -110,7 +110,7 @@ Tant que ses tuiles ont le focus.
 | <kbd>Backspace</kbd>, <kbd>Alt</kbd>+<kbd>↑</kbd> | Aller au dossier parent |
 | <kbd>F2</kbd> | Renommer le groupe sélectionné, dans la vue Personnes |
 | <kbd>Ctrl</kbd>+<kbd>C</kbd> | Copier le fichier sélectionné |
-| <kbd>Ctrl</kbd>+<kbd>Molette</kbd> | Tuiles plus grandes ou plus petites |
+| <kbd>Ctrl</kbd>+<kbd>Molette</kbd> | Tuiles plus grandes ou plus petites, 15 % par cran |
 | <kbd>Molette</kbd> | Faire défiler la liste |
 
 ## Zone de recherche et zone URL
