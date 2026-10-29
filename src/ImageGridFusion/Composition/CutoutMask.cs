@@ -29,7 +29,8 @@ public sealed class CutoutMask
     /// <summary>
     /// <paramref name="source"/> cut out by the mask: a new bitmap, its alpha multiplied by the mask —
     /// stretched to its size, its edge grown or eaten, softened and inverted as <paramref name="edges"/>
-    /// says, each a share of the longer side, so a bitmap rendered at another size looks the same.
+    /// says, each a share of the longer side, so a bitmap rendered at another size looks the same — or,
+    /// with a background kept, the part left out treated under the part kept.
     /// </summary>
     public Bitmap Apply(Bitmap source, CutoutEffect edges)
     {
@@ -60,44 +61,233 @@ public sealed class CutoutMask
             }
         }
 
-        var cut = new Bitmap(width, height, PixelFormat.Format32bppArgb);
-        var area = new Rectangle(0, 0, width, height);
-        var read = source.LockBits(area, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
-        try
+        var pixels = Pixels(source);
+        if (edges.Background == CutoutBackground.Transparent)
         {
-            var write = cut.LockBits(area, ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
-            try
+            for (int i = 0; i < mask.Length; i++)
             {
-                var row = new byte[width * 4];
-                for (int y = 0; y < height; y++)
-                {
-                    Marshal.Copy(read.Scan0 + y * read.Stride, row, 0, row.Length);
-                    int at = y * width;
-                    for (int x = 0; x < width; x++)
-                    {
-                        int alpha = x * 4 + 3;
-                        row[alpha] = (byte)((row[alpha] * mask[at + x] + 127) / 255);
-                    }
-
-                    Marshal.Copy(row, 0, write.Scan0 + y * write.Stride, row.Length);
-                }
-            }
-            finally
-            {
-                cut.UnlockBits(write);
+                pixels[i * 4 + 3] = (byte)((pixels[i * 4 + 3] * mask[i] + 127) / 255);
             }
         }
-        catch
+        else
         {
-            cut.Dispose();
-            throw;
+            Mix(pixels, Treated(pixels, width, height, edges), mask);
+        }
+
+        var cut = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+        var write = cut.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
+        try
+        {
+            for (int y = 0; y < height; y++)
+            {
+                Marshal.Copy(pixels, y * width * 4, write.Scan0 + y * write.Stride, width * 4);
+            }
+        }
+        finally
+        {
+            cut.UnlockBits(write);
+        }
+
+        return cut;
+    }
+
+    // The pixels of a bitmap — blue, green, red, alpha — row after row.
+    private static byte[] Pixels(Bitmap source)
+    {
+        int width = source.Width, height = source.Height;
+        var pixels = new byte[width * height * 4];
+        var read = source.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+        try
+        {
+            for (int y = 0; y < height; y++)
+            {
+                Marshal.Copy(read.Scan0 + y * read.Stride, pixels, y * width * 4, width * 4);
+            }
         }
         finally
         {
             source.UnlockBits(read);
         }
 
-        return cut;
+        return pixels;
+    }
+
+    /// <summary>
+    /// The image as the part left out shows it (workfiles/20261029-cutout.md § The Background Kept):
+    /// see-through, under a color, blurred or in squares — the blur and the squares averaged with the
+    /// colors weighted by their alpha, so a transparent pixel lends no color.
+    /// </summary>
+    private static byte[] Treated(byte[] pixels, int width, int height, CutoutEffect effect)
+    {
+        var treated = (byte[])pixels.Clone();
+        int longer = Math.Max(width, height);
+        switch (effect.Background)
+        {
+            case CutoutBackground.Opacity:
+                for (int i = 3; i < treated.Length; i += 4)
+                {
+                    treated[i] = (byte)Math.Round(treated[i] * effect.Amount);
+                }
+
+                break;
+            case CutoutBackground.Color:
+                int amount = (int)Math.Round(effect.Amount * 255);
+                byte[] color = [effect.Color.B, effect.Color.G, effect.Color.R];
+                for (int i = 0; i < treated.Length; i += 4)
+                {
+                    for (int c = 0; c < 3; c++)
+                    {
+                        treated[i + c] = (byte)((treated[i + c] * (255 - amount) + color[c] * amount + 127) / 255);
+                    }
+                }
+
+                break;
+            case CutoutBackground.Blur:
+                // Three box blurs come close to a gaussian; their radii add up to the strength.
+                int radius = (int)Math.Round(effect.Amount * CutoutEffect.MaxBlur * longer / 3);
+                if (radius > 0)
+                {
+                    Premultiply(treated);
+                    for (int pass = 0; pass < 3; pass++)
+                    {
+                        BoxBlurColors(treated, width, height, radius);
+                    }
+
+                    Unpremultiply(treated);
+                }
+
+                break;
+            case CutoutBackground.Pixelate:
+                Pixelate(treated, width, height, Math.Max(2, (int)Math.Round(effect.Amount * CutoutEffect.MaxPixel * longer)));
+                break;
+        }
+
+        return treated;
+    }
+
+    /// <summary>The kept part over the treated one, mixed by the mask, their colors weighted by their alpha: <paramref name="pixels"/> becomes the result.</summary>
+    private static void Mix(byte[] pixels, byte[] treated, byte[] mask)
+    {
+        for (int i = 0; i < mask.Length; i++)
+        {
+            int at = i * 4;
+            int keptAlpha = pixels[at + 3] * mask[i];
+            int leftAlpha = treated[at + 3] * (255 - mask[i]);
+            int alpha = keptAlpha + leftAlpha;
+            if (alpha == 0)
+            {
+                pixels[at + 3] = 0;
+                continue;
+            }
+
+            for (int c = 0; c < 3; c++)
+            {
+                pixels[at + c] = (byte)((pixels[at + c] * keptAlpha + treated[at + c] * leftAlpha + alpha / 2) / alpha);
+            }
+
+            pixels[at + 3] = (byte)((alpha + 127) / 255);
+        }
+    }
+
+    private static void Premultiply(byte[] pixels)
+    {
+        for (int i = 0; i < pixels.Length; i += 4)
+        {
+            int alpha = pixels[i + 3];
+            for (int c = 0; c < 3; c++)
+            {
+                pixels[i + c] = (byte)((pixels[i + c] * alpha + 127) / 255);
+            }
+        }
+    }
+
+    private static void Unpremultiply(byte[] pixels)
+    {
+        for (int i = 0; i < pixels.Length; i += 4)
+        {
+            int alpha = pixels[i + 3];
+            for (int c = 0; c < 3; c++)
+            {
+                pixels[i + c] = alpha == 0 ? (byte)0 : (byte)Math.Min(255, (pixels[i + c] * 255 + alpha / 2) / alpha);
+            }
+        }
+    }
+
+    // Each channel of every pixel the mean of the square of radius around it, the edges repeated: rows then columns.
+    private static void BoxBlurColors(byte[] pixels, int width, int height, int radius)
+    {
+        int longest = Math.Max(width, height);
+        var line = new byte[longest];
+        var blurred = new byte[longest];
+        for (int c = 0; c < 4; c++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    line[x] = pixels[(y * width + x) * 4 + c];
+                }
+
+                BoxBlur1D(line, blurred, width, radius);
+                for (int x = 0; x < width; x++)
+                {
+                    pixels[(y * width + x) * 4 + c] = blurred[x];
+                }
+            }
+
+            for (int x = 0; x < width; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    line[y] = pixels[(y * width + x) * 4 + c];
+                }
+
+                BoxBlur1D(line, blurred, height, radius);
+                for (int y = 0; y < height; y++)
+                {
+                    pixels[(y * width + x) * 4 + c] = blurred[y];
+                }
+            }
+        }
+    }
+
+    // Squares of side, each the mean of its pixels, the colors weighted by their alpha.
+    private static void Pixelate(byte[] pixels, int width, int height, int side)
+    {
+        var mean = new byte[4];
+        for (int top = 0; top < height; top += side)
+        {
+            for (int left = 0; left < width; left += side)
+            {
+                int bottom = Math.Min(top + side, height), right = Math.Min(left + side, width);
+                long b = 0, g = 0, r = 0, a = 0;
+                for (int y = top; y < bottom; y++)
+                {
+                    for (int x = left; x < right; x++)
+                    {
+                        int at = (y * width + x) * 4;
+                        int alpha = pixels[at + 3];
+                        b += pixels[at] * alpha;
+                        g += pixels[at + 1] * alpha;
+                        r += pixels[at + 2] * alpha;
+                        a += alpha;
+                    }
+                }
+
+                int count = (bottom - top) * (right - left);
+                mean[0] = a == 0 ? (byte)0 : (byte)(b / a);
+                mean[1] = a == 0 ? (byte)0 : (byte)(g / a);
+                mean[2] = a == 0 ? (byte)0 : (byte)(r / a);
+                mean[3] = (byte)(a / count);
+                for (int y = top; y < bottom; y++)
+                {
+                    for (int x = left; x < right; x++)
+                    {
+                        Array.Copy(mean, 0, pixels, (y * width + x) * 4, 4);
+                    }
+                }
+            }
+        }
     }
 
     /// <summary>The mask stretched to <paramref name="width"/> × <paramref name="height"/>, bilinear.</summary>

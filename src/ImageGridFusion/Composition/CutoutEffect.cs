@@ -10,6 +10,16 @@ public enum CutoutMode
     Picked,
 }
 
+/// <summary>What becomes of the part of the image the Cutout leaves out: transparent, or kept with one treatment.</summary>
+public enum CutoutBackground
+{
+    Transparent,
+    Opacity,
+    Color,
+    Blur,
+    Pixelate,
+}
+
 /// <summary>
 /// A point clicked on the image to pick an object, in fractions of the image as loaded — before any
 /// rotation, flip or crop — so the pick survives them; <see cref="Included"/> while it marks the object,
@@ -29,6 +39,10 @@ public sealed record CutoutEffect
     /// <summary>The farthest the edge grows or is eaten, and the widest it softens: a share of the image's longer side.</summary>
     public const double MaxEdge = 0.02;
 
+    /// <summary>The strongest blur of the part left out — the gaussian's radius — and the side of its largest squares: shares of the image's longer side.</summary>
+    public const double MaxBlur = 0.03;
+    public const double MaxPixel = 0.08;
+
     /// <summary>The main subject, its edge as the model gives it.</summary>
     public static readonly CutoutEffect Default = new();
 
@@ -45,6 +59,18 @@ public sealed record CutoutEffect
 
     /// <summary>Keeps what the mask leaves out instead.</summary>
     public bool Invert { get; private init; }
+
+    /// <summary>What becomes of the part the mask leaves out: transparent, or kept with a treatment.</summary>
+    public CutoutBackground Background { get; private init; } = CutoutBackground.Transparent;
+
+    /// <summary>
+    /// From 0 to 1, the treatment's amount: the part left out's opacity, the color's opacity over it, the
+    /// blur's strength or the squares' side.
+    /// </summary>
+    public double Amount { get; private init; } = 0.5;
+
+    /// <summary>The color masking the part left out, under <see cref="CutoutBackground.Color"/>.</summary>
+    public Color Color { get; private init; } = Color.Black;
 
     /// <summary>What the model's mask depends on — the mode and the points — the edge options aside: two effects with the same key share a mask.</summary>
     public string MaskKey => this.Mode == CutoutMode.Subject
@@ -69,12 +95,19 @@ public sealed record CutoutEffect
 
     public CutoutEffect WithInvert(bool invert) => this with { Invert = invert };
 
+    public CutoutEffect WithBackground(CutoutBackground background) => this with { Background = background };
+
+    public CutoutEffect WithAmount(double amount) => this with { Amount = Math.Clamp(amount, 0, 1) };
+
+    public CutoutEffect WithColor(Color color) => this with { Color = Color.FromArgb(255, color) };
+
     // The points compared by value: a record compares a list by reference.
     public bool Equals(CutoutEffect? other) =>
         other is not null && this.Mode == other.Mode && this.Grow == other.Grow && this.Soften == other.Soften
-        && this.Invert == other.Invert && this.Points.SequenceEqual(other.Points);
+        && this.Invert == other.Invert && this.Background == other.Background && this.Amount == other.Amount
+        && this.Color.ToArgb() == other.Color.ToArgb() && this.Points.SequenceEqual(other.Points);
 
-    public override int GetHashCode() => HashCode.Combine(this.Mode, this.Points.Count, this.Grow, this.Soften, this.Invert);
+    public override int GetHashCode() => HashCode.Combine(this.Mode, this.Points.Count, this.Grow, this.Soften, this.Invert, this.Background, this.Amount, this.Color.ToArgb());
 
     /// <summary>Its settings as an effect preset saves them (<see cref="LookPreset"/>): the points in fractions of the image as loaded.</summary>
     internal JsonObject ToJson()
@@ -93,6 +126,9 @@ public sealed record CutoutEffect
             ["grow"] = this.Grow,
             ["soften"] = this.Soften,
             ["invert"] = this.Invert,
+            ["background"] = this.Background.ToString(),
+            ["amount"] = this.Amount,
+            ["color"] = $"#{this.Color.R:X2}{this.Color.G:X2}{this.Color.B:X2}",
         };
     }
 
@@ -112,8 +148,18 @@ public sealed record CutoutEffect
         return cutout
             .WithGrow(PresetJson.Double(json, "grow", Default.Grow))
             .WithSoften(PresetJson.Double(json, "soften", Default.Soften))
-            .WithInvert(PresetJson.Bool(json, "invert", Default.Invert));
+            .WithInvert(PresetJson.Bool(json, "invert", Default.Invert))
+            .WithBackground(PresetJson.Enum(json, "background", Default.Background))
+            .WithAmount(PresetJson.Double(json, "amount", Default.Amount))
+            .WithColor(ColorOf(json, "color") ?? Default.Color);
     }
+
+    // A color written #RRGGBB; null when missing or malformed.
+    private static Color? ColorOf(JsonObject json, string key) =>
+        json[key] is JsonValue value && value.TryGetValue(out string? text) && text is ['#', .. var hex] && hex.Length == 6
+            && int.TryParse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int rgb)
+            ? Color.FromArgb(255, Color.FromArgb(rgb))
+            : null;
 
     /// <summary>What the preset dialog lists after its name: the mode, then the edge options not at their defaults.</summary>
     internal string Describe()
@@ -136,6 +182,12 @@ public sealed record CutoutEffect
         if (this.Invert)
         {
             parts.Add("inverted");
+        }
+
+        if (this.Background != CutoutBackground.Transparent)
+        {
+            string color = this.Background == CutoutBackground.Color ? $" #{this.Color.R:X2}{this.Color.G:X2}{this.Color.B:X2}" : "";
+            parts.Add($"background {this.Background.ToString().ToLowerInvariant()}{color} {Math.Round(this.Amount * 100)} %");
         }
 
         return string.Join(", ", parts);

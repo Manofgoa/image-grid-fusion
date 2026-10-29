@@ -259,6 +259,13 @@ internal sealed partial class MainForm : Form
     private readonly TrackBar _cutoutSoften = OptionSlider(0, 100, 10);
     private readonly Label _cutoutSoftenLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _cutoutInvert = new() { Text = "Invert", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CutoutBackgroundStrip _cutoutBackground = new() { Anchor = AnchorStyles.Left };
+    private readonly TrackBar _cutoutAmount = OptionSlider(0, 100, 10);
+    private readonly Label _cutoutAmountLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly ColorSplitButton _cutoutColor = new();
+    private readonly TrackBar _cutoutSample = SampleSlider();
+    private readonly Label _cutoutSampleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private Color? _cutoutSwatchColor;
 
     // The Cutout's cut-outs, computed off the UI thread, and its engine's download while it runs (workfiles/20261029-cutout.md).
     private readonly CutoutService _cutouts = new();
@@ -521,7 +528,15 @@ internal sealed partial class MainForm : Form
         backgroundLines.Controls.AddRange([backgroundColorLine, backgroundEdgesLine]);
         _options[ImageEffect.Background].Controls.AddRange([this._backgroundFill, backgroundLines]);
         _options[ImageEffect.Crop].Controls.Add(this._crop);
-        this._options[ImageEffect.Cutout].Controls.AddRange([this._cutoutMode, this._cutoutGrow, this._cutoutGrowLabel, this._cutoutSoften, this._cutoutSoftenLabel, this._cutoutInvert]);
+        // The edge on a first line, the part left out's treatment on a second, as the Background's two lines.
+        var cutoutEdgeLine = OptionLine();
+        cutoutEdgeLine.Controls.AddRange([this._cutoutGrow, this._cutoutGrowLabel, this._cutoutSoften, this._cutoutSoftenLabel, this._cutoutInvert]);
+        var cutoutBackgroundLine = OptionLine();
+        cutoutBackgroundLine.Controls.AddRange([this._cutoutAmount, this._cutoutAmountLabel, this._cutoutColor, this._cutoutSample, this._cutoutSampleLabel]);
+        var cutoutLines = OptionLine();
+        cutoutLines.FlowDirection = FlowDirection.TopDown;
+        cutoutLines.Controls.AddRange([cutoutEdgeLine, cutoutBackgroundLine]);
+        this._options[ImageEffect.Cutout].Controls.AddRange([this._cutoutMode, this._cutoutBackground, cutoutLines]);
         _options[ImageEffect.Zoom].Controls.AddRange([_zoom, _zoomLabel, this._zoomFit]);
         this._motionKind.Items.AddRange(Enum.GetNames<MotionKind>());
         this._motionKind.SelectedIndex = (int)MotionEffect.Default.Kind;
@@ -890,6 +905,7 @@ internal sealed partial class MainForm : Form
         this._cutoutSoften.ValueChanged += (_, _) =>
         {
             this._cutoutSoftenLabel.Text = SoftenText(this._cutoutSoften.Value);
+        this._cutoutAmountLabel.Text = AmountText(this._cutoutBackground.Selected, this._cutoutAmount.Value);
             this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithSoften(this._cutoutSoften.Value / 100.0)));
         };
         this._cutoutInvert.CheckedChanged += (_, _) => this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithInvert(this._cutoutInvert.Checked)));
@@ -900,6 +916,18 @@ internal sealed partial class MainForm : Form
         this._cutouts.Failed += (_, message) => this.ShowStatus(message, error: true);
         this._preview.CutoutPicked += (_, pick) => this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithPoint(pick.Point, pick.Add)));
         this._preview.CutoutPickEnded += (_, _) => this._cutoutMode.Armed = false;
+        this._cutoutBackground.Picked += (_, background) => this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithBackground(background)));
+        this._cutoutAmount.ValueChanged += (_, _) =>
+        {
+            this._cutoutAmountLabel.Text = AmountText(this._cutoutBackground.Selected, this._cutoutAmount.Value);
+            this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithAmount(this._cutoutAmount.Value / 100.0)));
+        };
+        this._cutoutAmountLabel.MinimumSize = new Size(TextRenderer.MeasureText(AmountText(CutoutBackground.Opacity, 100), this._cutoutAmountLabel.Font).Width, 0);
+        this._toolTip.SetToolTip(this._cutoutAmount, "How much of the treatment the part left out gets: its opacity, the color's opacity, the blur's strength or the squares' size");
+        this._toolTip.SetToolTip(this._cutoutColor.Dialog, "Chooses the color masking the part left out, in the color dialog");
+        this._toolTip.SetToolTip(this._cutoutColor.Eyedropper, "Takes the mask's color from the preview: click a cell; Escape or a right click cancels");
+        this._cutoutColor.Dialog.Click += (_, _) => this.PickCutoutColor();
+        this._cutoutColor.Eyedropper.Click += (_, _) => this.ArmCutoutEyedropper();
         _blurIntensity.ValueChanged += (_, _) => SetBlurIntensity();
         _volume.ValueChanged += (_, _) =>
         {
@@ -979,7 +1007,7 @@ internal sealed partial class MainForm : Form
         this._toolTip.SetToolTip(this._bordersColor.Eyedropper, "Takes the borders' color from the preview: click a cell; Escape or a right click cancels");
         this._bordersColor.Dialog.Click += (_, _) => this.PickBorderColor();
         this._bordersColor.Eyedropper.Click += (_, _) => this.ArmBordersEyedropper();
-        foreach (var (slider, label) in ((TrackBar, Label)[])[(this._backgroundSample, this._backgroundSampleLabel), (this._bordersSample, this._bordersSampleLabel)])
+        foreach (var (slider, label) in ((TrackBar, Label)[])[(this._backgroundSample, this._backgroundSampleLabel), (this._bordersSample, this._bordersSampleLabel), (this._cutoutSample, this._cutoutSampleLabel)])
         {
             label.Text = SampleText(slider.Value);
             label.MinimumSize = new Size(TextRenderer.MeasureText(SampleText(GridPreview.MaxEyedropperSample), label.Font).Width, 0);
@@ -1137,7 +1165,7 @@ internal sealed partial class MainForm : Form
     {
         int size = LogicalToDeviceUnits(16);
         Image?[] previous = [_resetButton.Image, _effectResetButton.Image, _globalResetButton.Image, _globalEffectResetButton.Image, _fadeSquared.Image, _fadeLinear.Image, _blurIntensityIcon.Image, _backgroundOpacityIcon.Image,
-            this._backgroundColor.Eyedropper.Image, this._bordersColor.Eyedropper.Image];
+            this._backgroundColor.Eyedropper.Image, this._bordersColor.Eyedropper.Image, this._cutoutColor.Eyedropper.Image];
         foreach (var effect in Enum.GetValues<ImageEffect>())
         {
             _effectTabs.SetIcon(effect, effect switch
@@ -1176,6 +1204,7 @@ internal sealed partial class MainForm : Form
         _backgroundOpacityIcon.Size = new Size(size, size);
         this._backgroundColor.Eyedropper.Image = EffectIcons.Eyedropper(size);
         this._bordersColor.Eyedropper.Image = EffectIcons.Eyedropper(size);
+        this._cutoutColor.Eyedropper.Image = EffectIcons.Eyedropper(size);
         foreach (var image in previous)
         {
             image?.Dispose();
@@ -1186,6 +1215,11 @@ internal sealed partial class MainForm : Form
         if (this._backgroundSwatchColor is { } backgroundSwatch)
         {
             this.SetSwatch(this._backgroundColor.Dialog, backgroundSwatch);
+        }
+
+        if (this._cutoutSwatchColor is { } cutoutSwatch)
+        {
+            this.SetSwatch(this._cutoutColor.Dialog, cutoutSwatch);
         }
     }
 
@@ -3471,6 +3505,54 @@ internal sealed partial class MainForm : Form
         }
     }
 
+    private static string AmountText(CutoutBackground background, int value) => background switch
+    {
+        CutoutBackground.Opacity or CutoutBackground.Color => $"Opacity: {value} %",
+        CutoutBackground.Transparent => "Amount: —",
+        _ => $"Intensity: {value} %",
+    };
+
+    /// <summary>The standard color dialog, on the mask's color: a color chosen turns the Color treatment on.</summary>
+    private void PickCutoutColor()
+    {
+        if (this.IsExporting || this._preview.SelectedImage?.Look.TurnOn(ImageEffect.Cutout).Cutout is not { } cutout)
+        {
+            return;
+        }
+
+        if (this._colorDialog.Show(this, cutout.Color) is { } color)
+        {
+            this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithBackground(CutoutBackground.Color).WithColor(color)));
+        }
+    }
+
+    /// <summary>
+    /// The mask's eyedropper: the part left out follows the color under the cursor; a click takes it as the
+    /// dialog's OK does, and a cancel gives the cell its look back (RULES.md § Color Options).
+    /// </summary>
+    private void ArmCutoutEyedropper()
+    {
+        if (this.IsExporting || this._preview.SelectedImage is not { } image || !(image.Look.IsActive(ImageEffect.Cutout) || this.CutoutEngineReady()))
+        {
+            return;
+        }
+
+        var original = image.Look;
+        var on = original.TurnOn(ImageEffect.Cutout);
+        this.ArmEyedropper(
+            this._cutoutColor,
+            this._cutoutSample,
+            color => this._preview.SetSelectedLook(on.WithCutout(on.Cutout!.WithBackground(CutoutBackground.Color).WithColor(color))),
+            () =>
+            {
+                if (this._preview.SelectedImage == image)
+                {
+                    this._preview.SetSelectedLook(original);
+                }
+            },
+            color => this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithBackground(CutoutBackground.Color).WithColor(color))));
+    }
+
     private static string GrowText(int value) => $"Grow: {value * CutoutEffect.MaxEdge:+0.0;-0.0;0.0} %";
 
     private static string SoftenText(int value) => $"Soften: {value * CutoutEffect.MaxEdge:0.0} %";
@@ -3862,6 +3944,13 @@ internal sealed partial class MainForm : Form
                 this._cutoutGrow.Value = (int)Math.Round(cutout.Grow * 100);
                 this._cutoutSoften.Value = (int)Math.Round(cutout.Soften * 100);
                 this._cutoutInvert.Checked = cutout.Invert;
+                this._cutoutBackground.Selected = cutout.Background;
+                this._cutoutAmount.Value = (int)Math.Round(cutout.Amount * 100);
+                if (cutout.Color != this._cutoutSwatchColor)
+                {
+                    this._cutoutSwatchColor = cutout.Color;
+                    this.SetSwatch(this._cutoutColor.Dialog, cutout.Color);
+                }
             }
 
             if (look.TurnOn(ImageEffect.Blur).Blur is { } blur)
@@ -3911,6 +4000,11 @@ internal sealed partial class MainForm : Form
         _preview.BarsEffect = _selectedEffect is ImageEffect.Blur or ImageEffect.Crop && look?.IsActive(_selectedEffect.Value) == true
             ? _selectedEffect
             : null;
+
+        // The amount acts on a treatment, the color on the mask only: disabled otherwise, their values kept.
+        var treatment = this._cutoutBackground.Selected;
+        this._cutoutAmount.Enabled = this._cutoutAmountLabel.Enabled = treatment != CutoutBackground.Transparent;
+        this._cutoutColor.Enabled = this._cutoutSample.Enabled = this._cutoutSampleLabel.Enabled = treatment == CutoutBackground.Color;
 
         // The pick's points show, and Pick stays armed, while the Cutout tab is selected and its effect on.
         bool picking = usable && _selectedEffect == ImageEffect.Cutout && look?.IsActive(ImageEffect.Cutout) == true;
