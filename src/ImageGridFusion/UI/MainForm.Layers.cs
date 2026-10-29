@@ -929,7 +929,7 @@ internal sealed partial class MainForm
             {
                 files = Clipboard.GetFileDropList().Cast<string>().ToArray();
             }
-            else if (Clipboard.GetImage() is { } image)
+            else if (ClipboardImage.Get() is { } image)
             {
                 using (image)
                 {

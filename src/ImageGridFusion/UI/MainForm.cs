@@ -1781,7 +1781,7 @@ internal sealed partial class MainForm : Form
             {
                 files = Clipboard.GetFileDropList().Cast<string>().ToArray();
             }
-            else if (Clipboard.GetImage() is { } image)
+            else if (ClipboardImage.Get() is { } image)
             {
                 // An image wins over the text that may come with it: Excel cells paste as a picture.
                 using (image)
