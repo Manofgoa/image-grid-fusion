@@ -74,11 +74,57 @@ Components: `UI/FileExplorerPanel.cs` (tile menu `_menu`, `_menu.Opening`, `Open
 
 ---
 
+## Safer People Decisions
+
+Added by Iteration 5 (⚙️ post-implementation).
+
+### Confirmation Submenus
+
+A decision that takes something away no longer happens in one click: its menu item opens a
+**submenu** of a single item that does it.
+
+| Menu item (unchanged) | Its submenu's item |
+|---|---|
+| *Not <name>* (a file of an open group) | *Remove from <name>* |
+| *Hide* (a group) | *Hide <name>* |
+| *Un-merge* (a sub-group) | *Un-merge <name>* |
+
+*Rename…*, *Unhide*, *Open* and the drags stay as they are. `<name>` is the group's name or *Unnamed*.
+
+### Undo — One Timeline
+
+Every People decision is a **step of the undo history**, in one timeline with the grid's: Ctrl+Z takes
+back the last action, whatever it was, and Ctrl+Y / Ctrl+Shift+Z redo it.
+
+- **Which decisions**: all of them — *Not <name>*, a rename (the title, *Rename…*, F2), *Hide* /
+  *Unhide*, a merge, *Un-merge*, a face dragged onto a group, a person created from a face alone.
+- **How**: the people's state joins the step (RULES.md § Undo History: *a new piece of composed state
+  joins the snapshot and the restore*): `GridState` gains a **people state** — an immutable copy of
+  every person (`People.Snapshot()`, `PersonData`) and the decision that led to it, replaced by each
+  decision (`FileExplorerPanel.SavePeople`). `MainForm.CaptureState` reads it, `MainForm.RestoreState`
+  puts it back: the store takes the copy (`People.Restore`), `people.json` is saved, the groups computed
+  again. No per-action inverse.
+- **Committed like any step**: once the state settles (`GridHistory`), a decision being instant.
+- **The status line** names it, as for the grid: `↶ Undone: Not Alice — 3 more` (`GridHistory.Describe`
+  reading the decision's text).
+- **Not decisions**: loading `people.json` at start-up and *Forget faces…* are no steps. They start a
+  new **generation** of the people's state: the step already committed takes it without a new step
+  (`GridHistory` rebased), and a step of an older generation restores the grid only, the people left as
+  they are — *Forget faces…* stays final, as its confirmation says.
+- Undo while the People view shows a group that the restore removes: the view goes back to the people
+  list, as a regrouping already does.
+
+---
+
 ## Documentation
 
 - `README.md` / `README.fr.md` § People view: the **People** submenu of a file tile, the group title.
 - `GLOSSARY.md` / `GLOSSARY.fr.md`: *Face group* gains the title and the submenu, or a term of its own.
 - `RULES.md` § People: the submenu and the title under *Decisions*.
+- Iteration 5: `RULES.md` § People (decisions in the undo history, confirmation submenus) and
+  § Undo History (the people's state in a step; the file explorer stays out, its People decisions
+  aside); README EN + FR § People view and § Undo; GLOSSARY EN + FR *Undo history*, *Step*,
+  *Face group*.
 
 ---
 
@@ -104,10 +150,12 @@ can pin it if a test project is added later.
 - [x] ~~What does an entry show — name / *Unnamed*, a face picture, a file count?~~ → The face cut
   out of the photo, the name or *Unnamed*, the file count.
 - [x] ~~Where does the name popup open?~~ → Centered on the explorer panel, *Rename…* / F2 included.
-- [ ] Ctrl+Z on the People view: which decisions does it undo?
-- [ ] Ctrl+Z: the People's own history, or one timeline shared with the grid's?
-- [ ] The *Not <name> › Remove* submenu: only *Not <name>*, or the other decisions too?
-- [ ] The folder idea: sent to the face-grouping-accuracy session?
+- [x] ~~Ctrl+Z on the People view: which decisions does it undo?~~ → All of them; Ctrl+Y redoes.
+- [x] ~~Ctrl+Z: the People's own history, or one timeline shared with the grid's?~~ → One timeline.
+- [x] ~~The *Not <name> › Remove* submenu: only *Not <name>*, or the other decisions too?~~ → *Hide* and
+  *Un-merge* too.
+- [x] ~~The folder idea: sent to the face-grouping-accuracy session?~~ → Not now: the user tests the
+  new grouping first, once merged.
 
 ---
 
@@ -167,6 +215,14 @@ Lead from the code: `People.Snapshot()` already copies every person (`PersonData
 can be the whole people state before a decision — restored, saved, regrouped — as `GridHistory` keeps
 the whole grid state, never a per-action inverse. Open Questions added for points 1–2.
 
+### Iteration 6 — 2026-10-29 — ⚙️ Post-implementation — Safer People decisions designed
+
+Q&A 9–12: Ctrl+Z covers every People decision, in **one timeline** with the grid's; the confirmation
+submenu applies to *Not <name>*, *Hide* and *Un-merge*; the folder idea waits for the new grouping.
+Design written in § Safer People Decisions: the people's state joins `GridState`; loading and *Forget
+faces…* start a new generation, never undone. This reverses RULES.md § People's *out of the undo
+history*.
+
 ---
 
 ## Implementation Log
@@ -193,10 +249,10 @@ the whole grid state, never a per-action inverse. Open Questions added for point
 | 6 | Hidden people in the submenu? | Yes, marked | 2026-10-28 |
 | 7 | What does an entry show? | Face + name + file count | 2026-10-28 |
 | 8 | Where does the name popup open? | Centered on the explorer | 2026-10-28 |
-| 9 | Ctrl+Z: which People decisions? | | |
-| 10 | Ctrl+Z: own history or shared with the grid? | | |
-| 11 | Submenu *› Remove*: which decisions? | | |
-| 12 | Folder idea sent to the grouping session? | | |
+| 9 | Ctrl+Z: which People decisions? | All of them | 2026-10-29 |
+| 10 | Ctrl+Z: own history or shared with the grid? | One timeline | 2026-10-29 |
+| 11 | Submenu *› Remove*: which decisions? | Not, Hide and Un-merge | 2026-10-29 |
+| 12 | Folder idea sent to the grouping session? | No, test the new grouping first | 2026-10-29 |
 
 ---
 
