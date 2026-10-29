@@ -153,6 +153,11 @@ The four questions answered (Q&A #6–9): the layer snaps by proximity, within 6
 is a share of the moved layer's bounding rectangle; every guide crosses the whole grid; the drag alone
 snaps and shows guides, the wheel staying free. No open question left.
 
+### Iteration 4 — 2026-10-29 — ✅ Implemented
+
+Go given (Q&A #10): code, unit tests and documentation — no unit tests, there is no test project — in a
+worktree on `feature/layer-ergonomics`.
+
 ---
 
 ## Implementation Log
@@ -183,7 +188,7 @@ Questions asked by the agent during design, with user responses.
 | 7 | Approach distance: a share of the grid, of the cell, or fixed pixels? | The moved layer's box | 2026-10-29 |
 | 8 | Extent of a guide: the whole grid or the stretch it aligns? | The whole grid | 2026-10-29 |
 | 9 | Wheel resize: snap and guides too, or the drag only? | The drag only | 2026-10-29 |
-| 10 | Go for the implementation: scope, and where? | | |
+| 10 | Go for the implementation: scope, and where? | Code, unit tests and documentation; in a worktree | 2026-10-29 |
 
 ---
 
