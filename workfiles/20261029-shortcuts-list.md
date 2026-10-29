@@ -299,6 +299,14 @@ Questions asked by the agent during design, with user responses.
 | 2 | How does the app show the list? | A window showing `SHORTCUTS.md` embedded in the exe | 2026-10-29 |
 | 3 | Which shortcuts are listed? | Keys, wheel and modifier gestures, meaningful double-clicks | 2026-10-29 |
 | 4 | How deep is the exploration? | Simple — one scout pass | 2026-10-29 |
+| 5 | What enforces the rule beyond `RULES.md`? | | |
+| 6 | Which key opens the window? | | |
+| 7 | Modeless or modal window? | | |
+| 8 | Keys written as `<kbd>` or plain text? | | |
+| 9 | Which file does the app embed? | | |
+| 10 | The README's shortcut mentions: kept, or trimmed to a link? | | |
+| 11 | Windows' own behaviour listed? | | |
+| 12 | A glossary term for the window? | | |
 
 ---
 
