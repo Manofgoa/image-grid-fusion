@@ -65,6 +65,12 @@ internal sealed partial class MainForm
     private readonly TrackBar _layerBackgroundOpacity = OptionSlider(0, 100, 10);
     private readonly Label _layerBackgroundOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
 
+    // Each family of the font drop-down, made once to draw its name in its own face; null when it has no usable style.
+    private readonly Dictionary<string, Font?> _layerFontFaces = [];
+
+    // Families drawing symbols rather than letters: their name follows a sample, in the drop-down's own font.
+    private static readonly string[] SymbolFonts = ["Wingdings", "Webdings", "Symbol", "Marlett", "MDL2", "Fluent Icons", "Dings", "MT Extra", "Bookshelf"];
+
     // The colors the three swatches show, so each is drawn again only when its color changes.
     private Color? _layerColorSwatch;
     private Color? _layerOutlineSwatch;
@@ -117,6 +123,22 @@ internal sealed partial class MainForm
 
         var fonts = TextRaster.FontFamilies();
         this._layerFont.Items.AddRange([.. fonts]);
+
+        // Each font shown in its own face, in the list and in the closed box (workfiles/20261029-layers.md, Iteration 13).
+        this._layerFont.DrawMode = DrawMode.OwnerDrawFixed;
+        this._layerFont.ItemHeight = this.LogicalToDeviceUnits(22);
+        this._layerFont.MaxDropDownItems = 16;
+        this._layerFont.DropDownWidth = this.LogicalToDeviceUnits(280);
+        this._layerFont.DrawItem += (_, e) => this.DrawFontItem(e);
+        this.Disposed += (_, _) =>
+        {
+            foreach (var face in this._layerFontFaces.Values)
+            {
+                face?.Dispose();
+            }
+
+            this._layerFontFaces.Clear();
+        };
 
         this._toolTip.SetToolTip(this._layerAddImage, "Add image… — lays images, GIFs or videos over the grid, chosen in the file picker; files dropped onto the Layers tab do the same");
         this._toolTip.SetToolTip(this._layerPaste, "Paste — lays the clipboard's image, files or text over the grid");
@@ -212,6 +234,72 @@ internal sealed partial class MainForm
 
     private static string OutlineWidthText(int percent) => $"Width: {percent} %";
 
+    /// <summary>
+    /// A row of the font drop-down: the family's name in its own face; for a family of symbols, a sample of
+    /// them, then its name in the drop-down's font so it can be read.
+    /// </summary>
+    private void DrawFontItem(DrawItemEventArgs e)
+    {
+        e.DrawBackground();
+        if (e.Index < 0 || e.Index >= this._layerFont.Items.Count || this._layerFont.Items[e.Index] is not string family)
+        {
+            return;
+        }
+
+        var color = (e.State & DrawItemState.Selected) != 0 ? SystemColors.HighlightText
+            : this._layerFont.Enabled ? SystemColors.ControlText : SystemColors.GrayText;
+        var flags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine;
+        var bounds = Rectangle.Inflate(e.Bounds, -this.LogicalToDeviceUnits(3), 0);
+        var face = this.FontFace(family, e.Font ?? this._layerFont.Font);
+        if (face is null)
+        {
+            TextRenderer.DrawText(e.Graphics, family, this._layerFont.Font, bounds, color, flags);
+            return;
+        }
+
+        if (SymbolFonts.Any(symbol => family.Contains(symbol, StringComparison.OrdinalIgnoreCase)))
+        {
+            const string Sample = "AaBb";
+            int sample = TextRenderer.MeasureText(e.Graphics, Sample, face, bounds.Size, flags).Width;
+            TextRenderer.DrawText(e.Graphics, Sample, face, bounds, color, flags);
+            bounds = Rectangle.FromLTRB(bounds.Left + sample + this.LogicalToDeviceUnits(4), bounds.Top, bounds.Right, bounds.Bottom);
+            TextRenderer.DrawText(e.Graphics, family, this._layerFont.Font, bounds, color, flags);
+            return;
+        }
+
+        TextRenderer.DrawText(e.Graphics, family, face, bounds, color, flags);
+    }
+
+    /// <summary>The family's face at the drop-down's size, made once: regular, else bold, else italic; <c>null</c> without any.</summary>
+    private Font? FontFace(string family, Font reference)
+    {
+        if (this._layerFontFaces.TryGetValue(family, out var face))
+        {
+            return face;
+        }
+
+        face = null;
+        try
+        {
+            using var fontFamily = new FontFamily(family);
+            foreach (var style in new[] { FontStyle.Regular, FontStyle.Bold, FontStyle.Italic })
+            {
+                if (fontFamily.IsStyleAvailable(style))
+                {
+                    face = new Font(fontFamily, reference.SizeInPoints * 1.15f, style, GraphicsUnit.Point);
+                    break;
+                }
+            }
+        }
+        catch (ArgumentException)
+        {
+            // A family GDI+ cannot open: its name is drawn in the drop-down's font.
+        }
+
+        this._layerFontFaces[family] = face;
+        return face;
+    }
+
     /// <summary>The eyedropper icons of the three colors and the list's buttons, drawn at the monitor's DPI; the ones replaced disposed.</summary>
     private void UpdateLayerIcons(int size)
     {
@@ -253,7 +341,7 @@ internal sealed partial class MainForm
     /// </summary>
     private void UpdateLayerOptions()
     {
-        bool enabled = !this.IsExporting && this.LayersUnavailable is null;
+        bool enabled = !this.IsExporting;
         bool editing = this._preview.EditingLayer;
         var listed = this._preview.ListedLayer;
         var layer = this._preview.SelectedLayer;
@@ -404,12 +492,6 @@ internal sealed partial class MainForm
     private async Task DropLayerFilesAsync(string[] paths)
     {
         this.SelectGlobalEffect(GlobalEffect.Layers);
-        if (this.LayersUnavailable is { } why)
-        {
-            this.ShowStatus($"No layer added: {char.ToLowerInvariant(why[0])}{why[1..]}.");
-            return;
-        }
-
         await this.AddLayerFilesAsync(paths);
     }
 
@@ -494,7 +576,7 @@ internal sealed partial class MainForm
     /// </summary>
     private void AddTextLayer(string text = "", PointF? at = null)
     {
-        if (this.IsExporting || this.LayersUnavailable is not null)
+        if (this.IsExporting)
         {
             return;
         }
@@ -606,7 +688,7 @@ internal sealed partial class MainForm
     /// <summary>The file picker's images, GIFs and videos laid over the grid as layers.</summary>
     private async void PickLayerFiles()
     {
-        if (this.IsExporting || this.LayersUnavailable is not null)
+        if (this.IsExporting)
         {
             return;
         }
@@ -680,7 +762,7 @@ internal sealed partial class MainForm
     /// <summary>The clipboard laid over the grid: its files, its image, or its text as a text layer.</summary>
     private async Task PasteLayersAsync()
     {
-        if (this.RefuseWhileExporting() || this.LayersUnavailable is not null)
+        if (this.RefuseWhileExporting())
         {
             return;
         }
