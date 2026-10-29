@@ -46,6 +46,7 @@ internal sealed partial class GridPreview
     // The rotation handle hovered, or dragged.
     private bool _hoveringRotation;
     private bool _rotatingLayer;
+    private static readonly Dictionary<int, Cursor> RotationCursors = [];
 
     // The text box's side hovered, or dragged: -1 the left, 1 the right, 0 none.
     private int _hoveredBoxSide;
@@ -455,8 +456,65 @@ internal sealed partial class GridPreview
             this.Invalidate();
         }
 
-        this.Cursor = boxSide != 0 ? Cursors.SizeWE : rotation || !selected ? Cursors.Hand : Cursors.SizeAll;
+        this.Cursor = boxSide != 0 ? Cursors.SizeWE : rotation ? this.RotationCursor() : !selected ? Cursors.Hand : Cursors.SizeAll;
         return true;
+    }
+
+    /// <summary>
+    /// The cursor over the rotation handle, kept while it is dragged: a circular arrow, white outlined in black
+    /// like the system cursors, its hot spot at its center, at the monitor's DPI; one per size
+    /// (workfiles/20261029-layer-ergonomics.md § Rotation Cursor).
+    /// </summary>
+    private Cursor RotationCursor()
+    {
+        int size = this.LogicalToDeviceUnits(32);
+        if (RotationCursors.TryGetValue(size, out var cursor))
+        {
+            return cursor;
+        }
+
+        using var image = new Bitmap(size, size);
+        using (var g = Graphics.FromImage(image))
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            float stroke = size / 16f;
+            float radius = size / 2f - 4.5f * stroke;
+            var arc = new RectangleF(size / 2f - radius, size / 2f - radius, 2 * radius, 2 * radius);
+
+            // Three quarters of a turn, clockwise from the bottom right round to the top right, where the
+            // arrowhead points on along the circle.
+            const float start = 45, sweep = 270;
+            double end = (start + sweep) * Math.PI / 180;
+            var tip = new PointF(size / 2f + radius * (float)Math.Cos(end), size / 2f + radius * (float)Math.Sin(end));
+            var along = new SizeF(-(float)Math.Sin(end), (float)Math.Cos(end));
+            var across = new SizeF((float)Math.Cos(end), (float)Math.Sin(end));
+            PointF[] Head(float length, float width) =>
+            [
+                new(tip.X + along.Width * length, tip.Y + along.Height * length),
+                new(tip.X - along.Width * length + across.Width * width, tip.Y - along.Height * length + across.Height * width),
+                new(tip.X - along.Width * length - across.Width * width, tip.Y - along.Height * length - across.Height * width),
+            ];
+
+            using (var outline = new Pen(Color.Black, 3 * stroke) { StartCap = LineCap.Round })
+            using (var outlineHead = new Pen(Color.Black, 2 * stroke) { LineJoin = LineJoin.Round })
+            {
+                var head = Head(2.2f * stroke, 2.4f * stroke);
+                g.DrawArc(outline, arc, start, sweep);
+                g.FillPolygon(Brushes.Black, head);
+                g.DrawPolygon(outlineHead, head);
+            }
+
+            using (var line = new Pen(Color.White, stroke) { StartCap = LineCap.Round })
+            {
+                g.DrawArc(line, arc, start, sweep);
+            }
+
+            g.FillPolygon(Brushes.White, Head(2.2f * stroke, 2.4f * stroke));
+        }
+
+        cursor = CreateCursor(image, new Point(size / 2, size / 2)) ?? Cursors.Hand;
+        RotationCursors[size] = cursor;
+        return cursor;
     }
 
     /// <summary>
