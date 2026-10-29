@@ -21,6 +21,13 @@
 | **Alt text** — the captions of the grid's images assembled into an alt text, copied with the export | Backlog review, 2026-10-29 | To design |
 | **Duplicates** — near-identical images of the index found through their vision embeddings, listed in a cleanup view | Backlog review, 2026-10-29 | To design |
 | **AI upscale** — a small image enlarged by a model (Real-ESRGAN), downloaded on demand like the other engines | Backlog review, 2026-10-29 | To design |
+| **Shared fill and grid background** — one fill (a kind and its settings) drawn by one painter, used by the cell's Background and by a new global effect, **Grid background**, drawn under the cells: the gap, the Twitter corners, a grid of layers only. The fills below are kinds of it | Backlog review, 2026-10-29 | To design |
+| **Gradient fills** — linear (an angle), radial, conic and mesh (a color per corner); their colors chosen or **Auto**, from the image's dominant colors (the grid's for the grid background), with a slight grain against banding | Backlog review, 2026-10-29 | To design |
+| **Pattern fills** — dots, stripes, checkerboard, grid, hatching, zigzag: two colors, a scale, an angle | Backlog review, 2026-10-29 | To design |
+| **Blurred image and mirror fills** — the image itself enlarged to cover the cell, heavily blurred and darkened (the whole grid blurred for the grid background); or its edges mirrored instead of stretched | Backlog review, 2026-10-29 | To design |
+| **Chosen image fill** — a texture or a photo as the background, with a blur and an opacity | Backlog review, 2026-10-29 | To design |
+| **Frosted glass fill** — a blur, a light tint and a thin edge line | Backlog review, 2026-10-29 | To design |
+| **Palette fill** — bands of the image's dominant colors | Backlog review, 2026-10-29 | To design |
 
 ---
 
