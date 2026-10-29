@@ -51,14 +51,17 @@ Not in the feature backlog (`workfiles/TODO-FEATURES.md`): no row matches.
 
 ## Views Order
 
-- `ExplorerMode` becomes **`Folders, People, Favorites`**: the drop-down's entries follow it
-  (`_modes.SelectedIndex = (int)mode`), so the order lives in one place.
+- `ExplorerMode` becomes **`Folders, People, Favorites`**: the drop-down's entries are its values
+  themselves (`Enum.GetValues<ExplorerMode>()`, their names as labels, `_modes.SelectedIndex =
+  (int)mode`), so the order and the names live in one place.
 - The view is **saved by name** (`AppSettings.ExplorerMode`): reordering the enum changes nothing for
   a saved setting.
 - **Default view** at the very first launch — no `ExplorerMode` saved, no older folder-view flag —
   becomes **Folders**, the first entry. An older settings file holding the folder-view flag keeps its
   meaning: `1` → Folders, `0` → Favorites.
-- The panel's own initial value (`[DefaultValue]`, the drop-down's initial index) becomes Folders too.
+- The panel's own initial value (`[DefaultValue]`, `_folderView` initially on, the drop-down's initial
+  index) becomes Folders too; the constructor applies that view at once (`ApplyView`: the breadcrumb,
+  the folder hint).
 - *Find similar images* still switches to Favorites (the search view), as today.
 
 ---
@@ -71,13 +74,18 @@ Not in the feature backlog (`workfiles/TODO-FEATURES.md`): no row matches.
 
   | View | Glyph | Colour |
   |---|---|---|
-  | Folders | 📁 `U+1F4C1` | Amber |
+  | Folders | 📁 `U+1F4C1` | Amber (214, 150, 0), the tooltip's 💡 one |
   | People | 👥 `U+1F465` | The tooltip's people colour (202, 80, 16) |
-  | Favorites | ❤ `U+2764` | Red |
+  | Favorites | ❤ `U+2764` | Red (232, 17, 35) |
 
+  One table, `FileExplorerPanel.ModeIcons`, in `ExplorerMode`'s order; drawn by
+  `FileExplorerPanel.DrawModeItem`.
 - The **closed box** shows the selected entry's icon too, not only the open list.
-- The drop-down is **widened** to hold the icon and the longest name, scaled with the DPI.
-- Selected / hovered entries keep the system's highlight; disabled, the icon is faded like the text.
+- The drop-down is **widened** to hold the icon and the longest name: `ModesWidth` 84 → **96** logical
+  px (icon 16, *Favorites* 47, arrow 17, gaps), scaled with the DPI like before.
+- Selected / hovered entries keep the system's highlight; disabled, the icon and the text are drawn in
+  `SystemColors.GrayText`.
+- The drop-down's tooltip says that `Ctrl+F` again cycles the views, `Ctrl+Shift+F` backward.
 
 ---
 
@@ -125,6 +133,35 @@ behaviour, the following ones (search box focused) cycle Folders → People → 
 backward, People skipped while the face analysis is off; `ExplorerMode` reordered, Folders the
 default view at the first launch; the drop-down owner-drawn with a coloured emoji glyph per entry.
 
+### Iteration 2 — 2026-10-29 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree (`.claude/worktrees/ctrl-f-view-cycle`,
+branch `feature/ctrl-f-view-cycle`, from `main` at `7e4b44a`).
+
+### Iteration 3 — 2026-10-29 — 🧭 Implementation choices
+
+No rule broken. Choices the frozen design left open:
+
+- **One source for the entries**: the drop-down holds the `ExplorerMode` values themselves, their names
+  as labels — the hard-coded `["Favorites", "Folders", "People"]` is gone.
+- **Panel default**: `_folderView` starts on and the constructor calls `ApplyView`, so the panel is
+  coherent before `MainForm` sets the saved view.
+- **Older settings**: the folder-view flag saved as `0` by an older version still means Favorites; only
+  a settings file holding neither value gives Folders.
+- **Cycle**: `FileExplorerPanel.FocusSearch(int step)` (1 for `Ctrl+F`, -1 for `Ctrl+Shift+F`) and
+  `NextMode(step)`; the view changes through `ChangeMode`, so it is saved like a pick in the drop-down.
+  The press that opens a collapsed panel never cycles.
+- **Width**: 96 logical px, measured (see § Drop-Down Icons) rather than the 112 first tried. At the
+  default panel width (240 px), the search box is 12 logical px narrower than before — it was already
+  narrow there; a wider panel is unaffected in practice. Reported, not changed (scope freeze).
+- **Rendering**: on this machine Windows draws the glyphs in full colour through `TextRenderer` (the
+  heart's red tones, the amber folder); the given colour applies where it draws them flat.
+- **Checked in the app** (a `--new-instance` build of the worktree, no settings): Folders shown at the
+  first launch with its 📁; `Ctrl+F` ×2 → Favorites (People skipped, the face analysis off);
+  `Ctrl+Shift+F` → Folders; the open list shows 📁 👥 ❤ before the names.
+- **Documentation**: README (EN + FR) § `Ctrl+F` and § Folder view; GLOSSARY (EN + FR) *File explorer*
+  row. RULES.md unchanged: no rule names the views' order or Ctrl+F.
+
 ---
 
 ## Implementation Log
@@ -134,9 +171,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable — no test project |
-| README | | | |
+| Code | 2, 3 | 2026-10-29 | Views reordered, Ctrl+F / Ctrl+Shift+F cycle, drawn icons; checked in the app |
+| Unit tests | 2 | 2026-10-29 | Not applicable — no test project |
+| README | 3 | 2026-10-29 | README and GLOSSARY, EN + FR |
 
 ---
 

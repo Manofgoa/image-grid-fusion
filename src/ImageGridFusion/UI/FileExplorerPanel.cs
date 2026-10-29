@@ -90,8 +90,18 @@ internal sealed partial class FileExplorerPanel : Panel
     // The sort drop-down's width in logical pixels: its longest entry and the arrow.
     private const int SortWidth = 92;
 
-    // The views drop-down's width in logical pixels: its longest entry and the arrow.
-    private const int ModesWidth = 84;
+    // The views drop-down's width in logical pixels: its icon, its longest entry and the arrow.
+    private const int ModesWidth = 96;
+
+    // The views drop-down's icons, in ExplorerMode's order (workfiles/20261029-ctrl-f-view-cycle.md § Drop-Down
+    // Icons): Segoe UI Emoji glyphs drawn in a colour of their own, as the tile tooltip's — GDI draws no
+    // full-colour emoji.
+    private static readonly (string Icon, Color Color)[] ModeIcons =
+    [
+        ("\U0001F4C1", Color.FromArgb(214, 150, 0)),
+        ("\U0001F465", Color.FromArgb(202, 80, 16)),
+        ("❤", Color.FromArgb(232, 17, 35)),
+    ];
 
     // The width of a face in the People submenu of a file's tile, in logical pixels, at the tiles' 4:3.
     private const int PhotoFaceWidth = 40;
@@ -103,8 +113,9 @@ internal sealed partial class FileExplorerPanel : Panel
     private readonly Button _expand = new() { Text = "«", Dock = DockStyle.Fill, Visible = false, Margin = Padding.Empty };
     private readonly TableLayoutPanel _searchRow = new() { ColumnCount = 5, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
     // The views drop-down (workfiles/20261027-face-detection.md § People View): its entries in
-    // ExplorerMode's order.
-    private readonly ComboBox _modes = new() { DropDownStyle = ComboBoxStyle.DropDownList, Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0) };
+    // ExplorerMode's order, each after its icon.
+    private readonly ComboBox _modes = new() { DropDownStyle = ComboBoxStyle.DropDownList, DrawMode = DrawMode.OwnerDrawFixed, Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0) };
+    private readonly Font _modeIconFont;
 
     // The search criteria (workfiles/20261007-search-options.md): pressed, the search looks in the
     // relative paths, in the content texts; both at start-up, never none, not remembered. Toggled by
@@ -238,7 +249,7 @@ internal sealed partial class FileExplorerPanel : Panel
     // The folder view (workfiles/20260930-file-explorer-folder-view.md): whether it shows, the open
     // folder relative to the base folder ("" for the base folder itself), the index's folders once
     // derived, and the list being built — a later refresh making an earlier folder read stale.
-    private bool _folderView;
+    private bool _folderView = true;
     private string _openFolder = "";
     private FolderTree? _tree;
     private int _listVersion;
@@ -297,6 +308,7 @@ internal sealed partial class FileExplorerPanel : Panel
         this._groupTitle.Font = new Font(this.Font.FontFamily, this.Font.SizeInPoints + 4f, FontStyle.Bold);
         _smallerGlyph.Font = new Font("Segoe UI Symbol", Font.SizeInPoints);
         _largerGlyph.Font = new Font("Segoe UI Symbol", Font.SizeInPoints + 6f);
+        this._modeIconFont = new Font("Segoe UI Emoji", this.Font.SizeInPoints);
         ApplyWidth();
 
         _content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -317,8 +329,13 @@ internal sealed partial class FileExplorerPanel : Panel
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        this._modes.Items.AddRange(["Favorites", "Folders", "People"]);
-        this._modes.SelectedIndex = (int)ExplorerMode.Favorites;
+        foreach (ExplorerMode mode in Enum.GetValues<ExplorerMode>())
+        {
+            this._modes.Items.Add(mode);
+        }
+
+        this._modes.SelectedIndex = (int)this.Mode;
+        this.ApplyView();
         this._searchRow.Controls.Add(this._modes, 0, 0);
         this._searchRow.Controls.Add(this._byName, 1, 0);
         this._searchRow.Controls.Add(this._byContent, 2, 0);
@@ -383,7 +400,7 @@ internal sealed partial class FileExplorerPanel : Panel
         _toolTip.SetToolTip(_collapse, "Hide the file explorer");
         _toolTip.SetToolTip(_expand, "Show the file explorer");
         _toolTip.SetToolTip(_rescan, "Rescan the folder");
-        this._toolTip.SetToolTip(this._modes, "What the list shows: the favorites and the search over every file, the base folder folder by folder, or the people the faces were grouped into");
+        this._toolTip.SetToolTip(this._modes, "What the list shows: the base folder folder by folder, the people the faces were grouped into, or the favorites and the search over every file — Ctrl+F again in the search box: the next view, Ctrl+Shift+F: the previous one");
         this.ApplyCriteriaTips();
         _toolTip.SetToolTip(_smallerGlyph, "Smaller tiles");
         _toolTip.SetToolTip(_largerGlyph, "Larger tiles");
@@ -425,6 +442,7 @@ internal sealed partial class FileExplorerPanel : Panel
         this._toolTip.SetToolTip(this._similarClear, "Back to the search");
         _search.KeyDown += OnSearchKeyDown;
         this._modes.SelectionChangeCommitted += (_, _) => this.ChangeMode((ExplorerMode)this._modes.SelectedIndex);
+        this._modes.DrawItem += this.DrawModeItem;
         this._byName.Click += (_, _) => this.ToggleCriterion(this._byName, this._byContent);
         this._byContent.Click += (_, _) => this.ToggleCriterion(this._byContent, this._byName);
         _breadcrumb.UpRequested += (_, _) => GoUp();
@@ -826,7 +844,7 @@ internal sealed partial class FileExplorerPanel : Panel
     /// matches — the folder view — the open folder's subfolders and files — or the People view — the
     /// face groups, then the faces close to no other. Setting it raises nothing.
     /// </summary>
-    [DefaultValue(ExplorerMode.Favorites)]
+    [DefaultValue(ExplorerMode.Folders)]
     public ExplorerMode Mode
     {
         get => this._peopleView ? ExplorerMode.People : this._folderView ? ExplorerMode.Folders : ExplorerMode.Favorites;
@@ -1251,13 +1269,20 @@ internal sealed partial class FileExplorerPanel : Panel
 
     /// <summary>
     /// Ctrl+F: the panel opened if collapsed, as its « button does, then the search box focused, its
-    /// text selected (see workfiles/20261007-ctrl-f-search-focus.md).
+    /// text selected (see workfiles/20261007-ctrl-f-search-focus.md). Pressed again while the search box
+    /// has the focus, it moves to the view <paramref name="step"/> away in the drop-down's order — 1 for
+    /// Ctrl+F, -1 for Ctrl+Shift+F — round the end, People skipped while the face analysis is off (see
+    /// workfiles/20261029-ctrl-f-view-cycle.md).
     /// </summary>
-    public void FocusSearch()
+    public void FocusSearch(int step)
     {
         if (!this._open)
         {
             this.SetOpen(true);
+        }
+        else if (this._search.Focused)
+        {
+            this.ChangeMode(this.NextMode(step));
         }
 
         this._search.Focus();
@@ -1339,6 +1364,7 @@ internal sealed partial class FileExplorerPanel : Panel
             _title.Font.Dispose();
             _smallerGlyph.Font.Dispose();
             _largerGlyph.Font.Dispose();
+            this._modeIconFont.Dispose();
         }
 
         base.Dispose(disposing);
@@ -2963,6 +2989,50 @@ internal sealed partial class FileExplorerPanel : Panel
 
         this.Mode = mode;
         this.FolderViewChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// The view <paramref name="step"/> away from the current one in <see cref="ExplorerMode"/>'s order, round
+    /// the end, People skipped while the face analysis is off.
+    /// </summary>
+    private ExplorerMode NextMode(int step)
+    {
+        int count = Enum.GetValues<ExplorerMode>().Length;
+        var mode = this.Mode;
+        do
+        {
+            mode = (ExplorerMode)((((int)mode + step) % count + count) % count);
+        }
+        while (mode == ExplorerMode.People && !this._faceAnalysis);
+
+        return mode;
+    }
+
+    /// <summary>
+    /// An entry of the views drop-down — in its list and in its closed box alike: its icon in its colour, then
+    /// its name; both faded while the drop-down is disabled.
+    /// </summary>
+    private void DrawModeItem(object? sender, DrawItemEventArgs e)
+    {
+        e.DrawBackground();
+        if (e.Index < 0)
+        {
+            return;
+        }
+
+        var mode = (ExplorerMode)this._modes.Items[e.Index]!;
+        var (icon, color) = ModeIcons[(int)mode];
+        bool disabled = (e.State & DrawItemState.Disabled) != 0 || !this._modes.Enabled;
+        bool selected = (e.State & DrawItemState.Selected) != 0;
+        var textColor = disabled ? SystemColors.GrayText : selected ? SystemColors.HighlightText : e.ForeColor;
+        const TextFormatFlags flags = TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.VerticalCenter | TextFormatFlags.NoClipping;
+        int gap = this.LogicalToDeviceUnits(3);
+        int iconWidth = TextRenderer.MeasureText(e.Graphics, icon, this._modeIconFont, Size.Empty, flags).Width;
+        var bounds = e.Bounds;
+        TextRenderer.DrawText(e.Graphics, icon, this._modeIconFont, new Rectangle(bounds.X + gap, bounds.Y, iconWidth, bounds.Height), disabled ? SystemColors.GrayText : color, flags);
+        int textLeft = bounds.X + gap * 2 + iconWidth;
+        TextRenderer.DrawText(e.Graphics, mode.ToString(), e.Font ?? this._modes.Font, new Rectangle(textLeft, bounds.Y, Math.Max(0, bounds.Right - textLeft), bounds.Height), textColor, (flags & ~TextFormatFlags.NoClipping) | TextFormatFlags.EndEllipsis);
+        e.DrawFocusRectangle();
     }
 
     /// <summary>What the view changes around the grid: the caption or the breadcrumb, the search box's hint.</summary>

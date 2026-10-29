@@ -1396,7 +1396,10 @@ internal sealed class MainForm : Form
                 this.TurnQuarter(-1);
                 return true;
             case Keys.Control | Keys.F when this._explorer.IsEditingText || this.FocusedControl() is not TextBoxBase:
-                this._explorer.FocusSearch();
+                this._explorer.FocusSearch(1);
+                return true;
+            case Keys.Control | Keys.Shift | Keys.F when this._explorer.IsEditingText || this.FocusedControl() is not TextBoxBase:
+                this._explorer.FocusSearch(-1);
                 return true;
             // Play / Pause over every control but a text field — a focused button included, so Space never
             // runs a Copy or a Save again; the transport disabled (no length, an export running), it does nothing.

@@ -224,13 +224,13 @@ internal static class AppSettings
 
     /// <summary>
     /// What the file explorer lists — its views drop-down's — saved by name; read from the older
-    /// folder-view flag when it was not saved, the search view when neither was. See
-    /// workfiles/20261027-face-detection.md § People View.
+    /// folder-view flag when it was not saved, the folder view — the drop-down's first — when neither was.
+    /// See workfiles/20261027-face-detection.md § People View, workfiles/20261029-ctrl-f-view-cycle.md.
     /// </summary>
     public static ExplorerMode ExplorerMode =>
         Text(ExplorerModeName) is { } name && Enum.TryParse(name, out ExplorerMode mode) && mode.ToString() == name ? mode
-        : Int(ExplorerFolderViewName) is int value && value != 0 ? ExplorerMode.Folders
-        : ExplorerMode.Favorites;
+        : Int(ExplorerFolderViewName) is int value ? (value != 0 ? ExplorerMode.Folders : ExplorerMode.Favorites)
+        : ExplorerMode.Folders;
 
     /// <summary>The folder the file explorer's folder view has open, relative to the base folder; "" — the base folder — when none was saved.</summary>
     public static string ExplorerOpenFolder => Text(ExplorerOpenFolderName) ?? "";
