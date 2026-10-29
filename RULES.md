@@ -903,6 +903,24 @@ What the indexed images **show**, analysed offline and searched under 💡 in Fr
   there.
 - Everything stays on this machine; out of the undo history.
 
+## Keyboard Shortcuts
+
+Every shortcut of the app is documented, in one place (origin: `workfiles/20261029-shortcuts-list.md`):
+
+- **`SHORTCUTS.md` lists every one** — keys and key combinations, wheel gestures, a modifier held
+  during a drag or a click, double-clicks with a meaning, and Windows' own behaviour in the app's
+  windows — in the `##` section of where it works, one `| Shortcut | Does |` row each.
+- **A shortcut added, changed or removed** updates its row in `SHORTCUTS.md` **and** `SHORTCUTS.fr.md`
+  **in the same commit** as the code. A commit touching a key or mouse handler — `ProcessCmdKey`,
+  `OnKeyDown`, `OnMouseWheel`, `ModifierKeys`, `e.Clicks == 2`, a double-click — without them is
+  incomplete. Nothing checks it but this rule.
+- **The file is the app's contract**: embedded in the exe, it is what the **shortcuts window** (F1, the ⚙
+  menu) shows, parsed by `UI/ShortcutList.Parse` — a `##` heading per section, a table under it whose
+  header row and separator row are skipped, the keys written `<kbd>Ctrl</kbd>+<kbd>Z</kbd>`, the
+  language line, the title and the paragraphs left out. A row it cannot read does not show.
+- **One place per fact**: the README and the other docs never list keys — they link to the section of
+  `SHORTCUTS.md` (`SHORTCUTS.fr.md` from a French doc) where they are.
+
 ## App Settings
 
 Apply to every setting remembered between sessions (origin:
