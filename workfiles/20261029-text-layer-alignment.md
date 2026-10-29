@@ -163,6 +163,18 @@ worktree, `.claude/worktrees/text-layer-alignment` on `feature/text-layer-alignm
   Center.
 - No project rule broken.
 
+### Iteration 5 — 2026-10-29 — ⚙️ Post-implementation — No alignment by default, the text block
+
+The user, after the delivery: *« il manque un truc essentiel : la taille de l'élément en layer ! On doit
+pouvoir choisir un alignement mais aussi AUCUN alignement. Par défaut, AUCUN. Si on en choisit un, ça
+crée une taille de bloc qu'on peut redimensionner directement dans la surface de travail. Et les sauts
+de lignes sont calculés au sein de cette surface. »*
+
+- A fifth choice, **None**, the **default** — replacing Center as the default (Q&A 5).
+- Choosing an alignment gives the layer a **text block**: a size of its own, **resized directly on the
+  working surface**, the lines **wrapped within it**.
+- Design questions asked before any code: Q&A 8–13.
+
 ---
 
 ## Implementation Log
@@ -192,6 +204,12 @@ Questions asked by the agent during design, with user responses.
 | 5 | *(given by the user, unasked)* Default alignment | Center | 2026-10-29 |
 | 6 | Justified: what ends a paragraph — a blank line, or the end of the text only? | A blank line | 2026-10-29 |
 | 7 | Justified: a line without a space — left-aligned, or its letters spread? | Left-aligned | 2026-10-29 |
+| 8 | None: how do the lines stand within the text? | | 2026-10-29 |
+| 9 | The block: its width only, or its width and height? | | 2026-10-29 |
+| 10 | The block's width when an alignment is chosen? | | 2026-10-29 |
+| 11 | Justified with wrapping: what ends a paragraph? | | 2026-10-29 |
+| 12 | A word longer than the block? | | 2026-10-29 |
+| 13 | The alignment and the block: in the text style, or on the layer? | | 2026-10-29 |
 
 ---
 
