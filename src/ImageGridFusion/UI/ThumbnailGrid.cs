@@ -931,7 +931,8 @@ internal sealed class ThumbnailGrid : ScrollableControl
         int nameWidth = width;
         if (row.IsFile)
         {
-            string size = FileSizes.Text(this.SizeOf(row));
+            // An image found by its similarity shows its closeness before its size.
+            string size = row.ClosenessText is { } closeness ? $"{closeness} · {FileSizes.Text(this.SizeOf(row))}" : FileSizes.Text(this.SizeOf(row));
             int sizeWidth = TextRenderer.MeasureText(g, size, this._nameFont, Size.Empty, LineFlags).Width;
             TextRenderer.DrawText(g, size, this._nameFont, line, SystemColors.GrayText, LineFlags | TextFormatFlags.Right);
             nameWidth = Math.Max(0, width - sizeWidth - this.GapPx);
@@ -1208,6 +1209,27 @@ internal sealed class ThumbnailGrid : ScrollableControl
                 BulbColor,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         }
+
+        // An image found by its similarity: its closeness in a dark label at its bottom left, the Details
+        // row writing it before the size (workfiles/20261029-similar-images-accuracy.md § Closeness Shown).
+        if (!this.Details && row.ClosenessText is { } closeness)
+        {
+            this.PaintCornerLabel(g, closeness, tile, right: false);
+        }
+    }
+
+    /// <summary>A short text in a dark label at a bottom corner of a picture: a group's file count, a result's closeness.</summary>
+    private void PaintCornerLabel(Graphics g, string text, Rectangle picture, bool right)
+    {
+        const TextFormatFlags Flags = TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding;
+        var size = TextRenderer.MeasureText(g, text, this._nameFont, Size.Empty, Flags);
+        int pad = this.LogicalToDeviceUnits(3);
+        int inset = this.LogicalToDeviceUnits(MedallionInset);
+        int x = right ? picture.Right - inset - size.Width - 2 * pad : picture.X + inset;
+        var label = new Rectangle(x, picture.Bottom - inset - size.Height - pad, size.Width + 2 * pad, size.Height + pad);
+        using var fill = new SolidBrush(Color.FromArgb(200, 24, 24, 24));
+        g.FillRectangle(fill, label);
+        TextRenderer.DrawText(g, text, this._nameFont, label, Color.White, Flags | TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
     }
 
     /// <summary>
@@ -1247,15 +1269,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
         if (row.Count is { } count)
         {
-            string text = FileCount(count);
-            const TextFormatFlags Flags = TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding;
-            var size = TextRenderer.MeasureText(g, text, this._nameFont, Size.Empty, Flags);
-            int pad = this.LogicalToDeviceUnits(3);
-            int inset = this.LogicalToDeviceUnits(MedallionInset);
-            var label = new Rectangle(picture.Right - inset - size.Width - 2 * pad, picture.Bottom - inset - size.Height - pad, size.Width + 2 * pad, size.Height + pad);
-            using var fill = new SolidBrush(Color.FromArgb(200, 24, 24, 24));
-            g.FillRectangle(fill, label);
-            TextRenderer.DrawText(g, text, this._nameFont, label, Color.White, Flags | TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            this.PaintCornerLabel(g, FileCount(count), picture, right: true);
         }
 
         this.PaintDropTarget(g, row, picture);
