@@ -52,11 +52,12 @@ opening a menu of variants is Windows' own split button … never a second butto
 
 | Part | Look | Click | Tooltip |
 |---|---|---|---|
-| Eyedropper | A `SplitButton` (`BS_SPLITBUTTON`): the eyedropper icon (`EffectIcons.Eyedropper`, a kept drawing) and its built-in ▾; drawn **pressed** while armed | Main part: arms the eyedropper at the size in use, as today. ▾: opens the **sample menu** below the button | As today, with the size added: `Takes the borders' color from the preview (sample: 3 px): click a cell; Escape or a right click cancels` |
-| Color… | A native button: the swatch of the color in use, then `Color…`, as today | Opens the standard color dialog, as today | As today |
+| Eyedropper | A `SplitButton` (`BS_SPLITBUTTON`): the eyedropper icon (`EffectIcons.Eyedropper`, a kept drawing) and its built-in ▾, at the system's ideal width; drawn **pressed** while armed | Main part: arms the eyedropper at the size in use, as today. ▾: opens the **sample menu** below the button | **One for the whole button** (one system control): `Takes the borders' color from the preview (sample: 3 px): click a cell; Escape or a right click cancels. The arrow chooses the sample, the side of the square of pixels averaged` |
+| Color… | A native button: the swatch of the color in use, then `Color…`, as today | Opens the standard color dialog, followed live | `Chooses the borders' color in the color dialog, following it live — Cancel gives the previous one back`, plus the option's own note |
 
-- The two buttons **touch**: no gap between them, the Color… button overlapping the eyedropper's right
-  border by 1 px so the two borders read as one line.
+- The two buttons **touch**: the Color… button lies 2 logical px over the eyedropper's right edge — the
+  system buttons keep a margin inside their bounds — so one border shows between them
+  (`ColorSplitButton` lays them out itself, a `Panel`).
 - The eyedropper button is as tall as Color…; its width is the system's ideal size (icon + arrow).
 - It stays **where the split button is today** on each line (option B, moved next to its checkbox,
   rejected).
@@ -81,7 +82,7 @@ Agreed with the user (parent session, scoping, Q&A 5–6):
   (`GridPreview.MinEyedropperSample` … `MaxEyedropperSample`), the size in use checked, under a disabled
   caption `Eyedropper sample`. No icons: they are values (RULES.md § Icons).
 - **Choosing a size arms the eyedropper** at that size at once, as a click on its main part would
-  (Q&A 5). Choosing while it is already armed for this option changes the size of the armed eyedropper.
+  (Q&A 5). While it is armed, a press on the ▾ cancels it, as any press does.
 - **Only the ▾ opens the menu**: a right click on the eyedropper does not (it cancels an armed one, as
   today) (Q&A 6).
 - The size in use **shows in the tooltip and the menu's check only** — nothing drawn on the button
@@ -126,8 +127,8 @@ Color…**.
 |---|---|---|
 | Background | `BackgroundEffect.Opacity`, its icon, slider and label **before** the split button | Moved right after Color… — same value, same range (0–100 %) |
 | Borders | `GridBorders.Opacity` (10–100 %), after Thickness, the **brackets only** — disabled for the line styles | Moved right after Color…, and now **every style**: the brackets, the outer frame and the inner lines — a translucent line letting the image under it, or the canvas in a gap, show through (Q&A 9) |
-| Cutout | The Color treatment's amount (`CutoutEffect`, `colorOpacity`), its slider after the Sample on the treatments line | Right after Color… once the Sample leaves — the amount **is** the mask color's opacity; it takes the opacity's shape |
-| Text layer's box | `LayerTextStyle.BackgroundOpacity` (0–100 %), at the end of the box's line | Right after Color… (already there once the Sample leaves) |
+| Cutout | The Color treatment's amount (`CutoutEffect`, `colorOpacity`), its slider after the Sample on the treatments line | Right after Color… once the Sample leaves — the amount **is** the mask color's opacity; the opacity icon before it, its label kept `Color: N %` (the Cutout has an Opacity treatment of its own) |
+| Text layer's box | `LayerTextStyle.BackgroundOpacity` (0–100 %), on a line of its own under the box's | Right after Color…, on the box's line |
 | Text layer's text | — | **New**: the letters' opacity |
 | Text layer's outline | — | **New**: the outline's opacity |
 | Text layer's shadow | — | **New**: the shadow's opacity |
@@ -276,6 +277,41 @@ Go given: **code, unit tests and documentation**, in a **worktree** (`.claude/wo
 branch `feature/eyedropper-ergonomics`, from `main` at `b240e84`). The scope is frozen as the sections above
 stand.
 
+### Iteration 8 — 2026-10-29 — 🧭 Implementation choices
+
+- **One tooltip for the eyedropper and its ▾**: a system split button is one control, so the ▾'s text joins
+  the eyedropper's.
+- **No size change while armed**: the armed eyedropper owns the mouse, so a press on the ▾ cancels it, as
+  any press does; the design's "changes the size of the armed eyedropper" dropped.
+- **The touching buttons**: `ColorSplitButton` became a `Panel` laying its two buttons out itself — the
+  eyedropper at the system's ideal width (`SplitButton.IdealWidth`: WinForms' own preferred width added an
+  empty text area, the first build showed a gap between the icon and the ▾, seen by the user), Color… 2
+  logical px over its right edge.
+- **The held state** is `BM_SETSTATE` (`SplitButton.Held`), re-applied when the handle is made; the menu's
+  direction is `SplitButton.MenuDirection`.
+- **One route per color option** (`MainForm.ColorRoute`, built by `BackgroundRoute`, `BordersRoute`,
+  `CutoutRoute`, `LayerColorRoute`): the eyedropper and the dialog share it. Consequence: the Cutout's
+  Color… now asks for its engine first when the Cutout cannot be turned on, as its eyedropper already did.
+- **The live dialog** (`SharedColorDialog.LiveColorDialog.HookProc`): a color equal to the one shown is
+  skipped, so opening the dialog previews nothing and turns nothing on; a cancel restores only when
+  something was previewed.
+- **The tooltips of Color…** now say it follows the dialog live and that Cancel gives the previous color
+  back, each option keeping its note (Automatic color unchecked, the Borders' color remembered).
+- **The Cutout's mask opacity** keeps its label `Color: N %`, the opacity icon added before it: `Opacity`
+  is already one of its treatments, on its first line.
+- **The text box's opacity** moved onto the box's line, its line of its own removed.
+- **Translucent text**: the outline and the letters are drawn together, then the letters alone; the outline
+  is what the first leaves of the second (premultiplied), so the antialiased edges match the opaque
+  drawing exactly, and nothing changes while both opacities are 100 %. The shadow is faded as a layer.
+- **Borders on every style**: drawn with the color at its opacity; in the dashed, dotted and double styles
+  where two strokes cross, the crossing may show darker — not checked.
+- **Commits**: the color options' UI changes share their files (`MainForm`, `MainForm.Layers`), so they
+  are one commit; the text rendering and the Borders' drawing are their own.
+- **Checked by hand**: the Background's line — the eyedropper at its ideal width, Color… touching it, the
+  sample menu below, its check — in screenshots. **Not checked**: the live dialog, the pressed state while
+  armed, the Borders', the Cutout's and the Layers' lines, the translucent text — left to the user's test.
+- No rule broken.
+
 ---
 
 ## Implementation Log
@@ -285,9 +321,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project |
-| README | | | README.md / README.fr.md, GLOSSARY.md / GLOSSARY.fr.md, RULES.md § Color Options |
+| Code | 7, 8 | 2026-10-29 | `b08892f` text opacities, `e1510e9` Borders on every style, `5a895e3` the color options, `f77d90d` the split button's width |
+| Unit tests | 7 | 2026-10-29 | No test project — checked by hand (Iteration 8) |
+| README | 7 | 2026-10-29 | `9781dea` RULES.md § Color Options, `0c5f2c9` GLOSSARY.md / .fr.md, `2910178` README.md / .fr.md |
 
 ---
 
