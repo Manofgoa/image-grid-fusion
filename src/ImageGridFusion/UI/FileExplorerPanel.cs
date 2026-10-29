@@ -238,7 +238,7 @@ internal sealed partial class FileExplorerPanel : Panel
     // The folder view (workfiles/20260930-file-explorer-folder-view.md): whether it shows, the open
     // folder relative to the base folder ("" for the base folder itself), the index's folders once
     // derived, and the list being built — a later refresh making an earlier folder read stale.
-    private bool _folderView;
+    private bool _folderView = true;
     private string _openFolder = "";
     private FolderTree? _tree;
     private int _listVersion;
@@ -317,8 +317,13 @@ internal sealed partial class FileExplorerPanel : Panel
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        this._modes.Items.AddRange(["Favorites", "Folders", "People"]);
-        this._modes.SelectedIndex = (int)ExplorerMode.Favorites;
+        foreach (ExplorerMode mode in Enum.GetValues<ExplorerMode>())
+        {
+            this._modes.Items.Add(mode);
+        }
+
+        this._modes.SelectedIndex = (int)this.Mode;
+        this.ApplyView();
         this._searchRow.Controls.Add(this._modes, 0, 0);
         this._searchRow.Controls.Add(this._byName, 1, 0);
         this._searchRow.Controls.Add(this._byContent, 2, 0);
@@ -383,7 +388,7 @@ internal sealed partial class FileExplorerPanel : Panel
         _toolTip.SetToolTip(_collapse, "Hide the file explorer");
         _toolTip.SetToolTip(_expand, "Show the file explorer");
         _toolTip.SetToolTip(_rescan, "Rescan the folder");
-        this._toolTip.SetToolTip(this._modes, "What the list shows: the favorites and the search over every file, the base folder folder by folder, or the people the faces were grouped into");
+        this._toolTip.SetToolTip(this._modes, "What the list shows: the base folder folder by folder, the people the faces were grouped into, or the favorites and the search over every file — Ctrl+F again in the search box: the next view, Ctrl+Shift+F: the previous one");
         this.ApplyCriteriaTips();
         _toolTip.SetToolTip(_smallerGlyph, "Smaller tiles");
         _toolTip.SetToolTip(_largerGlyph, "Larger tiles");
@@ -826,7 +831,7 @@ internal sealed partial class FileExplorerPanel : Panel
     /// matches — the folder view — the open folder's subfolders and files — or the People view — the
     /// face groups, then the faces close to no other. Setting it raises nothing.
     /// </summary>
-    [DefaultValue(ExplorerMode.Favorites)]
+    [DefaultValue(ExplorerMode.Folders)]
     public ExplorerMode Mode
     {
         get => this._peopleView ? ExplorerMode.People : this._folderView ? ExplorerMode.Folders : ExplorerMode.Favorites;
