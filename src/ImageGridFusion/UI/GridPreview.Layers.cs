@@ -26,6 +26,9 @@ internal sealed partial class GridPreview
     private const int RotationKnob = 7;
     private const double RotationSnap = 15;
 
+    // A text box's side handles: a square on the middle of its left and right edges (workfiles/20261029-text-layer-alignment.md).
+    private const int BoxHandle = 5;
+
     private GridLayers _layers = GridLayers.Initial;
     private bool _layersShown;
     private bool _layersActive;
@@ -44,6 +47,10 @@ internal sealed partial class GridPreview
     private bool _hoveringRotation;
     private bool _rotatingLayer;
 
+    // The text box's side hovered, or dragged: -1 the left, 1 the right, 0 none.
+    private int _hoveredBoxSide;
+    private int _resizingBox;
+
     // A layer's edit view: the grid set aside meanwhile, the layer shown alone as its one cell.
     private EditState? _edit;
 
@@ -58,6 +65,13 @@ internal sealed partial class GridPreview
 
     /// <summary>Raised when the layers change — added, moved, turned, resized, tuned, removed, restacked — or the selected one.</summary>
     public event EventHandler? LayersChanged;
+
+    /// <summary>
+    /// Draws a text layer again, as it says — its box's width changed by a drag —; given by the form, which
+    /// owns the drawing of the texts. <c>null</c> when it cannot be drawn.
+    /// </summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Func<Layer, Layer?>? RenderTextLayer { get; set; }
 
     /// <summary>The layers, the last one on top, whether their effect is on or not.</summary>
     public GridLayers Layers => this._layers;
@@ -323,7 +337,15 @@ internal sealed partial class GridPreview
             return true;
         }
 
-        int hit = this.OnSelectedLayer(e.Location) ? this._selectedLayer : this.LayerAt(e.Location);
+        // Then a text box's side handles, half outside it.
+        if (this.OnBoxHandle(e.Location) is var side and not 0)
+        {
+            this._resizingBox = side;
+            this.InvalidateLayerOutline(this.SelectedLayer);
+            return true;
+        }
+
+        int hit =this.OnSelectedLayer(e.Location) ? this._selectedLayer : this.LayerAt(e.Location);
         if (hit < 0)
         {
             return false;
@@ -370,6 +392,16 @@ internal sealed partial class GridPreview
             return true;
         }
 
+        if (this._resizingBox != 0)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                this.ResizeTextBox(e.Location);
+            }
+
+            return true;
+        }
+
         if (this._pressedLayer >= 0)
         {
             if (e.Button == MouseButtons.Left && this.SelectedLayer is { } layer && this._pressedLayer == this._selectedLayer)
@@ -397,7 +429,14 @@ internal sealed partial class GridPreview
             this.InvalidateLayerOutline(this.SelectedLayer);
         }
 
-        bool selected = rotation || this.OnSelectedLayer(e.Location);
+        int boxSide = this.OnBoxHandle(e.Location);
+        if (boxSide != this._hoveredBoxSide)
+        {
+            this._hoveredBoxSide = boxSide;
+            this.InvalidateLayerOutline(this.SelectedLayer);
+        }
+
+        bool selected = rotation || boxSide != 0 || this.OnSelectedLayer(e.Location);
         if (!selected && this.LayerAt(e.Location) < 0)
         {
             return false;
@@ -416,20 +455,93 @@ internal sealed partial class GridPreview
             this.Invalidate();
         }
 
-        this.Cursor = rotation || !selected ? Cursors.Hand : Cursors.SizeAll;
+        this.Cursor = boxSide != 0 ? Cursors.SizeWE : rotation || !selected ? Cursors.Hand : Cursors.SizeAll;
         return true;
+    }
+
+    /// <summary>
+    /// A text box's side dragged to <paramref name="location"/>, along the box's own axis: the box as wide as
+    /// that, at least a line, its opposite side staying where it is, the text wrapped in it again.
+    /// </summary>
+    private void ResizeTextBox(Point location)
+    {
+        var canvas = this.CanvasBounds();
+        if (this.SelectedLayer is not { TextBox: { } lines } layer || this.RenderTextLayer is not { } render || canvas.IsEmpty || layer.Place.LinePixels <= 0)
+        {
+            return;
+        }
+
+        var box = layer.Place.BoxSize(layer.Shown, canvas.Size);
+        var center = layer.Place.Center(canvas.Size);
+        double radians = layer.Place.Angle * Math.PI / 180, ax = Math.Cos(radians), ay = Math.Sin(radians);
+        double along = (location.X - canvas.X - center.X) * ax + (location.Y - canvas.Y - center.Y) * ay;
+        double fixedSide = -this._resizingBox * box.Width / 2;
+
+        // A line on the canvas, and the drawing's margins around the box, in lines — kept as they are.
+        double line = Math.Min(canvas.Width, canvas.Height) * layer.Place.Size;
+        double margins = layer.Image.Bitmap.Width / layer.Place.LinePixels - lines;
+        double wanted = Math.Clamp(this._resizingBox * (along - fixedSide) / line - margins, Layer.MinTextBox, Layer.MaxTextBox);
+        if (Math.Abs(wanted - lines) < 0.01)
+        {
+            return;
+        }
+
+        double middle = fixedSide + this._resizingBox * (wanted + margins) * line / 2;
+        var place = layer.Place with { X = (center.X + middle * ax) / canvas.Width, Y = (center.Y + middle * ay) / canvas.Height };
+        if (render(layer with { Place = place, TextBox = wanted }) is { } drawn)
+        {
+            this.SetLayers(this._layers.With(this._selectedLayer, drawn));
+            this.Update();
+        }
+    }
+
+    /// <summary>The selected text layer's box handles in the control — the middles of its left and right sides, turned with it —; none without a box.</summary>
+    private PointF[]? BoxHandles(Rectangle canvas)
+    {
+        if (this.SelectedLayer is not { Visible: true, TextBox: not null } layer || canvas.IsEmpty)
+        {
+            return null;
+        }
+
+        var box = layer.Place.BoxSize(layer.Shown, canvas.Size);
+        PointF[] points = [new(-box.Width / 2, 0), new(box.Width / 2, 0)];
+        using var matrix = layer.Place.ToCanvas(canvas.Size);
+        matrix.TransformPoints(points);
+        return [.. points.Select(p => new PointF(p.X + canvas.X, p.Y + canvas.Y))];
+    }
+
+    /// <summary>The side of the selected text box whose handle <paramref name="location"/> grabs, while the layers take the mouse: -1 the left, 1 the right, 0 none.</summary>
+    private int OnBoxHandle(Point location)
+    {
+        if (!this.LayersTakeMouse || this.BoxHandles(this.CanvasBounds()) is not { } handles)
+        {
+            return 0;
+        }
+
+        double reach = this.LogicalToDeviceUnits(BoxHandle + 3);
+        for (int i = 0; i < handles.Length; i++)
+        {
+            double dx = location.X - handles[i].X, dy = location.Y - handles[i].Y;
+            if (dx * dx + dy * dy <= reach * reach)
+            {
+                return i == 0 ? -1 : 1;
+            }
+        }
+
+        return 0;
     }
 
     /// <summary>A move of a layer ends: drawn again in full. Whether a layer was pressed.</summary>
     private bool EndLayerPress()
     {
-        if (this._pressedLayer < 0 && !this._rotatingLayer)
+        if (this._pressedLayer < 0 && !this._rotatingLayer && this._resizingBox == 0)
         {
             return false;
         }
 
         this._pressedLayer = -1;
         this._rotatingLayer = false;
+        this._resizingBox = 0;
         this.Cursor = Cursors.Default;
         this.RedrawLayerArea(this.SelectedLayer, fast: false);
         return true;
@@ -441,7 +553,7 @@ internal sealed partial class GridPreview
     /// </summary>
     private bool LayerWheel(MouseEventArgs e)
     {
-        if (!this.LayersTakeMouse || this.SelectedLayer is not { } layer || this._pressed >= 0 || this._pressedLayer >= 0 || !this.OnSelectedLayer(e.Location))
+        if (!this.LayersTakeMouse || this.SelectedLayer is not { } layer || this._pressed >= 0 || this._pressedLayer >= 0 || this._resizingBox != 0 || !this.OnSelectedLayer(e.Location))
         {
             this._layerWheelDelta = 0;
             return false;
@@ -511,6 +623,30 @@ internal sealed partial class GridPreview
         using (var fill = new SolidBrush(color))
         {
             g.FillEllipse(fill, knob.X - radius, knob.Y - radius, 2 * radius, 2 * radius);
+        }
+
+        // A text box's side handles: a square on each side's middle, turned with it; white while hovered or dragged.
+        if (this.BoxHandles(canvas) is { } handles)
+        {
+            float half = this.LogicalToDeviceUnits(BoxHandle);
+            float halo = this.LogicalToDeviceUnits(2);
+            var state = g.Save();
+            for (int i = 0; i < handles.Length; i++)
+            {
+                int side = i == 0 ? -1 : 1;
+                g.ResetTransform();
+                g.TranslateTransform(handles[i].X, handles[i].Y);
+                g.RotateTransform((float)layer.Place.Angle);
+                using (var dark = new SolidBrush(HelperHalo))
+                {
+                    g.FillRectangle(dark, -half - halo, -half - halo, 2 * (half + halo), 2 * (half + halo));
+                }
+
+                using var square = new SolidBrush(this._resizingBox == side || this._hoveredBoxSide == side ? Color.White : HelperColor);
+                g.FillRectangle(square, -half, -half, 2 * half, 2 * half);
+            }
+
+            g.Restore(state);
         }
 
         g.SmoothingMode = smoothing;

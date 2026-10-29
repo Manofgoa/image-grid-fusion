@@ -50,6 +50,7 @@ internal sealed partial class MainForm
     private readonly CheckBox _layerItalic = new() { Text = "Italic", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _layerCaps = new() { Text = "ALL CAPS", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox[] _layerAlignment = [.. Enum.GetValues<LayerTextAlignment>().Select(_ => AlignmentButton())];
+    private readonly CheckBox _layerBox = new() { Text = "Box", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly ColorSplitButton _layerColor = new();
     private readonly TrackBar _layerColorSample = SampleSlider();
     private readonly Label _layerColorSampleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
@@ -141,7 +142,7 @@ internal sealed partial class MainForm
         this._textStyleScroll.Height = this._textStyleStrip.Height + SystemInformation.HorizontalScrollBarHeight;
         this._textStyleScroll.Width = this.LogicalToDeviceUnits(100);
         var fontLine = OptionLine();
-        fontLine.Controls.AddRange([this._layerFont, this._layerBold, this._layerItalic, this._layerCaps, .. this._layerAlignment, this._layerColor,this._layerColorSample, this._layerColorSampleLabel]);
+        fontLine.Controls.AddRange([this._layerFont, this._layerBold, this._layerItalic, this._layerCaps, .. this._layerAlignment, this._layerBox, this._layerColor,this._layerColorSample, this._layerColorSampleLabel]);
         var outlineLine = OptionLine();
         outlineLine.Controls.AddRange([this._layerOutline, this._layerOutlineColor, this._layerOutlineSample, this._layerOutlineSampleLabel, this._layerOutlineWidth, this._layerOutlineWidthLabel]);
         var styleLines = OptionLine();
@@ -248,9 +249,13 @@ internal sealed partial class MainForm
                 LayerTextAlignment.Left => "Align left — the lines start at the left edge of the widest one",
                 LayerTextAlignment.Center => "Center — the lines centered on the widest one",
                 LayerTextAlignment.Right => "Align right — the lines end at the right edge of the widest one",
-                _ => "Justify — the lines of a paragraph stretched by their spaces to the widest one; its last line, and a line of one word, aligned left; a blank line ends a paragraph",
+                _ => "Justify — the lines of a paragraph stretched by their spaces to the widest one, or to the box; its last line, and a line of one word, aligned left; a blank line ends a paragraph, in a box each line break",
             });
         }
+
+        this._layerBox.CheckedChanged += (_, _) => this.ChangeLayerBox(this._layerBox.Checked);
+        this._toolTip.SetToolTip(this._layerBox, "Box — the text wraps in a box half the grid wide, its width dragged by the handles on its sides; unchecked, the size fits the text");
+        this._preview.RenderTextLayer = layer => this.RenderTextLayer(layer.Text!, layer.Style!, layer.Look, layer.Place, layer.TextBox);
 
         this._layerShadow.CheckedChanged += (_, _) => this.ChangeLayerStyle(style => style with { Shadow = this._layerShadow.Checked });
         this._layerShadowKind.Picked += (_, kind) => this.ChangeLayerStyle(style => style with { Shadow = true, ShadowKind = kind });
@@ -481,7 +486,7 @@ internal sealed partial class MainForm
             this._layerBackground, this._layerBackgroundColor, this._layerBackgroundSample, this._layerBackgroundSampleLabel, this._layerBackgroundOpacity, this._layerBackgroundOpacityLabel,
             this._layerShadow, this._layerShadowColor, this._layerShadowSample, this._layerShadowSampleLabel, this._layerShadowKind, this._layerShadowSize, this._layerShadowSizeLabel,
             this._textStyleStrip,
-        }.Concat(this._layerAlignment))
+        }.Concat(this._layerAlignment).Append(this._layerBox))
         {
             control.Enabled = text;
         }
@@ -511,6 +516,8 @@ internal sealed partial class MainForm
         {
             this._layerAlignment[(int)alignment].Checked = style.Alignment == alignment;
         }
+
+        this._layerBox.Checked = layer is { IsText: true, TextBox: not null };
 
         this._layerShadow.Checked = style.Shadow;
         this._layerShadowKind.Selected = style.ShadowKind;
@@ -720,13 +727,13 @@ internal sealed partial class MainForm
     /// A text layer of <paramref name="text"/> in <paramref name="style"/>, its content drawn anew; <c>null</c>,
     /// the status line saying why, when it cannot be drawn.
     /// </summary>
-    private Layer? RenderTextLayer(string text, LayerTextStyle style, ImageLook look, LayerPlacement place)
+    private Layer? RenderTextLayer(string text, LayerTextStyle style, ImageLook look, LayerPlacement place, double? box = null)
     {
         try
         {
-            var (bitmap, line) = TextRaster.Render(text, style);
+            var (bitmap, line) = TextRaster.Render(text, style, box);
             var image = new SourceImage(bitmap, filePath: null) { Look = look };
-            return new Layer(image, look, place with { LinePixels = line }, text, style);
+            return new Layer(image, look, place with { LinePixels = line }, text, style) { TextBox = box };
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException or ArgumentException)
         {
@@ -761,9 +768,27 @@ internal sealed partial class MainForm
         }
     }
 
-    private void ReplaceTextLayer(Layer layer, string text, LayerTextStyle style)
+    /// <summary>
+    /// The Box checkbox: the selected text layer wrapped in a box half the grid wide, its center kept — or
+    /// back to the automatic size (workfiles/20261029-text-layer-alignment.md § Size Mode).
+    /// </summary>
+    private void ChangeLayerBox(bool box)
     {
-        if (this.RenderTextLayer(text, style, layer.Look, layer.Place) is { } drawn)
+        if (this._syncingEffects || this.IsExporting || this._preview.SelectedLayer is not { IsText: true } layer || box == layer.TextBox is not null)
+        {
+            return;
+        }
+
+        double ratio = this._preview.CanvasRatio;
+        double half = Math.Clamp(0.5 * ratio / (Math.Min(ratio, 1) * layer.Place.Size), Layer.MinTextBox, Layer.MaxTextBox);
+        this.ReplaceTextLayer(layer, layer.Text!, layer.Style!, box ? half : null);
+    }
+
+    private void ReplaceTextLayer(Layer layer, string text, LayerTextStyle style) => this.ReplaceTextLayer(layer, text, style, layer.TextBox);
+
+    private void ReplaceTextLayer(Layer layer, string text, LayerTextStyle style, double? box)
+    {
+        if (this.RenderTextLayer(text, style, layer.Look, layer.Place, box) is { } drawn)
         {
             this.TurnLayersOn();
             this._preview.ReplaceSelectedLayer(drawn);
