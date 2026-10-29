@@ -292,6 +292,8 @@ Questions asked by the agent during design, with user responses.
 | 17 | Box mode: a word longer than the box? | Cut | 2026-10-29 |
 | 18 | The size mode and the box: in the text style, or on the layer? | On the layer | 2026-10-29 |
 | 19 | Which control chooses the size mode? | A "Box" checkbox | 2026-10-29 |
+| 20 | Merge `feature/text-layer-alignment` into `main`? | Merge | 2026-10-29 |
+| 21 | Is the text layer alignment task finished? | Yes | 2026-10-29 |
 
 ---
 
