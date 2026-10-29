@@ -195,6 +195,11 @@ internal sealed partial class MainForm
         };
 
         this._layerMenu.Items.AddRange([this._layerMenuDuplicate, this._layerMenuDelete, this._layerMenuSeparator, this._layerMenuFindSimilar]);
+        UiIcons.Set(this._layerMenuDuplicate, UiIcons.DuplicateLayer);
+        UiIcons.Set(this._layerMenuDelete, UiIcons.DeleteLayer);
+        UiIcons.Set(this._layerMenuFindSimilar, UiIcons.FindSimilar);
+        UiIcons.Attach(this._layerMenu);
+        UiIcons.Attach(this._textStyleMenu);
         this._layerMenuDuplicate.Click += async (_, _) => await this.DuplicateSelectedLayerAsync();
         this._layerMenuDelete.Click += (_, _) => this._preview.RemoveSelectedLayer();
         this._layerMenuFindSimilar.Click += (_, _) =>
@@ -443,18 +448,19 @@ internal sealed partial class MainForm
     /// <summary>The eyedropper icons of the three colors and the list's buttons, drawn at the monitor's DPI; the ones replaced disposed.</summary>
     private void UpdateLayerIcons(int size)
     {
-        foreach (var (button, action) in new (Button, EffectIcons.LayerAction)[]
+        // Emoji first; Duplicate's drawing kept, no emoji saying it (RULES.md § Icons).
+        foreach (var (button, icon) in new (Button, UiIcon)[]
         {
-            (this._layerAddImage, EffectIcons.LayerAction.AddImage), (this._layerPaste, EffectIcons.LayerAction.Paste),
-            (this._layerAddText, EffectIcons.LayerAction.AddText), (this._layerCopy, EffectIcons.LayerAction.Copy),
-            (this._layerDuplicate, EffectIcons.LayerAction.Duplicate),
-            (this._layerDelete, EffectIcons.LayerAction.Delete),
-            (this._layerToBack, EffectIcons.LayerAction.ToBack), (this._layerLower, EffectIcons.LayerAction.Lower),
-            (this._layerRaise, EffectIcons.LayerAction.Raise), (this._layerToFront, EffectIcons.LayerAction.ToFront),
+            (this._layerAddImage, UiIcons.AddImage), (this._layerPaste, UiIcons.Copy),
+            (this._layerAddText, UiIcons.AddText), (this._layerCopy, UiIcons.CopyLayer),
+            (this._layerDuplicate, UiIcons.DuplicateLayer),
+            (this._layerDelete, UiIcons.DeleteLayer),
+            (this._layerToBack, UiIcons.ToBack), (this._layerLower, UiIcons.Lower),
+            (this._layerRaise, UiIcons.Raise), (this._layerToFront, UiIcons.ToFront),
         })
         {
             var previous = button.Image;
-            button.Image = EffectIcons.Layer(size, action);
+            button.Image = icon.Copy(size);
             previous?.Dispose();
         }
 
@@ -509,7 +515,7 @@ internal sealed partial class MainForm
         {
             this._layerEditShowsDone = editing;
             var previous = this._layerEdit.Image;
-            this._layerEdit.Image = EffectIcons.Layer(this._layerIconSize, editing ? EffectIcons.LayerAction.Done : EffectIcons.LayerAction.Edit);
+            this._layerEdit.Image = (editing ? UiIcons.Done : UiIcons.Edit).Copy(this._layerIconSize);
             previous?.Dispose();
             this._toolTip.SetToolTip(
                 this._layerEdit,
@@ -1173,7 +1179,7 @@ internal sealed partial class MainForm
         }
 
         this._textStyleMenu.Items.Clear();
-        this._textStyleMenu.Items.Add("Rename…", null, (_, _) => this.RenameTextStyle(style));
+        UiIcons.Set(this._textStyleMenu.Items.Add("Rename…", null, (_, _) => this.RenameTextStyle(style)), UiIcons.Rename);
         var replace = new ToolStripMenuItem("Replace with current style", null, (_, _) =>
         {
             if (this._preview.SelectedLayer is { IsText: true } layer)
@@ -1185,15 +1191,18 @@ internal sealed partial class MainForm
         {
             Enabled = this._preview.SelectedLayer is { IsText: true },
         };
+        UiIcons.Set(replace, UiIcons.ReplaceStyle);
         this._textStyleMenu.Items.Add(replace);
 
         // A decision taking something away goes through a submenu (RULES.md § People).
         var delete = new ToolStripMenuItem("Delete");
-        delete.DropDownItems.Add($"Delete {style.Name}", null, (_, _) =>
+        var confirm = delete.DropDownItems.Add($"Delete {style.Name}", null, (_, _) =>
         {
             this._textStyles.Delete(style);
             this.SaveTextStyles($"Style “{style.Name}” deleted.");
         });
+        UiIcons.Set(delete, UiIcons.Forget);
+        UiIcons.Set(confirm, UiIcons.Forget);
         this._textStyleMenu.Items.Add(delete);
         this._textStyleMenu.Show(this._textStyleStrip, location);
     }

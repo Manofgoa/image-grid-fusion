@@ -85,8 +85,6 @@ internal sealed partial class FileExplorerPanel : Panel
     private const string SortNewestText = "Date ↓";
     private const string SortNameText = "Name A→Z";
     private const string SortSmallestText = "Size ↑";
-    private const string ThumbnailsViewText = "▦";
-    private const string DetailsViewText = "☰";
 
     // The sort drop-down's width in logical pixels: its longest entry and the arrow.
     private const int SortWidth = 92;
@@ -95,14 +93,11 @@ internal sealed partial class FileExplorerPanel : Panel
     private const int ModesWidth = 96;
 
     // The views drop-down's icons, in ExplorerMode's order (workfiles/20261029-ctrl-f-view-cycle.md § Drop-Down
-    // Icons): Segoe UI Emoji glyphs drawn in a colour of their own, as the tile tooltip's — GDI draws no
-    // full-colour emoji.
-    private static readonly (string Icon, Color Color)[] ModeIcons =
-    [
-        ("\U0001F4C1", Color.FromArgb(214, 150, 0)),
-        ("\U0001F465", Color.FromArgb(202, 80, 16)),
-        ("❤", Color.FromArgb(232, 17, 35)),
-    ];
+    // Icons), in full color (workfiles/20261029-menu-icons.md § Other Controls).
+    private static readonly UiIcon[] ModeIcons = [UiIcons.Folder, UiIcons.Group, UiIcons.Favorites];
+
+    // The sort drop-down's icons, in FileOrder's order; the direction stays in the text (Iteration 11).
+    private static readonly UiIcon[] SortIcons = [UiIcons.Date, UiIcons.ByName, UiIcons.FileSize];
 
     // The width of a face in the People submenu of a file's tile, in logical pixels, at the tiles' 4:3.
     private const int PhotoFaceWidth = 40;
@@ -110,21 +105,20 @@ internal sealed partial class FileExplorerPanel : Panel
     private readonly TableLayoutPanel _content = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 8, Padding = new Padding(6, 4, 6, 6) };
     private readonly TableLayoutPanel _header = new() { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
     private readonly Label _title = new() { Text = "Files", AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly Button _collapse = new() { Text = "»", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right };
-    private readonly Button _expand = new() { Text = "«", Dock = DockStyle.Fill, Visible = false, Margin = Padding.Empty };
+    private readonly Button _collapse = new() { AccessibleName = "Collapse", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right };
+    private readonly Button _expand = new() { AccessibleName = "Expand", Dock = DockStyle.Fill, Visible = false, Margin = Padding.Empty };
     private readonly TableLayoutPanel _searchRow = new() { ColumnCount = 5, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
     // The views drop-down (workfiles/20261027-face-detection.md § People View): its entries in
     // ExplorerMode's order, each after its icon.
     private readonly ComboBox _modes = new() { DropDownStyle = ComboBoxStyle.DropDownList, DrawMode = DrawMode.OwnerDrawFixed, Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0) };
-    private readonly Font _modeIconFont;
 
     // The search criteria (workfiles/20261007-search-options.md): pressed, the search looks in the
     // relative paths, in the content texts; both at start-up, never none, not remembered. Toggled by
     // hand (AutoCheck off), so the last one pressed stays pressed.
-    private readonly CheckBox _byName = new() { Text = "Aa", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0), Checked = true, AutoCheck = false };
-    private readonly CheckBox _byContent = new() { Text = "💡", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0), Checked = true, AutoCheck = false };
+    private readonly CheckBox _byName = new() { AccessibleName = "Name", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0), Checked = true, AutoCheck = false };
+    private readonly CheckBox _byContent = new() { AccessibleName = "Content", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0), Checked = true, AutoCheck = false };
     private readonly TextBox _search = new() { PlaceholderText = SearchPlaceholder, Anchor = AnchorStyles.Left | AnchorStyles.Right };
-    private readonly Button _rescan = new() { Text = "↻", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right, Enabled = false };
+    private readonly Button _rescan = new() { AccessibleName = "Rescan", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right, Enabled = false };
     // One bar per pass (ContentPass, its index) — the OCR passes' (workfiles/20261013-complementary-ocr-passes.md
     // § Progress Bars), the face pass's (workfiles/20261027-face-detection.md § Face Pass), the Vision and
     // Caption passes' (workfiles/20261027-image-content-analysis.md § Passes) — each in its colour, stacked
@@ -158,12 +152,12 @@ internal sealed partial class FileExplorerPanel : Panel
 
     // The sort drop-down (workfiles/20261009-search-results-sort.md), at the end of the slider's row:
     // its entries in FileOrder's order.
-    private readonly ComboBox _sort = new() { DropDownStyle = ComboBoxStyle.DropDownList, Anchor = AnchorStyles.Right, Margin = new Padding(8, 0, 0, 0) };
+    private readonly ComboBox _sort = new() { DropDownStyle = ComboBoxStyle.DropDownList, DrawMode = DrawMode.OwnerDrawFixed, Anchor = AnchorStyles.Right, Margin = new Padding(8, 0, 0, 0) };
 
     // The view buttons (workfiles/20261009-explorer-details-view.md), after the sort drop-down: the
     // current view's pressed, toggled by hand (AutoCheck off) so one is always pressed.
-    private readonly CheckBox _thumbnailsView = new() { Text = ThumbnailsViewText, Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(6, 0, 0, 0), AutoCheck = false, Checked = true };
-    private readonly CheckBox _detailsView = new() { Text = DetailsViewText, Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(2, 0, 0, 0), AutoCheck = false };
+    private readonly CheckBox _thumbnailsView = new() { AccessibleName = "Thumbnails", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(6, 0, 0, 0), AutoCheck = false, Checked = true };
+    private readonly CheckBox _detailsView = new() { AccessibleName = "Details", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(2, 0, 0, 0), AutoCheck = false };
     private readonly Panel _invite = new() { Dock = DockStyle.Fill, Visible = false };
     private readonly Label _inviteText = new()
     {
@@ -311,7 +305,7 @@ internal sealed partial class FileExplorerPanel : Panel
     private (string Query, float[] Embedding)? _queryEmbedding;
     private string? _queryPending;
     private SimilarSource? _similarTo;
-    private readonly Button _similarClear = new() { Text = "×", Dock = DockStyle.Right, Width = 22, FlatStyle = FlatStyle.Flat, Visible = false, Margin = Padding.Empty };
+    private readonly Button _similarClear = new() { AccessibleName = "Clear", Dock = DockStyle.Right, Width = 22, FlatStyle = FlatStyle.Flat, Visible = false, Margin = Padding.Empty };
     private readonly ToolStripMenuItem _findSimilar = new("Find similar images");
 
     public FileExplorerPanel()
@@ -320,7 +314,6 @@ internal sealed partial class FileExplorerPanel : Panel
         this._groupTitle.Font = new Font(this.Font.FontFamily, this.Font.SizeInPoints + 4f, FontStyle.Bold);
         _smallerGlyph.Font = new Font("Segoe UI Symbol", Font.SizeInPoints);
         _largerGlyph.Font = new Font("Segoe UI Symbol", Font.SizeInPoints + 6f);
-        this._modeIconFont = new Font("Segoe UI Emoji", this.Font.SizeInPoints);
         ApplyWidth();
 
         _content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -374,6 +367,13 @@ internal sealed partial class FileExplorerPanel : Panel
         this._detailsView.Font = new Font("Segoe UI Symbol", this.Font.SizeInPoints);
         this._sort.Items.AddRange([SortNewestText, SortNameText, SortSmallestText]);
         this._sort.SelectedIndex = (int)this._fileOrder;
+        this._sort.DrawItem += (_, e) =>
+        {
+            if (e.Index >= 0)
+            {
+                UiIcons.DrawItem(this._sort, e, SortIcons[e.Index], (string)this._sort.Items[e.Index]!);
+            }
+        };
 
         // Docked to the top in reverse order of addition: the text above the button.
         _invite.Controls.Add(_chooseFolder);
@@ -401,6 +401,22 @@ internal sealed partial class FileExplorerPanel : Panel
         this._menu.Items.AddRange([this._photoPeople, this._photoPeopleSeparator, this._openGroupItem, this._renameGroup, this._hideGroup, this._unhideGroup, this._unmergeGroup, this._notThisPerson, this._peopleSeparator]);
         this._menu.Items.AddRange([this._editDescription, this._findSimilar, this._copy, this._copyPng, this._copyFullPath, this._copySeparator]);
         _menu.Items.Add(_openLocation);
+
+        // A confirming item takes its parent's icon: it is the action itself (RULES.md § Icons).
+        foreach (var (item, icon) in new (ToolStripItem, UiIcon)[]
+        {
+            (this._photoPeople, UiIcons.People), (this._openGroupItem, UiIcons.Group), (this._renameGroup, UiIcons.Rename),
+            (this._hideGroup, UiIcons.Hide), (this._hideConfirm, UiIcons.Hide), (this._unhideGroup, UiIcons.Unhide),
+            (this._unmergeGroup, UiIcons.Unmerge), (this._unmergeConfirm, UiIcons.Unmerge),
+            (this._notThisPerson, UiIcons.NotThisPerson), (this._notConfirm, UiIcons.NotThisPerson),
+            (this._editDescription, UiIcons.Rename), (this._findSimilar, UiIcons.FindSimilar), (this._copy, UiIcons.Copy),
+            (this._copyPng, UiIcons.Png), (this._copyFullPath, UiIcons.CopyPath), (this._openLocation, UiIcons.OpenFolder),
+        })
+        {
+            UiIcons.Set(item, icon);
+        }
+
+        UiIcons.Attach(this._menu);
         _grid.ContextMenuStrip = _menu;
         _grid.IsFavorite = _favorites.Contains;
         this._grid.ContentExcerpt = this.ExcerptOf;
@@ -1392,7 +1408,6 @@ internal sealed partial class FileExplorerPanel : Panel
             _title.Font.Dispose();
             _smallerGlyph.Font.Dispose();
             _largerGlyph.Font.Dispose();
-            this._modeIconFont.Dispose();
         }
 
         base.Dispose(disposing);
@@ -1478,9 +1493,25 @@ internal sealed partial class FileExplorerPanel : Panel
         Width = IsHandleCreated ? LogicalToDeviceUnits(logical) : logical;
     }
 
+    /// <summary>The buttons' icons at the DPI, emoji first (RULES.md § Icons).</summary>
+    private void UpdateIcons()
+    {
+        int size = this.LogicalToDeviceUnits(UiIcons.LogicalSize);
+        foreach (var (button, icon) in new (ButtonBase, UiIcon)[]
+        {
+            (this._byName, UiIcons.ByName), (this._byContent, UiIcons.Caption), (this._rescan, UiIcons.Rescan),
+            (this._collapse, UiIcons.Collapse), (this._expand, UiIcons.Expand), (this._similarClear, UiIcons.Clear),
+            (this._thumbnailsView, UiIcons.Thumbnails), (this._detailsView, UiIcons.Details), (this._chooseFolder, UiIcons.Folder),
+        })
+        {
+            UiIcons.SetImage(button, icon, size);
+        }
+    }
+
     /// <summary>The rows sized to the font and the DPI: the progress bar's, the status and caption lines, the slider's row, the URL zone, the invitation.</summary>
     private void ApplyMetrics()
     {
+        this.UpdateIcons();
         int line = Font.Height + LogicalToDeviceUnits(4);
         int bar = this.LogicalToDeviceUnits(IndexingBar.Thickness);
         foreach (RowStyle row in this._bars.RowStyles)
@@ -3042,25 +3073,14 @@ internal sealed partial class FileExplorerPanel : Panel
     /// </summary>
     private void DrawModeItem(object? sender, DrawItemEventArgs e)
     {
-        e.DrawBackground();
         if (e.Index < 0)
         {
+            e.DrawBackground();
             return;
         }
 
         var mode = (ExplorerMode)this._modes.Items[e.Index]!;
-        var (icon, color) = ModeIcons[(int)mode];
-        bool disabled = (e.State & DrawItemState.Disabled) != 0 || !this._modes.Enabled;
-        bool selected = (e.State & DrawItemState.Selected) != 0;
-        var textColor = disabled ? SystemColors.GrayText : selected ? SystemColors.HighlightText : e.ForeColor;
-        const TextFormatFlags flags = TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.VerticalCenter | TextFormatFlags.NoClipping;
-        int gap = this.LogicalToDeviceUnits(3);
-        int iconWidth = TextRenderer.MeasureText(e.Graphics, icon, this._modeIconFont, Size.Empty, flags).Width;
-        var bounds = e.Bounds;
-        TextRenderer.DrawText(e.Graphics, icon, this._modeIconFont, new Rectangle(bounds.X + gap, bounds.Y, iconWidth, bounds.Height), disabled ? SystemColors.GrayText : color, flags);
-        int textLeft = bounds.X + gap * 2 + iconWidth;
-        TextRenderer.DrawText(e.Graphics, mode.ToString(), e.Font ?? this._modes.Font, new Rectangle(textLeft, bounds.Y, Math.Max(0, bounds.Right - textLeft), bounds.Height), textColor, (flags & ~TextFormatFlags.NoClipping) | TextFormatFlags.EndEllipsis);
-        e.DrawFocusRectangle();
+        UiIcons.DrawItem(this._modes, e, ModeIcons[(int)mode], mode.ToString());
     }
 
     /// <summary>What the view changes around the grid: the caption or the breadcrumb, the search box's hint.</summary>

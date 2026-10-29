@@ -80,7 +80,7 @@ internal sealed partial class MainForm : Form
     // The ⚙ menu's last item, an action rather than a setting: Explorer on the running exe's folder.
     private readonly ToolStripMenuItem _openAppFolder = new("Open app folder");
     private readonly Button _clearButton = new() { Text = "Clear all", AutoSize = true };
-    private readonly Button _settingsButton = new() { Text = "⚙", Size = new Size(32, 23), AutoSize = true };
+    private readonly Button _settingsButton = new() { AccessibleName = "Settings", Size = new Size(32, 23), AutoSize = true };
     // The length readout: what the exported video would last, always shown, its detail in its tooltip (see RefreshLength).
     private readonly Label _lengthReadout = new() { AutoSize = true, Anchor = AnchorStyles.Left, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 3, 3) };
 
@@ -94,6 +94,9 @@ internal sealed partial class MainForm : Form
         RowCount = 1,
         Padding = new Padding(8, 4, 8, 0),
     };
+    // The size and state the Play / Pause icon was drawn at.
+    private int _playIconSize;
+    private bool _playShowsPlay;
     private readonly Button _playButton = new() { AutoSize = true, Anchor = AnchorStyles.Left, TabStop = false, Margin = new Padding(0, 3, 3, 3) };
     private readonly PlaybackTimeline _timeline = new() { Anchor = AnchorStyles.Left | AnchorStyles.Right, Margin = new Padding(3, 3, 6, 3) };
     private readonly Label _positionReadout = new() { AutoSize = true, Anchor = AnchorStyles.Right, TextAlign = ContentAlignment.MiddleRight, Margin = new Padding(3, 3, 3, 3) };
@@ -103,15 +106,13 @@ internal sealed partial class MainForm : Form
     private readonly ContextMenuStrip _settingsMenu = new();
     private readonly ToolStripMenuItem _startWithWindows = new("Start with Windows");
     private readonly ToolTip _toolTip = new();
-    private readonly Button _copyButton = SplitMain("Copy");
-    private readonly Button _copyArrow = SplitArrow();
+    private readonly SplitButton _copyButton = SplitMain("Copy");
     private readonly ContextMenuStrip _copyMenu = new();
     private readonly ToolStripMenuItem _copyGif = new("GIF");
     private readonly ToolStripMenuItem _copyMp4 = new("MP4 Video");
     private readonly ToolStripMenuItem _copyForSharing = new("JPEG for sharing");
     private readonly ToolStripMenuItem _copyPngMaxSize = new("PNG max size");
-    private readonly Button _saveButton = SplitMain("Save…");
-    private readonly Button _saveArrow = SplitArrow();
+    private readonly SplitButton _saveButton = SplitMain("Save…");
     private readonly ContextMenuStrip _saveMenu = new();
     private readonly ToolStripMenuItem _saveGif = new("GIF");
     private readonly ToolStripMenuItem _saveMp4 = new("MP4 Video");
@@ -194,7 +195,7 @@ internal sealed partial class MainForm : Form
     // Left of the Reset, as tall as it: the selected cell's effects saved as an effect preset.
     private readonly Button _presetButton = new()
     {
-        Text = "★ Preset…",
+        Text = "Preset…",
         AutoSize = true,
         Anchor = AnchorStyles.Right | AnchorStyles.Top,
         Margin = new Padding(3, 0, 0, 0),
@@ -210,7 +211,7 @@ internal sealed partial class MainForm : Form
 
     // The zoom's fit modes, exclusive: at most one pressed, from the look of the selected image.
     private readonly ZoomFitStrip _zoomFit = new() { Anchor = AnchorStyles.Left };
-    private readonly ComboBox _motionKind = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 90, Anchor = AnchorStyles.Left };
+    private readonly ComboBox _motionKind = new() { DropDownStyle = ComboBoxStyle.DropDownList, DrawMode = DrawMode.OwnerDrawFixed, Width = 90, Anchor = AnchorStyles.Left };
 
     // Minus the duration of one back-and-forth, in seconds: the right end is the fastest.
     private readonly StepSlider _motionCycle = OptionSlider(-(int)MotionEffect.MaxCycle.TotalSeconds, -(int)MotionEffect.MinCycle.TotalSeconds, 5, controlStep: 1);
@@ -470,10 +471,8 @@ internal sealed partial class MainForm : Form
         _outputButtons = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = Padding.Empty };
         _outputButtons.Controls.Add(_settingsButton);
         _outputButtons.Controls.Add(_copyButton);
-        _outputButtons.Controls.Add(_copyArrow);
         _outputButtons.Controls.Add(_copyLastButton);
         _outputButtons.Controls.Add(_saveButton);
-        _outputButtons.Controls.Add(_saveArrow);
 
         // Clear button on the left, then the status line, output buttons on the right.
         _bottom = new TableLayoutPanel
@@ -559,6 +558,14 @@ internal sealed partial class MainForm : Form
         _options[ImageEffect.Zoom].Controls.AddRange([_zoom, _zoomLabel, this._zoomFit]);
         this._motionKind.Items.AddRange(Enum.GetNames<MotionKind>());
         this._motionKind.SelectedIndex = (int)MotionEffect.Default.Kind;
+        this._motionKind.DrawItem += (_, e) =>
+        {
+            // Each kind after its icon (RULES.md § Icons): Zoom's magnifying glass, the only kind for now.
+            if (e.Index >= 0)
+            {
+                UiIcons.DrawItem(this._motionKind, e, UiIcons.Zoom, (string)this._motionKind.Items[e.Index]!);
+            }
+        };
         this._motionCycle.Value = -(int)MotionEffect.Default.Cycle.TotalSeconds;
         this._options[ImageEffect.Animations].Controls.AddRange([this._motionKind, this._motionCycle, this._motionCycleLabel]);
         _options[ImageEffect.Rotate].Controls.AddRange([this._quarterTurns, _fineAngle, _fineAngleLabel]);
@@ -675,6 +682,34 @@ internal sealed partial class MainForm : Form
         this._transportTimer.Start();
         this._toolTip.SetToolTip(this._clearButton, "Removes every image and the global effects, and brings the format back to Twitter (Ctrl+N)");
         _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, this._installYtDlpCompanions, this._downloadCutoutEngine, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._downloadOcrEngine, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._downloadFaceEngine, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._similarImages, this._downloadVisionEngine, this._captions, this._downloadCaptionEngine, this._forgetVisual, new ToolStripSeparator(), this._openAppFolder]);
+        // An icon per action and toggle, never on a caption nor a submenu's values (RULES.md § Icons).
+        UiIcons.Set(this._startWithWindows, UiIcons.StartWithWindows);
+        UiIcons.Set(this._twitterCornersDefault, UiIcons.TwitterCorners);
+        UiIcons.Set(this._videoSize, UiIcons.Video);
+        UiIcons.Set(this._guideApproach, UiIcons.Guides);
+        UiIcons.Set(this._gapBarsFrom, UiIcons.GapBars);
+        UiIcons.Set(this._explorerFolder, UiIcons.Folder);
+        UiIcons.Set(this._explorerPages, UiIcons.Pages);
+        UiIcons.Set(this._installYtDlpCompanions, UiIcons.Download);
+        UiIcons.Set(this._downloadCutoutEngine, UiIcons.Download);
+        UiIcons.Set(this._explorerContentSearch, UiIcons.TextRead);
+        UiIcons.Set(this._rebuildContent, UiIcons.Rebuild);
+        UiIcons.Set(this._downloadOcrEngine, UiIcons.Download);
+        UiIcons.Set(this._ocrResultStyle, UiIcons.OcrResultStyle);
+        UiIcons.Set(this._ocrArrowCurved, UiIcons.CurvedArrow);
+        UiIcons.Set(this._ocrArrowThickness, UiIcons.Thickness);
+        UiIcons.Set(this._faceAnalysis, UiIcons.People);
+        UiIcons.Set(this._faceGrouping, UiIcons.Group);
+        UiIcons.Set(this._downloadFaceEngine, UiIcons.Download);
+        UiIcons.Set(this._forgetFaces, UiIcons.Forget);
+        UiIcons.Set(this._visualAnalysis, UiIcons.Tags);
+        UiIcons.Set(this._similarImages, UiIcons.Strictness);
+        UiIcons.Set(this._downloadVisionEngine, UiIcons.Download);
+        UiIcons.Set(this._captions, UiIcons.Caption);
+        UiIcons.Set(this._downloadCaptionEngine, UiIcons.Download);
+        UiIcons.Set(this._forgetVisual, UiIcons.Forget);
+        UiIcons.Set(this._openAppFolder, UiIcons.OpenFolder);
+        UiIcons.Attach(this._settingsMenu);
         for (int pages = FileExplorerPanel.MinPagesPerLoad; pages <= FileExplorerPanel.MaxPagesPerLoad; pages++)
         {
             int choice = pages;
@@ -810,6 +845,19 @@ internal sealed partial class MainForm : Form
         _saveMp4.Click += (_, _) => SaveAs(GridExport.Format.Mp4);
         this.AddPngMaxSizes(this._savePngMaxSize, side => this.SaveAs(null, side));
         _saveMenu.Items.AddRange([_saveGif, _saveMp4, this._savePngMaxSize, new ToolStripSeparator(), _saveLast]);
+        foreach (var (item, icon) in new (ToolStripItem, UiIcon)[]
+        {
+            (this._copyGif, UiIcons.Gif), (this._copyMp4, UiIcons.Video), (this._copyForSharing, UiIcons.Share),
+            (this._copyPngMaxSize, UiIcons.Png), (this._copyLast, UiIcons.LastVideo),
+            (this._saveGif, UiIcons.Gif), (this._saveMp4, UiIcons.Video), (this._savePngMaxSize, UiIcons.Png),
+            (this._saveLast, UiIcons.LastVideo),
+        })
+        {
+            UiIcons.Set(item, icon);
+        }
+
+        UiIcons.Attach(this._copyMenu);
+        UiIcons.Attach(this._saveMenu);
 
         // The last video's tooltips say whether the grid has changed since: refreshed as they are about to show.
         _copyLastButton.Click += (_, _) => CopyLastVideo();
@@ -826,8 +874,8 @@ internal sealed partial class MainForm : Form
         this._saveMenu.Opening += (_, _) => this.RefreshPngMaxSizes(this._savePngMaxSize);
         this._copyButton.MouseEnter += (_, _) => this.RefreshPngSizeTooltips();
         this._saveButton.MouseEnter += (_, _) => this.RefreshPngSizeTooltips();
-        _copyArrow.Click += (_, _) => _copyMenu.Show(_copyButton, Point.Empty, ToolStripDropDownDirection.AboveRight);
-        _saveArrow.Click += (_, _) => _saveMenu.Show(_saveButton, Point.Empty, ToolStripDropDownDirection.AboveRight);
+        this._copyButton.Menu = this._copyMenu;
+        this._saveButton.Menu = this._saveMenu;
         _cancelButton.Click += (_, _) => _export?.Cancel();
         UpdateEffectIcons();
         FitEffectRows();
@@ -1151,6 +1199,9 @@ internal sealed partial class MainForm : Form
         };
         this._cellMenu.Items.Add(this._copyCell);
         this._cellMenu.Items.Add(this._findSimilarCell);
+        UiIcons.Set(this._copyCell, UiIcons.Copy);
+        UiIcons.Set(this._findSimilarCell, UiIcons.FindSimilar);
+        UiIcons.Attach(this._cellMenu);
         _explorer.MessageWhileCollapsed += (_, message) => ShowStatus(message.Text, message.Error);
         this._explorer.SearchEscaped += (_, _) => this._preview.Focus();
         _layouts.DragEnter += OnDragEnter;
@@ -1209,32 +1260,54 @@ internal sealed partial class MainForm : Form
         {
             _effectTabs.SetIcon(effect, effect switch
             {
-                ImageEffect.Background => EffectIcons.Background(size),
+                // Emoji first; Crop's drawing kept, no emoji saying it (RULES.md § Icons).
+                ImageEffect.Background => UiIcons.Background.Copy(size),
                 ImageEffect.Crop => EffectIcons.Crop(size),
-                ImageEffect.Cutout => EffectIcons.Cutout(size),
-                ImageEffect.Zoom => EffectIcons.Zoom(size),
-                ImageEffect.Animations => EffectIcons.Animations(size),
-                ImageEffect.Rotate => EffectIcons.Rotate(size),
-                ImageEffect.Flip => EffectIcons.Flip(size),
-                ImageEffect.Frames => EffectIcons.Frames(size),
-                ImageEffect.Colors => EffectIcons.Colors(size),
-                ImageEffect.Volume => EffectIcons.Volume(size),
-                _ => EffectIcons.Blur(size),
+                ImageEffect.Cutout => UiIcons.Cutout.Copy(size),
+                ImageEffect.Zoom => UiIcons.Zoom.Copy(size),
+                ImageEffect.Animations => UiIcons.Animations.Copy(size),
+                ImageEffect.Rotate => UiIcons.Rotate.Copy(size),
+                ImageEffect.Flip => UiIcons.Flip.Copy(size),
+                ImageEffect.Frames => UiIcons.Frames.Copy(size),
+                ImageEffect.Colors => UiIcons.Colors.Copy(size),
+                ImageEffect.Volume => UiIcons.Volume.Copy(size),
+                _ => UiIcons.Blur.Copy(size),
             });
         }
 
         _globalTabs.SetIcon(GlobalEffect.Format, EffectIcons.Format(size));
-        _globalTabs.SetIcon(GlobalEffect.Soundtrack, EffectIcons.Soundtrack(size));
+        _globalTabs.SetIcon(GlobalEffect.Soundtrack, UiIcons.Soundtrack.Copy(size));
         _globalTabs.SetIcon(GlobalEffect.Fade, EffectIcons.Fade(size));
         _globalTabs.SetIcon(GlobalEffect.Borders, EffectIcons.Borders(size));
         this._globalTabs.SetIcon(GlobalEffect.Seams, EffectIcons.Seams(size));
-        this._globalTabs.SetIcon(GlobalEffect.Cascade, EffectIcons.Cascade(size));
-        this._globalTabs.SetIcon(GlobalEffect.Layers, EffectIcons.Layers(size));
+        this._globalTabs.SetIcon(GlobalEffect.Cascade, UiIcons.Cascade.Copy(size));
+        this._globalTabs.SetIcon(GlobalEffect.Layers, UiIcons.Layers.Copy(size));
         this.UpdateLayerIcons(size);
-        _resetButton.Image = EffectIcons.Reset(size);
-        _effectResetButton.Image = EffectIcons.Reset(size);
-        _globalResetButton.Image = EffectIcons.Reset(size);
-        _globalEffectResetButton.Image = EffectIcons.Reset(size);
+        _resetButton.Image = UiIcons.Reset.Copy(size);
+        _effectResetButton.Image = UiIcons.Reset.Copy(size);
+        _globalResetButton.Image = UiIcons.Reset.Copy(size);
+        _globalEffectResetButton.Image = UiIcons.Reset.Copy(size);
+        foreach (var (button, icon) in new (ButtonBase, UiIcon)[]
+        {
+            (this._presetButton, UiIcons.Preset), (this._clearButton, UiIcons.ClearAll), (this._settingsButton, UiIcons.Settings),
+            (this._copyLastButton, UiIcons.LastVideo), (this._soundtrackBrowse, UiIcons.OpenFolder),
+        })
+        {
+            UiIcons.SetImage(button, icon, size);
+        }
+
+        using (var copy = UiIcons.Copy.Copy(size))
+        {
+            this._copyButton.SetIcon(copy);
+        }
+
+        using (var save = UiIcons.Save.Copy(size))
+        {
+            this._saveButton.SetIcon(save);
+        }
+
+        this._playIconSize = 0;
+        this.UpdatePlayButton();
         _fadeSquared.Image = EffectIcons.Curve(size, FadeCurve.Squared);
         _fadeLinear.Image = EffectIcons.Curve(size, FadeCurve.Linear);
         _blurIntensityIcon.Image = EffectIcons.Intensity(size);
@@ -2457,9 +2530,25 @@ internal sealed partial class MainForm : Form
     /// <summary>The Play / Pause button shows what a click does, enabled with the timeline; the thumb and the grid's time follow.</summary>
     private void RefreshTransport()
     {
-        this._playButton.Text = this._preview.PlaybackPaused ? "▶" : "❚❚";
+        this.UpdatePlayButton();
         this._playButton.Enabled = this._timeline.Enabled;
         this.RefreshTransportPosition();
+    }
+
+    /// <summary>Play while paused, Pause while playing: drawn again only when that or the DPI changes.</summary>
+    private void UpdatePlayButton()
+    {
+        bool paused = this._preview.PlaybackPaused;
+        int size = this.LogicalToDeviceUnits(UiIcons.LogicalSize);
+        if (size == this._playIconSize && paused == this._playShowsPlay)
+        {
+            return;
+        }
+
+        this._playIconSize = size;
+        this._playShowsPlay = paused;
+        this._playButton.AccessibleName = paused ? "Play" : "Pause";
+        UiIcons.SetImage(this._playButton, paused ? UiIcons.Play : UiIcons.Pause, size);
     }
 
     /// <summary>The timeline's thumb on the grid's time, and that time left of the length readout: as wide as under 1000 s, so nothing moves.</summary>
@@ -3296,8 +3385,9 @@ internal sealed partial class MainForm : Form
     {
         bool any = this.HasContent && !IsExporting;
         _clearButton.Enabled = (_preview.Images.Count > 0 || !SoundtrackInitial || !BordersInitial || !FadeInitial || !this.SeamsInitial || !this.CascadeInitial || !this.LayersInitial || !FormatInitial) && !IsExporting;
-        _copyButton.Enabled = any;
-        _saveButton.Enabled = any;
+        // One system split button each: its main part acts with something to copy, its arrow with the last video too.
+        this._copyButton.MainEnabled = any;
+        this._saveButton.MainEnabled = any;
 
         // The main parts name what they produce; the menus force a GIF or a video, pointless when nothing
         // plays — the menus stay open for Copy's light JPEG and their PNG max sizes.
@@ -3306,13 +3396,13 @@ internal sealed partial class MainForm : Form
         _saveButton.Text = $"Save {format}…";
         // The last video is offered back whatever the grid, an empty one included: the arrows open for it.
         bool last = _lastVideo is not null && !IsExporting;
-        _copyArrow.Enabled = any || last;
+        this._copyButton.Enabled = any || last;
         _copyGif.Enabled = HasAnimation;
         _copyMp4.Enabled = HasAnimation;
         _copyForSharing.Enabled = any;
         this._copyPngMaxSize.Enabled = any;
         this._savePngMaxSize.Enabled = any;
-        _saveArrow.Enabled = any || last;
+        this._saveButton.Enabled = any || last;
         _saveGif.Enabled = HasAnimation;
         _saveMp4.Enabled = HasAnimation;
         string lastName = _lastVideo is { } video ? FormatName(video.Format) : "video";
@@ -3329,22 +3419,11 @@ internal sealed partial class MainForm : Form
         UpdateGlobalEffects();
     }
 
-    /// <summary>The main part of a split button: its right edge touches its arrow.</summary>
-    private static Button SplitMain(string text) => new()
+    /// <summary>A split button of the bottom row: Windows' own, its arrow built in, opening its menu.</summary>
+    private static SplitButton SplitMain(string text) => new()
     {
         Text = text,
         AutoSize = true,
-        Margin = new Padding(3, 3, 0, 3),
-    };
-
-    /// <summary>The ▾ part of a split button, opening its menu; as tall as the row, as narrow as its glyph.</summary>
-    private static Button SplitArrow() => new()
-    {
-        Text = "▾",
-        AutoSize = true,
-        AutoSizeMode = AutoSizeMode.GrowAndShrink,
-        Anchor = AnchorStyles.Top | AnchorStyles.Bottom,
-        Margin = new Padding(0, 3, 3, 3),
     };
 
     /// <summary>A slider of the options; Control + wheel moves it by <paramref name="controlStep"/>, snapped (5 % for a percentage, 5° for an angle).</summary>
