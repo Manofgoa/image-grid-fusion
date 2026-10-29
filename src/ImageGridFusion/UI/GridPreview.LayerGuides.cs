@@ -1,3 +1,4 @@
+using System.Drawing.Drawing2D;
 using ImageGridFusion.Composition;
 
 namespace ImageGridFusion.UI;
@@ -119,6 +120,10 @@ internal sealed partial class GridPreview
         var guides = new List<(Point From, Point To, double Opacity)>();
         var bars = new List<(Point From, Point To)>();
 
+        // The lines shown on each axis, at the opacity they would have as another layer's line.
+        var shownX = new List<(float At, double Opacity)>();
+        var shownY = new List<(float At, double Opacity)>();
+
         // A line on the canvas's edge is drawn just inside it, where the clip lets it show.
         int X(float at) => Math.Clamp((int)Math.Round(at), canvas.Left + inset, canvas.Right - 1 - inset);
         int Y(float at) => Math.Clamp((int)Math.Round(at), canvas.Top + inset, canvas.Bottom - 1 - inset);
@@ -129,12 +134,14 @@ internal sealed partial class GridPreview
         foreach (var line in resting)
         {
             guides.Add((new Point(X(line.At), canvas.Top), new Point(X(line.At), canvas.Bottom), Opacity(line, 1)));
+            shownX.Add((line.At, FaintGuideOpacity));
         }
 
         if (resting.Count == 0 && this.GuideApproach > 0 && LayerSnap.Nearest(bounds.Left, bounds.Right, vertical, reachX) is { } nearX)
         {
             int x = X(nearX.Line.At);
             guides.Add((new Point(x, canvas.Top), new Point(x, canvas.Bottom), Opacity(nearX.Line, ApproachOpacity(nearX.Gap, reachX))));
+            shownX.Add((nearX.Line.At, FaintGuideOpacity * ApproachOpacity(nearX.Gap, reachX)));
             int y = this.GapBarAt(center.Y, canvas.Top, canvas.Bottom);
             bars.Add((new Point(this.GapBarStart(bounds.X, bounds.Width, x), y), new Point(x, y)));
         }
@@ -144,12 +151,14 @@ internal sealed partial class GridPreview
         foreach (var line in resting)
         {
             guides.Add((new Point(canvas.Left, Y(line.At)), new Point(canvas.Right, Y(line.At)), Opacity(line, 1)));
+            shownY.Add((line.At, FaintGuideOpacity));
         }
 
         if (resting.Count == 0 && this.GuideApproach > 0 && LayerSnap.Nearest(bounds.Top, bounds.Bottom, horizontal, reachY) is { } nearY)
         {
             int y = Y(nearY.Line.At);
             guides.Add((new Point(canvas.Left, y), new Point(canvas.Right, y), Opacity(nearY.Line, ApproachOpacity(nearY.Gap, reachY))));
+            shownY.Add((nearY.Line.At, FaintGuideOpacity * ApproachOpacity(nearY.Gap, reachY)));
             int x = this.GapBarAt(center.X, canvas.Left, canvas.Right);
             bars.Add((new Point(x, this.GapBarStart(bounds.Y, bounds.Height, y)), new Point(x, y)));
         }
@@ -160,5 +169,54 @@ internal sealed partial class GridPreview
         }
 
         this.PaintGapBars(g, bars);
+        this.PaintMatchingLayers(g, canvas, shownX, shownY);
+    }
+
+    /// <summary>
+    /// Every other shown layer one of whose references lies on a guide shown, its turned box outlined dashed —
+    /// at the opacity of its line as another layer's — so the user sees which layer the dragged one lines up with.
+    /// </summary>
+    private void PaintMatchingLayers(Graphics g, Rectangle canvas, List<(float At, double Opacity)> shownX, List<(float At, double Opacity)> shownY)
+    {
+        if (shownX.Count == 0 && shownY.Count == 0)
+        {
+            return;
+        }
+
+        var state = g.Save();
+        g.SetClip(canvas, CombineMode.Intersect);
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        for (int i = 0; i < this._layers.Count; i++)
+        {
+            var other = this._layers.Items[i];
+            if (i == this._selectedLayer || !other.Visible)
+            {
+                continue;
+            }
+
+            var bounds = LayerRectangle(other, canvas);
+            double opacity = shownX.Where(l => LayerSnap.Touches(bounds.Left, bounds.Right, l.At))
+                .Concat(shownY.Where(l => LayerSnap.Touches(bounds.Top, bounds.Bottom, l.At)))
+                .Select(l => l.Opacity)
+                .DefaultIfEmpty(0)
+                .Max();
+            if (opacity <= 0)
+            {
+                continue;
+            }
+
+            var corners = other.Place.Corners(other.Shown, canvas.Size);
+            for (int c = 0; c < corners.Length; c++)
+            {
+                corners[c] = new PointF(corners[c].X + canvas.X, corners[c].Y + canvas.Y);
+            }
+
+            using var halo = new Pen(Color.FromArgb((int)(HelperHalo.A * opacity), HelperHalo), this.LogicalToDeviceUnits(4));
+            using var dashed = this.GuidePen(opacity);
+            g.DrawPolygon(halo, corners);
+            g.DrawPolygon(dashed, corners);
+        }
+
+        g.Restore(state);
     }
 }

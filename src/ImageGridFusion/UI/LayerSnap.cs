@@ -71,5 +71,8 @@ internal static class LayerSnap
         return nearest;
     }
 
+    /// <summary>Whether one of the references of a rectangle from <paramref name="low"/> to <paramref name="high"/> lies on the line at <paramref name="at"/>.</summary>
+    public static bool Touches(float low, float high, float at) => References(low, high).Any(r => Math.Abs(at - r) < Epsilon);
+
     private static float[] References(float low, float high) => [low, (low + high) / 2, high];
 }
