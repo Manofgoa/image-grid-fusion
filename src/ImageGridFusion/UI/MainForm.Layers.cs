@@ -195,6 +195,11 @@ internal sealed partial class MainForm
         };
 
         this._layerMenu.Items.AddRange([this._layerMenuDuplicate, this._layerMenuDelete, this._layerMenuSeparator, this._layerMenuFindSimilar]);
+        MenuIcons.Set(this._layerMenuDuplicate, MenuIcons.DuplicateLayer);
+        MenuIcons.Set(this._layerMenuDelete, MenuIcons.DeleteLayer);
+        MenuIcons.Set(this._layerMenuFindSimilar, MenuIcons.FindSimilar);
+        MenuIcons.Attach(this._layerMenu);
+        MenuIcons.Attach(this._textStyleMenu);
         this._layerMenuDuplicate.Click += async (_, _) => await this.DuplicateSelectedLayerAsync();
         this._layerMenuDelete.Click += (_, _) => this._preview.RemoveSelectedLayer();
         this._layerMenuFindSimilar.Click += (_, _) =>
@@ -1173,7 +1178,7 @@ internal sealed partial class MainForm
         }
 
         this._textStyleMenu.Items.Clear();
-        this._textStyleMenu.Items.Add("Rename…", null, (_, _) => this.RenameTextStyle(style));
+        MenuIcons.Set(this._textStyleMenu.Items.Add("Rename…", null, (_, _) => this.RenameTextStyle(style)), MenuIcons.Rename);
         var replace = new ToolStripMenuItem("Replace with current style", null, (_, _) =>
         {
             if (this._preview.SelectedLayer is { IsText: true } layer)
@@ -1185,15 +1190,18 @@ internal sealed partial class MainForm
         {
             Enabled = this._preview.SelectedLayer is { IsText: true },
         };
+        MenuIcons.Set(replace, MenuIcons.ReplaceStyle);
         this._textStyleMenu.Items.Add(replace);
 
         // A decision taking something away goes through a submenu (RULES.md § People).
         var delete = new ToolStripMenuItem("Delete");
-        delete.DropDownItems.Add($"Delete {style.Name}", null, (_, _) =>
+        var confirm = delete.DropDownItems.Add($"Delete {style.Name}", null, (_, _) =>
         {
             this._textStyles.Delete(style);
             this.SaveTextStyles($"Style “{style.Name}” deleted.");
         });
+        MenuIcons.Set(delete, MenuIcons.Forget);
+        MenuIcons.Set(confirm, MenuIcons.Forget);
         this._textStyleMenu.Items.Add(delete);
         this._textStyleMenu.Show(this._textStyleStrip, location);
     }

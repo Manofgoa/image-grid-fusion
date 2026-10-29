@@ -675,6 +675,34 @@ internal sealed partial class MainForm : Form
         this._transportTimer.Start();
         this._toolTip.SetToolTip(this._clearButton, "Removes every image and the global effects, and brings the format back to Twitter (Ctrl+N)");
         _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, this._installYtDlpCompanions, this._downloadCutoutEngine, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._downloadOcrEngine, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._downloadFaceEngine, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._similarImages, this._downloadVisionEngine, this._captions, this._downloadCaptionEngine, this._forgetVisual, new ToolStripSeparator(), this._openAppFolder]);
+        // An icon per action and toggle, never on a caption nor a submenu's values (RULES.md § Menus).
+        MenuIcons.Set(this._startWithWindows, MenuIcons.StartWithWindows);
+        MenuIcons.Set(this._twitterCornersDefault, MenuIcons.TwitterCorners);
+        MenuIcons.Set(this._videoSize, MenuIcons.Video);
+        MenuIcons.Set(this._guideApproach, MenuIcons.Guides);
+        MenuIcons.Set(this._gapBarsFrom, MenuIcons.GapBars);
+        MenuIcons.Set(this._explorerFolder, MenuIcons.Folder);
+        MenuIcons.Set(this._explorerPages, MenuIcons.Pages);
+        MenuIcons.Set(this._installYtDlpCompanions, MenuIcons.Download);
+        MenuIcons.Set(this._downloadCutoutEngine, MenuIcons.Download);
+        MenuIcons.Set(this._explorerContentSearch, MenuIcons.TextRead);
+        MenuIcons.Set(this._rebuildContent, MenuIcons.Rebuild);
+        MenuIcons.Set(this._downloadOcrEngine, MenuIcons.Download);
+        MenuIcons.Set(this._ocrResultStyle, MenuIcons.OcrResultStyle);
+        MenuIcons.Set(this._ocrArrowCurved, MenuIcons.CurvedArrow);
+        MenuIcons.Set(this._ocrArrowThickness, MenuIcons.Thickness);
+        MenuIcons.Set(this._faceAnalysis, MenuIcons.People);
+        MenuIcons.Set(this._faceGrouping, MenuIcons.Group);
+        MenuIcons.Set(this._downloadFaceEngine, MenuIcons.Download);
+        MenuIcons.Set(this._forgetFaces, MenuIcons.Forget);
+        MenuIcons.Set(this._visualAnalysis, MenuIcons.Tags);
+        MenuIcons.Set(this._similarImages, MenuIcons.Strictness);
+        MenuIcons.Set(this._downloadVisionEngine, MenuIcons.Download);
+        MenuIcons.Set(this._captions, MenuIcons.Caption);
+        MenuIcons.Set(this._downloadCaptionEngine, MenuIcons.Download);
+        MenuIcons.Set(this._forgetVisual, MenuIcons.Forget);
+        MenuIcons.Set(this._openAppFolder, MenuIcons.OpenFolder);
+        MenuIcons.Attach(this._settingsMenu);
         for (int pages = FileExplorerPanel.MinPagesPerLoad; pages <= FileExplorerPanel.MaxPagesPerLoad; pages++)
         {
             int choice = pages;
@@ -810,6 +838,19 @@ internal sealed partial class MainForm : Form
         _saveMp4.Click += (_, _) => SaveAs(GridExport.Format.Mp4);
         this.AddPngMaxSizes(this._savePngMaxSize, side => this.SaveAs(null, side));
         _saveMenu.Items.AddRange([_saveGif, _saveMp4, this._savePngMaxSize, new ToolStripSeparator(), _saveLast]);
+        foreach (var (item, icon) in new (ToolStripItem, MenuIcon)[]
+        {
+            (this._copyGif, MenuIcons.Gif), (this._copyMp4, MenuIcons.Video), (this._copyForSharing, MenuIcons.Share),
+            (this._copyPngMaxSize, MenuIcons.Png), (this._copyLast, MenuIcons.LastVideo),
+            (this._saveGif, MenuIcons.Gif), (this._saveMp4, MenuIcons.Video), (this._savePngMaxSize, MenuIcons.Png),
+            (this._saveLast, MenuIcons.LastVideo),
+        })
+        {
+            MenuIcons.Set(item, icon);
+        }
+
+        MenuIcons.Attach(this._copyMenu);
+        MenuIcons.Attach(this._saveMenu);
 
         // The last video's tooltips say whether the grid has changed since: refreshed as they are about to show.
         _copyLastButton.Click += (_, _) => CopyLastVideo();
@@ -1151,6 +1192,9 @@ internal sealed partial class MainForm : Form
         };
         this._cellMenu.Items.Add(this._copyCell);
         this._cellMenu.Items.Add(this._findSimilarCell);
+        MenuIcons.Set(this._copyCell, MenuIcons.Copy);
+        MenuIcons.Set(this._findSimilarCell, MenuIcons.FindSimilar);
+        MenuIcons.Attach(this._cellMenu);
         _explorer.MessageWhileCollapsed += (_, message) => ShowStatus(message.Text, message.Error);
         this._explorer.SearchEscaped += (_, _) => this._preview.Focus();
         _layouts.DragEnter += OnDragEnter;

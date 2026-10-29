@@ -77,12 +77,13 @@ internal sealed class UrlZone : Panel
         this._preview.MouseMove += OnPreviewMouseMove;
         this._preview.MouseUp += (_, _) => this._pressedAt = null;
         this._menu.Items.AddRange([
-            this.MenuItem(FileExplorerPanel.CopyText, FileAction.Copy),
-            this.MenuItem(FileExplorerPanel.CopyPngText, FileAction.CopyPng),
-            this.MenuItem(FileExplorerPanel.CopyFullPathText, FileAction.CopyFullPath),
+            this.MenuItem(FileExplorerPanel.CopyText, FileAction.Copy, MenuIcons.Copy),
+            this.MenuItem(FileExplorerPanel.CopyPngText, FileAction.CopyPng, MenuIcons.Png),
+            this.MenuItem(FileExplorerPanel.CopyFullPathText, FileAction.CopyFullPath, MenuIcons.CopyPath),
             new ToolStripSeparator(),
-            this.MenuItem(FileExplorerPanel.OpenFileLocationText, FileAction.OpenFileLocation),
+            this.MenuItem(FileExplorerPanel.OpenFileLocationText, FileAction.OpenFileLocation, MenuIcons.OpenFolder),
         ]);
+        MenuIcons.Attach(this._menu);
         this._menu.Opening += (_, e) => e.Cancel = this._preview.State != PreviewState.Ready;
         this._preview.ContextMenuStrip = this._menu;
 
@@ -520,8 +521,12 @@ internal sealed class UrlZone : Panel
         this._toolTip.SetToolTip(this._caption, text);
     }
 
-    private ToolStripMenuItem MenuItem(string text, FileAction action) =>
-        new(text, null, (_, _) => this.RequestFileAction(action));
+    private ToolStripMenuItem MenuItem(string text, FileAction action, MenuIcon icon)
+    {
+        var item = new ToolStripMenuItem(text, null, (_, _) => this.RequestFileAction(action));
+        MenuIcons.Set(item, icon);
+        return item;
+    }
 
     /// <summary>A menu entry on the downloaded file, gone from the temp folder: nothing done, the zone saying so.</summary>
     private void RequestFileAction(FileAction action)

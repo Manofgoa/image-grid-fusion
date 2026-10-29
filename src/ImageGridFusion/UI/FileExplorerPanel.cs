@@ -401,6 +401,22 @@ internal sealed partial class FileExplorerPanel : Panel
         this._menu.Items.AddRange([this._photoPeople, this._photoPeopleSeparator, this._openGroupItem, this._renameGroup, this._hideGroup, this._unhideGroup, this._unmergeGroup, this._notThisPerson, this._peopleSeparator]);
         this._menu.Items.AddRange([this._editDescription, this._findSimilar, this._copy, this._copyPng, this._copyFullPath, this._copySeparator]);
         _menu.Items.Add(_openLocation);
+
+        // A confirming item takes its parent's icon: it is the action itself (RULES.md § Menus).
+        foreach (var (item, icon) in new (ToolStripItem, MenuIcon)[]
+        {
+            (this._photoPeople, MenuIcons.People), (this._openGroupItem, MenuIcons.Group), (this._renameGroup, MenuIcons.Rename),
+            (this._hideGroup, MenuIcons.Hide), (this._hideConfirm, MenuIcons.Hide), (this._unhideGroup, MenuIcons.Unhide),
+            (this._unmergeGroup, MenuIcons.Unmerge), (this._unmergeConfirm, MenuIcons.Unmerge),
+            (this._notThisPerson, MenuIcons.NotThisPerson), (this._notConfirm, MenuIcons.NotThisPerson),
+            (this._editDescription, MenuIcons.Rename), (this._findSimilar, MenuIcons.FindSimilar), (this._copy, MenuIcons.Copy),
+            (this._copyPng, MenuIcons.Png), (this._copyFullPath, MenuIcons.CopyPath), (this._openLocation, MenuIcons.OpenFolder),
+        })
+        {
+            MenuIcons.Set(item, icon);
+        }
+
+        MenuIcons.Attach(this._menu);
         _grid.ContextMenuStrip = _menu;
         _grid.IsFavorite = _favorites.Contains;
         this._grid.ContentExcerpt = this.ExcerptOf;
