@@ -463,6 +463,44 @@ internal sealed partial class GridPreview : Control
     /// <summary>The image of the selected cell — never a layer's —; <c>null</c> without one.</summary>
     private SourceImage? SelectedCellImage => _selected >= 0 && _selected < _images.Count ? _images[_selected] : null;
 
+    /// <summary>Whether a cell copy has something to render: a layer selected, or a cell holding an image.</summary>
+    public bool CanCopySelectedAlone => this.SelectedLayer is not null || this.SelectedCellImage is not null;
+
+    /// <summary>
+    /// The selected layer, else the selected cell's image, rendered alone as shown now — its effects but
+    /// the Background, at its native size, cut to the image (workfiles/20261029-copy-single-cell.md);
+    /// <c>null</c> with nothing to copy. The source of the copy comes with it, for its file name.
+    /// </summary>
+    public (Bitmap Bitmap, SourceImage Image)? RenderSelectedAlone()
+    {
+        if (this.SelectedLayer is { } layer)
+        {
+            var frame = layer.FrameAt(this._player.GridTime);
+            var box = layer.Place.BoxSize(frame.Size, CanvasSizer.Smallest(this.CanvasRatio));
+            return CellCopy.Render(frame, box, layer.Place.Angle) is { } bitmap ? (bitmap, layer.Image) : null;
+        }
+
+        return this._selected >= 0 ? this.RenderCellAlone(this._selected) : null;
+    }
+
+    /// <summary>
+    /// The image of <paramref name="cell"/> rendered alone, in the shape its cell has in the PNG export;
+    /// <c>null</c> with nothing to copy.
+    /// </summary>
+    public (Bitmap Bitmap, SourceImage Image)? RenderCellAlone(int cell)
+    {
+        if (this._layout is not { } layout || layout.Count != this._images.Count || cell < 0 || cell >= this._images.Count)
+        {
+            return null;
+        }
+
+        var canvas = CanvasSizer.Compute(this._images.Select(i => i.Sizing).ToList(), layout, this.CanvasRatio, this._borders);
+        var cells = Compositor.Cells(layout, canvas, this._borders);
+        var image = this._images[cell];
+        var frame = new Frame(image.DrawnBitmap, image.BandColor, image.DrawnLook, this._player.GridTime, image.Sharpening, image.Sharpens);
+        return CellCopy.Render(frame, cells[cell].Size) is { } bitmap ? (bitmap, image) : null;
+    }
+
     /// <summary>
     /// The effect whose bars the selected cell shows and lets be dragged — the blur, or the crop in its
     /// edit view — set while that effect is the selected one of the effects toolbar and is on; <c>null</c>

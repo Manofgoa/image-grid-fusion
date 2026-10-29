@@ -34,16 +34,20 @@ Components concerned (from the exploration):
 
 ## Triggers
 
-- **Cell context menu**: a **Copy cell** entry in the cell's right-click menu, on the cell clicked.
-  The menu shows whatever the visual analysis — *Find similar images* stays gated by
-  `FileExplorerPanel.CanFindSimilar` on its own entry. Disabled on an empty cell.
+- **Cell context menu**: a **Copy cell** entry (`Ctrl+C` shown beside it), first in the cell's
+  right-click menu, on the cell clicked. The menu shows on every cell holding an image, whatever the
+  visual analysis — *Find similar images* is hidden while `FileExplorerPanel.CanFindSimilar` is false.
+  Copy cell is disabled while exporting.
 - **Ctrl+C**: with a **cell selected** holding an image, or a **layer selected**, Ctrl+C copies it
   alone; with nothing selected (or an empty cell selected), the whole grid, as today.
 - **Ctrl+Shift+C** always copies the **whole grid** — the Copy button's still or video, as Ctrl+C
   did. The **Copy button** and its ▾ menu stay the grid's.
 - The text-field whitelist and the explorer tiles' Ctrl+C keep priority, as today.
-- **Layer list**: a **Copy** icon button among the layer list's buttons, on the selected layer,
-  enabled while one is selected.
+- **Layer list**: a **Copy** icon button after *Add text* — two sheets, the front one a picture
+  (`EffectIcons.LayerAction.Copy`) —, on the selected layer, enabled while one is selected outside its
+  edit view.
+- Every route goes through `MainForm.CopyAlone`, which waits for the pending cutouts first, as the
+  grid's still does.
 - **Locked while exporting**, like Copy.
 
 ## What Is Rendered
@@ -67,10 +71,11 @@ Components concerned (from the exploration):
 ## Size
 
 - **Native size**: the smallest cell where the image is **not downscaled as drawn** — the same
-  criterion as the grid's PNG (`CanvasSizer.DrawnScale`, made reachable, read through `SizedImage`:
+  criterion as the grid's PNG (`CanvasSizer.DrawnScale`, now `internal`, read through `SizedImage`:
   its zoom, its fine angle's cover scale; a content that sharpens — PDF, thumbnail, text — read at
-  zoom 1). The cell keeps its shape (its rectangle in the grid, its ratio); its size is scaled until
-  the drawn scale reaches 1.
+  zoom 1). The cell keeps its shape — **its rectangle in the PNG export** (`CanvasSizer.Compute`,
+  `Compositor.Cells`), a layer's **box at the smallest canvas of the ratio** (`LayerPlacement.BoxSize`)
+  —; its size is scaled until the drawn scale reaches 1. One function, `Composition/CellCopy.Render`.
 - **Longer side capped at 8192** (`CanvasSizer.MaxLongSide`), like the PNG Copy.
 - **No 1200 floor**: the grid's minimum is an output rule for posting the grid; a cell copied alone
   stays at its native size, a small image giving a small PNG.
@@ -79,10 +84,12 @@ Components concerned (from the exploration):
 
 - The same formats as the grid's still Copy: the **`"PNG"` stream** (alpha kept) and the image
   **flattened on white** (`Compositor.Flattened`, DIB) for the apps reading only that.
+- The clipboard step is shared with the grid's still Copy (`MainForm.PutStillOnClipboard`).
+- When the image shows nothing in its cell, the status line says *Nothing to copy*.
 - The status line says what was copied — `Cell copied to the clipboard — PNG 812 × 640, 312 Ko`,
   `Layer copied…` — as `StillSummary` does.
-- **Kept in `previous\`** like any Copy (`PreviousCopy.Keep`), named after the cell's or the layer's
-  file (`fusion-…` when it has none), the previous copy deleted.
+- **Kept in `previous\`** like any Copy (`PreviousCopy.Keep`), named after the copied image's file
+  alone (`fusion-…` when it has none), the previous copy deleted.
 
 ## Pasting Into a Cell
 
@@ -92,7 +99,8 @@ Components concerned (from the exploration):
 - **The paste reads the `"PNG"` format first**, its alpha kept, then the DIB (`Clipboard.GetImage()`)
   as today: the cut-out arrives transparent — and so does a PNG another app (a browser) puts on the
   clipboard. Both routes: the cells' Ctrl+V (`MainForm`) and the layer list's Paste
-  (`MainForm.Layers.cs`). A file drop list still wins over an image, as today.
+  (`MainForm.Layers.cs`), through `UI/ClipboardImage.Get` (`Clipboard.TryGetData`, `GetData` being
+  obsolete). A file drop list still wins over an image, as today.
 
 ## Documentation
 
@@ -161,15 +169,46 @@ Open questions answered (Q&A #8–#12), the domain sections updated:
 - A turned layer is copied turned, as placed.
 - A cell copy is kept in `previous\` like any Copy.
 
+### Iteration 3 — 2026-10-29 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree (`feature/copy-single-cell`). No unit
+tests — the solution has no test project.
+
+### Iteration 4 — 2026-10-29 — 🧭 Implementation choices
+
+No project rule broken. What the frozen design did not state, decided during the run:
+
+- **The cell's shape** is its rectangle in the PNG export (`CanvasSizer.Compute` then
+  `Compositor.Cells`), so the zoom fit and the crop match the grid's PNG; a **layer's** is its box at
+  `CanvasSizer.Smallest(ratio)` — any canvas gives the same shape, the size being rescaled anyway.
+- **One function** for the cell and the layer, `CellCopy.Render(frame, shape, angle)`: the cell scaled
+  to native size, the image's drawn box clipped to it, turned by the layer's angle, its axis-aligned
+  box the output; drawn into it through a translation and a rotation, as `Compositor.DrawLayer` does.
+  `CanvasSizer.DrawnScale` went from `private` to `internal` for it.
+- A **text layer** is sized like any content that sharpens (fitted at zoom 1), not by its line height.
+- The **cell menu** now shows on every cell holding an image, Copy cell first; *Find similar images*
+  hidden while unavailable rather than the whole menu.
+- **The layer edit view**: the layer list's Copy is disabled there (no selected layer); `Ctrl+C` copies
+  the edited layer as a cell — upright, as the view shows it.
+- The copy **waits for the pending cutouts** (`WaitForCutoutsAsync`): the Cutout effect landed on
+  `main` meanwhile, and the grid's still waits for them too.
+- The clipboard step is **extracted** (`PutStillOnClipboard`), shared with the grid's still Copy.
+- A render giving nothing (an image moved out of its cell) says *Nothing to copy* in the status line.
+- The **previous copy** is named after the copied image's file alone.
+- The paste reads the PNG through `Clipboard.TryGetData` — `GetData` is obsolete in .NET 10.
+- Checked outside the app with a scratch console calling `CellCopy.Render`: native size, the
+  transparent margin of a cut-out PNG kept, a fine angle's and a turned layer's corners transparent
+  (30°: 498 × 460 for a 400 × 300 image, 496 × 460 expected).
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | None — no test project |
-| README | | | |
+| Code | 4 | 2026-10-29 | `CellCopy`, `GridPreview.RenderSelectedAlone` / `RenderCellAlone`, `MainForm.CopyAlone`, Ctrl+C / Ctrl+Shift+C, the cell menu, the layer list's Copy, `ClipboardImage` |
+| Unit tests | 4 | 2026-10-29 | None — no test project |
+| README | 4 | 2026-10-29 | README and GLOSSARY in English and French; RULES.md § Cell Copy |
 
 ---
 

@@ -656,6 +656,27 @@ One running instance **per exe location** and Windows session (origin:
 - **Agents launch with `--new-instance`, always** (`CLAUDE.md` § Launch): without it, an agent's launch
   would bring back, and load its files into, the user's instance or another session's.
 
+## Cell Copy
+
+One cell's image, or one layer, copied alone (origin: `workfiles/20261029-copy-single-cell.md`), one
+rendering, `Composition/CellCopy.Render`:
+
+- Drawn by `Compositor.DrawCell` with its look **minus the Background** — every other effect from the
+  one place they are drawn, so a new cell effect is copied by itself — on a transparent canvas, **cut to
+  the image as drawn** (`TurnedFit.Bounds`) clipped to its cell, never trimmed to its visible pixels.
+- At its **native size**: the cell's shape in the PNG export (a layer's box), scaled until the image is
+  drawn at `CanvasSizer.DrawnScale` 1 — the grid's rule for one image, without the 1200 floor —, the
+  result's longer side at most `CanvasSizer.MaxLongSide`.
+- A layer is copied **turned as placed**, its corners transparent; a playing content gives the frame
+  shown at the grid time, the grid held while it renders.
+- **Routes**: `Ctrl+C` with a cell holding an image or a layer selected (`GridPreview.RenderSelectedAlone`),
+  **Copy cell** in the cell's menu (`GridPreview.RenderCellAlone`), **Copy** in the layer list — all through
+  `MainForm.CopyAlone`; `Ctrl+C` with nothing selected and **`Ctrl+Shift+C`** copy the grid, the Copy
+  button stays the grid's. Locked while exporting; kept as the previous copy like any Copy.
+- On the clipboard like the grid's still (`MainForm.PutStillOnClipboard`). **Every paste of an image reads
+  the `"PNG"` format first** (`UI/ClipboardImage`), then the bitmap: a cut-out keeps its transparency in
+  another cell or a layer, where it arrives as a plain image.
+
 ## Content From a URL
 
 What the URL zone loads (origin: `workfiles/20261009-url-content.md`), `Web/`:

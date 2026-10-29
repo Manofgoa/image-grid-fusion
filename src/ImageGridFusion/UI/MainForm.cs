@@ -65,6 +65,10 @@ internal sealed partial class MainForm : Form
     // A cell's context menu, shown while the visual analysis can run: the images like its own.
     private readonly ContextMenuStrip _cellMenu = new();
     private readonly ToolStripMenuItem _findSimilarCell = new("Find similar images");
+    private readonly ToolStripMenuItem _copyCell = new("Copy cell") { ShortcutKeyDisplayString = "Ctrl+C" };
+
+    /// <summary>The cell the context menu was opened on, by its slot.</summary>
+    private int _cellMenuCell = -1;
     // How the light bulb's arrow to the word found is drawn: a submenu of the group, the thickness a
     // submenu of exclusive choices, remembered between sessions. See workfiles/20261007-ocr-result-style.md.
     private readonly ToolStripMenuItem _ocrResultStyle = new("OCR result style");
@@ -1140,6 +1144,12 @@ internal sealed partial class MainForm : Form
                 this.FindSimilar(image);
             }
         };
+        this._copyCell.Click += (_, _) =>
+        {
+            int cell = this._cellMenuCell;
+            this.CopyAlone(() => this._preview.RenderCellAlone(cell), "Cell");
+        };
+        this._cellMenu.Items.Add(this._copyCell);
         this._cellMenu.Items.Add(this._findSimilarCell);
         _explorer.MessageWhileCollapsed += (_, message) => ShowStatus(message.Text, message.Error);
         this._explorer.SearchEscaped += (_, _) => this._preview.Focus();
@@ -1498,6 +1508,9 @@ internal sealed partial class MainForm : Form
                 Paste();
                 return true;
             case Keys.Control | Keys.C:
+                this.CopySelectionOrGrid();
+                return true;
+            case Keys.Control | Keys.Shift | Keys.C:
                 CopyToClipboard();
                 return true;
             case Keys.Control | Keys.S:
@@ -1768,7 +1781,7 @@ internal sealed partial class MainForm : Form
             {
                 files = Clipboard.GetFileDropList().Cast<string>().ToArray();
             }
-            else if (Clipboard.GetImage() is { } image)
+            else if (ClipboardImage.Get() is { } image)
             {
                 // An image wins over the text that may come with it: Excel cells paste as a picture.
                 using (image)
@@ -2162,16 +2175,94 @@ internal sealed partial class MainForm : Form
             using var png = new MemoryStream();
             result.Save(png, ImageFormat.Png);
             var encoding = clock.Elapsed;
-
-            // Standard bitmap for most apps, flattened on white as it carries no transparency, plus the
-            // PNG format that browsers paste more reliably, which keeps it.
-            using var flat = Compositor.Flattened(result);
-            var data = new DataObject();
-            data.SetImage(flat);
-            data.SetData("PNG", png);
-            Clipboard.SetDataObject(data, copy: true);
+            PutStillOnClipboard(result, png);
             string kept = KeepPrevious(() => PreviousCopy.Keep(png.ToArray(), ".png", cellFiles));
             ShowStatus(StillSummary("Copied to the clipboard", "PNG", result.Size, png.Length, encoding) + kept);
+        }
+        catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
+        {
+            ShowStatus($"Copy failed: {ErrorLog.Describe(ex)}", error: true);
+        }
+    }
+
+    /// <summary>
+    /// Puts a still on the clipboard: a standard bitmap for most apps, flattened on white as it carries
+    /// no transparency, plus the PNG format that browsers — and this app's paste — read, which keeps it.
+    /// </summary>
+    private static void PutStillOnClipboard(Bitmap still, MemoryStream png)
+    {
+        using var flat = Compositor.Flattened(still);
+        var data = new DataObject();
+        data.SetImage(flat);
+        data.SetData("PNG", png);
+        Clipboard.SetDataObject(data, copy: true);
+    }
+
+    /// <summary>
+    /// Ctrl+C: the selected layer or cell alone when there is one (<see cref="CopyAlone"/>), else the grid
+    /// as the Copy button copies it (workfiles/20261029-copy-single-cell.md).
+    /// </summary>
+    private void CopySelectionOrGrid()
+    {
+        if (this._preview.CanCopySelectedAlone)
+        {
+            this.CopyAlone(this._preview.RenderSelectedAlone, this._preview.SelectedLayer is null ? "Cell" : "Layer");
+        }
+        else
+        {
+            this.CopyToClipboard();
+        }
+    }
+
+    /// <summary>
+    /// Copies one cell's image or one layer alone, as <paramref name="render"/> gives it — its effects but
+    /// the Background, at its native size, cut to the image, the frame shown now —: a PNG keeping its
+    /// transparency, kept as the previous copy like any Copy (workfiles/20261029-copy-single-cell.md).
+    /// <paramref name="what"/> names it in the status line: Cell or Layer.
+    /// </summary>
+    private async void CopyAlone(Func<(Bitmap Bitmap, SourceImage Image)?> render, string what)
+    {
+        if (this.IsExporting)
+        {
+            return;
+        }
+
+        await this.WaitForCutoutsAsync();
+        var clock = Stopwatch.StartNew();
+        (Bitmap Bitmap, SourceImage Image)? rendered;
+
+        // Rendered at once on the UI thread, the grid held meanwhile, as the grid's still copy.
+        this._preview.HoldPlayback();
+        try
+        {
+            Cursor.Current = Cursors.WaitCursor;
+            rendered = render();
+        }
+        catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
+        {
+            this.ShowStatus($"Copy failed: {ErrorLog.Describe(ex)}", error: true);
+            return;
+        }
+        finally
+        {
+            this._preview.ReleasePlayback();
+        }
+
+        if (rendered is not { } copy)
+        {
+            this.ShowStatus("Nothing to copy: the image shows nothing in its cell.");
+            return;
+        }
+
+        using var result = copy.Bitmap;
+        try
+        {
+            using var png = new MemoryStream();
+            result.Save(png, ImageFormat.Png);
+            var encoding = clock.Elapsed;
+            PutStillOnClipboard(result, png);
+            string kept = KeepPrevious(() => PreviousCopy.Keep(png.ToArray(), ".png", [copy.Image.FilePath]));
+            ShowStatus(StillSummary($"{what} copied to the clipboard", "PNG", result.Size, png.Length, encoding) + kept);
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
@@ -4835,8 +4926,9 @@ internal sealed partial class MainForm : Form
     }
 
     /// <summary>
-    /// A right click on a cell holding an image, while the visual analysis can run: its context menu,
-    /// Find similar images. See workfiles/20261027-image-content-analysis.md § Similar Images.
+    /// A right click on a cell holding an image: its context menu — Copy cell
+    /// (workfiles/20261029-copy-single-cell.md), and Find similar images while the visual analysis can run
+    /// (workfiles/20261027-image-content-analysis.md § Similar Images).
     /// </summary>
     private void ShowCellMenu(MouseEventArgs e)
     {
@@ -4852,17 +4944,15 @@ internal sealed partial class MainForm : Form
             return;
         }
 
-        if (!this._explorer.CanFindSimilar)
-        {
-            return;
-        }
-
         int cell = this._preview.CellAt(e.Location);
         if (cell < 0 || cell >= this._preview.Images.Count)
         {
             return;
         }
 
+        this._cellMenuCell = cell;
+        this._copyCell.Enabled = !this.IsExporting;
+        this._findSimilarCell.Visible = this._explorer.CanFindSimilar;
         this._cellMenu.Tag = this._preview.Images[cell];
         this._cellMenu.Show(this._preview, e.Location);
     }
