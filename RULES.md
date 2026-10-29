@@ -348,9 +348,19 @@ one definition, `Composition/GridLayers`:
 - **Drawn last**, over the borders, by `Compositor.DrawLayers` — each layer by `Compositor.DrawCell` into its
   box, turned — in the preview and every export, so **every cell effect applies to a layer** from the same
   place. The layers never size the canvas. A new cell effect works on a layer by itself.
-- **Nothing changes for the cells** unless the Layers tab is selected (`GridPreview.LayersActive`): only then
-  do the layers take the mouse — their hit-test first, on their own area only —, Ctrl+V and a drop on the
-  grid (`MainForm.LayersTakePaste`). A new gesture or input route on the preview checks it the same way.
+- **Nothing changes for the cells**: the layers take the mouse — their hit-test first, on their own area
+  only, the rotation handle before them — only while the Layers tab is selected (`GridPreview.LayersActive`);
+  Ctrl+V and a drop on the grid always fill the cells. Layers are added from the Layers options, or by files
+  dropped onto the Layers tab or its options (`MainForm.DroppedOnLayers`). A new gesture on the preview
+  checks `LayersTakeMouse` the same way.
+- A layer **hidden** from the layer list (`Layer.Visible`) is neither drawn, played, heard, hit nor exported:
+  every reader takes `GridLayers.Shown`, never `Items`, for what is drawn.
+- The **edit view** (`GridPreview.BeginLayerEdit` / `EndLayerEdit`) sets the grid aside — images, layout,
+  ratio, borders, seams — and shows the layer alone as a one-cell grid at its box's ratio, so every cell
+  tool works on it unchanged; the layer takes its cell's look (`SyncEditedLayer`). Meanwhile the public
+  `Images`, `ActiveLayout`, `CanvasRatio` and `FreeRatio` give the grid set aside, and any change of the
+  grid from outside — images, layout, format, global effects, layers, an undo, an export's lock — closes the
+  view first. A new route changing the grid from outside does the same.
 - A layer is **selected first**, the cell's selection and the layer's exclusive: `GridPreview.SelectedImage`
   is the selected layer's content when there is one, so the effects toolbar acts on it; the cell-only code
   reads `SelectedCellImage`. A layer's default look has the **Background off** (`Layer.DefaultLook`) — the
