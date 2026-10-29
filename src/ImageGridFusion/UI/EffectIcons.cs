@@ -378,6 +378,7 @@ internal static class EffectIcons
         AddImage,
         Paste,
         AddText,
+        Duplicate,
         Edit,
         Done,
         Delete,
@@ -388,8 +389,9 @@ internal static class EffectIcons
     }
 
     /// <summary>
-    /// A layer list button's icon: a picture, a clipboard, a T — each with a green plus when it adds —, a
-    /// pencil, a check, a red cross, and arrows moving a layer down or up, doubled with a bar to the end.
+    /// A layer list button's icon: a picture, a clipboard, a T — each with a green plus when it adds —, two
+    /// overlapping sheets, a pencil, a check, a red cross, and arrows moving a layer down or up, doubled with a
+    /// bar to the end.
     /// </summary>
     public static Bitmap Layer(int size, LayerAction action) => Draw(size, (g, s) =>
     {
@@ -440,6 +442,26 @@ internal static class EffectIcons
                 using var font = new Font("Segoe UI", s * 0.62f, FontStyle.Bold, GraphicsUnit.Pixel);
                 g.DrawString("T", font, blue, -s * 0.02f, -s * 0.04f);
                 Plus(g, s);
+                break;
+            }
+
+            case LayerAction.Duplicate:
+            {
+                // The original behind, grey, its copy over it a little lower and to the right, blue.
+                var back = new RectangleF(s * 0.1f, s * 0.1f, s * 0.52f, s * 0.52f);
+                using (var grey = new SolidBrush(Color.FromArgb(200, 200, 200)))
+                {
+                    g.FillRectangle(grey, back);
+                }
+
+                g.DrawRectangle(dark, back.X, back.Y, back.Width, back.Height);
+                var front = new RectangleF(s * 0.38f, s * 0.38f, s * 0.52f, s * 0.52f);
+                using (var sky = new LinearGradientBrush(front, Color.FromArgb(120, 200, 255), Color.FromArgb(30, 100, 220), 90f))
+                {
+                    g.FillRectangle(sky, front);
+                }
+
+                g.DrawRectangle(dark, front.X, front.Y, front.Width, front.Height);
                 break;
             }
 

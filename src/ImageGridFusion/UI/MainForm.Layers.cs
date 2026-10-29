@@ -26,6 +26,7 @@ internal sealed partial class MainForm
     private readonly Button _layerAddImage = IconButton();
     private readonly Button _layerPaste = IconButton();
     private readonly Button _layerAddText = IconButton();
+    private readonly Button _layerDuplicate = IconButton();
     private readonly Button _layerEdit = IconButton();
     private readonly Button _layerDelete = IconButton();
     private readonly Button _layerToBack = IconButton();
@@ -132,7 +133,7 @@ internal sealed partial class MainForm
     {
         this._layerList.Height = this.LogicalToDeviceUnits(4 * 34 + 4);
         var iconLine = OptionLine();
-        iconLine.Controls.AddRange([this._layerAddImage, this._layerPaste, this._layerAddText, this._layerEdit, this._layerDelete, this._layerToBack, this._layerLower, this._layerRaise, this._layerToFront]);
+        iconLine.Controls.AddRange([this._layerAddImage, this._layerPaste, this._layerAddText, this._layerDuplicate, this._layerEdit, this._layerDelete, this._layerToBack, this._layerLower, this._layerRaise, this._layerToFront]);
         var buttons = OptionLine();
         buttons.FlowDirection = FlowDirection.TopDown;
         buttons.Controls.AddRange([this._layerList, iconLine]);
@@ -187,6 +188,7 @@ internal sealed partial class MainForm
         this._toolTip.SetToolTip(this._layerAddImage, "Add image… — lays images, GIFs or videos over the grid, chosen in the file picker; files dropped onto the Layers tab do the same");
         this._toolTip.SetToolTip(this._layerPaste, "Paste — lays the clipboard's image, files or text over the grid");
         this._toolTip.SetToolTip(this._layerAddText, "Add text — lays a text over the grid, typed in the field beside; Win+. opens the emoji panel");
+        this._toolTip.SetToolTip(this._layerDuplicate, "Duplicate — lays a copy of the selected layer just above it, a little off; Ctrl + drag a layer leaves a copy where it was");
         this._toolTip.SetToolTip(this._layerDelete, "Delete — removes the selected layer (Delete)");
         this._toolTip.SetToolTip(this._layerToBack, "To back — puts the selected layer under every other");
         this._toolTip.SetToolTip(this._layerLower, "Lower — puts the selected layer one place lower");
@@ -201,6 +203,8 @@ internal sealed partial class MainForm
         this._layerAddImage.Click += (_, _) => this.PickLayerFiles();
         this._layerPaste.Click += async (_, _) => await this.PasteLayersAsync();
         this._layerAddText.Click += (_, _) => this.AddTextLayer();
+        this._layerDuplicate.Click += async (_, _) => await this.DuplicateSelectedLayerAsync();
+        this._preview.LayerCopyDragged += async (_, original) => await this.CopyDraggedLayerAsync(original);
         this._layerEdit.Click += (_, _) => this.ToggleLayerEdit();
         this._layerDelete.Click += (_, _) => this._preview.RemoveSelectedLayer();
         this._layerList.LayerPicked += (_, index) => this._preview.SelectLayer(index);
@@ -412,7 +416,8 @@ internal sealed partial class MainForm
         foreach (var (button, action) in new (Button, EffectIcons.LayerAction)[]
         {
             (this._layerAddImage, EffectIcons.LayerAction.AddImage), (this._layerPaste, EffectIcons.LayerAction.Paste),
-            (this._layerAddText, EffectIcons.LayerAction.AddText), (this._layerDelete, EffectIcons.LayerAction.Delete),
+            (this._layerAddText, EffectIcons.LayerAction.AddText), (this._layerDuplicate, EffectIcons.LayerAction.Duplicate),
+            (this._layerDelete, EffectIcons.LayerAction.Delete),
             (this._layerToBack, EffectIcons.LayerAction.ToBack), (this._layerLower, EffectIcons.LayerAction.Lower),
             (this._layerRaise, EffectIcons.LayerAction.Raise), (this._layerToFront, EffectIcons.LayerAction.ToFront),
         })
@@ -465,6 +470,7 @@ internal sealed partial class MainForm
         this._layerAddImage.Enabled = this._layerPaste.Enabled = this._layerAddText.Enabled = enabled;
         this._layerEdit.Enabled = enabled && (editing || layer is { Visible: true });
         this._layerDelete.Enabled = enabled && listed is not null;
+        this._layerDuplicate.Enabled = enabled && listed is not null && !editing;
         this._layerToBack.Enabled = this._layerLower.Enabled = enabled && listed is not null && index > 0;
         this._layerRaise.Enabled = this._layerToFront.Enabled = enabled && listed is not null && index < count - 1;
         if (this._layerEditShowsDone != editing)
@@ -671,6 +677,101 @@ internal sealed partial class MainForm
 
         this.TurnLayersOn();
         this._preview.RestackSelectedLayer(to(index));
+    }
+
+    /// <summary>
+    /// Duplicate: a copy of the selected layer laid just above it, a little off, and selected — not in its edit
+    /// view (workfiles/20261029-duplicate-layer.md).
+    /// </summary>
+    private async Task DuplicateSelectedLayerAsync()
+    {
+        if (this.IsExporting || this._preview.EditingLayer || this._preview.SelectedLayer is not { } original
+            || await this.LayerCopyAsync(original) is not { } copy)
+        {
+            return;
+        }
+
+        this.TurnLayersOn();
+        if (this._preview.InsertLayerCopy(original, copy with { Place = copy.Place.Beside(LayerCascadeStep) }))
+        {
+            this.ShowStatus("Layer duplicated.");
+        }
+        else
+        {
+            copy.Image.Dispose();
+        }
+    }
+
+    /// <summary>A Ctrl + drag started: the copy made and given back to the preview, which lays it under the layer moved — or ends its wait without one.</summary>
+    private async Task CopyDraggedLayerAsync(Layer original)
+    {
+        Layer? copy = null;
+        try
+        {
+            copy = this.IsExporting ? null : await this.LayerCopyAsync(original);
+        }
+        finally
+        {
+            if (!this._preview.PlaceDraggedCopy(original, copy))
+            {
+                copy?.Image.Dispose();
+                copy = null;
+            }
+        }
+
+        if (copy is not null)
+        {
+            this.ShowStatus("Layer duplicated.");
+        }
+    }
+
+    /// <summary>
+    /// A copy of <paramref name="original"/> — its look, its place, its text and style —, visible, with a content of
+    /// its own, since a content carries its look and its reader: a text drawn again, a file loaded again off the UI
+    /// thread, a pasted image's bitmap copied. <c>null</c>, the status line saying why, when it cannot be made.
+    /// </summary>
+    private async Task<Layer?> LayerCopyAsync(Layer original)
+    {
+        if (original.IsText)
+        {
+            return this.RenderTextLayer(original.Text!, original.Style!, original.Look, original.Place, original.TextBox);
+        }
+
+        SourceImage image;
+        if (original.Image.FilePath is { } path)
+        {
+            if (await Task.Run(() => ImageLoader.TryLoadFile(path)) is not { } loaded)
+            {
+                this.ShowStatus($"The layer could not be duplicated: {Path.GetFileName(path)} could not be read again.", error: true);
+                return null;
+            }
+
+            image = loaded;
+            image.TextOrigin = original.Image.TextOrigin;
+            image.Dropped = original.Image.Dropped;
+        }
+        else
+        {
+            try
+            {
+                image = ImageLoader.FromImage(original.Image.Bitmap);
+            }
+            catch (Exception ex) when (ex is ExternalException or OutOfMemoryException or ArgumentException)
+            {
+                this.ShowStatus($"The layer could not be duplicated: {ErrorLog.Describe(ex)}", error: true);
+                return null;
+            }
+        }
+
+        // Locked meanwhile: the content made is let go.
+        if (this.IsExporting)
+        {
+            image.Dispose();
+            return null;
+        }
+
+        image.Look = original.Look;
+        return original with { Image = image, Visible = true };
     }
 
     /// <summary>
