@@ -295,9 +295,11 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 - The Layers options hold, at the left, the **layer list**, as in Paint.NET: one row per layer, the top one first — its thumbnail, its name (its file's, its text's first line), and a **checkbox** that hides the layer in the preview and every export, kept. Clicking a row selects the layer. Under the list, icon buttons — their names in tooltips:
   - **Add image…** picks images, GIFs or videos — up to 10 at once; files **dropped onto the Layers tab**, or onto its options, are added the same way. **Paste** lays the clipboard's image, files or text; a pasted text becomes a text layer;
   - **Add text** lays an empty text at the grid's center and focuses the field beside the list: type it there, several lines allowed — **Win+.** opens Windows' emoji panel;
+  - **Duplicate** lays a copy of the selected layer just above it, a little lower and to the right, and selects it: same content, effects, size, angle, text and style, under the same name — visible even when the original is hidden, a video copy heard as its original is. A layer whose file has gone since it was added is not copied, the status line saying why. Disabled in the edit view;
   - **Edit** opens the selected layer's edit view (below); **Delete** removes it; **To back**, **Lower**, **Raise** and **To front** move it in the stacking order.
+- A **right click** on a layer — on the grid or on its row of the list — selects it and opens its menu: **Duplicate**, **Delete**, and **Find similar images** on a layer that is not a text, while the visual analysis is on.
 - On the grid, a layer is **selected first**, outlined in green: a click on another one only selects it. Then:
-  - **drag** it to move it, its center kept inside the grid;
+  - **drag** it to move it, its center kept inside the grid; **Ctrl + drag** leaves a copy where it was — the cursor shows a **+** — the drag, copy included, being one undo step;
   - drag the **round handle** above its top edge to turn it, **Shift** snapping to every 15°;
   - a text in a **Box** shows a **square handle** on the middle of its left and right sides: dragged, it sets the box's width, the other side staying put, the text wrapping again as it goes;
   - the **wheel** over it grows or shrinks it by 5 % a notch, **Shift + wheel** turns it by 5°; elsewhere the wheel zooms the cell under it, as ever;

@@ -4840,7 +4840,19 @@ internal sealed partial class MainForm : Form
     /// </summary>
     private void ShowCellMenu(MouseEventArgs e)
     {
-        if (e.Button != MouseButtons.Right || !this._explorer.CanFindSimilar)
+        if (e.Button != MouseButtons.Right)
+        {
+            return;
+        }
+
+        // Over a layer taking the mouse, its own menu (workfiles/20261029-duplicate-layer.md § The Context Menu).
+        if (this._preview.LayerForMenu(e.Location) is { } layer)
+        {
+            this.ShowLayerMenu(layer, this._preview, e.Location);
+            return;
+        }
+
+        if (!this._explorer.CanFindSimilar)
         {
             return;
         }

@@ -70,6 +70,17 @@ public sealed record LayerPlacement(double X, double Y, double Size, double Angl
         Y = Math.Clamp(this.Y + delta.Height / Math.Max(1, canvas.Height), 0, 1),
     };
 
+    /// <summary>
+    /// A copy's place: its center moved by <paramref name="step"/> of the grid to the right and down — the other
+    /// way on an axis where that would leave the grid — so it never lands on its original
+    /// (workfiles/20261029-duplicate-layer.md § Where the Copy Goes).
+    /// </summary>
+    public LayerPlacement Beside(double step) => this with
+    {
+        X = this.X + step <= 1 ? this.X + step : Math.Max(0, this.X - step),
+        Y = this.Y + step <= 1 ? this.Y + step : Math.Max(0, this.Y - step),
+    };
+
     public LayerPlacement WithSize(double size) => this with { Size = Math.Clamp(size, MinSize, MaxSize) };
 
     /// <summary>Turned to <paramref name="angle"/>, brought within (-180°, 180°].</summary>
@@ -137,6 +148,28 @@ public sealed record GridLayers(IReadOnlyList<Layer> Items)
     }
 
     public GridLayers Adding(Layer layer) => new([.. this.Items, layer]);
+
+    /// <summary><paramref name="layer"/> put at <paramref name="index"/> in the stacking order, the layers from there one place higher.</summary>
+    public GridLayers Inserting(int index, Layer layer)
+    {
+        var items = this.Items.ToList();
+        items.Insert(Math.Clamp(index, 0, items.Count), layer);
+        return new GridLayers(items);
+    }
+
+    /// <summary>The index of the layer showing <paramref name="image"/>, -1 for none.</summary>
+    public int IndexOf(SourceImage image)
+    {
+        for (int i = 0; i < this.Items.Count; i++)
+        {
+            if (this.Items[i].Image == image)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
 
     public GridLayers Without(int index)
     {
