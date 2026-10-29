@@ -104,6 +104,10 @@ can pin it if a test project is added later.
 - [x] ~~What does an entry show — name / *Unnamed*, a face picture, a file count?~~ → The face cut
   out of the photo, the name or *Unnamed*, the file count.
 - [x] ~~Where does the name popup open?~~ → Centered on the explorer panel, *Rename…* / F2 included.
+- [ ] Ctrl+Z on the People view: which decisions does it undo?
+- [ ] Ctrl+Z: the People's own history, or one timeline shared with the grid's?
+- [ ] The *Not <name> › Remove* submenu: only *Not <name>*, or the other decisions too?
+- [ ] The folder idea: sent to the face-grouping-accuracy session?
 
 ---
 
@@ -147,6 +151,22 @@ No rule broken. Choices the frozen design left open:
 - `RenameGroup` now calls `Rename(FaceGroup)`, shared with the title; `NameDialog.CenterOn` places the
   popup on the explorer, kept inside the screen's working area.
 
+### Iteration 5 — 2026-10-29 — ⚙️ Post-implementation — Safer People decisions
+
+User feedback after testing:
+
+1. *"Not this person"* was clicked by mistake: it should open a **submenu**, *Not <name> › Remove*,
+   so that one click never takes a face out.
+2. The People decisions should be **undone with Ctrl+Z**. This changes a recorded rule: RULES.md
+   § People keeps them *out of the undo history*.
+3. Most faces end up in one huge mixed *Unnamed* group; the user suggests separating them **by
+   folder**. Not designed here: the grouping is being reworked by the face-grouping-accuracy session
+   (`workfiles/20261028-face-grouping-accuracy.md`, not merged yet), where the idea belongs.
+
+Lead from the code: `People.Snapshot()` already copies every person (`PersonData`), so a People step
+can be the whole people state before a decision — restored, saved, regrouped — as `GridHistory` keeps
+the whole grid state, never a per-action inverse. Open Questions added for points 1–2.
+
 ---
 
 ## Implementation Log
@@ -173,7 +193,11 @@ No rule broken. Choices the frozen design left open:
 | 6 | Hidden people in the submenu? | Yes, marked | 2026-10-28 |
 | 7 | What does an entry show? | Face + name + file count | 2026-10-28 |
 | 8 | Where does the name popup open? | Centered on the explorer | 2026-10-28 |
+| 9 | Ctrl+Z: which People decisions? | | |
+| 10 | Ctrl+Z: own history or shared with the grid? | | |
+| 11 | Submenu *› Remove*: which decisions? | | |
+| 12 | Folder idea sent to the grouping session? | | |
 
 ---
 
-*Last updated: 2026-10-28*
+*Last updated: 2026-10-29*
