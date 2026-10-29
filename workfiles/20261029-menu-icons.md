@@ -176,11 +176,11 @@ drawn in full color (`MenuIcon`, Direct2D), at the control's DPI size. Approved 
 | Global tabs | Format, Soundtrack, Fade, Borders, Seams, Cascade, Layers | ✎, 🎵, ✎, ✎, ✎, ⏭️, 📑 |
 | Global / options toolbars | Every Reset | ↩️ |
 | Layer list | Add image, Paste, Add text, Copy, Duplicate, Edit, Done, Delete, To back, Lower, Raise, To front | 🖼️, 📋, 🔤, 📄, ✎, ✏️, ✅, ❌, ⏬, 🔽, 🔼, ⏫ — the adds' green plus gone |
-| Bottom bar | Clear all, ⚙, Copy PNG, its ▾, Copy last video, Save PNG…, its ▾ | 🧹, ⚙️, 📋, 🔽, 🕘, 💾, 🔽 |
+| Bottom bar | Clear all, ⚙, Copy PNG ▾, Copy last video, Save PNG… ▾ | 🧹, ⚙️ (as tall as its row), 📋, 🕘, 💾 — Copy and Save are **Windows split buttons**, their arrow built in (Iteration 10) |
 | Transport | Play / Pause | ▶️ / ⏸️ |
 | File explorer | Aa (name search), 💡 (content search), ↻, » / «, × (*Similar to*), ▦, ☰, Choose folder…, Load (URL zone), Browse… (Soundtrack) | 🔠, 💡, 🔄, ⏩ / ⏪, ✖️, 🔳, 📃, 📁, ⬇️, 📂 |
 | Views drop-down | Folders, People, Favorites | 📁, 👥, ❤️ — full color, no longer one tint |
-| Sort drop-down | Date ↓, Name A→Z, Size ↑ | 📅 Date ⬇️, 🔠 Name A→Z, 📦 Size ⬆️ |
+| Sort drop-down | Date ↓, Name A→Z, Size ↑ | 📅 Date ↓, 🔠 Name A→Z, 📦 Size ↑ — the direction stays text (Iteration 11) |
 | Animations' Type | Zoom | 🔍 |
 | Kept drawings | Crop, Format, Fade, Borders, Seams, Duplicate, the eyedropper, the Fade curves, the intensity and opacity icons, the text alignments, the option thumbnails | ✎ |
 | No icon | The font drop-down (each font in its face), the Borders style drop-down, the Color… part (its swatch) | — |
@@ -330,17 +330,38 @@ entry's icon is an emoji. *(Revises Q&A 15 for the arrows inside a label.)*
 The ⚙ button, its text removed for the icon, shrank to the icon's height under `AutoSize`, lower than
 its neighbours. A button showing its icon alone keeps the height it had with its text — the row's.
 
+
+### Iteration 13 — 2026-10-29 — 🧭 Implementation choices — Every control
+
+- **`MenuIcons` renamed `UiIcons`**, `MenuIcon` `UiIcon`: one place for every control's icon. Helpers:
+  `UiIcons.SetImage` (a button, its own copy), `UiIcons.DrawItem` (an owner-drawn drop-down's entry),
+  `UiIcon.Copy` (a copy the caller owns, for the tabs and the layer list that dispose theirs).
+- **The split button** (`UI/SplitButton`): `BS_SPLITBUTTON` on a system-drawn button, its arrow's
+  `BCN_DROPDOWN` opening the menu, its icon given through `BCM_SETIMAGELIST` (a 32-bit image list
+  keeping its own copy of the bitmap), its width the system's ideal one, its height the other
+  buttons'. The system cannot grey one part alone: while only the arrow acts (the last video with an
+  empty grid), the button stays enabled and a click on its main part opens the menu too.
+- **Icon-only buttons** (⚙️, ▶️ / ⏸️, 🔄, ⏩ / ⏪…) lost their glyph text; their `AccessibleName` keeps their
+  name. Sized to their content, they stretch to their row's height (`Anchor` top and bottom), as the
+  split buttons' arrows did.
+- **The views drop-down** no longer draws its glyphs in one tint with GDI: full color, like every icon.
+- **Docs**: `RULES.md` § Menus became § Icons; the glossary's *Menu icon* became *Icon*, EN + FR; the
+  README's and the rules' glyphs follow the controls — 🔠 for Aa, ⭐ Preset…, 🔄, 🔳 / 📃, ⏩ / ⏪, ▶️ / ⏸️.
+- **Checked on screen**: the tabs, the bottom bar (split buttons, heights), the explorer's header and
+  buttons. **Not checked**: the views and sort drop-downs opened (the UI Automation call failed), the
+  layer list, a tab selected, the tray, a DPI change — left to the user's test.
+- No rule broken.
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 5, 6 | 2026-10-29 | `UI/MenuIcons.cs`, every menu wired |
+| Code | 5, 6, 9–13 | 2026-10-29 | `UI/UiIcons.cs` (formerly `MenuIcons.cs`), `UI/SplitButton.cs`, every menu and control wired |
 | Unit tests | 5 | 2026-10-29 | None: no test project in the solution |
-| RULES.md | 5 | 2026-10-29 | § Menus › Menu Icons |
-| Glossary (EN + FR) | 5 | 2026-10-29 | *Menu icon* / *Icône de menu* |
-| README | 4 | 2026-10-29 | Not needed: decided at design |
+| RULES.md | 5, 13 | 2026-10-29 | § Menus › Menu Icons, then § Icons |
+| Glossary (EN + FR) | 5, 13 | 2026-10-29 | *Menu icon* / *Icône de menu*, then *Icon* / *Icône* |
+| README | 4, 13 | 2026-10-29 | Not needed for the menus (decided at design); the new glyphs of the controls, EN + FR |
 
 ---
 
