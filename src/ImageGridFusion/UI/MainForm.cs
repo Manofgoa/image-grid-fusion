@@ -725,6 +725,7 @@ internal sealed class MainForm : Form
         };
         _explorer.TileSizeChanged += (_, _) => SaveExplorerTileSize();
         _explorer.FolderViewChanged += (_, _) => SaveExplorerFolderView();
+        this._explorer.PeopleReset += (_, _) => this._history.Rebase(this._explorer.PeopleState);
         this._explorer.FileOrderChanged += (_, _) => this.SaveExplorerFileOrder();
         this._explorer.ViewChanged += (_, _) => this.SaveExplorerView();
         _explorer.ChooseFolderRequested += (_, _) => PickExplorerFolder();
@@ -1784,7 +1785,8 @@ internal sealed class MainForm : Form
             this._seams,
             this._seamsOn,
             this._cascade,
-            this._cascadeOn));
+            this._cascadeOn),
+        this._explorer.PeopleState);
 
     /// <summary>
     /// Ctrl+Z (<paramref name="undo"/>) or Ctrl+Y / Ctrl+Shift+Z: the grid one step back or forward, the
@@ -1841,6 +1843,13 @@ internal sealed class MainForm : Form
         this._preview.Borders = this.ActiveBorders;
         this._preview.Seams = this.ActiveSeams;
         this.UpdateButtons();
+
+        // The people's decisions, unless the step is of a generation gone — loaded, or forgotten since:
+        // the step then takes the people as they stand, so the history sees no change to commit.
+        if (!ReferenceEquals(to.People, this._explorer.PeopleState) && !this._explorer.RestorePeople(to.People))
+        {
+            this._history.Rebase(this._explorer.PeopleState);
+        }
     }
 
     /// <summary>

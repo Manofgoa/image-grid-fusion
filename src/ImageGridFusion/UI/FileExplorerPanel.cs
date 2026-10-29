@@ -509,6 +509,15 @@ internal sealed partial class FileExplorerPanel : Panel
     /// <summary>The view was switched, or another folder opened: <see cref="FolderView"/> and <see cref="OpenFolder"/> to remember.</summary>
     public event EventHandler? FolderViewChanged;
 
+    /// <summary>The people's state took a new generation — loaded, or forgotten — no decision of the user's.</summary>
+    public event EventHandler? PeopleReset;
+
+    /// <summary>
+    /// The people as the undo history reads them: replaced by every decision, put back by
+    /// <see cref="RestorePeople"/> (workfiles/20261028-open-people-from-image.md § Undo).
+    /// </summary>
+    public PeopleState PeopleState { get; private set; } = PeopleState.Empty;
+
     /// <summary>The user picked another order in the sort drop-down: <see cref="FileOrder"/> to remember.</summary>
     public event EventHandler? FileOrderChanged;
 
@@ -1015,6 +1024,7 @@ internal sealed partial class FileExplorerPanel : Panel
             error ??= ex.Message;
         }
 
+        this.ResetPeopleState();
         this._snapshot = PeopleSnapshot.Empty;
         this._openGroup = null;
         this.Regroup();
@@ -1283,6 +1293,7 @@ internal sealed partial class FileExplorerPanel : Panel
     {
         _favorites.Load();
         this._peopleStore.Load();
+        this.ResetPeopleState();
         SetBaseFolder(baseFolder);
     }
 
@@ -3800,8 +3811,46 @@ internal sealed partial class FileExplorerPanel : Panel
             ? person
             : this._peopleStore.Create(group.Faces.Select(face => (face.Key, face.Face.Embedding)));
 
-    /// <summary>The people's decisions written, the status line saying <paramref name="done"/>, the groups computed again.</summary>
+    /// <summary>
+    /// A decision on the people taken: their state as the undo history reads it, then written, the status
+    /// line saying <paramref name="done"/>, the groups computed again.
+    /// </summary>
     private void SavePeople(string done)
+    {
+        this.PeopleState = new PeopleState(this._peopleStore.Snapshot(), this.PeopleState.Generation, done);
+        this.WritePeople(done, quiet: false);
+    }
+
+    /// <summary>
+    /// The people put back as an undo or a redo found them — written, the groups computed again — unless
+    /// <paramref name="state"/> belongs to another generation (§ Undo: loading and Forget faces… are never
+    /// undone); false then, the people left as they are.
+    /// </summary>
+    public bool RestorePeople(PeopleState state)
+    {
+        if (state.Generation != this.PeopleState.Generation)
+        {
+            return false;
+        }
+
+        this._peopleStore.Restore(state.People);
+        this.PeopleState = state;
+        this.WritePeople("People restored", quiet: true);
+        return true;
+    }
+
+    /// <summary>
+    /// The people as the store holds them taken as a new generation — loaded, or forgotten — no decision
+    /// of the user: the undo history takes it without a step (<see cref="PeopleReset"/>).
+    /// </summary>
+    private void ResetPeopleState()
+    {
+        this.PeopleState = new PeopleState(this._peopleStore.Snapshot(), this.PeopleState.Generation + 1, "");
+        this.PeopleReset?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>The people written, the status line saying <paramref name="done"/> — only a failure when <paramref name="quiet"/> — the groups computed again.</summary>
+    private void WritePeople(string done, bool quiet)
     {
         string? error = null;
         try
@@ -3813,7 +3862,11 @@ internal sealed partial class FileExplorerPanel : Panel
             error = ex.Message;
         }
 
-        this.Report(error is null ? done : $"{done} — for the session, not saved: {error}", error is not null);
+        if (!quiet || error is not null)
+        {
+            this.Report(error is null ? done : $"{done} — for the session, not saved: {error}", error is not null);
+        }
+
         this.Regroup(force: true);
     }
 
