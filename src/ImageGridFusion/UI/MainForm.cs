@@ -77,6 +77,9 @@ internal sealed partial class MainForm : Form
     private readonly ToolStripMenuItem _ocrArrowColor = new("Arrow color…");
     // The URL zone's yt-dlp companions, offered while yt-dlp is there without them (workfiles/20261015-yt-dlp-best-format.md § When They Are Offered).
     private readonly ToolStripMenuItem _installYtDlpCompanions = new("Install yt-dlp companions…");
+    // The shortcuts window, also opened by F1 (workfiles/20261029-shortcuts-list.md); one at a time.
+    private readonly ToolStripMenuItem _keyboardShortcuts = new("Keyboard shortcuts…") { ShortcutKeyDisplayString = "F1" };
+    private ShortcutsWindow? _shortcutsWindow;
     // The ⚙ menu's last item, an action rather than a setting: Explorer on the running exe's folder.
     private readonly ToolStripMenuItem _openAppFolder = new("Open app folder");
     private readonly Button _clearButton = new() { Text = "Clear all", AutoSize = true };
@@ -681,7 +684,7 @@ internal sealed partial class MainForm : Form
         this._transportTimer.Tick += (_, _) => this.RefreshTransportPosition();
         this._transportTimer.Start();
         this._toolTip.SetToolTip(this._clearButton, "Removes every image and the global effects, and brings the format back to Twitter (Ctrl+N)");
-        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, this._installYtDlpCompanions, this._downloadCutoutEngine, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._downloadOcrEngine, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._downloadFaceEngine, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._similarImages, this._downloadVisionEngine, this._captions, this._downloadCaptionEngine, this._forgetVisual, new ToolStripSeparator(), this._openAppFolder]);
+        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, this._installYtDlpCompanions, this._downloadCutoutEngine, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._downloadOcrEngine, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._downloadFaceEngine, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._similarImages, this._downloadVisionEngine, this._captions, this._downloadCaptionEngine, this._forgetVisual, new ToolStripSeparator(), this._keyboardShortcuts, this._openAppFolder]);
         // An icon per action and toggle, never on a caption nor a submenu's values (RULES.md § Icons).
         UiIcons.Set(this._startWithWindows, UiIcons.StartWithWindows);
         UiIcons.Set(this._twitterCornersDefault, UiIcons.TwitterCorners);
@@ -708,6 +711,7 @@ internal sealed partial class MainForm : Form
         UiIcons.Set(this._captions, UiIcons.Caption);
         UiIcons.Set(this._downloadCaptionEngine, UiIcons.Download);
         UiIcons.Set(this._forgetVisual, UiIcons.Forget);
+        UiIcons.Set(this._keyboardShortcuts, UiIcons.Keyboard);
         UiIcons.Set(this._openAppFolder, UiIcons.OpenFolder);
         UiIcons.Attach(this._settingsMenu);
         for (int pages = FileExplorerPanel.MinPagesPerLoad; pages <= FileExplorerPanel.MaxPagesPerLoad; pages++)
@@ -805,6 +809,8 @@ internal sealed partial class MainForm : Form
         this._installYtDlpCompanions.Click += async (_, _) => await this._explorer.OfferYtDlpCompanionsAsync();
         this._openAppFolder.ToolTipText = "Opens Explorer on the folder of this exe, the exe selected — where settings.json and the app's other files live";
         this._openAppFolder.Click += (_, _) => this.ShowInExplorer(Environment.ProcessPath ?? Application.ExecutablePath);
+        this._keyboardShortcuts.ToolTipText = "Lists every key and mouse gesture of the app and what it does, in a window that stays open beside this one";
+        this._keyboardShortcuts.Click += (_, _) => this.ShowShortcuts();
         _explorer.OpenChanged += (_, _) =>
         {
             _explorerSplitter.Visible = _explorer.Open;
@@ -1482,11 +1488,35 @@ internal sealed partial class MainForm : Form
         this._history.Start();
     }
 
-    /// <summary>Hidden in the tray, the preview stops playing; shown again, it plays from the start.</summary>
+    /// <summary>
+    /// Hidden in the tray, the preview stops playing; shown again, it plays from the start. The shortcuts window,
+    /// which would stay on screen without it, closes.
+    /// </summary>
     protected override void OnVisibleChanged(EventArgs e)
     {
         base.OnVisibleChanged(e);
         _preview.WindowVisibleChanged();
+        if (!this.Visible)
+        {
+            this._shortcutsWindow?.Close();
+        }
+    }
+
+    /// <summary>
+    /// F1 and the ⚙ menu: the shortcuts window, modeless and owned by this one; already open, it comes back to the
+    /// front (workfiles/20261029-shortcuts-list.md § Shortcuts Window).
+    /// </summary>
+    private void ShowShortcuts()
+    {
+        if (this._shortcutsWindow is { IsDisposed: false } open)
+        {
+            open.Activate();
+            return;
+        }
+
+        this._shortcutsWindow = new ShortcutsWindow(ShortcutList.Load());
+        this._shortcutsWindow.FormClosed += (_, _) => this._shortcutsWindow = null;
+        this._shortcutsWindow.Show(this);
     }
 
     /// <summary>
@@ -1542,6 +1572,13 @@ internal sealed partial class MainForm : Form
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
+        // F1 means nothing to a text field: the shortcuts window opens wherever the focus is.
+        if (keyData == Keys.F1)
+        {
+            this.ShowShortcuts();
+            return true;
+        }
+
         // Typed in the file explorer's search box, or in a Frames field, these keys edit its text, not the grid.
         if ((_explorer.IsEditingText || this.IsEditingFrameField || this._layerText.Focused) && keyData is (Keys.Control | Keys.V) or (Keys.Control | Keys.C) or Keys.Delete or Keys.Escape
             or (Keys.Control | Keys.Z) or (Keys.Control | Keys.Y) or (Keys.Control | Keys.Shift | Keys.Z))

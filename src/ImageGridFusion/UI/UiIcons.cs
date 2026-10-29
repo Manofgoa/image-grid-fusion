@@ -122,6 +122,7 @@ internal static class UiIcons
     public static readonly UiIcon Strictness = UiIcon.Emoji("\U0001F39A️");
     public static readonly UiIcon Caption = UiIcon.Emoji("\U0001F4A1");
     public static readonly UiIcon OpenFolder = UiIcon.Emoji("\U0001F4C2");
+    public static readonly UiIcon Keyboard = UiIcon.Emoji("⌨️");
     public static readonly UiIcon Gif = UiIcon.Emoji("\U0001F39E️");
     public static readonly UiIcon Share = UiIcon.Emoji("\U0001F4E4");
     public static readonly UiIcon Png = UiIcon.Emoji("\U0001F5BC️");
