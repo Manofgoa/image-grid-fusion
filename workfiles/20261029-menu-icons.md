@@ -313,6 +313,13 @@ criterion now emoji first.
 Go given for the adjustment: code, tests and documentation, in a new worktree
 (`.claude/worktrees/control-icons`, branch `feature/control-icons`, from `feature/menu-icons`).
 
+### Iteration 10 — 2026-10-29 — ⚙️ Post-implementation — Standard split buttons
+
+Seen on the first build of Iteration 9, the user rejects the result ("nothing is right"): the Copy ▾
+and Save ▾ arrows drawn as a 🔽 emoji in a button of their own make no sense — they must be the
+**standard Windows split button**, its arrow built into the button. What else is wrong is asked
+before going on; the Iteration 9 code stays uncommitted meanwhile.
+
 ---
 
 ## Implementation Log
@@ -348,6 +355,7 @@ Go given for the adjustment: code, tests and documentation, in a new worktree
 | 15 | Adjustment: the arrows and symbols (▾ » « × ▦ ☰ ↓): text or emoji? | Emoji where one exists | 2026-10-29 |
 | 16 | Adjustment: the preview of every control's icon (emoji, or the drawing kept): approved? | Approved as shown | 2026-10-29 |
 | 17 | Go for the adjustment? | Code, tests and documentation, in a new worktree | 2026-10-29 |
+| 18 | Besides the split buttons, what is wrong on the first build? | | 2026-10-29 |
 
 ---
 
