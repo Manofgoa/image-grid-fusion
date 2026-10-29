@@ -338,6 +338,10 @@ public static class FitCalculator
         }
     }
 
+    /// <summary>Where <paramref name="point"/> of the image — in fractions of it as shown — is drawn in <paramref name="cell"/>, the inverse of <see cref="ImagePointAt"/>.</summary>
+    public static PointF DrawnAt(Rectangle cell, Size image, double zoom, PointF focus, int degrees, PointF point) =>
+        DrawnPoint(ComputeTurned(cell, image, zoom, focus, degrees), point);
+
     /// <summary>Where <paramref name="point"/> of the image — in fractions of it as shown — is drawn in the cell.</summary>
     private static PointF DrawnPoint(TurnedFit turned, PointF point)
     {

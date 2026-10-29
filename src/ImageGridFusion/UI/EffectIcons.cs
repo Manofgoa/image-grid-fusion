@@ -177,6 +177,21 @@ internal static class EffectIcons
         g.DrawRectangle(penLandscape, landscape.X, landscape.Y, landscape.Width, landscape.Height);
     });
 
+    /// <summary>A pair of scissors, open: two steel blades crossing, two red rings.</summary>
+    public static Bitmap Cutout(int size) => Draw(size, (g, s) =>
+    {
+        using (var blade = new Pen(Color.FromArgb(120, 130, 145), Math.Max(1.5f, s * 0.11f)) { StartCap = LineCap.Triangle, EndCap = LineCap.Round })
+        {
+            g.DrawLine(blade, s * 0.36f, s * 0.6f, s * 0.82f, s * 0.06f);
+            g.DrawLine(blade, s * 0.64f, s * 0.6f, s * 0.18f, s * 0.06f);
+        }
+
+        float r = s * 0.15f;
+        using var ring = new Pen(Color.FromArgb(220, 50, 50), Math.Max(1.5f, s * 0.09f));
+        g.DrawEllipse(ring, s * 0.27f - r, s * 0.77f - r, 2 * r, 2 * r);
+        g.DrawEllipse(ring, s * 0.73f - r, s * 0.77f - r, 2 * r, 2 * r);
+    });
+
     /// <summary>A drop, blue to cyan, with a light reflection.</summary>
     public static Bitmap Blur(int size) => Draw(size, (g, s) =>
     {

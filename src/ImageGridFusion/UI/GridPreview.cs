@@ -1057,6 +1057,7 @@ internal sealed partial class GridPreview : Control
         }
 
         this.PaintReadouts(g, cells);
+        this.PaintCutout(g, cells);
 
         PaintHoverOutline(g, HoverOutlineBounds(canvas, cells));
 
@@ -1087,6 +1088,12 @@ internal sealed partial class GridPreview : Control
 
         // Clicked, the preview takes the keyboard focus: the arrows then move the selected image.
         this.Focus();
+
+        // Pick armed takes every press: a left click on the selected cell picks, any other cancels.
+        if (this.CutoutMouseDown(e))
+        {
+            return;
+        }
         if (e.Button != MouseButtons.Left)
         {
             return;
@@ -1219,6 +1226,11 @@ internal sealed partial class GridPreview : Control
         if (this._eyedropper is not null)
         {
             this.HoverEyedropper(e.Location);
+            return;
+        }
+
+        if (this.CutoutMouseMove(e))
+        {
             return;
         }
 
@@ -1898,7 +1910,7 @@ internal sealed partial class GridPreview : Control
     }
 
     /// <summary>What the cell of <paramref name="image"/> shows now: its frame, its motion at the grid's time.</summary>
-    private Frame FrameOf(SourceImage image) => new(image.Bitmap, image.BandColor, image.DrawnLook, this._player.GridTime, image.Sharpening);
+    private Frame FrameOf(SourceImage image) => new(image.DrawnBitmap, image.BandColor, image.DrawnLook, this._player.GridTime, image.Sharpening);
 
     /// <summary>Draws the new frame of an image into the cached preview, and repaints only its cell.</summary>
     private void RedrawCell(SourceImage image)
@@ -3027,6 +3039,7 @@ internal sealed partial class GridPreview : Control
         }
 
         this.CancelEyedropper();
+        this.CancelCutoutPick();
 
         // A cell selected clears the layer's: the two are exclusive.
         if (index >= 0 && this.SelectedLayer is { } layer)
@@ -3481,7 +3494,7 @@ internal sealed partial class GridPreview : Control
         g.TranslateTransform(canvas.X, canvas.Y);
         var local = cell;
         local.Offset(-canvas.X, -canvas.Y);
-        Compositor.DrawUncropped(g, new Frame(image.Bitmap, image.BandColor, image.DrawnLook), local);
+        Compositor.DrawUncropped(g, new Frame(image.DrawnBitmap, image.BandColor, image.DrawnLook), local);
         DrawBordersOver(g, local, canvas.Size);
         g.Restore(state);
 
