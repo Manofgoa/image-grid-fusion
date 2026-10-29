@@ -302,6 +302,10 @@ scoping batch) before any code.
 | 10 | Glossary / README: a term, a line, or RULES.md only? | RULES.md and a glossary term | 2026-10-29 |
 | 11 | Go: scope and where? | Code, tests and documentation, in a worktree | 2026-10-29 |
 | 12 | Merge `feature/menu-icons` into `main`? | Not answered yet: the worktree and its branch kept | 2026-10-29 |
+| 13 | Adjustment: which controls get emoji-first icons? | Drop-downs, buttons with an emoji glyph, text buttons, tabs and the options' small icons | 2026-10-29 |
+| 14 | Adjustment: the icons the app already draws (tabs, Reset, layer list…): kept or replaced? | Replaced where an emoji fits — validated first on a preview | 2026-10-29 |
+| 15 | Adjustment: the arrows and symbols (▾ » « × ▦ ☰ ↓): text or emoji? | Emoji where one exists | 2026-10-29 |
+| 16 | Adjustment: the preview of every control's icon (emoji, or the drawing kept): approved? | | 2026-10-29 |
 
 ---
 
