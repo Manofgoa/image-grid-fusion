@@ -61,26 +61,30 @@ internal sealed partial class MainForm
     private readonly CheckBox[] _layerAlignment = [.. Enum.GetValues<LayerTextAlignment>().Select(_ => AlignmentButton())];
     private readonly CheckBox _layerBox = new() { Text = "Box", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly ColorSplitButton _layerColor = new();
-    private readonly TrackBar _layerColorSample = SampleSlider();
-    private readonly Label _layerColorSampleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+
+    // Each color's opacity right after it (workfiles/20261029-eyedropper-ergonomics.md § Color Opacity).
+    private readonly PictureBox _layerColorOpacityIcon = OpacityIcon();
+    private readonly TrackBar _layerColorOpacity = OptionSlider(0, 100, 10);
+    private readonly Label _layerColorOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _layerOutline = new() { Text = "Outline", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly ColorSplitButton _layerOutlineColor = new();
-    private readonly TrackBar _layerOutlineSample = SampleSlider();
-    private readonly Label _layerOutlineSampleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly PictureBox _layerOutlineOpacityIcon = OpacityIcon();
+    private readonly TrackBar _layerOutlineOpacity = OptionSlider(0, 100, 10);
+    private readonly Label _layerOutlineOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
 
     // The outline's width in percent of a line.
     private readonly TrackBar _layerOutlineWidth = OptionSlider((int)Math.Round(LayerTextStyle.MinOutlineWidth * 100), (int)Math.Round(LayerTextStyle.MaxOutlineWidth * 100), 2, controlStep: 1);
     private readonly Label _layerOutlineWidthLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _layerBackground = new() { Text = "Background", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly ColorSplitButton _layerBackgroundColor = new();
-    private readonly TrackBar _layerBackgroundSample = SampleSlider();
-    private readonly Label _layerBackgroundSampleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly PictureBox _layerBackgroundOpacityIcon = OpacityIcon();
     private readonly TrackBar _layerBackgroundOpacity = OptionSlider(0, 100, 10);
     private readonly Label _layerBackgroundOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _layerShadow = new() { Text = "Shadow", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly ColorSplitButton _layerShadowColor = new();
-    private readonly TrackBar _layerShadowSample = SampleSlider();
-    private readonly Label _layerShadowSampleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly PictureBox _layerShadowOpacityIcon = OpacityIcon();
+    private readonly TrackBar _layerShadowOpacity = OptionSlider(0, 100, 10);
+    private readonly Label _layerShadowOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly ShadowKindStrip _layerShadowKind = new() { Anchor = AnchorStyles.Left };
 
     // The shadow's size in percent of a line.
@@ -151,25 +155,23 @@ internal sealed partial class MainForm
         this._textStyleScroll.Height = this._textStyleStrip.Height + SystemInformation.HorizontalScrollBarHeight;
         this._textStyleScroll.Width = this.LogicalToDeviceUnits(100);
         var fontLine = OptionLine();
-        fontLine.Controls.AddRange([this._layerFont, this._layerBold, this._layerItalic, this._layerCaps, .. this._layerAlignment, this._layerBox, this._layerColor,this._layerColorSample, this._layerColorSampleLabel]);
+        fontLine.Controls.AddRange([this._layerFont, this._layerBold, this._layerItalic, this._layerCaps, .. this._layerAlignment, this._layerBox, this._layerColor, this._layerColorOpacityIcon, this._layerColorOpacity, this._layerColorOpacityLabel]);
         var outlineLine = OptionLine();
-        outlineLine.Controls.AddRange([this._layerOutline, this._layerOutlineColor, this._layerOutlineSample, this._layerOutlineSampleLabel, this._layerOutlineWidth, this._layerOutlineWidthLabel]);
+        outlineLine.Controls.AddRange([this._layerOutline, this._layerOutlineColor, this._layerOutlineOpacityIcon, this._layerOutlineOpacity, this._layerOutlineOpacityLabel, this._layerOutlineWidth, this._layerOutlineWidthLabel]);
         var styleLines = OptionLine();
         styleLines.FlowDirection = FlowDirection.TopDown;
         styleLines.Controls.AddRange([this._textStyleScroll, fontLine, outlineLine]);
 
-        // The box's lines, then the shadow's below them.
+        // The box's line, then the shadow's two below it.
         var backgroundLine = OptionLine();
-        backgroundLine.Controls.AddRange([this._layerBackground, this._layerBackgroundColor, this._layerBackgroundSample, this._layerBackgroundSampleLabel]);
-        var opacityLine = OptionLine();
-        opacityLine.Controls.AddRange([this._layerBackgroundOpacity, this._layerBackgroundOpacityLabel]);
+        backgroundLine.Controls.AddRange([this._layerBackground, this._layerBackgroundColor, this._layerBackgroundOpacityIcon, this._layerBackgroundOpacity, this._layerBackgroundOpacityLabel]);
         var shadowLine = OptionLine();
-        shadowLine.Controls.AddRange([this._layerShadow, this._layerShadowColor, this._layerShadowSample, this._layerShadowSampleLabel]);
+        shadowLine.Controls.AddRange([this._layerShadow, this._layerShadowColor, this._layerShadowOpacityIcon, this._layerShadowOpacity, this._layerShadowOpacityLabel]);
         var shadowShapeLine = OptionLine();
         shadowShapeLine.Controls.AddRange([this._layerShadowKind, this._layerShadowSize, this._layerShadowSizeLabel]);
         var backgroundLines = OptionLine();
         backgroundLines.FlowDirection = FlowDirection.TopDown;
-        backgroundLines.Controls.AddRange([backgroundLine, opacityLine, shadowLine, shadowShapeLine]);
+        backgroundLines.Controls.AddRange([backgroundLine, shadowLine, shadowShapeLine]);
 
         this._layerText.Height = this.LogicalToDeviceUnits(4 * 34);
         this._globalOptions[GlobalEffect.Layers].Controls.AddRange([buttons, this._layerText, styleLines, backgroundLines]);
@@ -232,7 +234,6 @@ internal sealed partial class MainForm
         this._toolTip.SetToolTip(this._layerOutline, "Draws an outline around the letters and the emojis, so the text reads on any image");
         this._toolTip.SetToolTip(this._layerOutlineWidth, "Width of the outline, as a share of a line");
         this._toolTip.SetToolTip(this._layerBackground, "Draws a box behind the text");
-        this._toolTip.SetToolTip(this._layerBackgroundOpacity, "Opacity of the box behind the text");
 
         this._layerAddImage.Click += (_, _) => this.PickLayerFiles();
         this._layerPaste.Click += async (_, _) => await this.PasteLayersAsync();
@@ -272,11 +273,6 @@ internal sealed partial class MainForm
             this.ChangeLayerStyle(style => style with { Outline = true, OutlineWidth = this._layerOutlineWidth.Value / 100.0 });
         };
         this._layerBackground.CheckedChanged += (_, _) => this.ChangeLayerStyle(style => style with { Background = this._layerBackground.Checked });
-        this._layerBackgroundOpacity.ValueChanged += (_, _) =>
-        {
-            this._layerBackgroundOpacityLabel.Text = OpacityText(this._layerBackgroundOpacity.Value);
-            this.ChangeLayerStyle(style => style with { Background = true, BackgroundOpacity = this._layerBackgroundOpacity.Value / 100.0 });
-        };
         this._layerItalic.CheckedChanged += (_, _) => this.ChangeLayerStyle(style => style with { Italic = this._layerItalic.Checked });
         this._layerCaps.CheckedChanged += (_, _) => this.ChangeLayerStyle(style => style with { Caps = this._layerCaps.Checked });
         foreach (var alignment in Enum.GetValues<LayerTextAlignment>())
@@ -335,24 +331,27 @@ internal sealed partial class MainForm
             }
         };
 
-        // Each color: the dialog's button and the eyedropper; the outline's and the box's turn them on.
-        (ColorSplitButton Button, TrackBar Sample, Label Label, string Name, Func<LayerTextStyle, Color> Get, Func<LayerTextStyle, Color, LayerTextStyle> Set)[] colors =
+        // Each color: the eyedropper, the dialog's button, then its opacity; the outline's, the box's and the shadow's turn
+        // them on.
+        (ColorSplitButton Button, TrackBar Opacity, Label Label, string Name, Func<LayerTextStyle, Color> Get, Func<LayerTextStyle, Color, LayerTextStyle> Set, Func<LayerTextStyle, double, LayerTextStyle> SetOpacity)[] colors =
         [
-            (this._layerColor, this._layerColorSample, this._layerColorSampleLabel, "the text's", style => style.Color, (style, color) => style with { Color = color }),
-            (this._layerOutlineColor, this._layerOutlineSample, this._layerOutlineSampleLabel, "the outline's", style => style.OutlineColor, (style, color) => style with { Outline = true, OutlineColor = color }),
-            (this._layerBackgroundColor, this._layerBackgroundSample, this._layerBackgroundSampleLabel, "the box's", style => style.BackgroundColor, (style, color) => style with { Background = true, BackgroundColor = color }),
-            (this._layerShadowColor, this._layerShadowSample, this._layerShadowSampleLabel, "the shadow's", style => style.ShadowColor, (style, color) => style with { Shadow = true, ShadowColor = color }),
+            (this._layerColor, this._layerColorOpacity, this._layerColorOpacityLabel, "the text's", style => style.Color, (style, color) => style with { Color = color }, (style, opacity) => style with { Opacity = opacity }),
+            (this._layerOutlineColor, this._layerOutlineOpacity, this._layerOutlineOpacityLabel, "the outline's", style => style.OutlineColor, (style, color) => style with { Outline = true, OutlineColor = color }, (style, opacity) => style with { Outline = true, OutlineOpacity = opacity }),
+            (this._layerBackgroundColor, this._layerBackgroundOpacity, this._layerBackgroundOpacityLabel, "the box's", style => style.BackgroundColor, (style, color) => style with { Background = true, BackgroundColor = color }, (style, opacity) => style with { Background = true, BackgroundOpacity = opacity }),
+            (this._layerShadowColor, this._layerShadowOpacity, this._layerShadowOpacityLabel, "the shadow's", style => style.ShadowColor, (style, color) => style with { Shadow = true, ShadowColor = color }, (style, opacity) => style with { Shadow = true, ShadowOpacity = opacity }),
         ];
-        foreach (var (button, sample, label, name, get, set) in colors)
+        foreach (var (button, opacity, label, name, get, set, setOpacity) in colors)
         {
-            this._toolTip.SetToolTip(button.Dialog, $"Chooses {name} color in the color dialog");
-            this._toolTip.SetToolTip(button.Eyedropper, $"Takes {name} color from the preview: click a cell; Escape or a right click cancels");
-            button.Dialog.Click += (_, _) => this.PickLayerColor(get, set);
-            button.Eyedropper.Click += (_, _) => this.ArmLayerEyedropper(button, sample, set);
-            label.Text = SampleText(sample.Value);
-            label.MinimumSize = new Size(TextRenderer.MeasureText(SampleText(GridPreview.MaxEyedropperSample), label.Font).Width, 0);
-            this._toolTip.SetToolTip(sample, "The eyedropper's sample: the side of the square of preview pixels it averages; not remembered");
-            sample.ValueChanged += (_, _) => label.Text = SampleText(sample.Value);
+            button.Describe(this._toolTip, $"{name} color");
+            button.Dialog.Click += (_, _) => this.PickColor(this.LayerColorRoute(get, set));
+            button.Eyedropper.Click += (_, _) => this.ArmEyedropper(button, this.LayerColorRoute(get, set));
+            this._toolTip.SetToolTip(opacity, $"Opacity of {name} color");
+            label.MinimumSize = new Size(TextRenderer.MeasureText(OpacityText(100), label.Font).Width, 0);
+            opacity.ValueChanged += (_, _) =>
+            {
+                label.Text = OpacityText(opacity.Value);
+                this.ChangeLayerStyle(style => setOpacity(style, opacity.Value / 100.0));
+            };
         }
 
         this._layerOutlineWidthLabel.Text = OutlineWidthText(this._layerOutlineWidth.Value);
@@ -475,10 +474,19 @@ internal sealed partial class MainForm
             previous?.Dispose();
         }
 
-        foreach (var button in new[] { this._layerColor, this._layerOutlineColor, this._layerBackgroundColor, this._layerShadowColor })
+        using (var eyedropper = EffectIcons.Eyedropper(size))
         {
-            var previous = button.Eyedropper.Image;
-            button.Eyedropper.Image = EffectIcons.Eyedropper(size);
+            foreach (var button in new[] { this._layerColor, this._layerOutlineColor, this._layerBackgroundColor, this._layerShadowColor })
+            {
+                button.SetIcon(eyedropper);
+            }
+        }
+
+        foreach (var icon in new[] { this._layerColorOpacityIcon, this._layerOutlineOpacityIcon, this._layerBackgroundOpacityIcon, this._layerShadowOpacityIcon })
+        {
+            var previous = icon.Image;
+            icon.Image = EffectIcons.Opacity(size);
+            icon.Size = new Size(size, size);
             previous?.Dispose();
         }
 
@@ -525,10 +533,11 @@ internal sealed partial class MainForm
         bool text = enabled && layer is { IsText: true };
         foreach (var control in new Control[]
         {
-            this._layerText, this._layerFont, this._layerBold, this._layerItalic, this._layerCaps, this._layerColor, this._layerColorSample, this._layerColorSampleLabel,
-            this._layerOutline, this._layerOutlineColor, this._layerOutlineSample, this._layerOutlineSampleLabel, this._layerOutlineWidth, this._layerOutlineWidthLabel,
-            this._layerBackground, this._layerBackgroundColor, this._layerBackgroundSample, this._layerBackgroundSampleLabel, this._layerBackgroundOpacity, this._layerBackgroundOpacityLabel,
-            this._layerShadow, this._layerShadowColor, this._layerShadowSample, this._layerShadowSampleLabel, this._layerShadowKind, this._layerShadowSize, this._layerShadowSizeLabel,
+            this._layerText, this._layerFont, this._layerBold, this._layerItalic, this._layerCaps,
+            this._layerColor, this._layerColorOpacityIcon, this._layerColorOpacity, this._layerColorOpacityLabel,
+            this._layerOutline, this._layerOutlineColor, this._layerOutlineOpacityIcon, this._layerOutlineOpacity, this._layerOutlineOpacityLabel, this._layerOutlineWidth, this._layerOutlineWidthLabel,
+            this._layerBackground, this._layerBackgroundColor, this._layerBackgroundOpacityIcon, this._layerBackgroundOpacity, this._layerBackgroundOpacityLabel,
+            this._layerShadow, this._layerShadowColor, this._layerShadowOpacityIcon, this._layerShadowOpacity, this._layerShadowOpacityLabel, this._layerShadowKind, this._layerShadowSize, this._layerShadowSizeLabel,
             this._textStyleStrip,
         }.Concat(this._layerAlignment).Append(this._layerBox))
         {
@@ -570,9 +579,15 @@ internal sealed partial class MainForm
         this._layerOutlineWidth.Value = Math.Clamp((int)Math.Round(style.OutlineWidth * 100), this._layerOutlineWidth.Minimum, this._layerOutlineWidth.Maximum);
         this._layerBackground.Checked = style.Background;
         this._layerBackgroundOpacity.Value = (int)Math.Round(style.BackgroundOpacity * 100);
+        this._layerColorOpacity.Value = (int)Math.Round(style.Opacity * 100);
+        this._layerOutlineOpacity.Value = (int)Math.Round(style.OutlineOpacity * 100);
+        this._layerShadowOpacity.Value = (int)Math.Round(style.ShadowOpacity * 100);
         this._syncingEffects = syncing;
         this._layerOutlineWidthLabel.Text = OutlineWidthText(this._layerOutlineWidth.Value);
-        this._layerBackgroundOpacityLabel.Text = OpacityText(this._layerBackgroundOpacity.Value);
+        foreach (var (slider, label) in ((TrackBar, Label)[])[(this._layerColorOpacity, this._layerColorOpacityLabel), (this._layerOutlineOpacity, this._layerOutlineOpacityLabel), (this._layerBackgroundOpacity, this._layerBackgroundOpacityLabel), (this._layerShadowOpacity, this._layerShadowOpacityLabel)])
+        {
+            label.Text = OpacityText(slider.Value);
+        }
         this._layerShadowSizeLabel.Text = ShadowSizeText(this._layerShadowSize.Value);
         this.ShowLayerSwatch(this._layerShadowColor, ref this._layerShadowSwatch, style.ShadowColor);
         this.ShowLayerSwatch(this._layerColor, ref this._layerColorSwatch, style.Color);
@@ -949,34 +964,19 @@ internal sealed partial class MainForm
         }
     }
 
-    /// <summary>The standard color dialog, on a color of the selected text layer: the color chosen taken.</summary>
-    private void PickLayerColor(Func<LayerTextStyle, Color> get, Func<LayerTextStyle, Color, LayerTextStyle> set)
-    {
-        if (this.IsExporting || this._preview.SelectedLayer is not { IsText: true } layer)
-        {
-            return;
-        }
-
-        if (this._colorDialog.Show(this, get(layer.Style!)) is { } color)
-        {
-            this.ChangeLayerStyle(style => set(style, color));
-        }
-    }
-
     /// <summary>
-    /// A text layer's eyedropper: the color follows the one under the cursor, a click takes it, a cancel gives
-    /// the layer back as it was (RULES.md § Color Options).
+    /// A color's routes for the selected text layer: the color follows the one shown, the color taken is kept, a
+    /// cancel gives the layer back as it was (RULES.md § Color Options). None without a text layer selected.
     /// </summary>
-    private void ArmLayerEyedropper(ColorSplitButton button, TrackBar sample, Func<LayerTextStyle, Color, LayerTextStyle> set)
+    private ColorRoute? LayerColorRoute(Func<LayerTextStyle, Color> get, Func<LayerTextStyle, Color, LayerTextStyle> set)
     {
         if (this.IsExporting || this._preview.SelectedLayer is not { IsText: true } original)
         {
-            return;
+            return null;
         }
 
-        this.ArmEyedropper(
-            button,
-            sample,
+        return new ColorRoute(
+            get(original.Style!),
             color => this.ChangeLayerStyle(style => set(style, color)),
             () =>
             {

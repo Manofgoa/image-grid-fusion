@@ -276,8 +276,7 @@ internal sealed partial class MainForm : Form
         [CutoutBackground.Pixelate] = (CutoutSlider(0, 100), new Label { AutoSize = true, Anchor = AnchorStyles.Left }),
     };
     private readonly ColorSplitButton _cutoutColor = new();
-    private readonly TrackBar _cutoutSample = SampleSlider();
-    private readonly Label _cutoutSampleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly PictureBox _cutoutColorOpacityIcon = OpacityIcon();
     private Color? _cutoutSwatchColor;
 
     // The Cutout's cut-outs, computed off the UI thread, and its engine's download while it runs (workfiles/20261029-cutout.md).
@@ -287,16 +286,13 @@ internal sealed partial class MainForm : Form
     private readonly Label _volumeLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _mute = new() { Text = "Mute", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _backgroundAutomatic = new() { Text = "Automatic color", AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly PictureBox _backgroundOpacityIcon = new() { SizeMode = PictureBoxSizeMode.CenterImage, Anchor = AnchorStyles.Left };
+    private readonly PictureBox _backgroundOpacityIcon = OpacityIcon();
     private readonly TrackBar _backgroundOpacity = OptionSlider(0, 100, 10);
     private readonly Label _backgroundOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
 
-    // The eyedropper, then a native button, the swatch of the background color in use before its text (shared RULES.md § Colour Items).
+    // The eyedropper, its sample in its menu, then a native button, the swatch of the background color in use before its
+    // text (shared RULES.md § Colour Items).
     private readonly ColorSplitButton _backgroundColor = new();
-
-    // The eyedropper's sample beside it: an eyedropper setting, not an option of the effect — 1 px at each launch.
-    private readonly TrackBar _backgroundSample = SampleSlider();
-    private readonly Label _backgroundSampleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
 
     // The color the Color… button's swatch shows: drawn again only when it changes, or the DPI does.
     private Color? _backgroundSwatchColor;
@@ -395,8 +391,7 @@ internal sealed partial class MainForm : Form
     // The borders' options; the last color chosen is remembered between sessions.
     private readonly ComboBox _bordersStyle = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 90, Anchor = AnchorStyles.Left };
     private readonly ColorSplitButton _bordersColor = new();
-    private readonly TrackBar _bordersSample = SampleSlider();
-    private readonly Label _bordersSampleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly PictureBox _bordersOpacityIcon = OpacityIcon();
 
     // The color the Color… button's swatch shows, so it is drawn again only when the borders' color changes.
     private Color? _bordersSwatchColor;
@@ -531,7 +526,7 @@ internal sealed partial class MainForm : Form
         _optionsHost.Controls.AddRange([.. _options.Values]);
         // Beside the thumbnails, two lines: the flat color's settings over the extended edges' ones.
         var backgroundColorLine = OptionLine();
-        backgroundColorLine.Controls.AddRange([_backgroundAutomatic, _backgroundOpacityIcon, _backgroundOpacity, _backgroundOpacityLabel, _backgroundColor, this._backgroundSample, this._backgroundSampleLabel]);
+        backgroundColorLine.Controls.AddRange([_backgroundAutomatic, _backgroundColor, _backgroundOpacityIcon, _backgroundOpacity, _backgroundOpacityLabel]);
         var backgroundEdgesLine = OptionLine();
         backgroundEdgesLine.Controls.AddRange([this._backgroundEdgeOpacity, this._backgroundEdgeOpacityLabel, this._backgroundBlend, this._backgroundBlendLabel, this._backgroundSoften]);
         var backgroundLines = OptionLine();
@@ -544,7 +539,7 @@ internal sealed partial class MainForm : Form
         var (opacity, opacityLabel) = this._cutoutAmounts[CutoutBackground.Opacity];
         cutoutEdgeLine.Controls.AddRange([this._cutoutGrow, this._cutoutGrowLabel, this._cutoutSoften, this._cutoutSoftenLabel, this._cutoutInvert, opacity, opacityLabel]);
         var cutoutBackgroundLine = OptionLine();
-        cutoutBackgroundLine.Controls.AddRange([this._cutoutColor, this._cutoutSample, this._cutoutSampleLabel]);
+        cutoutBackgroundLine.Controls.AddRange([this._cutoutColor, this._cutoutColorOpacityIcon]);
         foreach (var treatment in (CutoutBackground[])[CutoutBackground.Color, CutoutBackground.Blur, CutoutBackground.Pixelate])
         {
             var (slider, label) = this._cutoutAmounts[treatment];
@@ -616,7 +611,7 @@ internal sealed partial class MainForm : Form
         _globalOptions[GlobalEffect.Soundtrack].Controls.AddRange([_soundtrackBrowse, _soundtrackFile, _soundtrackVolume, _soundtrackVolumeLabel]);
         _globalOptions[GlobalEffect.Fade].Controls.AddRange([_fadeDuration, _fadeDurationLabel, _fadeSquared, _fadeLinear]);
         _globalOptions[GlobalEffect.Borders].Controls.AddRange(
-            [_bordersStyle, this._bordersColor, this._bordersSample, this._bordersSampleLabel, _bordersThickness, _bordersThicknessLabel, _bordersOpacity, _bordersOpacityLabel, this._bordersInnerLines, _bordersOuterFrame, _bordersRounded]);
+            [_bordersStyle, this._bordersColor, this._bordersOpacityIcon, _bordersOpacity, _bordersOpacityLabel, _bordersThickness, _bordersThicknessLabel, this._bordersInnerLines, _bordersOuterFrame, _bordersRounded]);
         this._globalOptions[GlobalEffect.Seams].Controls.AddRange([this._seamsDepth, this._seamsDepthLabel]);
         this._globalOptions[GlobalEffect.Cascade].Controls.AddRange([this._cascadePause, this._cascadePauseLabel]);
         this.BuildLayerOptions();
@@ -1005,10 +1000,9 @@ internal sealed partial class MainForm : Form
             };
         }
 
-        this._toolTip.SetToolTip(this._cutoutColor.Dialog, "Chooses the color masking the part left out, in the color dialog");
-        this._toolTip.SetToolTip(this._cutoutColor.Eyedropper, "Takes the mask's color from the preview: click a cell; Escape or a right click cancels");
-        this._cutoutColor.Dialog.Click += (_, _) => this.PickCutoutColor();
-        this._cutoutColor.Eyedropper.Click += (_, _) => this.ArmCutoutEyedropper();
+        this._cutoutColor.Describe(this._toolTip, "the mask's color");
+        this._cutoutColor.Dialog.Click += (_, _) => this.PickColor(this.CutoutRoute());
+        this._cutoutColor.Eyedropper.Click += (_, _) => this.ArmEyedropper(this._cutoutColor, this.CutoutRoute());
         _blurIntensity.ValueChanged += (_, _) => SetBlurIntensity();
         _volume.ValueChanged += (_, _) =>
         {
@@ -1017,16 +1011,15 @@ internal sealed partial class MainForm : Form
         };
         _mute.CheckedChanged += (_, _) => ChangeLook(ImageEffect.Volume, look => look.WithVolume(look.Volume!.WithMuted(_mute.Checked)));
         _toolTip.SetToolTip(_backgroundAutomatic, "The color computed from the edges of the part of the image shown");
-        _toolTip.SetToolTip(_backgroundColor.Dialog, "Chooses the background color in the color dialog; Automatic color is then unchecked");
-        this._toolTip.SetToolTip(this._backgroundColor.Eyedropper, "Takes the background color from the preview: click a cell; Escape or a right click cancels");
+        this._backgroundColor.Describe(this._toolTip, "the background color", ". A color chosen unchecks Automatic color");
         _backgroundAutomatic.CheckedChanged += (_, _) => SetBackgroundAutomatic();
         _backgroundOpacity.ValueChanged += (_, _) =>
         {
             _backgroundOpacityLabel.Text = OpacityText(_backgroundOpacity.Value);
             ChangeLook(ImageEffect.Background, look => look.WithBackground(look.Background!.WithOpacity(_backgroundOpacity.Value / 100.0)));
         };
-        _backgroundColor.Dialog.Click += (_, _) => PickBackgroundColor();
-        this._backgroundColor.Eyedropper.Click += (_, _) => this.ArmBackgroundEyedropper();
+        this._backgroundColor.Dialog.Click += (_, _) => this.PickColor(this.BackgroundRoute());
+        this._backgroundColor.Eyedropper.Click += (_, _) => this.ArmEyedropper(this._backgroundColor, this.BackgroundRoute());
         this._toolTip.SetToolTip(this._backgroundEdgeOpacity, "The extended edges' opacity over the background color, which keeps its own");
         this._backgroundEdgeOpacity.ValueChanged += (_, _) =>
         {
@@ -1084,18 +1077,9 @@ internal sealed partial class MainForm : Form
             this.ChangeCascade(cascade => cascade.WithPause(TimeSpan.FromSeconds(this._cascadePause.Value / 10.0)));
         };
         _toolTip.SetToolTip(_bordersStyle, "Brackets at the grid's corners, or a gap between the cells");
-        this._toolTip.SetToolTip(this._bordersColor.Dialog, "Chooses the borders' color in the color dialog, remembered between sessions");
-        this._toolTip.SetToolTip(this._bordersColor.Eyedropper, "Takes the borders' color from the preview: click a cell; Escape or a right click cancels");
+        this._bordersColor.Describe(this._toolTip, "the borders' color", ". The color chosen is remembered between sessions");
         this._bordersColor.Dialog.Click += (_, _) => this.PickBorderColor();
-        this._bordersColor.Eyedropper.Click += (_, _) => this.ArmBordersEyedropper();
-        foreach (var (slider, label) in ((TrackBar, Label)[])[(this._backgroundSample, this._backgroundSampleLabel), (this._bordersSample, this._bordersSampleLabel), (this._cutoutSample, this._cutoutSampleLabel)])
-        {
-            label.Text = SampleText(slider.Value);
-            label.MinimumSize = new Size(TextRenderer.MeasureText(SampleText(GridPreview.MaxEyedropperSample), label.Font).Width, 0);
-            this._toolTip.SetToolTip(slider, "The eyedropper's sample: the side of the square of preview pixels it averages; not remembered");
-            slider.ValueChanged += (_, _) => label.Text = SampleText(slider.Value);
-        }
-
+        this._bordersColor.Eyedropper.Click += (_, _) => this.ArmEyedropper(this._bordersColor, this.BordersRoute());
         _toolTip.SetToolTip(_bordersThickness, "Width of the borders, as a share of the grid's shorter side");
         _toolTip.SetToolTip(_bordersOuterFrame, "Also draws the borders around the grid; the corner brackets already are its frame");
         _bordersStyle.SelectedIndexChanged += (_, _) => ChangeBorders(borders => borders with { Pattern = (BorderPattern)_bordersStyle.SelectedIndex });
@@ -1104,7 +1088,7 @@ internal sealed partial class MainForm : Form
             _bordersThicknessLabel.Text = ThicknessText(_bordersThickness.Value);
             ChangeBorders(borders => borders with { Thickness = _bordersThickness.Value / 1000.0 });
         };
-        _toolTip.SetToolTip(_bordersOpacity, "Opacity of the corner brackets, drawn over the images");
+        _toolTip.SetToolTip(_bordersOpacity, "Opacity of the borders' color: the corner brackets over the images, the frame and the lines");
         _bordersOpacity.ValueChanged += (_, _) =>
         {
             _bordersOpacityLabel.Text = OpacityText(_bordersOpacity.Value);
@@ -1255,7 +1239,7 @@ internal sealed partial class MainForm : Form
     {
         int size = LogicalToDeviceUnits(16);
         Image?[] previous = [_resetButton.Image, _effectResetButton.Image, _globalResetButton.Image, _globalEffectResetButton.Image, _fadeSquared.Image, _fadeLinear.Image, _blurIntensityIcon.Image, _backgroundOpacityIcon.Image,
-            this._backgroundColor.Eyedropper.Image, this._bordersColor.Eyedropper.Image, this._cutoutColor.Eyedropper.Image];
+            this._bordersOpacityIcon.Image, this._cutoutColorOpacityIcon.Image];
         foreach (var effect in Enum.GetValues<ImageEffect>())
         {
             _effectTabs.SetIcon(effect, effect switch
@@ -1314,9 +1298,20 @@ internal sealed partial class MainForm : Form
         _blurIntensityIcon.Size = new Size(size, size);
         _backgroundOpacityIcon.Image = EffectIcons.Opacity(size);
         _backgroundOpacityIcon.Size = new Size(size, size);
-        this._backgroundColor.Eyedropper.Image = EffectIcons.Eyedropper(size);
-        this._bordersColor.Eyedropper.Image = EffectIcons.Eyedropper(size);
-        this._cutoutColor.Eyedropper.Image = EffectIcons.Eyedropper(size);
+        foreach (var icon in new[] { this._bordersOpacityIcon, this._cutoutColorOpacityIcon })
+        {
+            icon.Image = EffectIcons.Opacity(size);
+            icon.Size = new Size(size, size);
+        }
+
+        using (var eyedropper = EffectIcons.Eyedropper(size))
+        {
+            foreach (var button in new[] { this._backgroundColor, this._bordersColor, this._cutoutColor })
+            {
+                button.SetIcon(eyedropper);
+            }
+        }
+
         foreach (var image in previous)
         {
             image?.Dispose();
@@ -3720,36 +3715,22 @@ internal sealed partial class MainForm : Form
         return slider;
     }
 
-    /// <summary>The standard color dialog, on the mask's color: a color chosen turns the Color treatment on.</summary>
-    private void PickCutoutColor()
-    {
-        if (this.IsExporting || this._preview.SelectedImage?.Look.TurnOn(ImageEffect.Cutout).Cutout is not { } cutout)
-        {
-            return;
-        }
-
-        if (this._colorDialog.Show(this, cutout.Color) is { } color)
-        {
-            this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithTreatment(CutoutBackground.Color, on: true).WithColor(color)));
-        }
-    }
-
     /// <summary>
-    /// The mask's eyedropper: the part left out follows the color under the cursor; a click takes it as the
-    /// dialog's OK does, and a cancel gives the cell its look back (RULES.md § Color Options).
+    /// The mask's color routes: the part left out follows the color shown, the Color treatment and the effect on
+    /// meanwhile; the color taken turns them on as any option does, a cancel gives the cell its look back (RULES.md
+    /// § Color Options). None while the Cutout cannot be turned on.
     /// </summary>
-    private void ArmCutoutEyedropper()
+    private ColorRoute? CutoutRoute()
     {
         if (this.IsExporting || this._preview.SelectedImage is not { } image || !(image.Look.IsActive(ImageEffect.Cutout) || this.CutoutEngineReady()))
         {
-            return;
+            return null;
         }
 
         var original = image.Look;
         var on = original.TurnOn(ImageEffect.Cutout);
-        this.ArmEyedropper(
-            this._cutoutColor,
-            this._cutoutSample,
+        return new ColorRoute(
+            on.Cutout!.Color,
             color => this._preview.SetSelectedLook(on.WithCutout(on.Cutout!.WithTreatment(CutoutBackground.Color, on: true).WithColor(color))),
             () =>
             {
@@ -3882,15 +3863,8 @@ internal sealed partial class MainForm : Form
 
     private static string OpacityText(int percent) => $"Opacity: {percent} %";
 
-    private static string SampleText(int pixels) => $"Sample: {pixels} px";
-
-    /// <summary>The eyedropper's sample, 1 to 5 px, narrower than the options' sliders: five steps.</summary>
-    private static StepSlider SampleSlider()
-    {
-        var slider = OptionSlider(GridPreview.MinEyedropperSample, GridPreview.MaxEyedropperSample, 1, controlStep: 1);
-        slider.Width = 70;
-        return slider;
-    }
+    /// <summary>The icon before a color's opacity slider, drawn at the monitor's DPI with the effects' icons.</summary>
+    private static PictureBox OpacityIcon() => new() { SizeMode = PictureBoxSizeMode.CenterImage, Anchor = AnchorStyles.Left };
 
     private static string BlendText(int percent) => $"Blend: {percent} %";
 
@@ -3915,37 +3889,22 @@ internal sealed partial class MainForm : Form
             ? look.Background!.WithAutomatic()
             : look.Background!.WithColor(_preview.SelectedAutomaticBackground ?? Color.White)));
 
-    /// <summary>The standard color dialog, on the color in use: a color chosen leaves the automatic mode.</summary>
-    private void PickBackgroundColor()
-    {
-        if (IsExporting || _preview.SelectedImage?.Look.TurnOn(ImageEffect.Background).Background is not { } background)
-        {
-            return;
-        }
-
-        if (_colorDialog.Show(this, BackgroundShown(background)) is { } color)
-        {
-            ChangeLook(ImageEffect.Background, look => look.WithBackground(look.Background!.WithColor(color)));
-        }
-    }
-
     /// <summary>
-    /// The Background's eyedropper: the selected cell's background follows the color under the cursor; a
-    /// click takes it as the dialog's OK does — Automatic color unchecked, the Background on — and a cancel
-    /// gives the cell its look back (workfiles/20261021-color-eyedropper.md).
+    /// The Background's color routes: the selected cell's background follows the color shown, the Background on
+    /// meanwhile; the color taken leaves the automatic mode — Automatic color unchecked, the Background on — and a
+    /// cancel gives the cell its look back (workfiles/20261021-color-eyedropper.md).
     /// </summary>
-    private void ArmBackgroundEyedropper()
+    private ColorRoute? BackgroundRoute()
     {
         if (this.IsExporting || this._preview.SelectedImage is not { } image)
         {
-            return;
+            return null;
         }
 
         var original = image.Look;
         var on = original.TurnOn(ImageEffect.Background);
-        this.ArmEyedropper(
-            this._backgroundColor,
-            this._backgroundSample,
+        return new ColorRoute(
+            this.BackgroundShown(on.Background!),
             color => this._preview.SetSelectedLook(on.WithBackground(on.Background!.WithColor(color))),
             () =>
             {
@@ -3958,20 +3917,19 @@ internal sealed partial class MainForm : Form
     }
 
     /// <summary>
-    /// The Borders' eyedropper: the borders follow the color under the cursor, turned on meanwhile; a click
-    /// takes it as the dialog's OK does, and a cancel gives them back as they were.
+    /// The Borders' color routes: the borders follow the color shown, turned on meanwhile; the color taken turns
+    /// them on and is remembered (<see cref="SetBorderColor"/>), a cancel gives them back as they were.
     /// </summary>
-    private void ArmBordersEyedropper()
+    private ColorRoute? BordersRoute()
     {
         if (this.IsExporting)
         {
-            return;
+            return null;
         }
 
         var (borders, on) = (this._borders, this._bordersOn);
-        this.ArmEyedropper(
-            this._bordersColor,
-            this._bordersSample,
+        return new ColorRoute(
+            borders.Color,
             color =>
             {
                 this._borders = borders with { Color = color };
@@ -3988,15 +3946,66 @@ internal sealed partial class MainForm : Form
     }
 
     /// <summary>
-    /// Arms the preview's eyedropper for a color option, its button pressed meanwhile: <paramref name="preview"/>
-    /// shows a color read, <paramref name="restore"/> the option as it was; a pick has <paramref name="take"/>
-    /// apply the color — one undo step — and the dialog's custom colors get it.
+    /// A color option's routes, given by its owner to the eyedropper and to the color dialog alike: the color in
+    /// use, showing a color without taking it, the option back as it was, the color taken — one undo step
+    /// (RULES.md § Color Options).
     /// </summary>
-    private void ArmEyedropper(ColorSplitButton button, TrackBar sample, Action<Color> preview, Action restore, Action<Color> take)
+    private sealed record ColorRoute(Color Current, Action<Color> Preview, Action Restore, Action<Color> Take);
+
+    /// <summary>
+    /// The standard color dialog on the option's color, followed live while it is open — a gesture, so that it is
+    /// one undo step: OK takes the color shown, a cancel gives the option back as it was
+    /// (workfiles/20261029-eyedropper-ergonomics.md § Live Color Dialog).
+    /// </summary>
+    private void PickColor(ColorRoute? route)
     {
-        button.Eyedropper.Checked = true;
+        if (route is null)
+        {
+            return;
+        }
+
+        bool previewed = false;
+        Color? chosen;
+        this._preview.ColorDialogOpen = true;
+        try
+        {
+            chosen = this._colorDialog.Show(this, route.Current, color =>
+            {
+                previewed = true;
+                route.Preview(color);
+            });
+        }
+        finally
+        {
+            this._preview.ColorDialogOpen = false;
+        }
+
+        if (chosen is { } color)
+        {
+            route.Take(color);
+        }
+        else if (previewed)
+        {
+            route.Restore();
+        }
+    }
+
+    /// <summary>
+    /// Arms the preview's eyedropper for a color option at its sample, its button pressed meanwhile: the route's
+    /// preview shows a color read, its restore the option as it was; a pick has it take the color — one undo
+    /// step — and the dialog's custom colors get it.
+    /// </summary>
+    private void ArmEyedropper(ColorSplitButton button, ColorRoute? route)
+    {
+        if (route is null)
+        {
+            return;
+        }
+
+        var (preview, restore, take) = (route.Preview, route.Restore, route.Take);
+        button.Armed = true;
         this._preview.ArmEyedropper(
-            sample.Value,
+            button.Sample,
             color =>
             {
                 if (color is { } shown)
@@ -4011,13 +4020,13 @@ internal sealed partial class MainForm : Form
             color =>
             {
                 // Taken over the color previewed, without restoring first: the cell is drawn once.
-                button.Eyedropper.Checked = false;
+                button.Armed = false;
                 take(color);
                 this._colorDialog.Add(color);
             },
             () =>
             {
-                button.Eyedropper.Checked = false;
+                button.Armed = false;
                 restore();
             });
     }
@@ -4226,7 +4235,7 @@ internal sealed partial class MainForm : Form
             slider.Enabled = label.Enabled = treatments.Contains(treatment);
         }
 
-        this._cutoutColor.Enabled = this._cutoutSample.Enabled = this._cutoutSampleLabel.Enabled = treatments.Contains(CutoutBackground.Color);
+        this._cutoutColor.Enabled = this._cutoutColorOpacityIcon.Enabled = treatments.Contains(CutoutBackground.Color);
 
         // The pick's points show, and Pick stays armed, while the Cutout tab is selected and its effect on.
         bool picking = usable && _selectedEffect == ImageEffect.Cutout && look?.IsActive(ImageEffect.Cutout) == true;
@@ -4676,18 +4685,7 @@ internal sealed partial class MainForm : Form
     /// borders on like any of their options (RULES.md) and is remembered for the next start-up — a Reset,
     /// Clear all or an undo changes the color in force, never the one remembered.
     /// </summary>
-    private void PickBorderColor()
-    {
-        if (this.IsExporting)
-        {
-            return;
-        }
-
-        if (this._colorDialog.Show(this, this._borders.Color) is { } color)
-        {
-            this.SetBorderColor(color);
-        }
-    }
+    private void PickBorderColor() => this.PickColor(this.BordersRoute());
 
     /// <summary>
     /// A color chosen for the borders — in the dialog or with the eyedropper: turns them on like any of their
@@ -5327,8 +5325,6 @@ internal sealed partial class MainForm : Form
         _bordersRounded.Text = TwitterCornersApply ? "Twitter corners" : "Twitter corners (Twitter format only)";
 
         // Only the corner brackets lie over the images.
-        _bordersOpacity.Enabled = !_borders.IsLineStyle;
-        _bordersOpacityLabel.Enabled = !_borders.IsLineStyle;
     }
 
     /// <summary>The borders' width, from thousandths of the grid's shorter side.</summary>

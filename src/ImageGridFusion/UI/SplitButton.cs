@@ -16,10 +16,12 @@ internal sealed class SplitButton : Button
     private const int BCM_SETIMAGELIST = 0x1602;
     private const int BCM_GETIDEALSIZE = 0x1601;
     private const int BUTTON_IMAGELIST_ALIGN_LEFT = 0;
+    private const int BM_SETSTATE = 0x00F3;
 
     private ImageList? _images;
     private Bitmap? _icon;
     private bool _mainEnabled = true;
+    private bool _held;
 
     public SplitButton()
     {
@@ -30,6 +32,27 @@ internal sealed class SplitButton : Button
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public ContextMenuStrip? Menu { get; set; }
+
+    /// <summary>Where its menu opens: above it by default, as the bottom row's; below it for a button near the top.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public ToolStripDropDownDirection MenuDirection { get; set; } = ToolStripDropDownDirection.AboveRight;
+
+    /// <summary>
+    /// Whether it is drawn pressed, held so by its owner — the system split button has no checked state
+    /// (workfiles/20261029-eyedropper-ergonomics.md § Attached Split Button).
+    /// </summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool Held
+    {
+        get => this._held;
+        set
+        {
+            this._held = value;
+            this.ApplyHeld();
+        }
+    }
 
     /// <summary>
     /// Whether the main part acts: when it does not, while the arrow still does, a click on it opens the menu too —
@@ -72,6 +95,7 @@ internal sealed class SplitButton : Button
     {
         base.OnHandleCreated(e);
         this.ApplyImages();
+        this.ApplyHeld();
         this.AdjustSize();
     }
 
@@ -132,7 +156,19 @@ internal sealed class SplitButton : Button
         base.Dispose(disposing);
     }
 
-    private void ShowMenu() => this.Menu?.Show(this, Point.Empty, ToolStripDropDownDirection.AboveRight);
+    private void ShowMenu()
+    {
+        bool below = this.MenuDirection is ToolStripDropDownDirection.BelowRight or ToolStripDropDownDirection.BelowLeft;
+        this.Menu?.Show(this, below ? new Point(0, this.Height) : Point.Empty, this.MenuDirection);
+    }
+
+    private void ApplyHeld()
+    {
+        if (this.IsHandleCreated)
+        {
+            SendMessage(this.Handle, BM_SETSTATE, this._held ? 1 : 0, IntPtr.Zero);
+        }
+    }
 
     private void ApplyImages()
     {
@@ -188,6 +224,9 @@ internal sealed class SplitButton : Button
 
     [DllImport("user32.dll")]
     private static extern IntPtr SendMessage(IntPtr window, int message, IntPtr wParam, ref NativeSize lParam);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SendMessage(IntPtr window, int message, nint wParam, IntPtr lParam);
 
     [DllImport("user32.dll")]
     private static extern IntPtr SendMessage(IntPtr window, int message, IntPtr wParam, ref ButtonImageList lParam);
