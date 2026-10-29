@@ -278,15 +278,17 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 
 - Images, GIFs, videos and texts laid **over the whole grid**, each a **layer** free of the cells: it may straddle several of them, and stays where it is when an image is replaced, swapped or removed, or the layout, a separator or the format changes. The last layer added is on top.
 - **Off at start-up**, with no layer, and back to that state with **Clear all** and the Resets — every layer removed. Its checkbox shows or hides them all, kept; adding one turns it on. Disabled while the grid holds no image.
-- **Nothing changes for the cells** until the **Layers** tab is selected: only then do the layers take the mouse, **Ctrl+V** and a drop on the grid. With any other tab, a click on a layer reaches the cell under it.
-- Adding, while the tab is selected:
-  - **Add image…** picks images, GIFs or videos — up to 10 at once; **Paste**, or **Ctrl+V**, lays the clipboard's image, files or text; a **drop on the grid** lays its files or text where it falls. A pasted or dropped text becomes a text layer;
-  - **Add text** lays an empty text at the grid's center and focuses the field beside it: type it there, several lines allowed — **Win+.** opens Windows' emoji panel.
+- **Nothing changes for the cells**: Ctrl+V and a drop on the grid fill them as ever, whatever tab is selected. The layers take the mouse only while the **Layers** tab is selected; with any other tab, a click on a layer reaches the cell under it.
+- The Layers options hold, at the left, the **layer list**, as in Paint.NET: one row per layer, the top one first — its thumbnail, its name (its file's, its text's first line), and a **checkbox** that hides the layer in the preview and every export, kept. Clicking a row selects the layer. Under the list, icon buttons — their names in tooltips:
+  - **Add image…** picks images, GIFs or videos — up to 10 at once; files **dropped onto the Layers tab**, or onto its options, are added the same way. **Paste** lays the clipboard's image, files or text; a pasted text becomes a text layer;
+  - **Add text** lays an empty text at the grid's center and focuses the field beside the list: type it there, several lines allowed — **Win+.** opens Windows' emoji panel;
+  - **Edit** opens the selected layer's edit view (below); **Delete** removes it; **To back**, **Lower**, **Raise** and **To front** move it in the stacking order.
 - On the grid, a layer is **selected first**, outlined in green: a click on another one only selects it. Then:
   - **drag** it to move it, its center kept inside the grid;
+  - drag the **round handle** above its top edge to turn it, **Shift** snapping to every 15°;
   - the **wheel** over it grows or shrinks it by 5 % a notch, **Shift + wheel** turns it by 5°; elsewhere the wheel zooms the cell under it, as ever;
   - **Delete** removes it, **Escape** or a click outside every layer deselects it;
-  - **To back**, **Lower**, **Raise** and **To front** move it in the stacking order.
+  - a **double-click** opens its **edit view**: the layer alone, upright, shown large over the whole working surface as one cell, where every tool of a cell works as usual — the Crop and its bars, the Blur's bars, the zoom, moving the content within the box. **Escape**, **Done** or a double-click outside it gives the grid back, the layer keeping its new effects.
 - Selecting a layer deselects the cell, and the other way round. While a layer is selected, the **effect tabs act on it** as on a cell — Background, Crop, Zoom, Animations, Rotate, Flip, Frames, Colors, Blur, Volume — its box taking the shape of its content as shown. A layer's **Background is off** by default, so a cut-out PNG or a text sits on the grid with no box behind it. A video layer plays on the grid's clock — its Frames trim and starting point applying — and is **heard**, at its Volume; its loop counts in the video length. It takes no turn in the Cascade.
 - A **text layer**'s settings, beside its field: the **font** and **Bold**, its **color**, an **Outline** — color and width — and a **Background** box — color and opacity; each color with its eyedropper (see Picking a color). Segoe UI bold, white, outlined black at first. Its size is a line's height: typing never shrinks the letters.
 - Layers show in the preview and every export: PNG, JPEG for sharing, GIF and MP4 video. They are part of the undo history: a move, a wheel burst or a text typed is one step.
