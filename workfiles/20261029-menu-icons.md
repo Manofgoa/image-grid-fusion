@@ -360,7 +360,7 @@ entry's icon is an emoji. *(Revises Q&A 15 for the arrows inside a label.)*
 | 15 | Adjustment: the arrows and symbols (▾ » « × ▦ ☰ ↓): text or emoji? | Emoji where one exists | 2026-10-29 |
 | 16 | Adjustment: the preview of every control's icon (emoji, or the drawing kept): approved? | Approved as shown | 2026-10-29 |
 | 17 | Go for the adjustment? | Code, tests and documentation, in a new worktree | 2026-10-29 |
-| 18 | Besides the split buttons, what is wrong on the first build? | | 2026-10-29 |
+| 18 | Besides the split buttons, what is wrong on the first build? | Not answered: the sort direction as text came meanwhile (Iteration 11) | 2026-10-29 |
 
 ---
 
