@@ -56,7 +56,7 @@ internal sealed partial class GridPreview
         {
             using (var g = Graphics.FromImage(snapshot))
             {
-                Compositor.Draw(g, this._images, this._layout!, canvas.Size, this._borders, this._player.GridTime, this._seams);
+                Compositor.Draw(g, this._images, this._layout!, canvas.Size, this._borders, this._player.GridTime, this._seams, layers: this.ShownLayers);
             }
 
             this._borders?.CutCorners(snapshot);

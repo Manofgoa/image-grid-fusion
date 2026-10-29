@@ -425,7 +425,7 @@ internal sealed partial class GridPreview : Control
     /// </summary>
     public bool InGesture =>
         this._pressed >= 0 || this._draggedBar is not null || this._draggedCorner is not null || this._draggedSeparator is not null
-        || this._movedCrop is not null || this._live is not null || this._wheelEnd.Enabled || this._eyedropper is not null;
+        || this._movedCrop is not null || this._live is not null || this._wheelEnd.Enabled || this._eyedropper is not null || this._pressedLayer >= 0;
 
     /// <summary>
     /// Whether the wheel was turned over the grid with Alt held since the last call, cleared by it: the
@@ -445,8 +445,14 @@ internal sealed partial class GridPreview : Control
 
     public bool HasSelection => _selected >= 0;
 
-    /// <summary>The image of the selected cell, the one the effects toolbar acts on; <c>null</c> without a selection.</summary>
-    public SourceImage? SelectedImage => _selected >= 0 && _selected < _images.Count ? _images[_selected] : null;
+    /// <summary>
+    /// The image the effects toolbar acts on: the selected layer's content, else the selected cell's;
+    /// <c>null</c> without a selection — the two are exclusive (workfiles/20261029-layers.md).
+    /// </summary>
+    public SourceImage? SelectedImage => this.SelectedLayer?.Image ?? this.SelectedCellImage;
+
+    /// <summary>The image of the selected cell — never a layer's —; <c>null</c> without one.</summary>
+    private SourceImage? SelectedCellImage => _selected >= 0 && _selected < _images.Count ? _images[_selected] : null;
 
     /// <summary>
     /// The effect whose bars the selected cell shows and lets be dragged — the blur, or the crop in its
@@ -590,7 +596,11 @@ internal sealed partial class GridPreview : Control
         }
     }
 
-    public void ClearSelection() => Select(-1);
+    public void ClearSelection()
+    {
+        this.SelectLayer(-1);
+        Select(-1);
+    }
 
     /// <summary>
     /// Selects the cell under the mouse pointer when it holds an image, else keeps the selection: what a
@@ -655,7 +665,11 @@ internal sealed partial class GridPreview : Control
     /// <summary>Gives the selected image a new look: an effect toggled or tuned from the toolbars.</summary>
     public void SetSelectedLook(ImageLook look)
     {
-        if (SelectedImage is not null)
+        if (this.SelectedLayer is not null)
+        {
+            this.SetLayerLook(look);
+        }
+        else if (SelectedImage is not null)
         {
             SetLook(_selected, look);
         }
@@ -908,6 +922,10 @@ internal sealed partial class GridPreview : Control
             _player.Dispose();
             _images.ForEach(i => i.Dispose());
             _images.Clear();
+            foreach (var layer in this._layers.Items)
+            {
+                layer.Image.Dispose();
+            }
             _cache?.Dispose();
             _ghost?.Dispose();
             _checkerboard?.Dispose();
@@ -949,7 +967,7 @@ internal sealed partial class GridPreview : Control
             using (var cacheGraphics = Graphics.FromImage(_cache))
             {
                 // Fast while the eyedropper previews a color, drawn in full once it ends.
-                Compositor.Draw(cacheGraphics, _images, _layout!, canvas.Size, _borders, this._player.GridTime, this._seams, fast: this._eyedropper is not null);
+                Compositor.Draw(cacheGraphics, _images, _layout!, canvas.Size, _borders, this._player.GridTime, this._seams, fast: this._eyedropper is not null, this.ShownLayers);
             }
 
             this._seamFills = this.SeamsOf(Compositor.Cells(_layout!, canvas.Size, _borders))?.Fills;
@@ -1030,6 +1048,7 @@ internal sealed partial class GridPreview : Control
         }
 
         PaintZoomBadge(g);
+        this.PaintLayerSelection(g, canvas);
 
         if (_dragging && _ghost is not null)
         {
@@ -1054,12 +1073,18 @@ internal sealed partial class GridPreview : Control
         // Opening Explorer changes nothing in the grid: it works during an export too.
         if (SourceHitAt(e.Location).Icon)
         {
-            ShowInExplorerClicked?.Invoke(this, SelectedImage!.FilePath!);
+            ShowInExplorerClicked?.Invoke(this, SelectedCellImage!.FilePath!);
             return;
         }
 
         // The selection is kept: a full grid replaces the selected cell with the first added image.
         if (_locked)
+        {
+            return;
+        }
+
+        // While their tab is selected, the layers come first, on their own area only (workfiles/20261029-layers.md).
+        if (this.LayerMouseDown(e))
         {
             return;
         }
@@ -1164,6 +1189,11 @@ internal sealed partial class GridPreview : Control
             return;
         }
 
+        if (this.LayerMouseMove(e))
+        {
+            return;
+        }
+
         if (_draggedSeparator is { } separator)
         {
             DragSeparator(separator, e.Location);
@@ -1237,6 +1267,11 @@ internal sealed partial class GridPreview : Control
     protected override void OnMouseUp(MouseEventArgs e)
     {
         base.OnMouseUp(e);
+        if (this.EndLayerPress())
+        {
+            return;
+        }
+
         if (_draggedSeparator is not null)
         {
             EndSeparatorDrag();
@@ -1304,7 +1339,7 @@ internal sealed partial class GridPreview : Control
     protected override void OnMouseWheel(MouseEventArgs e)
     {
         base.OnMouseWheel(e);
-        if (this._eyedropper is not null)
+        if (this._eyedropper is not null || this.LayerWheel(e))
         {
             return;
         }
@@ -1353,6 +1388,7 @@ internal sealed partial class GridPreview : Control
     protected override void OnMouseCaptureChanged(EventArgs e)
     {
         base.OnMouseCaptureChanged(e);
+        this.EndLayerPress();
         if (_pressed >= 0)
         {
             EndDrag();
@@ -1748,7 +1784,7 @@ internal sealed partial class GridPreview : Control
             return;
         }
 
-        _player.Sync(_images);
+        _player.Sync(_images, this.ShownLayerImages);
         UpdateDisplaySizes();
         _progressTimer.Start();
     }
@@ -1760,6 +1796,8 @@ internal sealed partial class GridPreview : Control
         {
             _player.SetDisplaySize(_images[i], FrameDisplaySize(_images[i], cells[i]));
         }
+
+        this.UpdateLayerDisplaySizes();
     }
 
     /// <summary>
@@ -1801,6 +1839,7 @@ internal sealed partial class GridPreview : Control
             this.UpdateRatio();
         }
 
+        this.EndLayerWheel();
         if (_live is not { } image)
         {
             return;
@@ -1811,6 +1850,20 @@ internal sealed partial class GridPreview : Control
         RedrawCell(image);
     }
 
+    /// <summary>
+    /// The wheel's burst on a layer rests: the layer drawn fast meanwhile is drawn again in full. Called by
+    /// <see cref="EndLive"/>, which the wheel's timer ends with.
+    /// </summary>
+    private void EndLayerWheel()
+    {
+        if (this._layerWheeled)
+        {
+            this._layerWheeled = false;
+            this.UpdateDisplaySizes();
+            this.RedrawLayerArea(this.SelectedLayer, fast: false);
+        }
+    }
+
     /// <summary>What the cell of <paramref name="image"/> shows now: its frame, its motion at the grid's time.</summary>
     private Frame FrameOf(SourceImage image) => new(image.Bitmap, image.BandColor, image.DrawnLook, this._player.GridTime, image.Sharpening);
 
@@ -1818,6 +1871,14 @@ internal sealed partial class GridPreview : Control
     private void RedrawCell(SourceImage image)
     {
         int index = _images.IndexOf(image);
+
+        // A layer's content: its area drawn again, the cells under it and the layers over them.
+        if (index < 0 && this._layersShown && this.LayerOf(image) is { } layer)
+        {
+            this.RedrawLayerArea(layer, fast: this._player.Running || this._eyedropper is not null);
+            return;
+        }
+
         var canvas = CanvasBounds();
         if (index < 0 || _layout is null || _cache is null || _cache.Size != canvas.Size)
         {
@@ -1905,6 +1966,18 @@ internal sealed partial class GridPreview : Control
                 this.DrawBordersOver(g, cells[i], canvas);
                 area = area.IsEmpty ? cells[i] : Rectangle.Union(area, cells[i]);
             }
+
+            // The layers over the cells drawn again, within them: the others keep theirs.
+            if (this.ShownLayers is not null && !area.IsEmpty)
+            {
+                foreach (int i in drawn)
+                {
+                    g.SetClip(cells[i]);
+                    this.DrawLayersInto(g, canvas, fast);
+                }
+
+                g.ResetClip();
+            }
         }
 
         // Each cell cut on its own: the union may cover cells not drawn again, already cut.
@@ -1975,8 +2048,13 @@ internal sealed partial class GridPreview : Control
     {
         get
         {
+            if (this.SelectedLayer is { } layer && this.SelectedLayerCell is { } box)
+            {
+                return Compositor.AutomaticBackground(layer.FrameAt(this._player.GridTime), box);
+            }
+
             var cells = CellBounds();
-            if (SelectedImage is not { } image || _selected >= cells.Length)
+            if (SelectedCellImage is not { } image || _selected >= cells.Length)
             {
                 return null;
             }
@@ -2251,6 +2329,19 @@ internal sealed partial class GridPreview : Control
     /// </summary>
     public void ZoomSelected(double zoom)
     {
+        // A layer's box stands for its cell (workfiles/20261029-layers.md § Cell Effects on a Layer).
+        if (this.SelectedLayer is { } layer && this.SelectedLayerCell is { } box)
+        {
+            if (!this._locked)
+            {
+                var zoomedLayer = layer.Look.WithZoom(zoom);
+                var shown = zoomedLayer.Shown(layer.Image.Bitmap.Size);
+                this.SetLayerLook(zoomedLayer.WithFocus(FitCalculator.FocusKeeping(box, shown, layer.Look.ZoomIn(box, shown), zoomedLayer.Zoom, layer.Look.Focus, layer.Look.FineAngle, FitCalculator.ImageCenter)));
+            }
+
+            return;
+        }
+
         var cells = CellBounds();
         if (_selected < 0 || _selected >= cells.Length || _locked)
         {
@@ -2274,29 +2365,44 @@ internal sealed partial class GridPreview : Control
     /// </summary>
     public void FitSelected(ZoomFit fit)
     {
+        bool onLayer = this.SelectedLayer is not null;
         var cells = this.CellBounds();
-        if (this._selected < 0 || this._selected >= cells.Length || this._locked)
+        if (onLayer ? this.SelectedLayerCell is null : this._selected < 0 || this._selected >= cells.Length || this._locked)
         {
             return;
         }
 
-        var image = this._images[this._selected];
-        var cell = cells[this._selected];
+        var image = this.SelectedImage!;
+        var cell = onLayer ? this.SelectedLayerCell!.Value : cells[this._selected];
         var look = image.Look;
         var fitted = fit == ZoomFit.None ? look.WithZoom(ZoomOf(image, cell)) : look.WithZoomFit(fit);
         var size = fitted.Shown(image.Bitmap.Size);
         var focus = fit == ZoomFit.None
             ? FitCalculator.FocusKeeping(cell, size, look.ZoomIn(cell, size), fitted.ZoomIn(cell, size), look.Focus, look.FineAngle, FitCalculator.ImageCenter)
             : FitCalculator.ImageCenter;
+        if (onLayer)
+        {
+            this.SetLayerLook(fitted.WithFocus(focus));
+            return;
+        }
+
         this.SetLook(this._selected, fitted.WithFocus(focus));
         this.ShowZoomBadge(image);
     }
 
-    /// <summary>The zoom <paramref name="look"/> — the selected image's own by default — draws the selected image at in its cell; 1 with none selected.</summary>
+    /// <summary>
+    /// The zoom <paramref name="look"/> — the selected image's own by default — draws the selected image at in
+    /// its cell, or the selected layer's content in its box; 1 with none selected.
+    /// </summary>
     public double SelectedZoom(ImageLook? look = null)
     {
+        if (this.SelectedLayer is { } layer && this.SelectedLayerCell is { } box)
+        {
+            return ZoomOf(layer.Image, box, look);
+        }
+
         var cells = this.CellBounds();
-        return this.SelectedImage is { } image && this._selected < cells.Length ? ZoomOf(image, cells[this._selected], look) : 1;
+        return this.SelectedCellImage is { } image && this._selected < cells.Length ? ZoomOf(image, cells[this._selected], look) : 1;
     }
 
     /// <summary>The zoom <paramref name="look"/> — the image's own by default — draws <paramref name="image"/> at in <paramref name="cell"/>: its fit mode's there, else its free zoom.</summary>
@@ -2406,6 +2512,11 @@ internal sealed partial class GridPreview : Control
             foreach (var image in this._images.Where(i => i.Look.Motion is not null).ToList())
             {
                 this.RedrawCell(image);
+            }
+
+            foreach (var layer in this.ShownLayers?.Items.Where(l => l.Look.Motion is not null).ToList() ?? [])
+            {
+                this.RedrawCell(layer.Image);
             }
         }
 
@@ -2754,7 +2865,7 @@ internal sealed partial class GridPreview : Control
     /// <summary>The move of an arrow key, <paramref name="delta"/> giving it for the cell moved; see <see cref="PanSelected"/>.</summary>
     private bool KeyPan(Func<int, Size> delta, bool free)
     {
-        if (this.SelectedImage is not { } image || this._locked || this._pressed >= 0 || this._selected >= this.CellBounds().Length
+        if (this.SelectedCellImage is not { } image || this._locked || this._pressed >= 0 || this._selected >= this.CellBounds().Length
             || this.EditsCrop(this._selected))
         {
             return false;
@@ -2823,7 +2934,7 @@ internal sealed partial class GridPreview : Control
 
     /// <summary>Whether the selected image is still as the arrow keys left it, its move going on.</summary>
     private bool KeyPanned() =>
-        this._keyPan is { } pan && this.SelectedImage is { } image && pan.Image == image && pan.Look == image.Look;
+        this._keyPan is { } pan && this.SelectedCellImage is { } image && pan.Image == image && pan.Look == image.Look;
 
     /// <summary>
     /// Moves an image by <paramref name="delta"/> from where it is actually shown, held by the
@@ -2882,6 +2993,14 @@ internal sealed partial class GridPreview : Control
         }
 
         this.CancelEyedropper();
+
+        // A cell selected clears the layer's: the two are exclusive.
+        if (index >= 0 && this.SelectedLayer is { } layer)
+        {
+            this._selectedLayer = -1;
+            this.InvalidateLayerOutline(layer);
+        }
+
         _selected = index;
         _hoveredBar = null;
         this._hoveredCorner = null;
@@ -3676,7 +3795,7 @@ internal sealed partial class GridPreview : Control
     {
         cell = textBounds = icon = Rectangle.Empty;
         var cells = CellBounds();
-        if (_dragging || SelectedImage is not { } image || _selected >= cells.Length)
+        if (_dragging || SelectedCellImage is not { } image || _selected >= cells.Length)
         {
             return null;
         }
@@ -3821,7 +3940,7 @@ internal sealed partial class GridPreview : Control
     private (bool Name, bool Icon) SourceHitAt(Point location)
     {
         using var path = SourceNamePath(out var cell, out var text, out var icon);
-        if (path is null || SelectedImage?.FilePath is null || !cell.Contains(location)
+        if (path is null || SelectedCellImage?.FilePath is null || !cell.Contains(location)
             || ShownBars(_selected) is { } bars && BarAt(cell, bars, location) is not null)
         {
             return (false, false);
@@ -3841,7 +3960,7 @@ internal sealed partial class GridPreview : Control
         {
             if (!shown)
             {
-                _toolTip.SetToolTip(this, SelectedImage?.FilePath);
+                _toolTip.SetToolTip(this, SelectedCellImage?.FilePath);
             }
         }
         else if (shown)

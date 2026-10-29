@@ -56,6 +56,9 @@ internal sealed class AnimationPlayer : IDisposable
     // The images last synced, empty once stopped; the soundtrack and the clock time it started at,
     // null while it does not play.
     private IReadOnlyList<SourceImage> _images = [];
+
+    // The contents of the layers over the grid: they play beside the cells, never taking a turn in the cascade.
+    private IReadOnlyList<SourceImage> _layers = [];
     private Soundtrack? _soundtrack;
     private TimeSpan? _soundtrackStart;
     private SoundFade? _fade;
@@ -97,7 +100,7 @@ internal sealed class AnimationPlayer : IDisposable
     /// The grid's loop — the video length (RULES.md § Video Length), the Cascade and the soundtrack
     /// included — or zero without one: the length of the timeline.
     /// </summary>
-    public TimeSpan LoopLength => this._images.Count == 0 ? TimeSpan.Zero : Animation.VideoLength(this._images, this._soundtrack, this._cascade);
+    public TimeSpan LoopLength => this._images.Count == 0 ? TimeSpan.Zero : Animation.VideoLength(this._images, this._soundtrack, this._cascade, this._layers);
 
     /// <summary>Where the grid stands in its loop: the time the exported video shows the same instant at.</summary>
     public TimeSpan LoopPosition => Animation.LoopTime(this.GridTime, this.LoopLength);
@@ -168,7 +171,7 @@ internal sealed class AnimationPlayer : IDisposable
                 _ = this.RunAsync(playback);
             }
 
-            this._sound.Follow(this._images);
+            this._sound.Follow([.. this._images, .. this._layers]);
             this.UpdateSoundtrack();
         }
 
@@ -226,19 +229,24 @@ internal sealed class AnimationPlayer : IDisposable
         this.SyncSoundtrack();
     }
 
-    /// <summary>Plays the animated images not playing yet, stops the ones gone or shown still, and mixes the sounds of the videos.</summary>
-    public void Sync(IReadOnlyList<SourceImage> images)
+    /// <summary>
+    /// Plays the animated images not playing yet — the cells' <paramref name="images"/> and the contents of the
+    /// <paramref name="layers"/> —, stops the ones gone or shown still, and mixes the sounds of the videos.
+    /// </summary>
+    public void Sync(IReadOnlyList<SourceImage> images, IReadOnlyList<SourceImage>? layers = null)
     {
+        this._layers = layers ?? [];
+        var all = images.Concat(this._layers).ToList();
         foreach (var (image, playback) in _playbacks.ToList())
         {
-            if (!images.Contains(image) || !image.IsAnimated)
+            if (!all.Contains(image) || !image.IsAnimated)
             {
                 playback.Stop();
                 _playbacks.Remove(image);
             }
         }
 
-        foreach (var image in images)
+        foreach (var image in all)
         {
             if (image.IsAnimated && !_playbacks.ContainsKey(image))
             {
@@ -259,7 +267,7 @@ internal sealed class AnimationPlayer : IDisposable
             }
         }
 
-        _sound.Follow(images);
+        _sound.Follow(all);
         _images = images;
         UpdateSoundtrack();
         UpdateFade();
@@ -360,7 +368,7 @@ internal sealed class AnimationPlayer : IDisposable
             return Animation.Progress(this.Position(playback), image.PlayedLength);
         }
 
-        return image.Look.Motion is { } motion && this._images.Contains(image)
+        return image.Look.Motion is { } motion && (this._images.Contains(image) || this._layers.Contains(image))
             ? Animation.Progress(this.GridTime, motion.Cycle)
             : null;
     }
@@ -403,6 +411,7 @@ internal sealed class AnimationPlayer : IDisposable
         _playbacks.Clear();
         _sound.Follow([]);
         _images = [];
+        this._layers = [];
         UpdateSoundtrack();
         UpdateFade();
     }
@@ -520,7 +529,7 @@ internal sealed class AnimationPlayer : IDisposable
             return;
         }
 
-        var loop = Animation.VideoLength(_images, soundtrack, this._cascade);
+        var loop = Animation.VideoLength(_images, soundtrack, this._cascade, this._layers);
         var time = Animation.LoopTime(Animation.LoopTime(_clock.Elapsed - start, loop), soundtrack.Duration);
         _sound.SyncSoundtrack(time, soundtrack.Level, this.Running || this._snippet);
     }
@@ -551,8 +560,8 @@ internal sealed class AnimationPlayer : IDisposable
             return;
         }
 
-        var loop = Animation.VideoLength(_images, _soundtrack, this._cascade);
-        var origin = Animation.GridLength(_images, this._cascade) > TimeSpan.Zero ? TimeSpan.Zero : _soundtrackStart ?? TimeSpan.Zero;
+        var loop = Animation.VideoLength(_images, _soundtrack, this._cascade, this._layers);
+        var origin = Animation.GridLength(_images, this._cascade, this._layers) > TimeSpan.Zero ? TimeSpan.Zero : _soundtrackStart ?? TimeSpan.Zero;
         _sound.MasterGain = fade.GainAt(Animation.LoopTime(_clock.Elapsed - origin, loop), loop);
     }
 
