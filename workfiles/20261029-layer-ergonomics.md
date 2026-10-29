@@ -94,6 +94,10 @@ Every line is vertical (a position on x) or horizontal (on y), in the control's 
   the **preview only**, while the drag lasts — from its first move — and gone on release
   (`GridPreview.PaintLayerGuides`). Another layer's line is drawn at **half** the opacity it would have
   (`FaintGuideOpacity`). A line on the grid's edge is drawn 2 px inside it, as the cells' edge guides.
+- **The matching layers are outlined**: every other layer one of whose references lies on a guide shown —
+  resting or approaching, merged into a grid or cell line or not — gets its turned box outlined in the same
+  dashed green, at the opacity of a faint guide, so the user sees which layer the moved one lines up with
+  (Iteration 6).
 - A **resting** axis draws no gap bar; an approaching one draws it crossing the guide at the layer's center,
   kept inside the grid (`GapBarAt`).
 
@@ -185,6 +189,12 @@ No rule broken. Choices the design left open:
   image between two edges and a center, not many lines.
 - **Not checked by hand**: the build passes and the cursor's drawing was rendered and looked at; the drag,
   the snap and the guides are left to the user's test.
+
+### Iteration 6 — 2026-10-29 — ⚙️ Post-implementation — Matching layers outlined
+
+Tested by the user: good, but when a guide comes from one or several other layers, the user wants those
+layers **outlined dashed** too, to see which one matches. Every other layer with a reference on a guide shown
+gets its turned box outlined in the guides' dashed green, at a faint guide's opacity.
 
 ---
 
