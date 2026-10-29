@@ -93,14 +93,16 @@ internal sealed class CutoutEngine : IDisposable
     }
 
     /// <summary>
-    /// The object under <paramref name="points"/> — the included ones on it, the others off it — at the
-    /// size the image was read at times <paramref name="scale"/>: a hover's outline asks for less. One
-    /// point: the best of the multi-mask decoder's four; several: the single-mask decoder, as Segment
-    /// Anything advises.
+    /// The object under <paramref name="points"/> — the included ones on it, the others off it — as wide as
+    /// <paramref name="reach"/>, at the size the image was read at times <paramref name="scale"/>: a hover's
+    /// outline asks for less. Auto: for one point the best of the multi-mask decoder's masks, for several
+    /// the single-mask decoder, as Segment Anything advises. Another reach: the multi-mask decoder's three
+    /// masks of a click — its first, single one set aside — by area, the smallest, the middle or the largest
+    /// (workfiles/20261029-cutout.md § Reach).
     /// </summary>
-    public CutoutMask Pick(PickEmbedding embedding, IReadOnlyList<CutoutPoint> points, double scale = 1)
+    public CutoutMask Pick(PickEmbedding embedding, IReadOnlyList<CutoutPoint> points, CutoutReach reach = CutoutReach.Auto, double scale = 1)
     {
-        bool single = points.Count > 1;
+        bool single = points.Count > 1 && reach == CutoutReach.Auto;
         var decoder = single ? (this._single ??= Load(CutoutEngineFiles.PickSingle)) : (this._multi ??= Load(CutoutEngineFiles.PickMulti));
         var read = embedding.Read;
         var size = new Size(Math.Max(1, (int)Math.Round(read.Width * scale)), Math.Max(1, (int)Math.Round(read.Height * scale)));
@@ -128,15 +130,41 @@ internal sealed class CutoutEngine : IDisposable
         using var results = decoder.Run(inputs);
         var masks = results.First(r => r.Name == "masks").AsTensor<float>();
         var scores = results.First(r => r.Name == "iou_predictions").AsTensor<float>();
-        int best = 0;
-        for (int m = 1; m < scores.Dimensions[1]; m++)
-        {
-            best = scores[0, m] > scores[0, best] ? m : best;
-        }
 
-        // The best mask's plane, read straight from the buffer: the tensor's indexer is slow per pixel.
+        // The planes read straight from the buffer: the tensor's indexer is slow per pixel.
         int plane = masks.Dimensions[2] * masks.Dimensions[3];
         var values = masks.ToArray();
+        int count = masks.Dimensions[1];
+        int best = 0;
+        if (reach == CutoutReach.Auto || count < 4)
+        {
+            for (int m = 1; m < scores.Dimensions[1]; m++)
+            {
+                best = scores[0, m] > scores[0, best] ? m : best;
+            }
+        }
+        else
+        {
+            int Area(int m)
+            {
+                int area = 0;
+                for (int i = m * plane; i < (m + 1) * plane; i++)
+                {
+                    area += values[i] > 0 ? 1 : 0;
+                }
+
+                return area;
+            }
+
+            var bySize = Enumerable.Range(1, count - 1).OrderBy(Area).ToArray();
+            best = reach switch
+            {
+                CutoutReach.Part => bySize[0],
+                CutoutReach.Object => bySize[bySize.Length / 2],
+                _ => bySize[^1],
+            };
+        }
+
         var alpha = new byte[plane];
         for (int i = 0; i < plane; i++)
         {

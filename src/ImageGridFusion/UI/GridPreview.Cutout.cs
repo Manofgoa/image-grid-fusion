@@ -219,7 +219,7 @@ internal sealed partial class GridPreview
         CutoutMask? mask;
         try
         {
-            mask = await cutouts.PreviewAsync(image, points);
+            mask = await cutouts.PreviewAsync(image, points, look.Cutout?.Reach ?? CutoutReach.Auto);
         }
         finally
         {

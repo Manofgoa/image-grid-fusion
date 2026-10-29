@@ -1,15 +1,18 @@
+using System.ComponentModel;
 using System.Drawing.Drawing2D;
 using ImageGridFusion.Composition;
 
 namespace ImageGridFusion.UI;
 
 /// <summary>
-/// The Cutout tab's treatments of the part left out: Transparent, Opacity, Color, Blur, Pixelate, the one
-/// in use pressed. A click on any picks it — the one shown included, so it still turns the cutout on.
-/// See workfiles/20261029-cutout.md § The Background Kept.
+/// The Cutout tab's treatments of the part left out — Opacity, Color, Blur, Pixelate — each pressed while
+/// on, any of them at once; Transparent pressed while none is. A click toggles a treatment; on
+/// Transparent, turns them all off. See workfiles/20261029-cutout.md § The Background Kept.
 /// </summary>
-internal sealed class CutoutBackgroundStrip : SelectionStrip<CutoutBackground>
+internal sealed class CutoutBackgroundStrip : ThumbnailStrip<CutoutBackground>
 {
+    private IReadOnlyList<CutoutBackground> _treatments = [];
+
     // The pictograms' squares: the checkerboard's grey, the mask's dark, the pixelated blues.
     private static readonly Color Checker = Color.FromArgb(200, 200, 200);
     private static readonly Color Mask = Color.FromArgb(60, 60, 60);
@@ -17,24 +20,41 @@ internal sealed class CutoutBackgroundStrip : SelectionStrip<CutoutBackground>
     private static readonly Color DarkBlue = Color.FromArgb(24, 95, 165);
 
     public CutoutBackgroundStrip()
-        : base(CutoutBackground.Transparent)
+        : base(Enum.GetValues<CutoutBackground>())
     {
         this.FitSize();
     }
 
+    /// <summary>The treatments on, pressed; none presses Transparent.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public IReadOnlyList<CutoutBackground> Treatments
+    {
+        get => this._treatments;
+        set
+        {
+            if (!value.SequenceEqual(this._treatments))
+            {
+                this._treatments = value;
+                this.Invalidate();
+            }
+        }
+    }
+
     protected override Size Box => EffectBox;
 
-    protected override bool PicksSelected => true;
+    protected override bool IsPressed(CutoutBackground background) =>
+        background == CutoutBackground.Transparent ? this._treatments.Count == 0 : this._treatments.Contains(background);
 
     protected override string Label(CutoutBackground background) => background.ToString();
 
     protected override string Tip(CutoutBackground background) => background switch
     {
-        CutoutBackground.Transparent => "The part left out becomes transparent",
-        CutoutBackground.Opacity => "The part left out is kept, see-through at the opacity set",
-        CutoutBackground.Color => "The part left out is masked by a color, at the opacity set",
-        CutoutBackground.Blur => "The part left out is kept, blurred",
-        _ => "The part left out is kept, in squares",
+        CutoutBackground.Transparent => "The part left out becomes transparent: every treatment turned off",
+        CutoutBackground.Opacity => "Keeps the part left out, see-through at its opacity; combines with the others",
+        CutoutBackground.Color => "Masks the part left out with a color, at its opacity; combines with the others",
+        CutoutBackground.Blur => "Keeps the part left out, blurred; combines with the others",
+        _ => "Keeps the part left out, in squares; combines with the others",
     };
 
     protected override void PaintThumbnail(Graphics g, CutoutBackground background, Rectangle box, bool pressed)

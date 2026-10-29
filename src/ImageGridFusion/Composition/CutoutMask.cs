@@ -62,7 +62,7 @@ public sealed class CutoutMask
         }
 
         var pixels = Pixels(source);
-        if (edges.Background == CutoutBackground.Transparent)
+        if (!edges.KeepsBackground)
         {
             for (int i = 0; i < mask.Length; i++)
             {
@@ -113,53 +113,57 @@ public sealed class CutoutMask
     }
 
     /// <summary>
-    /// The image as the part left out shows it (workfiles/20261029-cutout.md § The Background Kept):
-    /// see-through, under a color, blurred or in squares — the blur and the squares averaged with the
-    /// colors weighted by their alpha, so a transparent pixel lends no color.
+    /// The image as the part left out shows it (workfiles/20261029-cutout.md § The Background Kept): its
+    /// treatments one after the other — blurred, in squares, under a color, see-through — the blur and
+    /// the squares averaged with the colors weighted by their alpha, so a transparent pixel lends no color.
     /// </summary>
     private static byte[] Treated(byte[] pixels, int width, int height, CutoutEffect effect)
     {
         var treated = (byte[])pixels.Clone();
         int longer = Math.Max(width, height);
-        switch (effect.Background)
+        foreach (var treatment in effect.Treatments)
         {
-            case CutoutBackground.Opacity:
-                for (int i = 3; i < treated.Length; i += 4)
-                {
-                    treated[i] = (byte)Math.Round(treated[i] * effect.Amount);
-                }
-
-                break;
-            case CutoutBackground.Color:
-                int amount = (int)Math.Round(effect.Amount * 255);
-                byte[] color = [effect.Color.B, effect.Color.G, effect.Color.R];
-                for (int i = 0; i < treated.Length; i += 4)
-                {
-                    for (int c = 0; c < 3; c++)
+            double amount = effect.AmountOf(treatment);
+            switch (treatment)
+            {
+                case CutoutBackground.Opacity:
+                    for (int i = 3; i < treated.Length; i += 4)
                     {
-                        treated[i + c] = (byte)((treated[i + c] * (255 - amount) + color[c] * amount + 127) / 255);
-                    }
-                }
-
-                break;
-            case CutoutBackground.Blur:
-                // Three box blurs come close to a gaussian; their radii add up to the strength.
-                int radius = (int)Math.Round(effect.Amount * CutoutEffect.MaxBlur * longer / 3);
-                if (radius > 0)
-                {
-                    Premultiply(treated);
-                    for (int pass = 0; pass < 3; pass++)
-                    {
-                        BoxBlurColors(treated, width, height, radius);
+                        treated[i] = (byte)Math.Round(treated[i] * amount);
                     }
 
-                    Unpremultiply(treated);
-                }
+                    break;
+                case CutoutBackground.Color:
+                    int share = (int)Math.Round(amount * 255);
+                    byte[] color = [effect.Color.B, effect.Color.G, effect.Color.R];
+                    for (int i = 0; i < treated.Length; i += 4)
+                    {
+                        for (int c = 0; c < 3; c++)
+                        {
+                            treated[i + c] = (byte)((treated[i + c] * (255 - share) + color[c] * share + 127) / 255);
+                        }
+                    }
 
-                break;
-            case CutoutBackground.Pixelate:
-                Pixelate(treated, width, height, Math.Max(2, (int)Math.Round(effect.Amount * CutoutEffect.MaxPixel * longer)));
-                break;
+                    break;
+                case CutoutBackground.Blur:
+                    // Three box blurs come close to a gaussian; their radii add up to the strength.
+                    int radius = (int)Math.Round(amount * CutoutEffect.MaxBlur * longer / 3);
+                    if (radius > 0)
+                    {
+                        Premultiply(treated);
+                        for (int pass = 0; pass < 3; pass++)
+                        {
+                            BoxBlurColors(treated, width, height, radius);
+                        }
+
+                        Unpremultiply(treated);
+                    }
+
+                    break;
+                case CutoutBackground.Pixelate:
+                    Pixelate(treated, width, height, Math.Max(2, (int)Math.Round(amount * CutoutEffect.MaxPixel * longer)));
+                    break;
+            }
         }
 
         return treated;

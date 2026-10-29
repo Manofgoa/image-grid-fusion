@@ -94,7 +94,7 @@ internal sealed class CutoutService : IDisposable
     /// Outline). The image's embedding is read first when it has none; without a point, that is all, and
     /// the result <c>null</c>, as when the engine is missing or fails.
     /// </summary>
-    public async Task<CutoutMask?> PreviewAsync(SourceImage image, IReadOnlyList<CutoutPoint> points)
+    public async Task<CutoutMask?> PreviewAsync(SourceImage image, IReadOnlyList<CutoutPoint> points, CutoutReach reach = CutoutReach.Auto)
     {
         if (this._disposed || !CutoutEngineFiles.IsAvailable)
         {
@@ -118,7 +118,7 @@ internal sealed class CutoutService : IDisposable
                 {
                     this._engine ??= new CutoutEngine();
                     var read = embedding ?? this._engine.Embed(copy!, page);
-                    return (read, points.Count == 0 ? null : this._engine.Pick(read, points, scale: 0.5));
+                    return (read, points.Count == 0 ? null : this._engine.Pick(read, points, reach, scale: 0.5));
                 });
                 if (!image.IsDisposed && image.Page == page)
                 {
@@ -185,7 +185,7 @@ internal sealed class CutoutService : IDisposable
                         else
                         {
                             embedding ??= this._engine.Embed(copy, page);
-                            mask = this._engine.Pick(embedding, effect.Points);
+                            mask = this._engine.Pick(embedding, effect.Points, effect.Reach);
                         }
                     }
 
