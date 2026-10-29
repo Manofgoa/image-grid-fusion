@@ -367,6 +367,7 @@ internal sealed partial class GridPreview
 
         this._pressedLayer = hit;
         this._layerPoint = e.Location;
+        this.BeginLayerDrag(this._layers.Items[hit]);
         this.Cursor = Cursors.SizeAll;
         return true;
     }
@@ -408,9 +409,12 @@ internal sealed partial class GridPreview
             if (e.Button == MouseButtons.Left && this.SelectedLayer is { } layer && this._pressedLayer == this._selectedLayer)
             {
                 var canvas = this.CanvasBounds();
-                var moved = layer.Place.MovedBy(new SizeF(e.X - this._layerPoint.X, e.Y - this._layerPoint.Y), canvas.Size);
+                var moved = this.DraggedPlace(layer, new SizeF(e.X - this._layerPoint.X, e.Y - this._layerPoint.Y), canvas);
                 this._layerPoint = e.Location;
                 this.SetLayers(this._layers.With(this._selectedLayer, layer with { Place = moved }));
+
+                // Its guides cross the whole grid: painted again over the cached preview.
+                this.Invalidate();
                 this.Update();
             }
 
@@ -595,6 +599,12 @@ internal sealed partial class GridPreview
         if (this._pressedLayer < 0 && !this._rotatingLayer && this._resizingBox == 0)
         {
             return false;
+        }
+
+        // A drag's guides go with it.
+        if (this._pressedLayer >= 0)
+        {
+            this.Invalidate();
         }
 
         this._pressedLayer = -1;
