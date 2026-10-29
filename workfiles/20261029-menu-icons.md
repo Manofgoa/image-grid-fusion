@@ -320,6 +320,11 @@ and Save ▾ arrows drawn as a 🔽 emoji in a button of their own make no sense
 **standard Windows split button**, its arrow built into the button. What else is wrong is asked
 before going on; the Iteration 9 code stays uncommitted meanwhile.
 
+### Iteration 11 — 2026-10-29 — ⚙️ Post-implementation — Sort direction as text
+
+The sort drop-down's direction stays **text** — `Date ↓`, `Size ↑` — never a ⬇️ / ⬆️ emoji; only the
+entry's icon is an emoji. *(Revises Q&A 15 for the arrows inside a label.)*
+
 ---
 
 ## Implementation Log
