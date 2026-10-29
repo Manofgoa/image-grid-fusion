@@ -279,6 +279,7 @@ Questions asked by the agent during design, with user responses.
 | 10 | Storage: `settings.json`, or a file of their own? | `text-styles.json` | 2026-10-29 |
 | 11 | Alignment of several lines: added to the style, or out of scope? | Out of scope | 2026-10-29 |
 | 12 | Sequencing: after the Layers session's run, or alongside it? | After its delivery | 2026-10-29 |
+| 13 | Go for the implementation? Where? | No — the gate holds until the Layers session delivers; a worktree preferred for the run, to be confirmed with the go | 2026-10-29 |
 
 ---
 
