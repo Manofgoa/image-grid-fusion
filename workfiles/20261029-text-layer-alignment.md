@@ -226,6 +226,31 @@ spaces and cuts a word longer than it; justified in a box, each typed line break
 size mode and the box's width belong to the layer, not to the style; a **Box** checkbox chooses the
 mode, unchecked (Automatic) by default. § Size Mode describes it.
 
+### Iteration 8 — 2026-10-29 — 🧭 Implementation choices (Box mode)
+
+- **`Layer.TextBox`** holds the box's width in lines, from `Layer.MinTextBox` (1) to `MaxTextBox` (400);
+  `TextRaster.Render` takes it, measures a line on the text as typed, then wraps within `TextBox` lines.
+- **Half the grid** is the text's area: the drawing's margins — outline, shadow, background margin —
+  come around it, so the layer is a little wider than half the grid.
+- **The drag keeps the drawing's margins** as they are, read from the current bitmap; with a Crop or a
+  Rotate effect on the text layer itself, the width follows the mouse only approximately.
+- **The handles**: a square of 10 logical px on each side's middle, turned with the layer, green over
+  the black halo, white while hovered or dragged; the cursor `SizeWE`. Grabbed after the rotation
+  handle, before a move of the layer; the wheel is left alone during the drag.
+- **Drawn again at each mouse move** of the drag, with no throttling: a text is drawn in a few
+  milliseconds at 192 px; to be revisited if a long text drags slowly.
+- **The preview asks the form** to draw the text (`GridPreview.RenderTextLayer`, set by `MainForm`): the
+  text's drawing stays in `MainForm.RenderTextLayer`, its error reporting with it.
+- **Justify's tooltip** now names both paragraph rules: a blank line in the automatic size, each line
+  break in a box.
+- **Checked**: by the scratch program — a box 8 lines wide in the four alignments, the wrapping, a word
+  longer than the box cut, the justified lines with each line break ending a paragraph, the right-aligned
+  lines on the box's right edge. **Not checked**: the handles' drag in the running app (no UI driving);
+  the user tests it at launch.
+- RULES.md is not changed: the box is a text layer setting like the others; § Layers' gestures rule
+  (`LayersTakeMouse`) is followed.
+- No project rule broken.
+
 ---
 
 ## Implementation Log
@@ -235,10 +260,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 3, 4 | 2026-10-29 | The alignment in the style, the layout, the four buttons |
+| Code | 3, 4, 8 | 2026-10-29 | The alignment in the style, the layout, the four buttons; the Box mode and its handles |
 | Unit tests | 3 | 2026-10-29 | Not applicable: no test project; checked by a scratch program |
-| README | 3 | 2026-10-29 | `README.md`, `README.fr.md` |
-| Glossary | 3 | 2026-10-29 | `GLOSSARY.md`, `GLOSSARY.fr.md`: Text layer, Text style |
+| README | 3, 8 | 2026-10-29 | `README.md`, `README.fr.md` |
+| Glossary | 3, 8 | 2026-10-29 | `GLOSSARY.md`, `GLOSSARY.fr.md`: Text layer, Text style |
 
 ---
 
