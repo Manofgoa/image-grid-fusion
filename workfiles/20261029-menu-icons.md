@@ -173,6 +173,17 @@ A new section, `## Menus` › `### Menu Icons` (origin: this workfile):
   never a small bitmap stretched.
 - A checked toggle shows its icon framed, as the default renderer draws it: no ✓ beside it.
 
+## Glossary
+
+A new row in `GLOSSARY.md` and its French twin in `GLOSSARY.fr.md`, in the same commit
+(`../CLAUDE.md` § French Versions):
+
+| Term | Meaning |
+|---|---|
+| Menu icon (*icône de menu*) | The picture in front of a menu entry — every action and toggle of the ⚙ menu, Copy ▾ / Save ▾ and the context menus, never a caption nor a submenu's values: the icon the app already shows for that meaning, else an emoji in full color; a checked toggle shows it framed instead of a ✓ |
+
+No README line: the README does not describe the menus' look.
+
 ---
 
 ## Test Impact
@@ -193,8 +204,9 @@ tested; the delivery is checked by hand in the running app, at 100 % and at a hi
 - [x] ~~**Emoji in full color or in one tint?**~~ → Full color, rendered by Direct2D
 - [x] ~~**Checked toggles**~~ → The framed icon in place of the ✓, the default renderer's look
 - [x] ~~**The confirming item** of *Hide ▸*, *Un-merge ▸*, *Not this person ▸*~~ → The parent's icon
-- [ ] **The icon of each entry** (§ Entries): approved as drafted, or changes?
-- [ ] **Glossary / README**: a *Menu icon* term, a README line — or the rule in `RULES.md` only?
+- [x] ~~**The icon of each entry** (§ Entries): approved as drafted, or changes?~~ → Approved as drafted
+- [x] ~~**Glossary / README**: a *Menu icon* term, a README line — or the rule in `RULES.md` only?~~
+  → `RULES.md` and a *Menu icon* term in the glossary, English and French; no README line
 
 ---
 
@@ -219,6 +231,11 @@ renderer draws them; a confirming item takes its parent's icon. § Entries draft
 The user set aside the **regrouping** of the menu entries: discussed after the icons are
 integrated, not here. § Overview says it is out of scope; the entries keep their order and groups.
 
+### Iteration 4 — 2026-10-29
+
+§ Entries approved as drafted. The docs: the rule in `RULES.md` and a *Menu icon* term in the
+glossary, English and French (§ Glossary); no README line. No open question left.
+
 ---
 
 ## Implementation Log
@@ -228,7 +245,8 @@ integrated, not here. § Overview says it is out of scope; the entries keep thei
 | Code | | | |
 | Unit tests | | | No test project in the solution |
 | RULES.md | | | |
-| README | | | |
+| Glossary (EN + FR) | | | |
+| README | 4 | 2026-10-29 | Not needed: decided at design |
 
 ---
 
@@ -244,8 +262,9 @@ integrated, not here. § Overview says it is out of scope; the entries keep thei
 | 6 | Emoji in full color (Direct2D) or in one tint (GDI)? | Full color | 2026-10-29 |
 | 7 | Checked toggles: framed icon, no icon (✓ kept), or both drawn? | Framed icon | 2026-10-29 |
 | 8 | The confirming item of Hide ▸, Un-merge ▸, Not this person ▸: the parent's icon, or none? | The parent's icon | 2026-10-29 |
-| 9 | The icon of each entry (§ Entries): approved, or changes? | | 2026-10-29 |
-| 10 | Glossary / README: a term, a line, or RULES.md only? | | 2026-10-29 |
+| 9 | The icon of each entry (§ Entries): approved, or changes? | Approved as drafted | 2026-10-29 |
+| 10 | Glossary / README: a term, a line, or RULES.md only? | RULES.md and a glossary term | 2026-10-29 |
+| 11 | Go: scope and where? | | 2026-10-29 |
 
 ---
 
