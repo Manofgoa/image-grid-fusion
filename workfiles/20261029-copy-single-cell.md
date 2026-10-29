@@ -38,7 +38,9 @@ Components concerned (from the exploration):
   The menu shows whatever the visual analysis — *Find similar images* stays gated by
   `FileExplorerPanel.CanFindSimilar` on its own entry. Disabled on an empty cell.
 - **Ctrl+C**: with a **cell selected** holding an image, or a **layer selected**, Ctrl+C copies it
-  alone. *How the whole grid is copied then: Open Question 1.*
+  alone; with nothing selected (or an empty cell selected), the whole grid, as today.
+- **Ctrl+Shift+C** always copies the **whole grid** — the Copy button's still or video, as Ctrl+C
+  did. The **Copy button** and its ▾ menu stay the grid's.
 - The text-field whitelist and the explorer tiles' Ctrl+C keep priority, as today.
 - **Layer list**: a **Copy** icon button among the layer list's buttons, on the selected layer,
   enabled while one is selected.
@@ -51,13 +53,15 @@ Components concerned (from the exploration):
   is drawn (RULES.md § Rendering). A new cell effect is copied by itself.
 - **Cut to the image as drawn**: the rectangle the image is drawn in (`ComputeTurned(...).Bounds`),
   clipped to the cell — what the cell actually shows of the image. Outside the image, transparent.
-  *Or trimmed to the visible pixels: Open Question 3.*
+  **Not trimmed** to the visible pixels: the framing chosen is kept exactly, a PNG's transparent
+  margins included.
 - An image already transparent (a cut-out PNG) stays transparent: the canvas is ARGB, nothing
   fills it.
 - **Animated content**: the frame **shown** at the grid time (playing or paused) — a still, like a
   freeze-frame. The grid is held during the render (`AnimationPlayer.Hold` / `Release`, as Copy).
-- **A layer**: its content drawn into its box (`LayerCell`) with its look minus the Background.
-  *Turned as placed or upright: Open Question 4.*
+- **A layer**: its content drawn into its box (`LayerCell`) with its look minus the Background,
+  **turned as placed** — as the grid shows it (`Compositor.DrawLayer`'s rotation by its angle) —
+  cut to the axis-aligned box of the turned drawn image, its corners transparent.
 - The layer edit view open: the edited layer is the selected cell's content — copied like a cell.
 
 ## Size
@@ -77,21 +81,25 @@ Components concerned (from the exploration):
   **flattened on white** (`Compositor.Flattened`, DIB) for the apps reading only that.
 - The status line says what was copied — `Cell copied to the clipboard — PNG 812 × 640, 312 Ko`,
   `Layer copied…` — as `StillSummary` does.
-- *Kept in `previous\` like any Copy: Open Question 5.*
+- **Kept in `previous\`** like any Copy (`PreviousCopy.Keep`), named after the cell's or the layer's
+  file (`fusion-…` when it has none), the previous copy deleted.
 
 ## Pasting Into a Cell
 
 - The PNG pasted into another cell (Ctrl+V, the layer list's Paste) arrives as a **plain image**:
   the effects are in its pixels, the new cell starts from the default effects (an ordinary arrival —
   Arrival Zoom, the grid starting over).
-- *Transparency on paste: Open Question 2* — today the paste reads `Clipboard.GetImage()`, the DIB
-  flattened on white: the cut-out would arrive on white.
+- **The paste reads the `"PNG"` format first**, its alpha kept, then the DIB (`Clipboard.GetImage()`)
+  as today: the cut-out arrives transparent — and so does a PNG another app (a browser) puts on the
+  clipboard. Both routes: the cells' Ctrl+V (`MainForm`) and the layer list's Paste
+  (`MainForm.Layers.cs`). A file drop list still wins over an image, as today.
 
 ## Documentation
 
 - `RULES.md`: a short section — what a cell copy renders, one route for the cell and the layer.
 - `GLOSSARY.md` / `GLOSSARY.fr.md`: **Cell copy** (*copie de cellule*).
-- `README.md` / `README.fr.md`: the feature and its shortcut.
+- `README.md` / `README.fr.md`: the feature and its shortcuts (Ctrl+C on the selection,
+  Ctrl+Shift+C for the grid), and the paste keeping transparency.
 
 ---
 
@@ -115,12 +123,15 @@ in `20261029-layers.md`, Q&A #13).
 - [x] ~~Animated content?~~ → A PNG of the frame shown (Q&A #5)
 - [x] ~~Layers?~~ → Yes, the selected layer too (Q&A #6)
 - [x] ~~Pasted into a cell, how does it arrive?~~ → A plain image, effects baked in (Q&A #7)
-- [ ] 1. Ctrl+C with a cell selected copies the cell: how is the whole grid copied by keyboard then?
-- [ ] 2. Should the paste into a cell / a layer read the `"PNG"` format first, so a cut-out keeps
-  its transparency (from this copy, and from any app putting a PNG on the clipboard)?
-- [ ] 3. Cut to the image's drawn rectangle, or trimmed to its visible (non-transparent) pixels?
-- [ ] 4. A turned layer: copied turned as placed, or upright?
-- [ ] 5. Is a cell copy kept in `previous\` like the grid's Copy?
+- [x] ~~1. Ctrl+C with a cell selected copies the cell: how is the whole grid copied by keyboard
+  then?~~ → Ctrl+Shift+C always copies the grid; Ctrl+C copies the grid with nothing selected
+  (Q&A #8)
+- [x] ~~2. Should the paste into a cell / a layer read the `"PNG"` format first, so a cut-out keeps
+  its transparency?~~ → Yes, the PNG first, then the DIB (Q&A #9)
+- [x] ~~3. Cut to the image's drawn rectangle, or trimmed to its visible pixels?~~ → The drawn
+  rectangle, clipped to the cell (Q&A #10)
+- [x] ~~4. A turned layer: copied turned as placed, or upright?~~ → Turned as placed (Q&A #11)
+- [x] ~~5. Is a cell copy kept in `previous\` like the grid's Copy?~~ → Yes (Q&A #12)
 
 ---
 
@@ -138,6 +149,17 @@ single-cell rendering, menus and layer commands). Initial design:
 - Put on the clipboard as the grid's still Copy does (PNG stream + flattened DIB).
 - Found: the paste reads only the DIB, flattened on white — a cut-out would lose its transparency
   (Open Question 2). The cell menu is gated by *Find similar images* and must show without it.
+
+### Iteration 2 — 2026-10-29
+
+Open questions answered (Q&A #8–#12), the domain sections updated:
+
+- Ctrl+C copies the selected cell or layer, the grid with nothing selected; **Ctrl+Shift+C** always
+  copies the grid.
+- The paste (cells and layers) reads the `"PNG"` format first, so a cut-out keeps its transparency.
+- Cut to the drawn rectangle, never trimmed to the visible pixels.
+- A turned layer is copied turned, as placed.
+- A cell copy is kept in `previous\` like any Copy.
 
 ---
 
@@ -162,11 +184,11 @@ single-cell rendering, menus and layer commands). Initial design:
 | 5 | For a video or an animated GIF, what is copied? | A PNG of the frame shown | 2026-10-29 |
 | 6 | Are the layers concerned? | Yes, the selected layer | 2026-10-29 |
 | 7 | Pasted into another cell, how does it arrive? | A plain image, effects baked in | 2026-10-29 |
-| 8 | Ctrl+C copying the cell: how is the whole grid copied by keyboard? | | |
-| 9 | Does the paste read the `"PNG"` format first, keeping transparency? | | |
-| 10 | Cut to the drawn rectangle, or trimmed to the visible pixels? | | |
-| 11 | A turned layer: copied turned, or upright? | | |
-| 12 | Is a cell copy kept in `previous\`? | | |
+| 8 | Ctrl+C copying the cell: how is the whole grid copied by keyboard? | Ctrl+Shift+C always copies the grid; Ctrl+C copies the selected cell / layer, the grid with nothing selected; the Copy button stays the grid's | 2026-10-29 |
+| 9 | Does the paste read the `"PNG"` format first, keeping transparency? | Yes, the PNG first | 2026-10-29 |
+| 10 | Cut to the drawn rectangle, or trimmed to the visible pixels? | The drawn rectangle | 2026-10-29 |
+| 11 | A turned layer: copied turned, or upright? | Turned as placed | 2026-10-29 |
+| 12 | Is a cell copy kept in `previous\`? | Yes, like Copy | 2026-10-29 |
 
 ---
 
