@@ -164,12 +164,6 @@ internal sealed partial class GridPreview
             }
         }
 
-        var kept = layers.Items.Select(l => l.Image).ToHashSet();
-        foreach (var gone in before.Items.Select(l => l.Image).Distinct().Where(i => !kept.Contains(i)).ToList())
-        {
-            this.ReleaseImage(gone);
-        }
-
         // The selection changes with its index or its content; a move or a resize keeps it.
         int selection = selected ?? this._selectedLayer;
         selection = selection >= 0 && selection < layers.Count ? selection : -1;
@@ -183,6 +177,14 @@ internal sealed partial class GridPreview
 
         this.RedrawLayersChange(before, layers);
         this.SyncPlayer();
+
+        // Let go last: the area drawn again reads the contents left, which the history may dispose at once.
+        var kept = layers.Items.Select(l => l.Image).ToHashSet();
+        foreach (var gone in before.Items.Select(l => l.Image).Distinct().Where(i => !kept.Contains(i)).ToList())
+        {
+            this.ReleaseImage(gone);
+        }
+
         this.ContentVersion++;
         this.LayersChanged?.Invoke(this, EventArgs.Empty);
         if (selectionChanged)
