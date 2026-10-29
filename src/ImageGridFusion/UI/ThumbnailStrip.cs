@@ -22,7 +22,7 @@ internal abstract class ThumbnailStrip<T> : Control
     /// <summary>The color of the image's marker in the pictograms, the Background's top edge color; a pictogram may draw in it beyond the marker.</summary>
     protected static readonly Color Marker = Color.FromArgb(55, 138, 221);
 
-    private readonly T[] _values;
+    private T[] _values;
     private readonly ToolTip _toolTip = new();
     private int _hovered = -1;
 
@@ -72,6 +72,26 @@ internal abstract class ThumbnailStrip<T> : Control
 
     /// <summary>Fits the control to its thumbnails; called once the derived strip is set up, and on every font or DPI change.</summary>
     protected void FitSize() => this.Size = this.GetPreferredSize(Size.Empty);
+
+    /// <summary>The strip's items replaced by <paramref name="values"/> — a strip whose choices change — the control fitted to them.</summary>
+    protected void SetValues(IEnumerable<T> values)
+    {
+        this._values = [.. values];
+        this.SetHovered(-1);
+        this.FitSize();
+        this.Invalidate();
+    }
+
+    /// <summary>The strip's items, left to right.</summary>
+    protected IReadOnlyList<T> Values => this._values;
+
+    /// <summary>The item under <paramref name="location"/>, in the control's coordinates; <c>false</c> between items.</summary>
+    public bool TryValueAt(Point location, out T value)
+    {
+        int index = this.Items().FindIndex(item => item.Contains(location));
+        value = index >= 0 ? this._values[index] : default!;
+        return index >= 0;
+    }
 
     /// <summary>The color as drawn: faded toward the control's color while the strip is disabled.</summary>
     protected Color Shade(Color color)
