@@ -423,7 +423,7 @@ internal sealed partial class GridPreview
 
         string dots = new('.', 1 + (int)(Environment.TickCount64 / CutoutBadgeTick % 3));
         return this._cutouts?.IsWorking(image) == true ? $"✂ Cutting out{dots}"
-            : !CutoutEngineFiles.IsAvailable ? "✂ Waiting for the cutout engine"
+            : image.Look.Cutout?.NeedsEngine == true && !CutoutEngineFiles.IsAvailable ? "✂ Waiting for the cutout engine"
             : null;
     }
 

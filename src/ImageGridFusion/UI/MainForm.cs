@@ -3424,7 +3424,7 @@ internal sealed partial class MainForm : Form
     private void ToggleEffect(ImageEffect effect)
     {
         _selectedEffect = effect;
-        if (_preview.SelectedImage?.Look is { } look && (effect != ImageEffect.Cutout || look.IsActive(effect) || this.CutoutEngineReady()))
+        if (_preview.SelectedImage?.Look is { } look && (effect != ImageEffect.Cutout || this.CutoutEngineReady(look, look.TurnOn(effect))))
         {
             _preview.SetSelectedLook(look.IsActive(effect) ? look.TurnOff(effect) : look.TurnOn(effect));
         }
@@ -3661,7 +3661,7 @@ internal sealed partial class MainForm : Form
     /// </summary>
     private void ArmCutoutEyedropper()
     {
-        if (this.IsExporting || this._preview.SelectedImage is not { } image || !(image.Look.IsActive(ImageEffect.Cutout) || this.CutoutEngineReady()))
+        if (this.IsExporting || this._preview.SelectedImage is not { } image || !this.CutoutEngineReady(image.Look, image.Look.TurnOn(ImageEffect.Cutout)))
         {
             return;
         }
@@ -3687,12 +3687,15 @@ internal sealed partial class MainForm : Form
     private static string SoftenText(int value) => $"Soften: {value * CutoutEffect.MaxEdge:0.0} %";
 
     /// <summary>
-    /// Whether the Cutout can be turned on: its engine downloaded or downloading — else offered, the
-    /// effect left off on a No, as a global effect's file picker cancelled (RULES.md § Global Toolbar).
+    /// Whether the Cutout can go from <paramref name="before"/> to <paramref name="after"/>: in a mode
+    /// needing no engine (the plain background), already on in one needing it, or its engine downloaded or
+    /// downloading — else offered, the change not made on a No, as a global effect's file picker
+    /// cancelled (RULES.md § Global Toolbar).
     /// </summary>
-    private bool CutoutEngineReady()
+    private bool CutoutEngineReady(ImageLook before, ImageLook after)
     {
-        if (CutoutEngineFiles.IsAvailable || this._cutoutEngineDownload is not null || this.OfferCutoutEngineDownload())
+        if (after.Cutout?.NeedsEngine != true || (before.IsActive(ImageEffect.Cutout) && before.Cutout!.NeedsEngine)
+            || CutoutEngineFiles.IsAvailable || this._cutoutEngineDownload is not null || this.OfferCutoutEngineDownload())
         {
             return true;
         }
@@ -3776,7 +3779,7 @@ internal sealed partial class MainForm : Form
     private async Task WaitForCutoutsAsync()
     {
         var images = this._preview.Images.Concat(this.ActiveLayerImages).ToList();
-        if (!CutoutEngineFiles.IsAvailable || !images.Any(i => i.CutoutPending))
+        if (!images.Any(i => i.CutoutPending && (CutoutEngineFiles.IsAvailable || i.Look.Cutout?.NeedsEngine == false)))
         {
             return;
         }
@@ -3964,9 +3967,10 @@ internal sealed partial class MainForm : Form
     /// </summary>
     private void ChangeLook(ImageEffect effect, Func<ImageLook, ImageLook> change)
     {
-        if (!_syncingEffects && _preview.SelectedImage?.Look is { } look && (effect != ImageEffect.Cutout || look.IsActive(effect) || this.CutoutEngineReady()))
+        if (!_syncingEffects && _preview.SelectedImage?.Look is { } look && change(look.TurnOn(effect)) is var changed
+            && (effect != ImageEffect.Cutout || this.CutoutEngineReady(look, changed)))
         {
-            _preview.SetSelectedLook(change(look.TurnOn(effect)));
+            _preview.SetSelectedLook(changed);
         }
     }
 
