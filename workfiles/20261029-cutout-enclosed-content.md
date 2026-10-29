@@ -232,6 +232,11 @@ half the gap, the flood, the region reached grown back; the Plain mode works **w
 the new controls in a **column after the mode strip** (Tolerance, then Close gaps and Fill holes); the
 background color **automatic**. No question left.
 
+### Iteration 3 — 2026-10-29 — ✅ Implemented
+
+Go given: code, tests and documentation — no unit tests, the solution has none (§ Test Impact) — in a
+worktree, `.claude/worktrees/cutout-enclosed-content`, branch `feature/cutout-enclosed-content`.
+
 ---
 
 ## Implementation Log
