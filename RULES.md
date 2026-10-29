@@ -132,8 +132,8 @@ The Cutout effect's state holds no pixel, and its mask is computed outside `Comp
 ### Effects Toolbar
 
 - An **always-visible row of tabs**, hanging down from the options toolbar above it: an **Effects**
-  label, one **effect tab** per effect, then a **★ Preset…** button and, at the far right, a **Reset**
-  button — neither an effect — **as tall as the tabs** (★ Preset…: § Effect Presets). Every action on the image is an effect: the cell itself only keeps the
+  label, one **effect tab** per effect, then a **⭐ Preset…** button and, at the far right, a **Reset**
+  button — neither an effect — **as tall as the tabs** (⭐ Preset…: § Effect Presets). Every action on the image is an effect: the cell itself only keeps the
   **×**, the **✥** swap handle, and the wheel and drag gestures (origin:
   `workfiles/20260925-toolbar.md`, `workfiles/20260925-ui-cleanup.md`).
 - The **separators** between cells resize the **grid**, not an image: they are no effect and have
@@ -317,7 +317,7 @@ cell with them (origin: `workfiles/20261026-effect-preset-favorites.md`):
 - Kept in **`favorites.json`** with the favorites (`Explorer/Favorites.cs`), an older `favorites.txt`
   migrated once by the normal instance (`Favorites.Migrate`). A preset is **never dropped silently**:
   its file gone, it stays until its heart deletes it, after a confirmation.
-- **Searched** under **Aa** (`FileSearch.SearchFavorites`), by its file's name or its description: the
+- **Searched** under **🔠** (`FileSearch.SearchFavorites`), by its file's name or its description: the
   description matches in their own tier, after the path matches and before the content matches
   (`SearchMatch.Tier`). Every search goes through the favorites — the search view's and the folder
   view's alike (`FileExplorerPanel.WithFavorites`): the presets, and the file favorites it would not
@@ -829,7 +829,7 @@ The faces of the indexed images grouped into people, in the file explorer's **Pe
   group. A face alone is made a person (`People.Create`, saved) and opened once the groups hold it.
 - **The group open's title**, at the top of its list, is clicked to rename it — the same route as
   *Rename…* (`FileExplorerPanel.Rename`), its `NameDialog` centered on the explorer.
-- **Search by name**: under **Aa**, a person's name finds their files in their own tier — after the
+- **Search by name**: under **🔠**, a person's name finds their files in their own tier — after the
   presets' descriptions, before the content matches (`FileSearch.SearchPeople`) — the hidden people left
   out, in the folder view those below the open folder.
 
@@ -978,31 +978,38 @@ The offset of an image from its cell's center, shown while it changes (origin:
 - Each image's readout has the zoom badge's timing on its own clock, **held at full opacity while
   `InGesture`**, its hold starting when the gesture ends.
 
-## Menus
+## Icons
 
-### Menu Icons
+Every control that does something shows an icon, **emoji first** (origin:
+`workfiles/20261029-menu-icons.md`), one definition, `UI/UiIcons`:
 
-Every menu entry that does something shows an icon (origin: `workfiles/20261029-menu-icons.md`),
-one definition, `UI/MenuIcons`:
-
-- **Which entries**: every **action and toggle** of every menu — the ⚙ menu, Copy ▾ / Save ▾, every
-  context menu, a new one included; never a greyed caption, never the **values** of a submenu
-  (`1920 px`, `Normal`…). A confirming item (*Hide ▸ Hide*, *Delete ▸ Delete <name>*) takes its
-  parent's icon: it is the action itself. A colour item keeps its swatch (shared RULES.md § Colour
-  Items).
-- **Its style**, in this order: the icon the app already shows for that meaning — drawn
-  (`EffectIcons`), the app's own (`AppIcon`), or the emoji of the tile tooltip (💡 caption, 🏷 tags,
-  📝 text read, 👨‍🦰 people) —, else a **Segoe UI Emoji glyph in full color**, else — no emoji saying
-  it — a new drawn icon in `EffectIcons`' manner.
-- **One icon per action**: a `MenuIcons` field, shared by every menu showing the action (*Find
-  similar images*, *Copy*, every *Download the … engine…*). A new entry takes the field of its action,
-  or adds one.
-- **Drawn as the menu opens**, at 16 logical px in the **device pixels** of the screen it opens on,
-  `ImageScaling = None` (`MenuIcons.Set` on the entry, `MenuIcons.Attach` on its menu); the emoji
-  rendered by Direct2D (`TextRaster`) — GDI draws them in one color —, each size kept once drawn.
-  Never a small bitmap stretched.
-- A **checked toggle** shows its icon framed, as WinForms' default renderer draws it, in place of
-  the ✓; a disabled entry's icon is greyed by the same renderer.
+- **Which controls**: every **action and toggle** of every menu — the ⚙ menu, Copy ▾ / Save ▾, every
+  context menu —, the effect and global **tabs**, the **buttons** (icon alone, or before the text) and
+  the entries of the **drop-downs** that name a choice (the views, the sort, the Animations' Type), a
+  new one included. Never a menu's greyed caption, never the **values** of a submenu (`1920 px`,
+  `Normal`…), never the font drop-down (each font in its face) nor the Borders style. A confirming item
+  (*Hide ▸ Hide*, *Delete ▸ Delete <name>*) takes its parent's icon: it is the action itself. A colour
+  item keeps its swatch (shared RULES.md § Colour Items).
+- **Its style**: a **Segoe UI Emoji glyph in full color**, wherever one says the thing — over the
+  app's own drawings too; the emoji the tile tooltip shows for a meaning (💡 caption, 🏷 tags, 📝 text
+  read, 👨‍🦰 people) is that meaning's everywhere. A **drawing** (`EffectIcons`) only where no emoji
+  says it — Crop, Format, Fade, Borders, Seams, Duplicate, the eyedropper, the Fade curves, the
+  intensity and opacity, the text alignments, the option thumbnails —, the app's own icon (`AppIcon`)
+  for the tray's *Open*.
+- **The direction of a label stays text**: `Date ↓`, `Size ↑`, `Name A→Z` — never an arrow emoji
+  inside a label.
+- **One icon per action**: a `UiIcons` field, shared by every control showing the action (*Find
+  similar images*, *Copy*, every *Download the … engine…*). A new control takes the field of its
+  action, or adds one.
+- **Drawn at 16 logical px in device pixels**, again when the DPI changes; the emoji rendered by
+  Direct2D (`TextRaster`) — GDI draws them in one color —, each size kept once drawn. Never a small
+  bitmap stretched. A menu entry: `UiIcons.Set` on it, `UiIcons.Attach` on its menu, drawn as it opens.
+  A button: `UiIcons.SetImage`, an icon-only one stretched to its row's height. A drop-down's entry:
+  owner-drawn by `UiIcons.DrawItem`.
+- **A button opening a menu of variants** is Windows' own split button (`UI/SplitButton`,
+  `BS_SPLITBUTTON`), its arrow built in — never a second button beside it.
+- A **checked toggle** of a menu shows its icon framed, as WinForms' default renderer draws it, in
+  place of the ✓; a disabled entry's or control's icon is greyed.
 
 ## Repository Docs
 
