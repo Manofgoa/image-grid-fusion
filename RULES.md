@@ -978,6 +978,32 @@ The offset of an image from its cell's center, shown while it changes (origin:
 - Each image's readout has the zoom badge's timing on its own clock, **held at full opacity while
   `InGesture`**, its hold starting when the gesture ends.
 
+## Menus
+
+### Menu Icons
+
+Every menu entry that does something shows an icon (origin: `workfiles/20261029-menu-icons.md`),
+one definition, `UI/MenuIcons`:
+
+- **Which entries**: every **action and toggle** of every menu — the ⚙ menu, Copy ▾ / Save ▾, every
+  context menu, a new one included; never a greyed caption, never the **values** of a submenu
+  (`1920 px`, `Normal`…). A confirming item (*Hide ▸ Hide*, *Delete ▸ Delete <name>*) takes its
+  parent's icon: it is the action itself. A colour item keeps its swatch (shared RULES.md § Colour
+  Items).
+- **Its style**, in this order: the icon the app already shows for that meaning — drawn
+  (`EffectIcons`), the app's own (`AppIcon`), or the emoji of the tile tooltip (💡 caption, 🏷 tags,
+  📝 text read, 👨‍🦰 people) —, else a **Segoe UI Emoji glyph in full color**, else — no emoji saying
+  it — a new drawn icon in `EffectIcons`' manner.
+- **One icon per action**: a `MenuIcons` field, shared by every menu showing the action (*Find
+  similar images*, *Copy*, every *Download the … engine…*). A new entry takes the field of its action,
+  or adds one.
+- **Drawn as the menu opens**, at 16 logical px in the **device pixels** of the screen it opens on,
+  `ImageScaling = None` (`MenuIcons.Set` on the entry, `MenuIcons.Attach` on its menu); the emoji
+  rendered by Direct2D (`TextRaster`) — GDI draws them in one color —, each size kept once drawn.
+  Never a small bitmap stretched.
+- A **checked toggle** shows its icon framed, as WinForms' default renderer draws it, in place of
+  the ✓; a disabled entry's icon is greyed by the same renderer.
+
 ## Repository Docs
 
 The repository's docs — the French versions (`README.fr.md`, `GLOSSARY.fr.md`) kept in step with
