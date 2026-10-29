@@ -294,6 +294,7 @@ Go given: code, tests and documentation, in a worktree (`.claude/worktrees/menu-
 | 9 | The icon of each entry (§ Entries): approved, or changes? | Approved as drafted | 2026-10-29 |
 | 10 | Glossary / README: a term, a line, or RULES.md only? | RULES.md and a glossary term | 2026-10-29 |
 | 11 | Go: scope and where? | Code, tests and documentation, in a worktree | 2026-10-29 |
+| 12 | Merge `feature/menu-icons` into `main`? | Not answered yet: the worktree and its branch kept | 2026-10-29 |
 
 ---
 
