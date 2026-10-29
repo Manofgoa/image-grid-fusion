@@ -236,6 +236,11 @@ integrated, not here. § Overview says it is out of scope; the entries keep thei
 § Entries approved as drafted. The docs: the rule in `RULES.md` and a *Menu icon* term in the
 glossary, English and French (§ Glossary); no README line. No open question left.
 
+### Iteration 5 — 2026-10-29 — ✅ Implemented
+
+Go given: code, tests and documentation, in a worktree (`.claude/worktrees/menu-icons`, branch
+`feature/menu-icons`). No unit test: the solution holds no test project.
+
 ---
 
 ## Implementation Log
@@ -264,7 +269,7 @@ glossary, English and French (§ Glossary); no README line. No open question lef
 | 8 | The confirming item of Hide ▸, Un-merge ▸, Not this person ▸: the parent's icon, or none? | The parent's icon | 2026-10-29 |
 | 9 | The icon of each entry (§ Entries): approved, or changes? | Approved as drafted | 2026-10-29 |
 | 10 | Glossary / README: a term, a line, or RULES.md only? | RULES.md and a glossary term | 2026-10-29 |
-| 11 | Go: scope and where? | | 2026-10-29 |
+| 11 | Go: scope and where? | Code, tests and documentation, in a worktree | 2026-10-29 |
 
 ---
 
