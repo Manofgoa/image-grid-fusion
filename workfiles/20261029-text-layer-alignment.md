@@ -33,8 +33,11 @@ preset carries it.
 - **Default: `Center`** — `LayerTextStyle.Default` keeps drawing the text as today, so a new text and
   every existing call look the same.
 - Being part of the style, the alignment is in the `Layer` (immutable, held by `GridLayers`): the undo
-  history covers it with no code of its own (RULES.md § Undo History), and a style preset of the
-  related workfile carries it.
+  history covers it with no code of its own (RULES.md § Undo History), and a text style carries it.
+- Saved with the text styles (`text-styles.json`) under the key **`alignment`**, by name (`Left`,
+  `Center`, `Right`, `Justified`) — a missing or foreign value gives `Center` (RULES.md § Text Styles).
+- The text styles' tooltip (`TextStyleStrip.Describe`) names it when it is not the default: `aligned
+  left`, `aligned right`, `justified`.
 
 ---
 
@@ -44,45 +47,43 @@ preset carries it.
   height the lines' (`TextRaster.Render`). Changing the alignment never moves nor resizes the layer —
   only the lines move inside it.
 - `TextRaster.CreateLayout` sets the layout's text alignment from the style instead of the fixed
-  `CENTER` (DirectWrite `DWRITE_TEXT_ALIGNMENT`: `LEADING` 0, `TRAILING` 1, `CENTER` 2, `JUSTIFIED` 3),
-  still after the width is set to the widest line.
+  `CENTER` (DirectWrite `DWRITE_TEXT_ALIGNMENT`: `LEADING` 0 for Left and Justified, `TRAILING` 1,
+  `CENTER` 2), still after the width is set to the widest line.
 - The outline, the background box and the emojis follow the lines as drawn: they are drawn from the
   same layout.
 
 ### Justified
 
-- Every line is **stretched to the widest line's width** by widening its spaces, **except the last
-  line of a paragraph**, aligned **left** — the usual rule (Word, DirectWrite).
+- Every line is **stretched to the text's widest line** — across every paragraph — by widening its
+  spaces between words, **except the last line of a paragraph**, aligned **left** — the usual rule
+  (Word, DirectWrite). The spaces typed before a line's first word or after its last are left as they
+  are.
 - A **paragraph** ends at a **blank line** or at the end of the text: the lines between two blank
   lines are stretched, the last one of each left-aligned. A blank line itself draws nothing.
 - A line with **no space** (a single word, an emoji alone) cannot be stretched: it is **left-aligned**,
   as a paragraph's last line is — its letters are never spread.
-- **Technical risk**: the text layers never wrap (`NO_WRAP`), every line ends with a line break typed
-  by the user, and DirectWrite does not justify a line ending a paragraph — `JUSTIFIED` alone would
-  likely leave every line left-aligned. The implementation checks it first; if so, the lines are
-  stretched by the app:
-  - either the line breaks inside a paragraph are given to DirectWrite as **line separators**
-    (U+2028), which end a line without ending the paragraph, if DirectWrite justifies before them;
-  - or each line to stretch gets its extra width spread over its spaces with
-    `IDWriteTextLayout1.SetCharacterSpacing` on each space's range, the line's width read from
-    `GetLineMetrics` — the alignment then `LEADING`.
-
-  Whichever works is kept, and reported as an implementation choice.
+- **Stretched by the app** (`TextRaster.Justify`), never by DirectWrite's `JUSTIFIED`, which leaves a
+  line ended by a line break — every line of a text layer, which never wraps — as it is: the layout's
+  clusters (`GetClusterMetrics`) give each line's width and its spaces between words, and each such
+  space of a line to stretch gets an equal share of the missing width as trailing spacing
+  (`IDWriteTextLayout1.SetCharacterSpacing`), the alignment `LEADING`.
 
 ---
 
 ## UI
 
-- **Four icon buttons** in the Layers options, on the font line, **right after Bold**: Left, Center,
-  Right, Justified — one pressed at a time, the selected text layer's alignment.
-- Each is a toggle-looking button (a `CheckBox` with `Appearance.Button`, or a button drawn pressed),
-  its icon drawn by `EffectIcons` like the layer list's — four lines of varying lengths, aligned as the
-  button says, the classic pictograms — its name in its tooltip (`Align left`, `Center`,
-  `Align right`, `Justify`).
+- **Four icon buttons** in the Layers options, on the font line, **after Bold, Italic and ALL CAPS**,
+  before the color: Left, Center, Right, Justified — one pressed at a time, the selected text layer's
+  alignment.
+- Each is a `CheckBox` with `Appearance.Button` and `AutoCheck` off — pressed by
+  `UpdateLayerOptions` only, so clicking the pressed one leaves it pressed — its icon drawn by
+  `EffectIcons.Alignment` at the monitor's DPI with the layer list's — four lines of varying lengths,
+  aligned as the button says, the classic pictograms — its name in its tooltip (`Align left`,
+  `Center`, `Align right`, `Justify`, the last one saying what a paragraph is).
 - A click goes through `ChangeLayerStyle`, as every style control does: the text layer drawn again,
   the Layers turned on (RULES.md § Global Toolbar: acting on any option activates the effect).
-- Enabled and synced like the other style controls (`MainForm.Layers.cs` around line 370 and 395):
-  disabled without a text layer selected, showing `LayerTextStyle.Default` then.
+- Enabled and synced like the other style controls (`UpdateLayerOptions`): disabled without a text
+  layer selected, showing a new text's style then.
 
 ---
 
@@ -139,6 +140,29 @@ Go given for code, unit tests and documentation (no test project: nothing to wri
 worktree, `.claude/worktrees/text-layer-alignment` on `feature/text-layer-alignment`, created from
 `main` after the text styles (`20261029-text-layer-style-presets.md`) were merged into it.
 
+### Iteration 4 — 2026-10-29 — 🧭 Implementation choices
+
+- **The text styles were merged into `main` before the go**: `LayerTextStyle` had gained Italic, ALL
+  CAPS, a shadow and its JSON (`text-styles.json`). The alignment followed RULES.md § Text Styles: its
+  `alignment` key in `ToJson` / `FromJson`, and a word in the style strip's tooltip — only when it is
+  not Center, the default, so the built-in styles' tooltips do not change.
+- **Justified stretched by the app**, the second fallback of the design: `SetCharacterSpacing` on the
+  spaces between words, the line widths read from the clusters (`GetClusterMetrics`) rather than
+  `GetLineMetrics`, which gives no width. DirectWrite's `JUSTIFIED` and the U+2028 route were not
+  tried: every line of a text layer ends a DirectWrite paragraph, and the clusters gave the paragraph
+  and the no-space rules in one place.
+- **Stretched to the text's widest line**, across paragraphs — the box's width — rather than the
+  paragraph's own widest line, so the right edge is straight for the whole text.
+- **Spaces before the first word or after the last** of a line are not widened: only the spaces
+  between words are.
+- **The buttons stand after ALL CAPS**, not right after Bold: Italic and ALL CAPS, merged since, sit
+  after Bold, and the alignment buttons close the text's shape settings before the color.
+- **Checked by a scratch program**, outside the repository: the four alignments rendered through
+  `TextRaster.Render` — the same box for each, the right and justified lines as designed (two
+  paragraphs, a one-word line, an emoji) — and the `alignment` key read back, a missing one giving
+  Center.
+- No project rule broken.
+
 ---
 
 ## Implementation Log
@@ -148,10 +172,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project |
-| README | | | |
-| Glossary | | | |
+| Code | 3, 4 | 2026-10-29 | The alignment in the style, the layout, the four buttons |
+| Unit tests | 3 | 2026-10-29 | Not applicable: no test project; checked by a scratch program |
+| README | 3 | 2026-10-29 | `README.md`, `README.fr.md` |
+| Glossary | 3 | 2026-10-29 | `GLOSSARY.md`, `GLOSSARY.fr.md`: Text layer, Text style |
 
 ---
 
