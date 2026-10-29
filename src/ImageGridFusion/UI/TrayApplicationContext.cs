@@ -32,10 +32,10 @@ internal sealed class TrayApplicationContext : ApplicationContext
         // Not set as MainForm: Application.Run would show it, and closing it would end the app.
         _form.FormClosed += OnFormClosed;
 
-        MenuIcons.Set(_menu.Items.Add("Open", null, (_, _) => ShowForm()), MenuIcons.App);
+        UiIcons.Set(_menu.Items.Add("Open", null, (_, _) => ShowForm()), UiIcons.App);
         _menu.Items.Add(new ToolStripSeparator());
-        MenuIcons.Set(_menu.Items.Add("Quit", null, (_, _) => Quit()), MenuIcons.Quit);
-        MenuIcons.Attach(this._menu);
+        UiIcons.Set(_menu.Items.Add("Quit", null, (_, _) => Quit()), UiIcons.Quit);
+        UiIcons.Attach(this._menu);
         _tray = new NotifyIcon
         {
             Icon = new Icon(_form.Icon!, SystemInformation.SmallIconSize),

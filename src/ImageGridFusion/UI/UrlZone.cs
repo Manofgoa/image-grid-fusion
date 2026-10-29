@@ -77,13 +77,13 @@ internal sealed class UrlZone : Panel
         this._preview.MouseMove += OnPreviewMouseMove;
         this._preview.MouseUp += (_, _) => this._pressedAt = null;
         this._menu.Items.AddRange([
-            this.MenuItem(FileExplorerPanel.CopyText, FileAction.Copy, MenuIcons.Copy),
-            this.MenuItem(FileExplorerPanel.CopyPngText, FileAction.CopyPng, MenuIcons.Png),
-            this.MenuItem(FileExplorerPanel.CopyFullPathText, FileAction.CopyFullPath, MenuIcons.CopyPath),
+            this.MenuItem(FileExplorerPanel.CopyText, FileAction.Copy, UiIcons.Copy),
+            this.MenuItem(FileExplorerPanel.CopyPngText, FileAction.CopyPng, UiIcons.Png),
+            this.MenuItem(FileExplorerPanel.CopyFullPathText, FileAction.CopyFullPath, UiIcons.CopyPath),
             new ToolStripSeparator(),
-            this.MenuItem(FileExplorerPanel.OpenFileLocationText, FileAction.OpenFileLocation, MenuIcons.OpenFolder),
+            this.MenuItem(FileExplorerPanel.OpenFileLocationText, FileAction.OpenFileLocation, UiIcons.OpenFolder),
         ]);
-        MenuIcons.Attach(this._menu);
+        UiIcons.Attach(this._menu);
         this._menu.Opening += (_, e) => e.Cancel = this._preview.State != PreviewState.Ready;
         this._preview.ContextMenuStrip = this._menu;
 
@@ -199,6 +199,7 @@ internal sealed class UrlZone : Panel
         this._layout.ColumnStyles[0].Width = this.LogicalToDeviceUnits(PreviewSide + PreviewGap);
         this._preview.Margin = new Padding(0, 0, this.LogicalToDeviceUnits(PreviewGap), 0);
         this.Padding = new Padding(0, this.LogicalToDeviceUnits(SeparatorBand), 0, 0);
+        UiIcons.SetImage(this._load, UiIcons.Download, this.LogicalToDeviceUnits(UiIcons.LogicalSize));
         this.Invalidate();
     }
 
@@ -521,10 +522,10 @@ internal sealed class UrlZone : Panel
         this._toolTip.SetToolTip(this._caption, text);
     }
 
-    private ToolStripMenuItem MenuItem(string text, FileAction action, MenuIcon icon)
+    private ToolStripMenuItem MenuItem(string text, FileAction action, UiIcon icon)
     {
         var item = new ToolStripMenuItem(text, null, (_, _) => this.RequestFileAction(action));
-        MenuIcons.Set(item, icon);
+        UiIcons.Set(item, icon);
         return item;
     }
 
