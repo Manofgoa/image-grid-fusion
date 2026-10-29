@@ -62,122 +62,12 @@ Alt — the keyboard's labels), its headings and *Does* cells in French, with th
 
 ## Shortcut Inventory
 
-What the code does today (exploration, 2026-10-29), the rows to write. The wording is final at
-implementation; the sections follow the contexts.
-
-### Anywhere
-
-| Shortcut | Does |
-|---|---|
-| Ctrl+Z | Undo |
-| Ctrl+Y, Ctrl+Shift+Z | Redo |
-| Ctrl+V | Paste files, an image or a text into a cell |
-| Ctrl+C | Copy the grid (PNG / MP4 / GIF) — the selected file when the explorer's tiles have the focus |
-| Ctrl+S | Save the grid |
-| Ctrl+N | Clear all |
-| Ctrl+R / Ctrl+Shift+R | Turn the image under the mouse — else the selected one — a quarter turn clockwise / counter-clockwise |
-| Ctrl+F / Ctrl+Shift+F | Go to the explorer's search box; pressed again there, next / previous view |
-| Space | Play / Pause, unless a text field has the focus |
-| F1 *(new)* | Show the keyboard shortcuts — in a text field too |
-
-In a text field (search box, Frames fields, layer text), Ctrl+V / C / Z / Y, Delete and Escape act on
-its text.
-
-### Selected cell or layer
-
-| Shortcut | Does |
-|---|---|
-| Arrows | Move the selected image 1 px, the preview focused |
-| Ctrl+arrows | Move it 10 px |
-| Shift+arrows | Move it 1 px, ignoring the magnetic stops |
-| Ctrl+Shift+arrows | Jump to the next stop |
-| Delete | Remove the selected layer, else the selected cell's image |
-| Escape | Close the layer edit view, else deselect |
-
-### Preview — mouse
-
-| Shortcut | Does |
-|---|---|
-| Wheel | Zoom the image under the mouse, around the point under it |
-| Ctrl+wheel | Finer zoom steps |
-| Shift held while dragging an image | Ignore the magnetic stops |
-| Double-click on a separator | Put it back in its default place |
-
-### Crop and Blur bars
-
-| Shortcut | Does |
-|---|---|
-| Wheel | Grow / shrink the zone 5 % a notch, its ratio kept, around its center |
-| Ctrl+wheel | Same, around the point under the mouse |
-| Alt+wheel | Zoom the image instead |
-| Ctrl+Alt+wheel | Finer zoom of the image |
-
-### Layers (Layers tab selected)
-
-| Shortcut | Does |
-|---|---|
-| Wheel over the selected layer | Grow / shrink it 5 % a notch |
-| Shift+wheel over the selected layer | Turn it 5° a notch |
-| Shift held while dragging the round handle | Turn by 15° steps |
-| Double-click on the selected layer | Open its edit view |
-| Double-click outside it, in the edit view | Close the edit view |
-
-### Pick and eyedropper
-
-| Shortcut | Does |
-|---|---|
-| Shift+click (Pick armed) | Add a point to keep, Pick staying armed |
-| Ctrl+click (Pick armed) | Add a point to leave out, Pick staying armed |
-| Escape (Pick armed) | Cancel Pick |
-| Any key, any button but the left one (eyedropper armed) | Cancel the eyedropper |
-
-### Options
-
-| Shortcut | Does |
-|---|---|
-| Ctrl+wheel over a slider | One step a notch |
-| Wheel / Ctrl+wheel over the Zoom slider | The wheel's zoom steps / its finer ones |
-| Up / Down in a Frames field | ±1 frame |
-| Ctrl+Up / Ctrl+Down in a Frames field | ±5 frames |
-| Wheel / Ctrl+wheel over a Frames field | ±1 / ±5 frames a notch |
-| Enter / Escape in a Frames field | Apply / give back the value |
-
-### File explorer — tiles
-
-| Shortcut | Does |
-|---|---|
-| Arrows | Move between the tiles |
-| PageUp / PageDown | Move by a page |
-| Home / End | First / last tile |
-| Enter, double-click | Bring the file into a cell, or open the folder / group |
-| Backspace, Alt+Up | Parent folder |
-| F2 | Rename the selected group (People view) |
-| Ctrl+C | Copy the selected file |
-| Ctrl+wheel | Larger / smaller tiles |
-
-### File explorer — search box and URL zone
-
-| Shortcut | Does |
-|---|---|
-| Enter | Bring the first result into a cell |
-| Down | Go to the first tile |
-| Alt+Up | Parent folder |
-| Escape | Give the focus back to the preview |
-| Enter in the URL field | Load the URL |
-
-### Dialogs
-
-| Shortcut | Does |
-|---|---|
-| Ctrl+Enter in a preset's description | Save the preset |
-| Enter / Escape | OK / Cancel |
-
-### Windows
-
-The standard behaviour valid everywhere, inventoried at implementation: Tab / Shift+Tab (next /
-previous control), Alt+F4 (close the window), Alt+Space (window menu), a text field's editing keys
-(Ctrl+A, Ctrl+Backspace…), the plain wheel scrolling a list, the layout strip or the options. Those
-tied to one context (the wheel scrolling the tiles, the layout strip) go in its section.
+The inventory lives in **`SHORTCUTS.md`** itself (§ One place per fact): eleven sections — Anywhere,
+Selected Image, Mouse Over the Grid, Crop and Blur Bars, Layers, Pick and Eyedropper, Options, File
+Explorer, Search Box and URL Zone, Dialogs, Windows — every row read from the code on 2026-10-29. Beside the
+exploration's first list, the code gave: **Ctrl+C** copying the selected cell or layer alone (the grid
+with nothing selected), **Ctrl+Shift+C** copying the grid, **Ctrl held while dragging a layer** leaving a
+copy, and the shortcuts window's own keys.
 
 ---
 
@@ -202,6 +92,12 @@ tied to one context (the wheel scrolling the tiles, the layout strip) go in its 
   `UI/NameDialog.cs` but **resizable**, the list scrolling: per section its heading in bold, per row
   the keys as key caps (a rounded box per `<kbd>`) in a left column as wide as the widest, what it
   does on the right, wrapped.
+- Each **section has its own keys' column** — the widest of its rows, at most 45 % of the width — so a
+  long row elsewhere does not push every description away; a `+` glued to a word (`<kbd>Ctrl</kbd>+arrow`)
+  is drawn apart, as between two keys. The measures are taken once per font.
+- Its own keys: Escape closes it; ↑ ↓, PageUp PageDown, Home End scroll it — listed in `SHORTCUTS.md`
+  § Dialogs like any other.
+- The main window hidden in the tray, it closes: owned, it would otherwise stay alone on screen.
 - Out of the undo history; nothing persisted.
 
 ---
@@ -234,7 +130,9 @@ A new section of `RULES.md`, **§ Keyboard Shortcuts**:
 - A **link to `SHORTCUTS.md`** near the top (after the glossary's line), and a mention of the window
   (F1, ⚙ menu).
 - The README stays readable alone: what a feature does is said there, how to trigger it by key is in
-  `SHORTCUTS.md`.
+  `SHORTCUTS.md`. The **wheel stays named** where it is the feature's own gesture (the zoom, the crop's
+  zone); its modifiers and the step sizes go to `SHORTCUTS.md` (the tile size's 15 % a notch moved there).
+- The glossary names the window's key through a link too.
 
 ---
 
@@ -275,6 +173,8 @@ Checked by hand in the running app:
       `SHORTCUTS.md` (§ README)
 - [x] ~~Windows' own behaviour listed?~~ → Yes, all of it (§ Scope)
 - [x] ~~A glossary term for the window?~~ → Yes, *Shortcuts window* / *fenêtre des raccourcis*
+- [ ] `GLOSSARY.md` / `.fr.md` and `RULES.md` still name keys in several rows: trim them to links to
+      `SHORTCUTS.md` too, as the rule's *one place per fact* now asks? *(raised by the run, Iteration 5)*
 
 ---
 
@@ -321,6 +221,30 @@ No question left: the design is complete.
 Go given: code, unit tests and documentation, in a worktree (`feature/shortcuts-list`). The scope is
 frozen as the sections above stand.
 
+### Iteration 5 — 2026-10-29 — 🧭 Implementation choices
+
+No project rule broken.
+
+- **Inventory checked against the code**, not the exploration's list alone: Ctrl+C (the selection alone),
+  Ctrl+Shift+C (the grid) and Ctrl + drag of a layer (a copy) added. The inventory section now points to
+  `SHORTCUTS.md` rather than repeating it.
+- **The window's own keys** — Escape, ↑ ↓, PageUp PageDown, Home End scrolling — added, and listed in
+  `SHORTCUTS.md` § Dialogs per the new rule. Space does not scroll it.
+- **A keys' column per section**, at most 45 % of the width, instead of one for the whole list: one long
+  row (Pick, Windows) pushed every description to the middle. Measures cached per font; a glued `+`
+  drawn apart.
+- **The window closes when the main window hides** to the tray, rather than staying alone on screen.
+- **Parser**: `UI/ShortcutList.Parse` — `##` headings, table rows, header and separator skipped, `<kbd>`
+  read as keys, `*` and `` ` `` stripped, HTML entities decoded; `SHORTCUTS.md` linked into the csproj
+  with `Link` so it shows in the IDE.
+- **README trimming**: the wheel kept named where it is the feature's gesture, its modifiers and step
+  sizes moved out; *as `Ctrl+C` in the Explorer* became *as Copy in the Explorer*; the tile size's 15 % a
+  notch moved into `SHORTCUTS.md`. 40 lines changed in each language, in step.
+- **Glossary**: the window's key linked, not named, per the rule's *one place per fact*.
+- **Not done — out of the frozen scope**: `GLOSSARY.md` / `.fr.md` and `RULES.md` still name keys in
+  several rows (the undo history's Ctrl+Z, the layer edit view's Escape…); the rule now says the other docs
+  link instead. Offered as an Open Question.
+
 ---
 
 ## Implementation Log
@@ -330,12 +254,12 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project in the repository |
-| SHORTCUTS.md / SHORTCUTS.fr.md | | | |
-| RULES.md | | | |
-| README | | | |
-| Glossary | | | |
+| Code | 4, 5 | 2026-10-29 | `UI/ShortcutList.cs`, `UI/ShortcutsWindow.cs`, F1 and the ⚙ entry in `MainForm`, the embedded resource |
+| Unit tests | 4 | 2026-10-29 | None — no test project in the repository; checked in the running app (F1 opens it in ~70 ms, Escape closes it) |
+| SHORTCUTS.md / SHORTCUTS.fr.md | 4, 5 | 2026-10-29 | Eleven sections, both languages in step |
+| RULES.md | 4 | 2026-10-29 | § Keyboard Shortcuts |
+| README | 4, 5 | 2026-10-29 | Trimmed to links, both languages |
+| Glossary | 4, 5 | 2026-10-29 | *Shortcuts window* / *fenêtre des raccourcis* |
 
 ---
 
