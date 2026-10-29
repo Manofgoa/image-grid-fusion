@@ -11,8 +11,8 @@
 
 Three improvements to moving a layer on the grid (`workfiles/20261029-layers.md`):
 
-1. The **rotation handle** — the round knob above the selected layer's top edge — shows a **rotation
-   icon**, so it reads as "turn" rather than as a plain dot.
+1. Over the **rotation handle** — the round knob above the selected layer's top edge — the **mouse cursor**
+   becomes a **rotation cursor**, so the knob reads as "turn"; the green knob itself is unchanged.
 2. **Placement guides**: while a layer is dragged, dashed guides show where it lines up with the
    **grid** (its center and edges) and the **cells** (their edges and centers), and the layer
    **snaps** onto them, as an image does in its cell.
@@ -26,16 +26,18 @@ Components: `UI/GridPreview.Layers.cs` (the layer's mouse gestures, the outline 
 
 ---
 
-## Rotation Icon
+## Rotation Cursor
 
 Today (`PaintLayerSelection`): a stem from the middle of the top edge, then a knob — a disc of
 `RotationKnob` = 7 logical px radius, filled green (`HelperColor`), white while hovered or dragged, over
-the black halo. The cursor over it is `Cursors.Hand`.
+the black halo. The cursor over it is `Cursors.Hand` (`LayerMouseMove`).
 
-- The knob carries a **rotation icon** — style to choose (Open Questions).
-- Its hit area grows with it (`OnRotationHandle`: the knob's radius + 3 px).
-- Everything else stays: the stem, the colours (green, white while hovered or dragged), the halo, the
-  gesture (Shift snapping to 15°), preview only.
+- The **cursor** over the knob, and for as long as the knob is dragged, is a **rotation cursor**: a
+  circular arrow, drawn like the system cursors — white with a black outline — its hot spot at its
+  center (Q&A #5).
+- Windows has no such cursor: the app makes it, at the monitor's DPI so it stays sharp, once.
+- The **green knob is not touched**: no icon drawn on it, same size, same hit area, same colours (green,
+  white while hovered or dragged), same gesture (Shift snapping to 15°).
 
 ---
 
@@ -106,7 +108,7 @@ There is no test project (CONTRIBUTING.md): the change is checked by hand in the
 - [x] ~~Do the guides snap the layer?~~ → Yes, magnetic like an image in its cell, Shift ignoring them, shown from the approach distance (Q&A #1)
 - [x] ~~Which grid references give a guide?~~ → The grid's center and edges, and every cell's edges and center (Q&A #2)
 - [x] ~~What is a rotated layer's top / middle / bottom?~~ → Its bounding rectangle, its middle the layer's center (Q&A #3)
-- [ ] Rotation icon: which style on the knob?
+- [x] ~~Rotation icon: which style on the knob?~~ → None on the knob: the mouse cursor becomes a rotation cursor over it (Q&A #5)
 - [ ] Snapping model: by proximity (the layer follows the mouse, snapped while a reference is within a few pixels of a line) or by resistance (held on a line until dragged 24 px past it, as the cells' pan)?
 - [ ] Approach distance: a share of the grid, of the cell under the layer, or a fixed number of pixels?
 - [ ] Extent of a guide: across the whole grid, or only the stretch it aligns (the moved layer to the farthest aligned one, a cell's line along that cell)?
@@ -129,6 +131,13 @@ The exploration found the rotation knob a 7 px disc (`PaintLayerSelection`) and 
 (`PanMagnet`) built for one image between two edges and a center, not for many lines: the layers get a
 snap of their own, drawn with the cells' guide pen, approach opacity and gap bars. Five questions left
 open: the icon's style, the snapping model, the approach distance's base, a guide's extent, the wheel.
+
+### Iteration 2 — 2026-10-29
+
+Asked to choose among three icons drawn on the knob, the user wants the **cursor** to take the rotation
+image, not the green drawing (Q&A #5): § Rotation Icon becomes § Rotation Cursor — a rotation cursor
+over the knob and while it is dragged, the knob unchanged. The four other questions were not answered
+and are asked again.
 
 ---
 
@@ -155,7 +164,7 @@ Questions asked by the agent during design, with user responses.
 | 2 | Which grid references give a guide? | The grid and the cells: the grid's center and edges, every cell's edges and center | 2026-10-29 |
 | 3 | What counts as a rotated layer's top / middle / bottom? | Its bounding rectangle, as seen on screen | 2026-10-29 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward | 2026-10-29 |
-| 5 | Rotation icon: which style on the knob? | | |
+| 5 | Rotation icon: which style on the knob? | The cursor takes the rotation image, not the green drawing | 2026-10-29 |
 | 6 | Snapping model: proximity or resistance? | | |
 | 7 | Approach distance: a share of the grid, of the cell, or fixed pixels? | | |
 | 8 | Extent of a guide: the whole grid or the stretch it aligns? | | |
