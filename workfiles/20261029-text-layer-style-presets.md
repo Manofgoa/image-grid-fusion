@@ -61,8 +61,9 @@ The **alignment** of several lines stays out of scope (Q&A #11): they stay cente
   | **Halo** | A soft blur of the text in the shadow's color, all around the letters — imgflip's look |
   | **Drop** | The same blur, offset down-right at 45° |
 
-  - Its **size** is a fraction of a line, as the outline's width: the halo's blur radius; for the
-    drop, its offset, blurred over half of it.
+  - Its **size** is a fraction of a line, as the outline's width: the halo grows the letters by half
+    of it, then blurs them over the other half; the drop falls by it down-right at 45°, blurred over
+    half of it. Its mask is drawn apart and blurred in three box blurs (`TextRaster.Shadow`).
   - **Independent of the outline** (Q&A #9): both may be on; the order from the bottom is the box,
     the shadow, the outline, the letters. The emojis cast a shadow as plain shapes, as they are
     outlined.
@@ -82,13 +83,13 @@ Shipped in the code, in this order (Q&A #3). Values proposed — fine-tuned on s
 | **Meme** | Impact | | | ✅ | White | | Halo, black, 10 % | |
 | **Subtitle** | Segoe UI | | | | White | | | Black, 60 % |
 | **Label** | Segoe UI | ✅ | | | Black | | | White, 100 % |
-| **Neon** | Arial Black | ✅ | | | Fluorescent yellow (255, 235, 0) | Black, 14 % | | |
+| **Neon** | Segoe UI | ✅ | | | Fluorescent yellow (255, 235, 0) | Black, 14 % | | |
 | **Subtle** | Segoe UI | | | | White | Black, 3 % | | |
 
 - **Default** is the app's own default style (`LayerTextStyle.Default`), listed first so a text can
   always be brought back to it — the agent's addition (Iteration 1), kept.
-- Impact and Arial Black ship with Windows. A style whose font is missing draws in the font
-  DirectWrite falls back to, as a font typed in by hand would.
+- Impact ships with Windows. A style whose font is missing draws in the font DirectWrite falls back
+  to. Neon was to be in Arial Black: DirectWrite knows no family of that name (Iteration 4).
 - **Fixed** (Q&A #7): no rename, no delete, no replace; their names are reserved.
 
 ---
@@ -132,8 +133,9 @@ Shipped in the code, in this order (Q&A #3). Values proposed — fine-tuned on s
 
 ## UI
 
-**A strip of style thumbnails** (Q&A #5, layout A), in the Layers options, between the text field
-and the text's settings lines:
+**A strip of style thumbnails** (Q&A #5, layout A), in the Layers options, after the text field,
+**above the font and outline lines** and as wide as they are (`TextStyleStrip`, in a panel scrolled
+sideways):
 
 - One **thumbnail per style**, in the option thumbnails' format (RULES.md § Options Toolbar,
   `ThumbnailStrip`): **"Aa"** drawn by `TextRaster` in the style — "AA" under ALL CAPS — over the
@@ -148,9 +150,11 @@ and the text's settings lines:
 The three new settings join the text's settings lines:
 
 - **Italic** and **ALL CAPS** checkboxes next to *Bold*.
-- The **Shadow** on a line of its own, like the outline's: its checkbox, two option thumbnails
-  **Halo** and **Drop**, its color split button (RULES.md § Color Options, its eyedropper and
-  sample), its size slider. Acting on any of them turns the shadow on, as the outline's controls do.
+- The **Shadow** on two lines **under the box's lines**: its checkbox and its color split button
+  (RULES.md § Color Options, its eyedropper and sample), then two option thumbnails **Halo** and
+  **Drop** (`ShadowKindStrip`) and its size slider. Acting on any of them turns the shadow on, as the
+  outline's controls do — a click on the pressed kind included.
+- While no text layer is selected, the settings show the style a new text would take.
 
 ---
 
@@ -200,6 +204,9 @@ no unit test is created or updated. The run checks by hand:
       them. Added to the style here, or out of scope?~~ → Out of scope (Q&A #11)
 - [x] ~~**Sequencing**: this run waits for the Layers session's run to be delivered, or runs alongside
       it (same files)?~~ → After its delivery (Q&A #12)
+- [ ] The font drop-down lists GDI family names that DirectWrite does not know (*Arial Black*, *Segoe UI
+      Black*…), drawn in a fallback font: list DirectWrite's families instead, or map them? (found in
+      Iteration 4, out of this scope)
 
 ---
 
@@ -252,6 +259,37 @@ The Layers session delivered its Iterations 12–14 (`bbce6d7`, `b592c1b`, `b71a
 closed, the working copy clean: the sequencing constraint (Q&A #12) is met. Go given (Q&A #14) for the
 code and the documentation, in a worktree on `feature/text-layer-style-presets`.
 
+### Iteration 4 — 2026-10-29 — 🧭 Implementation choices
+
+No project rule broken. Choices the frozen design did not state, or could not hold as written:
+
+- **The strip sits above the font and outline lines**, as wide as them, rather than in a column of its
+  own between the text field and the settings: the options row is not wrapped, and a column more
+  would push the box's settings off a 1920 px window. With the six built-in styles and Save style… it
+  shows whole; more styles scroll it sideways.
+- **The shadow's lines sit under the box's lines** rather than on a line beside the outline's, for the
+  same width: the box's column had the height free.
+- **Neon is in Segoe UI**, not Arial Black: DirectWrite resolves families by their typographic name, and
+  *Arial Black* is not one, so the style drew in its fallback anyway. The same holds for any such GDI
+  name picked in the font drop-down (*Arial Black*, *Segoe UI Black*…): a gap of the Layers workfile,
+  not fixed here — offered as an open question.
+- **Italic**: the bitmap's margin grows by 0.2 of a line, so a leaning last letter is not cut.
+- **The shadow is cast by the letters and their outline**, the emojis as plain shapes; the halo grows
+  the shape by half its size and blurs it over the other half; the drop falls by its size at 45° and is
+  blurred over half of it. With a shadow, the text is drawn in three passes (box, mask, outline and
+  letters) put together in memory; without one, in a single pass as before.
+- **Renaming to another of the user's styles' names is refused**, rather than merging them.
+- **`text-styles.json` unreadable**: the status line says so and only the built-in styles show; the next
+  save writes the file anew, the unreadable one lost.
+- `ThumbnailStrip` gained `SetValues`, `Values` and `TryValueAt`, for a strip whose items change and its
+  context menu.
+
+**Checked by hand**: every built-in style, and a Meme in Drop and italic, rendered by `TextRaster` over two
+backgrounds (emojis in color, nothing cut); in the app, the options' layout, a text added, Meme applied —
+its thumbnail pressed, ALL CAPS checked, the field keeping the text as typed. **Not checked**: Save style…,
+rename, replace, delete, a restart, the undo step, an export — the app was driven by simulated clicks in
+screen coordinates, and the user's own window stood in front of it: the checks were stopped there.
+
 ---
 
 ## Implementation Log
@@ -261,9 +299,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project in the repository |
-| README | | | |
+| Code | 4 | 2026-10-29 | Renderer, styles and their file, strips, options |
+| Unit tests | 4 | 2026-10-29 | No test project in the repository: checked by hand, partly (Iteration 4) |
+| README | 4 | 2026-10-29 | README and README.fr, GLOSSARY and GLOSSARY.fr, RULES § Text Styles |
 
 ---
 
