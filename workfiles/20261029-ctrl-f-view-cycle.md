@@ -125,6 +125,11 @@ behaviour, the following ones (search box focused) cycle Folders → People → 
 backward, People skipped while the face analysis is off; `ExplorerMode` reordered, Folders the
 default view at the first launch; the drop-down owner-drawn with a coloured emoji glyph per entry.
 
+### Iteration 2 — 2026-10-29 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree (`.claude/worktrees/ctrl-f-view-cycle`,
+branch `feature/ctrl-f-view-cycle`, from `main` at `7e4b44a`).
+
 ---
 
 ## Implementation Log
