@@ -90,8 +90,18 @@ internal sealed partial class FileExplorerPanel : Panel
     // The sort drop-down's width in logical pixels: its longest entry and the arrow.
     private const int SortWidth = 92;
 
-    // The views drop-down's width in logical pixels: its longest entry and the arrow.
-    private const int ModesWidth = 84;
+    // The views drop-down's width in logical pixels: its icon, its longest entry and the arrow.
+    private const int ModesWidth = 112;
+
+    // The views drop-down's icons, in ExplorerMode's order (workfiles/20261029-ctrl-f-view-cycle.md § Drop-Down
+    // Icons): Segoe UI Emoji glyphs drawn in a colour of their own, as the tile tooltip's — GDI draws no
+    // full-colour emoji.
+    private static readonly (string Icon, Color Color)[] ModeIcons =
+    [
+        ("\U0001F4C1", Color.FromArgb(214, 150, 0)),
+        ("\U0001F465", Color.FromArgb(202, 80, 16)),
+        ("❤", Color.FromArgb(232, 17, 35)),
+    ];
 
     // The width of a face in the People submenu of a file's tile, in logical pixels, at the tiles' 4:3.
     private const int PhotoFaceWidth = 40;
@@ -103,8 +113,9 @@ internal sealed partial class FileExplorerPanel : Panel
     private readonly Button _expand = new() { Text = "«", Dock = DockStyle.Fill, Visible = false, Margin = Padding.Empty };
     private readonly TableLayoutPanel _searchRow = new() { ColumnCount = 5, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
     // The views drop-down (workfiles/20261027-face-detection.md § People View): its entries in
-    // ExplorerMode's order.
-    private readonly ComboBox _modes = new() { DropDownStyle = ComboBoxStyle.DropDownList, Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0) };
+    // ExplorerMode's order, each after its icon.
+    private readonly ComboBox _modes = new() { DropDownStyle = ComboBoxStyle.DropDownList, DrawMode = DrawMode.OwnerDrawFixed, Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0) };
+    private readonly Font _modeIconFont;
 
     // The search criteria (workfiles/20261007-search-options.md): pressed, the search looks in the
     // relative paths, in the content texts; both at start-up, never none, not remembered. Toggled by
@@ -297,6 +308,7 @@ internal sealed partial class FileExplorerPanel : Panel
         this._groupTitle.Font = new Font(this.Font.FontFamily, this.Font.SizeInPoints + 4f, FontStyle.Bold);
         _smallerGlyph.Font = new Font("Segoe UI Symbol", Font.SizeInPoints);
         _largerGlyph.Font = new Font("Segoe UI Symbol", Font.SizeInPoints + 6f);
+        this._modeIconFont = new Font("Segoe UI Emoji", this.Font.SizeInPoints);
         ApplyWidth();
 
         _content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -430,6 +442,7 @@ internal sealed partial class FileExplorerPanel : Panel
         this._toolTip.SetToolTip(this._similarClear, "Back to the search");
         _search.KeyDown += OnSearchKeyDown;
         this._modes.SelectionChangeCommitted += (_, _) => this.ChangeMode((ExplorerMode)this._modes.SelectedIndex);
+        this._modes.DrawItem += this.DrawModeItem;
         this._byName.Click += (_, _) => this.ToggleCriterion(this._byName, this._byContent);
         this._byContent.Click += (_, _) => this.ToggleCriterion(this._byContent, this._byName);
         _breadcrumb.UpRequested += (_, _) => GoUp();
@@ -1351,6 +1364,7 @@ internal sealed partial class FileExplorerPanel : Panel
             _title.Font.Dispose();
             _smallerGlyph.Font.Dispose();
             _largerGlyph.Font.Dispose();
+            this._modeIconFont.Dispose();
         }
 
         base.Dispose(disposing);
@@ -2992,6 +3006,33 @@ internal sealed partial class FileExplorerPanel : Panel
         while (mode == ExplorerMode.People && !this._faceAnalysis);
 
         return mode;
+    }
+
+    /// <summary>
+    /// An entry of the views drop-down — in its list and in its closed box alike: its icon in its colour, then
+    /// its name; both faded while the drop-down is disabled.
+    /// </summary>
+    private void DrawModeItem(object? sender, DrawItemEventArgs e)
+    {
+        e.DrawBackground();
+        if (e.Index < 0)
+        {
+            return;
+        }
+
+        var mode = (ExplorerMode)this._modes.Items[e.Index]!;
+        var (icon, color) = ModeIcons[(int)mode];
+        bool disabled = (e.State & DrawItemState.Disabled) != 0 || !this._modes.Enabled;
+        bool selected = (e.State & DrawItemState.Selected) != 0;
+        var textColor = disabled ? SystemColors.GrayText : selected ? SystemColors.HighlightText : e.ForeColor;
+        const TextFormatFlags flags = TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.VerticalCenter | TextFormatFlags.NoClipping;
+        int gap = this.LogicalToDeviceUnits(3);
+        int iconWidth = TextRenderer.MeasureText(e.Graphics, icon, this._modeIconFont, Size.Empty, flags).Width;
+        var bounds = e.Bounds;
+        TextRenderer.DrawText(e.Graphics, icon, this._modeIconFont, new Rectangle(bounds.X + gap, bounds.Y, iconWidth, bounds.Height), disabled ? SystemColors.GrayText : color, flags);
+        int textLeft = bounds.X + gap * 2 + iconWidth;
+        TextRenderer.DrawText(e.Graphics, mode.ToString(), e.Font ?? this._modes.Font, new Rectangle(textLeft, bounds.Y, Math.Max(0, bounds.Right - textLeft), bounds.Height), textColor, (flags & ~TextFormatFlags.NoClipping) | TextFormatFlags.EndEllipsis);
+        e.DrawFocusRectangle();
     }
 
     /// <summary>What the view changes around the grid: the caption or the breadcrumb, the search box's hint.</summary>
