@@ -26,6 +26,7 @@ internal sealed partial class MainForm
     private readonly Button _layerAddImage = IconButton();
     private readonly Button _layerPaste = IconButton();
     private readonly Button _layerAddText = IconButton();
+    private readonly Button _layerCopy = IconButton();
     private readonly Button _layerEdit = IconButton();
     private readonly Button _layerDelete = IconButton();
     private readonly Button _layerToBack = IconButton();
@@ -132,7 +133,7 @@ internal sealed partial class MainForm
     {
         this._layerList.Height = this.LogicalToDeviceUnits(4 * 34 + 4);
         var iconLine = OptionLine();
-        iconLine.Controls.AddRange([this._layerAddImage, this._layerPaste, this._layerAddText, this._layerEdit, this._layerDelete, this._layerToBack, this._layerLower, this._layerRaise, this._layerToFront]);
+        iconLine.Controls.AddRange([this._layerAddImage, this._layerPaste, this._layerAddText, this._layerCopy, this._layerEdit, this._layerDelete, this._layerToBack, this._layerLower, this._layerRaise, this._layerToFront]);
         var buttons = OptionLine();
         buttons.FlowDirection = FlowDirection.TopDown;
         buttons.Controls.AddRange([this._layerList, iconLine]);
@@ -187,6 +188,7 @@ internal sealed partial class MainForm
         this._toolTip.SetToolTip(this._layerAddImage, "Add image… — lays images, GIFs or videos over the grid, chosen in the file picker; files dropped onto the Layers tab do the same");
         this._toolTip.SetToolTip(this._layerPaste, "Paste — lays the clipboard's image, files or text over the grid");
         this._toolTip.SetToolTip(this._layerAddText, "Add text — lays a text over the grid, typed in the field beside; Win+. opens the emoji panel");
+        this._toolTip.SetToolTip(this._layerCopy, "Copy — the selected layer alone as a PNG: its effects but the background, transparent around it (Ctrl+C)");
         this._toolTip.SetToolTip(this._layerDelete, "Delete — removes the selected layer (Delete)");
         this._toolTip.SetToolTip(this._layerToBack, "To back — puts the selected layer under every other");
         this._toolTip.SetToolTip(this._layerLower, "Lower — puts the selected layer one place lower");
@@ -203,6 +205,7 @@ internal sealed partial class MainForm
         this._layerAddText.Click += (_, _) => this.AddTextLayer();
         this._layerEdit.Click += (_, _) => this.ToggleLayerEdit();
         this._layerDelete.Click += (_, _) => this._preview.RemoveSelectedLayer();
+        this._layerCopy.Click += (_, _) => this.CopyAlone(this._preview.RenderSelectedAlone, "Layer");
         this._layerList.LayerPicked += (_, index) => this._preview.SelectLayer(index);
         this._layerList.VisibilityClicked += (_, index) => this.ToggleLayerVisibility(index);
         this._preview.LayerEditChanged += (_, _) =>
@@ -412,7 +415,8 @@ internal sealed partial class MainForm
         foreach (var (button, action) in new (Button, EffectIcons.LayerAction)[]
         {
             (this._layerAddImage, EffectIcons.LayerAction.AddImage), (this._layerPaste, EffectIcons.LayerAction.Paste),
-            (this._layerAddText, EffectIcons.LayerAction.AddText), (this._layerDelete, EffectIcons.LayerAction.Delete),
+            (this._layerAddText, EffectIcons.LayerAction.AddText), (this._layerCopy, EffectIcons.LayerAction.Copy),
+            (this._layerDelete, EffectIcons.LayerAction.Delete),
             (this._layerToBack, EffectIcons.LayerAction.ToBack), (this._layerLower, EffectIcons.LayerAction.Lower),
             (this._layerRaise, EffectIcons.LayerAction.Raise), (this._layerToFront, EffectIcons.LayerAction.ToFront),
         })
@@ -465,6 +469,7 @@ internal sealed partial class MainForm
         this._layerAddImage.Enabled = this._layerPaste.Enabled = this._layerAddText.Enabled = enabled;
         this._layerEdit.Enabled = enabled && (editing || layer is { Visible: true });
         this._layerDelete.Enabled = enabled && listed is not null;
+        this._layerCopy.Enabled = enabled && layer is not null;
         this._layerToBack.Enabled = this._layerLower.Enabled = enabled && listed is not null && index > 0;
         this._layerRaise.Enabled = this._layerToFront.Enabled = enabled && listed is not null && index < count - 1;
         if (this._layerEditShowsDone != editing)

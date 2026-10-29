@@ -378,6 +378,7 @@ internal static class EffectIcons
         AddImage,
         Paste,
         AddText,
+        Copy,
         Edit,
         Done,
         Delete,
@@ -388,8 +389,8 @@ internal static class EffectIcons
     }
 
     /// <summary>
-    /// A layer list button's icon: a picture, a clipboard, a T — each with a green plus when it adds —, a
-    /// pencil, a check, a red cross, and arrows moving a layer down or up, doubled with a bar to the end.
+    /// A layer list button's icon: a picture, a clipboard, a T — each with a green plus when it adds —, two
+    /// sheets, the front one a picture, a pencil, a check, a red cross, and arrows moving a layer down or up, doubled with a bar to the end.
     /// </summary>
     public static Bitmap Layer(int size, LayerAction action) => Draw(size, (g, s) =>
     {
@@ -440,6 +441,29 @@ internal static class EffectIcons
                 using var font = new Font("Segoe UI", s * 0.62f, FontStyle.Bold, GraphicsUnit.Pixel);
                 g.DrawString("T", font, blue, -s * 0.02f, -s * 0.04f);
                 Plus(g, s);
+                break;
+            }
+
+            case LayerAction.Copy:
+            {
+                using (var sheet = new SolidBrush(Color.White))
+                {
+                    g.FillRectangle(sheet, s * 0.08f, s * 0.08f, s * 0.54f, s * 0.6f);
+                    g.DrawRectangle(dark, s * 0.08f, s * 0.08f, s * 0.54f, s * 0.6f);
+                }
+
+                var front = new RectangleF(s * 0.36f, s * 0.32f, s * 0.54f, s * 0.6f);
+                using (var sky = new LinearGradientBrush(front, Color.FromArgb(120, 200, 255), Color.FromArgb(30, 100, 220), 90f))
+                {
+                    g.FillRectangle(sky, front);
+                }
+
+                using (var hill = new SolidBrush(Color.FromArgb(60, 160, 70)))
+                {
+                    g.FillPolygon(hill, [new PointF(front.Left, front.Bottom), new PointF(front.Left + front.Width * 0.45f, front.Top + front.Height * 0.45f), new PointF(front.Right, front.Bottom)]);
+                }
+
+                g.DrawRectangle(dark, front.X, front.Y, front.Width, front.Height);
                 break;
             }
 
