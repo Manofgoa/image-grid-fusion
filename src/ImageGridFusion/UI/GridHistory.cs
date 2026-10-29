@@ -1,4 +1,5 @@
 using ImageGridFusion.Composition;
+using ImageGridFusion.Explorer;
 
 namespace ImageGridFusion.UI;
 
@@ -23,12 +24,15 @@ internal sealed record GlobalState(
 
 /// <summary>
 /// Everything the user composes, as it stood after an action: the cells' images and looks, the layout
-/// with its separators, the output format and the global effects. Only references and immutable
-/// values: a step never copies a bitmap.
+/// with its separators, the output format, the global effects, and the decisions on the people
+/// (workfiles/20261028-open-people-from-image.md § Undo). Only references and immutable values: a step
+/// never copies a bitmap.
 /// </summary>
-internal sealed class GridState(IReadOnlyList<CellState> cells, GridLayout? layout, OutputFormat format, GlobalState global)
+internal sealed class GridState(IReadOnlyList<CellState> cells, GridLayout? layout, OutputFormat format, GlobalState global, PeopleState people)
     : IEquatable<GridState>
 {
+    public PeopleState People { get; } = people;
+
     public IReadOnlyList<CellState> Cells { get; } = cells;
 
     public GridLayout? Layout { get; } = layout;
@@ -42,13 +46,17 @@ internal sealed class GridState(IReadOnlyList<CellState> cells, GridLayout? layo
         && this.Cells.SequenceEqual(other.Cells)
         && (this.Layout is null ? other.Layout is null : this.Layout.SameAs(other.Layout))
         && this.Format == other.Format
-        && this.Global == other.Global;
+        && this.Global == other.Global
+        && ReferenceEquals(this.People, other.People);
 
     public override bool Equals(object? obj) => this.Equals(obj as GridState);
 
     public override int GetHashCode() => HashCode.Combine(this.Cells.Count, this.Format, this.Global);
 
     public bool Holds(SourceImage image) => this.Cells.Any(c => c.Image == image);
+
+    /// <summary>The same state, the people's replaced by <paramref name="people"/>.</summary>
+    public GridState WithPeople(PeopleState people) => new(this.Cells, this.Layout, this.Format, this.Global, people);
 }
 
 /// <summary>
@@ -121,6 +129,18 @@ internal sealed class GridHistory : IDisposable
         if (!state.Equals(this._committed))
         {
             this.Push(state);
+        }
+    }
+
+    /// <summary>
+    /// The last step takes the people as they stand without a new step: they changed by no decision of
+    /// the user's — loaded, or forgotten — so nothing undoes it.
+    /// </summary>
+    public void Rebase(PeopleState people)
+    {
+        if (this._committed is not null)
+        {
+            this._committed = this._committed.WithPeople(people);
         }
     }
 
@@ -211,6 +231,12 @@ internal sealed class GridHistory : IDisposable
         if (o.Cascade != n.Cascade || o.CascadeOn != n.CascadeOn)
         {
             labels.Add(nameof(GlobalEffect.Cascade));
+        }
+
+        // A decision on the people, named by its own text; one of another generation is never restored.
+        if (!ReferenceEquals(older.People, newer.People) && older.People.Generation == newer.People.Generation)
+        {
+            labels.Add(newer.People.Done.Length > 0 ? newer.People.Done : "people");
         }
 
         return labels.Count switch

@@ -49,6 +49,24 @@ internal sealed class Person(string id)
 internal sealed record PersonData(string Id, string Name, bool Hidden, string? MergedInto, IReadOnlyDictionary<string, float[]> Pinned, IReadOnlySet<string> Excluded);
 
 /// <summary>
+/// The people as a step of the undo history holds them (workfiles/20261028-open-people-from-image.md
+/// § Undo): a copy of every person, the decision that led to them ("" for none), and their generation —
+/// loading the file or forgetting the faces starts another, never undone. Each decision makes a new one:
+/// two are the same state only when they are the same object.
+/// </summary>
+internal sealed class PeopleState(IReadOnlyList<PersonData> people, int generation, string done)
+{
+    public static readonly PeopleState Empty = new([], 0, "");
+
+    public IReadOnlyList<PersonData> People { get; } = people;
+
+    public int Generation { get; } = generation;
+
+    /// <summary>The decision that led to it, as the status line names it.</summary>
+    public string Done { get; } = done;
+}
+
+/// <summary>
 /// The people the user acted on, kept in <see cref="FileName"/> next to the exe — the decisions only:
 /// the groups themselves are computed from the faces and these, never stored. A version and a
 /// <c>people</c> array; each change written at once, by the caller's <see cref="Save"/>, a failure
@@ -80,6 +98,23 @@ internal sealed class People
 
     /// <summary>Copies of every person, for the grouping.</summary>
     public IReadOnlyList<PersonData> Snapshot() => [.. this._people.Select(person => person.Snapshot())];
+
+    /// <summary>Every person replaced by <paramref name="people"/>, as a copy taken earlier held them — an undo or a redo.</summary>
+    public void Restore(IReadOnlyList<PersonData> people)
+    {
+        this._people.Clear();
+        foreach (var data in people)
+        {
+            var person = new Person(data.Id) { Name = data.Name, Hidden = data.Hidden, MergedInto = data.MergedInto };
+            foreach (var (key, embedding) in data.Pinned)
+            {
+                person.Pinned[key] = embedding;
+            }
+
+            person.Excluded.UnionWith(data.Excluded);
+            this._people.Add(person);
+        }
+    }
 
     /// <summary>A new person holding <paramref name="faces"/> pinned — an unnamed group the user acts on for the first time.</summary>
     public Person Create(IEnumerable<(string Key, float[] Embedding)> faces)

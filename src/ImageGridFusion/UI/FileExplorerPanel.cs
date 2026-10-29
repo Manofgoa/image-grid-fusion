@@ -193,6 +193,12 @@ internal sealed partial class FileExplorerPanel : Panel
     private readonly ToolStripMenuItem _unhideGroup = new("Unhide");
     private readonly ToolStripMenuItem _unmergeGroup = new("Un-merge");
     private readonly ToolStripMenuItem _notThisPerson = new("Not this person");
+
+    // The decisions taking something away confirmed by their submenu's single item, never done in one
+    // click (workfiles/20261028-open-people-from-image.md § Safer People Decisions).
+    private readonly ToolStripMenuItem _hideConfirm = new("Hide");
+    private readonly ToolStripMenuItem _unmergeConfirm = new("Un-merge");
+    private readonly ToolStripMenuItem _notConfirm = new("Remove");
     private readonly ToolStripSeparator _peopleSeparator = new();
 
     // A file's people, each opening its group, and the title of the group open, clicked to rename it
@@ -476,19 +482,24 @@ internal sealed partial class FileExplorerPanel : Panel
             this._unhideGroup.Visible = group && shown is { Hidden: true, Parent: null };
             this._unmergeGroup.Visible = group && shown?.Parent is not null;
             this._notThisPerson.Visible = file && row!.FaceKey is not null && this._openGroup is { } open && !IsPeopleTile(open);
-            this._notThisPerson.Text = this._notThisPerson.Visible && this._snapshot.ById.GetValueOrDefault(this._openGroup!) is { } opened
-                ? $"Not {GroupName(opened)}"
-                : "Not this person";
+            var opened = this._notThisPerson.Visible ? this._snapshot.ById.GetValueOrDefault(this._openGroup!) : null;
+            this._notThisPerson.Text = opened is not null ? $"Not {GroupName(opened)}" : "Not this person";
+            this._notConfirm.Text = opened is not null ? $"Remove from {GroupName(opened)}" : "Remove";
+            this._hideConfirm.Text = shown is not null ? $"Hide {GroupName(shown)}" : "Hide";
+            this._unmergeConfirm.Text = shown is not null ? $"Un-merge {GroupName(shown)}" : "Un-merge";
             this._peopleSeparator.Visible = row?.IsGroup == true || this._notThisPerson.Visible;
             this.FillPhotoPeople(file ? row : null);
             this._photoPeopleSeparator.Visible = this._photoPeople.Visible;
         };
         this._openGroupItem.Click += (_, _) => { if (this._grid.SelectedRow is { } row) { this.Activate(row); } };
         this._renameGroup.Click += (_, _) => { if (this._grid.SelectedRow is { } row) { this.RenameGroup(row); } };
-        this._hideGroup.Click += (_, _) => this.SetGroupHidden(this._grid.SelectedRow, hidden: true);
+        this._hideGroup.DropDownItems.Add(this._hideConfirm);
+        this._unmergeGroup.DropDownItems.Add(this._unmergeConfirm);
+        this._notThisPerson.DropDownItems.Add(this._notConfirm);
+        this._hideConfirm.Click += (_, _) => this.SetGroupHidden(this._grid.SelectedRow, hidden: true);
         this._unhideGroup.Click += (_, _) => this.SetGroupHidden(this._grid.SelectedRow, hidden: false);
-        this._unmergeGroup.Click += (_, _) => this.UnmergeGroup(this._grid.SelectedRow);
-        this._notThisPerson.Click += (_, _) => this.RemoveFace(this._grid.SelectedRow);
+        this._unmergeConfirm.Click += (_, _) => this.UnmergeGroup(this._grid.SelectedRow);
+        this._notConfirm.Click += (_, _) => this.RemoveFace(this._grid.SelectedRow);
         this._groupTitle.Click += (_, _) => this.RenameOpenGroup();
         this._toolTip.SetToolTip(this._groupTitle, "Click to rename");
         this._editDescription.Click += (_, _) => this.EditDescription();
@@ -515,6 +526,15 @@ internal sealed partial class FileExplorerPanel : Panel
 
     /// <summary>The view was switched, or another folder opened: <see cref="FolderView"/> and <see cref="OpenFolder"/> to remember.</summary>
     public event EventHandler? FolderViewChanged;
+
+    /// <summary>The people's state took a new generation — loaded, or forgotten — no decision of the user's.</summary>
+    public event EventHandler? PeopleReset;
+
+    /// <summary>
+    /// The people as the undo history reads them: replaced by every decision, put back by
+    /// <see cref="RestorePeople"/> (workfiles/20261028-open-people-from-image.md § Undo).
+    /// </summary>
+    public PeopleState PeopleState { get; private set; } = PeopleState.Empty;
 
     /// <summary>The user picked another order in the sort drop-down: <see cref="FileOrder"/> to remember.</summary>
     public event EventHandler? FileOrderChanged;
@@ -1022,6 +1042,7 @@ internal sealed partial class FileExplorerPanel : Panel
             error ??= ex.Message;
         }
 
+        this.ResetPeopleState();
         this._snapshot = PeopleSnapshot.Empty;
         this._openGroup = null;
         this.Regroup();
@@ -1297,6 +1318,7 @@ internal sealed partial class FileExplorerPanel : Panel
     {
         _favorites.Load();
         this._peopleStore.Load();
+        this.ResetPeopleState();
         SetBaseFolder(baseFolder);
     }
 
@@ -3859,8 +3881,46 @@ internal sealed partial class FileExplorerPanel : Panel
             ? person
             : this._peopleStore.Create(group.Faces.Select(face => (face.Key, face.Face.Embedding)));
 
-    /// <summary>The people's decisions written, the status line saying <paramref name="done"/>, the groups computed again.</summary>
+    /// <summary>
+    /// A decision on the people taken: their state as the undo history reads it, then written, the status
+    /// line saying <paramref name="done"/>, the groups computed again.
+    /// </summary>
     private void SavePeople(string done)
+    {
+        this.PeopleState = new PeopleState(this._peopleStore.Snapshot(), this.PeopleState.Generation, done);
+        this.WritePeople(done, quiet: false);
+    }
+
+    /// <summary>
+    /// The people put back as an undo or a redo found them — written, the groups computed again — unless
+    /// <paramref name="state"/> belongs to another generation (§ Undo: loading and Forget faces… are never
+    /// undone); false then, the people left as they are.
+    /// </summary>
+    public bool RestorePeople(PeopleState state)
+    {
+        if (state.Generation != this.PeopleState.Generation)
+        {
+            return false;
+        }
+
+        this._peopleStore.Restore(state.People);
+        this.PeopleState = state;
+        this.WritePeople("People restored", quiet: true);
+        return true;
+    }
+
+    /// <summary>
+    /// The people as the store holds them taken as a new generation — loaded, or forgotten — no decision
+    /// of the user: the undo history takes it without a step (<see cref="PeopleReset"/>).
+    /// </summary>
+    private void ResetPeopleState()
+    {
+        this.PeopleState = new PeopleState(this._peopleStore.Snapshot(), this.PeopleState.Generation + 1, "");
+        this.PeopleReset?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>The people written, the status line saying <paramref name="done"/> — only a failure when <paramref name="quiet"/> — the groups computed again.</summary>
+    private void WritePeople(string done, bool quiet)
     {
         string? error = null;
         try
@@ -3872,7 +3932,11 @@ internal sealed partial class FileExplorerPanel : Panel
             error = ex.Message;
         }
 
-        this.Report(error is null ? done : $"{done} — for the session, not saved: {error}", error is not null);
+        if (!quiet || error is not null)
+        {
+            this.Report(error is null ? done : $"{done} — for the session, not saved: {error}", error is not null);
+        }
+
         this.Regroup(force: true);
     }
 
