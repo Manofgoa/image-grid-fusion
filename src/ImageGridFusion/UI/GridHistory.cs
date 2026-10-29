@@ -20,7 +20,9 @@ internal sealed record GlobalState(
     SeamFade Seams,
     bool SeamsOn,
     VideoCascade Cascade,
-    bool CascadeOn);
+    bool CascadeOn,
+    GridLayers Layers,
+    bool LayersOn);
 
 /// <summary>
 /// Everything the user composes, as it stood after an action: the cells' images and looks, the layout
@@ -53,7 +55,10 @@ internal sealed class GridState(IReadOnlyList<CellState> cells, GridLayout? layo
 
     public override int GetHashCode() => HashCode.Combine(this.Cells.Count, this.Format, this.Global);
 
-    public bool Holds(SourceImage image) => this.Cells.Any(c => c.Image == image);
+    /// <summary>Every image the step holds: the cells', then the layers' contents (workfiles/20261029-layers.md).</summary>
+    public IEnumerable<SourceImage> Images => this.Cells.Select(c => c.Image).Concat(this.Global.Layers.Items.Select(l => l.Image));
+
+    public bool Holds(SourceImage image) => this.Images.Contains(image);
 
     /// <summary>The same state, the people's replaced by <paramref name="people"/>.</summary>
     public GridState WithPeople(PeopleState people) => new(this.Cells, this.Layout, this.Format, this.Global, people);
@@ -233,6 +238,11 @@ internal sealed class GridHistory : IDisposable
             labels.Add(nameof(GlobalEffect.Cascade));
         }
 
+        if (o.Layers != n.Layers || o.LayersOn != n.LayersOn)
+        {
+            labels.Add(nameof(GlobalEffect.Layers));
+        }
+
         // A decision on the people, named by its own text; one of another generation is never restored.
         if (!ReferenceEquals(older.People, newer.People) && older.People.Generation == newer.People.Generation)
         {
@@ -251,8 +261,8 @@ internal sealed class GridHistory : IDisposable
     public void Dispose()
     {
         this._timer.Dispose();
-        HashSet<SourceImage> shown = this._committed is null ? [] : this._capture().Cells.Select(c => c.Image).ToHashSet();
-        foreach (var image in this.AllStates().SelectMany(s => s.Cells).Select(c => c.Image).Distinct())
+        HashSet<SourceImage> shown = this._committed is null ? [] : this._capture().Images.ToHashSet();
+        foreach (var image in this.AllStates().SelectMany(s => s.Images).Distinct())
         {
             if (!shown.Contains(image))
             {
@@ -320,10 +330,9 @@ internal sealed class GridHistory : IDisposable
     /// <summary>Bytes of the images the steps still hold that the grid no longer shows.</summary>
     private long ParkedBytes()
     {
-        var shown = this._committed!.Cells.Select(c => c.Image).ToHashSet();
+        var shown = this._committed!.Images.ToHashSet();
         return this._undo.Concat(this._redo)
-            .SelectMany(s => s.Cells)
-            .Select(c => c.Image)
+            .SelectMany(s => s.Images)
             .Distinct()
             .Where(image => !shown.Contains(image))
             .Sum(image => image.MemoryBytes);
@@ -357,8 +366,8 @@ internal sealed class GridHistory : IDisposable
             return;
         }
 
-        var shown = this._capture().Cells.Select(c => c.Image).ToHashSet();
-        foreach (var image in dropped.SelectMany(s => s.Cells).Select(c => c.Image).Distinct())
+        var shown = this._capture().Images.ToHashSet();
+        foreach (var image in dropped.SelectMany(s => s.Images).Distinct())
         {
             if (!shown.Contains(image) && !this.Referenced(image))
             {

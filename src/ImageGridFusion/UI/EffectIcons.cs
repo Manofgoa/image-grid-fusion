@@ -332,6 +332,30 @@ internal static class EffectIcons
         }
     });
 
+    /// <summary>Two sheets stacked askew, the upper one blue over a grey one: the layers laid over the grid.</summary>
+    public static Bitmap Layers(int size) => Draw(size, (g, s) =>
+    {
+        using var rim = new Pen(Color.FromArgb(60, 60, 60), Math.Max(1, s / 16f));
+        var under = new RectangleF(s * 0.06f, s * 0.08f, s * 0.6f, s * 0.5f);
+        using (var grey = new SolidBrush(Color.FromArgb(170, 170, 170)))
+        {
+            g.FillRectangle(grey, under);
+        }
+
+        g.DrawRectangle(rim, under.X, under.Y, under.Width, under.Height);
+        var state = g.Save();
+        g.TranslateTransform(s * 0.6f, s * 0.6f);
+        g.RotateTransform(-12);
+        var over = new RectangleF(-s * 0.3f, -s * 0.24f, s * 0.6f, s * 0.48f);
+        using (var blue = new LinearGradientBrush(over, Color.FromArgb(120, 200, 255), Color.FromArgb(30, 100, 220), 45f))
+        {
+            g.FillRectangle(blue, over);
+        }
+
+        g.DrawRectangle(rim, over.X, over.Y, over.Width, over.Height);
+        g.Restore(state);
+    });
+
     /// <summary>A wedge growing to the right, yellow to red.</summary>
     public static Bitmap Intensity(int size) => Draw(size, (g, s) =>
     {

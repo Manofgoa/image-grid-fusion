@@ -10,7 +10,7 @@ using ImageGridFusion.Web;
 
 namespace ImageGridFusion.UI;
 
-internal sealed class MainForm : Form
+internal sealed partial class MainForm : Form
 {
     /// <summary>
     /// Gives the window a second title, its value the next argument: which implementation an instance tests, when
@@ -564,6 +564,7 @@ internal sealed class MainForm : Form
             [_bordersStyle, this._bordersColor, this._bordersSample, this._bordersSampleLabel, _bordersThickness, _bordersThicknessLabel, _bordersOpacity, _bordersOpacityLabel, this._bordersInnerLines, _bordersOuterFrame, _bordersRounded]);
         this._globalOptions[GlobalEffect.Seams].Controls.AddRange([this._seamsDepth, this._seamsDepthLabel]);
         this._globalOptions[GlobalEffect.Cascade].Controls.AddRange([this._cascadePause, this._cascadePauseLabel]);
+        this.BuildLayerOptions();
 
         // Docked in reverse order of addition: the options row and the tabs row, then the bottom bar,
         // the global options row above it, the global tabs row above that and the transport above them,
@@ -1113,6 +1114,8 @@ internal sealed class MainForm : Form
         _globalTabs.SetIcon(GlobalEffect.Borders, EffectIcons.Borders(size));
         this._globalTabs.SetIcon(GlobalEffect.Seams, EffectIcons.Seams(size));
         this._globalTabs.SetIcon(GlobalEffect.Cascade, EffectIcons.Cascade(size));
+        this._globalTabs.SetIcon(GlobalEffect.Layers, EffectIcons.Layers(size));
+        this.UpdateLayerIcons(size);
         _resetButton.Image = EffectIcons.Reset(size);
         _effectResetButton.Image = EffectIcons.Reset(size);
         _globalResetButton.Image = EffectIcons.Reset(size);
@@ -1346,7 +1349,7 @@ internal sealed class MainForm : Form
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
         // Typed in the file explorer's search box, or in a Frames field, these keys edit its text, not the grid.
-        if ((_explorer.IsEditingText || this.IsEditingFrameField) && keyData is (Keys.Control | Keys.V) or (Keys.Control | Keys.C) or Keys.Delete or Keys.Escape
+        if ((_explorer.IsEditingText || this.IsEditingFrameField || this._layerText.Focused) && keyData is (Keys.Control | Keys.V) or (Keys.Control | Keys.C) or Keys.Delete or Keys.Escape
             or (Keys.Control | Keys.Z) or (Keys.Control | Keys.Y) or (Keys.Control | Keys.Shift | Keys.Z))
         {
             return base.ProcessCmdKey(ref msg, keyData);
@@ -1414,10 +1417,14 @@ internal sealed class MainForm : Form
             case Keys.Space when this._timeline.Enabled && !this._explorer.IsEditingText && !this.IsEditingFrameField && this.FocusedControl() is not TextBoxBase:
                 this.TogglePlayback();
                 return true;
+            // The selected layer first: the two selections are exclusive (workfiles/20261029-layers.md).
+            case Keys.Delete when this._preview.HasLayerSelection && !IsExporting:
+                this._preview.RemoveSelectedLayer();
+                return true;
             case Keys.Delete when _preview.HasSelection && !IsExporting:
                 _preview.RemoveSelected();
                 return true;
-            case Keys.Escape when _preview.HasSelection:
+            case Keys.Escape when _preview.HasSelection || this._preview.HasLayerSelection:
                 _preview.ClearSelection();
                 return true;
             default:
@@ -1485,7 +1492,8 @@ internal sealed class MainForm : Form
 
     private void OnPreviewDragOver(object? sender, DragEventArgs e)
     {
-        if (e.Effect != DragDropEffects.None && !IsExporting)
+        // A drop then makes a layer: no cell is highlighted, none would be filled.
+        if (e.Effect != DragDropEffects.None && !IsExporting && !this.LayersTakePaste)
         {
             _preview.ShowDropTarget(_preview.PointToClient(new Point(e.X, e.Y)));
         }
@@ -1494,6 +1502,13 @@ internal sealed class MainForm : Form
     private async void OnDragDrop(object? sender, DragEventArgs e)
     {
         _preview.ShowDropTarget(null);
+
+        // On the grid while the Layers tab is selected: laid over it as layers (workfiles/20261029-layers.md).
+        if (sender == this._preview && this.LayersTakePaste)
+        {
+            await this.DropLayersAsync(e);
+            return;
+        }
 
         // Onto a cell: replaces it. Onto the drop zone or elsewhere in the window: added like a paste.
         int target = sender == _preview ? DropCell(e) : -1;
@@ -1628,6 +1643,13 @@ internal sealed class MainForm : Form
     {
         if (RefuseWhileExporting())
         {
+            return;
+        }
+
+        // While the Layers tab is selected, the clipboard is laid over the grid (workfiles/20261029-layers.md).
+        if (this.LayersTakePaste)
+        {
+            await this.PasteLayersAsync();
             return;
         }
 
@@ -1795,7 +1817,9 @@ internal sealed class MainForm : Form
             this._seams,
             this._seamsOn,
             this._cascade,
-            this._cascadeOn),
+            this._cascadeOn,
+            this._preview.Layers,
+            this._layersOn),
         this._explorer.PeopleState);
 
     /// <summary>
@@ -1852,6 +1876,11 @@ internal sealed class MainForm : Form
         // After the format, which tells whether the Twitter corners apply.
         this._preview.Borders = this.ActiveBorders;
         this._preview.Seams = this.ActiveSeams;
+
+        // The layers as they stood, the selected one kept while it still stands at its place.
+        this._layersOn = global.LayersOn;
+        this._preview.SetLayers(global.Layers);
+        this._preview.LayersShown = this._layersOn;
         this.UpdateButtons();
 
         // The people's decisions, unless the step is of a generation gone — loaded, or forgotten since:
@@ -1893,9 +1922,11 @@ internal sealed class MainForm : Form
         bool fade = !FadeInitial;
         bool seams = !this.SeamsInitial;
         bool cascade = !this.CascadeInitial;
+        int layers = this._preview.Layers.Count;
+        bool layersSet = !this.LayersInitial;
         bool format = !FormatInitial;
         bool soundtrackInitial = SoundtrackInitial;
-        if (count == 0 && soundtrackInitial && !borders && !fade && !seams && !cascade && !format)
+        if (count == 0 && soundtrackInitial && !borders && !fade && !seams && !cascade && !layersSet && !format)
         {
             return;
         }
@@ -1912,6 +1943,12 @@ internal sealed class MainForm : Form
         if (soundtrack)
         {
             removed.Add(count > 0 ? "the soundtrack" : "The soundtrack");
+        }
+
+        if (layers > 0)
+        {
+            string text = layers == 1 ? "1 layer" : $"{layers} layers";
+            removed.Add(removed.Count > 0 ? text : char.ToUpperInvariant(text[0]) + text[1..]);
         }
 
         // What was only set, not removed: a soundtrack level without a file, the borders, the fade, the format.
@@ -1939,6 +1976,12 @@ internal sealed class MainForm : Form
         if (cascade)
         {
             reset.Add("cascade");
+        }
+
+        // Turned on with no layer: only its state goes back.
+        if (layersSet && layers == 0)
+        {
+            reset.Add("layers");
         }
 
         if (format)
@@ -2171,7 +2214,7 @@ internal sealed class MainForm : Form
     {
         var images = _preview.Images;
         var soundtrack = ActiveSoundtrack;
-        var length = images.Count == 0 ? TimeSpan.Zero : Animation.VideoLength(images, soundtrack, this.ActiveCascade);
+        var length = images.Count == 0 ? TimeSpan.Zero : Animation.VideoLength(images, soundtrack, this.ActiveCascade, this.ActiveLayerImages);
         _lengthReadout.Text = length > TimeSpan.Zero ? $"⏱ {Seconds(length)}" : "⏱ —";
         // As wide as a length under 1000 s: the digits change without moving the gear.
         _lengthReadout.MinimumSize = new Size(TextRenderer.MeasureText("⏱ 000.0 s", _lengthReadout.Font).Width, 0);
@@ -2473,8 +2516,26 @@ internal sealed class MainForm : Form
 
     private bool IsExporting => _export is not null;
 
-    /// <summary>Content that plays, or moves by its Animations effect: a frozen one that does not move is exported as a still.</summary>
-    private bool HasAnimation => _preview.Images.Any(i => i.Moves);
+    /// <summary>Content that plays, or moves by its Animations effect — a layer's too: a frozen one that does not move is exported as a still.</summary>
+    private bool HasAnimation => _preview.Images.Any(i => i.Moves) || this.ActiveLayerImages.Any(i => i.Moves);
+
+    /// <summary>The layers drawn over the grid, in the preview and every export; <c>null</c> while their effect is off.</summary>
+    private GridLayers? ActiveLayers => this._layersOn && this._preview.Layers.Count > 0 ? this._preview.Layers : null;
+
+    /// <summary>The contents of the layers drawn: they play, sound and count in the video length beside the cells.</summary>
+    private IReadOnlyList<SourceImage> ActiveLayerImages => this.ActiveLayers?.Items.Select(l => l.Image).ToList() ?? [];
+
+    /// <summary>Whether the layers are as the app starts: off, none.</summary>
+    private bool LayersInitial => !this._layersOn && this._preview.Layers.Count == 0;
+
+    /// <summary>Why the layers do not apply — the grid holds no image to lay them over — or <c>null</c> when they do.</summary>
+    private string? LayersUnavailable => this._preview.Images.Count > 0 ? null : "The grid holds no image to lay layers over";
+
+    /// <summary>
+    /// Whether a paste or a drop on the grid makes a layer rather than filling a cell: only while the Layers
+    /// tab is selected and they apply (workfiles/20261029-layers.md § Image Layer).
+    /// </summary>
+    private bool LayersTakePaste => this._selectedGlobalEffect == GlobalEffect.Layers && this.LayersUnavailable is null && !this.IsExporting;
 
     /// <summary>The soundtrack mixed into the preview and the MP4 export; <c>null</c> while off.</summary>
     private Soundtrack? ActiveSoundtrack => _soundtrackOn ? _soundtrack : null;
@@ -2508,7 +2569,7 @@ internal sealed class MainForm : Form
     /// is on above 0 % — or <c>null</c> when it does.
     /// </summary>
     private string? FadeUnavailable =>
-        Animation.Heard(_preview.Images).Count > 0 || ActiveSoundtrack is { Level: > 0 }
+        Animation.Heard(_preview.Images.Concat(this.ActiveLayerImages)).Count > 0 || ActiveSoundtrack is { Level: > 0 }
             ? null
             : "Nothing is heard: no video plays with its sound, and no soundtrack is on";
 
@@ -2562,14 +2623,14 @@ internal sealed class MainForm : Form
     /// </summary>
     private async Task<Bitmap?> RenderStillAsync(int maxLongSide)
     {
-        if (!_preview.Images.Any(i => i.IsAnimated))
+        if (!_preview.Images.Concat(this.ActiveLayerImages).Any(i => i.IsAnimated))
         {
             // Rendered at once on the UI thread, the grid held all the same: its motions and soundtrack stand still.
             this._preview.HoldPlayback();
             try
             {
                 Cursor.Current = Cursors.WaitCursor;
-                return Compositor.Render(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, this.ActiveSeams, maxLongSide);
+                return Compositor.Render(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, this.ActiveSeams, maxLongSide, this.ActiveLayers);
             }
             catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
             {
@@ -2586,7 +2647,7 @@ internal sealed class MainForm : Form
         GridExport.Job job;
         try
         {
-            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, seams: this.ActiveSeams, stillMaxSide: maxLongSide);
+            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, seams: this.ActiveSeams, stillMaxSide: maxLongSide, layers: this.ActiveLayers);
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
@@ -2624,7 +2685,7 @@ internal sealed class MainForm : Form
         GridExport.Job job;
         try
         {
-            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, ActiveSoundtrack, ActiveFade, this.ActiveSeams, this.ActiveCascade, AppSettings.VideoMaxSide);
+            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, ActiveSoundtrack, ActiveFade, this.ActiveSeams, this.ActiveCascade, AppSettings.VideoMaxSide, layers: this.ActiveLayers);
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
@@ -3032,7 +3093,7 @@ internal sealed class MainForm : Form
     private void UpdateButtons()
     {
         bool any = _preview.Images.Count > 0 && !IsExporting;
-        _clearButton.Enabled = (_preview.Images.Count > 0 || !SoundtrackInitial || !BordersInitial || !FadeInitial || !this.SeamsInitial || !this.CascadeInitial || !FormatInitial) && !IsExporting;
+        _clearButton.Enabled = (_preview.Images.Count > 0 || !SoundtrackInitial || !BordersInitial || !FadeInitial || !this.SeamsInitial || !this.CascadeInitial || !this.LayersInitial || !FormatInitial) && !IsExporting;
         _copyButton.Enabled = any;
         _saveButton.Enabled = any;
 
@@ -3189,7 +3250,12 @@ internal sealed class MainForm : Form
             _preview.SetSelectedLook(look);
         }
 
-        _preview.ResetCellSizes();
+        // A layer has no separator of its own: the grid's stay where they are.
+        if (!this._preview.HasLayerSelection)
+        {
+            _preview.ResetCellSizes();
+        }
+
         UpdateEffects();
     }
 
@@ -3202,6 +3268,17 @@ internal sealed class MainForm : Form
         if (_preview.SelectedImage is not { } image)
         {
             return null;
+        }
+
+        // On a layer, the Background's default state is off: its content's transparency kept (workfiles/20261029-layers.md).
+        if (this._preview.HasLayerSelection)
+        {
+            return effect switch
+            {
+                null => Layer.DefaultLook,
+                ImageEffect.Background => image.Look.Reset(ImageEffect.Background).TurnOff(ImageEffect.Background),
+                { } reset => image.Look.Reset(reset),
+            };
         }
 
         return effect is { } one ? image.Look.Reset(one) : ImageLook.None;
@@ -3522,8 +3599,10 @@ internal sealed class MainForm : Form
 
         _effectTabs.Selected = _selectedEffect;
         _effectTabs.Enabled = enabled;
-        _resetButton.Enabled = enabled && (ResetLook(effect: null) != look || _preview.ActiveLayout?.IsResized == true);
-        this._presetButton.Enabled = enabled;
+        _resetButton.Enabled = enabled && (ResetLook(effect: null) != look || (!this._preview.HasLayerSelection && _preview.ActiveLayout?.IsResized == true));
+
+        // A preset belongs to a cell's file: never made from a layer (workfiles/20261029-layers.md).
+        this._presetButton.Enabled = enabled && !this._preview.HasLayerSelection;
         if (look is not null)
         {
             // The automatic color is computed only while the tab shows: it changes with every zoom or move.
@@ -3677,6 +3756,9 @@ internal sealed class MainForm : Form
             case GlobalEffect.Cascade:
                 this.ToggleCascade();
                 break;
+            case GlobalEffect.Layers:
+                this.ToggleLayers();
+                break;
             default:
                 // The Format's tab has no checkbox.
                 break;
@@ -3752,6 +3834,13 @@ internal sealed class MainForm : Form
             this._cascade = VideoCascade.Initial;
             this._cascadeOn = false;
             this._preview.Cascade = this.ActiveCascade;
+        }
+
+        if (effect is null or GlobalEffect.Layers)
+        {
+            this._layersOn = false;
+            this._preview.SetLayers(GridLayers.Initial, -1);
+            this._preview.LayersShown = false;
         }
 
         UpdateButtons();
@@ -3870,9 +3959,14 @@ internal sealed class MainForm : Form
         _globalTabs.SetState(GlobalEffect.Borders, ActiveBorders is not null, unavailable: null);
         this._globalTabs.SetState(GlobalEffect.Seams, this.ActiveSeams is not null, seamsUnavailable);
         this._globalTabs.SetState(GlobalEffect.Cascade, this.ActiveCascade is not null, cascadeUnavailable);
+        string? layersUnavailable = this.LayersUnavailable;
+        this._globalTabs.SetState(GlobalEffect.Layers, this._layersOn, layersUnavailable);
         _globalTabs.Selected = _selectedGlobalEffect;
         _globalTabs.Enabled = enabled;
-        _globalResetButton.Enabled = enabled && !(SoundtrackInitial && BordersInitial && FadeInitial && this.SeamsInitial && this.CascadeInitial && FormatInitial);
+        _globalResetButton.Enabled = enabled && !(SoundtrackInitial && BordersInitial && FadeInitial && this.SeamsInitial && this.CascadeInitial && this.LayersInitial && FormatInitial);
+
+        // The layers take the mouse only while their tab is selected; never during an export.
+        this._preview.LayersActive = this._selectedGlobalEffect == GlobalEffect.Layers && enabled;
         _formatStrip.Selected = _preview.Format;
         _formatStrip.SetGrid(_preview.ActiveLayout, _preview.FreeRatio);
         foreach (var (effect, row) in _globalOptions)
@@ -3883,7 +3977,8 @@ internal sealed class MainForm : Form
             row.Enabled = enabled
                 && (effect != GlobalEffect.Fade || fadeUnavailable is null)
                 && (effect != GlobalEffect.Seams || seamsUnavailable is null)
-                && (effect != GlobalEffect.Cascade || cascadeUnavailable is null);
+                && (effect != GlobalEffect.Cascade || cascadeUnavailable is null)
+                && (effect != GlobalEffect.Layers || layersUnavailable is null);
         }
 
         _globalEffectResetButton.Visible = _selectedGlobalEffect is not null;
@@ -3894,10 +3989,12 @@ internal sealed class MainForm : Form
             GlobalEffect.Borders => !BordersInitial,
             GlobalEffect.Seams => !this.SeamsInitial,
             GlobalEffect.Cascade => !this.CascadeInitial,
+            GlobalEffect.Layers => !this.LayersInitial,
             GlobalEffect.Format => !FormatInitial,
             _ => false,
         };
         UpdateBorders();
+        this.UpdateLayerOptions();
 
         // A long name is cut, the whole path in its tooltip; the file is kept while the soundtrack is off.
         const int MaxName = 32;
