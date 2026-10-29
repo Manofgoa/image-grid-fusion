@@ -47,6 +47,8 @@ internal sealed partial class MainForm
 
     private readonly ComboBox _layerFont = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 150, Anchor = AnchorStyles.Left };
     private readonly CheckBox _layerBold = new() { Text = "Bold", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _layerItalic = new() { Text = "Italic", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _layerCaps = new() { Text = "ALL CAPS", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly ColorSplitButton _layerColor = new();
     private readonly TrackBar _layerColorSample = SampleSlider();
     private readonly Label _layerColorSampleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
@@ -64,6 +66,22 @@ internal sealed partial class MainForm
     private readonly Label _layerBackgroundSampleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly TrackBar _layerBackgroundOpacity = OptionSlider(0, 100, 10);
     private readonly Label _layerBackgroundOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _layerShadow = new() { Text = "Shadow", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly ColorSplitButton _layerShadowColor = new();
+    private readonly TrackBar _layerShadowSample = SampleSlider();
+    private readonly Label _layerShadowSampleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly ShadowKindStrip _layerShadowKind = new() { Anchor = AnchorStyles.Left };
+
+    // The shadow's size in percent of a line.
+    private readonly TrackBar _layerShadowSize = OptionSlider((int)Math.Round(LayerTextStyle.MinShadowSize * 100), (int)Math.Round(LayerTextStyle.MaxShadowSize * 100), 2, controlStep: 1);
+    private readonly Label _layerShadowSizeLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+
+    // The text styles (workfiles/20261029-text-layer-style-presets.md): their strip above the text's settings, scrolled
+    // sideways past the width it has; the styles themselves kept in text-styles.json.
+    private readonly TextStyles _textStyles = new(TextStyles.DefaultPath);
+    private readonly TextStyleStrip _textStyleStrip = new();
+    private readonly Panel _textStyleScroll = new() { AutoScroll = true, Margin = Padding.Empty, Anchor = AnchorStyles.Left | AnchorStyles.Right };
+    private readonly ContextMenuStrip _textStyleMenu = new();
 
     // Each family of the font drop-down, made once to draw its name in its own face; null when it has no usable style.
     private readonly Dictionary<string, Font?> _layerFontFaces = [];
@@ -75,6 +93,7 @@ internal sealed partial class MainForm
     private Color? _layerColorSwatch;
     private Color? _layerOutlineSwatch;
     private Color? _layerBackgroundSwatch;
+    private Color? _layerShadowSwatch;
 
     /// <summary>A button of the layer list: an icon, no text — its name in its tooltip.</summary>
     private static Button IconButton() => new()
@@ -102,21 +121,30 @@ internal sealed partial class MainForm
         buttons.FlowDirection = FlowDirection.TopDown;
         buttons.Controls.AddRange([this._layerList, iconLine]);
 
+        // The text styles' strip over the font and outline lines, as wide as they are, scrolled sideways past it.
+        this._textStyleScroll.Controls.Add(this._textStyleStrip);
+        this._textStyleScroll.Height = this._textStyleStrip.Height + SystemInformation.HorizontalScrollBarHeight;
+        this._textStyleScroll.Width = this.LogicalToDeviceUnits(100);
         var fontLine = OptionLine();
-        fontLine.Controls.AddRange([this._layerFont, this._layerBold, this._layerColor, this._layerColorSample, this._layerColorSampleLabel]);
+        fontLine.Controls.AddRange([this._layerFont, this._layerBold, this._layerItalic, this._layerCaps, this._layerColor, this._layerColorSample, this._layerColorSampleLabel]);
         var outlineLine = OptionLine();
         outlineLine.Controls.AddRange([this._layerOutline, this._layerOutlineColor, this._layerOutlineSample, this._layerOutlineSampleLabel, this._layerOutlineWidth, this._layerOutlineWidthLabel]);
         var styleLines = OptionLine();
         styleLines.FlowDirection = FlowDirection.TopDown;
-        styleLines.Controls.AddRange([fontLine, outlineLine]);
+        styleLines.Controls.AddRange([this._textStyleScroll, fontLine, outlineLine]);
 
+        // The box's lines, then the shadow's below them.
         var backgroundLine = OptionLine();
         backgroundLine.Controls.AddRange([this._layerBackground, this._layerBackgroundColor, this._layerBackgroundSample, this._layerBackgroundSampleLabel]);
         var opacityLine = OptionLine();
         opacityLine.Controls.AddRange([this._layerBackgroundOpacity, this._layerBackgroundOpacityLabel]);
+        var shadowLine = OptionLine();
+        shadowLine.Controls.AddRange([this._layerShadow, this._layerShadowColor, this._layerShadowSample, this._layerShadowSampleLabel]);
+        var shadowShapeLine = OptionLine();
+        shadowShapeLine.Controls.AddRange([this._layerShadowKind, this._layerShadowSize, this._layerShadowSizeLabel]);
         var backgroundLines = OptionLine();
         backgroundLines.FlowDirection = FlowDirection.TopDown;
-        backgroundLines.Controls.AddRange([backgroundLine, opacityLine]);
+        backgroundLines.Controls.AddRange([backgroundLine, opacityLine, shadowLine, shadowShapeLine]);
 
         this._layerText.Height = this.LogicalToDeviceUnits(4 * 34);
         this._globalOptions[GlobalEffect.Layers].Controls.AddRange([buttons, this._layerText, styleLines, backgroundLines]);
@@ -194,6 +222,46 @@ internal sealed partial class MainForm
             this._layerBackgroundOpacityLabel.Text = OpacityText(this._layerBackgroundOpacity.Value);
             this.ChangeLayerStyle(style => style with { Background = true, BackgroundOpacity = this._layerBackgroundOpacity.Value / 100.0 });
         };
+        this._layerItalic.CheckedChanged += (_, _) => this.ChangeLayerStyle(style => style with { Italic = this._layerItalic.Checked });
+        this._layerCaps.CheckedChanged += (_, _) => this.ChangeLayerStyle(style => style with { Caps = this._layerCaps.Checked });
+        this._layerShadow.CheckedChanged += (_, _) => this.ChangeLayerStyle(style => style with { Shadow = this._layerShadow.Checked });
+        this._layerShadowKind.Picked += (_, kind) => this.ChangeLayerStyle(style => style with { Shadow = true, ShadowKind = kind });
+        this._layerShadowSize.ValueChanged += (_, _) =>
+        {
+            this._layerShadowSizeLabel.Text = ShadowSizeText(this._layerShadowSize.Value);
+            this.ChangeLayerStyle(style => style with { Shadow = true, ShadowSize = this._layerShadowSize.Value / 100.0 });
+        };
+        this._toolTip.SetToolTip(this._layerItalic, "Draws the text slanted: the font's italic, else its letters leaned");
+        this._toolTip.SetToolTip(this._layerCaps, "Draws the text in capitals; the field keeps the text as typed");
+        this._toolTip.SetToolTip(this._layerShadow, "Draws a soft shadow under the letters and their outline");
+        this._toolTip.SetToolTip(this._layerShadowSize, "Size of the shadow, as a share of a line: how far a halo reaches, how far a drop falls");
+
+        // The text styles: a click applies one or saves a new one, a right click on one of the user's manages it.
+        if (!this._textStyles.Load())
+        {
+            this.ShowStatus($"The text styles could not be read from {TextStyles.FileName}: only the built-in ones are offered.", error: true);
+        }
+
+        this._textStyleStrip.SetStyles(this._textStyles.All);
+        this._textStyleStrip.Picked += (_, choice) =>
+        {
+            if (choice is ApplyStyle apply)
+            {
+                this.ApplyTextStyle(apply.Style);
+            }
+            else
+            {
+                this.SaveTextStyle();
+            }
+        };
+        this._textStyleStrip.MouseUp += (_, e) =>
+        {
+            if (e.Button == MouseButtons.Right && this._textStyleStrip.Enabled
+                && this._textStyleStrip.TryValueAt(e.Location, out var choice) && choice is ApplyStyle { Style.BuiltIn: false } apply)
+            {
+                this.ShowTextStyleMenu(apply.Style, e.Location);
+            }
+        };
 
         // Each color: the dialog's button and the eyedropper; the outline's and the box's turn them on.
         (ColorSplitButton Button, TrackBar Sample, Label Label, string Name, Func<LayerTextStyle, Color> Get, Func<LayerTextStyle, Color, LayerTextStyle> Set)[] colors =
@@ -201,6 +269,7 @@ internal sealed partial class MainForm
             (this._layerColor, this._layerColorSample, this._layerColorSampleLabel, "the text's", style => style.Color, (style, color) => style with { Color = color }),
             (this._layerOutlineColor, this._layerOutlineSample, this._layerOutlineSampleLabel, "the outline's", style => style.OutlineColor, (style, color) => style with { Outline = true, OutlineColor = color }),
             (this._layerBackgroundColor, this._layerBackgroundSample, this._layerBackgroundSampleLabel, "the box's", style => style.BackgroundColor, (style, color) => style with { Background = true, BackgroundColor = color }),
+            (this._layerShadowColor, this._layerShadowSample, this._layerShadowSampleLabel, "the shadow's", style => style.ShadowColor, (style, color) => style with { Shadow = true, ShadowColor = color }),
         ];
         foreach (var (button, sample, label, name, get, set) in colors)
         {
@@ -217,6 +286,8 @@ internal sealed partial class MainForm
         this._layerOutlineWidthLabel.Text = OutlineWidthText(this._layerOutlineWidth.Value);
         this._layerOutlineWidthLabel.MinimumSize = new Size(TextRenderer.MeasureText(OutlineWidthText(20), this._layerOutlineWidthLabel.Font).Width, 0);
         this._layerBackgroundOpacityLabel.Text = OpacityText(this._layerBackgroundOpacity.Value);
+        this._layerShadowSizeLabel.Text = ShadowSizeText(this._layerShadowSize.Value);
+        this._layerShadowSizeLabel.MinimumSize = new Size(TextRenderer.MeasureText(ShadowSizeText(30), this._layerShadowSizeLabel.Font).Width, 0);
 
         // A move or a turn by a gesture updates the options alone; any other change the buttons and rows too.
         this._preview.LayersChanged += (_, _) =>
@@ -233,6 +304,8 @@ internal sealed partial class MainForm
     }
 
     private static string OutlineWidthText(int percent) => $"Width: {percent} %";
+
+    private static string ShadowSizeText(int percent) => $"Size: {percent} %";
 
     /// <summary>
     /// A row of the font drop-down: the family's name in its own face; for a family of symbols, a sample of
@@ -319,14 +392,14 @@ internal sealed partial class MainForm
         this._layerIconSize = size;
         this._layerEditShowsDone = null;
 
-        foreach (var button in new[] { this._layerColor, this._layerOutlineColor, this._layerBackgroundColor })
+        foreach (var button in new[] { this._layerColor, this._layerOutlineColor, this._layerBackgroundColor, this._layerShadowColor })
         {
             var previous = button.Eyedropper.Image;
             button.Eyedropper.Image = EffectIcons.Eyedropper(size);
             previous?.Dispose();
         }
 
-        this._layerColorSwatch = this._layerOutlineSwatch = this._layerBackgroundSwatch = null;
+        this._layerColorSwatch = this._layerOutlineSwatch = this._layerBackgroundSwatch = this._layerShadowSwatch = null;
         this.UpdateLayerOptions();
     }
 
@@ -367,17 +440,20 @@ internal sealed partial class MainForm
         bool text = enabled && layer is { IsText: true };
         foreach (var control in new Control[]
         {
-            this._layerText, this._layerFont, this._layerBold, this._layerColor, this._layerColorSample, this._layerColorSampleLabel,
+            this._layerText, this._layerFont, this._layerBold, this._layerItalic, this._layerCaps, this._layerColor, this._layerColorSample, this._layerColorSampleLabel,
             this._layerOutline, this._layerOutlineColor, this._layerOutlineSample, this._layerOutlineSampleLabel, this._layerOutlineWidth, this._layerOutlineWidthLabel,
             this._layerBackground, this._layerBackgroundColor, this._layerBackgroundSample, this._layerBackgroundSampleLabel, this._layerBackgroundOpacity, this._layerBackgroundOpacityLabel,
+            this._layerShadow, this._layerShadowColor, this._layerShadowSample, this._layerShadowSampleLabel, this._layerShadowKind, this._layerShadowSize, this._layerShadowSizeLabel,
+            this._textStyleStrip,
         })
         {
             control.Enabled = text;
         }
 
-        // The text layer's own settings shown — the defaults while none is selected; the field left alone
-        // while it already holds the text, so its caret stays where the user types.
-        var style = layer is { IsText: true } ? layer.Style! : LayerTextStyle.Default;
+        // The text layer's own settings shown — a new text's style while none is selected; the field left
+        // alone while it already holds the text, so its caret stays where the user types.
+        var style = layer is { IsText: true } ? layer.Style! : this._textStyles.NewTextStyle;
+        this._textStyleStrip.Current = layer is { IsText: true } ? layer.Style : null;
         string shownText = layer is { IsText: true } ? layer.Text! : "";
         bool syncing = this._syncingEffects;
         this._syncingEffects = true;
@@ -393,6 +469,11 @@ internal sealed partial class MainForm
 
         this._layerFont.SelectedItem = style.Font;
         this._layerBold.Checked = style.Bold;
+        this._layerItalic.Checked = style.Italic;
+        this._layerCaps.Checked = style.Caps;
+        this._layerShadow.Checked = style.Shadow;
+        this._layerShadowKind.Selected = style.ShadowKind;
+        this._layerShadowSize.Value = Math.Clamp((int)Math.Round(style.ShadowSize * 100), this._layerShadowSize.Minimum, this._layerShadowSize.Maximum);
         this._layerOutline.Checked = style.Outline;
         this._layerOutlineWidth.Value = Math.Clamp((int)Math.Round(style.OutlineWidth * 100), this._layerOutlineWidth.Minimum, this._layerOutlineWidth.Maximum);
         this._layerBackground.Checked = style.Background;
@@ -400,6 +481,8 @@ internal sealed partial class MainForm
         this._syncingEffects = syncing;
         this._layerOutlineWidthLabel.Text = OutlineWidthText(this._layerOutlineWidth.Value);
         this._layerBackgroundOpacityLabel.Text = OpacityText(this._layerBackgroundOpacity.Value);
+        this._layerShadowSizeLabel.Text = ShadowSizeText(this._layerShadowSize.Value);
+        this.ShowLayerSwatch(this._layerShadowColor, ref this._layerShadowSwatch, style.ShadowColor);
         this.ShowLayerSwatch(this._layerColor, ref this._layerColorSwatch, style.Color);
         this.ShowLayerSwatch(this._layerOutlineColor, ref this._layerOutlineSwatch, style.OutlineColor);
         this.ShowLayerSwatch(this._layerBackgroundColor, ref this._layerBackgroundSwatch, style.BackgroundColor);
@@ -583,7 +666,7 @@ internal sealed partial class MainForm
 
         var center = at ?? new PointF(0.5f, 0.5f);
         var place = new LayerPlacement(center.X, center.Y, LayerPlacement.TextSize, 0);
-        if (this.RenderTextLayer(text, LayerTextStyle.Default, Layer.DefaultLook, place) is { } layer)
+        if (this.RenderTextLayer(text, this._textStyles.NewTextStyle, Layer.DefaultLook, place) is { } layer)
         {
             this.TurnLayersOn();
             this._preview.AddLayer(layer);
@@ -822,4 +905,137 @@ internal sealed partial class MainForm
         this.AddTextLayer(text.Replace("\r\n", "\n").TrimEnd('\n'), at);
     }
 
+    /// <summary>
+    /// A style's thumbnail clicked: the selected text layer drawn in it — one step of the undo history, like any
+    /// setting — and the next new text given it (workfiles/20261029-text-layer-style-presets.md § Applying a Style).
+    /// </summary>
+    private void ApplyTextStyle(NamedTextStyle style)
+    {
+        if (this.IsExporting || this._preview.SelectedLayer is not { IsText: true })
+        {
+            return;
+        }
+
+        this.ChangeLayerStyle(_ => style.Style);
+        this._textStyles.Applied(style);
+        this.SaveTextStyles(null);
+    }
+
+    /// <summary>Save style…: the selected text layer's style kept under a name, one of the user's of that name replaced after a confirmation.</summary>
+    private void SaveTextStyle()
+    {
+        if (this.IsExporting || this._preview.SelectedLayer is not { IsText: true } layer
+            || this.AskTextStyleName("Save style", "The style's name:", "", except: null) is not { } name)
+        {
+            return;
+        }
+
+        if (this._textStyles.Find(name) is { } existing)
+        {
+            if (MessageBox.Show(
+                    this,
+                    $"Replace the style “{existing.Name}” with the selected text's style?",
+                    "Save style",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question,
+                    MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+            {
+                return;
+            }
+
+            name = existing.Name;
+        }
+
+        this._textStyles.Put(name, layer.Style!);
+        this.SaveTextStyles($"Style “{name}” saved.");
+    }
+
+    /// <summary>The context menu of one of the user's styles: rename it, replace it with the selected text's style, delete it.</summary>
+    private void ShowTextStyleMenu(NamedTextStyle style, Point location)
+    {
+        foreach (var item in this._textStyleMenu.Items.Cast<ToolStripItem>().ToList())
+        {
+            item.Dispose();
+        }
+
+        this._textStyleMenu.Items.Clear();
+        this._textStyleMenu.Items.Add("Rename…", null, (_, _) => this.RenameTextStyle(style));
+        var replace = new ToolStripMenuItem("Replace with current style", null, (_, _) =>
+        {
+            if (this._preview.SelectedLayer is { IsText: true } layer)
+            {
+                this._textStyles.Put(style.Name, layer.Style!);
+                this.SaveTextStyles($"Style “{style.Name}” replaced.");
+            }
+        })
+        {
+            Enabled = this._preview.SelectedLayer is { IsText: true },
+        };
+        this._textStyleMenu.Items.Add(replace);
+
+        // A decision taking something away goes through a submenu (RULES.md § People).
+        var delete = new ToolStripMenuItem("Delete");
+        delete.DropDownItems.Add($"Delete {style.Name}", null, (_, _) =>
+        {
+            this._textStyles.Delete(style);
+            this.SaveTextStyles($"Style “{style.Name}” deleted.");
+        });
+        this._textStyleMenu.Items.Add(delete);
+        this._textStyleMenu.Show(this._textStyleStrip, location);
+    }
+
+    private void RenameTextStyle(NamedTextStyle style)
+    {
+        if (this.AskTextStyleName("Rename style", "The style's new name:", style.Name, except: style) is { } name && name != style.Name)
+        {
+            this._textStyles.Rename(style, name);
+            this.SaveTextStyles($"Style “{style.Name}” renamed “{name}”.");
+        }
+    }
+
+    /// <summary>
+    /// A style's name asked until it is given or cancelled: not empty, never a built-in style's; when renaming
+    /// <paramref name="except"/>, never another style's either. <c>null</c> when cancelled.
+    /// </summary>
+    private string? AskTextStyleName(string title, string prompt, string value, NamedTextStyle? except)
+    {
+        while (true)
+        {
+            using var dialog = new NameDialog(title, prompt, value);
+            if (dialog.ShowDialog(this) != DialogResult.OK)
+            {
+                return null;
+            }
+
+            value = dialog.Value;
+            string? refused = value.Length == 0 ? "A style needs a name."
+                : TextStyles.IsReserved(value) ? $"“{value}” is a built-in style's name: choose another one."
+                : except is not null && this._textStyles.Find(value) is { } other && other != except ? $"A style is already named “{other.Name}”: choose another name."
+                : null;
+            if (refused is null)
+            {
+                return value;
+            }
+
+            MessageBox.Show(this, refused, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+    }
+
+    /// <summary>The text styles written to their file and shown again in the strip; <paramref name="done"/> in the status line, or why they could not be written.</summary>
+    private void SaveTextStyles(string? done)
+    {
+        this._textStyleStrip.SetStyles(this._textStyles.All);
+        try
+        {
+            this._textStyles.Save();
+            if (done is not null)
+            {
+                this.ShowStatus(done);
+            }
+        }
+        catch (Exception ex) when (Explorer.FileIndex.IsFileError(ex))
+        {
+            this.ShowStatus($"The text styles could not be saved to {TextStyles.FileName}: {ErrorLog.Describe(ex)}", error: true);
+        }
+    }
 }
