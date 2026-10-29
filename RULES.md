@@ -376,6 +376,20 @@ one definition, `Composition/GridLayers`:
 - A **text layer** is drawn into a bitmap by `Imaging/TextRaster` — DirectWrite through Direct2D, called
   through their COM tables: the only way the app draws emojis in color; GDI and GDI+ never do.
 
+### Text Styles
+
+A text layer's style under a name (origin: `workfiles/20261029-text-layer-style-presets.md`), `UI/TextStyles`:
+
+- A text style holds **`LayerTextStyle` only** — never the layer's text, size, place or angle, nor its look.
+  A new setting of the text joins `LayerTextStyle`, its `ToJson` / `FromJson` under a named key (a missing or
+  foreign value giving its default), and `TextStyleStrip`'s tooltip.
+- **Drawn from the bottom up**: the box, the shadow, the outline, the letters (`TextRaster.Draw`); ALL CAPS
+  changes the text drawn (`LayerTextStyle.Drawn`), never the text kept.
+- The **built-in styles** live in the code (`TextStyles.BuiltIn`), fixed, their names reserved; the **user's** in
+  `text-styles.json` next to the exe, with the name of the last style applied — the style of a new text. User
+  actions write it, a `--new-instance` too. Out of the undo history; applying a style is a style change, one
+  step like any setting.
+
 ## Output Format
 
 The canvas ratio has **one definition** (origin: `workfiles/20261001-output-formats.md`): the
