@@ -422,7 +422,8 @@ one definition, `Composition/GridLayers`:
   6 logical px, `LayerSnap`) onto the grid's edges and center, every cell's as drawn (`CellBounds`) and the
   other shown layers', one line per position, the grid's or a cell's winning over a layer's. They show by
   § Guides Approach — the approach distance a share of the layer's rectangle — every guide crossing the whole
-  grid, another layer's at half opacity. Shift ignores them; the drag only, never the wheel nor the rotation.
+  grid, another layer's at half opacity — and that layer's turned box outlined dashed at the same opacity, so
+  the user sees which one matches (`PaintMatchingLayers`). Shift ignores them; the drag only, never the wheel nor the rotation.
   The cursor over the rotation handle, and while it is dragged, is a rotation arrow (`RotationCursor`).
 - A **text layer** is drawn into a bitmap by `Imaging/TextRaster` — DirectWrite through Direct2D, called
   through their COM tables: the only way the app draws emojis in color; GDI and GDI+ never do.
