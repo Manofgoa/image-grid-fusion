@@ -89,9 +89,10 @@ internal sealed partial class GridPreview
 
     /// <summary>
     /// Whether the selected cell shows the Pick view — the whole image see-through over the cell — while
-    /// the Cutout tab is selected, the effect on and Pick pressed: armed, or the cutout a pick.
+    /// selecting: Pick armed, the Cutout tab selected and the effect on. Otherwise the cell shows the
+    /// cutout as it is, its treatments included.
     /// </summary>
-    private bool InPickView => this._cutoutPoints && (this._cutoutPick || this.SelectedCellImage?.Look.Cutout?.Mode == CutoutMode.Picked);
+    private bool InPickView => this._cutoutPoints && this._cutoutPick;
 
     /// <summary>
     /// Arms Pick on the selected cell — a layer is picked on in its edit view, where it is the cell — and
