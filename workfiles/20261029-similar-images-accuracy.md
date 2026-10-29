@@ -91,12 +91,10 @@ about what a random pair does at its 90th percentile — most of the 100 are no 
 
 ## Image Similarity (Find similar images)
 
-The design proposed (Open Questions settle its open points):
-
-- **Cutoff by standing out**: a result is kept when its score stands out of the source's scores over the
-  index by at least the strictness level's `z` (§ Strictness Setting), at most `SimilarCount` (100),
-  the closest first. Mean and spread computed per query over every embedded image — one pass, already
-  made to score them.
+- **Cutoff by standing out** (Q&A 5): a result is kept when its score stands out of the source's scores
+  over the index — `z = (score − mean) / sd`, every embedded image but the source — by at least the
+  strictness level's `z` (§ Strictness Setting), at most `SimilarCount` (100), the closest first. The mean
+  and spread come from the pass that scores them: no second pass.
 - **The source image is left out** of its own results.
 - **None standing out**: the caption line says so (`Similar to <name> — nothing close enough`), rather
   than an empty list without a word.
@@ -105,24 +103,45 @@ The design proposed (Open Questions settle its open points):
 
 ## Text Similarity (the 💡 similarity tier)
 
-- **The query embedded with its accents**: the raw text typed, lowercased, not `FileSearch.Words`.
-- **A cutoff**: open — the measurements show that no per-query cutoff separates noise (Open Question 2).
+- **The query embedded with its accents**: the raw text typed, trimmed and lowercased — not
+  `FileSearch.Words`, which folds the accents for the name search.
+- **Per-image debiasing**: an image's score is read against its own scores for a fixed set of **neutral
+  prompts** (`VisionSimilarity.NeutralPrompts`, about 60, French and English — `un chat`, `a house`…):
+  `d = (score − its neutral mean) / its neutral spread`. The prompts are embedded once per text model
+  load; each image's mean and spread are kept in memory while the vision index is unchanged.
+- **A strict cutoff** (Q&A 6): a result is kept when `d` reaches the level's `z` plus a text margin
+  (`TextMargin`) **and** its score stands out of the query's own scores by the level's `z` too, at most
+  `SimilarCount`. The margin is calibrated so that **nonsense queries return nothing at Normal** — often
+  0 to a few results for a real one, which is the point.
 - Its place stays the **last tier**, by score.
 
 ---
 
 ## Strictness Setting
 
-An app setting of the ⚙ menu, after *Visual analysis* (the `Face grouping` pattern): levels giving the
-cutoff — Open Question 3. Changing it applies to the next search; the list shown is searched again.
+An app setting of the ⚙ menu, after *Visual analysis*: *Similar images* › **five levels** (Q&A 7) —
+*Very loose*, *Loose*, **Normal** (the default), *Strict*, *Very strict* — **one setting for both
+features**, each level giving the cutoff `z` (`VisionSimilarity.Cutoffs`, proposed 1.5 / 2.0 / **2.5** /
+3.0 / 3.5, calibrated in the run). Stored in `settings.json` (`AppSettings.SimilarImages`, the level's
+index, an unknown value giving Normal) — the `Face grouping` pattern. Disabled while the visual analysis
+is off. Changing it searches the list shown again (a Find similar or a 💡 search).
 
 ---
 
 ## Closeness Shown
 
-- `ExplorerRow` carries the result's **closeness** (`Similarity`, from `SearchMatch.Similarity`), filled by
-  `SimilarRows` and `WithFavorites` for the similarity tier only.
-- What is shown, and where — Open Question 4.
+- **The closeness** (Q&A 10): how far a result stands out, **0–100 %, computed the same way** for both
+  features — from `z` for an image, from `d` for a text: `clamp((v − 1) / 4) × 100`, so 1 σ is 0 % and
+  5 σ is 100 % (values set in the run if the measurements ask). Never the raw cosine, which is not
+  comparable between an image and a text.
+- `ExplorerRow` carries it (`Closeness`, null for every other row), filled by `SimilarRows` and
+  `WithFavorites` for the similarity tier only — `SearchMatch` carries the standing-out value next to
+  `Similarity`.
+- Shown three ways (Q&A 8):
+  - a **badge** on the tile — `87 %` on a dark pill in the bottom-left corner, the group counts' style
+    (`PaintGroupPicture`), never over the heart or the bulb;
+  - in the **Details** view, the closeness before the size on the row's first line;
+  - in the **tooltip**, a line after the path: `≈ 87 % close`.
 
 ---
 
@@ -137,14 +156,16 @@ embeddings and by hand.
 | Find similar leaves the source image out | Throwaway harness (scratchpad) | Create |
 | The text query reaches the text model with its accents | Throwaway harness (scratchpad) | Create |
 | The closeness reaches the row and is shown | By hand, in the app | — |
+| The text cutoff returns nothing for nonsense queries at Normal, a few results for real ones | Throwaway harness (scratchpad), on real embeddings | Create |
+| The closeness maps 1 σ to 0 % and 5 σ to 100 %, the same for an image and a text | Throwaway harness (scratchpad) | Create |
 | The ⚙ level is saved, read back at start-up, and the shown list is searched again | By hand, in the app | — |
+| *Nothing close enough* shows when no result stands out | By hand, in the app | — |
 
 ---
 
 ## Open Questions
 
-- [ ] 1. Find similar's cutoff: **relative** (how far a result stands out of the source's own scores, z)
-  — recommended by the measurements — or an **absolute** cosine floor?
+- [x] ~~1. Find similar's cutoff: relative (z) or an absolute cosine floor?~~ → **Relative**
 - [x] ~~2. The text similarity tier: strict cutoff, dropped, or kept with its closeness shown?~~ → A
   **strict cutoff**, with per-image debiasing (§ Text Similarity)
 - [x] ~~3. The strictness levels: five or three; one setting or one each?~~ → **Five**, one setting for
@@ -152,8 +173,8 @@ embeddings and by hand.
 - [x] ~~4. The closeness shown: badge, Details line, tooltip?~~ → **All three**
 - [x] ~~5. Try the text model's fp16 export before the go, or later?~~ → **Later**: out of this workfile,
   a follow-up once it is delivered
-- [ ] 6. The number shown: the **raw cosine** (0.83 for an image, 0.12 for a text — not comparable), or
-  **how far the result stands out**, mapped to 0–100 % the same way for both?
+- [x] ~~6. The number shown: the raw cosine, or how far the result stands out, 0–100 %?~~ → **How far it
+  stands out**, 0–100 %, the same way for both
 
 ---
 
@@ -178,6 +199,20 @@ Request: after the faces, the images too far apart that the similar-image search
   much; the query folded of its accents (§ Diagnosis).
 - Proposed: a relative cutoff for Find similar, the source left out, the query's accents kept, a ⚙
   level, the closeness carried to the rows; five questions left open.
+
+### Iteration 2 — 2026-10-29
+
+The open questions answered (Q&A 5–10):
+
+- **Find similar**: a **relative** cutoff, how far a result stands out of the source's own scores.
+- **Text**: a **strict cutoff**, per-image debiasing against neutral prompts, calibrated so that nonsense
+  queries give nothing at Normal.
+- **Five levels**, *Similar images* in the ⚙ menu, one setting for both.
+- **The closeness shown** as a tile badge, in the Details row and in the tooltip — how far the result
+  stands out, 0–100 %, the same for both.
+- **The fp16 text model**: later, out of this workfile.
+
+No question left open: the design is ready for the go.
 
 ---
 
@@ -204,12 +239,12 @@ Questions asked by the agent during design, with user responses.
 | 2 | Which levers are accepted? | A score cutoff; a strictness setting; the score shown (not a model change) | 2026-10-29 |
 | 3 | Is the subject straightforward or tricky / long? | Tricky / long | 2026-10-29 |
 | 4 | *(the user's)* How is the global search ranking computed? The file name should weigh more than the content | Answered: relevance tiers, the path matches first (every word in the name, then fewer), presets, people, the content by reliability, the similarity tier last; the sort order inside a tier — the name already outranks the content | 2026-10-29 |
-| 5 | Find similar's cutoff: relative (z) or absolute? | | |
+| 5 | Find similar's cutoff: relative (z) or absolute? | Relative | 2026-10-29 |
 | 6 | The text similarity tier: strict cutoff, dropped, or kept with its closeness shown? | Strict cutoff | 2026-10-29 |
 | 7 | The strictness levels: five or three; one setting or one each? | Five levels, one setting for both | 2026-10-29 |
 | 8 | The closeness shown: badge, Details line, tooltip? | All three | 2026-10-29 |
 | 9 | Try the text model's fp16 export before the go, or later? | Later | 2026-10-29 |
-| 10 | The closeness shown: the raw cosine, or how far the result stands out, on a 0–100 scale? | | |
+| 10 | The closeness shown: the raw cosine, or how far the result stands out, on a 0–100 scale? | How far it stands out, 0–100 % | 2026-10-29 |
 
 ---
 
