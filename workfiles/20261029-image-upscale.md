@@ -73,17 +73,17 @@ Settled with the user before exploration (Q&A 1–4):
 - **Offered** when the effect is turned on without it — a **No** leaves it off — and from the ⚙ menu
   while missing (*Download the upscale engine…*), as `CutoutEngineReady` / `OfferCutoutEngineDownload`
   do.
-- **Models** (scout candidates, licence BSD-3-Clause, input `float32 [1,3,h,w]` RGB in [0,1],
-  dynamic height and width, output `[1,3,s·h,s·w]`):
+- **Models**: RealESRGAN ×2 and ×4, **both in one download** (134 MB), the factor picking the model
+  — never one model resized for the other. Licence BSD-3-Clause, credited with the other engines;
+  input `float32 [1,3,h,w]` RGB in [0,1], dynamic height and width, output `[1,3,s·h,s·w]`:
 
   | Model | File | Size | Source |
   |---|---|---|---|
   | RealESRGAN ×2 (RRDBNet) | `real_esrgan_x2.onnx` | 67.1 MB | `SceneWorks/real-esrgan-onnx` @ `09f741bac80a246b407da3ee902bf5f3291b602f` |
   | RealESRGAN ×4 (RRDBNet) | `real_esrgan_x4.onnx` | 67.1 MB | same revision |
-  | realesr-general-x4v3 (compact, ×4) | `realesr-general-x4v3.onnx` | 4.9 MB | `jonathanst29/tinier-upscale-models` @ `899dc1e4b22bbf1955c2f1739c085edc080cb366` |
 
-  Which ones ship in the download: Open Question 2. The hashes are taken from the Hugging Face API
-  by the scout and checked again at implementation.
+  The hashes are taken from the Hugging Face API by the scout and checked again at implementation;
+  the ×2 file is checked to be a true ×2 on a test image.
 - **Sessions**: `UpscaleEngine` copies `CutoutEngine.Load` — no memory arena, no memory pattern, two
   intra-op threads — loaded lazily, released after 5 minutes unused (`UpscaleService`'s idle timer).
 - **Tiling**: the image is run in tiles (about 256 px with a 16 px overlap, the agent's choice at
@@ -100,16 +100,24 @@ Settled with the user before exploration (Q&A 1–4):
   behind a gate, a request whose look changed before its turn dropped, failures reported through the
   status line — and kept on the `SourceImage`, counted in its `MemoryBytes`, released on `Dispose`.
 - **Every reader draws it** through `SourceImage.DrawnBitmap` (RULES.md § The Cutout Exception lists
-  them): it now builds `Bitmap` → cut-out → upscale, each stage cached on its own key. The size
-  check of `DrawnBitmap` (`cut.Bitmap.Size == Bitmap.Size`) becomes a check on the stage's expected
-  size.
+  them): it now builds `Bitmap` → upscale → cut-out (below), each stage cached on its own key. The
+  size check of `DrawnBitmap` (`cut.Bitmap.Size == Bitmap.Size`) becomes a check on the stage's
+  expected size.
 - **Fractions stay fractions**: the crop, the focus, the zoom, the blur's rectangle and the cutout's
   points are fractions of the image as loaded; `ImageLook.Shown` reads the drawn size, so they hold
   as long as the ratio is exact. Every pixel-space reader of `image.Bitmap.Size` that draws from
   `DrawnBitmap` is checked at implementation (the scout named `GridPreview.cs` around 500, 1951, 2277,
   2375, 3535, and `SourceImage.Sizing`, which reads `Bitmap.Size`).
-- **Canvas sizing**: Open Question 1.
-- **Cutout and Upscale together**: Open Question 3.
+- **Canvas sizing — the upscaled image widens the native size**: its drawn bitmap counts as a larger
+  image (`Sharpening` stays 1), so `CanvasSizer.Compute` grows the PNG's canvas until it is not
+  downscaled, within [1200, cap] — that is where the gain shows. `SourceImage.Sizing`, which reads
+  `Bitmap.Size` today, reads the drawn size as `Frame.Sizing` does, so the preview's readouts and
+  the export agree. A video export stays clamped to the Video size as ever.
+- **Cutout and Upscale together — upscale, then the mask**: the model enlarges the **whole image**
+  (never the cut-out), then the cutout's mask — computed once on the image as loaded, unchanged —
+  is enlarged and applied to it with its treatments (`CutoutMask.Apply`, its strengths shares of the
+  longer side, so resolution-independent). `DrawnBitmap` builds `Bitmap` → upscale → cut, the
+  cut-out of an upscaled image cached on the upscale's key and the cutout's.
 - **While it is computed**: the cell shows the image as it is, with an *⤢ Upscaling…* badge (the
   preview only), asked for **at every paint** like `PaintCutout`, so any route changing a look is
   covered by itself. **Exports wait** for the upscales they draw (`WaitForUpscalesAsync` beside
@@ -129,7 +137,12 @@ Settled with the user before exploration (Q&A 1–4):
   export at once.
 - The frames are upscaled **in the background**, the badge showing the progress
   (*⤢ Upscaling… 12 / 40*); the GIF keeps playing as it is until every frame is ready, then switches.
-- **Where the upscaled frames are kept**: Open Question 4.
+- **The upscaled frames are kept on disk**, never all in memory: each written as it is computed
+  into a cache folder, **`%TEMP%\ImageGridFusion\upscale-cache\`** (kebab-case, its name in one
+  constant `UpscaleCache.FolderName` — shared RULES § Folder Names), one file per frame keyed by the
+  GIF's file, its stamp, the frame and the factor; `UpscaledPages.Render` reads a frame back on
+  demand. The folder is emptied at start-up by the normal instance only — a `--new-instance` one
+  deletes nothing of its own accord (RULES.md § Single Instance), as `url-downloads\`.
 - The preview's player shrinks each frame to the cell (`AnimationPlayer.ScaleDown`): expected — the
   preview never draws more than the cell; the gain shows in the exports and in a large cell.
 
@@ -155,15 +168,14 @@ app*). Nothing is created or updated; the checks are made by hand on the launche
 
 ## Open Questions
 
-- [ ] **Canvas sizing** — should an upscaled image **widen the PNG's native size** (its drawn bitmap
-  counts as a larger image: `Sharpening` 1), or keep the canvas as it was and only draw the cell
-  from more pixels (`Sharpening` = the factor, as a PDF page)?
-- [ ] **Models downloaded** — RealESRGAN ×2 and ×4 (134 MB together)? With the compact x4v3 (4.9 MB)
-  as a faster ×4 choice? Or the compact one alone (×4 only, then shrunk for ×2)?
-- [ ] **Cutout and Upscale together** — upscale the original image and apply the cutout's mask
-  enlarged (cleaner edges, one mask), or upscale the cut-out (the model seeing only the subject)?
-- [ ] **A GIF's upscaled frames** — kept in memory (fast, but a 400 × 300 GIF of 50 frames at ×4 is
-  about 380 MB), or written to a cache folder in `%TEMP%` and read back per frame (light, slower)?
+- [x] ~~**Canvas sizing** — should an upscaled image widen the PNG's native size, or only draw the
+  cell from more pixels?~~ → It widens the native size (`Sharpening` 1)
+- [x] ~~**Models downloaded** — ×2 and ×4, with the compact x4v3, or the compact one alone?~~ →
+  RealESRGAN ×2 and ×4 (134 MB), no compact model
+- [x] ~~**Cutout and Upscale together** — upscale then the mask, or upscale the cut-out?~~ → Upscale
+  the whole image, then apply the cutout's mask enlarged
+- [x] ~~**A GIF's upscaled frames** — in memory, or in a temp cache?~~ → A cache folder in `%TEMP%`,
+  read back per frame
 
 ---
 
@@ -181,6 +193,13 @@ single scout pass over the Cutout pipeline, the engine download and the GIF / ca
 by the agent, open to review: the tab after Cutout, the factor thumbnails, the 8192 limit, the
 `UpscaledPages` wrapper for GIFs, the badge and the export wait mirroring Cutout. Four questions left
 open.
+
+### Iteration 2 — 2026-10-29
+
+The four open questions answered (Q&A 5–8): the upscaled image widens the PNG's native size; the
+download holds RealESRGAN ×2 and ×4 only; with the Cutout on, the whole image is upscaled and the
+mask applied after, enlarged; a GIF's upscaled frames go to `%TEMP%\ImageGridFusion\upscale-cache\`
+and are read back per frame. § Engine, § Drawn Bitmap and § Animated GIFs updated. No question left.
 
 ---
 
@@ -209,10 +228,12 @@ Questions asked by the agent during design, with user responses.
 | 2 | Which contents can be upscaled? | Still images and animated GIFs | 2026-10-29 |
 | 3 | Which enlargement factor? | ×2 or ×4, chosen in the options | 2026-10-29 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward — a single scout pass | 2026-10-29 |
-| 5 | Canvas sizing: widen the native size, or only sharpen the cell? | | |
-| 6 | Which models are downloaded? | | |
-| 7 | Cutout + Upscale: upscale then mask, or upscale the cut-out? | | |
-| 8 | A GIF's upscaled frames: in memory or in a temp cache? | | |
+| 5 | Canvas sizing: widen the native size, or only sharpen the cell? | Widen the native size | 2026-10-29 |
+| 6 | Which models are downloaded? | RealESRGAN ×2 and ×4 (134 MB) | 2026-10-29 |
+| 7 | Cutout + Upscale: upscale then mask, or upscale the cut-out? | Upscale, then the mask | 2026-10-29 |
+| 8 | A GIF's upscaled frames: in memory or in a temp cache? | A cache in `%TEMP%` | 2026-10-29 |
+| 9 | Mark the backlog row *AI upscale* with this workfile? | | |
+| 10 | Go for implementation — scope and where? | | |
 
 ---
 
