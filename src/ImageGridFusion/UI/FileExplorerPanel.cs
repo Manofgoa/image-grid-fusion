@@ -91,7 +91,7 @@ internal sealed partial class FileExplorerPanel : Panel
     private const int SortWidth = 92;
 
     // The views drop-down's width in logical pixels: its icon, its longest entry and the arrow.
-    private const int ModesWidth = 112;
+    private const int ModesWidth = 96;
 
     // The views drop-down's icons, in ExplorerMode's order (workfiles/20261029-ctrl-f-view-cycle.md § Drop-Down
     // Icons): Segoe UI Emoji glyphs drawn in a colour of their own, as the tile tooltip's — GDI draws no
