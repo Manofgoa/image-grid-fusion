@@ -96,7 +96,7 @@ public sealed record Layer(SourceImage Image, ImageLook Look, LayerPlacement Pla
     public Size Shown => this.Look.Shown(this.Image.Bitmap.Size);
 
     /// <summary>What the layer draws now: its frame, its look, its motion at <paramref name="time"/> on the grid's clock.</summary>
-    public Frame FrameAt(TimeSpan time) => new(this.Image.Bitmap, this.Image.BandColor, this.Look, time, this.Image.Sharpening, this.Image.Sharpens);
+    public Frame FrameAt(TimeSpan time) => new(this.Image.DrawnBitmap, this.Image.BandColor, this.Look, time, this.Image.Sharpening, this.Image.Sharpens);
 
     /// <summary>
     /// A layer's default look: none of the cell effects, the Background off — the content's transparency

@@ -54,7 +54,7 @@ public static class Compositor
     /// <summary>Renders the final image at <paramref name="ratio"/>, at the size given by <see cref="CanvasSizer"/>.</summary>
     public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout? layout, double ratio, GridBorders? borders = null, SeamFade? seams = null, int maxLongSide = CanvasSizer.MaxLongSide, GridLayers? layers = null) =>
         Render(
-            images.Select(i => new Frame(i.Bitmap, i.BandColor, i.DrawnLook, Sharpening: i.Sharpening, Sharpens: i.Sharpens)).ToList(),
+            images.Select(i => new Frame(i.DrawnBitmap, i.BandColor, i.DrawnLook, Sharpening: i.Sharpening, Sharpens: i.Sharpens)).ToList(),
             layout,
             ratio,
             borders,
@@ -146,7 +146,7 @@ public static class Compositor
     public static void Draw(Graphics g, IReadOnlyList<SourceImage> images, GridLayout? layout, Size canvas, GridBorders? borders = null, TimeSpan time = default, SeamFade? seams = null, bool fast = false, GridLayers? layers = null) =>
         Draw(
             g,
-            images.Select(i => new Frame(i.Bitmap, i.BandColor, i.DrawnLook, time, i.Sharpening, i.Sharpens)).ToList(),
+            images.Select(i => new Frame(i.DrawnBitmap, i.BandColor, i.DrawnLook, time, i.Sharpening, i.Sharpens)).ToList(),
             layout,
             canvas,
             borders,
