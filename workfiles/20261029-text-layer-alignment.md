@@ -133,6 +133,12 @@ questions left: what a paragraph is, and a line without a space.
 Q&A 6–7 answered: in justified, a paragraph ends at a blank line (or the text's end), and a line
 without a space is left-aligned, its letters never spread. No open question left.
 
+### Iteration 3 — 2026-10-29 — ✅ Implemented
+
+Go given for code, unit tests and documentation (no test project: nothing to write there), in a
+worktree, `.claude/worktrees/text-layer-alignment` on `feature/text-layer-alignment`, created from
+`main` after the text styles (`20261029-text-layer-style-presets.md`) were merged into it.
+
 ---
 
 ## Implementation Log
