@@ -421,11 +421,12 @@ Applies to everything the user composes (origin: `workfiles/20261006-undo-redo.m
 
 - A **step** is the whole composed state after an action — a `GridState`: per cell its image and
   that image's `ImageLook`, the `GridLayout` (separators included), the output format, the global
-  effects. Only references and immutable values: a new piece of composed state joins the snapshot
-  (`MainForm.CaptureState`) and the restore (`MainForm.RestoreState`), never a per-action inverse.
+  effects, and the **decisions on the people** (`PeopleState`, § People). Only references and immutable
+  values: a new piece of composed state joins the snapshot (`MainForm.CaptureState`) and the restore
+  (`MainForm.RestoreState`), never a per-action inverse.
 - **Out of the history**: the selection, the selected tabs, the playback position and its pause, the app settings
   (§ App Settings),
-  the file explorer, the last video.
+  the file explorer — its People decisions aside — the last video.
 - Steps are committed by `GridHistory` **once the state settles** — unchanged for ~300 ms, no mouse
   button held, no gesture running (`GridPreview.InGesture`): no route commits its own step, so a new
   route is covered by itself, and a gesture is one step. A new gesture that changes the grid without
@@ -690,8 +691,19 @@ The faces of the indexed images grouped into people, in the file explorer's **Pe
   then every file of it and of them; the Low quality tile opened lists its faces as the faces alone.
 - **Decisions by drag and drop and context menu**: a face onto a group joins it; a group onto another
   merges after a confirmation; *Un-merge* on a sub-group; *Not <name>* on a file of an open group; *Hide*
-  / *Unhide*; *Rename…* or F2. User actions write `people.json`, a `--new-instance` too. Out of the undo
-  history.
+  / *Unhide*; *Rename…* or F2. User actions write `people.json`, a `--new-instance` too.
+- **A decision taking something away is confirmed** (origin:
+  `workfiles/20261028-open-people-from-image.md` § Safer People Decisions): *Not <name>*, *Hide* and
+  *Un-merge* open a submenu whose single item does it — *Remove from <name>*, *Hide <name>*,
+  *Un-merge <name>*. A new one does the same.
+- **Every decision is a step of the undo history**, in one timeline with the grid's (§ Undo History):
+  each `FileExplorerPanel.SavePeople` makes a new `PeopleState` — a copy of every person and the
+  decision's text, named by the status line — read by `MainForm.CaptureState`, put back by
+  `FileExplorerPanel.RestorePeople` (`People.Restore`, saved, regrouped). A new decision goes through
+  `SavePeople`, and is covered by itself.
+- **Loading `people.json` and *Forget faces…* are never undone**: they start a new **generation**
+  (`ResetPeopleState`), taken by the last step without a new one (`GridHistory.Rebase`); a step of an
+  older generation restores the grid only.
 - **From a photo** (origin: `workfiles/20261028-open-people-from-image.md`): a file tile's **People**
   submenu lists its people — one definition, `PhotoPeople.Of`: a group per face, a sub-group's counting
   for its top group, named as the tooltip names it; a face alone; the hidden last, marked — each entry
