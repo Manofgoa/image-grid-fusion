@@ -337,6 +337,31 @@ The **mirror of the cell effects' toolbars** at the bottom of the window (origin
   default, and the tabs' **Reset** and *Clear all* reset it with the global effects. Like them, it is
   not persisted and leaves the cells alone.
 
+### Layers
+
+The Layers global effect lays **floating cells** over the whole grid (origin: `workfiles/20261029-layers.md`),
+one definition, `Composition/GridLayers`:
+
+- A **layer** is a content (`SourceImage`), the look of its cell effects (`ImageLook`, kept equal on both) and
+  its place (`LayerPlacement`) in **fractions of the grid** — center, size of the grid's shorter side, angle.
+  Its box takes the shape of its content **as shown** (`ImageLook.Shown`); a text's size measures a line.
+- **Drawn last**, over the borders, by `Compositor.DrawLayers` — each layer by `Compositor.DrawCell` into its
+  box, turned — in the preview and every export, so **every cell effect applies to a layer** from the same
+  place. The layers never size the canvas. A new cell effect works on a layer by itself.
+- **Nothing changes for the cells** unless the Layers tab is selected (`GridPreview.LayersActive`): only then
+  do the layers take the mouse — their hit-test first, on their own area only —, Ctrl+V and a drop on the
+  grid (`MainForm.LayersTakePaste`). A new gesture or input route on the preview checks it the same way.
+- A layer is **selected first**, the cell's selection and the layer's exclusive: `GridPreview.SelectedImage`
+  is the selected layer's content when there is one, so the effects toolbar acts on it; the cell-only code
+  reads `SelectedCellImage`. A layer's default look has the **Background off** (`Layer.DefaultLook`) — the
+  layers' exception to § The Background Exception.
+- Their contents **play beside the cells**: the player, the export, the sound mix and the video length take
+  them (`AnimationPlayer.Sync`, `GridExport.Job.Capture`, `Animation.GridLength`), never the Cascade.
+- Every change makes a **new `GridLayers`**, held by `GlobalState`: the undo history covers them, and a
+  content leaving the layers goes through `GridPreview.ReleaseImage` like a cell's (`GridState.Images`).
+- A **text layer** is drawn into a bitmap by `Imaging/TextRaster` — DirectWrite through Direct2D, called
+  through their COM tables: the only way the app draws emojis in color; GDI and GDI+ never do.
+
 ## Output Format
 
 The canvas ratio has **one definition** (origin: `workfiles/20261001-output-formats.md`): the
