@@ -30,29 +30,28 @@ per line, wrapping, homogeneous sliders) is another subject, handled by its own 
 
 ---
 
-## Joined Split Button
+## Attached Split Button
 
-Agreed with the user (scoping, answer A of the mockups):
+Agreed with the user (Iteration 2, mockup C — replacing mockup A of Iteration 1):
 
 ```
- ┌────┬──┬───────────┐
- │ 💧 │▾ │ ■ Color…  │
- └────┴──┴───────────┘
+ ┌──────┐┌───────────┐
+ │ 💧 ▾ ││ ■ Color…  │
+ └──────┘└───────────┘
 ```
 
 | Part | Look | Click | Tooltip |
 |---|---|---|---|
-| Eyedropper | The eyedropper icon (`EffectIcons.Eyedropper`), square, as tall as the control; drawn **pressed** while armed | Arms the eyedropper, as today | As today, with the sample size added: `Takes the borders' color from the preview (sample: 3 px): click a cell; Escape or a right click cancels` |
-| ▾ | A small down chevron, narrow | Opens the **sample menu** below the control | `The eyedropper's sample: 3 px — the side of the square of preview pixels it averages` |
-| Color… | The swatch of the color in use, then `Color…`, as today | Opens the standard color dialog, as today | As today |
+| Eyedropper button | A native button: the eyedropper icon (`EffectIcons.Eyedropper`), then a small **▾** on its right; drawn **pressed** while armed | On the icon: arms the eyedropper, as today. On the ▾: opens the **sample menu** below the button | As today, with the sample size added: `Takes the borders' color from the preview (sample: 3 px): click a cell; Escape or a right click cancels` |
+| Color… button | A native button: the swatch of the color in use, then `Color…`, as today | Opens the standard color dialog, as today | As today |
 
-- **One frame**, the parts separated by a 1 px line inside it, no gap anywhere: it reads as a single
-  control. The frame, hover and pressed shading follow the **native buttons** of the app (Windows visual
-  styles), each part hovered and pressed **on its own**.
-- It stays **where the split button is today** on each line (the user did not want it moved next to its
-  checkbox — option B rejected).
+- **Two native buttons kept**, as today, but **touching**: no gap between them (the second overlapping
+  the first's right border by 1 px, so the two borders read as one line).
+- The eyedropper button grows by the ▾'s width; it stays as tall as the Color… button.
+- It stays **where the split button is today** on each line (option B, moved next to its checkbox,
+  rejected).
 - Disabled as a whole, as today, when its option is.
-- It keeps its API for its owners: the eyedropper's pressed state, the Color… part's swatch, one click
+- It keeps its API for its owners: the eyedropper's pressed state, the Color… button's swatch, one click
   event per part, one tooltip per part.
 
 ---
@@ -111,6 +110,11 @@ menu, an armed pick at 1 px and 5 px, the tooltips.
   once? (Recommended: set it only — the click on 💧 stays the one way to arm.)
 - [ ] A **right click on the eyedropper part**: does it open the same sample menu too? (Recommended: no —
   the ▾ is the one way, and a right click cancels an armed eyedropper today.)
+- [ ] The **opacity at the right of the color choice**, generalised to every use of a color: designed in
+  this workfile, or in a workfile of its own?
+- [ ] Which color options get it: only those with an opacity today — Background (`Opacity`), Borders
+  (the brackets' `Opacity`), the text layer's box — moved to the right of Color…, or **every** color
+  option, adding one to the text, its outline and its shadow (a new rendering setting, not only a move)?
 
 ---
 
@@ -131,6 +135,16 @@ Initial design, from the parent session's agreed points and the scoping batch:
   the size shown in the tooltips and the menu's check only.
 - The Sample keeps its RULES.md exception (per option, 1 px at launch, activates nothing, no undo, no
   Reset), reworded for the menu.
+
+### Iteration 2 — 2026-10-29
+
+User feedback on the mockups:
+
+- **Mockup C rather than A**: the two native buttons are kept, touching, the ▾ inside the eyedropper
+  button at the right of its icon (section *Attached Split Button* rewritten).
+- **Opacity is a color matter**: the user sees the opacity of a color as a generalisable subject — it
+  should sit **at the right of the color choice**, and that placement should then apply to **every use
+  of a color**. Its scope (this workfile or another, which color options get one) is asked — Q&A 7–8.
 
 ---
 
@@ -159,6 +173,8 @@ Questions asked by the agent during design, with user responses.
 | 4 | Is the subject straightforward or tricky / long? | Straightforward — a single scout pass | 2026-10-29 |
 | 5 | Choosing a size in the ▾ menu: only set it, or set it and arm the eyedropper? | | |
 | 6 | A right click on the eyedropper part: opens the sample menu too? | | |
+| 7 | The opacity at the right of the color choice, for every color: designed in this workfile, or in its own? | | |
+| 8 | Which color options get an opacity at the right of Color…: those that have one today, moved, or every one? | | |
 
 ---
 
