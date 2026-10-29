@@ -29,6 +29,7 @@ internal static class AppSettings
     private const string ExplorerModeName = "ExplorerMode";
     private const string FaceAnalysisName = "FaceAnalysis";
     private const string FaceGroupingName = "FaceGrouping";
+    private const string SimilarImagesName = "SimilarImages";
     private const string VisualAnalysisName = "VisualAnalysis";
     private const string CaptionsName = "Captions";
     private const string ExplorerOpenFolderName = "ExplorerOpenFolder";
@@ -261,6 +262,17 @@ internal static class AppSettings
 
     /// <summary>Saves how strictly the faces are grouped; throws an <see cref="IsSaveError"/> exception on failure.</summary>
     public static void SaveFaceGrouping(int level) => Save((FaceGroupingName, level));
+
+    /// <summary>
+    /// How far an image found by its similarity must stand out — the ⚙ menu's Similar images, a level of
+    /// <see cref="VisionSimilarity.Cutoffs"/>; Normal when nothing was saved or the value is not a level. See
+    /// workfiles/20261029-similar-images-accuracy.md § Strictness Setting.
+    /// </summary>
+    public static int SimilarImages =>
+        Int(SimilarImagesName) is int value && value >= 0 && value < VisionSimilarity.Cutoffs.Length ? value : VisionSimilarity.DefaultLevel;
+
+    /// <summary>Saves how far an image found by its similarity must stand out; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveSimilarImages(int level) => Save((SimilarImagesName, level));
 
     /// <summary>
     /// Whether the file explorer computes the images' embeddings and tags, for the searches by what the
