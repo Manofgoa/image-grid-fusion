@@ -325,6 +325,11 @@ before going on; the Iteration 9 code stays uncommitted meanwhile.
 The sort drop-down's direction stays **text** — `Date ↓`, `Size ↑` — never a ⬇️ / ⬆️ emoji; only the
 entry's icon is an emoji. *(Revises Q&A 15 for the arrows inside a label.)*
 
+### Iteration 12 — 2026-10-29 — ⚙️ Post-implementation — Icon-only buttons keep their row's height
+
+The ⚙ button, its text removed for the icon, shrank to the icon's height under `AutoSize`, lower than
+its neighbours. A button showing its icon alone keeps the height it had with its text — the row's.
+
 ---
 
 ## Implementation Log
