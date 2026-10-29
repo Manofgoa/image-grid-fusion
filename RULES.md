@@ -353,6 +353,10 @@ one definition, `Composition/GridLayers`:
   Ctrl+V and a drop on the grid always fill the cells. Layers are added from the Layers options, or by files
   dropped onto the Layers tab or its options (`MainForm.DroppedOnLayers`). A new gesture on the preview
   checks `LayersTakeMouse` the same way.
+- **A grid holding layers only** has no layout: `Compositor.Draw` / `Render` and `GridExport.Job` take a
+  `null` layout, drawing the layers alone over a transparent canvas, sized by `CanvasSizer.ForLayers` — the
+  smallest where no layer's content is shrunk. With cells, the layers never size the canvas. Every check
+  for an empty grid reads `MainForm.HasContent`, never the cells' count alone.
 - A layer **hidden** from the layer list (`Layer.Visible`) is neither drawn, played, heard, hit nor exported:
   every reader takes `GridLayers.Shown`, never `Items`, for what is drawn.
 - The **edit view** (`GridPreview.BeginLayerEdit` / `EndLayerEdit`) sets the grid aside — images, layout,
