@@ -246,6 +246,12 @@ deleted one giving Default, a renamed one followed); the shadow's size a fractio
 kinds, the drop blurred over half its offset; the shadow's kinds as two option thumbnails; the
 **Default** entry kept first among the built-in styles.
 
+### Iteration 3 — 2026-10-29 — ✅ Implemented
+
+The Layers session delivered its Iterations 12–14 (`bbce6d7`, `b592c1b`, `b71a87b`, `0fc5540`) and was
+closed, the working copy clean: the sequencing constraint (Q&A #12) is met. Go given (Q&A #14) for the
+code and the documentation, in a worktree on `feature/text-layer-style-presets`.
+
 ---
 
 ## Implementation Log
@@ -280,6 +286,7 @@ Questions asked by the agent during design, with user responses.
 | 11 | Alignment of several lines: added to the style, or out of scope? | Out of scope | 2026-10-29 |
 | 12 | Sequencing: after the Layers session's run, or alongside it? | After its delivery | 2026-10-29 |
 | 13 | Go for the implementation? Where? | No — the gate holds until the Layers session delivers; a worktree preferred for the run, to be confirmed with the go | 2026-10-29 |
+| 14 | The Layers session delivered (checked): go for the implementation? Where? | Code, unit tests and documentation; in a worktree | 2026-10-29 |
 
 ---
 
