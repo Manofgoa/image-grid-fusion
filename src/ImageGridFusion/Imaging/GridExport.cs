@@ -20,7 +20,7 @@ internal static class GridExport
     /// </summary>
     public sealed class Job : IDisposable
     {
-        private Job(IReadOnlyList<Item> items, int cellCount, IReadOnlyList<LayerPlacement> layerPlaces, GridLayout layout, double ratio, GridBorders? borders, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack, SoundFade? fade, SeamFade? seams, CascadeSchedule? cascade, int videoMaxSide, int stillMaxSide)
+        private Job(IReadOnlyList<Item> items, int cellCount, IReadOnlyList<LayerPlacement> layerPlaces, GridLayout? layout, double ratio, GridBorders? borders, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack, SoundFade? fade, SeamFade? seams, CascadeSchedule? cascade, int videoMaxSide, int stillMaxSide)
         {
             Items = items;
             this.CellCount = cellCount;
@@ -63,7 +63,8 @@ internal static class GridExport
         /// <summary>Where each layer stands on the grid, the first one for item <see cref="CellCount"/>.</summary>
         public IReadOnlyList<LayerPlacement> LayerPlaces { get; }
 
-        public GridLayout Layout { get; }
+        /// <summary>The cells' layout; <c>null</c> for a grid holding layers only.</summary>
+        public GridLayout? Layout { get; }
 
         /// <summary>The canvas's width ÷ height, the output format's as the export started — the free one as computed then.</summary>
         public double Ratio { get; }
@@ -106,7 +107,7 @@ internal static class GridExport
         /// canvas clamped to <paramref name="videoMaxSide"/>, a still's to <paramref name="stillMaxSide"/>; the
         /// <paramref name="layers"/> over everything, playing beside the cells, never taking a turn in the cascade.
         /// </summary>
-        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders, Soundtrack? soundtrack = null, SoundFade? fade = null, SeamFade? seams = null, VideoCascade? cascade = null, int videoMaxSide = CanvasSizer.MaxSharedLongSide, int stillMaxSide = CanvasSizer.MaxLongSide, GridLayers? layers = null)
+        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout? layout, double ratio, GridBorders? borders, Soundtrack? soundtrack = null, SoundFade? fade = null, SeamFade? seams = null, VideoCascade? cascade = null, int videoMaxSide = CanvasSizer.MaxSharedLongSide, int stillMaxSide = CanvasSizer.MaxLongSide, GridLayers? layers = null)
         {
             var layered = layers?.Items ?? [];
             var contents = images.Concat(layered.Select(l => l.Image)).ToList();
@@ -256,7 +257,10 @@ internal static class GridExport
 
             // The layers never size the canvas; their frames are rewritten into this array at each frame.
             var layers = new LayerFrame[job.LayerPlaces.Count];
-            var canvas = Animation.EvenSize(CanvasSizer.Compute(job.Cells(frames).Select(f => f.Sizing).ToList(), job.Layout, job.Ratio, job.Borders, job.VideoMaxSide));
+            job.Layers(frames, layers);
+            var canvas = Animation.EvenSize(job.Layout is null
+                ? CanvasSizer.ForLayers(layers, job.Ratio, job.VideoMaxSide)
+                : CanvasSizer.Compute(job.Cells(frames).Select(f => f.Sizing).ToList(), job.Layout, job.Ratio, job.Borders, job.VideoMaxSide));
             using var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppRgb);
             using var g = Graphics.FromImage(bitmap);
             encoder = format == Format.Gif

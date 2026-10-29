@@ -52,7 +52,7 @@ public static class Compositor
     }
 
     /// <summary>Renders the final image at <paramref name="ratio"/>, at the size given by <see cref="CanvasSizer"/>.</summary>
-    public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout layout, double ratio, GridBorders? borders = null, SeamFade? seams = null, int maxLongSide = CanvasSizer.MaxLongSide, GridLayers? layers = null) =>
+    public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout? layout, double ratio, GridBorders? borders = null, SeamFade? seams = null, int maxLongSide = CanvasSizer.MaxLongSide, GridLayers? layers = null) =>
         Render(
             images.Select(i => new Frame(i.Bitmap, i.BandColor, i.DrawnLook, Sharpening: i.Sharpening, Sharpens: i.Sharpens)).ToList(),
             layout,
@@ -68,9 +68,12 @@ public static class Compositor
     /// over them — they never size the canvas. With an alpha channel, transparent where a cell, or the gap
     /// between the cells, has no fill: a PNG keeps it.
     /// </summary>
-    public static Bitmap Render(IReadOnlyList<Frame> frames, GridLayout layout, double ratio, GridBorders? borders = null, SeamFade? seams = null, int maxLongSide = CanvasSizer.MaxLongSide, IReadOnlyList<LayerFrame>? layers = null)
+    public static Bitmap Render(IReadOnlyList<Frame> frames, GridLayout? layout, double ratio, GridBorders? borders = null, SeamFade? seams = null, int maxLongSide = CanvasSizer.MaxLongSide, IReadOnlyList<LayerFrame>? layers = null)
     {
-        var canvas = CanvasSizer.Compute(frames.Select(f => f.Sizing).ToList(), layout, ratio, borders, maxLongSide);
+        // A grid holding layers only is sized by them, transparent around them (workfiles/20261029-layers.md, Iteration 12).
+        var canvas = layout is null
+            ? CanvasSizer.ForLayers(layers ?? [], ratio, maxLongSide)
+            : CanvasSizer.Compute(frames.Select(f => f.Sizing).ToList(), layout, ratio, borders, maxLongSide);
         var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppArgb);
         using var g = Graphics.FromImage(bitmap);
         Draw(g, frames, layout, canvas, borders, seams, layers: layers);
@@ -140,7 +143,7 @@ public static class Compositor
     /// the layout, its motion at <paramref name="time"/> on the clock of the grid; <paramref name="fast"/> as
     /// <see cref="DrawCell"/> takes it.
     /// </summary>
-    public static void Draw(Graphics g, IReadOnlyList<SourceImage> images, GridLayout layout, Size canvas, GridBorders? borders = null, TimeSpan time = default, SeamFade? seams = null, bool fast = false, GridLayers? layers = null) =>
+    public static void Draw(Graphics g, IReadOnlyList<SourceImage> images, GridLayout? layout, Size canvas, GridBorders? borders = null, TimeSpan time = default, SeamFade? seams = null, bool fast = false, GridLayers? layers = null) =>
         Draw(
             g,
             images.Select(i => new Frame(i.Bitmap, i.BandColor, i.DrawnLook, time, i.Sharpening, i.Sharpens)).ToList(),
@@ -156,8 +159,19 @@ public static class Compositor
     /// the layout. The borders, the seams and the layers, global effects, are drawn here too, at the grid
     /// level — the layers last, over everything.
     /// </summary>
-    public static void Draw(Graphics g, IReadOnlyList<Frame> frames, GridLayout layout, Size canvas, GridBorders? borders = null, SeamFade? seams = null, bool fast = false, IReadOnlyList<LayerFrame>? layers = null)
+    public static void Draw(Graphics g, IReadOnlyList<Frame> frames, GridLayout? layout, Size canvas, GridBorders? borders = null, SeamFade? seams = null, bool fast = false, IReadOnlyList<LayerFrame>? layers = null)
     {
+        // No cell: the layers alone, over nothing.
+        if (layout is null)
+        {
+            if (layers is not null)
+            {
+                DrawLayers(g, layers, canvas, fast);
+            }
+
+            return;
+        }
+
         var slots = layout.Cells(canvas);
         var cells = borders?.Inset(slots, canvas) ?? slots;
         var field = SeamField.Of(frames, cells, seams, borders);

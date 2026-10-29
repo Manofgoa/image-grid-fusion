@@ -970,7 +970,8 @@ internal sealed partial class GridPreview : Control
         using var highlight = new SolidBrush(Color.FromArgb(90, SystemColors.Highlight));
         PaintDropZone(g, DropZoneBounds(canvas));
         this.UpdateReadouts();
-        if (_images.Count == 0)
+        // An empty grid shows its empty state — unless layers lie on it, drawn on its canvas (workfiles/20261029-layers.md, Iteration 12).
+        if (_images.Count == 0 && this.ShownLayers is null)
         {
             PaintEmptyState(g, canvas);
             g.FillRectangle(highlight, _externalTarget);
@@ -988,10 +989,10 @@ internal sealed partial class GridPreview : Control
             using (var cacheGraphics = Graphics.FromImage(_cache))
             {
                 // Fast while the eyedropper previews a color, drawn in full once it ends.
-                Compositor.Draw(cacheGraphics, _images, _layout!, canvas.Size, _borders, this._player.GridTime, this._seams, fast: this._eyedropper is not null, this.ShownLayers);
+                Compositor.Draw(cacheGraphics, _images, _layout, canvas.Size, _borders, this._player.GridTime, this._seams, fast: this._eyedropper is not null, this.ShownLayers);
             }
 
-            this._seamFills = this.SeamsOf(Compositor.Cells(_layout!, canvas.Size, _borders))?.Fills;
+            this._seamFills = _layout is null ? null : this.SeamsOf(Compositor.Cells(_layout, canvas.Size, _borders))?.Fills;
 
             // The Twitter corners cut as a PNG is: the preview shows what Twitter / X shows.
             _borders?.CutCorners(_cache);
@@ -1637,7 +1638,7 @@ internal sealed partial class GridPreview : Control
         var canvas = CanvasBounds();
         var zone = DropZoneBounds(canvas);
         return zone.Contains(location) ? zone
-            : _images.Count == 0 && canvas.Contains(location) ? canvas
+            : _images.Count == 0 && this.ShownLayers is null && canvas.Contains(location) ? canvas
             : Rectangle.Empty;
     }
 
@@ -1765,7 +1766,7 @@ internal sealed partial class GridPreview : Control
     {
         int hovered = CellAt(location);
         bool onClose = hovered >= 0 && CloseBounds(CellBounds()[hovered]).Contains(location);
-        bool onCanvas = _images.Count == 0 && CanvasBounds().Contains(location);
+        bool onCanvas = _images.Count == 0 && this.ShownLayers is null && CanvasBounds().Contains(location);
         bool onDropZone = DropZoneBounds(CanvasBounds()).Contains(location);
         bool actions = hovered >= 0 && !_locked;
         bool onHandle = actions && this.HandleOf(hovered).Contains(location);

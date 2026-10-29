@@ -626,9 +626,16 @@ internal sealed partial class GridPreview
     private void RedrawArea(Rectangle area, bool fast)
     {
         var canvas = this.CanvasBounds();
-        if (this._layout is null || this._cache is null || this._cache.Size != canvas.Size)
+        if (this._cache is null || this._cache.Size != canvas.Size)
         {
             this.Invalidate();
+            return;
+        }
+
+        // No cell under the layers: the whole canvas is drawn again, the layers alone.
+        if (this._layout is null)
+        {
+            this.RedrawAll();
             return;
         }
 
@@ -682,7 +689,7 @@ internal sealed partial class GridPreview
     /// </summary>
     public void BeginLayerEdit()
     {
-        if (this._edit is not null || this.SelectedLayer is not { Visible: true } layer || this._locked || !this._layersShown || this._layout is null)
+        if (this._edit is not null || this.SelectedLayer is not { Visible: true } layer || this._locked || !this._layersShown)
         {
             return;
         }

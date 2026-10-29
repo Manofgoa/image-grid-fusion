@@ -105,6 +105,31 @@ public static class CanvasSizer
         return turned.Fit.Image.Width / shown.Width * turned.Scale;
     }
 
+    /// <summary>
+    /// The canvas of a grid holding layers only, at <paramref name="ratio"/>: the smallest where no layer's
+    /// content is shrunk — its size, of the grid's shorter side, measuring its content's longer side or a
+    /// text's line —, its longer side within [<see cref="MinLongSide"/>, <paramref name="maxLongSide"/>]
+    /// (workfiles/20261029-layers.md, Iteration 12). With cells, the layers never size the canvas.
+    /// </summary>
+    public static Size ForLayers(IEnumerable<LayerFrame> layers, double ratio, int maxLongSide = MaxLongSide)
+    {
+        int cap = Math.Max(MinLongSide, Math.Min(maxLongSide, MaxLongSide));
+        var smallest = Smallest(ratio);
+        double shorter = Math.Min(smallest.Width, smallest.Height);
+        double need = 0;
+        foreach (var layer in layers)
+        {
+            var shown = Frame.Unsharpened(layer.Frame.Size, layer.Frame.Sharpening);
+            double reference = layer.Place.LinePixels > 0 ? layer.Place.LinePixels : Math.Max(shown.Width, shown.Height);
+            if (layer.Place.Size > 0)
+            {
+                need = Math.Max(need, reference / layer.Place.Size / shorter);
+            }
+        }
+
+        return At(Clamped(Math.Ceiling(LongSide(smallest) * need), cap), ratio);
+    }
+
     private static int Clamped(double longSide, int cap) => (int)Math.Round(Math.Clamp(longSide, MinLongSide, cap));
 
     private static int LongSide(Size canvas) => Math.Max(canvas.Width, canvas.Height);

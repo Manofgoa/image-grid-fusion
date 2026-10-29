@@ -2009,7 +2009,7 @@ internal sealed partial class MainForm : Form
     /// </summary>
     private async void Copy(GridExport.Format? format, int stillMaxSide = CanvasSizer.MaxLongSide)
     {
-        if (_preview.Images.Count == 0 || IsExporting)
+        if (!this.HasContent || IsExporting)
         {
             return;
         }
@@ -2216,7 +2216,7 @@ internal sealed partial class MainForm : Form
     {
         var images = _preview.Images;
         var soundtrack = ActiveSoundtrack;
-        var length = images.Count == 0 ? TimeSpan.Zero : Animation.VideoLength(images, soundtrack, this.ActiveCascade, this.ActiveLayerImages);
+        var length = !this.HasContent ? TimeSpan.Zero : Animation.VideoLength(images, soundtrack, this.ActiveCascade, this.ActiveLayerImages);
         _lengthReadout.Text = length > TimeSpan.Zero ? $"⏱ {Seconds(length)}" : "⏱ —";
         // As wide as a length under 1000 s: the digits change without moving the gear.
         _lengthReadout.MinimumSize = new Size(TextRenderer.MeasureText("⏱ 000.0 s", _lengthReadout.Font).Width, 0);
@@ -2378,7 +2378,7 @@ internal sealed partial class MainForm : Form
     /// </summary>
     private async void CopyForSharing()
     {
-        if (_preview.Images.Count == 0 || IsExporting)
+        if (!this.HasContent || IsExporting)
         {
             return;
         }
@@ -2453,7 +2453,11 @@ internal sealed partial class MainForm : Form
 
     /// <summary>The size of the PNG the grid gives as it stands, its longer side at most <paramref name="maxLongSide"/>; <c>null</c> without images.</summary>
     private Size? PngSize(int maxLongSide) =>
-        this._preview.Images.Count == 0 || this._preview.ActiveLayout is not { } layout || layout.Count != this._preview.Images.Count
+        this._preview.Images.Count == 0
+            ? this.ActiveLayers is { } layers
+                ? CanvasSizer.ForLayers(layers.Items.Select(l => new LayerFrame(l.FrameAt(TimeSpan.Zero), l.Place)), this._preview.CanvasRatio, maxLongSide)
+                : null
+            : this._preview.ActiveLayout is not { } layout || layout.Count != this._preview.Images.Count
             ? null
             : CanvasSizer.Compute(this._preview.Images.Select(i => i.Sizing).ToList(), layout, this._preview.CanvasRatio, this.ActiveBorders, maxLongSide);
 
@@ -2466,7 +2470,7 @@ internal sealed partial class MainForm : Form
     /// </summary>
     private async void SaveAs(GridExport.Format? format, int stillMaxSide = CanvasSizer.MaxLongSide)
     {
-        if (_preview.Images.Count == 0 || IsExporting)
+        if (!this.HasContent || IsExporting)
         {
             return;
         }
@@ -2530,8 +2534,11 @@ internal sealed partial class MainForm : Form
     /// <summary>Whether the layers are as the app starts: off, none.</summary>
     private bool LayersInitial => !this._layersOn && this._preview.Layers.Count == 0;
 
-    /// <summary>Why the layers do not apply — the grid holds no image to lay them over — or <c>null</c> when they do.</summary>
-    private string? LayersUnavailable => this._preview.Images.Count > 0 ? null : "The grid holds no image to lay layers over";
+    /// <summary>
+    /// Whether the grid gives an image: cells, or layers alone over a transparent canvas
+    /// (workfiles/20261029-layers.md, Iteration 12).
+    /// </summary>
+    private bool HasContent => this._preview.Images.Count > 0 || this.ActiveLayers is not null;
 
     /// <summary>The soundtrack mixed into the preview and the MP4 export; <c>null</c> while off.</summary>
     private Soundtrack? ActiveSoundtrack => _soundtrackOn ? _soundtrack : null;
@@ -2626,7 +2633,7 @@ internal sealed partial class MainForm : Form
             try
             {
                 Cursor.Current = Cursors.WaitCursor;
-                return Compositor.Render(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, this.ActiveSeams, maxLongSide, this.ActiveLayers);
+                return Compositor.Render(_preview.Images, _preview.ActiveLayout, _preview.CanvasRatio, ActiveBorders, this.ActiveSeams, maxLongSide, this.ActiveLayers);
             }
             catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
             {
@@ -2643,7 +2650,7 @@ internal sealed partial class MainForm : Form
         GridExport.Job job;
         try
         {
-            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, seams: this.ActiveSeams, stillMaxSide: maxLongSide, layers: this.ActiveLayers);
+            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout, _preview.CanvasRatio, ActiveBorders, seams: this.ActiveSeams, stillMaxSide: maxLongSide, layers: this.ActiveLayers);
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
@@ -2681,7 +2688,7 @@ internal sealed partial class MainForm : Form
         GridExport.Job job;
         try
         {
-            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout!, _preview.CanvasRatio, ActiveBorders, ActiveSoundtrack, ActiveFade, this.ActiveSeams, this.ActiveCascade, AppSettings.VideoMaxSide, layers: this.ActiveLayers);
+            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout, _preview.CanvasRatio, ActiveBorders, ActiveSoundtrack, ActiveFade, this.ActiveSeams, this.ActiveCascade, AppSettings.VideoMaxSide, layers: this.ActiveLayers);
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
@@ -3088,7 +3095,7 @@ internal sealed partial class MainForm : Form
 
     private void UpdateButtons()
     {
-        bool any = _preview.Images.Count > 0 && !IsExporting;
+        bool any = this.HasContent && !IsExporting;
         _clearButton.Enabled = (_preview.Images.Count > 0 || !SoundtrackInitial || !BordersInitial || !FadeInitial || !this.SeamsInitial || !this.CascadeInitial || !this.LayersInitial || !FormatInitial) && !IsExporting;
         _copyButton.Enabled = any;
         _saveButton.Enabled = any;
@@ -3955,8 +3962,7 @@ internal sealed partial class MainForm : Form
         _globalTabs.SetState(GlobalEffect.Borders, ActiveBorders is not null, unavailable: null);
         this._globalTabs.SetState(GlobalEffect.Seams, this.ActiveSeams is not null, seamsUnavailable);
         this._globalTabs.SetState(GlobalEffect.Cascade, this.ActiveCascade is not null, cascadeUnavailable);
-        string? layersUnavailable = this.LayersUnavailable;
-        this._globalTabs.SetState(GlobalEffect.Layers, this._layersOn, layersUnavailable);
+        this._globalTabs.SetState(GlobalEffect.Layers, this._layersOn, unavailable: null);
         _globalTabs.Selected = _selectedGlobalEffect;
         _globalTabs.Enabled = enabled;
         _globalResetButton.Enabled = enabled && !(SoundtrackInitial && BordersInitial && FadeInitial && this.SeamsInitial && this.CascadeInitial && this.LayersInitial && FormatInitial);
@@ -3973,8 +3979,7 @@ internal sealed partial class MainForm : Form
             row.Enabled = enabled
                 && (effect != GlobalEffect.Fade || fadeUnavailable is null)
                 && (effect != GlobalEffect.Seams || seamsUnavailable is null)
-                && (effect != GlobalEffect.Cascade || cascadeUnavailable is null)
-                && (effect != GlobalEffect.Layers || layersUnavailable is null);
+                && (effect != GlobalEffect.Cascade || cascadeUnavailable is null);
         }
 
         _globalEffectResetButton.Visible = _selectedGlobalEffect is not null;

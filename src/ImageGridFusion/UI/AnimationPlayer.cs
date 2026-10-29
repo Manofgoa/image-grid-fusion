@@ -100,7 +100,7 @@ internal sealed class AnimationPlayer : IDisposable
     /// The grid's loop — the video length (RULES.md § Video Length), the Cascade and the soundtrack
     /// included — or zero without one: the length of the timeline.
     /// </summary>
-    public TimeSpan LoopLength => this._images.Count == 0 ? TimeSpan.Zero : Animation.VideoLength(this._images, this._soundtrack, this._cascade, this._layers);
+    public TimeSpan LoopLength => this._images.Count == 0 && this._layers.Count == 0 ? TimeSpan.Zero : Animation.VideoLength(this._images, this._soundtrack, this._cascade, this._layers);
 
     /// <summary>Where the grid stands in its loop: the time the exported video shows the same instant at.</summary>
     public TimeSpan LoopPosition => Animation.LoopTime(this.GridTime, this.LoopLength);
@@ -504,7 +504,7 @@ internal sealed class AnimationPlayer : IDisposable
     /// <summary>The soundtrack plays while the grid holds an image; stopped, it starts again on a whole second of the clock.</summary>
     private void UpdateSoundtrack()
     {
-        bool plays = _soundtrack is not null && _images.Count > 0;
+        bool plays = _soundtrack is not null && (_images.Count > 0 || this._layers.Count > 0);
         _sound.FollowSoundtrack(plays ? _soundtrack!.Path : null);
         if (!plays)
         {
@@ -537,7 +537,7 @@ internal sealed class AnimationPlayer : IDisposable
     /// <summary>The fade follows the grid while it holds an image; without it, the mix plays as it is.</summary>
     private void UpdateFade()
     {
-        if (_fade is null || _images.Count == 0)
+        if (_fade is null || (_images.Count == 0 && this._layers.Count == 0))
         {
             _fadeTimer.Stop();
             _sound.MasterGain = 1;
@@ -555,7 +555,7 @@ internal sealed class AnimationPlayer : IDisposable
     /// </summary>
     private void SyncFade()
     {
-        if (_fade is not { } fade || _images.Count == 0)
+        if (_fade is not { } fade || (_images.Count == 0 && this._layers.Count == 0))
         {
             return;
         }
