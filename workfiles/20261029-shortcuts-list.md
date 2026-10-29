@@ -33,8 +33,9 @@ Components: `SHORTCUTS.md`, `SHORTCUTS.fr.md`, `ImageGridFusion.csproj` (embedde
 |---|---|
 | Keys and key combinations (Ctrl+Z, Space, F2, arrows…) | Plain drags and plain clicks (moving an image, the ✥ handle, dropping a file) |
 | Wheel gestures, with or without a modifier (wheel, Ctrl / Alt / Shift + wheel) | Context menus opened without a key |
-| A modifier held during a drag or a click (Shift ignoring the stops, Shift / Ctrl + click in Pick) | Windows' own behaviour the app gives no meaning of its own — see Open Questions |
+| A modifier held during a drag or a click (Shift ignoring the stops, Shift / Ctrl + click in Pick) | |
 | Double-clicks with a meaning (separator reset, layer edit view, tile activation) | |
+| **Windows' own behaviour** in the app's windows and controls — Tab / Shift+Tab, Enter / Escape in a dialog, the plain wheel scrolling a list or the layout strip, Alt+F4, a text field's editing keys — each in the section where it works, the ones valid everywhere in a last **Windows** section | |
 
 ---
 
@@ -49,6 +50,9 @@ The file is read by people on GitHub **and parsed by the app**, so its shape is 
 - Under each, one table **`| Shortcut | Does |`**: a row per shortcut, its keys first, what it does in
   one short line. A condition that matters (*not while exporting*, *a layer selected*) is in the
   *Does* cell.
+- **Keys written as `<kbd>`**: `<kbd>Ctrl</kbd>+<kbd>Z</kbd>`, `<kbd>Wheel</kbd>`, `<kbd>Ctrl</kbd>+<kbd>Wheel</kbd>`
+  — key caps on GitHub, drawn as key caps in the window; the text between them (`+`, `/`, `,`, *held
+  while dragging an image*) shown as written.
 - Nothing else is read by the app: a paragraph between the tables shows on GitHub only.
 
 The French file has the **same sections, same rows, same order**; its keys are the same (Ctrl, Shift,
@@ -74,7 +78,7 @@ implementation; the sections follow the contexts.
 | Ctrl+R / Ctrl+Shift+R | Turn the image under the mouse — else the selected one — a quarter turn clockwise / counter-clockwise |
 | Ctrl+F / Ctrl+Shift+F | Go to the explorer's search box; pressed again there, next / previous view |
 | Space | Play / Pause, unless a text field has the focus |
-| *(new)* the key opening the shortcuts window | Show the keyboard shortcuts |
+| F1 *(new)* | Show the keyboard shortcuts — in a text field too |
 
 In a text field (search box, Frames fields, layer text), Ctrl+V / C / Z / Y, Delete and Escape act on
 its text.
@@ -166,25 +170,38 @@ its text.
 | Shortcut | Does |
 |---|---|
 | Ctrl+Enter in a preset's description | Save the preset |
+| Enter / Escape | OK / Cancel |
+
+### Windows
+
+The standard behaviour valid everywhere, inventoried at implementation: Tab / Shift+Tab (next /
+previous control), Alt+F4 (close the window), Alt+Space (window menu), a text field's editing keys
+(Ctrl+A, Ctrl+Backspace…), the plain wheel scrolling a list, the layout strip or the options. Those
+tied to one context (the wheel scrolling the tiles, the layout strip) go in its section.
 
 ---
 
 ## Shortcuts Window
 
 - Title **Keyboard shortcuts**, opened from the **⚙ menu** (*Keyboard shortcuts…*, before *Open app
-  folder*) and by a key (Open Questions).
+  folder*) and by **F1** (`MainForm.ProcessCmdKey`, before the text-field guard: F1 means nothing to a
+  text field).
+- **Modeless**: it stays open beside the main window while the shortcuts are tried; one instance —
+  opened again, it comes back to the front. Escape closes it.
 - Shows **only** the sections and their rows — the headings, then per row the keys and what they do;
   the language line, the title and the paragraphs are left out.
-- Content read from **`SHORTCUTS.md` embedded in the exe**: linked from the repository root in
+- Content read from **`SHORTCUTS.md` embedded in the exe** — the English file only, like the whole
+  UI: linked from the repository root in
   `ImageGridFusion.csproj` as `<EmbeddedResource Include="..\..\SHORTCUTS.md"
   LogicalName="ImageGridFusion.SHORTCUTS.md" />`, read like `Explorer/VisionTags.txt`
   (`GetManifestResourceStream`, UTF-8).
 - **No new package**: a small parser of its own (`##` headings, `|` table rows, the header and
-  separator rows skipped, `<kbd>` tags read as keys if they are used — Open Questions). The app has
-  no Markdown renderer and avoids heavy dependencies.
+  separator rows skipped, `<kbd>` tags read as keys, `*…*` and `` `…` `` stripped to their text). The
+  app has no Markdown renderer and avoids heavy dependencies.
 - Drawn with `SystemColors`, sized with `LogicalToDeviceUnits` (no theme in the app), on the model of
-  `UI/NameDialog.cs` but **resizable**, the list scrolling.
-- One instance: opened again, the window comes back to the front.
+  `UI/NameDialog.cs` but **resizable**, the list scrolling: per section its heading in bold, per row
+  the keys as key caps (a rounded box per `<kbd>`) in a left column as wide as the widest, what it
+  does on the right, wrapped.
 - Out of the undo history; nothing persisted.
 
 ---
@@ -201,42 +218,63 @@ A new section of `RULES.md`, **§ Keyboard Shortcuts**:
   incomplete.
 - The file's format is the app's contract (§ SHORTCUTS.md — Format above): a row the parser cannot
   read does not show in the window.
-- How it is enforced beyond the rule: Open Questions.
+- **One place per fact**: the README and the other docs never list keys — they link to the section of
+  `SHORTCUTS.md` (`SHORTCUTS.fr.md` from a French doc) where they are.
+- Enforced by the rule alone: no hook, no test.
+
+---
+
+## README
+
+`README.md` and `README.fr.md` are **trimmed** of their shortcut mentions (§ One place per fact):
+
+- A sentence whose purpose is to give a key or a wheel gesture is **replaced by a link** to the
+  `SHORTCUTS.md` section where it lives (`SHORTCUTS.fr.md` from the French README); a feature's
+  description keeps saying what the feature does, without the keys.
+- A **link to `SHORTCUTS.md`** near the top (after the glossary's line), and a mention of the window
+  (F1, ⚙ menu).
+- The README stays readable alone: what a feature does is said there, how to trigger it by key is in
+  `SHORTCUTS.md`.
+
+---
+
+## Glossary
+
+A new term in `GLOSSARY.md` and `GLOSSARY.fr.md`: **Shortcuts window** (*fenêtre des raccourcis*) — the
+window listing every keyboard shortcut and gesture of the app and what it does, read from
+`SHORTCUTS.md`; opened by F1 or the ⚙ menu, modeless.
 
 ---
 
 ## Test Impact
 
 **No unit test**: the repository has no test project (`CONTRIBUTING.md`: *check a change by hand in
-the running app*), and this work creates none — unless the guard question below asks for one.
+the running app*), and this work creates none (the rule is enforced by itself, Q&A 5).
 
 Checked by hand in the running app:
 
 | Behaviour to check | How |
 |---|---|
-| The window lists every section and row of `SHORTCUTS.md` | Open it from ⚙ and by its key, compare |
+| The window lists every section and row of `SHORTCUTS.md`, keys as key caps | Open it from ⚙ and by F1, compare |
 | The language line, the title and the paragraphs do not show | Same |
-| The window opened twice comes back to the front | Open it again while it is open |
-| The key opening it does nothing else (no text field, no gesture broken) | Press it in the search box, in a Frames field, while exporting |
+| Modeless; opened again, it comes back to the front; Escape closes it | Use the app with it open, press F1 again |
+| F1 works in a text field and breaks nothing there | Press it in the search box, in a Frames field |
 
 ---
 
 ## Open Questions
 
-- [ ] What enforces the rule beyond `RULES.md`: the rule alone, or also a Claude Code hook reminding an
-      agent that changes a key handler without `SHORTCUTS.md`?
-- [ ] Which key opens the window: F1 (free today), another one, or the ⚙ menu only?
-- [ ] Is the window modeless (it stays open beside the app while you try the shortcuts) or modal?
-- [ ] How are the keys written in `SHORTCUTS.md`: `<kbd>Ctrl</kbd>+<kbd>Z</kbd>` (key caps on GitHub,
-      drawn as key caps in the window) or plain `Ctrl+Z`?
-- [ ] Which file does the app embed: `SHORTCUTS.md` (English, like the whole UI), or the French one when
-      Windows is in French?
-- [ ] The README's prose mentions many shortcuts where it describes each feature: kept as they are,
-      `SHORTCUTS.md` linked from the top of the README — or trimmed, the README linking to
-      `SHORTCUTS.md` instead (§ One place per fact)?
-- [ ] Windows' own behaviour (Tab, Enter / Escape in a dialog, the plain wheel scrolling a list or the
-      layout strip, Enter in the URL field): listed, or only what the app gives a meaning of its own?
-- [ ] A glossary term for the window (*Shortcuts window* / *fenêtre des raccourcis*) in both glossaries?
+- [x] ~~What enforces the rule beyond `RULES.md`: the rule alone, or also a Claude Code hook?~~ → The
+      rule alone
+- [x] ~~Which key opens the window?~~ → F1, plus the ⚙ menu entry
+- [x] ~~Is the window modeless or modal?~~ → Modeless
+- [x] ~~How are the keys written in `SHORTCUTS.md`?~~ → `<kbd>Ctrl</kbd>+<kbd>Z</kbd>`, drawn as key caps
+      in the window
+- [x] ~~Which file does the app embed?~~ → `SHORTCUTS.md`, English, like the whole UI
+- [x] ~~The README's shortcut mentions: kept, or trimmed?~~ → Trimmed, the README linking to
+      `SHORTCUTS.md` (§ README)
+- [x] ~~Windows' own behaviour listed?~~ → Yes, all of it (§ Scope)
+- [x] ~~A glossary term for the window?~~ → Yes, *Shortcuts window* / *fenêtre des raccourcis*
 
 ---
 
@@ -271,6 +309,13 @@ Request: add a rule to the project so that every shortcut is documented in `SHOR
 automatically. → § Rule — Every Shortcut Documented, written into `RULES.md` at implementation; how it
 is enforced beyond the rule left as an Open Question.
 
+### Iteration 3 — 2026-10-29
+
+Open Questions answered (Q&A 5–12): the rule alone; F1 and the ⚙ menu; a modeless window; keys as
+`<kbd>`, drawn as key caps; the English file embedded; the README trimmed to links (§ README, and the
+rule's *one place per fact*); Windows' own behaviour listed too (§ Scope, § Windows); a glossary term.
+No question left: the design is complete.
+
 ---
 
 ## Implementation Log
@@ -299,14 +344,14 @@ Questions asked by the agent during design, with user responses.
 | 2 | How does the app show the list? | A window showing `SHORTCUTS.md` embedded in the exe | 2026-10-29 |
 | 3 | Which shortcuts are listed? | Keys, wheel and modifier gestures, meaningful double-clicks | 2026-10-29 |
 | 4 | How deep is the exploration? | Simple — one scout pass | 2026-10-29 |
-| 5 | What enforces the rule beyond `RULES.md`? | | |
-| 6 | Which key opens the window? | | |
-| 7 | Modeless or modal window? | | |
-| 8 | Keys written as `<kbd>` or plain text? | | |
-| 9 | Which file does the app embed? | | |
-| 10 | The README's shortcut mentions: kept, or trimmed to a link? | | |
-| 11 | Windows' own behaviour listed? | | |
-| 12 | A glossary term for the window? | | |
+| 5 | What enforces the rule beyond `RULES.md`? | The rule alone | 2026-10-29 |
+| 6 | Which key opens the window? | F1 (plus the ⚙ menu) | 2026-10-29 |
+| 7 | Modeless or modal window? | Modeless | 2026-10-29 |
+| 8 | Keys written as `<kbd>` or plain text? | `<kbd>` | 2026-10-29 |
+| 9 | Which file does the app embed? | `SHORTCUTS.md`, English | 2026-10-29 |
+| 10 | The README's shortcut mentions: kept, or trimmed to a link? | Trimmed to links to `SHORTCUTS.md` | 2026-10-29 |
+| 11 | Windows' own behaviour listed? | Yes, all of it | 2026-10-29 |
+| 12 | A glossary term for the window? | Yes | 2026-10-29 |
 
 ---
 
