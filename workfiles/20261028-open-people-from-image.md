@@ -223,17 +223,35 @@ Design written in § Safer People Decisions: the people's state joins `GridState
 faces…* start a new generation, never undone. This reverses RULES.md § People's *out of the undo
 history*.
 
+### Iteration 7 — 2026-10-29 — 🧭 Implementation choices
+
+Go given for Iteration 6 (code, tests and documentation), in a worktree
+(`feature/safer-people-decisions`). No rule broken. Choices the design left open:
+
+- The submenus' items: *Remove from <name>*, *Hide <name>*, *Un-merge <name>* — the parent items keep
+  their text and lose their click.
+- `PeopleState` lives in `Explorer/People.cs`, next to `PersonData`; `People.Restore` rebuilds every
+  person from a copy. Two states are equal only when they are the same object.
+- The panel exposes `PeopleState` and raises `PeopleReset` on a new generation; `MainForm` answers it
+  with `GridHistory.Rebase`. A restore of an older generation's step also rebases the step restored,
+  so the history sees no change to commit and the redo steps are kept.
+- A restore writes `people.json` quietly — the status line is `MainForm`'s `↶ Undone: <decision>` —
+  and reports only a write failure.
+- The decision's text in the status line is the one `SavePeople` already reported (`Named: Alice`,
+  `Hidden: Bob`…).
+- Documentation also covers README § Undo & redo (EN + FR), where the history's coverage is listed.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 3 | 2026-10-28 | `PhotoPeople`, `NameDialog.CenterOn`, `FileExplorerPanel` |
-| Unit tests | 3 | 2026-10-28 | None — no test project in the repository |
-| README (EN + FR) | 3 | 2026-10-28 | § People view |
-| Glossary (EN + FR) | 3 | 2026-10-28 | *Face group* |
-| RULES.md | 3 | 2026-10-28 | § People › From a photo, the group open's title |
+| Code | 3, 7 | 2026-10-28, 2026-10-29 | `PhotoPeople`, `NameDialog.CenterOn`, `FileExplorerPanel`; submenus, `PeopleState`, `GridHistory.Rebase` |
+| Unit tests | 3, 7 | 2026-10-28, 2026-10-29 | None — no test project in the repository |
+| README (EN + FR) | 3, 7 | 2026-10-28, 2026-10-29 | § People view; § Undo & redo |
+| Glossary (EN + FR) | 3, 7 | 2026-10-28, 2026-10-29 | *Face group*; *Step* |
+| RULES.md | 3, 7 | 2026-10-28, 2026-10-29 | § People; § Undo History |
 
 ---
 
