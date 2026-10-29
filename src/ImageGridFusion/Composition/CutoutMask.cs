@@ -27,15 +27,62 @@ public sealed class CutoutMask
     public long MemoryBytes => this.Alpha.LongLength;
 
     /// <summary>
+    /// The plain background of <paramref name="source"/> left out (workfiles/20261029-cutout-enclosed-content.md
+    /// § Plain Mode): the pixels within the effect's tolerance of the border's most frequent color, or
+    /// transparent, connected to a border through such pixels — the outline's gaps closed first — at the
+    /// bitmap's resolution; everything they enclose kept, a kept pixel touching them faded by its distance.
+    /// </summary>
+    public static CutoutMask Plain(Bitmap source, CutoutEffect effect)
+    {
+        int width = source.Width, height = source.Height;
+        var pixels = Pixels(source);
+        var color = BorderColor(pixels, width, height);
+        int tolerance = (int)Math.Round(effect.Tolerance * CutoutEffect.MaxTolerance);
+        var distance = new int[width * height];
+        var near = new bool[distance.Length];
+        for (int i = 0; i < distance.Length; i++)
+        {
+            int at = i * 4;
+            distance[i] = Math.Max(Math.Abs(pixels[at] - color.B), Math.Max(Math.Abs(pixels[at + 1] - color.G), Math.Abs(pixels[at + 2] - color.R)));
+            near[i] = pixels[at + 3] == 0 || distance[i] <= tolerance;
+        }
+
+        var background = Flood(near, width, height, GapRadius(effect.CloseGaps, width, height));
+
+        // The antialiased edge: a kept pixel touching the background fades from the tolerance to twice it.
+        int ramp = Math.Max(tolerance, 32);
+        var alpha = new byte[distance.Length];
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                int i = y * width + x;
+                if (background[i])
+                {
+                    continue;
+                }
+
+                bool edge = (x > 0 && background[i - 1]) || (x < width - 1 && background[i + 1])
+                    || (y > 0 && background[i - width]) || (y < height - 1 && background[i + width]);
+                alpha[i] = edge ? (byte)Math.Clamp((distance[i] - tolerance) * 255 / ramp, 0, 255) : (byte)255;
+            }
+        }
+
+        return new CutoutMask(width, height, alpha);
+    }
+
+    /// <summary>
     /// <paramref name="source"/> cut out by the mask: a new bitmap, its alpha multiplied by the mask —
-    /// stretched to its size, its edge grown or eaten, softened and inverted as <paramref name="edges"/>
-    /// says, each a share of the longer side, so a bitmap rendered at another size looks the same — or,
-    /// with a background kept, the part left out treated under the part kept.
+    /// its holes filled at its own resolution, then stretched to the bitmap's size, its edge grown or eaten,
+    /// softened and inverted as <paramref name="edges"/> says, each a share of the longer side, so a bitmap
+    /// rendered at another size looks the same — or, with a background kept, the part left out treated
+    /// under the part kept.
     /// </summary>
     public Bitmap Apply(Bitmap source, CutoutEffect edges)
     {
         int width = source.Width, height = source.Height;
-        var mask = this.Stretched(width, height);
+        var filled = edges.FillHoles && edges.Mode != CutoutMode.Plain ? this.Filled(edges.CloseGaps) : this;
+        var mask = filled.Stretched(width, height);
         int longer = Math.Max(width, height);
         int grow = (int)Math.Round(Math.Abs(edges.Grow) * CutoutEffect.MaxEdge * longer);
         if (grow > 0)
@@ -292,6 +339,167 @@ public sealed class CutoutMask
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// The mask with its holes kept (workfiles/20261029-cutout-enclosed-content.md § Fill Holes): every
+    /// pixel left out — below 128 — that the part kept encloses, its outline's gaps up to
+    /// <paramref name="closeGaps"/> closed, set to 255.
+    /// </summary>
+    private CutoutMask Filled(double closeGaps)
+    {
+        var left = new bool[this.Alpha.Length];
+        for (int i = 0; i < left.Length; i++)
+        {
+            left[i] = this.Alpha[i] < 128;
+        }
+
+        var background = Flood(left, this.Width, this.Height, GapRadius(closeGaps, this.Width, this.Height));
+        var alpha = (byte[])this.Alpha.Clone();
+        for (int i = 0; i < alpha.Length; i++)
+        {
+            if (left[i] && !background[i])
+            {
+                alpha[i] = 255;
+            }
+        }
+
+        return new CutoutMask(this.Width, this.Height, alpha);
+    }
+
+    // Half the widest gap closed, in pixels of an image of that size: a share of its longer side.
+    private static int GapRadius(double closeGaps, int width, int height) =>
+        (int)Math.Round(closeGaps * CutoutEffect.MaxGap * Math.Max(width, height) / 2);
+
+    /// <summary>
+    /// The <paramref name="open"/> pixels connected to the image's border through open pixels, 4-connected —
+    /// with a <paramref name="radius"/>, the closed ones grown by it first, so a gap of up to twice it is
+    /// closed, then the region reached grown back by it within the open pixels: the background comes back
+    /// up to the outline, and only what the closed outline encloses stays out.
+    /// </summary>
+    private static bool[] Flood(bool[] open, int width, int height, int radius)
+    {
+        var passable = open;
+        if (radius > 0)
+        {
+            var eroded = new byte[open.Length];
+            for (int i = 0; i < open.Length; i++)
+            {
+                eroded[i] = open[i] ? (byte)255 : (byte)0;
+            }
+
+            Extreme(eroded, width, height, radius, max: false);
+            passable = Array.ConvertAll(eroded, value => value == 255);
+        }
+
+        var reached = new bool[open.Length];
+        var queue = new int[open.Length];
+        int head = 0, tail = 0;
+        void Seed(int i)
+        {
+            if (passable[i] && !reached[i])
+            {
+                reached[i] = true;
+                queue[tail++] = i;
+            }
+        }
+
+        for (int x = 0; x < width; x++)
+        {
+            Seed(x);
+            Seed((height - 1) * width + x);
+        }
+
+        for (int y = 0; y < height; y++)
+        {
+            Seed(y * width);
+            Seed(y * width + width - 1);
+        }
+
+        while (head < tail)
+        {
+            int i = queue[head++];
+            int x = i % width;
+            if (x > 0)
+            {
+                Seed(i - 1);
+            }
+
+            if (x < width - 1)
+            {
+                Seed(i + 1);
+            }
+
+            if (i >= width)
+            {
+                Seed(i - width);
+            }
+
+            if (i < open.Length - width)
+            {
+                Seed(i + width);
+            }
+        }
+
+        if (radius == 0)
+        {
+            return reached;
+        }
+
+        var grown = new byte[open.Length];
+        for (int i = 0; i < open.Length; i++)
+        {
+            grown[i] = reached[i] ? (byte)255 : (byte)0;
+        }
+
+        Extreme(grown, width, height, radius, max: true);
+        for (int i = 0; i < open.Length; i++)
+        {
+            reached[i] = open[i] && grown[i] == 255;
+        }
+
+        return reached;
+    }
+
+    /// <summary>
+    /// The plain background's color: the most frequent of the border's opaque pixels, counted in buckets of
+    /// 32 levels a channel, the mean of the winning bucket taken; white when the whole border is transparent.
+    /// </summary>
+    private static Color BorderColor(byte[] pixels, int width, int height)
+    {
+        var buckets = new Dictionary<int, (int Count, long B, long G, long R)>();
+        void Count(int i)
+        {
+            int at = i * 4;
+            if (pixels[at + 3] == 0)
+            {
+                return;
+            }
+
+            int key = (pixels[at] >> 5) | ((pixels[at + 1] >> 5) << 3) | ((pixels[at + 2] >> 5) << 6);
+            var (count, b, g, r) = buckets.GetValueOrDefault(key);
+            buckets[key] = (count + 1, b + pixels[at], g + pixels[at + 1], r + pixels[at + 2]);
+        }
+
+        for (int x = 0; x < width; x++)
+        {
+            Count(x);
+            Count((height - 1) * width + x);
+        }
+
+        for (int y = 1; y < height - 1; y++)
+        {
+            Count(y * width);
+            Count(y * width + width - 1);
+        }
+
+        if (buckets.Count == 0)
+        {
+            return Color.White;
+        }
+
+        var (n, blue, green, red) = buckets.Values.MaxBy(bucket => bucket.Count);
+        return Color.FromArgb((int)(red / n), (int)(green / n), (int)(blue / n));
     }
 
     /// <summary>The mask stretched to <paramref name="width"/> × <paramref name="height"/>, bilinear.</summary>
