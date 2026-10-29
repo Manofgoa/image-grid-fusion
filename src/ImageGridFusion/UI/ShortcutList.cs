@@ -101,6 +101,19 @@ internal static partial class ShortcutList
         var parts = new List<ShortcutPart>();
         bool space = false;
 
+        // A "+" glued to a word (<kbd>Ctrl</kbd>+arrow) is a piece of its own, as between two keys.
+        void Add(string word)
+        {
+            if (word.Length > 1 && word[0] == '+')
+            {
+                parts.Add(new ShortcutPart("+", false, space));
+                space = false;
+                word = word[1..];
+            }
+
+            parts.Add(new ShortcutPart(Plain(word), false, space));
+        }
+
         void Words(string text)
         {
             var word = new StringBuilder();
@@ -114,7 +127,7 @@ internal static partial class ShortcutList
 
                 if (word.Length > 0)
                 {
-                    parts.Add(new ShortcutPart(Plain(word.ToString()), false, space));
+                    Add(word.ToString());
                     word.Clear();
                 }
 
@@ -123,7 +136,7 @@ internal static partial class ShortcutList
 
             if (word.Length > 0)
             {
-                parts.Add(new ShortcutPart(Plain(word.ToString()), false, space));
+                Add(word.ToString());
                 space = false;
             }
         }

@@ -104,6 +104,9 @@ internal sealed class ShortcutsView : Control
     private const TextFormatFlags Wrapped = TextFormatFlags.NoPadding | TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl;
 
     private readonly IReadOnlyList<ShortcutSection> _sections;
+    // The measures, taken once per font: every layout and paint reads them again.
+    private readonly Dictionary<ShortcutPart, int> _partWidths = [];
+    private int? _spaceWidth;
     private Font _headingFont;
 
     public ShortcutsView(IReadOnlyList<ShortcutSection> sections)
@@ -129,6 +132,8 @@ internal sealed class ShortcutsView : Control
     protected override void OnFontChanged(EventArgs e)
     {
         base.OnFontChanged(e);
+        this._partWidths.Clear();
+        this._spaceWidth = null;
         this._headingFont.Dispose();
         this._headingFont = new Font(this.Font.FontFamily, this.Font.Size * 1.15f, FontStyle.Bold);
     }
@@ -148,9 +153,6 @@ internal sealed class ShortcutsView : Control
     {
         int edge = this.LogicalToDeviceUnits(Edge);
         int available = Math.Max(1, width - 2 * edge);
-        int keysWidth = Math.Min(this.WidestKeys(), available * 45 / 100);
-        int doesX = edge + keysWidth + this.LogicalToDeviceUnits(ColumnGap);
-        int doesWidth = Math.Max(this.LogicalToDeviceUnits(80), width - edge - doesX);
         int lineHeight = this.KeyLineHeight();
         int textHeight = TextRenderer.MeasureText("Ag", this.Font, Size.Empty, Single).Height;
         int rowGap = this.LogicalToDeviceUnits(RowGap);
@@ -160,6 +162,10 @@ internal sealed class ShortcutsView : Control
         int y = 0;
         foreach (var section in this._sections)
         {
+            // Each section its own keys' column, so a long row elsewhere does not push every description away.
+            int keysWidth = Math.Min(this.WidestKeys(section), available * 45 / 100);
+            int doesX = edge + keysWidth + this.LogicalToDeviceUnits(ColumnGap);
+            int doesWidth = Math.Max(this.LogicalToDeviceUnits(80), width - edge - doesX);
             y += this.LogicalToDeviceUnits(y == 0 ? Edge : SectionGap);
             var heading = TextRenderer.MeasureText(section.Title, this._headingFont, new Size(available, int.MaxValue), Wrapped);
             if (g is not null)
@@ -242,11 +248,11 @@ internal sealed class ShortcutsView : Control
             Single | TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
     }
 
-    /// <summary>The widest row of keys on one line: the keys' column, unless that takes more than its share.</summary>
-    private int WidestKeys()
+    /// <summary>The widest row of keys of <paramref name="section"/> on one line: its keys' column, unless that takes more than its share.</summary>
+    private int WidestKeys(ShortcutSection section)
     {
         int widest = 0;
-        foreach (var row in this._sections.SelectMany(section => section.Rows))
+        foreach (var row in section.Rows)
         {
             int width = 0;
             for (int i = 0; i < row.Keys.Count; i++)
@@ -262,13 +268,20 @@ internal sealed class ShortcutsView : Control
 
     private int PartWidth(ShortcutPart part)
     {
-        int text = TextRenderer.MeasureText(part.Text, this.Font, Size.Empty, Single).Width;
-        return part.IsKey ? text + 2 * this.LogicalToDeviceUnits(KeyPadX) : text;
+        var key = part with { SpaceBefore = false };
+        if (!this._partWidths.TryGetValue(key, out int width))
+        {
+            int text = TextRenderer.MeasureText(part.Text, this.Font, Size.Empty, Single).Width;
+            width = part.IsKey ? text + 2 * this.LogicalToDeviceUnits(KeyPadX) : text;
+            this._partWidths[key] = width;
+        }
+
+        return width;
     }
 
     /// <summary>A space's width after a space in the file, a narrow gap otherwise (<c>Ctrl</c>+<c>Z</c>).</summary>
     private int GapBefore(ShortcutPart part) => part.SpaceBefore
-        ? TextRenderer.MeasureText("x x", this.Font, Size.Empty, Single).Width - TextRenderer.MeasureText("xx", this.Font, Size.Empty, Single).Width
+        ? this._spaceWidth ??= TextRenderer.MeasureText("x x", this.Font, Size.Empty, Single).Width - TextRenderer.MeasureText("xx", this.Font, Size.Empty, Single).Width
         : this.LogicalToDeviceUnits(KeyGap);
 
     private int KeyLineHeight() => TextRenderer.MeasureText("Ag", this.Font, Size.Empty, Single).Height + this.LogicalToDeviceUnits(6);
