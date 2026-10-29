@@ -189,6 +189,11 @@ The seven open questions answered (Q&A 5 to 11):
 - Ctrl + drag copies the selected layer only: a press on another one still only selects it.
 - Duplicate is disabled while the layer edit view is open.
 
+### Iteration 3 — 2026-10-29 — ✅ Implemented
+
+Go given (Q&A 12): code, unit tests and documentation, in a worktree on `feature/duplicate-layer`. The
+scope is frozen as the sections above stand.
+
 ---
 
 ## Implementation Log
@@ -222,7 +227,7 @@ Questions asked by the agent during design, with user responses.
 | 9 | The context menu on an image layer: Find similar images too? | Yes, while the visual analysis can run | 2026-10-29 |
 | 10 | Ctrl + drag on a layer not selected: copy at once, or select first? | Select first | 2026-10-29 |
 | 11 | In the layer edit view: Duplicate available, or disabled? | Disabled | 2026-10-29 |
-| 12 | Go for implementation? (scope, where) | | |
+| 12 | Go for implementation? (scope, where) | Code, unit tests and documentation; in a worktree | 2026-10-29 |
 
 ---
 
