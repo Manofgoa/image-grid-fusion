@@ -214,6 +214,12 @@ The open questions answered (Q&A 5–10):
 
 No question left open: the design is ready for the go.
 
+### Iteration 3 — 2026-10-29 — ✅ Implemented
+
+Go given: **code, unit tests and documentation**, in a **worktree** —
+`.claude/worktrees/similar-images-accuracy`, branch `feature/similar-images-accuracy`, created from `main`
+at `e313f25`. The Branch Gate is skipped: the worktree's branch is dedicated.
+
 ---
 
 ## Implementation Log
