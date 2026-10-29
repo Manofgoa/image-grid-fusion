@@ -21,6 +21,11 @@ internal sealed partial class GridPreview
     private const int LayerOutlineWidth = 2;
     private const int LayerHaloWidth = 5;
 
+    // The rotation handle: a knob above the middle of the top edge, at the end of a stem; Shift snaps its turn.
+    private const int RotationStem = 24;
+    private const int RotationKnob = 7;
+    private const double RotationSnap = 15;
+
     private GridLayers _layers = GridLayers.Initial;
     private bool _layersShown;
     private bool _layersActive;
@@ -34,6 +39,22 @@ internal sealed partial class GridPreview
 
     // The wheel resized or turned the selected layer, drawn fast: drawn in full once its burst rests.
     private bool _layerWheeled;
+
+    // The rotation handle hovered, or dragged.
+    private bool _hoveringRotation;
+    private bool _rotatingLayer;
+
+    // A layer's edit view: the grid set aside meanwhile, the layer shown alone as its one cell.
+    private EditState? _edit;
+
+    /// <summary>What a layer's edit view sets aside, given back when it closes.</summary>
+    private sealed record EditState(int Layer, List<SourceImage> Images, GridLayout? Layout, double Ratio, double FreeRatio, GridBorders? Borders, SeamFade? Seams);
+
+    /// <summary>Raised when a layer's edit view opens or closes.</summary>
+    public event EventHandler? LayerEditChanged;
+
+    /// <summary>Whether a layer's edit view shows (workfiles/20261029-layers.md § Edit View).</summary>
+    public bool EditingLayer => this._edit is not null;
 
     /// <summary>Raised when the layers change — added, moved, turned, resized, tuned, removed, restacked — or the selected one.</summary>
     public event EventHandler? LayersChanged;
@@ -53,6 +74,7 @@ internal sealed partial class GridPreview
                 return;
             }
 
+            this.EndLayerEdit();
             this._layersShown = value;
             if (!value)
             {
@@ -77,6 +99,7 @@ internal sealed partial class GridPreview
                 return;
             }
 
+            this.EndLayerEdit();
             this._layersActive = value;
             if (!value)
             {
@@ -89,19 +112,25 @@ internal sealed partial class GridPreview
 
     public bool HasLayerSelection => this._selectedLayer >= 0;
 
-    /// <summary>The selected layer, the one the effects toolbar acts on instead of a cell; <c>null</c> for none.</summary>
-    public Layer? SelectedLayer => this._selectedLayer >= 0 && this._selectedLayer < this._layers.Count ? this._layers.Items[this._selectedLayer] : null;
+    /// <summary>
+    /// The selected layer, the one the effects toolbar acts on instead of a cell; <c>null</c> for none —
+    /// and in its edit view, where it is the selected cell.
+    /// </summary>
+    public Layer? SelectedLayer => this._edit is null ? this.ListedLayer : null;
 
-    public int SelectedLayerIndex => this.SelectedLayer is null ? -1 : this._selectedLayer;
+    /// <summary>The selected layer, the one the layer list shows selected, its edit view open or not.</summary>
+    public Layer? ListedLayer => this._selectedLayer >= 0 && this._selectedLayer < this._layers.Count ? this._layers.Items[this._selectedLayer] : null;
 
-    /// <summary>The layers drawn now: none while their effect is off.</summary>
-    private GridLayers? ShownLayers => this._layersShown && this._layers.Count > 0 ? this._layers : null;
+    public int SelectedLayerIndex => this.ListedLayer is null ? -1 : this._selectedLayer;
+
+    /// <summary>The layers drawn now — the visible ones —: none while their effect is off, or a layer's edit view shows.</summary>
+    private GridLayers? ShownLayers => this._layersShown && this._edit is null ? this._layers.Shown : null;
 
     /// <summary>The contents the player plays beside the cells: the shown layers'.</summary>
     private IReadOnlyList<SourceImage> ShownLayerImages => this.ShownLayers?.Items.Select(l => l.Image).ToList() ?? [];
 
     /// <summary>Whether the layers take the mouse now: their tab selected, their effect on, no export running.</summary>
-    private bool LayersTakeMouse => this._layersActive && this._layersShown && !this._locked && this._layers.Count > 0;
+    private bool LayersTakeMouse => this._layersActive && this._layersShown && !this._locked && this._edit is null && this._layers.Count > 0;
 
     /// <summary>
     /// Puts <paramref name="layers"/> in place — a change of the window, an undo, a gesture — each content
@@ -111,6 +140,8 @@ internal sealed partial class GridPreview
     /// </summary>
     public void SetLayers(GridLayers layers, int? selected = null)
     {
+        // Given from outside, the layers change under the edit view: it closes first.
+        this.EndLayerEdit();
         var before = this._layers;
         if (ReferenceEquals(layers, before) && selected is null)
         {
@@ -205,6 +236,8 @@ internal sealed partial class GridPreview
             return;
         }
 
+        this.EndLayerEdit();
+
         this.CancelEyedropper();
         var previous = this.SelectedLayer;
         this._selectedLayer = index;
@@ -253,15 +286,6 @@ internal sealed partial class GridPreview
         }
     }
 
-    /// <summary>Where <paramref name="location"/> of the control falls on the grid, in fractions of it, kept within; <c>null</c> without a canvas.</summary>
-    public PointF? GridFractionAt(Point location)
-    {
-        var canvas = this.CanvasBounds();
-        return canvas.IsEmpty
-            ? null
-            : new PointF(Math.Clamp((location.X - canvas.X) / (float)canvas.Width, 0, 1), Math.Clamp((location.Y - canvas.Y) / (float)canvas.Height, 0, 1));
-    }
-
     /// <summary>The topmost layer under <paramref name="location"/> of the control; -1 for none.</summary>
     private int LayerAt(Point location)
     {
@@ -273,7 +297,7 @@ internal sealed partial class GridPreview
     private bool OnSelectedLayer(Point location)
     {
         var canvas = this.CanvasBounds();
-        return this.SelectedLayer is { } layer && !canvas.IsEmpty
+        return this.SelectedLayer is { Visible: true } layer && !canvas.IsEmpty
             && layer.Place.Contains(new PointF(location.X - canvas.X, location.Y - canvas.Y), layer.Shown, canvas.Size);
     }
 
@@ -289,6 +313,14 @@ internal sealed partial class GridPreview
             return false;
         }
 
+        // The rotation handle first: it lies outside the layer, over whatever is there.
+        if (this.OnRotationHandle(e.Location))
+        {
+            this._rotatingLayer = true;
+            this.InvalidateLayerOutline(this.SelectedLayer);
+            return true;
+        }
+
         int hit = this.OnSelectedLayer(e.Location) ? this._selectedLayer : this.LayerAt(e.Location);
         if (hit < 0)
         {
@@ -301,6 +333,13 @@ internal sealed partial class GridPreview
             return true;
         }
 
+        // A double-click on the selected layer opens its edit view.
+        if (e.Clicks == 2)
+        {
+            this.BeginLayerEdit();
+            return true;
+        }
+
         this._pressedLayer = hit;
         this._layerPoint = e.Location;
         this.Cursor = Cursors.SizeAll;
@@ -310,6 +349,25 @@ internal sealed partial class GridPreview
     /// <summary>The mouse moved: the pressed layer follows it; over a layer, the cursor tells what a press does. Whether the layers took it.</summary>
     private bool LayerMouseMove(MouseEventArgs e)
     {
+        if (this._rotatingLayer)
+        {
+            if (e.Button == MouseButtons.Left && this.SelectedLayer is { } turned)
+            {
+                var canvas = this.CanvasBounds();
+                var center = turned.Place.Center(canvas.Size);
+                double angle = Math.Atan2(e.Y - canvas.Y - center.Y, e.X - canvas.X - center.X) * 180 / Math.PI + 90;
+                if ((ModifierKeys & Keys.Shift) != 0)
+                {
+                    angle = Math.Round(angle / RotationSnap) * RotationSnap;
+                }
+
+                this.SetLayers(this._layers.With(this._selectedLayer, turned with { Place = turned.Place.WithAngle(angle) }));
+                this.Update();
+            }
+
+            return true;
+        }
+
         if (this._pressedLayer >= 0)
         {
             if (e.Button == MouseButtons.Left && this.SelectedLayer is { } layer && this._pressedLayer == this._selectedLayer)
@@ -330,7 +388,14 @@ internal sealed partial class GridPreview
             return false;
         }
 
-        bool selected = this.OnSelectedLayer(e.Location);
+        bool rotation = this.OnRotationHandle(e.Location);
+        if (rotation != this._hoveringRotation)
+        {
+            this._hoveringRotation = rotation;
+            this.InvalidateLayerOutline(this.SelectedLayer);
+        }
+
+        bool selected = rotation || this.OnSelectedLayer(e.Location);
         if (!selected && this.LayerAt(e.Location) < 0)
         {
             return false;
@@ -349,19 +414,20 @@ internal sealed partial class GridPreview
             this.Invalidate();
         }
 
-        this.Cursor = selected ? Cursors.SizeAll : Cursors.Hand;
+        this.Cursor = rotation || !selected ? Cursors.Hand : Cursors.SizeAll;
         return true;
     }
 
     /// <summary>A move of a layer ends: drawn again in full. Whether a layer was pressed.</summary>
     private bool EndLayerPress()
     {
-        if (this._pressedLayer < 0)
+        if (this._pressedLayer < 0 && !this._rotatingLayer)
         {
             return false;
         }
 
         this._pressedLayer = -1;
+        this._rotatingLayer = false;
         this.Cursor = Cursors.Default;
         this.RedrawLayerArea(this.SelectedLayer, fast: false);
         return true;
@@ -402,7 +468,7 @@ internal sealed partial class GridPreview
     /// <summary>The selected layer's outline, a helper indicator: its turned box, green over the black halo; preview only.</summary>
     private void PaintLayerSelection(Graphics g, Rectangle canvas)
     {
-        if (!this._layersActive || !this._layersShown || this.SelectedLayer is not { } layer || this._dragging)
+        if (!this._layersActive || !this._layersShown || this.SelectedLayer is not { Visible: true } layer || this._dragging)
         {
             return;
         }
@@ -425,7 +491,52 @@ internal sealed partial class GridPreview
             g.DrawPolygon(outline, corners);
         }
 
+        // The rotation handle: a stem from the top edge's middle, a knob at its end; white while hovered or dragged.
+        var (from, knob) = this.RotationHandle(layer, canvas);
+        float radius = this.LogicalToDeviceUnits(RotationKnob);
+        var color = this._rotatingLayer || this._hoveringRotation ? Color.White : HelperColor;
+        using (var halo = new Pen(HelperHalo, this.LogicalToDeviceUnits(LayerHaloWidth)))
+        {
+            g.DrawLine(halo, from, knob);
+            g.DrawEllipse(halo, knob.X - radius, knob.Y - radius, 2 * radius, 2 * radius);
+        }
+
+        using (var stem = new Pen(color, this.LogicalToDeviceUnits(LayerOutlineWidth)))
+        {
+            g.DrawLine(stem, from, knob);
+        }
+
+        using (var fill = new SolidBrush(color))
+        {
+            g.FillEllipse(fill, knob.X - radius, knob.Y - radius, 2 * radius, 2 * radius);
+        }
+
         g.SmoothingMode = smoothing;
+    }
+
+    /// <summary>The rotation handle of <paramref name="layer"/> in the control: the middle of its top edge, and its knob's center beyond it, turned with it.</summary>
+    private (PointF From, PointF Knob) RotationHandle(Layer layer, Rectangle canvas)
+    {
+        var box = layer.Place.BoxSize(layer.Shown, canvas.Size);
+        PointF[] points = [new(0, -box.Height / 2), new(0, -box.Height / 2 - this.LogicalToDeviceUnits(RotationStem))];
+        using var matrix = layer.Place.ToCanvas(canvas.Size);
+        matrix.TransformPoints(points);
+        return (new PointF(points[0].X + canvas.X, points[0].Y + canvas.Y), new PointF(points[1].X + canvas.X, points[1].Y + canvas.Y));
+    }
+
+    /// <summary>Whether <paramref name="location"/> grabs the selected layer's rotation handle, while the layers take the mouse.</summary>
+    private bool OnRotationHandle(Point location)
+    {
+        var canvas = this.CanvasBounds();
+        if (!this.LayersTakeMouse || this.SelectedLayer is not { Visible: true } layer || canvas.IsEmpty)
+        {
+            return false;
+        }
+
+        var knob = this.RotationHandle(layer, canvas).Knob;
+        double reach = this.LogicalToDeviceUnits(RotationKnob + 3);
+        double dx = location.X - knob.X, dy = location.Y - knob.Y;
+        return dx * dx + dy * dy <= reach * reach;
     }
 
     /// <summary>Repaints where <paramref name="layer"/>'s outline is drawn.</summary>
@@ -449,7 +560,8 @@ internal sealed partial class GridPreview
             (int)Math.Floor(corners.Min(c => c.Y)),
             (int)Math.Ceiling(corners.Max(c => c.X)),
             (int)Math.Ceiling(corners.Max(c => c.Y)));
-        int margin = this.LogicalToDeviceUnits(LayerHaloWidth) + 2;
+        // The rotation handle reaches beyond the box, whichever way the layer is turned.
+        int margin = this.LogicalToDeviceUnits(LayerHaloWidth + RotationStem + RotationKnob) + 2;
         bounds.Inflate(margin, margin);
         return bounds;
     }
@@ -559,6 +671,106 @@ internal sealed partial class GridPreview
 
     /// <summary>The layer showing <paramref name="image"/>, or <c>null</c>.</summary>
     private Layer? LayerOf(SourceImage image) => this._layers.Items.FirstOrDefault(l => l.Image == image);
+
+    /// <summary>
+    /// Opens the selected layer's edit view (workfiles/20261029-layers.md § Edit View): the grid set aside,
+    /// the canvas takes the layer's shape and holds it alone as its one cell, upright and selected — so
+    /// every tool of a cell works on it: the effects toolbar, the blur's bars, the crop's edit view, the
+    /// wheel's zoom, the drag within the box. Its look changes as the layer's; its place is left alone.
+    /// </summary>
+    public void BeginLayerEdit()
+    {
+        if (this._edit is not null || this.SelectedLayer is not { Visible: true } layer || this._locked || !this._layersShown || this._layout is null)
+        {
+            return;
+        }
+
+        this.CancelEyedropper();
+        this.EndLayerPress();
+        this.EndDrag();
+        this.EndKeyPan();
+        this._edit = new EditState(this._selectedLayer, [.. this._images], this._layout, this._ratio, this.FreeRatio, this._borders, this._seams);
+        this._images.Clear();
+        layer.Image.Look = layer.Look;
+        this._images.Add(layer.Image);
+        this._layout = GridLayout.Default(1);
+        this._borders = null;
+        this._seams = null;
+        this._selected = 0;
+        this.ResetHover();
+        this._ratio = this.EditRatio();
+        this.EnterOrLeaveEdit();
+    }
+
+    /// <summary>Closes a layer's edit view: the grid given back as it was, the layer selected with the look it got.</summary>
+    public void EndLayerEdit()
+    {
+        if (this._edit is not { } edit)
+        {
+            return;
+        }
+
+        this.CancelEyedropper();
+        this.EndDrag();
+        this.EndLive();
+        this.EndKeyPan();
+        this._edit = null;
+        this._images.Clear();
+        this._images.AddRange(edit.Images);
+        this._layout = edit.Layout;
+        this._borders = edit.Borders;
+        this._seams = edit.Seams;
+        this._ratio = edit.Ratio;
+        this._selected = -1;
+        this._selectedLayer = edit.Layer < this._layers.Count ? edit.Layer : -1;
+        this.ResetHover();
+        this.EnterOrLeaveEdit();
+    }
+
+    /// <summary>The preview drawn and played anew for the grid it now shows, and the window told.</summary>
+    private void EnterOrLeaveEdit()
+    {
+        this._cache?.Dispose();
+        this._cache = null;
+        this.FitPagesToCells();
+        this.SyncPlayer();
+        this.Invalidate();
+        this.ContentVersion++;
+        this.LayerEditChanged?.Invoke(this, EventArgs.Empty);
+        this.SelectedImageChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>The hover of a cell, its bars and its separators forgotten: the cells under the mouse changed.</summary>
+    private void ResetHover()
+    {
+        this._hovered = -1;
+        this._hoveringClose = false;
+        this._hoveringHandle = false;
+        this._hoveredBar = null;
+        this._hoveredCorner = null;
+        this._hoveringKept = false;
+        this._hoveredSeparator = null;
+        this._hoveringRotation = false;
+        this._fittedName = null;
+    }
+
+    /// <summary>The edit view's canvas ratio: the edited layer's box, its content as shown.</summary>
+    private double EditRatio()
+    {
+        var image = this._images.Count > 0 ? this._images[0] : null;
+        var shown = image is null ? new Size(1, 1) : image.Look.Shown(image.Bitmap.Size);
+        return Math.Clamp(shown.Width / (double)Math.Max(1, shown.Height), 0.05, 20);
+    }
+
+    /// <summary>In the edit view, the layer takes the look its cell was just given: the undo history and the exports read the layer.</summary>
+    private void SyncEditedLayer(SourceImage image)
+    {
+        if (this._edit is { } edit && edit.Layer < this._layers.Count && this._layers.Items[edit.Layer] is var layer
+            && layer.Image == image && layer.Look != image.Look)
+        {
+            this._layers = this._layers.With(edit.Layer, layer with { Look = image.Look });
+        }
+    }
 
     /// <summary>The frames of the shown layers' contents are decoded at the size of their boxes.</summary>
     private void UpdateLayerDisplaySizes()

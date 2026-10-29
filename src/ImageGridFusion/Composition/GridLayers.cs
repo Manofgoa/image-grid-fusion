@@ -87,7 +87,8 @@ public sealed record LayerPlacement(double X, double Y, double Size, double Angl
 /// </summary>
 /// <param name="Image">Its content; its <see cref="SourceImage.Look"/> is kept equal to <paramref name="Look"/>.</param>
 /// <param name="Text">The text and its style for a text layer, drawn into <paramref name="Image"/>; <c>null</c> for any other.</param>
-public sealed record Layer(SourceImage Image, ImageLook Look, LayerPlacement Place, string? Text = null, LayerTextStyle? Style = null)
+/// <param name="Visible">Unchecked in the layer list, it is neither drawn, played nor heard, its settings kept.</param>
+public sealed record Layer(SourceImage Image, ImageLook Look, LayerPlacement Place, string? Text = null, LayerTextStyle? Style = null, bool Visible = true)
 {
     public bool IsText => this.Text is not null;
 
@@ -113,6 +114,9 @@ public sealed record GridLayers(IReadOnlyList<Layer> Items)
     public static readonly GridLayers Initial = new([]);
 
     public int Count => this.Items.Count;
+
+    /// <summary>The layers drawn — the visible ones, in their order —, <c>null</c> when none is.</summary>
+    public GridLayers? Shown => this.Items.Any(l => l.Visible) ? new GridLayers([.. this.Items.Where(l => l.Visible)]) : null;
 
     public GridLayers With(int index, Layer layer)
     {
@@ -140,13 +144,13 @@ public sealed record GridLayers(IReadOnlyList<Layer> Items)
         return new GridLayers(items);
     }
 
-    /// <summary>The topmost layer under <paramref name="point"/> of the canvas, -1 for none.</summary>
+    /// <summary>The topmost visible layer under <paramref name="point"/> of the canvas, -1 for none.</summary>
     public int At(PointF point, Size canvas)
     {
         for (int i = this.Items.Count - 1; i >= 0; i--)
         {
             var layer = this.Items[i];
-            if (layer.Place.Contains(point, layer.Shown, canvas))
+            if (layer.Visible && layer.Place.Contains(point, layer.Shown, canvas))
             {
                 return i;
             }

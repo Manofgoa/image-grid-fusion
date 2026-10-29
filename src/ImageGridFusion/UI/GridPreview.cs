@@ -251,7 +251,8 @@ internal sealed partial class GridPreview : Control
     /// </summary>
     public event EventHandler<(SourceImage Image, Point ScreenPoint)>? ReleasedOffGrid;
 
-    public IReadOnlyList<SourceImage> Images => _images;
+    /// <summary>The cells' images — the grid's, also while a layer's edit view shows that layer alone.</summary>
+    public IReadOnlyList<SourceImage> Images => this._edit?.Images ?? _images;
 
     /// <summary>
     /// Counts the changes of the rendered result — images, layout, cell sizes, looks, borders,
@@ -306,6 +307,8 @@ internal sealed partial class GridPreview : Control
         get => _format;
         set
         {
+            // The grid changes: a layer's edit view gives it back first.
+            this.EndLayerEdit();
             if (value != _format)
             {
                 _format = value;
@@ -315,10 +318,10 @@ internal sealed partial class GridPreview : Control
     }
 
     /// <summary>The canvas's width ÷ height as drawn: the format's, or the free one — the one rule every reader goes through.</summary>
-    public double CanvasRatio => _ratio;
+    public double CanvasRatio => this._edit?.Ratio ?? _ratio;
 
     /// <summary>The ratio the free format gives the grid as it stands, whatever the format.</summary>
-    public double FreeRatio => _layout is null ? OutputFormats.TwitterRatio
+    public double FreeRatio => this._edit is { } edit ? edit.FreeRatio : _layout is null ? OutputFormats.TwitterRatio
         : OutputFormats.FreeRatio(_images.Select(i => i.Pages is { PageSize: not null } ? (Size?)null : i.Look.Shown(i.Size)).ToList(), _layout);
 
     /// <summary>The borders drawn on the grid, shrinking its cells for their gap; <c>null</c> when they are off.</summary>
@@ -328,6 +331,8 @@ internal sealed partial class GridPreview : Control
         get => _borders;
         set
         {
+            // The grid changes: a layer's edit view gives it back first.
+            this.EndLayerEdit();
             if (value == _borders)
             {
                 return;
@@ -355,6 +360,8 @@ internal sealed partial class GridPreview : Control
         get => this._seams;
         set
         {
+            // The grid changes: a layer's edit view gives it back first.
+            this.EndLayerEdit();
             if (value == this._seams)
             {
                 return;
@@ -379,6 +386,8 @@ internal sealed partial class GridPreview : Control
         get => this._cascade;
         set
         {
+            // The grid changes: a layer's edit view gives it back first.
+            this.EndLayerEdit();
             if (value == this._cascade)
             {
                 return;
@@ -425,7 +434,7 @@ internal sealed partial class GridPreview : Control
     /// </summary>
     public bool InGesture =>
         this._pressed >= 0 || this._draggedBar is not null || this._draggedCorner is not null || this._draggedSeparator is not null
-        || this._movedCrop is not null || this._live is not null || this._wheelEnd.Enabled || this._eyedropper is not null || this._pressedLayer >= 0;
+        || this._movedCrop is not null || this._live is not null || this._wheelEnd.Enabled || this._eyedropper is not null || this._pressedLayer >= 0 || this._rotatingLayer;
 
     /// <summary>
     /// Whether the wheel was turned over the grid with Alt held since the last call, cleared by it: the
@@ -439,9 +448,9 @@ internal sealed partial class GridPreview : Control
     }
 
     /// <summary>Layout the images are shown and exported with; <c>null</c> while there is no image.</summary>
-    public GridLayout? ActiveLayout => _layout;
+    public GridLayout? ActiveLayout => this._edit is { } edit ? edit.Layout : _layout;
 
-    public int FreeSlots => GridLayout.MaxImages - _images.Count;
+    public int FreeSlots => GridLayout.MaxImages - this.Images.Count;
 
     public bool HasSelection => _selected >= 0;
 
@@ -485,6 +494,8 @@ internal sealed partial class GridPreview : Control
         get => _locked;
         set
         {
+            // The grid changes: a layer's edit view gives it back first.
+            this.EndLayerEdit();
             _locked = value;
             _pressed = -1;
             EndSeparatorDrag();
@@ -501,6 +512,7 @@ internal sealed partial class GridPreview : Control
     /// </summary>
     public int Add(IReadOnlyList<SourceImage> images, int targetCell = -1)
     {
+        this.EndLayerEdit();
         int ignored = 0;
         bool excessReplaced = false;
         for (int i = 0; i < images.Count; i++)
@@ -565,6 +577,7 @@ internal sealed partial class GridPreview : Control
     /// <summary>Applies a layout for the current image count; the images keep their order.</summary>
     public void SetLayout(GridLayout layout)
     {
+        this.EndLayerEdit();
         if (layout.Count != _images.Count)
         {
             throw new ArgumentException($"Layout {layout.Id} holds {layout.Count} images, not {_images.Count}.", nameof(layout));
@@ -598,6 +611,12 @@ internal sealed partial class GridPreview : Control
 
     public void ClearSelection()
     {
+        // In a layer's edit view, the layer stays the selected cell until the view closes.
+        if (this._edit is not null)
+        {
+            return;
+        }
+
         this.SelectLayer(-1);
         Select(-1);
     }
@@ -678,6 +697,7 @@ internal sealed partial class GridPreview : Control
     /// <summary>Removes every image at once, raising <see cref="ImagesChanged"/> a single time.</summary>
     public void Clear()
     {
+        this.EndLayerEdit();
         if (_images.Count == 0)
         {
             return;
@@ -703,6 +723,7 @@ internal sealed partial class GridPreview : Control
     /// </summary>
     public void Restore(IReadOnlyList<CellState> cells, GridLayout? layout, OutputFormat format, int selected)
     {
+        this.EndLayerEdit();
         bool startOver = cells.Count != this._images.Count || cells.Any(c => !this._images.Contains(c.Image));
         bool layoutChanged = layout is null ? this._layout is not null : !layout.SameAs(this._layout);
         List<SourceImage> replayed = startOver ? [] : cells.Where(c => c.Look.Frames != c.Image.Look.Frames).Select(c => c.Image).ToList();
@@ -1038,7 +1059,7 @@ internal sealed partial class GridPreview : Control
 
         PaintHoverOutline(g, HoverOutlineBounds(canvas, cells));
 
-        if (_hovered >= 0 && !_dragging && !_locked)
+        if (_hovered >= 0 && !_dragging && !_locked && this._edit is null)
         {
             PaintCloseButton(g, CloseBounds(cells[_hovered]), _hoveringClose);
             if (this.HandleOf(_hovered) is { IsEmpty: false } handle)
@@ -1099,11 +1120,22 @@ internal sealed partial class GridPreview : Control
         int index = CellAt(e.Location);
         if (index < 0)
         {
+            // In a layer's edit view, a double-click outside the layer closes it; a click changes nothing.
+            if (this._edit is not null)
+            {
+                if (e.Clicks == 2)
+                {
+                    this.EndLayerEdit();
+                }
+
+                return;
+            }
+
             ClearSelection();
             return;
         }
 
-        if (CloseBounds(CellBounds()[index]).Contains(e.Location))
+        if (this._edit is null && CloseBounds(CellBounds()[index]).Contains(e.Location))
         {
             RemoveAt(index);
             UpdateHover(e.Location);
@@ -1172,7 +1204,7 @@ internal sealed partial class GridPreview : Control
         Select(index);
         _pressed = index;
         _pressPoint = e.Location;
-        _panning = !this.HandleOf(index).Contains(e.Location);
+        _panning = this._edit is not null || !this.HandleOf(index).Contains(e.Location);
         _panPoint = e.Location;
         _panX.Reset();
         _panY.Reset();
@@ -2316,6 +2348,7 @@ internal sealed partial class GridPreview : Control
             UpdateDisplaySizes();
         }
 
+        this.SyncEditedLayer(image);
         RedrawCell(image);
         if (index == _selected)
         {
@@ -3398,7 +3431,8 @@ internal sealed partial class GridPreview : Control
             return;
         }
 
-        double ratio = OutputFormats.Ratio(_format) ?? FreeRatio;
+        // In a layer's edit view, the canvas takes the layer's shape (workfiles/20261029-layers.md § Edit View).
+        double ratio = this._edit is not null ? this.EditRatio() : OutputFormats.Ratio(_format) ?? FreeRatio;
 
         // A video's frames, scaled to their cell, must not nudge the free ratio back and forth.
         if (Math.Abs(ratio / _ratio - 1) < 0.002)
