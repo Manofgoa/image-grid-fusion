@@ -976,7 +976,17 @@ internal sealed partial class MainForm : Form
             row.DragEnter += (_, e) => e.Effect = e.Data?.GetDataPresent(DataFormats.FileDrop) == true ? DragDropEffects.Copy : DragDropEffects.None;
             row.DragDrop += async (_, e) =>
             {
-                if (e.Data?.GetData(DataFormats.FileDrop) is string[] { Length: > 0 } paths)
+                if (e.Data?.GetData(DataFormats.FileDrop) is not string[] { Length: > 0 } paths)
+                {
+                    return;
+                }
+
+                // Onto the Layers tab, or its options while it is selected: laid over the grid (workfiles/20261029-layers.md).
+                if (this.DroppedOnLayers(new Point(e.X, e.Y)))
+                {
+                    await this.DropLayerFilesAsync(paths);
+                }
+                else
                 {
                     await LoadSoundtrackAsync(paths[0]);
                 }
@@ -1417,7 +1427,10 @@ internal sealed partial class MainForm : Form
             case Keys.Space when this._timeline.Enabled && !this._explorer.IsEditingText && !this.IsEditingFrameField && this.FocusedControl() is not TextBoxBase:
                 this.TogglePlayback();
                 return true;
-            // The selected layer first: the two selections are exclusive (workfiles/20261029-layers.md).
+            // A layer's edit view closes first; then the selected layer: the two selections are exclusive (workfiles/20261029-layers.md).
+            case Keys.Escape when this._preview.EditingLayer:
+                this._preview.EndLayerEdit();
+                return true;
             case Keys.Delete when this._preview.HasLayerSelection && !IsExporting:
                 this._preview.RemoveSelectedLayer();
                 return true;
@@ -1492,8 +1505,7 @@ internal sealed partial class MainForm : Form
 
     private void OnPreviewDragOver(object? sender, DragEventArgs e)
     {
-        // A drop then makes a layer: no cell is highlighted, none would be filled.
-        if (e.Effect != DragDropEffects.None && !IsExporting && !this.LayersTakePaste)
+        if (e.Effect != DragDropEffects.None && !IsExporting && !this._preview.EditingLayer)
         {
             _preview.ShowDropTarget(_preview.PointToClient(new Point(e.X, e.Y)));
         }
@@ -1503,15 +1515,12 @@ internal sealed partial class MainForm : Form
     {
         _preview.ShowDropTarget(null);
 
-        // On the grid while the Layers tab is selected: laid over it as layers (workfiles/20261029-layers.md).
-        if (sender == this._preview && this.LayersTakePaste)
-        {
-            await this.DropLayersAsync(e);
-            return;
-        }
+        // In a layer's edit view, the grid's cells are not shown: a drop is added like a paste.
+        bool editing = this._preview.EditingLayer;
+        this._preview.EndLayerEdit();
 
         // Onto a cell: replaces it. Onto the drop zone or elsewhere in the window: added like a paste.
-        int target = sender == _preview ? DropCell(e) : -1;
+        int target = sender == _preview && !editing ? DropCell(e) : -1;
         if (e.Data?.GetData(DataFormats.FileDrop) is string[] paths)
         {
             await AddFilesAsync(paths, target, FileExplorerPanel.PresetLookOf(e.Data));
@@ -1643,13 +1652,6 @@ internal sealed partial class MainForm : Form
     {
         if (RefuseWhileExporting())
         {
-            return;
-        }
-
-        // While the Layers tab is selected, the clipboard is laid over the grid (workfiles/20261029-layers.md).
-        if (this.LayersTakePaste)
-        {
-            await this.PasteLayersAsync();
             return;
         }
 
@@ -2520,7 +2522,7 @@ internal sealed partial class MainForm : Form
     private bool HasAnimation => _preview.Images.Any(i => i.Moves) || this.ActiveLayerImages.Any(i => i.Moves);
 
     /// <summary>The layers drawn over the grid, in the preview and every export; <c>null</c> while their effect is off.</summary>
-    private GridLayers? ActiveLayers => this._layersOn && this._preview.Layers.Count > 0 ? this._preview.Layers : null;
+    private GridLayers? ActiveLayers => this._layersOn ? this._preview.Layers.Shown : null;
 
     /// <summary>The contents of the layers drawn: they play, sound and count in the video length beside the cells.</summary>
     private IReadOnlyList<SourceImage> ActiveLayerImages => this.ActiveLayers?.Items.Select(l => l.Image).ToList() ?? [];
@@ -2530,12 +2532,6 @@ internal sealed partial class MainForm : Form
 
     /// <summary>Why the layers do not apply — the grid holds no image to lay them over — or <c>null</c> when they do.</summary>
     private string? LayersUnavailable => this._preview.Images.Count > 0 ? null : "The grid holds no image to lay layers over";
-
-    /// <summary>
-    /// Whether a paste or a drop on the grid makes a layer rather than filling a cell: only while the Layers
-    /// tab is selected and they apply (workfiles/20261029-layers.md § Image Layer).
-    /// </summary>
-    private bool LayersTakePaste => this._selectedGlobalEffect == GlobalEffect.Layers && this.LayersUnavailable is null && !this.IsExporting;
 
     /// <summary>The soundtrack mixed into the preview and the MP4 export; <c>null</c> while off.</summary>
     private Soundtrack? ActiveSoundtrack => _soundtrackOn ? _soundtrack : null;

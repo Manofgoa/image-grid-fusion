@@ -250,6 +250,20 @@ internal sealed class EffectTabs<TEffect> : Control
         return null;
     }
 
+    /// <summary>The tab under <paramref name="location"/>, in the control's coordinates; <c>null</c> for none.</summary>
+    public TEffect? EffectAt(Point location)
+    {
+        foreach (var tab in this.Tabs())
+        {
+            if (tab.Bounds.Contains(location))
+            {
+                return tab.Effect;
+            }
+        }
+
+        return null;
+    }
+
     private List<Tab> Tabs()
     {
         int pad = LogicalToDeviceUnits(Pad);

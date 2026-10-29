@@ -6,9 +6,9 @@ namespace ImageGridFusion.UI;
 
 /// <summary>
 /// The Layers global effect (workfiles/20261029-layers.md): its options in the global options toolbar —
-/// adding an image or a text, the selected layer's stacking, a text's own settings — and the paste and the
-/// drop that make layers while its tab is selected. Its layers live in the preview, which draws them and
-/// takes their gestures; the cell effects of a selected layer are the effects toolbar's.
+/// the layer list and its icon buttons, a text's own settings — and the drop onto its tab that makes
+/// layers. Its layers live in the preview, which draws them and takes their gestures; the cell effects of
+/// a selected layer are the effects toolbar's, in its edit view too.
 /// </summary>
 internal sealed partial class MainForm
 {
@@ -21,13 +21,20 @@ internal sealed partial class MainForm
     // The Layers effect on: its layers drawn over the grid, in the preview and the exports.
     private bool _layersOn;
 
-    private readonly Button _layerAddImage = OptionButton("Add image…");
-    private readonly Button _layerPaste = OptionButton("Paste");
-    private readonly Button _layerAddText = OptionButton("Add text");
-    private readonly Button _layerToBack = OptionButton("To back");
-    private readonly Button _layerLower = OptionButton("Lower");
-    private readonly Button _layerRaise = OptionButton("Raise");
-    private readonly Button _layerToFront = OptionButton("To front");
+    // The layer list, at the left of the options, and its icon buttons below it (§ Layer List).
+    private readonly LayerList _layerList = new() { Width = 240, Anchor = AnchorStyles.Left };
+    private readonly Button _layerAddImage = IconButton();
+    private readonly Button _layerPaste = IconButton();
+    private readonly Button _layerAddText = IconButton();
+    private readonly Button _layerEdit = IconButton();
+    private readonly Button _layerDelete = IconButton();
+    private readonly Button _layerToBack = IconButton();
+    private readonly Button _layerLower = IconButton();
+    private readonly Button _layerRaise = IconButton();
+    private readonly Button _layerToFront = IconButton();
+
+    // The list's thumbnails, one per layer content, made once and dropped with it.
+    private readonly Dictionary<SourceImage, Bitmap> _layerThumbnails = [];
     private readonly TextBox _layerText = new()
     {
         Multiline = true,
@@ -63,29 +70,31 @@ internal sealed partial class MainForm
     private Color? _layerOutlineSwatch;
     private Color? _layerBackgroundSwatch;
 
-    /// <summary>A button of the options, as wide as its text.</summary>
-    private static Button OptionButton(string text) => new()
+    /// <summary>A button of the layer list: an icon, no text — its name in its tooltip.</summary>
+    private static Button IconButton() => new()
     {
-        Text = text,
         AutoSize = true,
+        AutoSizeMode = AutoSizeMode.GrowAndShrink,
         Anchor = AnchorStyles.Left,
+        Margin = new Padding(1),
+        Padding = new Padding(2),
         BackColor = SystemColors.Control,
         UseVisualStyleBackColor = true,
     };
 
     /// <summary>
-    /// The Layers options, on two lines beside a text field: adding, stacking, then a text's font, color,
-    /// outline and background — each color with its eyedropper and sample (RULES.md § Color Options).
+    /// The Layers options: the layer list over its icon buttons, then a text field and, on two lines, a
+    /// text's font, color, outline and background — each color with its eyedropper and sample (RULES.md
+    /// § Color Options). The list shows about four layers: the global options toolbar grows to it.
     /// </summary>
     private void BuildLayerOptions()
     {
-        var addLine = OptionLine();
-        addLine.Controls.AddRange([this._layerAddImage, this._layerPaste, this._layerAddText]);
-        var stackLine = OptionLine();
-        stackLine.Controls.AddRange([this._layerToBack, this._layerLower, this._layerRaise, this._layerToFront]);
+        this._layerList.Height = this.LogicalToDeviceUnits(4 * 34 + 4);
+        var iconLine = OptionLine();
+        iconLine.Controls.AddRange([this._layerAddImage, this._layerPaste, this._layerAddText, this._layerEdit, this._layerDelete, this._layerToBack, this._layerLower, this._layerRaise, this._layerToFront]);
         var buttons = OptionLine();
         buttons.FlowDirection = FlowDirection.TopDown;
-        buttons.Controls.AddRange([addLine, stackLine]);
+        buttons.Controls.AddRange([this._layerList, iconLine]);
 
         var fontLine = OptionLine();
         fontLine.Controls.AddRange([this._layerFont, this._layerBold, this._layerColor, this._layerColorSample, this._layerColorSampleLabel]);
@@ -103,19 +112,20 @@ internal sealed partial class MainForm
         backgroundLines.FlowDirection = FlowDirection.TopDown;
         backgroundLines.Controls.AddRange([backgroundLine, opacityLine]);
 
-        this._layerText.Height = this.LogicalToDeviceUnits(52);
+        this._layerText.Height = this.LogicalToDeviceUnits(4 * 34);
         this._globalOptions[GlobalEffect.Layers].Controls.AddRange([buttons, this._layerText, styleLines, backgroundLines]);
 
         var fonts = TextRaster.FontFamilies();
         this._layerFont.Items.AddRange([.. fonts]);
 
-        this._toolTip.SetToolTip(this._layerAddImage, "Lays an image, a GIF or a video over the grid, chosen in the file picker");
-        this._toolTip.SetToolTip(this._layerPaste, "Lays the clipboard's image, files or text over the grid (Ctrl+V while this tab is selected)");
-        this._toolTip.SetToolTip(this._layerAddText, "Lays a text over the grid, typed in the field beside — Win+. opens the emoji panel");
-        this._toolTip.SetToolTip(this._layerToBack, "Puts the selected layer under every other");
-        this._toolTip.SetToolTip(this._layerLower, "Puts the selected layer one place lower");
-        this._toolTip.SetToolTip(this._layerRaise, "Puts the selected layer one place higher");
-        this._toolTip.SetToolTip(this._layerToFront, "Puts the selected layer over every other");
+        this._toolTip.SetToolTip(this._layerAddImage, "Add image… — lays images, GIFs or videos over the grid, chosen in the file picker; files dropped onto the Layers tab do the same");
+        this._toolTip.SetToolTip(this._layerPaste, "Paste — lays the clipboard's image, files or text over the grid");
+        this._toolTip.SetToolTip(this._layerAddText, "Add text — lays a text over the grid, typed in the field beside; Win+. opens the emoji panel");
+        this._toolTip.SetToolTip(this._layerDelete, "Delete — removes the selected layer (Delete)");
+        this._toolTip.SetToolTip(this._layerToBack, "To back — puts the selected layer under every other");
+        this._toolTip.SetToolTip(this._layerLower, "Lower — puts the selected layer one place lower");
+        this._toolTip.SetToolTip(this._layerRaise, "Raise — puts the selected layer one place higher");
+        this._toolTip.SetToolTip(this._layerToFront, "To front — puts the selected layer over every other");
         this._toolTip.SetToolTip(this._layerText, "The selected text layer's text, several lines allowed; Win+. opens the emoji panel");
         this._toolTip.SetToolTip(this._layerOutline, "Draws an outline around the letters and the emojis, so the text reads on any image");
         this._toolTip.SetToolTip(this._layerOutlineWidth, "Width of the outline, as a share of a line");
@@ -125,6 +135,18 @@ internal sealed partial class MainForm
         this._layerAddImage.Click += (_, _) => this.PickLayerFiles();
         this._layerPaste.Click += async (_, _) => await this.PasteLayersAsync();
         this._layerAddText.Click += (_, _) => this.AddTextLayer();
+        this._layerEdit.Click += (_, _) => this.ToggleLayerEdit();
+        this._layerDelete.Click += (_, _) => this._preview.RemoveSelectedLayer();
+        this._layerList.LayerPicked += (_, index) => this._preview.SelectLayer(index);
+        this._layerList.VisibilityClicked += (_, index) => this.ToggleLayerVisibility(index);
+        this._preview.LayerEditChanged += (_, _) =>
+        {
+            this.UpdateButtons();
+            if (this._preview.EditingLayer)
+            {
+                this.ShowStatus("Editing the layer: its effects work as on a cell. Escape, Done or a double-click outside it gives the grid back.");
+            }
+        };
         this._layerToBack.Click += (_, _) => this.RestackLayer(_ => 0);
         this._layerLower.Click += (_, _) => this.RestackLayer(index => index - 1);
         this._layerRaise.Click += (_, _) => this.RestackLayer(index => index + 1);
@@ -190,9 +212,25 @@ internal sealed partial class MainForm
 
     private static string OutlineWidthText(int percent) => $"Width: {percent} %";
 
-    /// <summary>The eyedropper icons of the three colors, drawn at the monitor's DPI; the ones replaced disposed.</summary>
+    /// <summary>The eyedropper icons of the three colors and the list's buttons, drawn at the monitor's DPI; the ones replaced disposed.</summary>
     private void UpdateLayerIcons(int size)
     {
+        foreach (var (button, action) in new (Button, EffectIcons.LayerAction)[]
+        {
+            (this._layerAddImage, EffectIcons.LayerAction.AddImage), (this._layerPaste, EffectIcons.LayerAction.Paste),
+            (this._layerAddText, EffectIcons.LayerAction.AddText), (this._layerDelete, EffectIcons.LayerAction.Delete),
+            (this._layerToBack, EffectIcons.LayerAction.ToBack), (this._layerLower, EffectIcons.LayerAction.Lower),
+            (this._layerRaise, EffectIcons.LayerAction.Raise), (this._layerToFront, EffectIcons.LayerAction.ToFront),
+        })
+        {
+            var previous = button.Image;
+            button.Image = EffectIcons.Layer(size, action);
+            previous?.Dispose();
+        }
+
+        this._layerIconSize = size;
+        this._layerEditShowsDone = null;
+
         foreach (var button in new[] { this._layerColor, this._layerOutlineColor, this._layerBackgroundColor })
         {
             var previous = button.Eyedropper.Image;
@@ -204,19 +242,39 @@ internal sealed partial class MainForm
         this.UpdateLayerOptions();
     }
 
+    // The size the list's icons were drawn at, and whether the Edit button shows Done — drawn again when it changes.
+    private int _layerIconSize = 16;
+    private bool? _layerEditShowsDone;
+
     /// <summary>
-    /// Shows the Layers options: the adding buttons while the grid holds an image, the stacking ones while
-    /// they would move the selected layer, a text's settings while a text layer is selected.
+    /// Shows the Layers options: the list of the layers, the selected one selected; the adding buttons while
+    /// the grid holds an image, the others while they would act on the selected layer; Edit or Done; a
+    /// text's settings while a text layer is selected outside its edit view.
     /// </summary>
     private void UpdateLayerOptions()
     {
         bool enabled = !this.IsExporting && this.LayersUnavailable is null;
+        bool editing = this._preview.EditingLayer;
+        var listed = this._preview.ListedLayer;
         var layer = this._preview.SelectedLayer;
         int index = this._preview.SelectedLayerIndex;
         int count = this._preview.Layers.Count;
+        this.UpdateLayerList();
         this._layerAddImage.Enabled = this._layerPaste.Enabled = this._layerAddText.Enabled = enabled;
-        this._layerToBack.Enabled = this._layerLower.Enabled = enabled && layer is not null && index > 0;
-        this._layerRaise.Enabled = this._layerToFront.Enabled = enabled && layer is not null && index < count - 1;
+        this._layerEdit.Enabled = enabled && (editing || layer is { Visible: true });
+        this._layerDelete.Enabled = enabled && listed is not null;
+        this._layerToBack.Enabled = this._layerLower.Enabled = enabled && listed is not null && index > 0;
+        this._layerRaise.Enabled = this._layerToFront.Enabled = enabled && listed is not null && index < count - 1;
+        if (this._layerEditShowsDone != editing)
+        {
+            this._layerEditShowsDone = editing;
+            var previous = this._layerEdit.Image;
+            this._layerEdit.Image = EffectIcons.Layer(this._layerIconSize, editing ? EffectIcons.LayerAction.Done : EffectIcons.LayerAction.Edit);
+            previous?.Dispose();
+            this._toolTip.SetToolTip(
+                this._layerEdit,
+                editing ? "Done — gives the grid back (Escape)" : "Edit — shows the selected layer alone, large, its effects working as on a cell (double-click the layer)");
+        }
 
         bool text = enabled && layer is { IsText: true };
         foreach (var control in new Control[]
@@ -257,6 +315,102 @@ internal sealed partial class MainForm
         this.ShowLayerSwatch(this._layerColor, ref this._layerColorSwatch, style.Color);
         this.ShowLayerSwatch(this._layerOutlineColor, ref this._layerOutlineSwatch, style.OutlineColor);
         this.ShowLayerSwatch(this._layerBackgroundColor, ref this._layerBackgroundSwatch, style.BackgroundColor);
+    }
+
+    /// <summary>The layer list's rows, their thumbnails made for the new contents and dropped for the gone ones.</summary>
+    private void UpdateLayerList()
+    {
+        var layers = this._preview.Layers.Items;
+        foreach (var gone in this._layerThumbnails.Keys.Where(image => !layers.Any(l => l.Image == image)).ToList())
+        {
+            this._layerThumbnails[gone].Dispose();
+            this._layerThumbnails.Remove(gone);
+        }
+
+        var rows = new List<LayerList.Row>(layers.Count);
+        foreach (var layer in layers)
+        {
+            if (!this._layerThumbnails.TryGetValue(layer.Image, out var thumbnail) && !layer.Image.IsDisposed)
+            {
+                thumbnail = Thumbnail(layer.Image.Bitmap);
+                this._layerThumbnails[layer.Image] = thumbnail;
+            }
+
+            rows.Add(new LayerList.Row(LayerName(layer), thumbnail, layer.Visible));
+        }
+
+        this._layerList.SetRows(rows, this._preview.SelectedLayerIndex);
+    }
+
+    /// <summary>A layer's name in the list: its file's, its text's first line, else what it was pasted as.</summary>
+    private static string LayerName(Layer layer) =>
+        layer.Text is { } text ? (text.Split('\n')[0] is { Length: > 0 } line ? line : "Text")
+        : layer.Image.FilePath is { } path ? Path.GetFileName(path)
+        : "Pasted image";
+
+    /// <summary>A small copy of <paramref name="bitmap"/>, for the list: its longer side 80 px.</summary>
+    private static Bitmap Thumbnail(Bitmap bitmap)
+    {
+        double scale = Math.Min(1, 80.0 / Math.Max(bitmap.Width, bitmap.Height));
+        var size = new Size(Math.Max(1, (int)(bitmap.Width * scale)), Math.Max(1, (int)(bitmap.Height * scale)));
+        var thumbnail = new Bitmap(size.Width, size.Height);
+        using var g = Graphics.FromImage(thumbnail);
+        g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+        g.DrawImage(bitmap, new Rectangle(Point.Empty, size));
+        return thumbnail;
+    }
+
+    /// <summary>A layer's visibility checkbox in the list: shown or hidden, its settings kept; the Layers turned on (RULES.md).</summary>
+    private void ToggleLayerVisibility(int index)
+    {
+        if (this.IsExporting || index < 0 || index >= this._preview.Layers.Count)
+        {
+            return;
+        }
+
+        var layer = this._preview.Layers.Items[index];
+        this.TurnLayersOn();
+        this._preview.SetLayers(this._preview.Layers.With(index, layer with { Visible = !layer.Visible }));
+    }
+
+    /// <summary>The Edit button: the selected layer's edit view opened, or closed when it shows (Done).</summary>
+    private void ToggleLayerEdit()
+    {
+        if (this._preview.EditingLayer)
+        {
+            this._preview.EndLayerEdit();
+        }
+        else if (!this.IsExporting)
+        {
+            this.TurnLayersOn();
+            this._preview.BeginLayerEdit();
+        }
+    }
+
+    /// <summary>Whether a drop at <paramref name="screen"/> falls on the Layers tab, or on the Global options while it is selected.</summary>
+    private bool DroppedOnLayers(Point screen)
+    {
+        var onTabs = this._globalTabs.PointToClient(screen);
+        if (this._globalTabs.ClientRectangle.Contains(onTabs))
+        {
+            return this._globalTabs.EffectAt(onTabs) == GlobalEffect.Layers;
+        }
+
+        return this._selectedGlobalEffect == GlobalEffect.Layers
+            && this._globalOptionsRow.RectangleToScreen(this._globalOptionsRow.ClientRectangle).Contains(screen);
+    }
+
+    /// <summary>Files dropped onto the Layers tab or its options: its tab selected, they are laid over the grid.</summary>
+    private async Task DropLayerFilesAsync(string[] paths)
+    {
+        this.SelectGlobalEffect(GlobalEffect.Layers);
+        if (this.LayersUnavailable is { } why)
+        {
+            this.ShowStatus($"No layer added: {char.ToLowerInvariant(why[0])}{why[1..]}.");
+            return;
+        }
+
+        await this.AddLayerFilesAsync(paths);
     }
 
     /// <summary>A color button's swatch, drawn again only when its color changes.</summary>
@@ -586,17 +740,4 @@ internal sealed partial class MainForm
         this.AddTextLayer(text.Replace("\r\n", "\n").TrimEnd('\n'), at);
     }
 
-    /// <summary>A drop on the grid while the Layers tab is selected: its files, or its text, laid over the grid where it fell.</summary>
-    private async Task DropLayersAsync(DragEventArgs e)
-    {
-        var at = this._preview.GridFractionAt(this._preview.PointToClient(new Point(e.X, e.Y)));
-        if (e.Data?.GetData(DataFormats.FileDrop) is string[] paths)
-        {
-            await this.AddLayerFilesAsync(paths, at);
-        }
-        else if (e.Data is not null && TextData.TryGet(e.Data) is { } text)
-        {
-            await this.AddTextLayerAsync(text, at);
-        }
-    }
 }

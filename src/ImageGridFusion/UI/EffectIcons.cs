@@ -356,6 +356,127 @@ internal static class EffectIcons
         g.Restore(state);
     });
 
+    /// <summary>The layer list's buttons (workfiles/20261029-layers.md § Layer List), drawn without text.</summary>
+    public enum LayerAction
+    {
+        AddImage,
+        Paste,
+        AddText,
+        Edit,
+        Done,
+        Delete,
+        ToBack,
+        Lower,
+        Raise,
+        ToFront,
+    }
+
+    /// <summary>
+    /// A layer list button's icon: a picture, a clipboard, a T — each with a green plus when it adds —, a
+    /// pencil, a check, a red cross, and arrows moving a layer down or up, doubled with a bar to the end.
+    /// </summary>
+    public static Bitmap Layer(int size, LayerAction action) => Draw(size, (g, s) =>
+    {
+        float w = Math.Max(1, s / 12f);
+        using var dark = new Pen(Color.FromArgb(60, 60, 60), w);
+        using var blue = new SolidBrush(Color.FromArgb(40, 110, 210));
+        switch (action)
+        {
+            case LayerAction.AddImage:
+            {
+                var frame = new RectangleF(s * 0.06f, s * 0.14f, s * 0.66f, s * 0.54f);
+                using (var sky = new LinearGradientBrush(frame, Color.FromArgb(120, 200, 255), Color.FromArgb(30, 100, 220), 90f))
+                {
+                    g.FillRectangle(sky, frame);
+                }
+
+                using (var hill = new SolidBrush(Color.FromArgb(60, 160, 70)))
+                {
+                    g.FillPolygon(hill, [new PointF(frame.Left, frame.Bottom), new PointF(frame.Left + frame.Width * 0.45f, frame.Top + frame.Height * 0.4f), new PointF(frame.Right, frame.Bottom)]);
+                }
+
+                g.DrawRectangle(dark, frame.X, frame.Y, frame.Width, frame.Height);
+                Plus(g, s);
+                break;
+            }
+
+            case LayerAction.Paste:
+            {
+                var board = new RectangleF(s * 0.12f, s * 0.14f, s * 0.56f, s * 0.72f);
+                using (var wood = new SolidBrush(Color.FromArgb(205, 160, 90)))
+                {
+                    g.FillRectangle(wood, board);
+                }
+
+                g.DrawRectangle(dark, board.X, board.Y, board.Width, board.Height);
+                using (var sheet = new SolidBrush(Color.White))
+                {
+                    g.FillRectangle(sheet, s * 0.2f, s * 0.3f, s * 0.4f, s * 0.48f);
+                }
+
+                g.FillRectangle(blue, s * 0.26f, s * 0.08f, s * 0.28f, s * 0.12f);
+                Plus(g, s);
+                break;
+            }
+
+            case LayerAction.AddText:
+            {
+                using var font = new Font("Segoe UI", s * 0.62f, FontStyle.Bold, GraphicsUnit.Pixel);
+                g.DrawString("T", font, blue, -s * 0.02f, -s * 0.04f);
+                Plus(g, s);
+                break;
+            }
+
+            case LayerAction.Edit:
+            {
+                using var pencil = new Pen(Color.FromArgb(230, 160, 30), s * 0.18f) { StartCap = LineCap.Triangle };
+                g.DrawLine(pencil, s * 0.18f, s * 0.82f, s * 0.8f, s * 0.2f);
+                g.DrawLine(dark, s * 0.08f, s * 0.92f, s * 0.24f, s * 0.92f);
+                break;
+            }
+
+            case LayerAction.Done:
+            {
+                using var check = new Pen(Color.FromArgb(40, 160, 70), s * 0.16f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+                g.DrawLines(check, [new PointF(s * 0.16f, s * 0.52f), new PointF(s * 0.4f, s * 0.76f), new PointF(s * 0.84f, s * 0.24f)]);
+                break;
+            }
+
+            case LayerAction.Delete:
+            {
+                using var cross = new Pen(Color.FromArgb(210, 50, 40), s * 0.16f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+                g.DrawLine(cross, s * 0.22f, s * 0.22f, s * 0.78f, s * 0.78f);
+                g.DrawLine(cross, s * 0.78f, s * 0.22f, s * 0.22f, s * 0.78f);
+                break;
+            }
+
+            default:
+            {
+                // Lower / To back point down, Raise / To front up; the outer ones end on a bar.
+                bool up = action is LayerAction.Raise or LayerAction.ToFront;
+                bool end = action is LayerAction.ToBack or LayerAction.ToFront;
+                float tip = up ? s * 0.18f : s * 0.82f, root = up ? s * 0.82f : s * 0.18f, head = up ? s * 0.52f : s * 0.48f;
+                g.FillPolygon(blue, [new PointF(s * 0.5f, tip), new PointF(s * 0.16f, head), new PointF(s * 0.84f, head)]);
+                g.FillRectangle(blue, s * 0.38f, Math.Min(head, root), s * 0.24f, Math.Abs(root - head));
+                if (end)
+                {
+                    float bar = up ? s * 0.04f : s * 0.88f;
+                    g.FillRectangle(blue, s * 0.14f, bar, s * 0.72f, s * 0.08f);
+                }
+
+                break;
+            }
+        }
+    });
+
+    /// <summary>The green plus of an adding button, at the icon's lower right.</summary>
+    private static void Plus(Graphics g, int s)
+    {
+        using var green = new Pen(Color.FromArgb(40, 160, 70), Math.Max(2, s / 7f));
+        g.DrawLine(green, s * 0.72f, s * 0.56f, s * 0.72f, s * 0.96f);
+        g.DrawLine(green, s * 0.52f, s * 0.76f, s * 0.92f, s * 0.76f);
+    }
+
     /// <summary>A wedge growing to the right, yellow to red.</summary>
     public static Bitmap Intensity(int size) => Draw(size, (g, s) =>
     {
