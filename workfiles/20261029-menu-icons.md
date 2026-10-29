@@ -265,6 +265,13 @@ Go given: code, tests and documentation, in a worktree (`.claude/worktrees/menu-
   launch.
 - No rule broken.
 
+### Iteration 7 — 2026-10-29 — ⚙️ Post-implementation — Buttons and drop-downs
+
+The user asks for the same logic, **emoji first**, on the icons of the **buttons**, the
+**drop-downs** and the other controls — the file explorer's views drop-down (Folders, People,
+Favorites) given as an example of icons that look poor. Scope to be settled (inventory, then a
+scoping batch) before any code.
+
 ---
 
 ## Implementation Log
