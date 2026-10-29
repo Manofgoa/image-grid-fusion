@@ -297,8 +297,8 @@ Un panneau repliable à droite de l'aperçu, ouvert au démarrage : une zone de 
   - **Add text** pose un texte vide au centre de la grille et donne le focus au champ à côté de la liste : on l'y tape, sur plusieurs lignes si besoin — **Win+.** ouvre le panneau d'emojis de Windows ;
   - **Edit** ouvre la vue d'édition du calque sélectionné (ci-dessous) ; **Delete** le retire ; **To back**, **Lower**, **Raise** et **To front** le déplacent dans l'ordre d'empilement.
 - Sur la grille, un calque se **sélectionne d'abord**, entouré de vert : un clic sur un autre ne fait que le sélectionner. Ensuite :
-  - le **glisser** le déplace, son centre gardé dans la grille ;
-  - tirer la **poignée ronde** au-dessus de son bord haut le fait tourner, **Shift** l'aimantant tous les 15° ;
+  - le **glisser** le déplace, son centre gardé dans la grille. Des **guides de placement** pointillés apparaissent quand il approche du centre et des bords de la grille, des bords et du centre d'une cellule, ou des bords et du centre d'un autre calque — ceux-là plus pâles — et il s'y **aimante** à quelques pixels près, chaque guide traversant toute la grille, un seul par ligne quel que soit le nombre de calques qui la partagent ; un calque tourné compte par le rectangle droit qui l'entoure. **Shift** maintenu le déplace librement, sans guide ;
+  - tirer la **poignée ronde** au-dessus de son bord haut le fait tourner — le curseur y devient une flèche de rotation — **Shift** l'aimantant tous les 15° ;
   - un texte en **Box** montre une **poignée carrée** au milieu de ses côtés gauche et droit : tirée, elle règle la largeur de la boîte, l'autre côté restant en place, le texte se repliant à mesure ;
   - la **molette** par-dessus l'agrandit ou le réduit de 5 % par cran, **Shift + molette** le tourne de 5° ; ailleurs la molette zoome la cellule en dessous, comme toujours ;
   - **Suppr** le retire, **Échap** ou un clic hors de tout calque le désélectionne ;
