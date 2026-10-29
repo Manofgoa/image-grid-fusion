@@ -136,7 +136,11 @@ rule for a colour item, untouched).
 
 | Menu | Entry | Icon |
 |---|---|---|
+| Cell | Copy cell (Ctrl+C) | 📋 |
 | Cell | Find similar images | 🔍 |
+| Layer | Duplicate | The layer list's Duplicate icon, drawn (`EffectIcons.Layer`) — *reused* |
+| Layer | Delete | The layer list's Delete icon, drawn (`EffectIcons.Layer`) — *reused* |
+| Layer | Find similar images | 🔍 |
 | Tile | People ▸ | 👨‍🦰 — *reused*; its entries keep their faces |
 | Tile | Open (a group) | 👥 |
 | Tile | Rename… | ✏️ |
@@ -152,7 +156,7 @@ rule for a colour item, untouched).
 | Tile, URL zone | Open file location | 📂 |
 | Text style | Rename… | ✏️ |
 | Text style | Replace with current style | 📥 |
-| Text style | Delete | 🗑️ |
+| Text style | Delete ▸ Delete <name> | 🗑️ |
 | Tray | Open | The app's icon (`AppIcon`) — *reused* |
 | Tray | Quit | 🚪 |
 
@@ -241,16 +245,36 @@ glossary, English and French (§ Glossary); no README line. No open question lef
 Go given: code, tests and documentation, in a worktree (`.claude/worktrees/menu-icons`, branch
 `feature/menu-icons`). No unit test: the solution holds no test project.
 
+### Iteration 6 — 2026-10-29 — 🧭 Implementation choices
+
+- **Two menus grew on `main` since the design**: the cell menu's *Copy cell* and the layer list's
+  context menu (*Duplicate*, *Delete*, *Find similar images*). Every menu being in scope, they got
+  their icons by the agreed criterion — 📋, the layer list's own drawn Duplicate and Delete icons, 🔍
+  — and § Entries lists them.
+- **One place**: `UI/MenuIcons.cs` — a `MenuIcon` per action (an emoji, or an icon the app draws),
+  `MenuIcons.Set` on an entry, `MenuIcons.Attach` on its menu.
+- **Drawn as a menu opens** (its `Opening`), at 16 logical px in the DPI of its source control — its
+  own for the tray's — the whole tree of its entries at once, an entry drawn again only when that
+  size changed. Each entry holds its own copy of the shared bitmap, disposed with it: the text
+  style menu's entries are made anew at each opening.
+- **The emoji**: `TextRaster.Render` in Segoe UI Emoji at its 192 px em, the ink's bounds trimmed,
+  fitted bicubic into the square — `TextRaster` untouched.
+- **Checked on screen**: the ⚙ menu at the checking instance's scale — full-color emoji, the checked
+  *Twitter corners by default* framed, the disabled entries greyed. The other menus were not opened
+  (an empty grid disables Copy ▾ / Save ▾, no base folder for the tiles): left to the delivery
+  launch.
+- No rule broken.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project in the solution |
-| RULES.md | | | |
-| Glossary (EN + FR) | | | |
+| Code | 5, 6 | 2026-10-29 | `UI/MenuIcons.cs`, every menu wired |
+| Unit tests | 5 | 2026-10-29 | None: no test project in the solution |
+| RULES.md | 5 | 2026-10-29 | § Menus › Menu Icons |
+| Glossary (EN + FR) | 5 | 2026-10-29 | *Menu icon* / *Icône de menu* |
 | README | 4 | 2026-10-29 | Not needed: decided at design |
 
 ---
