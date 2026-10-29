@@ -237,7 +237,7 @@ internal static unsafe class TextRaster
     }
 
     /// <summary>
-    /// Stretches the lines of a paragraph to its widest by widening their spaces between words, its last line
+    /// Stretches the lines of a paragraph to the text's widest line by widening their spaces between words, its last line
     /// and a line without such a space left as they are; a blank line ends a paragraph. DirectWrite's own
     /// JUSTIFIED never stretches a line ended by a line break — every line of a text layer — so the spaces are
     /// widened here, by IDWriteTextLayout1's character spacing.
