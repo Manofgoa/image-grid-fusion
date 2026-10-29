@@ -26,7 +26,9 @@ The work:
    its ▾ built in; **Color…** touches it on its right.
 2. The Sample slider and its label leave every options line; the size is chosen from the eyedropper's
    **▾ menu**, the choice arming the eyedropper at once.
-3. Every color option gets an **opacity** right after Color…: moved for the Background, the Borders and
+3. The **Color… dialog previews live**: the option follows the color the dialog shows while it is open;
+   Cancel gives the previous color back.
+4. Every color option gets an **opacity** right after Color…: moved for the Background, the Borders and
    the text's box, **new** for the text, its outline and its shadow.
 
 The resulting shape of every color option:
@@ -92,6 +94,29 @@ Agreed with the user (parent session, scoping, Q&A 5–6):
 
 ---
 
+## Live Color Dialog
+
+Agreed with the user (Iteration 6): while the standard color dialog (`UI/SharedColorDialog`) is open, the
+option **follows the color it shows**, as it follows the color under an armed eyedropper.
+
+- **Read through the dialog's hook**: `SharedColorDialog` overrides `ColorDialog.HookProc`; every change of
+  its Red, Green and Blue fields (controls 706–708, `EN_CHANGE`) — which Windows updates for a click on a
+  basic or custom color, a click or a drag in the spectrum, the luminance bar, or a typed value — gives the
+  color shown.
+- **Shown live**: that color is applied to the option through the same preview route as the eyedropper's
+  (`preview` of `MainForm.ArmEyedropper`), at most every 33 ms, the last one always applied; the preview
+  repaints meanwhile (the dialog's modal loop dispatches the window's paint messages). The effect is turned
+  on while it previews, as with the eyedropper.
+- **OK** takes the color through the option's setter, as today (the Borders' color remembered, the
+  Automatic color unchecked…): **one undo step** for the whole dialog — the dialog is a gesture
+  (`InGesture`) while open.
+- **Cancel** — the button, Escape or the window's × — gives the option back **as it was**, the `restore`
+  route of the eyedropper: no step, nothing remembered.
+- One route for **every color option**: each owner gives the dialog its `preview` and `restore`, as it gives
+  them to `ArmEyedropper`; a new color option gets the live dialog from them.
+
+---
+
 ## Color Opacity
 
 Agreed with the user (Iteration 2, Q&A 7–8): every color option has an opacity, **at the right of
@@ -131,13 +156,14 @@ Color…**.
 |---|---|
 | The eyedropper as a `SplitButton`, its menu, the `Sample` value, Color… attached | `UI/ColorSplitButton.cs` |
 | The menu's direction | `UI/SplitButton.cs` (`ShowMenu`, today `AboveRight`) |
+| The live dialog: hook, throttle, preview / restore | `UI/SharedColorDialog.cs`, the `Pick…Color` methods of `MainForm` / `MainForm.Layers` |
 | `SampleSlider()`, `SampleText`, Background / Borders samples and labels, their tooltips, the enable lists, the arming | `UI/MainForm.cs` (fields ~264–407, the color lines ~534 / ~619, the wiring ~947–1111, `ArmEyedropper`) |
 | The Cutout's split button, Sample and label (`_cutoutColor`, `_cutoutSample`, `cutoutBackgroundLine`, `ArmCutoutEyedropper`) | `UI/MainForm.cs` |
 | The Background's and the Borders' opacity moved after Color… | `UI/MainForm.cs` (`backgroundColorLine`, the Borders' `AddRange`, the Borders' enable rule ~5330) |
 | Four text-layer samples and labels, their wiring, the enable list, `ArmLayerEyedropper`; the three new opacities | `UI/MainForm.Layers.cs` (`BuildLayerOptions`: `fontLine`, `outlineLine`, `backgroundLine`, `shadowLine`) |
 | The three new text opacities, their JSON keys, their drawing | `Imaging/TextRaster.cs` (`LayerTextStyle`, `PaintText`, `Shadow`), `UI/TextStyleStrip` tooltip |
 | Eyedropper icon re-made at the DPI | `MainForm.Layers.cs` and its Background / Borders counterpart |
-| Rules | RULES.md § Color Options (the Sample in the menu, the opacity after Color…), § Text Styles unchanged (the new settings follow it) |
+| Rules | RULES.md § Color Options (the Sample in the menu, the live dialog, the opacity after Color…), § Text Styles unchanged (the new settings follow it) |
 | Docs | README.md / README.fr.md § Picking a color, the Background fill line, the Borders, the text layer's settings; GLOSSARY.md / GLOSSARY.fr.md *Eyedropper* row, *Borders* row |
 
 **Overlap with other sessions**: the text layer's lines in `MainForm.Layers.cs` `BuildLayerOptions` were
@@ -152,7 +178,8 @@ work touches every options line too: whichever lands second rebases its line edi
 The app has **no test project** (`src/` holds the app only): nothing testable is created or updated.
 The behaviour is checked by hand — the split button's look, its pressed state while armed and its menu at
 100 % and 150 % DPI, an armed pick at 1 px and 5 px, the tooltips, each opacity in the preview and a PNG
-export, a text style saved and applied with the new opacities.
+export, a text style saved and applied with the new opacities, the dialog previewing live then cancelled (the
+previous color back, no undo step) and confirmed (one undo step).
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
@@ -236,6 +263,13 @@ option — the mask color of its Color treatment, a `ColorSplitButton` with its 
 and its Color treatment's amount — the mask color's opacity — stands right after Color…, in the opacity's
 shape.
 
+### Iteration 6 — 2026-10-29
+
+User request: while the Color… dialog is open, update the color **visually in real time** — today it applies
+only once the dialog closes — **Cancel bringing the previous color back**. Section *Live Color Dialog*
+added: the dialog's hook reads its RGB fields, the option previews through the eyedropper's route, OK is
+one undo step, Cancel restores.
+
 ---
 
 ## Implementation Log
@@ -267,6 +301,7 @@ Questions asked by the agent during design, with user responses.
 | 8 | Which color options get an opacity at the right of Color…: those that have one today, moved, or every one? | Every color option | 2026-10-29 |
 | 9 | The Borders' opacity: does it now cover the line styles' frame and inner lines too? | Yes, every style | 2026-10-29 |
 | 10 | A translucent text: does its outline show through the letters, or is it cut out under them? | Cut out under the letters | 2026-10-29 |
+| 11 | Can the color shown in the app follow the color dialog live, instead of waiting for it to close? (asked by the user) | Yes, through the dialog's hook — the user wants it, Cancel restoring the previous color | 2026-10-29 |
 
 ---
 
