@@ -85,6 +85,37 @@ The Crop effect's geometry is **not in fractions of the cell**, and its kept par
   drawn by `GridPreview` only, while its tab is selected and it is on; `Compositor` and the
   exports always draw the cropped image.
 
+#### The Cutout Exception
+
+The Cutout effect's state holds no pixel, and its mask is computed outside `Compositor` (origin:
+`workfiles/20261029-cutout.md`):
+
+- Its **points** are fractions of the **image as loaded**, like the Crop's sides
+  (`ImageLook.LoadedPoint` / `ShownPoint`), so they survive a turn, a flip, a crop and a resize.
+- Its **mask** — the model's, over the whole image as loaded — and the **cut-out** bitmap are computed
+  off the UI thread by `UI/CutoutService`, one at a time, and kept on the `SourceImage` (`MaskFor` /
+  `KeepMask`, `SetCut`), counted in its `MemoryBytes`: never in `Compositor.DrawCell`, which runs at
+  every frame.
+- Every reader drawing an image builds its `Frame` from **`SourceImage.DrawnBitmap`** — the cut-out
+  while the Cutout is on and ready, else the bitmap: `Compositor.Draw` / `Render`, `GridPreview.FrameOf`,
+  `GridLayers.FrameAt`, `GridExport.Job` (`ItemOf`). A new reader does the same. The cut-out then goes
+  through `DrawCell` as the image would: crop, orientation, zoom, colors, blur, the Background's
+  extended edges.
+- It is asked for **at every paint** (`GridPreview.PaintCutout`) for every image still drawn uncut, so a
+  new route changing a look is covered by itself; a request whose look changed before its turn is
+  dropped. Meanwhile the cell shows the image uncut with its *Cutting out…* badge, preview only.
+- **Exports wait** for the cut-outs they draw (`MainForm.WaitForCutoutsAsync`, under `BeginExport`);
+  one that fails is drawn uncut, the status line saying why.
+- Its edge options, Grow and Soften, are shares of the image's **longer side**, so a bitmap rendered at
+  another size looks the same.
+- On stills only (`SourceImage.CutsOut`): a content that plays has its checkbox disabled.
+- **The cutout engine is never shipped**: IS-Net (the subject) and MobileSAM (a click),
+  `Imaging/CutoutEngineFiles`, downloaded in one go into **`cutout-engine\` next to the exe** from
+  pinned URLs, each checked against its SHA-256 (`DirectEngineDownload`) — offered when the effect is
+  turned on without it, a **No** leaving it off, and from the ⚙ menu while missing. It runs on the OCR
+  engine's ONNX Runtime (`Imaging/CutoutEngine`), its sessions without the memory arena, released after
+  5 minutes unused.
+
 ### Effects Toolbar
 
 - An **always-visible row of tabs**, hanging down from the options toolbar above it: an **Effects**
@@ -133,7 +164,7 @@ The Crop effect's geometry is **not in fractions of the cell**, and its kept par
     (`ThumbnailStrip.PaintCell` / `PaintImage`); faded while disabled.
   - Zero, one or several thumbnails may be pressed, as the effect's state says; an **action** among
     them, never pressed (Crop's 100 %), is **set apart** after them by a wider gap and a line.
-  - Out of it: plain on / off checkboxes (Freeze, Mute, Automatic color, Soften), the Color… button,
+  - Out of it: plain on / off checkboxes (Freeze, Mute, Automatic color, Soften, Invert), the Color… button,
     the sliders and a drop-down of a single value (the Animations' Type).
 
 ### Color Options
