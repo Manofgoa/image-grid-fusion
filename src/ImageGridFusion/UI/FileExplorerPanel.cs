@@ -1256,13 +1256,20 @@ internal sealed partial class FileExplorerPanel : Panel
 
     /// <summary>
     /// Ctrl+F: the panel opened if collapsed, as its « button does, then the search box focused, its
-    /// text selected (see workfiles/20261007-ctrl-f-search-focus.md).
+    /// text selected (see workfiles/20261007-ctrl-f-search-focus.md). Pressed again while the search box
+    /// has the focus, it moves to the view <paramref name="step"/> away in the drop-down's order — 1 for
+    /// Ctrl+F, -1 for Ctrl+Shift+F — round the end, People skipped while the face analysis is off (see
+    /// workfiles/20261029-ctrl-f-view-cycle.md).
     /// </summary>
-    public void FocusSearch()
+    public void FocusSearch(int step)
     {
         if (!this._open)
         {
             this.SetOpen(true);
+        }
+        else if (this._search.Focused)
+        {
+            this.ChangeMode(this.NextMode(step));
         }
 
         this._search.Focus();
@@ -2968,6 +2975,23 @@ internal sealed partial class FileExplorerPanel : Panel
 
         this.Mode = mode;
         this.FolderViewChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// The view <paramref name="step"/> away from the current one in <see cref="ExplorerMode"/>'s order, round
+    /// the end, People skipped while the face analysis is off.
+    /// </summary>
+    private ExplorerMode NextMode(int step)
+    {
+        int count = Enum.GetValues<ExplorerMode>().Length;
+        var mode = this.Mode;
+        do
+        {
+            mode = (ExplorerMode)((((int)mode + step) % count + count) % count);
+        }
+        while (mode == ExplorerMode.People && !this._faceAnalysis);
+
+        return mode;
     }
 
     /// <summary>What the view changes around the grid: the caption or the breadcrumb, the search box's hint.</summary>
