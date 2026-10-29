@@ -90,7 +90,18 @@ public sealed record LayerPlacement(double X, double Y, double Size, double Angl
 /// <param name="Visible">Unchecked in the layer list, it is neither drawn, played nor heard, its settings kept.</param>
 public sealed record Layer(SourceImage Image, ImageLook Look, LayerPlacement Place, string? Text = null, LayerTextStyle? Style = null, bool Visible = true)
 {
+    /// <summary>The narrowest and widest a text box may be, in lines.</summary>
+    public const double MinTextBox = 1;
+    public const double MaxTextBox = 400;
+
     public bool IsText => this.Text is not null;
+
+    /// <summary>
+    /// A text layer's size mode: the width of the box its lines wrap in, in lines; <c>null</c> for the automatic
+    /// size, the box fitting the text (workfiles/20261029-text-layer-alignment.md § Size Mode). Never part of
+    /// the style.
+    /// </summary>
+    public double? TextBox { get; init; }
 
     /// <summary>The content's size as shown — cropped, then turned — which the box takes the proportions of.</summary>
     public Size Shown => this.Look.Shown(this.Image.Bitmap.Size);

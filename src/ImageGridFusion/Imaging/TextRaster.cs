@@ -149,21 +149,22 @@ internal static unsafe class TextRaster
     /// <summary>
     /// The text drawn in <paramref name="style"/>, on a transparent background, and the height of one of its
     /// lines in the bitmap's pixels — what a text layer's size measures. An empty text gives an empty box
-    /// half a line wide.
+    /// half a line wide. In a <paramref name="box"/> — its width in lines — the lines are wrapped within it,
+    /// and the bitmap is as wide as it (workfiles/20261029-text-layer-alignment.md § Size Mode).
     /// </summary>
-    public static (Bitmap Bitmap, double LinePixels) Render(string text, LayerTextStyle style)
+    public static (Bitmap Bitmap, double LinePixels) Render(string text, LayerTextStyle style, double? box = null)
     {
         var factories = Factories.Get();
         text = style.Drawn(text);
         float em = EmSize;
         for (int attempt = 0; ; attempt++)
         {
-            var layout = CreateLayout(factories.Write, text.Length == 0 ? " " : text, style, em);
+            var layout = CreateLayout(factories.Write, text.Length == 0 ? " " : text, style, em, box);
             try
             {
                 var metrics = Metrics(layout);
                 double line = metrics.Height / Math.Max(1, metrics.LineCount);
-                float width = text.Length == 0 ? (float)line / 2 : metrics.WidthIncludingTrailingWhitespace;
+                float width = box is not null ? metrics.LayoutWidth : text.Length == 0 ? (float)line / 2 : metrics.WidthIncludingTrailingWhitespace;
                 double outline = style.Outline ? style.OutlineWidth * line : 0;
                 double shadow = style.Shadow && text.Length > 0 ? outline + ShadowReach(style, line) : 0;
                 double pad = Math.Max(Math.Max(outline, shadow), style.Background ? LayerTextStyle.BackgroundMargin * line : 0)
@@ -192,7 +193,7 @@ internal static unsafe class TextRaster
         return [.. fonts.Families.Select(f => f.Name).OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase)];
     }
 
-    private static IntPtr CreateLayout(IntPtr write, string text, LayerTextStyle style, float em)
+    private static IntPtr CreateLayout(IntPtr write, string text, LayerTextStyle style, float em, double? box)
     {
         IntPtr format;
         fixed (char* family = style.Font, locale = "en-us")
@@ -212,10 +213,29 @@ internal static unsafe class TextRaster
                     write, chars, text.Length, format, 1e6f, 1e6f, &layout));
             }
 
-            // SetWordWrapping(NO_WRAP), then the lines aligned within the widest once it is known — SetTextAlignment's
-            // LEADING, TRAILING or CENTER; justified, LEADING with the lines stretched by the app.
+            // SetWordWrapping(NO_WRAP): the lines measured as typed, a line's height read from them.
             Check(((delegate* unmanaged[Stdcall]<IntPtr, int, int>)Slot(layout, 5))(layout, 1));
             var metrics = Metrics(layout);
+            if (box is { } lines)
+            {
+                // In a box: SetWordWrapping(EMERGENCY_BREAK) within its width — a word longer than it cut —, then
+                // SetTextAlignment's LEADING, TRAILING, CENTER or JUSTIFIED, DirectWrite's own: each typed line
+                // break ends a paragraph, its last line left-aligned.
+                float line = metrics.Height / Math.Max(1, metrics.LineCount);
+                Check(((delegate* unmanaged[Stdcall]<IntPtr, int, int>)Slot(layout, 5))(layout, 2));
+                Check(((delegate* unmanaged[Stdcall]<IntPtr, float, int>)Slot(layout, 28))(layout, Math.Max(1, (float)lines * line)));
+                Check(((delegate* unmanaged[Stdcall]<IntPtr, int, int>)Slot(layout, 3))(layout, style.Alignment switch
+                {
+                    LayerTextAlignment.Right => 1,
+                    LayerTextAlignment.Center => 2,
+                    LayerTextAlignment.Justified => 3,
+                    _ => 0,
+                }));
+                return layout;
+            }
+
+            // Automatic: the lines aligned within the widest once it is known — SetTextAlignment's LEADING,
+            // TRAILING or CENTER; justified, LEADING with the lines stretched by the app.
             Check(((delegate* unmanaged[Stdcall]<IntPtr, float, int>)Slot(layout, 28))(layout, Math.Max(1, metrics.WidthIncludingTrailingWhitespace)));
             Check(((delegate* unmanaged[Stdcall]<IntPtr, int, int>)Slot(layout, 3))(layout, style.Alignment switch
             {
