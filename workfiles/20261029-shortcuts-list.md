@@ -316,6 +316,11 @@ Open Questions answered (Q&A 5–12): the rule alone; F1 and the ⚙ menu; a mod
 rule's *one place per fact*); Windows' own behaviour listed too (§ Scope, § Windows); a glossary term.
 No question left: the design is complete.
 
+### Iteration 4 — 2026-10-29 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree (`feature/shortcuts-list`). The scope is
+frozen as the sections above stand.
+
 ---
 
 ## Implementation Log
