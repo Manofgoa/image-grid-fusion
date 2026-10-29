@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using ImageGridFusion.Explorer;
 
 namespace ImageGridFusion.UI;
@@ -322,7 +323,31 @@ internal sealed partial class FileExplorerPanel
         return data?.GetDataPresent(DataFormats.Bitmap) == true ? data.GetData(DataFormats.Bitmap) as Image : null;
     }
 
-    /// <summary>The rows of a similar images search: the closest images of the index, the closest first.</summary>
+    /// <summary>
+    /// How far an image found by its similarity must stand out of the others — a level of
+    /// <see cref="VisionSimilarity.Cutoffs"/>, the ⚙ menu's Similar images: set, the list shown is searched
+    /// again. Setting it raises nothing. See workfiles/20261029-similar-images-accuracy.md § Strictness Setting.
+    /// </summary>
+    [DefaultValue(VisionSimilarity.DefaultLevel)]
+    public int SimilarImagesLevel
+    {
+        get => this._similarImages;
+        set
+        {
+            if (value == this._similarImages)
+            {
+                return;
+            }
+
+            this._similarImages = value;
+            this.RefreshRows(keepPlace: true);
+        }
+    }
+
+    /// <summary>
+    /// The rows of a similar images search: the images of the index standing out of the others by the level's
+    /// cutoff, the source itself left out, the farthest first, each with its closeness.
+    /// </summary>
     private IEnumerable<ExplorerRow> SimilarRows(SimilarSource source)
     {
         if (this._index is not { } index || this._vision is not { } vision)
@@ -330,14 +355,19 @@ internal sealed partial class FileExplorerPanel
             return [];
         }
 
-        return FileSearch.SearchSimilar(index.Entries, e => vision.EmbeddingOf(e.RelativePath), source.Embedding, SimilarCount, 0)
-            .Select(match => new ExplorerRow(index.FullPath(match.Entry), match.Entry.Name, Size: match.Entry.Size));
+        var itself = source.FullPath is { } path && this.EntryOf(path) is { } entry ? new HashSet<IndexEntry> { entry } : null;
+        return FileSearch.SearchSimilar(index.Entries, e => vision.EmbeddingOf(e.RelativePath), source.Embedding, SimilarCount, 0, VisionSimilarity.CutoffOf(this._similarImages), itself)
+            .Select(match => new ExplorerRow(index.FullPath(match.Entry), match.Entry.Name, Size: match.Entry.Size, Closeness: Closeness(match)));
     }
 
+    /// <summary>The closeness a match is shown with; null for one not found by its similarity.</summary>
+    private static float? Closeness(SearchMatch match) => match.Standing is { } standing ? VisionSimilarity.Closeness(standing) : null;
+
     /// <summary>
-    /// The files a search found, followed by the similarity tier: the images closest to the query, the
-    /// closest first, those found already left out — once the query's embedding is known, computed
-    /// meanwhile; none while the visual analysis is off.
+    /// The files a search found, followed by the similarity tier: the images standing out for the query — read
+    /// against their own spread over the vocabulary's concepts — by the level's cutoff, the farthest first,
+    /// those found already left out — once the query's embedding is known, computed meanwhile; none while
+    /// the visual analysis is off. The query is the text typed, its accents kept: the model reads them.
     /// </summary>
     private IReadOnlyList<SearchMatch> WithSimilar(IReadOnlyList<SearchMatch> found, IReadOnlyList<IndexEntry> entries, string[] words)
     {
@@ -346,15 +376,47 @@ internal sealed partial class FileExplorerPanel
             return found;
         }
 
-        string query = string.Join(' ', words);
-        if (this._queryEmbedding is not { } known || known.Query != query)
+        string query = string.Join(' ', this._search.Text.ToLowerInvariant().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        if (this._queryEmbedding is not { } known || known.Query != query || this._concepts is not { } concepts)
         {
             this.RequestQueryEmbedding(query);
             return found;
         }
 
         var excluded = found.Select(match => match.Entry).ToHashSet();
-        return [.. found, .. FileSearch.SearchSimilar(entries, e => vision.EmbeddingOf(e.RelativePath), known.Embedding, SimilarCount, words.Length, excluded)];
+        float cutoff = VisionSimilarity.CutoffOf(this._similarImages);
+        return [.. found, .. FileSearch.SearchSimilar(entries, e => vision.EmbeddingOf(e.RelativePath), known.Embedding, SimilarCount, words.Length, cutoff, excluded, (_, embedding) => this.SpreadOf(embedding, concepts))];
+    }
+
+    /// <summary>An image's spread over the vocabulary's concepts, kept with its embedding — computed again for a new one.</summary>
+    private VisionSimilarity.Spread SpreadOf(float[] embedding, IReadOnlyList<float[]> concepts) =>
+        this._spreads.GetValue(embedding, e => new StrongBox<VisionSimilarity.Spread>(VisionSimilarity.SpreadOf(e, concepts))).Value;
+
+    /// <summary>
+    /// The vocabulary's concepts embedded — from their cache, else by the text model — and every image's
+    /// spread over them, so a search reads them at once. Off the UI thread, once per session; a new
+    /// image's spread is computed when a search first meets it.
+    /// </summary>
+    private void PrepareConcepts()
+    {
+        if (this._concepts is not { } concepts)
+        {
+            var tags = VisionTags.Load();
+            if (!tags.Embedded)
+            {
+                tags.Embed(this.EmbedText, CancellationToken.None);
+            }
+
+            this._concepts = concepts = tags.ConceptEmbeddings;
+        }
+
+        if (this._vision is { } vision)
+        {
+            foreach (var (_, _, embedding) in vision.WithEmbeddings())
+            {
+                this.SpreadOf(embedding, concepts);
+            }
+        }
     }
 
     /// <summary>
@@ -377,7 +439,12 @@ internal sealed partial class FileExplorerPanel
 
         try
         {
-            var embedding = await Task.Run(() => this.EmbedText(query));
+            var embedding = await Task.Run(() =>
+            {
+                var embedded = this.EmbedText(query);
+                this.PrepareConcepts();
+                return embedded;
+            });
             if (this._queryPending != query || this.IsDisposed)
             {
                 return;
