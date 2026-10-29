@@ -182,6 +182,12 @@ internal sealed partial class FileExplorerPanel : Panel
     private readonly ToolStripMenuItem _unhideGroup = new("Unhide");
     private readonly ToolStripMenuItem _unmergeGroup = new("Un-merge");
     private readonly ToolStripMenuItem _notThisPerson = new("Not this person");
+
+    // The decisions taking something away confirmed by their submenu's single item, never done in one
+    // click (workfiles/20261028-open-people-from-image.md § Safer People Decisions).
+    private readonly ToolStripMenuItem _hideConfirm = new("Hide");
+    private readonly ToolStripMenuItem _unmergeConfirm = new("Un-merge");
+    private readonly ToolStripMenuItem _notConfirm = new("Remove");
     private readonly ToolStripSeparator _peopleSeparator = new();
 
     // A file's people, each opening its group, and the title of the group open, clicked to rename it
@@ -458,19 +464,24 @@ internal sealed partial class FileExplorerPanel : Panel
             this._unhideGroup.Visible = group && shown is { Hidden: true, Parent: null };
             this._unmergeGroup.Visible = group && shown?.Parent is not null;
             this._notThisPerson.Visible = file && row!.FaceKey is not null && this._openGroup is { } open && !IsPeopleTile(open);
-            this._notThisPerson.Text = this._notThisPerson.Visible && this._snapshot.ById.GetValueOrDefault(this._openGroup!) is { } opened
-                ? $"Not {GroupName(opened)}"
-                : "Not this person";
+            var opened = this._notThisPerson.Visible ? this._snapshot.ById.GetValueOrDefault(this._openGroup!) : null;
+            this._notThisPerson.Text = opened is not null ? $"Not {GroupName(opened)}" : "Not this person";
+            this._notConfirm.Text = opened is not null ? $"Remove from {GroupName(opened)}" : "Remove";
+            this._hideConfirm.Text = shown is not null ? $"Hide {GroupName(shown)}" : "Hide";
+            this._unmergeConfirm.Text = shown is not null ? $"Un-merge {GroupName(shown)}" : "Un-merge";
             this._peopleSeparator.Visible = row?.IsGroup == true || this._notThisPerson.Visible;
             this.FillPhotoPeople(file ? row : null);
             this._photoPeopleSeparator.Visible = this._photoPeople.Visible;
         };
         this._openGroupItem.Click += (_, _) => { if (this._grid.SelectedRow is { } row) { this.Activate(row); } };
         this._renameGroup.Click += (_, _) => { if (this._grid.SelectedRow is { } row) { this.RenameGroup(row); } };
-        this._hideGroup.Click += (_, _) => this.SetGroupHidden(this._grid.SelectedRow, hidden: true);
+        this._hideGroup.DropDownItems.Add(this._hideConfirm);
+        this._unmergeGroup.DropDownItems.Add(this._unmergeConfirm);
+        this._notThisPerson.DropDownItems.Add(this._notConfirm);
+        this._hideConfirm.Click += (_, _) => this.SetGroupHidden(this._grid.SelectedRow, hidden: true);
         this._unhideGroup.Click += (_, _) => this.SetGroupHidden(this._grid.SelectedRow, hidden: false);
-        this._unmergeGroup.Click += (_, _) => this.UnmergeGroup(this._grid.SelectedRow);
-        this._notThisPerson.Click += (_, _) => this.RemoveFace(this._grid.SelectedRow);
+        this._unmergeConfirm.Click += (_, _) => this.UnmergeGroup(this._grid.SelectedRow);
+        this._notConfirm.Click += (_, _) => this.RemoveFace(this._grid.SelectedRow);
         this._groupTitle.Click += (_, _) => this.RenameOpenGroup();
         this._toolTip.SetToolTip(this._groupTitle, "Click to rename");
         this._editDescription.Click += (_, _) => this.EditDescription();
