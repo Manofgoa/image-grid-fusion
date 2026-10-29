@@ -5,9 +5,10 @@ using ImageGridFusion.Composition;
 namespace ImageGridFusion.UI;
 
 /// <summary>
-/// The Cutout tab's modes: Subject, the main subject found by the model, and Pick, which arms the click
-/// picking an object — pressed while armed or while the cutout is a pick. A click on either picks it, the
-/// one pressed included: Subject brings the subject back, Pick arms again for a new pick.
+/// The Cutout tab's modes: Subject, the main subject found by the model; Pick, which arms the click
+/// picking an object — pressed while armed or while the cutout is a pick; and Plain, the plain background
+/// removed from the edges. A click on any picks it, the one pressed included: Subject brings the subject
+/// back, Pick arms again for a new pick.
 /// </summary>
 internal sealed class CutoutModeStrip : ThumbnailStrip<CutoutMode>
 {
@@ -55,13 +56,21 @@ internal sealed class CutoutModeStrip : ThumbnailStrip<CutoutMode>
     protected override Size Box => EffectBox;
 
     protected override bool IsPressed(CutoutMode mode) =>
-        mode == CutoutMode.Picked ? this._armed || this._mode == CutoutMode.Picked : !this._armed && this._mode == CutoutMode.Subject;
+        mode == CutoutMode.Picked ? this._armed || this._mode == CutoutMode.Picked : !this._armed && this._mode == mode;
 
-    protected override string Label(CutoutMode mode) => mode == CutoutMode.Subject ? "Subject" : "Pick";
+    protected override string Label(CutoutMode mode) => mode switch
+    {
+        CutoutMode.Subject => "Subject",
+        CutoutMode.Plain => "Plain",
+        _ => "Pick",
+    };
 
-    protected override string Tip(CutoutMode mode) => mode == CutoutMode.Subject
-        ? "Keeps the image's main subject, found by the model; the rest becomes transparent"
-        : "Click an object of the selected cell to keep it instead; Shift + click adds a part, Ctrl + click leaves one out; Escape cancels";
+    protected override string Tip(CutoutMode mode) => mode switch
+    {
+        CutoutMode.Subject => "Keeps the image's main subject, found by the model; the rest becomes transparent",
+        CutoutMode.Plain => "Removes the plain background around the content — the color of the image's edges, from the edges inward — keeping everything it encloses; no engine needed",
+        _ => "Click an object of the selected cell to keep it instead; Shift + click adds a part, Ctrl + click leaves one out; Escape cancels",
+    };
 
     protected override void PaintThumbnail(Graphics g, CutoutMode mode, Rectangle box, bool pressed)
     {
@@ -71,15 +80,25 @@ internal sealed class CutoutModeStrip : ThumbnailStrip<CutoutMode>
         var image = new Rectangle(box.X + (box.Width - width) / 2, box.Y + (box.Height - height) / 2, width, height);
         this.Fill(g, SystemColors.Window, image);
 
-        // The part kept, a blue blob: centered for the subject, aside for a pick, its point marked.
+        // The part kept, a blue blob: centered for the subject, aside for a pick, its point marked; for a
+        // plain background, an outline over the white, what it encloses kept and the white around it gone.
         var smoothing = g.SmoothingMode;
         g.SmoothingMode = SmoothingMode.AntiAlias;
         int side = image.Height * 3 / 5;
-        var blob = mode == CutoutMode.Subject
-            ? new Rectangle(image.X + (image.Width - side) / 2, image.Y + (image.Height - side) / 2, side, side)
-            : new Rectangle(image.Right - side - image.Width / 8, image.Y + (image.Height - side) / 2, side, side);
-        using (var brush = new SolidBrush(this.Shade(Marker)))
+        var blob = mode == CutoutMode.Picked
+            ? new Rectangle(image.Right - side - image.Width / 8, image.Y + (image.Height - side) / 2, side, side)
+            : new Rectangle(image.X + (image.Width - side) / 2, image.Y + (image.Height - side) / 2, side, side);
+        if (mode == CutoutMode.Plain)
         {
+            this.Fill(g, SystemColors.ControlDark, image);
+            using var inside = new SolidBrush(this.Shade(SystemColors.Window));
+            using var outline = new Pen(this.Shade(Marker), Math.Max(2, side / 6));
+            g.FillEllipse(inside, blob);
+            g.DrawEllipse(outline, blob);
+        }
+        else
+        {
+            using var brush = new SolidBrush(this.Shade(Marker));
             g.FillEllipse(brush, blob);
         }
 

@@ -263,6 +263,13 @@ internal sealed partial class MainForm : Form
     private readonly TrackBar _cutoutSoften = CutoutSlider(0, 100);
     private readonly Label _cutoutSoftenLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _cutoutInvert = new() { Text = "Invert", AutoSize = true, Anchor = AnchorStyles.Left };
+
+    // The enclosed content kept: the plain background's tolerance, the gaps closed, the holes filled (workfiles/20261029-cutout-enclosed-content.md).
+    private readonly TrackBar _cutoutTolerance = CutoutSlider(0, 100);
+    private readonly Label _cutoutToleranceLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly TrackBar _cutoutGaps = CutoutSlider(0, 100);
+    private readonly Label _cutoutGapsLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _cutoutFillHoles = new() { Text = "Fill holes", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CutoutReachStrip _cutoutReach = new() { Anchor = AnchorStyles.Left };
     private readonly CutoutBackgroundStrip _cutoutBackground = new() { Anchor = AnchorStyles.Left };
 
@@ -555,7 +562,16 @@ internal sealed partial class MainForm : Form
         var cutoutLines = OptionLine();
         cutoutLines.FlowDirection = FlowDirection.TopDown;
         cutoutLines.Controls.AddRange([cutoutEdgeLine, cutoutBackgroundLine]);
-        this._options[ImageEffect.Cutout].Controls.AddRange([this._cutoutMode, this._cutoutReach, this._cutoutBackground, cutoutLines]);
+
+        // The tolerance, the gaps and the holes in a column right after the modes they belong to (layout B).
+        var cutoutToleranceLine = OptionLine();
+        cutoutToleranceLine.Controls.AddRange([this._cutoutTolerance, this._cutoutToleranceLabel]);
+        var cutoutGapsLine = OptionLine();
+        cutoutGapsLine.Controls.AddRange([this._cutoutGaps, this._cutoutGapsLabel, this._cutoutFillHoles]);
+        var cutoutEnclosedLines = OptionLine();
+        cutoutEnclosedLines.FlowDirection = FlowDirection.TopDown;
+        cutoutEnclosedLines.Controls.AddRange([cutoutToleranceLine, cutoutGapsLine]);
+        this._options[ImageEffect.Cutout].Controls.AddRange([this._cutoutMode, cutoutEnclosedLines, this._cutoutReach, this._cutoutBackground, cutoutLines]);
         _options[ImageEffect.Zoom].Controls.AddRange([_zoom, _zoomLabel, this._zoomFit]);
         this._motionKind.Items.AddRange(Enum.GetNames<MotionKind>());
         this._motionKind.SelectedIndex = (int)MotionEffect.Default.Kind;
@@ -587,6 +603,8 @@ internal sealed partial class MainForm : Form
         this._contrastLabel.MinimumSize = new Size(TextRenderer.MeasureText(SignedPercentText("Contrast", -100), this._contrastLabel.Font).Width, 0);
         this._cutoutGrowLabel.MinimumSize = new Size(TextRenderer.MeasureText(GrowText(-100), this._cutoutGrowLabel.Font).Width, 0);
         this._cutoutSoftenLabel.MinimumSize = new Size(TextRenderer.MeasureText(SoftenText(100), this._cutoutSoftenLabel.Font).Width, 0);
+        this._cutoutToleranceLabel.MinimumSize = new Size(TextRenderer.MeasureText(ToleranceText(100), this._cutoutToleranceLabel.Font).Width, 0);
+        this._cutoutGapsLabel.MinimumSize = new Size(TextRenderer.MeasureText(GapsText(100), this._cutoutGapsLabel.Font).Width, 0);
         _options[ImageEffect.Blur].Controls.AddRange([this._blurKind, _blurIntensityIcon, _blurIntensity, _blurIntensityLabel]);
         _options[ImageEffect.Volume].Controls.AddRange([_mute, _volume, _volumeLabel]);
         _globalTabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -930,6 +948,19 @@ internal sealed partial class MainForm : Form
         this._toolTip.SetToolTip(this._cutoutGrow, "Pushes the edge out, or eats it in, to leave no fringe of the old background");
         this._toolTip.SetToolTip(this._cutoutSoften, "Fades the edge over a few pixels");
         this._toolTip.SetToolTip(this._cutoutInvert, "Keeps what the cutout leaves out instead");
+        this._cutoutTolerance.ValueChanged += (_, _) =>
+        {
+            this._cutoutToleranceLabel.Text = ToleranceText(this._cutoutTolerance.Value);
+            this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithTolerance(this._cutoutTolerance.Value / 100.0)));
+        };
+        this._cutoutGaps.ValueChanged += (_, _) =>
+        {
+            this._cutoutGapsLabel.Text = GapsText(this._cutoutGaps.Value);
+            this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithCloseGaps(this._cutoutGaps.Value / 100.0)));
+        };
+        this._cutoutFillHoles.CheckedChanged += (_, _) => this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithFillHoles(this._cutoutFillHoles.Checked)));
+        this._toolTip.SetToolTip(this._cutoutTolerance, "How close to the edges' color a pixel must be to be removed — Plain mode");
+        this._toolTip.SetToolTip(this._cutoutGaps, "Closes the outline over gaps up to this width, so what it almost encloses is kept too — Plain mode, or Fill holes");
         this._preview.Cutouts = this._cutouts;
         this._cutouts.Failed += (_, message) => this.ShowStatus(message, error: true);
         this._preview.CutoutPicked += (_, pick) => this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithPoint(pick.Point, pick.Add)));
@@ -3610,10 +3641,10 @@ internal sealed partial class MainForm : Form
     /// </summary>
     private void PickCutoutMode(CutoutMode mode)
     {
-        if (mode == CutoutMode.Subject)
+        if (mode != CutoutMode.Picked)
         {
             this._preview.CancelCutoutPick();
-            this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithSubject()));
+            this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(mode == CutoutMode.Plain ? look.Cutout!.WithPlain() : look.Cutout!.WithSubject()));
             return;
         }
 
@@ -3685,6 +3716,10 @@ internal sealed partial class MainForm : Form
     private static string GrowText(int value) => $"Grow: {value * CutoutEffect.MaxEdge:+0.0;-0.0;0.0} %";
 
     private static string SoftenText(int value) => $"Soften: {value * CutoutEffect.MaxEdge:0.0} %";
+
+    private static string ToleranceText(int value) => $"Tolerance: {value} %";
+
+    private static string GapsText(int value) => $"Gaps: {value * CutoutEffect.MaxGap:0.0} %";
 
     /// <summary>
     /// Whether the Cutout can go from <paramref name="before"/> to <paramref name="after"/>: in a mode
@@ -4077,6 +4112,9 @@ internal sealed partial class MainForm : Form
                 this._cutoutGrow.Value = (int)Math.Round(cutout.Grow * 100);
                 this._cutoutSoften.Value = (int)Math.Round(cutout.Soften * 100);
                 this._cutoutInvert.Checked = cutout.Invert;
+                this._cutoutTolerance.Value = (int)Math.Round(cutout.Tolerance * 100);
+                this._cutoutGaps.Value = (int)Math.Round(cutout.CloseGaps * 100);
+                this._cutoutFillHoles.Checked = cutout.FillHoles;
                 this._cutoutReach.Selected = cutout.Reach;
                 this._cutoutBackground.Treatments = cutout.Treatments;
                 foreach (var (treatment, (slider, _)) in this._cutoutAmounts)
@@ -4113,6 +4151,8 @@ internal sealed partial class MainForm : Form
         _blurIntensityLabel.Text = $"Intensity: {_blurIntensity.Value}%";
         this._cutoutGrowLabel.Text = GrowText(this._cutoutGrow.Value);
         this._cutoutSoftenLabel.Text = SoftenText(this._cutoutSoften.Value);
+        this._cutoutToleranceLabel.Text = ToleranceText(this._cutoutTolerance.Value);
+        this._cutoutGapsLabel.Text = GapsText(this._cutoutGaps.Value);
         foreach (var (treatment, (slider, label)) in this._cutoutAmounts)
         {
             label.Text = AmountText(treatment, slider.Value);
@@ -4152,6 +4192,17 @@ internal sealed partial class MainForm : Form
         }
 
         this._cutoutColor.Enabled = this._cutoutSample.Enabled = this._cutoutSampleLabel.Enabled = treatments.Contains(CutoutBackground.Color);
+
+        // The tolerance acts on the plain background, the holes on the others' masks, the gaps on either fill: disabled otherwise, their values kept.
+        var kept = look?.TurnOn(ImageEffect.Cutout).Cutout;
+        bool plain = kept?.Mode == CutoutMode.Plain;
+        this._cutoutTolerance.Enabled = this._cutoutToleranceLabel.Enabled = plain;
+        this._cutoutFillHoles.Enabled = !plain;
+        this._toolTip.SetToolTip(
+            this._cutoutFillHoles,
+            plain ? "The Plain mode keeps what the background encloses already"
+                : "Keeps what the cutout's outline encloses: the parts of the image the model left out but that the part kept surrounds");
+        this._cutoutGaps.Enabled = this._cutoutGapsLabel.Enabled = kept?.ClosesGaps == true;
 
         // The pick's points show, and Pick stays armed, while the Cutout tab is selected and its effect on.
         bool picking = usable && _selectedEffect == ImageEffect.Cutout && look?.IsActive(ImageEffect.Cutout) == true;
