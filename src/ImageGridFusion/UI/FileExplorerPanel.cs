@@ -402,7 +402,7 @@ internal sealed partial class FileExplorerPanel : Panel
         this._menu.Items.AddRange([this._editDescription, this._findSimilar, this._copy, this._copyPng, this._copyFullPath, this._copySeparator]);
         _menu.Items.Add(_openLocation);
 
-        // A confirming item takes its parent's icon: it is the action itself (RULES.md § Menus).
+        // A confirming item takes its parent's icon: it is the action itself (RULES.md § Icons).
         foreach (var (item, icon) in new (ToolStripItem, UiIcon)[]
         {
             (this._photoPeople, UiIcons.People), (this._openGroupItem, UiIcons.Group), (this._renameGroup, UiIcons.Rename),
