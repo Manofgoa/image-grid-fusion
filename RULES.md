@@ -654,12 +654,29 @@ The faces of the indexed images grouped into people, in the file explorer's **Pe
   `FaceAnalyzer.MinScore` and `MinFaceSide` kept, each aligned from its 5 landmarks onto SFace's template
   and embedded (`FaceAnalyzer`).
 - **The face index** is a file of its own, `index\files.faces` (`FaceIndex`), never a slot of
-  `files.content`: binary, versioned, per file its stamp and its faces; a file with no face is kept, so it
-  is not analysed again until it changes.
-- **Groups are computed, never stored** (`FaceGrouping.Compute`): from the faces and the user's decisions,
-  every time either changes, off the UI thread. Two faces are one person from
-  `FaceGrouping.SameThreshold` — a fixed constant, no setting. A group of one face is no group: that face
-  is listed alone.
+  `files.content`: binary, versioned, per file its stamp and its faces — box, score, embedding, and in
+  pixels of the image as analysed its 5 landmarks and its side; a file with no face is kept, so it is not
+  analysed again until it changes. A version change rejects the older file: the face pass analyses every
+  file again, and the face keys still match since the detection is unchanged (origin:
+  `workfiles/20261028-face-grouping-accuracy.md`). A new value a face needs is a version change too.
+- **Groups are computed, never stored** (`FaceGrouping.Compute`): from the faces, the user's decisions and
+  the strictness, every time one changes, off the UI thread. A group of one face is no group: that face is
+  listed alone.
+- **How faces are grouped** (origin: `workfiles/20261028-face-grouping-accuracy.md`) — never a chain, never
+  a normalized mean against a pairwise threshold:
+  - Each face has a **quality** (`FaceQuality.Of`): its score, its side in pixels and how frontal it is
+    (its landmarks), each mapped to (0, 1] and multiplied. A poor face **weighs less** in a group's sums
+    and **needs more** to join: the threshold plus `FaceGrouping.QualityMargin` × (1 − quality).
+  - Similarities are **averages** over the faces (`Cluster`: a weighted sum and its weight, one dot
+    product): a face against a group or a person's pinned faces, two groups over every pair of theirs.
+  - A face joins its person, else the closest **seed** above the threshold plus `SeedMargin`, the clearest
+    faces first; the seeds are then merged by **average linkage**, the closest pair first, while a pair
+    reaches the threshold, its poorer side's margin included.
+  - The threshold is the **strictness level**'s, an app setting of the ⚙ menu (*Face grouping*,
+    `AppSettings.FaceGrouping`): Very loose, Loose, **Normal** (the default), Strict, Very strict
+    (`FaceGrouping.Thresholds`, set on real faces). Changing it regroups at once; the decisions stay.
+  - A face close to no one under `FaceQuality.LowFloor` is a **low-quality face**, set apart from the faces
+    alone.
 - **A decision is stored on faces, never on a computed group** (`People`, `people.json` next to the exe):
   a person's **pinned** faces — key and a copy of the embedding, so it survives its files moving — its
   **excluded** faces, its name, hidden flag, and the person it was **merged into**. A merge is a link
@@ -668,8 +685,9 @@ The faces of the indexed images grouped into people, in the file explorer's **Pe
   full path and its box rounded (`FaceKeys`).
 - **The view**: a third view of the file explorer, picked in its **views drop-down** (`ExplorerMode`,
   saved by name, the older folder-view flag read as before): the groups — named A→Z, then the larger
-  first — a tile for the hidden ones, then the faces alone as file tiles showing the face cut out of their
-  file (`FaceCrops`). A group opened lists its sub-groups, then every file of it and of them.
+  first — a tile for the hidden ones, a **Low quality** tile for the low-quality faces, then the faces alone
+  as file tiles showing the face cut out of their file (`FaceCrops`). A group opened lists its sub-groups,
+  then every file of it and of them; the Low quality tile opened lists its faces as the faces alone.
 - **Decisions by drag and drop and context menu**: a face onto a group joins it; a group onto another
   merges after a confirmation; *Un-merge* on a sub-group; *Not <name>* on a file of an open group; *Hide*
   / *Unhide*; *Rename…* or F2. User actions write `people.json`, a `--new-instance` too. Out of the undo
