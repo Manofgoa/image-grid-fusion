@@ -8,8 +8,12 @@ namespace ImageGridFusion.UI;
 /// its text (shared RULES.md § Colour Items). Each with its own hover and tooltip
 /// (workfiles/20261029-eyedropper-ergonomics.md § Attached Split Button, § Sample Menu).
 /// </summary>
-internal sealed class ColorSplitButton : FlowLayoutPanel
+internal sealed class ColorSplitButton : Panel
 {
+    // How far the Color… button lies over the eyedropper's right edge, in logical px: the system buttons keep a
+    // margin inside their bounds, so that only one border shows between the two.
+    private const int Overlap = 2;
+
     private readonly ContextMenuStrip _sampleMenu = new();
     private ToolTip? _toolTip;
     private string _target = "";
@@ -18,7 +22,6 @@ internal sealed class ColorSplitButton : FlowLayoutPanel
     {
         this.AutoSize = true;
         this.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-        this.WrapContents = false;
         this.Anchor = AnchorStyles.Left;
         this.Margin = new Padding(3);
         this.Eyedropper.Menu = this._sampleMenu;
@@ -51,7 +54,7 @@ internal sealed class ColorSplitButton : FlowLayoutPanel
         Text = "Color…",
         AutoSize = true,
         TextImageRelation = TextImageRelation.ImageBeforeText,
-        Margin = new Padding(-1, 0, 0, 0),
+        Margin = Padding.Empty,
     };
 
     /// <summary>
@@ -82,13 +85,24 @@ internal sealed class ColorSplitButton : FlowLayoutPanel
     /// <summary>The eyedropper's icon, at its size in device pixels; the button keeps its own copy.</summary>
     public void SetIcon(Bitmap icon) => this.Eyedropper.SetIcon(icon);
 
-    /// <summary>The eyedropper square, plus its arrow, as tall as the Color… part beside it.</summary>
+    /// <summary>
+    /// The eyedropper at its ideal width — its icon and its arrow — as tall as the Color… part, which lies over its
+    /// right edge.
+    /// </summary>
     protected override void OnLayout(LayoutEventArgs levent)
     {
-        var size = new Size(this.Eyedropper.GetPreferredSize(Size.Empty).Width, this.Dialog.Height);
-        if (this.Eyedropper.Size != size)
+        int height = this.Dialog.Height;
+        int width = this.Eyedropper.IdealWidth is > 0 and var ideal ? ideal : height + this.LogicalToDeviceUnits(16);
+        var eyedropper = new Rectangle(0, 0, width, height);
+        if (this.Eyedropper.Bounds != eyedropper)
         {
-            this.Eyedropper.Size = size;
+            this.Eyedropper.Bounds = eyedropper;
+        }
+
+        var dialog = new Point(width - this.LogicalToDeviceUnits(Overlap), 0);
+        if (this.Dialog.Location != dialog)
+        {
+            this.Dialog.Location = dialog;
         }
 
         base.OnLayout(levent);

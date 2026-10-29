@@ -117,6 +117,24 @@ internal sealed class SplitButton : Button
         }
     }
 
+    /// <summary>The system's own ideal width alone — the icon, the text and the arrow part — 0 before the handle exists.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public int IdealWidth
+    {
+        get
+        {
+            if (!this.IsHandleCreated)
+            {
+                return 0;
+            }
+
+            var size = default(NativeSize);
+            SendMessage(this.Handle, BCM_GETIDEALSIZE, IntPtr.Zero, ref size);
+            return size.Width;
+        }
+    }
+
     /// <summary>
     /// The system's ideal width — the text, the icon and the arrow part — once the handle exists, at the height of
     /// the app's other buttons.
