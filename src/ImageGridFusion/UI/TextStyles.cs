@@ -44,7 +44,7 @@ internal sealed class TextStyles
         }, true),
         new("Subtitle", new LayerTextStyle("Segoe UI", false, Color.White, false, Color.Black, 0.08, true, Color.Black, 0.6), true),
         new("Label", new LayerTextStyle("Segoe UI", true, Color.Black, false, Color.Black, 0.08, true, Color.White, 1), true),
-        new("Neon", new LayerTextStyle("Arial Black", true, Color.FromArgb(255, 235, 0), true, Color.Black, 0.14, false, Color.Black, 0.5), true),
+        new("Neon", new LayerTextStyle("Segoe UI", true, Color.FromArgb(255, 235, 0), true, Color.Black, 0.14, false, Color.Black, 0.5), true),
         new("Subtle", new LayerTextStyle("Segoe UI", false, Color.White, true, Color.Black, 0.03, false, Color.Black, 0.5), true),
     ];
 
