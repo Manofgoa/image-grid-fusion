@@ -434,7 +434,7 @@ internal sealed partial class GridPreview : Control
     /// </summary>
     public bool InGesture =>
         this._pressed >= 0 || this._draggedBar is not null || this._draggedCorner is not null || this._draggedSeparator is not null
-        || this._movedCrop is not null || this._live is not null || this._wheelEnd.Enabled || this._eyedropper is not null || this._pressedLayer >= 0 || this._rotatingLayer;
+        || this._movedCrop is not null || this._live is not null || this._wheelEnd.Enabled || this._eyedropper is not null || this._pressedLayer >= 0 || this._rotatingLayer || this._resizingBox != 0;
 
     /// <summary>
     /// Whether the wheel was turned over the grid with Alt held since the last call, cleared by it: the

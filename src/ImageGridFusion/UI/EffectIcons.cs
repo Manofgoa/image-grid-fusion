@@ -1,5 +1,6 @@
 using System.Drawing.Drawing2D;
 using ImageGridFusion.Composition;
+using ImageGridFusion.Imaging;
 
 namespace ImageGridFusion.UI;
 
@@ -466,6 +467,28 @@ internal static class EffectIcons
 
                 break;
             }
+        }
+    });
+
+    /// <summary>
+    /// A text alignment button's icon (workfiles/20261029-text-layer-alignment.md): four lines of text, long and
+    /// short, standing left, centered or right — justified, all as long but the last, short at the left.
+    /// </summary>
+    public static Bitmap Alignment(int size, LayerTextAlignment alignment) => Draw(size, (g, s) =>
+    {
+        using var ink = new SolidBrush(Color.FromArgb(60, 60, 60));
+        float[] lengths = alignment == LayerTextAlignment.Justified ? [1f, 1f, 1f, 0.55f] : [1f, 0.6f, 0.85f, 0.5f];
+        float left = s * 0.1f, full = s * 0.8f, thick = Math.Max(1, s * 0.1f);
+        for (int i = 0; i < lengths.Length; i++)
+        {
+            float length = full * lengths[i];
+            float x = alignment switch
+            {
+                LayerTextAlignment.Center => left + (full - length) / 2,
+                LayerTextAlignment.Right => left + full - length,
+                _ => left,
+            };
+            g.FillRectangle(ink, x, s * (0.16f + 0.2f * i), length, thick);
         }
     });
 

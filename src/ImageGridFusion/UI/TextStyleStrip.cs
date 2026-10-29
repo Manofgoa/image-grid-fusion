@@ -136,6 +136,11 @@ internal sealed class TextStyleStrip : ThumbnailStrip<TextStyleChoice>
     {
         var parts = new List<string> { style.Font };
         parts.AddRange(new[] { (style.Bold, "bold"), (style.Italic, "italic"), (style.Caps, "ALL CAPS") }.Where(p => p.Item1).Select(p => p.Item2));
+        if (style.Alignment != LayerTextAlignment.Center)
+        {
+            parts.Add(style.Alignment == LayerTextAlignment.Justified ? "justified" : $"aligned {style.Alignment.ToString().ToLowerInvariant()}");
+        }
+
         parts.Add(Hex(style.Color));
         if (style.Outline)
         {

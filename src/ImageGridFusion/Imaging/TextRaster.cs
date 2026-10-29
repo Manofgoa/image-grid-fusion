@@ -7,7 +7,7 @@ namespace ImageGridFusion.Imaging;
 
 /// <summary>
 /// How a text is drawn into a bitmap by <see cref="TextRaster"/>: its font, weight, slant and color, in
-/// capitals or as typed, an outline around its letters, a shadow under them, a box behind it. The
+/// capitals or as typed, its lines' alignment, an outline around its letters, a shadow under them, a box behind it. The
 /// outline's width, the shadow's size and the box's margin are fractions of a line.
 /// </summary>
 public sealed record LayerTextStyle(string Font, bool Bold, Color Color, bool Outline, Color OutlineColor, double OutlineWidth, bool Background, Color BackgroundColor, double BackgroundOpacity)
@@ -29,6 +29,9 @@ public sealed record LayerTextStyle(string Font, bool Bold, Color Color, bool Ou
     /// <summary>The text drawn in capitals, the text typed kept as it is.</summary>
     public bool Caps { get; init; }
 
+    /// <summary>How the lines stand within the widest one: centered by default (workfiles/20261029-text-layer-alignment.md).</summary>
+    public LayerTextAlignment Alignment { get; init; } = LayerTextAlignment.Center;
+
     /// <summary>A blur of the letters — and of their outline — in <see cref="ShadowColor"/>, under them.</summary>
     public bool Shadow { get; init; }
 
@@ -49,6 +52,7 @@ public sealed record LayerTextStyle(string Font, bool Bold, Color Color, bool Ou
         ["bold"] = this.Bold,
         ["italic"] = this.Italic,
         ["caps"] = this.Caps,
+        ["alignment"] = this.Alignment.ToString(),
         ["color"] = Hex(this.Color),
         ["outline"] = this.Outline,
         ["outlineColor"] = Hex(this.OutlineColor),
@@ -77,6 +81,7 @@ public sealed record LayerTextStyle(string Font, bool Bold, Color Color, bool Ou
         {
             Italic = PresetJson.Bool(json, "italic", Default.Italic),
             Caps = PresetJson.Bool(json, "caps", Default.Caps),
+            Alignment = PresetJson.Enum(json, "alignment", Default.Alignment),
             Shadow = PresetJson.Bool(json, "shadow", Default.Shadow),
             ShadowKind = PresetJson.Enum(json, "shadowKind", Default.ShadowKind),
             ShadowColor = HexColor(json, "shadowColor", Default.ShadowColor),
@@ -90,6 +95,19 @@ public sealed record LayerTextStyle(string Font, bool Bold, Color Color, bool Ou
             && int.TryParse(hex.AsSpan(1), System.Globalization.NumberStyles.HexNumber, null, out int rgb)
                 ? Color.FromArgb(255, Color.FromArgb(rgb))
                 : fallback;
+}
+
+/// <summary>
+/// How a text layer's lines stand within the widest one. Justified stretches every line of a paragraph to the
+/// widest by its spaces, but the paragraph's last and a line without a space, left-aligned; a blank line ends
+/// a paragraph.
+/// </summary>
+public enum LayerTextAlignment
+{
+    Left,
+    Center,
+    Right,
+    Justified,
 }
 
 /// <summary>A text shadow's shape: a soft halo all around the letters, or dropped down to the right.</summary>
@@ -125,26 +143,28 @@ internal static unsafe class TextRaster
     private static readonly Guid WriteFactoryId = new("b859ee5a-d838-4b5b-a2e8-1adc7d93db48");
     private static readonly Guid ImagingFactoryClass = new("cacaf262-9370-4615-a13b-9f5539da4c0a");
     private static readonly Guid ImagingFactoryId = new("ec5ec8a9-c395-4314-9c77-54d7a935ff70");
+    private static readonly Guid TextLayout1Id = new("9064d822-80a7-465c-a986-df65f78b8feb");
     private static readonly Guid PremultipliedBgra = new("6fddc324-4e03-4bfe-b185-3d77768dc910");
 
     /// <summary>
     /// The text drawn in <paramref name="style"/>, on a transparent background, and the height of one of its
     /// lines in the bitmap's pixels — what a text layer's size measures. An empty text gives an empty box
-    /// half a line wide.
+    /// half a line wide. In a <paramref name="box"/> — its width in lines — the lines are wrapped within it,
+    /// and the bitmap is as wide as it (workfiles/20261029-text-layer-alignment.md § Size Mode).
     /// </summary>
-    public static (Bitmap Bitmap, double LinePixels) Render(string text, LayerTextStyle style)
+    public static (Bitmap Bitmap, double LinePixels) Render(string text, LayerTextStyle style, double? box = null)
     {
         var factories = Factories.Get();
         text = style.Drawn(text);
         float em = EmSize;
         for (int attempt = 0; ; attempt++)
         {
-            var layout = CreateLayout(factories.Write, text.Length == 0 ? " " : text, style, em);
+            var layout = CreateLayout(factories.Write, text.Length == 0 ? " " : text, style, em, box);
             try
             {
                 var metrics = Metrics(layout);
                 double line = metrics.Height / Math.Max(1, metrics.LineCount);
-                float width = text.Length == 0 ? (float)line / 2 : metrics.WidthIncludingTrailingWhitespace;
+                float width = box is not null ? metrics.LayoutWidth : text.Length == 0 ? (float)line / 2 : metrics.WidthIncludingTrailingWhitespace;
                 double outline = style.Outline ? style.OutlineWidth * line : 0;
                 double shadow = style.Shadow && text.Length > 0 ? outline + ShadowReach(style, line) : 0;
                 double pad = Math.Max(Math.Max(outline, shadow), style.Background ? LayerTextStyle.BackgroundMargin * line : 0)
@@ -173,7 +193,7 @@ internal static unsafe class TextRaster
         return [.. fonts.Families.Select(f => f.Name).OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase)];
     }
 
-    private static IntPtr CreateLayout(IntPtr write, string text, LayerTextStyle style, float em)
+    private static IntPtr CreateLayout(IntPtr write, string text, LayerTextStyle style, float em, double? box)
     {
         IntPtr format;
         fixed (char* family = style.Font, locale = "en-us")
@@ -193,16 +213,136 @@ internal static unsafe class TextRaster
                     write, chars, text.Length, format, 1e6f, 1e6f, &layout));
             }
 
-            // SetWordWrapping(NO_WRAP), then the lines centered within the widest once it is known.
+            // SetWordWrapping(NO_WRAP): the lines measured as typed, a line's height read from them.
             Check(((delegate* unmanaged[Stdcall]<IntPtr, int, int>)Slot(layout, 5))(layout, 1));
             var metrics = Metrics(layout);
+            if (box is { } lines)
+            {
+                // In a box: SetWordWrapping(EMERGENCY_BREAK) within its width — a word longer than it cut —, then
+                // SetTextAlignment's LEADING, TRAILING, CENTER or JUSTIFIED, DirectWrite's own: each typed line
+                // break ends a paragraph, its last line left-aligned.
+                float line = metrics.Height / Math.Max(1, metrics.LineCount);
+                Check(((delegate* unmanaged[Stdcall]<IntPtr, int, int>)Slot(layout, 5))(layout, 2));
+                Check(((delegate* unmanaged[Stdcall]<IntPtr, float, int>)Slot(layout, 28))(layout, Math.Max(1, (float)lines * line)));
+                Check(((delegate* unmanaged[Stdcall]<IntPtr, int, int>)Slot(layout, 3))(layout, style.Alignment switch
+                {
+                    LayerTextAlignment.Right => 1,
+                    LayerTextAlignment.Center => 2,
+                    LayerTextAlignment.Justified => 3,
+                    _ => 0,
+                }));
+                return layout;
+            }
+
+            // Automatic: the lines aligned within the widest once it is known — SetTextAlignment's LEADING,
+            // TRAILING or CENTER; justified, LEADING with the lines stretched by the app.
             Check(((delegate* unmanaged[Stdcall]<IntPtr, float, int>)Slot(layout, 28))(layout, Math.Max(1, metrics.WidthIncludingTrailingWhitespace)));
-            Check(((delegate* unmanaged[Stdcall]<IntPtr, int, int>)Slot(layout, 3))(layout, 2));
+            Check(((delegate* unmanaged[Stdcall]<IntPtr, int, int>)Slot(layout, 3))(layout, style.Alignment switch
+            {
+                LayerTextAlignment.Right => 1,
+                LayerTextAlignment.Center => 2,
+                _ => 0,
+            }));
+            if (style.Alignment == LayerTextAlignment.Justified)
+            {
+                Justify(layout, text.Length);
+            }
+
             return layout;
         }
         finally
         {
             Marshal.Release(format);
+        }
+    }
+
+    /// <summary>
+    /// Stretches the lines of a paragraph to the text's widest line by widening their spaces between words, its last line
+    /// and a line without such a space left as they are; a blank line ends a paragraph. DirectWrite's own
+    /// JUSTIFIED never stretches a line ended by a line break — every line of a text layer — so the spaces are
+    /// widened here, by IDWriteTextLayout1's character spacing.
+    /// </summary>
+    private static void Justify(IntPtr layout, int length)
+    {
+        // GetClusterMetrics: at most one cluster per character, in the text's order.
+        var clusters = new ClusterMetrics[Math.Max(1, length)];
+        uint count;
+        fixed (ClusterMetrics* buffer = clusters)
+        {
+            Check(((delegate* unmanaged[Stdcall]<IntPtr, ClusterMetrics*, uint, uint*, int>)Slot(layout, 62))(layout, buffer, (uint)clusters.Length, &count));
+        }
+
+        // Each line: its width up to its last visible cluster (-1 for a blank one), the spaces between its words.
+        var lines = new List<(float Width, List<int> Spaces)>();
+        for (int first = 0; first < count;)
+        {
+            int end = first;
+            while (end < count && !clusters[end].IsNewline)
+            {
+                end++;
+            }
+
+            int start = first, last = end - 1;
+            while (start < end && clusters[start].IsWhitespace)
+            {
+                start++;
+            }
+
+            while (last >= start && clusters[last].IsWhitespace)
+            {
+                last--;
+            }
+
+            float width = 0;
+            var spaces = new List<int>();
+            for (int i = first; i <= last; i++)
+            {
+                width += clusters[i].Width;
+                if (i > start && clusters[i].IsWhitespace)
+                {
+                    spaces.Add(i);
+                }
+            }
+
+            lines.Add((start <= last ? width : -1, spaces));
+            first = end + 1;
+        }
+
+        float widest = lines.Count == 0 ? 0 : lines.Max(l => l.Width);
+        if (widest <= 0 || Marshal.QueryInterface(layout, in TextLayout1Id, out var layout1) < 0)
+        {
+            return;
+        }
+
+        try
+        {
+            var positions = new uint[count + 1];
+            for (int i = 0; i < count; i++)
+            {
+                positions[i + 1] = positions[i] + clusters[i].Length;
+            }
+
+            for (int l = 0; l < lines.Count; l++)
+            {
+                var (width, spaces) = lines[l];
+                bool lastOfParagraph = l == lines.Count - 1 || lines[l + 1].Width < 0;
+                if (lastOfParagraph || spaces.Count == 0 || width >= widest)
+                {
+                    continue;
+                }
+
+                // SetCharacterSpacing(leading, trailing, minimum advance, range): each space between the words widened alike.
+                float extra = (widest - width) / spaces.Count;
+                foreach (int space in spaces)
+                {
+                    var range = new TextRange { StartPosition = positions[space], Length = clusters[space].Length };
+                    Check(((delegate* unmanaged[Stdcall]<IntPtr, float, float, float, TextRange, int>)Slot(layout1, 69))(layout1, 0, extra, 0, range));
+                }
+            }
+        }
+        finally
+        {
+            Marshal.Release(layout1);
         }
     }
 
@@ -565,6 +705,24 @@ internal static unsafe class TextRaster
         public int Type, Format, AlphaMode;
         public float DpiX, DpiY;
         public int Usage, MinLevel;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ClusterMetrics
+    {
+        public float Width;
+        public ushort Length;
+        public ushort Flags;
+
+        public readonly bool IsWhitespace => (this.Flags & 2) != 0;
+
+        public readonly bool IsNewline => (this.Flags & 4) != 0;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct TextRange
+    {
+        public uint StartPosition, Length;
     }
 
     [StructLayout(LayoutKind.Sequential)]

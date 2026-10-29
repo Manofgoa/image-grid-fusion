@@ -1,6 +1,7 @@
 # Text Layer Alignment
 
-> Working document — the alignment of a text layer's lines: left, center, right or justified.
+> Working document — the alignment of a text layer's lines: left, center, right or justified; and its
+> size, automatic or a box the lines wrap in.
 > This file is the source of truth for the planned work until implemented,
 > then the log of every adjustment made to it afterwards.
 
@@ -33,8 +34,11 @@ preset carries it.
 - **Default: `Center`** — `LayerTextStyle.Default` keeps drawing the text as today, so a new text and
   every existing call look the same.
 - Being part of the style, the alignment is in the `Layer` (immutable, held by `GridLayers`): the undo
-  history covers it with no code of its own (RULES.md § Undo History), and a style preset of the
-  related workfile carries it.
+  history covers it with no code of its own (RULES.md § Undo History), and a text style carries it.
+- Saved with the text styles (`text-styles.json`) under the key **`alignment`**, by name (`Left`,
+  `Center`, `Right`, `Justified`) — a missing or foreign value gives `Center` (RULES.md § Text Styles).
+- The text styles' tooltip (`TextStyleStrip.Describe`) names it when it is not the default: `aligned
+  left`, `aligned right`, `justified`.
 
 ---
 
@@ -44,52 +48,79 @@ preset carries it.
   height the lines' (`TextRaster.Render`). Changing the alignment never moves nor resizes the layer —
   only the lines move inside it.
 - `TextRaster.CreateLayout` sets the layout's text alignment from the style instead of the fixed
-  `CENTER` (DirectWrite `DWRITE_TEXT_ALIGNMENT`: `LEADING` 0, `TRAILING` 1, `CENTER` 2, `JUSTIFIED` 3),
-  still after the width is set to the widest line.
+  `CENTER` (DirectWrite `DWRITE_TEXT_ALIGNMENT`: `LEADING` 0 for Left and Justified, `TRAILING` 1,
+  `CENTER` 2), still after the width is set to the widest line.
 - The outline, the background box and the emojis follow the lines as drawn: they are drawn from the
   same layout.
 
 ### Justified
 
-- Every line is **stretched to the widest line's width** by widening its spaces, **except the last
-  line of a paragraph**, aligned **left** — the usual rule (Word, DirectWrite).
+- Every line is **stretched to the text's widest line** — across every paragraph — by widening its
+  spaces between words, **except the last line of a paragraph**, aligned **left** — the usual rule
+  (Word, DirectWrite). The spaces typed before a line's first word or after its last are left as they
+  are.
 - A **paragraph** ends at a **blank line** or at the end of the text: the lines between two blank
   lines are stretched, the last one of each left-aligned. A blank line itself draws nothing.
 - A line with **no space** (a single word, an emoji alone) cannot be stretched: it is **left-aligned**,
   as a paragraph's last line is — its letters are never spread.
-- **Technical risk**: the text layers never wrap (`NO_WRAP`), every line ends with a line break typed
-  by the user, and DirectWrite does not justify a line ending a paragraph — `JUSTIFIED` alone would
-  likely leave every line left-aligned. The implementation checks it first; if so, the lines are
-  stretched by the app:
-  - either the line breaks inside a paragraph are given to DirectWrite as **line separators**
-    (U+2028), which end a line without ending the paragraph, if DirectWrite justifies before them;
-  - or each line to stretch gets its extra width spread over its spaces with
-    `IDWriteTextLayout1.SetCharacterSpacing` on each space's range, the line's width read from
-    `GetLineMetrics` — the alignment then `LEADING`.
-
-  Whichever works is kept, and reported as an implementation choice.
+- **Stretched by the app** (`TextRaster.Justify`), never by DirectWrite's `JUSTIFIED`, which leaves a
+  line ended by a line break — every line of a text layer, which never wraps — as it is: the layout's
+  clusters (`GetClusterMetrics`) give each line's width and its spaces between words, and each such
+  space of a line to stretch gets an equal share of the missing width as trailing spacing
+  (`IDWriteTextLayout1.SetCharacterSpacing`), the alignment `LEADING`.
 
 ---
 
 ## UI
 
-- **Four icon buttons** in the Layers options, on the font line, **right after Bold**: Left, Center,
-  Right, Justified — one pressed at a time, the selected text layer's alignment.
-- Each is a toggle-looking button (a `CheckBox` with `Appearance.Button`, or a button drawn pressed),
-  its icon drawn by `EffectIcons` like the layer list's — four lines of varying lengths, aligned as the
-  button says, the classic pictograms — its name in its tooltip (`Align left`, `Center`,
-  `Align right`, `Justify`).
+- **Four icon buttons** in the Layers options, on the font line, **after Bold, Italic and ALL CAPS**,
+  before the color: Left, Center, Right, Justified — one pressed at a time, the selected text layer's
+  alignment.
+- Each is a `CheckBox` with `Appearance.Button` and `AutoCheck` off — pressed by
+  `UpdateLayerOptions` only, so clicking the pressed one leaves it pressed — its icon drawn by
+  `EffectIcons.Alignment` at the monitor's DPI with the layer list's — four lines of varying lengths,
+  aligned as the button says, the classic pictograms — its name in its tooltip (`Align left`,
+  `Center`, `Align right`, `Justify`, the last one saying what a paragraph is).
 - A click goes through `ChangeLayerStyle`, as every style control does: the text layer drawn again,
   the Layers turned on (RULES.md § Global Toolbar: acting on any option activates the effect).
-- Enabled and synced like the other style controls (`MainForm.Layers.cs` around line 370 and 395):
-  disabled without a text layer selected, showing `LayerTextStyle.Default` then.
+- Enabled and synced like the other style controls (`UpdateLayerOptions`): disabled without a text
+  layer selected, showing a new text's style then.
+
+---
+
+## Size Mode
+
+A text layer's size is **Automatic** — its box fits the text, the lines ending where the user typed a
+line break, as above — or a **Box**: a width of its own, the lines **wrapped** within it (Iterations 5–7).
+
+- **On the layer**, never in the style: `Layer.TextBox`, the box's width **in lines** (the text's line
+  height), `null` for Automatic — the default, a new text's size. Applying a text style leaves it as it
+  is; a text style does not keep it. In lines, so the wheel resizing the layer keeps the same wrapping,
+  and the format changing never rewraps it. Part of the `Layer`: the undo history covers it.
+- **Turned on** by a **Box** checkbox in the Layers options, after the four alignment buttons: the box
+  starts **half the grid wide**, the layer's center kept. Unchecked, the size goes back to Automatic.
+- **Resized by its width only**, directly on the working surface: while the Layers tab is selected and
+  a text layer in Box mode is selected, a **handle** on the middle of its left and right edges — a
+  helper indicator (RULES.md § On-Cell Helper Indicators), green, white while hovered or dragged —
+  dragged along the box's own axis (turned with it), the **opposite edge staying where it is**. Its
+  height follows the lines the wrapping gives. At least one line wide. The drag is a gesture — one step
+  of the undo history — the text drawn again at each move.
+- **Wrapping**: DirectWrite's word wrapping within the box's width (`EMERGENCY_BREAK`): at the spaces,
+  and a **word longer than the box is cut** between two letters. A typed line break still ends a line.
+- **Alignment in a box**: the lines stand left, centered or right **within the box's width**, not the
+  widest line's. **Justified** is DirectWrite's own (`JUSTIFIED`): every wrapped line stretched to the
+  box, the last line of a paragraph left-aligned, **each typed line break ending a paragraph** — not the
+  blank-line rule of the Automatic size, which no longer applies here.
+- The **background box** covers the box's width.
 
 ---
 
 ## Documentation
 
-- `GLOSSARY.md` / `GLOSSARY.fr.md`: the *Text layer* entry names the alignment among its settings.
-- `README.md` / `README.fr.md`: the text layers' description, where it lists their settings.
+- `GLOSSARY.md` / `GLOSSARY.fr.md`: the *Text layer* entry names the alignment and the size mode among
+  its settings; the *Text style* entry, that the size mode is not part of it.
+- `README.md` / `README.fr.md`: the text layers' description, where it lists their settings, and the
+  layers' gestures, the box's handles among them.
 
 ---
 
@@ -133,6 +164,93 @@ questions left: what a paragraph is, and a line without a space.
 Q&A 6–7 answered: in justified, a paragraph ends at a blank line (or the text's end), and a line
 without a space is left-aligned, its letters never spread. No open question left.
 
+### Iteration 3 — 2026-10-29 — ✅ Implemented
+
+Go given for code, unit tests and documentation (no test project: nothing to write there), in a
+worktree, `.claude/worktrees/text-layer-alignment` on `feature/text-layer-alignment`, created from
+`main` after the text styles (`20261029-text-layer-style-presets.md`) were merged into it.
+
+### Iteration 4 — 2026-10-29 — 🧭 Implementation choices
+
+- **The text styles were merged into `main` before the go**: `LayerTextStyle` had gained Italic, ALL
+  CAPS, a shadow and its JSON (`text-styles.json`). The alignment followed RULES.md § Text Styles: its
+  `alignment` key in `ToJson` / `FromJson`, and a word in the style strip's tooltip — only when it is
+  not Center, the default, so the built-in styles' tooltips do not change.
+- **Justified stretched by the app**, the second fallback of the design: `SetCharacterSpacing` on the
+  spaces between words, the line widths read from the clusters (`GetClusterMetrics`) rather than
+  `GetLineMetrics`, which gives no width. DirectWrite's `JUSTIFIED` and the U+2028 route were not
+  tried: every line of a text layer ends a DirectWrite paragraph, and the clusters gave the paragraph
+  and the no-space rules in one place.
+- **Stretched to the text's widest line**, across paragraphs — the box's width — rather than the
+  paragraph's own widest line, so the right edge is straight for the whole text.
+- **Spaces before the first word or after the last** of a line are not widened: only the spaces
+  between words are.
+- **The buttons stand after ALL CAPS**, not right after Bold: Italic and ALL CAPS, merged since, sit
+  after Bold, and the alignment buttons close the text's shape settings before the color.
+- **Checked by a scratch program**, outside the repository: the four alignments rendered through
+  `TextRaster.Render` — the same box for each, the right and justified lines as designed (two
+  paragraphs, a one-word line, an emoji) — and the `alignment` key read back, a missing one giving
+  Center.
+- No project rule broken.
+
+### Iteration 5 — 2026-10-29 — ⚙️ Post-implementation — No alignment by default, the text block
+
+The user, after the delivery: *« il manque un truc essentiel : la taille de l'élément en layer ! On doit
+pouvoir choisir un alignement mais aussi AUCUN alignement. Par défaut, AUCUN. Si on en choisit un, ça
+crée une taille de bloc qu'on peut redimensionner directement dans la surface de travail. Et les sauts
+de lignes sont calculés au sein de cette surface. »*
+
+- A fifth choice, **None**, the **default** — replacing Center as the default (Q&A 5).
+- Choosing an alignment gives the layer a **text block**: a size of its own, **resized directly on the
+  working surface**, the lines **wrapped within it**.
+- Design questions asked before any code: Q&A 8–13.
+
+### Iteration 6 — 2026-10-29 — ⚙️ Post-implementation — Alignment kept, a size mode apart
+
+The user, answering Q&A 8, takes back part of Iteration 5: *« Centrée mais en fait je me suis trompé,
+on doit pouvoir aligner à gauche/droite même sans taille de boîte ! Il faut une option pour déterminer
+si la taille est automatique ou avec une taille de boîte. »*
+
+- **No `None` alignment**: the four alignments stay as delivered, Center by default, and apply with or
+  without a box.
+- A **size option** apart from the alignment: **Automatic** — the box fits the text, as delivered — or
+  **Box** — the text block of Iteration 5: a size of its own, resized on the working surface, the lines
+  wrapped within it.
+- Q&A 9–11 were answered "see previous answer": they concerned the block, now the Box mode, and are
+  asked again for it (Q&A 14–18).
+
+### Iteration 7 — 2026-10-29 — ⚙️ Post-implementation — The Box mode designed
+
+Q&A 14–19 answered: the box is resized by its width only, starts half the grid wide, wraps at the
+spaces and cuts a word longer than it; justified in a box, each typed line break ends a paragraph; the
+size mode and the box's width belong to the layer, not to the style; a **Box** checkbox chooses the
+mode, unchecked (Automatic) by default. § Size Mode describes it.
+
+### Iteration 8 — 2026-10-29 — 🧭 Implementation choices (Box mode)
+
+- **`Layer.TextBox`** holds the box's width in lines, from `Layer.MinTextBox` (1) to `MaxTextBox` (400);
+  `TextRaster.Render` takes it, measures a line on the text as typed, then wraps within `TextBox` lines.
+- **Half the grid** is the text's area: the drawing's margins — outline, shadow, background margin —
+  come around it, so the layer is a little wider than half the grid.
+- **The drag keeps the drawing's margins** as they are, read from the current bitmap; with a Crop or a
+  Rotate effect on the text layer itself, the width follows the mouse only approximately.
+- **The handles**: a square of 10 logical px on each side's middle, turned with the layer, green over
+  the black halo, white while hovered or dragged; the cursor `SizeWE`. Grabbed after the rotation
+  handle, before a move of the layer; the wheel is left alone during the drag.
+- **Drawn again at each mouse move** of the drag, with no throttling: a text is drawn in a few
+  milliseconds at 192 px; to be revisited if a long text drags slowly.
+- **The preview asks the form** to draw the text (`GridPreview.RenderTextLayer`, set by `MainForm`): the
+  text's drawing stays in `MainForm.RenderTextLayer`, its error reporting with it.
+- **Justify's tooltip** now names both paragraph rules: a blank line in the automatic size, each line
+  break in a box.
+- **Checked**: by the scratch program — a box 8 lines wide in the four alignments, the wrapping, a word
+  longer than the box cut, the justified lines with each line break ending a paragraph, the right-aligned
+  lines on the box's right edge. **Not checked**: the handles' drag in the running app (no UI driving);
+  the user tests it at launch.
+- RULES.md is not changed: the box is a text layer setting like the others; § Layers' gestures rule
+  (`LayersTakeMouse`) is followed.
+- No project rule broken.
+
 ---
 
 ## Implementation Log
@@ -142,10 +260,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project |
-| README | | | |
-| Glossary | | | |
+| Code | 3, 4, 8 | 2026-10-29 | The alignment in the style, the layout, the four buttons; the Box mode and its handles |
+| Unit tests | 3 | 2026-10-29 | Not applicable: no test project; checked by a scratch program |
+| README | 3, 8 | 2026-10-29 | `README.md`, `README.fr.md` |
+| Glossary | 3, 8 | 2026-10-29 | `GLOSSARY.md`, `GLOSSARY.fr.md`: Text layer, Text style |
 
 ---
 
@@ -162,6 +280,18 @@ Questions asked by the agent during design, with user responses.
 | 5 | *(given by the user, unasked)* Default alignment | Center | 2026-10-29 |
 | 6 | Justified: what ends a paragraph — a blank line, or the end of the text only? | A blank line | 2026-10-29 |
 | 7 | Justified: a line without a space — left-aligned, or its letters spread? | Left-aligned | 2026-10-29 |
+| 8 | None: how do the lines stand within the text? | Centered — then: no None; the alignment works without a box too, a separate option chooses an automatic size or a box size (Iteration 6) | 2026-10-29 |
+| 9 | The block: its width only, or its width and height? | "See previous answer" — asked again as Q&A 14 | 2026-10-29 |
+| 10 | The block's width when an alignment is chosen? | "See previous answer" — asked again as Q&A 15 | 2026-10-29 |
+| 11 | Justified with wrapping: what ends a paragraph? | "See previous answer" — asked again as Q&A 16 | 2026-10-29 |
+| 12 | A word longer than the block? | Not asked — asked as Q&A 17 | 2026-10-29 |
+| 13 | The alignment and the block: in the text style, or on the layer? | Not asked — asked as Q&A 18 | 2026-10-29 |
+| 14 | Box mode: resized by its width only, or its width and height? | Width only | 2026-10-29 |
+| 15 | Box mode: the box's size when it is turned on? | Half the grid | 2026-10-29 |
+| 16 | Box mode, justified: what ends a paragraph? | Each typed line break | 2026-10-29 |
+| 17 | Box mode: a word longer than the box? | Cut | 2026-10-29 |
+| 18 | The size mode and the box: in the text style, or on the layer? | On the layer | 2026-10-29 |
+| 19 | Which control chooses the size mode? | A "Box" checkbox | 2026-10-29 |
 
 ---
 
