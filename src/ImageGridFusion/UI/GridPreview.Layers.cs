@@ -51,6 +51,15 @@ internal sealed partial class GridPreview
     private int _hoveredBoxSide;
     private int _resizingBox;
 
+    // A Ctrl + drag of the selected layer: the layer as it stood at the press, and where, until the drag starts
+    // and its copy is asked for; then whether the copy is still being made — the gesture lasting until it is laid
+    // (workfiles/20261029-duplicate-layer.md § Ctrl + Drag).
+    private CopyDrag? _copyDrag;
+    private bool _layerCopyPending;
+    private static readonly Dictionary<int, Cursor> LayerCopyCursors = [];
+
+    private sealed record CopyDrag(Layer Original, Point Start);
+
     // A layer's edit view: the grid set aside meanwhile, the layer shown alone as its one cell.
     private EditState? _edit;
 
@@ -65,6 +74,12 @@ internal sealed partial class GridPreview
 
     /// <summary>Raised when the layers change — added, moved, turned, resized, tuned, removed, restacked — or the selected one.</summary>
     public event EventHandler? LayersChanged;
+
+    /// <summary>
+    /// Raised when a Ctrl + drag of the selected layer starts, with the layer as it stood at the press: the form
+    /// makes its copy and gives it back to <see cref="PlaceDraggedCopy"/>, which ends the gesture's wait.
+    /// </summary>
+    public event EventHandler<Layer>? LayerCopyDragged;
 
     /// <summary>
     /// Draws a text layer again, as it says — its box's width changed by a drag —; given by the form, which
@@ -219,6 +234,69 @@ internal sealed partial class GridPreview
         }
     }
 
+    /// <summary>
+    /// <paramref name="copy"/> laid just above <paramref name="original"/> — found by its content, wherever it
+    /// stands now — and selected. Whether it was laid: not when the original is gone, an export runs or the edit
+    /// view shows; the copy is then the caller's to dispose.
+    /// </summary>
+    public bool InsertLayerCopy(Layer original, Layer copy)
+    {
+        int index = this._layers.IndexOf(original.Image);
+        if (index < 0 || this._locked || this._edit is not null)
+        {
+            return false;
+        }
+
+        this.SetLayers(this._layers.Inserting(index + 1, copy), index + 1);
+        return true;
+    }
+
+    /// <summary>
+    /// The copy a Ctrl + drag asked for (<see cref="LayerCopyDragged"/>), <c>null</c> when it could not be made:
+    /// laid just under <paramref name="original"/>, which goes on moving, selected. Ends the gesture's wait.
+    /// Whether it was laid — the copy otherwise the caller's to dispose.
+    /// </summary>
+    public bool PlaceDraggedCopy(Layer original, Layer? copy)
+    {
+        this._layerCopyPending = false;
+        int index = copy is null ? -1 : this._layers.IndexOf(original.Image);
+        if (index < 0 || this._locked || this._edit is not null)
+        {
+            return false;
+        }
+
+        // The layers from the original up go one place higher, the one pressed and the selected one with them.
+        if (this._pressedLayer >= index)
+        {
+            this._pressedLayer++;
+        }
+
+        int selected = this._selectedLayer >= index ? this._selectedLayer + 1 : this._selectedLayer;
+        this.SetLayers(this._layers.Inserting(index, copy!), selected);
+        return true;
+    }
+
+    /// <summary>
+    /// A right click at <paramref name="location"/>, while the layers take the mouse: the topmost layer there —
+    /// the selected one first, as a press — selected and given for its menu; <c>null</c> off every layer.
+    /// </summary>
+    public Layer? LayerForMenu(Point location)
+    {
+        if (!this.LayersTakeMouse || this._locked)
+        {
+            return null;
+        }
+
+        int hit = this.OnSelectedLayer(location) ? this._selectedLayer : this.LayerAt(location);
+        if (hit < 0)
+        {
+            return null;
+        }
+
+        this.SelectLayer(hit);
+        return this.SelectedLayer;
+    }
+
     /// <summary>The selected layer moved to <paramref name="to"/> in the stacking order — 0 at the back — staying selected.</summary>
     public void RestackSelectedLayer(int to)
     {
@@ -366,7 +444,10 @@ internal sealed partial class GridPreview
 
         this._pressedLayer = hit;
         this._layerPoint = e.Location;
-        this.Cursor = Cursors.SizeAll;
+
+        // With Ctrl, the drag leaves a copy where it starts: asked for once the mouse has moved past the drag size.
+        this._copyDrag = this.CopiesOnDrag ? new CopyDrag(this._layers.Items[hit], e.Location) : null;
+        this.Cursor = this._copyDrag is not null ? this.LayerCopyCursor() : Cursors.SizeAll;
         return true;
     }
 
@@ -404,6 +485,14 @@ internal sealed partial class GridPreview
 
         if (this._pressedLayer >= 0)
         {
+            if (e.Button == MouseButtons.Left && this._copyDrag is { } copy && !WithinDragSize(copy.Start, e.Location))
+            {
+                // The copy is laid under the layer moved, at once or once its content is made (PlaceDraggedCopy).
+                this._copyDrag = null;
+                this._layerCopyPending = true;
+                this.LayerCopyDragged?.Invoke(this, copy.Original);
+            }
+
             if (e.Button == MouseButtons.Left && this.SelectedLayer is { } layer && this._pressedLayer == this._selectedLayer)
             {
                 var canvas = this.CanvasBounds();
@@ -455,8 +544,78 @@ internal sealed partial class GridPreview
             this.Invalidate();
         }
 
-        this.Cursor = boxSide != 0 ? Cursors.SizeWE : rotation || !selected ? Cursors.Hand : Cursors.SizeAll;
+        this.Cursor = boxSide != 0 ? Cursors.SizeWE : rotation || !selected ? Cursors.Hand : this.CopiesOnDrag ? this.LayerCopyCursor() : Cursors.SizeAll;
         return true;
+    }
+
+    /// <summary>Whether a drag of the selected layer leaves a copy now: Ctrl held, and the form making copies.</summary>
+    private bool CopiesOnDrag => (ModifierKeys & Keys.Control) != 0 && this.LayerCopyDragged is not null;
+
+    /// <summary>Whether <paramref name="location"/> is still within the system's drag size around <paramref name="start"/>.</summary>
+    private static bool WithinDragSize(Point start, Point location)
+    {
+        var drag = SystemInformation.DragSize;
+        return Math.Abs(location.X - start.X) <= drag.Width / 2 && Math.Abs(location.Y - start.Y) <= drag.Height / 2;
+    }
+
+    /// <summary>
+    /// The cursor of a Ctrl + drag: the four arrows of a move, black outlined white, with the system's copy badge —
+    /// a plus in a white square — at its bottom right; its hot spot at the center, at the monitor's DPI, one per size.
+    /// </summary>
+    private Cursor LayerCopyCursor()
+    {
+        int size = this.LogicalToDeviceUnits(32);
+        if (LayerCopyCursors.TryGetValue(size, out var cursor))
+        {
+            return cursor;
+        }
+
+        using var image = new Bitmap(size, size);
+        using (var g = Graphics.FromImage(image))
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            float c = size / 2f, reach = size * 0.4f, head = size * 0.13f, stroke = Math.Max(1.5f, size / 20f);
+            PointF[][] heads =
+            [
+                [new(c - reach, c), new(c - reach + head, c - head), new(c - reach + head, c + head)],
+                [new(c + reach, c), new(c + reach - head, c - head), new(c + reach - head, c + head)],
+                [new(c, c - reach), new(c - head, c - reach + head), new(c + head, c - reach + head)],
+                [new(c, c + reach), new(c - head, c + reach - head), new(c + head, c + reach - head)],
+            ];
+            using (var halo = new Pen(Color.White, stroke + 2 * Math.Max(1, size / 32f)) { LineJoin = LineJoin.Miter })
+            {
+                g.DrawLine(halo, c - reach + head, c, c + reach - head, c);
+                g.DrawLine(halo, c, c - reach + head, c, c + reach - head);
+                foreach (var triangle in heads)
+                {
+                    g.DrawPolygon(halo, triangle);
+                }
+            }
+
+            using (var line = new Pen(Color.Black, stroke))
+            using (var fill = new SolidBrush(Color.Black))
+            {
+                g.DrawLine(line, c - reach + head, c, c + reach - head, c);
+                g.DrawLine(line, c, c - reach + head, c, c + reach - head);
+                foreach (var triangle in heads)
+                {
+                    g.FillPolygon(fill, triangle);
+                }
+            }
+
+            // The copy badge, clear of the right and the bottom arrows.
+            g.SmoothingMode = SmoothingMode.None;
+            int side = (int)Math.Round(size * 0.34), left = size - side - 1, top = size - side - 1, arm = side / 4;
+            g.FillRectangle(Brushes.White, left, top, side, side);
+            g.DrawRectangle(Pens.Black, left, top, side, side);
+            using var plus = new Pen(Color.Black, Math.Max(1, size / 24));
+            g.DrawLine(plus, left + side / 2f, top + arm, left + side / 2f, top + side - arm);
+            g.DrawLine(plus, left + arm, top + side / 2f, left + side - arm, top + side / 2f);
+        }
+
+        cursor = CreateCursor(image, new Point(size / 2, size / 2)) ?? Cursors.SizeAll;
+        LayerCopyCursors[size] = cursor;
+        return cursor;
     }
 
     /// <summary>
@@ -540,6 +699,7 @@ internal sealed partial class GridPreview
         }
 
         this._pressedLayer = -1;
+        this._copyDrag = null;
         this._rotatingLayer = false;
         this._resizingBox = 0;
         this.Cursor = Cursors.Default;
