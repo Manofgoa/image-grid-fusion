@@ -103,17 +103,19 @@ about what a random pair does at its 90th percentile — most of the 100 are no 
 
 ## Text Similarity (the 💡 similarity tier)
 
-- **The query embedded with its accents**: the raw text typed, trimmed and lowercased — not
+- **The query embedded with its accents**: the text typed, lowercased, its spaces collapsed — not
   `FileSearch.Words`, which folds the accents for the name search.
-- **Per-image debiasing**: an image's score is read against its own scores for a fixed set of **neutral
-  prompts** (`VisionSimilarity.NeutralPrompts`, about 60, French and English — `un chat`, `a house`…):
-  `d = (score − its neutral mean) / its neutral spread`. The prompts are embedded once per text model
-  load; each image's mean and spread are kept in memory while the vision index is unchanged.
-- **A strict cutoff** (Q&A 6): a result is kept when `d` reaches the level's `z` plus a text margin
-  (`TextMargin`) **and** its score stands out of the query's own scores by the level's `z` too, at most
-  `SimilarCount`. The margin is calibrated so that **nonsense queries return nothing at Normal** — often
-  0 to a few results for a real one, which is the point.
-- Its place stays the **last tier**, by score.
+- **Per-image debiasing** against the **vocabulary's concepts** (`VisionTags.ConceptEmbeddings`, the 1 018
+  concepts the tags are chosen from, already embedded and cached): `d = (score − the image's mean over the
+  concepts) / its spread over them` (`VisionSimilarity.SpreadOf`). Each image's spread is kept with its
+  embedding (`FileExplorerPanel.SpreadOf`, a weak table keyed by the embedding array, so a new embedding is
+  computed again); the concepts are loaded and every spread computed off the UI thread with the query's
+  embedding (`PrepareConcepts`), once per session.
+- **A strict cutoff** (Q&A 6): a result is kept when its score stands out of the query's own scores by the
+  level's `z` **and** `d` reaches the level's `z` plus `VisionSimilarity.TextMargin` (**2.5**), at most
+  `SimilarCount`, the highest `d` first. At Normal, the 10 nonsense queries of the calibration find nothing;
+  17 real queries find 28 images in all, for 4 of them (§ Calibration).
+- Its place stays the **last tier**.
 
 ---
 
@@ -121,8 +123,8 @@ about what a random pair does at its 90th percentile — most of the 100 are no 
 
 An app setting of the ⚙ menu, after *Visual analysis*: *Similar images* › **five levels** (Q&A 7) —
 *Very loose*, *Loose*, **Normal** (the default), *Strict*, *Very strict* — **one setting for both
-features**, each level giving the cutoff `z` (`VisionSimilarity.Cutoffs`, proposed 1.5 / 2.0 / **2.5** /
-3.0 / 3.5, calibrated in the run). Stored in `settings.json` (`AppSettings.SimilarImages`, the level's
+features**, each level giving the cutoff `z` (`VisionSimilarity.Cutoffs`: 1.5 / 2.0 / **2.5** / 3.0 / 3.5,
+kept by the calibration). Stored in `settings.json` (`AppSettings.SimilarImages`, the level's
 index, an unknown value giving Normal) — the `Face grouping` pattern. Disabled while the visual analysis
 is off. Changing it searches the list shown again (a Find similar or a 💡 search).
 
@@ -134,14 +136,33 @@ is off. Changing it searches the list shown again (a Find similar or a 💡 sear
   features — from `z` for an image, from `d` for a text: `clamp((v − 1) / 4) × 100`, so 1 σ is 0 % and
   5 σ is 100 % (values set in the run if the measurements ask). Never the raw cosine, which is not
   comparable between an image and a text.
-- `ExplorerRow` carries it (`Closeness`, null for every other row), filled by `SimilarRows` and
-  `WithFavorites` for the similarity tier only — `SearchMatch` carries the standing-out value next to
-  `Similarity`.
+- `ExplorerRow` carries it (`Closeness`, null for every other row; `ClosenessText` writes `87 %`), filled
+  by `SimilarRows` and `WithFavorites` from `SearchMatch.Standing`, next to `Similarity`.
 - Shown three ways (Q&A 8):
-  - a **badge** on the tile — `87 %` on a dark pill in the bottom-left corner, the group counts' style
-    (`PaintGroupPicture`), never over the heart or the bulb;
-  - in the **Details** view, the closeness before the size on the row's first line;
-  - in the **tooltip**, a line after the path: `≈ 87 % close`.
+  - a **label** on the tile — `87 %` on a dark label at its bottom-left corner, in the Thumbnails view,
+    the group counts' style (`ThumbnailGrid.PaintCornerLabel`, now shared with them), clear of the heart
+    and the bulb at the top left;
+  - in the **Details** view, before the size on the row's first line: `87 % · 412 Ko`;
+  - in the **tooltip**, a line after the path: `≈ 87 % close` (`ExplorerRow.Tip`).
+
+---
+
+## Calibration
+
+The throwaway harness against the worktree's build (`FileSearch.SearchSimilar`, `VisionSimilarity`), read-only
+on the user's 2 308 embeddings and their 1 018 concepts:
+
+| Level | Find similar: results p10 / median / p90 | Sources with none (of 300) | Text, 17 real queries: results (queries with some) | Text, 10 nonsense queries |
+|---|---|---|---|---|
+| Very loose, 1.5 | 100 / 100 / 100 (the cap) | 0 | 174 (13) | 10 (4) |
+| Loose, 2.0 | 23 / 47 / 90 | 0 | 80 (10) | 1 (1) |
+| **Normal, 2.5** | 1 / **9** / 39 | 17 | 28 (4) | **0** |
+| Strict, 3.0 | 0 / 1 / 13 | 116 | 9 (3) | 0 |
+| Very strict, 3.5 | 0 / 0 / 5 | 186 | 3 (2) | 0 |
+
+The text margin was swept from 1.0 to 3.0: 1.0 (the first guess) left nonsense results at Normal for 7
+queries of 10, 2.0 for 1, 2.5 for none. The real text matches stay weak even when kept (`chien` → a cat
+photo first): the text model is the limit — the fp16 export is the follow-up (Q&A 9).
 
 ---
 
@@ -152,12 +173,12 @@ embeddings and by hand.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| A result is kept only when its score stands out of the query's distribution by the level's `z` | Throwaway harness (scratchpad) | Create |
-| Find similar leaves the source image out | Throwaway harness (scratchpad) | Create |
-| The text query reaches the text model with its accents | Throwaway harness (scratchpad) | Create |
+| A result is kept only when its score stands out of the query's distribution by the level's `z` | Throwaway harness (scratchpad) | Created — passes, the farthest first |
+| Find similar leaves the source image out | Throwaway harness (scratchpad) | Created — passes |
+| The text query reaches the text model with its accents | By hand, in the app (the query is built in the panel) | — |
 | The closeness reaches the row and is shown | By hand, in the app | — |
-| The text cutoff returns nothing for nonsense queries at Normal, a few results for real ones | Throwaway harness (scratchpad), on real embeddings | Create |
-| The closeness maps 1 σ to 0 % and 5 σ to 100 %, the same for an image and a text | Throwaway harness (scratchpad) | Create |
+| The text cutoff returns nothing for nonsense queries at Normal, a few results for real ones | Throwaway harness (scratchpad), on real embeddings | Created — 0 of 10 nonsense, 4 of 17 real (§ Calibration) |
+| The closeness maps 1 σ to 0 % and 5 σ to 100 %, the same for an image and a text | Throwaway harness (scratchpad) | Created — passes |
 | The ⚙ level is saved, read back at start-up, and the shown list is searched again | By hand, in the app | — |
 | *Nothing close enough* shows when no result stands out | By hand, in the app | — |
 
@@ -220,6 +241,33 @@ Go given: **code, unit tests and documentation**, in a **worktree** —
 `.claude/worktrees/similar-images-accuracy`, branch `feature/similar-images-accuracy`, created from `main`
 at `e313f25`. The Branch Gate is skipped: the worktree's branch is dedicated.
 
+### Iteration 4 — 2026-10-29 — 🧭 Implementation choices
+
+No project rule broken. The choices the frozen design left open, or that diverge from it:
+
+- **The vocabulary's concepts as the neutral texts**, not a list of about 60 prompts: the 1 018 concepts the
+  tags are chosen from are already embedded and cached (`vision-concepts.bin`), so the debiasing costs no
+  text model call, and the set is broader. `VisionTags.ConceptEmbeddings` gives them.
+- **The text margin is 2.5** — the sweep's value where nonsense finds nothing at Normal (§ Calibration).
+  The real text matches become rare: what the user chose with *strict cutoff*.
+- **Each image's spread is kept with its embedding** (a weak table keyed by the array), rather than "while
+  the vision index is unchanged": a re-embedded image is recomputed by itself, nothing to invalidate. The
+  concepts are loaded once per session: a vocabulary edited meanwhile reaches the search at the next launch.
+- **Text results ordered by how far they stand out of their concepts** (`d`), image results by `z` — the
+  same order as their score.
+- **The cutoffs kept** (1.5 / 2.0 / 2.5 / 3.0 / 3.5): Very loose reaches the 100-result cap — the old
+  behaviour, with the closeness shown.
+- **The closeness label** is drawn in the Thumbnails view only (the Details row writes it before the size);
+  the group count's label drawing became `ThumbnailGrid.PaintCornerLabel`, shared.
+- **The tooltip's closeness line** is a plain line of `ExplorerRow.Tip`, not an icon line of the indexed
+  content: it belongs to the search, not to the index.
+- **The accents check is by hand**: the query is built in the panel from the search box; the harness
+  cannot reach it.
+- **Test data for the delivery launch**: the worktree's exe folder gets a copy of the user's engines,
+  index, `people.json`, favorites and settings, the version-2 faces of the previous workfile's harness as
+  its `files.faces`; the user's own data next to `main`'s exe is untouched. The `bin` folder is ignored
+  by git.
+
 ---
 
 ## Implementation Log
@@ -229,9 +277,11 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project; a throwaway harness stands in |
-| README | | | |
+| Code | 3, 4 | 2026-10-29 | Relative cutoff, texts against the concepts, source left out, accents kept, closeness shown, ⚙ Similar images; calibrated |
+| Unit tests | 3, 4 | 2026-10-29 | No test project; the throwaway harness ran 3 checks and the calibration on 2 308 real embeddings (§ Test Impact) |
+| RULES.md | 3 | 2026-10-29 | § Image Content Analysis: standing out, closeness, strictness levels |
+| Glossary | 3 | 2026-10-29 | Closeness, Similar images setting; similarity tier and similar images updated (EN + FR) |
+| README | 3 | 2026-10-29 | What the images show: standing out, closeness, Similar images (EN + FR) |
 
 ---
 
