@@ -34,6 +34,13 @@ internal sealed partial class MainForm
     private readonly Button _layerRaise = IconButton();
     private readonly Button _layerToFront = IconButton();
 
+    // A layer's context menu, on the working surface and in the list (workfiles/20261029-duplicate-layer.md § The Context Menu).
+    private readonly ContextMenuStrip _layerMenu = new();
+    private readonly ToolStripMenuItem _layerMenuDuplicate = new("Duplicate");
+    private readonly ToolStripMenuItem _layerMenuDelete = new("Delete");
+    private readonly ToolStripSeparator _layerMenuSeparator = new();
+    private readonly ToolStripMenuItem _layerMenuFindSimilar = new("Find similar images");
+
     // The list's thumbnails, one per layer content, made once and dropped with it.
     private readonly Dictionary<SourceImage, Bitmap> _layerThumbnails = [];
     private readonly TextBox _layerText = new()
@@ -183,6 +190,26 @@ internal sealed partial class MainForm
             }
 
             this._layerFontFaces.Clear();
+            this._layerMenu.Dispose();
+        };
+
+        this._layerMenu.Items.AddRange([this._layerMenuDuplicate, this._layerMenuDelete, this._layerMenuSeparator, this._layerMenuFindSimilar]);
+        this._layerMenuDuplicate.Click += async (_, _) => await this.DuplicateSelectedLayerAsync();
+        this._layerMenuDelete.Click += (_, _) => this._preview.RemoveSelectedLayer();
+        this._layerMenuFindSimilar.Click += (_, _) =>
+        {
+            if (this._layerMenu.Tag is Layer layer && this._preview.Layers.IndexOf(layer.Image) >= 0)
+            {
+                this.FindSimilar(layer.Image);
+            }
+        };
+        this._layerList.MenuRequested += (_, request) =>
+        {
+            this._preview.SelectLayer(request.Layer);
+            if (this._preview.ListedLayer is { } layer)
+            {
+                this.ShowLayerMenu(layer, this._layerList, request.Location);
+            }
         };
 
         this._toolTip.SetToolTip(this._layerAddImage, "Add image… — lays images, GIFs or videos over the grid, chosen in the file picker; files dropped onto the Layers tab do the same");
@@ -700,6 +727,21 @@ internal sealed partial class MainForm
         {
             copy.Image.Dispose();
         }
+    }
+
+    /// <summary>
+    /// A layer's context menu at <paramref name="location"/> of <paramref name="control"/>: Duplicate and Delete as
+    /// the list's buttons stand, then Find similar images on a layer that is not a text, while the visual analysis
+    /// can run.
+    /// </summary>
+    private void ShowLayerMenu(Layer layer, Control control, Point location)
+    {
+        this.UpdateLayerOptions();
+        this._layerMenuDuplicate.Enabled = this._layerDuplicate.Enabled;
+        this._layerMenuDelete.Enabled = this._layerDelete.Enabled;
+        this._layerMenuSeparator.Visible = this._layerMenuFindSimilar.Visible = !layer.IsText && this._explorer.CanFindSimilar;
+        this._layerMenu.Tag = layer;
+        this._layerMenu.Show(control, location);
     }
 
     /// <summary>A Ctrl + drag started: the copy made and given back to the preview, which lays it under the layer moved — or ends its wait without one.</summary>

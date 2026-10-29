@@ -37,6 +37,12 @@ internal sealed class LayerList : ListBox
     public event EventHandler<int>? VisibilityClicked;
 
     /// <summary>
+    /// Raised when a row is right-clicked, once released, with its layer's index and where, for its menu: the
+    /// press picked it already (workfiles/20261029-duplicate-layer.md § The Context Menu).
+    /// </summary>
+    public event EventHandler<(int Layer, Point Location)>? MenuRequested;
+
+    /// <summary>
     /// Shows <paramref name="rows"/>, given in the layers' order — the bottom one first — and drawn the top one
     /// first, the row of the layer <paramref name="selected"/> selected, none for -1.
     /// </summary>
@@ -79,20 +85,30 @@ internal sealed class LayerList : ListBox
     protected override void OnMouseDown(MouseEventArgs e)
     {
         int row = this.IndexFromPoint(e.Location);
-        if (e.Button != MouseButtons.Left || row < 0 || row >= this.Items.Count)
+        if (e.Button is not (MouseButtons.Left or MouseButtons.Right) || row < 0 || row >= this.Items.Count)
         {
             base.OnMouseDown(e);
             return;
         }
 
         int layer = this.Items.Count - 1 - row;
-        if (this.CheckBounds(this.GetItemRectangle(row)).Contains(e.Location))
+        if (e.Button == MouseButtons.Left && this.CheckBounds(this.GetItemRectangle(row)).Contains(e.Location))
         {
             this.VisibilityClicked?.Invoke(this, layer);
             return;
         }
 
         this.LayerPicked?.Invoke(this, layer);
+    }
+
+    protected override void OnMouseUp(MouseEventArgs e)
+    {
+        base.OnMouseUp(e);
+        int row = this.IndexFromPoint(e.Location);
+        if (e.Button == MouseButtons.Right && row >= 0 && row < this.Items.Count)
+        {
+            this.MenuRequested?.Invoke(this, (this.Items.Count - 1 - row, e.Location));
+        }
     }
 
     protected override void OnDrawItem(DrawItemEventArgs e)
