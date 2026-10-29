@@ -145,15 +145,15 @@ embeddings and by hand.
 
 - [ ] 1. Find similar's cutoff: **relative** (how far a result stands out of the source's own scores, z)
   — recommended by the measurements — or an **absolute** cosine floor?
-- [ ] 2. The text similarity tier: on this collection a nonsense query stands out as much as a real one.
-  Keep it with a strict cutoff (and per-image debiasing), **drop** it from text searches (the tags and
-  captions stay), or keep it as today but shown with its closeness?
-- [ ] 3. The strictness levels: **five** as *Face grouping* (Very loose … Very strict), or three; one
-  setting for both features, or one each?
-- [ ] 4. The closeness shown: a **percentage badge** on the tile, a line in the **Details** view, a line
-  in the **tooltip** — which ones?
-- [ ] 5. Try the text model's **fp16 export** (a download of about 560 MB, the same SigLIP 2 base) in the
-  harness, to see whether the int8 quantization is what blurs the text matches — before the go, or later?
+- [x] ~~2. The text similarity tier: strict cutoff, dropped, or kept with its closeness shown?~~ → A
+  **strict cutoff**, with per-image debiasing (§ Text Similarity)
+- [x] ~~3. The strictness levels: five or three; one setting or one each?~~ → **Five**, one setting for
+  both features
+- [x] ~~4. The closeness shown: badge, Details line, tooltip?~~ → **All three**
+- [x] ~~5. Try the text model's fp16 export before the go, or later?~~ → **Later**: out of this workfile,
+  a follow-up once it is delivered
+- [ ] 6. The number shown: the **raw cosine** (0.83 for an image, 0.12 for a text — not comparable), or
+  **how far the result stands out**, mapped to 0–100 % the same way for both?
 
 ---
 
@@ -205,10 +205,11 @@ Questions asked by the agent during design, with user responses.
 | 3 | Is the subject straightforward or tricky / long? | Tricky / long | 2026-10-29 |
 | 4 | *(the user's)* How is the global search ranking computed? The file name should weigh more than the content | Answered: relevance tiers, the path matches first (every word in the name, then fewer), presets, people, the content by reliability, the similarity tier last; the sort order inside a tier — the name already outranks the content | 2026-10-29 |
 | 5 | Find similar's cutoff: relative (z) or absolute? | | |
-| 6 | The text similarity tier: strict cutoff, dropped, or kept with its closeness shown? | | |
-| 7 | The strictness levels: five or three; one setting or one each? | | |
-| 8 | The closeness shown: badge, Details line, tooltip? | | |
-| 9 | Try the text model's fp16 export before the go, or later? | | |
+| 6 | The text similarity tier: strict cutoff, dropped, or kept with its closeness shown? | Strict cutoff | 2026-10-29 |
+| 7 | The strictness levels: five or three; one setting or one each? | Five levels, one setting for both | 2026-10-29 |
+| 8 | The closeness shown: badge, Details line, tooltip? | All three | 2026-10-29 |
+| 9 | Try the text model's fp16 export before the go, or later? | Later | 2026-10-29 |
+| 10 | The closeness shown: the raw cosine, or how far the result stands out, on a 0–100 scale? | | |
 
 ---
 
