@@ -9,8 +9,8 @@
 
 ## Overview
 
-Every color option — the Background's, the Borders', and the four colors of a text layer (text, outline,
-box, shadow) — takes its color through a split button (`UI/ColorSplitButton`): the eyedropper part, then
+Every color option — the Background's, the Borders', the Cutout's mask color, and the four colors of a text
+layer (text, outline, box, shadow) — takes its color through a split button (`UI/ColorSplitButton`): the eyedropper part, then
 the **Color…** part (origin: `workfiles/20261021-color-eyedropper.md`, RULES.md § Color Options).
 Complaints and wishes:
 
@@ -73,7 +73,8 @@ opening a menu of variants is Windows' own split button … never a second butto
 Agreed with the user (parent session, scoping, Q&A 5–6):
 
 - The **Sample** slider and its `Sample: N px` label are **removed** from every options line: the
-  Background's color line, the Borders' line, and the four color lines of the Layers text options.
+  Background's color line, the Borders' line, the Cutout's treatments line, and the four color lines of the
+  Layers text options.
 - The eyedropper's ▾ opens a menu of **five radio items**, `1 px` to `5 px`
   (`GridPreview.MinEyedropperSample` … `MaxEyedropperSample`), the size in use checked, under a disabled
   caption `Eyedropper sample`. No icons: they are values (RULES.md § Icons).
@@ -100,6 +101,7 @@ Color…**.
 |---|---|---|
 | Background | `BackgroundEffect.Opacity`, its icon, slider and label **before** the split button | Moved right after Color… — same value, same range (0–100 %) |
 | Borders | `GridBorders.Opacity` (10–100 %), after Thickness, the **brackets only** — disabled for the line styles | Moved right after Color…, and now **every style**: the brackets, the outer frame and the inner lines — a translucent line letting the image under it, or the canvas in a gap, show through (Q&A 9) |
+| Cutout | The Color treatment's amount (`CutoutEffect`, `colorOpacity`), its slider after the Sample on the treatments line | Right after Color… once the Sample leaves — the amount **is** the mask color's opacity; it takes the opacity's shape |
 | Text layer's box | `LayerTextStyle.BackgroundOpacity` (0–100 %), at the end of the box's line | Right after Color… (already there once the Sample leaves) |
 | Text layer's text | — | **New**: the letters' opacity |
 | Text layer's outline | — | **New**: the outline's opacity |
@@ -130,6 +132,7 @@ Color…**.
 | The eyedropper as a `SplitButton`, its menu, the `Sample` value, Color… attached | `UI/ColorSplitButton.cs` |
 | The menu's direction | `UI/SplitButton.cs` (`ShowMenu`, today `AboveRight`) |
 | `SampleSlider()`, `SampleText`, Background / Borders samples and labels, their tooltips, the enable lists, the arming | `UI/MainForm.cs` (fields ~264–407, the color lines ~534 / ~619, the wiring ~947–1111, `ArmEyedropper`) |
+| The Cutout's split button, Sample and label (`_cutoutColor`, `_cutoutSample`, `cutoutBackgroundLine`, `ArmCutoutEyedropper`) | `UI/MainForm.cs` |
 | The Background's and the Borders' opacity moved after Color… | `UI/MainForm.cs` (`backgroundColorLine`, the Borders' `AddRange`, the Borders' enable rule ~5330) |
 | Four text-layer samples and labels, their wiring, the enable list, `ArmLayerEyedropper`; the three new opacities | `UI/MainForm.Layers.cs` (`BuildLayerOptions`: `fontLine`, `outlineLine`, `backgroundLine`, `shadowLine`) |
 | The three new text opacities, their JSON keys, their drawing | `Imaging/TextRaster.cs` (`LayerTextStyle`, `PaintText`, `Shadow`), `UI/TextStyleStrip` tooltip |
@@ -224,6 +227,14 @@ Answers to Q&A 9–10 — no open question left:
   the line styles (`MainForm` ~5330 enable rule dropped, `GridBorders` draws the lines at it, its tooltip
   reworded).
 - **A translucent text's outline is cut out under its letters** (`TextRaster.PaintText`).
+
+### Iteration 5 — 2026-10-29
+
+The Cutout effect, merged into `main` meanwhile (`workfiles/20261029-cutout.md`), adds a seventh color
+option — the mask color of its Color treatment, a `ColorSplitButton` with its Sample slider
+(`ArmCutoutEyedropper`). It joins the scope as every color option does: its Sample goes into the ▾ menu,
+and its Color treatment's amount — the mask color's opacity — stands right after Color…, in the opacity's
+shape.
 
 ---
 
