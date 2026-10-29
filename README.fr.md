@@ -49,6 +49,7 @@ Chaque mot employé ici a un seul sens, donné dans le [glossaire](GLOSSARY.fr.m
 - **Annuler** avec `Ctrl+Z`, autant de fois que nécessaire, et **rétablir** avec `Ctrl+Y` ou `Ctrl+Shift+Z` : images ajoutées, remplacées, supprimées ou échangées, effets, disposition, séparateurs, format, effets globaux et décisions sur les personnes (voir Annuler et rétablir)
 - Des effets par cellule, depuis les onglets d'effets en haut de la fenêtre (voir Effets), et le format et les effets globaux pour toute la grille, depuis les onglets Global en bas, au-dessus de la barre du bas (voir Global)
   - Des **Borders** (bordures) sur la grille, désactivées au démarrage : des crochets rose vif (hotpink) aux quatre coins, ou un trait plein, tireté, pointillé ou double dans un espace entre les cellules, autour de la grille comme cadre extérieur, ou les deux ; les coins de la grille arrondis comme Twitter / X affiche les images ; leur couleur se règle depuis leurs options, la dernière choisie mémorisée (voir Borders)
+  - Des **calques** (Layers) posés sur toute la grille : images, GIF, vidéos et textes — leurs emojis en couleur — chacun déplacé, agrandi, tourné et empilé, tous les effets de cellule s'y appliquant (voir Layers)
   - Des **couleurs prélevées** à la **pipette** sur les cellules de l'aperçu — une loupe montrant les pixels et la valeur hexadécimale — ou choisies dans la boîte de dialogue de couleur standard, qui mémorise ses couleurs personnalisées (voir Choisir une couleur)
 - Copier dans le presse-papiers (`Ctrl+C`) ou enregistrer (`Ctrl+S`) : un PNG, ou une vidéo MP4 quand la grille contient un contenu qui se joue ou qu'une bande son est activée ; la flèche ▾ à côté de chaque bouton force un GIF en boucle ou une vidéo MP4 ; celle de Copy propose aussi un JPEG léger pour partager dans les applications de messagerie qui limitent la taille des images (WhatsApp : 16 Mo), et les deux un PNG plafonné en 720p, 1080p, 2K, 4K ou 8K
 - Vit dans la zone de notification : fermer la fenêtre ne fait que la masquer, l'icône de la zone de notification la ramène, et l'application peut démarrer avec Windows (voir Zone de notification et démarrage)
@@ -209,7 +210,7 @@ Un panneau repliable à droite de l'aperçu, ouvert au démarrage : une zone de 
 
 ## Global
 
-- Ce qui concerne toute la grille — pas une cellule — se trouve en bas de la fenêtre, le miroir des effets de cellule en haut : les onglets, puis la rangée d'options en dessous, juste au-dessus de la barre du bas. La rangée d'onglets contient une étiquette **Global**, l'onglet **Format**, un onglet par effet global — **Soundtrack**, **Fade**, **Borders**, **Cascade** — et, tout à droite, un bouton **Reset** aussi haut que les onglets.
+- Ce qui concerne toute la grille — pas une cellule — se trouve en bas de la fenêtre, le miroir des effets de cellule en haut : les onglets, puis la rangée d'options en dessous, juste au-dessus de la barre du bas. La rangée d'onglets contient une étiquette **Global**, l'onglet **Format**, un onglet par effet global — **Soundtrack**, **Fade**, **Borders**, **Cascade**, **Layers** — et, tout à droite, un bouton **Reset** aussi haut que les onglets.
 - L'onglet de chaque effet global contient une case à cocher, cochée tant que son effet est activé. Cliquer dessus active ou désactive l'effet, en gardant ses réglages, et sélectionne l'onglet. Cliquer sur un onglet ailleurs le sélectionne : ses options s'affichent dans la rangée en dessous, jointe à lui. Aucun onglet n'est sélectionné au démarrage ; la rangée d'options est toujours là, aussi haute que les miniatures du Format, vide tant qu'aucun onglet n'est sélectionné.
 - Le **Format** est un réglage, toujours en vigueur : son onglet n'a pas de case à cocher.
 - Un effet désactivé affiche ses réglages conservés dans ses options, et en modifier un l'active.
@@ -272,6 +273,23 @@ Un panneau repliable à droite de l'aperçu, ouvert au démarrage : une zone de 
 - La **durée de la vidéo** est toute la cascade — chaque tour et sa pause — sauf si un cycle Animations, ou un contenu qui joue à côté, dure plus longtemps ; la bande son boucle ou est coupée dessus, et le Fade fait le fondu du début et de la fin de la cascade. La **ligne de progression** ne s'affiche que sur le contenu qui joue son tour.
 - Tant qu'**aucune vidéo ni aucun GIF animé ne joue**, la case à cocher et l'option de la Cascade sont désactivées, l'info-bulle de la case en donnant la raison ; ses réglages sont conservés.
 - L'aperçu, la vidéo MP4 et le GIF la jouent pareil ; un PNG montre chaque contenu sur son point de départ, comme sans elle.
+
+### Layers
+
+- Des images, GIF, vidéos et textes posés **par-dessus toute la grille**, chacun un **calque** libre des cellules : il peut en chevaucher plusieurs, et reste où il est quand une image est remplacée, échangée ou retirée, ou que la disposition, un séparateur ou le format change. Le dernier calque ajouté est au-dessus.
+- **Désactivé au démarrage**, sans calque, et ramené à cet état par **Clear all** et les Reset — tous les calques retirés. Sa case à cocher les montre ou les cache tous, conservés ; en ajouter un l'active. Désactivé tant que la grille ne contient aucune image.
+- **Rien ne change pour les cellules** tant que l'onglet **Layers** n'est pas sélectionné : alors seulement les calques prennent la souris, **Ctrl+V** et un dépôt sur la grille. Avec tout autre onglet, un clic sur un calque atteint la cellule en dessous.
+- Ajouter, l'onglet sélectionné :
+  - **Add image…** choisit des images, GIF ou vidéos — jusqu'à 10 à la fois ; **Paste**, ou **Ctrl+V**, pose l'image, les fichiers ou le texte du presse-papiers ; un **dépôt sur la grille** pose ses fichiers ou son texte là où il tombe. Un texte collé ou déposé devient un calque texte ;
+  - **Add text** pose un texte vide au centre de la grille et donne le focus au champ à côté : on l'y tape, sur plusieurs lignes si besoin — **Win+.** ouvre le panneau d'emojis de Windows.
+- Sur la grille, un calque se **sélectionne d'abord**, entouré de vert : un clic sur un autre ne fait que le sélectionner. Ensuite :
+  - le **glisser** le déplace, son centre gardé dans la grille ;
+  - la **molette** par-dessus l'agrandit ou le réduit de 5 % par cran, **Shift + molette** le tourne de 5° ; ailleurs la molette zoome la cellule en dessous, comme toujours ;
+  - **Suppr** le retire, **Échap** ou un clic hors de tout calque le désélectionne ;
+  - **To back**, **Lower**, **Raise** et **To front** le déplacent dans l'ordre d'empilement.
+- Sélectionner un calque désélectionne la cellule, et inversement. Tant qu'un calque est sélectionné, les **onglets d'effets agissent sur lui** comme sur une cellule — Background, Crop, Zoom, Animations, Rotate, Flip, Frames, Colors, Blur, Volume — son cadre prenant la forme de son contenu tel qu'il est montré. Le **Background d'un calque est désactivé** par défaut, pour qu'un PNG détouré ou un texte se pose sur la grille sans rectangle derrière. Un calque vidéo joue sur l'horloge de la grille — la découpe et le point de départ de son Frames s'appliquant — et **s'entend**, à son Volume ; sa boucle compte dans la durée de la vidéo. Il ne prend aucun tour dans la Cascade.
+- Les réglages d'un **calque texte**, à côté de son champ : la **police** et **Bold**, sa **couleur**, un **Outline** (contour) — couleur et largeur — et un **Background** (fond) — couleur et opacité ; chaque couleur avec sa pipette (voir Choisir une couleur). Segoe UI gras, blanc, contour noir au départ. Sa taille est la hauteur d'une ligne : taper ne rapetisse jamais les lettres.
+- Les calques apparaissent dans l'aperçu et dans chaque export : PNG, JPEG pour le partage, GIF et vidéo MP4. Ils font partie de l'historique d'annulation : un déplacement, une rafale de molette ou un texte tapé fait une étape.
 
 ## Choisir une couleur
 

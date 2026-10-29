@@ -49,6 +49,7 @@ Each word used here has one meaning, given in the [Glossary](GLOSSARY.md).
 - **Undo** with `Ctrl+Z`, as many times as needed, and **redo** with `Ctrl+Y` or `Ctrl+Shift+Z`: images added, replaced, deleted or swapped, effects, layout, separators, format, global effects and the decisions on the people (see Undo & redo)
 - Effects per cell, from the effect tabs at the top of the window (see Effects), and the format and global effects for the whole grid, from the Global tabs at the bottom, above the bottom bar (see Global)
   - **Borders** on the grid, off at start-up: hotpink brackets at its four corners, or a solid, dashed, dotted or double line in a gap between the cells, around the grid as an outer frame, or both; the grid's corners rounded the way Twitter / X shows images; their color is set from their options, the last one chosen remembered (see Borders)
+  - **Layers** laid over the whole grid: images, GIFs, videos and texts — their emojis in color — each moved, resized, turned and stacked, every cell effect applying to them (see Layers)
   - **Colors picked** with an **eyedropper** on the preview's cells — a loupe showing the pixels and the hex value — or in the standard color dialog, which remembers its custom colors (see Picking a color)
 - Copy to clipboard (`Ctrl+C`) or save (`Ctrl+S`): a PNG, or an MP4 video when the grid holds content that plays or a soundtrack is on; the ▾ arrow next to each button forces a looping GIF or an MP4 video; Copy's also offers a light JPEG for sharing in chat apps that cap image size (WhatsApp: 16 MB), and both a PNG capped at 720p, 1080p, 2K, 4K or 8K
 - Lives in the notification area: closing the window only hides it, the tray icon brings it back, and it can start with Windows (see Tray & startup)
@@ -209,7 +210,7 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 
 ## Global
 
-- What concerns the whole grid — not a cell — sits at the bottom of the window, the mirror of the cell effects at the top: the tabs, then the options row below them, just above the bottom bar. The tabs row holds a **Global** label, the **Format** tab, one tab per global effect — **Soundtrack**, **Fade**, **Borders**, **Cascade** — and, at the far right, a **Reset** button as tall as the tabs.
+- What concerns the whole grid — not a cell — sits at the bottom of the window, the mirror of the cell effects at the top: the tabs, then the options row below them, just above the bottom bar. The tabs row holds a **Global** label, the **Format** tab, one tab per global effect — **Soundtrack**, **Fade**, **Borders**, **Cascade**, **Layers** — and, at the far right, a **Reset** button as tall as the tabs.
 - Each global effect's tab holds a checkbox, checked while its effect is on. Clicking it turns the effect on or off, keeping its settings, and selects the tab. Clicking a tab elsewhere selects it: its options show in the row below, joined to it. No tab is selected at start-up; the options row is always there, as tall as the Format's thumbnails, empty until a tab is selected.
 - The **Format** is a setting, always in force: its tab has no checkbox.
 - An effect that is off shows its kept settings in its options, and changing any of them turns it on.
@@ -272,6 +273,23 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 - The **video length** is the whole cascade — every turn and its pause — unless an Animations cycle, or a content playing alongside, lasts longer; the soundtrack loops or is cut on it, and the Fade fades the cascade's start and end. The **progress line** shows on the content playing its turn only.
 - While **no video nor animated GIF plays**, the Cascade's checkbox and option are disabled, the checkbox's tooltip saying why; its settings are kept.
 - The preview, the MP4 video and the GIF play it alike; a PNG shows every content on its starting point, as without it.
+
+### Layers
+
+- Images, GIFs, videos and texts laid **over the whole grid**, each a **layer** free of the cells: it may straddle several of them, and stays where it is when an image is replaced, swapped or removed, or the layout, a separator or the format changes. The last layer added is on top.
+- **Off at start-up**, with no layer, and back to that state with **Clear all** and the Resets — every layer removed. Its checkbox shows or hides them all, kept; adding one turns it on. Disabled while the grid holds no image.
+- **Nothing changes for the cells** until the **Layers** tab is selected: only then do the layers take the mouse, **Ctrl+V** and a drop on the grid. With any other tab, a click on a layer reaches the cell under it.
+- Adding, while the tab is selected:
+  - **Add image…** picks images, GIFs or videos — up to 10 at once; **Paste**, or **Ctrl+V**, lays the clipboard's image, files or text; a **drop on the grid** lays its files or text where it falls. A pasted or dropped text becomes a text layer;
+  - **Add text** lays an empty text at the grid's center and focuses the field beside it: type it there, several lines allowed — **Win+.** opens Windows' emoji panel.
+- On the grid, a layer is **selected first**, outlined in green: a click on another one only selects it. Then:
+  - **drag** it to move it, its center kept inside the grid;
+  - the **wheel** over it grows or shrinks it by 5 % a notch, **Shift + wheel** turns it by 5°; elsewhere the wheel zooms the cell under it, as ever;
+  - **Delete** removes it, **Escape** or a click outside every layer deselects it;
+  - **To back**, **Lower**, **Raise** and **To front** move it in the stacking order.
+- Selecting a layer deselects the cell, and the other way round. While a layer is selected, the **effect tabs act on it** as on a cell — Background, Crop, Zoom, Animations, Rotate, Flip, Frames, Colors, Blur, Volume — its box taking the shape of its content as shown. A layer's **Background is off** by default, so a cut-out PNG or a text sits on the grid with no box behind it. A video layer plays on the grid's clock — its Frames trim and starting point applying — and is **heard**, at its Volume; its loop counts in the video length. It takes no turn in the Cascade.
+- A **text layer**'s settings, beside its field: the **font** and **Bold**, its **color**, an **Outline** — color and width — and a **Background** box — color and opacity; each color with its eyedropper (see Picking a color). Segoe UI bold, white, outlined black at first. Its size is a line's height: typing never shrinks the letters.
+- Layers show in the preview and every export: PNG, JPEG for sharing, GIF and MP4 video. They are part of the undo history: a move, a wheel burst or a text typed is one step.
 
 ## Picking a color
 
