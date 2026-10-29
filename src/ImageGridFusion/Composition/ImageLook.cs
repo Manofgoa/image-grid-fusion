@@ -7,6 +7,7 @@ public enum ImageEffect
 {
     Background,
     Crop,
+    Cutout,
     Zoom,
     Animations,
     Rotate,
@@ -76,6 +77,7 @@ public sealed record ImageLook
     private ColorsEffect? KeptColors { get; init; }
     private BlurEffect? KeptBlur { get; init; }
     private CropEffect? KeptCrop { get; init; }
+    private CutoutEffect? KeptCutout { get; init; }
     private VolumeEffect? KeptVolume { get; init; }
     private BackgroundEffect? KeptBackground { get; init; }
     private MotionEffect? KeptMotion { get; init; }
@@ -125,6 +127,12 @@ public sealed record ImageLook
     /// then treats as the whole image. Turning or flipping the image turns or flips it along.
     /// </summary>
     public CropEffect? Crop { get; private init; }
+
+    /// <summary>
+    /// The Cutout effect, <c>null</c> while inactive: a mask keeps a part of the image, the rest made
+    /// transparent. Its points are in fractions of the image as loaded, so a turn, a flip or a crop leaves them.
+    /// </summary>
+    public CutoutEffect? Cutout { get; private init; }
 
     /// <summary>The Animations effect, <c>null</c> while inactive: the image then stands still in its cell.</summary>
     public MotionEffect? Motion { get; private init; }
@@ -176,6 +184,7 @@ public sealed record ImageLook
     {
         ImageEffect.Background => Background is not null,
         ImageEffect.Crop => Crop is not null,
+        ImageEffect.Cutout => this.Cutout is not null,
         ImageEffect.Frames => Frames is not null,
         ImageEffect.Colors => this.Colors is not null,
         ImageEffect.Blur => Blur is not null,
@@ -213,6 +222,8 @@ public sealed record ImageLook
                 return this with { Colors = colors, KeptColors = null };
             case ImageEffect.Crop when KeptCrop is { } crop:
                 return this with { Crop = crop, KeptCrop = null };
+            case ImageEffect.Cutout when this.KeptCutout is { } cutout:
+                return this with { Cutout = cutout, KeptCutout = null };
             case ImageEffect.Blur when KeptBlur is { } blur:
                 return this with { Blur = blur, KeptBlur = null };
             case ImageEffect.Volume when KeptVolume is { } volume:
@@ -245,6 +256,7 @@ public sealed record ImageLook
             ImageEffect.Volume => off with { KeptVolume = Volume },
             ImageEffect.Background => off with { KeptBackground = Background },
             ImageEffect.Crop => off with { KeptCrop = Crop },
+            ImageEffect.Cutout => off with { KeptCutout = this.Cutout },
             ImageEffect.Animations => off with { KeptMotion = this.Motion },
             _ => off with { KeptBlur = Blur },
         };
@@ -267,6 +279,7 @@ public sealed record ImageLook
             ImageEffect.Colors => look with { KeptColors = null },
             ImageEffect.Volume => look with { KeptVolume = null },
             ImageEffect.Crop => look with { KeptCrop = null },
+            ImageEffect.Cutout => look with { KeptCutout = null },
             ImageEffect.Animations => look with { KeptMotion = null },
             _ => look with { KeptBlur = null },
         };
@@ -277,6 +290,7 @@ public sealed record ImageLook
     {
         ImageEffect.Background => this with { Background = BackgroundEffect.Default },
         ImageEffect.Crop => this with { Crop = CropEffect.Default },
+        ImageEffect.Cutout => this with { Cutout = CutoutEffect.Default },
         ImageEffect.Frames => this with { Frames = FramesEffect.Default },
         ImageEffect.Colors => this with { Colors = ColorsEffect.Default },
         ImageEffect.Blur => this with { Blur = BlurEffect.Default },
@@ -285,13 +299,14 @@ public sealed record ImageLook
         _ => Activated(effect),
     };
 
-    /// <summary>Deactivates an effect, bringing back its defaults: no background, the whole image, centered at 100 %, still, upright, unflipped, playing from the beginning, in color, sharp, heard at 100 %.</summary>
+    /// <summary>Deactivates an effect, bringing back its defaults: no background, the whole image uncut, centered at 100 %, still, upright, unflipped, playing from the beginning, in color, sharp, heard at 100 %.</summary>
     private ImageLook Deactivate(ImageEffect effect)
     {
         var look = effect switch
         {
             ImageEffect.Background => this with { Background = null },
             ImageEffect.Crop => this with { Crop = null },
+            ImageEffect.Cutout => this with { Cutout = null },
             ImageEffect.Zoom => this with { Zoom = 1, Focus = Center, ZoomFit = ZoomFit.None, ZoomOnArrival = false },
             ImageEffect.Rotate => WithRotation(0),
             ImageEffect.Flip => (FlipX ? ToggleFlipX() : this) is var flipped && flipped.FlipY ? flipped.ToggleFlipY() : flipped,
@@ -411,6 +426,8 @@ public sealed record ImageLook
 
     public ImageLook WithCrop(CropEffect? crop) => this with { Crop = crop };
 
+    public ImageLook WithCutout(CutoutEffect? cutout) => this with { Cutout = cutout };
+
     public ImageLook WithVolume(VolumeEffect? volume) => this with { Volume = volume };
 
     public ImageLook WithBackground(BackgroundEffect? background) => this with { Background = background };
@@ -441,6 +458,7 @@ public sealed record ImageLook
         {
             ImageEffect.Background => Background != other.Background || KeptBackground != other.KeptBackground,
             ImageEffect.Crop => Toggled(effect) || (!moved && (Crop != other.Crop || KeptCrop != other.KeptCrop)),
+            ImageEffect.Cutout => this.Cutout != other.Cutout || this.KeptCutout != other.KeptCutout,
             ImageEffect.Zoom => Toggled(effect) || Zoom != other.Zoom || this.ZoomFit != other.ZoomFit || (!moved && (Focus != other.Focus || KeptZoom != other.KeptZoom)),
             ImageEffect.Rotate => turned,
             ImageEffect.Flip => flipped,
@@ -456,6 +474,43 @@ public sealed record ImageLook
     private static int Bit(ImageEffect effect) => 1 << (int)effect;
 
     private ImageLook Activated(ImageEffect effect) => this with { Activations = Activations | Bit(effect) };
+
+    /// <summary>
+    /// The point of a bitmap of <paramref name="size"/> — in fractions of it, the image as loaded — that
+    /// <paramref name="shown"/> stands on, in fractions of the image as drawn: cropped, then oriented.
+    /// The Cutout's points are taken so (workfiles/20261029-cutout.md § Click to Pick).
+    /// </summary>
+    public PointF LoadedPoint(PointF shown, Size size)
+    {
+        var (offset, extent) = this.ShownFrame(size);
+        using var inverse = this.Orientation(size);
+        inverse.Invert();
+        PointF[] point = [new(offset.X + shown.X * extent.Width, offset.Y + shown.Y * extent.Height)];
+        inverse.TransformPoints(point);
+        return new PointF(point[0].X / size.Width, point[0].Y / size.Height);
+    }
+
+    /// <summary>The inverse of <see cref="LoadedPoint"/>: where a point of the image as loaded stands on the image as drawn, in fractions of it.</summary>
+    public PointF ShownPoint(PointF loaded, Size size)
+    {
+        var (offset, extent) = this.ShownFrame(size);
+        using var orientation = this.Orientation(size);
+        PointF[] point = [new(loaded.X * size.Width, loaded.Y * size.Height)];
+        orientation.TransformPoints(point);
+        return new PointF((point[0].X - offset.X) / extent.Width, (point[0].Y - offset.Y) / extent.Height);
+    }
+
+    // The kept part, where it lies in the oriented whole image, and its oriented size.
+    private (PointF Offset, SizeF Extent) ShownFrame(Size size)
+    {
+        var kept = this.Cropped(size);
+        using var orientation = this.Orientation(size);
+        PointF[] corners = [new(kept.Left, kept.Top), new(kept.Right, kept.Bottom)];
+        orientation.TransformPoints(corners);
+        var offset = new PointF(Math.Min(corners[0].X, corners[1].X), Math.Min(corners[0].Y, corners[1].Y));
+        var extent = new SizeF(Math.Abs(corners[1].X - corners[0].X), Math.Abs(corners[1].Y - corners[0].Y));
+        return (offset, extent);
+    }
 
     /// <summary>
     /// Maps the pixels of a bitmap of <paramref name="size"/> to the oriented image: rotated, then
