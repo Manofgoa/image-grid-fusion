@@ -42,6 +42,18 @@ public sealed record LayerTextStyle(string Font, bool Bold, Color Color, bool Ou
     /// <summary>The halo's reach, or the drop's offset, in lines.</summary>
     public double ShadowSize { get; init; } = 0.08;
 
+    /// <summary>
+    /// The letters' opacity, their emojis' included, 0 to 1: the outline is cut out under them, so a translucent text
+    /// reads as one color (workfiles/20261029-eyedropper-ergonomics.md § Color Opacity).
+    /// </summary>
+    public double Opacity { get; init; } = 1;
+
+    /// <summary>The outline's opacity, 0 to 1.</summary>
+    public double OutlineOpacity { get; init; } = 1;
+
+    /// <summary>The shadow's opacity, 0 to 1.</summary>
+    public double ShadowOpacity { get; init; } = 1;
+
     /// <summary>The text as drawn: in capitals with the current culture under <see cref="Caps"/>, the emojis untouched.</summary>
     public string Drawn(string text) => this.Caps ? text.ToUpper(System.Globalization.CultureInfo.CurrentCulture) : text;
 
@@ -54,12 +66,15 @@ public sealed record LayerTextStyle(string Font, bool Bold, Color Color, bool Ou
         ["caps"] = this.Caps,
         ["alignment"] = this.Alignment.ToString(),
         ["color"] = Hex(this.Color),
+        ["opacity"] = this.Opacity,
         ["outline"] = this.Outline,
         ["outlineColor"] = Hex(this.OutlineColor),
+        ["outlineOpacity"] = this.OutlineOpacity,
         ["outlineWidth"] = this.OutlineWidth,
         ["shadow"] = this.Shadow,
         ["shadowKind"] = this.ShadowKind.ToString(),
         ["shadowColor"] = Hex(this.ShadowColor),
+        ["shadowOpacity"] = this.ShadowOpacity,
         ["shadowSize"] = this.ShadowSize,
         ["background"] = this.Background,
         ["backgroundColor"] = Hex(this.BackgroundColor),
@@ -86,6 +101,9 @@ public sealed record LayerTextStyle(string Font, bool Bold, Color Color, bool Ou
             ShadowKind = PresetJson.Enum(json, "shadowKind", Default.ShadowKind),
             ShadowColor = HexColor(json, "shadowColor", Default.ShadowColor),
             ShadowSize = Math.Clamp(PresetJson.Double(json, "shadowSize", Default.ShadowSize), MinShadowSize, MaxShadowSize),
+            Opacity = Math.Clamp(PresetJson.Double(json, "opacity", Default.Opacity), 0, 1),
+            OutlineOpacity = Math.Clamp(PresetJson.Double(json, "outlineOpacity", Default.OutlineOpacity), 0, 1),
+            ShadowOpacity = Math.Clamp(PresetJson.Double(json, "shadowOpacity", Default.ShadowOpacity), 0, 1),
         };
 
     private static string Hex(Color color) => $"#{color.R:X2}{color.G:X2}{color.B:X2}";
@@ -354,13 +372,15 @@ internal static unsafe class TextRaster
     }
 
     /// <summary>
-    /// The text drawn from the bottom up: the box, the shadow, the outline, the letters. Without a shadow, in
-    /// one pass; with one, its mask is drawn and blurred apart, then the three put together.
+    /// The text drawn from the bottom up: the box, the shadow, the outline, the letters. Without a shadow nor a
+    /// translucent outline or letters, in one pass; else the shadow's mask is drawn and blurred apart, the text
+    /// made translucent apart (<see cref="Text"/>), then put together.
     /// </summary>
     private static Bitmap Draw(Factories factories, IntPtr layout, bool empty, LayerTextStyle style, Size size, float pad, float width, float height, double line)
     {
+        bool translucent = style.Opacity < 1 || (style.Outline && style.OutlineOpacity < 1);
         byte[] pixels;
-        if (!style.Shadow || empty)
+        if (empty || (!style.Shadow && !translucent))
         {
             pixels = Paint(factories, size, target =>
             {
@@ -373,14 +393,20 @@ internal static unsafe class TextRaster
         }
         else
         {
-            double reach = style.ShadowSize * line;
-            bool halo = style.ShadowKind == ShadowKind.Halo;
-            float offset = halo ? 0 : (float)(reach / Math.Sqrt(2));
-            double spread = (style.Outline ? style.OutlineWidth * line : 0) + (halo ? reach / 2 : 0);
             pixels = style.Background ? Paint(factories, size, target => PaintBox(target, style, pad, width, height, line)) : new byte[size.Width * size.Height * 4];
-            var mask = Paint(factories, size, target => PaintMask(target, layout, pad + offset, spread));
-            Over(pixels, Shadow(mask, size, reach / 2, style.ShadowColor));
-            Over(pixels, Paint(factories, size, target => PaintText(target, layout, style, pad, line)));
+            if (style.Shadow)
+            {
+                double reach = style.ShadowSize * line;
+                bool halo = style.ShadowKind == ShadowKind.Halo;
+                float offset = halo ? 0 : (float)(reach / Math.Sqrt(2));
+                double spread = (style.Outline ? style.OutlineWidth * line : 0) + (halo ? reach / 2 : 0);
+                var mask = Paint(factories, size, target => PaintMask(target, layout, pad + offset, spread));
+                var shadow = Shadow(mask, size, reach / 2, style.ShadowColor);
+                Fade(shadow, style.ShadowOpacity);
+                Over(pixels, shadow);
+            }
+
+            Over(pixels, Text(factories, layout, style, size, pad, line));
         }
 
         var bitmap = new Bitmap(size.Width, size.Height, PixelFormat.Format32bppPArgb);
@@ -460,6 +486,45 @@ internal static unsafe class TextRaster
         }
     }
 
+    /// <summary>
+    /// The outline and the letters, each at its opacity, the outline cut out under the letters: from the two drawn
+    /// together (premultiplied) and the letters alone, the outline is what the letters leave of it, so the
+    /// antialiased edges come out as they do opaque.
+    /// </summary>
+    private static byte[] Text(Factories factories, IntPtr layout, LayerTextStyle style, Size size, float pad, double line)
+    {
+        var text = Paint(factories, size, target => PaintText(target, layout, style, pad, line));
+        double letters = Math.Clamp(style.Opacity, 0, 1);
+        double outline = style.Outline ? Math.Clamp(style.OutlineOpacity, 0, 1) : 1;
+        if (letters >= 1 && outline >= 1)
+        {
+            return text;
+        }
+
+        var alone = Paint(factories, size, target => PaintLetters(target, layout, style, pad));
+        for (int i = 0; i < text.Length; i++)
+        {
+            text[i] = (byte)Math.Clamp((int)Math.Round((text[i] - alone[i]) * outline + alone[i] * letters), 0, 255);
+        }
+
+        return text;
+    }
+
+    /// <summary>A premultiplied layer made <paramref name="opacity"/> times as opaque.</summary>
+    private static void Fade(byte[] pixels, double opacity)
+    {
+        opacity = Math.Clamp(opacity, 0, 1);
+        if (opacity >= 1)
+        {
+            return;
+        }
+
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            pixels[i] = (byte)Math.Round(pixels[i] * opacity);
+        }
+    }
+
     /// <summary>The outline — copies around the text in its color, its emojis as plain shapes of that color — then the letters.</summary>
     private static void PaintText(IntPtr target, IntPtr layout, LayerTextStyle style, float pad, double line)
     {
@@ -476,6 +541,12 @@ internal static unsafe class TextRaster
             }
         }
 
+        PaintLetters(target, layout, style, pad);
+    }
+
+    /// <summary>The letters in their color, the emojis in theirs.</summary>
+    private static void PaintLetters(IntPtr target, IntPtr layout, LayerTextStyle style, float pad)
+    {
         IntPtr brush = Brush(target, style.Color);
         try
         {

@@ -182,13 +182,20 @@ The Cutout effect's state holds no pixel, and its mask is computed outside `Comp
 
 ### Color Options
 
-Every color option of an effect — the Background's, the Borders', a future one — takes its color two
-ways (origin: `workfiles/20261021-color-eyedropper.md`):
+Every color option of an effect — the Background's, the Borders', the Cutout's mask, a text layer's
+four, a future one — takes its color two ways, and has an opacity (origin:
+`workfiles/20261021-color-eyedropper.md`, `workfiles/20261029-eyedropper-ergonomics.md`):
 
-- A **split button** (`UI/ColorSplitButton`): the **eyedropper** part, pressed while armed, then the
-  **Color…** part, its swatch before its text (shared RULES.md § Colour Items), opening the shared
-  standard dialog (`UI/SharedColorDialog`) — fully expanded, its custom colors remembered in the
-  settings file, each eyedropper pick written into the first empty slot, then round them.
+- **Two buttons touching** (`UI/ColorSplitButton`): the **eyedropper**, Windows' own split button
+  (`UI/SplitButton`, § Icons) held pressed while armed, its arrow opening the **sample menu**; then
+  **Color…**, its swatch before its text (shared RULES.md § Colour Items), lying over the eyedropper's
+  right edge so one border shows between them, opening the shared standard dialog
+  (`UI/SharedColorDialog`) — fully expanded, its custom colors remembered in the settings file, each
+  eyedropper pick written into the first empty slot, then round them.
+- **Its opacity right after Color…**, in one shape — the opacity icon, a slider, `Opacity: N %` (the
+  Cutout's mask keeping its `Color: N %`, its effect having an Opacity of its own). An ordinary option:
+  it turns its effect on, is undone, the Resets bring back its default; a pick or the dialog sets the
+  color, never the opacity, and the swatch stays opaque.
 - The eyedropper (`GridPreview.ArmEyedropper`) **holds the grid** and reads a **snapshot** of the cells
   as composed (`Compositor.Draw` at the preview's size, Twitter corners cut), taken when armed: what
   the preview alone draws is never read. A sample square holding a fully transparent pixel reads
@@ -199,10 +206,16 @@ ways (origin: `workfiles/20261021-color-eyedropper.md`):
   pick is one undo step, a cancel none.
 - The option follows the color under the cursor **live**, at most every 33 ms, the cells drawn fast
   meanwhile and in full once it ends; the loupe is repainted on its own area only.
-- The **Sample** slider after the split button (1–5 px, one per option, 1 px at each launch) is an
+- The **sample** (1–5 px, one per option, 1 px at each launch) is chosen in the eyedropper's menu,
+  which arms the eyedropper at once; the size in use shows in the tooltip and the menu's check only. An
   eyedropper setting, **the exception** to "acting on any option activates the effect": it activates
-  nothing, is out of the undo history, and no Reset touches it.
-- A pick or a dialog's OK go through the **same setter**: a new color option gets both routes from it.
+  nothing by itself, is out of the undo history, and no Reset touches it.
+- **The dialog previews live**: its hook reads the color it shows (its Red, Green and Blue fields) and
+  the option follows it, at most every 33 ms; the dialog is a **gesture** (`GridPreview.ColorDialogOpen`)
+  — OK is one undo step, Cancel gives the option back as it was, no step.
+- **One route per option** (`MainForm.ColorRoute`: the color in use, preview, restore, take), given to
+  the eyedropper (`ArmEyedropper`) and to the dialog (`PickColor`) alike: a new color option gets both,
+  live, from it.
 
 ### On-Cell Handles
 

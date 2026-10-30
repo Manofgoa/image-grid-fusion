@@ -1,19 +1,26 @@
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+
 namespace ImageGridFusion.UI;
 
 /// <summary>
 /// The standard color dialog every Color… opens: fully expanded, its custom colors remembered between
-/// sessions, the eyedropper's picks written into them (workfiles/20261021-color-eyedropper.md § Windows Dialog).
-/// One for the whole session.
+/// sessions, the eyedropper's picks written into them (workfiles/20261021-color-eyedropper.md § Windows Dialog);
+/// the color it shows followed live while it is open (workfiles/20261029-eyedropper-ergonomics.md § Live Color
+/// Dialog). One for the whole session.
 /// </summary>
 internal sealed class SharedColorDialog : IDisposable
 {
     /// <summary>How many custom colors the dialog holds.</summary>
     public const int SlotCount = 16;
 
+    /// <summary>The shortest time between two colors shown live, as the eyedropper's.</summary>
+    private const int LiveInterval = 33;
+
     // What the dialog shows in a custom slot never filled: white.
     private static readonly int EmptySlot = ColorTranslator.ToWin32(Color.White);
 
-    private readonly ColorDialog _dialog = new() { AnyColor = true, FullOpen = true };
+    private readonly LiveColorDialog _dialog = new() { AnyColor = true, FullOpen = true };
     private readonly Action<string> _saveFailed;
     private int[] _custom;
     private int _next;
@@ -28,13 +35,59 @@ internal sealed class SharedColorDialog : IDisposable
 
     /// <summary>
     /// Shows the dialog preselected on <paramref name="color"/>: the color chosen, null when cancelled. Its
-    /// custom colors, which may be edited in it, are saved back either way.
+    /// custom colors, which may be edited in it, are saved back either way. While it is open, every other color
+    /// it shows is given to <paramref name="live"/>, at most every 33 ms, the last one always.
     /// </summary>
-    public Color? Show(IWin32Window owner, Color color)
+    public Color? Show(IWin32Window owner, Color color, Action<Color>? live = null)
     {
         this._dialog.Color = color;
         this._dialog.CustomColors = this._custom;
-        var result = this._dialog.ShowDialog(owner);
+        DialogResult result;
+        using (var timer = new System.Windows.Forms.Timer { Interval = LiveInterval })
+        {
+            int shown = color.ToArgb();
+            Color? pending = null;
+            long last = 0;
+            void Apply()
+            {
+                timer.Stop();
+                if (pending is { } next)
+                {
+                    pending = null;
+                    last = Environment.TickCount64;
+                    live!(next);
+                }
+            }
+
+            timer.Tick += (_, _) => Apply();
+            this._dialog.Changed = live is null ? null : next =>
+            {
+                if (next.ToArgb() == shown)
+                {
+                    return;
+                }
+
+                shown = next.ToArgb();
+                pending = next;
+                if (Environment.TickCount64 - last >= LiveInterval)
+                {
+                    Apply();
+                }
+                else
+                {
+                    timer.Start();
+                }
+            };
+            try
+            {
+                result = this._dialog.ShowDialog(owner);
+            }
+            finally
+            {
+                this._dialog.Changed = null;
+            }
+        }
+
         var custom = this._dialog.CustomColors;
         if (!custom.SequenceEqual(this._custom))
         {
@@ -63,6 +116,39 @@ internal sealed class SharedColorDialog : IDisposable
     }
 
     public void Dispose() => this._dialog.Dispose();
+
+    /// <summary>
+    /// The color dialog telling the color it shows: its Red, Green and Blue fields, which it updates for a basic or
+    /// custom color clicked, the spectrum clicked or dragged, the luminance bar or a value typed.
+    /// </summary>
+    private sealed class LiveColorDialog : ColorDialog
+    {
+        private const int WM_COMMAND = 0x0111;
+        private const int EN_CHANGE = 0x0300;
+        private const int ColorRed = 706;
+        private const int ColorGreen = 707;
+        private const int ColorBlue = 708;
+
+        /// <summary>Given the color shown at each change of its fields, while set.</summary>
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public Action<Color>? Changed { get; set; }
+
+        protected override IntPtr HookProc(IntPtr hWnd, int msg, IntPtr wparam, IntPtr lparam)
+        {
+            if (msg == WM_COMMAND && this.Changed is { } changed
+                && (int)(((long)wparam >> 16) & 0xFFFF) == EN_CHANGE && (int)((long)wparam & 0xFFFF) is >= ColorRed and <= ColorBlue)
+            {
+                changed(Color.FromArgb(Channel(hWnd, ColorRed), Channel(hWnd, ColorGreen), Channel(hWnd, ColorBlue)));
+            }
+
+            return base.HookProc(hWnd, msg, wparam, lparam);
+        }
+
+        private static int Channel(IntPtr dialog, int id) => (int)Math.Min(GetDlgItemInt(dialog, id, out _, false), 255);
+
+        [DllImport("user32.dll")]
+        private static extern uint GetDlgItemInt(IntPtr dialog, int id, out bool translated, bool signed);
+    }
 
     private void Save()
     {

@@ -19,7 +19,7 @@ public enum BorderPattern
 /// <paramref name="InnerLines"/> — and as an outer frame around the grid — with
 /// <paramref name="OuterFrame"/> — or brackets over the images at the grid's four corners; with <paramref name="Rounded"/>, the
 /// grid's outer corners rounded the way Twitter / X shows a posted image, the brackets and the frame
-/// following the curve; the corner brackets, drawn over the images, at <paramref name="Opacity"/>. Its
+/// following the curve; every style — brackets, frame, lines — at <paramref name="Opacity"/>. Its
 /// width is a fraction of the canvas's shorter side, so the preview and every export size look the same.
 /// </summary>
 public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool InnerLines, bool OuterFrame, Color Color, bool Rounded, double Opacity)
@@ -41,6 +41,12 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool I
 
     /// <summary>The borders as the app starts and as Clear all leaves them, in <paramref name="color"/>, their corners <paramref name="rounded"/> or not.</summary>
     public static GridBorders Initial(Color color, bool rounded) => new(BorderPattern.Corners, DefaultThickness, false, true, color, rounded, 1.0);
+
+    /// <summary>
+    /// The color drawn: <see cref="Color"/> at <see cref="Opacity"/>, for every style
+    /// (workfiles/20261029-eyedropper-ergonomics.md § Color Opacity).
+    /// </summary>
+    public Color Drawn => Color.FromArgb((int)Math.Round(255 * Math.Clamp(Opacity, 0, 1)), Color);
 
     /// <summary>Whether the borders are drawn as a line style — inner lines, outer frame: every style but the corners.</summary>
     public bool IsLineStyle => Pattern != BorderPattern.Corners;
@@ -123,7 +129,7 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool I
         }
 
         g.SetClip(gap, CombineMode.Intersect);
-        using var brush = new SolidBrush(Color);
+        using var brush = new SolidBrush(Drawn);
         if (Pattern == BorderPattern.Solid)
         {
             g.FillRegion(brush, gap);
@@ -150,7 +156,7 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool I
     {
         int width = Width(canvas);
         float radius = Radius(canvas);
-        using var brush = new SolidBrush(Color);
+        using var brush = new SolidBrush(Drawn);
         if (IsLineStyle)
         {
             if (OuterFrame && radius > 0)
@@ -160,9 +166,6 @@ public sealed record GridBorders(BorderPattern Pattern, double Thickness, bool I
 
             return;
         }
-
-        // The brackets lie over the images, at their opacity.
-        brush.Color = Color.FromArgb((int)Math.Round(255 * Math.Clamp(Opacity, 0, 1)), Color);
 
         // An arm is at least as long as the radius, so the curve always fits in its bracket.
         int reach = (int)Math.Ceiling(radius);

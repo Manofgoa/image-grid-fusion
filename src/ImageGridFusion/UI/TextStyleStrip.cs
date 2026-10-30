@@ -141,15 +141,15 @@ internal sealed class TextStyleStrip : ThumbnailStrip<TextStyleChoice>
             parts.Add(style.Alignment == LayerTextAlignment.Justified ? "justified" : $"aligned {style.Alignment.ToString().ToLowerInvariant()}");
         }
 
-        parts.Add(Hex(style.Color));
+        parts.Add(Hex(style.Color) + Opacity(style.Opacity));
         if (style.Outline)
         {
-            parts.Add($"outline {Hex(style.OutlineColor)} {style.OutlineWidth * 100:0} %");
+            parts.Add($"outline {Hex(style.OutlineColor)}{Opacity(style.OutlineOpacity)} {style.OutlineWidth * 100:0} %");
         }
 
         if (style.Shadow)
         {
-            parts.Add($"{style.ShadowKind.ToString().ToLowerInvariant()} shadow {Hex(style.ShadowColor)} {style.ShadowSize * 100:0} %");
+            parts.Add($"{style.ShadowKind.ToString().ToLowerInvariant()} shadow {Hex(style.ShadowColor)}{Opacity(style.ShadowOpacity)} {style.ShadowSize * 100:0} %");
         }
 
         if (style.Background)
@@ -159,6 +159,9 @@ internal sealed class TextStyleStrip : ThumbnailStrip<TextStyleChoice>
 
         return string.Join(", ", parts);
     }
+
+    /// <summary>A color's opacity after it, said only when below 100 %: " at 60 %".</summary>
+    private static string Opacity(double opacity) => opacity < 1 ? $" at {opacity * 100:0} %" : "";
 
     private static string Hex(Color color) => $"#{color.R:X2}{color.G:X2}{color.B:X2}";
 

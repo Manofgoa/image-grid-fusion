@@ -428,12 +428,19 @@ internal sealed partial class GridPreview : Control
     public bool GapBarsFromEdges { get; set; }
 
     /// <summary>
+    /// Whether a color option's dialog is open, its color followed live: a gesture, so that the dialog is one
+    /// undo step (workfiles/20261029-eyedropper-ergonomics.md § Live Color Dialog).
+    /// </summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool ColorDialogOpen { get; set; }
+
+    /// <summary>
     /// Whether a gesture is changing the grid right now — a cell pressed (pan, ✥ swap), a bar or a
-    /// separator dragged, a crop moved, a zoom by the wheel or the slider not yet at rest: the undo
-    /// history commits nothing before it ends.
+    /// separator dragged, a crop moved, a zoom by the wheel or the slider not yet at rest, a color dialog
+    /// open: the undo history commits nothing before it ends.
     /// </summary>
     public bool InGesture =>
-        this._pressed >= 0 || this._draggedBar is not null || this._draggedCorner is not null || this._draggedSeparator is not null
+        this.ColorDialogOpen || this._pressed >= 0 || this._draggedBar is not null || this._draggedCorner is not null || this._draggedSeparator is not null
         || this._movedCrop is not null || this._live is not null || this._wheelEnd.Enabled || this._eyedropper is not null || this._pressedLayer >= 0 || this._rotatingLayer || this._resizingBox != 0 || this._layerCopyPending;
 
     /// <summary>
