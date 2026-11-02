@@ -477,6 +477,21 @@ The emojis of the texts — a text layer's and a text cell's — in color, flags
   shadow and the mask draw the text without its colors.
 - **A text cell's grid counts text elements**, never UTF-16 units (`TextPages.CellsOf`): an emoji
   (`Emojis.IsEmoji`) takes two columns, any other element one, and a line is never wrapped inside an element.
+- **A text layer's emoji font** (`LayerTextStyle.EmojiFont`, origin: `workfiles/20261102-emoji-fonts.md`) is
+  **set on each emoji** of the layout, like the flag font (`TextRaster.SetEmojiFont`, the elements `Emojis.IsEmoji`
+  finds), never left to a fallback; Segoe UI Emoji, the default, sets nothing. The flags follow it when it has
+  them, the flag font keeping the four joined ones. A font found nowhere draws as the default, its name kept.
+- **The installed emoji fonts** are the color fonts holding 😀 (`TextRaster.InstalledEmojiFamilies`), whatever their
+  name: the Emoji drop-down lists them, the font drop-down leaves them out.
+- **The emoji fonts of the app are never shipped**: Twemoji, Noto Color Emoji, OpenMoji and Blobmoji
+  (`Imaging/EmojiFonts`), downloaded into **`emoji-fonts\` next to the exe** from pinned URLs, each checked against
+  its SHA-256 — offered at the first launch (a **No** remembered, `AppSettings.EmojiFontsDeclined`; no offer from a
+  `--new-instance`) and from the ⚙ menu while one is missing — and updated from the ⚙ menu to their **latest
+  release**. **Loaded from memory** (`TextRaster.CreateMemoryCollection`), never from their files, so an update
+  replaces them; `EmojiFonts.Generation` tells every thread's `TextRaster` to load them again.
+- **With an emoji font, the outline and the shadow are made of the text drawn in color** — its alpha, as an
+  opacity mask (`TextRaster.Shape`) — since those fonts' color glyphs have no plain shape; Segoe UI Emoji keeps the
+  plain shapes.
 
 ## Output Format
 

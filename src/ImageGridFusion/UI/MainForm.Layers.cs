@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using ImageGridFusion.Composition;
 using ImageGridFusion.Imaging;
+using ImageGridFusion.Web;
 
 namespace ImageGridFusion.UI;
 
@@ -55,6 +56,9 @@ internal sealed partial class MainForm
     };
 
     private readonly ComboBox _layerFont = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 150, Anchor = AnchorStyles.Left };
+
+    // The emoji font, the letters staying in the font beside (workfiles/20261102-emoji-fonts.md § User Interface).
+    private readonly ComboBox _layerEmojiFont = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 64, Anchor = AnchorStyles.Left };
     private readonly CheckBox _layerBold = new() { Text = "Bold", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _layerItalic = new() { Text = "Italic", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _layerCaps = new() { Text = "ALL CAPS", AutoSize = true, Anchor = AnchorStyles.Left };
@@ -100,6 +104,9 @@ internal sealed partial class MainForm
 
     // Each family of the font drop-down, made once to draw its name in its own face; null when it has no usable style.
     private readonly Dictionary<string, Font?> _layerFontFaces = [];
+
+    // Each emoji font's sample, drawn once by TextRaster — GDI draws the emojis in one color —; null when it cannot be drawn.
+    private readonly Dictionary<string, Bitmap?> _emojiFontSamples = new(StringComparer.OrdinalIgnoreCase);
 
     // Families drawing symbols rather than letters: their name follows a sample, in the drop-down's own font.
     private static readonly string[] SymbolFonts = ["Wingdings", "Webdings", "Symbol", "Marlett", "MDL2", "Fluent Icons", "Dings", "MT Extra", "Bookshelf"];
@@ -155,7 +162,7 @@ internal sealed partial class MainForm
         this._textStyleScroll.Height = this._textStyleStrip.Height + SystemInformation.HorizontalScrollBarHeight;
         this._textStyleScroll.Width = this.LogicalToDeviceUnits(100);
         var fontLine = OptionLine();
-        fontLine.Controls.AddRange([this._layerFont, this._layerBold, this._layerItalic, this._layerCaps, .. this._layerAlignment, this._layerBox, this._layerColor, this._layerColorOpacityIcon, this._layerColorOpacity, this._layerColorOpacityLabel]);
+        fontLine.Controls.AddRange([this._layerFont, this._layerEmojiFont, this._layerBold, this._layerItalic, this._layerCaps, .. this._layerAlignment, this._layerBox, this._layerColor, this._layerColorOpacityIcon, this._layerColorOpacity, this._layerColorOpacityLabel]);
         var outlineLine = OptionLine();
         outlineLine.Controls.AddRange([this._layerOutline, this._layerOutlineColor, this._layerOutlineOpacityIcon, this._layerOutlineOpacity, this._layerOutlineOpacityLabel, this._layerOutlineWidth, this._layerOutlineWidthLabel]);
         var styleLines = OptionLine();
@@ -185,6 +192,13 @@ internal sealed partial class MainForm
         this._layerFont.MaxDropDownItems = 16;
         this._layerFont.DropDownWidth = this.LogicalToDeviceUnits(280);
         this._layerFont.DrawItem += (_, e) => this.DrawFontItem(e);
+
+        // Each emoji font as a sample of its emojis, then its name.
+        this._layerEmojiFont.DrawMode = DrawMode.OwnerDrawFixed;
+        this._layerEmojiFont.ItemHeight = this.LogicalToDeviceUnits(22);
+        this._layerEmojiFont.DropDownWidth = this.LogicalToDeviceUnits(240);
+        this._layerEmojiFont.DrawItem += (_, e) => this.DrawEmojiFontItem(e);
+        this.FillEmojiFonts();
         this.Disposed += (_, _) =>
         {
             foreach (var face in this._layerFontFaces.Values)
@@ -193,6 +207,7 @@ internal sealed partial class MainForm
             }
 
             this._layerFontFaces.Clear();
+            this.ClearEmojiFontSamples();
             this._layerMenu.Dispose();
         };
 
@@ -265,6 +280,14 @@ internal sealed partial class MainForm
                 this.ChangeLayerStyle(style => style with { Font = font });
             }
         };
+        this._layerEmojiFont.SelectedIndexChanged += (_, _) =>
+        {
+            if (this._layerEmojiFont.SelectedItem is string emojiFont)
+            {
+                this.ChangeLayerStyle(style => style with { EmojiFont = emojiFont });
+            }
+        };
+        this._toolTip.SetToolTip(this._layerEmojiFont, "Emoji font — the font the text's emojis are drawn in, the letters staying in the font beside; Segoe UI Emoji is Windows' own, the others are installed or downloaded from the ⚙ menu");
         this._layerBold.CheckedChanged += (_, _) => this.ChangeLayerStyle(style => style with { Bold = this._layerBold.Checked });
         this._layerOutline.CheckedChanged += (_, _) => this.ChangeLayerStyle(style => style with { Outline = this._layerOutline.Checked });
         this._layerOutlineWidth.ValueChanged += (_, _) =>
@@ -414,6 +437,242 @@ internal sealed partial class MainForm
         TextRenderer.DrawText(e.Graphics, family, face, bounds, color, flags);
     }
 
+    /// <summary>
+    /// Offers to download the emoji fonts, saying which, how much and where; on Yes, downloads them. A No
+    /// <paramref name="atLaunch"/> is remembered: the launch offers them no more, the ⚙ menu still does.
+    /// </summary>
+    private void OfferEmojiFontsDownload(bool atLaunch)
+    {
+        var answer = MessageBox.Show(
+            this,
+            $"Download the emoji fonts? A text's emojis can then be drawn in {string.Join(", ", EmojiFonts.Names)} rather than Windows' own, "
+            + "picked in the Emoji drop-down beside the text's font. They are never installed into Windows.\n\n"
+            + $"About {EmojiFonts.DownloadMegabytes} MB, taken from github.com into:\n\n{EmojiFonts.Folder}"
+            + (atLaunch ? "\n\nIf you say No, the ⚙ menu still offers them." : ""),
+            "Download the emoji fonts",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question);
+        if (answer == DialogResult.Yes)
+        {
+            _ = this.DownloadEmojiFontsAsync();
+            return;
+        }
+
+        if (atLaunch)
+        {
+            try
+            {
+                AppSettings.SaveEmojiFontsDeclined();
+            }
+            catch (Exception ex) when (AppSettings.IsSaveError(ex))
+            {
+                this.ShowStatus($"The emoji fonts' answer not remembered: {ex.Message}", error: true);
+            }
+        }
+    }
+
+    /// <summary>Downloads the emoji fonts missing, its progress in the status line; the Emoji drop-down and the texts drawn again after.</summary>
+    private async Task DownloadEmojiFontsAsync()
+    {
+        if (this._emojiFontsDownload is not null)
+        {
+            return;
+        }
+
+        var cancellation = new CancellationTokenSource();
+        this._emojiFontsDownload = cancellation;
+        var progress = new Progress<double>(share =>
+        {
+            if (this._emojiFontsDownload == cancellation && !this.IsDisposed)
+            {
+                this.ShowStatus($"Downloading the emoji fonts… {share:P0}");
+            }
+        });
+        try
+        {
+            await EmojiFonts.DownloadAsync(progress, cancellation.Token);
+            if (!this.IsDisposed)
+            {
+                this.ShowStatus("The emoji fonts downloaded: pick one in the Emoji drop-down of a text");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (UrlLoadException ex)
+        {
+            if (!this.IsDisposed)
+            {
+                this.ShowStatus($"Couldn't download the emoji fonts: {ex.Message}", error: true);
+            }
+        }
+        finally
+        {
+            this._emojiFontsDownload = null;
+            cancellation.Dispose();
+            if (!this.IsDisposed)
+            {
+                this.EmojiFontsChanged();
+            }
+        }
+    }
+
+    /// <summary>Replaces the emoji fonts downloaded by their latest release, its progress and its outcome in the status line.</summary>
+    private async Task UpdateEmojiFontsAsync()
+    {
+        if (this._emojiFontsDownload is not null)
+        {
+            return;
+        }
+
+        var cancellation = new CancellationTokenSource();
+        this._emojiFontsDownload = cancellation;
+        var progress = new Progress<double>(share =>
+        {
+            if (this._emojiFontsDownload == cancellation && !this.IsDisposed)
+            {
+                this.ShowStatus($"Updating the emoji fonts… {share:P0}");
+            }
+        });
+        try
+        {
+            var (updated, failed) = await EmojiFonts.UpdateAsync(progress, cancellation.Token);
+            if (!this.IsDisposed)
+            {
+                string done = updated.Count == 0 ? "The emoji fonts are up to date" : $"Updated: {string.Join(", ", updated)}";
+                this.ShowStatus(failed.Count == 0 ? done : $"{done}; couldn't update {string.Join(", ", failed)}", error: failed.Count > 0);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            this._emojiFontsDownload = null;
+            cancellation.Dispose();
+            if (!this.IsDisposed)
+            {
+                this.EmojiFontsChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    /// The emoji fonts' files changed: the Emoji drop-down read again, and every text layer drawn in an emoji font of its
+    /// own drawn again with it (workfiles/20261102-emoji-fonts.md § Shipped Fonts).
+    /// </summary>
+    private void EmojiFontsChanged()
+    {
+        this.FillEmojiFonts();
+        this._layerEmojiFont.Invalidate();
+        var layers = this._preview.Layers;
+        var redrawn = layers;
+        for (int i = 0; i < layers.Count; i++)
+        {
+            if (layers.Items[i] is { IsText: true } layer && !string.Equals(layer.Style!.EmojiFont, EmojiFonts.Default, StringComparison.OrdinalIgnoreCase)
+                && this.RenderTextLayer(layer.Text!, layer.Style, layer.Look, layer.Place, layer.TextBox) is { } drawn)
+            {
+                redrawn = redrawn.With(i, drawn with { Visible = layer.Visible });
+            }
+        }
+
+        if (!ReferenceEquals(redrawn, layers) && !this.IsExporting)
+        {
+            this._preview.SetLayers(redrawn);
+        }
+    }
+
+    /// <summary>The Emoji drop-down's fonts, read again — the installed ones and the ones downloaded —, its samples drawn again.</summary>
+    private void FillEmojiFonts()
+    {
+        this.ClearEmojiFontSamples();
+        var selected = this._layerEmojiFont.SelectedItem;
+        bool syncing = this._syncingEffects;
+        this._syncingEffects = true;
+        try
+        {
+            this._layerEmojiFont.Items.Clear();
+            this._layerEmojiFont.Items.AddRange([.. TextRaster.EmojiFamilies()]);
+            if (selected is string family)
+            {
+                if (!this._layerEmojiFont.Items.Contains(family))
+                {
+                    this._layerEmojiFont.Items.Add(family);
+                }
+
+                this._layerEmojiFont.SelectedItem = family;
+            }
+        }
+        finally
+        {
+            this._syncingEffects = syncing;
+        }
+    }
+
+    private void ClearEmojiFontSamples()
+    {
+        foreach (var sample in this._emojiFontSamples.Values)
+        {
+            sample?.Dispose();
+        }
+
+        this._emojiFontSamples.Clear();
+    }
+
+    /// <summary>A row of the Emoji drop-down: a few emojis drawn in the font, then its name; in the closed box, the emojis alone.</summary>
+    private void DrawEmojiFontItem(DrawItemEventArgs e)
+    {
+        e.DrawBackground();
+        if (e.Index < 0 || e.Index >= this._layerEmojiFont.Items.Count || this._layerEmojiFont.Items[e.Index] is not string family)
+        {
+            return;
+        }
+
+        var bounds = Rectangle.Inflate(e.Bounds, -this.LogicalToDeviceUnits(3), 0);
+        if (this.EmojiFontSample(family) is { } sample)
+        {
+            int height = Math.Max(1, bounds.Height - this.LogicalToDeviceUnits(4));
+            int width = sample.Width * height / Math.Max(1, sample.Height);
+            e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            e.Graphics.DrawImage(sample, bounds.Left, bounds.Top + (bounds.Height - height) / 2, width, height);
+            bounds = Rectangle.FromLTRB(bounds.Left + width + this.LogicalToDeviceUnits(6), bounds.Top, bounds.Right, bounds.Bottom);
+        }
+
+        if ((e.State & DrawItemState.ComboBoxEdit) == 0)
+        {
+            var color = (e.State & DrawItemState.Selected) != 0 ? SystemColors.HighlightText
+                : this._layerEmojiFont.Enabled ? SystemColors.ControlText : SystemColors.GrayText;
+            TextRenderer.DrawText(e.Graphics, family, this._layerEmojiFont.Font, bounds, color, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine);
+        }
+    }
+
+    /// <summary>Three emojis drawn in <paramref name="family"/>, made once; <c>null</c> when they cannot be drawn.</summary>
+    private Bitmap? EmojiFontSample(string family)
+    {
+        if (this._emojiFontSamples.TryGetValue(family, out var sample))
+        {
+            return sample;
+        }
+
+        try
+        {
+            var style = LayerTextStyle.Default with { Bold = false, Outline = false, Color = Color.Black, EmojiFont = family };
+            var drawn = TextRaster.Render("😀👍❤️", style).Bitmap;
+
+            // At a row's height: the drawing is large, for an export.
+            int height = this.LogicalToDeviceUnits(36);
+            sample = new Bitmap(drawn, Math.Max(1, drawn.Width * height / Math.Max(1, drawn.Height)), height);
+            drawn.Dispose();
+        }
+        catch (Exception ex) when (ex is ExternalException or OutOfMemoryException or ArgumentException)
+        {
+            sample = null;
+        }
+
+        this._emojiFontSamples[family] = sample;
+        return sample;
+    }
+
     /// <summary>The family's face at the drop-down's size, made once: regular, else bold, else italic; <c>null</c> without any.</summary>
     private Font? FontFace(string family, Font reference)
     {
@@ -533,7 +792,7 @@ internal sealed partial class MainForm
         bool text = enabled && layer is { IsText: true };
         foreach (var control in new Control[]
         {
-            this._layerText, this._layerFont, this._layerBold, this._layerItalic, this._layerCaps,
+            this._layerText, this._layerFont, this._layerEmojiFont, this._layerBold, this._layerItalic, this._layerCaps,
             this._layerColor, this._layerColorOpacityIcon, this._layerColorOpacity, this._layerColorOpacityLabel,
             this._layerOutline, this._layerOutlineColor, this._layerOutlineOpacityIcon, this._layerOutlineOpacity, this._layerOutlineOpacityLabel, this._layerOutlineWidth, this._layerOutlineWidthLabel,
             this._layerBackground, this._layerBackgroundColor, this._layerBackgroundOpacityIcon, this._layerBackgroundOpacity, this._layerBackgroundOpacityLabel,
@@ -562,6 +821,12 @@ internal sealed partial class MainForm
         }
 
         this._layerFont.SelectedItem = style.Font;
+        if (!this._layerEmojiFont.Items.Contains(style.EmojiFont))
+        {
+            this._layerEmojiFont.Items.Add(style.EmojiFont);
+        }
+
+        this._layerEmojiFont.SelectedItem = style.EmojiFont;
         this._layerBold.Checked = style.Bold;
         this._layerItalic.Checked = style.Italic;
         this._layerCaps.Checked = style.Caps;

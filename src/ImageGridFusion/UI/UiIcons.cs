@@ -112,6 +112,7 @@ internal static class UiIcons
     public static readonly UiIcon Download = UiIcon.Emoji("⬇️");
     public static readonly UiIcon TextRead = UiIcon.Emoji("\U0001F4DD");
     public static readonly UiIcon Rebuild = UiIcon.Emoji("\U0001F504");
+    public static readonly UiIcon UpdateEmojiFonts = UiIcon.Emoji("\U0001F504");
     public static readonly UiIcon OcrResultStyle = UiIcon.Emoji("↪️");
     public static readonly UiIcon CurvedArrow = UiIcon.Emoji("⤴️");
     public static readonly UiIcon Thickness = UiIcon.Emoji("➖");
