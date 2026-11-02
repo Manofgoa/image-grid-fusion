@@ -413,6 +413,11 @@ offered at the first launch and downloaded or updated from two ⚙ entries. Foll
 removed, the first-launch offer opening the window on their rows. The branch takes `main` first.
 No open question remains.
 
+### Iteration 10 — 2026-11-02 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in the current worktree
+(`claude/component-update-verification-4c9318`), brought up to date with `main` first.
+
 ---
 
 ## Implementation Log
