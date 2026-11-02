@@ -33,6 +33,67 @@ internal static class DirectEngineDownload
             start = runtimeShare;
         }
 
+        await DownloadMissingAsync(folder, files, start, progress, token);
+    }
+
+    /// <summary>
+    /// Downloads the files missing from <paramref name="folder"/> without ONNX Runtime — files no engine runs, the
+    /// emoji fonts (workfiles/20261102-emoji-fonts.md § Shipped Fonts) — reporting the share done, 0 to 1. Throws a
+    /// <see cref="UrlLoadException"/> when it cannot.
+    /// </summary>
+    public static Task DownloadAsync(string folder, IReadOnlyList<EngineFile> files, IProgress<double> progress, CancellationToken token) =>
+        DownloadMissingAsync(folder, files, 0, progress, token);
+
+    /// <summary>
+    /// The response to <paramref name="url"/> written to <paramref name="path"/>, the share received reported to
+    /// <paramref name="report"/>, 0 to 1. Throws what the request or the file throws.
+    /// </summary>
+    public static async Task SaveAsync(Uri url, string path, Action<double> report, CancellationToken token)
+    {
+        using var response = await Downloader.GetAsync(url, token);
+        Downloader.EnsureSuccess(response);
+        long? total = response.Content.Headers.ContentLength;
+        await using var source = await response.Content.ReadAsStreamAsync(token);
+        await using var target = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+        var buffer = new byte[81920];
+        long received = 0;
+        long reported = 0;
+        int read;
+        while ((read = await source.ReadAsync(buffer, token)) > 0)
+        {
+            await target.WriteAsync(buffer.AsMemory(0, read), token);
+            received += read;
+            long now = Environment.TickCount64;
+            if (total is > 0 && now - reported >= ReportInterval)
+            {
+                reported = now;
+                report(Math.Min(1, (double)received / total.Value));
+            }
+        }
+    }
+
+    /// <summary>The SHA-256 of the file at <paramref name="path"/>, in hexadecimal.</summary>
+    public static string Sha256Of(string path)
+    {
+        using var stream = File.OpenRead(path);
+        return Convert.ToHexString(SHA256.HashData(stream));
+    }
+
+    /// <summary>Deletes the file at <paramref name="path"/>, nothing said when it cannot.</summary>
+    public static void TryDelete(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+        }
+    }
+
+    /// <summary>The files missing from <paramref name="folder"/>, their progress reported from <paramref name="start"/> to 1.</summary>
+    private static async Task DownloadMissingAsync(string folder, IReadOnlyList<EngineFile> files, double start, IProgress<double> progress, CancellationToken token)
+    {
         Directory.CreateDirectory(folder);
         var missing = files.Where(f => !File.Exists(Path.Combine(folder, f.Name))).ToArray();
         long weight = Math.Max(1, missing.Sum(f => f.Size));
@@ -46,30 +107,8 @@ internal static class DirectEngineDownload
             before += file.Size;
             try
             {
-                using var response = await Downloader.GetAsync(new Uri(file.Url), token);
-                Downloader.EnsureSuccess(response);
-                long? total = response.Content.Headers.ContentLength;
-                await using (var source = await response.Content.ReadAsStreamAsync(token))
-                await using (var target = new FileStream(partial, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true))
-                {
-                    var buffer = new byte[81920];
-                    long received = 0;
-                    long reported = 0;
-                    int read;
-                    while ((read = await source.ReadAsync(buffer, token)) > 0)
-                    {
-                        await target.WriteAsync(buffer.AsMemory(0, read), token);
-                        received += read;
-                        long now = Environment.TickCount64;
-                        if (total is > 0 && now - reported >= ReportInterval)
-                        {
-                            reported = now;
-                            progress.Report(from + span * Math.Min(1, (double)received / total.Value));
-                        }
-                    }
-                }
-
-                if (!HashMatches(partial, file.Sha256))
+                await SaveAsync(new Uri(file.Url), partial, share => progress.Report(from + span * share), token);
+                if (!string.Equals(Sha256Of(partial), file.Sha256, StringComparison.OrdinalIgnoreCase))
                 {
                     throw new UrlLoadException($"{file.Name} does not match its expected content");
                 }
@@ -93,23 +132,6 @@ internal static class DirectEngineDownload
         }
 
         progress.Report(1);
-    }
-
-    private static bool HashMatches(string path, string sha256)
-    {
-        using var stream = File.OpenRead(path);
-        return string.Equals(Convert.ToHexString(SHA256.HashData(stream)), sha256, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static void TryDelete(string path)
-    {
-        try
-        {
-            File.Delete(path);
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-        }
     }
 }
 
