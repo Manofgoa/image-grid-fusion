@@ -120,6 +120,11 @@ Open questions answered (Q&A 5–7): `Ctrl+Shift+F` resets the open folder too; 
 on the way to the folder left is selected; the search text is kept. § Behaviour and § Planned code
 updated. No open question left.
 
+### Iteration 3 — 2026-11-02 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree (`.claude/worktrees/ctrl-f-cycle-folder-root`,
+branch `feature/ctrl-f-cycle-folder-root`).
+
 ---
 
 ## Implementation Log
