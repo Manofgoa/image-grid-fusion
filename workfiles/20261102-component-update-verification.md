@@ -43,8 +43,14 @@ now** (Q&A 3). There is no background check and no badge.
 | Caption engine | `Explorer/CaptionEngineFiles` | Hugging Face `onnx-community/Florence-2-base`, commit-pinned | The commit in `Revision` | `vision-engine\` |
 | Cutout engine | `Imaging/CutoutEngineFiles` | IS-Net: GitHub release `danielgatis/rembg` `v0.0.0`; MobileSAM: Hugging Face `Acly/MobileSAM`, commit-pinned | The URL pieces | `cutout-engine\` |
 | yt-dlp, Deno, ffmpeg | `Web/WingetTool` (`Web/YtDlp`, `Web/YtDlpCompanions`) | winget `yt-dlp.yt-dlp`, `DenoLand.Deno`, `yt-dlp.FFmpeg`, `--location` | None, nothing pinned, never upgraded | `yt-dlp\`, `deno\`, `ffmpeg\` |
-| Emoji fonts | Designed only (`workfiles/20261102-emoji-fonts.md`) | Undecided there | — | `emoji-fonts\` (planned) |
-| Twemoji flag subset | Embedded in the exe (`feature/text-flag-emojis`) | Built once | Fixed at build time | **Not a component**: never downloaded |
+| Emoji fonts | `Imaging/EmojiFonts` (`Font(EngineFile File, Family, Repository, Asset, Path)`), delivered on `main` by `workfiles/20261102-emoji-fonts.md` | GitHub releases: `mozilla/twemoji-colr` v0.7.0 (asset), `googlefonts/noto-emoji` v2026-09-24-unicode18_0 (file at the tag), `hfg-gmuend/openmoji` 17.0.0 (file at the tag), `C1710/blobmoji` v15.0 (asset); its update takes `releases/latest`, no hash | The release tag in the pin | `emoji-fonts\` |
+| Twemoji flag subset | Embedded in the exe (`Imaging/TwemojiFlags.ttf`, RULES.md § Text Emojis) | Built once | Fixed at build time | **Not a component**: never downloaded |
+
+- The emoji fonts are **loaded from memory**, one collection per font, so their files are never held
+  open: an update replaces them at once. After a download or an update the Emoji drop-down is read again
+  and the text layers drawn again (`EmojiFonts.Generation`, `GridPreview.SetLayers`). They are offered at
+  the **first launch** while none is there (a **No** remembered, `AppSettings.EmojiFontsDeclined`), and
+  from the ⚙ menu's *Download the emoji fonts…* and *Update the emoji fonts*.
 
 - The direct engines share `EngineFile(Name, Url, Sha256, Size)` and one download loop,
   `Explorer/DirectEngineDownload`, which skips a file already there and checks the SHA-256 only at
@@ -77,7 +83,7 @@ Layout **A — one grouped list** (Q&A 1), drawn in the mockup of 2026-11-02:
   | **Engines** | OCR engine — RapidOCR models (NuGet `rapidocrnet`) · Face engine — YuNet · Face engine — SFace · Vision engine — SigLIP 2 models (`onnx-community/siglip2-base-patch16-256-ONNX`) · Vision engine — SigLIP 2 tokenizer (`google/siglip2-base-patch16-256`) · Caption engine — Florence-2 · Cutout engine — IS-Net · Cutout engine — MobileSAM |
   | **Runtimes** | ONNX Runtime · SkiaSharp |
   | **Web tools** | yt-dlp · Deno · ffmpeg |
-  | **Emoji fonts** | § Open Questions |
+  | **Emoji fonts** | Twemoji Mozilla · Noto Color Emoji · OpenMoji · Blobmoji |
 
   An engine is installed when all its rows are; *Install* is offered on each missing row.
 - **What each component is for** (Iteration 5): an **ℹ️ icon right after its name**, its tooltip
@@ -99,6 +105,7 @@ Layout **A — one grouped list** (Q&A 1), drawn in the mockup of 2026-11-02:
   | yt-dlp | Downloads the media of a URL the other resolvers do not know (URL zone) |
   | Deno | Lets yt-dlp read YouTube's formats |
   | ffmpeg | Joins a video track and its sound into one MP4 for yt-dlp |
+  | Twemoji Mozilla, Noto Color Emoji, OpenMoji, Blobmoji | Draws a text layer's emojis in that font's style, picked in the Layers options' Emoji drop-down |
 
   The ℹ️ is a Segoe UI Emoji glyph drawn by the app, as the tile tooltip's icons (RULES.md § Icons).
 - **Columns**:
@@ -143,6 +150,12 @@ Layout **A — one grouped list** (Q&A 1), drawn in the mockup of 2026-11-02:
   — the Cutout turned on in a mode needing its engine, the content search, the face analysis, the
   visual analysis, the captions, the URL zone's yt-dlp and companions offers — **open the window**
   instead of downloading themselves. No download or winget install runs anywhere else.
+- **The emoji fonts too** (Iteration 9): the ⚙ menu's *Download the emoji fonts…* and *Update the
+  emoji fonts* are removed; the **first-launch offer** opens the window on the four font rows, its
+  balloon saying what they are for — a **No** still remembered (`EmojiFontsDeclined`), the window then
+  not opened at the next launch. Their update is a row's *Update* like any other; once a font row is
+  swapped, the Emoji drop-down and the text layers are refreshed as today (`EmojiFonts.Generation`).
+  Their files are never locked: swapped at once.
 - **Opened by an in-context offer** (Q&A 14): the window shows every component as usual, the rows the
   feature needs **highlighted**, the first scrolled into view, and a **balloon tooltip open on it**
   naming the component to install and why it is wanted — *The Cutout's Subject mode needs the cutout
@@ -259,7 +272,10 @@ for a version:
   installed versions, the hard-coded pin as its fallback, a new downloadable component registered
   with its group and source, the release route of a resident engine, the staged swap for a locked file.
   The sections saying an engine is offered "from the ⚙ menu while missing" (§ The Cutout Exception,
-  § Content OCR Passes, § People, § Image Content Analysis) say the Component updates window instead.
+  § Content OCR Passes, § People, § Image Content Analysis), and § Text Emojis' emoji fonts downloaded
+  and updated from the ⚙ menu, say the Component updates window instead.
+- **The branch first takes `main`**: this worktree was cut before the emoji fonts were merged
+  (`c695d80`); the implementation starts by bringing it up to date with `main`.
 - **GLOSSARY.md / .fr.md**: *Component (composant)*, *Component updates window*, *Pinned version*,
   *Forced version*, *Components manifest*.
 - **README.md / .fr.md**: the window in the features list; the network calls it makes in the technical
@@ -296,8 +312,9 @@ Checked by hand in the running app:
 - [x] ~~The forced version: a version alone, or a full file list?~~ → A full list of files with their
   URLs and hashes (a winget tool: its version alone)
 - [x] ~~A pin changed in the code: which wins?~~ → The code, always: `pinned` rewritten at every start
-- [ ] The **emoji fonts**: is their group part of this work, or left to `workfiles/20261102-emoji-fonts.md`?
-  → **Waiting** for the session implementing the emoji fonts (Q&A 11)
+- [x] ~~The emoji fonts: is their group part of this work, or left to `workfiles/20261102-emoji-fonts.md`?~~
+  → Waited for the emoji fonts session (Q&A 11); delivered, their four fonts are a group of the window,
+  installed and updated through it like every component (Iteration 9)
 - [x] ~~The ⚙ menu's Install yt-dlp companions… entry: removed too, or kept?~~ → Removed too
 - [x] ~~An in-context offer now opens the window: what does the window show?~~ → Every component,
   the needed rows highlighted with a balloon tooltip naming the component and why it is wanted
@@ -386,6 +403,15 @@ download. This replaces *Update all* running the rows one after the other, and *
 running updates going on. The agent added: a × per row to cancel it alone, ONNX Runtime downloaded
 once for the rows sharing it, the winget installs queued one at a time (winget refuses concurrent
 installs), and the same confirmation when the app exits with downloads running.
+
+### Iteration 9 — 2026-11-02
+
+The emoji fonts session delivered (`main`, `c695d80`): four fonts pinned in `Imaging/EmojiFonts` —
+Twemoji Mozilla, Noto Color Emoji, OpenMoji, Blobmoji — from GitHub releases, loaded from memory,
+offered at the first launch and downloaded or updated from two ⚙ entries. Following Iteration 4
+(every install and update through the window): they are the *Emoji fonts* group, the two ⚙ entries
+removed, the first-launch offer opening the window on their rows. The branch takes `main` first.
+No open question remains.
 
 ---
 
