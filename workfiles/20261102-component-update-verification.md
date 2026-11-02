@@ -102,8 +102,8 @@ Layout **A — one grouped list** (Q&A 1), drawn in the mockup of 2026-11-02:
   updates already running carry on.
 - A row's buttons are disabled while it updates; an engine downloading through an in-context offer
   (an effect or an analysis turned on without it) shows as updating there too.
-- **The ⚙ menu's *Download the … engine…* entries are removed** (Q&A 12): the window's *Install*
-  replaces them. The in-context offers stay — the Cutout turned on, the content search, the face
+- **The ⚙ menu's *Download the … engine…* entries and *Install yt-dlp companions…* are removed**
+  (Q&A 12, 13): the window's *Install* replaces them. The in-context offers stay — the Cutout turned on, the content search, the face
   analysis, the visual analysis, the captions, the URL zone's yt-dlp offer.
 - No shortcut is added (`SHORTCUTS.md` unchanged), apart from Escape closing the window, as in the
   shortcuts window.
@@ -252,8 +252,7 @@ Checked by hand in the running app:
 - [x] ~~A pin changed in the code: which wins?~~ → The code, always: `pinned` rewritten at every start
 - [ ] The **emoji fonts**: is their group part of this work, or left to `workfiles/20261102-emoji-fonts.md`?
   → **Waiting** for the session implementing the emoji fonts (Q&A 11)
-- [ ] The ⚙ menu's **Install yt-dlp companions…** entry: removed with the engines' entries (the window's
-  *Install* on Deno and ffmpeg replacing it), or kept?
+- [x] ~~The ⚙ menu's Install yt-dlp companions… entry: removed too, or kept?~~ → Removed too
 
 ---
 
@@ -298,6 +297,12 @@ The open questions answered (Q&A 5–12):
 - The emoji fonts' group waits for the session implementing the emoji fonts. A new question: the
   ⚙ menu's *Install yt-dlp companions…* entry.
 
+### Iteration 3 — 2026-11-02
+
+Q&A 13: the ⚙ menu's *Install yt-dlp companions…* entry is removed too, the window's *Install* on
+Deno and ffmpeg replacing it. One question stays open: the emoji fonts' group, waiting for the
+session implementing the emoji fonts.
+
 ---
 
 ## Implementation Log
@@ -333,7 +338,7 @@ Questions asked by the agent during design, with user responses.
 | 10 | A pin changed in the code: which wins, the code or the manifest? | The code, always | 2026-11-02 |
 | 11 | The emoji fonts' group: part of this work, or left to the emoji fonts workfile? | Wait for the other session | 2026-11-02 |
 | 12 | The ⚙ menu's *Download the … engine…* entries: kept or removed? | Removed | 2026-11-02 |
-| 13 | The ⚙ menu's *Install yt-dlp companions…* entry: removed too, or kept? | | |
+| 13 | The ⚙ menu's *Install yt-dlp companions…* entry: removed too, or kept? | Removed too | 2026-11-02 |
 
 ---
 
