@@ -30,11 +30,18 @@ Components:
 
 | Route to the folder view | Open folder |
 |---|---|
-| The `Ctrl+F` cycle, the search box focused | **The base folder** (`""`) |
+| The `Ctrl+F` / `Ctrl+Shift+F` cycle, the search box focused | **The base folder** (`""`) |
 | The views drop-down | Unchanged — the folder left last, as today |
 | The first `Ctrl+F` (the box not focused, or the panel collapsed) | Unchanged — the view does not change |
 | Start-up | Unchanged — the remembered open folder |
 
+- **Both directions**: `Ctrl+Shift+F` arriving on Folders resets it too — any arrival through the
+  cycle.
+- **The folder left stays in sight**: the base's subfolder on the way to the folder left is
+  selected, as ↑ and the breadcrumb select the folder below (nothing selected when the folder left
+  was the base itself).
+- **The search text is kept**, selected again, as the cycle keeps it today: a search typed there
+  then runs over the whole base folder.
 - **Only the cycle** resets the open folder; picking Folders in the views drop-down keeps today's
   behaviour, so the folder the user was browsing is found again there.
 - **Remembered as any navigation**: the base folder becomes the open folder, and it is what
@@ -49,7 +56,10 @@ Components:
 
 - In `FocusSearch`, the next mode computed once; when it is `ExplorerMode.Folders`, `_openFolder`
   is set to `""` before `ChangeMode`, so the `Mode` setter's `RefreshRows` lists the base folder and
-  `FolderViewChanged` saves it. The selection and the search text: see § Open Questions.
+  `FolderViewChanged` saves it. The base's subfolder on the way to the folder left
+  (`Path.Combine(_baseFolder, <its first segment>)`) is handed to the listing as its selection, the
+  way `GoUp` hands `Navigate` its `select`. The search box is not touched (no `Navigate`, which
+  clears it).
 
 ---
 
@@ -80,12 +90,11 @@ a WinForms control's key handling: nothing testable is added. Checked by hand in
 
 ## Open Questions
 
-- [ ] `Ctrl+Shift+F` (the cycle backward) arriving on the folder view: the base folder too?
-      Proposed: yes — any arrival on Folders through the cycle, whatever its direction.
-- [ ] The selection once at the base folder: the base's subfolder on the way to the folder left
-      selected (as ↑ and the breadcrumb do), or nothing selected? Proposed: that subfolder selected.
-- [ ] The search box's text: kept as the cycle keeps it today (a search then runs over the whole
-      base folder), or cleared as a navigation clears it? Proposed: kept, as the cycle does.
+- [x] ~~`Ctrl+Shift+F` (the cycle backward) arriving on the folder view: the base folder too?~~ → Yes,
+      any arrival on Folders through the cycle, whatever its direction
+- [x] ~~The selection once at the base folder?~~ → The base's subfolder on the way to the folder left,
+      as ↑ and the breadcrumb do
+- [x] ~~The search box's text: kept or cleared?~~ → Kept and selected again, as the cycle does
 
 ---
 
@@ -104,6 +113,12 @@ base folder is what is remembered. Exploration (one direct pass, the subject str
 cycle is `FileExplorerPanel.FocusSearch` → `ChangeMode(NextMode(step))`, the open folder
 `_openFolder`, saved through `FolderViewChanged`. No row of `TODO-FEATURES.md` matches. Three open
 questions left: the backward cycle, the selection, the search text.
+
+### Iteration 2 — 2026-11-02
+
+Open questions answered (Q&A 5–7): `Ctrl+Shift+F` resets the open folder too; the base's subfolder
+on the way to the folder left is selected; the search text is kept. § Behaviour and § Planned code
+updated. No open question left.
 
 ---
 
@@ -132,9 +147,9 @@ Questions asked by the agent during design, with user responses.
 | 2 | Only the `Ctrl+F` cycle, or the views drop-down too? | `Ctrl+F` only — the drop-down keeps the folder left | 2026-11-02 |
 | 3 | What is remembered between sessions after a reset? | The base folder, as for any navigation | 2026-11-02 |
 | 4 | Straightforward or tricky / long? | Straightforward — one scout pass | 2026-11-02 |
-| 5 | `Ctrl+Shift+F` arriving on the folder view: the base folder too? | | 2026-11-02 |
-| 6 | The selection once at the base folder? | | 2026-11-02 |
-| 7 | The search box's text: kept or cleared? | | 2026-11-02 |
+| 5 | `Ctrl+Shift+F` arriving on the folder view: the base folder too? | Yes, both directions | 2026-11-02 |
+| 6 | The selection once at the base folder? | The base's subfolder on the way to the folder left | 2026-11-02 |
+| 7 | The search box's text: kept or cleared? | Kept, as the cycle does | 2026-11-02 |
 
 ---
 
