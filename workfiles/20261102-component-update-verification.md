@@ -79,7 +79,7 @@ Layout **A — one grouped list** (Q&A 1), drawn in the mockup of 2026-11-02:
   | **Web tools** | yt-dlp · Deno · ffmpeg |
   | **Emoji fonts** | § Open Questions |
 
-  An engine is installed when all its rows are; its ⚙-free *Install* is on each missing row.
+  An engine is installed when all its rows are; *Install* is offered on each missing row.
 - **Columns**:
 
   | Column | Shows |
@@ -333,6 +333,7 @@ Questions asked by the agent during design, with user responses.
 | 10 | A pin changed in the code: which wins, the code or the manifest? | The code, always | 2026-11-02 |
 | 11 | The emoji fonts' group: part of this work, or left to the emoji fonts workfile? | Wait for the other session | 2026-11-02 |
 | 12 | The ⚙ menu's *Download the … engine…* entries: kept or removed? | Removed | 2026-11-02 |
+| 13 | The ⚙ menu's *Install yt-dlp companions…* entry: removed too, or kept? | | |
 
 ---
 
