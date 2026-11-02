@@ -229,8 +229,7 @@ internal sealed partial class FileExplorerPanel : Panel
     private string? _activity;
     private int _pagesPerLoad = DefaultPagesPerLoad;
 
-    // The OCR engine's download running, and what it says after the activity (workfiles/20261013-complementary-ocr-passes.md § RapidOCR Download).
-    private CancellationTokenSource? _engineDownload;
+    // What the status line says after the activity (workfiles/20261013-complementary-ocr-passes.md § RapidOCR Download).
     private string? _engineActivity;
     private FileOrder _fileOrder = FileOrder.Newest;
     private ExplorerView _view = ExplorerView.Thumbnails;
@@ -281,7 +280,6 @@ internal sealed partial class FileExplorerPanel : Panel
 
     // The person just created for a face alone, opened once the groups computed again hold it.
     private string? _openAfterRegroup;
-    private CancellationTokenSource? _faceEngineDownload;
     private InviteAction _inviteAction = InviteAction.ChooseFolder;
 
     // The image content analysis (workfiles/20261027-image-content-analysis.md): the embeddings, the ⚙
@@ -296,8 +294,6 @@ internal sealed partial class FileExplorerPanel : Panel
     private IReadOnlyList<float[]>? _concepts;
     private readonly ConditionalWeakTable<float[], StrongBox<VisionSimilarity.Spread>> _spreads = new();
     private bool _captions;
-    private CancellationTokenSource? _visionEngineDownload;
-    private CancellationTokenSource? _captionEngineDownload;
     private readonly object _textEncoderLock = new();
     private TextEncoder? _textEncoder;
     private readonly System.Windows.Forms.Timer _textEncoderIdle = new() { Interval = 60 * 1000, Enabled = true };
@@ -480,6 +476,7 @@ internal sealed partial class FileExplorerPanel : Panel
         _grid.DragRequested += (_, row) => StartDrag(row);
         this._urlZone.DragRequested += (_, path) => this.StartUrlDrag(path);
         this._urlZone.FileActionRequested += async (_, request) => await this.RunUrlFileActionAsync(request.Path, request.Action);
+        this._urlZone.ComponentsRequested += (_, need) => this.ComponentsRequested?.Invoke(this, need);
         _grid.MoreRequested += (_, _) => LoadMore();
         _grid.UpRequested += (_, _) => GoUp();
         this._grid.RenameRequested += (_, row) => this.RenameGroup(row);
@@ -815,70 +812,35 @@ internal sealed partial class FileExplorerPanel : Panel
         this.Rescan();
     }
 
-    /// <summary>Whether yt-dlp's companions are being installed by the URL zone.</summary>
-    public bool InstallingYtDlpCompanions => this._urlZone.InstallingCompanions;
-
-    /// <summary>The URL zone's offer to install yt-dlp's companions, from the ⚙ menu.</summary>
-    public Task OfferYtDlpCompanionsAsync() => this._urlZone.OfferCompanionsAsync();
-
-    /// <summary>Whether the OCR engine (RapidOCR) is being downloaded.</summary>
-    public bool DownloadingOcrEngine => this._engineDownload is not null;
+    /// <summary>A feature of the panel needs components it lacks — the URL zone's yt-dlp: the Component updates window to open on them.</summary>
+    public event EventHandler<ComponentNeed>? ComponentsRequested;
 
     /// <summary>
-    /// Downloads the OCR engine (<see cref="OcrEngineFiles"/>), its progress after the status line's
-    /// summary, then starts the extraction again so the RapidOCR pass runs; a failure said in the status
-    /// line. Nothing when it is already being downloaded. See
-    /// workfiles/20261013-complementary-ocr-passes.md § RapidOCR Download.
+    /// Before the engines' files are swapped: the content passes stopped — a pass running closes its sessions — and the
+    /// text model released (workfiles/20261102-component-update-verification.md § Updating). <see cref="EnginesChanged"/>
+    /// starts them again.
     /// </summary>
-    public async Task DownloadOcrEngineAsync()
+    public void SuspendEngines()
     {
-        if (this._engineDownload is not null)
+        this.StopExtraction();
+        this.ReleaseTextEncoder(force: true);
+    }
+
+    /// <summary>
+    /// The engines' files changed — installed, updated, put back — or their swap is over: the bars' tooltips, the content
+    /// passes started again with what is there, the People view refreshed.
+    /// </summary>
+    public void EnginesChanged()
+    {
+        if (this.IsDisposed)
         {
             return;
         }
 
-        var download = new CancellationTokenSource();
-        this._engineDownload = download;
-        var progress = new Progress<double>(share =>
-        {
-            if (this._engineDownload == download && !this.IsDisposed)
-            {
-                this.SetEngineActivity($"Downloading the OCR engine… {share:P0}");
-            }
-        });
-        try
-        {
-            await OcrEngineFiles.DownloadAsync(progress, download.Token);
-            this._engineDownload = null;
-            if (!this.IsDisposed)
-            {
-                this.SetEngineActivity(null);
-                this.ShowTransient("OCR engine downloaded: RapidOCR reads the images next");
-                this.ApplyBarTips();
-                this.StartExtraction();
-            }
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Web.UrlLoadException ex)
-        {
-            this._engineDownload = null;
-            if (!this.IsDisposed)
-            {
-                this.SetEngineActivity(null);
-                this.ShowTransient($"OCR engine not downloaded: {ex.Message}", error: true);
-            }
-        }
-        finally
-        {
-            if (this._engineDownload == download)
-            {
-                this._engineDownload = null;
-            }
-
-            download.Dispose();
-        }
+        this.ApplyBarTips();
+        this.StopExtraction();
+        this.StartExtraction();
+        this.RefreshPeopleIfShown();
     }
 
     /// <summary>
@@ -972,72 +934,11 @@ internal sealed partial class FileExplorerPanel : Panel
         }
     }
 
-    /// <summary>Whether the face engine is being downloaded.</summary>
-    public bool DownloadingFaceEngine => this._faceEngineDownload is not null;
-
     /// <summary>The People view's invitation was answered: the face analysis to turn on, as from the ⚙ menu.</summary>
     public event EventHandler? FaceAnalysisRequested;
 
-    /// <summary>The People view's invitation was answered: the face engine to download, as from the ⚙ menu.</summary>
+    /// <summary>The People view's invitation was answered: the face engine to install, from the Component updates window.</summary>
     public event EventHandler? FaceEngineRequested;
-
-    /// <summary>
-    /// Downloads the face engine (<see cref="FaceEngineFiles"/>), its progress after the status line's
-    /// summary, then starts the extraction again so the face pass runs; a failure said in the status line.
-    /// Nothing when it is already being downloaded. See workfiles/20261027-face-detection.md § Face Engine.
-    /// </summary>
-    public async Task DownloadFaceEngineAsync()
-    {
-        if (this._faceEngineDownload is not null)
-        {
-            return;
-        }
-
-        var download = new CancellationTokenSource();
-        this._faceEngineDownload = download;
-        var progress = new Progress<double>(share =>
-        {
-            if (this._faceEngineDownload == download && !this.IsDisposed)
-            {
-                this.SetEngineActivity($"Downloading the face engine… {share:P0}");
-            }
-        });
-        try
-        {
-            await FaceEngineFiles.DownloadAsync(progress, download.Token);
-            this._faceEngineDownload = null;
-            if (!this.IsDisposed)
-            {
-                this.SetEngineActivity(null);
-                this.ShowTransient("Face engine downloaded: the faces are looked for next");
-                this.ApplyBarTips();
-                this.StopExtraction();
-                this.StartExtraction();
-                this.RefreshPeopleIfShown();
-            }
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Web.UrlLoadException ex)
-        {
-            this._faceEngineDownload = null;
-            if (!this.IsDisposed)
-            {
-                this.SetEngineActivity(null);
-                this.ShowTransient($"Face engine not downloaded: {ex.Message}", error: true);
-            }
-        }
-        finally
-        {
-            if (this._faceEngineDownload == download)
-            {
-                this._faceEngineDownload = null;
-            }
-
-            download.Dispose();
-        }
-    }
 
     /// <summary>
     /// Forgets every face found and every decision on the people — <c>files.faces</c> and
@@ -1410,9 +1311,6 @@ internal sealed partial class FileExplorerPanel : Panel
         if (disposing)
         {
             _scan?.Cancel();
-            this._engineDownload?.Cancel();
-            this._visionEngineDownload?.Cancel();
-            this._captionEngineDownload?.Cancel();
             this._textEncoderIdle.Dispose();
             this.ReleaseTextEncoder(force: true);
             _transient.Dispose();

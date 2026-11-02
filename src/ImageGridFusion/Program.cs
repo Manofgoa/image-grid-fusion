@@ -1,3 +1,4 @@
+using ImageGridFusion.Components;
 using ImageGridFusion.Composition;
 using ImageGridFusion.Explorer;
 using ImageGridFusion.UI;
@@ -40,6 +41,10 @@ internal static class Program
 
         bool hidden = args.Any(IsHidden);
 
+        // Started again by the Component updates window: the instance before is waited for, so its lock and its files are
+        // free (workfiles/20261102-component-update-verification.md § Restart).
+        WaitForRestartedInstance();
+
         // One instance per exe location: a later launch hands its files over to the running one and ends — with
         // --tray (Windows start-up), it leaves that instance as it is. --new-instance runs outside the lock.
         bool newInstance = args.Any(IsNewInstance);
@@ -53,6 +58,11 @@ internal static class Program
 
             return;
         }
+
+        // The components manifest, then the swaps left for this start — before anything loads a native runtime. Written
+        // by the normal instance on its own; a --new-instance writes it only to finish a user's swap.
+        var manifest = ComponentManifest.Load(ComponentRegistry.All, writes: !newInstance);
+        var swapped = ComponentInstaller.ApplyPending(manifest, ComponentRegistry.All);
 
         ApplicationConfiguration.Initialize();
 
@@ -71,8 +81,39 @@ internal static class Program
 
         // Before the main window: its zoom slider takes its range from it.
         ImageLook.MaxZoom = AppSettings.MaxZoom / 100.0;
-        var context = new TrayApplicationContext(new MainForm(files.ToArray(), secondTitle, savesWindowSize: !newInstance), hidden);
+        var form = new MainForm(files.ToArray(), secondTitle, savesWindowSize: !newInstance);
+        form.ComponentsAtStart(manifest.LoadError, swapped);
+        var context = new TrayApplicationContext(form, hidden);
         instance?.Listen(context.Launched);
         Application.Run(context);
+    }
+
+    /// <summary>
+    /// The process id a restart gives (<see cref="MainForm.RestartWaitVariable"/>), waited for at most 30 s; the variable
+    /// cleared, so the processes this one starts do not wait.
+    /// </summary>
+    private static void WaitForRestartedInstance()
+    {
+        string? id = Environment.GetEnvironmentVariable(MainForm.RestartWaitVariable);
+        if (id is null)
+        {
+            return;
+        }
+
+        Environment.SetEnvironmentVariable(MainForm.RestartWaitVariable, null);
+        if (!int.TryParse(id, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int pid))
+        {
+            return;
+        }
+
+        try
+        {
+            using var before = System.Diagnostics.Process.GetProcessById(pid);
+            before.WaitForExit(30_000);
+        }
+        catch (ArgumentException)
+        {
+            // Already gone.
+        }
     }
 }

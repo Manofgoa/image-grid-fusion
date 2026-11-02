@@ -237,6 +237,29 @@ internal sealed class CutoutService : IDisposable
         }
     }
 
+    /// <summary>
+    /// The models released at once, once the cut-out computed now is done: their files can then be replaced
+    /// (workfiles/20261102-component-update-verification.md § Updating). The next cut-out loads them again.
+    /// </summary>
+    public async Task ReleaseNowAsync()
+    {
+        if (this._disposed)
+        {
+            return;
+        }
+
+        await this._gate.WaitAsync();
+        try
+        {
+            this._engine?.Dispose();
+            this._engine = null;
+        }
+        finally
+        {
+            this._gate.Release();
+        }
+    }
+
     // The models released once unused for a while: they hold a few hundred MB.
     private async Task ReleaseIdleAsync()
     {
