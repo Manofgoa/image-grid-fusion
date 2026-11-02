@@ -35,19 +35,17 @@ preview shows, the PNG / MP4 / GIF and the cell copy show too.
 - A **free emoji font, cut down to the flags** (a subset), **embedded in the exe** as a resource — never
   downloaded, never installed in Windows. The other emojis stay Segoe UI Emoji: only the flags take the
   new font's style.
-- **Which font**: an Open Question. The legacy `ID2D1RenderTarget` path `TextRaster` uses today draws
-  **COLRv0** color glyphs — Segoe UI Emoji's format — for sure; a COLRv1 or bitmap (CBDT) font would need
-  that path checked or changed first. Candidates:
+- **The font is Twemoji Mozilla** (`mozilla/twemoji-colr`), **COLRv0** — Segoe UI Emoji's format, the one
+  the legacy `ID2D1RenderTarget` path `TextRaster` uses today draws for sure, so no change to the
+  drawing path. Its graphics are under **CC-BY 4.0**: attribution required.
+- **The subset** holds:
+  - the 26 regional indicators and every valid pair's flag (the country flags, 🇪🇺 and 🇺🇳 included);
+  - the **subdivision flags** — England, Scotland, Wales: 🏴 (U+1F3F4) followed by tag characters
+    (U+E0020–U+E007F) — with 🏴 itself and **🏴‍☠️** (🏴 ZWJ ☠ VS16, its ZWJ, ☠ and VS16 in the subset), so
+    the sequences built on 🏴 stay in one font. 🏴 and 🏴‍☠️ then take Twemoji's style.
 
-  | Font | Format | License | Note |
-  |---|---|---|---|
-  | **Twemoji Mozilla** (`mozilla/twemoji-colr`) | COLRv0 | Graphics CC-BY 4.0 (attribution) | Drawn by today's path as is |
-  | **Noto Color Emoji** (`googlefonts/noto-emoji`) | COLRv1 or CBDT | OFL 1.1 | Needs Windows 11's COLRv1 support through Direct2D, unverified |
-
-- **The subset** holds the regional indicators, every valid pair's flag, and — per an Open Question — the
-  subdivision flags (🏴 + tag characters: England, Scotland, Wales). Made once with fontTools
-  (`pyftsubset`), the file committed under `src/ImageGridFusion/Imaging/`, its license file next to it;
-  the command that made it written in `CONTRIBUTING.md`, so it can be made again.
+  Made once with fontTools (`pyftsubset`), the file committed under `src/ImageGridFusion/Imaging/`, its
+  license file next to it; the command that made it written in `CONTRIBUTING.md`, so it can be made again.
 - **Attribution**: the README's technical paragraph names the font and its license, as it names the other
   third-party components (§ One place per fact: there only).
 
@@ -59,8 +57,8 @@ preview shows, the PNG / MP4 / GIF and the cell copy show too.
   `IDWriteFactory5::CreateInMemoryFontFileLoader`, a font set (`IDWriteFactory3::CreateFontSetBuilder`),
   `CreateFontCollectionFromFontSet` — once per thread, with the other factories (`TextRaster.Factories`).
 - A **font fallback** maps the flags' code points to the flag font, **before** the system's mappings:
-  `IDWriteFactory2::CreateFontFallbackBuilder`, `AddMapping` (the regional indicators, and the tags / 🏴
-  when the subdivision flags are in), then `AddMappings(GetSystemFontFallback)` so every other emoji
+  `IDWriteFactory2::CreateFontFallbackBuilder`, `AddMapping` (the regional indicators U+1F1E6–U+1F1FF,
+  🏴 U+1F3F4 and the tag characters U+E0020–U+E007F), then `AddMappings(GetSystemFontFallback)` so every other emoji
   still falls back to Segoe UI Emoji; set on each layout (`IDWriteTextLayout2::SetFontFallback`).
 - The **chosen font wins** where it has the character: a font drawing the regional indicators itself
   keeps doing so (rare; Segoe UI, the default, does not).
@@ -76,12 +74,17 @@ Today a text cell draws every character with GDI+ in Consolas, one column per UT
 **four** UTF-16 units (two surrogate pairs), and a line may be wrapped between them. GDI+ draws no color
 glyph.
 
-- **Which emojis are drawn in color** in a text cell — the flags only, or every emoji — is an Open
-  Question. Either way they are drawn by **`TextRaster`** (Direct2D, the flag font's fallback included),
-  one emoji at the cell's font size, its bitmap cached by emoji and size, then placed at its column with
-  `Graphics.DrawImage`; the rest of the text stays GDI+ in Consolas.
-- **The grid counts text elements** (`StringInfo`, extended grapheme clusters), never UTF-16 units: a flag
-  is one element, never wrapped in its middle. **Its width** in columns is an Open Question.
+- **Every emoji is drawn in color**, the flags among them, by **`TextRaster`** (Direct2D, the flag font's
+  fallback included) — one emoji at the cell's font size, its bitmap cached by emoji and size, then placed
+  at its column with `Graphics.DrawImage`. The rest of the text stays GDI+ in Consolas.
+- **An emoji** is a text element that is a flag (a regional indicator pair, a subdivision flag), holds VS16
+  (U+FE0F), or starts with a code point of Unicode's `Emoji_Presentation` property — .NET has no API for
+  it, so a compact range table in the code, one definition. A lone regional indicator is no emoji there:
+  drawn as GDI+ draws it.
+- **The grid counts text elements** (`StringInfo`, extended grapheme clusters), never UTF-16 units: an
+  emoji — a flag, a ZWJ sequence, a skin tone — is one element, **two columns wide**, as in a terminal;
+  any other element one column. A line is **never wrapped inside an element**, and a column's place is
+  the columns before it, never its UTF-16 offset.
 - A style run (`StyledText`) covering an emoji keeps its **highlight** behind it; its **ink** does not
   color it — an emoji keeps its own colors.
 
@@ -97,7 +100,9 @@ no unit test is created or updated. The run checks by hand:
 | A text layer `Vive l'🇪🇺 et la 🇫🇷 !` draws both flags in color, the other emojis unchanged (Segoe UI Emoji) | The running app | — (by hand) |
 | The flags with an outline, a Halo and a Drop shadow, bold and italic, in a box and justified | The running app | — (by hand) |
 | A text layer with flags exported as PNG, MP4 and copied alone (Ctrl+C): the flags in color | The running app | — (by hand) |
-| A text pasted into a cell with flags: drawn in color, never split by a line wrap, columns aligned after them | The running app | — (by hand) |
+| England, Scotland, Wales and 🏴‍☠️ in a text layer: each one flag, in color | The running app | — (by hand) |
+| A text pasted into a cell with flags and other emojis (😀, 👍🏽, 👨‍👩‍👧): drawn in color, two columns each, never split by a line wrap, the columns after them aligned | The running app | — (by hand) |
+| A styled text cell (highlight, ink) holding an emoji: the highlight behind it, the emoji in its own colors | The running app | — (by hand) |
 | A text cell zoomed in and out (`Sharpen`): the flags stay sharp and in their column | The running app | — (by hand) |
 | An invalid pair (🇽🇽) and a lone regional indicator draw letters, no crash | The running app | — (by hand) |
 
@@ -105,12 +110,12 @@ no unit test is created or updated. The run checks by hand:
 
 ## Open Questions
 
-- [ ] Which flag font: Twemoji Mozilla (COLRv0, drawn by today's path, CC-BY 4.0) or Noto Color Emoji
-  (COLRv1, OFL, the drawing path to check first)?
-- [ ] The subdivision flags (England, Scotland, Wales: 🏴 + tag characters) — in the subset? They need 🏴
-  itself in the flag font, so 🏴 and 🏴‍☠️ take its style too.
-- [ ] In a text cell, which emojis are drawn in color: the flags only, or every emoji?
-- [ ] In a text cell, how many columns does an emoji take: 2 (a terminal's convention), or 1?
+- [x] ~~Which flag font: Twemoji Mozilla (COLRv0, drawn by today's path, CC-BY 4.0) or Noto Color Emoji
+  (COLRv1, OFL, the drawing path to check first)?~~ → Twemoji Mozilla
+- [x] ~~The subdivision flags (England, Scotland, Wales: 🏴 + tag characters) — in the subset? They need 🏴
+  itself in the flag font, so 🏴 and 🏴‍☠️ take its style too.~~ → Yes, 🏴 and 🏴‍☠️ with them
+- [x] ~~In a text cell, which emojis are drawn in color: the flags only, or every emoji?~~ → Every emoji
+- [x] ~~In a text cell, how many columns does an emoji take: 2 (a terminal's convention), or 1?~~ → 2
 
 ---
 
@@ -129,6 +134,14 @@ of a free emoji font embedded in the exe, given to DirectWrite as a private coll
 fallback placed before the system's; the text cells drawing their emojis through `TextRaster` and
 counting text elements. Four questions left open: the font, the subdivision flags, which emojis a text
 cell colors, an emoji's width in its grid.
+
+### Iteration 2 — 2026-11-02
+
+The four open questions answered (Q&A 5–8): Twemoji Mozilla (COLRv0) is the flag font; the subdivision
+flags are in its subset, with 🏴 and 🏴‍☠️; a text cell draws **every** emoji in color through
+`TextRaster`, each two columns wide, its grid counting text elements. § The Flag Font, § Text Layers and
+§ Text Cells updated; the Test Impact gains the subdivision flags, the other emojis of a text cell and a
+styled one.
 
 ---
 
@@ -155,10 +168,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | Segoe UI Emoji has no flags: where do they come from? | A font embedded in the exe, cut down to the flags, used for the flags only | 2026-11-02 |
 | 3 | How is a flag entered? | Pasted or typed only — no picker | 2026-11-02 |
 | 4 | Is the subject straightforward or tricky? | Straightforward: one exploration pass | 2026-11-02 |
-| 5 | Which flag font? | | |
-| 6 | The subdivision flags in the subset? | | |
-| 7 | Text cells: flags only in color, or every emoji? | | |
-| 8 | Text cells: an emoji's width in columns? | | |
+| 5 | Which flag font? | Twemoji Mozilla (COLRv0) | 2026-11-02 |
+| 6 | The subdivision flags in the subset? | Yes — 🏴 and 🏴‍☠️ take its style | 2026-11-02 |
+| 7 | Text cells: flags only in color, or every emoji? | Every emoji | 2026-11-02 |
+| 8 | Text cells: an emoji's width in columns? | 2 columns | 2026-11-02 |
 
 ---
 
