@@ -128,7 +128,7 @@ Tant que ses tuiles ont le focus.
 | Raccourci | Effet |
 |---|---|
 | <kbd>Enter</kbd> | OK |
-| <kbd>Escape</kbd> | Annuler, ou fermer cette liste |
+| <kbd>Escape</kbd> | Annuler, ou fermer cette liste ou la fenêtre Component updates |
 | <kbd>↑</kbd> <kbd>↓</kbd>, <kbd>PageUp</kbd> <kbd>PageDown</kbd>, <kbd>Home</kbd> <kbd>End</kbd> dans cette liste | La faire défiler |
 | <kbd>Ctrl</kbd>+<kbd>Enter</kbd> dans la description d'un preset | Enregistrer le preset — <kbd>Enter</kbd> seul commence une nouvelle ligne |
 

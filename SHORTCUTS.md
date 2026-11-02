@@ -127,7 +127,7 @@ While its tiles have the focus.
 | Shortcut | Does |
 |---|---|
 | <kbd>Enter</kbd> | OK |
-| <kbd>Escape</kbd> | Cancel, or close this list |
+| <kbd>Escape</kbd> | Cancel, or close this list or the Component updates window |
 | <kbd>↑</kbd> <kbd>↓</kbd>, <kbd>PageUp</kbd> <kbd>PageDown</kbd>, <kbd>Home</kbd> <kbd>End</kbd> in this list | Scroll it |
 | <kbd>Ctrl</kbd>+<kbd>Enter</kbd> in a preset's description | Save the preset — <kbd>Enter</kbd> alone starts a new line |
 
