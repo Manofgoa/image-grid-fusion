@@ -32,6 +32,7 @@ internal static class AppSettings
     private const string SimilarImagesName = "SimilarImages";
     private const string VisualAnalysisName = "VisualAnalysis";
     private const string CaptionsName = "Captions";
+    private const string EmojiFontsDeclinedName = "EmojiFontsDeclined";
     private const string ExplorerOpenFolderName = "ExplorerOpenFolder";
     private const string ExplorerContentSearchName = "ExplorerContentSearch";
     private const string ExplorerFileOrderName = "ExplorerFileOrder";
@@ -289,6 +290,15 @@ internal static class AppSettings
 
     /// <summary>Saves whether the file explorer writes the images' captions; throws an <see cref="IsSaveError"/> exception on failure.</summary>
     public static void SaveCaptions(bool on) => Save((CaptionsName, on ? 1 : 0));
+
+    /// <summary>
+    /// Whether the emoji fonts' download was declined at a launch: it is not offered at launch again, the ⚙ menu still
+    /// offers it (workfiles/20261102-emoji-fonts.md § Shipped Fonts).
+    /// </summary>
+    public static bool EmojiFontsDeclined => Int(EmojiFontsDeclinedName) is int value && value != 0;
+
+    /// <summary>Saves that the emoji fonts' download was declined at launch; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveEmojiFontsDeclined() => Save((EmojiFontsDeclinedName, 1));
 
     /// <summary>
     /// The file explorer's order of the files, its sort drop-down's — saved by name; <see cref="FileOrder.Newest"/>

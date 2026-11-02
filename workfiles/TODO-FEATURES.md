@@ -28,7 +28,8 @@
 | **Chosen image fill** — a texture or a photo as the background, with a blur and an opacity | Backlog review, 2026-10-29 | To design |
 | **Frosted glass fill** — a blur, a light tint and a thin edge line | Backlog review, 2026-10-29 | To design |
 | **Palette fill** — bands of the image's dominant colors | Backlog review, 2026-10-29 | To design |
+| **Stickers in layers** — ready-made stickers (transparent images, some animated) added as layers. Overlaps the favorites with effect presets: a file cut out by the Cutout and saved as a preset is already the user's own sticker — but a preset dropped onto the Layers loses its effects today (`AddLayerFilesAsync` takes no look), the first gap to close. Libraries looked at: **GIPHY** stickers (an API key, a beta key at 100 calls an hour, production priced on request, attribution), **KLIPY** (free, ads among its results), **Tenor** shut down on 2026-06-30; offline packs shipped or downloaded: Microsoft **Fluent Emoji** (MIT), **Noto Animated Emoji** (CC BY 4.0), **OpenMoji** (CC BY-SA 4.0), **Twemoji** (CC BY 4.0, already the flag font's source). The emoji stickers of 2026-09-27 were cancelled for the text layers' emojis | User request, 2026-11-02 | To discuss |
 
 ---
 
-*Last updated: 2026-10-29*
+*Last updated: 2026-11-02*

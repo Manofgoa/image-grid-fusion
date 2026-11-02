@@ -61,6 +61,8 @@ internal sealed partial class MainForm : Form
     private readonly ToolStripMenuItem _captions = new("Captions");
     private readonly ToolStripMenuItem _downloadCaptionEngine = new("Download the caption engine…");
     private readonly ToolStripMenuItem _downloadCutoutEngine = new("Download the cutout engine…");
+    private readonly ToolStripMenuItem _downloadEmojiFonts = new("Download the emoji fonts…");
+    private readonly ToolStripMenuItem _updateEmojiFonts = new("Update the emoji fonts");
     private readonly ToolStripMenuItem _forgetVisual = new("Forget visual analysis…");
     // A cell's context menu, shown while the visual analysis can run: the images like its own.
     private readonly ContextMenuStrip _cellMenu = new();
@@ -292,6 +294,9 @@ internal sealed partial class MainForm : Form
     // The Cutout's cut-outs, computed off the UI thread, and its engine's download while it runs (workfiles/20261029-cutout.md).
     private readonly CutoutService _cutouts = new();
     private CancellationTokenSource? _cutoutEngineDownload;
+
+    // The emoji fonts' download or update while it runs (workfiles/20261102-emoji-fonts.md § Shipped Fonts).
+    private CancellationTokenSource? _emojiFontsDownload;
     private readonly TrackBar _volume = OptionSlider(0, (int)(VolumeEffect.MaxLevel * 100), 10);
     private readonly Label _volumeLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _mute = new() { Text = "Mute", AutoSize = true, Anchor = AnchorStyles.Left };
@@ -697,7 +702,7 @@ internal sealed partial class MainForm : Form
         this._transportTimer.Tick += (_, _) => this.RefreshTransportPosition();
         this._transportTimer.Start();
         this._toolTip.SetToolTip(this._clearButton, "Removes every image and the global effects, and brings the format back to Twitter (Ctrl+N)");
-        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, this._installYtDlpCompanions, this._downloadCutoutEngine, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._downloadOcrEngine, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._downloadFaceEngine, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._similarImages, this._downloadVisionEngine, this._captions, this._downloadCaptionEngine, this._forgetVisual, new ToolStripSeparator(), this._keyboardShortcuts, this._openAppFolder]);
+        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, this._installYtDlpCompanions, this._downloadCutoutEngine, this._downloadEmojiFonts, this._updateEmojiFonts, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._downloadOcrEngine, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._downloadFaceEngine, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._similarImages, this._downloadVisionEngine, this._captions, this._downloadCaptionEngine, this._forgetVisual, new ToolStripSeparator(), this._keyboardShortcuts, this._openAppFolder]);
         // An icon per action and toggle, never on a caption nor a submenu's values (RULES.md § Icons).
         UiIcons.Set(this._startWithWindows, UiIcons.StartWithWindows);
         UiIcons.Set(this._twitterCornersDefault, UiIcons.TwitterCorners);
@@ -708,6 +713,8 @@ internal sealed partial class MainForm : Form
         UiIcons.Set(this._explorerPages, UiIcons.Pages);
         UiIcons.Set(this._installYtDlpCompanions, UiIcons.Download);
         UiIcons.Set(this._downloadCutoutEngine, UiIcons.Download);
+        UiIcons.Set(this._downloadEmojiFonts, UiIcons.Download);
+        UiIcons.Set(this._updateEmojiFonts, UiIcons.UpdateEmojiFonts);
         UiIcons.Set(this._explorerContentSearch, UiIcons.TextRead);
         UiIcons.Set(this._rebuildContent, UiIcons.Rebuild);
         UiIcons.Set(this._downloadOcrEngine, UiIcons.Download);
@@ -810,6 +817,10 @@ internal sealed partial class MainForm : Form
         this._downloadCaptionEngine.Click += (_, _) => this.OfferCaptionEngineDownload();
         this._downloadCutoutEngine.ToolTipText = "Downloads the cutout engine — IS-Net and MobileSAM — the Cutout effect runs on; shown while it is not downloaded";
         this._downloadCutoutEngine.Click += (_, _) => this.OfferCutoutEngineDownload();
+        this._downloadEmojiFonts.ToolTipText = "Downloads the emoji fonts — Twemoji, Noto Color Emoji, OpenMoji and Blobmoji — a text's emojis may be drawn in; shown while one is not downloaded";
+        this._downloadEmojiFonts.Click += (_, _) => this.OfferEmojiFontsDownload(atLaunch: false);
+        this._updateEmojiFonts.ToolTipText = "Replaces the emoji fonts downloaded by their latest release, the texts drawn again with them";
+        this._updateEmojiFonts.Click += async (_, _) => await this.UpdateEmojiFontsAsync();
         this._forgetVisual.ToolTipText = "Deletes every embedding, tag and caption — files.vision and the tags and captions of files.content — and turns the visual analysis and the captions off";
         this._forgetVisual.Click += (_, _) => this.ForgetVisualAnalysis();
         this._ocrResultStyle.ToolTipText = "How the arrow from a tile's light bulb to the word the OCR found is drawn; remembered between sessions";
@@ -1239,6 +1250,7 @@ internal sealed partial class MainForm : Form
             // Before the preview, which disposes the images it shows: the history disposes the others.
             this._history.Dispose();
             this._cutoutEngineDownload?.Cancel();
+            this._emojiFontsDownload?.Cancel();
             this._cutouts.Dispose();
             this._transportTimer.Dispose();
             _settingsMenu.Dispose();
@@ -1512,6 +1524,13 @@ internal sealed partial class MainForm : Form
         }
 
         this._history.Start();
+
+        // The emoji fonts offered at the first launch — by the normal instance only, a --new-instance offering nothing of
+        // its own accord —, never again once declined (workfiles/20261102-emoji-fonts.md § Shipped Fonts).
+        if (this._savesWindowSize && !EmojiFonts.AnyPresent && !AppSettings.EmojiFontsDeclined)
+        {
+            this.OfferEmojiFontsDownload(atLaunch: true);
+        }
     }
 
     /// <summary>
@@ -3419,6 +3438,9 @@ internal sealed partial class MainForm : Form
         this._captions.Checked = this._explorer.Captions;
         this._downloadCutoutEngine.Visible = !CutoutEngineFiles.IsAvailable;
         this._downloadCutoutEngine.Enabled = this._cutoutEngineDownload is null;
+        this._downloadEmojiFonts.Visible = !EmojiFonts.AllPresent;
+        this._updateEmojiFonts.Visible = EmojiFonts.AnyPresent;
+        this._downloadEmojiFonts.Enabled = this._updateEmojiFonts.Enabled = this._emojiFontsDownload is null;
         this._downloadCaptionEngine.Visible = !CaptionEngineFiles.IsAvailable;
         this._downloadCaptionEngine.Enabled = !this._explorer.DownloadingCaptionEngine;
         this._ocrArrowCurved.Checked = this._explorer.ArrowStyle.Curved;
