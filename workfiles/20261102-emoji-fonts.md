@@ -71,9 +71,13 @@ The emoji fonts that exist, as known at design time (to be checked when pinning 
   sequence's invisible characters (ZWJ, VS16, a skin tone) to the text's font. The emoji font therefore
   **wins over the text's font** on an emoji, as the flag font does; a character that is no emoji (©, ♥
   without VS16, a digit) stays in the text's font.
-- **The shipped fonts are private**: their files in a collection of their own (`CreateFontFileReference`,
-  a font set, `CreateFontCollectionFromFontSet`), built beside the flag font's in `TextRaster.Factories` and
-  built again after a download or an update — never installed into Windows.
+- **The shipped fonts are private and loaded from memory**: each file read into memory and given its own
+  collection the way the flag font is (`TextRaster.CreateMemoryCollection`: in-memory loader, font set,
+  `CreateFontCollectionFromFontSet`), when a text first needs it, kept per thread in `TextRaster.Factories` and
+  loaded again once `EmojiFonts.Generation` changes (a download, an update) — never installed into Windows, and
+  never holding its file open, so an update can replace it.
+- **The family set is DirectWrite's name of the font** (its WWS family, read from the collection), not the app's:
+  OpenMoji's is `OpenMoji Color`. The drop-down and the style keep the app's name.
 - **The default emoji font draws as today**: Segoe UI Emoji, nothing set — the system fallback, as
   delivered by the flag workfile; the icons (`UiIcons`) keep drawing that way.
 - **The country flags follow the chosen emoji font** when it has them (it holds the regional indicators):
@@ -84,9 +88,8 @@ The emoji fonts that exist, as known at design time (to be checked when pinning 
   the style keeps its name.
 - **Text layers only**: the text cells keep Segoe UI Emoji and the flag subset, as the flag workfile
   delivers them.
-- **Formats**: `DrawTextLayout` with `ENABLE_COLOR_FONT` draws COLRv0 for sure; COLRv1, CBDT and SVG glyphs
-  depend on the Direct2D version — each shipped font's build is chosen for one that draws, checked when it is
-  pinned (COLRv0 preferred when a font offers it).
+- **Formats**: `DrawTextLayout` with `ENABLE_COLOR_FONT` draws COLRv0, COLRv1 and CBDT in color on the WIC
+  render target — checked with each shipped build (Iteration 6).
 - **Outline and shadow from the color render**: they draw the emojis as plain shapes (`colorFont: false`),
   from the base glyphs' outlines — empty in Twemoji (the flag workfile found it) and in the COLRv0 builds,
   missing in the bitmap ones (CBDT). With an emoji font other than Segoe UI Emoji, the shape the outline's
@@ -108,9 +111,9 @@ The emoji fonts that exist, as known at design time (to be checked when pinning 
 - **Part of the text style**: `LayerTextStyle.EmojiFont`, `"Segoe UI Emoji"` by default, under its own key
   (`emojiFont`) in `ToJson` / `FromJson` — a missing or blank value giving the default — and in
   `TextStyleStrip`'s tooltip; saved in the user's text styles. The built-in styles keep Segoe UI Emoji.
-- **Each font drawn as a sample** of a few emojis in it, then its name: rendered through `TextRaster` (GDI
-  draws emojis in one color), each sample cached once drawn. No icon (§ Icons: the font drop-downs show each
-  font in its face).
+- **Each font drawn as a sample** of three emojis in it (😀👍❤️), then its name: rendered through `TextRaster`
+  (GDI draws emojis in one color), each sample cached once drawn. The closed box, narrow, shows the sample alone.
+  No icon (§ Icons: the font drop-downs show each font in its face).
 - **An emoji font is an ordinary option** of the text: it turns the Layers effect on, is one undo step, is
   reset with the text's style.
 
@@ -118,19 +121,28 @@ The emoji fonts that exist, as known at design time (to be checked when pinning 
 
 ## Shipped Fonts
 
-- **Four fonts**: **Twemoji** (Mozilla's build, COLRv0, CC-BY 4.0), **Noto Color Emoji** (OFL 1.1),
-  **OpenMoji** (CC BY-SA 4.0), **Blobmoji** (Apache 2.0). For each, the build that `DrawTextLayout` draws in
-  color is chosen when it is pinned (COLRv0 preferred; Noto's COLRv1 or CBDT, Blobmoji's CBDT checked).
-- **Downloaded at the first launch, after asking**: the app offers them while their folder is missing — one
+- **Four fonts**, pinned in `Imaging/EmojiFonts` (about 22 MB in all):
+
+  | Font | Build pinned | Format | License | Latest release from |
+  |---|---|---|---|---|
+  | Twemoji Mozilla | `mozilla/twemoji-colr` v0.7.0, `Twemoji.Mozilla.ttf` | COLRv0 | Graphics CC-BY 4.0 | The release's asset |
+  | Noto Color Emoji | `googlefonts/noto-emoji` v2026-09-24-unicode18_0, `2D/fonts/Noto-COLRv1.ttf` | COLRv1 | OFL 1.1 | The file at the release's tag |
+  | OpenMoji | `hfg-gmuend/openmoji` 17.0.0, `font/OpenMoji-color-glyf_colr_0/…ttf` | COLRv0 | CC BY-SA 4.0 | The file at the release's tag |
+  | Blobmoji | `C1710/blobmoji` v15.0, `Blobmoji.ttf` | CBDT | Apache 2.0 | The release's asset |
+- **Downloaded at the first launch, after asking**: the app offers them while none is there — one
   confirmation, their names and total size; a **Yes** downloads them, a **No** is remembered
-  (`AppSettings`) so the offer is not repeated; the ⚙ menu offers them again while missing. A
-  `--new-instance` makes no offer of its own accord (RULES.md § Single Instance).
+  (`AppSettings.EmojiFontsDeclined`) so the offer is not repeated; the ⚙ menu's **Download the emoji fonts…**
+  offers them again while one is missing. A `--new-instance` makes no offer of its own accord (RULES.md § Single
+  Instance).
 - Into **`emoji-fonts\` next to the exe** (`FolderName`, kebab-case per `../CLAUDE.md` § Folder Names),
   from **pinned URLs, each checked against its SHA-256** — the engines' loop, `DirectEngineDownload`. Never
   installed into Windows.
-- **⚙ Update emoji fonts**, once they are there: the **latest release** of each font, found from its
-  GitHub releases, no pinned hash (HTTPS only), replacing the file in `emoji-fonts\`; the texts drawn again
-  with it. A font whose download fails keeps its file.
+- **⚙ Update the emoji fonts**, once one is there: the **latest release** of each font, found from its
+  GitHub releases (`api.github.com/…/releases/latest`), no pinned hash (HTTPS only), replacing the file in
+  `emoji-fonts\` — a download identical to the file changes nothing, one that does not start as a font is
+  refused; the status line names the fonts updated and those that failed. A font whose download fails keeps its
+  file. After a download or an update, the Emoji drop-down is read again and every text layer with an emoji font
+  of its own is drawn again.
 - Their licenses credited in the README's technical paragraph, beside the flag subset's (CC-BY and
   CC BY-SA require the attribution).
 
@@ -220,16 +232,43 @@ tagged flags at private code points, and filled its glyphs' empty outlines. Cons
 Go given: code, the checks by hand and the documentation, in a worktree (`feature/emoji-fonts`). The scope
 is frozen as Iteration 4 left it.
 
+### Iteration 6 — 2026-11-02 — 🧭 Implementation choices
+
+Divergent choices of the run, each in the domain sections above:
+
+- **The shipped fonts loaded from memory, one collection per font, when first needed** — not their files added
+  to one font set: a collection on the files would hold them open, and the update could not replace them.
+- **The family set is the one DirectWrite reads from the font** (its WWS name): OpenMoji's is `OpenMoji Color`,
+  and setting the app's `OpenMoji` drew Segoe UI Emoji instead.
+- **The builds pinned**: Noto's **COLRv1** (5 MB) rather than its CBDT one (10.7 MB), and Blobmoji's CBDT — both
+  drawn in color by `DrawTextLayout` on this Windows; OpenMoji's `glyf_colr_0`.
+- **The update** compares the download with the file (identical → nothing changes) and refuses a file that does
+  not start as a font; its outcome names the fonts updated and failed.
+- **The first-launch offer** shows while **no** emoji font is there; a partial download leaves it to the ⚙ menu.
+  The test instance is recognised by the form's existing flag (`savesWindowSize`, false for `--new-instance`).
+- **Redrawing the texts after a download or an update** goes through `GridPreview.SetLayers`: it is a step of the
+  undo history, the step before it holding the texts as they were drawn.
+- **The closed Emoji drop-down shows the sample alone**, 64 px wide; its list shows the sample and the name.
+- **`DirectEngineDownload`** gained a download without ONNX Runtime, and its file save, hash and delete became
+  public for the update; **`UiIcons.UpdateEmojiFonts`** (🔄) is the update's icon.
+- **The checks by hand ran through the app's `TextRaster`** in a scratch harness, not the app's window: every
+  font drawn with an outline and a halo (letters, 😀, 👍🏽, 👨‍👩‍👧, 🇫🇷, 🇪🇺, 🏴󠁧󠁢󠁳󠁣󠁴󠁿, 🏴‍☠️, ❤️, ©), a missing font drawn as Segoe
+  UI Emoji, the real download (hashes checked) and the real update (nothing newer). The Emoji drop-down, the
+  first-launch dialog, the ⚙ entries, the text styles and the exports are left to the delivery test.
+
+No project rule was broken.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
-| GLOSSARY | | | |
+| Code | 5 | 2026-11-02 | Rendering, the four fonts, the Emoji drop-down, the download and the update |
+| Unit tests | 5 | 2026-11-02 | No test project: checked by hand through `TextRaster` (Iteration 6); the window's checks left to the delivery test |
+| README | 5 | 2026-11-02 | The emoji font in the Layers section, the fonts credited in Tech; English and French |
+| GLOSSARY | 5 | 2026-11-02 | *Emoji font* row, the text style's row; English and French |
+| RULES | 5 | 2026-11-02 | § Text Emojis: the emoji font, the installed ones, the app's, the outlines |
 
 ---
 
