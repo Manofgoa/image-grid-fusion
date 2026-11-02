@@ -24,6 +24,14 @@
     <EmbeddedResource Include="Explorer\VisionTags.txt" LogicalName="ImageGridFusion.Explorer.VisionTags.txt" />
   </ItemGroup>
 
+  <!--
+    The flags of the texts: Twemoji Mozilla v0.7.0 cut down to its flags, CC-BY 4.0 (Imaging/TwemojiFlags.LICENSE.md),
+    made again as CONTRIBUTING.md § Flag Font says (workfiles/20261102-text-flag-emojis.md § The Flag Font).
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="Imaging\TwemojiFlags.ttf" LogicalName="ImageGridFusion.Imaging.TwemojiFlags.ttf" />
+  </ItemGroup>
+
   <!-- The shortcuts window's list: the repository's SHORTCUTS.md itself, one source with GitHub (workfiles/20261029-shortcuts-list.md). -->
   <ItemGroup>
     <EmbeddedResource Include="..\..\SHORTCUTS.md" LogicalName="ImageGridFusion.SHORTCUTS.md" Link="SHORTCUTS.md" />
