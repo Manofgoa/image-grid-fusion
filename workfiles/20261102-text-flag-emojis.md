@@ -143,6 +143,11 @@ flags are in its subset, with 🏴 and 🏴‍☠️; a text cell draws **every*
 § Text Cells updated; the Test Impact gains the subdivision flags, the other emojis of a text cell and a
 styled one.
 
+### Iteration 3 — 2026-11-02 — ✅ Implemented
+
+Go given: code, the checks by hand and the documentation, in a worktree (`feature/text-flag-emojis`).
+The scope is frozen as Iteration 2 left it.
+
 ---
 
 ## Implementation Log
