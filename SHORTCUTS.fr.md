@@ -21,8 +21,8 @@ L'application montre la même liste, en anglais : <kbd>F1</kbd>, ou **Keyboard s
 | <kbd>Ctrl</kbd>+<kbd>N</kbd> | Tout effacer, sans confirmation |
 | <kbd>Ctrl</kbd>+<kbd>R</kbd> | Tourner d'un quart de tour horaire l'image sous la souris — sinon l'image sélectionnée |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> | La même chose, dans le sens antihoraire |
-| <kbd>Ctrl</kbd>+<kbd>F</kbd> | Aller dans la zone de recherche de l'explorateur de fichiers ; pressé de nouveau là, la vue suivante |
-| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> | Dans la zone de recherche, la vue précédente |
+| <kbd>Ctrl</kbd>+<kbd>F</kbd> | Aller dans la zone de recherche de l'explorateur de fichiers ; pressé de nouveau là, la vue suivante — la vue dossiers atteinte ainsi s'ouvrant au dossier de base |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> | Dans la zone de recherche, la vue précédente — la vue dossiers, au dossier de base aussi |
 | <kbd>Space</kbd> | Lecture / pause de la grille — pas dans un champ de texte |
 
 Dans un champ de texte, <kbd>Ctrl</kbd>+<kbd>V</kbd>, <kbd>Ctrl</kbd>+<kbd>C</kbd>, <kbd>Ctrl</kbd>+<kbd>Z</kbd>,

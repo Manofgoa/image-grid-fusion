@@ -890,30 +890,33 @@ internal sealed partial class FileExplorerPanel : Panel
     public ExplorerMode Mode
     {
         get => this._peopleView ? ExplorerMode.People : this._folderView ? ExplorerMode.Folders : ExplorerMode.Favorites;
-        set
+        set => this.SetMode(value);
+    }
+
+    /// <summary>The view set as <see cref="Mode"/> does, <paramref name="select"/> selected once listed.</summary>
+    private void SetMode(ExplorerMode value, string? select = null)
+    {
+        if (value == this.Mode || !Enum.IsDefined(value))
         {
-            if (value == this.Mode || !Enum.IsDefined(value))
-            {
-                return;
-            }
-
-            this._folderView = value == ExplorerMode.Folders;
-            this._peopleView = value == ExplorerMode.People;
-            this._openGroup = null;
-            this._similarTo = null;
-            this._syncingToggle = true;
-            try
-            {
-                this._modes.SelectedIndex = (int)value;
-            }
-            finally
-            {
-                this._syncingToggle = false;
-            }
-
-            this.ApplyView();
-            this.RefreshRows();
+            return;
         }
+
+        this._folderView = value == ExplorerMode.Folders;
+        this._peopleView = value == ExplorerMode.People;
+        this._openGroup = null;
+        this._similarTo = null;
+        this._syncingToggle = true;
+        try
+        {
+            this._modes.SelectedIndex = (int)value;
+        }
+        finally
+        {
+            this._syncingToggle = false;
+        }
+
+        this.ApplyView();
+        this.RefreshRows(select: select);
     }
 
     /// <summary>Whether the folder view shows.</summary>
@@ -1315,7 +1318,9 @@ internal sealed partial class FileExplorerPanel : Panel
     /// text selected (see workfiles/20261007-ctrl-f-search-focus.md). Pressed again while the search box
     /// has the focus, it moves to the view <paramref name="step"/> away in the drop-down's order — 1 for
     /// Ctrl+F, -1 for Ctrl+Shift+F — round the end, People skipped while the face analysis is off (see
-    /// workfiles/20261029-ctrl-f-view-cycle.md).
+    /// workfiles/20261029-ctrl-f-view-cycle.md). The folder view reached that way opens at the base folder,
+    /// the folder left on its way selected, so pressing it until Folders comes back goes up to the top (see
+    /// workfiles/20261102-ctrl-f-cycle-folder-root.md); the drop-down keeps the folder left.
     /// </summary>
     public void FocusSearch(int step)
     {
@@ -1325,7 +1330,15 @@ internal sealed partial class FileExplorerPanel : Panel
         }
         else if (this._search.Focused)
         {
-            this.ChangeMode(this.NextMode(step));
+            var mode = this.NextMode(step);
+            string? select = null;
+            if (mode == ExplorerMode.Folders && this._openFolder.Length > 0)
+            {
+                select = this._baseFolder is null ? null : Path.Combine(this._baseFolder, this.SegmentsOf(this._openFolder)[1]);
+                this._openFolder = "";
+            }
+
+            this.ChangeMode(mode, select);
         }
 
         this._search.Focus();
@@ -3038,15 +3051,15 @@ internal sealed partial class FileExplorerPanel : Panel
     /// <summary>Whether the list is the favorites: the search view with a blank box.</summary>
     private bool ShowingFavorites => !_folderView && !this._peopleView && FileSearch.Words(_search.Text).Length == 0;
 
-    /// <summary>Another view picked in the drop-down by the user: it shows, remembered.</summary>
-    private void ChangeMode(ExplorerMode mode)
+    /// <summary>Another view picked in the drop-down by the user: it shows, remembered, <paramref name="select"/> selected once listed.</summary>
+    private void ChangeMode(ExplorerMode mode, string? select = null)
     {
         if (this._syncingToggle || mode == this.Mode)
         {
             return;
         }
 
-        this.Mode = mode;
+        this.SetMode(mode, select);
         this.FolderViewChanged?.Invoke(this, EventArgs.Empty);
     }
 

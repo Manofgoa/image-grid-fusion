@@ -60,6 +60,10 @@ Components:
   (`Path.Combine(_baseFolder, <its first segment>)`) is handed to the listing as its selection, the
   way `GoUp` hands `Navigate` its `select`. The search box is not touched (no `Navigate`, which
   clears it).
+- As built: the `Mode` setter's body moved into `SetMode(ExplorerMode, string? select)`, which
+  `ChangeMode` calls with its new optional `select`, so the listing selects the folder in one
+  refresh. Without a base folder (the invitation shows), the open folder is still reset and
+  nothing is selected.
 
 ---
 
@@ -120,6 +124,23 @@ Open questions answered (Q&A 5–7): `Ctrl+Shift+F` resets the open folder too; 
 on the way to the folder left is selected; the search text is kept. § Behaviour and § Planned code
 updated. No open question left.
 
+### Iteration 3 — 2026-11-02 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree (`.claude/worktrees/ctrl-f-cycle-folder-root`,
+branch `feature/ctrl-f-cycle-folder-root`).
+
+### Iteration 4 — 2026-11-02 — 🧭 Implementation choices
+
+- **No rule broken.**
+- **One refresh with the selection**: the `Mode` setter's body became `SetMode(value, select)`, and
+  `ChangeMode` takes an optional `select` — rather than a second `RefreshRows(select:)` after the
+  mode change, which would have listed the folder twice.
+- **The folder left's subfolder** is the first segment of the open folder (`SegmentsOf(...)[1]`),
+  combined with the base folder, the way `OpenFolderAtDepth` builds its selection.
+- **Without a base folder**, the open folder is still reset (nothing is listed to select in).
+- **Not checked in the app by the agent**: the worktree's exe has no `settings.json` next to it, so
+  no base folder nor index — the user's hand test covers it.
+
 ---
 
 ## Implementation Log
@@ -129,11 +150,11 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable: no test project |
-| README | | | |
-| SHORTCUTS | | | With the code commit |
-| GLOSSARY | | | |
+| Code | 3 | 2026-11-02 | `FileExplorerPanel.FocusSearch`, `SetMode`, `ChangeMode(select)`; built, not checked in the app by the agent |
+| Unit tests | 3 | 2026-11-02 | Not applicable: no test project |
+| README | 3 | 2026-11-02 | EN + FR, § File explorer, the search box's key |
+| SHORTCUTS | 3 | 2026-11-02 | EN + FR, `Ctrl+F` and `Ctrl+Shift+F` rows, in the code commit |
+| GLOSSARY | 3 | 2026-11-02 | EN + FR, *Open folder* row |
 
 ---
 
