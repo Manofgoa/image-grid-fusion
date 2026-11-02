@@ -126,9 +126,16 @@ Layout **A — one grouped list** (Q&A 1), drawn in the mockup of 2026-11-02:
 - **Every install and update goes through the window** (Iteration 4): the ⚙ menu's *Download the …
   engine…* entries and *Install yt-dlp companions…* are removed (Q&A 12, 13), and the in-context offers
   — the Cutout turned on in a mode needing its engine, the content search, the face analysis, the
-  visual analysis, the captions, the URL zone's yt-dlp and companions offers — **open the window** on
-  the rows they need instead of downloading themselves (how the feature that asked goes on: Q&A 14).
-  No download or winget install runs anywhere else.
+  visual analysis, the captions, the URL zone's yt-dlp and companions offers — **open the window**
+  instead of downloading themselves. No download or winget install runs anywhere else.
+- **Opened by an in-context offer** (Q&A 14): the window shows every component as usual, the rows the
+  feature needs **highlighted**, the first scrolled into view, and a **balloon tooltip open on it**
+  naming the component to install and why it is wanted — *The Cutout's Subject mode needs the cutout
+  engine — IS-Net to find the image's main subject.* — built from the feature asking and the
+  component's purpose. Nothing installs by itself: the user clicks *Install*.
+- **The feature that asked goes back to off** (§ Open Questions, to confirm): the Cutout's checkbox,
+  the analysis setting, the URL load — as a **No** does today; the user turns it on again once the
+  component is installed.
 - No shortcut is added (`SHORTCUTS.md` unchanged), apart from Escape closing the window, as in the
   shortcuts window.
 
@@ -277,9 +284,10 @@ Checked by hand in the running app:
 - [ ] The **emoji fonts**: is their group part of this work, or left to `workfiles/20261102-emoji-fonts.md`?
   → **Waiting** for the session implementing the emoji fonts (Q&A 11)
 - [x] ~~The ⚙ menu's Install yt-dlp companions… entry: removed too, or kept?~~ → Removed too
-- [ ] An in-context offer now opens the window: what happens to the feature that asked (the Cutout
-  turned on, an analysis setting turned on, a URL load) while its component is missing, and once it is
-  installed?
+- [x] ~~An in-context offer now opens the window: what does the window show?~~ → Every component,
+  the needed rows highlighted with a balloon tooltip naming the component and why it is wanted
+- [ ] The feature that asked: back to off at once (the agent's reading of Q&A 14, the answer not
+  saying), or waiting and resuming by itself once the component is installed?
 
 ---
 
@@ -343,6 +351,13 @@ User request: show what each component is for, for instance in a tooltip next to
 icon after the name, its tooltip giving the component's purpose and the features needing it, then
 its upstream and license (§ Components Window).
 
+### Iteration 6 — 2026-11-02
+
+Q&A 14: an in-context offer opens the window with every component, the needed rows highlighted and a
+balloon tooltip open on the first, naming the component and why the feature wants it; nothing installs
+by itself. The feature that asked goes back to off, as a *No* does today — the agent's reading, left
+open for confirmation.
+
 ---
 
 ## Implementation Log
@@ -379,7 +394,7 @@ Questions asked by the agent during design, with user responses.
 | 11 | The emoji fonts' group: part of this work, or left to the emoji fonts workfile? | Wait for the other session | 2026-11-02 |
 | 12 | The ⚙ menu's *Download the … engine…* entries: kept or removed? | Removed | 2026-11-02 |
 | 13 | The ⚙ menu's *Install yt-dlp companions…* entry: removed too, or kept? | Removed too | 2026-11-02 |
-| 14 | An in-context offer opens the window: what happens to the feature that asked? | | |
+| 14 | An in-context offer opens the window: what happens to the feature that asked? | The window opens with everything, the row in question highlighted, with a tooltip open or a popup naming the component to download and why it is wanted | 2026-11-02 |
 
 ---
 
