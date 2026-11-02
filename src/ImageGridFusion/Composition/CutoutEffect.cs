@@ -3,11 +3,15 @@ using System.Text.Json.Nodes;
 
 namespace ImageGridFusion.Composition;
 
-/// <summary>What the Cutout effect keeps: the image's main subject, or the object under the points clicked.</summary>
+/// <summary>
+/// What the Cutout effect keeps: the image's main subject, the object under the points clicked, or
+/// everything but the plain background around it.
+/// </summary>
 public enum CutoutMode
 {
     Subject,
     Picked,
+    Plain,
 }
 
 /// <summary>
@@ -41,11 +45,12 @@ public readonly record struct CutoutPoint(float X, float Y, bool Included);
 
 /// <summary>
 /// The Cutout effect of an image: a mask computed by a model — the main subject, or the object under
-/// the points clicked, as wide as its reach — keeps a part of the image; the rest is made transparent,
-/// or kept with treatments — see-through, under a color, blurred, in squares — combined, each its own
-/// amount; the edge grown or eaten, softened, the mask inverted at will. The mask is computed off the UI
-/// thread on the image as loaded and cached on the image (<see cref="SourceImage.DrawnBitmap"/>); this
-/// record holds the settings only. See workfiles/20261029-cutout.md.
+/// the points clicked, as wide as its reach — or the plain background flooded from the edges keeps a
+/// part of the image; the rest is made transparent, or kept with treatments — see-through, under a
+/// color, blurred, in squares — combined, each its own amount; the holes filled, the edge grown or eaten,
+/// softened, the mask inverted at will. The mask is computed off the UI thread on the image as loaded and
+/// cached on the image (<see cref="SourceImage.DrawnBitmap"/>); this record holds the settings only. See
+/// workfiles/20261029-cutout.md and workfiles/20261029-cutout-enclosed-content.md.
 /// </summary>
 public sealed record CutoutEffect
 {
@@ -55,6 +60,15 @@ public sealed record CutoutEffect
     /// <summary>The strongest blur of the part left out — the gaussian's radius — and the side of its largest squares: shares of the image's longer side.</summary>
     public const double MaxBlur = 0.03;
     public const double MaxPixel = 0.08;
+
+    /// <summary>The farthest a color may be from the plain background's and still be background: the largest channel difference, of 255.</summary>
+    public const int MaxTolerance = 128;
+
+    /// <summary>The widest gap of an outline closed before a fill: a share of the image's longer side.</summary>
+    public const double MaxGap = 0.02;
+
+    /// <summary>The plain background's tolerance until it is set.</summary>
+    public const double DefaultTolerance = 0.25;
 
     // A treatment's amount until it is set.
     private const double DefaultAmount = 0.5;
@@ -83,6 +97,21 @@ public sealed record CutoutEffect
     /// <summary>Keeps what the mask leaves out instead.</summary>
     public bool Invert { get; private init; }
 
+    /// <summary>Keeps the parts the mask leaves out that the part kept encloses — the subject's or a pick's; a plain background leaves none.</summary>
+    public bool FillHoles { get; private init; }
+
+    /// <summary>From 0 to 1, how far a color may be from the plain background's, up to <see cref="MaxTolerance"/>; the plain background only.</summary>
+    public double Tolerance { get; private init; } = DefaultTolerance;
+
+    /// <summary>From 0 to 1, the widest gap of the outline closed before the fill, up to <see cref="MaxGap"/>: the plain background, or the holes filled.</summary>
+    public double CloseGaps { get; private init; }
+
+    /// <summary>Whether <see cref="CloseGaps"/> applies: to the plain background, or to the holes filled.</summary>
+    public bool ClosesGaps => this.Mode == CutoutMode.Plain || this.FillHoles;
+
+    /// <summary>Whether the mask needs the cutout engine's models: the plain background needs none.</summary>
+    public bool NeedsEngine => this.Mode != CutoutMode.Plain;
+
     /// <summary>The color masking the part left out, under the <see cref="CutoutBackground.Color"/> treatment.</summary>
     public Color Color { get; private init; } = Color.Black;
 
@@ -104,13 +133,22 @@ public sealed record CutoutEffect
     /// </summary>
     public double AmountOf(CutoutBackground treatment) => this.AmountSet.GetValueOrDefault(treatment, DefaultAmount);
 
-    /// <summary>What the model's mask depends on — the mode, the points, the reach — the other options aside: two effects with the same key share a mask.</summary>
-    public string MaskKey => this.Mode == CutoutMode.Subject
-        ? "subject"
-        : $"{this.Reach}:" + string.Join(";", this.Points.Select(p => FormattableString.Invariant($"{p.X:R},{p.Y:R},{(p.Included ? 1 : 0)}")));
+    /// <summary>
+    /// What the mask depends on — the mode, the points, the reach; a plain background's tolerance and
+    /// gaps — the other options aside: two effects with the same key share a mask.
+    /// </summary>
+    public string MaskKey => this.Mode switch
+    {
+        CutoutMode.Subject => "subject",
+        CutoutMode.Plain => FormattableString.Invariant($"plain:{this.Tolerance:R}:{this.CloseGaps:R}"),
+        _ => $"{this.Reach}:" + string.Join(";", this.Points.Select(p => FormattableString.Invariant($"{p.X:R},{p.Y:R},{(p.Included ? 1 : 0)}"))),
+    };
 
     /// <summary>The main subject: the points cleared.</summary>
     public CutoutEffect WithSubject() => this with { Mode = CutoutMode.Subject, Points = [] };
+
+    /// <summary>The plain background removed: the points cleared.</summary>
+    public CutoutEffect WithPlain() => this with { Mode = CutoutMode.Plain, Points = [] };
 
     /// <summary>
     /// A point clicked: alone, a new pick; <paramref name="add"/>, one more point of the pick — included,
@@ -128,6 +166,12 @@ public sealed record CutoutEffect
     public CutoutEffect WithSoften(double soften) => this with { Soften = Math.Clamp(soften, 0, 1) };
 
     public CutoutEffect WithInvert(bool invert) => this with { Invert = invert };
+
+    public CutoutEffect WithFillHoles(bool fillHoles) => this with { FillHoles = fillHoles };
+
+    public CutoutEffect WithTolerance(double tolerance) => this with { Tolerance = Math.Clamp(tolerance, 0, 1) };
+
+    public CutoutEffect WithCloseGaps(double closeGaps) => this with { CloseGaps = Math.Clamp(closeGaps, 0, 1) };
 
     public CutoutEffect WithColor(Color color) => this with { Color = Color.FromArgb(255, color) };
 
@@ -158,11 +202,16 @@ public sealed record CutoutEffect
     public bool Equals(CutoutEffect? other) =>
         other is not null && this.Mode == other.Mode && this.Reach == other.Reach && this.Grow == other.Grow
         && this.Soften == other.Soften && this.Invert == other.Invert && this.Color.ToArgb() == other.Color.ToArgb()
+        && this.FillHoles == other.FillHoles && this.Tolerance == other.Tolerance && this.CloseGaps == other.CloseGaps
         && this.Points.SequenceEqual(other.Points) && this.TreatmentSet.SetEquals(other.TreatmentSet)
         && Enum.GetValues<CutoutBackground>().All(t => this.AmountOf(t) == other.AmountOf(t));
 
     public override int GetHashCode() =>
-        HashCode.Combine(this.Mode, this.Points.Count, this.Reach, this.Grow, this.Soften, this.Invert, this.TreatmentSet.Count, this.Color.ToArgb());
+        HashCode.Combine(
+            HashCode.Combine(this.Mode, this.Points.Count, this.Reach, this.Grow, this.Soften, this.Invert, this.TreatmentSet.Count, this.Color.ToArgb()),
+            this.FillHoles,
+            this.Tolerance,
+            this.CloseGaps);
 
     /// <summary>Its settings as an effect preset saves them (<see cref="LookPreset"/>): the points in fractions of the image as loaded.</summary>
     internal JsonObject ToJson()
@@ -188,6 +237,9 @@ public sealed record CutoutEffect
             ["grow"] = this.Grow,
             ["soften"] = this.Soften,
             ["invert"] = this.Invert,
+            ["fillHoles"] = this.FillHoles,
+            ["tolerance"] = this.Tolerance,
+            ["closeGaps"] = this.CloseGaps,
             ["treatments"] = treatments,
             ["opacity"] = this.AmountOf(CutoutBackground.Opacity),
             ["colorOpacity"] = this.AmountOf(CutoutBackground.Color),
@@ -207,14 +259,20 @@ public sealed record CutoutEffect
                 PresetJson.Bool(p, "included", true))).ToList()
             : [];
         var mode = PresetJson.Enum(json, "mode", Default.Mode);
-        var cutout = mode == CutoutMode.Picked && points.Count > 0
-            ? Default with { Mode = CutoutMode.Picked, Points = [points[0] with { Included = true }, .. points.Skip(1)] }
-            : Default;
+        var cutout = mode switch
+        {
+            CutoutMode.Picked when points.Count > 0 => Default with { Mode = CutoutMode.Picked, Points = [points[0] with { Included = true }, .. points.Skip(1)] },
+            CutoutMode.Plain => Default.WithPlain(),
+            _ => Default,
+        };
         cutout = cutout
             .WithReach(PresetJson.Enum(json, "reach", Default.Reach))
             .WithGrow(PresetJson.Double(json, "grow", Default.Grow))
             .WithSoften(PresetJson.Double(json, "soften", Default.Soften))
             .WithInvert(PresetJson.Bool(json, "invert", Default.Invert))
+            .WithFillHoles(PresetJson.Bool(json, "fillHoles", Default.FillHoles))
+            .WithTolerance(PresetJson.Double(json, "tolerance", Default.Tolerance))
+            .WithCloseGaps(PresetJson.Double(json, "closeGaps", Default.CloseGaps))
             .WithColor(ColorOf(json, "color") ?? Default.Color)
             .WithAmount(CutoutBackground.Opacity, PresetJson.Double(json, "opacity", DefaultAmount))
             .WithAmount(CutoutBackground.Color, PresetJson.Double(json, "colorOpacity", DefaultAmount))
@@ -251,9 +309,23 @@ public sealed record CutoutEffect
     {
         var parts = new List<string>
         {
-            this.Mode == CutoutMode.Subject ? "subject"
-                : $"picked, {this.Points.Count} point{(this.Points.Count == 1 ? "" : "s")}{(this.Reach == CutoutReach.Auto ? "" : $", reach {this.Reach.ToString().ToLowerInvariant()}")}",
+            this.Mode switch
+            {
+                CutoutMode.Subject => "subject",
+                CutoutMode.Plain => $"plain background, tolerance {Math.Round(this.Tolerance * 100)} %",
+                _ => $"picked, {this.Points.Count} point{(this.Points.Count == 1 ? "" : "s")}{(this.Reach == CutoutReach.Auto ? "" : $", reach {this.Reach.ToString().ToLowerInvariant()}")}",
+            },
         };
+        if (this.FillHoles && this.Mode != CutoutMode.Plain)
+        {
+            parts.Add("holes filled");
+        }
+
+        if (this.ClosesGaps && this.CloseGaps != 0)
+        {
+            parts.Add($"gaps {(this.CloseGaps * MaxGap * 100).ToString("0.0", CultureInfo.InvariantCulture)} %");
+        }
+
         if (this.Grow != 0)
         {
             parts.Add($"grow {(this.Grow * MaxEdge * 100).ToString("+0.0;-0.0", CultureInfo.InvariantCulture)} %");

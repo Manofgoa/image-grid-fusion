@@ -88,9 +88,9 @@ Computed by `CutoutService` off the UI thread like the others, **without the eng
 the **bitmap's resolution** — a drawing's lines stay crisp — the mask cached on the image like the
 models' (`SourceImage.KeepMask`, its key `plain:<tolerance>:<closeGaps>`):
 
-- **The background color**: the most frequent color of the image's border pixels (its four outer
+- **The background color**: the most frequent color of the image's opaque border pixels (its outer
   rows and columns), each channel rounded to 8 levels for the count, the exact mean of the winning
-  bucket taken.
+  bucket taken; white when the whole border is transparent (`CutoutMask.BorderColor`).
 - **The background**: the pixels whose largest channel difference from it is at most the tolerance,
   **connected to a border** through such pixels (4-connected flood fill from every border pixel
   within the tolerance). Opacity 0.
@@ -127,7 +127,8 @@ One computation for both fills — a *close gap* flood, as paint programs' bucke
   content kept, the white around it gone); tooltip *Removes the plain background around the content —
   the color of the image's edges, from the edges inward — keeping everything it encloses; no engine
   needed*. Clicked: mode Plain, the points cleared, Pick disarmed. Turns the effect on.
-- **Reach** strip: disabled in Plain mode, as in Subject mode.
+- **Reach** strip: left enabled in Plain mode, as it is in Subject mode — it applies to the next pick
+  (Iteration 4).
 - **Fill holes**: a plain checkbox (RULES.md § Options Toolbar: plain on / off checkboxes are out of
   the thumbnails), tooltip *Keeps what the cutout's outline encloses: the parts of the image the model
   left out but that the part kept surrounds*. Disabled in Plain mode, its tooltip then saying the
@@ -153,7 +154,11 @@ One computation for both fills — a *close gap* flood, as paint programs' bucke
   through the same way.
 - The **download offer** is not made for Plain: the Plain thumbnail turns the effect on directly. The
   activation checkbox keeps turning the effect on in its kept mode — Subject by default — so the
-  offer still comes then when the engine is missing.
+  offer still comes then when the engine is missing. One gate decides, on the look before and after the
+  change (`MainForm.CutoutEngineReady(before, after)`): no offer when the result needs no engine, nor
+  when the effect is already on in a mode needing it (as before); otherwise the offer — so going from
+  an active Plain to Subject or Pick without the engine offers it too, a **No** keeping Plain
+  (Iteration 4).
 - **The background color is automatic** (Q&A #8): no eyedropper on the Plain mode.
 - `SourceImage.CutsOut` unchanged: still images only, Plain included.
 
@@ -232,6 +237,40 @@ half the gap, the flood, the region reached grown back; the Plain mode works **w
 the new controls in a **column after the mode strip** (Tolerance, then Close gaps and Fill holes); the
 background color **automatic**. No question left.
 
+### Iteration 3 — 2026-10-29 — ✅ Implemented
+
+Go given: code, tests and documentation — no unit tests, the solution has none (§ Test Impact) — in a
+worktree, `.claude/worktrees/cutout-enclosed-content`, branch `feature/cutout-enclosed-content`.
+
+### Iteration 4 — 2026-10-29 — 🧭 Implementation choices
+
+No rule broken. The choices the frozen design did not state:
+
+- **Reach left enabled in Plain mode.** The design said "disabled in Plain mode, as in Subject mode",
+  but the strip is enabled in Subject mode — the reach applies to the next pick. Plain does the same.
+- **One engine gate on the look before and after** (`MainForm.CutoutEngineReady(before, after)`),
+  replacing the three `IsActive || CutoutEngineReady()` tests (`ChangeLook`, `ToggleEffect`, the mask
+  color's eyedropper): no offer when the result is Plain, nor when the Cutout is already on in Subject
+  or Pick (as before). Going from an active Plain to Subject or Pick without the engine therefore
+  offers the download; a **No** keeps Plain. `ChangeLook` now computes the change before the gate —
+  the changes are pure functions of the look.
+- **The background color** ignores the transparent border pixels, white when the whole border is
+  transparent; transparent pixels are background anyway.
+- **The edge fade** concerns the kept pixels with a 4-neighbour in the background.
+- **The Plain pictogram**: the image's white replaced by the cell's grey (the white gone), a white
+  disc outlined blue in the middle (what the outline encloses, kept).
+- **Fill holes' tooltip** is set at each options refresh: what it does, or in Plain mode that Plain
+  keeps the enclosed parts already.
+
+Checks, by hand — no unit tests (§ Test Impact): a scratch harness referencing the project (outside the
+repository) cut the example out with `CutoutMask.Plain`: 65.3 % of the image removed with Gaps 0,
+64.7 % with Gaps 0.5 %, the same as the design's simulation; at 0.5 % the left arm is kept and the
+background between the arm and the shirt removed; about 0.13 s a mask without gaps, 0.45 s with them,
+on 1408 × 1408. On a synthetic ring with a 3 px gap, Fill holes alone leaves the center out, Fill holes
+with Gaps 2 % keeps it, inverted gives the opposite; a preset with the new keys round-trips. The
+options row was **not** checked on screen: the app launched and loaded the example, but the tabs did
+not take posted clicks — the user's test covers it.
+
 ---
 
 ## Implementation Log
@@ -241,9 +280,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | None planned: no test project |
-| README | | | |
+| Code | Iteration 4 | 2026-10-29 | Three commits: the effect's settings, preset keys and masks; the Plain mask without the engine; the Plain thumbnail and the options column |
+| Unit tests | — | 2026-10-29 | None: no test project (§ Test Impact); a scratch harness checked the masks instead |
+| README | Iteration 4 | 2026-10-29 | RULES.md § The Cutout Exception in one commit; README and Glossary, English and French, in another |
 
 ---
 

@@ -45,11 +45,12 @@ internal sealed class CutoutService : IDisposable
 
     /// <summary>
     /// Queues the cut-out of <paramref name="image"/> when its Cutout effect is on and its cut-out not
-    /// ready — nothing when it is already queued, failed before, or the engine is not downloaded.
+    /// ready — nothing when it is already queued, failed before, or needs the engine not downloaded (a
+    /// plain background needs none).
     /// </summary>
     public void Request(SourceImage image)
     {
-        if (this._disposed || image.IsDisposed || !image.CutoutPending || image.Look.Cutout is not { } effect || !CutoutEngineFiles.IsAvailable)
+        if (this._disposed || image.IsDisposed || !image.CutoutPending || image.Look.Cutout is not { } effect || (effect.NeedsEngine && !CutoutEngineFiles.IsAvailable))
         {
             return;
         }
@@ -175,7 +176,11 @@ internal sealed class CutoutService : IDisposable
             {
                 result = await Task.Run(() =>
                 {
-                    if (mask is null)
+                    if (mask is null && effect.Mode == CutoutMode.Plain)
+                    {
+                        mask = CutoutMask.Plain(copy, effect);
+                    }
+                    else if (mask is null)
                     {
                         this._engine ??= new CutoutEngine();
                         if (effect.Mode == CutoutMode.Subject)

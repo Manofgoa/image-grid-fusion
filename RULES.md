@@ -116,6 +116,15 @@ The Cutout effect's state holds no pixel, and its mask is computed outside `Comp
   slider in the options.
 - **A pick's reach** — Auto, Part, Object, Whole — chooses among MobileSAM's masks of a click by area
   (`CutoutEngine.Pick`); it is part of the mask's key.
+- **The Plain mode** has no model (origin: `workfiles/20261029-cutout-enclosed-content.md`): its mask —
+  the background flooded from the edges within the tolerance, at the bitmap's resolution
+  (`CutoutMask.Plain`) — is computed by `CutoutService` like the others, its tolerance and gaps in its key,
+  and kept the same way. It needs no engine (`CutoutEffect.NeedsEngine`): every check of the engine on
+  the Cutout's routes — the download offer (`MainForm.CutoutEngineReady`), the request, the exports' wait,
+  the *Waiting for the cutout engine* badge — lets it through. A new check does the same.
+- **Fill holes** is applied first in `CutoutMask.Apply`, on the mask at its own resolution, before Grow,
+  Soften and Invert; it is out of the mask's key, so it never runs the model again. Both fills close the
+  outline's gaps the same way (`CutoutMask.Flood`), the gap a share of the longer side.
 - **The Pick view** and the **hover outline** are the preview's only (`GridPreview.Cutout.cs`), like the
   crop's edit view, and show **while Pick is armed** only, so the cutout's treatments show otherwise:
   the whole image drawn see-through over the selected cell; the object a click would pick outlined in
@@ -125,7 +134,8 @@ The Cutout effect's state holds no pixel, and its mask is computed outside `Comp
 - **The cutout engine is never shipped**: IS-Net (the subject) and MobileSAM (a click),
   `Imaging/CutoutEngineFiles`, downloaded in one go into **`cutout-engine\` next to the exe** from
   pinned URLs, each checked against its SHA-256 (`DirectEngineDownload`) — offered when the effect is
-  turned on without it, a **No** leaving it off, and from the ⚙ menu while missing. It runs on the OCR
+  turned on without it in a mode needing it, a **No** leaving it as it was, and from the ⚙ menu while
+  missing. It runs on the OCR
   engine's ONNX Runtime (`Imaging/CutoutEngine`), its sessions without the memory arena, released after
   5 minutes unused.
 
@@ -177,7 +187,7 @@ The Cutout effect's state holds no pixel, and its mask is computed outside `Comp
     (`ThumbnailStrip.PaintCell` / `PaintImage`); faded while disabled.
   - Zero, one or several thumbnails may be pressed, as the effect's state says; an **action** among
     them, never pressed (Crop's 100 %), is **set apart** after them by a wider gap and a line.
-  - Out of it: plain on / off checkboxes (Freeze, Mute, Automatic color, Soften, Invert), the Color… button,
+  - Out of it: plain on / off checkboxes (Freeze, Mute, Automatic color, Soften, Invert, Fill holes), the Color… button,
     the sliders and a drop-down of a single value (the Animations' Type).
 
 ### Color Options
