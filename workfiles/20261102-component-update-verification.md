@@ -102,9 +102,12 @@ Layout **A — one grouped list** (Q&A 1), drawn in the mockup of 2026-11-02:
   updates already running carry on.
 - A row's buttons are disabled while it updates; an engine downloading through an in-context offer
   (an effect or an analysis turned on without it) shows as updating there too.
-- **The ⚙ menu's *Download the … engine…* entries and *Install yt-dlp companions…* are removed**
-  (Q&A 12, 13): the window's *Install* replaces them. The in-context offers stay — the Cutout turned on, the content search, the face
-  analysis, the visual analysis, the captions, the URL zone's yt-dlp offer.
+- **Every install and update goes through the window** (Iteration 4): the ⚙ menu's *Download the …
+  engine…* entries and *Install yt-dlp companions…* are removed (Q&A 12, 13), and the in-context offers
+  — the Cutout turned on in a mode needing its engine, the content search, the face analysis, the
+  visual analysis, the captions, the URL zone's yt-dlp and companions offers — **open the window** on
+  the rows they need instead of downloading themselves (how the feature that asked goes on: Q&A 14).
+  No download or winget install runs anywhere else.
 - No shortcut is added (`SHORTCUTS.md` unchanged), apart from Escape closing the window, as in the
   shortcuts window.
 
@@ -253,6 +256,9 @@ Checked by hand in the running app:
 - [ ] The **emoji fonts**: is their group part of this work, or left to `workfiles/20261102-emoji-fonts.md`?
   → **Waiting** for the session implementing the emoji fonts (Q&A 11)
 - [x] ~~The ⚙ menu's Install yt-dlp companions… entry: removed too, or kept?~~ → Removed too
+- [ ] An in-context offer now opens the window: what happens to the feature that asked (the Cutout
+  turned on, an analysis setting turned on, a URL load) while its component is missing, and once it is
+  installed?
 
 ---
 
@@ -303,6 +309,13 @@ Q&A 13: the ⚙ menu's *Install yt-dlp companions…* entry is removed too, the 
 Deno and ffmpeg replacing it. One question stays open: the emoji fonts' group, waiting for the
 session implementing the emoji fonts.
 
+### Iteration 4 — 2026-11-02
+
+User request: every install and update of a component goes through the new window. Beyond the ⚙
+entries already removed, the in-context offers (an effect or an analysis turned on without its
+engine, the URL zone's yt-dlp and companions offers) open the window on the rows they need rather
+than downloading themselves. New question: how the feature that asked goes on (Q&A 14).
+
 ---
 
 ## Implementation Log
@@ -339,6 +352,7 @@ Questions asked by the agent during design, with user responses.
 | 11 | The emoji fonts' group: part of this work, or left to the emoji fonts workfile? | Wait for the other session | 2026-11-02 |
 | 12 | The ⚙ menu's *Download the … engine…* entries: kept or removed? | Removed | 2026-11-02 |
 | 13 | The ⚙ menu's *Install yt-dlp companions…* entry: removed too, or kept? | Removed too | 2026-11-02 |
+| 14 | An in-context offer opens the window: what happens to the feature that asked? | | |
 
 ---
 
