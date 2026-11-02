@@ -68,8 +68,18 @@ Layout **A — one grouped list** (Q&A 1), drawn in the mockup of 2026-11-02:
 - A **modeless window**, owned by the main window, opened by **Component updates…** in the ⚙ menu.
   There is one at a time: opened again, it comes back to the front (`ShortcutsWindow`'s pattern).
 - **One list**, a header row per **group** (the component's kind), then one row per component.
-- **Groups**, in this order: **Engines**, **Runtimes**, **Web tools**, **Emoji fonts** (§ Open Questions
-  on the last two).
+- **A component is one upstream** (Q&A 5): a Hugging Face repository, a GitHub release asset, a NuGet
+  package, a winget package — each with its own version and date. An engine made of several takes
+  several rows, named after it:
+
+  | Group | Rows |
+  |---|---|
+  | **Engines** | OCR engine — RapidOCR models (NuGet `rapidocrnet`) · Face engine — YuNet · Face engine — SFace · Vision engine — SigLIP 2 models (`onnx-community/siglip2-base-patch16-256-ONNX`) · Vision engine — SigLIP 2 tokenizer (`google/siglip2-base-patch16-256`) · Caption engine — Florence-2 · Cutout engine — IS-Net · Cutout engine — MobileSAM |
+  | **Runtimes** | ONNX Runtime · SkiaSharp |
+  | **Web tools** | yt-dlp · Deno · ffmpeg |
+  | **Emoji fonts** | § Open Questions |
+
+  An engine is installed when all its rows are; its ⚙-free *Install* is on each missing row.
 - **Columns**:
 
   | Column | Shows |
@@ -90,8 +100,11 @@ Layout **A — one grouped list** (Q&A 1), drawn in the mockup of 2026-11-02:
 - **Update all (N)** at the bottom updates every component whose latest version differs from the
   installed one, one after the other, each row showing its progress. **Close** closes the window, and
   updates already running carry on.
-- A row's buttons are disabled while it updates; an engine downloading through the ⚙ menu's entry
-  shows as updating there too.
+- A row's buttons are disabled while it updates; an engine downloading through an in-context offer
+  (an effect or an analysis turned on without it) shows as updating there too.
+- **The ⚙ menu's *Download the … engine…* entries are removed** (Q&A 12): the window's *Install*
+  replaces them. The in-context offers stay — the Cutout turned on, the content search, the face
+  analysis, the visual analysis, the captions, the URL zone's yt-dlp offer.
 - No shortcut is added (`SHORTCUTS.md` unchanged), apart from Escape closing the window, as in the
   shortcuts window.
 
@@ -108,8 +121,8 @@ name to settle at implementation):
 
   | Key | Meaning |
   |---|---|
-  | `pinned` | The pinned version, **editable by hand**. Written from the code's value when the file is created |
-  | `forced` | Optional: a version the user forces as the safe fallback, without rebuilding the app |
+  | `pinned` | The pinned version and its files, **a copy of the code's**: rewritten from it at every start (Q&A 10), so a new build's pin always wins |
+  | `forced` | Optional, **the user's**: the safe fallback, without rebuilding the app — a full list of files (Q&A 9), `{ "version", "files": [{ "name", "url", "sha256", "size" }] }`, `size` optional; for a winget tool `{ "version" }` alone, winget fetching it. Never written by the app |
   | `installed` | The version installed now |
   | `installedOn` | When it was first installed |
   | `updatedOn` | When it was last replaced |
@@ -118,8 +131,10 @@ name to settle at implementation):
 - **Missing → recreated** from the hard-coded values. A component whose files are already there (an
   install older than this feature) is recorded as the **pinned version**, installed on its files'
   creation date.
-- **Version of the code newer than the file**: a pin changed in the code since the file was written
-  leaves `pinned` alone when the user edited it, and takes the code's value otherwise (§ Open Questions).
+- **The code always wins for `pinned`**: rewritten at every start by the normal instance, a hand edit
+  of it lasting until the next start only. Imposing a version of one's own is `forced`'s job.
+- **A forced version is checked against its own hashes**, written with it: a file whose SHA-256
+  differs is refused, the installed version kept.
 - An unreadable file is reported in the status line and treated as missing for the session. It is
   never overwritten silently: it is kept as `components.json.bad` before being recreated.
 - **`--new-instance`** recreates nothing on its own: a missing file stays in memory only. User actions
@@ -143,6 +158,13 @@ for a version:
   installed one: a commit touching only the README offers no update.
 - **The installed version of a winget tool** is read from the tool itself: `yt-dlp --version`,
   `deno --version`, `ffmpeg -version` (its first line), through `WingetTool.RunAsync`.
+- **The winget tools get a pinned version in the code** (Q&A 7), the one current when this work is
+  implemented: a first install and *Back to the pinned version* run `winget install … --version <pin>`,
+  so they go back to a version known to work like the engines do.
+- **The runtimes are updated like the others** (Q&A 6), from NuGet, their pin the version
+  `ImageGridFusion.csproj` references. A native newer than the managed binding compiled in the exe may
+  fail at its first use: the window loads no runtime, so it stays open to go back to the pinned version.
+  The status line names the runtime when an engine fails to start after such an update.
 - **An update to the latest** has no hash pinned in the code: the files are checked against the hash
   the source gives when it gives one (Hugging Face, NuGet's package), and their SHA-256 is **recorded
   in the manifest** after the download in every case.
@@ -159,10 +181,14 @@ for a version:
   `files`). A failure or a cancel deletes the staging folder and leaves the installed version untouched.
 - **Back to the forced or pinned version** goes the same way: the target version downloaded, then the
   current files deleted.
-- **A file in use**: what can be released is released before the swap (§ Open Questions). What stays
-  locked — the native runtimes once loaded, a tool while a URL load runs — is **left staged**: the swap
-  is done at the next start, in `Program.Main` **before anything loads them**, and the row says
-  *Restart to finish*.
+- **A file in use is released, then replaced at once** (Q&A 8): before the swap, the resident sessions
+  of the engine updated are closed — the cutout engine (`CutoutService`, its requests waiting), the
+  vision text model (`ReleaseTextEncoder(force: true)`) — and the content passes are paused, a running
+  pass closing its sessions; all of it resumes once the files are in place, the sessions reopening at
+  their next use. One release route per resident engine, called by the update.
+- **What stays locked** — the native runtimes once loaded, a tool while a URL load runs — is **left
+  staged**: the swap is done at the next start, in `Program.Main` **before anything loads them**, and the
+  row says *Restart to finish*. A runtime not loaded yet in this process is swapped at once.
 - **Shared folders**: the caption and vision engines share `vision-engine\`, so only the updated
   component's own files are deleted, never the folder.
 - **The vision engine's model id** (`EmbeddingModelId`) is part of its version: a new SigLIP version
@@ -185,7 +211,9 @@ for a version:
 
 - **RULES.md**, a new section **§ Downloadable Components**: the manifest as the one place for
   installed versions, the hard-coded pin as its fallback, a new downloadable component registered
-  with its group and source (the emoji fonts being the next one), the staged swap for a locked file.
+  with its group and source, the release route of a resident engine, the staged swap for a locked file.
+  The sections saying an engine is offered "from the ⚙ menu while missing" (§ The Cutout Exception,
+  § Content OCR Passes, § People, § Image Content Analysis) say the Component updates window instead.
 - **GLOSSARY.md / .fr.md**: *Component (composant)*, *Component updates window*, *Pinned version*,
   *Forced version*, *Components manifest*.
 - **README.md / .fr.md**: the window in the features list; the network calls it makes in the technical
@@ -214,24 +242,18 @@ Checked by hand in the running app:
 
 ## Open Questions
 
-- [ ] What is a row: one per **engine** (the cutout engine's IS-Net and MobileSAM together), or one
-  per **upstream** (IS-Net and MobileSAM on two rows, each with its own version and date)?
-- [ ] The **native runtimes** (ONNX Runtime, SkiaSharp): updatable like the others, or shown with the
-  version the build is compiled against and never updated (a native newer than its managed binding
-  can crash)?
-- [ ] The **winget tools** have no pin today: pin a version in the code (installed with
-  `winget --version`), or have no pinned version for them (no *Back to the pinned version*)?
-- [ ] **Files in use**: release the resident sessions and pause the content passes so most updates swap
-  at once, staging only the native runtimes; or stage every file in use, the restart doing the rest?
-- [ ] The **forced version** in the manifest: a version or commit alone (the files' URLs derived from
-  it, their SHA-256 optional), or a full list of files with their URLs and hashes?
-- [ ] A **pin changed in the code** (a new build) while the manifest holds the older one: the code wins
-  unless the user edited `pinned`, or the manifest always wins?
-- [ ] The **emoji fonts**: is their group part of this work (empty until
-  `workfiles/20261102-emoji-fonts.md` is delivered, its ⚙ *update* entry replaced by this window), or
-  left to that workfile entirely?
-- [ ] The ⚙ menu's **Download the … engine…** entries: kept beside the window, or removed (the
-  window's *Install* replacing them)?
+- [x] ~~What is a row: one per engine, or one per upstream?~~ → One per upstream, named after its engine
+- [x] ~~The native runtimes: updatable, or tied to the build?~~ → Updated like the others
+- [x] ~~The winget tools: pin a version in the code, or no pinned version?~~ → A version pinned in the code
+- [x] ~~Files in use: release and swap at once, or stage everything in use?~~ → Released, then swapped
+  at once; only what stays locked is staged
+- [x] ~~The forced version: a version alone, or a full file list?~~ → A full list of files with their
+  URLs and hashes (a winget tool: its version alone)
+- [x] ~~A pin changed in the code: which wins?~~ → The code, always: `pinned` rewritten at every start
+- [ ] The **emoji fonts**: is their group part of this work, or left to `workfiles/20261102-emoji-fonts.md`?
+  → **Waiting** for the session implementing the emoji fonts (Q&A 11)
+- [ ] The ⚙ menu's **Install yt-dlp companions…** entry: removed with the engines' entries (the window's
+  *Install* on Deno and ffmpeg replacing it), or kept?
 
 ---
 
@@ -260,6 +282,22 @@ Initial design from the request and the scoping batch (Q&A 1–4), after a mocku
   files locked at run time, the ⚙ menu and the shortcuts window's pattern. The emoji fonts are designed
   only, and the Twemoji flag subset is embedded, so it is not a component.
 
+### Iteration 2 — 2026-11-02
+
+The open questions answered (Q&A 5–12):
+
+- A row per upstream: the engines made of several models take several rows (§ Components Window).
+- The native runtimes are updated like the others, the window staying usable to go back if one fails.
+- The winget tools get a version pinned in the code, installed with `winget --version`.
+- Files in use are released and swapped at once; only the native runtimes once loaded and a tool in
+  use are staged for the next start.
+- The forced version is a full list of files with their hashes, a winget tool's its version alone.
+- The code always wins for `pinned`, rewritten at every start: a hand edit of `pinned` no longer lasts,
+  `forced` being the user's (this narrows Q&A 2's "editable" to the forced version).
+- The ⚙ menu's *Download the … engine…* entries are removed, the window's *Install* replacing them.
+- The emoji fonts' group waits for the session implementing the emoji fonts. A new question: the
+  ⚙ menu's *Install yt-dlp companions…* entry.
+
 ---
 
 ## Implementation Log
@@ -287,14 +325,14 @@ Questions asked by the agent during design, with user responses.
 | 2 | The engines are pinned (fixed URLs + SHA-256): what does updating mean for them? | Check the upstream and offer to update; once updated, offer to go back to the project's pinned version. The pinned versions go into an editable `.json` file, to force a safe fallback version without rebuilding; recreated from the hard-coded values when missing. It also holds each component's install date, last update date and an optional forced version. The window's grid shows all of it and goes back to the forced or the hard-coded version, deleting the current version's files after the download | 2026-11-02 |
 | 3 | When does the check run, and how is the user told? | Only when the window is open | 2026-11-02 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward | 2026-11-02 |
-| 5 | A row per engine, or per upstream? | | |
-| 6 | The native runtimes: updatable, or tied to the build? | | |
-| 7 | The winget tools: pin a version in the code, or no pinned version? | | |
-| 8 | Files in use: release the sessions and swap at once, or stage everything in use? | | |
-| 9 | The forced version: a version alone, or a full file list? | | |
-| 10 | A pin changed in the code: which wins, the code or the manifest? | | |
-| 11 | The emoji fonts' group: part of this work, or left to the emoji fonts workfile? | | |
-| 12 | The ⚙ menu's *Download the … engine…* entries: kept or removed? | | |
+| 5 | A row per engine, or per upstream? | One per upstream | 2026-11-02 |
+| 6 | The native runtimes: updatable, or tied to the build? | Updated like the others | 2026-11-02 |
+| 7 | The winget tools: pin a version in the code, or no pinned version? | Pin a version in the code | 2026-11-02 |
+| 8 | Files in use: release the sessions and swap at once, or stage everything in use? | Release, then replace at once | 2026-11-02 |
+| 9 | The forced version: a version alone, or a full file list? | A full list of files | 2026-11-02 |
+| 10 | A pin changed in the code: which wins, the code or the manifest? | The code, always | 2026-11-02 |
+| 11 | The emoji fonts' group: part of this work, or left to the emoji fonts workfile? | Wait for the other session | 2026-11-02 |
+| 12 | The ⚙ menu's *Download the … engine…* entries: kept or removed? | Removed | 2026-11-02 |
 
 ---
 
