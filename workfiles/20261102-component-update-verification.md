@@ -133,9 +133,9 @@ Layout **A — one grouped list** (Q&A 1), drawn in the mockup of 2026-11-02:
   naming the component to install and why it is wanted — *The Cutout's Subject mode needs the cutout
   engine — IS-Net to find the image's main subject.* — built from the feature asking and the
   component's purpose. Nothing installs by itself: the user clicks *Install*.
-- **The feature that asked goes back to off** (§ Open Questions, to confirm): the Cutout's checkbox,
-  the analysis setting, the URL load — as a **No** does today; the user turns it on again once the
-  component is installed.
+- **The feature that asked goes back to off at once** (Q&A 15), as the window opens: the Cutout's
+  checkbox unchecked, the analysis setting off, the URL load ended — as a **No** does today; the user
+  turns it on again once the component is installed.
 - No shortcut is added (`SHORTCUTS.md` unchanged), apart from Escape closing the window, as in the
   shortcuts window.
 
@@ -286,8 +286,8 @@ Checked by hand in the running app:
 - [x] ~~The ⚙ menu's Install yt-dlp companions… entry: removed too, or kept?~~ → Removed too
 - [x] ~~An in-context offer now opens the window: what does the window show?~~ → Every component,
   the needed rows highlighted with a balloon tooltip naming the component and why it is wanted
-- [ ] The feature that asked: back to off at once (the agent's reading of Q&A 14, the answer not
-  saying), or waiting and resuming by itself once the component is installed?
+- [x] ~~The feature that asked: back to off at once, or waiting and resuming by itself once the
+  component is installed?~~ → Back to off at once (Q&A 15)
 
 ---
 
@@ -358,6 +358,11 @@ balloon tooltip open on the first, naming the component and why the feature want
 by itself. The feature that asked goes back to off, as a *No* does today — the agent's reading, left
 open for confirmation.
 
+### Iteration 7 — 2026-11-02
+
+Q&A 15 confirms it: the feature that asked goes back to off as soon as the window opens, and is turned
+on again by the user once the component is installed. One question stays open: the emoji fonts' group.
+
 ---
 
 ## Implementation Log
@@ -395,6 +400,7 @@ Questions asked by the agent during design, with user responses.
 | 12 | The ⚙ menu's *Download the … engine…* entries: kept or removed? | Removed | 2026-11-02 |
 | 13 | The ⚙ menu's *Install yt-dlp companions…* entry: removed too, or kept? | Removed too | 2026-11-02 |
 | 14 | An in-context offer opens the window: what happens to the feature that asked? | The window opens with everything, the row in question highlighted, with a tooltip open or a popup naming the component to download and why it is wanted | 2026-11-02 |
+| 15 | The Cutout checked without its engine, the window opened: does its checkbox stay checked and cut out once installed, or uncheck at once? | Unchecked at once | 2026-11-02 |
 
 ---
 
