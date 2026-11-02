@@ -32,16 +32,17 @@ Relevant components:
 
 ### Prerequisite — Text Flag Emojis
 
-**No development before `workfiles/20261102-text-flag-emojis.md` is delivered**, and this design is
-re-read against what it delivered before the go. That workfile, being implemented in another session,
-changes the same code:
+`workfiles/20261102-text-flag-emojis.md` is **delivered** (merged as `22d7b2d`); this design was re-read
+against it (Iteration 4). What it delivered, and what it means here:
 
-| It adds | What it means here |
+| It delivered (RULES.md § Text Emojis) | What it means here |
 |---|---|
-| A **private font collection** in `TextRaster.Factories`, loaded from memory (`CreateInMemoryFontFileLoader`, a font set, `CreateFontCollectionFromFontSet`) | The shipped emoji fonts join that infrastructure — files added to a font set — rather than a second one |
-| A **font fallback** on every layout: the flags (regional indicators, 🏴, the tag characters) to a **Twemoji Mozilla flag subset** embedded in the exe, then the system's mappings | The emoji font's mappings slot into the same builder; their order against the flag subset is an open question |
-| **Text cells** drawing every emoji in color through `TextRaster`, one emoji at a time, two columns wide | A text cell could take an emoji font too — the scope question below |
-| Twemoji's **CC-BY 4.0** attribution in the README's technical paragraph | The shipped fonts' attributions go in the same place |
+| The **flag font** — Twemoji Mozilla cut down to its flags (`Imaging/TwemojiFlags.ttf`), in a private collection loaded from memory (`TextRaster.CreateFlagCollection`: in-memory loader, font set, `CreateFontCollectionFromFontSet`) | The shipped emoji fonts get a private collection the same way, from their files |
+| **No font fallback**: the flag font **set on each flag sequence** of the layout (`TextRaster.SetFlagFont`, `SetFontCollection` / `SetFontFamilyName` on the ranges of `Emojis.Flags`) — a fallback left a sequence's invisible characters to the text's font, cutting it apart | The emoji font is set the same way, on each emoji element's range — never a fallback |
+| England, Scotland, Wales and 🏴‍☠️ **joined at private code points** U+E000–U+E003 (`Emojis.Joined`) — DirectWrite never joins their tags | Those four stay the flag font's, whatever the emoji font |
+| The flag font's **color glyphs' outlines filled** — Twemoji's base glyphs are empty, leaving no outline and no shadow | The shipped fonts are downloaded as published: their empty or missing outlines need another route (§ Rendering) |
+| `Emojis.IsEmoji` / `Elements` — what an emoji is (`Emoji_Presentation`, VS16, keycaps, flags), one definition | The ranges the emoji font is set on |
+| Twemoji's **CC-BY 4.0** attribution in the README's Tech paragraph | The shipped fonts' attributions go in the same place |
 
 ---
 
@@ -64,20 +65,21 @@ The emoji fonts that exist, as known at design time (to be checked when pinning 
 
 ## Rendering
 
-- **The emoji font is a font fallback mapping**, added to the fallback the flag workfile builds
-  (`IDWriteFactory2.CreateFontFallbackBuilder`): the emoji ranges mapped to the emoji font, the system's
-  mappings after them (`GetSystemFontFallback`) for everything else; set on the layout
-  (`IDWriteTextLayout2.SetFontFallback`). One fallback per emoji font in use, cached. The letters' font
-  stays first: a character it has (©, ♥, a digit) stays in it, as today.
-- **The shipped fonts are private**: their files added to the private font set the flag workfile creates
-  (`AddFontFile` beside its in-memory flag subset → `CreateFontCollectionFromFontSet`), that collection
-  passed as the mapping's — never installed into Windows.
-- **The default emoji font draws as today**: Segoe UI Emoji, no mapping of the app's but the flag
-  subset's — the icons (`UiIcons`) keep drawing that way.
-- **The flags follow the chosen emoji font**: its mapping comes **before** the flag subset's and covers the
-  flags' code points too (regional indicators, 🏴, the tag characters) when the font has them, so every
-  emoji of a text has one style. The embedded Twemoji flag subset then only serves Segoe UI Emoji, which has
-  no flags, and an emoji font without flags.
+- **The emoji font is set on each emoji** of the layout, as the flag font is on each flag: the ranges of the
+  text elements `Emojis.IsEmoji` recognises, `SetFontCollection` (the shipped fonts' collection, or the
+  system's for an installed font) and `SetFontFamilyName` on each — never a font fallback, which would leave a
+  sequence's invisible characters (ZWJ, VS16, a skin tone) to the text's font. The emoji font therefore
+  **wins over the text's font** on an emoji, as the flag font does; a character that is no emoji (©, ♥
+  without VS16, a digit) stays in the text's font.
+- **The shipped fonts are private**: their files in a collection of their own (`CreateFontFileReference`,
+  a font set, `CreateFontCollectionFromFontSet`), built beside the flag font's in `TextRaster.Factories` and
+  built again after a download or an update — never installed into Windows.
+- **The default emoji font draws as today**: Segoe UI Emoji, nothing set — the system fallback, as
+  delivered by the flag workfile; the icons (`UiIcons`) keep drawing that way.
+- **The country flags follow the chosen emoji font** when it has them (it holds the regional indicators):
+  its font is set on them too, after the flag font, so every emoji of a text has one style. Otherwise — Segoe
+  UI Emoji, a font without flags — the flag font keeps them. **England, Scotland, Wales and 🏴‍☠️ stay the flag
+  font's**, at their private code points: DirectWrite joins them in no other font.
 - **A font missing** — a shipped one not downloaded, an installed one uninstalled — draws as Segoe UI Emoji;
   the style keeps its name.
 - **Text layers only**: the text cells keep Segoe UI Emoji and the flag subset, as the flag workfile
@@ -85,10 +87,12 @@ The emoji fonts that exist, as known at design time (to be checked when pinning 
 - **Formats**: `DrawTextLayout` with `ENABLE_COLOR_FONT` draws COLRv0 for sure; COLRv1, CBDT and SVG glyphs
   depend on the Direct2D version — each shipped font's build is chosen for one that draws, checked when it is
   pinned (COLRv0 preferred when a font offers it).
-- **Outline and shadow**: they draw the emojis as plain shapes (`colorFont: false`), from the base glyphs'
-  outlines. A font whose base glyphs are empty (bitmap-only, some COLR builds) would leave its emojis without
-  outline or shadow — checked per font; if one is kept anyway, the shapes are taken from the color render's
-  alpha instead.
+- **Outline and shadow from the color render**: they draw the emojis as plain shapes (`colorFont: false`),
+  from the base glyphs' outlines — empty in Twemoji (the flag workfile found it) and in the COLRv0 builds,
+  missing in the bitmap ones (CBDT). With an emoji font other than Segoe UI Emoji, the shape the outline's
+  rings and the shadow's mask are made of is the **alpha of the text drawn in color**, at full opacity,
+  instead of the plain-shape draw: the letters give the same shape, the emojis get theirs. Segoe UI Emoji
+  keeps today's path.
 
 ---
 
@@ -193,6 +197,23 @@ color fonts holding 😀; text layers only; the flags from the chosen font when 
 them, to review: a **No** to the first-launch offer remembered, the ⚙ menu offering the download again; no
 offer from a `--new-instance`; the first download pinned (SHA-256), the update not; a missing font drawn as
 Segoe UI Emoji, its name kept. § Rendering, § User Interface, § Shipped Fonts and the Test Impact updated.
+
+### Iteration 4 — 2026-11-02
+
+Re-read against the delivered `workfiles/20261102-text-flag-emojis.md` (merged as `22d7b2d`), as Iteration 2
+required. Its run replaced the font fallback by the flag font set on each flag sequence, joined the four
+tagged flags at private code points, and filled its glyphs' empty outlines. Consequences here:
+
+- **The emoji font is set on each emoji's range** (`Emojis.IsEmoji`), never a fallback — for the reason the
+  flag run found; it wins over the text's font on an emoji.
+- **The shipped fonts get a private collection of their own**, from their files, beside the flag font's.
+- **Q&A 12 narrowed**: the chosen font takes the **country flags** when it has them; England, Scotland, Wales
+  and 🏴‍☠️ stay the flag font's — DirectWrite joins them in no other font.
+- **Outline and shadow from the color render's alpha** with any emoji font but Segoe UI Emoji: the shipped
+  fonts are downloaded as published, their base glyphs empty (COLRv0) or missing (CBDT), so the fix the flag
+  run made in its own font cannot be made in them.
+
+§ Prerequisite, § Rendering updated.
 
 ---
 
