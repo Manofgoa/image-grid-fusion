@@ -30,6 +30,9 @@ public sealed class TextPages : PageSource
     private const int TabWidth = 4;
     private const string FontFamily = "Consolas";
 
+    /// <summary>The columns an emoji takes, as in a terminal (workfiles/20261102-text-flag-emojis.md § Text Cells).</summary>
+    private const int EmojiColumns = 2;
+
     private static readonly Color WhitePaper = Color.White;
     private static readonly Color DarkInk = Color.FromArgb(34, 34, 34);
     private static readonly Color LightInk = Color.FromArgb(221, 221, 221);
@@ -43,6 +46,9 @@ public sealed class TextPages : PageSource
     /// <summary>Logical lines, tabs expanded, and the offset of each in the whole text.</summary>
     private readonly string[] _lines;
     private readonly int[] _lineOffsets;
+
+    /// <summary>The text elements of each logical line and their columns (<see cref="CellsOf"/>), null for a line of ASCII only.</summary>
+    private readonly Cell[]?[] _cells;
     private readonly Color _paper;
 
     /// <summary>Color of the text that has none of its own: dark on a light paper, light on a dark one.</summary>
@@ -64,6 +70,8 @@ public sealed class TextPages : PageSource
         {
             _lineOffsets[i] = _lineOffsets[i - 1] + lines[i - 1].Length + 1;
         }
+
+        _cells = [.. lines.Select(CellsOf)];
 
         _layout = this.LayOut(pageSize, 1);
     }
@@ -202,6 +210,7 @@ public sealed class TextPages : PageSource
         g.TextRenderingHint = TextRenderingHint.AntiAlias;
 
         var fonts = new Dictionary<FontStyle, Font>();
+        var emojis = new Dictionary<string, Bitmap?>();
         using var ink = new SolidBrush(_ink);
         using var format = (StringFormat)StringFormat.GenericTypographic.Clone();
         format.FormatFlags |= StringFormatFlags.NoWrap | StringFormatFlags.MeasureTrailingSpaces;
@@ -215,43 +224,61 @@ public sealed class TextPages : PageSource
             {
                 float y = layout.Margin + (i - first) * height;
                 string line = layout.Lines[i];
-                if (!_text.HasStyles)
+                var cells = CellsOf(line);
+                if (!_text.HasStyles && (cells is null || !cells.Any(c => c.Emoji)))
                 {
                     g.DrawString(line, FontOf(FontStyle.Regular), ink, layout.Margin, y, format);
                     continue;
                 }
 
-                // Runs of one style, each at its column: the font is monospace, bold and italic too.
+                // Runs of one style, each at its column: the font is monospace, bold and italic too. An emoji is
+                // a run of its own, drawn in its colors over its style's highlight, its ink left out.
                 int start = layout.LineStarts[i];
-                for (int run = 0; run < line.Length;)
+                int count = cells?.Length ?? line.Length;
+                int column = 0;
+                for (int run = 0; run < count;)
                 {
-                    ushort index = _text.StyleIndexAt(start + run);
-                    int end = run + 1;
-                    while (end < line.Length && _text.StyleIndexAt(start + end) == index)
+                    var cell = CellAt(run);
+                    ushort index = _text.StyleIndexAt(start + cell.Start);
+                    int end = run + 1, columns = cell.Width;
+                    while (!cell.Emoji && end < count && CellAt(end) is { Emoji: false } next && _text.StyleIndexAt(start + next.Start) == index)
                     {
+                        columns += next.Width;
                         end++;
                     }
 
                     var style = _text.StyleOf(index);
-                    float x = layout.Margin + run * width;
+                    float x = layout.Margin + column * width;
                     if (style.Highlight is { } highlight)
                     {
                         using var fill = new SolidBrush(highlight);
-                        g.FillRectangle(fill, x, y, (end - run) * width, height);
+                        g.FillRectangle(fill, x, y, columns * width, height);
                     }
 
-                    if (style.Ink is { } color)
+                    string text = line[cell.Start..(end < count ? CellAt(end).Start : line.Length)];
+                    if (cell.Emoji && Emoji(text) is { } picture)
+                    {
+                        // Fitted whole into its columns, centered, at the size it was drawn for.
+                        float drawn = (float)(layout.Zoom * scale);
+                        float fit = Math.Min(1, Math.Min(columns * width * drawn / picture.Width, height * drawn / picture.Height));
+                        float w = picture.Width / drawn * fit, h = picture.Height / drawn * fit;
+                        g.DrawImage(picture, x + (columns * width - w) / 2, y + (height - h) / 2, w, h);
+                    }
+                    else if (style.Ink is { } color)
                     {
                         using var own = new SolidBrush(color);
-                        g.DrawString(line[run..end], FontOf(style.Font), own, x, y, format);
+                        g.DrawString(text, FontOf(style.Font), own, x, y, format);
                     }
                     else
                     {
-                        g.DrawString(line[run..end], FontOf(style.Font), ink, x, y, format);
+                        g.DrawString(text, FontOf(style.Font), ink, x, y, format);
                     }
 
+                    column += columns;
                     run = end;
                 }
+
+                Cell CellAt(int element) => cells?[element] ?? new Cell(element, 1, 1, false);
             }
         }
         finally
@@ -260,9 +287,35 @@ public sealed class TextPages : PageSource
             {
                 font.Dispose();
             }
+
+            foreach (var picture in emojis.Values)
+            {
+                picture?.Dispose();
+            }
         }
 
         return bitmap;
+
+        // An emoji drawn by Direct2D at the page's font size in pixels, once per page; null where it cannot be — GDI+
+        // draws it then, in one color.
+        Bitmap? Emoji(string text)
+        {
+            if (!emojis.TryGetValue(text, out var picture))
+            {
+                try
+                {
+                    picture = TextRaster.RenderGlyphs(text, (float)(layout.FontSize * layout.Zoom * scale));
+                }
+                catch (Exception e) when (e is not OutOfMemoryException)
+                {
+                    picture = null;
+                }
+
+                emojis[text] = picture;
+            }
+
+            return picture;
+        }
 
         Font FontOf(FontStyle style)
         {
@@ -332,7 +385,8 @@ public sealed class TextPages : PageSource
 
     /// <summary>
     /// Word-wraps the lines to <paramref name="columns"/>, breaking inside a word only when it is
-    /// wider than a line. Stops once past <paramref name="maxLines"/>: enough to know it overflows.
+    /// wider than a line, never inside a text element. Stops once past <paramref name="maxLines"/>:
+    /// enough to know it overflows.
     /// </summary>
     private List<(string Text, int Start)> Wrap(int columns, int maxLines)
     {
@@ -340,20 +394,53 @@ public sealed class TextPages : PageSource
         for (int i = 0; i < _lines.Length && result.Count <= maxLines; i++)
         {
             string line = _lines[i];
-            int start = 0;
-            while (line.Length - start > columns && result.Count <= maxLines)
+            var cells = _cells[i];
+            int count = cells?.Length ?? line.Length;
+            int first = 0, used = 0;
+            for (int k = 0; k < count && result.Count <= maxLines; k++)
             {
-                int space = line.LastIndexOf(' ', start + columns, columns);
-                int end = space > start ? space : start + columns;
-                result.Add((line[start..end], _lineOffsets[i] + start));
-                start = space > start ? end + 1 : end;
+                int span = cells?[k].Width ?? 1;
+                if (used + span <= columns)
+                {
+                    used += span;
+                    continue;
+                }
+
+                // Element k does not fit: the line ends at the last space after its first element, else before k.
+                int space = -1;
+                for (int j = k; j > first && space < 0; j--)
+                {
+                    if (line[StartOf(j)] == ' ')
+                    {
+                        space = j;
+                    }
+                }
+
+                int end = space > first ? space : Math.Max(k, first + 1);
+                result.Add((line[StartOf(first)..StartOf(end)], _lineOffsets[i] + StartOf(first)));
+                first = space > first ? end + 1 : end;
+                used = 0;
+                k = first - 1;
             }
 
-            result.Add((line[start..], _lineOffsets[i] + start));
+            result.Add((line[StartOf(first)..], _lineOffsets[i] + StartOf(first)));
+
+            int StartOf(int element) => cells is null ? element : element < cells.Length ? cells[element].Start : line.Length;
         }
 
         return result;
     }
+
+    /// <summary>
+    /// The text elements of <paramref name="line"/> — extended grapheme clusters — each one column wide, an emoji
+    /// <see cref="EmojiColumns"/>; null for a line of ASCII only, one column per character.
+    /// </summary>
+    private static Cell[]? CellsOf(string line) =>
+        Ascii.IsValid(line)
+            ? null
+            : [.. Emojis.Elements(line).Select(e => Emojis.IsEmoji(line, e.Start, e.Length)
+                ? new Cell(e.Start, e.Length, EmojiColumns, true)
+                : new Cell(e.Start, e.Length, 1, false))];
 
     private static string? TryReadText(string path)
     {
@@ -418,6 +505,9 @@ public sealed class TextPages : PageSource
     /// zoom they are laid out for: <see cref="Margin"/> and the lines' positions are on the page divided
     /// by <see cref="Zoom"/>, the page rendered at <see cref="PageSize"/>.
     /// </summary>
+    /// <summary>A text element of a line: where it starts and its length in the line, its columns, whether it is an emoji.</summary>
+    private readonly record struct Cell(int Start, int Length, int Width, bool Emoji);
+
     private sealed record Layout(Size PageSize, double Zoom, int FontSize, float Margin, string[] Lines, int[] LineStarts, int LinesPerPage)
     {
         public int PageCount => Math.Max(1, (Lines.Length + LinesPerPage - 1) / LinesPerPage);
