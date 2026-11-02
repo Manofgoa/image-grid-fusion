@@ -163,16 +163,21 @@ Layout **A — one grouped list** (Q&A 1), drawn in the mockup of 2026-11-02:
   component's purpose. Nothing installs by itself: the user clicks *Install*.
 - **The feature that asked goes back to off at once** (Q&A 15), as the window opens: the Cutout's
   checkbox unchecked, the analysis setting off, the URL load ended — as a **No** does today; the user
-  turns it on again once the component is installed.
-- No shortcut is added (`SHORTCUTS.md` unchanged), apart from Escape closing the window, as in the
-  shortcuts window.
+  turns it on again once the component is installed. **The content search aside** (Iteration 11): it
+  runs with Windows OCR without RapidOCR, so it stays on, as a **No** left it.
+- **Install** installs the **forced version when there is one, else the pinned one** — never the latest,
+  which *Update* offers once installed (Iteration 11). An engine installed without ONNX Runtime starts the
+  runtime's row at the same time.
+- The ℹ️ tooltip is the **row's** tooltip: hovering anywhere on the row shows the purpose, the upstream,
+  the license, and a failure's reason (Iteration 11).
+- No shortcut is added but Escape closing the window, as in the shortcuts window (`SHORTCUTS.md`
+  § Dialogs).
 
 ---
 
 ## Components Manifest
 
-`components.json`, **next to the exe**, read and written through one class (`UI/ComponentManifest`,
-name to settle at implementation):
+`components.json`, **next to the exe**, read and written through one class (`Components/ComponentManifest`):
 
 - **The hard-coded values stay in the code**: each component's **pinned version** and its files
   (URLs, SHA-256, sizes) as today. They are the fallback when the file is missing or unreadable.
@@ -235,7 +240,7 @@ for a version:
 ## Updating
 
 - **Download first, then swap**: the new version is downloaded into a staging folder next to the
-  component's own (`<folder>.~update\`), its files checked. Then the current version's files are
+  component's own (`<folder>\update-staging\<id>\`), its files checked. Then the current version's files are
   **deleted** and the new ones moved into place, and the manifest is updated (`installed`, `updatedOn`,
   `files`). A failure or a cancel deletes the staging folder and leaves the installed version untouched.
 - **Back to the forced or pinned version** goes the same way: the target version downloaded, then the
@@ -245,9 +250,13 @@ for a version:
   vision text model (`ReleaseTextEncoder(force: true)`) — and the content passes are paused, a running
   pass closing its sessions; all of it resumes once the files are in place, the sessions reopening at
   their next use. One release route per resident engine, called by the update.
-- **What stays locked** — the native runtimes once loaded, a tool while a URL load runs — is **left
-  staged**: the swap is done at the next start, in `Program.Main` **before anything loads them**, and the
-  row says *Restart to finish*. A runtime not loaded yet in this process is swapped at once.
+- **What stays locked** — the native runtimes once loaded — is **left staged**: the swap is done at the
+  next start, in `Program.Main` **before anything loads them**, and the row says *Restart to finish*. A
+  runtime not loaded yet in this process is swapped at once.
+- **A winget tool** is installed by winget into its own folder, the folder there set aside as
+  `<folder>-previous` meanwhile and given back if winget fails (`winget install --version <v> --force`).
+  A tool **in use** (a URL load running) cannot be set aside: its row says so — *try again once the URL
+  load ends* — rather than staging it, since winget installs into the folder itself (Iteration 11).
 - **Shared folders**: the caption and vision engines share `vision-engine\`, so only the updated
   component's own files are deleted, never the folder.
 - **The vision engine's model id** (`EmbeddingModelId`) is part of its version: a new SigLIP version
@@ -261,7 +270,8 @@ for a version:
   now** / **Later**.
 - **Restart now** starts the exe again with the same arguments (`--title`, `--new-instance` and the
   files aside), the new process **waiting for the old one to end** before taking the single-instance
-  lock, then closes the app as its tray *Exit* does.
+  lock — the old one's id given in the environment variable `IMAGE_GRID_FUSION_WAIT_FOR_PID`, no new
+  command-line argument (Iteration 11) — then closes the app as its tray *Exit* does.
 - **Later**: the swaps are done at the next start whenever it comes.
 
 ---
@@ -418,6 +428,47 @@ No open question remains.
 Go given: code, unit tests and documentation, in the current worktree
 (`claude/component-update-verification-4c9318`), brought up to date with `main` first.
 
+### Iteration 11 — 2026-11-02 — 🧭 Implementation choices
+
+Divergent choices of the run, each in the domain sections above:
+
+- ⚠️ **Rule broken — a commit touching a key handler updates `SHORTCUTS.md` in the same commit**
+  (RULES.md § Keyboard Shortcuts): the window's Escape (`ComponentsWindow.ProcessCmdKey`) went in the
+  code commit, its row in a separate one right after. Why: the docs were committed apart, by step; noticed
+  afterwards. Autonomous run: reported instead of asked.
+- **The face models pinned to a commit** (`opencv/face_detection_yunet` 3cc26e7f, `face_recognition_sface`
+  3d708243) instead of `main`: the same files and hashes, now a real pinned version. Their pinned label
+  keeps the date in their file name (`2023mar`, `2021dec`); the others show their commit (8 characters),
+  their NuGet version, their release tag or their winget version.
+- **The winget tools' pins**: yt-dlp 2026.10.26, Deno 2.9.8, ffmpeg N-127043-g5a54fcf75e-20260930 —
+  winget's latest on 2026-11-02.
+- **Install takes the forced version, else the pinned one**; Update the latest. An engine installed
+  without ONNX Runtime starts the runtime's row at the same time, rather than a *Waiting for ONNX
+  Runtime…* on its own row.
+- **The content search stays on** when the OCR engine is missing: it works with Windows OCR alone.
+- **A winget tool in use is refused, not staged**: winget installs into the folder itself.
+- **The restart's wait** goes through an environment variable, not a command-line argument: RULES.md
+  § Command-Line Arguments keeps its four entries.
+- **A `--new-instance` finishes the swaps pending** at its start, and writes `components.json` on a
+  user's install: they complete a user action, not a write of its own accord.
+- **The row's tooltip** carries the purpose, not the ℹ️ alone (WinForms' item tooltips).
+- **The rows' buttons are drawn** in the list (owner-drawn `ListView`, `MouseClick`), the progress bar
+  with the visual styles' renderer; an indeterminate bar slides for winget.
+- **A Hugging Face component** whose files match the latest commit's is up to date, its Latest cell
+  showing the commit with a ✓, though its pinned label is a date or an older commit.
+- **What the start says**: a manifest unreadable, or the components swapped at the start, in the status
+  line once the window shows.
+- **Removed with the old downloads**: the engines' `DownloadAsync`, `EmojiFonts.DownloadAsync` /
+  `UpdateAsync`, the URL zone's install confirmations (`InstallingStep`, `CompanionsInstalledException`), the
+  ⚙ entries and their visibility code.
+- **The checks by hand ran in a scratchpad harness** compiling the app's sources with an entry point of its
+  own, in its own folder: the window opened, the 17 latest versions read for real (ONNX Runtime 1.31.1
+  offered over 1.29.0), YuNet and Twemoji installed with ONNX Runtime started alongside, a locked file left
+  staged then swapped as at the next start, `components.json` written. The rows' clicks were sent to the
+  handler directly: driving the running app from outside failed (UI Automation sees none of its tree), and
+  the real mouse was left alone. **Not run**: a winget install (nothing installed on this machine), a
+  restart, the app's own offers — left to the delivery test.
+
 ---
 
 ## Implementation Log
@@ -427,11 +478,12 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project (§ Test Impact) |
-| RULES.md | | | |
-| README (+ .fr) | | | |
-| GLOSSARY (+ .fr) | | | |
+| Code | 10 | 2026-11-02 | `Components/` (registry, sources, manifest, installer), `UI/ComponentsWindow`, `UI/MainForm.Components`; the engines' and fonts' own downloads and the ⚙ download entries removed |
+| Unit tests | 10 | 2026-11-02 | Declined by the design: no test project (§ Test Impact). Checked in a scratchpad harness instead (Iteration 11) |
+| RULES.md | 10 | 2026-11-02 | § Downloadable Components; the engines', fonts' and yt-dlp's offers point to the window |
+| README (+ .fr) | 10 | 2026-11-02 | § Components / § Composants; the offers' passages |
+| GLOSSARY (+ .fr) | 10 | 2026-11-02 | Component, Component updates window, pinned / forced version, components manifest |
+| SHORTCUTS (+ .fr) | 10 | 2026-11-02 | Escape closes the window (§ Dialogs) |
 
 ---
 
