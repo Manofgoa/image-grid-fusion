@@ -54,6 +54,12 @@ public sealed record LayerTextStyle(string Font, bool Bold, Color Color, bool Ou
     /// <summary>The shadow's opacity, 0 to 1.</summary>
     public double ShadowOpacity { get; init; } = 1;
 
+    /// <summary>
+    /// The font the emojis are drawn in, the letters staying in <see cref="Font"/>: Windows' Segoe UI Emoji by default, else
+    /// an emoji font installed or shipped (workfiles/20261102-emoji-fonts.md); a font missing draws as the default.
+    /// </summary>
+    public string EmojiFont { get; init; } = EmojiFonts.Default;
+
     /// <summary>The text as drawn: in capitals with the current culture under <see cref="Caps"/>, the emojis untouched.</summary>
     public string Drawn(string text) => this.Caps ? text.ToUpper(System.Globalization.CultureInfo.CurrentCulture) : text;
 
@@ -61,6 +67,7 @@ public sealed record LayerTextStyle(string Font, bool Bold, Color Color, bool Ou
     public JsonObject ToJson() => new()
     {
         ["font"] = this.Font,
+        ["emojiFont"] = this.EmojiFont,
         ["bold"] = this.Bold,
         ["italic"] = this.Italic,
         ["caps"] = this.Caps,
@@ -94,6 +101,7 @@ public sealed record LayerTextStyle(string Font, bool Bold, Color Color, bool Ou
             HexColor(json, "backgroundColor", Default.BackgroundColor),
             Math.Clamp(PresetJson.Double(json, "backgroundOpacity", Default.BackgroundOpacity), 0, 1))
         {
+            EmojiFont = json["emojiFont"] is JsonValue emoji && emoji.TryGetValue(out string? emojiFamily) && emojiFamily.Trim().Length > 0 ? emojiFamily.Trim() : Default.EmojiFont,
             Italic = PresetJson.Bool(json, "italic", Default.Italic),
             Caps = PresetJson.Bool(json, "caps", Default.Caps),
             Alignment = PresetJson.Enum(json, "alignment", Default.Alignment),
@@ -163,6 +171,7 @@ internal static unsafe class TextRaster
     private static readonly Guid ImagingFactoryId = new("ec5ec8a9-c395-4314-9c77-54d7a935ff70");
     private static readonly Guid TextLayout1Id = new("9064d822-80a7-465c-a986-df65f78b8feb");
     private static readonly Guid WriteFactory5Id = new("958db99a-be2a-4f09-af7d-65189803d1d3");
+    private static readonly Guid Font2Id = new("29748ed6-8c9c-4a6a-be0b-d912e8538944");
     private static readonly Guid PremultipliedBgra = new("6fddc324-4e03-4bfe-b185-3d77768dc910");
 
     // The flag font: Twemoji Mozilla cut down to its flags (workfiles/20261102-text-flag-emojis.md § The Flag Font).
@@ -182,6 +191,7 @@ internal static unsafe class TextRaster
     {
         var factories = Factories.Get();
         text = style.Drawn(text);
+        bool colorShapes = EmojiFontOf(factories, style.EmojiFont) is not null;
         float em = EmSize;
         for (int attempt = 0; ; attempt++)
         {
@@ -202,7 +212,7 @@ internal static unsafe class TextRaster
                     continue;
                 }
 
-                var bitmap = Draw(factories, layout, text.Length == 0, style, new Size(Math.Max(1, w), Math.Max(1, h)), (float)pad, width, metrics.Height, line);
+                var bitmap = Draw(factories, layout, text.Length == 0, style, new Size(Math.Max(1, w), Math.Max(1, h)), (float)pad, width, metrics.Height, line, colorShapes);
                 return (bitmap, line);
             }
             finally
@@ -233,12 +243,34 @@ internal static unsafe class TextRaster
         }
     }
 
-    /// <summary>The families of the fonts installed, A→Z, for the font drop-down.</summary>
+    /// <summary>The families of the fonts installed, A→Z, for the font drop-down: the emoji fonts left out, they have their own.</summary>
     public static IReadOnlyList<string> FontFamilies()
     {
         using var fonts = new System.Drawing.Text.InstalledFontCollection();
-        return [.. fonts.Families.Select(f => f.Name).OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase)];
+        var emoji = InstalledEmojiFamilies().ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return [.. fonts.Families.Select(f => f.Name).Where(n => !emoji.Contains(n)).OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase)];
     }
+
+    /// <summary>
+    /// The emoji fonts, for the Emoji drop-down: <see cref="EmojiFonts.Default"/> first, then the ones installed and the
+    /// ones shipped there, A→Z, a family once (workfiles/20261102-emoji-fonts.md § User Interface).
+    /// </summary>
+    public static IReadOnlyList<string> EmojiFamilies() =>
+    [
+        EmojiFonts.Default,
+        .. InstalledEmojiFamilies().Concat(EmojiFonts.Present.Select(f => f.Family))
+            .Where(n => !string.Equals(n, EmojiFonts.Default, StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase),
+    ];
+
+    /// <summary>
+    /// The installed families that are emoji fonts — color fonts holding 😀 (U+1F600), whatever their name — read once
+    /// from the system's collection.
+    /// </summary>
+    public static IReadOnlyList<string> InstalledEmojiFamilies() => _installedEmoji ??= ReadInstalledEmojiFamilies(Factories.Get());
+
+    private static IReadOnlyList<string>? _installedEmoji;
 
     private static IntPtr CreateLayout(Factories factories, string text, LayerTextStyle style, float em, double? box)
     {
@@ -266,7 +298,14 @@ internal static unsafe class TextRaster
                     write, chars, text.Length, format, 1e6f, 1e6f, &layout));
             }
 
-            SetFlagFont(layout, factories.Flags, text);
+            // The emoji font on each emoji, then the flag font on the flags it does not draw itself.
+            var emoji = EmojiFontOf(factories, style.EmojiFont);
+            if (emoji is { } font)
+            {
+                SetEmojiFont(layout, font.Collection, font.Family, text);
+            }
+
+            SetFlagFont(layout, factories.Flags, text, joinedOnly: emoji?.HasFlags == true);
 
             // SetWordWrapping(NO_WRAP): the lines measured as typed, a line's height read from them.
             Check(((delegate* unmanaged[Stdcall]<IntPtr, int, int>)Slot(layout, 5))(layout, 1));
@@ -413,9 +452,11 @@ internal static unsafe class TextRaster
     /// translucent outline or letters, in one pass; else the shadow's mask is drawn and blurred apart, the text
     /// made translucent apart (<see cref="Text"/>), then put together.
     /// </summary>
-    private static Bitmap Draw(Factories factories, IntPtr layout, bool empty, LayerTextStyle style, Size size, float pad, float width, float height, double line)
+    private static Bitmap Draw(Factories factories, IntPtr layout, bool empty, LayerTextStyle style, Size size, float pad, float width, float height, double line, bool colorShapes)
     {
         bool translucent = style.Opacity < 1 || (style.Outline && style.OutlineOpacity < 1);
+        bool shaped = !empty && (style.Shadow || style.Outline);
+        var shape = new Shape(layout, colorShapes && shaped ? Paint(factories, size, target => PaintColorShape(target, layout, pad)) : null, size, pad);
         byte[] pixels;
         if (empty || (!style.Shadow && !translucent))
         {
@@ -424,7 +465,7 @@ internal static unsafe class TextRaster
                 PaintBox(target, style, pad, width, height, line);
                 if (!empty)
                 {
-                    PaintText(target, layout, style, pad, line);
+                    PaintText(target, shape, style, pad, line);
                 }
             });
         }
@@ -437,13 +478,13 @@ internal static unsafe class TextRaster
                 bool halo = style.ShadowKind == ShadowKind.Halo;
                 float offset = halo ? 0 : (float)(reach / Math.Sqrt(2));
                 double spread = (style.Outline ? style.OutlineWidth * line : 0) + (halo ? reach / 2 : 0);
-                var mask = Paint(factories, size, target => PaintMask(target, layout, pad + offset, spread));
+                var mask = Paint(factories, size, target => PaintMask(target, shape, pad + offset, spread));
                 var shadow = Shadow(mask, size, reach / 2, style.ShadowColor);
                 Fade(shadow, style.ShadowOpacity);
                 Over(pixels, shadow);
             }
 
-            Over(pixels, Text(factories, layout, style, size, pad, line));
+            Over(pixels, Text(factories, shape, style, size, pad, line));
         }
 
         return ToBitmap(pixels, size);
@@ -534,9 +575,9 @@ internal static unsafe class TextRaster
     /// together (premultiplied) and the letters alone, the outline is what the letters leave of it, so the
     /// antialiased edges come out as they do opaque.
     /// </summary>
-    private static byte[] Text(Factories factories, IntPtr layout, LayerTextStyle style, Size size, float pad, double line)
+    private static byte[] Text(Factories factories, Shape shape, LayerTextStyle style, Size size, float pad, double line)
     {
-        var text = Paint(factories, size, target => PaintText(target, layout, style, pad, line));
+        var text = Paint(factories, size, target => PaintText(target, shape, style, pad, line));
         double letters = Math.Clamp(style.Opacity, 0, 1);
         double outline = style.Outline ? Math.Clamp(style.OutlineOpacity, 0, 1) : 1;
         if (letters >= 1 && outline >= 1)
@@ -544,7 +585,7 @@ internal static unsafe class TextRaster
             return text;
         }
 
-        var alone = Paint(factories, size, target => PaintLetters(target, layout, style, pad));
+        var alone = Paint(factories, size, target => PaintLetters(target, shape.Layout, style, pad));
         for (int i = 0; i < text.Length; i++)
         {
             text[i] = (byte)Math.Clamp((int)Math.Round((text[i] - alone[i]) * outline + alone[i] * letters), 0, 255);
@@ -569,14 +610,14 @@ internal static unsafe class TextRaster
     }
 
     /// <summary>The outline — copies around the text in its color, its emojis as plain shapes of that color — then the letters.</summary>
-    private static void PaintText(IntPtr target, IntPtr layout, LayerTextStyle style, float pad, double line)
+    private static void PaintText(IntPtr target, Shape shape, LayerTextStyle style, float pad, double line)
     {
         if (style.Outline)
         {
             IntPtr outline = Brush(target, style.OutlineColor);
             try
             {
-                PaintRings(target, layout, outline, pad, style.OutlineWidth * line);
+                DrawShapes(target, shape, outline, Rings(pad, style.OutlineWidth * line));
             }
             finally
             {
@@ -584,7 +625,7 @@ internal static unsafe class TextRaster
             }
         }
 
-        PaintLetters(target, layout, style, pad);
+        PaintLetters(target, shape.Layout, style, pad);
     }
 
     /// <summary>The letters in their color, the emojis in theirs.</summary>
@@ -602,13 +643,12 @@ internal static unsafe class TextRaster
     }
 
     /// <summary>The shape casting the shadow: the letters, their emojis as plain shapes, grown by <paramref name="spread"/>.</summary>
-    private static void PaintMask(IntPtr target, IntPtr layout, float at, double spread)
+    private static void PaintMask(IntPtr target, Shape shape, float at, double spread)
     {
         IntPtr brush = Brush(target, Color.Black);
         try
         {
-            PaintRings(target, layout, brush, at, spread);
-            DrawText(target, layout, brush, at, at, colorFont: false);
+            DrawShapes(target, shape, brush, Rings(at, spread).Append((at, at)));
         }
         finally
         {
@@ -616,12 +656,12 @@ internal static unsafe class TextRaster
         }
     }
 
-    /// <summary>Copies of the text in rings around <paramref name="at"/>, out to <paramref name="radius"/>: the text grown by it.</summary>
-    private static void PaintRings(IntPtr target, IntPtr layout, IntPtr brush, float at, double radius)
+    /// <summary>Where the copies of the text go in rings around <paramref name="at"/>, out to <paramref name="radius"/>: the text grown by it.</summary>
+    private static IEnumerable<(float X, float Y)> Rings(float at, double radius)
     {
         if (radius <= 0)
         {
-            return;
+            yield break;
         }
 
         for (int ring = 0; ring < OutlineRings.Length; ring++)
@@ -631,8 +671,65 @@ internal static unsafe class TextRaster
             for (int k = 0; k < copies; k++)
             {
                 double angle = 2 * Math.PI * k / copies;
-                DrawText(target, layout, brush, at + (float)(r * Math.Cos(angle)), at + (float)(r * Math.Sin(angle)), colorFont: false);
+                yield return (at + (float)(r * Math.Cos(angle)), at + (float)(r * Math.Sin(angle)));
             }
+        }
+    }
+
+    /// <summary>
+    /// The text's shape in <paramref name="brush"/> at each of <paramref name="places"/> — where the text drawn at the
+    /// pad's offset would be: its plain shapes, or the alpha of the text drawn in color
+    /// (<see cref="Shape.Alpha"/>) as an opacity mask.
+    /// </summary>
+    private static void DrawShapes(IntPtr target, Shape shape, IntPtr brush, IEnumerable<(float X, float Y)> places)
+    {
+        if (shape.Alpha is null)
+        {
+            foreach (var (x, y) in places)
+            {
+                DrawText(target, shape.Layout, brush, x, y, colorFont: false);
+            }
+
+            return;
+        }
+
+        // ID2D1RenderTarget.CreateBitmap: the alpha as a premultiplied BGRA bitmap of the target.
+        IntPtr mask;
+        var properties = new BitmapProperties { Format = 87, AlphaMode = 1, DpiX = 96, DpiY = 96 };
+        fixed (byte* pixels = shape.Alpha)
+        {
+            Check(((delegate* unmanaged[Stdcall]<IntPtr, SizeU, byte*, uint, BitmapProperties*, IntPtr*, int>)Slot(target, 4))(
+                target, new SizeU { Width = (uint)shape.Size.Width, Height = (uint)shape.Size.Height }, pixels, (uint)shape.Size.Width * 4, &properties, &mask));
+        }
+
+        try
+        {
+            // SetAntialiasMode(ALIASED): FillOpacityMask's requirement; FillOpacityMask(mask, brush, GRAPHICS, the place, the whole mask).
+            ((delegate* unmanaged[Stdcall]<IntPtr, int, void>)Slot(target, 32))(target, 1);
+            foreach (var (x, y) in places)
+            {
+                var rect = new D2DRect { Left = x - shape.Pad, Top = y - shape.Pad, Right = x - shape.Pad + shape.Size.Width, Bottom = y - shape.Pad + shape.Size.Height };
+                ((delegate* unmanaged[Stdcall]<IntPtr, IntPtr, IntPtr, int, D2DRect*, D2DRect*, void>)Slot(target, 25))(target, mask, brush, 0, &rect, null);
+            }
+        }
+        finally
+        {
+            ((delegate* unmanaged[Stdcall]<IntPtr, int, void>)Slot(target, 32))(target, 0);
+            Marshal.Release(mask);
+        }
+    }
+
+    /// <summary>The text drawn in color, opaque, at the pad's offset: the shape of an emoji font's emojis, which have no plain one.</summary>
+    private static void PaintColorShape(IntPtr target, IntPtr layout, float pad)
+    {
+        IntPtr brush = Brush(target, Color.Black);
+        try
+        {
+            DrawText(target, layout, brush, pad, pad, colorFont: true);
+        }
+        finally
+        {
+            Marshal.Release(brush);
         }
     }
 
@@ -777,6 +874,24 @@ internal static unsafe class TextRaster
     /// </summary>
     private static IntPtr CreateFlagCollection(IntPtr write)
     {
+        byte[] font;
+        using (var stream = typeof(TextRaster).Assembly.GetManifestResourceStream(FlagFontResource)!)
+        using (var copy = new MemoryStream())
+        {
+            stream.CopyTo(copy);
+            font = copy.ToArray();
+        }
+
+        return CreateMemoryCollection(write, font);
+    }
+
+    /// <summary>
+    /// A font given as its bytes, in a collection of its own: the flag font, an emoji font of <see cref="EmojiFonts.Folder"/>
+    /// — read into memory, so its file is never held open and an update can replace it. Zero where it cannot be made —
+    /// before Windows 10 1703 —, or the bytes are no font.
+    /// </summary>
+    private static IntPtr CreateMemoryCollection(IntPtr write, byte[] font)
+    {
         IntPtr factory5 = IntPtr.Zero, loader = IntPtr.Zero, file = IntPtr.Zero, builder = IntPtr.Zero, set = IntPtr.Zero;
         try
         {
@@ -784,14 +899,6 @@ internal static unsafe class TextRaster
             if (Marshal.QueryInterface(write, in WriteFactory5Id, out factory5) < 0)
             {
                 return IntPtr.Zero;
-            }
-
-            byte[] font;
-            using (var stream = typeof(TextRaster).Assembly.GetManifestResourceStream(FlagFontResource)!)
-            using (var copy = new MemoryStream())
-            {
-                stream.CopyTo(copy);
-                font = copy.ToArray();
             }
 
             // IDWriteFactory5.CreateInMemoryFontFileLoader, registered with the factory (RegisterFontFileLoader) before it
@@ -833,9 +940,11 @@ internal static unsafe class TextRaster
     /// <summary>
     /// The flag font on every flag sequence of the layout (<see cref="Emojis.Flags"/>), whatever the text's font: set on
     /// the whole sequence, its invisible characters — tags, joiner — included, so it is shaped into one flag. A font
-    /// fallback cannot do it: it leaves those characters to the text's font, and the flag falls apart.
+    /// fallback cannot do it: it leaves those characters to the text's font, and the flag falls apart. With
+    /// <paramref name="joinedOnly"/> — an emoji font drawing the flags itself — on England, Scotland, Wales and the pirate
+    /// flag only, which DirectWrite joins in no other font (workfiles/20261102-emoji-fonts.md § Rendering).
     /// </summary>
-    private static void SetFlagFont(IntPtr layout, IntPtr flags, string text)
+    private static void SetFlagFont(IntPtr layout, IntPtr flags, string text, bool joinedOnly)
     {
         if (flags == IntPtr.Zero)
         {
@@ -844,7 +953,8 @@ internal static unsafe class TextRaster
 
         fixed (char* family = FlagFamily)
         {
-            foreach (var (start, length) in Emojis.Flags(text))
+            // Emojis.Flags gives the joined flags alone as one character.
+            foreach (var (start, length) in Emojis.Flags(text).Where(f => !joinedOnly || f.Length == 1))
             {
                 // IDWriteTextLayout.SetFontCollection and SetFontFamilyName on the sequence's range.
                 var range = new TextRange { StartPosition = (uint)start, Length = (uint)length };
@@ -854,11 +964,238 @@ internal static unsafe class TextRaster
         }
     }
 
-    /// <summary>The three factories and the flag font, made once per thread: the Direct2D factory is single-threaded.</summary>
+    /// <summary>
+    /// The emoji font on every emoji of the layout (<see cref="Emojis.IsEmoji"/>), whatever the text's font — as the flag
+    /// font is set on the flags, and for the same reason: a fallback would leave a sequence's joiner, VS16 or skin tone to
+    /// the text's font (workfiles/20261102-emoji-fonts.md § Rendering).
+    /// </summary>
+    private static void SetEmojiFont(IntPtr layout, IntPtr collection, string emojiFamily, string text)
+    {
+        fixed (char* family = emojiFamily)
+        {
+            foreach (var (start, length) in Emojis.Elements(text).Where(e => Emojis.IsEmoji(text, e.Start, e.Length)))
+            {
+                // IDWriteTextLayout.SetFontCollection and SetFontFamilyName on the emoji's range.
+                var range = new TextRange { StartPosition = (uint)start, Length = (uint)length };
+                Check(((delegate* unmanaged[Stdcall]<IntPtr, IntPtr, TextRange, int>)Slot(layout, 30))(layout, collection, range));
+                Check(((delegate* unmanaged[Stdcall]<IntPtr, char*, TextRange, int>)Slot(layout, 31))(layout, family, range));
+            }
+        }
+    }
+
+    /// <summary>
+    /// The emoji font named <paramref name="family"/>: a shipped one, loaded from <see cref="EmojiFonts.Folder"/>, else an
+    /// installed one; <c>null</c> for <see cref="EmojiFonts.Default"/> — the system's fallback draws it — and for a font
+    /// found nowhere, drawn as the default. Kept per thread until the shipped fonts change.
+    /// </summary>
+    private static EmojiFont? EmojiFontOf(Factories factories, string family)
+    {
+        if (string.Equals(family, EmojiFonts.Default, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        factories.Refresh();
+        if (factories.EmojiFonts.TryGetValue(family, out var known))
+        {
+            return known;
+        }
+
+        EmojiFont? found = null;
+        var (_, path) = EmojiFonts.Present.FirstOrDefault(f => string.Equals(f.Family, family, StringComparison.OrdinalIgnoreCase));
+        if (path is not null)
+        {
+            try
+            {
+                var collection = CreateMemoryCollection(factories.Write, File.ReadAllBytes(path));
+                if (collection != IntPtr.Zero)
+                {
+                    // Its one family, by the name DirectWrite gives it: the WWS family — OpenMoji's is "OpenMoji Color".
+                    factories.Own(collection);
+                    found = FamilyName(collection, 0) is { } name ? Find(collection, name) : null;
+                }
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // Unreadable: looked for among the installed fonts, else drawn as the default.
+            }
+        }
+
+        found ??= Find(factories.System, family);
+        factories.EmojiFonts[family] = found;
+        return found;
+    }
+
+    /// <summary><paramref name="family"/> in <paramref name="collection"/>, and whether it holds the flags; <c>null</c> when it is not there.</summary>
+    private static EmojiFont? Find(IntPtr collection, string family)
+    {
+        uint index;
+        int exists;
+        fixed (char* name = family)
+        {
+            // IDWriteFontCollection.FindFamilyName.
+            Check(((delegate* unmanaged[Stdcall]<IntPtr, char*, uint*, int*, int>)Slot(collection, 5))(collection, name, &index, &exists));
+        }
+
+        if (exists == 0)
+        {
+            return null;
+        }
+
+        IntPtr font = FirstFont(collection, index);
+        try
+        {
+            return new EmojiFont(collection, family, font != IntPtr.Zero && HasCharacter(font, 0x1F1E6));
+        }
+        finally
+        {
+            if (font != IntPtr.Zero)
+            {
+                Marshal.Release(font);
+            }
+        }
+    }
+
+    /// <summary>The installed families that are color fonts holding 😀: <see cref="InstalledEmojiFamilies"/>.</summary>
+    private static IReadOnlyList<string> ReadInstalledEmojiFamilies(Factories factories)
+    {
+        var families = new List<string>();
+        IntPtr collection = factories.System;
+
+        // IDWriteFontCollection.GetFontFamilyCount.
+        uint count = ((delegate* unmanaged[Stdcall]<IntPtr, uint>)Slot(collection, 3))(collection);
+        for (uint i = 0; i < count; i++)
+        {
+            IntPtr font = FirstFont(collection, i), font2 = IntPtr.Zero;
+            try
+            {
+                // IDWriteFont2.IsColorFont, then IDWriteFont.HasCharacter.
+                if (font == IntPtr.Zero || Marshal.QueryInterface(font, in Font2Id, out font2) < 0
+                    || ((delegate* unmanaged[Stdcall]<IntPtr, int>)Slot(font2, 18))(font2) == 0 || !HasCharacter(font, 0x1F600))
+                {
+                    continue;
+                }
+
+                if (FamilyName(collection, i) is { } name)
+                {
+                    families.Add(name);
+                }
+            }
+            finally
+            {
+                if (font2 != IntPtr.Zero)
+                {
+                    Marshal.Release(font2);
+                }
+
+                if (font != IntPtr.Zero)
+                {
+                    Marshal.Release(font);
+                }
+            }
+        }
+
+        return families;
+    }
+
+    /// <summary>The regular font of the collection's family at <paramref name="index"/> — the caller's to release —, zero when it cannot be read.</summary>
+    private static IntPtr FirstFont(IntPtr collection, uint index)
+    {
+        IntPtr family = IntPtr.Zero;
+        try
+        {
+            // IDWriteFontCollection.GetFontFamily, then IDWriteFontFamily.GetFirstMatchingFont: normal weight, stretch and style.
+            if (((delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int>)Slot(collection, 4))(collection, index, &family) < 0)
+            {
+                return IntPtr.Zero;
+            }
+
+            IntPtr font;
+            return ((delegate* unmanaged[Stdcall]<IntPtr, int, int, int, IntPtr*, int>)Slot(family, 7))(family, 400, 5, 0, &font) < 0 ? IntPtr.Zero : font;
+        }
+        finally
+        {
+            if (family != IntPtr.Zero)
+            {
+                Marshal.Release(family);
+            }
+        }
+    }
+
+    /// <summary>IDWriteFont.HasCharacter.</summary>
+    private static bool HasCharacter(IntPtr font, int code)
+    {
+        int exists;
+        return ((delegate* unmanaged[Stdcall]<IntPtr, uint, int*, int>)Slot(font, 12))(font, (uint)code, &exists) >= 0 && exists != 0;
+    }
+
+    /// <summary>The name of the collection's family at <paramref name="index"/>, in English when it has one, else its first; <c>null</c> when it cannot be read.</summary>
+    private static string? FamilyName(IntPtr collection, uint index)
+    {
+        IntPtr family = IntPtr.Zero, names = IntPtr.Zero;
+        try
+        {
+            // IDWriteFontCollection.GetFontFamily, IDWriteFontFamily.GetFamilyNames.
+            if (((delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int>)Slot(collection, 4))(collection, index, &family) < 0
+                || ((delegate* unmanaged[Stdcall]<IntPtr, IntPtr*, int>)Slot(family, 6))(family, &names) < 0)
+            {
+                return null;
+            }
+
+            // IDWriteLocalizedStrings.FindLocaleName, GetStringLength, GetString.
+            uint at;
+            int exists;
+            fixed (char* locale = "en-us")
+            {
+                Check(((delegate* unmanaged[Stdcall]<IntPtr, char*, uint*, int*, int>)Slot(names, 4))(names, locale, &at, &exists));
+            }
+
+            if (exists == 0)
+            {
+                at = 0;
+            }
+
+            uint length;
+            Check(((delegate* unmanaged[Stdcall]<IntPtr, uint, uint*, int>)Slot(names, 7))(names, at, &length));
+            var buffer = new char[length + 1];
+            fixed (char* chars = buffer)
+            {
+                Check(((delegate* unmanaged[Stdcall]<IntPtr, uint, char*, uint, int>)Slot(names, 8))(names, at, chars, length + 1));
+            }
+
+            return new string(buffer, 0, (int)length);
+        }
+        catch (COMException)
+        {
+            return null;
+        }
+        finally
+        {
+            if (names != IntPtr.Zero)
+            {
+                Marshal.Release(names);
+            }
+
+            if (family != IntPtr.Zero)
+            {
+                Marshal.Release(family);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The three factories, the flag font and the emoji fonts in use, made once per thread: the Direct2D factory is
+    /// single-threaded.
+    /// </summary>
     private sealed class Factories
     {
         [ThreadStatic]
         private static Factories? _current;
+
+        // The shipped emoji fonts' collections this thread loaded, released when the fonts change.
+        private readonly List<IntPtr> _owned = [];
+        private IntPtr _system;
+        private int _generation;
 
         private Factories()
         {
@@ -869,6 +1206,7 @@ internal static unsafe class TextRaster
             this.Write = write;
             this.Imaging = imaging;
             this.Flags = CreateFlagCollection(write);
+            this._generation = global::ImageGridFusion.Imaging.EmojiFonts.Generation;
         }
 
         public IntPtr Direct2D { get; }
@@ -880,7 +1218,71 @@ internal static unsafe class TextRaster
         /// <summary>The flag font's collection, zero without one (<see cref="CreateFlagCollection"/>).</summary>
         public IntPtr Flags { get; }
 
+        /// <summary>The system's font collection, read once (IDWriteFactory.GetSystemFontCollection).</summary>
+        public IntPtr System
+        {
+            get
+            {
+                if (this._system == IntPtr.Zero)
+                {
+                    IntPtr collection;
+                    Check(((delegate* unmanaged[Stdcall]<IntPtr, IntPtr*, int, int>)Slot(this.Write, 3))(this.Write, &collection, 0));
+                    this._system = collection;
+                }
+
+                return this._system;
+            }
+        }
+
+        /// <summary>The emoji fonts looked for, by family: <see cref="EmojiFontOf"/>'s.</summary>
+        public Dictionary<string, EmojiFont?> EmojiFonts { get; } = new(StringComparer.OrdinalIgnoreCase);
+
         public static Factories Get() => _current ??= new Factories();
+
+        /// <summary>Keeps <paramref name="collection"/> until the shipped fonts change.</summary>
+        public void Own(IntPtr collection) => this._owned.Add(collection);
+
+        /// <summary>Forgets the emoji fonts looked for once the shipped ones changed, their collections released.</summary>
+        public void Refresh()
+        {
+            int generation = global::ImageGridFusion.Imaging.EmojiFonts.Generation;
+            if (generation == this._generation)
+            {
+                return;
+            }
+
+            this._generation = generation;
+            this.EmojiFonts.Clear();
+            foreach (var collection in this._owned)
+            {
+                Marshal.Release(collection);
+            }
+
+            this._owned.Clear();
+        }
+    }
+
+    /// <summary>An emoji font found: the collection holding it, its family there, and whether it draws the flags.</summary>
+    private readonly record struct EmojiFont(IntPtr Collection, string Family, bool HasFlags);
+
+    /// <summary>
+    /// What the outline's rings and the shadow's mask are made of: the layout's plain shapes, or — <see cref="Alpha"/> set —
+    /// the text drawn in color at the pad's offset, for an emoji font whose emojis have no plain shape
+    /// (workfiles/20261102-emoji-fonts.md § Rendering).
+    /// </summary>
+    private sealed record Shape(IntPtr Layout, byte[]? Alpha, Size Size, float Pad);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct SizeU
+    {
+        public uint Width, Height;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct BitmapProperties
+    {
+        public int Format, AlphaMode;
+        public float DpiX, DpiY;
     }
 
     [StructLayout(LayoutKind.Sequential)]
