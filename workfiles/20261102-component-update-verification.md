@@ -118,11 +118,26 @@ Layout **A — one grouped list** (Q&A 1), drawn in the mockup of 2026-11-02:
 - **The check** runs **when the window opens** and on **Check now**: every row at once, each row's
   spinner stopping on its own answer. Nothing runs in the background, and nothing runs while the
   window is closed. The time of the last check is shown at the top.
-- **Update all (N)** at the bottom updates every component whose latest version differs from the
-  installed one, one after the other, each row showing its progress. **Close** closes the window, and
-  updates already running carry on.
-- A row's buttons are disabled while it updates; an engine downloading through an in-context offer
-  (an effect or an analysis turned on without it) shows as updating there too.
+- **A progress bar per row** (Iteration 8): while a component downloads or installs, its Actions cell
+  shows a bar — its share done, the megabytes received over the total (`12 / 48 MB`), then
+  *Installing…* while its files are swapped — and a **×** cancelling that row alone, its staging folder
+  deleted, the installed version untouched. A winget install, which tells no size, shows an
+  indeterminate bar.
+- **Several components at once, the UI never blocked** (Iteration 8): *Update*, *Install* and the
+  *Back to…* entries of several rows can run **in parallel**, each on its own bar, the window and the
+  main window staying usable meanwhile. The work runs off the UI thread; only the bars are updated on
+  it. Within that:
+  - a row already running takes no second action;
+  - a file several rows need (ONNX Runtime, needed by every engine) is downloaded **once**, the rows
+    waiting for it showing *Waiting for ONNX Runtime…*;
+  - the winget installs run **one at a time**, winget refusing concurrent installs; a queued one shows
+    *Waiting for winget…*.
+- **Update all (N)** at the bottom starts every row whose latest version differs from the installed
+  one, in parallel as above.
+- **Closing the window while a row runs asks for confirmation**: *N downloads are running. Cancel them
+  and close?* — **Yes** cancels them all (staging folders deleted, installed versions untouched) and
+  closes; **No** keeps the window open, the downloads going on. The same question is asked when the app
+  exits with the window running one.
 - **Every install and update goes through the window** (Iteration 4): the ⚙ menu's *Download the …
   engine…* entries and *Install yt-dlp companions…* are removed (Q&A 12, 13), and the in-context offers
   — the Cutout turned on in a mode needing its engine, the content search, the face analysis, the
@@ -362,6 +377,15 @@ open for confirmation.
 
 Q&A 15 confirms it: the feature that asked goes back to off as soon as the window opens, and is turned
 on again by the user once the component is installed. One question stays open: the emoji fonts' group.
+
+### Iteration 8 — 2026-11-02
+
+User request: a progress bar per row on its download / install; several components downloaded or
+installed in parallel without blocking the UI; a confirmation when the window is closed during a
+download. This replaces *Update all* running the rows one after the other, and *Close* leaving the
+running updates going on. The agent added: a × per row to cancel it alone, ONNX Runtime downloaded
+once for the rows sharing it, the winget installs queued one at a time (winget refuses concurrent
+installs), and the same confirmation when the app exits with downloads running.
 
 ---
 
