@@ -215,6 +215,11 @@ tagged flags at private code points, and filled its glyphs' empty outlines. Cons
 
 § Prerequisite, § Rendering updated.
 
+### Iteration 5 — 2026-11-02 — ✅ Implemented
+
+Go given: code, the checks by hand and the documentation, in a worktree (`feature/emoji-fonts`). The scope
+is frozen as Iteration 4 left it.
+
 ---
 
 ## Implementation Log
