@@ -72,8 +72,16 @@ The emoji fonts that exist, as known at design time (to be checked when pinning 
 - **The shipped fonts are private**: their files added to the private font set the flag workfile creates
   (`AddFontFile` beside its in-memory flag subset → `CreateFontCollectionFromFontSet`), that collection
   passed as the mapping's — never installed into Windows.
-- **The default emoji font draws as today**: Segoe UI Emoji, no fallback of the app's — the icons
-  (`UiIcons`) and the text styles' samples keep drawing through the system fallback.
+- **The default emoji font draws as today**: Segoe UI Emoji, no mapping of the app's but the flag
+  subset's — the icons (`UiIcons`) keep drawing that way.
+- **The flags follow the chosen emoji font**: its mapping comes **before** the flag subset's and covers the
+  flags' code points too (regional indicators, 🏴, the tag characters) when the font has them, so every
+  emoji of a text has one style. The embedded Twemoji flag subset then only serves Segoe UI Emoji, which has
+  no flags, and an emoji font without flags.
+- **A font missing** — a shipped one not downloaded, an installed one uninstalled — draws as Segoe UI Emoji;
+  the style keeps its name.
+- **Text layers only**: the text cells keep Segoe UI Emoji and the flag subset, as the flag workfile
+  delivers them.
 - **Formats**: `DrawTextLayout` with `ENABLE_COLOR_FONT` draws COLRv0 for sure; COLRv1, CBDT and SVG glyphs
   depend on the Direct2D version — each shipped font's build is chosen for one that draws, checked when it is
   pinned (COLRv0 preferred when a font offers it).
@@ -87,7 +95,15 @@ The emoji fonts that exist, as known at design time (to be checked when pinning 
 ## User Interface
 
 - **An Emoji drop-down** next to the font drop-down in the Layers options, listing the emoji fonts only,
-  Segoe UI Emoji first (the default).
+  Segoe UI Emoji first (the default), then the others A→Z, installed and shipped together, a family once.
+- **An emoji font** is recognised among the installed families as a **color font holding 😀** (U+1F600:
+  `IDWriteFontFace2.IsColorFont`, `HasCharacter`) — whatever its name; Noto Emoji or Segoe UI Symbol, not
+  color, are not emoji fonts.
+- **The emoji fonts leave the main font drop-down** (`TextRaster.FontFamilies` leaves them out); a style
+  naming one as its font is still read and drawn as before.
+- **Part of the text style**: `LayerTextStyle.EmojiFont`, `"Segoe UI Emoji"` by default, under its own key
+  (`emojiFont`) in `ToJson` / `FromJson` — a missing or blank value giving the default — and in
+  `TextStyleStrip`'s tooltip; saved in the user's text styles. The built-in styles keep Segoe UI Emoji.
 - **Each font drawn as a sample** of a few emojis in it, then its name: rendered through `TextRaster` (GDI
   draws emojis in one color), each sample cached once drawn. No icon (§ Icons: the font drop-downs show each
   font in its face).
@@ -98,10 +114,21 @@ The emoji fonts that exist, as known at design time (to be checked when pinning 
 
 ## Shipped Fonts
 
-- A set of emoji fonts **shipped with the app**, in a folder next to the exe, already there at the first
-  launch — `emoji-fonts\` (`FolderName`, kebab-case per `../CLAUDE.md` § Folder Names).
-- A **⚙ menu entry** updates them: their newer versions downloaded into that folder.
-- Their licenses credited in the repository's docs (CC-BY and CC BY-SA require the attribution).
+- **Four fonts**: **Twemoji** (Mozilla's build, COLRv0, CC-BY 4.0), **Noto Color Emoji** (OFL 1.1),
+  **OpenMoji** (CC BY-SA 4.0), **Blobmoji** (Apache 2.0). For each, the build that `DrawTextLayout` draws in
+  color is chosen when it is pinned (COLRv0 preferred; Noto's COLRv1 or CBDT, Blobmoji's CBDT checked).
+- **Downloaded at the first launch, after asking**: the app offers them while their folder is missing — one
+  confirmation, their names and total size; a **Yes** downloads them, a **No** is remembered
+  (`AppSettings`) so the offer is not repeated; the ⚙ menu offers them again while missing. A
+  `--new-instance` makes no offer of its own accord (RULES.md § Single Instance).
+- Into **`emoji-fonts\` next to the exe** (`FolderName`, kebab-case per `../CLAUDE.md` § Folder Names),
+  from **pinned URLs, each checked against its SHA-256** — the engines' loop, `DirectEngineDownload`. Never
+  installed into Windows.
+- **⚙ Update emoji fonts**, once they are there: the **latest release** of each font, found from its
+  GitHub releases, no pinned hash (HTTPS only), replacing the file in `emoji-fonts\`; the texts drawn again
+  with it. A font whose download fails keeps its file.
+- Their licenses credited in the README's technical paragraph, beside the flag subset's (CC-BY and
+  CC BY-SA require the attribution).
 
 ---
 
@@ -116,24 +143,26 @@ unit test is created or updated. The run checks by hand:
 | Each emoji font with an outline, a Halo and a Drop shadow: the emojis outlined and shadowed | The running app | — (by hand) |
 | The Emoji drop-down: Segoe UI Emoji first, the installed and shipped fonts, each as a sample in its face, no duplicate | The running app | — (by hand) |
 | A text with an emoji font exported as PNG, MP4 and copied alone: the emojis in that font | The running app | — (by hand) |
-| The flags (🇫🇷, 🏴󠁧󠁢󠁳󠁣󠁴󠁿) with Segoe UI Emoji and with another emoji font, per the flags' open question | The running app | — (by hand) |
-| The ⚙ menu's update: the fonts updated, the texts drawn with the new versions | The running app | — (by hand) |
-| The app's emoji icons (`UiIcons`) unchanged | The running app | — (by hand) |
-
-To be completed once the Open Questions are answered (detection rule, update source, text styles).
+| The flags (🇫🇷, 🏴󠁧󠁢󠁳󠁣󠁴󠁿) with Segoe UI Emoji (Twemoji subset) and with Noto / OpenMoji (their own) | The running app | — (by hand) |
+| The first launch without `emoji-fonts\`: the offer, **No** remembered, **Yes** downloading the four, checked | The running app | — (by hand) |
+| The ⚙ menu's update: the latest releases downloaded, the texts drawn with them | The running app | — (by hand) |
+| A user text style saved with an emoji font, applied to another text: the emoji font follows | The running app | — (by hand) |
+| The main font drop-down: no emoji font left in it | The running app | — (by hand) |
+| A style naming a font not downloaded: drawn in Segoe UI Emoji, no error | The running app | — (by hand) |
+| The app's emoji icons (`UiIcons`) and the text cells' emojis unchanged | The running app | — (by hand) |
 
 ---
 
 ## Open Questions
 
-- [ ] Which emoji fonts are shipped with the app? (Noto Color Emoji, Twemoji, OpenMoji, Blobmoji, a Fluent Emoji build…)
-- [ ] How are they "pre-downloaded"? Committed into the repository, downloaded by the build (pinned URL + SHA-256) into the output, or downloaded at the first launch?
-- [ ] What does the ⚙ menu's update fetch? The latest release of each font (no pinned hash), or versions pinned in the app?
-- [ ] Is the emoji font part of a text style (`LayerTextStyle`, saved in the user's text styles, the built-in ones possibly using one)?
-- [ ] Do the emoji fonts leave the main font drop-down, now that they have their own?
-- [ ] How is an installed font recognised as an emoji font? A color font covering 😀 (U+1F600), or its name holding "Emoji"?
-- [ ] Scope: text layers only, or also the text cells (pasted / dropped texts, `Imaging/TextPages`), which draw their emojis through `TextRaster` once the flag workfile is delivered?
-- [ ] The flags with an emoji font holding its own (Noto, OpenMoji, full Twemoji): drawn by the chosen emoji font, or always by the embedded Twemoji flag subset?
+- [x] ~~Which emoji fonts are shipped with the app?~~ → Twemoji, Noto Color Emoji, OpenMoji, Blobmoji
+- [x] ~~How are they "pre-downloaded"?~~ → At the first launch, after asking
+- [x] ~~What does the ⚙ menu's update fetch?~~ → The latest release of each font, no pinned hash
+- [x] ~~Is the emoji font part of a text style?~~ → Yes, in the user's styles; the built-in ones keep Segoe UI Emoji
+- [x] ~~Do the emoji fonts leave the main font drop-down?~~ → Yes
+- [x] ~~How is an installed font recognised as an emoji font?~~ → A color font holding 😀 (U+1F600)
+- [x] ~~Scope: text layers only, or also the text cells?~~ → Text layers only
+- [x] ~~The flags with an emoji font holding its own?~~ → The chosen font's; the Twemoji subset only where the font has none
 
 ---
 
@@ -154,6 +183,16 @@ The user asks to wait for the session *Caractères drapeaux dans les textes*
 § Prerequisite added; § Rendering now builds on its private font collection and font fallback instead of
 making its own; two open questions follow from it (the text cells' scope reworded, the flags' order
 added). Test Impact rewritten as checks by hand: the repository has no test project.
+
+### Iteration 3 — 2026-11-02
+
+The eight open questions answered (Q&A 5–12): the four fonts shipped (Twemoji, Noto Color Emoji, OpenMoji,
+Blobmoji), downloaded at the first launch after asking, updated from the ⚙ menu to their latest releases;
+the emoji font part of the user's text styles; the emoji fonts out of the main drop-down, recognised as
+color fonts holding 😀; text layers only; the flags from the chosen font when it has them. Decided with
+them, to review: a **No** to the first-launch offer remembered, the ⚙ menu offering the download again; no
+offer from a `--new-instance`; the first download pinned (SHA-256), the update not; a missing font drawn as
+Segoe UI Emoji, its name kept. § Rendering, § User Interface, § Shipped Fonts and the Test Impact updated.
 
 ---
 
@@ -176,14 +215,14 @@ added). Test Impact rewritten as checks by hand: the repository has no test proj
 | 2 | How are the emoji fonts presented? | A drop-down of their own, next to the font drop-down | 2026-11-02 |
 | 3 | Where do the emoji fonts offered come from? | The installed ones, plus fonts shipped with the app in a subfolder, pre-downloaded, with a menu entry to update them | 2026-11-02 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward — one scout pass | 2026-11-02 |
-| 5 | Which emoji fonts are shipped? | | |
-| 6 | How are they pre-downloaded? | | |
-| 7 | What does the update fetch? | | |
-| 8 | Is the emoji font part of a text style? | | |
-| 9 | Do the emoji fonts leave the main font drop-down? | | |
-| 10 | How is an installed emoji font recognised? | | |
-| 11 | Text layers only, or the text cells too? | | |
-| 12 | The flags with an emoji font holding its own: the chosen font's, or the Twemoji flag subset's? | | |
+| 5 | Which emoji fonts are shipped? | Twemoji, Noto Color Emoji, OpenMoji, Blobmoji | 2026-11-02 |
+| 6 | How are they pre-downloaded? | At the first launch, after asking | 2026-11-02 |
+| 7 | What does the update fetch? | The latest release of each font | 2026-11-02 |
+| 8 | Is the emoji font part of a text style? | Yes — the user's styles; the built-in ones keep Segoe UI Emoji | 2026-11-02 |
+| 9 | Do the emoji fonts leave the main font drop-down? | Yes | 2026-11-02 |
+| 10 | How is an installed emoji font recognised? | A color font holding 😀 | 2026-11-02 |
+| 11 | Text layers only, or the text cells too? | Text layers only | 2026-11-02 |
+| 12 | The flags with an emoji font holding its own: the chosen font's, or the Twemoji flag subset's? | The chosen font's | 2026-11-02 |
 
 ---
 
