@@ -80,11 +80,32 @@ Layout **A — one grouped list** (Q&A 1), drawn in the mockup of 2026-11-02:
   | **Emoji fonts** | § Open Questions |
 
   An engine is installed when all its rows are; *Install* is offered on each missing row.
+- **What each component is for** (Iteration 5): an **ℹ️ icon right after its name**, its tooltip
+  saying what the component does in the app and which features need it, then its upstream and its
+  license. One text per component, kept with its registration in the code:
+
+  | Component | Tooltip's purpose line |
+  |---|---|
+  | OCR engine — RapidOCR models | Reads the text in images and PDF pages for the content search (💡), after Windows OCR |
+  | Face engine — YuNet | Finds the faces in the indexed images, for the People view |
+  | Face engine — SFace | Tells the faces apart, to group them into people |
+  | Vision engine — SigLIP 2 models | Sees what the images show: their tags, the similarity search under 💡, Find similar images |
+  | Vision engine — SigLIP 2 tokenizer | Turns a search's words into what the SigLIP 2 text model reads |
+  | Caption engine — Florence-2 | Writes a sentence describing each image, for the search under 💡 |
+  | Cutout engine — IS-Net | Finds an image's main subject, for the Cutout's Subject mode |
+  | Cutout engine — MobileSAM | Picks the object under a click, for the Cutout's Pick mode |
+  | ONNX Runtime | Runs every engine's models; shared by all of them |
+  | SkiaSharp | Decodes the images for RapidOCR |
+  | yt-dlp | Downloads the media of a URL the other resolvers do not know (URL zone) |
+  | Deno | Lets yt-dlp read YouTube's formats |
+  | ffmpeg | Joins a video track and its sound into one MP4 for yt-dlp |
+
+  The ℹ️ is a Segoe UI Emoji glyph drawn by the app, as the tile tooltip's icons (RULES.md § Icons).
 - **Columns**:
 
   | Column | Shows |
   |---|---|
-  | Component | Its name (`Vision engine — SigLIP 2`), its upstream in the tooltip |
+  | Component | Its name (`Vision engine — SigLIP 2 models`), then the ℹ️ of its purpose (below) |
   | Installed | The installed version, `—` when not installed |
   | Installed on | When it was first installed |
   | Updated on | When it was last replaced, `—` if never |
@@ -315,6 +336,12 @@ User request: every install and update of a component goes through the new windo
 entries already removed, the in-context offers (an effect or an analysis turned on without its
 engine, the URL zone's yt-dlp and companions offers) open the window on the rows they need rather
 than downloading themselves. New question: how the feature that asked goes on (Q&A 14).
+
+### Iteration 5 — 2026-11-02
+
+User request: show what each component is for, for instance in a tooltip next to its name. An ℹ️
+icon after the name, its tooltip giving the component's purpose and the features needing it, then
+its upstream and license (§ Components Window).
 
 ---
 
