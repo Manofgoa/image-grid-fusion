@@ -43,9 +43,13 @@ preview shows, the PNG / MP4 / GIF and the cell copy show too.
   - the **subdivision flags** — England, Scotland, Wales: 🏴 (U+1F3F4) followed by tag characters
     (U+E0020–U+E007F) — with 🏴 itself and **🏴‍☠️** (🏴 ZWJ ☠ VS16, its ZWJ, ☠ and VS16 in the subset), so
     the sequences built on 🏴 stay in one font. 🏴 and 🏴‍☠️ then take Twemoji's style.
-
-  Made once with fontTools (`pyftsubset`), the file committed under `src/ImageGridFusion/Imaging/`, its
-  license file next to it; the command that made it written in `CONTRIBUTING.md`, so it can be made again.
+- **Made by `tools/make-flag-font.py`** (fontTools) from Twemoji Mozilla v0.7.0, committed as
+  `src/ImageGridFusion/Imaging/TwemojiFlags.ttf` (347 KB, embedded), its license next to it
+  (`TwemojiFlags.LICENSE.md`), the way to make it again in `CONTRIBUTING.md § Flag Font`. Beyond the subset:
+  - each **color glyph's own outline is filled** with its layers' outlines — Twemoji's are empty, and the
+    outline, the shadow and the mask draw the text without its colors;
+  - **England, Scotland, Wales and 🏴‍☠️ get private code points**, U+E000 to U+E003, mapped to their
+    ligature glyphs (§ Text Layers).
 - **Attribution**: the README's technical paragraph names the font and its license, as it names the other
   third-party components (§ One place per fact: there only).
 
@@ -56,14 +60,15 @@ preview shows, the PNG / MP4 / GIF and the cell copy show too.
 - The flag font is loaded **from memory** into a **private font collection** — DirectWrite's
   `IDWriteFactory5::CreateInMemoryFontFileLoader`, a font set (`IDWriteFactory3::CreateFontSetBuilder`),
   `CreateFontCollectionFromFontSet` — once per thread, with the other factories (`TextRaster.Factories`).
-- A **font fallback** maps the flags' code points to the flag font, **before** the system's mappings:
-  `IDWriteFactory2::CreateFontFallbackBuilder`, `AddMapping` (the regional indicators U+1F1E6–U+1F1FF,
-  🏴 U+1F3F4 and the tag characters U+E0020–U+E007F), then `AddMappings(GetSystemFontFallback)` so every other emoji
-  still falls back to Segoe UI Emoji; set on each layout (`IDWriteTextLayout2::SetFontFallback`).
-- The **chosen font wins** where it has the character: a font drawing the regional indicators itself
-  keeps doing so (rare; Segoe UI, the default, does not).
-- Nothing else changes: the flag is drawn by `DrawText` with color glyphs, a **plain shape** in the
-  shadow's mask (`colorFont: false`) and in the outline's rings, like every emoji.
+- The flag font is **set on each flag sequence** of a layout (`TextRaster.SetFlagFont`:
+  `IDWriteTextLayout::SetFontCollection` and `SetFontFamilyName` on its range), the sequences found by
+  `Imaging/Emojis.Flags` — a regional indicator pair (a lone one too), 🏴 and its tags, 🏴‍☠️. Every other
+  emoji still falls back to Segoe UI Emoji. It **wins over the text's font**, whatever it is.
+- **Joined flags**: DirectWrite drops the tags and the VS16 of England, Scotland, Wales and 🏴‍☠️ before the
+  font's ligatures could join them, so the text laid out has them replaced by the flag font's private code
+  points (`Emojis.Joined`, in `TextRaster.CreateLayout`) — for drawing only, the text kept never changes.
+- Nothing else changes: the flag is drawn by `DrawText` with color glyphs, a **plain shape** — its filled
+  outline — in the shadow's mask (`colorFont: false`) and in the outline's rings, like every emoji.
 - Requires Windows 10 1703 — the app's target (10.0.19041) is above it.
 
 ---
@@ -74,17 +79,19 @@ Today a text cell draws every character with GDI+ in Consolas, one column per UT
 **four** UTF-16 units (two surrogate pairs), and a line may be wrapped between them. GDI+ draws no color
 glyph.
 
-- **Every emoji is drawn in color**, the flags among them, by **`TextRaster`** (Direct2D, the flag font's
-  fallback included) — one emoji at the cell's font size, its bitmap cached by emoji and size, then placed
-  at its column with `Graphics.DrawImage`. The rest of the text stays GDI+ in Consolas.
-- **An emoji** is a text element that is a flag (a regional indicator pair, a subdivision flag), holds VS16
-  (U+FE0F), or starts with a code point of Unicode's `Emoji_Presentation` property — .NET has no API for
-  it, so a compact range table in the code, one definition. A lone regional indicator is no emoji there:
-  drawn as GDI+ draws it.
+- **Every emoji is drawn in color**, the flags among them, by **`TextRaster.RenderGlyphs`** (Direct2D, in
+  Segoe UI, the flag font set on its flags) — one emoji at the page's font size in pixels, drawn once per
+  page rendered, then fitted whole into its columns, centered, with `Graphics.DrawImage`. The rest of the
+  text stays GDI+ in Consolas. An emoji Direct2D cannot draw is drawn by GDI+, as before.
+- **An emoji** (`Emojis.IsEmoji`) is a text element that is a flag (a regional indicator pair, a
+  subdivision flag), holds VS16 (U+FE0F) or a keycap (U+20E3), or starts with a code point of Unicode's
+  `Emoji_Presentation` property — .NET has no API for it, so a compact range table (Unicode 15.1) in
+  `Imaging/Emojis`, one definition. A lone regional indicator is no emoji there: drawn as GDI+ draws it.
 - **The grid counts text elements** (`StringInfo`, extended grapheme clusters), never UTF-16 units: an
   emoji — a flag, a ZWJ sequence, a skin tone — is one element, **two columns wide**, as in a terminal;
-  any other element one column. A line is **never wrapped inside an element**, and a column's place is
-  the columns before it, never its UTF-16 offset.
+  any other element one column (`TextPages.CellsOf`, kept per line; a line of ASCII only keeps one column
+  per character, as before). A line is **never wrapped inside an element**, and a column's place is the
+  columns before it, never its UTF-16 offset.
 - A style run (`StyledText`) covering an emoji keeps its **highlight** behind it; its **ink** does not
   color it — an emoji keeps its own colors.
 
@@ -143,6 +150,36 @@ flags are in its subset, with 🏴 and 🏴‍☠️; a text cell draws **every*
 § Text Cells updated; the Test Impact gains the subdivision flags, the other emojis of a text cell and a
 styled one.
 
+### Iteration 3 — 2026-11-02 — ✅ Implemented
+
+Go given: code, the checks by hand and the documentation, in a worktree (`feature/text-flag-emojis`).
+The scope is frozen as Iteration 2 left it.
+
+### Iteration 4 — 2026-11-02 — 🧭 Implementation choices
+
+Divergent choices of the run, each in the domain sections above:
+
+- **No font fallback — the flag font set on each flag sequence instead** (closest workable variant). The
+  fallback as designed drew the country flags, but cut England, Scotland, Wales and 🏴‍☠️ apart (a black flag,
+  then the skull): it leaves a sequence's invisible characters to the text's font. Setting the flag font on
+  the sequence's range (`SetFontCollection` / `SetFontFamilyName`) keeps it in one run. Consequence: the
+  flag font **wins over the text's font**, where the design had the chosen font win.
+- **Joined flags at private code points** (closest workable variant). Even in one run DirectWrite never joined
+  those four sequences — the font's ligatures are right (one lookup, no flag, every glyph a base), but their
+  tags and VS16 never reach them. The flag font gives the four ligature glyphs U+E000–U+E003, and the text
+  laid out has the sequences replaced by them (`Emojis.Joined`), the text kept unchanged.
+- **The color glyphs' outlines filled** in the flag font: Twemoji's base glyphs are empty, so the flags had
+  no outline and no shadow. Not in the design; needed for the flags to look like every other emoji.
+- **A script rather than a `pyftsubset` command**: `tools/make-flag-font.py` (new `tools/` folder) subsets,
+  fills the outlines and adds the private code points; `CONTRIBUTING.md § Flag Font` says how to run it.
+- **The emoji bitmaps of a text cell are cached per page rendered**, not across renders: few per page, and no
+  cache to bound or release.
+- **The keycaps** (1️⃣) count as emojis, beside VS16 and `Emoji_Presentation`.
+- **Docs**: the README's text section and Tech paragraph (Twemoji credited there, CC-BY 4.0), a § Text
+  Emojis in RULES.md, a *Flag font* row in the glossary, in English and French.
+
+No project rule was broken.
+
 ---
 
 ## Implementation Log
@@ -152,9 +189,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project: checked by hand |
-| README | | | |
+| Code | 3, 4 | 2026-11-02 | Flag font and its script, `TextRaster`, `Emojis`, `TextPages` |
+| Unit tests | 3, 4 | 2026-11-02 | No test project. Checked by rendering through the built `TextRaster` and `TextPages` (a scratch harness, not committed): the country flags, England, Scotland, Wales, 🏴‍☠️, the outline, the other emojis, a lone and an invalid regional indicator, a text cell's columns and wraps. The exports, the shadows, a styled text cell and the zoom are left to the check by hand |
+| README | 4 | 2026-11-02 | `README.md` / `README.fr.md`; also `CONTRIBUTING.md`, `RULES.md`, `GLOSSARY.md` / `GLOSSARY.fr.md` |
 
 ---
 

@@ -162,7 +162,15 @@ internal static unsafe class TextRaster
     private static readonly Guid ImagingFactoryClass = new("cacaf262-9370-4615-a13b-9f5539da4c0a");
     private static readonly Guid ImagingFactoryId = new("ec5ec8a9-c395-4314-9c77-54d7a935ff70");
     private static readonly Guid TextLayout1Id = new("9064d822-80a7-465c-a986-df65f78b8feb");
+    private static readonly Guid WriteFactory5Id = new("958db99a-be2a-4f09-af7d-65189803d1d3");
     private static readonly Guid PremultipliedBgra = new("6fddc324-4e03-4bfe-b185-3d77768dc910");
+
+    // The flag font: Twemoji Mozilla cut down to its flags (workfiles/20261102-text-flag-emojis.md § The Flag Font).
+    private const string FlagFontResource = "ImageGridFusion.Imaging.TwemojiFlags.ttf";
+    private const string FlagFamily = "Twemoji Mozilla";
+
+    // An emoji alone, for a text cell: Segoe UI, the other emojis falling back to Segoe UI Emoji.
+    private static readonly LayerTextStyle Glyphs = LayerTextStyle.Default with { Bold = false, Color = Color.Black, Outline = false, Alignment = LayerTextAlignment.Left };
 
     /// <summary>
     /// The text drawn in <paramref name="style"/>, on a transparent background, and the height of one of its
@@ -177,7 +185,7 @@ internal static unsafe class TextRaster
         float em = EmSize;
         for (int attempt = 0; ; attempt++)
         {
-            var layout = CreateLayout(factories.Write, text.Length == 0 ? " " : text, style, em, box);
+            var layout = CreateLayout(factories, text.Length == 0 ? " " : text, style, em, box);
             try
             {
                 var metrics = Metrics(layout);
@@ -204,6 +212,27 @@ internal static unsafe class TextRaster
         }
     }
 
+    /// <summary>
+    /// The emojis of <paramref name="text"/> in their own colors, at a font size of <paramref name="em"/> pixels, on a
+    /// transparent background as wide and as tall as the line DirectWrite lays them out on: an emoji of a text cell, which
+    /// GDI+ draws in one color (workfiles/20261102-text-flag-emojis.md § Text Cells).
+    /// </summary>
+    public static Bitmap RenderGlyphs(string text, float em)
+    {
+        var factories = Factories.Get();
+        var layout = CreateLayout(factories, text, Glyphs, Math.Max(1, em), null);
+        try
+        {
+            var metrics = Metrics(layout);
+            var size = new Size(Math.Max(1, (int)Math.Ceiling(metrics.WidthIncludingTrailingWhitespace)), Math.Max(1, (int)Math.Ceiling(metrics.Height)));
+            return ToBitmap(Paint(factories, size, target => PaintLetters(target, layout, Glyphs, 0)), size);
+        }
+        finally
+        {
+            Marshal.Release(layout);
+        }
+    }
+
     /// <summary>The families of the fonts installed, A→Z, for the font drop-down.</summary>
     public static IReadOnlyList<string> FontFamilies()
     {
@@ -211,8 +240,14 @@ internal static unsafe class TextRaster
         return [.. fonts.Families.Select(f => f.Name).OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase)];
     }
 
-    private static IntPtr CreateLayout(IntPtr write, string text, LayerTextStyle style, float em, double? box)
+    private static IntPtr CreateLayout(Factories factories, string text, LayerTextStyle style, float em, double? box)
     {
+        IntPtr write = factories.Write;
+        if (factories.Flags != IntPtr.Zero)
+        {
+            text = Emojis.Joined(text);
+        }
+
         IntPtr format;
         fixed (char* family = style.Font, locale = "en-us")
         {
@@ -230,6 +265,8 @@ internal static unsafe class TextRaster
                 Check(((delegate* unmanaged[Stdcall]<IntPtr, char*, int, IntPtr, float, float, IntPtr*, int>)Slot(write, 18))(
                     write, chars, text.Length, format, 1e6f, 1e6f, &layout));
             }
+
+            SetFlagFont(layout, factories.Flags, text);
 
             // SetWordWrapping(NO_WRAP): the lines measured as typed, a line's height read from them.
             Check(((delegate* unmanaged[Stdcall]<IntPtr, int, int>)Slot(layout, 5))(layout, 1));
@@ -409,6 +446,12 @@ internal static unsafe class TextRaster
             Over(pixels, Text(factories, layout, style, size, pad, line));
         }
 
+        return ToBitmap(pixels, size);
+    }
+
+    /// <summary>Premultiplied BGRA pixels, row by row, as a bitmap.</summary>
+    private static Bitmap ToBitmap(byte[] pixels, Size size)
+    {
         var bitmap = new Bitmap(size.Width, size.Height, PixelFormat.Format32bppPArgb);
         var data = bitmap.LockBits(new Rectangle(Point.Empty, size), ImageLockMode.WriteOnly, PixelFormat.Format32bppPArgb);
         try
@@ -727,7 +770,91 @@ internal static unsafe class TextRaster
     [DllImport("ole32.dll", ExactSpelling = true)]
     private static extern int CoCreateInstance(in Guid classId, IntPtr outer, int context, in Guid id, out IntPtr instance);
 
-    /// <summary>The three factories, made once per thread: the Direct2D one is single-threaded.</summary>
+    /// <summary>
+    /// The flag font in a collection of its own, loaded from the exe's resources: what <see cref="SetFlagFont"/> gives the
+    /// flags of a layout (workfiles/20261102-text-flag-emojis.md § Text Layers). Zero where it cannot be made — before
+    /// Windows 10 1703 —: the flags are then drawn as Windows draws them, as letters.
+    /// </summary>
+    private static IntPtr CreateFlagCollection(IntPtr write)
+    {
+        IntPtr factory5 = IntPtr.Zero, loader = IntPtr.Zero, file = IntPtr.Zero, builder = IntPtr.Zero, set = IntPtr.Zero;
+        try
+        {
+            // IDWriteFactory5: the in-memory font files and the font set builder.
+            if (Marshal.QueryInterface(write, in WriteFactory5Id, out factory5) < 0)
+            {
+                return IntPtr.Zero;
+            }
+
+            byte[] font;
+            using (var stream = typeof(TextRaster).Assembly.GetManifestResourceStream(FlagFontResource)!)
+            using (var copy = new MemoryStream())
+            {
+                stream.CopyTo(copy);
+                font = copy.ToArray();
+            }
+
+            // IDWriteFactory5.CreateInMemoryFontFileLoader, registered with the factory (RegisterFontFileLoader) before it
+            // makes a file; IDWriteInMemoryFontFileLoader.CreateInMemoryFontFileReference, without an owner: DirectWrite
+            // keeps its own copy of the font.
+            Check(((delegate* unmanaged[Stdcall]<IntPtr, IntPtr*, int>)Slot(factory5, 44))(factory5, &loader));
+            Check(((delegate* unmanaged[Stdcall]<IntPtr, IntPtr, int>)Slot(write, 13))(write, loader));
+            fixed (byte* data = font)
+            {
+                Check(((delegate* unmanaged[Stdcall]<IntPtr, IntPtr, byte*, uint, IntPtr, IntPtr*, int>)Slot(loader, 4))(
+                    loader, write, data, (uint)font.Length, IntPtr.Zero, &file));
+            }
+
+            // IDWriteFactory5.CreateFontSetBuilder, IDWriteFontSetBuilder1.AddFontFile and CreateFontSet, then
+            // IDWriteFactory3.CreateFontCollectionFromFontSet.
+            Check(((delegate* unmanaged[Stdcall]<IntPtr, IntPtr*, int>)Slot(factory5, 43))(factory5, &builder));
+            Check(((delegate* unmanaged[Stdcall]<IntPtr, IntPtr, int>)Slot(builder, 7))(builder, file));
+            Check(((delegate* unmanaged[Stdcall]<IntPtr, IntPtr*, int>)Slot(builder, 6))(builder, &set));
+            IntPtr collection;
+            Check(((delegate* unmanaged[Stdcall]<IntPtr, IntPtr, IntPtr*, int>)Slot(factory5, 37))(factory5, set, &collection));
+            return collection;
+        }
+        catch (Exception e) when (e is not OutOfMemoryException)
+        {
+            return IntPtr.Zero;
+        }
+        finally
+        {
+            foreach (var com in new[] { set, builder, file, loader, factory5 })
+            {
+                if (com != IntPtr.Zero)
+                {
+                    Marshal.Release(com);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// The flag font on every flag sequence of the layout (<see cref="Emojis.Flags"/>), whatever the text's font: set on
+    /// the whole sequence, its invisible characters — tags, joiner — included, so it is shaped into one flag. A font
+    /// fallback cannot do it: it leaves those characters to the text's font, and the flag falls apart.
+    /// </summary>
+    private static void SetFlagFont(IntPtr layout, IntPtr flags, string text)
+    {
+        if (flags == IntPtr.Zero)
+        {
+            return;
+        }
+
+        fixed (char* family = FlagFamily)
+        {
+            foreach (var (start, length) in Emojis.Flags(text))
+            {
+                // IDWriteTextLayout.SetFontCollection and SetFontFamilyName on the sequence's range.
+                var range = new TextRange { StartPosition = (uint)start, Length = (uint)length };
+                Check(((delegate* unmanaged[Stdcall]<IntPtr, IntPtr, TextRange, int>)Slot(layout, 30))(layout, flags, range));
+                Check(((delegate* unmanaged[Stdcall]<IntPtr, char*, TextRange, int>)Slot(layout, 31))(layout, family, range));
+            }
+        }
+    }
+
+    /// <summary>The three factories and the flag font, made once per thread: the Direct2D factory is single-threaded.</summary>
     private sealed class Factories
     {
         [ThreadStatic]
@@ -741,6 +868,7 @@ internal static unsafe class TextRaster
             this.Direct2D = direct2D;
             this.Write = write;
             this.Imaging = imaging;
+            this.Flags = CreateFlagCollection(write);
         }
 
         public IntPtr Direct2D { get; }
@@ -748,6 +876,9 @@ internal static unsafe class TextRaster
         public IntPtr Write { get; }
 
         public IntPtr Imaging { get; }
+
+        /// <summary>The flag font's collection, zero without one (<see cref="CreateFlagCollection"/>).</summary>
+        public IntPtr Flags { get; }
 
         public static Factories Get() => _current ??= new Factories();
     }

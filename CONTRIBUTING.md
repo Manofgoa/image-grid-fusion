@@ -13,6 +13,20 @@ Thanks for your interest in Image Grid Fusion. Issues and pull requests are welc
 
 There is no test project: check a change by hand in the running app.
 
+## Flag Font
+
+`src/ImageGridFusion/Imaging/TwemojiFlags.ttf`, the texts' flags, is made from
+[Twemoji Mozilla v0.7.0](https://github.com/mozilla/twemoji-colr/releases/tag/v0.7.0) by
+[`tools/make-flag-font.py`](tools/make-flag-font.py), which says what it changes. To make it again, with
+Python and fontTools:
+
+```bash
+pip install fonttools
+python tools/make-flag-font.py Twemoji.Mozilla.ttf src/ImageGridFusion/Imaging/TwemojiFlags.ttf
+```
+
+Its art is Twemoji's, under CC-BY 4.0: see `src/ImageGridFusion/Imaging/TwemojiFlags.LICENSE.md`.
+
 ## Before changing the code
 
 - [RULES.md](RULES.md) holds the rules every change follows — effects, toolbars, output format,

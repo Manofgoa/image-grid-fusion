@@ -441,7 +441,8 @@ one definition, `Composition/GridLayers`:
 - Every change makes a **new `GridLayers`**, held by `GlobalState`: the undo history covers them, and a
   content leaving the layers goes through `GridPreview.ReleaseImage` like a cell's (`GridState.Images`).
 - A **text layer** is drawn into a bitmap by `Imaging/TextRaster` — DirectWrite through Direct2D, called
-  through their COM tables: the only way the app draws emojis in color; GDI and GDI+ never do.
+  through their COM tables: the only way the app draws emojis in color; GDI and GDI+ never do (§ Text
+  Emojis).
 
 ### Text Styles
 
@@ -456,6 +457,26 @@ A text layer's style under a name (origin: `workfiles/20261029-text-layer-style-
   `text-styles.json` next to the exe, with the name of the last style applied — the style of a new text. User
   actions write it, a `--new-instance` too. Out of the undo history; applying a style is a style change, one
   step like any setting.
+
+### Text Emojis
+
+The emojis of the texts — a text layer's and a text cell's — in color, flags included (origin:
+`workfiles/20261102-text-flag-emojis.md`), one definition, `Imaging/Emojis`:
+
+- **Every emoji is drawn by `TextRaster`**: a text layer whole, a text cell's emojis one by one
+  (`TextRaster.RenderGlyphs`), placed among the letters GDI+ draws. A new text drawn with GDI+ does the same.
+- **The flags come from the flag font**, Twemoji Mozilla cut down to its flags, embedded in the exe
+  (`Imaging/TwemojiFlags.ttf`, made by `tools/make-flag-font.py`) — Segoe UI Emoji has none. It is **set on
+  each flag sequence** of a layout (`TextRaster.SetFlagFont`, the sequences of `Emojis.Flags`), whatever the
+  text's font, never left to a font fallback: a fallback leaves a sequence's invisible characters to the text's
+  font, and the flag falls apart.
+- **England, Scotland, Wales and the pirate flag are drawn from private code points** of the flag font
+  (`Emojis.Joined`, U+E000 to U+E003), since DirectWrite drops their tags and VS16 before the font could join
+  them; for drawing only, the text kept never changes. A new joined flag adds its code point in both places.
+- **The flag font's color glyphs hold their own outline**, their layers' outlines filled in: the outline, the
+  shadow and the mask draw the text without its colors.
+- **A text cell's grid counts text elements**, never UTF-16 units (`TextPages.CellsOf`): an emoji
+  (`Emojis.IsEmoji`) takes two columns, any other element one, and a line is never wrapped inside an element.
 
 ## Output Format
 
