@@ -557,6 +557,8 @@ half their opening widths, so their total never matched the list's width, and th
 fit (Iteration 13) posted itself again forever. The check now runs only when the list's width changed
 since the last fit, and the columns shrink down to a floor of their own, a horizontal scroll bar showing
 only below it.
+Done: checked in the harness at the window's minimum width — responsive (a 500 ms wait took 503 ms), no
+horizontal scroll bar.
 
 ---
 
