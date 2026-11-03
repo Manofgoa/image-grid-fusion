@@ -581,6 +581,8 @@ winget having no page of its own for a package.
 
 User request: at the very bottom, the sum of the sizes. The bottom row shows at its left *Total on disk:
 N MB* — the Size column's values added up — kept up to date after every install, update or uninstall.
+Done (with Iteration 26): `ComponentSource.PageUrl`, the name drawn in the link color and hit-tested on its
+text; *Total on disk* at the bottom left. Checked in the harness — the hover underlines, the 17 pages right.
 
 ---
 
