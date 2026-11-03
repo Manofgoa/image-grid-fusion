@@ -577,6 +577,11 @@ the browser the upstream's page: the Hugging Face repository, the GitHub reposit
 page; for a winget tool, its project's page — yt-dlp's and its FFmpeg builds' repositories, Deno's site —
 winget having no page of its own for a package.
 
+### Iteration 27 — 2026-11-03 — ⚙️ Post-implementation — The total size
+
+User request: at the very bottom, the sum of the sizes. The bottom row shows at its left *Total on disk:
+N MB* — the Size column's values added up — kept up to date after every install, update or uninstall.
+
 ---
 
 ## Implementation Log
