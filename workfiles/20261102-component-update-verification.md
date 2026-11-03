@@ -566,6 +566,8 @@ User request: an **Uninstall all** button. Beside Install all and Update all, it
 disabled at 0: one confirmation naming the components and the size freed, then every row installed and not
 running uninstalled as its own Uninstall does (Iteration 21) — what holds the files released once, a file
 still locked left, its row saying a restart frees it.
+Done: `ComponentsWindow.UninstallAllAsync`; checked in the harness — two components installed, both removed,
+each kind released once.
 
 ---
 
