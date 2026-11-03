@@ -1004,7 +1004,8 @@ the **Component updates window** (origin: `workfiles/20261102-component-update-v
 
 - **One registry**: `Components/ComponentRegistry`, one component per **upstream** — a Hugging Face
   repository, a GitHub release, a NuGet package, a winget package — with its group (Engines, Runtimes,
-  Web tools, Emoji fonts), its purpose, its license and its **source** (`ComponentSource`). Its pinned files
+  Web tools, Emoji fonts), its purpose, its license and its **source** (`ComponentSource`), which gives its
+  page too (`PageUrl`, opened by a click on its name; a winget tool's is its project's). Its pinned files
   stay with the code that reads them (`OcrEngineFiles`, `FaceEngineFiles`, `EmojiFonts`…). A new
   downloadable component is registered there.
 - **Every install goes through the window**: no download or winget install runs anywhere else, and the ⚙
