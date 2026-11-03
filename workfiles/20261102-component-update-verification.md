@@ -170,6 +170,8 @@ Layout **A — one grouped list** (Q&A 1), drawn in the mockup of 2026-11-02:
   runtime's row at the same time.
 - The ℹ️ tooltip is the **row's** tooltip: hovering anywhere on the row shows the purpose, the upstream,
   the license, and a failure's reason (Iteration 11).
+- **The columns follow the window** (Iteration 12): resized, the list's columns share its width in
+  proportion to their opening widths, the Actions column keeping its own.
 - No shortcut is added but Escape closing the window, as in the shortcuts window (`SHORTCUTS.md`
   § Dialogs).
 
@@ -468,6 +470,11 @@ Divergent choices of the run, each in the domain sections above:
   handler directly: driving the running app from outside failed (UI Automation sees none of its tree), and
   the real mouse was left alone. **Not run**: a winget install (nothing installed on this machine), a
   restart, the app's own offers — left to the delivery test.
+### Iteration 12 — 2026-11-03 — ⚙️ Post-implementation — Columns follow the window
+
+User request: when the window is resized, its content adapts to it. The list's columns share its width as
+it changes — each in proportion to its width at the window's opening, the Actions column keeping its
+own so its buttons and progress bar never shrink —, the list itself filling the window as before.
 
 ---
 
