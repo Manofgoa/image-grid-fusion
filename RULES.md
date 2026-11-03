@@ -139,6 +139,38 @@ The Cutout effect's state holds no pixel, and its mask is computed outside `Comp
   engine's ONNX Runtime (`Imaging/CutoutEngine`), its sessions without the memory arena, released after
   5 minutes unused.
 
+#### The Upscale Exception
+
+The Upscale effect's enlargement is computed outside `Compositor`, and a GIF's is played from pages of its own
+(origin: `workfiles/20261029-image-upscale.md`):
+
+- Its state holds the **factor** only, ×2 or ×4; a factor whose result would pass `CanvasSizer.MaxLongSide` on the
+  longer side is refused (`UpscaleEffect.Fits`), its thumbnail faded.
+- On **stills and animated GIFs** only (`SourceImage.Upscales`, `PageSource.UpscaledFrom`): a video, a PDF, a text and a
+  thumbnail have their checkbox disabled.
+- A still's enlargement is computed off the UI thread by `UI/UpscaleService`, one at a time, and kept on the
+  `SourceImage` (`SetUpscaled`), counted in its `MemoryBytes`; a GIF's frames go one by one into
+  **`%TEMP%\ImageGridFusion\upscale-cache\`** (`UpscaleCache`, emptied at start-up by the normal instance only), its pages
+  then `UpscaledPages` (`SetUpscaledPages`). Never in `Compositor.DrawCell`, which runs at every frame; never kept
+  between sessions.
+- **Upscale, then the cut-out**: `SourceImage.DrawnBitmap` builds the bitmap → its enlargement (`UpscaleBase`) → the
+  cut-out; the Cutout's mask, read on the image as loaded, is applied to the enlarged image.
+- Every reader of a content's pages that draws them reads **`SourceImage.DrawnPages`** — the player
+  (`AnimationPlayer.RunAsync`), the page loader, the exports (`GridExport.ItemOf`). A new reader does the same. Its change
+  reopens the content's player (`GridPreview.FollowDrawnPages`, `AnimationPlayer.Reopen`).
+- The **canvas sizing reads the drawn size** (`SourceImage.Sizing` from `DrawnBitmap`, `Sharpening` 1): an enlarged image
+  widens the PNG's native size.
+- It is asked for **at every paint** (`GridPreview.PaintUpscale`, before the Cutout's), the cell drawn as loaded with its
+  *Upscaling… N %* badge meanwhile, preview only. **Exports wait** for it (`MainForm.WaitForUpscalesAsync`, before
+  `WaitForCutoutsAsync`); one that fails is drawn as loaded, the status line saying why.
+- **The upscale engine is never shipped**: Real-ESRGAN ×2 and ×4, `Imaging/UpscaleEngineFiles`, one component installed
+  from the Component updates window into **`upscale-engine\` next to the exe** (§ Downloadable Components) — the window
+  opened on its row when the effect is turned on without it, the effect left off. It runs on the OCR engine's ONNX
+  Runtime in tiles (`Imaging/UpscaleEngine`), the alpha enlarged on its own, its sessions released after 5 minutes unused.
+- **Save upscaled image…** (`MainForm.SaveUpscaledAsync`, from the options' *Save…* and the cell's menu) writes the
+  enlargement alone — cut out with the Cutout on, no other effect — as a PNG, a GIF's as an animated GIF; the cell
+  untouched, out of the undo history.
+
 ### Effects Toolbar
 
 - An **always-visible row of tabs**, hanging down from the options toolbar above it: an **Effects**
