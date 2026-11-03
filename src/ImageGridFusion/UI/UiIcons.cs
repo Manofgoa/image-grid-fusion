@@ -116,7 +116,6 @@ internal static class UiIcons
     public static readonly UiIcon UpdateComponent = UiIcon.Emoji("⬆️");
     public static readonly UiIcon BackToVersion = UiIcon.Emoji("↩️");
     public static readonly UiIcon Uninstall = UiIcon.Emoji("\U0001F5D1️");
-    public static readonly UiIcon CloseWindow = UiIcon.Emoji("✖️");
     public static readonly UiIcon TextRead = UiIcon.Emoji("\U0001F4DD");
     public static readonly UiIcon Rebuild = UiIcon.Emoji("\U0001F504");
     public static readonly UiIcon OcrResultStyle = UiIcon.Emoji("↪️");

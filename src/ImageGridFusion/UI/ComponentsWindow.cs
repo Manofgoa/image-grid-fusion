@@ -66,7 +66,6 @@ internal sealed class ComponentsWindow : Form
     private readonly Button _checkNow = new() { Text = "Check now", AutoSize = true };
     private readonly Button _installAll = new() { Text = "Install all", AutoSize = true };
     private readonly Button _updateAll = new() { Text = "Update all", AutoSize = true };
-    private readonly Button _close = new() { Text = "Close", AutoSize = true };
     private readonly ToolTip _balloon = new() { IsBalloon = true, ToolTipTitle = "Needed" };
     private readonly ContextMenuStrip _backMenu = new();
     private readonly System.Windows.Forms.Timer _spin = new() { Interval = SpinInterval };
@@ -92,7 +91,7 @@ internal sealed class ComponentsWindow : Form
 
         (string Text, int Width)[] columns =
         [
-            ("Component", 300), ("Installed", 110), ("Size", 80), ("Installed on", 90), ("Updated on", 90), ("Pinned", 110), ("Forced", 90),
+            ("Component", 290), ("Installed", 100), ("Size", 90), ("Installed on", 90), ("Updated on", 90), ("Pinned", 110), ("Forced", 90),
             ("Latest", 150), ("Released", 90), ("", 190),
         ];
         foreach (var (text, width) in columns)
@@ -126,12 +125,10 @@ internal sealed class ComponentsWindow : Form
         UiIcons.SetImage(this._checkNow, UiIcons.CheckComponents, this.LogicalToDeviceUnits(16));
         UiIcons.SetImage(this._installAll, UiIcons.Download, this.LogicalToDeviceUnits(16));
         UiIcons.SetImage(this._updateAll, UiIcons.UpdateComponent, this.LogicalToDeviceUnits(16));
-        UiIcons.SetImage(this._close, UiIcons.CloseWindow, this.LogicalToDeviceUnits(16));
         UiIcons.Attach(this._backMenu);
         this._checkNow.Click += (_, _) => this.CheckAll();
         this._installAll.Click += (_, _) => this.InstallAll();
         this._updateAll.Click += (_, _) => this.UpdateAll();
-        this._close.Click += (_, _) => this.Close();
         this._spin.Tick += (_, _) => this.Spin();
 
         // Three rows, each in its place whatever the DPI: Check now, the list taking the rest, the buttons at the right
@@ -141,7 +138,7 @@ internal sealed class ComponentsWindow : Form
         top.Controls.AddRange([this._checkNow, this._checkedAt]);
         this._checkedAt.Margin = new Padding(pad, this.LogicalToDeviceUnits(7), 0, 0);
         var bottom = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, Anchor = AnchorStyles.Right, Margin = new Padding(pad, pad / 2, pad, pad) };
-        bottom.Controls.AddRange([this._installAll, this._updateAll, this._close]);
+        bottom.Controls.AddRange([this._installAll, this._updateAll]);
         var rows = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, BackColor = SystemColors.Window };
         rows.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         rows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -800,9 +797,18 @@ internal sealed class ComponentsWindow : Form
             return;
         }
 
+        // The 📂 at the right end of every row installed (Iteration 22).
+        if (this.FolderRect(row, area) is { } folder)
+        {
+            ButtonRenderer.DrawButton(g, folder, false, PushButtonState.Normal);
+            int side = this.LogicalToDeviceUnits(14);
+            g.DrawImage(UiIcons.OpenFolder.At(side), folder.Left + (folder.Width - side) / 2, folder.Top + (folder.Height - side) / 2, side, side);
+            area = Rectangle.FromLTRB(area.Left, area.Top, folder.Left - pad, area.Bottom);
+        }
+
         if (row.PendingRestart)
         {
-            TextRenderer.DrawText(g, "Restart to finish", this._list.Font, area, fore, TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine);
+            TextRenderer.DrawText(g, "Restart to finish", this._list.Font, area, fore, TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
             return;
         }
 
@@ -851,6 +857,16 @@ internal sealed class ComponentsWindow : Form
             return this.CancelRect(area).Contains(point) ? (row, RowAction.Cancel) : null;
         }
 
+        if (this.FolderRect(row, area) is { } folder)
+        {
+            if (folder.Contains(point))
+            {
+                return (row, RowAction.Folder);
+            }
+
+            area = Rectangle.FromLTRB(area.Left, area.Top, folder.Left - pad, area.Bottom);
+        }
+
         if (row.PendingRestart)
         {
             return null;
@@ -886,6 +902,10 @@ internal sealed class ComponentsWindow : Form
 
             case RowAction.Back:
                 this.ShowBackMenu(row, e.Location);
+                break;
+
+            case RowAction.Folder:
+                this.OpenFolder(row);
                 break;
         }
     }
@@ -1006,6 +1026,34 @@ internal sealed class ComponentsWindow : Form
         return (mainRect, backRect);
     }
 
+    /// <summary>The 📂 button of a row installed, at the right end of its Actions cell; null otherwise.</summary>
+    private Rectangle? FolderRect(Row row, Rectangle area) =>
+        this.RecordOf(row).Installed is not null ? new Rectangle(area.Right - area.Height, area.Top, area.Height, area.Height) : null;
+
+    /// <summary>Explorer opened on the component's folder, its first file selected — a winget tool's folder in its parent.</summary>
+    private void OpenFolder(Row row)
+    {
+        var component = row.Component;
+        var installed = this.RecordOf(row).Installed;
+        string? path = component.Tool is { } tool ? tool.Folder
+            : (installed?.Files.Count > 0 ? installed.Files : component.Pinned.Files).Select(f => component.PathOf(f.Name)).FirstOrDefault(File.Exists);
+        try
+        {
+            if (path is not null && (File.Exists(path) || Directory.Exists(path)))
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true })?.Dispose();
+            }
+            else if (Directory.Exists(component.Folder))
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(component.Folder) { UseShellExecute = true })?.Dispose();
+            }
+        }
+        catch (System.ComponentModel.Win32Exception e)
+        {
+            MessageBox.Show(this, $"Couldn't open Explorer: {e.Message}", "Component updates", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+    }
+
     private Rectangle CancelRect(Rectangle area)
     {
         int side = area.Height;
@@ -1017,6 +1065,7 @@ internal sealed class ComponentsWindow : Form
         Main,
         Back,
         Cancel,
+        Folder,
     }
 
     /// <summary>The list drawn double-buffered: its rows redrawn while downloads run never flicker.</summary>
