@@ -69,7 +69,9 @@ internal sealed class ComponentsWindow : Form
     private readonly ContextMenuStrip _backMenu = new();
     private readonly System.Windows.Forms.Timer _spin = new() { Interval = SpinInterval };
     private readonly Dictionary<ListViewItem, Row> _rows = [];
+    private readonly List<int> _widths = [];
     private CancellationTokenSource? _check;
+    private bool _fitting;
     private int _frame;
     private bool _restartAsked;
     private (IReadOnlyList<Component> Components, string Reason)? _need;
@@ -93,7 +95,8 @@ internal sealed class ComponentsWindow : Form
         ];
         foreach (var (text, width) in columns)
         {
-            this._list.Columns.Add(text, this.LogicalToDeviceUnits(width));
+            this._widths.Add(this.LogicalToDeviceUnits(width));
+            this._list.Columns.Add(text, this._widths[^1]);
         }
 
         foreach (var group in Enum.GetValues<ComponentGroup>())
@@ -111,6 +114,7 @@ internal sealed class ComponentsWindow : Form
             this.Fill(this._rows[item]);
         }
 
+        this._list.ClientSizeChanged += (_, _) => this.FitColumns();
         this._list.DrawColumnHeader += (_, e) => e.DrawDefault = true;
         this._list.DrawItem += (_, _) => { };
         this._list.DrawSubItem += this.DrawCell;
@@ -256,6 +260,45 @@ internal sealed class ComponentsWindow : Form
         }
 
         base.Dispose(disposing);
+    }
+
+    /// <summary>
+    /// The columns sharing the list's width as the window is resized, each in proportion to its width at the opening; the
+    /// Actions column keeps its own, so its buttons and progress bar never shrink.
+    /// </summary>
+    private void FitColumns()
+    {
+        if (this._fitting || this._list.Columns.Count != this._widths.Count || this._list.ClientSize.Width <= 0)
+        {
+            return;
+        }
+
+        this._fitting = true;
+        try
+        {
+            int fixedWidth = this._widths[ActionsColumn];
+            int nominal = this._widths.Sum() - fixedWidth;
+            int room = Math.Max(nominal / 2, this._list.ClientSize.Width - fixedWidth);
+            int given = 0;
+            for (int i = 0; i < this._widths.Count; i++)
+            {
+                if (i == ActionsColumn)
+                {
+                    continue;
+                }
+
+                // The last column shared takes what rounding left, so the row fills the width exactly.
+                int width = i == ActionsColumn - 1 ? room - given : this._widths[i] * room / nominal;
+                this._list.Columns[i].Width = width;
+                given += width;
+            }
+
+            this._list.Columns[ActionsColumn].Width = fixedWidth;
+        }
+        finally
+        {
+            this._fitting = false;
+        }
     }
 
     private static string GroupName(ComponentGroup group) => group switch
@@ -620,10 +663,13 @@ internal sealed class ComponentsWindow : Form
         {
             case NameColumn:
             {
-                int width = TextRenderer.MeasureText(g, row.Component.Name, this._list.Font, text.Size, Flags).Width;
-                TextRenderer.DrawText(g, row.Component.Name, this._list.Font, text, fore, Flags);
+                // The ℹ️ keeps its room: a name too long is cut before it.
                 int icon = this.LogicalToDeviceUnits(14);
-                int x = Math.Min(text.Left + width + this.LogicalToDeviceUnits(4), text.Right - icon);
+                int gap = this.LogicalToDeviceUnits(4);
+                var name = Rectangle.FromLTRB(text.Left, text.Top, Math.Max(text.Left, text.Right - icon - gap), text.Bottom);
+                int width = Math.Min(name.Width, TextRenderer.MeasureText(g, row.Component.Name, this._list.Font, name.Size, Flags).Width);
+                TextRenderer.DrawText(g, row.Component.Name, this._list.Font, name, fore, Flags);
+                int x = text.Left + width + gap;
                 g.DrawImage(UiIcons.ComponentInfo.At(icon), x, bounds.Top + (bounds.Height - icon) / 2, icon, icon);
                 break;
             }
