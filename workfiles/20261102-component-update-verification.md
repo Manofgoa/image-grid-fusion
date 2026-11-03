@@ -584,6 +584,12 @@ N MB* — the Size column's values added up — kept up to date after every inst
 Done (with Iteration 26): `ComponentSource.PageUrl`, the name drawn in the link color and hit-tested on its
 text; *Total on disk* at the bottom left. Checked in the harness — the hover underlines, the 17 pages right.
 
+### Iteration 28 — 2026-11-03 — ⚙️ Post-implementation — A window showing everything
+
+User request: a larger default size, so that everything shows at once — as in their capture, every row and
+every column. The window opens as wide as its columns at their opening widths, and as tall as its rows —
+measured once the list is laid out —, both within the screen's working area, centered on the main window.
+
 ---
 
 ## Implementation Log
