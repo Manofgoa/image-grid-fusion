@@ -19,9 +19,11 @@ namespace ImageGridFusion.UI;
 /// its files counted in <paramref name="Count"/>; <paramref name="Face"/>, the face whose picture the tile
 /// shows, cut out of the file; <paramref name="FaceKey"/>, the face the tile stands for — dragged onto a
 /// group, removed from one. <paramref name="Closeness"/>: for an image found by its similarity, how far it
-/// stands out of the others, 0 to 1 (<see cref="VisionSimilarity.Closeness"/>).
+/// stands out of the others, 0 to 1 (<see cref="VisionSimilarity.Closeness"/>). <paramref name="Section"/>: the
+/// title of the section the tile belongs to — <c>Outils RS (3)</c> — a header drawn above the first tile of
+/// each run of equal titles; null in a list without sections (workfiles/20261103-file-explorer-groups.md).
 /// </summary>
-internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false, string? ContentWord = null, long? Size = null, int? Count = null, EffectPreset? Preset = null, string? DescriptionWord = null, string? GroupId = null, RectangleF? Face = null, string? FaceKey = null, float? Closeness = null)
+internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false, string? ContentWord = null, long? Size = null, int? Count = null, EffectPreset? Preset = null, string? DescriptionWord = null, string? GroupId = null, RectangleF? Face = null, string? FaceKey = null, float? Closeness = null, string? Section = null)
 {
     /// <summary>What tells a tile from the others: a file's presets share its path, and its faces.</summary>
     public string Key => this.GroupId is { } group ? "group:" + group : this.FaceKey ?? this.Preset?.Id ?? this.FullPath;
@@ -148,6 +150,17 @@ internal sealed class ThumbnailGrid : ScrollableControl
     private Point _pressedAt;
     private string? _dropTarget;
     private Font? _groupFont;
+    private Font? _headerFont;
+
+    // The slots' layout, sections included (workfiles/20261103-file-explorer-groups.md § Grid Layout):
+    // each slot's line and column — the Loading… slot's too — each line's top and first slot, each
+    // section header's top and title, and the height of the whole. A section starts on a line of its own.
+    private int[] _slotLine = [];
+    private int[] _slotColumn = [];
+    private readonly List<int> _lineTops = [];
+    private readonly List<int> _lineStarts = [];
+    private readonly List<(int Top, string Title)> _headers = [];
+    private int _extent;
 
     public ThumbnailGrid()
     {
@@ -310,7 +323,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
     /// partly visible one counted — at the current width and tile size.
     /// </summary>
     [Browsable(false)]
-    public int PageSize => _perRow * Math.Max(1, (ClientSize.Height - InsetPx + CellH - 1) / CellH);
+    public int PageSize => _perRow * this.LinesPerPage;
 
     /// <summary>
     /// Shows <paramref name="rows"/>, followed by the Loading… slot when <paramref name="hasMore"/>.
@@ -455,6 +468,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
             this._detailsHeartFont?.Dispose();
             this._detailsBulbFont?.Dispose();
             this._groupFont?.Dispose();
+            this._headerFont?.Dispose();
         }
 
         base.Dispose(disposing);
@@ -496,6 +510,8 @@ internal sealed class ThumbnailGrid : ScrollableControl
         bulb.Dispose();
         this._groupFont?.Dispose();
         this._groupFont = null;
+        this._headerFont?.Dispose();
+        this._headerFont = null;
 
         // A Details row is as tall as its two lines of text at least: laid out again, its medallions'
         // fonts made again from the new ones.
@@ -510,9 +526,9 @@ internal sealed class ThumbnailGrid : ScrollableControl
         || base.IsInputKey(keyData);
 
     /// <summary>
-    /// The arrows move the selection — up and down by a row of tiles, staying in its column at the
-    /// top — the page keys by a view of tiles; Enter activates it. Moving past the last tile loaded
-    /// brings the Loading… slot into view, which loads the next ones.
+    /// The arrows move the selection — up and down by a line of tiles, in its column or the closest one,
+    /// across the section headers — the page keys by a view of lines; Enter activates it. Moving past the
+    /// last tile loaded brings the Loading… slot into view, which loads the next ones.
     /// </summary>
     protected override void OnKeyDown(KeyEventArgs e)
     {
@@ -548,16 +564,16 @@ internal sealed class ThumbnailGrid : ScrollableControl
                 wanted = _selected + 1;
                 break;
             case Keys.Up:
-                wanted = _selected < 0 ? 0 : Math.Max(_selected % _perRow, _selected - _perRow);
+                wanted = this.LineMove(-1);
                 break;
             case Keys.Down:
-                wanted = _selected < 0 ? 0 : _selected + _perRow;
+                wanted = this.LineMove(1);
                 break;
             case Keys.PageUp:
-                wanted = _selected < 0 ? 0 : Math.Max(_selected % _perRow, _selected - PageSize);
+                wanted = this.LineMove(-this.LinesPerPage);
                 break;
             case Keys.PageDown:
-                wanted = _selected < 0 ? 0 : _selected + PageSize;
+                wanted = this.LineMove(this.LinesPerPage);
                 break;
             case Keys.Home:
                 wanted = 0;
@@ -708,8 +724,18 @@ internal sealed class ThumbnailGrid : ScrollableControl
         g.PixelOffsetMode = PixelOffsetMode.HighQuality;
         var clip = e.ClipRectangle;
 
-        // From the row the clip starts in: a long list loaded far down is not walked from its top.
-        int first = Math.Max(0, (clip.Top - AutoScrollPosition.Y - InsetPx) / CellH) * _perRow;
+        foreach (var (top, title) in this._headers)
+        {
+            var header = this.Scrolled(this.HeaderBounds(top));
+            if (header.IntersectsWith(clip))
+            {
+                this.PaintHeader(g, header, title);
+            }
+        }
+
+        // From the line the clip starts in: a long list loaded far down is not walked from its top.
+        int line = this.LineAt(clip.Top - AutoScrollPosition.Y);
+        int first = line < 0 ? 0 : this._lineStarts[line];
         for (int i = first; i < _rows.Count; i++)
         {
             var cell = Scrolled(CellBounds(i));
@@ -1425,6 +1451,90 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
     private static string FileCount(int count) => count == 1 ? "1 file" : $"{count:N0} files";
 
+    /// <summary>
+    /// A section's header: its title in bold at the left, then a thin line across the rest of the row, the
+    /// tiles of the section right under it. See workfiles/20261103-file-explorer-groups.md § Sections.
+    /// </summary>
+    private void PaintHeader(Graphics g, Rectangle header, string title)
+    {
+        const TextFormatFlags flags = TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis;
+        var font = this.HeaderFont;
+        int gap = this.LogicalToDeviceUnits(6);
+        var size = TextRenderer.MeasureText(g, title, font, new Size(header.Width, int.MaxValue), flags);
+        int width = Math.Min(size.Width, header.Width);
+        var text = new Rectangle(header.X, header.Bottom - this.LogicalToDeviceUnits(4) - size.Height, width, size.Height);
+        TextRenderer.DrawText(g, title, font, text, SystemColors.ControlText, flags);
+        int left = text.Right + gap;
+        if (left < header.Right)
+        {
+            int y = text.Y + text.Height / 2;
+            using var pen = new Pen(SystemColors.ControlDark, Math.Max(1, this.LogicalToDeviceUnits(1)));
+            g.DrawLine(pen, left, y, header.Right, y);
+        }
+    }
+
+    private Font HeaderFont => this._headerFont ??= new Font(this.Font, FontStyle.Bold);
+
+    // A section header's height: its title's line, a little space above it to set it apart.
+    private int HeaderH => this.HeaderFont.Height + this.LogicalToDeviceUnits(10);
+
+    private Rectangle HeaderBounds(int top) => new(this.InsetPx, top, Math.Max(1, this.ClientSize.Width - 2 * this.InsetPx), this.HeaderH);
+
+    // A slot's top and column, from the layout — or, before one was made, as a list without sections.
+    private int SlotTop(int index) =>
+        index < this._slotLine.Length ? this._lineTops[this._slotLine[index]] : this.InsetPx + index / this._perRow * this.CellH;
+
+    private int SlotColumn(int index) => index < this._slotColumn.Length ? this._slotColumn[index] : index % this._perRow;
+
+    /// <summary>The line of tiles a content height falls in or right below: the last one starting above it; -1 above the first.</summary>
+    private int LineAt(int y)
+    {
+        int found = this._lineTops.BinarySearch(y);
+        return found >= 0 ? found : ~found - 1;
+    }
+
+    /// <summary>The lines of tiles a view holds, a partly visible one counted.</summary>
+    private int LinesPerPage => Math.Max(1, (this.ClientSize.Height - this.InsetPx + this.CellH - 1) / this.CellH);
+
+    /// <summary>
+    /// The tile <paramref name="lines"/> lines of tiles away from the selected one, in its column or the
+    /// last of a shorter line — the first tile with none selected. Past the last line, or onto a column the
+    /// last line does not reach, beyond the last tile: the caller then shows the Loading… slot.
+    /// </summary>
+    private int LineMove(int lines)
+    {
+        if (this._selected < 0 || this._selected >= this._slotLine.Length)
+        {
+            return 0;
+        }
+
+        int lastLine = this._slotLine[this._rows.Count - 1];
+        int target = this._slotLine[this._selected] + lines;
+        if (target > lastLine)
+        {
+            return int.MaxValue;
+        }
+
+        target = Math.Max(0, target);
+        int index = this._lineStarts[target] + this._slotColumn[this._selected];
+        return target == lastLine ? index : Math.Min(index, this._lineStarts[target + 1] - 1);
+    }
+
+    /// <summary>The top of the header right above a slot's line, when the line starts a section; null otherwise.</summary>
+    private int? HeaderAbove(int index)
+    {
+        int top = this.SlotTop(index);
+        foreach (var header in this._headers)
+        {
+            if (header.Top + this.HeaderH == top)
+            {
+                return header.Top;
+            }
+        }
+
+        return null;
+    }
+
     // The drawn tile, from LayoutRows(): the row's width shared by as many tiles as fit at the tile size, at 4:3.
     private int TileW => _tileW;
 
@@ -1460,8 +1570,8 @@ internal sealed class ThumbnailGrid : ScrollableControl
     // Content coordinates: unscrolled. A Details row's thumbnail is centered in its height.
     private Rectangle TileBounds(int index) =>
         this.Details
-            ? new Rectangle(this.InsetPx, this.InsetPx + index * this.CellH + (this._rowH - this.TileH) / 2, this.TileW, this.TileH)
-            : new(InsetPx + index % _perRow * CellW, InsetPx + index / _perRow * CellH, TileW, TileH);
+            ? new Rectangle(this.InsetPx, this.SlotTop(index) + (this._rowH - this.TileH) / 2, this.TileW, this.TileH)
+            : new(this.InsetPx + this.SlotColumn(index) * this.CellW, this.SlotTop(index), this.TileW, this.TileH);
 
     private Rectangle NameBounds(int index)
     {
@@ -1473,7 +1583,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
     {
         if (this.Details)
         {
-            return new Rectangle(this.InsetPx, this.InsetPx + index * this.CellH, this._rowW, this._rowH);
+            return new Rectangle(this.InsetPx, this.SlotTop(index), this._rowW, this._rowH);
         }
 
         var tile = TileBounds(index);
@@ -1663,26 +1773,29 @@ internal sealed class ThumbnailGrid : ScrollableControl
     {
         var p = Unscrolled(client);
         int x = p.X - InsetPx;
-        int y = p.Y - InsetPx;
-        if (x < 0 || y < 0)
+        int line = this.LineAt(p.Y);
+        if (x < 0 || line < 0)
         {
             return -1;
         }
 
+        // Within the line: from its first slot, up to the next line's.
+        int y = p.Y - this._lineTops[line];
+        int start = this._lineStarts[line];
+        int end = Math.Min(this._rows.Count, line + 1 < this._lineStarts.Count ? this._lineStarts[line + 1] : this._slotLine.Length);
         if (this.Details)
         {
-            int rowIndex = y / this.CellH;
-            return x < this._rowW && y % this.CellH < this._rowH && rowIndex < this._rows.Count ? rowIndex : -1;
+            return x < this._rowW && y < this._rowH && start < end ? start : -1;
         }
 
         int column = x / CellW;
-        if (column >= _perRow || x % CellW >= TileW || y % CellH >= TileH + this.CaptionH)
+        if (column >= _perRow || x % CellW >= TileW || y >= TileH + this.CaptionH)
         {
             return -1;
         }
 
-        int index = y / CellH * _perRow + column;
-        return index < _rows.Count ? index : -1;
+        int index = start + column;
+        return index < end ? index : -1;
     }
 
     private bool OnHeart(int index, Point client) => index >= 0 && _rows[index].IsFile && HeartBounds(index).Contains(Unscrolled(client));
@@ -1727,10 +1840,48 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
     private void UpdateExtent()
     {
-        int slots = _rows.Count + (_hasMore ? 1 : 0);
-        int rows = (slots + _perRow - 1) / _perRow;
-        AutoScrollMinSize = new Size(0, rows == 0 ? 0 : InsetPx * 2 + rows * CellH - this.RowGapPx);
+        this.LayoutSlots();
+        AutoScrollMinSize = new Size(0, this._extent);
         Invalidate();
+    }
+
+    /// <summary>
+    /// Every slot's place — the tiles', then the Loading… slot's — line by line, as many per line as the
+    /// width holds: a tile whose section title differs from the one before it starts a new line under its
+    /// section's header. Without sections, the lines are the rows of tiles they always were.
+    /// </summary>
+    private void LayoutSlots()
+    {
+        int slots = this._rows.Count + (this._hasMore ? 1 : 0);
+        this._slotLine = new int[slots];
+        this._slotColumn = new int[slots];
+        this._lineTops.Clear();
+        this._lineStarts.Clear();
+        this._headers.Clear();
+        int next = this.InsetPx;
+        int column = this._perRow;
+        for (int i = 0; i < slots; i++)
+        {
+            if (i < this._rows.Count && this._rows[i].Section is { } section && (i == 0 || section != this._rows[i - 1].Section))
+            {
+                this._headers.Add((next, section));
+                next += this.HeaderH;
+                column = this._perRow;
+            }
+
+            if (column >= this._perRow)
+            {
+                this._lineTops.Add(next);
+                this._lineStarts.Add(i);
+                next += this.CellH;
+                column = 0;
+            }
+
+            this._slotLine[i] = this._lineTops.Count - 1;
+            this._slotColumn[i] = column++;
+        }
+
+        this._extent = slots == 0 ? 0 : next - this.RowGapPx + this.InsetPx;
     }
 
     /// <summary>
@@ -1808,8 +1959,8 @@ internal sealed class ThumbnailGrid : ScrollableControl
             return -1;
         }
 
-        int row = Math.Max(0, (-AutoScrollPosition.Y - InsetPx) / CellH);
-        return Math.Min(_rows.Count - 1, row * _perRow);
+        int line = this.LineAt(-AutoScrollPosition.Y);
+        return Math.Min(_rows.Count - 1, line < 0 ? 0 : this._lineStarts[line]);
     }
 
     /// <summary>The size or the width changed: the rows, the box and the extent follow, the tile that topped the view (<paramref name="top"/>) still in view.</summary>
@@ -1877,7 +2028,8 @@ internal sealed class ThumbnailGrid : ScrollableControl
         int top = -AutoScrollPosition.Y;
         if (cell.Top < top)
         {
-            AutoScrollPosition = new Point(0, Math.Max(0, cell.Top - InsetPx));
+            // The first line of a section: its header comes into view with it.
+            AutoScrollPosition = new Point(0, Math.Max(0, (this.HeaderAbove(index) ?? cell.Top) - InsetPx));
         }
         else if (cell.Bottom > top + ClientSize.Height)
         {
