@@ -550,6 +550,14 @@ Explorer opens on its folder, its first file selected — a winget tool's folder
 User feedback: the Close button is useless, Windows' own × does it. Removed; the × and Escape close the
 window, asking first while a download runs.
 
+### Iteration 24 — 2026-11-03 — ⚙️ Post-implementation — Hang at the smallest width
+
+User report: resized to its smallest, the window stopped responding. The columns could not shrink below
+half their opening widths, so their total never matched the list's width, and the check made after each
+fit (Iteration 13) posted itself again forever. The check now runs only when the list's width changed
+since the last fit, and the columns shrink down to a floor of their own, a horizontal scroll bar showing
+only below it.
+
 ---
 
 ## Implementation Log
