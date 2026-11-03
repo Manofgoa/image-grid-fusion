@@ -68,6 +68,7 @@ internal sealed class ComponentsWindow : Form
     private readonly Label _checkedAt = new() { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 12, 0) };
     private readonly Button _checkNow = new() { Text = "Check now", AutoSize = true };
     private readonly Button _installAll = new() { Text = "Install all", AutoSize = true };
+    private readonly Button _uninstallAll = new() { Text = "Uninstall all", AutoSize = true };
     private readonly Button _updateAll = new() { Text = "Update all", AutoSize = true };
     private readonly ToolTip _balloon = new() { IsBalloon = true, ToolTipTitle = "Needed" };
     private readonly ContextMenuStrip _backMenu = new();
@@ -127,10 +128,12 @@ internal sealed class ComponentsWindow : Form
 
         UiIcons.SetImage(this._checkNow, UiIcons.CheckComponents, this.LogicalToDeviceUnits(16));
         UiIcons.SetImage(this._installAll, UiIcons.Download, this.LogicalToDeviceUnits(16));
+        UiIcons.SetImage(this._uninstallAll, UiIcons.Uninstall, this.LogicalToDeviceUnits(16));
         UiIcons.SetImage(this._updateAll, UiIcons.UpdateComponent, this.LogicalToDeviceUnits(16));
         UiIcons.Attach(this._backMenu);
         this._checkNow.Click += (_, _) => this.CheckAll();
         this._installAll.Click += (_, _) => this.InstallAll();
+        this._uninstallAll.Click += async (_, _) => await this.UninstallAllAsync();
         this._updateAll.Click += (_, _) => this.UpdateAll();
         this._spin.Tick += (_, _) => this.Spin();
 
@@ -141,7 +144,7 @@ internal sealed class ComponentsWindow : Form
         top.Controls.AddRange([this._checkNow, this._checkedAt]);
         this._checkedAt.Margin = new Padding(pad, this.LogicalToDeviceUnits(7), 0, 0);
         var bottom = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, Anchor = AnchorStyles.Right, Margin = new Padding(pad, pad / 2, pad, pad) };
-        bottom.Controls.AddRange([this._installAll, this._updateAll]);
+        bottom.Controls.AddRange([this._uninstallAll, this._installAll, this._updateAll]);
         var rows = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, BackColor = SystemColors.Window };
         rows.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         rows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -531,6 +534,9 @@ internal sealed class ComponentsWindow : Form
         int missing = this.Installable().Count();
         this._installAll.Text = $"Install all ({missing})";
         this._installAll.Enabled = missing > 0;
+        int installed = this.Uninstallable().Count();
+        this._uninstallAll.Text = $"Uninstall all ({installed})";
+        this._uninstallAll.Enabled = installed > 0;
     }
 
     /// <summary>
@@ -970,28 +976,90 @@ internal sealed class ComponentsWindow : Form
             return;
         }
 
-        row.Error = null;
-        await this._host.ReleaseAsync(component);
-        bool deleted = await Task.Run(() => ComponentInstaller.Uninstall(component, installed));
-        if (deleted)
+        await this.UninstallRowsAsync([row]);
+    }
+
+    /// <summary>
+    /// Every row installed and not running uninstalled, after one confirmation naming them and the size freed
+    /// (Iteration 25).
+    /// </summary>
+    private async Task UninstallAllAsync()
+    {
+        var rows = this.Uninstallable().ToList();
+        if (rows.Count == 0)
         {
-            record.Installed = null;
-            record.Pending = null;
-            record.InstalledOn = null;
-            record.UpdatedOn = null;
-            row.UpToDate = false;
-            this.TrySave();
+            return;
         }
-        else
+
+        long size = rows.Sum(r => ComponentInstaller.SizeOf(r.Component, this.RecordOf(r).Installed!));
+        if (MessageBox.Show(
+                this,
+                $"Uninstall {rows.Count} components? Their files are deleted ({SizeText(size)}):\n\n{string.Join("\n", rows.Select(r => r.Component.Name))}\n\nThe features needing them are offered them again.",
+                "Component updates",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning,
+                MessageBoxDefaultButton.Button2) != DialogResult.Yes)
         {
-            row.Error = "Some of its files are in use: restart the app, then uninstall it again";
+            return;
+        }
+
+        await this.UninstallRowsAsync(rows);
+    }
+
+    private IEnumerable<Row> Uninstallable() =>
+        this._rows.Values.Where(r => r.Run is null && this.RecordOf(r).Installed is not null);
+
+    /// <summary>
+    /// What holds the rows' files released — once per kind —, their files deleted, their installed version and dates
+    /// cleared. A file still locked is left, its row saying a restart frees it.
+    /// </summary>
+    private async Task UninstallRowsAsync(IReadOnlyList<Row> rows)
+    {
+        foreach (var group in rows.Select(r => r.Component).GroupBy(c => c.Group))
+        {
+            await this._host.ReleaseAsync(group.First());
+        }
+
+        foreach (var row in rows)
+        {
+            var record = this.RecordOf(row);
+            if (row.Run is not null || record.Installed is not { } installed)
+            {
+                continue;
+            }
+
+            var component = row.Component;
+            row.Error = null;
+            bool deleted = await Task.Run(() => ComponentInstaller.Uninstall(component, installed));
+            if (deleted)
+            {
+                record.Installed = null;
+                record.Pending = null;
+                record.InstalledOn = null;
+                record.UpdatedOn = null;
+                row.UpToDate = false;
+                row.PendingRestart = false;
+            }
+            else
+            {
+                row.Error = "Some of its files are in use: restart the app, then uninstall it again";
+            }
+
+            if (!this.IsDisposed)
+            {
+                this.Fill(row);
+                this._list.Invalidate(row.Item.Bounds);
+            }
+        }
+
+        this.TrySave();
+        foreach (var group in rows.Select(r => r.Component).GroupBy(c => c.Group))
+        {
+            this._host.Changed(group.First());
         }
 
         if (!this.IsDisposed)
         {
-            this._host.Changed(component);
-            this.Fill(row);
-            this._list.Invalidate(row.Item.Bounds);
             this.UpdateButtons();
         }
     }
