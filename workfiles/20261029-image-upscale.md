@@ -23,7 +23,7 @@ Components touched (from the scout pass):
 | Effect state | `Composition/ImageLook.cs` (`ImageEffect`, property, `Kept*`, `IsActive`, `Activate`, `Deactivate`, diff, `With*`), a new `Composition/UpscaleEffect.cs` |
 | Drawn bitmap | `Composition/SourceImage.cs` (`DrawnBitmap`, the cache, `MemoryBytes`, `Dispose`, `Sizing`) |
 | Animated GIFs | `Composition/PageSource.cs`, `Imaging/GifFrames.cs`, `Composition/AnimationReader.cs`, `UI/AnimationPlayer.cs`, `Imaging/GridExport.cs` |
-| Engine | a new `Imaging/UpscaleEngineFiles.cs` and `Imaging/UpscaleEngine.cs` on `Explorer/DirectEngineDownload.cs`, a new `UI/UpscaleService.cs` mirroring `UI/CutoutService.cs` |
+| Engine | a new `Imaging/UpscaleEngineFiles.cs` and `Imaging/UpscaleEngine.cs`, its component in `Components/ComponentRegistry.cs`, its release in `UI/MainForm.Components.cs` (`IComponentsHost.ReleaseAsync`), a new `UI/UpscaleService.cs` mirroring `UI/CutoutService.cs` |
 | Preview / exports | `UI/GridPreview.cs` (request at paint, badge), `UI/MainForm.cs` (options, gate, offer, ⚙ menu, export wait) |
 | Presets | `Composition/LookPreset.cs` |
 | Icons | `UI/UiIcons.cs` |
@@ -61,18 +61,32 @@ Settled with the user before exploration (Q&A 1–4):
 - **Layers**: a layer gets it like any cell effect (RULES.md § Layers) — a text layer's checkbox
   disabled (it sharpens).
 - **Effect presets**: the factor is saved when the effect is on (`LookPreset.Saved`).
+- **The effect stays temporary**: the upscaled image is a cache of the `SourceImage`, never a file of
+  its own, computed again in each session (Q&A 11).
+
+### Save Upscaled Image
+
+An **action** writing the upscaled image to a real file, for when one is wanted (Q&A 11):
+*Save upscaled image…*, a file dialog, a PNG — the effect itself unchanged, the cell untouched.
+Where it lives, what it holds and how a GIF is saved: Open Questions.
 
 ---
 
 ## Engine
 
-- **Never shipped** (as every engine): downloaded on demand into **`upscale-engine\` next to the
-  exe** (`UpscaleEngineFiles.FolderName`), from pinned URLs, each file checked against its SHA-256
-  through `DirectEngineDownload`; it runs on the OCR engine's ONNX Runtime, fetched with it when
-  missing.
-- **Offered** when the effect is turned on without it — a **No** leaves it off — and from the ⚙ menu
-  while missing (*Download the upscale engine…*), as `CutoutEngineReady` / `OfferCutoutEngineDownload`
-  do.
+- **A component** (RULES.md § Downloadable Components): **one** entry of `ComponentRegistry` — one
+  upstream, the Hugging Face repository below, its two files — in the **Engines** group, *Upscale
+  engine — Real-ESRGAN*, BSD-3-Clause, its purpose *Enlarges a small image ×2 or ×4, for the Upscale
+  effect*. Its files are pinned in `UpscaleEngineFiles` (`EngineFile`s, as `CutoutEngineFiles.PickFiles`),
+  installed from the **Component updates window** into **`upscale-engine\` next to the exe**
+  (`UpscaleEngineFiles.FolderName`), each checked against its SHA-256. It runs on the OCR engine's ONNX
+  Runtime, a row the window installs with it when missing.
+- **Turned on without it**: the window opens on its row (`MainForm.ShowComponents` with a
+  `ComponentNeed`), highlighted, its balloon saying the Upscale effect needs it; the effect **goes back
+  to off** at once. No ⚙ menu entry, no dialog of its own: nothing installs anywhere else.
+- **Released before an update or an uninstall**: `IComponentsHost.ReleaseAsync` releases
+  `UpscaleService`'s sessions once the upscale running is done (`ReleaseNowAsync`, as `CutoutService`),
+  so the files can be swapped.
 - **Models**: RealESRGAN ×2 and ×4, **both in one download** (134 MB), the factor picking the model
   — never one model resized for the other. Licence BSD-3-Clause, credited with the other engines;
   input `float32 [1,3,h,w]` RGB in [0,1], dynamic height and width, output `[1,3,s·h,s·w]`:
@@ -161,7 +175,8 @@ app*). Nothing is created or updated; the checks are made by hand on the launche
 | Cutout + Upscale on one image | Preview, PNG |
 | An animated GIF: progress badge, then upscaled frames in the MP4 / GIF export | Preview, export |
 | Video, PDF, text: checkbox disabled with its tooltip; a factor over 8192 disabled | Effects toolbar |
-| Engine missing: the offer, a **No** leaving the effect off, the ⚙ menu entry | ⚙ menu |
+| Engine missing: the Component updates window opened on its row, the effect back to off; installed, updated, uninstalled from the window, the sessions released | Component updates window |
+| *Save upscaled image…*: the PNG written, at the upscaled size | File dialog, Explorer |
 | An effect preset with Upscale restored | File explorer |
 
 ---
@@ -176,6 +191,11 @@ app*). Nothing is created or updated; the checks are made by hand on the launche
   the whole image, then apply the cutout's mask enlarged
 - [x] ~~**A GIF's upscaled frames** — in memory, or in a temp cache?~~ → A cache folder in `%TEMP%`,
   read back per frame
+- [ ] **Where *Save upscaled image…* lives** — a button in the Upscale options (after the factors, set
+  apart as an action), the cell's context menu, or both?
+- [ ] **What it saves** — the upscaled image alone, whole (as loaded, with the cut-out when the Cutout is
+  on), or the cell as drawn with all its effects (which Cell copy already gives)?
+- [ ] **A GIF** — saved as an animated GIF of the upscaled frames, or only the frame shown as a PNG?
 
 ---
 
@@ -200,6 +220,22 @@ The four open questions answered (Q&A 5–8): the upscaled image widens the PNG'
 download holds RealESRGAN ×2 and ×4 only; with the Cutout on, the whole image is upscaled and the
 mask applied after, enlarged; a GIF's upscaled frames go to `%TEMP%\ImageGridFusion\upscale-cache\`
 and are read back per frame. § Engine, § Drawn Bitmap and § Animated GIFs updated. No question left.
+
+### Iteration 3 — 2026-11-03
+
+The code moved meanwhile: every downloadable component is now installed from the **Component updates
+window** (`workfiles/20261102-component-update-verification.md`, RULES.md § Downloadable Components).
+§ Engine follows it: the upscale engine is one component of `ComponentRegistry`, installed from the
+window, opened on its row when the effect is turned on without it (the effect back to off); no offer
+dialog, no ⚙ menu entry; its sessions released through `IComponentsHost.ReleaseAsync`. Nothing else in
+the design depends on what changed. The go question (Q&A 10) and the backlog question (Q&A 9) were
+interrupted before an answer.
+
+### Iteration 4 — 2026-11-03
+
+The user asked whether the upscale makes a new image or a temporary one. Kept a **temporary effect**,
+plus an **action saving the upscaled image to a file** (Q&A 11) — § Save Upscaled Image. Three
+questions opened about it.
 
 ---
 
@@ -232,9 +268,14 @@ Questions asked by the agent during design, with user responses.
 | 6 | Which models are downloaded? | RealESRGAN ×2 and ×4 (134 MB) | 2026-10-29 |
 | 7 | Cutout + Upscale: upscale then mask, or upscale the cut-out? | Upscale, then the mask | 2026-10-29 |
 | 8 | A GIF's upscaled frames: in memory or in a temp cache? | A cache in `%TEMP%` | 2026-10-29 |
-| 9 | Mark the backlog row *AI upscale* with this workfile? | | |
-| 10 | Go for implementation — scope and where? | | |
+| 9 | Mark the backlog row *AI upscale* with this workfile? | Interrupted — not answered | 2026-10-29 |
+| 10 | Go for implementation — scope and where? | Interrupted — not answered | 2026-10-29 |
+| 11 | Which form: a temporary effect, with a persistent cache, with a *Save* action, or a new image? | The temporary effect plus a *Save upscaled image…* action | 2026-11-03 |
+| 12 | Update the workfile for the Component updates window? | Yes | 2026-11-03 |
+| 13 | Where does *Save upscaled image…* live? | | |
+| 14 | What does it save? | | |
+| 15 | A GIF: animated GIF or the frame shown? | | |
 
 ---
 
-*Last updated: 2026-10-29*
+*Last updated: 2026-11-03*
