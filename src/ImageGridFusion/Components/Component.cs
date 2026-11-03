@@ -127,6 +127,9 @@ internal sealed class Component(string id, ComponentGroup group, string name, st
     /// <summary>Its upstream as the tooltip names it: <c>huggingface.co/opencv/face_detection_yunet</c>.</summary>
     public string Upstream => this.Source.Upstream;
 
+    /// <summary>Its upstream's page, opened by a click on its name in the window.</summary>
+    public string PageUrl => this.Source.PageUrl;
+
     public string PathOf(string fileName) => Path.Combine(this.Folder, fileName);
 }
 

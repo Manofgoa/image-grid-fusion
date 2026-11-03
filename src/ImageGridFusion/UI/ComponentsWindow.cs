@@ -67,6 +67,9 @@ internal sealed class ComponentsWindow : Form
 
     private readonly Label _checkedAt = new() { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 12, 0) };
     private readonly Button _checkNow = new() { Text = "Check now", AutoSize = true };
+    private readonly Label _total = new() { AutoSize = true };
+    private readonly Font _linkFont;
+    private Row? _hoveredName;
     private readonly Button _installAll = new() { Text = "Install all", AutoSize = true };
     private readonly Button _uninstallAll = new() { Text = "Uninstall all", AutoSize = true };
     private readonly Button _updateAll = new() { Text = "Update all", AutoSize = true };
@@ -124,7 +127,9 @@ internal sealed class ComponentsWindow : Form
         this._list.DrawItem += (_, _) => { };
         this._list.DrawSubItem += this.DrawCell;
         this._list.MouseClick += this.OnListClick;
-        this._list.MouseMove += (_, e) => this._list.Cursor = this.ActionAt(e.Location) is not null ? Cursors.Hand : Cursors.Default;
+        this._list.MouseMove += (_, e) => this.OnListMouseMove(e.Location);
+        this._list.MouseLeave += (_, _) => this.SetHoveredName(null);
+        this._linkFont = new Font(this._list.Font, FontStyle.Underline);
 
         UiIcons.SetImage(this._checkNow, UiIcons.CheckComponents, this.LogicalToDeviceUnits(16));
         UiIcons.SetImage(this._installAll, UiIcons.Download, this.LogicalToDeviceUnits(16));
@@ -143,8 +148,16 @@ internal sealed class ComponentsWindow : Form
         var top = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, Margin = new Padding(pad, pad, pad, pad / 2) };
         top.Controls.AddRange([this._checkNow, this._checkedAt]);
         this._checkedAt.Margin = new Padding(pad, this.LogicalToDeviceUnits(7), 0, 0);
-        var bottom = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, Anchor = AnchorStyles.Right, Margin = new Padding(pad, pad / 2, pad, pad) };
-        bottom.Controls.AddRange([this._uninstallAll, this._installAll, this._updateAll]);
+        var buttons = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, Anchor = AnchorStyles.Right, Margin = Padding.Empty };
+        buttons.Controls.AddRange([this._uninstallAll, this._installAll, this._updateAll]);
+
+        // The total on the disk at the left, the buttons at the right (Iteration 27).
+        var bottom = new TableLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = new Padding(pad, pad / 2, pad, pad) };
+        bottom.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        bottom.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        this._total.Anchor = AnchorStyles.Left;
+        bottom.Controls.Add(this._total, 0, 0);
+        bottom.Controls.Add(buttons, 1, 0);
         var rows = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, BackColor = SystemColors.Window };
         rows.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         rows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -275,6 +288,7 @@ internal sealed class ComponentsWindow : Form
             this._balloon.Dispose();
             this._backMenu.Dispose();
             this._list.SmallImageList?.Dispose();
+            this._linkFont.Dispose();
         }
 
         base.Dispose(disposing);
@@ -382,7 +396,8 @@ internal sealed class ComponentsWindow : Form
 
         Set(cells[NameColumn], row.Component.Name);
         Set(cells[InstalledColumn], record.Installed?.Label ?? "—");
-        Set(cells[SizeColumn], record.Installed is null ? "—" : SizeText(ComponentInstaller.SizeOf(row.Component, record.Installed)));
+        row.Size = record.Installed is null ? 0 : ComponentInstaller.SizeOf(row.Component, record.Installed);
+        Set(cells[SizeColumn], record.Installed is null ? "—" : SizeText(row.Size));
         Set(cells[InstalledOnColumn], DateText(record.InstalledOn));
         Set(cells[UpdatedOnColumn], DateText(record.UpdatedOn));
         Set(cells[PinnedColumn], record.Pinned.Label);
@@ -534,6 +549,8 @@ internal sealed class ComponentsWindow : Form
         int missing = this.Installable().Count();
         this._installAll.Text = $"Install all ({missing})";
         this._installAll.Enabled = missing > 0;
+        long total = this._rows.Values.Sum(r => r.Size);
+        this._total.Text = $"Total on disk: {(total > 0 ? SizeText(total) : "0 MB")}";
         int installed = this.Uninstallable().Count();
         this._uninstallAll.Text = $"Uninstall all ({installed})";
         this._uninstallAll.Enabled = installed > 0;
@@ -743,7 +760,10 @@ internal sealed class ComponentsWindow : Form
                 int gap = this.LogicalToDeviceUnits(6);
                 g.DrawImage(UiIcons.ComponentInfo.At(icon), text.Left, bounds.Top + (bounds.Height - icon) / 2, icon, icon);
                 var name = Rectangle.FromLTRB(Math.Min(text.Right, text.Left + icon + gap), text.Top, text.Right, text.Bottom);
-                TextRenderer.DrawText(g, row.Component.Name, this._list.Font, name, fore, Flags);
+
+                // A link to its upstream's page, underlined under the mouse (Iteration 26).
+                var link = e.Item.Selected ? fore : SystemColors.HotTrack;
+                TextRenderer.DrawText(g, row.Component.Name, row == this._hoveredName ? this._linkFont : this._list.Font, name, link, Flags);
                 break;
             }
 
@@ -891,8 +911,68 @@ internal sealed class ComponentsWindow : Form
             : null;
     }
 
+    /// <summary>The component's name under <paramref name="point"/>: the ℹ️ left out, as wide as its text.</summary>
+    private Row? NameAt(Point point)
+    {
+        var hit = this._list.HitTest(point);
+        if (hit.Item is null || !this._rows.TryGetValue(hit.Item, out var row) || hit.SubItem is null || hit.Item.SubItems.IndexOf(hit.SubItem) != NameColumn)
+        {
+            return null;
+        }
+
+        var cell = hit.SubItem.Bounds;
+        int left = cell.Left + this.LogicalToDeviceUnits(6) + this.LogicalToDeviceUnits(14) + this.LogicalToDeviceUnits(6);
+        int width = TextRenderer.MeasureText(row.Component.Name, this._list.Font).Width;
+        return point.X >= left && point.X < Math.Min(cell.Right, left + width) ? row : null;
+    }
+
+    private void OnListMouseMove(Point point)
+    {
+        var name = this.NameAt(point);
+        this.SetHoveredName(name);
+        this._list.Cursor = name is not null || this.ActionAt(point) is not null ? Cursors.Hand : Cursors.Default;
+    }
+
+    private void SetHoveredName(Row? row)
+    {
+        if (row == this._hoveredName)
+        {
+            return;
+        }
+
+        if (this._hoveredName is { } before)
+        {
+            this._list.Invalidate(before.Item.SubItems[NameColumn].Bounds);
+        }
+
+        this._hoveredName = row;
+        if (row is not null)
+        {
+            this._list.Invalidate(row.Item.SubItems[NameColumn].Bounds);
+        }
+    }
+
+    /// <summary>The upstream's page of <paramref name="row"/>'s component, in the browser.</summary>
+    private void OpenPage(Row row)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(row.Component.PageUrl) { UseShellExecute = true })?.Dispose();
+        }
+        catch (System.ComponentModel.Win32Exception e)
+        {
+            MessageBox.Show(this, $"Couldn't open {row.Component.PageUrl}: {e.Message}", "Component updates", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+    }
+
     private void OnListClick(object? sender, MouseEventArgs e)
     {
+        if (e.Button == MouseButtons.Left && this.NameAt(e.Location) is { } named)
+        {
+            this.OpenPage(named);
+            return;
+        }
+
         if (e.Button != MouseButtons.Left || this.ActionAt(e.Location) is not var (row, action))
         {
             return;
@@ -1179,5 +1259,8 @@ internal sealed class ComponentsWindow : Form
         public bool PendingRestart { get; set; }
 
         public bool Highlighted { get; set; }
+
+        /// <summary>What its installed files take on the disk, 0 when not installed: summed under the list.</summary>
+        public long Size { get; set; }
     }
 }

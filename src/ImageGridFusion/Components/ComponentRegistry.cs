@@ -70,11 +70,11 @@ internal static class ComponentRegistry
             NuGet(SkiaSharp, ComponentGroup.Runtimes, "SkiaSharp", "MIT",
                 "Decodes the images for RapidOCR, the OCR engine. Loaded once RapidOCR has run: replaced at the next start",
                 [.. ocr.Where(f => f.Name == OcrEngineFiles.SkiaSharp)]),
-            Tool(YtDlp, Web.YtDlp.Tool, YtDlpVersion, "Unlicense",
+            Tool(YtDlp, Web.YtDlp.Tool, YtDlpVersion, "Unlicense", "https://github.com/yt-dlp/yt-dlp",
                 "Downloads the media of a URL the URL zone's own resolvers do not know"),
-            Tool(Deno, YtDlpCompanions.Deno, DenoVersion, "MIT",
+            Tool(Deno, YtDlpCompanions.Deno, DenoVersion, "MIT", "https://deno.com",
                 "Lets yt-dlp read YouTube's formats, to load the largest ones"),
-            Tool(Ffmpeg, YtDlpCompanions.Ffmpeg, FfmpegVersion, "GPL 3.0",
+            Tool(Ffmpeg, YtDlpCompanions.Ffmpeg, FfmpegVersion, "GPL 3.0", "https://github.com/yt-dlp/FFmpeg-Builds",
                 "Joins a video track and its sound into one MP4 for yt-dlp, to load the largest formats"),
         };
 
@@ -111,8 +111,8 @@ internal static class ComponentRegistry
         return new Component(id, group, name, purpose, license, OcrEngineFiles.Folder, version, source);
     }
 
-    private static Component Tool(string id, WingetTool tool, string version, string license, string purpose) =>
-        new(id, ComponentGroup.WebTools, tool.Name, purpose, license, tool.Folder, new ComponentVersion(version, []), new WingetSource(tool));
+    private static Component Tool(string id, WingetTool tool, string version, string license, string homepage, string purpose) =>
+        new(id, ComponentGroup.WebTools, tool.Name, purpose, license, tool.Folder, new ComponentVersion(version, []), new WingetSource(tool, homepage));
 
     private static ComponentVersion Version(string label, params EngineFile[] files) =>
         new(label, [.. files.Select(f => new ComponentFile(f.Name, f.Url, f.Sha256.ToLowerInvariant(), f.Size))]);

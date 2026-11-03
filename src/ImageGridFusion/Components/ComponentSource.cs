@@ -16,6 +16,9 @@ internal abstract class ComponentSource
     /// <summary>The upstream as the tooltip names it.</summary>
     public abstract string Upstream { get; }
 
+    /// <summary>The upstream's page, opened by a click on the component's name: its repository, its package, its project.</summary>
+    public abstract string PageUrl { get; }
+
     /// <summary>
     /// The latest version, for <paramref name="component"/>'s files. Throws a <see cref="UrlLoadException"/> saying why
     /// when it cannot be read.
@@ -55,6 +58,8 @@ internal abstract class ComponentSource
 internal sealed class HuggingFaceSource(string repository, IReadOnlyDictionary<string, string> files) : ComponentSource
 {
     public override string Upstream => $"huggingface.co/{repository}";
+
+    public override string PageUrl => $"https://huggingface.co/{repository}";
 
     /// <summary>
     /// The source of files pinned as <c>https://huggingface.co/&lt;repo&gt;/resolve/&lt;revision&gt;/&lt;path&gt;</c>, all of one
@@ -120,6 +125,8 @@ internal sealed class GitHubReleaseSource(string repository, string? tag, string
 {
     public override string Upstream => $"github.com/{repository}";
 
+    public override string PageUrl => $"https://github.com/{repository}";
+
     public override async Task<LatestVersion> LatestAsync(Component component, CancellationToken token)
     {
         var release = await GetJsonAsync(new Uri($"https://api.github.com/repos/{repository}/releases/{(tag is null ? "latest" : "tags/" + Uri.EscapeDataString(tag))}"), token);
@@ -154,6 +161,8 @@ internal sealed class NuGetSource(string package, IReadOnlyDictionary<string, st
 {
     public override string Upstream => $"nuget.org/packages/{package}";
 
+    public override string PageUrl => $"https://www.nuget.org/packages/{package}";
+
     /// <summary>The URL of <paramref name="version"/>'s package.</summary>
     public string PackageUrl(string version) => $"https://api.nuget.org/v3-flatcontainer/{package}/{version}/{package}.{version}.nupkg";
 
@@ -182,13 +191,17 @@ internal sealed class NuGetSource(string package, IReadOnlyDictionary<string, st
 /// <summary>
 /// A winget package, installed by winget into the tool's folder (<see cref="WingetTool"/>): its latest version from
 /// <c>winget show --versions</c>, its date from the manifest's release date when it has one, the version installed from
-/// the tool itself. winget's labels are in the user's language: only the values are read.
+/// the tool itself, its page the project's (<paramref name="homepage"/>). winget's labels are in the user's language: only
+/// the values are read.
 /// </summary>
-internal sealed partial class WingetSource(WingetTool tool) : ComponentSource
+internal sealed partial class WingetSource(WingetTool tool, string homepage) : ComponentSource
 {
     public WingetTool Tool { get; } = tool;
 
     public override string Upstream => $"winget {this.Tool.PackageId}";
+
+    // winget has no page of its own for a package: the project's.
+    public override string PageUrl => homepage;
 
     public override async Task<LatestVersion> LatestAsync(Component component, CancellationToken token)
     {
