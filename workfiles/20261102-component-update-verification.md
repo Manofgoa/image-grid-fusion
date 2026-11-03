@@ -171,7 +171,8 @@ Layout **A — one grouped list** (Q&A 1), drawn in the mockup of 2026-11-02:
 - The ℹ️ tooltip is the **row's** tooltip: hovering anywhere on the row shows the purpose, the upstream,
   the license, and a failure's reason (Iteration 11).
 - **The columns follow the window** (Iteration 12): resized, the list's columns share its width in
-  proportion to their opening widths, the Actions column keeping its own.
+  proportion to their opening widths, the Actions column keeping its own; they always add up to the
+  list's usable width, so no horizontal scroll bar shows (Iteration 13).
 - No shortcut is added but Escape closing the window, as in the shortcuts window (`SHORTCUTS.md`
   § Dialogs).
 
@@ -477,6 +478,13 @@ it changes — each in proportion to its width at the window's opening, the Acti
 own so its buttons and progress bar never shrink —, the list itself filling the window as before.
 Done: the columns refitted on every resize of the list (`ComponentsWindow.FitColumns`), a name too long cut
 before its ℹ️ rather than under it; checked in the harness at 1 100 and 1 900 px wide.
+
+### Iteration 13 — 2026-11-03 — ⚙️ Post-implementation — No horizontal scroll bar
+
+User feedback on the delivered window: the content must take all the width available, and no scroll bar
+shows when none is needed — a horizontal one showed under the list. The columns are fitted again whenever
+the list's usable width changes, the vertical scroll bar appearing after the window opened included, so
+the columns always add up to the list's width exactly: no horizontal scroll bar, no gap at the right.
 
 ---
 
