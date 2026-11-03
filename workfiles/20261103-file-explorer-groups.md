@@ -50,18 +50,18 @@ Components: `UI/ThumbnailGrid` (layout, hit-test, keyboard, paint), `UI/FileExpl
   The files break "the groups first": the human names, the more telling, come before the pattern
   groups (Q&A 9).
 - Inside a section, the existing order is kept: folders A→Z, files in the sort order.
-- A list that would hold a **single section** shows **no header** at all (proposed): grouping
-  changes nothing visible where there is nothing to separate.
+- A header shows **even when the list holds a single section** (Q&A 13: the proposal to drop it
+  was not kept) — with the groups on, every list is titled.
 
 ## Folder Prefix Groups
 
 - Built on `SharedPrefix`: sibling folders sharing at least one whole leading word, compared
   ignoring case, the same separators (space, `-`, `_`, `.`).
 - **Two folders at least** make a group — like the flap's prefix, which needs a sibling.
-- Nested prefixes (`Outils RS Alpha`, `Outils RS Alpha 2`, `Outils RS Beta`): proposed — one group
-  per **shortest** shared prefix (`Outils RS`), the largest group, no sub-sections.
+- Nested prefixes (`Outils RS Alpha`, `Outils RS Alpha 2`, `Outils RS Beta`): one group per
+  **shortest** shared prefix (`Outils RS`), the largest group, no sub-sections (Q&A 13).
 - `Outils RS` itself next to `Outils RS 2`: today it gets no prefix (it would keep no word of its
-  own); proposed — it joins the `Outils RS` group anyway, as its first member.
+  own); it joins the `Outils RS` group anyway, as its first member (Q&A 13).
 - **The flap is unchanged** inside a group (Q&A 6): `Outils RS ›` small over `Alpha`, groups on or
   off alike.
 
@@ -103,23 +103,25 @@ The search view's results grouped by **how they were found** (Q&A 8):
   by its name alone, then the rest of Path in today's tiers; Content keeps today's tiers. A file
   found both ways is listed once, in Path, with its 💡. Whether the search already knows a name
   match's content hit (`SearchMatch.ContentWord`) is checked at implementation.
-- The new first tier applies with the groups off too (proposed): it is a ranking, not a group.
+- The new first tier applies with the groups off too (Q&A 13): it is a ranking, not a group.
 
 ## Toggles
 
 - **Two on / off buttons** (Q&A 8, superseding Q&A 2's single one): the **folder view's groups** and
-  the **search results' groups**, each turning its view's groupings on or off at once. Proposed: in
-  the tile size row next to the 🔳 / 📃 view buttons, the one of the view shown (or both), an icon per
-  § Icons (proposed 🗂️), pressed while on.
-- **Remembered** between sessions in `settings.json`. Default proposed: **on**.
-- The pattern checkboxes of the ⚙ submenu work under the folder view's button: it off, no group
-  shows whatever they say.
+  the **search results' groups**, each turning its view's groupings on or off at once, **side by
+  side, always visible**, in the tile size row next to the 🔳 / 📃 view buttons (Q&A 14); an icon
+  each per § Icons, chosen at implementation, their tooltips saying which view they group; pressed
+  while on.
+- **Remembered** between sessions in `settings.json`; **on** by default.
+- The pattern checkboxes live in a **⚙ menu submenu** (its name chosen at implementation, e.g.
+  *Explorer groups*); they work under the folder view's button: it off, no group shows whatever
+  they say.
 
 ## Views
 
 - The **folder view** (prefix and pattern groups) and the **search view** (Path / Content). `*`, the
-  favorites and the People view keep their lists as they are — proposed.
-- Both displays: **Thumbnails** and **Details** (a header row between the rows) — proposed.
+  favorites and the People view keep their lists as they are.
+- Both displays: **Thumbnails** and **Details** (a header row between the rows) (Q&A 13).
 
 ## Grid Layout (technical)
 
@@ -140,10 +142,9 @@ break that:
 
 ## Test Impact
 
-The app has **no unit test project** (`src/` holds `ImageGridFusion` only): nothing testable is
-added to a test project. The name patterns (`NamePatterns`) and the grouping are pure functions that
-would be the first candidates if one is created — see Open Questions. Checked by hand in the app
-otherwise.
+The app has **no unit test project** (`src/` holds `ImageGridFusion` only), and none is created for
+this work (Q&A 15): the name patterns (`NamePatterns`) and the grouping are checked by hand in the
+app.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
@@ -159,7 +160,8 @@ otherwise.
   or the files with a human name first?~~ → Named files first (Q&A 9)
 - [x] ~~A catch-all **Automatic names** group, or straight to the files in no group?~~ → No
   catch-all: straight to the Named files (Q&A 10)
-- [ ] Nested folder prefixes: one group per shortest shared prefix (`Outils RS`), no sub-sections?
+- [x] ~~Nested folder prefixes: one group per shortest shared prefix (`Outils RS`), no sub-sections?~~
+  → Yes, `Outils RS` itself its first member (Q&A 13)
 - [x] ~~Inside a prefix group, does a tile's flap still show `Outils RS ›` small?~~ → Unchanged (Q&A 6)
 - [x] ~~Which stamp names count as automatic?~~ → Camera, screenshots and messaging apps, all
   (Q&A 7); each its own group, turned off on its own (Iteration 3)
@@ -167,15 +169,19 @@ otherwise.
   name and its content first, then by its name alone, then by its content alone (Q&A 11)
 - [x] ~~Search groups: where go the presets' descriptions, the people's files, Seen, similarity?~~ →
   Path and Content only: descriptions and people in Path, Seen and similarity in Content (Q&A 12)
-- [ ] The new first tier (name and content) with the search groups off too?
-- [ ] Section titles: `Other folders`, `Other files`, `Path`, `Content`… (UI in English)?
-- [ ] No header when the list would hold a single section?
+- [x] ~~The new first tier (name and content) with the search groups off too?~~ → Yes (Q&A 13)
+- [x] ~~Section titles?~~ → `Other folders`, `Named files`, the pattern names (`Camera`…), as in the
+  preview chosen at Q&A 9; `Path`, `Content` (Q&A 8)
+- [x] ~~No header when the list would hold a single section?~~ → Not kept: the header always shows
+  (Q&A 13)
 - [x] ~~Views: the folder view only, or the search view too?~~ → Both, one button each (Q&A 8)
-- [ ] Details view: headers too?
-- [ ] Toggles: next to the 🔳 / 📃 buttons, 🗂️, on by default? The ⚙ submenu's name?
-- [ ] The folders' shared-prefix principle applied to the **named files** too (`Meme chat 1`,
-  `Meme chat 2` → a `Meme chat` group)? Not chosen in the first answers — out of scope unless asked.
-- [ ] Create a unit test project for `NamePatterns` and the grouping, or keep the hand checks?
+- [x] ~~Details view: headers too?~~ → Yes (Q&A 13)
+- [x] ~~Toggles: placement, icon, default, the ⚙ submenu?~~ → Two buttons side by side next to
+  🔳 / 📃, always visible (Q&A 14); on by default and remembered, as proposed; icons and the submenu's
+  name chosen at implementation
+- [x] ~~The shared-prefix principle applied to the **named files** too (`Meme chat 1`, `Meme chat 2`)?~~
+  → Not chosen at Q&A 1: out of scope
+- [x] ~~Create a unit test project for `NamePatterns` and the grouping?~~ → No, hand checks (Q&A 15)
 
 ---
 
@@ -226,6 +232,14 @@ Named files (Q&A 10); the search ranks a file found **by its name and its conten
 the search keeps **two groups**, Path (names, subfolders, presets' descriptions, people) and Content
 (text read, Seen, similarity) (Q&A 12).
 
+### Iteration 5 — 2026-11-03
+
+Last batch answered: the shortest prefix makes the folder group, nested ones included; headers in
+the Details view too; the name-and-content tier also with the search groups off; the proposal to
+drop the header of a single-section list **not kept** — a header always shows (Q&A 13). Two toggle
+buttons side by side, always visible (Q&A 14). No test project (Q&A 15). Every open question is
+settled.
+
 ---
 
 ## Implementation Log
@@ -259,9 +273,10 @@ Questions asked by the agent during design, with user responses.
 | 10 | A catch-all *Automatic names* group, or straight to no group? | No group (recommended) | 2026-11-03 |
 | 11 | Search ranking: what "file names and bulbs the most relevant" means | Name AND content first | 2026-11-03 |
 | 12 | Search groups: where the descriptions, people, Seen and similarity matches go | Path / Content only | 2026-11-03 |
-| 13 | The remaining proposals (nested prefixes, `Outils RS` alone, single section, Details headers, name-and-content tier with the groups off) | | 2026-11-03 |
-| 14 | Toggles: placement, icon, default, the ⚙ submenu | | 2026-11-03 |
-| 15 | A unit test project for the name patterns and the grouping? | | 2026-11-03 |
+| 13 | The remaining proposals (nested prefixes, `Outils RS` alone, single section, Details headers, name-and-content tier with the groups off) | Shortest prefix, headers in Details, name + content always; the single-section proposal not kept | 2026-11-03 |
+| 14 | Toggles: placement, icon, default, the ⚙ submenu | Two buttons side by side | 2026-11-03 |
+| 15 | A unit test project for the name patterns and the grouping? | No, hand checks | 2026-11-03 |
+| 16 | Go for implementation? | | 2026-11-03 |
 
 ---
 
