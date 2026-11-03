@@ -22,6 +22,7 @@ internal static class ComponentRegistry
     public const string CaptionModels = "caption-florence2";
     public const string CutoutSubject = "cutout-isnet";
     public const string CutoutPick = "cutout-mobilesam";
+    public const string Upscale = "upscale-realesrgan";
     public const string YtDlp = "yt-dlp";
     public const string Deno = "deno";
     public const string Ffmpeg = "ffmpeg";
@@ -64,6 +65,8 @@ internal static class ComponentRegistry
                 CutoutEngineFiles.Folder, Version("v0.0.0", CutoutEngineFiles.SubjectFile), new GitHubReleaseSource("danielgatis/rembg", "v0.0.0", CutoutEngineFiles.SubjectModel, null)),
             Hf(CutoutPick, "Cutout engine — MobileSAM", "MIT", "0d3b4033",
                 "Picks the object under a click, for the Cutout's Pick mode", CutoutEngineFiles.Folder, CutoutEngineFiles.PickFiles),
+            Hf(Upscale, "Upscale engine — Real-ESRGAN", "BSD-3-Clause", "09f741ba",
+                "Enlarges a small image ×2 or ×4, for the Upscale effect", UpscaleEngineFiles.Folder, UpscaleEngineFiles.Files),
             NuGet(OnnxRuntime, ComponentGroup.Runtimes, "ONNX Runtime", "MIT",
                 "Runs every engine's models: needed by all of them. Loaded once an engine has run: replaced at the next start",
                 [.. ocr.Where(f => f.Name == OcrEngineFiles.OnnxRuntime)]),
