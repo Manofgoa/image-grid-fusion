@@ -260,6 +260,11 @@ entry of the cell's menu; the upscaled image alone, whole, cut out when the Cuto
 as an animated GIF. Proposed by the agent: the PNG for a still, the file dialog in the image's folder
 with `-x2` / `-x4` in the name, the action waiting for an upscale not ready. No question left.
 
+### Iteration 6 — 2026-11-03 — ✅ Implemented
+
+Go given (Q&A 17): code, tests and documentation, in a worktree on `feature/image-upscale`. The backlog
+row *AI upscale* marked with this workfile (Q&A 16).
+
 ---
 
 ## Implementation Log
@@ -298,8 +303,8 @@ Questions asked by the agent during design, with user responses.
 | 13 | Where does *Save upscaled image…* live? | Both: the Upscale options and the cell's menu | 2026-11-03 |
 | 14 | What does it save? | The upscaled image alone | 2026-11-03 |
 | 15 | A GIF: animated GIF or the frame shown? | An animated GIF | 2026-11-03 |
-| 16 | Mark the backlog row *AI upscale* with this workfile? | | |
-| 17 | Go for implementation — scope and where? | | |
+| 16 | Mark the backlog row *AI upscale* with this workfile? | Yes | 2026-11-03 |
+| 17 | Go for implementation — scope and where? | Code, tests and documentation — in a worktree | 2026-11-03 |
 
 ---
 
