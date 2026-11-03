@@ -37,6 +37,9 @@ internal static class AppSettings
     private const string ExplorerContentSearchName = "ExplorerContentSearch";
     private const string ExplorerFileOrderName = "ExplorerFileOrder";
     private const string ExplorerViewName = "ExplorerView";
+    private const string ExplorerFolderGroupsName = "ExplorerFolderGroups";
+    private const string ExplorerSearchGroupsName = "ExplorerSearchGroups";
+    private const string ExplorerPatternsOffName = "ExplorerPatternsOff";
     private const string OcrArrowCurvedName = "OcrArrowCurved";
     private const string OcrArrowThicknessName = "OcrArrowThickness";
     private const string OcrArrowColorName = "OcrArrowColor";
@@ -324,6 +327,31 @@ internal static class AppSettings
 
     /// <summary>Saves the file explorer's view; throws an <see cref="IsSaveError"/> exception on failure.</summary>
     public static void SaveExplorerView(ExplorerView view) => Save((ExplorerViewName, view.ToString()));
+
+    /// <summary>
+    /// Whether the file explorer's folder view and its search results show their groups — their buttons';
+    /// both on when nothing was saved. See workfiles/20261103-file-explorer-groups.md § Toggles.
+    /// </summary>
+    public static (bool Folders, bool Search) ExplorerGroups =>
+        (Int(ExplorerFolderGroupsName) is not int folders || folders != 0, Int(ExplorerSearchGroupsName) is not int search || search != 0);
+
+    /// <summary>Saves whether the folder view and the search results show their groups; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveExplorerGroups(bool folders, bool search) =>
+        Save((ExplorerFolderGroupsName, folders ? 1 : 0), (ExplorerSearchGroupsName, search ? 1 : 0));
+
+    /// <summary>
+    /// The name patterns whose folder view group is turned off — the ⚙ menu's File explorer groups — saved
+    /// by name, comma-separated; none when nothing was saved, an unknown name skipped.
+    /// </summary>
+    public static IReadOnlySet<Explorer.NamePattern> ExplorerPatternsOff =>
+        (Text(ExplorerPatternsOffName) ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(name => Enum.TryParse(name, out Explorer.NamePattern pattern) && pattern.ToString() == name ? pattern : (Explorer.NamePattern?)null)
+            .OfType<Explorer.NamePattern>()
+            .ToHashSet();
+
+    /// <summary>Saves the name patterns turned off; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveExplorerPatternsOff(IEnumerable<Explorer.NamePattern> off) =>
+        Save((ExplorerPatternsOffName, string.Join(',', off.Order())));
 
     /// <summary>
     /// Whether the file explorer extracts the files' content texts — OCR included — for its search; false

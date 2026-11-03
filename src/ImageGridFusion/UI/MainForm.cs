@@ -41,6 +41,7 @@ internal sealed partial class MainForm : Form
     private readonly ToolStripMenuItem _explorerFolder = new("File explorer folder…");
     // How many pages of tiles the explorer loads at a time: a submenu of exclusive choices, remembered between sessions.
     private readonly ToolStripMenuItem _explorerPages = new("File explorer pages per load");
+    private readonly ToolStripMenuItem _explorerGroups = new("File explorer groups");
     // The file contents' group of the ⚙ menu: a caption, grey and inert, over its entries.
     private readonly ToolStripMenuItem _contentCaption = new("File contents") { Enabled = false };
     private readonly ToolStripMenuItem _explorerContentSearch = new("Search file contents (OCR)");
@@ -649,6 +650,8 @@ internal sealed partial class MainForm : Form
         _explorer.ContentSearch = AppSettings.ExplorerContentSearch;
         this._explorer.FileOrder = AppSettings.ExplorerFileOrder;
         this._explorer.View = AppSettings.ExplorerView;
+        (this._explorer.FolderGroups, this._explorer.SearchGroups) = AppSettings.ExplorerGroups;
+        this._explorer.PatternsOff = AppSettings.ExplorerPatternsOff;
         this._explorer.ArrowStyle = AppSettings.OcrArrow;
         _explorer.OpenFolder = AppSettings.ExplorerOpenFolder;
         this._explorer.FaceAnalysis = AppSettings.FaceAnalysis;
@@ -696,7 +699,7 @@ internal sealed partial class MainForm : Form
         this._transportTimer.Tick += (_, _) => this.RefreshTransportPosition();
         this._transportTimer.Start();
         this._toolTip.SetToolTip(this._clearButton, "Removes every image and the global effects, and brings the format back to Twitter (Ctrl+N)");
-        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._similarImages, this._captions, this._forgetVisual, new ToolStripSeparator(), this._componentUpdates, this._keyboardShortcuts, this._openAppFolder]);
+        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, this._explorerGroups, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._similarImages, this._captions, this._forgetVisual, new ToolStripSeparator(), this._componentUpdates, this._keyboardShortcuts, this._openAppFolder]);
         // An icon per action and toggle, never on a caption nor a submenu's values (RULES.md § Icons).
         UiIcons.Set(this._startWithWindows, UiIcons.StartWithWindows);
         UiIcons.Set(this._twitterCornersDefault, UiIcons.TwitterCorners);
@@ -705,6 +708,7 @@ internal sealed partial class MainForm : Form
         UiIcons.Set(this._gapBarsFrom, UiIcons.GapBars);
         UiIcons.Set(this._explorerFolder, UiIcons.Folder);
         UiIcons.Set(this._explorerPages, UiIcons.Pages);
+        UiIcons.Set(this._explorerGroups, UiIcons.FolderGroups);
         UiIcons.Set(this._explorerContentSearch, UiIcons.TextRead);
         UiIcons.Set(this._rebuildContent, UiIcons.Rebuild);
         UiIcons.Set(this._ocrResultStyle, UiIcons.OcrResultStyle);
@@ -727,6 +731,14 @@ internal sealed partial class MainForm : Form
             var item = new ToolStripMenuItem(choice.ToString()) { Tag = choice };
             item.Click += (_, _) => SetExplorerPagesPerLoad(choice);
             _explorerPages.DropDownItems.Add(item);
+        }
+
+        foreach (var pattern in NamePatterns.All)
+        {
+            var item = new ToolStripMenuItem(NamePatterns.Title(pattern)) { Tag = pattern, ToolTipText = PatternTip(pattern) };
+            UiIcons.Set(item, PatternIcon(pattern));
+            item.Click += (_, _) => this.TogglePattern(pattern);
+            this._explorerGroups.DropDownItems.Add(item);
         }
 
         foreach (int percent in GridPreview.GuideApproachChoices)
@@ -780,6 +792,7 @@ internal sealed partial class MainForm : Form
         this._guideApproach.ToolTipText = "How far before its magnetic stop a moved image's guide shows, with a bar measuring the gap left; remembered between sessions";
         this._gapBarsFrom.ToolTipText = "The point of the image every guide's bar runs from to the guide: the image's center, or its edge nearest the guide — the same for every guide; remembered between sessions";
         _explorerPages.ToolTipText = "How many screens of tiles the file explorer loads at a time, the next ones as the list scrolls; remembered between sessions";
+        this._explorerGroups.ToolTipText = "The groups of files named by a machine the folder view sets apart, each after the named files; a file of a group turned off goes to the next group it fits, else among the named files; remembered between sessions";
         this._explorerContentSearch.ToolTipText = "Whether the file explorer's search also finds files by the text inside them — recognised in images and a PDF's first page, read in text and HTML files — extracted in the background after the files are indexed; remembered between sessions";
         this._explorerContentSearch.Click += (_, _) => this.ToggleExplorerContentSearch();
         this._rebuildContent.ToolTipText = "Forgets the text found in every file and extracts it all again — after installing an OCR language, for instance";
@@ -824,6 +837,7 @@ internal sealed partial class MainForm : Form
         this._explorer.PeopleReset += (_, _) => this._history.Rebase(this._explorer.PeopleState);
         this._explorer.FileOrderChanged += (_, _) => this.SaveExplorerFileOrder();
         this._explorer.ViewChanged += (_, _) => this.SaveExplorerView();
+        this._explorer.GroupsChanged += (_, _) => this.SaveExplorerGroups();
         _explorer.ChooseFolderRequested += (_, _) => PickExplorerFolder();
         this._explorer.FaceAnalysisRequested += (_, _) =>
         {
@@ -3384,6 +3398,11 @@ internal sealed partial class MainForm : Form
             item.Checked = (int)item.Tag! == _explorer.PagesPerLoad;
         }
 
+        foreach (ToolStripMenuItem item in this._explorerGroups.DropDownItems)
+        {
+            item.Checked = !this._explorer.PatternsOff.Contains((NamePattern)item.Tag!);
+        }
+
         foreach (ToolStripMenuItem item in this._guideApproach.DropDownItems)
         {
             item.Checked = (int)item.Tag! == this._preview.GuideApproach;
@@ -5207,6 +5226,60 @@ internal sealed partial class MainForm : Form
             this.ShowStatus($"File explorer order not remembered: {ex.Message}", error: true);
         }
     }
+
+    /// <summary>A file explorer groups button was clicked: the folder view's and the search's groups remembered between sessions.</summary>
+    private void SaveExplorerGroups()
+    {
+        try
+        {
+            AppSettings.SaveExplorerGroups(this._explorer.FolderGroups, this._explorer.SearchGroups);
+        }
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
+        {
+            this.ShowStatus($"File explorer groups not remembered: {ex.Message}", error: true);
+        }
+    }
+
+    /// <summary>
+    /// The ⚙ menu's File explorer groups: a name pattern's group turned on or off, the folder view made
+    /// again, the choice remembered between sessions. See workfiles/20261103-file-explorer-groups.md.
+    /// </summary>
+    private void TogglePattern(NamePattern pattern)
+    {
+        var off = new HashSet<NamePattern>(this._explorer.PatternsOff);
+        if (!off.Remove(pattern))
+        {
+            off.Add(pattern);
+        }
+
+        this._explorer.PatternsOff = off;
+        try
+        {
+            AppSettings.SaveExplorerPatternsOff(off);
+        }
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
+        {
+            this.ShowStatus($"File explorer groups not remembered: {ex.Message}", error: true);
+        }
+    }
+
+    private static UiIcon PatternIcon(NamePattern pattern) => pattern switch
+    {
+        NamePattern.Camera => UiIcons.Camera,
+        NamePattern.Screenshots => UiIcons.Screenshots,
+        NamePattern.Messaging => UiIcons.Messaging,
+        NamePattern.Identifiers => UiIcons.Identifiers,
+        _ => UiIcons.Numbers,
+    };
+
+    private static string PatternTip(NamePattern pattern) => pattern switch
+    {
+        NamePattern.Camera => "Files named by a camera or a phone: IMG_20220321_132643, PXL_…, DSC_0042",
+        NamePattern.Screenshots => "Screenshots and screen recordings: Screenshot_2026-11-03-10-24-09, Capture d'écran 2026-11-03…",
+        NamePattern.Messaging => "Files saved from a messaging app: WhatsApp Image 2026-11-03 at 10.24.09, IMG-20220321-WA0001, Telegram, Signal…",
+        NamePattern.Identifiers => "Names made of an identifier: a GUID, a hash, a random token such as F3xKz9aWkAA1b2c",
+        _ => "Names made of digits only: 20220321_132643, 001",
+    };
 
     /// <summary>The file explorer's view was switched by the user: remembered between sessions.</summary>
     private void SaveExplorerView()
