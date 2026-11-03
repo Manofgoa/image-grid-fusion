@@ -288,6 +288,9 @@ internal sealed class ComponentsWindow : Form
         }
 
         this._fitting = true;
+
+        // One redraw for every column, not one per column (Iteration 20).
+        this._list.BeginUpdate();
         try
         {
             int fixedWidth = this._widths[ActionsColumn];
@@ -303,14 +306,22 @@ internal sealed class ComponentsWindow : Form
 
                 // The last column shared takes what rounding left, so the row fills the width exactly.
                 int width = i == ActionsColumn - 1 ? room - given : this._widths[i] * room / nominal;
-                this._list.Columns[i].Width = width;
+                if (this._list.Columns[i].Width != width)
+                {
+                    this._list.Columns[i].Width = width;
+                }
+
                 given += width;
             }
 
-            this._list.Columns[ActionsColumn].Width = fixedWidth;
+            if (this._list.Columns[ActionsColumn].Width != fixedWidth)
+            {
+                this._list.Columns[ActionsColumn].Width = fixedWidth;
+            }
         }
         finally
         {
+            this._list.EndUpdate();
             this._fitting = false;
         }
 
@@ -342,18 +353,31 @@ internal sealed class ComponentsWindow : Form
     /// <summary>The texts of a row's plain cells, and its tooltip: its purpose, its upstream and license, its failure.</summary>
     private void Fill(Row row)
     {
+        // Each text set only when it changes: setting one redraws the row (Iteration 19).
         var record = this.RecordOf(row);
         var cells = row.Item.SubItems;
-        cells[NameColumn].Text = row.Component.Name;
-        cells[InstalledColumn].Text = record.Installed?.Label ?? "—";
-        cells[InstalledOnColumn].Text = DateText(record.InstalledOn);
-        cells[UpdatedOnColumn].Text = DateText(record.UpdatedOn);
-        cells[PinnedColumn].Text = record.Pinned.Label;
-        cells[ForcedColumn].Text = record.Forced?.Label ?? "—";
-        cells[ReleasedColumn].Text = DateText(row.Latest?.Released);
-        row.Item.ToolTipText = $"{row.Component.Purpose}\n{row.Component.Upstream} — {row.Component.License}"
+        static void Set(ListViewItem.ListViewSubItem cell, string text)
+        {
+            if (cell.Text != text)
+            {
+                cell.Text = text;
+            }
+        }
+
+        Set(cells[NameColumn], row.Component.Name);
+        Set(cells[InstalledColumn], record.Installed?.Label ?? "—");
+        Set(cells[InstalledOnColumn], DateText(record.InstalledOn));
+        Set(cells[UpdatedOnColumn], DateText(record.UpdatedOn));
+        Set(cells[PinnedColumn], record.Pinned.Label);
+        Set(cells[ForcedColumn], record.Forced?.Label ?? "—");
+        Set(cells[ReleasedColumn], DateText(row.Latest?.Released));
+        string tip = $"{row.Component.Purpose}\n{row.Component.Upstream} — {row.Component.License}"
             + (row.Error is { } error ? $"\n\n⚠ {error}" : "")
             + (row.CheckError is { } check ? $"\n\nCouldn't check: {check}" : "");
+        if (row.Item.ToolTipText != tip)
+        {
+            row.Item.ToolTipText = tip;
+        }
     }
 
     /// <summary>Every row's latest version read again, each row's spinner stopping on its own answer.</summary>
@@ -367,11 +391,11 @@ internal sealed class ComponentsWindow : Form
         {
             row.Checking = true;
             row.CheckError = null;
+            this._list.Invalidate(row.Item.SubItems[LatestColumn].Bounds);
             _ = this.CheckAsync(row, check.Token);
         }
 
         this._spin.Start();
-        this._list.Invalidate();
         this.UpdateButtons();
     }
 
@@ -567,7 +591,7 @@ internal sealed class ComponentsWindow : Form
             {
                 this._host.Changed(component);
                 this.Fill(row);
-                this._list.Invalidate();
+                this._list.Invalidate(row.Item.Bounds);
                 this.UpdateButtons();
                 this.AskRestartWhenDone();
             }

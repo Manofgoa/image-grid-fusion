@@ -120,6 +120,7 @@ Layout **A — one grouped list** (Q&A 1), drawn in the mockup of 2026-11-02:
   | Forced | The forced version of the manifest, `—` when none |
   | Latest | The latest upstream version; a **spinner** while it is being checked; *Couldn't check*, its reason in the tooltip, when it failed |
   | Released | The latest version's date, `—` when the source gives none |
+  | Size | What its files take on the disk, after *Installed* (Iteration 21) |
   | Actions | **Update** while the latest differs from the installed, **Install** while not installed, and a **▾** menu: *Back to the forced version*, *Back to the pinned version* (each only when it differs from the installed) |
 
 - **The check** runs **when the window opens** and on **Check now**: every row at once, each row's
@@ -525,6 +526,18 @@ rewritten only when their text changes, and the list is redrawn only where a row
 
 User feedback: resizing the window is very slow, and should not be. The columns are fitted with the list's
 drawing suspended (one redraw, not one per column), once per resize.
+
+### Iteration 21 — 2026-11-03 — ⚙️ Post-implementation — Uninstall, and the size on disk
+
+User request: let the downloaded content be uninstalled — deleted — and show the size of the component's
+files or folder.
+
+- A **Size** column after *Installed*: what the component's files take on the disk — its installed files in
+  its folder, a winget tool's whole folder —, `—` when not installed.
+- **Uninstall** in the row's **▾** menu, once installed: a confirmation naming the size freed, then what
+  holds the files released, its files deleted — a tool's folder —, the manifest's installed version and dates
+  cleared, the features using it refreshed. A file still locked (a native runtime loaded) is left: the row
+  says so, a restart freeing it.
 
 ---
 
