@@ -40,6 +40,9 @@ internal sealed class ComponentsWindow : Form
     private const int ReleasedColumn = 8;
     private const int ActionsColumn = 9;
 
+    // The narrowest a column shrinks to as the window narrows, in logical px.
+    private const int MinColumnWidth = 36;
+
     // How often the spinners and the indeterminate bars move, in ms.
     private const int SpinInterval = 80;
 
@@ -293,7 +296,9 @@ internal sealed class ComponentsWindow : Form
         {
             int fixedWidth = this._widths[ActionsColumn];
             int nominal = this._widths.Sum() - fixedWidth;
-            int room = Math.Max(nominal / 2, this._list.ClientSize.Width - fixedWidth);
+            // Down to a floor per column: below it, a horizontal scroll bar (Iteration 24).
+            int floor = this.LogicalToDeviceUnits(MinColumnWidth) * (this._widths.Count - 1);
+            int room = Math.Max(floor, this._list.ClientSize.Width - fixedWidth);
             int given = 0;
             for (int i = 0; i < this._widths.Count; i++)
             {
@@ -303,7 +308,7 @@ internal sealed class ComponentsWindow : Form
                 }
 
                 // The last column shared takes what rounding left, so the row fills the width exactly.
-                int width = i == ActionsColumn - 1 ? room - given : this._widths[i] * room / nominal;
+                int width = Math.Max(this.LogicalToDeviceUnits(MinColumnWidth), i == ActionsColumn - 1 ? room - given : this._widths[i] * room / nominal);
                 if (this._list.Columns[i].Width != width)
                 {
                     this._list.Columns[i].Width = width;
@@ -323,12 +328,14 @@ internal sealed class ComponentsWindow : Form
             this._fitting = false;
         }
 
-        // The vertical scroll bar may come or go once the list lays itself out, without a resize: checked again then.
+        // The vertical scroll bar may come or go once the list lays itself out, without a resize: checked again then —
+        // only when the width changed since this fit, so a fit that cannot match it is not posted again forever.
+        int fitted = this._list.ClientSize.Width;
         if (this.IsHandleCreated)
         {
             this.BeginInvoke(() =>
             {
-                if (!this.IsDisposed && this._list.Columns.Cast<ColumnHeader>().Sum(c => c.Width) != this._list.ClientSize.Width)
+                if (!this.IsDisposed && this._list.ClientSize.Width != fitted)
                 {
                     this.FitColumns();
                 }
