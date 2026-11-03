@@ -27,6 +27,9 @@ internal static class ComponentInstaller
     private const int MoveAttempts = 5;
     private const int MoveRetryMs = 200;
 
+    // How often a download's progress is reported, in ms.
+    private const int ReportInterval = 100;
+
     // winget refuses concurrent installs: one at a time.
     private static readonly SemaphoreSlim WingetGate = new(1, 1);
 
@@ -52,7 +55,7 @@ internal static class ComponentInstaller
                 {
                     if (!zips.TryGetValue(file.Url, out var directory))
                     {
-                        progress.Report(new InstallProgress(0, "Reading the package…"));
+                        progress.Report(new InstallProgress(null, "Reading the package…"));
                         directory = await RemoteZip.ReadDirectoryAsync(new Uri(file.Url), token);
                         zips[file.Url] = directory;
                     }
@@ -74,8 +77,17 @@ internal static class ComponentInstaller
                 string path = Path.Combine(staging, file.Name);
                 long start = before;
                 long weight = sizes[i];
+                long reported = 0;
                 void Report(double share)
                 {
+                    // At most every ReportInterval ms: a zip entry's extraction reports every block it reads.
+                    long now = Environment.TickCount64;
+                    if (now - reported < ReportInterval && share < 1)
+                    {
+                        return;
+                    }
+
+                    reported = now;
                     long done = start + (long)(weight * share);
                     progress.Report(new InstallProgress((double)done / total, $"{Megabytes(done)} / {Megabytes(total)} MB"));
                 }

@@ -140,7 +140,9 @@ Layout **A — one grouped list** (Q&A 1), drawn in the mockup of 2026-11-02:
   - the winget installs run **one at a time**, winget refusing concurrent installs; a queued one shows
     *Waiting for winget…*.
 - **Update all (N)** at the bottom starts every row whose latest version differs from the installed
-  one, in parallel as above.
+  one, in parallel as above; **Install all (N)** beside it every row not installed, at its forced version,
+  else its pinned one (Iteration 16). The window is a grid of three rows: Check now, the list, the buttons
+  at the right (Iteration 17).
 - **Closing the window while a row runs asks for confirmation**: *N downloads are running. Cancel them
   and close?* — **Yes** cancels them all (staging folders deleted, installed versions untouched) and
   closes; **No** keeps the window open, the downloads going on. The same question is asked when the app
@@ -497,6 +499,32 @@ User feedback: the window is very slow and flickers everywhere during a download
 double-buffered; a row's progress is only stored as it comes, and the rows running are redrawn by the
 spinner's timer (80 ms), never by each report; the installer reports a zip entry's progress at most every
 100 ms, like a direct download.
+
+### Iteration 16 — 2026-11-03 — ⚙️ Post-implementation — Install all
+
+User request: beside Update all, an **Install all**. It starts every row not installed, each at its forced
+version, else its pinned one, in parallel like Update all; its count in its text, disabled at 0.
+
+### Iteration 17 — 2026-11-03 — ⚙️ Post-implementation — The space lost at the top
+
+User feedback: at the top of the window a space is lost and a strange black band shows. The bottom row of
+buttons was laid out at the top, unpainted, by the docked panels. The window is now a grid of three rows —
+Check now, the list taking the rest, the buttons at the right — each in its place whatever the DPI.
+
+### Iteration 18 — 2026-11-03 — ⚙️ Post-implementation — Reading, a step of the bar
+
+User feedback: *Reading the package…* must be a step of the progress bar, not a greyed button. It is drawn
+as an indeterminate bar, sliding, until the download starts.
+
+### Iteration 19 — 2026-11-03 — ⚙️ Post-implementation — Check now without flicker
+
+User feedback: clicking Check now makes everything flicker; it refreshes too often. A row's cells are
+rewritten only when their text changes, and the list is redrawn only where a row changed, never whole.
+
+### Iteration 20 — 2026-11-03 — ⚙️ Post-implementation — Resizing at once
+
+User feedback: resizing the window is very slow, and should not be. The columns are fitted with the list's
+drawing suspended (one redraw, not one per column), once per resize.
 
 ---
 

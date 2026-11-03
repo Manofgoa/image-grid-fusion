@@ -49,7 +49,7 @@ internal sealed class ComponentsWindow : Form
 
     private readonly IComponentsHost _host;
     private readonly ComponentManifest _manifest = ComponentManifest.Current;
-    private readonly ListView _list = new()
+    private readonly ListView _list = new BufferedList
     {
         Dock = DockStyle.Fill,
         View = View.Details,
@@ -63,6 +63,7 @@ internal sealed class ComponentsWindow : Form
 
     private readonly Label _checkedAt = new() { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 12, 0) };
     private readonly Button _checkNow = new() { Text = "Check now", AutoSize = true };
+    private readonly Button _installAll = new() { Text = "Install all", AutoSize = true };
     private readonly Button _updateAll = new() { Text = "Update all", AutoSize = true };
     private readonly Button _close = new() { Text = "Close", AutoSize = true };
     private readonly ToolTip _balloon = new() { IsBalloon = true, ToolTipTitle = "Needed" };
@@ -122,22 +123,34 @@ internal sealed class ComponentsWindow : Form
         this._list.MouseMove += (_, e) => this._list.Cursor = this.ActionAt(e.Location) is not null ? Cursors.Hand : Cursors.Default;
 
         UiIcons.SetImage(this._checkNow, UiIcons.CheckComponents, this.LogicalToDeviceUnits(16));
+        UiIcons.SetImage(this._installAll, UiIcons.Download, this.LogicalToDeviceUnits(16));
         UiIcons.SetImage(this._updateAll, UiIcons.UpdateComponent, this.LogicalToDeviceUnits(16));
         UiIcons.SetImage(this._close, UiIcons.CloseWindow, this.LogicalToDeviceUnits(16));
         UiIcons.Attach(this._backMenu);
         this._checkNow.Click += (_, _) => this.CheckAll();
+        this._installAll.Click += (_, _) => this.InstallAll();
         this._updateAll.Click += (_, _) => this.UpdateAll();
         this._close.Click += (_, _) => this.Close();
         this._spin.Tick += (_, _) => this.Spin();
 
-        var top = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(this.LogicalToDeviceUnits(8)), WrapContents = false };
+        // Three rows, each in its place whatever the DPI: Check now, the list taking the rest, the buttons at the right
+        // (Iteration 16).
+        int pad = this.LogicalToDeviceUnits(8);
+        var top = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, Margin = new Padding(pad, pad, pad, pad / 2) };
         top.Controls.AddRange([this._checkNow, this._checkedAt]);
-        this._checkedAt.Margin = new Padding(this.LogicalToDeviceUnits(8), this.LogicalToDeviceUnits(7), 0, 0);
-        var bottom = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, Padding = new Padding(this.LogicalToDeviceUnits(8)), FlowDirection = FlowDirection.RightToLeft, WrapContents = false };
-        bottom.Controls.AddRange([this._close, this._updateAll]);
-        this.Controls.Add(this._list);
-        this.Controls.Add(top);
-        this.Controls.Add(bottom);
+        this._checkedAt.Margin = new Padding(pad, this.LogicalToDeviceUnits(7), 0, 0);
+        var bottom = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, Anchor = AnchorStyles.Right, Margin = new Padding(pad, pad / 2, pad, pad) };
+        bottom.Controls.AddRange([this._installAll, this._updateAll, this._close]);
+        var rows = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, BackColor = SystemColors.Window };
+        rows.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        rows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        rows.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        rows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        this._list.Margin = Padding.Empty;
+        rows.Controls.Add(top, 0, 0);
+        rows.Controls.Add(this._list, 0, 1);
+        rows.Controls.Add(bottom, 0, 2);
+        this.Controls.Add(rows);
         this.AcceptButton = null;
         this.CancelButton = null;
         this.UpdateButtons();
@@ -213,6 +226,7 @@ internal sealed class ComponentsWindow : Form
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);
+        this.FitColumns();
         if (this._need is not null)
         {
             this.BeginInvoke(this.ShowBalloon);
@@ -298,6 +312,18 @@ internal sealed class ComponentsWindow : Form
         finally
         {
             this._fitting = false;
+        }
+
+        // The vertical scroll bar may come or go once the list lays itself out, without a resize: checked again then.
+        if (this.IsHandleCreated)
+        {
+            this.BeginInvoke(() =>
+            {
+                if (!this.IsDisposed && this._list.Columns.Cast<ColumnHeader>().Sum(c => c.Width) != this._list.ClientSize.Width)
+                {
+                    this.FitColumns();
+                }
+            });
         }
     }
 
@@ -444,6 +470,18 @@ internal sealed class ComponentsWindow : Form
         }
     }
 
+    /// <summary>The rows not installed, each at its forced version, else its pinned one, started at once (Iteration 16).</summary>
+    private void InstallAll()
+    {
+        foreach (var row in this.Installable().ToList())
+        {
+            _ = this.RunAsync(row, this.RecordOf(row).Forced ?? row.Component.Pinned);
+        }
+    }
+
+    private IEnumerable<Row> Installable() =>
+        this._rows.Values.Where(r => r.Run is null && !r.PendingRestart && this.RecordOf(r).Installed is null);
+
     private IEnumerable<Row> Updatable() =>
         this._rows.Values.Where(r => r.Run is null && !r.PendingRestart && r.Latest is not null && !r.UpToDate && this.RecordOf(r).Installed is not null);
 
@@ -452,6 +490,9 @@ internal sealed class ComponentsWindow : Form
         int count = this.Updatable().Count();
         this._updateAll.Text = $"Update all ({count})";
         this._updateAll.Enabled = count > 0;
+        int missing = this.Installable().Count();
+        this._installAll.Text = $"Install all ({missing})";
+        this._installAll.Enabled = missing > 0;
     }
 
     /// <summary>
@@ -473,14 +514,8 @@ internal sealed class ComponentsWindow : Form
         this.Fill(row);
         this._spin.Start();
         this.UpdateButtons();
-        var progress = new Progress<InstallProgress>(p =>
-        {
-            run.Progress = p;
-            if (!this.IsDisposed)
-            {
-                this._list.Invalidate(row.Item.SubItems[ActionsColumn].Bounds);
-            }
-        });
+        // Only stored: the spinner's timer redraws the rows running, never each report (Iteration 15).
+        var progress = new Progress<InstallProgress>(p => run.Progress = p);
 
         if (component.NeedsRuntime && this._rows.Values.First(r => r.Component.Id == ComponentRegistry.OnnxRuntime) is { Run: null } runtime
             && !runtime.Component.IsInstalled && this.RecordOf(runtime).Pending is null)
@@ -620,13 +655,9 @@ internal sealed class ComponentsWindow : Form
                 any = true;
             }
 
-            if (row.Run is { } run)
+            if (row.Run is not null)
             {
-                if (run.Progress.Share is null)
-                {
-                    this._list.Invalidate(row.Item.SubItems[ActionsColumn].Bounds);
-                }
-
+                this._list.Invalidate(row.Item.SubItems[ActionsColumn].Bounds);
                 any = true;
             }
         }
@@ -663,14 +694,12 @@ internal sealed class ComponentsWindow : Form
         {
             case NameColumn:
             {
-                // The ℹ️ keeps its room: a name too long is cut before it.
+                // The ℹ️ first, aligned from row to row, the name after it (Iteration 14).
                 int icon = this.LogicalToDeviceUnits(14);
-                int gap = this.LogicalToDeviceUnits(4);
-                var name = Rectangle.FromLTRB(text.Left, text.Top, Math.Max(text.Left, text.Right - icon - gap), text.Bottom);
-                int width = Math.Min(name.Width, TextRenderer.MeasureText(g, row.Component.Name, this._list.Font, name.Size, Flags).Width);
+                int gap = this.LogicalToDeviceUnits(6);
+                g.DrawImage(UiIcons.ComponentInfo.At(icon), text.Left, bounds.Top + (bounds.Height - icon) / 2, icon, icon);
+                var name = Rectangle.FromLTRB(Math.Min(text.Right, text.Left + icon + gap), text.Top, text.Right, text.Bottom);
                 TextRenderer.DrawText(g, row.Component.Name, this._list.Font, name, fore, Flags);
-                int x = text.Left + width + gap;
-                g.DrawImage(UiIcons.ComponentInfo.At(icon), x, bounds.Top + (bounds.Height - icon) / 2, icon, icon);
                 break;
             }
 
@@ -891,6 +920,12 @@ internal sealed class ComponentsWindow : Form
         Main,
         Back,
         Cancel,
+    }
+
+    /// <summary>The list drawn double-buffered: its rows redrawn while downloads run never flicker.</summary>
+    private sealed class BufferedList : ListView
+    {
+        public BufferedList() => this.DoubleBuffered = true;
     }
 
     /// <summary>An install running on a row: its cancellation, and where it stands.</summary>
