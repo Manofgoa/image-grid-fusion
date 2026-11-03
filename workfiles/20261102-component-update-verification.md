@@ -565,6 +565,7 @@ says so rather than staying blank.
 | README (+ .fr) | 10 | 2026-11-02 | § Components / § Composants; the offers' passages |
 | GLOSSARY (+ .fr) | 10 | 2026-11-02 | Component, Component updates window, pinned / forced version, components manifest |
 | SHORTCUTS (+ .fr) | 10 | 2026-11-02 | Escape closes the window (§ Dialogs) |
+| Adjustments | 12–23 | 2026-11-03 | Code (columns, flicker, layout, Install all, Uninstall, size, Explorer, no Close); RULES, README and GLOSSARY (+ .fr) updated; checked in the harness at 1 100 and 1 900 px, uninstall and size included |
 
 ---
 
