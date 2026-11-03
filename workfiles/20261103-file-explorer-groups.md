@@ -185,6 +185,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | How are the groupings turned on? (a Groups drop-down, always automatic, an on / off button) | An on / off button turning every grouping off | 2026-11-03 |
 | 3 | How does a group show in the list? (collapsible header, group tile, header without collapse) | A header line, without collapse | 2026-11-03 |
 | 4 | Is the subject straightforward or tricky / long? | Straightforward | 2026-11-03 |
+| 5 | Full section order: prefix groups → Other folders → Named files → Automatic names? | | 2026-11-03 |
+| 6 | Inside a prefix group, does the flap keep `Outils RS ›` small? | | 2026-11-03 |
+| 7 | Which stamp names count as automatic? | | 2026-11-03 |
+| 8 | Which views get the groups? | | 2026-11-03 |
 
 ---
 
