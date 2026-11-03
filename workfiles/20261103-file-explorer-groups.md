@@ -55,8 +55,10 @@ Components: `UI/ThumbnailGrid` (layout, hit-test, keyboard, paint), `UI/FileExpl
 
 ## Folder Prefix Groups
 
-- Built on `SharedPrefix`: sibling folders sharing at least one whole leading word, compared
-  ignoring case, the same separators (space, `-`, `_`, `.`).
+- Built on `SharedPrefix` (`SharedPrefix.Groups`): sibling folders sharing their **first word**,
+  compared ignoring case, the same separators (space, `-`, `_`, `.`); the group's title is the
+  longest run of leading words **all** of them share, as its first folder writes it —
+  `outils_rs-gamma` joins `Outils RS Alpha` and `Outils RS Beta` under `Outils RS` (Iteration 7).
 - **Two folders at least** make a group — like the flap's prefix, which needs a sibling.
 - Nested prefixes (`Outils RS Alpha`, `Outils RS Alpha 2`, `Outils RS Beta`): one group per
   **shortest** shared prefix (`Outils RS`), the largest group, no sub-sections (Q&A 13).
@@ -92,6 +94,8 @@ kind counts (Q&A 7). Proposed patterns, **in the order they are tried**:
 
 The search view's results grouped by **how they were found** (Q&A 8):
 
+- **Every search** gets them — the search view's and a search typed in the folder view; `*`, the
+  favorites and *Similar to …* stay unsectioned (Iteration 7).
 - **Two groups only** (Q&A 12), each match in the group of its tier (`FileSearch` tiers):
 
   | Group | Holds |
@@ -102,20 +106,24 @@ The search view's results grouped by **how they were found** (Q&A 8):
 - **Ranking** (Q&A 11): a file found **by its name and by its content** (its 💡) comes **first**, then
   by its name alone, then the rest of Path in today's tiers; Content keeps today's tiers. A file
   found both ways is listed once, in Path, with its 💡. Whether the search already knows a name
-  match's content hit (`SearchMatch.ContentWord`) is checked at implementation.
+  match's content hit (`SearchMatch.ContentWord`) is checked at implementation: it did not — a
+  file found by its path was never looked for in its content. Now a file whose name holds every
+  word, with the content search on (💡), is looked for there too; holding them all, it ranks first
+  (tier −1, `Rank.ByNameAndContent`), its light bulb shown (Iteration 7).
 - The new first tier applies with the groups off too (Q&A 13): it is a ranking, not a group.
 
 ## Toggles
 
 - **Two on / off buttons** (Q&A 8, superseding Q&A 2's single one): the **folder view's groups** and
   the **search results' groups**, each turning its view's groupings on or off at once, **side by
-  side, always visible**, in the tile size row next to the 🔳 / 📃 view buttons (Q&A 14); an icon
-  each per § Icons, chosen at implementation, their tooltips saying which view they group; pressed
-  while on.
+  side, always visible**, in the tile size row next to the 🔳 / 📃 view buttons (Q&A 14): 🗂️ **Folder
+  groups** and 🗃️ **Search groups**, their tooltips saying which view they group; pressed while on
+  (Iteration 7).
 - **Remembered** between sessions in `settings.json`; **on** by default.
-- The pattern checkboxes live in a **⚙ menu submenu** (its name chosen at implementation, e.g.
-  *Explorer groups*); they work under the folder view's button: it off, no group shows whatever
-  they say.
+- The pattern checkboxes live in the **⚙ menu's File explorer groups**, after *File explorer pages
+  per load*: 📷 Camera, 🖥️ Screenshots, 💬 Messaging, 🆔 Identifiers, 🔢 Numbers, each with examples in its
+  tooltip; they work under the folder view's button: it off, no group shows whatever they say
+  (Iteration 7).
 
 ## Views
 
@@ -245,6 +253,31 @@ settled.
 Go given (Q&A 16): code, tests and documentation, in a worktree on `feature/file-explorer-groups`.
 The scope is frozen as the sections above stand.
 
+### Iteration 7 — 2026-11-03 — 🧭 Implementation choices
+
+⚠️ Rule broken — a shortcut change in the same commit as its code (RULES.md § Keyboard Shortcuts)
+   The arrows' new behaviour across the headers went into the grid's commit, SHORTCUTS.md and
+   SHORTCUTS.fr.md into a commit of their own right after it.
+   Why: the run keeps code and documentation in separate commits; both rules could not hold.
+   Autonomous run: reported instead of asked.
+
+- **Folder groups**: by the first word shared, titled by the longest run all members share
+  (§ Folder Prefix Groups).
+- **Search sections in every search**, the folder view's included; *Similar to …* unsectioned
+  (§ Search Result Groups).
+- **The name-and-content tier** needed the search to look for a name match in its content: done
+  only when every word is in the name and 💡 is on (§ Search Result Groups).
+- **Section titles carry the count of the whole list**, not of the tiles loaded yet.
+- **Patterns**: Camera also takes `P1010001` (`P` and 7 digits), a WhatsApp `IMG-…-WA0001` left to
+  Messaging; Messaging takes Telegram's `photo_2024-01-02_…`, Signal, `FB_IMG_…`, `received_…`,
+  Snapchat; a random token is 10 letters and digits or more, both present, switching kind (lower,
+  upper, digit) at least every third character — `grok-video-ba71b543-…` lands in Identifiers.
+- **Icons**: 🗂️ and 🗃️ for the buttons (📑 is the Layers'), 📷 🖥️ 💬 🆔 🔢 for the patterns.
+- **The header**: its title in bold, a thin grey line after it across the row, its height a line
+  plus 10 px; the first line of a section scrolled into view brings its header with it.
+- **Checks**: the worktree's build got a copy of the main build's `settings.json` and `index\` so
+  the folder view could be seen on the real base folder; launched with `--new-instance`.
+
 ---
 
 ## Implementation Log
@@ -254,9 +287,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
+| Code | 7 | 2026-11-03 | `NamePatterns`, `SharedPrefix.Groups`, the name-and-content tier, the grid's sections, the panel's sections and buttons, the ⚙ submenu and the settings |
+| Unit tests | 7 | 2026-11-03 | None: no test project (Q&A 15); the patterns and the folder groups checked on sample names in a throw-away console, the sections in the app |
+| README | 7 | 2026-11-03 | README / GLOSSARY in English and French, SHORTCUTS in English and French, RULES.md § File Explorer Sections |
 
 ---
 
