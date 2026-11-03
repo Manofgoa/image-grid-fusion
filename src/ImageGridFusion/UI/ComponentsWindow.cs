@@ -232,7 +232,8 @@ internal sealed class ComponentsWindow : Form
         base.OnLoad(e);
         var area = this.Owner?.Bounds ?? Screen.PrimaryScreen!.WorkingArea;
         var screen = Screen.FromRectangle(area).WorkingArea;
-        int width = this._list.Columns.Cast<ColumnHeader>().Sum(c => c.Width) + this.LogicalToDeviceUnits(40);
+        // The columns' opening widths, not the ones a first fit gave them before the window had its size (Iteration 28).
+        int width = this._widths.Sum() + SystemInformation.GetVerticalScrollBarWidthForDpi(this.DeviceDpi) + (this.Width - this.ClientSize.Width) + this.LogicalToDeviceUnits(4);
         this.Size = new Size(Math.Min(width, screen.Width), Math.Min(this.LogicalToDeviceUnits(720), screen.Height * 9 / 10));
         this.Location = new Point(
             Math.Clamp(area.Left + (area.Width - this.Width) / 2, screen.Left, Math.Max(screen.Left, screen.Right - this.Width)),
@@ -243,11 +244,36 @@ internal sealed class ComponentsWindow : Form
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);
+        this.FitHeight();
         this.FitColumns();
         if (this._need is not null)
         {
             this.BeginInvoke(this.ShowBalloon);
         }
+    }
+
+    /// <summary>
+    /// The window grown to show every row at once (Iteration 28) — the list's last row measured once laid out — within the
+    /// screen's working area, kept on it.
+    /// </summary>
+    private void FitHeight()
+    {
+        if (this._list.Items.Count == 0)
+        {
+            return;
+        }
+
+        int needed = this._list.Items[this._list.Items.Count - 1].Bounds.Bottom + this.LogicalToDeviceUnits(24);
+        int grow = needed - this._list.ClientSize.Height;
+        if (grow <= 0)
+        {
+            return;
+        }
+
+        var screen = Screen.FromControl(this).WorkingArea;
+        int height = Math.Min(this.Height + grow, screen.Height);
+        int top = Math.Clamp(this.Top - (height - this.Height) / 2, screen.Top, screen.Bottom - height);
+        this.SetBounds(this.Left, top, this.Width, height);
     }
 
     /// <summary>Escape closes.</summary>
