@@ -66,9 +66,24 @@ Settled with the user before exploration (Q&A 1–4):
 
 ### Save Upscaled Image
 
-An **action** writing the upscaled image to a real file, for when one is wanted (Q&A 11):
-*Save upscaled image…*, a file dialog, a PNG — the effect itself unchanged, the cell untouched.
-Where it lives, what it holds and how a GIF is saved: Open Questions.
+An **action** writing the upscaled image to a real file, for when one is wanted (Q&A 11) — the effect
+itself unchanged, the cell untouched:
+
+- **Two routes, one action** (Q&A 13): a **Save upscaled image…** button in the Upscale options, after
+  the ×2 / ×4 thumbnails, set apart as an action (RULES.md § Options Toolbar — as Crop's 100 %); and the
+  same entry in the **cell's context menu** (`MainForm.ShowCellMenu`). One `UiIcons` field for both.
+  Enabled while the effect is on for the image; when its upscale is not ready yet, the action waits for
+  it, the status line saying so.
+- **What it holds** (Q&A 14): the **upscaled image alone**, whole — the image as loaded, ×2 or ×4, the
+  cut-out when the Cutout is on (§ Drawn Bitmap: upscale, then the mask) — never the crop, the
+  orientation, the colors or any other effect: a source file to reuse. The cell as drawn stays Cell
+  copy's business.
+- **A still** is saved as a **PNG** (its alpha kept); **an animated GIF as an animated GIF** of the
+  upscaled frames (Q&A 15), each frame read from the upscale cache and written with its own delay
+  (`Imaging/GifEncoder`), its trim ignored — the whole GIF, as the image as loaded.
+- **The file dialog** opens in the image's folder, its name proposed as `<name>-x2.png` / `-x4.gif`;
+  an image without a file (pasted) gets `upscaled-x4.png` in the user's Pictures folder. Out of the
+  undo history.
 
 ---
 
@@ -176,7 +191,7 @@ app*). Nothing is created or updated; the checks are made by hand on the launche
 | An animated GIF: progress badge, then upscaled frames in the MP4 / GIF export | Preview, export |
 | Video, PDF, text: checkbox disabled with its tooltip; a factor over 8192 disabled | Effects toolbar |
 | Engine missing: the Component updates window opened on its row, the effect back to off; installed, updated, uninstalled from the window, the sessions released | Component updates window |
-| *Save upscaled image…*: the PNG written, at the upscaled size | File dialog, Explorer |
+| *Save upscaled image…* from the options and from the cell's menu: a still's PNG at the upscaled size, cut out with the Cutout on; a GIF's animated GIF, its delays kept | File dialog, Explorer |
 | An effect preset with Upscale restored | File explorer |
 
 ---
@@ -191,11 +206,12 @@ app*). Nothing is created or updated; the checks are made by hand on the launche
   the whole image, then apply the cutout's mask enlarged
 - [x] ~~**A GIF's upscaled frames** — in memory, or in a temp cache?~~ → A cache folder in `%TEMP%`,
   read back per frame
-- [ ] **Where *Save upscaled image…* lives** — a button in the Upscale options (after the factors, set
-  apart as an action), the cell's context menu, or both?
-- [ ] **What it saves** — the upscaled image alone, whole (as loaded, with the cut-out when the Cutout is
-  on), or the cell as drawn with all its effects (which Cell copy already gives)?
-- [ ] **A GIF** — saved as an animated GIF of the upscaled frames, or only the frame shown as a PNG?
+- [x] ~~**Where *Save upscaled image…* lives** — the Upscale options, the cell's menu, or both?~~ →
+  Both
+- [x] ~~**What it saves** — the upscaled image alone, or the cell as drawn with its effects?~~ → The
+  upscaled image alone, whole, with the cut-out when the Cutout is on
+- [x] ~~**A GIF** — an animated GIF of the upscaled frames, or the frame shown as a PNG?~~ → An
+  animated GIF
 
 ---
 
@@ -237,6 +253,13 @@ The user asked whether the upscale makes a new image or a temporary one. Kept a 
 plus an **action saving the upscaled image to a file** (Q&A 11) — § Save Upscaled Image. Three
 questions opened about it.
 
+### Iteration 5 — 2026-11-03
+
+The three questions on the save action answered (Q&A 13–15): a button in the Upscale options and an
+entry of the cell's menu; the upscaled image alone, whole, cut out when the Cutout is on; a GIF saved
+as an animated GIF. Proposed by the agent: the PNG for a still, the file dialog in the image's folder
+with `-x2` / `-x4` in the name, the action waiting for an upscale not ready. No question left.
+
 ---
 
 ## Implementation Log
@@ -272,9 +295,11 @@ Questions asked by the agent during design, with user responses.
 | 10 | Go for implementation — scope and where? | Interrupted — not answered | 2026-10-29 |
 | 11 | Which form: a temporary effect, with a persistent cache, with a *Save* action, or a new image? | The temporary effect plus a *Save upscaled image…* action | 2026-11-03 |
 | 12 | Update the workfile for the Component updates window? | Yes | 2026-11-03 |
-| 13 | Where does *Save upscaled image…* live? | | |
-| 14 | What does it save? | | |
-| 15 | A GIF: animated GIF or the frame shown? | | |
+| 13 | Where does *Save upscaled image…* live? | Both: the Upscale options and the cell's menu | 2026-11-03 |
+| 14 | What does it save? | The upscaled image alone | 2026-11-03 |
+| 15 | A GIF: animated GIF or the frame shown? | An animated GIF | 2026-11-03 |
+| 16 | Mark the backlog row *AI upscale* with this workfile? | | |
+| 17 | Go for implementation — scope and where? | | |
 
 ---
 
