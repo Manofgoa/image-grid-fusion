@@ -569,6 +569,14 @@ still locked left, its row saying a restart frees it.
 Done: `ComponentsWindow.UninstallAllAsync`; checked in the harness — two components installed, both removed,
 each kind released once.
 
+### Iteration 26 — 2026-11-03 — ⚙️ Post-implementation — The name, a link to its page
+
+User request: the component's name clickable, opening its GitHub repository, its site or its winget page.
+The name is drawn as a link — the link color, underlined under the mouse, the hand cursor — and opens in
+the browser the upstream's page: the Hugging Face repository, the GitHub repository, the NuGet package's
+page; for a winget tool, its project's page — yt-dlp's and its FFmpeg builds' repositories, Deno's site —
+winget having no page of its own for a package.
+
 ---
 
 ## Implementation Log
