@@ -1029,7 +1029,11 @@ the **Component updates window** (origin: `workfiles/20261102-component-update-v
   A file still locked — a native runtime loaded — stays staged: **swapped at the next start**, in
   `Program.Main` before anything loads it (`ComponentInstaller.ApplyPending`), the window offering a
   restart. A new resident engine adds its release there.
-- **Several rows at once**, each with its own progress bar and ×; a runtime several rows need is installed
+- **Uninstall** (the row's ▾) deletes the installed version's files — a winget tool's folder — after a
+  confirmation naming the size freed, what holds them released first; a file still locked is left, the row
+  saying a restart frees it. The **size** shown is what those files take on the disk.
+- **Several rows at once**, each with its own progress bar and ×, redrawn by the window's timer only, never
+  by each progress report; a runtime several rows need is installed
   once; the winget installs one at a time. Closing the window — or quitting the app — while one runs asks
   first, a **Yes** cancelling them, the installed versions untouched.
 - Out of the undo history.
