@@ -125,7 +125,7 @@ Layout **A — one grouped list** (Q&A 1), drawn in the mockup of 2026-11-02:
 - **The check** runs **when the window opens** and on **Check now**: every row at once, each row's
   spinner stopping on its own answer. Nothing runs in the background, and nothing runs while the
   window is closed. The time of the last check is shown at the top.
-- **A progress bar per row** (Iteration 8): while a component downloads or installs, its Actions cell
+- **A progress bar per row** (Iteration 8), redrawn by the spinner's timer, the list double-buffered (Iteration 15): while a component downloads or installs, its Actions cell
   shows a bar — its share done, the megabytes received over the total (`12 / 48 MB`), then
   *Installing…* while its files are swapped — and a **×** cancelling that row alone, its staging folder
   deleted, the installed version untouched. A winget install, which tells no size, shows an
@@ -168,7 +168,7 @@ Layout **A — one grouped list** (Q&A 1), drawn in the mockup of 2026-11-02:
 - **Install** installs the **forced version when there is one, else the pinned one** — never the latest,
   which *Update* offers once installed (Iteration 11). An engine installed without ONNX Runtime starts the
   runtime's row at the same time.
-- The ℹ️ tooltip is the **row's** tooltip: hovering anywhere on the row shows the purpose, the upstream,
+- The ℹ️ is drawn **before the name**, aligned from row to row (Iteration 14). Its tooltip is the **row's** tooltip: hovering anywhere on the row shows the purpose, the upstream,
   the license, and a failure's reason (Iteration 11).
 - **The columns follow the window** (Iteration 12): resized, the list's columns share its width in
   proportion to their opening widths, the Actions column keeping its own; they always add up to the
@@ -485,6 +485,18 @@ User feedback on the delivered window: the content must take all the width avail
 shows when none is needed — a horizontal one showed under the list. The columns are fitted again whenever
 the list's usable width changes, the vertical scroll bar appearing after the window opened included, so
 the columns always add up to the list's width exactly: no horizontal scroll bar, no gap at the right.
+
+### Iteration 14 — 2026-11-03 — ⚙️ Post-implementation — The ℹ️ before the name
+
+User request: the help icon on the left, aligned from row to row. The ℹ️ is drawn at the start of the
+Component cell, the name after it.
+
+### Iteration 15 — 2026-11-03 — ⚙️ Post-implementation — No flicker while downloading
+
+User feedback: the window is very slow and flickers everywhere during a download. The list is drawn
+double-buffered; a row's progress is only stored as it comes, and the rows running are redrawn by the
+spinner's timer (80 ms), never by each report; the installer reports a zip entry's progress at most every
+100 ms, like a direct download.
 
 ---
 
