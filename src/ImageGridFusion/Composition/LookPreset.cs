@@ -46,6 +46,9 @@ internal static class LookPreset
                 case ImageEffect.Cutout:
                     json["cutout"] = look.Cutout!.ToJson();
                     break;
+                case ImageEffect.Upscale:
+                    json["upscale"] = look.Upscale!.ToJson();
+                    break;
                 case ImageEffect.Zoom:
                     json["zoom"] = new JsonObject
                     {
@@ -112,6 +115,7 @@ internal static class LookPreset
         }
 
         look = json["cutout"] is JsonObject cutout ? look.WithCutout(CutoutEffect.FromJson(cutout)) : look;
+        look = json["upscale"] is JsonObject upscale ? look.WithUpscale(UpscaleEffect.FromJson(upscale)) : look;
 
         if (json.TryGetPropertyValue("background", out var background))
         {
@@ -156,6 +160,7 @@ internal static class LookPreset
             : $"{(background.Automatic ? "automatic color" : $"#{background.Color.R:X2}{background.Color.G:X2}{background.Color.B:X2}")}, {Percent(background.Opacity)}, {background.Mode}",
         ImageEffect.Crop => look.Crop!.SeenRatio(look) is { } ratio ? $"ratio {RatioName(ratio)}" : "free",
         ImageEffect.Cutout => look.Cutout!.Describe(),
+        ImageEffect.Upscale => look.Upscale!.Describe(),
         ImageEffect.Zoom => look.ZoomOnArrival ? "image moved, whole at arrival"
             : look.ZoomFit != ZoomFit.None ? look.ZoomFit.ToString() : Percent(look.Zoom),
         ImageEffect.Animations => $"{look.Motion!.Kind}, every {look.Motion.Cycle.TotalSeconds.ToString("0.#", CultureInfo.InvariantCulture)} s",

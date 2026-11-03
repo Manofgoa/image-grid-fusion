@@ -8,6 +8,7 @@ public enum ImageEffect
     Background,
     Crop,
     Cutout,
+    Upscale,
     Zoom,
     Animations,
     Rotate,
@@ -78,6 +79,7 @@ public sealed record ImageLook
     private BlurEffect? KeptBlur { get; init; }
     private CropEffect? KeptCrop { get; init; }
     private CutoutEffect? KeptCutout { get; init; }
+    private UpscaleEffect? KeptUpscale { get; init; }
     private VolumeEffect? KeptVolume { get; init; }
     private BackgroundEffect? KeptBackground { get; init; }
     private MotionEffect? KeptMotion { get; init; }
@@ -134,6 +136,12 @@ public sealed record ImageLook
     /// </summary>
     public CutoutEffect? Cutout { get; private init; }
 
+    /// <summary>
+    /// The Upscale effect, <c>null</c> while inactive: the image drawn from a model's enlargement of it, ×2 or ×4,
+    /// computed off the UI thread and cached on the image (workfiles/20261029-image-upscale.md).
+    /// </summary>
+    public UpscaleEffect? Upscale { get; private init; }
+
     /// <summary>The Animations effect, <c>null</c> while inactive: the image then stands still in its cell.</summary>
     public MotionEffect? Motion { get; private init; }
 
@@ -185,6 +193,7 @@ public sealed record ImageLook
         ImageEffect.Background => Background is not null,
         ImageEffect.Crop => Crop is not null,
         ImageEffect.Cutout => this.Cutout is not null,
+        ImageEffect.Upscale => this.Upscale is not null,
         ImageEffect.Frames => Frames is not null,
         ImageEffect.Colors => this.Colors is not null,
         ImageEffect.Blur => Blur is not null,
@@ -224,6 +233,8 @@ public sealed record ImageLook
                 return this with { Crop = crop, KeptCrop = null };
             case ImageEffect.Cutout when this.KeptCutout is { } cutout:
                 return this with { Cutout = cutout, KeptCutout = null };
+            case ImageEffect.Upscale when this.KeptUpscale is { } upscale:
+                return this with { Upscale = upscale, KeptUpscale = null };
             case ImageEffect.Blur when KeptBlur is { } blur:
                 return this with { Blur = blur, KeptBlur = null };
             case ImageEffect.Volume when KeptVolume is { } volume:
@@ -257,6 +268,7 @@ public sealed record ImageLook
             ImageEffect.Background => off with { KeptBackground = Background },
             ImageEffect.Crop => off with { KeptCrop = Crop },
             ImageEffect.Cutout => off with { KeptCutout = this.Cutout },
+            ImageEffect.Upscale => off with { KeptUpscale = this.Upscale },
             ImageEffect.Animations => off with { KeptMotion = this.Motion },
             _ => off with { KeptBlur = Blur },
         };
@@ -280,6 +292,7 @@ public sealed record ImageLook
             ImageEffect.Volume => look with { KeptVolume = null },
             ImageEffect.Crop => look with { KeptCrop = null },
             ImageEffect.Cutout => look with { KeptCutout = null },
+            ImageEffect.Upscale => look with { KeptUpscale = null },
             ImageEffect.Animations => look with { KeptMotion = null },
             _ => look with { KeptBlur = null },
         };
@@ -291,6 +304,7 @@ public sealed record ImageLook
         ImageEffect.Background => this with { Background = BackgroundEffect.Default },
         ImageEffect.Crop => this with { Crop = CropEffect.Default },
         ImageEffect.Cutout => this with { Cutout = CutoutEffect.Default },
+        ImageEffect.Upscale => this with { Upscale = UpscaleEffect.Default },
         ImageEffect.Frames => this with { Frames = FramesEffect.Default },
         ImageEffect.Colors => this with { Colors = ColorsEffect.Default },
         ImageEffect.Blur => this with { Blur = BlurEffect.Default },
@@ -307,6 +321,7 @@ public sealed record ImageLook
             ImageEffect.Background => this with { Background = null },
             ImageEffect.Crop => this with { Crop = null },
             ImageEffect.Cutout => this with { Cutout = null },
+            ImageEffect.Upscale => this with { Upscale = null },
             ImageEffect.Zoom => this with { Zoom = 1, Focus = Center, ZoomFit = ZoomFit.None, ZoomOnArrival = false },
             ImageEffect.Rotate => WithRotation(0),
             ImageEffect.Flip => (FlipX ? ToggleFlipX() : this) is var flipped && flipped.FlipY ? flipped.ToggleFlipY() : flipped,
@@ -428,6 +443,8 @@ public sealed record ImageLook
 
     public ImageLook WithCutout(CutoutEffect? cutout) => this with { Cutout = cutout };
 
+    public ImageLook WithUpscale(UpscaleEffect? upscale) => this with { Upscale = upscale };
+
     public ImageLook WithVolume(VolumeEffect? volume) => this with { Volume = volume };
 
     public ImageLook WithBackground(BackgroundEffect? background) => this with { Background = background };
@@ -459,6 +476,7 @@ public sealed record ImageLook
             ImageEffect.Background => Background != other.Background || KeptBackground != other.KeptBackground,
             ImageEffect.Crop => Toggled(effect) || (!moved && (Crop != other.Crop || KeptCrop != other.KeptCrop)),
             ImageEffect.Cutout => this.Cutout != other.Cutout || this.KeptCutout != other.KeptCutout,
+            ImageEffect.Upscale => this.Upscale != other.Upscale || this.KeptUpscale != other.KeptUpscale,
             ImageEffect.Zoom => Toggled(effect) || Zoom != other.Zoom || this.ZoomFit != other.ZoomFit || (!moved && (Focus != other.Focus || KeptZoom != other.KeptZoom)),
             ImageEffect.Rotate => turned,
             ImageEffect.Flip => flipped,
