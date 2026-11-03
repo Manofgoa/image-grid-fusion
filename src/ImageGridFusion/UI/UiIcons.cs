@@ -149,6 +149,7 @@ internal static class UiIcons
     // The tabs (Iteration 8): an emoji where one says the effect, its drawing kept otherwise.
     public static readonly UiIcon Background = UiIcon.Emoji("\U0001F5BC️");
     public static readonly UiIcon Cutout = UiIcon.Emoji("✂️");
+    public static readonly UiIcon Upscale = UiIcon.Emoji("\U0001F199");
     public static readonly UiIcon Zoom = UiIcon.Emoji("\U0001F50D");
     public static readonly UiIcon Animations = UiIcon.Emoji("✨");
     public static readonly UiIcon Rotate = UiIcon.Emoji("\U0001F503");
@@ -178,6 +179,7 @@ internal static class UiIcons
     public static readonly UiIcon ClearAll = UiIcon.Emoji("\U0001F9F9");
     public static readonly UiIcon Settings = UiIcon.Emoji("⚙️");
     public static readonly UiIcon Save = UiIcon.Emoji("\U0001F4BE");
+    public static readonly UiIcon SaveUpscaled = UiIcon.Emoji("\U0001F4BE");
     public static readonly UiIcon Play = UiIcon.Emoji("▶️");
     public static readonly UiIcon Pause = UiIcon.Emoji("⏸️");
     public static readonly UiIcon ByName = UiIcon.Emoji("\U0001F520");

@@ -122,6 +122,7 @@ internal sealed partial class MainForm : IComponentsHost
         {
             this._explorer.SuspendEngines();
             await this._cutouts.ReleaseNowAsync();
+            await this._upscales.ReleaseNowAsync();
         }
     }
 
