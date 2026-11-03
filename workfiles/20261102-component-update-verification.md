@@ -589,6 +589,9 @@ text; *Total on disk* at the bottom left. Checked in the harness — the hover u
 User request: a larger default size, so that everything shows at once — as in their capture, every row and
 every column. The window opens as wide as its columns at their opening widths, and as tall as its rows —
 measured once the list is laid out —, both within the screen's working area, centered on the main window.
+Done: the opening width read from the columns' opening widths — a first fit, before the window had its size,
+had shrunk them, so the window opened too narrow — and the height grown to the last row (`FitHeight`). Checked
+in the harness: every row and column shown, no scroll bar.
 
 ---
 
