@@ -475,6 +475,8 @@ Divergent choices of the run, each in the domain sections above:
 User request: when the window is resized, its content adapts to it. The list's columns share its width as
 it changes — each in proportion to its width at the window's opening, the Actions column keeping its
 own so its buttons and progress bar never shrink —, the list itself filling the window as before.
+Done: the columns refitted on every resize of the list (`ComponentsWindow.FitColumns`), a name too long cut
+before its ℹ️ rather than under it; checked in the harness at 1 100 and 1 900 px wide.
 
 ---
 
