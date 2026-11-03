@@ -31,13 +31,14 @@ internal sealed class ComponentsWindow : Form
     // The columns, in their order.
     private const int NameColumn = 0;
     private const int InstalledColumn = 1;
-    private const int InstalledOnColumn = 2;
-    private const int UpdatedOnColumn = 3;
-    private const int PinnedColumn = 4;
-    private const int ForcedColumn = 5;
-    private const int LatestColumn = 6;
-    private const int ReleasedColumn = 7;
-    private const int ActionsColumn = 8;
+    private const int SizeColumn = 2;
+    private const int InstalledOnColumn = 3;
+    private const int UpdatedOnColumn = 4;
+    private const int PinnedColumn = 5;
+    private const int ForcedColumn = 6;
+    private const int LatestColumn = 7;
+    private const int ReleasedColumn = 8;
+    private const int ActionsColumn = 9;
 
     // How often the spinners and the indeterminate bars move, in ms.
     private const int SpinInterval = 80;
@@ -91,7 +92,7 @@ internal sealed class ComponentsWindow : Form
 
         (string Text, int Width)[] columns =
         [
-            ("Component", 300), ("Installed", 110), ("Installed on", 90), ("Updated on", 90), ("Pinned", 110), ("Forced", 90),
+            ("Component", 300), ("Installed", 110), ("Size", 80), ("Installed on", 90), ("Updated on", 90), ("Pinned", 110), ("Forced", 90),
             ("Latest", 150), ("Released", 90), ("", 190),
         ];
         foreach (var (text, width) in columns)
@@ -346,6 +347,14 @@ internal sealed class ComponentsWindow : Form
         _ => "Emoji fonts",
     };
 
+    private static string SizeText(long bytes) => bytes switch
+    {
+        <= 0 => "—",
+        < 1_000_000 => $"{Math.Max(1, bytes / 1000)} KB",
+        < 100_000_000 => (bytes / 1e6).ToString("0.0", CultureInfo.InvariantCulture) + " MB",
+        _ => (bytes / 1e6).ToString("0", CultureInfo.InvariantCulture) + " MB",
+    };
+
     private static string DateText(DateTimeOffset? date) => date is { } d ? d.ToLocalTime().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : "—";
 
     private ComponentRecord RecordOf(Row row) => this._manifest[row.Component];
@@ -366,6 +375,7 @@ internal sealed class ComponentsWindow : Form
 
         Set(cells[NameColumn], row.Component.Name);
         Set(cells[InstalledColumn], record.Installed?.Label ?? "—");
+        Set(cells[SizeColumn], record.Installed is null ? "—" : SizeText(ComponentInstaller.SizeOf(row.Component, record.Installed)));
         Set(cells[InstalledOnColumn], DateText(record.InstalledOn));
         Set(cells[UpdatedOnColumn], DateText(record.UpdatedOn));
         Set(cells[PinnedColumn], record.Pinned.Label);
@@ -893,7 +903,70 @@ internal sealed class ComponentsWindow : Form
             this._backMenu.Items.Add(item);
         }
 
+        if (record.Installed is not null)
+        {
+            if (this._backMenu.Items.Count > 0)
+            {
+                this._backMenu.Items.Add(new ToolStripSeparator());
+            }
+
+            var uninstall = new ToolStripMenuItem("Uninstall…");
+            UiIcons.Set(uninstall, UiIcons.Uninstall);
+            uninstall.Click += (_, _) => _ = this.UninstallAsync(row);
+            this._backMenu.Items.Add(uninstall);
+        }
+
         this._backMenu.Show(this._list, at);
+    }
+
+    /// <summary>
+    /// After a confirmation naming the size freed: what holds the files released, the component's files deleted, its
+    /// installed version and dates cleared. A file still locked is left, the row saying a restart frees it (Iteration 21).
+    /// </summary>
+    private async Task UninstallAsync(Row row)
+    {
+        var record = this.RecordOf(row);
+        if (row.Run is not null || record.Installed is not { } installed)
+        {
+            return;
+        }
+
+        var component = row.Component;
+        if (MessageBox.Show(
+                this,
+                $"Uninstall {component.Name}? Its files are deleted ({SizeText(ComponentInstaller.SizeOf(component, installed))}); the features needing it are offered it again.",
+                "Component updates",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning,
+                MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+        {
+            return;
+        }
+
+        row.Error = null;
+        await this._host.ReleaseAsync(component);
+        bool deleted = await Task.Run(() => ComponentInstaller.Uninstall(component, installed));
+        if (deleted)
+        {
+            record.Installed = null;
+            record.Pending = null;
+            record.InstalledOn = null;
+            record.UpdatedOn = null;
+            row.UpToDate = false;
+            this.TrySave();
+        }
+        else
+        {
+            row.Error = "Some of its files are in use: restart the app, then uninstall it again";
+        }
+
+        if (!this.IsDisposed)
+        {
+            this._host.Changed(component);
+            this.Fill(row);
+            this._list.Invalidate(row.Item.Bounds);
+            this.UpdateButtons();
+        }
     }
 
     /// <summary>The versions a row can go back to: the forced one, the pinned one — each when it is not the one installed.</summary>
@@ -924,7 +997,7 @@ internal sealed class ComponentsWindow : Form
     {
         var record = this.RecordOf(row);
         bool main = record.Installed is null || (row.Latest is not null && !row.UpToDate);
-        bool back = this.BackTargets(row).Count > 0;
+        bool back = record.Installed is not null;
         int width = this.LogicalToDeviceUnits(96);
         int arrow = this.LogicalToDeviceUnits(24);
         int gap = this.LogicalToDeviceUnits(4);

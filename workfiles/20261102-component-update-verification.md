@@ -539,6 +539,17 @@ files or folder.
   cleared, the features using it refreshed. A file still locked (a native runtime loaded) is left: the row
   says so, a restart freeing it.
 
+### Iteration 22 — 2026-11-03 — ⚙️ Post-implementation — Open in Explorer
+
+User request: a folder icon opening the folder holding the component — a subfolder or a file — to look at
+it in Explorer. A **📂** at the right end of the Actions cell of every component installed: clicked,
+Explorer opens on its folder, its first file selected — a winget tool's folder selected in its parent.
+
+### Iteration 23 — 2026-11-03 — ⚙️ Post-implementation — No Close button
+
+User feedback: the Close button is useless, Windows' own × does it. Removed; the × and Escape close the
+window, asking first while a download runs.
+
 ---
 
 ## Implementation Log

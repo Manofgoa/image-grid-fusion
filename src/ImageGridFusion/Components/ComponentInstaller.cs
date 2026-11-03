@@ -263,6 +263,50 @@ internal static class ComponentInstaller
         return swapped;
     }
 
+    /// <summary>What <paramref name="installed"/>'s files take on the disk: its files in the folder, a winget tool's whole folder.</summary>
+    public static long SizeOf(Component component, ComponentVersion installed)
+    {
+        try
+        {
+            if (component.Tool is { } tool)
+            {
+                return Directory.Exists(tool.Folder) ? new DirectoryInfo(tool.Folder).EnumerateFiles("*", SearchOption.AllDirectories).Sum(f => f.Length) : 0;
+            }
+
+            var names = installed.Files.Count > 0 ? installed.Files.Select(f => f.Name) : component.Pinned.Files.Select(f => f.Name);
+            return names.Select(component.PathOf).Where(File.Exists).Sum(p => new FileInfo(p).Length);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// Deletes <paramref name="installed"/>'s files — a winget tool's folder — and its staging folder. Returns false when a
+    /// file stays, locked: a native runtime loaded.
+    /// </summary>
+    public static bool Uninstall(Component component, ComponentVersion installed)
+    {
+        DeleteFolder(StagingOf(component));
+        DeleteEmptyFolder(Path.Combine(component.Folder, StagingFolderName));
+        if (component.Tool is { } tool)
+        {
+            DeleteFolder(tool.Folder);
+            return !Directory.Exists(tool.Folder);
+        }
+
+        bool deleted = true;
+        var names = installed.Files.Count > 0 ? installed.Files.Select(f => f.Name) : component.Pinned.Files.Select(f => f.Name);
+        foreach (string path in names.Select(component.PathOf))
+        {
+            DirectEngineDownload.TryDelete(path);
+            deleted &= !File.Exists(path);
+        }
+
+        return deleted;
+    }
+
     /// <summary>The Git blob id of a file — what Hugging Face gives for its files out of LFS.</summary>
     public static string GitBlobOf(string path)
     {
