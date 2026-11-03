@@ -43,8 +43,12 @@ Components: `UI/ThumbnailGrid` (layout, hit-test, keyboard, paint), `UI/FileExpl
   first, then the items without a group:
   1. one section per **folder prefix** group, A→Z by prefix;
   2. **Other folders** — the folders in no prefix group;
-  3. the **file pattern** sections, then the files in none — their relative order an open question
-     since the patterns became groups of their own (Iteration 3).
+  3. **Named files** — the files in no pattern group: the human names, and the machine names whose
+     pattern is turned off and no other pattern takes (Q&A 9, 10);
+  4. one section per **file pattern** group, in the patterns' order.
+
+  The files break "the groups first": the human names, the more telling, come before the pattern
+  groups (Q&A 9).
 - Inside a section, the existing order is kept: folders A→Z, files in the sort order.
 - A list that would hold a **single section** shows **no header** at all (proposed): grouping
   changes nothing visible where there is nothing to separate.
@@ -79,8 +83,8 @@ kind counts (Q&A 7). Proposed patterns, **in the order they are tried**:
 - **Each pattern is turned off on its own** (Iteration 3): a **⚙ menu submenu**, one checkbox per
   pattern group, all checked by default, remembered in `settings.json`. A file whose pattern is
   turned off goes to the **next pattern it matches** still on, else among the files in no group —
-  `IMG_20220321_132643` with Camera off matches no other pattern and lands in no group. A pattern's
-  place in the table is that fallback order.
+  **no catch-all section** (Q&A 10): `IMG_20220321_132643` with Camera off matches no other pattern
+  and lands among the Named files. A pattern's place in the table is that fallback order.
 - **More patterns as they are identified**: a new pattern is a row of `NamePatterns` and a checkbox
   of the submenu, nothing else.
 
@@ -88,10 +92,18 @@ kind counts (Q&A 7). Proposed patterns, **in the order they are tried**:
 
 The search view's results grouped by **how they were found** (Q&A 8):
 
-- **Path** — found by its name or its subfolders; **Content** — found by what the file holds, OCR
-  included.
-- Ranked by relevance, the file names and the 💡 (content) matches counting as the most relevant —
-  what that means exactly is an open question.
+- **Two groups only** (Q&A 12), each match in the group of its tier (`FileSearch` tiers):
+
+  | Group | Holds |
+  |---|---|
+  | **Path** | Found by its name or its subfolders, an effect preset by its description, a person's file by their name — names all |
+  | **Content** | Found by what the file holds: the text read (OCR, every grade), the tags and captions (Seen), the similarity tier |
+
+- **Ranking** (Q&A 11): a file found **by its name and by its content** (its 💡) comes **first**, then
+  by its name alone, then the rest of Path in today's tiers; Content keeps today's tiers. A file
+  found both ways is listed once, in Path, with its 💡. Whether the search already knows a name
+  match's content hit (`SearchMatch.ContentWord`) is checked at implementation.
+- The new first tier applies with the groups off too (proposed): it is a ranking, not a group.
 
 ## Toggles
 
@@ -143,19 +155,19 @@ otherwise.
 
 - [x] ~~Full section order: folder prefix groups → Other folders → Named files → Automatic names?~~
   → Folders first, then files (Q&A 5); the files' order revisited by Iteration 3, below
-- [ ] With the patterns as groups of their own: the pattern sections (Camera, Screenshots…) before
-  the files in no group, as "the groups first" says — or the files with a human name first?
-- [ ] Is there a catch-all **Automatic names** group under the pattern groups, or does a file whose
-  pattern is off go straight to the files in no group when no other pattern takes it?
+- [x] ~~With the patterns as groups of their own: the pattern sections before the files in no group,
+  or the files with a human name first?~~ → Named files first (Q&A 9)
+- [x] ~~A catch-all **Automatic names** group, or straight to the files in no group?~~ → No
+  catch-all: straight to the Named files (Q&A 10)
 - [ ] Nested folder prefixes: one group per shortest shared prefix (`Outils RS`), no sub-sections?
 - [x] ~~Inside a prefix group, does a tile's flap still show `Outils RS ›` small?~~ → Unchanged (Q&A 6)
 - [x] ~~Which stamp names count as automatic?~~ → Camera, screenshots and messaging apps, all
   (Q&A 7); each its own group, turned off on its own (Iteration 3)
-- [ ] Search ranking: "the file names and the 💡 as the most relevant" — a file matching by its
-  name **and** its content first? Or the name and content matches ranked together, the
-  subfolder-only matches after them?
-- [ ] Search groups: where go the presets found by their description, the people's files, the
-  tags and captions (Seen), the similarity tier — Content, or a group of their own?
+- [x] ~~Search ranking: "the file names and the 💡 as the most relevant"?~~ → A file found by its
+  name and its content first, then by its name alone, then by its content alone (Q&A 11)
+- [x] ~~Search groups: where go the presets' descriptions, the people's files, Seen, similarity?~~ →
+  Path and Content only: descriptions and people in Path, Seen and similarity in Content (Q&A 12)
+- [ ] The new first tier (name and content) with the search groups off too?
 - [ ] Section titles: `Other folders`, `Other files`, `Path`, `Content`… (UI in English)?
 - [ ] No header when the list would hold a single section?
 - [x] ~~Views: the folder view only, or the search view too?~~ → Both, one button each (Q&A 8)
@@ -206,6 +218,14 @@ becomes § File Name Patterns: one group per pattern — Camera, Screenshots, Me
 Numbers — in a fallback order, instead of one *Automatic names* group; their order against the
 files in no group, and whether a catch-all remains, are open questions.
 
+### Iteration 4 — 2026-11-03
+
+Third batch answered: in the folder view the **Named files** come before the pattern groups
+(Q&A 9); no catch-all — a file whose pattern is off and that no other pattern takes goes among the
+Named files (Q&A 10); the search ranks a file found **by its name and its content** first (Q&A 11);
+the search keeps **two groups**, Path (names, subfolders, presets' descriptions, people) and Content
+(text read, Seen, similarity) (Q&A 12).
+
 ---
 
 ## Implementation Log
@@ -235,10 +255,13 @@ Questions asked by the agent during design, with user responses.
 | 6 | Inside a prefix group, does the flap keep `Outils RS ›` small? | Unchanged | 2026-11-03 |
 | 7 | Which stamp names count as automatic? | Camera, screenshots, messaging apps | 2026-11-03 |
 | 8 | Which views get the groups? | Two option buttons for the groupings: folder view and results view. For the results, rank by relevance, the file names and the "bulbs" being the most relevant. Possible groups for the search: Path / Content (OCR included) | 2026-11-03 |
-| 9 | Pattern sections before or after the files in no group? | | 2026-11-03 |
-| 10 | A catch-all *Automatic names* group, or straight to no group? | | 2026-11-03 |
-| 11 | Search ranking: what "file names and bulbs the most relevant" means | | 2026-11-03 |
-| 12 | Search groups: where the descriptions, people, Seen and similarity matches go | | 2026-11-03 |
+| 9 | Pattern sections before or after the files in no group? | Human names first | 2026-11-03 |
+| 10 | A catch-all *Automatic names* group, or straight to no group? | No group (recommended) | 2026-11-03 |
+| 11 | Search ranking: what "file names and bulbs the most relevant" means | Name AND content first | 2026-11-03 |
+| 12 | Search groups: where the descriptions, people, Seen and similarity matches go | Path / Content only | 2026-11-03 |
+| 13 | The remaining proposals (nested prefixes, `Outils RS` alone, single section, Details headers, name-and-content tier with the groups off) | | 2026-11-03 |
+| 14 | Toggles: placement, icon, default, the ⚙ submenu | | 2026-11-03 |
+| 15 | A unit test project for the name patterns and the grouping? | | 2026-11-03 |
 
 ---
 
