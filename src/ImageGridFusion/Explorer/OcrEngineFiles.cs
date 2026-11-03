@@ -1,15 +1,13 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
-using ImageGridFusion.Web;
 
 namespace ImageGridFusion.Explorer;
 
 /// <summary>
-/// The RapidOCR engine, never shipped: its models and the native DLLs it runs on, downloaded on demand
-/// into <see cref="FolderName"/> next to the exe — each file taken out of the NuGet package the app
-/// references, at the version it references, by HTTP ranges (<see cref="RemoteZip"/>), and checked
-/// against its SHA-256 — then loaded from there. See workfiles/20261013-complementary-ocr-passes.md
+/// The RapidOCR engine, never shipped: its models and the native DLLs it runs on, installed from the
+/// Component updates window into <see cref="FolderName"/> next to the exe — each file taken out of the NuGet
+/// package the app references, at the version it references, by HTTP ranges (<see cref="RemoteZip"/>), and
+/// checked against its SHA-256 (<see cref="Components.ComponentRegistry"/>) — then loaded from there. See workfiles/20261013-complementary-ocr-passes.md
 /// § RapidOCR Download.
 /// </summary>
 internal static class OcrEngineFiles
@@ -24,14 +22,10 @@ internal static class OcrEngineFiles
 
     /// <summary>ONNX Runtime's native DLL — the face engine runs on it too (<see cref="FaceEngineFiles"/>).</summary>
     public const string OnnxRuntime = "onnxruntime.dll";
-    private const string SkiaSharp = "libSkiaSharp.dll";
-    private const string PartialSuffix = ".~downloading";
-
-    // How often the download's progress is reported, in ms.
-    private const int ReportInterval = 100;
+    public const string SkiaSharp = "libSkiaSharp.dll";
 
     // The packages' versions are the ones the project references (ImageGridFusion.csproj): change both together, the hashes with them.
-    private static readonly EngineFile[] Files =
+    public static readonly EngineFile[] Files =
     [
         new(Detection, "rapidocrnet", "4.2.0", "models/v5/" + Detection, "4d97c44a20d30a81aad087d6a396b08f786c4635742afc391f6621f5c6ae78ae"),
         new(Classification, "rapidocrnet", "4.2.0", "models/v5/" + Classification, "54379ae5174d026780215fc748a7f31910dee36818e63d49e17dc598ecc82df7"),
@@ -74,85 +68,6 @@ internal static class OcrEngineFiles
         }
     }
 
-    /// <summary>
-    /// Downloads the files missing from <see cref="Folder"/>, reporting the share done, 0 to 1. A file
-    /// is written through a partial file and moved into place once its hash is checked: a failed or
-    /// cancelled download leaves nothing half-written. <paramref name="only"/>: the names of the files to
-    /// download, the others left — ONNX Runtime alone for the face engine. Throws a
-    /// <see cref="UrlLoadException"/> when it cannot.
-    /// </summary>
-    public static async Task DownloadAsync(IProgress<double> progress, CancellationToken token, IReadOnlyCollection<string>? only = null)
-    {
-        Directory.CreateDirectory(Folder);
-        var missing = Files.Where(f => !File.Exists(PathOf(f.Name)) && (only is null || only.Contains(f.Name))).ToArray();
-        var packages = new Dictionary<Uri, IReadOnlyDictionary<string, RemoteZipEntry>>();
-        var entries = new List<(EngineFile File, Uri Url, RemoteZipEntry Entry)>();
-        foreach (var file in missing)
-        {
-            var url = new Uri($"https://api.nuget.org/v3-flatcontainer/{file.Package}/{file.Version}/{file.Package}.{file.Version}.nupkg");
-            if (!packages.TryGetValue(url, out var directory))
-            {
-                directory = await RemoteZip.ReadDirectoryAsync(url, token);
-                packages[url] = directory;
-            }
-
-            entries.Add((file, url, directory.TryGetValue(file.Entry, out var entry) ? entry : throw new UrlLoadException($"{file.Package} {file.Version} has no {file.Entry}")));
-        }
-
-        long total = Math.Max(1, entries.Sum(e => e.Entry.CompressedSize));
-        long before = 0;
-        long reported = 0;
-        progress.Report(0);
-        foreach (var (file, url, entry) in entries)
-        {
-            string path = PathOf(file.Name);
-            string partial = path + PartialSuffix;
-            long start = before;
-            var received = new SyncProgress(count =>
-            {
-                long now = Environment.TickCount64;
-                if (now - reported >= ReportInterval)
-                {
-                    reported = now;
-                    progress.Report((double)(start + count) / total);
-                }
-            });
-            try
-            {
-                await using (var target = new FileStream(partial, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true))
-                {
-                    await RemoteZip.ExtractAsync(url, entry, target, received, token);
-                }
-
-                if (!HashMatches(partial, file.Sha256))
-                {
-                    throw new UrlLoadException($"{file.Name} does not match its expected content");
-                }
-
-                File.Move(partial, path, overwrite: true);
-            }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException or HttpRequestException or InvalidDataException or UrlLoadException or OperationCanceledException)
-            {
-                TryDelete(partial);
-                if (e is OperationCanceledException && token.IsCancellationRequested)
-                {
-                    throw;
-                }
-
-                throw e as UrlLoadException ?? new UrlLoadException(e switch
-                {
-                    HttpRequestException or OperationCanceledException => "The download broke off",
-                    InvalidDataException => $"{file.Name} arrived damaged",
-                    _ => $"Couldn't save {file.Name}: {e.Message}",
-                }, e);
-            }
-
-            before += entry.CompressedSize;
-        }
-
-        progress.Report(1);
-    }
-
     private static IntPtr Resolve(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
     {
         string name = libraryName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ? libraryName : libraryName + ".dll";
@@ -160,29 +75,6 @@ internal static class OcrEngineFiles
         return Files.Any(f => string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase)) && NativeLibrary.TryLoad(path, out var handle) ? handle : IntPtr.Zero;
     }
 
-    private static bool HashMatches(string path, string sha256)
-    {
-        using var stream = File.OpenRead(path);
-        return string.Equals(Convert.ToHexString(SHA256.HashData(stream)), sha256, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static void TryDelete(string path)
-    {
-        try
-        {
-            File.Delete(path);
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-        }
-    }
-
     /// <summary>A file of the engine: its name in the folder, and where it comes from — a NuGet package's entry — with its SHA-256.</summary>
-    private sealed record EngineFile(string Name, string Package, string Version, string Entry, string Sha256);
-
-    /// <summary>A progress reported on the reporting thread itself, throttled by its handler.</summary>
-    private sealed class SyncProgress(Action<long> handler) : IProgress<long>
-    {
-        public void Report(long value) => handler(value);
-    }
+    public sealed record EngineFile(string Name, string Package, string Version, string Entry, string Sha256);
 }

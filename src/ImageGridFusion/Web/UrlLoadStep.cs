@@ -12,9 +12,6 @@ internal sealed record PosterStep(Uri Url) : UrlLoadStep;
 /// <summary>The media is downloading: what is received, of a total the server may not give.</summary>
 internal sealed record DownloadingStep(long Received, long? Total, double? Percent = null) : UrlLoadStep;
 
-/// <summary>A tool — yt-dlp, its companions — is being installed with winget.</summary>
-internal sealed record InstallingStep(string Name) : UrlLoadStep;
-
 /// <summary>yt-dlp loads the URL, <paramref name="CompanionsMissing"/> when Deno or ffmpeg is not there.</summary>
 internal sealed record YtDlpStep(bool CompanionsMissing) : UrlLoadStep;
 

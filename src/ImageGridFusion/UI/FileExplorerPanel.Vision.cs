@@ -60,29 +60,8 @@ internal sealed partial class FileExplorerPanel
         }
     }
 
-    /// <summary>Whether the vision engine (SigLIP 2) is being downloaded.</summary>
-    public bool DownloadingVisionEngine => this._visionEngineDownload is not null;
-
-    /// <summary>Whether the caption engine (Florence-2) is being downloaded.</summary>
-    public bool DownloadingCaptionEngine => this._captionEngineDownload is not null;
-
     /// <summary>Whether a similar images search can run: the visual analysis on, its engine there.</summary>
     public bool CanFindSimilar => this._visualAnalysis && VisionEngineFiles.IsAvailable;
-
-    /// <summary>
-    /// Downloads the vision engine (<see cref="VisionEngineFiles"/>), its progress after the status line's
-    /// summary, then starts the extraction again so the Vision pass runs; a failure said in the status line.
-    /// Nothing when it is already being downloaded.
-    /// </summary>
-    public Task DownloadVisionEngineAsync() =>
-        this.DownloadEngineAsync("vision engine", VisionEngineFiles.DownloadAsync, () => this._visionEngineDownload, cts => this._visionEngineDownload = cts, "the images are analysed next");
-
-    /// <summary>
-    /// Downloads the caption engine (<see cref="CaptionEngineFiles"/>), as <see cref="DownloadVisionEngineAsync"/>
-    /// does the vision engine's, so the Caption pass runs.
-    /// </summary>
-    public Task DownloadCaptionEngineAsync() =>
-        this.DownloadEngineAsync("caption engine", CaptionEngineFiles.DownloadAsync, () => this._captionEngineDownload, cts => this._captionEngineDownload = cts, "the captions are written next");
 
     /// <summary>
     /// Forgets the visual analysis — <c>files.vision</c> and the concepts' cache deleted, the tags and the
@@ -178,58 +157,6 @@ internal sealed partial class FileExplorerPanel
         this.ApplyBarTips();
         this.ApplyMetrics();
         this.RefreshRows(keepPlace: true);
-    }
-
-    private async Task DownloadEngineAsync(string name, Func<IProgress<double>, CancellationToken, Task> download, Func<CancellationTokenSource?> running, Action<CancellationTokenSource?> setRunning, string next)
-    {
-        if (running() is not null)
-        {
-            return;
-        }
-
-        var cancellation = new CancellationTokenSource();
-        setRunning(cancellation);
-        var progress = new Progress<double>(share =>
-        {
-            if (running() == cancellation && !this.IsDisposed)
-            {
-                this.SetEngineActivity($"Downloading the {name}… {share:P0}");
-            }
-        });
-        try
-        {
-            await download(progress, cancellation.Token);
-            setRunning(null);
-            if (!this.IsDisposed)
-            {
-                this.SetEngineActivity(null);
-                this.ShowTransient($"The {name} downloaded: {next}");
-                this.ApplyBarTips();
-                this.StopExtraction();
-                this.StartExtraction();
-            }
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Web.UrlLoadException ex)
-        {
-            setRunning(null);
-            if (!this.IsDisposed)
-            {
-                this.SetEngineActivity(null);
-                this.ShowTransient($"The {name} not downloaded: {ex.Message}", error: true);
-            }
-        }
-        finally
-        {
-            if (running() == cancellation)
-            {
-                setRunning(null);
-            }
-
-            cancellation.Dispose();
-        }
     }
 
     /// <summary>

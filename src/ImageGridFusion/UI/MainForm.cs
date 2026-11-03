@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
+using ImageGridFusion.Components;
 using ImageGridFusion.Composition;
 using ImageGridFusion.Explorer;
 using ImageGridFusion.Imaging;
@@ -44,25 +45,18 @@ internal sealed partial class MainForm : Form
     private readonly ToolStripMenuItem _contentCaption = new("File contents") { Enabled = false };
     private readonly ToolStripMenuItem _explorerContentSearch = new("Search file contents (OCR)");
     private readonly ToolStripMenuItem _rebuildContent = new("Rebuild content index");
-    private readonly ToolStripMenuItem _downloadOcrEngine = new("Download the OCR engine…");
     // The faces' group of the ⚙ menu (workfiles/20261027-face-detection.md § Privacy): a caption, then its entries.
     private readonly ToolStripMenuItem _facesCaption = new("People") { Enabled = false };
     private readonly ToolStripMenuItem _faceAnalysis = new("Face analysis");
     // How strictly the faces are grouped (workfiles/20261028-face-grouping-accuracy.md): a submenu of exclusive levels.
     private readonly ToolStripMenuItem _faceGrouping = new("Face grouping");
-    private readonly ToolStripMenuItem _downloadFaceEngine = new("Download the face engine…");
     private readonly ToolStripMenuItem _forgetFaces = new("Forget faces…");
     // The image content analysis' group of the ⚙ menu (workfiles/20261027-image-content-analysis.md § Engine Offer).
     private readonly ToolStripMenuItem _visualCaption = new("Image content") { Enabled = false };
     private readonly ToolStripMenuItem _visualAnalysis = new("Visual analysis");
     // How far an image found by its similarity must stand out (workfiles/20261029-similar-images-accuracy.md): a submenu of exclusive levels.
     private readonly ToolStripMenuItem _similarImages = new("Similar images");
-    private readonly ToolStripMenuItem _downloadVisionEngine = new("Download the vision engine…");
     private readonly ToolStripMenuItem _captions = new("Captions");
-    private readonly ToolStripMenuItem _downloadCaptionEngine = new("Download the caption engine…");
-    private readonly ToolStripMenuItem _downloadCutoutEngine = new("Download the cutout engine…");
-    private readonly ToolStripMenuItem _downloadEmojiFonts = new("Download the emoji fonts…");
-    private readonly ToolStripMenuItem _updateEmojiFonts = new("Update the emoji fonts");
     private readonly ToolStripMenuItem _forgetVisual = new("Forget visual analysis…");
     // A cell's context menu, shown while the visual analysis can run: the images like its own.
     private readonly ContextMenuStrip _cellMenu = new();
@@ -77,8 +71,10 @@ internal sealed partial class MainForm : Form
     private readonly ToolStripMenuItem _ocrArrowCurved = new("Curved arrow");
     private readonly ToolStripMenuItem _ocrArrowThickness = new("Arrow thickness");
     private readonly ToolStripMenuItem _ocrArrowColor = new("Arrow color…");
-    // The URL zone's yt-dlp companions, offered while yt-dlp is there without them (workfiles/20261015-yt-dlp-best-format.md § When They Are Offered).
-    private readonly ToolStripMenuItem _installYtDlpCompanions = new("Install yt-dlp companions…");
+    // The Component updates window, where every component is installed and updated
+    // (workfiles/20261102-component-update-verification.md); one at a time.
+    private readonly ToolStripMenuItem _componentUpdates = new("Component updates…");
+    private ComponentsWindow? _componentsWindow;
     // The shortcuts window, also opened by F1 (workfiles/20261029-shortcuts-list.md); one at a time.
     private readonly ToolStripMenuItem _keyboardShortcuts = new("Keyboard shortcuts…") { ShortcutKeyDisplayString = "F1" };
     private ShortcutsWindow? _shortcutsWindow;
@@ -293,10 +289,8 @@ internal sealed partial class MainForm : Form
 
     // The Cutout's cut-outs, computed off the UI thread, and its engine's download while it runs (workfiles/20261029-cutout.md).
     private readonly CutoutService _cutouts = new();
-    private CancellationTokenSource? _cutoutEngineDownload;
 
     // The emoji fonts' download or update while it runs (workfiles/20261102-emoji-fonts.md § Shipped Fonts).
-    private CancellationTokenSource? _emojiFontsDownload;
     private readonly TrackBar _volume = OptionSlider(0, (int)(VolumeEffect.MaxLevel * 100), 10);
     private readonly Label _volumeLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _mute = new() { Text = "Mute", AutoSize = true, Anchor = AnchorStyles.Left };
@@ -702,7 +696,7 @@ internal sealed partial class MainForm : Form
         this._transportTimer.Tick += (_, _) => this.RefreshTransportPosition();
         this._transportTimer.Start();
         this._toolTip.SetToolTip(this._clearButton, "Removes every image and the global effects, and brings the format back to Twitter (Ctrl+N)");
-        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, this._installYtDlpCompanions, this._downloadCutoutEngine, this._downloadEmojiFonts, this._updateEmojiFonts, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._downloadOcrEngine, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._downloadFaceEngine, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._similarImages, this._downloadVisionEngine, this._captions, this._downloadCaptionEngine, this._forgetVisual, new ToolStripSeparator(), this._keyboardShortcuts, this._openAppFolder]);
+        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._similarImages, this._captions, this._forgetVisual, new ToolStripSeparator(), this._componentUpdates, this._keyboardShortcuts, this._openAppFolder]);
         // An icon per action and toggle, never on a caption nor a submenu's values (RULES.md § Icons).
         UiIcons.Set(this._startWithWindows, UiIcons.StartWithWindows);
         UiIcons.Set(this._twitterCornersDefault, UiIcons.TwitterCorners);
@@ -711,26 +705,19 @@ internal sealed partial class MainForm : Form
         UiIcons.Set(this._gapBarsFrom, UiIcons.GapBars);
         UiIcons.Set(this._explorerFolder, UiIcons.Folder);
         UiIcons.Set(this._explorerPages, UiIcons.Pages);
-        UiIcons.Set(this._installYtDlpCompanions, UiIcons.Download);
-        UiIcons.Set(this._downloadCutoutEngine, UiIcons.Download);
-        UiIcons.Set(this._downloadEmojiFonts, UiIcons.Download);
-        UiIcons.Set(this._updateEmojiFonts, UiIcons.UpdateEmojiFonts);
         UiIcons.Set(this._explorerContentSearch, UiIcons.TextRead);
         UiIcons.Set(this._rebuildContent, UiIcons.Rebuild);
-        UiIcons.Set(this._downloadOcrEngine, UiIcons.Download);
         UiIcons.Set(this._ocrResultStyle, UiIcons.OcrResultStyle);
         UiIcons.Set(this._ocrArrowCurved, UiIcons.CurvedArrow);
         UiIcons.Set(this._ocrArrowThickness, UiIcons.Thickness);
         UiIcons.Set(this._faceAnalysis, UiIcons.People);
         UiIcons.Set(this._faceGrouping, UiIcons.Group);
-        UiIcons.Set(this._downloadFaceEngine, UiIcons.Download);
         UiIcons.Set(this._forgetFaces, UiIcons.Forget);
         UiIcons.Set(this._visualAnalysis, UiIcons.Tags);
         UiIcons.Set(this._similarImages, UiIcons.Strictness);
-        UiIcons.Set(this._downloadVisionEngine, UiIcons.Download);
         UiIcons.Set(this._captions, UiIcons.Caption);
-        UiIcons.Set(this._downloadCaptionEngine, UiIcons.Download);
         UiIcons.Set(this._forgetVisual, UiIcons.Forget);
+        UiIcons.Set(this._componentUpdates, UiIcons.ComponentUpdates);
         UiIcons.Set(this._keyboardShortcuts, UiIcons.Keyboard);
         UiIcons.Set(this._openAppFolder, UiIcons.OpenFolder);
         UiIcons.Attach(this._settingsMenu);
@@ -797,30 +784,16 @@ internal sealed partial class MainForm : Form
         this._explorerContentSearch.Click += (_, _) => this.ToggleExplorerContentSearch();
         this._rebuildContent.ToolTipText = "Forgets the text found in every file and extracts it all again — after installing an OCR language, for instance";
         this._rebuildContent.Click += (_, _) => _explorer.RebuildContentIndex();
-        this._downloadOcrEngine.ToolTipText = "Downloads RapidOCR, a second OCR engine reading the stylised, curved or inverted text Windows OCR misses — shown while it is not downloaded";
-        this._downloadOcrEngine.Click += (_, _) => this.OfferOcrEngineDownload();
         this._faceAnalysis.ToolTipText = "Whether the file explorer looks for the faces in the base folder's images and PDFs and groups them into people, for its People view — on this computer only; off until turned on, remembered between sessions";
         this._faceAnalysis.Click += (_, _) => this.ToggleFaceAnalysis();
         this._faceGrouping.ToolTipText = "How alike faces must be to be grouped as one person in the People view — stricter mixes fewer people, looser splits fewer; your names, merges and removed faces are kept; remembered between sessions";
-        this._downloadFaceEngine.ToolTipText = "Downloads the face engine — two models of the OpenCV Zoo, YuNet and SFace — the face analysis runs on; shown while it is not downloaded";
-        this._downloadFaceEngine.Click += (_, _) => this.OfferFaceEngineDownload();
         this._forgetFaces.ToolTipText = "Deletes every face found and every person named, hidden or merged — files.faces and people.json — and turns the face analysis off";
         this._forgetFaces.Click += (_, _) => this.ForgetFaces();
         this._visualAnalysis.ToolTipText = "Whether the file explorer looks at what the base folder's images and PDFs show — tags in French and English, and the images closest to a search or to another image — on this computer only; off until turned on, remembered between sessions";
         this._visualAnalysis.Click += (_, _) => this.ToggleVisualAnalysis();
         this._similarImages.ToolTipText = "How clearly an image must stand out to be listed by Find similar images and at the end of a 💡 search — stricter shows fewer, closer images; remembered between sessions";
-        this._downloadVisionEngine.ToolTipText = "Downloads the vision engine — SigLIP 2 — the visual analysis runs on; shown while it is not downloaded";
-        this._downloadVisionEngine.Click += (_, _) => this.OfferVisionEngineDownload();
         this._captions.ToolTipText = "Whether the file explorer writes a sentence in English saying what every image shows, found by the search and shown in the Details view — slow: a few seconds an image; off until turned on, remembered between sessions";
         this._captions.Click += (_, _) => this.ToggleCaptions();
-        this._downloadCaptionEngine.ToolTipText = "Downloads the caption engine — Florence-2 — the captions are written with; shown while it is not downloaded";
-        this._downloadCaptionEngine.Click += (_, _) => this.OfferCaptionEngineDownload();
-        this._downloadCutoutEngine.ToolTipText = "Downloads the cutout engine — IS-Net and MobileSAM — the Cutout effect runs on; shown while it is not downloaded";
-        this._downloadCutoutEngine.Click += (_, _) => this.OfferCutoutEngineDownload();
-        this._downloadEmojiFonts.ToolTipText = "Downloads the emoji fonts — Twemoji, Noto Color Emoji, OpenMoji and Blobmoji — a text's emojis may be drawn in; shown while one is not downloaded";
-        this._downloadEmojiFonts.Click += (_, _) => this.OfferEmojiFontsDownload(atLaunch: false);
-        this._updateEmojiFonts.ToolTipText = "Replaces the emoji fonts downloaded by their latest release, the texts drawn again with them";
-        this._updateEmojiFonts.Click += async (_, _) => await this.UpdateEmojiFontsAsync();
         this._forgetVisual.ToolTipText = "Deletes every embedding, tag and caption — files.vision and the tags and captions of files.content — and turns the visual analysis and the captions off";
         this._forgetVisual.Click += (_, _) => this.ForgetVisualAnalysis();
         this._ocrResultStyle.ToolTipText = "How the arrow from a tile's light bulb to the word the OCR found is drawn; remembered between sessions";
@@ -829,10 +802,10 @@ internal sealed partial class MainForm : Form
         this._ocrArrowThickness.ToolTipText = "The width of the arrow's colored line, its dark outline not counted; 0 draws no arrow; remembered between sessions";
         this._ocrArrowColor.ToolTipText = "The color of the arrow, its dark outline staying dark; remembered between sessions";
         this._ocrArrowColor.Click += (_, _) => this.PickOcrArrowColor();
-        this._installYtDlpCompanions.ToolTipText = "Installs Deno and ffmpeg with winget, each in its own folder next to this exe: the URL zone's yt-dlp then loads the largest formats — shown while yt-dlp is there without them";
-        this._installYtDlpCompanions.Click += async (_, _) => await this._explorer.OfferYtDlpCompanionsAsync();
         this._openAppFolder.ToolTipText = "Opens Explorer on the folder of this exe, the exe selected — where settings.json and the app's other files live";
         this._openAppFolder.Click += (_, _) => this.ShowInExplorer(Environment.ProcessPath ?? Application.ExecutablePath);
+        this._componentUpdates.ToolTipText = "Lists every component the app downloads — engines, runtimes, web tools, emoji fonts — with their versions, to install, update or put back one or all of them";
+        this._componentUpdates.Click += (_, _) => this.ShowComponents();
         this._keyboardShortcuts.ToolTipText = "Lists every key and mouse gesture of the app and what it does, in a window that stays open beside this one";
         this._keyboardShortcuts.Click += (_, _) => this.ShowShortcuts();
         _explorer.OpenChanged += (_, _) =>
@@ -860,6 +833,7 @@ internal sealed partial class MainForm : Form
             }
         };
         this._explorer.FaceEngineRequested += (_, _) => this.OfferFaceEngineDownload();
+        this._explorer.ComponentsRequested += (_, need) => this.ShowComponents(need);
 
         // A double-clicked row is added like a file from the Add images picker.
         _explorer.FileActivated += async (_, path) => await AddFilesAsync([path]);
@@ -1249,8 +1223,6 @@ internal sealed partial class MainForm : Form
         {
             // Before the preview, which disposes the images it shows: the history disposes the others.
             this._history.Dispose();
-            this._cutoutEngineDownload?.Cancel();
-            this._emojiFontsDownload?.Cancel();
             this._cutouts.Dispose();
             this._transportTimer.Dispose();
             _settingsMenu.Dispose();
@@ -1524,12 +1496,13 @@ internal sealed partial class MainForm : Form
         }
 
         this._history.Start();
+        this.ShowComponentsStatus();
 
         // The emoji fonts offered at the first launch — by the normal instance only, a --new-instance offering nothing of
         // its own accord —, never again once declined (workfiles/20261102-emoji-fonts.md § Shipped Fonts).
         if (this._savesWindowSize && !EmojiFonts.AnyPresent && !AppSettings.EmojiFontsDeclined)
         {
-            this.OfferEmojiFontsDownload(atLaunch: true);
+            this.OfferEmojiFontsAtLaunch();
         }
     }
 
@@ -1601,6 +1574,14 @@ internal sealed partial class MainForm : Form
         {
             e.Cancel = true;
             Hide();
+            return;
+        }
+
+        // Quit while components install: asked first, the app staying up on No (workfiles/20261102-component-update-verification.md).
+        if (e.CloseReason == CloseReason.UserClosing && this._componentsWindow is { IsDisposed: false } components && !components.ConfirmCancel())
+        {
+            e.Cancel = true;
+            _closingForGood = false;
             return;
         }
 
@@ -3411,12 +3392,8 @@ internal sealed partial class MainForm : Form
         this._gapBarsFromCenter.Checked = !this._preview.GapBarsFromEdges;
         this._gapBarsFromEdges.Checked = this._preview.GapBarsFromEdges;
 
-        this._installYtDlpCompanions.Visible = YtDlp.Find() is not null && YtDlpCompanions.Missing.Count > 0;
-        this._installYtDlpCompanions.Enabled = !this._explorer.InstallingYtDlpCompanions;
         this._explorerContentSearch.Checked = _explorer.ContentSearch;
         this._rebuildContent.Enabled = _explorer.CanRebuildContent;
-        this._downloadOcrEngine.Visible = !OcrEngineFiles.IsAvailable;
-        this._downloadOcrEngine.Enabled = !this._explorer.DownloadingOcrEngine;
         this._faceAnalysis.Checked = this._explorer.FaceAnalysis;
         this._faceGrouping.Enabled = this._explorer.FaceAnalysis;
         foreach (ToolStripMenuItem item in this._faceGrouping.DropDownItems)
@@ -3424,8 +3401,6 @@ internal sealed partial class MainForm : Form
             item.Checked = (int)item.Tag! == this._explorer.FaceGroupingLevel;
         }
 
-        this._downloadFaceEngine.Visible = !FaceEngineFiles.IsAvailable;
-        this._downloadFaceEngine.Enabled = !this._explorer.DownloadingFaceEngine;
         this._visualAnalysis.Checked = this._explorer.VisualAnalysis;
         this._similarImages.Enabled = this._explorer.VisualAnalysis;
         foreach (ToolStripMenuItem item in this._similarImages.DropDownItems)
@@ -3433,16 +3408,7 @@ internal sealed partial class MainForm : Form
             item.Checked = (int)item.Tag! == this._explorer.SimilarImagesLevel;
         }
 
-        this._downloadVisionEngine.Visible = !VisionEngineFiles.IsAvailable;
-        this._downloadVisionEngine.Enabled = !this._explorer.DownloadingVisionEngine;
         this._captions.Checked = this._explorer.Captions;
-        this._downloadCutoutEngine.Visible = !CutoutEngineFiles.IsAvailable;
-        this._downloadCutoutEngine.Enabled = this._cutoutEngineDownload is null;
-        this._downloadEmojiFonts.Visible = !EmojiFonts.AllPresent;
-        this._updateEmojiFonts.Visible = EmojiFonts.AnyPresent;
-        this._downloadEmojiFonts.Enabled = this._updateEmojiFonts.Enabled = this._emojiFontsDownload is null;
-        this._downloadCaptionEngine.Visible = !CaptionEngineFiles.IsAvailable;
-        this._downloadCaptionEngine.Enabled = !this._explorer.DownloadingCaptionEngine;
         this._ocrArrowCurved.Checked = this._explorer.ArrowStyle.Curved;
         foreach (ToolStripMenuItem item in this._ocrArrowThickness.DropDownItems)
         {
@@ -3842,14 +3808,14 @@ internal sealed partial class MainForm : Form
 
     /// <summary>
     /// Whether the Cutout can go from <paramref name="before"/> to <paramref name="after"/>: in a mode
-    /// needing no engine (the plain background), already on in one needing it, or its engine downloaded or
-    /// downloading — else offered, the change not made on a No, as a global effect's file picker
+    /// needing no engine (the plain background), already on in one needing it, or its engine installed — else the
+    /// Component updates window opened on it, the change not made, as a global effect's file picker
     /// cancelled (RULES.md § Global Toolbar).
     /// </summary>
     private bool CutoutEngineReady(ImageLook before, ImageLook after)
     {
         if (after.Cutout?.NeedsEngine != true || (before.IsActive(ImageEffect.Cutout) && before.Cutout!.NeedsEngine)
-            || CutoutEngineFiles.IsAvailable || this._cutoutEngineDownload is not null || this.OfferCutoutEngineDownload())
+            || CutoutEngineFiles.IsAvailable || this.OfferCutoutEngineDownload())
         {
             return true;
         }
@@ -3859,71 +3825,15 @@ internal sealed partial class MainForm : Form
     }
 
     /// <summary>
-    /// Offers to download the cutout engine, saying what, how much and where; on Yes, downloads it, the
-    /// images waiting for it cut out once it is there. Returns whether it was accepted.
+    /// The cutout engine missing for the Cutout's mode: the Component updates window opened on its rows, the Cutout left
+    /// off. Returns false: the change is not made (workfiles/20261102-component-update-verification.md § Components Window).
     /// </summary>
     private bool OfferCutoutEngineDownload()
     {
-        string runtime = OcrEngineFiles.HasRuntime ? "" : $"\n\nThe ONNX Runtime library it runs on (about 13 MB, from nuget.org) goes into:\n\n{OcrEngineFiles.Folder}";
-        var answer = MessageBox.Show(
-            this,
-            "Download the cutout engine? IS-Net finds an image's main subject, MobileSAM the object under a click: the Cutout effect keeps it and makes the rest transparent. "
-            + "Everything stays on this computer; a cutout takes a few seconds.\n\n"
-            + $"About {CutoutEngineFiles.DownloadMegabytes} MB, taken from github.com and huggingface.co into:\n\n{CutoutEngineFiles.Folder}{runtime}",
-            "Download the cutout engine",
-            MessageBoxButtons.YesNo,
-            MessageBoxIcon.Question);
-        if (answer != DialogResult.Yes)
-        {
-            return false;
-        }
-
-        _ = this.DownloadCutoutEngineAsync();
-        return true;
-    }
-
-    /// <summary>Downloads the cutout engine, its progress in the status line; the cells waiting for it are cut out next.</summary>
-    private async Task DownloadCutoutEngineAsync()
-    {
-        if (this._cutoutEngineDownload is not null)
-        {
-            return;
-        }
-
-        var cancellation = new CancellationTokenSource();
-        this._cutoutEngineDownload = cancellation;
-        var progress = new Progress<double>(share =>
-        {
-            if (this._cutoutEngineDownload == cancellation && !this.IsDisposed)
-            {
-                this.ShowStatus($"Downloading the cutout engine… {share:P0}");
-            }
-        });
-        try
-        {
-            await CutoutEngineFiles.DownloadAsync(progress, cancellation.Token);
-            if (!this.IsDisposed)
-            {
-                this.ShowStatus("The cutout engine downloaded: the images are cut out next");
-                this._preview.Invalidate();
-            }
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (UrlLoadException ex)
-        {
-            if (!this.IsDisposed)
-            {
-                this.ShowStatus($"Couldn't download the cutout engine: {ex.Message}", error: true);
-                this._preview.Invalidate();
-            }
-        }
-        finally
-        {
-            this._cutoutEngineDownload = null;
-            cancellation.Dispose();
-        }
+        this.ShowComponents(new ComponentNeed(
+            ComponentRegistry.Of(ComponentRegistry.CutoutSubject, ComponentRegistry.CutoutPick, ComponentRegistry.OnnxRuntime).Where(c => !c.IsInstalled).ToList(),
+            "The Cutout's Subject and Pick modes need the cutout engine to find what to keep."));
+        return false;
     }
 
     /// <summary>
@@ -5015,34 +4925,21 @@ internal sealed partial class MainForm : Form
             this.ShowStatus($"File content search not remembered: {ex.Message}", error: true);
         }
 
-        if (enable && !OcrEngineFiles.IsAvailable && !this._explorer.DownloadingOcrEngine)
+        if (enable && !OcrEngineFiles.IsAvailable)
         {
             this.OfferOcrEngineDownload();
         }
     }
 
     /// <summary>
-    /// Offers to download the OCR engine — RapidOCR, the content search's second pass — saying what, how
-    /// much and where; on Yes, the file explorer downloads it. Offered when the content search is turned
-    /// on, and from the ⚙ menu while it is missing. See workfiles/20261013-complementary-ocr-passes.md
-    /// § RapidOCR Download.
+    /// The OCR engine missing as the content search is turned on: the Component updates window opened on its rows. The
+    /// content search stays on — it reads the images with Windows OCR meanwhile. See
+    /// workfiles/20261102-component-update-verification.md § Components Window.
     /// </summary>
-    private void OfferOcrEngineDownload()
-    {
-        var answer = MessageBox.Show(
-            this,
-            "Download RapidOCR, a second OCR engine? It reads the stylised, curved or inverted text Windows OCR misses, "
-            + "in a pass of its own after it.\n\n"
-            + $"About 25 MB — its models and the ONNX Runtime and SkiaSharp libraries it runs on — taken from nuget.org into:\n\n{OcrEngineFiles.Folder}\n\n"
-            + "Without it, the content search still reads the images with Windows OCR.",
-            "Download the OCR engine",
-            MessageBoxButtons.YesNo,
-            MessageBoxIcon.Question);
-        if (answer == DialogResult.Yes)
-        {
-            _ = this._explorer.DownloadOcrEngineAsync();
-        }
-    }
+    private void OfferOcrEngineDownload() =>
+        this.ShowComponents(new ComponentNeed(
+            ComponentRegistry.Of(ComponentRegistry.OcrModels, ComponentRegistry.OnnxRuntime, ComponentRegistry.SkiaSharp).Where(c => !c.IsInstalled).ToList(),
+            "The content search reads the stylised, curved or inverted text Windows OCR misses with RapidOCR, a second OCR engine. Without it, Windows OCR alone reads the images."));
 
     /// <summary>
     /// The ⚙ menu's Face analysis: the file explorer starts or stops looking for the faces — those already
@@ -5063,31 +4960,25 @@ internal sealed partial class MainForm : Form
             this.ShowStatus($"Face analysis not remembered: {ex.Message}", error: true);
         }
 
-        if (enable && !FaceEngineFiles.IsAvailable && !this._explorer.DownloadingFaceEngine)
+        if (enable && !FaceEngineFiles.IsAvailable)
         {
             this.OfferFaceEngineDownload();
         }
     }
 
     /// <summary>
-    /// Offers to download the face engine, saying what, how much and where; on Yes, the file explorer
-    /// downloads it. Offered when the face analysis is turned on, from the ⚙ menu and from the People view
-    /// while it is missing. See workfiles/20261027-face-detection.md § Face Engine.
+    /// The face engine missing — the face analysis turned on, the People view's invitation: the Component updates window
+    /// opened on its rows, the face analysis turned off again (workfiles/20261102-component-update-verification.md
+    /// § Components Window).
     /// </summary>
     private void OfferFaceEngineDownload()
     {
-        string runtime = OcrEngineFiles.HasRuntime ? "" : $"\n\nThe ONNX Runtime library they run on (about 13 MB, from nuget.org) goes into:\n\n{OcrEngineFiles.Folder}";
-        var answer = MessageBox.Show(
-            this,
-            "Download the face engine? Two models of the OpenCV Zoo — YuNet, finding the faces, and SFace, telling them apart — "
-            + "let the file explorer group the faces of the base folder's images into people. Everything stays on this computer.\n\n"
-            + $"About 40 MB, taken from huggingface.co into:\n\n{FaceEngineFiles.Folder}{runtime}",
-            "Download the face engine",
-            MessageBoxButtons.YesNo,
-            MessageBoxIcon.Question);
-        if (answer == DialogResult.Yes)
+        this.ShowComponents(new ComponentNeed(
+            ComponentRegistry.Of(ComponentRegistry.FaceDetection, ComponentRegistry.FaceRecognition, ComponentRegistry.OnnxRuntime).Where(c => !c.IsInstalled).ToList(),
+            "The face analysis groups the faces of the base folder's images into people with the face engine. Turn it on again once the engine is installed."));
+        if (this._explorer.FaceAnalysis && !FaceEngineFiles.IsAvailable)
         {
-            _ = this._explorer.DownloadFaceEngineAsync();
+            this.ToggleFaceAnalysis();
         }
     }
 
@@ -5179,7 +5070,7 @@ internal sealed partial class MainForm : Form
             this.ShowStatus($"Visual analysis not remembered: {ex.Message}", error: true);
         }
 
-        if (enable && !VisionEngineFiles.IsAvailable && !this._explorer.DownloadingVisionEngine)
+        if (enable && !VisionEngineFiles.IsAvailable)
         {
             this.OfferVisionEngineDownload();
         }
@@ -5200,33 +5091,22 @@ internal sealed partial class MainForm : Form
             this.ShowStatus($"Captions not remembered: {ex.Message}", error: true);
         }
 
-        if (enable && !CaptionEngineFiles.IsAvailable && !this._explorer.DownloadingCaptionEngine)
+        if (enable && !CaptionEngineFiles.IsAvailable)
         {
             this.OfferCaptionEngineDownload();
         }
     }
 
     /// <summary>
-    /// Offers to download the vision engine, saying what, how much and where; on Yes, the file explorer
-    /// downloads it; on No, the visual analysis is turned off again. See
-    /// workfiles/20261027-image-content-analysis.md § Engine Offer.
+    /// The vision engine missing as the visual analysis is turned on: the Component updates window opened on its rows, the
+    /// visual analysis turned off again (workfiles/20261102-component-update-verification.md § Components Window).
     /// </summary>
     private void OfferVisionEngineDownload()
     {
-        string runtime = OcrEngineFiles.HasRuntime ? "" : $"\n\nThe ONNX Runtime library it runs on (about 13 MB, from nuget.org) goes into:\n\n{OcrEngineFiles.Folder}";
-        var answer = MessageBox.Show(
-            this,
-            "Download the vision engine? SigLIP 2, a model telling what an image shows, lets the file explorer tag the base folder's images "
-            + "in French and English and find them by what they show, or by their likeness to another image. Everything stays on this computer.\n\n"
-            + $"About {VisionEngineFiles.DownloadMegabytes} MB, taken from huggingface.co into:\n\n{VisionEngineFiles.Folder}{runtime}",
-            "Download the vision engine",
-            MessageBoxButtons.YesNo,
-            MessageBoxIcon.Question);
-        if (answer == DialogResult.Yes)
-        {
-            _ = this._explorer.DownloadVisionEngineAsync();
-        }
-        else if (this._explorer.VisualAnalysis && !VisionEngineFiles.IsAvailable)
+        this.ShowComponents(new ComponentNeed(
+            ComponentRegistry.Of(ComponentRegistry.VisionModels, ComponentRegistry.VisionTokenizer, ComponentRegistry.OnnxRuntime).Where(c => !c.IsInstalled).ToList(),
+            "The visual analysis tags the base folder's images and finds them by what they show with the vision engine. Turn it on again once the engine is installed."));
+        if (this._explorer.VisualAnalysis && !VisionEngineFiles.IsAvailable)
         {
             this.ToggleVisualAnalysis();
         }
@@ -5235,20 +5115,10 @@ internal sealed partial class MainForm : Form
     /// <summary>As <see cref="OfferVisionEngineDownload"/>, for the caption engine and the captions.</summary>
     private void OfferCaptionEngineDownload()
     {
-        string runtime = OcrEngineFiles.HasRuntime ? "" : $"\n\nThe ONNX Runtime library it runs on (about 13 MB, from nuget.org) goes into:\n\n{OcrEngineFiles.Folder}";
-        var answer = MessageBox.Show(
-            this,
-            "Download the caption engine? Florence-2, a model describing an image in a sentence, lets the file explorer write in English what every image of the base folder shows — "
-            + "a few seconds an image. Everything stays on this computer.\n\n"
-            + $"About {CaptionEngineFiles.DownloadMegabytes} MB, taken from huggingface.co into:\n\n{VisionEngineFiles.Folder}{runtime}",
-            "Download the caption engine",
-            MessageBoxButtons.YesNo,
-            MessageBoxIcon.Question);
-        if (answer == DialogResult.Yes)
-        {
-            _ = this._explorer.DownloadCaptionEngineAsync();
-        }
-        else if (this._explorer.Captions && !CaptionEngineFiles.IsAvailable)
+        this.ShowComponents(new ComponentNeed(
+            ComponentRegistry.Of(ComponentRegistry.CaptionModels, ComponentRegistry.OnnxRuntime).Where(c => !c.IsInstalled).ToList(),
+            "The captions are written with the caption engine. Turn them on again once the engine is installed."));
+        if (this._explorer.Captions && !CaptionEngineFiles.IsAvailable)
         {
             this.ToggleCaptions();
         }

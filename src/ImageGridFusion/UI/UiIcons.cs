@@ -110,9 +110,14 @@ internal static class UiIcons
     public static readonly UiIcon Folder = UiIcon.Emoji("\U0001F4C1");
     public static readonly UiIcon Pages = UiIcon.Emoji("\U0001F4C4");
     public static readonly UiIcon Download = UiIcon.Emoji("⬇️");
+    public static readonly UiIcon ComponentUpdates = UiIcon.Emoji("\U0001F4E6");
+    public static readonly UiIcon ComponentInfo = UiIcon.Emoji("ℹ️");
+    public static readonly UiIcon CheckComponents = UiIcon.Emoji("\U0001F504");
+    public static readonly UiIcon UpdateComponent = UiIcon.Emoji("⬆️");
+    public static readonly UiIcon BackToVersion = UiIcon.Emoji("↩️");
+    public static readonly UiIcon Uninstall = UiIcon.Emoji("\U0001F5D1️");
     public static readonly UiIcon TextRead = UiIcon.Emoji("\U0001F4DD");
     public static readonly UiIcon Rebuild = UiIcon.Emoji("\U0001F504");
-    public static readonly UiIcon UpdateEmojiFonts = UiIcon.Emoji("\U0001F504");
     public static readonly UiIcon OcrResultStyle = UiIcon.Emoji("↪️");
     public static readonly UiIcon CurvedArrow = UiIcon.Emoji("⤴️");
     public static readonly UiIcon Thickness = UiIcon.Emoji("➖");

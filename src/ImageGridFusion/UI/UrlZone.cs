@@ -109,88 +109,19 @@ internal sealed class UrlZone : Panel
     /// <summary>The URL field has the focus: the keys editing text are its own.</summary>
     public bool IsEditingText => this._url.Focused;
 
-    /// <summary>yt-dlp's companions are being installed, from the zone's link or the ⚙ menu.</summary>
-    public bool InstallingCompanions { get; private set; }
+    /// <summary>yt-dlp or its companions missing: the Component updates window to open on them, what they are for said.</summary>
+    public event EventHandler<ComponentNeed>? ComponentsRequested;
 
     /// <summary>
-    /// The companions' offer — the zone's link, the ⚙ menu: a confirmation showing the winget command of
-    /// each one missing, then their install and, when the offer was made for a URL, its load again;
-    /// otherwise the media the zone held comes back. See workfiles/20261015-yt-dlp-best-format.md
-    /// § When They Are Offered.
+    /// The companions' offer — the zone's link: the Component updates window opened on Deno and ffmpeg, which install
+    /// there (workfiles/20261102-component-update-verification.md § Components Window). Load the URL again once they are.
     /// </summary>
-    public async Task OfferCompanionsAsync()
+    public Task OfferCompanionsAsync()
     {
-        var missing = YtDlpCompanions.Missing;
-        if (missing.Count == 0 || this.InstallingCompanions)
-        {
-            return;
-        }
-
-        string names = YtDlpCompanions.Names(missing);
-        var answer = MessageBox.Show(
-            this.FindForm(),
-            "yt-dlp loads the largest formats with its companions: Deno, the JavaScript runtime YouTube's formats need, "
-            + "and ffmpeg, which joins a video track and its sound.\n\n"
-            + $"Install {names} with winget, each in its own folder next to the app? The app will run:\n\n{YtDlpCompanions.Commands(missing)}\n\n"
-            + "This accepts winget's source and package agreements on your behalf.",
-            "Install yt-dlp companions",
-            MessageBoxButtons.YesNo,
-            MessageBoxIcon.Question);
-        if (answer != DialogResult.Yes)
-        {
-            return;
-        }
-
-        Uri? url = this._installFor;
-        string? held = this._path;
-        this.InstallingCompanions = true;
-        try
-        {
-            await this.RunAsync(url, $"Installing {names}…", async (target, progress, token) =>
-            {
-                progress.Report(new InstallingStep(names));
-                await YtDlpCompanions.InstallAsync(missing, token);
-                return target is not null ? await UrlResolver.LoadAsync(target, progress, token)
-                    : held is not null && File.Exists(held) ? held
-                    : throw new CompanionsInstalledException(names);
-            });
-        }
-        finally
-        {
-            this.InstallingCompanions = false;
-        }
-    }
-
-    protected override void OnPaint(PaintEventArgs e)
-    {
-        base.OnPaint(e);
-        int y = this.LogicalToDeviceUnits(SeparatorBand) / 2;
-        using var pen = new Pen(SystemColors.ControlDark);
-        e.Graphics.DrawLine(pen, 0, y, this.Width, y);
-    }
-
-    protected override void OnFontChanged(EventArgs e)
-    {
-        base.OnFontChanged(e);
-        this.ApplyMetrics();
-    }
-
-    protected override void OnDpiChangedAfterParent(EventArgs e)
-    {
-        base.OnDpiChangedAfterParent(e);
-        this.ApplyMetrics();
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            this._loading?.Cancel();
-            this._toolTip.Dispose();
-            this._menu.Dispose();
-        }
-
-        base.Dispose(disposing);
+        this.ComponentsRequested?.Invoke(this, new ComponentNeed(
+            Components.ComponentRegistry.Of(Components.ComponentRegistry.Deno, Components.ComponentRegistry.Ffmpeg).Where(c => !c.IsInstalled).ToList(),
+            "yt-dlp loads the largest formats with its companions: Deno, the JavaScript runtime YouTube's formats need, and ffmpeg, which joins a video track and its sound. Load the URL again once they are installed."));
+        return Task.CompletedTask;
     }
 
     /// <summary>The preview's column and the separator's band, in device units.</summary>
@@ -229,47 +160,15 @@ internal sealed class UrlZone : Panel
     }
 
     /// <summary>
-    /// The install offer's link: a confirmation showing the winget command, then the install and, once
-    /// yt-dlp is there, the load it was offered for again.
+    /// The install offer's link: the Component updates window opened on yt-dlp and its companions missing, which install
+    /// there. Load the URL again once they are.
     /// </summary>
-    private async Task OfferInstallAsync()
+    private Task OfferInstallAsync()
     {
-        if (this._installFor is not { } url)
-        {
-            return;
-        }
-
-        // The companions missing are installed with it, in the same confirmation.
-        var companions = YtDlpCompanions.Missing;
-        string commands = string.Join("\n\n", [YtDlp.InstallCommand, .. companions.Select(t => t.InstallCommand)]);
-        string with = companions.Count == 0 ? ""
-            : $"\n\nWith its companions, {YtDlpCompanions.Names(companions)}, each in its own folder next to the app: "
-              + "Deno, the JavaScript runtime YouTube's formats need, and ffmpeg, which joins a video track and its sound.";
-        var answer = MessageBox.Show(
-            this.FindForm(),
-            "This site's media is loaded with yt-dlp, which isn't installed.\n\n"
-            + $"Install it in {YtDlp.Folder} with winget?{with}\n\nThe app will run:\n\n{commands}\n\n"
-            + "This accepts winget's source and package agreements on your behalf.",
-            "Install yt-dlp",
-            MessageBoxButtons.YesNo,
-            MessageBoxIcon.Question);
-        if (answer != DialogResult.Yes)
-        {
-            return;
-        }
-
-        await this.RunAsync(url, "Installing yt-dlp…", async (target, progress, token) =>
-        {
-            progress.Report(new InstallingStep("yt-dlp"));
-            await YtDlp.InstallAsync(token);
-            if (companions.Count > 0)
-            {
-                progress.Report(new InstallingStep(YtDlpCompanions.Names(companions)));
-                await YtDlpCompanions.InstallAsync(companions, token);
-            }
-
-            return await UrlResolver.LoadAsync(target!, progress, token);
-        });
+        this.ComponentsRequested?.Invoke(this, new ComponentNeed(
+            Components.ComponentRegistry.Of(Components.ComponentRegistry.YtDlp, Components.ComponentRegistry.Deno, Components.ComponentRegistry.Ffmpeg).Where(c => !c.IsInstalled).ToList(),
+            "This site's media is loaded with yt-dlp — with Deno and ffmpeg, its companions, for the largest formats. Load the URL again once they are installed."));
+        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -324,11 +223,6 @@ internal sealed class UrlZone : Panel
         {
             this.ShowCompanionsOffer(url, e.Message);
         }
-        catch (CompanionsInstalledException e) when (this._loading == cts)
-        {
-            this.ShowEmpty();
-            this.SetCaption(e.Message, error: false);
-        }
         catch (UrlLoadException e) when (this._loading == cts)
         {
             this.ShowFailed(e.Message);
@@ -360,9 +254,6 @@ internal sealed class UrlZone : Panel
         {
             case ResolvingStep:
                 this.SetCaption(ResolvingCaption, error: false);
-                break;
-            case InstallingStep installing:
-                this.SetCaption($"Installing {installing.Name}…", error: false);
                 break;
             case MergingStep:
                 this.SetCaption(MergingCaption, error: false);
@@ -575,9 +466,6 @@ internal sealed class UrlZone : Panel
         YtDlp,
         Companions,
     }
-
-    /// <summary>The companions installed from the ⚙ menu with no URL to load again: the zone says so.</summary>
-    private sealed class CompanionsInstalledException(string names) : Exception($"{names} installed: yt-dlp now loads the largest formats");
 
     private enum PreviewState
     {

@@ -1,15 +1,12 @@
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using ImageGridFusion.Explorer;
-using ImageGridFusion.Web;
 
 namespace ImageGridFusion.Imaging;
 
 /// <summary>
 /// The emoji fonts a text layer's emojis may be drawn in beside Windows' Segoe UI Emoji (workfiles/20261102-emoji-fonts.md
-/// § Shipped Fonts): four free fonts, never part of the build — downloaded at the first launch after asking, into
-/// <see cref="FolderName"/> next to the exe, from pinned URLs each checked against its SHA-256
-/// (<see cref="DirectEngineDownload"/>), and updated from the ⚙ menu to their latest release. Never installed into
+/// § Shipped Fonts): four free fonts, never part of the build — installed and updated from the Component updates
+/// window (offered at the first launch), into <see cref="FolderName"/> next to the exe, from pinned URLs each checked
+/// against its SHA-256 or their latest release (<see cref="Components.ComponentRegistry"/>). Never installed into
 /// Windows: <see cref="TextRaster"/> loads them from memory.
 /// </summary>
 internal static class EmojiFonts
@@ -19,8 +16,6 @@ internal static class EmojiFonts
 
     /// <summary>The fonts' folder next to the exe.</summary>
     public const string FolderName = "emoji-fonts";
-
-    private const string UpdateSuffix = ".~updating";
 
     // Each font: its file, pinned, its family as DirectWrite names it, and where its latest release is — a release's asset,
     // else a file of the repository at the release's tag. Licenses: Twemoji's graphics CC-BY 4.0, Noto OFL 1.1, OpenMoji
@@ -42,17 +37,8 @@ internal static class EmojiFonts
     /// <summary>The fonts' folder: <c>emoji-fonts\</c> next to the exe.</summary>
     public static string Folder => Path.Combine(AppContext.BaseDirectory, FolderName);
 
-    /// <summary>Whether every font is in <see cref="Folder"/>.</summary>
-    public static bool AllPresent => DirectEngineDownload.AllPresent(Folder, Fonts.Select(f => f.File));
-
     /// <summary>Whether any font is in <see cref="Folder"/>: what the update works on.</summary>
     public static bool AnyPresent => Fonts.Any(f => File.Exists(PathOf(f)));
-
-    /// <summary>The fonts' names, for the download's confirmation.</summary>
-    public static IEnumerable<string> Names => Fonts.Select(f => f.Family);
-
-    /// <summary>The download's size, in MB, rounded up.</summary>
-    public static int DownloadMegabytes => (int)Math.Ceiling(Fonts.Sum(f => f.File.Size) / 1e6);
 
     /// <summary>
     /// Changes whenever the fonts' files change — downloaded, updated —: <see cref="TextRaster"/> loads them again, and the
@@ -64,107 +50,16 @@ internal static class EmojiFonts
     public static IEnumerable<(string Family, string Path)> Present =>
         Fonts.Where(f => File.Exists(PathOf(f))).Select(f => (f.Family, PathOf(f)));
 
-    /// <summary>
-    /// Downloads the fonts missing from <see cref="Folder"/>, reporting the share done, 0 to 1. Throws a
-    /// <see cref="UrlLoadException"/> when it cannot; the fonts downloaded before the failure are kept.
-    /// </summary>
-    public static async Task DownloadAsync(IProgress<double> progress, CancellationToken token)
-    {
-        try
-        {
-            await DirectEngineDownload.DownloadAsync(Folder, [.. Fonts.Select(f => f.File)], progress, token);
-        }
-        finally
-        {
-            Interlocked.Increment(ref _generation);
-        }
-    }
+    private static string PathOf(Font font) => System.IO.Path.Combine(Folder, font.File.Name);
 
-    /// <summary>
-    /// Replaces each font there by its latest release — no pinned hash, HTTPS only — reporting the share done, 0 to 1:
-    /// the families updated, and those whose update failed with why. A font whose download fails keeps its file.
-    /// </summary>
-    public static async Task<(IReadOnlyList<string> Updated, IReadOnlyList<string> Failed)> UpdateAsync(IProgress<double> progress, CancellationToken token)
-    {
-        var present = Fonts.Where(f => File.Exists(PathOf(f))).ToArray();
-        var updated = new List<string>();
-        var failed = new List<string>();
-        try
-        {
-            for (int i = 0; i < present.Length; i++)
-            {
-                var font = present[i];
-                string path = PathOf(font);
-                string partial = path + UpdateSuffix;
-                try
-                {
-                    var url = await LatestUrlAsync(font, token);
-                    int done = i;
-                    await DirectEngineDownload.SaveAsync(url, partial, share => progress.Report((done + share) / present.Length), token);
-                    if (!IsFont(partial))
-                    {
-                        throw new UrlLoadException("not a font");
-                    }
+    /// <summary>Each font as pinned: its file, its family, and where its latest release is — the Component updates window's rows.</summary>
+    public static IReadOnlyList<Font> Pinned => Fonts;
 
-                    if (string.Equals(DirectEngineDownload.Sha256Of(partial), DirectEngineDownload.Sha256Of(path), StringComparison.OrdinalIgnoreCase))
-                    {
-                        DirectEngineDownload.TryDelete(partial);
-                    }
-                    else
-                    {
-                        File.Move(partial, path, overwrite: true);
-                        updated.Add(font.Family);
-                    }
-                }
-                catch (Exception e) when (e is IOException or UnauthorizedAccessException or HttpRequestException or UrlLoadException or JsonException or InvalidOperationException
-                    || (e is OperationCanceledException && !token.IsCancellationRequested))
-                {
-                    DirectEngineDownload.TryDelete(partial);
-                    failed.Add($"{font.Family} ({e.Message})");
-                }
-                catch (OperationCanceledException)
-                {
-                    DirectEngineDownload.TryDelete(partial);
-                    throw;
-                }
-            }
-        }
-        finally
-        {
-            if (updated.Count > 0)
-            {
-                Interlocked.Increment(ref _generation);
-            }
-        }
-
-        progress.Report(1);
-        return (updated, failed);
-    }
-
-    private static string PathOf(Font font) => Path.Combine(Folder, font.File.Name);
-
-    /// <summary>The file of <paramref name="font"/>'s latest release, read from GitHub's API.</summary>
-    private static async Task<Uri> LatestUrlAsync(Font font, CancellationToken token)
-    {
-        using var response = await Downloader.GetAsync(new Uri($"https://api.github.com/repos/{font.Repository}/releases/latest"), token);
-        Downloader.EnsureSuccess(response);
-        var release = JsonNode.Parse(await response.Content.ReadAsStringAsync(token)) as JsonObject
-            ?? throw new UrlLoadException("no release");
-        if (font.Asset is { } asset)
-        {
-            return release["assets"] is JsonArray assets
-                && assets.OfType<JsonObject>().FirstOrDefault(a => (string?)a["name"] == asset)?["browser_download_url"] is JsonValue link
-                && link.TryGetValue(out string? url)
-                    ? new Uri(url)
-                    : throw new UrlLoadException($"no {asset} in its latest release");
-        }
-
-        string tag = (string?)release["tag_name"] ?? throw new UrlLoadException("no release tag");
-        return new Uri($"https://raw.githubusercontent.com/{font.Repository}/{Uri.EscapeDataString(tag)}/{font.Path}");
-    }
+    /// <summary>The fonts' files changed — installed, updated, gone back to another version —: drawn again (<see cref="Generation"/>).</summary>
+    public static void NotifyChanged() => Interlocked.Increment(ref _generation);
 
     /// <summary>Whether the file starts as a TrueType or OpenType font does.</summary>
-    private static bool IsFont(string path)
+    public static bool IsFont(string path)
     {
         Span<byte> head = stackalloc byte[4];
         using var stream = File.OpenRead(path);
@@ -173,5 +68,5 @@ internal static class EmojiFonts
     }
 
     /// <summary>A font: its pinned file, its family, and where its latest release is — <paramref name="Asset"/> or <paramref name="Path"/>.</summary>
-    private sealed record Font(EngineFile File, string Family, string Repository, string? Asset, string? Path);
+    public sealed record Font(EngineFile File, string Family, string Repository, string? Asset, string? Path);
 }

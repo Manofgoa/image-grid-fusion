@@ -18,19 +18,4 @@ internal static class YtDlpCompanions
 
     /// <summary>The companions not installed yet, in the order they are installed.</summary>
     public static IReadOnlyList<WingetTool> Missing => [.. All.Where(t => t.Find() is null)];
-
-    /// <summary>"Deno and ffmpeg", or the one name: the companions <paramref name="tools"/> names, as the user reads them.</summary>
-    public static string Names(IReadOnlyList<WingetTool> tools) => string.Join(" and ", tools.Select(t => t.Name));
-
-    /// <summary>The winget commands installing <paramref name="tools"/>, one per line, as the user is shown them.</summary>
-    public static string Commands(IReadOnlyList<WingetTool> tools) => string.Join("\n\n", tools.Select(t => t.InstallCommand));
-
-    /// <summary>Installs <paramref name="tools"/> one after the other; the first that fails stops the others.</summary>
-    public static async Task InstallAsync(IReadOnlyList<WingetTool> tools, CancellationToken token)
-    {
-        foreach (var tool in tools)
-        {
-            await tool.InstallAsync(token);
-        }
-    }
 }

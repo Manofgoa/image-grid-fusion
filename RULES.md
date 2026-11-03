@@ -132,10 +132,10 @@ The Cutout effect's state holds no pixel, and its mask is computed outside `Comp
   one decode at a time, the last cursor place decoded next, the outline placed by `Compositor.DrawCell`
   with the image's look.
 - **The cutout engine is never shipped**: IS-Net (the subject) and MobileSAM (a click),
-  `Imaging/CutoutEngineFiles`, downloaded in one go into **`cutout-engine\` next to the exe** from
-  pinned URLs, each checked against its SHA-256 (`DirectEngineDownload`) — offered when the effect is
-  turned on without it in a mode needing it, a **No** leaving it as it was, and from the ⚙ menu while
-  missing. It runs on the OCR
+  `Imaging/CutoutEngineFiles`, installed from the Component updates window into **`cutout-engine\` next to
+  the exe** from pinned URLs, each checked against its SHA-256 (§ Downloadable Components) — the window
+  opened on its rows when the effect is turned on without it in a mode needing it, the effect left off.
+  It runs on the OCR
   engine's ONNX Runtime (`Imaging/CutoutEngine`), its sessions without the memory arena, released after
   5 minutes unused.
 
@@ -484,10 +484,10 @@ The emojis of the texts — a text layer's and a text cell's — in color, flags
 - **The installed emoji fonts** are the color fonts holding 😀 (`TextRaster.InstalledEmojiFamilies`), whatever their
   name: the Emoji drop-down lists them, the font drop-down leaves them out.
 - **The emoji fonts of the app are never shipped**: Twemoji, Noto Color Emoji, OpenMoji and Blobmoji
-  (`Imaging/EmojiFonts`), downloaded into **`emoji-fonts\` next to the exe** from pinned URLs, each checked against
-  its SHA-256 — offered at the first launch (a **No** remembered, `AppSettings.EmojiFontsDeclined`; no offer from a
-  `--new-instance`) and from the ⚙ menu while one is missing — and updated from the ⚙ menu to their **latest
-  release**. **Loaded from memory** (`TextRaster.CreateMemoryCollection`), never from their files, so an update
+  (`Imaging/EmojiFonts`), installed from the Component updates window into **`emoji-fonts\` next to the exe** from
+  pinned URLs, each checked against its SHA-256, and updated there to their **latest release** (§ Downloadable
+  Components) — the window opened on their rows at the first launch (closed with none installed, the **No** is
+  remembered, `AppSettings.EmojiFontsDeclined`; no offer from a `--new-instance`). **Loaded from memory** (`TextRaster.CreateMemoryCollection`), never from their files, so an update
   replaces them; `EmojiFonts.Generation` tells every thread's `TextRaster` to load them again.
 - **With an emoji font, the outline and the shadow are made of the text drawn in color** — its alpha, as an
   opacity mask (`TextRaster.Shape`) — since those fonts' color glyphs have no plain shape; Segoe UI Emoji keeps the
@@ -751,16 +751,15 @@ What the URL zone loads (origin: `workfiles/20261009-url-content.md`), `Web/`:
   start-up by the normal instance only — a `--new-instance` one deletes nothing of its own accord.
   The same file name already there is reused, not downloaded again.
 - **yt-dlp is never shipped**: looked for in `yt-dlp\` next to the exe only (`YtDlp.Folder`), never on
-  the `PATH`. Missing, the zone offers to install it there with winget — the command shown and
-  confirmed first; nothing is installed without that **Yes**.
+  the `PATH`. Missing, the zone's link opens the Component updates window on it, where it is installed
+  with winget at its pinned version (§ Downloadable Components); nothing is installed without a click.
 - **Its companions, Deno and ffmpeg, neither** (origin: `workfiles/20261015-yt-dlp-best-format.md`):
   Deno, the JavaScript runtime YouTube's formats need, and ffmpeg, joining a video track and its sound
   — each in its own folder next to the exe, `deno\` and `ffmpeg\` (`YtDlpCompanions`), passed to yt-dlp
   explicitly (`--js-runtimes`, `--ffmpeg-location`), never looked for on the `PATH` (`--no-js-runtimes`).
-  Offered **together**, one confirmation showing the winget command of each one missing: on a yt-dlp
-  load that fails without them, as a hint on one that succeeded without them, from the ⚙ menu while
-  yt-dlp is there without them, and in a fresh yt-dlp install's confirmation. A tool installed with
-  winget goes through `Web/WingetTool`.
+  Offered **together**, the zone's link opening the Component updates window on the ones missing: on a
+  yt-dlp load that fails without them, as a hint on one that succeeded without them, and with yt-dlp
+  itself. A tool installed with winget goes through `Web/WingetTool`.
 - **The largest format up to the Video size** (`YtDlp.FormatSelector`, `AppSettings.VideoMaxSide`, read
   when the load starts), for every site: its longer side capped, the largest of all when every one is
   larger; the resolution first, H.264 > VP9 > AV1 at equal resolution, AAC for the sound
@@ -800,11 +799,12 @@ How the content search reads the images and PDF pages (origin:
   slots — the tags and the caption (`ContentPasses.IsSeen`, § Image Content Analysis). The excerpt and the
   arrow come from the slot that gave the grade (`ContentIndex.Find`).
 - **RapidOCR is never shipped**: its models and the native DLLs of ONNX Runtime and SkiaSharp are kept
-  out of the build and downloaded on demand into **`ocr-engine\` next to the exe** (`OcrEngineFiles`) —
-  only the zip entries needed, by HTTP ranges (`Web/RemoteZip`), each checked against its SHA-256 —
-  offered when the content search is turned on and from the ⚙ menu while missing; nothing is downloaded
-  without that **Yes**. The package versions in `ImageGridFusion.csproj` and in `OcrEngineFiles` change
-  together, the hashes with them.
+  out of the build and installed from the Component updates window into **`ocr-engine\` next to the exe**
+  (`OcrEngineFiles`) — only the zip entries needed, by HTTP ranges (`Web/RemoteZip`), each checked against
+  its SHA-256 — the window opened on their rows when the content search is turned on without them, the
+  search staying on with Windows OCR; nothing is downloaded without a click. The package versions in
+  `ImageGridFusion.csproj` and in `OcrEngineFiles` change together, the hashes with them: they are the
+  runtimes' pinned versions (§ Downloadable Components).
 - The native DLLs are resolved from that folder (`OcrEngineFiles.ResolveNativeLibraries`) **before any
   code touches ONNX Runtime or SkiaSharp**: another `libSkiaSharp.dll` on the `PATH` would be loaded
   otherwise.
@@ -821,10 +821,11 @@ The faces of the indexed images grouped into people, in the file explorer's **Pe
   `AppSettings.FaceAnalysis`); every face, embedding and decision stays on this machine. *Forget faces…*
   deletes `index\files.faces` and `people.json` after a confirmation and turns the analysis off.
 - **The face engine is never shipped**: YuNet (detection, MIT) and SFace (recognition, Apache 2.0), two
-  OpenCV Zoo models, downloaded on demand into **`face-engine\` next to the exe** (`FaceEngineFiles`) —
-  pinned URLs, each checked against its SHA-256 — offered when the analysis is turned on, from the ⚙ menu
-  and from the People view while missing; nothing downloaded without that **Yes**. They run on the OCR
-  engine's ONNX Runtime DLL, fetched into `ocr-engine\` with them when missing. The non-commercial models
+  OpenCV Zoo models, installed from the Component updates window into **`face-engine\` next to the exe**
+  (`FaceEngineFiles`) — pinned revisions, each file checked against its SHA-256 — the window opened on
+  their rows when the analysis is turned on without them, or from the People view, the analysis turned off
+  again; nothing downloaded without a click. They run on the OCR engine's ONNX Runtime DLL, its row
+  installed with them when missing. The non-commercial models
   (InsightFace) are never used.
 - **The face pass** (`FileExplorerPanel.ExtractFaces`): over every image and PDF of the index — the pixels
   the OCR reads (`ContentExtractor.DecodePixels`), videos left out — with the OCR passes' pause rule and
@@ -905,9 +906,10 @@ What the indexed images **show**, analysed offline and searched under 💡 in Fr
   vocabulary stay.
 - **The engines are never shipped**: **SigLIP 2 base** (Apache 2.0 — its vision model, its text model and
   Gemma's SentencePiece tokenizer, `VisionEngineFiles`) and **Florence-2 base** (MIT, `CaptionEngineFiles`),
-  downloaded on demand into **`vision-engine\` next to the exe** from pinned revisions, each file checked
-  against its SHA-256 — one download loop for every direct engine, `DirectEngineDownload`, the face
-  engine's included. They run on the OCR engine's ONNX Runtime DLL, on the CPU. The vision encoders are
+  installed from the Component updates window into **`vision-engine\` next to the exe** from pinned
+  revisions, each file checked against its SHA-256 — one download for every component,
+  `ComponentInstaller` (§ Downloadable Components) —, the window opened on their rows when the setting
+  needing them is turned on without them, the setting turned off again. They run on the OCR engine's ONNX Runtime DLL, on the CPU. The vision encoders are
   the **uint8** exports, about twice as fast as the int8 ones on the CPU for the same results.
 - **The Vision pass** (`FileExplorerPanel.Extract`, `RunVision`): over every image and PDF — the pixels
   `ContentExtractor.DecodePixels` gives — each squashed to 256 × 256 over white through SigLIP 2's vision
@@ -994,6 +996,49 @@ Apply to every setting remembered between sessions (origin:
 - A setting that cannot be saved says so in the status line; one that cannot be read falls back to
   its default.
 
+## Downloadable Components
+
+Every file or tool the app downloads rather than ships — the engines' models, the runtimes they run on,
+the URL zone's tools, the emoji fonts — is a **component**, installed and updated from **one place**,
+the **Component updates window** (origin: `workfiles/20261102-component-update-verification.md`):
+
+- **One registry**: `Components/ComponentRegistry`, one component per **upstream** — a Hugging Face
+  repository, a GitHub release, a NuGet package, a winget package — with its group (Engines, Runtimes,
+  Web tools, Emoji fonts), its purpose, its license and its **source** (`ComponentSource`), which gives its
+  page too (`PageUrl`, opened by a click on its name; a winget tool's is its project's). Its pinned files
+  stay with the code that reads them (`OcrEngineFiles`, `FaceEngineFiles`, `EmojiFonts`…). A new
+  downloadable component is registered there.
+- **Every install goes through the window**: no download or winget install runs anywhere else, and the ⚙
+  menu holds no *Download* entry. A feature lacking a component **opens the window** on its rows
+  (`MainForm.ShowComponents` with a `ComponentNeed`), highlighted, a balloon saying why it is wanted;
+  **the feature goes back to off** at once — the Cutout's mode not set, an analysis setting turned off —,
+  the content search aside, which runs with Windows OCR meanwhile. Nothing installs by itself.
+- **The manifest**, `components.json` next to the exe (`ComponentManifest`): per component its
+  `pinned` version — **a copy of the code's**, rewritten at every start, the code always winning —, its
+  `forced` one — **the user's**, a full list of files with their URLs and SHA-256 (a winget tool: its
+  version alone), never written by the app —, the version `installed` with its files' hashes, the one
+  `pending` the next start, `installedOn` and `updatedOn`. Missing, it is recreated, a component already
+  there recorded as its pinned version; unreadable, it is kept as `components.json.bad`. A
+  `--new-instance` writes it only on a user's install.
+- **The latest version** is read when the window opens and on *Check now*, never in the background: each
+  source's (`LatestAsync`), a Hugging Face file compared by its LFS SHA-256 or its Git blob id, so a commit
+  touching other files offers no update; a winget tool's installed version read from the tool itself.
+- **An install** downloads into `update-staging\<id>\` in the component's folder, each file checked
+  against its SHA-256 when known beforehand and by the component's own check (`Component.Accepts`), off
+  the UI thread; then what holds the files is **released** (`IComponentsHost.ReleaseAsync`: the cutout
+  engine's sessions, the text model, the content passes), the files swapped, the version replaced deleted.
+  A file still locked — a native runtime loaded — stays staged: **swapped at the next start**, in
+  `Program.Main` before anything loads it (`ComponentInstaller.ApplyPending`), the window offering a
+  restart. A new resident engine adds its release there.
+- **Uninstall** (the row's ▾, or **Uninstall all** for every row installed, one confirmation) deletes the installed version's files — a winget tool's folder — after a
+  confirmation naming the size freed, what holds them released first; a file still locked is left, the row
+  saying a restart frees it. The **size** shown is what those files take on the disk.
+- **Several rows at once**, each with its own progress bar and ×, redrawn by the window's timer only, never
+  by each progress report; a runtime several rows need is installed
+  once; the winget installs one at a time. Closing the window — or quitting the app — while one runs asks
+  first, a **Yes** cancelling them, the installed versions untouched.
+- Out of the undo history.
+
 ## On-Cell Helper Indicators
 
 Apply to every **helper indicator** — a measure or geometry aid drawn over a cell: guides, handles,
@@ -1076,7 +1121,7 @@ Every control that does something shows an icon, **emoji first** (origin:
 - **The direction of a label stays text**: `Date ↓`, `Size ↑`, `Name A→Z` — never an arrow emoji
   inside a label.
 - **One icon per action**: a `UiIcons` field, shared by every control showing the action (*Find
-  similar images*, *Copy*, every *Download the … engine…*). A new control takes the field of its
+  similar images*, *Copy*, the Component updates window's *Install* and its ⚙ entry). A new control takes the field of its
   action, or adds one.
 - **Drawn at 16 logical px in device pixels**, again when the DPI changes; the emoji rendered by
   Direct2D (`TextRaster`) — GDI draws them in one color —, each size kept once drawn. Never a small

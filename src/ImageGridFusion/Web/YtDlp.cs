@@ -30,14 +30,8 @@ internal static class YtDlp
 
     public static string Folder => Tool.Folder;
 
-    /// <summary>The command <see cref="InstallAsync"/> runs, as the user is shown it before it does.</summary>
-    public static string InstallCommand => Tool.InstallCommand;
-
     /// <summary>yt-dlp.exe at the root of its folder, else the first one below it; null when it is not there.</summary>
     public static string? Find() => Tool.Find();
-
-    /// <summary>Installs yt-dlp into its folder with winget; throws a <see cref="UrlLoadException"/> when it cannot.</summary>
-    public static Task InstallAsync(CancellationToken token) => Tool.InstallAsync(token);
 
     /// <summary>
     /// yt-dlp's format selection: the largest format whose longer side is at most <paramref name="maxSide"/>
