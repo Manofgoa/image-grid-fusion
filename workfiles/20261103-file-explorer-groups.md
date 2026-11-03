@@ -240,6 +240,11 @@ drop the header of a single-section list **not kept** — a header always shows 
 buttons side by side, always visible (Q&A 14). No test project (Q&A 15). Every open question is
 settled.
 
+### Iteration 6 — 2026-11-03 — ✅ Implemented
+
+Go given (Q&A 16): code, tests and documentation, in a worktree on `feature/file-explorer-groups`.
+The scope is frozen as the sections above stand.
+
 ---
 
 ## Implementation Log
@@ -276,7 +281,7 @@ Questions asked by the agent during design, with user responses.
 | 13 | The remaining proposals (nested prefixes, `Outils RS` alone, single section, Details headers, name-and-content tier with the groups off) | Shortest prefix, headers in Details, name + content always; the single-section proposal not kept | 2026-11-03 |
 | 14 | Toggles: placement, icon, default, the ⚙ submenu | Two buttons side by side | 2026-11-03 |
 | 15 | A unit test project for the name patterns and the grouping? | No, hand checks | 2026-11-03 |
-| 16 | Go for implementation? | | 2026-11-03 |
+| 16 | Go for implementation? | Code, tests and documentation — in a worktree | 2026-11-03 |
 
 ---
 
