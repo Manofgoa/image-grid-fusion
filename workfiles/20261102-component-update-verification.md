@@ -560,6 +560,13 @@ only below it.
 Done: checked in the harness at the window's minimum width — responsive (a 500 ms wait took 503 ms), no
 horizontal scroll bar.
 
+### Iteration 25 — 2026-11-03 — ⚙️ Post-implementation — Uninstall all
+
+User request: an **Uninstall all** button. Beside Install all and Update all, its count in its text,
+disabled at 0: one confirmation naming the components and the size freed, then every row installed and not
+running uninstalled as its own Uninstall does (Iteration 21) — what holds the files released once, a file
+still locked left, its row saying a restart frees it.
+
 ---
 
 ## Implementation Log
