@@ -47,16 +47,18 @@ Settled with the user before exploration (Q&A 1–4):
 ## Effect and Options
 
 - **Tab**: `Upscale`, placed **right after Cutout** in `ImageEffect` (the enum order is the toolbar
-  order): the cut-out and the upscale are the two model-computed effects, and the drawn bitmap is
-  built in that order (§ Drawn Bitmap). Its icon: an emoji from `UiIcons` (RULES.md § Icons) — 🔍
-  unless a closer one says "enlarge".
+  order): the cut-out and the upscale are the two model-computed effects (the drawn bitmap is built
+  upscale first, then the cut-out — § Drawn Bitmap). Its icon: 🆙 (`UiIcons.Upscale`) — 🔍 is the
+  Zoom's.
 - **State**: a record `UpscaleEffect` (`Factor` 2 or 4), `Default` = ×2, with `ToJson` / `FromJson` /
   `Describe` (RULES.md § Effect Presets) and a cache key (`Factor` and the model).
-- **Options toolbar**: the factors as **option thumbnails** (`ThumbnailStrip`, 56 × 40, RULES.md
-  § Options Toolbar): **×2** and **×4**, one pressed; then the effect's **Reset**. Acting on a
-  thumbnail turns the effect on.
+- **Options toolbar**: the factors as **option thumbnails** (`UI/UpscaleStrip`, 56 × 40, RULES.md
+  § Options Toolbar): **×2** and **×4**, one pressed — the image as loaded in the corner of its
+  enlargement dashed in blue —, then, set apart, the **Save…** action; then the effect's **Reset**.
+  Acting on a factor turns the effect on; *Save…* does not.
 - **Size limit**: a factor whose result would exceed `CanvasSizer.MaxLongSide` (8192) on the longer
-  side is **disabled**, its tooltip saying why; when even ×2 would, the checkbox is disabled too.
+  side is **refused and faded**, its tooltip saying why; when even ×2 would, the checkbox is disabled
+  too (`UpscaleEffect.Fits`).
   What exceeds the PNG cap can never be drawn at its size.
 - **Layers**: a layer gets it like any cell effect (RULES.md § Layers) — a text layer's checkbox
   disabled (it sharpens).
@@ -69,11 +71,12 @@ Settled with the user before exploration (Q&A 1–4):
 An **action** writing the upscaled image to a real file, for when one is wanted (Q&A 11) — the effect
 itself unchanged, the cell untouched:
 
-- **Two routes, one action** (Q&A 13): a **Save upscaled image…** button in the Upscale options, after
-  the ×2 / ×4 thumbnails, set apart as an action (RULES.md § Options Toolbar — as Crop's 100 %); and the
-  same entry in the **cell's context menu** (`MainForm.ShowCellMenu`). One `UiIcons` field for both.
-  Enabled while the effect is on for the image; when its upscale is not ready yet, the action waits for
-  it, the status line saying so.
+- **Two routes, one action** (Q&A 13): **Save…**, a thumbnail of the Upscale options after the ×2 / ×4
+  ones, set apart as an action (RULES.md § Options Toolbar — as Crop's 100 %); and **Save upscaled
+  image…** in the **cell's context menu** (`MainForm.ShowCellMenu`), 💾 (`UiIcons.SaveUpscaled`), shown
+  for an image the Upscale applies to. Both enabled while the effect is on for the image; when its
+  upscale is not ready yet, the action waits for it once the file is chosen, the grid locked as an
+  export waits (`MainForm.SaveUpscaledAsync`).
 - **What it holds** (Q&A 14): the **upscaled image alone**, whole — the image as loaded, ×2 or ×4, the
   cut-out when the Cutout is on (§ Drawn Bitmap: upscale, then the mask) — never the crop, the
   orientation, the colors or any other effect: a source file to reuse. The cell as drawn stays Cell
@@ -113,11 +116,12 @@ itself unchanged, the cell untouched:
 
   The hashes are taken from the Hugging Face API by the scout and checked again at implementation;
   the ×2 file is checked to be a true ×2 on a test image.
-- **Sessions**: `UpscaleEngine` copies `CutoutEngine.Load` — no memory arena, no memory pattern, two
-  intra-op threads — loaded lazily, released after 5 minutes unused (`UpscaleService`'s idle timer).
-- **Tiling**: the image is run in tiles (about 256 px with a 16 px overlap, the agent's choice at
-  implementation), so a large image stays within memory; the result is exactly `factor × w` by
-  `factor × h`, so the effects' fractions stay exact.
+- **Sessions**: `UpscaleEngine` copies `CutoutEngine.Load` — no memory arena, no memory pattern — on
+  **half the cores** (2 to 8 intra-op threads), loaded lazily per factor, released after 5 minutes
+  unused (`UpscaleService`'s idle timer).
+- **Tiling**: the image is run in tiles of 256 px, 16 px read around each (its seams hidden), each
+  padded to a multiple of 4 by repeating its last row and column (the ×2 model folds its input in
+  two); the result is exactly `factor × w` by `factor × h`, so the effects' fractions stay exact.
 - **Alpha**: the model reads RGB only. The image is fed over its own colors (not over white), and
   its alpha channel is enlarged separately (bilinear) and put back.
 
@@ -265,6 +269,33 @@ with `-x2` / `-x4` in the name, the action waiting for an upscale not ready. No 
 Go given (Q&A 17): code, tests and documentation, in a worktree on `feature/image-upscale`. The backlog
 row *AI upscale* marked with this workfile (Q&A 16).
 
+### Iteration 7 — 2026-11-03 — 🧭 Implementation choices
+
+What the run decided on its own, the domain sections updated to match. No project rule broken.
+
+- **Icons**: 🆙 for the tab (🔍 is the Zoom's); 💾 for *Save upscaled image…* in the cell's menu, a
+  field of its own (`UiIcons.SaveUpscaled`). In the options, *Save…* is a thumbnail drawn like the
+  others (an image, and a blue arrow into a tray).
+- **Threads**: half the cores, 2 to 8, where the cutout engine takes 2: an upscale takes seconds a tile.
+- **Tiles**: 256 px, a 16 px margin, padded to a multiple of 4 (§ Engine).
+- **A cut-out of the image as loaded** stays drawn while the enlarged image's is computed
+  (`SourceImage.DrawnBitmap`), so the cell does not flash uncut; `CutoutPending` stays true meanwhile.
+- **Badge**: the *Upscaling… N %* badge takes the place of the *Cutting out…* one while both wait; its
+  percentage counts the tiles, a GIF's the frames.
+- **A GIF's pages**: `SourceImage.DrawnPages` — read by the player, the page loader and the exports —
+  and `AnimationPlayer.Reopen`, called by the preview when they change (`GridPreview.FollowDrawnPages`).
+  A new virtual, `PageSource.UpscaledFrom`, says a GIF's frames are enlarged and at which size.
+- **Cache keys**: a GIF's file — its full path, size and last write — hashed; a GIF without a file gets
+  a tag of its own. Each frame written through a partial file.
+- **The waits are not cancellable**, as the Cutout's: a GIF upscaled ×4 before an export may hold the
+  grid for minutes.
+- **A GIF saved** by *Save upscaled image…* is written by the app's GIF encoder, which writes opaque
+  frames: a GIF's transparency is not kept there (a still's PNG keeps its alpha).
+- **The cell's menu entry** is shown for every image the Upscale applies to, enabled while it is on.
+- **Not run on the real models**: the agent downloaded nothing; the pinned hashes were checked against
+  the Hugging Face API. The first run of the models is the user's test, once the engine is installed
+  from the Component updates window.
+
 ---
 
 ## Implementation Log
@@ -274,11 +305,11 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project in the repository — manual checks only |
-| README | | | |
-| Glossary | | | |
-| RULES.md | | | |
+| Code | 6, 7 | 2026-11-03 | Effect, engine and component, drawn bitmap and GIF pages, tab, options, save action |
+| Unit tests | 6 | 2026-11-03 | Not applicable: no test project in the repository — manual checks only |
+| README | 6 | 2026-11-03 | § Upscale, the tabs, the components, the tech credits — English and French |
+| Glossary | 6 | 2026-11-03 | Upscale, Upscale engine, the effects' list — English and French |
+| RULES.md | 6 | 2026-11-03 | § The Upscale Exception |
 
 ---
 
