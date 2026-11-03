@@ -1102,6 +1102,7 @@ internal sealed partial class GridPreview : Control
         }
 
         this.PaintReadouts(g, cells);
+        this.PaintUpscale();
         this.PaintCutout(g, cells);
 
         PaintHoverOutline(g, HoverOutlineBounds(canvas, cells));

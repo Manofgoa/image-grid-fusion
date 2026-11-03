@@ -15,6 +15,12 @@ public sealed class SourceImage : IDisposable
     // The image cut out as its look's Cutout effect says, for a page; drawn while they still match.
     private (int Page, CutoutEffect Effect, Bitmap Bitmap)? _cut;
 
+    // A still enlarged by its look's Upscale effect, for a page and a factor; drawn while they still match.
+    private (int Page, int Factor, Bitmap Bitmap)? _upscaled;
+
+    // An animated GIF's pages enlarged by its Upscale effect, every frame ready, for a factor (workfiles/20261029-image-upscale.md).
+    private (int Factor, PageSource Pages)? _upscaledPages;
+
     public SourceImage(Bitmap bitmap, string? filePath, PageSource? pages = null, int page = 0)
     {
         Bitmap = bitmap;
@@ -51,16 +57,60 @@ public sealed class SourceImage : IDisposable
     public bool CutsOut => !this.IsAnimated;
 
     /// <summary>
-    /// The bitmap the image is drawn from — by the preview, the exports and the layers: cut out while
-    /// its Cutout effect is on and its cut-out ready, else <see cref="Bitmap"/>. Same size as it.
+    /// Whether the Upscale effect applies to it: a still, or an animated GIF — its frames enlarged one by one. A video,
+    /// a PDF, a text or a thumbnail is left alone: the latter three render again at any resolution already.
     /// </summary>
-    public Bitmap DrawnBitmap =>
-        this.Look.Cutout is { } effect && this.CutsOut && this._cut is { } cut && cut.Page == this.Page && cut.Effect.Equals(effect) && cut.Bitmap.Size == this.Bitmap.Size
-            ? cut.Bitmap
-            : this.Bitmap;
+    public bool Upscales => this.Pages is null || this.Pages.UpscaledFrom is not null;
 
-    /// <summary>The Cutout on, its cut-out not ready yet: the image is drawn uncut meanwhile.</summary>
-    public bool CutoutPending => this.Look.Cutout is not null && this.CutsOut && ReferenceEquals(this.DrawnBitmap, this.Bitmap);
+    /// <summary>The size the Upscale enlarges: the image as loaded — a GIF's frames, whatever size the player shows them at.</summary>
+    public Size UpscaleSize => this.Pages?.UpscaledFrom ?? this.Bitmap.Size;
+
+    /// <summary>
+    /// The still's bitmap enlarged by its Upscale effect, while it is on and ready for the page and the factor;
+    /// <c>null</c> otherwise. Exactly the factor times <see cref="Bitmap"/>'s size.
+    /// </summary>
+    public Bitmap? UpscaledBitmap =>
+        this.Look.Upscale is { } upscale && this.Pages is null && this._upscaled is { } up && up.Page == this.Page && up.Factor == upscale.Factor
+            && up.Bitmap.Size == new Size(this.Bitmap.Width * up.Factor, this.Bitmap.Height * up.Factor)
+            ? up.Bitmap
+            : null;
+
+    /// <summary>What the Cutout cuts: the still enlarged while its upscale is ready, else <see cref="Bitmap"/> (workfiles/20261029-image-upscale.md § Drawn Bitmap).</summary>
+    public Bitmap UpscaleBase => this.UpscaledBitmap ?? this.Bitmap;
+
+    /// <summary>
+    /// The pages the image plays and shows its pages from — by the player, the page slider and the exports: an animated
+    /// GIF's enlarged by its Upscale effect while it is on and every frame ready, else <see cref="Pages"/>.
+    /// </summary>
+    public PageSource? DrawnPages =>
+        this.Look.Upscale is { } upscale && this._upscaledPages is { } up && up.Factor == upscale.Factor ? up.Pages : this.Pages;
+
+    /// <summary>The Upscale on and within the PNG's cap, its enlargement not ready yet: the image is drawn as loaded meanwhile.</summary>
+    public bool UpscalePending =>
+        this.Look.Upscale is { } upscale && this.Upscales && UpscaleEffect.Fits(this.UpscaleSize, upscale.Factor)
+        && (this.Pages is null ? this.UpscaledBitmap is null : ReferenceEquals(this.DrawnPages, this.Pages));
+
+    /// <summary>
+    /// The bitmap the image is drawn from — by the preview, the exports and the layers: enlarged while its Upscale
+    /// effect is on and ready (<see cref="UpscaleBase"/>), then cut out while its Cutout effect is on and its cut-out
+    /// ready — a cut-out of the image as loaded still drawn while the enlarged one is computed.
+    /// </summary>
+    public Bitmap DrawnBitmap
+    {
+        get
+        {
+            var drawn = this.UpscaleBase;
+            return this.Look.Cutout is { } effect && this.CutsOut && this._cut is { } cut && cut.Page == this.Page && cut.Effect.Equals(effect)
+                && (cut.Bitmap.Size == drawn.Size || cut.Bitmap.Size == this.Bitmap.Size)
+                ? cut.Bitmap
+                : drawn;
+        }
+    }
+
+    /// <summary>The Cutout on, its cut-out of <see cref="UpscaleBase"/> not ready yet: the image is drawn uncut — or cut at its loaded size — meanwhile.</summary>
+    public bool CutoutPending =>
+        this.Look.Cutout is { } effect && this.CutsOut
+        && !(this._cut is { } cut && cut.Page == this.Page && cut.Effect.Equals(effect) && cut.Bitmap.Size == this.UpscaleBase.Size);
 
     /// <summary>The image the Cutout's model last read, while a pick reads it again (<see cref="PickEmbedding"/>).</summary>
     public PickEmbedding? PickEmbedding { get; set; }
@@ -88,6 +138,17 @@ public sealed class SourceImage : IDisposable
         previous?.Dispose();
     }
 
+    /// <summary>Takes <paramref name="bitmap"/>, the still enlarged <paramref name="factor"/> times on <paramref name="page"/>, disposing the previous one.</summary>
+    public void SetUpscaled(int page, int factor, Bitmap bitmap)
+    {
+        var previous = this._upscaled?.Bitmap;
+        this._upscaled = (page, factor, bitmap);
+        previous?.Dispose();
+    }
+
+    /// <summary>Takes <paramref name="pages"/>, the GIF's frames enlarged <paramref name="factor"/> times, every one ready.</summary>
+    public void SetUpscaledPages(int factor, PageSource pages) => this._upscaledPages = (factor, pages);
+
     /// <summary>
     /// A text laying its content out for its zoom: its pages hold the zoom, so it is drawn at 100 %,
     /// filling its cell. Not while cropped — a cropped text keeps its layout and zooms like an image
@@ -109,7 +170,7 @@ public sealed class SourceImage : IDisposable
     public bool Sharpens => this.Pages?.Sharpens ?? false;
 
     /// <summary>What the canvas sizing reads: the image as drawn, at its unzoomed resolution, with the look it is drawn with.</summary>
-    public SizedImage Sizing => new(Frame.Unsharpened(this.Look.Shown(this.Bitmap.Size), this.Sharpening), this.DrawnLook, this.Sharpens);
+    public SizedImage Sizing => new(Frame.Unsharpened(this.Look.Shown(this.DrawnBitmap.Size), this.Sharpening), this.DrawnLook, this.Sharpens);
 
     public bool IsDisposed { get; private set; }
 
@@ -119,6 +180,7 @@ public sealed class SourceImage : IDisposable
     /// </summary>
     public long MemoryBytes => this.IsDisposed ? 0 : (long)this.Bitmap.Width * this.Bitmap.Height * 4 + (this.Pages?.MemoryBytes ?? 0)
         + (this._cut is { } cut ? (long)cut.Bitmap.Width * cut.Bitmap.Height * 4 : 0)
+        + (this._upscaled is { } up ? (long)up.Bitmap.Width * up.Bitmap.Height * 4 : 0)
         + this._masks.Sum(m => m.Mask.MemoryBytes) + (this.PickEmbedding?.MemoryBytes ?? 0);
 
     /// <summary>Plays when shown: a video, an animated GIF, a PDF of several pages, a text longer than its cell.</summary>
@@ -231,6 +293,7 @@ public sealed class SourceImage : IDisposable
         IsDisposed = true;
         Bitmap.Dispose();
         this._cut?.Bitmap.Dispose();
+        this._upscaled?.Bitmap.Dispose();
         Pages?.Dispose();
     }
 }

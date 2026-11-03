@@ -42,6 +42,18 @@ public sealed class GifFrames : PageSource
 
     public override bool HasFrames => true;
 
+    /// <summary>Every frame at the GIF's size: the Upscale enlarges them one by one.</summary>
+    public override Size? UpscaledFrom
+    {
+        get
+        {
+            lock (_image)
+            {
+                return _image.Size;
+            }
+        }
+    }
+
     /// <summary>The whole file, kept in memory so it does not stay locked.</summary>
     public override long MemoryBytes => _stream.Length;
 
