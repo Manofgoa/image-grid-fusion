@@ -299,12 +299,12 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | Iterations 3, 4 | 2026-11-04 | `fad6f58` model and drawing · `b94ddc2` preview · `5609ab7` window, history, exports · `471b4c1` click on the thumbnail |
+| Code | Iterations 3, 4, 6, 7 | 2026-11-04 | `fad6f58` model and drawing · `b94ddc2` preview · `5609ab7` window, history, exports · `471b4c1` click on the thumbnail · `3ef9d7b` no double-click, Browse beside Paste, Zoom slider |
 | Unit tests | Iteration 3 | 2026-11-04 | Does not apply: no test project |
 | RULES.md | Iteration 3 | 2026-11-04 | `0ebf9c1` § Grid Background Image (under § Global Effects), § The Shared Fill |
 | GLOSSARY.md / .fr.md | Iteration 3 | 2026-11-04 | `cc8444a` *Grid background*, *Background image*, *Background edit view* |
-| README.md / .fr.md | Iterations 3, 4 | 2026-11-04 | `cc8444a` § Grid background › its image |
-| SHORTCUTS.md / .fr.md | Iteration 4 | 2026-11-04 | `cc8444a` the thumbnail's click and double-click, Escape closing the background edit view |
+| README.md / .fr.md | Iterations 3, 4, 6, 7 | 2026-11-04 | `cc8444a` § Grid background › its image · then the Zoom slider, Browse beside Paste, no double-click |
+| SHORTCUTS.md / .fr.md | Iterations 4, 6 | 2026-11-04 | `cc8444a` the thumbnail's click, Escape closing the background edit view · `3ef9d7b` its double-click row removed |
 
 ---
 
