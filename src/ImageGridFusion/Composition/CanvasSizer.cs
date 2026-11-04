@@ -33,11 +33,17 @@ public static class CanvasSizer
     /// <param name="ratio">The canvas's width ÷ height: the output format's.</param>
     /// <param name="borders">The Borders shrinking the cells by their gap; <c>null</c> while off.</param>
     /// <param name="maxLongSide">The longer side's maximum: <see cref="MaxLongSide"/>, or a lower cap.</param>
-    public static Size Compute(IReadOnlyList<SizedImage> images, GridLayout layout, double ratio, GridBorders? borders, int maxLongSide = MaxLongSide)
+    /// <param name="exact">The Custom format's exact pixels, when on: the canvas is that size instead (<see cref="Exactly"/>).</param>
+    public static Size Compute(IReadOnlyList<SizedImage> images, GridLayout layout, double ratio, GridBorders? borders, int maxLongSide = MaxLongSide, Size? exact = null)
     {
         if (layout.Count != images.Count)
         {
             throw new ArgumentException($"Layout {layout.Id} holds {layout.Count} images, not {images.Count}.", nameof(layout));
+        }
+
+        if (exact is { } size)
+        {
+            return Exactly(size, maxLongSide);
         }
 
         int cap = Math.Max(MinLongSide, Math.Min(maxLongSide, MaxLongSide));
@@ -111,8 +117,13 @@ public static class CanvasSizer
     /// text's line —, its longer side within [<see cref="MinLongSide"/>, <paramref name="maxLongSide"/>]
     /// (workfiles/20261029-layers.md, Iteration 12). With cells, the layers never size the canvas.
     /// </summary>
-    public static Size ForLayers(IEnumerable<LayerFrame> layers, double ratio, int maxLongSide = MaxLongSide)
+    public static Size ForLayers(IEnumerable<LayerFrame> layers, double ratio, int maxLongSide = MaxLongSide, Size? exact = null)
     {
+        if (exact is { } size)
+        {
+            return Exactly(size, maxLongSide);
+        }
+
         int cap = Math.Max(MinLongSide, Math.Min(maxLongSide, MaxLongSide));
         var smallest = Smallest(ratio);
         double shorter = Math.Min(smallest.Width, smallest.Height);
@@ -128,6 +139,24 @@ public static class CanvasSizer
         }
 
         return At(Clamped(Math.Ceiling(LongSide(smallest) * need), cap), ratio);
+    }
+
+    /// <summary>
+    /// The canvas of the Custom format's exact pixels (workfiles/20261104-custom-output-format.md § Sizing):
+    /// <paramref name="exact"/> itself — enlarged or reduced from the native size, no <see cref="MinLongSide"/>
+    /// floor — reduced to <paramref name="maxLongSide"/>, the ratio kept, when its longer side exceeds that cap.
+    /// </summary>
+    public static Size Exactly(Size exact, int maxLongSide = MaxLongSide)
+    {
+        int cap = Math.Min(maxLongSide, MaxLongSide);
+        int longer = Math.Max(exact.Width, exact.Height);
+        if (longer <= cap)
+        {
+            return exact;
+        }
+
+        double scale = cap / (double)longer;
+        return new Size(Math.Max(1, (int)Math.Round(exact.Width * scale)), Math.Max(1, (int)Math.Round(exact.Height * scale)));
     }
 
     private static int Clamped(double longSide, int cap) => (int)Math.Round(Math.Clamp(longSide, MinLongSide, cap));

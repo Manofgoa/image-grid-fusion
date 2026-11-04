@@ -99,6 +99,12 @@ internal sealed partial class GridPreview : Control
     // computed — held while a separator or a crop bar is dragged.
     private OutputFormat _format = OutputFormat.Twitter;
     private double _ratio = OutputFormats.TwitterRatio;
+
+    // The Custom format's fields; null while unset — at start-up, after the Resets and Clear all.
+    private CustomFormat? _custom;
+
+    // The exact size the preview was last laid out for: a change of it alone lays the preview out again.
+    private Size? _laidOutExact;
     private GridBorders? _borders;
 
     // The seams global effect, and the fills its strips were last drawn from in the cache: a cell drawn
@@ -321,6 +327,33 @@ internal sealed partial class GridPreview : Control
             }
         }
     }
+
+    /// <summary>
+    /// The Custom format's fields — its ratio, or its exact pixels (workfiles/20261104-custom-output-format.md);
+    /// <c>null</c> while unset. Part of the composed state, not persisted; drawn while <see cref="Format"/> is
+    /// <see cref="OutputFormat.Custom"/>.
+    /// </summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public CustomFormat? Custom
+    {
+        get => this._custom;
+        set
+        {
+            // The grid changes: a layer's edit view gives it back first.
+            this.EndLayerEdit();
+            if (value != this._custom)
+            {
+                this._custom = value;
+                this.UpdateRatio();
+            }
+        }
+    }
+
+    /// <summary>
+    /// The exact size every export gives — reduced to its cap (<see cref="CanvasSizer.Exactly"/>) — while the
+    /// Custom format with exact pixels is in force; <c>null</c> for the native size, and in a layer's edit view.
+    /// </summary>
+    public Size? ExactSize => this._edit is null && this._format == OutputFormat.Custom ? this._custom?.ExactSize : null;
 
     /// <summary>The canvas's width ÷ height as drawn: the format's, or the free one — the one rule every reader goes through.</summary>
     public double CanvasRatio => this._edit?.Ratio ?? _ratio;
@@ -837,7 +870,7 @@ internal sealed partial class GridPreview : Control
     /// on, a frames change replaying its own image. Nothing is released: the history holds the images
     /// left out.
     /// </summary>
-    public void Restore(IReadOnlyList<CellState> cells, GridLayout? layout, OutputFormat format, int selected)
+    public void Restore(IReadOnlyList<CellState> cells, GridLayout? layout, OutputFormat format, CustomFormat? custom, int selected)
     {
         this.EndLayerEdit();
         bool startOver = cells.Count != this._images.Count || cells.Any(c => !this._images.Contains(c.Image));
@@ -856,6 +889,7 @@ internal sealed partial class GridPreview : Control
 
         this._layout = layout;
         this._format = format;
+        this._custom = custom;
         this._selected = selected < this._images.Count ? selected : -1;
         this._hovered = -1;
         this._hoveringClose = false;
@@ -2276,7 +2310,9 @@ internal sealed partial class GridPreview : Control
 
     /// <summary>
     /// Largest rectangle at the canvas ratio that fits the control once the drop zone and its gap
-    /// are reserved on the right, centered in what remains.
+    /// are reserved on the right, centered in what remains. With the Custom format's exact pixels, the
+    /// canvas at its real final size — one export pixel a device pixel — whenever it fits there
+    /// (workfiles/20261104-custom-output-format.md § The Preview at Real Size).
     /// </summary>
     private Rectangle CanvasBounds()
     {
@@ -2286,6 +2322,11 @@ internal sealed partial class GridPreview : Control
         if (area.Width <= 0 || area.Height <= 0)
         {
             return Rectangle.Empty;
+        }
+
+        if (this.ExactSize is { } exact && CanvasSizer.Exactly(exact) is var real && real.Width <= area.Width && real.Height <= area.Height)
+        {
+            return new Rectangle(area.X + (area.Width - real.Width) / 2, area.Y + (area.Height - real.Height) / 2, real.Width, real.Height);
         }
 
         int width = area.Width;
@@ -2838,7 +2879,7 @@ internal sealed partial class GridPreview : Control
             return null;
         }
 
-        var canvas = CanvasSizer.Compute(this._images.Select(i => i.Sizing).ToList(), layout, this.CanvasRatio, this._borders);
+        var canvas = CanvasSizer.Compute(this._images.Select(i => i.Sizing).ToList(), layout, this.CanvasRatio, this._borders, exact: this.ExactSize);
         var cells = Compositor.Cells(layout, canvas, this._borders);
         return this._images.Select((image, i) => CenterOffset(cells[i], image)).ToArray();
     }
@@ -3612,15 +3653,22 @@ internal sealed partial class GridPreview : Control
         }
 
         // In a layer's edit view, the canvas takes the layer's shape (workfiles/20261029-layers.md § Edit View).
-        double ratio = this._edit is not null ? this.EditRatio() : OutputFormats.Ratio(_format) ?? FreeRatio;
+        bool custom = this._edit is null && _format == OutputFormat.Custom;
+        double ratio = this._edit is not null ? this.EditRatio()
+            : custom ? this._custom?.Ratio ?? _ratio
+            : OutputFormats.Ratio(_format) ?? FreeRatio;
 
-        // A video's frames, scaled to their cell, must not nudge the free ratio back and forth.
-        if (Math.Abs(ratio / _ratio - 1) < 0.002)
+        // A video's frames, scaled to their cell, must not nudge the free ratio back and forth. The Custom
+        // ratio is the user's, to the pixel: its exact size and the preview must agree. An exact size changed
+        // alone changes the canvas drawn at real size (CanvasBounds).
+        var exact = this.ExactSize;
+        if (exact == this._laidOutExact && (ratio == _ratio || (!custom && Math.Abs(ratio / _ratio - 1) < 0.002)))
         {
             return;
         }
 
         _ratio = ratio;
+        this._laidOutExact = exact;
         _cache?.Dispose();
         _cache = null;
         FitPagesToCells();

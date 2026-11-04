@@ -51,8 +51,8 @@ public static class Compositor
         }
     }
 
-    /// <summary>Renders the final image at <paramref name="ratio"/>, at the size given by <see cref="CanvasSizer"/>.</summary>
-    public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout? layout, double ratio, GridBorders? borders = null, SeamFade? seams = null, int maxLongSide = CanvasSizer.MaxLongSide, GridLayers? layers = null, GridBackground? background = null) =>
+    /// <summary>Renders the final image at <paramref name="ratio"/>, at the size given by <see cref="CanvasSizer"/> — <paramref name="exact"/>'s with the Custom format's exact pixels.</summary>
+    public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout? layout, double ratio, GridBorders? borders = null, SeamFade? seams = null, int maxLongSide = CanvasSizer.MaxLongSide, GridLayers? layers = null, GridBackground? background = null, Size? exact = null) =>
         Render(
             images.Select(i => new Frame(i.DrawnBitmap, i.BandColor, i.DrawnLook, Sharpening: i.Sharpening, Sharpens: i.Sharpens)).ToList(),
             layout,
@@ -61,20 +61,22 @@ public static class Compositor
             seams,
             maxLongSide,
             layers?.Items.Select(l => new LayerFrame(l.FrameAt(TimeSpan.Zero), l.Place)).ToList(),
-            background);
+            background,
+            exact);
 
     /// <summary>
     /// Renders frames at <paramref name="ratio"/>, at the size given by <see cref="CanvasSizer"/>, its longer
     /// side at most <paramref name="maxLongSide"/>; frame i goes into cell i, the <paramref name="layers"/>
     /// over them — they never size the canvas. With an alpha channel, transparent where a cell, or the gap
     /// between the cells, has no fill — none while the Grid <paramref name="background"/> is on: a PNG keeps it.
+    /// With the Custom format's <paramref name="exact"/> pixels, the canvas is that size, reduced to the cap.
     /// </summary>
-    public static Bitmap Render(IReadOnlyList<Frame> frames, GridLayout? layout, double ratio, GridBorders? borders = null, SeamFade? seams = null, int maxLongSide = CanvasSizer.MaxLongSide, IReadOnlyList<LayerFrame>? layers = null, GridBackground? background = null)
+    public static Bitmap Render(IReadOnlyList<Frame> frames, GridLayout? layout, double ratio, GridBorders? borders = null, SeamFade? seams = null, int maxLongSide = CanvasSizer.MaxLongSide, IReadOnlyList<LayerFrame>? layers = null, GridBackground? background = null, Size? exact = null)
     {
         // A grid holding layers only is sized by them, transparent around them (workfiles/20261029-layers.md, Iteration 12).
         var canvas = layout is null
-            ? CanvasSizer.ForLayers(layers ?? [], ratio, maxLongSide)
-            : CanvasSizer.Compute(frames.Select(f => f.Sizing).ToList(), layout, ratio, borders, maxLongSide);
+            ? CanvasSizer.ForLayers(layers ?? [], ratio, maxLongSide, exact)
+            : CanvasSizer.Compute(frames.Select(f => f.Sizing).ToList(), layout, ratio, borders, maxLongSide, exact);
         var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppArgb);
         using var g = Graphics.FromImage(bitmap);
         Draw(g, frames, layout, canvas, borders, seams, layers: layers, background: background);

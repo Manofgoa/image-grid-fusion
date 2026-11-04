@@ -95,6 +95,8 @@ While the Layers tab is selected.
 | <kbd>Wheel</kbd> over a Frames field | One frame a notch — 5 with <kbd>Ctrl</kbd> |
 | <kbd>Enter</kbd> in a Frames field | Apply the number typed |
 | <kbd>Escape</kbd> in a Frames field | Put the value back |
+| <kbd>↑</kbd> <kbd>↓</kbd>, <kbd>Wheel</kbd> in the Format's Width or Height field | One more or less, picking Custom |
+| <kbd>Enter</kbd> in the Format's Width or Height field | Apply the number typed, brought within the bounds |
 | <kbd>Wheel</kbd> over the layout strip | Scroll the layouts |
 
 ## File Explorer
