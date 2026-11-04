@@ -1,3 +1,5 @@
+using ImageGridFusion.Resources;
+
 namespace ImageGridFusion.UI;
 
 /// <summary>
@@ -22,7 +24,7 @@ internal sealed class EffectPresetDialog : Form
 
     public EffectPresetDialog(string fileName, IReadOnlyList<string> effects, string description, Purpose purpose)
     {
-        this.Text = purpose == Purpose.Edit ? "Edit effect preset" : "Save effect preset";
+        this.Text = purpose == Purpose.Edit ? Strings.PanelPresetEditTitle : Strings.PanelPresetSaveTitle;
         this.FormBorderStyle = FormBorderStyle.FixedDialog;
         this.StartPosition = FormStartPosition.CenterParent;
         this.MinimizeBox = false;
@@ -36,24 +38,24 @@ internal sealed class EffectPresetDialog : Form
         name.Font = new Font(this.Font, FontStyle.Bold);
         var saved = new Label
         {
-            Text = effects.Count == 0 ? "No effect: the file arrives as it is." : string.Join(Environment.NewLine, effects),
+            Text = effects.Count == 0 ? Strings.PanelPresetNoEffect : string.Join(Environment.NewLine, effects),
             AutoSize = true,
             MaximumSize = new Size(436, 0),
             ForeColor = SystemColors.GrayText,
             Margin = new Padding(0, 0, 0, 12),
         };
-        var label = new Label { Text = "&Description — what it shows, to find it again by searching:", AutoSize = true, Margin = new Padding(0, 0, 0, 4) };
+        var label = new Label { Text = Strings.PanelPresetDescription, AutoSize = true, Margin = new Padding(0, 0, 0, 4) };
         this._description.Text = description;
 
-        var save = new Button { Text = "Save", DialogResult = DialogResult.OK, AutoSize = true };
-        var cancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, AutoSize = true };
+        var save = new Button { Text = Strings.PanelPresetSave, DialogResult = DialogResult.OK, AutoSize = true };
+        var cancel = new Button { Text = Strings.PanelPresetCancel, DialogResult = DialogResult.Cancel, AutoSize = true };
         var buttons = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty, WrapContents = false };
         buttons.Controls.Add(cancel);
         if (purpose == Purpose.SaveOrFileOnly)
         {
-            var fileOnly = new Button { Text = "File only", DialogResult = DialogResult.Ignore, AutoSize = true };
+            var fileOnly = new Button { Text = Strings.PanelPresetFileOnly, DialogResult = DialogResult.Ignore, AutoSize = true };
             buttons.Controls.Add(fileOnly);
-            this._toolTip.SetToolTip(fileOnly, "Make the file a favorite, as it is, without its effects");
+            this._toolTip.SetToolTip(fileOnly, Strings.PanelPresetFileOnlyTip);
         }
 
         buttons.Controls.Add(save);

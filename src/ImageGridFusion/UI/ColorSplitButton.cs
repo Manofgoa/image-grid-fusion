@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -25,11 +26,11 @@ internal sealed class ColorSplitButton : Panel
         this.Anchor = AnchorStyles.Left;
         this.Margin = new Padding(3);
         this.Eyedropper.Menu = this._sampleMenu;
-        this._sampleMenu.Items.Add(new ToolStripMenuItem("Eyedropper sample") { Enabled = false });
+        this._sampleMenu.Items.Add(new ToolStripMenuItem(Strings.PanelColorSampleCaption) { Enabled = false });
         for (int pixels = GridPreview.MinEyedropperSample; pixels <= GridPreview.MaxEyedropperSample; pixels++)
         {
             int size = pixels;
-            var item = new ToolStripMenuItem($"{size} px") { Checked = size == this.Sample, Tag = size };
+            var item = new ToolStripMenuItem(Texts.Format(Strings.PanelColorSampleSize, size)) { Checked = size == this.Sample, Tag = size };
             item.Click += (_, _) => this.ChooseSample(size);
             this._sampleMenu.Items.Add(item);
         }
@@ -51,7 +52,7 @@ internal sealed class ColorSplitButton : Panel
     /// <summary>The Color… part: the swatch of the color in use, then its text, its left border over the eyedropper's.</summary>
     public Button Dialog { get; } = new()
     {
-        Text = "Color…",
+        Text = Strings.PanelColorButton,
         AutoSize = true,
         TextImageRelation = TextImageRelation.ImageBeforeText,
         Margin = Padding.Empty,
@@ -78,7 +79,7 @@ internal sealed class ColorSplitButton : Panel
     public void Describe(ToolTip toolTip, string target, string dialogNote = "")
     {
         (this._toolTip, this._target) = (toolTip, target);
-        toolTip.SetToolTip(this.Dialog, $"Chooses {target} in the color dialog, following it live — Cancel gives the previous one back{dialogNote}");
+        toolTip.SetToolTip(this.Dialog, Texts.Format(Strings.PanelColorDialogTip, target, dialogNote));
         this.DescribeEyedropper();
     }
 
@@ -135,6 +136,5 @@ internal sealed class ColorSplitButton : Panel
     private void DescribeEyedropper() =>
         this._toolTip?.SetToolTip(
             this.Eyedropper,
-            $"Takes {this._target} from the preview (sample: {this.Sample} px): click a cell; Escape or a right click cancels. "
-            + "The arrow chooses the sample, the side of the square of pixels averaged");
+            Texts.Format(Strings.PanelColorEyedropperTip, this._target, this.Sample));
 }

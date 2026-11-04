@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using ImageGridFusion.Composition;
 using ImageGridFusion.Imaging;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -40,7 +41,7 @@ internal sealed partial class MainForm
     {
         var buttons = OptionLine();
         // Browse… right after Paste, its text beside its icon so it is seen (workfiles/20261104-grid-background-image.md, Iteration 6).
-        this._backgroundImageBrowse.Text = "Browse…";
+        this._backgroundImageBrowse.Text = Strings.PanelBgImageBrowse;
         this._backgroundImageBrowse.TextImageRelation = TextImageRelation.ImageBeforeText;
         buttons.Controls.AddRange([this._backgroundImagePaste, this._backgroundImageBrowse, this._backgroundImageEdit, this._backgroundImageRemove]);
         var opacity = OptionLine();
@@ -56,11 +57,11 @@ internal sealed partial class MainForm
         this._backgroundImageBox.Size = new Size(this._backgroundFit.Height * 16 / 10, this._backgroundFit.Height);
         this._backgroundImageOpacity.Width = this._backgroundImageZoom.Width = 110;
 
-        this._toolTip.SetToolTip(this._backgroundImageBrowse, "Browse… — chooses the grid background's image: an image, a GIF or a video");
-        this._toolTip.SetToolTip(this._backgroundImagePaste, "Paste — the clipboard's image, or its first file, as the grid background's image");
-        this._toolTip.SetToolTip(this._backgroundImageRemove, "Remove — the grid background's image gone, its fill alone");
-        this._toolTip.SetToolTip(this._backgroundImageOpacity, "Opacity of the grid background's image, over its fill");
-        this._toolTip.SetToolTip(this._backgroundImageZoom, "Zoom of the grid background's image — its Zoom effect, around its center; tiled, the tiles' size");
+        this._toolTip.SetToolTip(this._backgroundImageBrowse, Strings.PanelBgImageBrowseTip);
+        this._toolTip.SetToolTip(this._backgroundImagePaste, Strings.PanelBgImagePasteTip);
+        this._toolTip.SetToolTip(this._backgroundImageRemove, Strings.PanelBgImageRemoveTip);
+        this._toolTip.SetToolTip(this._backgroundImageOpacity, Strings.PanelBgImageOpacityTip);
+        this._toolTip.SetToolTip(this._backgroundImageZoom, Strings.PanelBgImageZoomTip);
 
         // No click on the thumbnail — Browse… chooses a file —; a double-click edits the image (Iteration 8).
         this._backgroundImageBox.DoubleClick += (_, _) => this.ToggleBackgroundEdit();
@@ -162,13 +163,13 @@ internal sealed partial class MainForm
 
         this._toolTip.SetToolTip(
             this._backgroundImageEdit,
-            editing ? "Done — gives the grid back (Escape)" : "Edit — shows the grid background's image alone, its effects working as on a cell (double-click its thumbnail)");
+            editing ? Strings.PanelEditDoneTip : Strings.PanelBgImageEditTip);
         this._toolTip.SetToolTip(this._backgroundImageBox, image?.Image.FilePath is { } path
-            ? $"{Path.GetFileName(path)} — double-click to edit its effects; drop another file here, or Browse…, to replace it"
-            : "The grid background's image, drawn over its fill, under the cells. Drop an image, a GIF or a video here — from the file explorer or Windows Explorer —, or choose one with Browse…");
+            ? Texts.Format(Strings.PanelBgImageBoxTipFile, Path.GetFileName(path))
+            : Strings.PanelBgImageBoxTipEmpty);
     }
 
-    private static string ZoomText(double zoom) => $"Zoom: {zoom * 100:0} %";
+    private static string ZoomText(double zoom) => Texts.Format(Strings.PanelBgImageZoomText, zoom * 100);
 
     /// <summary>The cell the image's zoom is read in: the canvas, at <paramref name="ratio"/>, for an image in its cell; a box of its own shape stretched or tiled.</summary>
     private static Rectangle ZoomCell(BackgroundImage image, double ratio) => image.Placement == BackgroundPlacement.Cell
@@ -234,13 +235,13 @@ internal sealed partial class MainForm
 
         using var dialog = new OpenFileDialog
         {
-            Title = "Grid background image",
+            Title = Strings.PanelBgImageDialogTitle,
             Filter = PickerFilter(),
             InitialDirectory = ExistingFolder(AppSettings.AddFolder) ?? "",
         };
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
-            RememberFolder(AppSettings.SaveAddFolder, dialog.FileName, "Add images");
+            RememberFolder(AppSettings.SaveAddFolder, dialog.FileName, Strings.PanelAddImagesFolder);
             await this.SetBackgroundImageFromFilesAsync([dialog.FileName], look: null);
         }
     }
@@ -272,7 +273,7 @@ internal sealed partial class MainForm
         }
         catch (ExternalException ex)
         {
-            this.ShowStatus($"Paste failed: {ex.Message}", error: true);
+            this.ShowStatus(Texts.Format(Strings.PanelPasteFailed, ex.Message), error: true);
             return;
         }
 
@@ -282,7 +283,7 @@ internal sealed partial class MainForm
         }
         else
         {
-            this.ShowStatus("Nothing to paste: the clipboard holds no image or file.");
+            this.ShowStatus(Strings.PanelBgImageNothingToPaste);
         }
     }
 
@@ -322,7 +323,7 @@ internal sealed partial class MainForm
 
         if (image is null)
         {
-            this.ShowStatus($"{(paths.Length == 1 ? "No preview available for this file" : "No preview available for these files")}: the grid background's image is unchanged.", error: true);
+            this.ShowStatus(paths.Length == 1 ? Strings.PanelBgImageNoPreviewOne : Strings.PanelBgImageNoPreviewMany, error: true);
             return;
         }
 
@@ -331,12 +332,12 @@ internal sealed partial class MainForm
         var messages = new List<string>();
         if (skipped > 0)
         {
-            messages.Add($"{Files(skipped)} skipped: no preview available");
+            messages.Add(Texts.Format(Strings.PanelFilesSkipped, Files(skipped)));
         }
 
         if (ignored > 0)
         {
-            messages.Add($"{Files(ignored)} ignored: the grid background takes one image");
+            messages.Add(Texts.Format(Strings.PanelBgImageIgnored, Files(ignored)));
         }
 
         if (messages.Count > 0)
