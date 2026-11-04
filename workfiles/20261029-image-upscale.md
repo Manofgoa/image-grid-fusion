@@ -110,6 +110,27 @@ itself unchanged, the cell untouched:
   an image without a file (pasted) gets `upscaled-x4.png` in the user's Pictures folder. Out of the
   undo history.
 
+### Crop to a New Image
+
+An image too large to upscale may hold a small part worth enlarging: the Crop's **Keep** action makes the
+kept part the cell's image, so the Upscale — and every effect — treats it as a whole image (Q&A 27–30):
+
+- **An action of the Crop's options**: a **Keep** thumbnail set apart after the ratios, beside the **100 %** one
+  (RULES.md § Options Toolbar — an action, never pressed), enabled while the Crop is on, on a **still** of a
+  **cell** (a GIF, a video, a PDF, a text, a layer: disabled, its tooltip saying why).
+- **The new image is the kept part of the image as loaded** (Q&A 27): the source's pixels, no orientation, colors,
+  blur nor background drawn into them — `CropEffect.Pixels` of the bitmap, copied.
+- **The look carries over as effects** (Q&A 28): every effect kept as it was — orientation, zoom and focus,
+  colors, blur, background, animations — **but the Crop**, consumed, and the **Cutout**, its mask and points made
+  for the former image, both back to their default state; the **Upscale** turned off, its setting kept, the new
+  image holding no enlargement. The zoom and the focus are relative to the image as shown, which keeps its size
+  and shape: the cell looks the same.
+- **Named after its origin** (Q&A 29): an image without a file, like a pasted one (`SourceImage.FilePath` null — a
+  favorite saves it into `favorites-from-pasted\`), keeping the file it was cut from (`SourceImage.CroppedFrom`):
+  the preview names it `<name> (crop)`, *Save upscaled image…* proposes `<name>-crop-x4.png` in that file's folder.
+- **One step of the undo history**: the cell's image replaced, its look kept (`GridPreview.ReplaceImage`); Ctrl+Z
+  gives back the whole image with its crop. The former image goes through `ReleaseImage`, kept alive by the history.
+
 ---
 
 ## Engine
@@ -409,6 +430,13 @@ keep possible the ones that are; the reason as a visible text in the options row
   the larger ones refused with it (`Too large to upscale: ×2 would make 10000 × 5138 px, past the 8192 px a PNG holds`;
   `×4 would make 8192 × 12288 px, …` for a 2048 × 3072). Checked on a render of the options row on both images.
 
+### Iteration 13 — 2026-11-04 — ⚙️ Post-implementation — Crop to a new image
+
+The user, cropping the 5000 × 2569 JPEG: the kept part is small enough to upscale, yet the image is not. Proposed by
+the user: a Crop option making the cropped image a new image of the cell, as a pasted one, rather than a crop-aware
+upscale. Settled (Q&A 27–30): the kept part of the source as loaded; every effect kept as an effect, the Crop and
+the Cutout reset, the Upscale off; named after its file; in this workfile. § Crop to a New Image.
+
 ---
 
 ## Implementation Log
@@ -458,6 +486,11 @@ Questions asked by the agent during design, with user responses.
 | 24 | Go for the Upscale window adjustment? | Code and documentation | 2026-11-04 |
 | 25 | An image whose enlargement would pass 8192 px: enlarge then cap, cap ×2 only, or refuse? | Explain why some upscales are not possible; make possible those that are | 2026-11-04 |
 | 26 | Show the reason as a visible text in the options row? | Yes | 2026-11-04 |
+| 27 | Crop to a new image: what does it hold? | The source's kept part only; the effects stay effects, never drawn into the bitmap | 2026-11-04 |
+| 28 | The cell's other effects afterwards? | Kept, but the Crop and the Cutout | 2026-11-04 |
+| 29 | The link to the original file? | Kept for the name | 2026-11-04 |
+| 30 | Where is it designed and implemented? | Here, in this workfile | 2026-11-04 |
+| 31 | Go for Crop to a new image? | | |
 
 ---
 
