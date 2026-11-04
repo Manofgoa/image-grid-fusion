@@ -244,8 +244,8 @@ pages of its own (origin: `workfiles/20261029-image-upscale.md`):
 
 ### Options Toolbar
 
-- A row **above** the effects toolbar, **always visible**, at the height of the tallest options, so
-  nothing moves when another tab is selected. It holds the **selected tab's options only**, and is
+- A row **above** the effects toolbar, **always visible**, at the height of the tallest options — the
+  room of a scrollbar below them included (§ Feature Lines) — so nothing moves when another tab is selected. It holds the **selected tab's options only**, and is
   **empty** while no tab is selected.
 - An effect that is off shows its **kept settings** in its options.
 - **Acting on any option activates the effect**: changing any control of an effect's options turns
@@ -265,6 +265,34 @@ pages of its own (origin: `workfiles/20261029-image-upscale.md`):
   - Out of it: plain on / off checkboxes (Freeze, Mute, Automatic color, Soften, Invert, Fill holes), the Color… button,
     the sliders and a drop-down of a single value (the Animations' Type).
 
+#### Feature Lines
+
+A tab's options laid out **one feature per line** (origin: `workfiles/20261104-options-toolbar-layout.md`),
+`UI/FeatureLines.cs` — the Background, the Frames and the Layers so far; every tab follows it once migrated, the
+others keeping their `FlowLayoutPanel` until then:
+
+- **A feature line**: its checkbox leading it when the feature has one, else its caption, then its controls
+  (`FeatureLinesPanel.AddLine`). A tall control — the layer list, the text field — is a **block** of its own
+  before the lines, as tall as the toolbar (`AddBlock`).
+- **Three layouts, in this order of preference** (`OptionLayout`): **C — Lines**, each slider's name and value
+  above it; **A — Grid**, the leading elements right-aligned, each slider's value after it; **B — Groups**, one
+  framed group per feature, its controls stacked, its caption at the bottom. The lines run top-down, a new column
+  to the right when the height is full; in a column the leading elements share one width, so the controls start
+  aligned, and a thin line separates two columns.
+- **Fixed per tab**, never recomputed on a resize: the first of C, A, B whose columns fit the toolbar with the
+  window **1920 logical px wide**, the Reset aside — the Background and the Frames in C, the Layers in A. A tab
+  migrated measures its own.
+- **Wider than the window**, the lines scroll sideways by a scrollbar under them. Its **room is kept** under both
+  options toolbars, in every tab, whether it shows or not (`FeatureLinesPanel.ScrollRoom`, `MainForm.FitEffectRows`),
+  so nothing moves when it shows or when another tab is selected.
+- **A tab's height** is its tallest line or block, with room for two lines of sliders
+  (`FeatureLinesPanel.GetPreferredSize`); the toolbar takes the tallest tab's, as § above says.
+- **A slider** is a `SliderBox`: one compact width (`SliderBox.CompactWidth`, 120 logical px) — a slider aiming
+  at one frame among many `LongWidth` (200) —, its icon at its left. Its caption is a `SliderCaption`: the text
+  the code sets, `Name: value`, drawn split above the slider — the name at the left, the value at the right —
+  or whole after it in the Grid; its `Caption` replaces the name, `""` drawing the value alone when the line's
+  caption names it already.
+
 ### Color Options
 
 Every color option of an effect — the Background's two, the Borders', the Grid background's two, the
@@ -278,7 +306,8 @@ Cutout's mask, a text layer's four, a future one — takes its color two ways, a
   (`UI/SharedColorDialog`) — fully expanded, its custom colors remembered in the settings file, each
   eyedropper pick written into the first empty slot, then round them.
 - **Its opacity right after Color…**, in one shape — the opacity icon, a slider, `Opacity: N %` (the
-  Cutout's mask keeping its `Color: N %`, its effect having an Opacity of its own). An ordinary option:
+  Cutout's mask keeping its `Color: N %`, its effect having an Opacity of its own); in a tab laid out as
+  feature lines, the icon at the slider's left, `Opacity` and `N %` above it (§ Options Toolbar › Feature Lines). An ordinary option:
   it turns its effect on, is undone, the Resets bring back its default; a pick or the dialog sets the
   color, never the opacity, and the swatch stays opaque.
 - The eyedropper (`GridPreview.ArmEyedropper`) **holds the grid** and reads a **snapshot** of the cells
@@ -468,7 +497,7 @@ The **mirror of the cell effects' toolbars** at the bottom of the window (origin
 - Everything § Effects Toolbar and § Options Toolbar say holds, the cells aside: an **activation
   checkbox** per tab, the same clicks, the selected tab belonging to the toolbar (independent of
   the cell effects' one, none at startup), the options toolbar at **one height** and **empty** while
-  no tab is selected, the **kept settings** shown while an effect is off, and **acting on any
+  no tab is selected, its tabs laid out as **feature lines** once migrated, the **kept settings** shown while an effect is off, and **acting on any
   option activates the effect**.
 - The options toolbar ends with the effect's own **Reset**; the tabs' **Reset** resets every
   global effect at once. Both bring back the **initial state** — the one *Clear all* restores — and
