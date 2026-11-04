@@ -86,7 +86,11 @@ The row holds the `FormatStrip`, then the Custom fields (Q&A #2):
   *acting on any option activates the effect*), then applies the change.
 - A change applies **live**, on each value change; the undo history commits the step once it settles
   (RULES.md § Undo History), so typing `1350` is one step.
-- The fields' bounds depend on *Exact pixels* — see *Open Questions*.
+- **Bounds** (Q&A #9), `CustomFormat.MinSide` / `MaxSide` / `MaxElongation`:
+  - each field from **1 to 8192** with *Exact pixels* off, **100 to 8192** with it on — turning it on
+    brings a smaller value up to 100;
+  - in both modes, the shape stays between **1:10 and 10:1**: the field just changed is brought back
+    to the limit against the other one (`Width 3000`, `Height 200` → `Height 300`).
 - Locked while exporting, like the strip (`SetFormat` returns while `IsExporting`).
 
 ---
@@ -162,7 +166,8 @@ unit test is created or updated. The run checks by hand:
   size, reduced by a smaller cap, the ratio kept (Q&A #3)
 - [x] ~~How does Free coexist with it?~~ → Free unchanged, a thumbnail of its own, never exact
   (follows from Q&A #1–#2)
-- [ ] The fields' bounds: the ratio's range with *Exact pixels* off, the pixels' with it on?
+- [x] ~~The fields' bounds: the ratio's range with *Exact pixels* off, the pixels' with it on?~~ →
+  The shape between 1:10 and 10:1, a side between 100 and 8192 px (Q&A #9)
 - [x] ~~The Custom fields' default — at launch, after a Reset or *Clear all*?~~ → Taken from the
   format shown before Custom is first picked (Q&A #6)
 - [x] ~~The Custom thumbnail's label: `Custom`, or its value (`3:2`, `1080 × 1350`)?~~ → Its value
@@ -196,6 +201,12 @@ picked, then filled from the native size of the format in force, the Resets unse
 thumbnail labelled with its value; an odd exact size rounded to even in the videos only. The bounds'
 question (#5) was not understood: asked again in plainer words (#9).
 
+### Iteration 3 — 2026-11-04
+
+Bounds settled (Q&A #9): the shape between 1:10 and 10:1 — applied with *Exact pixels* on too, so
+an exact size cannot be more elongated than a ratio —, a side between 100 and 8192 px with exact
+pixels. No question left open.
+
 ---
 
 ## Implementation Log
@@ -225,7 +236,7 @@ Questions asked by the agent during design, with user responses.
 | 6 | The Custom fields' default: taken from the current format, a fixed 1080 × 1350, or a fixed 1920 × 1080? | **Taken from the current format**: the native size of the format shown before, *Exact pixels* off; a Reset empties them for next time | 2026-11-04 |
 | 7 | The Custom thumbnail's label: its value, or `Custom`? | **Its value**: `3:2`, or `1080×1350` with *Exact pixels* | 2026-11-04 |
 | 8 | An odd exact size in a video: rounded to even in the video, or even fields only? | **Rounded to even in the video**: the PNG exact, the MP4 / GIF one pixel less, their tooltip giving the real size | 2026-11-04 |
-| 9 | The bounds, re-explained: how elongated a Custom shape may be (*Exact pixels* off), the smallest and largest side in pixels (on)? | | |
+| 9 | The bounds, re-explained: how elongated a Custom shape may be (*Exact pixels* off) — 4 times, as Free, or 10 times —, the smallest and largest side in pixels (on) — 100, 16 or 1 to 8192? | **Up to 10 times** (10:1 to 1:10); **100 to 8192 px** a side | 2026-11-04 |
 
 ---
 
