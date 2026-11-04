@@ -42,9 +42,11 @@ internal static class EdgeExtension
     /// made opaque, under the image's place <paramref name="covered"/>, the extension around it read from
     /// <paramref name="image"/> — the image alone, drawn at the cell's size, or smaller at the scale
     /// <paramref name="g"/> draws at: everything is computed in its pixels, the result stretched over the
-    /// cell — the whole at the opacity.
+    /// cell — the whole at the opacity. In a gradient (<see cref="BackgroundEffect.Style"/>), the fill under
+    /// each pixel is the gradient's there, its colors made opaque: <paramref name="flat"/>, the fill before
+    /// <paramref name="adjust"/> turns it, is where it starts.
     /// </summary>
-    public static void Draw(Graphics g, Bitmap image, Rectangle cell, Rectangle covered, BackgroundEffect background, Color fill)
+    public static void Draw(Graphics g, Bitmap image, Rectangle cell, Rectangle covered, BackgroundEffect background, Color fill, Color flat, Func<Color, Color>? adjust)
     {
         int width = image.Width;
         int height = image.Height;
@@ -59,33 +61,45 @@ internal static class EdgeExtension
             new Rectangle(0, 0, width, height));
         if (inside.Width < 1 || inside.Height < 1)
         {
-            // Too small to have edges at this scale: the flat fill alone, its opacity its own.
-            using var brush = new SolidBrush(fill);
-            g.FillRectangle(brush, cell);
+            // Too small to have edges at this scale: the fill alone, its opacity its own.
+            background.Style.Paint(g, cell, flat, null, adjust);
             return;
         }
 
         var edges = Edges.Read(image, inside);
-        var flat = new Pixel(255, fill.R, fill.G, fill.B);
-        int flatArgb = flat.Argb;
+        var solid = new Pixel(255, fill.R, fill.G, fill.B);
+        int solidArgb = solid.Argb;
         double spread = background.Soften ? SoftenSpread : 0;
 
         // Rented rather than allocated at every frame: its length is width × height, never the array's own.
         var pixels = ArrayPool<int>.Shared.Rent(width * height);
+        var flats = background.Style.IsGradient ? background.Style.OpaquePixels(width, height, flat, null, adjust) : null;
         try
         {
-            Array.Fill(pixels, flatArgb, 0, width * height);
-            Extend(pixels, width, height, inside, edges, flat, flatArgb, spread, background);
+            if (flats is null)
+            {
+                Array.Fill(pixels, solidArgb, 0, width * height);
+            }
+            else
+            {
+                Array.Copy(flats, pixels, width * height);
+            }
+
+            Extend(pixels, width, height, inside, edges, solid, solidArgb, flats, spread, background);
             Paint(g, pixels, width, height, cell, background);
         }
         finally
         {
             ArrayPool<int>.Shared.Return(pixels);
+            if (flats is not null)
+            {
+                ArrayPool<int>.Shared.Return(flats);
+            }
         }
     }
 
     /// <summary>Fills <paramref name="pixels"/>, <paramref name="width"/> by <paramref name="height"/>, with the extension around <paramref name="inside"/>.</summary>
-    private static void Extend(int[] pixels, int width, int height, Rectangle inside, Edges edges, Pixel flat, int flatArgb, double spread, BackgroundEffect background)
+    private static void Extend(int[] pixels, int width, int height, Rectangle inside, Edges edges, Pixel solid, int solidArgb, int[]? flats, double spread, BackgroundEffect background)
     {
         for (int y = 0; y < height; y++)
         {
@@ -101,6 +115,9 @@ internal static class EdgeExtension
                     continue;
                 }
 
+                // The fill under this pixel: the solid one, or the gradient's there.
+                int flatArgb = flats is null ? solidArgb : flats[y * width + x];
+                var flat = flats is null ? solid : Pixel.FromArgb(flatArgb);
                 int depthX = x < inside.Left ? inside.Left : width - inside.Right;
                 var row = y < inside.Top ? edges.Top : edges.Bottom;
                 var column = x < inside.Left ? edges.Left : edges.Right;

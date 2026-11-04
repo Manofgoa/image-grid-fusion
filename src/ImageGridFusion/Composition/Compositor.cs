@@ -52,7 +52,7 @@ public static class Compositor
     }
 
     /// <summary>Renders the final image at <paramref name="ratio"/>, at the size given by <see cref="CanvasSizer"/>.</summary>
-    public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout? layout, double ratio, GridBorders? borders = null, SeamFade? seams = null, int maxLongSide = CanvasSizer.MaxLongSide, GridLayers? layers = null) =>
+    public static Bitmap Render(IReadOnlyList<SourceImage> images, GridLayout? layout, double ratio, GridBorders? borders = null, SeamFade? seams = null, int maxLongSide = CanvasSizer.MaxLongSide, GridLayers? layers = null, GridBackground? background = null) =>
         Render(
             images.Select(i => new Frame(i.DrawnBitmap, i.BandColor, i.DrawnLook, Sharpening: i.Sharpening, Sharpens: i.Sharpens)).ToList(),
             layout,
@@ -60,15 +60,16 @@ public static class Compositor
             borders,
             seams,
             maxLongSide,
-            layers?.Items.Select(l => new LayerFrame(l.FrameAt(TimeSpan.Zero), l.Place)).ToList());
+            layers?.Items.Select(l => new LayerFrame(l.FrameAt(TimeSpan.Zero), l.Place)).ToList(),
+            background);
 
     /// <summary>
     /// Renders frames at <paramref name="ratio"/>, at the size given by <see cref="CanvasSizer"/>, its longer
     /// side at most <paramref name="maxLongSide"/>; frame i goes into cell i, the <paramref name="layers"/>
     /// over them — they never size the canvas. With an alpha channel, transparent where a cell, or the gap
-    /// between the cells, has no fill: a PNG keeps it.
+    /// between the cells, has no fill — none while the Grid <paramref name="background"/> is on: a PNG keeps it.
     /// </summary>
-    public static Bitmap Render(IReadOnlyList<Frame> frames, GridLayout? layout, double ratio, GridBorders? borders = null, SeamFade? seams = null, int maxLongSide = CanvasSizer.MaxLongSide, IReadOnlyList<LayerFrame>? layers = null)
+    public static Bitmap Render(IReadOnlyList<Frame> frames, GridLayout? layout, double ratio, GridBorders? borders = null, SeamFade? seams = null, int maxLongSide = CanvasSizer.MaxLongSide, IReadOnlyList<LayerFrame>? layers = null, GridBackground? background = null)
     {
         // A grid holding layers only is sized by them, transparent around them (workfiles/20261029-layers.md, Iteration 12).
         var canvas = layout is null
@@ -76,7 +77,7 @@ public static class Compositor
             : CanvasSizer.Compute(frames.Select(f => f.Sizing).ToList(), layout, ratio, borders, maxLongSide);
         var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppArgb);
         using var g = Graphics.FromImage(bitmap);
-        Draw(g, frames, layout, canvas, borders, seams, layers: layers);
+        Draw(g, frames, layout, canvas, borders, seams, layers: layers, background: background);
         return bitmap;
     }
 
@@ -144,7 +145,7 @@ public static class Compositor
     /// <see cref="DrawCell"/> takes it. The preview's: each image from <see cref="SourceImage.ShownBitmap"/>, an
     /// enlargement reduced; the exports draw their own frames, at full resolution.
     /// </summary>
-    public static void Draw(Graphics g, IReadOnlyList<SourceImage> images, GridLayout? layout, Size canvas, GridBorders? borders = null, TimeSpan time = default, SeamFade? seams = null, bool fast = false, GridLayers? layers = null) =>
+    public static void Draw(Graphics g, IReadOnlyList<SourceImage> images, GridLayout? layout, Size canvas, GridBorders? borders = null, TimeSpan time = default, SeamFade? seams = null, bool fast = false, GridLayers? layers = null, GridBackground? background = null) =>
         Draw(
             g,
             images.Select(i => new Frame(i.ShownBitmap, i.BandColor, i.DrawnLook, time, i.Sharpening, i.Sharpens)).ToList(),
@@ -153,18 +154,20 @@ public static class Compositor
             borders,
             seams,
             fast,
-            layers?.Items.Select(l => new LayerFrame(l.FrameAt(time), l.Place)).ToList());
+            layers?.Items.Select(l => new LayerFrame(l.FrameAt(time), l.Place)).ToList(),
+            background);
 
     /// <summary>
     /// Draws the grid in the rectangle (0, 0, canvas) of <paramref name="g"/>; frame i goes into cell i of
-    /// the layout. The borders, the seams and the layers, global effects, are drawn here too, at the grid
-    /// level — the layers last, over everything.
+    /// the layout. The Grid background, the borders, the seams and the layers, global effects, are drawn here
+    /// too, at the grid level — the Grid background first, under everything, the layers last, over everything.
     /// </summary>
-    public static void Draw(Graphics g, IReadOnlyList<Frame> frames, GridLayout? layout, Size canvas, GridBorders? borders = null, SeamFade? seams = null, bool fast = false, IReadOnlyList<LayerFrame>? layers = null)
+    public static void Draw(Graphics g, IReadOnlyList<Frame> frames, GridLayout? layout, Size canvas, GridBorders? borders = null, SeamFade? seams = null, bool fast = false, IReadOnlyList<LayerFrame>? layers = null, GridBackground? background = null)
     {
-        // No cell: the layers alone, over nothing.
+        // No cell: the layers alone, over the Grid background or nothing.
         if (layout is null)
         {
+            background?.Paint(g, new Rectangle(Point.Empty, canvas), (null, null));
             if (layers is not null)
             {
                 DrawLayers(g, layers, canvas, fast);
@@ -175,6 +178,7 @@ public static class Compositor
 
         var slots = layout.Cells(canvas);
         var cells = borders?.Inset(slots, canvas) ?? slots;
+        background?.Paint(g, new Rectangle(Point.Empty, canvas), GridColors(frames, cells));
         var field = SeamField.Of(frames, cells, seams, borders);
         for (int i = 0; i < frames.Count; i++)
         {
@@ -186,6 +190,17 @@ public static class Compositor
         {
             DrawLayers(g, layers, canvas, fast);
         }
+    }
+
+    /// <summary>
+    /// The automatic colors the Grid background reads: the first cell holding an image's, for its color while
+    /// it follows the first cell, and the last one's, for a gradient's Auto second color; <c>null</c> without
+    /// an image.
+    /// </summary>
+    public static (Color? First, Color? Last) GridColors(IReadOnlyList<Frame> frames, Rectangle[] cells)
+    {
+        int count = Math.Min(frames.Count, cells.Length);
+        return count == 0 ? (null, null) : (AutomaticBackground(frames[0], cells[0]), AutomaticBackground(frames[count - 1], cells[count - 1]));
     }
 
     /// <summary>
@@ -341,7 +356,8 @@ public static class Compositor
             return Color.Transparent;
         }
 
-        if (background.Extends)
+        // A gradient keeps its seams sharp too: the Seams fade solid fills only (workfiles/20260926-forced-background.md, Q&A #20).
+        if (background.Extends || background.Style.IsGradient)
         {
             return null;
         }
@@ -355,25 +371,24 @@ public static class Compositor
     /// chosen color, at the opacity, turned by <paramref name="colors"/> — or, in an extending
     /// mode with bands around the image's place <paramref name="covered"/>, the image's edges extended:
     /// read from the image alone, which <paramref name="drawImage"/> draws at the cell's size. The flat
-    /// fill fades into the neighbours' along the <paramref name="seams"/>; an extending mode never does.
+    /// fill fades into the neighbours' along the <paramref name="seams"/>; an extending mode never does. The fill
+    /// is the shared one: solid, or a gradient from it to the style's second color, under the extended edges too.
     /// </summary>
     private static void DrawBackground(Graphics g, BackgroundEffect background, Color automatic, ColorsEffect? colors, Rectangle cell, Rectangle? covered, Action<Graphics> drawImage, bool fast, SeamField? seams)
     {
-        var fill = background.Fill(automatic);
-        if (colors is not null)
-        {
-            fill = colors.Apply(fill);
-        }
+        // The flat fill unturned: the style turns both of its colors itself.
+        var flat = background.Fill(automatic);
+        var fill = colors is null ? flat : colors.Apply(flat);
+        Func<Color, Color>? adjust = colors is null ? null : colors.Apply;
 
-        if (!background.Extends && seams?.Draw(g, cell) == true)
+        if (!background.Extends && !background.Style.IsGradient && seams?.Draw(g, cell) == true)
         {
             return;
         }
 
         if (!background.Extends || covered is not { } place)
         {
-            using var brush = new SolidBrush(fill);
-            g.FillRectangle(brush, cell);
+            background.Style.Paint(g, cell, flat, null, adjust);
             return;
         }
 
@@ -392,7 +407,7 @@ public static class Compositor
             drawImage(ig);
         }
 
-        EdgeExtension.Draw(g, image, cell, place, background, fill);
+        EdgeExtension.Draw(g, image, cell, place, background, fill, flat, adjust);
     }
 
     /// <summary>

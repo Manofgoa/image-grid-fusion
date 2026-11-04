@@ -60,6 +60,12 @@ public sealed record BackgroundEffect
     /// </summary>
     public double EdgeOpacity { get; private init; } = 1;
 
+    /// <summary>
+    /// How the fill spreads its colors over the cell — solid, or a gradient from <see cref="Color"/> (or the
+    /// automatic one) to a second color — the shared fill of the Grid background (workfiles/20260926-forced-background.md).
+    /// </summary>
+    public FillStyle Style { get; private init; } = FillStyle.Cell;
+
     /// <summary>The image's edges are stretched over the bands.</summary>
     public bool Extends => Mode != BackgroundFill.Color;
 
@@ -82,6 +88,9 @@ public sealed record BackgroundEffect
 
     public BackgroundEffect WithEdgeOpacity(double opacity) => this with { EdgeOpacity = Math.Clamp(opacity, 0, 1) };
 
+    /// <summary>A cell offers no Auto second color: the Grid background's own (workfiles/20260926-forced-background.md, Q&amp;A #19).</summary>
+    public BackgroundEffect WithStyle(FillStyle style) => this with { Style = style.Second == SecondColor.Auto ? style.WithSecond(SecondColor.Darker) : style };
+
     /// <summary>The fill, given the <paramref name="automatic"/> band color: the color in use at the opacity.</summary>
     public Color Fill(Color automatic) => Color.FromArgb((int)Math.Round(255 * Opacity), Automatic ? automatic : Color);
 
@@ -95,6 +104,7 @@ public sealed record BackgroundEffect
         ["blend"] = this.Blend,
         ["soften"] = this.Soften,
         ["edgeOpacity"] = this.EdgeOpacity,
+        ["fill"] = this.Style.ToJson(),
     };
 
     /// <summary>The settings <see cref="ToJson"/> wrote; an unreadable color gives the automatic one.</summary>
@@ -108,7 +118,7 @@ public sealed record BackgroundEffect
             Blend = Math.Clamp(PresetJson.Double(json, "blend", Default.Blend), 0, 1),
             Soften = PresetJson.Bool(json, "soften", Default.Soften),
             EdgeOpacity = Math.Clamp(PresetJson.Double(json, "edgeOpacity", Default.EdgeOpacity), 0, 1),
-        };
+        }.WithStyle(json["fill"] is JsonObject fill ? FillStyle.FromJson(fill, FillStyle.Cell) : FillStyle.Cell);
         return !automatic && json["color"] is JsonValue value && value.TryGetValue(out string? hex)
             && hex.StartsWith('#') && int.TryParse(hex.AsSpan(1), System.Globalization.NumberStyles.HexNumber, null, out int rgb)
                 ? background.WithColor(Color.FromArgb(rgb))
