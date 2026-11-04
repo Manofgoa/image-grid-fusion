@@ -103,12 +103,18 @@ internal sealed class PreviewSound : IDisposable
 
     /// <summary>
     /// Plays the sound of <paramref name="image"/> from <paramref name="position"/>, at the gain of its
-    /// volume effect, while <paramref name="playing"/> and not muted; else pauses it.
+    /// volume effect and the speed of its frames effect — its pitch with it — while
+    /// <paramref name="playing"/> and not muted; else pauses it.
     /// </summary>
     public void Sync(SourceImage image, TimeSpan position, bool playing)
     {
         if (_voices.TryGetValue(image, out var voice))
         {
+            if (voice.Node is { } node && node.PlaybackSpeedFactor != image.Speed)
+            {
+                node.PlaybackSpeedFactor = image.Speed;
+            }
+
             Sync(voice, position, image.Look.SoundGain, playing);
         }
     }

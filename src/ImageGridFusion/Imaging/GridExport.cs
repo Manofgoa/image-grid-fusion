@@ -49,8 +49,8 @@ internal static class GridExport
             {
                 int index = items.ToList().FindIndex(item => item.Image == i);
                 return cascade is not null && cascade.Has(index)
-                    ? new MixedSound(i.FilePath!, i.PlayedLength, i.StartTime, i.Look.SoundGain, i.PlayedFrom, cascade.TurnAt(index), cascade.Length)
-                    : new MixedSound(i.FilePath!, i.PlayedLength, i.StartTime, i.Look.SoundGain, i.PlayedFrom);
+                    ? new MixedSound(i.FilePath!, i.LoopLength, i.StartTime, i.Look.SoundGain, i.PlayedFrom, cascade.TurnAt(index), cascade.Length, i.Speed)
+                    : new MixedSound(i.FilePath!, i.LoopLength, i.StartTime, i.Look.SoundGain, i.PlayedFrom, Speed: i.Speed);
             });
             Sounds = (soundtrack is null ? sounds : sounds.Append(new MixedSound(soundtrack.Path, soundtrack.Duration, TimeSpan.Zero, soundtrack.Level))).ToList();
         }
@@ -134,7 +134,7 @@ internal static class GridExport
         }
 
         private static Item ItemOf(SourceImage i) => i.Plays
-            ? new Item(null, i.BandColor, i.DrawnPages, i.PlayedLength, i.DrawnLook, i.Page, i.StartTime, i.PlayedFrom, i.Sharpening, i.Sharpens) { Image = i }
+            ? new Item(null, i.BandColor, i.DrawnPages, i.LoopLength, i.DrawnLook, i.Page, i.StartTime, i.PlayedFrom, i.Sharpening, i.Sharpens) { Image = i, Speed = i.Speed }
             : i.IsAnimated
             ? new Item(null, i.BandColor, i.DrawnPages, TimeSpan.Zero, i.DrawnLook, i.StartPage, TimeSpan.Zero, Sharpening: i.Sharpening, Sharpens: i.Sharpens)
             : new Item(new Bitmap(i.DrawnBitmap), i.BandColor, null, TimeSpan.Zero, i.DrawnLook, 0, TimeSpan.Zero, Sharpening: i.Sharpening, Sharpens: i.Sharpens);
@@ -176,7 +176,8 @@ internal static class GridExport
     /// A cell: a still copy, or an animated source with its loop, the page it shows and where it
     /// starts playing, and the effects on the image. A frozen source has no loop: its page is a still.
     /// The loop is the part its frames effect leaves to play, beginning at <paramref name="From"/> in
-    /// the content (workfiles/20261008-video-trim.md).
+    /// the content (workfiles/20261008-video-trim.md), on the video's clock: played at
+    /// <see cref="Speed"/> (workfiles/20260926-frames-speed.md).
     /// </summary>
     public sealed record Item(Bitmap? Still, BandColor BandColor, PageSource? Source, TimeSpan Loop, ImageLook Look, int Page, TimeSpan Start, TimeSpan From = default, double Sharpening = 1, bool Sharpens = false)
     {
@@ -185,8 +186,11 @@ internal static class GridExport
         /// <summary>The playing image the cell was captured from, to find its sound; <c>null</c> for a still.</summary>
         public SourceImage? Image { get; init; }
 
+        /// <summary>The frames effect's speed it plays at.</summary>
+        public double Speed { get; init; } = 1;
+
         /// <summary>Content time shown at <paramref name="time"/> of the video.</summary>
-        public TimeSpan ContentTime(TimeSpan time) => this.From + Animation.LoopTime(this.Start + time, this.Loop);
+        public TimeSpan ContentTime(TimeSpan time) => this.From + Animation.AtSpeed(Animation.LoopTime(this.Start + time, this.Loop), this.Loop, this.Speed);
     }
 
     /// <summary>

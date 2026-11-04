@@ -37,8 +37,9 @@ the multiplier scales it like it scales a GIF's delays or a video's frame rate.
 - Range: **×0.25 to ×4**, in steps of **0.25** (16 notches, ×1 on the fourth). Constants
   `MinSpeed`, `MaxSpeed`, `SpeedStep` on `FramesEffect`; `WithSpeed` clamps to the range.
 - **Effect presets** (RULES.md § Effect Presets): the speed is saved with the Frames effect under its
-  own key — `"speed"` in `FramesEffect.ToJson`, read back clamped to the range by `FromJson`, ×1 when
-  missing — and `LookPreset.Describe` names it when it is not ×1 (`×1.5`).
+  own key — `"speed"` in `FramesEffect.ToJson`, read back onto a step of the range by `FromJson`
+  (`FramesEffect.SpeedOf`), ×1 when missing — and `LookPreset.Describe` names it after the starting
+  point when it is not ×1 and the content is not frozen (`whole, starting at 0 %, ×1.5`).
 - It applies to a **layer**'s content as to a cell's (RULES.md § Layers): the same `SourceImage`
   members are read for both, and a layer never takes part in the Cascade.
 
@@ -60,6 +61,11 @@ length count) and the **content time** (what the frames and the sound are read a
 | `StartTime` | Content time from `PlayedFrom` | **Grid time**: the starting point's offset in the loop, `/ Speed` |
 | `ContentTime(position)` | `PlayedFrom + LoopTime(position, PlayedLength)` | `PlayedFrom + LoopTime(position, LoopLength) × Speed` |
 
+The two conversions are shared helpers of `Animation`, read by `SourceImage` and by the export's
+`GridExport.Item` alike: `LoopAtSpeed(played, speed)` (the loop on the grid's clock) and
+`AtSpeed(loopTime, loop, speed)` (the content time, kept inside the played part — one tick before
+its end at most). At ×1 both give their input back unchanged.
+
 - **Every reader of the loop in grid time** switches from `PlayedLength` to `LoopLength`:
   `Animation.LoopOf` (so the grid's loop, `Animation.VideoLength`, the export's length, the
   preview's wrap, the soundtrack's loop, the length readout and the timeline), the Cascade's turn
@@ -68,8 +74,8 @@ length count) and the **content time** (what the frames and the sound are read a
   (`MainForm`'s `Loop`). A slowed-down GIF lengthens the video and its turn, a sped-up one shortens
   them.
 - **Every reader of the content time** keeps going through `ContentTime`: the preview's frames, its
-  sound sync. The export's `GridExport.Item` gets the speed and the grid-time loop, its own
-  `ContentTime` following the same formula.
+  sound sync. The export's `GridExport.Item` gets the grid-time loop and a `Speed` init property, its
+  own `ContentTime` going through `Animation.AtSpeed`.
 - The starting point and the trim stay places along the frames, in content time: the speed moves
   neither, and their fields (minutes : seconds : frame, GIF frame number) are unchanged.
 - A **frozen** image ignores the speed (it shows one frame, `Speed` reads 1).
@@ -85,9 +91,13 @@ no time-stretching):
 - **Preview**: the video's `AudioFileInputNode` (`PreviewSound`) plays with its
   `PlaybackSpeedFactor` set to the speed; its span (`PreviewSound.Span`) and its drift check stay in
   content time, as today. The scrub snippets follow by themselves.
-- **Export**: `MixedSound` carries the speed; the mixer's `Voice` (`VideoEncoder`) decodes the
-  file at `rate / speed` and mixes those samples one for one at `rate` — the resampler does the
-  speed change — its loop, start, turn and cascade counted in that decoded rate.
+- **Export**: `MixedSound` carries the speed (a last parameter, 1 by default) and its loop and start
+  on the video's clock (`LoopLength`, `StartTime`), `From` staying in the file; the mixer's `Voice`
+  (`VideoEncoder`) decodes the file at the mix's rate divided by the speed, rounded to a whole rate,
+  and mixes those samples one for one — Windows' resampler does the speed change. Its loop, start,
+  turn and cascade stay counted in the mix's frames; only the seek to the starting point
+  (`From + Start × Speed`) and the frames read back from the file use the decoded rate. A file
+  Windows cannot decode at that rate is left out of the mix, like any sound it cannot re-encode.
 - It stays *heard* at any speed (RULES.md § The Volume Exception is unchanged).
 
 ---
@@ -99,7 +109,10 @@ no time-stretching):
   a second separator — its value label over its slider (`OptionSlider`) — so the options toolbar
   keeps its height.
 - Acting on it turns the effect on, starting from its kept settings (RULES.md § Options Toolbar).
-- Its label reads **`Speed: ×1.5`** (invariant culture, `×1`, `×0.25`, `×1.75`…).
+- Its label reads **`Speed: ×1.5`** (invariant culture, `×1`, `×0.25`, `×1.75`…), written by
+  `FramesEffect.SpeedText`, shared with the presets' description. The slider runs from 1 to 16 —
+  steps of `SpeedStep` — its page step 4 (×1), Ctrl + wheel one step; a tooltip says what it does.
+  No icon: RULES.md § Icons covers menus, tabs, buttons and drop-down entries, not sliders.
 - While **Freeze** is checked, the speed slider is **disabled** (a frozen image plays nothing); the
   speed is kept for when it is unfrozen.
 - README § Frames and § Animated content: the speed setting, and "1 s per page / view" becomes the
@@ -194,6 +207,36 @@ Go given: **code, unit tests and documentation**. Unit tests: none to write — 
 test project (§ Test Impact). Branch Gate: a **dedicated worktree**, `feature/frames-speed`, merged
 into `main` with `--no-ff` at the end. Scope frozen on the design sections as they stand.
 
+### Iteration 7 — 2026-11-04 — 🧭 Implementation choices
+
+What the run decided on its own, the design sections updated to match:
+
+- **Shared conversions**: `Animation.LoopAtSpeed` and `Animation.AtSpeed`, read by `SourceImage`
+  and `GridExport.Item`; the content time is clamped one tick before the end of the played part, so
+  a rounding at a speed other than ×1 never reads past it.
+- **`FramesEffect`**: `MinSpeed`, `MaxSpeed`, `SpeedStep`, `WithSpeed`, and `SpeedOf` bringing any
+  value onto a step of the range (a preset's included); `SpeedText` writes `×1.5`, for the label and
+  the presets' description, which names the speed only when it is not ×1 and the content plays.
+- **`GridExport.Item.Speed`** is an init property rather than a positional parameter, and
+  `MixedSound.Speed` a last positional one, 1 by default: no caller that does not play changes.
+- **Export sound**: the decoded rate is the mix's divided by the speed, **rounded** — 44 100 / 2.75
+  is not whole — a speed error under 0.01 %. Its loop, start and turn stay in the mix's frames, so
+  the Cascade's schedule is unchanged.
+- **Preview sound**: the node's `PlaybackSpeedFactor` is set in `PreviewSound.Sync`, at each sync,
+  whenever it differs from the image's speed.
+- **Slider**: values 1 to 16, page step 4, Ctrl + wheel one step, a tooltip; no icon (RULES.md §
+  Icons does not cover sliders).
+- **RULES.md** gets a § Played Part › Speed subsection — the two clocks and which members are which —
+  and § Cascade reads `LoopLength`.
+- **The workfile committed on the branch**: the `main` checkout was in the middle of another
+  session's conflict resolution, so the run's workfile entries ride on `feature/frames-speed`
+  rather than on `main` directly.
+- **Out of scope, noted**: the length readout's tooltip names each content's loop without saying it
+  plays at another speed — a possible follow-up, not done.
+
+No rule broken. A content's speed change replays that content only (RULES.md § Preview Playback),
+as any Frames change: its record equality includes the speed.
+
 ---
 
 ## Implementation Log
@@ -203,9 +246,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
+| Code | 6, 7 | 2026-11-04 | Effect and presets, timing, sound, UI — four commits on `feature/frames-speed`, plus a `this.` style fix |
+| Unit tests | 6 | 2026-11-04 | None: the repository has no test project (§ Test Impact) |
+| README | 6, 7 | 2026-11-04 | `README.md` and `README.fr.md`: § Frames, § Animated content |
+| RULES / GLOSSARY | 6, 7 | 2026-11-04 | RULES.md § Played Part › Speed, § Cascade; GLOSSARY *Speed* and *Turn*, English and French |
 
 ---
 

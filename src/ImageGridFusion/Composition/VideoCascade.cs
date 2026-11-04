@@ -57,8 +57,8 @@ public sealed class CascadeSchedule
     /// <summary>Takes part in the cascade: a video or an animated GIF that plays — a frozen one is a still.</summary>
     public static bool TakesPart(SourceImage image) => image.Plays && image.Trims;
 
-    /// <summary>The turn of <paramref name="image"/>: its played part, or zero when it takes no part.</summary>
-    public static TimeSpan TurnOf(SourceImage image) => TakesPart(image) ? image.PlayedLength : TimeSpan.Zero;
+    /// <summary>The turn of <paramref name="image"/>: its played part at its speed, or zero when it takes no part.</summary>
+    public static TimeSpan TurnOf(SourceImage image) => TakesPart(image) ? image.LoopLength : TimeSpan.Zero;
 
     /// <summary>One whole cascade: every turn and the pause after it; zero when nothing takes part.</summary>
     public TimeSpan Length { get; }

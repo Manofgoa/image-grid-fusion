@@ -229,6 +229,12 @@ internal sealed partial class MainForm : Form
     private readonly Label _framesLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _freeze = new() { Text = "Freeze", AutoSize = true, Anchor = AnchorStyles.Left };
 
+    // The Frames effect's speed, in steps of FramesEffect.SpeedStep: ×0.25 to ×4 (workfiles/20260926-frames-speed.md).
+    private readonly StepSlider _speed = OptionSlider(
+        (int)Math.Round(FramesEffect.MinSpeed / FramesEffect.SpeedStep), (int)Math.Round(FramesEffect.MaxSpeed / FramesEffect.SpeedStep), 4, controlStep: 1);
+
+    private readonly Label _speedLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+
     // The Frames effect's trim and its starting point's fields (workfiles/20261008-video-trim.md).
     private readonly Label _framesCaption = new() { Text = "Starts at", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly FrameField _framesField = new();
@@ -619,7 +625,12 @@ internal sealed partial class MainForm : Form
         framesStartLines.FlowDirection = FlowDirection.TopDown;
         framesStartLines.Controls.AddRange([framesStartLine, _freeze]);
         var framesSeparator = new Label { AutoSize = false, Width = 2, BorderStyle = BorderStyle.Fixed3D, Anchor = AnchorStyles.Top | AnchorStyles.Bottom, Margin = new Padding(8, 4, 8, 4) };
-        _options[ImageEffect.Frames].Controls.AddRange([this._trimLines, framesSeparator, framesStartLines]);
+        // The speed in a third column, its value over its slider (Iteration 4 of the workfile).
+        var framesSpeedLines = OptionLine();
+        framesSpeedLines.FlowDirection = FlowDirection.TopDown;
+        framesSpeedLines.Controls.AddRange([this._speedLabel, this._speed]);
+        var framesSpeedSeparator = new Label { AutoSize = false, Width = 2, BorderStyle = BorderStyle.Fixed3D, Anchor = AnchorStyles.Top | AnchorStyles.Bottom, Margin = framesSeparator.Margin };
+        _options[ImageEffect.Frames].Controls.AddRange([this._trimLines, framesSeparator, framesStartLines, framesSpeedSeparator, framesSpeedLines]);
         _options[ImageEffect.Colors].Controls.AddRange(
             [this._saturation, this._saturationLabel, this._hue, this._hueLabel, this._brightness, this._brightnessLabel, this._contrast, this._contrastLabel]);
 
@@ -1018,6 +1029,8 @@ internal sealed partial class MainForm : Form
         this._trimFromField.ValueChanged += (_, _) => this._trimFrom.Value = this._trimFromField.Value;
         this._trimToField.ValueChanged += (_, _) => this._trimTo.Value = this._trimToField.Value;
         _freeze.CheckedChanged += (_, _) => ChangeFrames(frames => frames.WithFrozen(_freeze.Checked));
+        this._toolTip.SetToolTip(this._speed, "How fast the content plays, its sound with it: ×1 is its own pace");
+        this._speed.ValueChanged += (_, _) => this.ChangeFrames(frames => frames.WithSpeed(this._speed.Value * FramesEffect.SpeedStep));
         foreach (var slider in (TrackBar[])[this._saturation, this._hue, this._brightness, this._contrast])
         {
             slider.ValueChanged += (_, _) => this.SetColors();
@@ -2765,7 +2778,7 @@ internal sealed partial class MainForm : Form
             : Animation.LoopOf(image);
 
         // A loop is a playing content's, or the cycle of an Animations effect when longer.
-        string Loop(SourceImage image) => image.Plays && Beside(image) == image.PlayedLength
+        string Loop(SourceImage image) => image.Plays && Beside(image) == image.LoopLength
             ? $"{Name(image)}'s"
             : $"{Name(image)}'s animation";
 
@@ -3861,6 +3874,10 @@ internal sealed partial class MainForm : Form
         this._framesField.Set(this._frames.Value, this._frames.Minimum, this._frames.Maximum);
         this._trimFromField.Set(this._trimFrom.Value, this._trimFrom.Minimum, this._trimTo.Value);
         this._trimToField.Set(this._trimTo.Value, this._trimFrom.Value, this._trimTo.Maximum);
+
+        // A frozen content plays nothing: its speed is kept for when it plays again.
+        this._speedLabel.Text = "Speed: " + FramesEffect.SpeedText(this._speed.Value * FramesEffect.SpeedStep);
+        this._speed.Enabled = !this._freeze.Checked;
     }
 
     /// <summary>A ratio button: the kept part reshaped to it around its center, or freed.</summary>
@@ -4540,6 +4557,7 @@ internal sealed partial class MainForm : Form
                 _frames.SetRange(first, last);
                 _frames.Value = Math.Clamp(frames.PageOf(count), first, last);
                 _freeze.Checked = frames.Frozen;
+                this._speed.Value = (int)Math.Round(frames.Speed / FramesEffect.SpeedStep);
                 double? rate = image.Trims ? pages.FrameRate : null;
                 this._framesField.SetFrameRate(rate);
                 this._trimFromField.SetFrameRate(rate);
