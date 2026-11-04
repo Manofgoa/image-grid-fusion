@@ -288,6 +288,9 @@ No project rule broken. The choices the frozen design left open:
 | 10 | Open question 6 — RULES.md Feature Lines now, and a backlog row for the rest? | Both | 2026-11-04 |
 | 11 | Open question 7 — the reference width? | 1920 px, maximized | 2026-11-04 |
 | 12 | Open question 8 — the scrollbar's place in the fixed height? | Room kept in every tab | 2026-11-04 |
+| 13 | Merge order with `feature/french-translation` (both rewrite `MainForm`'s options; this branch's new captions are English literals): merge after it and move the captions into `Strings.resx`, or merge now? | | 2026-11-05 |
+| 14 | *Slider exact value*: give `SliderCaption` the place where it draws the value, for its field? | | 2026-11-05 |
+| 15 | The user finds the pilot tabs still ugly: what to change first? | | 2026-11-05 |
 
 ---
 
