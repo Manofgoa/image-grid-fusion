@@ -65,7 +65,8 @@ internal sealed partial class GridPreview
     private EditState? _edit;
 
     /// <summary>What a layer's edit view sets aside, given back when it closes.</summary>
-    private sealed record EditState(int Layer, List<SourceImage> Images, GridLayout? Layout, double Ratio, double FreeRatio, GridBorders? Borders, SeamFade? Seams, GridBackground? Background);
+    // Layer is -1 while the view edits the Grid background's image (workfiles/20261104-grid-background-image.md § Background Edit View).
+    private sealed record EditState(int Layer, List<SourceImage> Images, GridLayout? Layout, double Ratio, double FreeRatio, GridBorders? Borders, SeamFade? Seams, GridBackground? Background, bool EditsBackground = false);
 
     /// <summary>Raised when a layer's edit view opens or closes.</summary>
     public event EventHandler? LayerEditChanged;
@@ -1019,6 +1020,7 @@ internal sealed partial class GridPreview
             if (this._gridBackground is { } background)
             {
                 background.Paint(g, new Rectangle(Point.Empty, canvas.Size), this.GridColorsOf(cells));
+                this.PaintBackgroundImage(g, canvas.Size, fast);
             }
 
             for (int i = 0; i < cells.Length && i < this._images.Count; i++)
@@ -1102,7 +1104,7 @@ internal sealed partial class GridPreview
         this._gridBackground = edit.Background;
         this._ratio = edit.Ratio;
         this._selected = -1;
-        this._selectedLayer = edit.Layer < this._layers.Count ? edit.Layer : -1;
+        this._selectedLayer = edit.Layer >= 0 && edit.Layer < this._layers.Count ? edit.Layer : -1;
         this.ResetHover();
         this.EnterOrLeaveEdit();
     }
@@ -1137,6 +1139,11 @@ internal sealed partial class GridPreview
     /// <summary>The edit view's canvas ratio: the edited layer's box, its content as shown.</summary>
     private double EditRatio()
     {
+        if (this._edit is { EditsBackground: true } background)
+        {
+            return this.BackgroundEditRatio(background);
+        }
+
         var image = this._images.Count > 0 ? this._images[0] : null;
         var shown = image is null ? new Size(1, 1) : image.Look.Shown(image.Bitmap.Size);
         return Math.Clamp(shown.Width / (double)Math.Max(1, shown.Height), 0.05, 20);
@@ -1145,7 +1152,8 @@ internal sealed partial class GridPreview
     /// <summary>In the edit view, the layer takes the look its cell was just given: the undo history and the exports read the layer.</summary>
     private void SyncEditedLayer(SourceImage image)
     {
-        if (this._edit is { } edit && edit.Layer < this._layers.Count && this._layers.Items[edit.Layer] is var layer
+        this.SyncEditedBackground(image);
+        if (this._edit is { EditsBackground: false } edit && edit.Layer >= 0 && edit.Layer < this._layers.Count && this._layers.Items[edit.Layer] is var layer
             && layer.Image == image && layer.Look != image.Look)
         {
             this._layers = this._layers.With(edit.Layer, layer with { Look = image.Look });

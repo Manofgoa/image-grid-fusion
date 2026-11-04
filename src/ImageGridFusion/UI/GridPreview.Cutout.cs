@@ -337,6 +337,11 @@ internal sealed partial class GridPreview
             }
         }
 
+        if (this.ShownBackgroundImage is { } background)
+        {
+            this._cutouts?.Request(background.Image);
+        }
+
         this._cutoutBadges.Clear();
         for (int i = 0; i < this._images.Count && i < cells.Length; i++)
         {

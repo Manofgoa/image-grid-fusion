@@ -397,9 +397,22 @@ internal sealed partial class GridPreview : Control
                 return;
             }
 
+            // Its image takes its look, as a layer's content does: the cut-out and the enlargement read it there.
+            if (value?.Image is { } image)
+            {
+                image.Image.Look = image.Look;
+            }
+
+            bool played = this._gridBackground?.Image?.Image != value?.Image?.Image;
             this._gridBackground = value;
             this._cache?.Dispose();
             this._cache = null;
+            this.ForgetBackgroundImage();
+            if (played)
+            {
+                this.SyncPlayer();
+            }
+
             this.Invalidate();
             this.ContentVersion++;
         }
@@ -1064,6 +1077,7 @@ internal sealed partial class GridPreview : Control
                 layer.Image.Dispose();
             }
             _cache?.Dispose();
+            this.ForgetBackgroundImage();
             _ghost?.Dispose();
             _checkerboard?.Dispose();
             _checkerTile?.Dispose();
@@ -1086,8 +1100,9 @@ internal sealed partial class GridPreview : Control
         using var highlight = new SolidBrush(Color.FromArgb(90, SystemColors.Highlight));
         PaintDropZone(g, DropZoneBounds(canvas));
         this.UpdateReadouts();
-        // An empty grid shows its empty state — unless layers lie on it, drawn on its canvas (workfiles/20261029-layers.md, Iteration 12).
-        if (_images.Count == 0 && this.ShownLayers is null)
+        // An empty grid shows its empty state — unless layers lie on it, drawn on its canvas (workfiles/20261029-layers.md, Iteration 12),
+        // or the Grid background's image (workfiles/20261104-grid-background-image.md § Drawing).
+        if (_images.Count == 0 && this.ShownLayers is null && this.ShownBackgroundImage is null)
         {
             PaintEmptyState(g, canvas);
             g.FillRectangle(highlight, _externalTarget);
@@ -1177,6 +1192,7 @@ internal sealed partial class GridPreview : Control
         this.PaintReadouts(g, cells);
         this.PaintUpscale();
         this.PaintCutout(g, cells);
+        this.PaintBackgroundEditBadge(g, cells);
 
         PaintHoverOutline(g, HoverOutlineBounds(canvas, cells));
 
@@ -1770,7 +1786,7 @@ internal sealed partial class GridPreview : Control
         var canvas = CanvasBounds();
         var zone = DropZoneBounds(canvas);
         return zone.Contains(location) ? zone
-            : _images.Count == 0 && this.ShownLayers is null && canvas.Contains(location) ? canvas
+            : _images.Count == 0 && this.ShownLayers is null && this.ShownBackgroundImage is null && canvas.Contains(location) ? canvas
             : Rectangle.Empty;
     }
 
@@ -1898,7 +1914,7 @@ internal sealed partial class GridPreview : Control
     {
         int hovered = CellAt(location);
         bool onClose = hovered >= 0 && CloseBounds(CellBounds()[hovered]).Contains(location);
-        bool onCanvas = _images.Count == 0 && this.ShownLayers is null && CanvasBounds().Contains(location);
+        bool onCanvas = _images.Count == 0 && this.ShownLayers is null && this.ShownBackgroundImage is null && CanvasBounds().Contains(location);
         bool onDropZone = DropZoneBounds(CanvasBounds()).Contains(location);
         bool actions = hovered >= 0 && !_locked;
         bool onHandle = actions && this.HandleOf(hovered).Contains(location);
@@ -1949,7 +1965,7 @@ internal sealed partial class GridPreview : Control
             return;
         }
 
-        _player.Sync(_images, this.ShownLayerImages);
+        _player.Sync(_images, this.PlayedBesideCells);
         UpdateDisplaySizes();
         _progressTimer.Start();
     }
@@ -1963,6 +1979,7 @@ internal sealed partial class GridPreview : Control
         }
 
         this.UpdateLayerDisplaySizes();
+        this.UpdateBackgroundDisplaySize();
     }
 
     /// <summary>
@@ -2044,6 +2061,13 @@ internal sealed partial class GridPreview : Control
             return;
         }
 
+        // The Grid background's image: the whole canvas lies over it.
+        if (index < 0 && this.IsBackgroundImage(image))
+        {
+            this.RedrawOverBackground();
+            return;
+        }
+
         var canvas = CanvasBounds();
         if (index < 0 || _layout is null || _cache is null || _cache.Size != canvas.Size)
         {
@@ -2070,6 +2094,13 @@ internal sealed partial class GridPreview : Control
         if (_layout is null || _cache is null || _cache.Size != canvas.Size)
         {
             Invalidate();
+            return;
+        }
+
+        // A playing Grid background's image: everything over it, in full.
+        if (this.ShownBackgroundImage is { Image.IsAnimated: true })
+        {
+            this.RedrawOverBackground();
             return;
         }
 
@@ -2138,7 +2169,7 @@ internal sealed partial class GridPreview : Control
             foreach (int i in drawn)
             {
                 ClearCell(g, cells[i]);
-                this.PaintGridBackground(g, cells[i], canvas, colors);
+                this.PaintGridBackground(g, cells[i], canvas, colors, fast);
                 Compositor.DrawCell(g, this.FrameOf(this._images[i]), cells[i], fast, seams);
                 this.DrawBordersOver(g, cells[i], canvas);
                 area = area.IsEmpty ? cells[i] : Rectangle.Union(area, cells[i]);
@@ -2167,7 +2198,7 @@ internal sealed partial class GridPreview : Control
     }
 
     /// <summary>The Grid background under <paramref name="area"/> of the cache, the rest of it left alone; nothing while it is off.</summary>
-    private void PaintGridBackground(Graphics g, Rectangle area, Size canvas, (Color? First, Color? Last) colors)
+    private void PaintGridBackground(Graphics g, Rectangle area, Size canvas, (Color? First, Color? Last) colors, bool fast)
     {
         if (this._gridBackground is not { } background)
         {
@@ -2176,6 +2207,7 @@ internal sealed partial class GridPreview : Control
 
         g.SetClip(area);
         background.Paint(g, new Rectangle(Point.Empty, canvas), colors);
+        this.PaintBackgroundImage(g, canvas, fast);
         g.ResetClip();
     }
 

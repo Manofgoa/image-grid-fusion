@@ -59,6 +59,14 @@ internal sealed partial class GridPreview
                 return;
             }
         }
+
+        // The Grid background's image: the window keeps the Grid background it now has.
+        if (this._gridBackground is { Image: { } background } grid && background.Image == image && background.Look != look)
+        {
+            var edited = grid.WithImage(background.WithLook(look));
+            this.GridBackground = edited;
+            this.GridBackgroundEdited?.Invoke(this, edited);
+        }
     }
 
     /// <summary>
@@ -87,6 +95,11 @@ internal sealed partial class GridPreview
         if (this.ShownLayers is { } layers)
         {
             shown.AddRange(layers.Items.Select(layer => layer.Image));
+        }
+
+        if (this.ShownBackgroundImage is { } background)
+        {
+            shown.Add(background.Image);
         }
 
         foreach (var image in shown)
