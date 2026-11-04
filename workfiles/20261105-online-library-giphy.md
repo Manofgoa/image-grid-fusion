@@ -59,7 +59,8 @@ first. To confirm (Open Questions).
 - **Content rating**: an app setting of the ⚙ menu — `g`, `pg`, `pg-13`, `r` — **`r` by default**
   (`AppSettings.GiphyRating`, Q&A 13), carried by every request.
 - **Attribution**: GIPHY's API terms (section 5A) require its **Powered By GIPHY** mark, visible wherever
-  its content shows. Where it sits is an Open Question.
+  its content shows. It sits **at the right end of the breadcrumb line** of the GIPHY view (Q&A 17),
+  GIPHY's official mark, always visible, taking no room of its own.
 - **Without a key**, the view shows an invitation to set one, a link to GIPHY's developer site and the
   ⚙ menu's entry.
 
@@ -78,12 +79,15 @@ first. To confirm (Open Questions).
 - **Budget**: a beta key allows **100 calls an hour**. A load is one call; nothing is fetched in the
   background, nothing per tile. A refused call (429) says so in the list's caption, the list kept.
 - A newer query cancels the one running.
+- **A search starts on Enter only** (Q&A 18): typing costs nothing; the same query pressed again is not
+  asked twice. The box emptied brings the trending back (one call, kept for the session).
 
 ### Loads
 
 - The view's list is **fetched page by page**: `LoadMore` asks the library for the next page while it
   says more remain, instead of slicing `_list`. The **Loading…** tile shows while it runs.
-- Its page size — Open Question.
+- **50 results a call** (Q&A 16), GIPHY's largest page: a load — the pages per load setting times a page
+  — may take less than one call, the rest kept for the next load before another call is made.
 
 ### Thumbnails
 
@@ -150,13 +154,14 @@ this work is an Open Question; until then, the behaviours are checked by hand:
   dragged; a double-click downloads and adds (Q&A 9)
 - [x] ~~**Thumbnails**: still, or animated in the list?~~ → Animated, playing while the results show
   (Q&A 11)
-- [ ] **Page size**: how many results a load asks for (GIPHY's beta allows up to 50 a call)?
+- [x] ~~**Page size**: how many results a load asks for (GIPHY's beta allows up to 50 a call)?~~ → 50 a
+  call (Q&A 16)
 - [x] ~~**Rating**: which content rating the requests carry (`g`, `pg`, `pg-13`, `r`), fixed or a setting?~~
   → An app setting of the ⚙ menu, `r` by default (Q&A 13)
-- [ ] **Search trigger**: the GIPHY view searches on Enter only, or after a pause in the typing as the
-  index search does — each search costing one of the 100 calls an hour?
-- [ ] **Attribution placement**: the Powered By GIPHY mark next to the search box, on the breadcrumb line,
-  or under the list?
+- [x] ~~**Search trigger**: the GIPHY view searches on Enter only, or after a pause in the typing as the
+  index search does — each search costing one of the 100 calls an hour?~~ → Enter only (Q&A 18)
+- [x] ~~**Attribution placement**: the Powered By GIPHY mark next to the search box, on the breadcrumb line,
+  or under the list?~~ → At the right end of the breadcrumb line (Q&A 17)
 - [x] ~~**Ctrl+F cycle**: does it go through the GIPHY view (skipped without a key, as People is without the
   face analysis)?~~ → Yes, last, skipped while no key is set (Q&A 15)
 - [ ] **Search criteria and sort**: hidden or disabled in the GIPHY view?
@@ -204,6 +209,11 @@ cycle goes through the GIPHY view, skipped without a key. The page size and the 
 were not understood: explained (100 calls an hour, not 100 images) and asked again, with a mockup. A new
 question follows from the budget: what triggers a search.
 
+### Iteration 5 — 2026-11-05
+
+Q&A 16–18: 50 results a call; the Powered By GIPHY mark at the right end of the breadcrumb line; a search
+starts on Enter only. § Requests, § Loads and the attribution updated.
+
 ---
 
 ## Implementation Log
@@ -240,9 +250,13 @@ Questions asked by the agent during design, with user responses.
 | 13 | Content rating of the requests | A ⚙ menu setting, `r` by default | 2026-11-05 |
 | 14 | Where the Powered By GIPHY mark sits | "I don't understand where you propose" → drawn as a mockup, asked again (#17) | 2026-11-05 |
 | 15 | Does the Ctrl+F cycle go through the GIPHY view? | Yes, skipped without a key | 2026-11-05 |
-| 16 | Page size of a load (again) | | 2026-11-05 |
-| 17 | Where the Powered By GIPHY mark sits (again, with a mockup) | | 2026-11-05 |
-| 18 | Search trigger: Enter only, or after a pause in the typing | | 2026-11-05 |
+| 16 | Page size of a load (again) | 50, the largest | 2026-11-05 |
+| 17 | Where the Powered By GIPHY mark sits (again, with a mockup) | At the right end of the breadcrumb line | 2026-11-05 |
+| 18 | Search trigger: Enter only, or after a pause in the typing | Enter only | 2026-11-05 |
+| 19 | The term for the new concept | | 2026-11-05 |
+| 20 | Search criteria, sort and sections buttons in the GIPHY view | | 2026-11-05 |
+| 21 | Hearting a GIPHY tile | | 2026-11-05 |
+| 22 | The API key shown in clear or masked | | 2026-11-05 |
 
 ---
 
