@@ -102,6 +102,9 @@ internal sealed partial class GridPreview : Control
 
     // The Custom format's fields; null while unset — at start-up, after the Resets and Clear all.
     private CustomFormat? _custom;
+
+    // The exact size the preview was last laid out for: a change of it alone lays the preview out again.
+    private Size? _laidOutExact;
     private GridBorders? _borders;
 
     // The seams global effect, and the fills its strips were last drawn from in the cache: a cell drawn
@@ -2307,7 +2310,9 @@ internal sealed partial class GridPreview : Control
 
     /// <summary>
     /// Largest rectangle at the canvas ratio that fits the control once the drop zone and its gap
-    /// are reserved on the right, centered in what remains.
+    /// are reserved on the right, centered in what remains. With the Custom format's exact pixels, the
+    /// canvas at its real final size — one export pixel a device pixel — whenever it fits there
+    /// (workfiles/20261104-custom-output-format.md § The Preview at Real Size).
     /// </summary>
     private Rectangle CanvasBounds()
     {
@@ -2317,6 +2322,11 @@ internal sealed partial class GridPreview : Control
         if (area.Width <= 0 || area.Height <= 0)
         {
             return Rectangle.Empty;
+        }
+
+        if (this.ExactSize is { } exact && CanvasSizer.Exactly(exact) is var real && real.Width <= area.Width && real.Height <= area.Height)
+        {
+            return new Rectangle(area.X + (area.Width - real.Width) / 2, area.Y + (area.Height - real.Height) / 2, real.Width, real.Height);
         }
 
         int width = area.Width;
@@ -3649,13 +3659,16 @@ internal sealed partial class GridPreview : Control
             : OutputFormats.Ratio(_format) ?? FreeRatio;
 
         // A video's frames, scaled to their cell, must not nudge the free ratio back and forth. The Custom
-        // ratio is the user's, to the pixel: its exact size and the preview must agree.
-        if (ratio == _ratio || (!custom && Math.Abs(ratio / _ratio - 1) < 0.002))
+        // ratio is the user's, to the pixel: its exact size and the preview must agree. An exact size changed
+        // alone changes the canvas drawn at real size (CanvasBounds).
+        var exact = this.ExactSize;
+        if (exact == this._laidOutExact && (ratio == _ratio || (!custom && Math.Abs(ratio / _ratio - 1) < 0.002)))
         {
             return;
         }
 
         _ratio = ratio;
+        this._laidOutExact = exact;
         _cache?.Dispose();
         _cache = null;
         FitPagesToCells();
