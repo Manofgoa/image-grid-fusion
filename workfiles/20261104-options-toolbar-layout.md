@@ -59,13 +59,13 @@ Read from the code, not measured: the cell options toolbar is about **100 logica
 34-px rows over its icon buttons). A C line holding a slider is about **44 px** (a 15-px name over a 26-px
 slider), a thumbnail strip about **62 px** (a 56 × 40 box and its name). So in the cell toolbar, C holds
 **about two slider lines, or one thumbnail line, per column**: C there is mostly a row of columns of one or
-two lines — what the mockup of the parent session called C, wrapped (open question 1).
+two lines — the parent session's C, wrapped into columns.
 
 ---
 
 ## Feature Lines of the Pilot Tabs
 
-Proposed split, one feature per line (open question 4):
+One feature per line, agreed (open question 4):
 
 ### Background
 
@@ -107,18 +107,29 @@ icon buttons, then the text field. Then the lines:
 
 ---
 
+## Fit Rule
+
+- **Decided once per tab**, at design time: each migrated tab has **one layout**, C, A or B, fixed in its
+  code — never recomputed when the window is resized. It is the first of C, A, B whose columns of lines fit
+  the toolbar's width at the **reference width** of the window (open question 7), the Reset button aside.
+- **A layout wider than the window** is scrolled sideways: a **horizontal scrollbar** shows under the options
+  while they do not fit (its place in the fixed height: open question 8). Nothing is clipped.
+- **In a column of lines**, the leading elements — checkboxes and captions — share **one width**, so the
+  controls of its lines start aligned; a **thin vertical line** separates two columns (and a tall block from
+  the next column).
+
 ## Mechanism
 
 One description of a tab's options, laid out three ways — never three hand-built layouts per tab.
 
 - **A tab's options are a list of feature lines** (a `FeatureLine`: its leading checkbox or caption, its
   controls) plus, ahead of them, its **tall blocks** (the Layers' list and text field). Built once per tab
-  in place of today's `OptionLine()` nesting.
+  in place of today's `OptionLine()` nesting, with the layout chosen for the tab (§ Fit Rule).
 - **A labeled slider** is one control: the slider, its name, its value — drawn as C wants it (name and
   value above) or as A wants it (the value after it, the name in the label column).
 - **One layout panel** per options row, replacing the pilot tabs' `FlowLayoutPanel`: it arranges the lines
-  in C, A or B within the toolbar's height (open questions 1 and 2), the controls themselves never
-  rebuilt — the events, tooltips and state updates of today's code keep their controls.
+  in the tab's layout — C, A or B — within the toolbar's height, scrolled sideways when wider than the
+  window (§ Fit Rule), the controls themselves never rebuilt — the events, tooltips and state updates of today's code keep their controls.
 - **The height** stays computed by `FitEffectRows()` from every tab's preferred height; a pilot tab's
   preferred height is that of its tallest line or block — never more — so the toolbars' heights do not
   change.
@@ -156,19 +167,21 @@ unit test is created or updated. The run checks by hand:
 
 ## Open Questions
 
-- [ ] 1. **The fit rule**: when is C, A or B chosen — measured per tab at every resize of the window, or
-  decided once per tab at design time? And what "fits" means: every column of lines within the toolbar's
-  width?
-- [ ] 2. **When B does not fit either** (a narrow window — the minimum is 480 px wide): the options clipped
-  at the right as today, or a horizontal scrollbar?
-- [ ] 3. **A line's leading element and the columns**: a line without a checkbox leads with its caption;
-  do the leading elements of a column share one width, so the controls start aligned? A thin line between
-  two columns of lines?
-- [ ] 4. **The feature lines of the pilot tabs** as listed in § Feature Lines of the Pilot Tabs.
+- [x] ~~1. **The fit rule**: when is C, A or B chosen — measured per tab at every resize of the window, or
+  decided once per tab at design time?~~ → Decided once per tab, at a reference width (§ Fit Rule)
+- [x] ~~2. **When B does not fit either** (a narrow window — the minimum is 480 px wide): the options clipped
+  at the right as today, or a horizontal scrollbar?~~ → A horizontal scrollbar
+- [x] ~~3. **A line's leading element and the columns**: do the leading elements of a column share one width?
+  A thin line between two columns of lines?~~ → Both
+- [x] ~~4. **The feature lines of the pilot tabs** as listed in § Feature Lines of the Pilot Tabs.~~ → As listed;
+  the Frames' hand-made separators go
 - [ ] 5. **The labeled slider**: one compact width for every slider (≈ 120 px; the Frames' frame sliders
   wider), the opacity icon before its name above the slider (§ Color Options updated)?
 - [ ] 6. **Rules and backlog**: RULES.md § Options Toolbar › Feature Lines written now for every tab, and a
   TODO-FEATURES row for the tabs left to migrate and the Global choices that are not thumbnails yet?
+- [ ] 7. **The reference width** at which each tab's layout is decided?
+- [ ] 8. **The scrollbar's place**: room kept for it under the options in every tab, the toolbar taller by
+  it; the toolbar growing only while it shows; or scroll arrows at the ends instead?
 
 ---
 
@@ -181,6 +194,13 @@ name and value above it, lines top-aligned, the toolbars' height kept, three pil
 Frames, Layers). Proposed: the feature lines of each pilot, one description per tab laid out three ways
 by one panel. Read from the code: with the height kept, C holds about two slider lines per column in the
 cell toolbar, so it wraps into columns.
+
+### Iteration 2 — 2026-11-04
+
+Open questions 1 to 4 answered: each tab's layout is **fixed at design time** (not measured at every
+resize); a layout wider than the window gets a **horizontal scrollbar**; the leading elements of a column
+share one width and columns are split by a thin line; the pilot tabs' lines are agreed as listed. New § Fit
+Rule. Two questions follow from them: the reference width (7) and the scrollbar's place in a fixed height (8).
 
 ---
 
@@ -205,12 +225,14 @@ cell toolbar, so it wraps into columns.
 | 2 | Lines in the toolbar's height: top-aligned or centered; height kept or grown? | Top-aligned, height kept | 2026-11-04 |
 | 3 | Scope: every tab at once, cell effects first, or a few pilot tabs? | A few pilot tabs (Background, Frames, Layers) | 2026-11-04 |
 | 4 | Depth of the exploration? | Straightforward: one pass | 2026-11-04 |
-| 5 | Open question 1 — the fit rule: measured at every resize, or decided per tab? | | 2026-11-04 |
-| 6 | Open question 2 — when B does not fit: clipped or scrolled? | | 2026-11-04 |
-| 7 | Open question 3 — leading elements of a column one width; a line between columns? | | 2026-11-04 |
-| 8 | Open question 4 — the pilot tabs' feature lines as listed? | | 2026-11-04 |
+| 5 | Open question 1 — the fit rule: measured at every resize, or decided per tab? | Decided per tab | 2026-11-04 |
+| 6 | Open question 2 — when B does not fit: clipped or scrolled? | A horizontal scrollbar | 2026-11-04 |
+| 7 | Open question 3 — leading elements of a column one width; a line between columns? | Both | 2026-11-04 |
+| 8 | Open question 4 — the pilot tabs' feature lines as listed? | Yes, as listed | 2026-11-04 |
 | 9 | Open question 5 — the labeled slider's width and the opacity icon? | | 2026-11-04 |
 | 10 | Open question 6 — RULES.md Feature Lines now, and a backlog row for the rest? | | 2026-11-04 |
+| 11 | Open question 7 — the reference width? | | 2026-11-04 |
+| 12 | Open question 8 — the scrollbar's place in the fixed height? | | 2026-11-04 |
 
 ---
 
