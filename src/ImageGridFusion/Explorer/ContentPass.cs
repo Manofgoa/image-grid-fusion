@@ -1,3 +1,5 @@
+using ImageGridFusion.Resources;
+
 namespace ImageGridFusion.Explorer;
 
 /// <summary>
@@ -97,11 +99,11 @@ internal static class ContentPasses
     public static string NameOf(ContentPass pass) => pass switch
     {
         ContentPass.Windows => "Windows OCR",
-        ContentPass.Faces => "Faces",
-        ContentPass.Vision => "Visual analysis",
+        ContentPass.Faces => Strings.ExplorerPassFaces,
+        ContentPass.Vision => Strings.ExplorerPassVision,
         ContentPass.Rapid => "RapidOCR",
-        ContentPass.Inverted => "Inverted",
-        ContentPass.Ring => "Ring",
-        _ => "Captions",
+        ContentPass.Inverted => Strings.ExplorerPassInverted,
+        ContentPass.Ring => Strings.ExplorerPassRing,
+        _ => Strings.ExplorerPassCaptions,
     };
 }

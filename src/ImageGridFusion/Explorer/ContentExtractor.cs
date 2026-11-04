@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
 using ImageGridFusion.Imaging;
+using ImageGridFusion.Resources;
 using Windows.Globalization;
 using Windows.Graphics.Imaging;
 using Windows.Media.Ocr;
@@ -101,7 +102,7 @@ internal sealed class ContentExtractor : IDisposable
 
         if (!OcrEngineFiles.IsAvailable)
         {
-            return "not downloaded";
+            return Strings.ExplorerNotDownloaded;
         }
 
         try

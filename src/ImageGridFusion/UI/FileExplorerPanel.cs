@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using ImageGridFusion.Composition;
 using ImageGridFusion.Explorer;
 using ImageGridFusion.Imaging;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -71,26 +72,26 @@ internal sealed partial class FileExplorerPanel : Panel
     // How long a folder may take to list before the status line says it is being read, in ms.
     private const int ReadingNoticeDelay = 150;
 
-    private const string SearchPlaceholder = "Search files… (Ctrl+F, * for all)";
-    private const string FolderSearchPlaceholder = "Search this folder… (Ctrl+F, * for all)";
-    private const string PeopleSearchPlaceholder = "Search the people by name… (Ctrl+F)";
-    private const string OpenInExplorerText = "Open in Explorer";
-    private const string FolderInviteText = "No base folder yet. The search looks through one folder and its subfolders: choose it to index your files.";
+    private static string SearchPlaceholder => Strings.ExplorerSearchPlaceholder;
+    private static string FolderSearchPlaceholder => Strings.ExplorerFolderSearchPlaceholder;
+    private static string PeopleSearchPlaceholder => Strings.ExplorerPeopleSearchPlaceholder;
+    private static string OpenInExplorerText => Strings.ExplorerMenuOpenInExplorer;
+    private static string FolderInviteText => Strings.ExplorerInviteFolder;
 
     // A file tile's menu labels, the URL zone's preview menu showing the same ones.
-    internal const string OpenFileLocationText = "Open file location";
-    internal const string CopyText = "Copy";
-    internal const string CopyPngText = "Copy PNG";
-    internal const string CopyFullPathText = "Copy full path";
-    private const string SortNewestText = "Date ↓";
+    internal static string OpenFileLocationText => Strings.ExplorerMenuOpenFileLocation;
+    internal static string CopyText => Strings.ExplorerMenuCopy;
+    internal static string CopyPngText => Strings.ExplorerMenuCopyPng;
+    internal static string CopyFullPathText => Strings.ExplorerMenuCopyFullPath;
+    private static string SortNewestText => Strings.ExplorerSortNewest;
 
     // The sections' titles beside the folder groups' and the name patterns' (workfiles/20261103-file-explorer-groups.md).
-    private const string OtherFoldersTitle = "Other folders";
-    private const string NamedFilesTitle = "Named files";
-    private const string PathTitle = "Path";
-    private const string ContentTitle = "Content";
-    private const string SortNameText = "Name A→Z";
-    private const string SortSmallestText = "Size ↑";
+    private static string OtherFoldersTitle => Strings.ExplorerSectionOtherFolders;
+    private static string NamedFilesTitle => Strings.ExplorerSectionNamedFiles;
+    private static string PathTitle => Strings.ExplorerSectionPath;
+    private static string ContentTitle => Strings.ExplorerSectionContent;
+    private static string SortNameText => Strings.ExplorerSortName;
+    private static string SortSmallestText => Strings.ExplorerSortSmallest;
 
     // The sort drop-down's width in logical pixels: its longest entry and the arrow.
     private const int SortWidth = 92;
@@ -110,9 +111,9 @@ internal sealed partial class FileExplorerPanel : Panel
 
     private readonly TableLayoutPanel _content = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 8, Padding = new Padding(6, 4, 6, 6) };
     private readonly TableLayoutPanel _header = new() { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
-    private readonly Label _title = new() { Text = "Files", AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly Button _collapse = new() { AccessibleName = "Collapse", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right };
-    private readonly Button _expand = new() { AccessibleName = "Expand", Dock = DockStyle.Fill, Visible = false, Margin = Padding.Empty };
+    private readonly Label _title = new() { Text = Strings.ExplorerTitleFiles, AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly Button _collapse = new() { AccessibleName = Strings.ExplorerAccCollapse, Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right };
+    private readonly Button _expand = new() { AccessibleName = Strings.ExplorerAccExpand, Dock = DockStyle.Fill, Visible = false, Margin = Padding.Empty };
     private readonly TableLayoutPanel _searchRow = new() { ColumnCount = 5, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
     // The views drop-down (workfiles/20261027-face-detection.md § People View): its entries in
     // ExplorerMode's order, each after its icon.
@@ -121,10 +122,10 @@ internal sealed partial class FileExplorerPanel : Panel
     // The search criteria (workfiles/20261007-search-options.md): pressed, the search looks in the
     // relative paths, in the content texts; both at start-up, never none, not remembered. Toggled by
     // hand (AutoCheck off), so the last one pressed stays pressed.
-    private readonly CheckBox _byName = new() { AccessibleName = "Name", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0), Checked = true, AutoCheck = false };
-    private readonly CheckBox _byContent = new() { AccessibleName = "Content", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0), Checked = true, AutoCheck = false };
+    private readonly CheckBox _byName = new() { AccessibleName = Strings.ExplorerAccName, Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0), Checked = true, AutoCheck = false };
+    private readonly CheckBox _byContent = new() { AccessibleName = Strings.ExplorerSectionContent, Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0), Checked = true, AutoCheck = false };
     private readonly TextBox _search = new() { PlaceholderText = SearchPlaceholder, Anchor = AnchorStyles.Left | AnchorStyles.Right };
-    private readonly Button _rescan = new() { AccessibleName = "Rescan", Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right, Enabled = false };
+    private readonly Button _rescan = new() { AccessibleName = Strings.ExplorerAccRescan, Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right, Enabled = false };
     // One bar per pass (ContentPass, its index) — the OCR passes' (workfiles/20261013-complementary-ocr-passes.md
     // § Progress Bars), the face pass's (workfiles/20261027-face-detection.md § Face Pass), the Vision and
     // Caption passes' (workfiles/20261027-image-content-analysis.md § Passes) — each in its colour, stacked
@@ -135,7 +136,8 @@ internal sealed partial class FileExplorerPanel : Panel
         IndexingBar.DefaultColor, Color.FromArgb(214, 0, 120), Color.FromArgb(0, 153, 153), Color.FromArgb(136, 23, 152), Color.FromArgb(202, 80, 16), Color.FromArgb(16, 124, 16), Color.FromArgb(193, 156, 0),
     ];
 
-    private static readonly string[] PassColorNames = ["blue", "pink", "teal", "purple", "orange", "green", "gold"];
+    private static string[] PassColorNames =>
+        [Strings.ExplorerColorBlue, Strings.ExplorerColorPink, Strings.ExplorerColorTeal, Strings.ExplorerColorPurple, Strings.ExplorerColorOrange, Strings.ExplorerColorGreen, Strings.ExplorerColorGold];
     private readonly TableLayoutPanel _bars = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = PassColors.Length, Margin = Padding.Empty, Padding = Padding.Empty };
     private readonly IndexingBar[] _passBars = PassColors.Select(color => new IndexingBar { Dock = DockStyle.Fill, BarColor = color }).ToArray();
 
@@ -162,11 +164,11 @@ internal sealed partial class FileExplorerPanel : Panel
 
     // The view buttons (workfiles/20261009-explorer-details-view.md), after the sort drop-down: the
     // current view's pressed, toggled by hand (AutoCheck off) so one is always pressed.
-    private readonly CheckBox _thumbnailsView = new() { AccessibleName = "Thumbnails", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(6, 0, 0, 0), AutoCheck = false, Checked = true };
-    private readonly CheckBox _detailsView = new() { AccessibleName = "Details", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(2, 0, 0, 0), AutoCheck = false };
-    private readonly CheckBox _folderGroupsButton = new() { AccessibleName = "Folder groups", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(6, 0, 0, 0), AutoCheck = false, Checked = true };
-    private readonly CheckBox _seriesButton = new() { AccessibleName = "Series", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(2, 0, 0, 0), AutoCheck = false, Checked = true };
-    private readonly CheckBox _searchGroupsButton = new() { AccessibleName = "Search groups", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(2, 0, 0, 0), AutoCheck = false, Checked = true };
+    private readonly CheckBox _thumbnailsView = new() { AccessibleName = Strings.ExplorerAccThumbnails, Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(6, 0, 0, 0), AutoCheck = false, Checked = true };
+    private readonly CheckBox _detailsView = new() { AccessibleName = Strings.ExplorerAccDetails, Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(2, 0, 0, 0), AutoCheck = false };
+    private readonly CheckBox _folderGroupsButton = new() { AccessibleName = Strings.ExplorerAccFolderGroups, Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(6, 0, 0, 0), AutoCheck = false, Checked = true };
+    private readonly CheckBox _seriesButton = new() { AccessibleName = Strings.ExplorerAccSeries, Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(2, 0, 0, 0), AutoCheck = false, Checked = true };
+    private readonly CheckBox _searchGroupsButton = new() { AccessibleName = Strings.ExplorerAccSearchGroups, Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(2, 0, 0, 0), AutoCheck = false, Checked = true };
     private readonly Panel _invite = new() { Dock = DockStyle.Fill, Visible = false };
     private readonly Label _inviteText = new()
     {
@@ -174,7 +176,7 @@ internal sealed partial class FileExplorerPanel : Panel
         TextAlign = ContentAlignment.MiddleLeft,
         Text = FolderInviteText,
     };
-    private readonly Button _chooseFolder = new() { Text = "Choose folder…", Dock = DockStyle.Top, AutoSize = true };
+    private readonly Button _chooseFolder = new() { Text = Strings.ExplorerChooseFolder, Dock = DockStyle.Top, AutoSize = true };
     private readonly ContextMenuStrip _menu = new();
 
     // The URL zone (workfiles/20261009-url-content.md), the last row: its media dragged like a tile.
@@ -188,26 +190,26 @@ internal sealed partial class FileExplorerPanel : Panel
     // Any tile's full path, as text (see workfiles/20261014-copy-full-path.md), a folder's too.
     private readonly ToolStripMenuItem _copyFullPath = new(CopyFullPathText);
     private readonly ToolStripSeparator _copySeparator = new();
-    private readonly ToolStripMenuItem _editDescription = new("Edit description…");
+    private readonly ToolStripMenuItem _editDescription = new(Strings.ExplorerMenuEditDescription);
 
     // A face group's entries, and a file's inside a group (workfiles/20261027-face-detection.md § Decisions).
-    private readonly ToolStripMenuItem _openGroupItem = new("Open");
-    private readonly ToolStripMenuItem _renameGroup = new("Rename…") { ShortcutKeyDisplayString = "F2" };
-    private readonly ToolStripMenuItem _hideGroup = new("Hide");
-    private readonly ToolStripMenuItem _unhideGroup = new("Unhide");
-    private readonly ToolStripMenuItem _unmergeGroup = new("Un-merge");
-    private readonly ToolStripMenuItem _notThisPerson = new("Not this person");
+    private readonly ToolStripMenuItem _openGroupItem = new(Strings.ExplorerMenuOpen);
+    private readonly ToolStripMenuItem _renameGroup = new(Strings.ExplorerMenuRename) { ShortcutKeyDisplayString = "F2" };
+    private readonly ToolStripMenuItem _hideGroup = new(Strings.ExplorerMenuHide);
+    private readonly ToolStripMenuItem _unhideGroup = new(Strings.ExplorerMenuUnhide);
+    private readonly ToolStripMenuItem _unmergeGroup = new(Strings.ExplorerMenuUnmerge);
+    private readonly ToolStripMenuItem _notThisPerson = new(Strings.ExplorerMenuNotThisPerson);
 
     // The decisions taking something away confirmed by their submenu's single item, never done in one
     // click (workfiles/20261028-open-people-from-image.md § Safer People Decisions).
-    private readonly ToolStripMenuItem _hideConfirm = new("Hide");
-    private readonly ToolStripMenuItem _unmergeConfirm = new("Un-merge");
-    private readonly ToolStripMenuItem _notConfirm = new("Remove");
+    private readonly ToolStripMenuItem _hideConfirm = new(Strings.ExplorerMenuHide);
+    private readonly ToolStripMenuItem _unmergeConfirm = new(Strings.ExplorerMenuUnmerge);
+    private readonly ToolStripMenuItem _notConfirm = new(Strings.ExplorerMenuRemove);
     private readonly ToolStripSeparator _peopleSeparator = new();
 
     // A file's people, each opening its group, and the title of the group open, clicked to rename it
     // (workfiles/20261028-open-people-from-image.md).
-    private readonly ToolStripMenuItem _photoPeople = new("People");
+    private readonly ToolStripMenuItem _photoPeople = new(Strings.ExplorerPeople);
     private readonly ToolStripSeparator _photoPeopleSeparator = new();
     private readonly Label _groupTitle = new() { Dock = DockStyle.Top, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, Cursor = Cursors.Hand, Visible = false, Padding = new Padding(6, 0, 6, 0) };
     private readonly ToolTip _toolTip = new();
@@ -222,7 +224,7 @@ internal sealed partial class FileExplorerPanel : Panel
     private string? _baseFolder;
     private FileIndex? _index;
     private CancellationTokenSource? _scan;
-    private string _summary = "No base folder";
+    private string _summary = Strings.ExplorerNoBaseFolder;
     private bool _summaryError;
 
     // The content texts of the base folder's files, once loaded; whether the content search is on (the
@@ -316,8 +318,8 @@ internal sealed partial class FileExplorerPanel : Panel
     private (string Query, float[] Embedding)? _queryEmbedding;
     private string? _queryPending;
     private SimilarSource? _similarTo;
-    private readonly Button _similarClear = new() { AccessibleName = "Clear", Dock = DockStyle.Right, Width = 22, FlatStyle = FlatStyle.Flat, Visible = false, Margin = Padding.Empty };
-    private readonly ToolStripMenuItem _findSimilar = new("Find similar images");
+    private readonly Button _similarClear = new() { AccessibleName = Strings.ExplorerAccClear, Dock = DockStyle.Right, Width = 22, FlatStyle = FlatStyle.Flat, Visible = false, Margin = Padding.Empty };
+    private readonly ToolStripMenuItem _findSimilar = new(Strings.ExplorerMenuFindSimilar);
 
     public FileExplorerPanel()
     {
@@ -442,21 +444,21 @@ internal sealed partial class FileExplorerPanel : Panel
         this._grid.SizeOf = this.SizeOf;
         this._grid.FolderFiles = this.FolderFiles;
 
-        _toolTip.SetToolTip(_collapse, "Hide the file explorer");
-        _toolTip.SetToolTip(_expand, "Show the file explorer");
-        _toolTip.SetToolTip(_rescan, "Rescan the folder");
-        this._toolTip.SetToolTip(this._modes, "What the list shows: the base folder folder by folder, the people the faces were grouped into, or the favorites and the search over every file — Ctrl+F again in the search box: the next view, Ctrl+Shift+F: the previous one");
+        _toolTip.SetToolTip(_collapse, Strings.ExplorerTipCollapse);
+        _toolTip.SetToolTip(_expand, Strings.ExplorerTipExpand);
+        _toolTip.SetToolTip(_rescan, Strings.ExplorerTipRescan);
+        this._toolTip.SetToolTip(this._modes, Strings.ExplorerTipModes);
         this.ApplyCriteriaTips();
-        _toolTip.SetToolTip(_smallerGlyph, "Smaller tiles");
-        _toolTip.SetToolTip(_largerGlyph, "Larger tiles");
+        _toolTip.SetToolTip(_smallerGlyph, Strings.ExplorerTipSmallerTiles);
+        _toolTip.SetToolTip(_largerGlyph, Strings.ExplorerTipLargerTiles);
         this.ApplySortTip();
-        this._toolTip.SetToolTip(this._thumbnailsView, "Thumbnails: tiles, as many per row as fit");
-        this._toolTip.SetToolTip(this._detailsView, "Details: one row per file — its name, its size, and the words a search found in its content");
-        this._toolTip.SetToolTip(this._folderGroupsButton, "Folder groups: the folder view in sections — the folders sharing their first words, the other folders, the series of named files, the named files, then the files named by a camera, a screenshot, an AI, a site… (⚙ menu: File explorer groups)");
-        this._toolTip.SetToolTip(this._searchGroupsButton, "Search groups: the search results in two sections — Path, found by their name or folders, then Content, found by what they hold");
+        this._toolTip.SetToolTip(this._thumbnailsView, Strings.ExplorerTipThumbnails);
+        this._toolTip.SetToolTip(this._detailsView, Strings.ExplorerTipDetails);
+        this._toolTip.SetToolTip(this._folderGroupsButton, Strings.ExplorerTipFolderGroups);
+        this._toolTip.SetToolTip(this._searchGroupsButton, Strings.ExplorerTipSearchGroups);
         this._folderGroupsButton.Click += (_, _) => this.ChangeGroups(!this._folderGroups, this._searchGroups);
         this._searchGroupsButton.Click += (_, _) => this.ChangeGroups(this._folderGroups, !this._searchGroups);
-        this._toolTip.SetToolTip(this._seriesButton, "Series: the named files sharing their first words — marlène schiappa …, homme soja … — in a section each, before the other named files (with Folder groups on; ⚙ menu: File explorer groups)");
+        this._toolTip.SetToolTip(this._seriesButton, Strings.ExplorerTipSeries);
         this._seriesButton.Click += (_, _) => this.ToggleSeries();
         _collapse.Click += (_, _) => SetOpen(false);
         _expand.Click += (_, _) => SetOpen(true);
@@ -490,7 +492,7 @@ internal sealed partial class FileExplorerPanel : Panel
         };
         this._textEncoderIdle.Tick += (_, _) => this.ReleaseTextEncoder();
         this._grid.IndexedContent = this.IndexedContentOf;
-        this._toolTip.SetToolTip(this._similarClear, "Back to the search");
+        this._toolTip.SetToolTip(this._similarClear, Strings.ExplorerTipBackToSearch);
         _search.KeyDown += OnSearchKeyDown;
         this._modes.SelectionChangeCommitted += (_, _) => this.ChangeMode((ExplorerMode)this._modes.SelectedIndex);
         this._modes.DrawItem += this.DrawModeItem;
@@ -529,10 +531,10 @@ internal sealed partial class FileExplorerPanel : Panel
             this._unmergeGroup.Visible = group && shown?.Parent is not null;
             this._notThisPerson.Visible = file && row!.FaceKey is not null && this._openGroup is { } open && !IsPeopleTile(open);
             var opened = this._notThisPerson.Visible ? this._snapshot.ById.GetValueOrDefault(this._openGroup!) : null;
-            this._notThisPerson.Text = opened is not null ? $"Not {GroupName(opened)}" : "Not this person";
-            this._notConfirm.Text = opened is not null ? $"Remove from {GroupName(opened)}" : "Remove";
-            this._hideConfirm.Text = shown is not null ? $"Hide {GroupName(shown)}" : "Hide";
-            this._unmergeConfirm.Text = shown is not null ? $"Un-merge {GroupName(shown)}" : "Un-merge";
+            this._notThisPerson.Text = opened is not null ? Texts.Format(Strings.ExplorerMenuNotPerson, GroupName(opened)) : Strings.ExplorerMenuNotThisPerson;
+            this._notConfirm.Text = opened is not null ? Texts.Format(Strings.ExplorerMenuRemoveFrom, GroupName(opened)) : Strings.ExplorerMenuRemove;
+            this._hideConfirm.Text = shown is not null ? Texts.Format(Strings.ExplorerMenuHideName, GroupName(shown)) : Strings.ExplorerMenuHide;
+            this._unmergeConfirm.Text = shown is not null ? Texts.Format(Strings.ExplorerMenuUnmergeName, GroupName(shown)) : Strings.ExplorerMenuUnmerge;
             this._peopleSeparator.Visible = row?.IsGroup == true || this._notThisPerson.Visible;
             this.FillPhotoPeople(file ? row : null);
             this._photoPeopleSeparator.Visible = this._photoPeople.Visible;
@@ -547,7 +549,7 @@ internal sealed partial class FileExplorerPanel : Panel
         this._unmergeConfirm.Click += (_, _) => this.UnmergeGroup(this._grid.SelectedRow);
         this._notConfirm.Click += (_, _) => this.RemoveFace(this._grid.SelectedRow);
         this._groupTitle.Click += (_, _) => this.RenameOpenGroup();
-        this._toolTip.SetToolTip(this._groupTitle, "Click to rename");
+        this._toolTip.SetToolTip(this._groupTitle, Strings.ExplorerTipClickToRename);
         this._editDescription.Click += (_, _) => this.EditDescription();
         _openLocation.Click += (_, _) => OpenLocation();
         this._copy.Click += (_, _) => this.CopySelected();
@@ -711,7 +713,7 @@ internal sealed partial class FileExplorerPanel : Panel
         }
 
         string name = Path.GetFileName(fullPath);
-        this.Report(error is null ? $"Effect preset saved: {name}" : $"Effect preset saved for the session, not written: {error}", error is not null);
+        this.Report(error is null ? Texts.Format(Strings.ExplorerPresetSaved, name) : Texts.Format(Strings.ExplorerPresetSavedNotWritten, error), error is not null);
     }
 
     /// <summary>The invitation's button: the base folder is to be chosen, as from the ⚙ menu.</summary>
@@ -1073,7 +1075,7 @@ internal sealed partial class FileExplorerPanel : Panel
         this.Regroup();
         this.StartExtraction();
         this.RefreshPeopleIfShown();
-        this.Report(error is null ? "Faces forgotten: every face found and every person deleted" : $"Faces forgotten, not every file deleted: {error}", error is not null);
+        this.Report(error is null ? Strings.ExplorerFacesForgotten : Texts.Format(Strings.ExplorerFacesForgottenPartly, error), error is not null);
     }
 
     /// <summary>
@@ -1144,7 +1146,7 @@ internal sealed partial class FileExplorerPanel : Panel
 
         if (files.Count == 0)
         {
-            Report(folders > 0 ? "Nothing added: folders do not become favorites" : "Nothing added: no file to add", error: false);
+            Report(folders > 0 ? Strings.ExplorerNothingAddedFolders : Strings.ExplorerNothingAddedNoFile, error: false);
             return;
         }
 
@@ -1167,9 +1169,9 @@ internal sealed partial class FileExplorerPanel : Panel
             _grid.Invalidate();
         }
 
-        string added = files.Count == 1 ? Path.GetFileName(files[0]) : $"{files.Count} files";
-        string skipped = folders switch { 0 => "", 1 => " — 1 folder skipped", _ => $" — {folders} folders skipped" };
-        Report(error is null ? $"Added to favorites: {added}{skipped}" : $"Added to favorites: {added}, not saved: {error}", error is not null);
+        string added = files.Count == 1 ? Path.GetFileName(files[0]) : ThumbnailGrid.FileCount(files.Count);
+        string skipped = folders switch { 0 => "", 1 => Strings.ExplorerSkippedFolderOne, _ => Texts.Format(Strings.ExplorerSkippedFolders, folders) };
+        Report(error is null ? Texts.Format(Strings.ExplorerAddedToFavorites, added, skipped) : Texts.Format(Strings.ExplorerAddedToFavoritesNotSaved, added, error), error is not null);
     }
 
     /// <summary>The search box has the focus: its keys are its own, not the window's shortcuts.</summary>
@@ -1200,11 +1202,11 @@ internal sealed partial class FileExplorerPanel : Panel
             var data = new DataObject();
             data.SetFileDropList(new StringCollection { path });
             Clipboard.SetDataObject(data, copy: true);
-            this.ShowTransient($"Copied: {Path.GetFileName(path)}");
+            this.ShowTransient(Texts.Format(Strings.ExplorerCopied, Path.GetFileName(path)));
         }
         catch (ExternalException ex)
         {
-            this.ShowTransient($"Copy failed: {ex.Message}", error: true);
+            this.ShowTransient(Texts.Format(Strings.ExplorerCopyFailed, ex.Message), error: true);
         }
     }
 
@@ -1236,7 +1238,7 @@ internal sealed partial class FileExplorerPanel : Panel
 
         if (image is null)
         {
-            this.ShowTransient($"No image to copy: {name}", error: true);
+            this.ShowTransient(Texts.Format(Strings.ExplorerNoImageToCopy, name), error: true);
             return;
         }
 
@@ -1253,11 +1255,11 @@ internal sealed partial class FileExplorerPanel : Panel
                 data.SetImage(flat);
                 data.SetData("PNG", png);
                 Clipboard.SetDataObject(data, copy: true);
-                this.ShowTransient($"Copied as PNG: {name} ({image.Size.Width} × {image.Size.Height})");
+                this.ShowTransient(Texts.Format(Strings.ExplorerCopiedAsPng, name, image.Size.Width, image.Size.Height));
             }
             catch (ExternalException ex)
             {
-                this.ShowTransient($"Copy failed: {ex.Message}", error: true);
+                this.ShowTransient(Texts.Format(Strings.ExplorerCopyFailed, ex.Message), error: true);
             }
         }
     }
@@ -1282,11 +1284,11 @@ internal sealed partial class FileExplorerPanel : Panel
         try
         {
             Clipboard.SetText(path);
-            this.ShowTransient($"Copied path: {path}");
+            this.ShowTransient(Texts.Format(Strings.ExplorerCopiedPath, path));
         }
         catch (ExternalException ex)
         {
-            this.ShowTransient($"Copy failed: {ex.Message}", error: true);
+            this.ShowTransient(Texts.Format(Strings.ExplorerCopyFailed, ex.Message), error: true);
         }
     }
 
@@ -1390,14 +1392,14 @@ internal sealed partial class FileExplorerPanel : Panel
         catch (ArgumentException)
         {
             _baseFolder = null;
-            SetSummary($"Invalid folder: {folder}", error: true);
+            SetSummary(Texts.Format(Strings.ExplorerInvalidFolder, folder), error: true);
             RefreshRows();
             return;
         }
 
         if (_baseFolder is null)
         {
-            SetSummary("No base folder");
+            SetSummary(Strings.ExplorerNoBaseFolder);
             RefreshRows();
             return;
         }
@@ -1432,8 +1434,8 @@ internal sealed partial class FileExplorerPanel : Panel
         if (e.Effect == DragDropEffects.Copy)
         {
             e.DropImageType = DropImageType.Copy;
-            e.Message = "Add to %1";
-            e.MessageReplacementToken = "Favorites";
+            e.Message = Strings.ExplorerDropAddTo;
+            e.MessageReplacementToken = Strings.ExplorerModeFavorites;
         }
     }
 
@@ -1589,7 +1591,7 @@ internal sealed partial class FileExplorerPanel : Panel
             _syncingSize = false;
         }
 
-        _toolTip.SetToolTip(_size, $"Tile size: {_tileSize} px");
+        _toolTip.SetToolTip(_size, Texts.Format(Strings.ExplorerTipTileSize, _tileSize));
     }
 
     /// <summary>The user picked an order in the sort drop-down: applied, then reported to be remembered.</summary>
@@ -1654,11 +1656,11 @@ internal sealed partial class FileExplorerPanel : Panel
     {
         string order = this._fileOrder switch
         {
-            FileOrder.Name => "the files A→Z by name",
-            FileOrder.Smallest => "the smallest files first",
-            _ => "the most recently created files first",
+            FileOrder.Name => Strings.ExplorerSortOrderName,
+            FileOrder.Smallest => Strings.ExplorerSortOrderSmallest,
+            _ => Strings.ExplorerSortOrderNewest,
         };
-        this._toolTip.SetToolTip(this._sort, $"Sort: {order}.\nA search lists the best matches first — found in the file name, then in its folders, then in its content — each group sorted this way.\nIn the folder view, the folders come first, A→Z.");
+        this._toolTip.SetToolTip(this._sort, Texts.Format(Strings.ExplorerTipSort, order));
     }
 
     /// <summary>The slider moved: its size applied and reported.</summary>
@@ -1697,7 +1699,7 @@ internal sealed partial class FileExplorerPanel : Panel
 
     private async Task LoadAndScanAsync(string folder, CancellationToken cancellation)
     {
-        ShowStatus("Loading the index…");
+        ShowStatus(Strings.ExplorerLoadingIndex);
 
         // The content texts load alongside: the file list shows without waiting for them
         // (workfiles/20261013-complementary-ocr-passes.md § Index Format).
@@ -1716,7 +1718,7 @@ internal sealed partial class FileExplorerPanel : Panel
         }
 
         SetIndex(loaded, tree);
-        SetSummary(loaded is null ? "No index yet" : Summary(loaded));
+        SetSummary(loaded is null ? Strings.ExplorerNoIndexYet : Summary(loaded));
         RefreshRows(keepPlace: true);
         var contents = await contentsLoad;
         if (cancellation.IsCancellationRequested || IsDisposed)
@@ -1780,7 +1782,7 @@ internal sealed partial class FileExplorerPanel : Panel
         {
             if (!cancellation.IsCancellationRequested && !IsDisposed)
             {
-                ShowStatus(p.Phase == ScanPhase.Counting ? $"Counting… {p.Done:N0}" : $"Indexing… {p.Done:N0}/{p.Total:N0}");
+                ShowStatus(p.Phase == ScanPhase.Counting ? Texts.Format(Strings.ExplorerCounting, p.Done) : Texts.Format(Strings.ExplorerIndexing, p.Done, p.Total));
                 if (p.Phase == ScanPhase.Counting || p.Total == 0)
                 {
                     this._progress.ShowUnknown();
@@ -1799,7 +1801,7 @@ internal sealed partial class FileExplorerPanel : Panel
         {
             if (!Directory.Exists(folder))
             {
-                SetSummary($"Folder not found: {folder}", error: true);
+                SetSummary(Texts.Format(Strings.ExplorerFolderNotFoundNamed, folder), error: true);
                 return;
             }
 
@@ -1834,7 +1836,7 @@ internal sealed partial class FileExplorerPanel : Panel
             this.Regroup();
             this._indexScanned = true;
             scanned = true;
-            SetSummary(saveError is null ? Summary(index) : $"{Summary(index)} · not saved: {saveError}", error: saveError is not null);
+            SetSummary(saveError is null ? Summary(index) : Texts.Format(Strings.ExplorerSummaryNotSaved, Summary(index), saveError), error: saveError is not null);
             RefreshRows(keepPlace: true);
         }
         catch (OperationCanceledException)
@@ -1844,7 +1846,7 @@ internal sealed partial class FileExplorerPanel : Panel
         {
             if (!cancellation.IsCancellationRequested && !IsDisposed)
             {
-                SetSummary($"Scan failed: {ex.Message}", error: true);
+                SetSummary(Texts.Format(Strings.ExplorerScanFailed, ex.Message), error: true);
             }
         }
         finally
@@ -1937,8 +1939,8 @@ internal sealed partial class FileExplorerPanel : Panel
 
             // The pass, the file's rank in it, then its name — none for a file that has no text to find.
             string doing = ContentPasses.IsOcr(p.Pass)
-                ? $"OCR {Array.IndexOf(ContentPasses.Ocr, p.Pass) + 1}/{ContentPasses.Ocr.Length} · {ContentPasses.NameOf(p.Pass)}: {p.Done + 1:N0}/{p.Total:N0}"
-                : $"{ContentPasses.NameOf(p.Pass)}: {p.Done + 1:N0}/{p.Total:N0}";
+                ? Texts.Format("OCR {0}/{1} · {2}: {3:N0}/{4:N0}", Array.IndexOf(ContentPasses.Ocr, p.Pass) + 1, ContentPasses.Ocr.Length, ContentPasses.NameOf(p.Pass), p.Done + 1, p.Total)
+                : Texts.Format("{0}: {1:N0}/{2:N0}", ContentPasses.NameOf(p.Pass), p.Done + 1, p.Total);
             this.SetActivity(p.File is null ? null
                 : p.Kind == ContentKind.None ? doing
                 : $"{doing} ({Path.GetFileName(p.File)})");
@@ -2109,7 +2111,7 @@ internal sealed partial class FileExplorerPanel : Panel
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                progress.Report(new ExtractionProgress(ContentPass.Vision, 0, queue.Length, before, imageRead.Length, null, ContentKind.None, false, Finished: true, $"The vision engine could not start: {ex.Message}"));
+                progress.Report(new ExtractionProgress(ContentPass.Vision, 0, queue.Length, before, imageRead.Length, null, ContentKind.None, false, Finished: true, Texts.Format(Strings.ExplorerVisionEngineFailed, ex.Message)));
                 return;
             }
 
@@ -2150,7 +2152,7 @@ internal sealed partial class FileExplorerPanel : Panel
             }
             catch (Exception ex)
             {
-                progress.Report(new ExtractionProgress(ContentPass.Vision, 0, queue.Length, before, imageRead.Length, null, ContentKind.None, false, Finished: true, $"The vision engine could not start: {ex.Message}"));
+                progress.Report(new ExtractionProgress(ContentPass.Vision, 0, queue.Length, before, imageRead.Length, null, ContentKind.None, false, Finished: true, Texts.Format(Strings.ExplorerVisionEngineFailed, ex.Message)));
                 return;
             }
 
@@ -2224,7 +2226,7 @@ internal sealed partial class FileExplorerPanel : Panel
             }
             catch (Exception ex)
             {
-                progress.Report(new ExtractionProgress(ContentPass.Caption, 0, queue.Length, before, imageRead.Length, null, ContentKind.None, false, Finished: true, $"The caption engine could not start: {ex.Message}"));
+                progress.Report(new ExtractionProgress(ContentPass.Caption, 0, queue.Length, before, imageRead.Length, null, ContentKind.None, false, Finished: true, Texts.Format(Strings.ExplorerCaptionEngineFailed, ex.Message)));
                 return;
             }
 
@@ -2290,7 +2292,7 @@ internal sealed partial class FileExplorerPanel : Panel
             if (pass == ContentPass.Rapid && extractor.StartRapid() is { } why)
             {
                 // Not downloaded: offered from the ⚙ menu; failing to load: said, the pass waiting.
-                string? note = OcrEngineFiles.IsAvailable ? $"RapidOCR could not start: {why}" : null;
+                string? note = OcrEngineFiles.IsAvailable ? Texts.Format(Strings.ExplorerRapidFailed, why) : null;
                 progress.Report(new ExtractionProgress(pass, 0, queue.Length, before, read.Length, null, ContentKind.None, false, Finished: true, note));
                 return;
             }
@@ -2357,7 +2359,7 @@ internal sealed partial class FileExplorerPanel : Panel
         catch (Exception ex)
         {
             // A DLL that does not load, a model that does not parse: the pass waits for a working engine.
-            progress.Report(new ExtractionProgress(ContentPass.Faces, 0, queue.Length, before, read.Length, null, ContentKind.None, false, Finished: true, $"The face engine could not start: {ex.Message}"));
+            progress.Report(new ExtractionProgress(ContentPass.Faces, 0, queue.Length, before, read.Length, null, ContentKind.None, false, Finished: true, Texts.Format(Strings.ExplorerFaceEngineFailed, ex.Message)));
             return false;
         }
 
@@ -2479,13 +2481,13 @@ internal sealed partial class FileExplorerPanel : Panel
                 ContentPass.Caption => !CaptionEngineFiles.IsAvailable,
                 _ => false,
             };
-            string state = missing ? "not downloaded"
-                : needed < 0 ? "not started"
-                : $"{done:N0}/{needed:N0}";
-            return $"{ContentPasses.NameOf(pass)} ({PassColorNames[i]}): {state}";
+            string state = missing ? Strings.ExplorerNotDownloaded
+                : needed < 0 ? Strings.ExplorerNotStarted
+                : Texts.Format("{0:N0}/{1:N0}", done, needed);
+            return Texts.Format("{0} ({1}): {2}", ContentPasses.NameOf(pass), PassColorNames[i], state);
         });
 
-        string tip = "Indexing passes\n" + string.Join('\n', lines);
+        string tip = Strings.ExplorerIndexingPasses + "\n" + string.Join('\n', lines);
         this._toolTip.SetToolTip(this._bars, tip);
         foreach (var bar in this._passBars)
         {
@@ -2559,11 +2561,12 @@ internal sealed partial class FileExplorerPanel : Panel
 
     private static string Summary(FileIndex index)
     {
-        string when = index.ScannedAt.Date == DateTime.Today ? index.ScannedAt.ToString("t") : index.ScannedAt.ToString("g");
-        return $"{Files(index.Count)} · indexed {when}";
+        var culture = System.Globalization.CultureInfo.CurrentUICulture;
+        string when = index.ScannedAt.Date == DateTime.Today ? index.ScannedAt.ToString("t", culture) : index.ScannedAt.ToString("g", culture);
+        return Texts.Format(Strings.ExplorerSummaryIndexed, Files(index.Count), when);
     }
 
-    private static string Files(int count) => count == 1 ? "1 file" : $"{count:N0} files";
+    private static string Files(int count) => ThumbnailGrid.FileCount(count);
 
     /// <summary>The line shown while nothing else is: the index summary, or what stands in its way.</summary>
     private void SetSummary(string summary, bool error = false)
@@ -2659,7 +2662,7 @@ internal sealed partial class FileExplorerPanel : Panel
             else if (_index is null)
             {
                 ShowRows([], keepPlace, null);
-                ShowBreadcrumb("Waiting for the index…");
+                ShowBreadcrumb(Strings.ExplorerWaitingForIndex);
             }
             else
             {
@@ -2676,7 +2679,7 @@ internal sealed partial class FileExplorerPanel : Panel
         if (this._similarClear.Visible)
         {
             rows.AddRange(this.SimilarRows(this._similarTo!));
-            this._caption.Text = rows.Count == 0 ? $"Similar to {this._similarTo!.Name} — nothing close enough" : $"Similar to {this._similarTo!.Name} ({rows.Count:N0})";
+            this._caption.Text = rows.Count == 0 ? Texts.Format(Strings.ExplorerSimilarNone, this._similarTo!.Name) : Texts.Format(Strings.ExplorerSimilarCount, this._similarTo!.Name, rows.Count);
         }
         else if (words.Length == 0)
         {
@@ -2685,11 +2688,11 @@ internal sealed partial class FileExplorerPanel : Panel
                 rows.Add(new ExplorerRow(favorite.FullPath, Path.GetFileName(favorite.FullPath), Preset: favorite.Preset));
             }
 
-            _caption.Text = $"Favorites ({_favorites.Count})";
+            _caption.Text = Texts.Format(Strings.ExplorerFavoritesCount, _favorites.Count);
         }
         else if (_index is null)
         {
-            _caption.Text = inviting ? "" : "Waiting for the index…";
+            _caption.Text = inviting ? "" : Strings.ExplorerWaitingForIndex;
         }
         else
         {
@@ -2699,12 +2702,12 @@ internal sealed partial class FileExplorerPanel : Panel
             rows.AddRange(this.SearchSections(this.WithFavorites(found, _index, words, everything, inPath), inPath, everything));
 
             _caption.Text = everything
-                ? $"All files ({found.Count:N0})"
+                ? Texts.Format(Strings.ExplorerAllFiles, found.Count)
                 : rows.Count switch
                 {
-                    0 => "No result",
-                    1 => "1 result",
-                    _ => $"{rows.Count:N0} results",
+                    0 => Strings.ExplorerNoResult,
+                    1 => Strings.ExplorerResultOne,
+                    _ => Texts.Format(Strings.ExplorerResults, rows.Count),
                 };
         }
 
@@ -2752,7 +2755,7 @@ internal sealed partial class FileExplorerPanel : Panel
         bool noticed = false;
         if (await Task.WhenAny(reading, Task.Delay(ReadingNoticeDelay)) != reading && version == _listVersion && !IsDisposed)
         {
-            ShowStatus("Reading the folder…");
+            ShowStatus(Strings.ExplorerReadingFolder);
             noticed = true;
         }
 
@@ -2778,13 +2781,13 @@ internal sealed partial class FileExplorerPanel : Panel
             keepPlace = false;
             select = null;
             FolderViewChanged?.Invoke(this, EventArgs.Empty);
-            Report($"Folder not found: {asked} — back to {SegmentsOf(listing.Folder)[^1]}", error: false);
+            Report(Texts.Format(Strings.ExplorerFolderNotFoundBack, asked, SegmentsOf(listing.Folder)[^1]), error: false);
         }
 
         var folders = listing.Folders.Select(this.FolderRow).ToList();
         var files = listing.Files.Select(file => new ExplorerRow(Path.Combine(root, file.RelativePath), file.Name, Size: file.Size)).ToList();
         ShowRows(this._folderGroups ? this.FolderSections(folders, files) : [.. folders, .. files], keepPlace, select);
-        ShowBreadcrumb(listing.Error ?? $"{Folders(listing.Folders.Count)}, {Files(listing.Files.Count)}");
+        ShowBreadcrumb(listing.Error ?? Texts.Format("{0}, {1}", Folders(listing.Folders.Count), Files(listing.Files.Count)));
     }
 
     /// <summary>
@@ -2806,7 +2809,7 @@ internal sealed partial class FileExplorerPanel : Panel
         }
         catch (Exception ex) when (FileIndex.IsFileError(ex))
         {
-            return (relative, [], [], ex is DirectoryNotFoundException ? "Folder not found" : $"Not readable: {ex.Message}");
+            return (relative, [], [], ex is DirectoryNotFoundException ? Strings.ExplorerFolderNotFound : Texts.Format(Strings.ExplorerNotReadable, ex.Message));
         }
     }
 
@@ -2852,12 +2855,12 @@ internal sealed partial class FileExplorerPanel : Panel
 
         int total = rows.Count;
         string trailing = everything
-            ? $"All: {Folders(foundFolders.Count)}, {Files(foundFiles.Count)}"
+            ? Texts.Format(Strings.ExplorerAllCounts, Folders(foundFolders.Count), Files(foundFiles.Count))
             : total switch
             {
-                0 => "No result",
-                1 => "1 result",
-                _ => $"{total:N0} results",
+                0 => Strings.ExplorerNoResult,
+                1 => Strings.ExplorerResultOne,
+                _ => Texts.Format(Strings.ExplorerResults, total),
             };
         return (rows, trailing);
     }
@@ -2971,7 +2974,7 @@ internal sealed partial class FileExplorerPanel : Panel
 
         void Add(List<ExplorerRow> section, string title)
         {
-            string header = $"{title} ({section.Count:N0})";
+            string header = Texts.Format("{0} ({1:N0})", title, section.Count);
             rows.AddRange(section.Select(row => row with { Section = header }));
         }
     }
@@ -2989,8 +2992,8 @@ internal sealed partial class FileExplorerPanel : Panel
         }
 
         int path = inPath.Count(found => found);
-        string pathHeader = $"{PathTitle} ({path:N0})";
-        string contentHeader = $"{ContentTitle} ({rows.Count - path:N0})";
+        string pathHeader = Texts.Format("{0} ({1:N0})", PathTitle, path);
+        string contentHeader = Texts.Format("{0} ({1:N0})", ContentTitle, rows.Count - path);
         return [.. rows.Select((row, i) => row with { Section = inPath[i] ? pathHeader : contentHeader })];
     }
 
@@ -3116,7 +3119,7 @@ internal sealed partial class FileExplorerPanel : Panel
         return new ExplorerRow(fullPath, name, IsFolder: true, Count: count);
     }
 
-    private static string Folders(int count) => count == 1 ? "1 folder" : $"{count:N0} folders";
+    private static string Folders(int count) => count == 1 ? Strings.ExplorerFolderOne : Texts.Format(Strings.ExplorerFolderMany, count);
 
     /// <summary>The base folder's name, then every folder down to <paramref name="relative"/>.</summary>
     private string[] SegmentsOf(string relative)
@@ -3182,8 +3185,16 @@ internal sealed partial class FileExplorerPanel : Panel
         }
 
         var mode = (ExplorerMode)this._modes.Items[e.Index]!;
-        UiIcons.DrawItem(this._modes, e, ModeIcons[(int)mode], mode.ToString());
+        UiIcons.DrawItem(this._modes, e, ModeIcons[(int)mode], ModeText(mode));
     }
+
+    /// <summary>A view's name in the views drop-down, in the UI language.</summary>
+    private static string ModeText(ExplorerMode mode) => mode switch
+    {
+        ExplorerMode.Folders => Strings.ExplorerModeFolders,
+        ExplorerMode.People => Strings.ExplorerPeople,
+        _ => Strings.ExplorerModeFavorites,
+    };
 
     /// <summary>What the view changes around the grid: the caption or the breadcrumb, the search box's hint.</summary>
     private void ApplyView()
@@ -3217,20 +3228,20 @@ internal sealed partial class FileExplorerPanel : Panel
     /// <summary>The criteria buttons' tooltips: what each searches, whether it is on, why the last one pressed stays pressed, the extraction stopped.</summary>
     private void ApplyCriteriaTips()
     {
-        this._toolTip.SetToolTip(this._byName, CriterionTip("Search in the file names and their folders", this._byName.Checked, this._byContent.Checked, null));
+        this._toolTip.SetToolTip(this._byName, CriterionTip(Strings.ExplorerCriterionName, this._byName.Checked, this._byContent.Checked, null));
         this._toolTip.SetToolTip(this._byContent, CriterionTip(
-            "Search in the text inside the files",
+            Strings.ExplorerCriterionContent,
             this._byContent.Checked,
             this._byName.Checked,
-            this._contentSearch ? null : "The extraction is stopped (⚙ Search file contents (OCR)): only the texts already extracted are searched"));
+            this._contentSearch ? null : Strings.ExplorerCriterionExtractionStopped));
     }
 
     private static string CriterionTip(string what, bool on, bool otherOn, string? note)
     {
-        string state = !on ? "off — click to turn on"
-            : otherOn ? "on — click to turn off"
-            : "on — at least one criterion stays on";
-        return note is null ? $"{what}: {state}" : $"{what}: {state}\n{note}";
+        string state = !on ? Strings.ExplorerCriterionOff
+            : otherOn ? Strings.ExplorerCriterionOn
+            : Strings.ExplorerCriterionLastOn;
+        return note is null ? Texts.Format(Strings.ExplorerCriterionTip, what, state) : Texts.Format(Strings.ExplorerCriterionTipNote, what, state, note);
     }
 
     /// <summary>Opens a folder of the folder view — its content from the top, the search box cleared — and remembers it.</summary>
@@ -3482,7 +3493,7 @@ internal sealed partial class FileExplorerPanel : Panel
         }
         catch (Exception ex) when (FileIndex.IsFileError(ex))
         {
-            ShowTransient($"Favorites not saved: {ex.Message}", error: true);
+            ShowTransient(Texts.Format(Strings.ExplorerFavoritesNotSaved, ex.Message), error: true);
         }
 
         this.AfterFavoriteRemoved(row, added);
@@ -3497,8 +3508,8 @@ internal sealed partial class FileExplorerPanel : Panel
         string described = preset.Description.Trim().Length > 0 ? $"\n\n« {preset.Description.Trim()} »" : "";
         if (MessageBox.Show(
                 this.FindForm(),
-                $"Delete this effect preset of {row.Name}?{described}",
-                "Delete effect preset",
+                Texts.Format(Strings.ExplorerDeletePresetPrompt, row.Name, described),
+                Strings.ExplorerDeletePresetTitle,
                 MessageBoxButtons.OKCancel,
                 MessageBoxIcon.Question,
                 MessageBoxDefaultButton.Button2) != DialogResult.OK)
@@ -3513,7 +3524,7 @@ internal sealed partial class FileExplorerPanel : Panel
         }
         catch (Exception ex) when (FileIndex.IsFileError(ex))
         {
-            this.ShowTransient($"Favorites not saved: {ex.Message}", error: true);
+            this.ShowTransient(Texts.Format(Strings.ExplorerFavoritesNotSaved, ex.Message), error: true);
             removed = true;
         }
 
@@ -3531,11 +3542,11 @@ internal sealed partial class FileExplorerPanel : Panel
             try
             {
                 PastedFavorites.Recycle(row.FullPath);
-                ShowTransient($"{Path.GetFileName(row.FullPath)} sent to the Recycle Bin");
+                ShowTransient(Texts.Format(Strings.ExplorerRecycled, Path.GetFileName(row.FullPath)));
             }
             catch (Exception ex) when (FileIndex.IsFileError(ex))
             {
-                ShowTransient($"{Path.GetFileName(row.FullPath)} not sent to the Recycle Bin: {ex.Message}", error: true);
+                ShowTransient(Texts.Format(Strings.ExplorerRecycleFailed, Path.GetFileName(row.FullPath), ex.Message), error: true);
             }
         }
 
@@ -3572,7 +3583,7 @@ internal sealed partial class FileExplorerPanel : Panel
         }
         catch (Exception ex) when (FileIndex.IsFileError(ex))
         {
-            this.ShowTransient($"Favorites not saved: {ex.Message}", error: true);
+            this.ShowTransient(Texts.Format(Strings.ExplorerFavoritesNotSaved, ex.Message), error: true);
         }
 
         this.RefreshRows(keepPlace: true);
@@ -3597,7 +3608,7 @@ internal sealed partial class FileExplorerPanel : Panel
         }
         catch (Win32Exception ex)
         {
-            ShowTransient($"Explorer could not be opened: {ex.Message}", error: true);
+            ShowTransient(Texts.Format(Strings.ExplorerOpenFailed, ex.Message), error: true);
         }
     }
 
@@ -3622,7 +3633,7 @@ internal sealed partial class FileExplorerPanel : Panel
 
             // A folder read from the disk, or derived from the index: the list is read again.
             RefreshRows(keepPlace: true);
-            ShowTransient("Folder not found");
+            ShowTransient(Strings.ExplorerFolderNotFound);
             return false;
         }
 
@@ -3634,7 +3645,7 @@ internal sealed partial class FileExplorerPanel : Panel
         // A preset is kept, its description never dropped silently: only its heart removes it.
         if (row.Preset is not null)
         {
-            this.ShowTransient($"File not found: {row.FullPath} — the preset is kept, its heart deletes it", error: true);
+            this.ShowTransient(Texts.Format(Strings.ExplorerFileNotFoundPreset, row.FullPath), error: true);
             return false;
         }
 
@@ -3663,7 +3674,7 @@ internal sealed partial class FileExplorerPanel : Panel
         }
 
         RefreshRows(keepPlace: true);
-        ShowTransient(error is null ? "File not found — removed from the index" : $"File not found — removed from the index, not saved: {error}", error: error is not null);
+        ShowTransient(error is null ? Strings.ExplorerFileNotFoundRemoved : Texts.Format(Strings.ExplorerFileNotFoundRemovedNotSaved, error), error: error is not null);
         return false;
     }
 
@@ -3686,9 +3697,9 @@ internal sealed partial class FileExplorerPanel : Panel
         this._inviteAction = action;
         (this._inviteText.Text, this._chooseFolder.Text) = action switch
         {
-            InviteAction.TurnOnFaces => ("The face analysis is off. Turned on, it looks for the faces in the base folder's images and PDFs — on this computer only — and groups them into people.", "Turn on face analysis…"),
-            InviteAction.DownloadFaceEngine => ("The face analysis needs its engine: two models of about 40 MB, downloaded once next to the app.", "Download the face engine…"),
-            _ => (FolderInviteText, "Choose folder…"),
+            InviteAction.TurnOnFaces => (Strings.ExplorerInviteFacesOff, Strings.ExplorerInviteFacesOffButton),
+            InviteAction.DownloadFaceEngine => (Strings.ExplorerInviteFaceEngine, Strings.ExplorerInviteFaceEngineButton),
+            _ => (FolderInviteText, Strings.ExplorerChooseFolder),
         };
     }
 
@@ -3746,7 +3757,7 @@ internal sealed partial class FileExplorerPanel : Panel
             this.ShowGroupTitle(null);
             var hidden = snapshot.Hidden.Where(group => NameHolds(group, words)).Select(GroupRow).ToList();
             this.ShowRows(hidden, keepPlace, select);
-            this.ShowPeopleBreadcrumb("Hidden", Groups(hidden.Count));
+            this.ShowPeopleBreadcrumb(Strings.ExplorerHidden, Groups(hidden.Count));
             return;
         }
 
@@ -3755,7 +3766,7 @@ internal sealed partial class FileExplorerPanel : Panel
             // A search in the People view looks for names: a face without a person has none.
             List<ExplorerRow> poor = words.Length > 0 ? [] : [.. snapshot.LowQuality.Select(this.FaceRow)];
             this.ShowRows(poor, keepPlace, select);
-            this.ShowPeopleBreadcrumb("Low quality", Faces(poor.Count));
+            this.ShowPeopleBreadcrumb(Strings.ExplorerLowQuality, Faces(poor.Count));
             return;
         }
 
@@ -3780,7 +3791,7 @@ internal sealed partial class FileExplorerPanel : Panel
                 var files = this.GroupFiles(open, words);
                 rows.AddRange(files);
                 this.ShowRows(rows, keepPlace, select);
-                this.ShowPeopleBreadcrumb(GroupName(open), open.SubGroups.Count > 0 ? $"{Groups(open.SubGroups.Count)}, {Files(files.Count)}" : Files(files.Count));
+                this.ShowPeopleBreadcrumb(GroupName(open), open.SubGroups.Count > 0 ? Texts.Format("{0}, {1}", Groups(open.SubGroups.Count), Files(files.Count)) : Files(files.Count));
                 return;
             }
         }
@@ -3793,33 +3804,33 @@ internal sealed partial class FileExplorerPanel : Panel
             if (snapshot.Hidden.Count > 0)
             {
                 var best = snapshot.Hidden[0].Best;
-                list.Add(new ExplorerRow(best.FullPath, $"Hidden ({snapshot.Hidden.Count:N0})", GroupId: HiddenGroups, Face: best.Face.Bounds));
+                list.Add(new ExplorerRow(best.FullPath, Texts.Format("{0} ({1:N0})", Strings.ExplorerHidden, snapshot.Hidden.Count), GroupId: HiddenGroups, Face: best.Face.Bounds));
             }
 
             if (snapshot.LowQuality.Count > 0)
             {
                 var best = snapshot.LowQuality.MaxBy(face => face.Quality)!;
-                list.Add(new ExplorerRow(best.FullPath, $"Low quality ({snapshot.LowQuality.Count:N0})", GroupId: LowQualityFaces, Face: best.Face.Bounds));
+                list.Add(new ExplorerRow(best.FullPath, Texts.Format("{0} ({1:N0})", Strings.ExplorerLowQuality, snapshot.LowQuality.Count), GroupId: LowQualityFaces, Face: best.Face.Bounds));
             }
 
             list.AddRange(snapshot.Ungrouped.Select(this.FaceRow));
         }
 
         this.ShowRows(list, keepPlace, select);
-        string looking = this._facePassRunning ? " · looking for faces…" : "";
-        this.ShowPeopleBreadcrumb(null, words.Length > 0 ? Groups(groups) : $"{Groups(groups)}, {Faces(snapshot.Ungrouped.Count)} alone{looking}");
+        string looking = this._facePassRunning ? Strings.ExplorerLookingForFaces : "";
+        this.ShowPeopleBreadcrumb(null, words.Length > 0 ? Groups(groups) : Texts.Format(Strings.ExplorerGroupsAndFacesAlone, Groups(groups), Faces(snapshot.Ungrouped.Count), looking));
     }
 
-    private static string Groups(int count) => count == 1 ? "1 group" : $"{count:N0} groups";
+    private static string Groups(int count) => count == 1 ? Strings.ExplorerGroupOne : Texts.Format(Strings.ExplorerGroupMany, count);
 
-    private static string Faces(int count) => count == 1 ? "1 face" : $"{count:N0} faces";
+    private static string Faces(int count) => count == 1 ? Strings.ExplorerFaceOne : Texts.Format(Strings.ExplorerFaceMany, count);
 
     /// <summary>A face close to no other: a file tile showing the face cut out of its file.</summary>
     private ExplorerRow FaceRow(FaceRef face) =>
         new(face.FullPath, Path.GetFileName(face.FullPath), Size: this.EntryOf(face.FullPath)?.Size, Face: face.Face.Bounds, FaceKey: face.Key);
 
     /// <summary>A group's name, or <c>Unnamed</c>.</summary>
-    private static string GroupName(FaceGroup group) => group.Name.Length > 0 ? group.Name : "Unnamed";
+    private static string GroupName(FaceGroup group) => group.Name.Length > 0 ? group.Name : Strings.ExplorerUnnamed;
 
     /// <summary>Whether a group's name holds every word of a search, accents and case ignored; any group without one.</summary>
     private static bool NameHolds(FaceGroup group, string[] words)
@@ -3869,7 +3880,7 @@ internal sealed partial class FileExplorerPanel : Panel
 
     /// <summary>The breadcrumb in the People view: <c>People</c>, then the group open, <paramref name="trailing"/> after it.</summary>
     private void ShowPeopleBreadcrumb(string? open, string trailing) =>
-        this._breadcrumb.SetPath(open is null ? ["People"] : ["People", open], trailing);
+        this._breadcrumb.SetPath(open is null ? [Strings.ExplorerPeople] : [Strings.ExplorerPeople, open], trailing);
 
     /// <summary>The title at the top of the list: the group open's name, or <c>Unnamed</c>; none for <c>null</c>.</summary>
     private void ShowGroupTitle(FaceGroup? group)
@@ -4033,7 +4044,7 @@ internal sealed partial class FileExplorerPanel : Panel
 
         this._peopleStore.Restore(state.People);
         this.PeopleState = state;
-        this.WritePeople("People restored", quiet: true);
+        this.WritePeople(Strings.ExplorerPeopleRestored, quiet: true);
         return true;
     }
 
@@ -4062,7 +4073,7 @@ internal sealed partial class FileExplorerPanel : Panel
 
         if (!quiet || error is not null)
         {
-            this.Report(error is null ? done : $"{done} — for the session, not saved: {error}", error is not null);
+            this.Report(error is null ? done : Texts.Format(Strings.ExplorerForSessionNotSaved, done, error), error is not null);
         }
 
         this.Regroup(force: true);
@@ -4098,7 +4109,7 @@ internal sealed partial class FileExplorerPanel : Panel
     /// <summary>A group's name asked in a popup centered on the explorer, then kept.</summary>
     private void Rename(FaceGroup group)
     {
-        using var dialog = new NameDialog("Rename", "The person's name:", group.Name);
+        using var dialog = new NameDialog(Strings.ExplorerRenameTitle, Strings.ExplorerRenamePrompt, group.Name);
         dialog.CenterOn(this);
         if (dialog.ShowDialog(this.FindForm()) != DialogResult.OK)
         {
@@ -4107,7 +4118,7 @@ internal sealed partial class FileExplorerPanel : Panel
 
         var person = this.PersonOf(group);
         person.Name = dialog.Value;
-        this.SavePeople(person.Name.Length > 0 ? $"Named: {person.Name}" : "Name removed");
+        this.SavePeople(person.Name.Length > 0 ? Texts.Format(Strings.ExplorerNamed, person.Name) : Strings.ExplorerNameRemoved);
     }
 
     /// <summary>
@@ -4155,7 +4166,7 @@ internal sealed partial class FileExplorerPanel : Panel
 
     /// <summary>An entry of the People submenu: <c>Alice (12 files)</c>, <c>Unnamed (1 file)</c>, <c>(hidden)</c> after a hidden one.</summary>
     private static string PhotoPersonText(PhotoPerson person) =>
-        $"{(person.Name.Length > 0 ? person.Name : "Unnamed")} ({Files(person.FileCount)}){(person.Hidden ? " (hidden)" : "")}";
+        Texts.Format("{0} ({1}){2}", person.Name.Length > 0 ? person.Name : Strings.ExplorerUnnamed, Files(person.FileCount), person.Hidden ? Strings.ExplorerHiddenSuffix : "");
 
     /// <summary>The faces of the People submenu cut out of their file one after the other, each shown as it comes.</summary>
     private async Task LoadPhotoFacesAsync(ToolStripMenuItem[] entries, IReadOnlyList<PhotoPerson> people, Size box)
@@ -4206,7 +4217,7 @@ internal sealed partial class FileExplorerPanel : Panel
 
         var created = this._peopleStore.Create([(person.Face.Key, person.Face.Face.Embedding)]);
         this._openAfterRegroup = created.Id;
-        this.SavePeople("New person: Unnamed");
+        this.SavePeople(Strings.ExplorerNewPerson);
     }
 
     /// <summary>Hide or Unhide on a group's tile: it leaves the view for the hidden ones' tile, or comes back.</summary>
@@ -4218,7 +4229,7 @@ internal sealed partial class FileExplorerPanel : Panel
         }
 
         this.PersonOf(group).Hidden = hidden;
-        this.SavePeople(hidden ? $"Hidden: {GroupName(group)}" : $"Shown again: {GroupName(group)}");
+        this.SavePeople(hidden ? Texts.Format(Strings.ExplorerDecisionHidden, GroupName(group)) : Texts.Format(Strings.ExplorerDecisionShown, GroupName(group)));
     }
 
     /// <summary>Un-merge on a sub-group's tile: a group of its own again, as it was before the merge.</summary>
@@ -4230,7 +4241,7 @@ internal sealed partial class FileExplorerPanel : Panel
         }
 
         person.MergedInto = null;
-        this.SavePeople($"Un-merged: {GroupName(group)} out of {GroupName(parent)}");
+        this.SavePeople(Texts.Format(Strings.ExplorerDecisionUnmerged, GroupName(group), GroupName(parent)));
     }
 
     /// <summary>
@@ -4245,7 +4256,7 @@ internal sealed partial class FileExplorerPanel : Panel
         }
 
         People.Exclude(key, this.PersonOf(owner));
-        this.SavePeople($"{row.Name}: not {GroupName(owner)}");
+        this.SavePeople(Texts.Format(Strings.ExplorerDecisionNotPerson, row.Name, GroupName(owner)));
     }
 
     /// <summary>
@@ -4284,8 +4295,8 @@ internal sealed partial class FileExplorerPanel : Panel
         {
             if (MessageBox.Show(
                     this.FindForm(),
-                    $"Merge « {GroupName(source)} » into « {GroupName(target)} »?\n\nIt shows inside it as a sub-group, every file of both listed there. Un-merge, on its tile there, brings it back as it was.",
-                    "Merge groups",
+                    Texts.Format(Strings.ExplorerMergePrompt, GroupName(source), GroupName(target)),
+                    Strings.ExplorerMergeTitle,
                     MessageBoxButtons.OKCancel,
                     MessageBoxIcon.Question) != DialogResult.OK)
             {
@@ -4294,14 +4305,14 @@ internal sealed partial class FileExplorerPanel : Panel
 
             var into = this.PersonOf(target);
             this._peopleStore.Merge(this.PersonOf(source), into);
-            this.SavePeople($"Merged: {GroupName(source)} into {GroupName(target)}");
+            this.SavePeople(Texts.Format(Strings.ExplorerDecisionMerged, GroupName(source), GroupName(target)));
             return;
         }
 
         if (faceKey is not null && this._snapshot.FaceByKey.GetValueOrDefault(faceKey) is { } face)
         {
             this._peopleStore.Pin(faceKey, face.Face.Embedding, this.PersonOf(target));
-            this.SavePeople($"{Path.GetFileName(face.FullPath)} added to {GroupName(target)}");
+            this.SavePeople(Texts.Format(Strings.ExplorerDecisionFaceAdded, Path.GetFileName(face.FullPath), GroupName(target)));
         }
     }
 }

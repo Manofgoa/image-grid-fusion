@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using ImageGridFusion.Explorer;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -92,7 +93,7 @@ internal sealed partial class FileExplorerPanel
 
         this.StartExtraction();
         this.RefreshRows(keepPlace: true);
-        this.Report(error is null ? "Visual analysis forgotten: every embedding, tag and caption deleted" : $"Visual analysis forgotten, not every file deleted: {error}", error is not null);
+        this.Report(error is null ? Strings.ExplorerVisionForgotten : Texts.Format(Strings.ExplorerVisionForgottenPartly, error), error is not null);
     }
 
     /// <summary>
@@ -166,7 +167,7 @@ internal sealed partial class FileExplorerPanel
     /// </summary>
     private async Task<float[]?> EmbedImageAsync(Func<Func<VisionEncoder, float[]>?> prepare)
     {
-        this.ShowStatus("Looking at the image…");
+        this.ShowStatus(Strings.ExplorerLookingAtImage);
         try
         {
             var embedding = await Task.Run(() =>
@@ -182,14 +183,14 @@ internal sealed partial class FileExplorerPanel
             this.ShowSummary();
             if (embedding is null)
             {
-                this.ShowTransient("This image cannot be read", error: true);
+                this.ShowTransient(Strings.ExplorerImageUnreadable, error: true);
             }
 
             return embedding;
         }
         catch (Exception ex) when (ex is Microsoft.ML.OnnxRuntime.OnnxRuntimeException or OutOfMemoryException or ArgumentException or IOException or System.Runtime.InteropServices.ExternalException or DllNotFoundException)
         {
-            this.ShowTransient($"The vision engine could not look at the image: {ex.Message}", error: true);
+            this.ShowTransient(Texts.Format(Strings.ExplorerVisionImageFailed, ex.Message), error: true);
             return null;
         }
     }
@@ -234,7 +235,7 @@ internal sealed partial class FileExplorerPanel
                 _ = this.FindSimilarAsync(path);
                 break;
             case Image image:
-                _ = this.FindSimilarAsync(image, "the dropped image", null);
+                _ = this.FindSimilarAsync(image, Strings.ExplorerDroppedImage, null);
                 break;
         }
     }
@@ -382,7 +383,7 @@ internal sealed partial class FileExplorerPanel
         }
         catch (Exception ex) when (ex is Microsoft.ML.OnnxRuntime.OnnxRuntimeException or OutOfMemoryException or IOException or DllNotFoundException or ArgumentException)
         {
-            this.ShowTransient($"The vision engine could not read the search: {ex.Message}", error: true);
+            this.ShowTransient(Texts.Format(Strings.ExplorerVisionSearchFailed, ex.Message), error: true);
         }
         finally
         {
@@ -470,10 +471,10 @@ internal sealed partial class FileExplorerPanel
         return (names.Count, unnamed) switch
         {
             (0, 0) => null,
-            (0, 1) => "1 unnamed face",
-            (0, _) => $"{unnamed} unnamed faces",
+            (0, 1) => Strings.ExplorerUnnamedFaceOne,
+            (0, _) => Texts.Format(Strings.ExplorerUnnamedFaces, unnamed),
             (_, 0) => named,
-            _ => $"{named} (+ {unnamed} unnamed)",
+            _ => Texts.Format(Strings.ExplorerNamedAndUnnamed, named, unnamed),
         };
     }
 

@@ -4,6 +4,7 @@ using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using ImageGridFusion.Explorer;
 using ImageGridFusion.Imaging;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -38,15 +39,15 @@ internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder =
     public string ThumbnailKey => this.Face is { } face ? FaceCrops.Key(this.FullPath, face) : this.FullPath;
 
     /// <summary>The tile's tooltip: its path, after a preset's description, then its closeness; a group's name and files.</summary>
-    public string Tip => this.IsGroup ? $"{this.Name}\n{(this.Count == 1 ? "1 file" : $"{this.Count:N0} files")}"
+    public string Tip => this.IsGroup ? $"{this.Name}\n{ThumbnailGrid.FileCount(this.Count ?? 0)}"
         : (this.Preset is { Description.Length: > 0 } preset ? $"{preset.Description.Trim()}\n\n{this.FullPath}" : this.FullPath)
-            + (this.ClosenessText is { } closeness ? $"\n≈ {closeness} close" : "");
+            + (this.ClosenessText is { } closeness ? Texts.Format(Strings.ExplorerTileCloseness, closeness) : "");
 
     /// <summary>The closeness as shown — <c>87 %</c> — for an image found by its similarity; null for any other row.</summary>
-    public string? ClosenessText => this.Closeness is { } closeness ? $"{Math.Round(closeness * 100):0} %" : null;
+    public string? ClosenessText => this.Closeness is { } closeness ? Texts.Format(Strings.ExplorerClosenessPercent, Math.Round(closeness * 100)) : null;
 
     /// <summary>The name with the file count after it, as a Details row shows a folder.</summary>
-    public string NameAndCount => this.Count is { } count ? $"{this.Name} ({count:N0})" : this.Name;
+    public string NameAndCount => this.Count is { } count ? Texts.Format("{0} ({1:N0})", this.Name, count) : this.Name;
 
     /// <summary>Whether the search found it thanks to its content text: it shows the light bulb.</summary>
     public bool ByContent => this.ContentWord is not null;
@@ -877,7 +878,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         g.DrawRectangle(SystemPens.ControlDark, new Rectangle(slot.X, slot.Y, slot.Width - 1, slot.Height - 1));
         TextRenderer.DrawText(
             g,
-            "Loading…",
+            Strings.ExplorerLoading,
             Font,
             slot,
             SystemColors.GrayText,
@@ -1449,7 +1450,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         g.FillPath(text, path);
     }
 
-    private static string FileCount(int count) => count == 1 ? "1 file" : $"{count:N0} files";
+    internal static string FileCount(int count) => count == 1 ? Strings.ExplorerFileOne : Texts.Format(Strings.ExplorerFileMany, count);
 
     /// <summary>
     /// A section's header: its title in bold at the left, then a thin line across the rest of the row, the
@@ -1627,7 +1628,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         if (bulb >= 0)
         {
             string? excerpt = this.ContentExcerpt(this._rows[bulb]);
-            this._toolTip.Set(excerpt is null ? "Found in its content" : $"Found in its content: {excerpt}");
+            this._toolTip.Set(excerpt is null ? Strings.ExplorerFoundInContent : Texts.Format(Strings.ExplorerFoundInContentExcerpt, excerpt));
         }
         else
         {

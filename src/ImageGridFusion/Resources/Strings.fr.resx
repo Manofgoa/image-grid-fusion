@@ -167,6 +167,210 @@ Les fonctionnalités qui en ont besoin les proposeront à nouveau.</value></data
   <data name="CompZipNotZip" xml:space="preserve"><value>{0} n'a pas envoyé de zip</value></data>
   <data name="CompZipShortAnswer" xml:space="preserve"><value>{0} a envoyé une réponse trop courte</value></data>
   <data name="CompZipUnsupportedCompression" xml:space="preserve"><value>{0} : compression non prise en charge {1}</value></data>
+  <data name="ExplorerAccClear" xml:space="preserve"><value>Effacer</value></data>
+  <data name="ExplorerAccCollapse" xml:space="preserve"><value>Réduire</value></data>
+  <data name="ExplorerAccDetails" xml:space="preserve"><value>Détails</value></data>
+  <data name="ExplorerAccExpand" xml:space="preserve"><value>Développer</value></data>
+  <data name="ExplorerAccFolderGroups" xml:space="preserve"><value>Groupes de dossiers</value></data>
+  <data name="ExplorerAccName" xml:space="preserve"><value>Nom</value></data>
+  <data name="ExplorerAccRescan" xml:space="preserve"><value>Réanalyser</value></data>
+  <data name="ExplorerAccSearchGroups" xml:space="preserve"><value>Groupes de recherche</value></data>
+  <data name="ExplorerAccSeries" xml:space="preserve"><value>Séries</value></data>
+  <data name="ExplorerAccThumbnails" xml:space="preserve"><value>Miniatures</value></data>
+  <data name="ExplorerAddedToFavorites" xml:space="preserve"><value>Ajouté aux favoris : {0}{1}</value></data>
+  <data name="ExplorerAddedToFavoritesNotSaved" xml:space="preserve"><value>Ajouté aux favoris : {0}, non enregistré : {1}</value></data>
+  <data name="ExplorerAllCounts" xml:space="preserve"><value>Tout : {0}, {1}</value></data>
+  <data name="ExplorerAllFiles" xml:space="preserve"><value>Tous les fichiers ({0:N0})</value></data>
+  <data name="ExplorerBreadcrumbOpen" xml:space="preserve"><value>Ouvrir {0}</value></data>
+  <data name="ExplorerBreadcrumbUp" xml:space="preserve"><value>Remonter au dossier parent (Backspace, Alt+↑)</value></data>
+  <data name="ExplorerCancel" xml:space="preserve"><value>Annuler</value></data>
+  <data name="ExplorerCaptionEngineFailed" xml:space="preserve"><value>Le moteur de descriptions n'a pas pu démarrer : {0}</value></data>
+  <data name="ExplorerChooseFolder" xml:space="preserve"><value>Choisir un dossier…</value></data>
+  <data name="ExplorerClosenessPercent" xml:space="preserve"><value>{0:0} %</value></data>
+  <data name="ExplorerColorBlue" xml:space="preserve"><value>bleu</value></data>
+  <data name="ExplorerColorGold" xml:space="preserve"><value>doré</value></data>
+  <data name="ExplorerColorGreen" xml:space="preserve"><value>vert</value></data>
+  <data name="ExplorerColorOrange" xml:space="preserve"><value>orange</value></data>
+  <data name="ExplorerColorPink" xml:space="preserve"><value>rose</value></data>
+  <data name="ExplorerColorPurple" xml:space="preserve"><value>violet</value></data>
+  <data name="ExplorerColorTeal" xml:space="preserve"><value>turquoise</value></data>
+  <data name="ExplorerCopied" xml:space="preserve"><value>Copié : {0}</value></data>
+  <data name="ExplorerCopiedAsPng" xml:space="preserve"><value>Copié en PNG : {0} ({1} × {2})</value></data>
+  <data name="ExplorerCopiedPath" xml:space="preserve"><value>Chemin copié : {0}</value></data>
+  <data name="ExplorerCopyFailed" xml:space="preserve"><value>Échec de la copie : {0}</value></data>
+  <data name="ExplorerCounting" xml:space="preserve"><value>Comptage… {0:N0}</value></data>
+  <data name="ExplorerCriterionContent" xml:space="preserve"><value>Rechercher dans le texte contenu dans les fichiers</value></data>
+  <data name="ExplorerCriterionExtractionStopped" xml:space="preserve"><value>L'extraction est arrêtée (⚙ Rechercher dans le contenu des fichiers (OCR)) : seuls les textes déjà extraits sont recherchés</value></data>
+  <data name="ExplorerCriterionLastOn" xml:space="preserve"><value>activé — au moins un critère reste activé</value></data>
+  <data name="ExplorerCriterionName" xml:space="preserve"><value>Rechercher dans les noms de fichiers et de dossiers</value></data>
+  <data name="ExplorerCriterionOff" xml:space="preserve"><value>désactivé — cliquer pour activer</value></data>
+  <data name="ExplorerCriterionOn" xml:space="preserve"><value>activé — cliquer pour désactiver</value></data>
+  <data name="ExplorerCriterionTip" xml:space="preserve"><value>{0} : {1}</value></data>
+  <data name="ExplorerCriterionTipNote" xml:space="preserve"><value>{0} : {1}
+{2}</value></data>
+  <data name="ExplorerDecisionFaceAdded" xml:space="preserve"><value>{0} ajouté à {1}</value></data>
+  <data name="ExplorerDecisionHidden" xml:space="preserve"><value>Masqué : {0}</value></data>
+  <data name="ExplorerDecisionMerged" xml:space="preserve"><value>Fusionné : {0} dans {1}</value></data>
+  <data name="ExplorerDecisionNotPerson" xml:space="preserve"><value>{0} : pas {1}</value></data>
+  <data name="ExplorerDecisionShown" xml:space="preserve"><value>Affiché de nouveau : {0}</value></data>
+  <data name="ExplorerDecisionUnmerged" xml:space="preserve"><value>Défusionné : {0} de {1}</value></data>
+  <data name="ExplorerDeletePresetPrompt" xml:space="preserve"><value>Supprimer ce preset d'effets de {0} ?{1}</value></data>
+  <data name="ExplorerDeletePresetTitle" xml:space="preserve"><value>Supprimer le preset d'effets</value></data>
+  <data name="ExplorerDropAddTo" xml:space="preserve"><value>Ajouter à %1</value></data>
+  <data name="ExplorerDroppedImage" xml:space="preserve"><value>l'image déposée</value></data>
+  <data name="ExplorerFaceEngineFailed" xml:space="preserve"><value>Le moteur de visages n'a pas pu démarrer : {0}</value></data>
+  <data name="ExplorerFaceMany" xml:space="preserve"><value>{0:N0} visages</value></data>
+  <data name="ExplorerFaceOne" xml:space="preserve"><value>1 visage</value></data>
+  <data name="ExplorerFacesForgotten" xml:space="preserve"><value>Visages oubliés : tous les visages trouvés et toutes les personnes sont supprimés</value></data>
+  <data name="ExplorerFacesForgottenPartly" xml:space="preserve"><value>Visages oubliés, certains fichiers n'ont pas été supprimés : {0}</value></data>
+  <data name="ExplorerFavoritesCount" xml:space="preserve"><value>Favoris ({0})</value></data>
+  <data name="ExplorerFavoritesNotSaved" xml:space="preserve"><value>Favoris non enregistrés : {0}</value></data>
+  <data name="ExplorerFileMany" xml:space="preserve"><value>{0:N0} fichiers</value></data>
+  <data name="ExplorerFileNotFoundPreset" xml:space="preserve"><value>Fichier introuvable : {0} — le preset est conservé, son cœur le supprime</value></data>
+  <data name="ExplorerFileNotFoundRemoved" xml:space="preserve"><value>Fichier introuvable — retiré de l'index</value></data>
+  <data name="ExplorerFileNotFoundRemovedNotSaved" xml:space="preserve"><value>Fichier introuvable — retiré de l'index, non enregistré : {0}</value></data>
+  <data name="ExplorerFileOne" xml:space="preserve"><value>1 fichier</value></data>
+  <data name="ExplorerFolderMany" xml:space="preserve"><value>{0:N0} dossiers</value></data>
+  <data name="ExplorerFolderNotFound" xml:space="preserve"><value>Dossier introuvable</value></data>
+  <data name="ExplorerFolderNotFoundBack" xml:space="preserve"><value>Dossier introuvable : {0} — retour à {1}</value></data>
+  <data name="ExplorerFolderNotFoundNamed" xml:space="preserve"><value>Dossier introuvable : {0}</value></data>
+  <data name="ExplorerFolderOne" xml:space="preserve"><value>1 dossier</value></data>
+  <data name="ExplorerFolderSearchPlaceholder" xml:space="preserve"><value>Rechercher dans ce dossier… (Ctrl+F, * pour tout)</value></data>
+  <data name="ExplorerForSessionNotSaved" xml:space="preserve"><value>{0} — pour la session, non enregistré : {1}</value></data>
+  <data name="ExplorerFoundInContent" xml:space="preserve"><value>Trouvé dans son contenu</value></data>
+  <data name="ExplorerFoundInContentExcerpt" xml:space="preserve"><value>Trouvé dans son contenu : {0}</value></data>
+  <data name="ExplorerGroupAi" xml:space="preserve"><value>IA</value></data>
+  <data name="ExplorerGroupCamera" xml:space="preserve"><value>Appareil photo</value></data>
+  <data name="ExplorerGroupDateStamps" xml:space="preserve"><value>Horodatages de date</value></data>
+  <data name="ExplorerGroupGenericNames" xml:space="preserve"><value>Noms génériques</value></data>
+  <data name="ExplorerGroupIdentifiers" xml:space="preserve"><value>Identifiants</value></data>
+  <data name="ExplorerGroupMany" xml:space="preserve"><value>{0:N0} groupes</value></data>
+  <data name="ExplorerGroupMessaging" xml:space="preserve"><value>Messageries</value></data>
+  <data name="ExplorerGroupNumbers" xml:space="preserve"><value>Nombres</value></data>
+  <data name="ExplorerGroupOne" xml:space="preserve"><value>1 groupe</value></data>
+  <data name="ExplorerGroupScreenshots" xml:space="preserve"><value>Captures d'écran</value></data>
+  <data name="ExplorerGroupShortCodes" xml:space="preserve"><value>Codes courts</value></data>
+  <data name="ExplorerGroupTimestamps" xml:space="preserve"><value>Horodatages</value></data>
+  <data name="ExplorerGroupsAndFacesAlone" xml:space="preserve"><value>{0}, {1} hors groupe{2}</value></data>
+  <data name="ExplorerHidden" xml:space="preserve"><value>Masqués</value></data>
+  <data name="ExplorerHiddenSuffix" xml:space="preserve"><value> (masqué)</value></data>
+  <data name="ExplorerImageUnreadable" xml:space="preserve"><value>Impossible de lire cette image</value></data>
+  <data name="ExplorerIndexing" xml:space="preserve"><value>Indexation… {0:N0}/{1:N0}</value></data>
+  <data name="ExplorerIndexingPasses" xml:space="preserve"><value>Passes d'indexation</value></data>
+  <data name="ExplorerInvalidFolder" xml:space="preserve"><value>Dossier invalide : {0}</value></data>
+  <data name="ExplorerInviteFaceEngine" xml:space="preserve"><value>L'analyse des visages a besoin de son moteur : deux modèles d'environ 40 Mo, téléchargés une fois à côté de l'application.</value></data>
+  <data name="ExplorerInviteFaceEngineButton" xml:space="preserve"><value>Télécharger le moteur de visages…</value></data>
+  <data name="ExplorerInviteFacesOff" xml:space="preserve"><value>L'analyse des visages est désactivée. Activée, elle cherche les visages dans les images et PDF du dossier de base — sur cet ordinateur uniquement — et les regroupe en personnes.</value></data>
+  <data name="ExplorerInviteFacesOffButton" xml:space="preserve"><value>Activer l'analyse des visages…</value></data>
+  <data name="ExplorerInviteFolder" xml:space="preserve"><value>Aucun dossier de base pour l'instant. La recherche parcourt un dossier et ses sous-dossiers : choisissez-le pour indexer vos fichiers.</value></data>
+  <data name="ExplorerLoading" xml:space="preserve"><value>Chargement…</value></data>
+  <data name="ExplorerLoadingIndex" xml:space="preserve"><value>Chargement de l'index…</value></data>
+  <data name="ExplorerLookingAtImage" xml:space="preserve"><value>Analyse de l'image…</value></data>
+  <data name="ExplorerLookingForFaces" xml:space="preserve"><value> · recherche de visages…</value></data>
+  <data name="ExplorerLowQuality" xml:space="preserve"><value>Faible qualité</value></data>
+  <data name="ExplorerMenuCopy" xml:space="preserve"><value>Copier</value></data>
+  <data name="ExplorerMenuCopyFullPath" xml:space="preserve"><value>Copier le chemin complet</value></data>
+  <data name="ExplorerMenuCopyPng" xml:space="preserve"><value>Copier en PNG</value></data>
+  <data name="ExplorerMenuEditDescription" xml:space="preserve"><value>Modifier la description…</value></data>
+  <data name="ExplorerMenuFindSimilar" xml:space="preserve"><value>Trouver des images similaires</value></data>
+  <data name="ExplorerMenuHide" xml:space="preserve"><value>Masquer</value></data>
+  <data name="ExplorerMenuHideName" xml:space="preserve"><value>Masquer {0}</value></data>
+  <data name="ExplorerMenuNotPerson" xml:space="preserve"><value>Pas {0}</value></data>
+  <data name="ExplorerMenuNotThisPerson" xml:space="preserve"><value>Pas cette personne</value></data>
+  <data name="ExplorerMenuOpen" xml:space="preserve"><value>Ouvrir</value></data>
+  <data name="ExplorerMenuOpenFileLocation" xml:space="preserve"><value>Ouvrir l'emplacement du fichier</value></data>
+  <data name="ExplorerMenuOpenInExplorer" xml:space="preserve"><value>Ouvrir dans l'Explorateur</value></data>
+  <data name="ExplorerMenuRemove" xml:space="preserve"><value>Retirer</value></data>
+  <data name="ExplorerMenuRemoveFrom" xml:space="preserve"><value>Retirer de {0}</value></data>
+  <data name="ExplorerMenuRename" xml:space="preserve"><value>Renommer…</value></data>
+  <data name="ExplorerMenuUnhide" xml:space="preserve"><value>Afficher</value></data>
+  <data name="ExplorerMenuUnmerge" xml:space="preserve"><value>Défusionner</value></data>
+  <data name="ExplorerMenuUnmergeName" xml:space="preserve"><value>Défusionner {0}</value></data>
+  <data name="ExplorerMergePrompt" xml:space="preserve"><value>Fusionner « {0} » dans « {1} » ?
+
+Il s'affiche à l'intérieur comme un sous-groupe, tous les fichiers des deux y étant listés. Défusionner, sur sa tuile là-bas, le remet comme avant.</value></data>
+  <data name="ExplorerMergeTitle" xml:space="preserve"><value>Fusionner les groupes</value></data>
+  <data name="ExplorerModeFavorites" xml:space="preserve"><value>Favoris</value></data>
+  <data name="ExplorerModeFolders" xml:space="preserve"><value>Dossiers</value></data>
+  <data name="ExplorerNameRemoved" xml:space="preserve"><value>Nom retiré</value></data>
+  <data name="ExplorerNamed" xml:space="preserve"><value>Nommé : {0}</value></data>
+  <data name="ExplorerNamedAndUnnamed" xml:space="preserve"><value>{0} (+ {1} sans nom)</value></data>
+  <data name="ExplorerNewPerson" xml:space="preserve"><value>Nouvelle personne : sans nom</value></data>
+  <data name="ExplorerNoBaseFolder" xml:space="preserve"><value>Aucun dossier de base</value></data>
+  <data name="ExplorerNoImageToCopy" xml:space="preserve"><value>Aucune image à copier : {0}</value></data>
+  <data name="ExplorerNoIndexYet" xml:space="preserve"><value>Aucun index pour l'instant</value></data>
+  <data name="ExplorerNoResult" xml:space="preserve"><value>Aucun résultat</value></data>
+  <data name="ExplorerNotDownloaded" xml:space="preserve"><value>non téléchargé</value></data>
+  <data name="ExplorerNotReadable" xml:space="preserve"><value>Illisible : {0}</value></data>
+  <data name="ExplorerNotStarted" xml:space="preserve"><value>non démarré</value></data>
+  <data name="ExplorerNothingAddedFolders" xml:space="preserve"><value>Rien ajouté : les dossiers ne deviennent pas des favoris</value></data>
+  <data name="ExplorerNothingAddedNoFile" xml:space="preserve"><value>Rien ajouté : aucun fichier à ajouter</value></data>
+  <data name="ExplorerOpenFailed" xml:space="preserve"><value>Impossible d'ouvrir l'Explorateur : {0}</value></data>
+  <data name="ExplorerPassCaptions" xml:space="preserve"><value>Descriptions</value></data>
+  <data name="ExplorerPassFaces" xml:space="preserve"><value>Visages</value></data>
+  <data name="ExplorerPassInverted" xml:space="preserve"><value>Inversé</value></data>
+  <data name="ExplorerPassRing" xml:space="preserve"><value>Anneau</value></data>
+  <data name="ExplorerPassVision" xml:space="preserve"><value>Analyse visuelle</value></data>
+  <data name="ExplorerPeople" xml:space="preserve"><value>Personnes</value></data>
+  <data name="ExplorerPeopleRestored" xml:space="preserve"><value>Personnes restaurées</value></data>
+  <data name="ExplorerPeopleSearchPlaceholder" xml:space="preserve"><value>Rechercher une personne par son nom… (Ctrl+F)</value></data>
+  <data name="ExplorerPresetSaved" xml:space="preserve"><value>Preset d'effets enregistré : {0}</value></data>
+  <data name="ExplorerPresetSavedNotWritten" xml:space="preserve"><value>Preset d'effets enregistré pour la session, non écrit : {0}</value></data>
+  <data name="ExplorerRapidFailed" xml:space="preserve"><value>RapidOCR n'a pas pu démarrer : {0}</value></data>
+  <data name="ExplorerReadingFolder" xml:space="preserve"><value>Lecture du dossier…</value></data>
+  <data name="ExplorerRecycleFailed" xml:space="preserve"><value>{0} n'a pas pu être envoyé dans la Corbeille : {1}</value></data>
+  <data name="ExplorerRecycled" xml:space="preserve"><value>{0} envoyé dans la Corbeille</value></data>
+  <data name="ExplorerRenamePrompt" xml:space="preserve"><value>Nom de la personne :</value></data>
+  <data name="ExplorerRenameTitle" xml:space="preserve"><value>Renommer</value></data>
+  <data name="ExplorerResultOne" xml:space="preserve"><value>1 résultat</value></data>
+  <data name="ExplorerResults" xml:space="preserve"><value>{0:N0} résultats</value></data>
+  <data name="ExplorerScanFailed" xml:space="preserve"><value>Échec de l'analyse : {0}</value></data>
+  <data name="ExplorerSearchPlaceholder" xml:space="preserve"><value>Rechercher des fichiers… (Ctrl+F, * pour tout)</value></data>
+  <data name="ExplorerSectionContent" xml:space="preserve"><value>Contenu</value></data>
+  <data name="ExplorerSectionNamedFiles" xml:space="preserve"><value>Fichiers nommés</value></data>
+  <data name="ExplorerSectionOtherFolders" xml:space="preserve"><value>Autres dossiers</value></data>
+  <data name="ExplorerSectionPath" xml:space="preserve"><value>Chemin</value></data>
+  <data name="ExplorerSimilarCount" xml:space="preserve"><value>Similaires à {0} ({1:N0})</value></data>
+  <data name="ExplorerSimilarNone" xml:space="preserve"><value>Similaires à {0} — rien d'assez proche</value></data>
+  <data name="ExplorerSkippedFolderOne" xml:space="preserve"><value> — 1 dossier ignoré</value></data>
+  <data name="ExplorerSkippedFolders" xml:space="preserve"><value> — {0} dossiers ignorés</value></data>
+  <data name="ExplorerSortName" xml:space="preserve"><value>Nom A→Z</value></data>
+  <data name="ExplorerSortNewest" xml:space="preserve"><value>Date ↓</value></data>
+  <data name="ExplorerSortOrderName" xml:space="preserve"><value>les fichiers par nom, de A à Z</value></data>
+  <data name="ExplorerSortOrderNewest" xml:space="preserve"><value>les fichiers créés le plus récemment d'abord</value></data>
+  <data name="ExplorerSortOrderSmallest" xml:space="preserve"><value>les plus petits fichiers d'abord</value></data>
+  <data name="ExplorerSortSmallest" xml:space="preserve"><value>Taille ↑</value></data>
+  <data name="ExplorerSummaryIndexed" xml:space="preserve"><value>{0} · indexé {1}</value></data>
+  <data name="ExplorerSummaryNotSaved" xml:space="preserve"><value>{0} · non enregistré : {1}</value></data>
+  <data name="ExplorerTileCloseness" xml:space="preserve"><value>
+≈ {0} de proximité</value></data>
+  <data name="ExplorerTipBackToSearch" xml:space="preserve"><value>Retour à la recherche</value></data>
+  <data name="ExplorerTipClickToRename" xml:space="preserve"><value>Cliquer pour renommer</value></data>
+  <data name="ExplorerTipCollapse" xml:space="preserve"><value>Masquer l'explorateur de fichiers</value></data>
+  <data name="ExplorerTipDetails" xml:space="preserve"><value>Détails : une ligne par fichier — son nom, sa taille, et les mots qu'une recherche a trouvés dans son contenu</value></data>
+  <data name="ExplorerTipExpand" xml:space="preserve"><value>Afficher l'explorateur de fichiers</value></data>
+  <data name="ExplorerTipFolderGroups" xml:space="preserve"><value>Groupes de dossiers : la vue Dossiers en sections — les dossiers partageant leurs premiers mots, les autres dossiers, les séries de fichiers nommés, les fichiers nommés, puis les fichiers nommés par un appareil photo, une capture d'écran, une IA, un site… (menu ⚙ : Groupes de l'explorateur de fichiers)</value></data>
+  <data name="ExplorerTipLargerTiles" xml:space="preserve"><value>Tuiles plus grandes</value></data>
+  <data name="ExplorerTipModes" xml:space="preserve"><value>Ce que la liste affiche : le dossier de base dossier par dossier, les personnes en lesquelles les visages ont été regroupés, ou les favoris et la recherche sur tous les fichiers — Ctrl+F de nouveau dans la zone de recherche : la vue suivante, Ctrl+Shift+F : la précédente</value></data>
+  <data name="ExplorerTipRescan" xml:space="preserve"><value>Réanalyser le dossier</value></data>
+  <data name="ExplorerTipSearchGroups" xml:space="preserve"><value>Groupes de recherche : les résultats de recherche en deux sections — Chemin, trouvés par leur nom ou leurs dossiers, puis Contenu, trouvés par ce qu'ils contiennent</value></data>
+  <data name="ExplorerTipSeries" xml:space="preserve"><value>Séries : les fichiers nommés partageant leurs premiers mots — marlène schiappa …, homme soja … — dans une section chacune, avant les autres fichiers nommés (avec Groupes de dossiers activés ; menu ⚙ : Groupes de l'explorateur de fichiers)</value></data>
+  <data name="ExplorerTipSmallerTiles" xml:space="preserve"><value>Tuiles plus petites</value></data>
+  <data name="ExplorerTipSort" xml:space="preserve"><value>Tri : {0}.
+Une recherche liste d'abord les meilleurs résultats — trouvés dans le nom du fichier, puis dans ses dossiers, puis dans son contenu — chaque groupe étant trié ainsi.
+Dans la vue Dossiers, les dossiers viennent en premier, de A à Z.</value></data>
+  <data name="ExplorerTipThumbnails" xml:space="preserve"><value>Miniatures : des tuiles, autant par ligne que la largeur en permet</value></data>
+  <data name="ExplorerTipTileSize" xml:space="preserve"><value>Taille des tuiles : {0} px</value></data>
+  <data name="ExplorerTitleFiles" xml:space="preserve"><value>Fichiers</value></data>
+  <data name="ExplorerUnnamed" xml:space="preserve"><value>Sans nom</value></data>
+  <data name="ExplorerUnnamedFaceOne" xml:space="preserve"><value>1 visage sans nom</value></data>
+  <data name="ExplorerUnnamedFaces" xml:space="preserve"><value>{0} visages sans nom</value></data>
+  <data name="ExplorerVisionEngineFailed" xml:space="preserve"><value>Le moteur de vision n'a pas pu démarrer : {0}</value></data>
+  <data name="ExplorerVisionForgotten" xml:space="preserve"><value>Analyse visuelle oubliée : tous les plongements, étiquettes et descriptions sont supprimés</value></data>
+  <data name="ExplorerVisionForgottenPartly" xml:space="preserve"><value>Analyse visuelle oubliée, certains fichiers n'ont pas été supprimés : {0}</value></data>
+  <data name="ExplorerVisionImageFailed" xml:space="preserve"><value>Le moteur de vision n'a pas pu analyser l'image : {0}</value></data>
+  <data name="ExplorerVisionSearchFailed" xml:space="preserve"><value>Le moteur de vision n'a pas pu lire la recherche : {0}</value></data>
+  <data name="ExplorerWaitingForIndex" xml:space="preserve"><value>En attente de l'index…</value></data>
   <data name="FileSizeByte" xml:space="preserve"><value>{0} octet</value></data>
   <data name="FileSizeBytes" xml:space="preserve"><value>{0} octets</value></data>
   <data name="FileSizeUnits" xml:space="preserve"><value>Ko Mo Go To</value></data>
