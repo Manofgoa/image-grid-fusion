@@ -49,8 +49,8 @@ internal static class GridExport
             {
                 int index = items.ToList().FindIndex(item => item.Image == i);
                 return cascade is not null && cascade.Has(index)
-                    ? new MixedSound(i.FilePath!, i.PlayedLength, i.StartTime, i.Look.SoundGain, i.PlayedFrom, cascade.TurnAt(index), cascade.Length)
-                    : new MixedSound(i.FilePath!, i.PlayedLength, i.StartTime, i.Look.SoundGain, i.PlayedFrom);
+                    ? new MixedSound(i.FilePath!, i.LoopLength, i.StartTime, i.Look.SoundGain, i.PlayedFrom, cascade.TurnAt(index), cascade.Length, i.Speed)
+                    : new MixedSound(i.FilePath!, i.LoopLength, i.StartTime, i.Look.SoundGain, i.PlayedFrom, Speed: i.Speed);
             });
             Sounds = (soundtrack is null ? sounds : sounds.Append(new MixedSound(soundtrack.Path, soundtrack.Duration, TimeSpan.Zero, soundtrack.Level))).ToList();
         }

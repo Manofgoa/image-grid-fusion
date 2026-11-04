@@ -423,7 +423,9 @@ internal sealed class VideoEncoder : IFrameEncoder
     /// The sound of one video, decoded to 16-bit PCM by a Source Reader: from its starting point, then
     /// from the loop's beginning again every loop — its trim's, else the file's start — cut at the end of each loop, silent where the sound is shorter
     /// than its loop; added to the mix at its gain, as stereo. In the cascade, it plays one loop per turn
-    /// and is silent between its turns.
+    /// and is silent between its turns. At a speed other than 1, it is decoded at the mix's rate divided
+    /// by the speed and mixed sample for sample, so it plays faster or slower, its pitch with it
+    /// (workfiles/20260926-frames-speed.md).
     /// </summary>
     private sealed class Voice : IDisposable
     {
@@ -432,6 +434,9 @@ internal sealed class VideoEncoder : IFrameEncoder
         private readonly long _start;
         private readonly long _from;
         private readonly double _gain;
+        private readonly double _speed;
+
+        // The rate the sound is decoded at: the mix's, divided by the speed.
         private int _rate;
         private int _channels;
         private long _loopFrames;
@@ -462,6 +467,7 @@ internal sealed class VideoEncoder : IFrameEncoder
             this._turnAt = sound.TurnAt.Ticks;
             this._cycle = sound.Cycle.Ticks;
             _gain = sound.Gain;
+            this._speed = sound.Speed;
             _reader = MediaFoundation.CreateSourceReader(sound.Path, attributes: null);
             try
             {
@@ -489,10 +495,14 @@ internal sealed class VideoEncoder : IFrameEncoder
 
         public int NativeRate { get; }
 
-        /// <summary>Decodes to PCM at <paramref name="rate"/>, mono or stereo, and seeks to the starting point.</summary>
+        /// <summary>
+        /// Decodes to PCM for a mix at <paramref name="rate"/> — at that rate divided by the speed — mono or
+        /// stereo, and seeks to the starting point.
+        /// </summary>
         public void Decode(int rate)
         {
-            var pcm = PcmType(_channels, rate);
+            int decoded = (int)Math.Round(rate / this._speed);
+            var pcm = PcmType(_channels, decoded);
             try
             {
                 Marshal.ThrowExceptionForHR(_reader.SetCurrentMediaType(MediaFoundation.FirstAudioStream, IntPtr.Zero, pcm));
@@ -506,7 +516,7 @@ internal sealed class VideoEncoder : IFrameEncoder
             try
             {
                 _channels = MediaFoundation.TryGetInt(current, MediaFoundation.Keys.AudioChannels) ?? _channels;
-                if ((MediaFoundation.TryGetInt(current, MediaFoundation.Keys.AudioSamplesPerSecond) ?? rate) != rate
+                if ((MediaFoundation.TryGetInt(current, MediaFoundation.Keys.AudioSamplesPerSecond) ?? decoded) != decoded
                     || (MediaFoundation.TryGetInt(current, MediaFoundation.Keys.AudioBitsPerSample) ?? 16) != 16
                     || _channels is not (1 or 2))
                 {
@@ -518,7 +528,8 @@ internal sealed class VideoEncoder : IFrameEncoder
                 MediaFoundation.Release(current);
             }
 
-            _rate = rate;
+            // The loop, the start and the turn are on the video's clock: one decoded frame is one frame of the mix.
+            _rate = decoded;
             _loopFrames = _loop * rate / TimeSpan.TicksPerSecond;
             if (_loopFrames <= 0)
             {
@@ -529,9 +540,10 @@ internal sealed class VideoEncoder : IFrameEncoder
             _position = _start * rate / TimeSpan.TicksPerSecond % _loopFrames;
             this._turnFrame = this._turnAt * rate / TimeSpan.TicksPerSecond;
             this._cycleFrames = this._cycle * rate / TimeSpan.TicksPerSecond;
-            if (this._from + _start > 0)
+            long start = this._from + (long)(_start * this._speed);
+            if (start > 0)
             {
-                _reader.SetCurrentPosition(Guid.Empty, PropVariant.FromLong(this._from + _start));
+                _reader.SetCurrentPosition(Guid.Empty, PropVariant.FromLong(start));
             }
         }
 
@@ -713,6 +725,8 @@ internal sealed class VideoEncoder : IFrameEncoder
 /// <paramref name="Start"/>, scaled by <paramref name="Gain"/>; the loop begins at <paramref name="From"/>
 /// in the file — a trimmed video's (workfiles/20261008-video-trim.md). In the Cascade, a
 /// <paramref name="Cycle"/> above zero: heard only during its turn, one loop from <paramref name="TurnAt"/>
-/// in every cascade of that length (workfiles/20261008-video-cascade.md).
+/// in every cascade of that length (workfiles/20261008-video-cascade.md). <paramref name="Loop"/>,
+/// <paramref name="Start"/> and the turn are on the video's clock, <paramref name="From"/> in the file:
+/// the sound plays at <paramref name="Speed"/>, its frames effect's (workfiles/20260926-frames-speed.md).
 /// </summary>
-internal sealed record MixedSound(string Path, TimeSpan Loop, TimeSpan Start, double Gain, TimeSpan From = default, TimeSpan TurnAt = default, TimeSpan Cycle = default);
+internal sealed record MixedSound(string Path, TimeSpan Loop, TimeSpan Start, double Gain, TimeSpan From = default, TimeSpan TurnAt = default, TimeSpan Cycle = default, double Speed = 1);
