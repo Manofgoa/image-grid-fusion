@@ -340,18 +340,16 @@ internal static class AppSettings
         Save((ExplorerFolderGroupsName, folders ? 1 : 0), (ExplorerSearchGroupsName, search ? 1 : 0));
 
     /// <summary>
-    /// The name patterns whose folder view group is turned off — the ⚙ menu's File explorer groups — saved
-    /// by name, comma-separated; none when nothing was saved, an unknown name skipped.
+    /// The name groups of the folder view turned off — the ⚙ menu's File explorer groups — saved by id,
+    /// comma-separated; none when nothing was saved. An id no group has any more turns nothing off.
     /// </summary>
-    public static IReadOnlySet<Explorer.NamePattern> ExplorerPatternsOff =>
+    public static IReadOnlySet<string> ExplorerPatternsOff =>
         (Text(ExplorerPatternsOffName) ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(name => Enum.TryParse(name, out Explorer.NamePattern pattern) && pattern.ToString() == name ? pattern : (Explorer.NamePattern?)null)
-            .OfType<Explorer.NamePattern>()
-            .ToHashSet();
+            .ToHashSet(StringComparer.Ordinal);
 
-    /// <summary>Saves the name patterns turned off; throws an <see cref="IsSaveError"/> exception on failure.</summary>
-    public static void SaveExplorerPatternsOff(IEnumerable<Explorer.NamePattern> off) =>
-        Save((ExplorerPatternsOffName, string.Join(',', off.Order())));
+    /// <summary>Saves the name groups turned off; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveExplorerPatternsOff(IEnumerable<string> off) =>
+        Save((ExplorerPatternsOffName, string.Join(',', off.Order(StringComparer.Ordinal))));
 
     /// <summary>
     /// Whether the file explorer extracts the files' content texts — OCR included — for its search; false

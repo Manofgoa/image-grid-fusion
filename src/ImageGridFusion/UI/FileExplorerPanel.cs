@@ -261,10 +261,10 @@ internal sealed partial class FileExplorerPanel : Panel
     private string _openFolder = "";
 
     // The groups (workfiles/20261103-file-explorer-groups.md): the folder view's, the search results', and
-    // the name patterns turned off in the ⚙ menu.
+    // the name groups turned off in the ⚙ menu, by id.
     private bool _folderGroups = true;
     private bool _searchGroups = true;
-    private IReadOnlySet<NamePattern> _patternsOff = new HashSet<NamePattern>();
+    private IReadOnlySet<string> _patternsOff = new HashSet<string>(StringComparer.Ordinal);
     private FolderTree? _tree;
     private int _listVersion;
     private bool _clearingSearch;
@@ -449,7 +449,7 @@ internal sealed partial class FileExplorerPanel : Panel
         this.ApplySortTip();
         this._toolTip.SetToolTip(this._thumbnailsView, "Thumbnails: tiles, as many per row as fit");
         this._toolTip.SetToolTip(this._detailsView, "Details: one row per file — its name, its size, and the words a search found in its content");
-        this._toolTip.SetToolTip(this._folderGroupsButton, "Folder groups: the folder view in sections — the folders sharing their first words, the other folders, the named files, then the files named by a camera, a screenshot, an app… (⚙ menu: File explorer groups)");
+        this._toolTip.SetToolTip(this._folderGroupsButton, "Folder groups: the folder view in sections — the folders sharing their first words, the other folders, the series of named files, the named files, then the files named by a camera, a screenshot, an AI, a site… (⚙ menu: File explorer groups)");
         this._toolTip.SetToolTip(this._searchGroupsButton, "Search groups: the search results in two sections — Path, found by their name or folders, then Content, found by what they hold");
         this._folderGroupsButton.Click += (_, _) => this.ChangeGroups(!this._folderGroups, this._searchGroups);
         this._searchGroupsButton.Click += (_, _) => this.ChangeGroups(this._folderGroups, !this._searchGroups);
@@ -630,12 +630,13 @@ internal sealed partial class FileExplorerPanel : Panel
     }
 
     /// <summary>
-    /// The name patterns whose group is turned off — the ⚙ menu's File explorer groups: their files go to
-    /// the next pattern they match, else among the named files. The list shown is made again at once.
+    /// The name groups turned off, by id (<see cref="NameGroup.Id"/>, <see cref="NamePatterns.SeriesId"/>,
+    /// <see cref="NamePatterns.DetectedSourcesId"/>) — the ⚙ menu's File explorer groups: their files go to the
+    /// next group they fit, else among the named files. The list shown is made again at once.
     /// </summary>
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public IReadOnlySet<NamePattern> PatternsOff
+    public IReadOnlySet<string> PatternsOff
     {
         get => this._patternsOff;
         set
@@ -645,7 +646,7 @@ internal sealed partial class FileExplorerPanel : Panel
                 return;
             }
 
-            this._patternsOff = new HashSet<NamePattern>(value);
+            this._patternsOff = new HashSet<string>(value, StringComparer.Ordinal);
             this.RefreshRows(keepPlace: true);
         }
     }
@@ -2902,9 +2903,10 @@ internal sealed partial class FileExplorerPanel : Panel
 
     /// <summary>
     /// The folder view's sections, in order (workfiles/20261103-file-explorer-groups.md § Sections): one per
-    /// group of folders sharing their first words, A→Z by the words they share; the other folders; the
-    /// files named by a person — and those whose every pattern is turned off — then one per name pattern, in
-    /// the patterns' order. Each keeps the listing's order; a section left empty shows nothing.
+    /// group of folders sharing their first words, A→Z by the words they share; the other folders; one per
+    /// series of named files, A→Z; the files named by a person — and those whose every group is turned off —
+    /// then one per name group, in the groups' order, the known sources among them; then one per source found
+    /// by itself, A→Z. Each keeps the listing's order; a section left empty shows nothing.
     /// </summary>
     private List<ExplorerRow> FolderSections(IReadOnlyList<ExplorerRow> folders, IReadOnlyList<ExplorerRow> files)
     {
@@ -2918,14 +2920,32 @@ internal sealed partial class FileExplorerPanel : Panel
         }
 
         Add(folders.Where(folder => !prefixes.ContainsKey(folder.Name)).ToList(), OtherFoldersTitle);
-        var patterns = files.Select(file => NamePatterns.Of(file.Name, this._patternsOff)).ToArray();
-        Add(files.Where((_, i) => patterns[i] is null).ToList(), NamedFilesTitle);
-        foreach (var pattern in NamePatterns.All)
+
+        // The files: a name group first, else a source found by itself, else a series.
+        var groups = files.Select(file => NamePatterns.Of(file.Name, this._patternsOff)).ToArray();
+        var left = files.Where((_, i) => groups[i] is null).Select(file => file.Name).ToList();
+        var sources = this._patternsOff.Contains(NamePatterns.DetectedSourcesId) ? new Dictionary<string, string>() : NamePatterns.DetectSources(left);
+        var series = this._patternsOff.Contains(NamePatterns.SeriesId) ? new Dictionary<string, string>() : NamePatterns.Series(left.Where(name => !sources.ContainsKey(name)));
+        AddRuns(series);
+        Add(files.Where((file, i) => groups[i] is null && !sources.ContainsKey(file.Name) && !series.ContainsKey(file.Name)).ToList(), NamedFilesTitle);
+        foreach (var group in NamePatterns.Groups)
         {
-            Add(files.Where((_, i) => patterns[i] == pattern).ToList(), NamePatterns.Title(pattern));
+            Add(files.Where((_, i) => groups[i] == group).ToList(), group.Title);
         }
 
+        AddRuns(sources);
         return rows;
+
+        // A section per title of a file's, A→Z.
+        void AddRuns(Dictionary<string, string> titles)
+        {
+            foreach (var run in files.Where(file => titles.ContainsKey(file.Name))
+                .GroupBy(file => titles[file.Name], StringComparer.OrdinalIgnoreCase)
+                .OrderBy(run => run.Key, StringComparer.CurrentCultureIgnoreCase))
+            {
+                Add(run.ToList(), run.Key);
+            }
+        }
 
         void Add(List<ExplorerRow> section, string title)
         {

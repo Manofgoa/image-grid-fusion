@@ -733,13 +733,29 @@ internal sealed partial class MainForm : Form
             _explorerPages.DropDownItems.Add(item);
         }
 
-        foreach (var pattern in NamePatterns.All)
+        // Series first, then the name groups, the known sources in a submenu of their own after AI with the
+        // sources found by themselves (workfiles/20261103-file-explorer-groups.md § File Name Patterns).
+        this._explorerGroups.DropDownItems.Add(this.GroupItem(NamePatterns.SeriesId, "Series"));
+        this._explorerGroups.DropDownItems.Add(new ToolStripSeparator());
+        var sources = new ToolStripMenuItem("Sources") { ToolTipText = "Files named by a downloader or an app, a group per source" };
+        UiIcons.Set(sources, UiIcons.Sources);
+        foreach (var group in NamePatterns.Groups)
         {
-            var item = new ToolStripMenuItem(NamePatterns.Title(pattern)) { Tag = pattern, ToolTipText = PatternTip(pattern) };
-            UiIcons.Set(item, PatternIcon(pattern));
-            item.Click += (_, _) => this.TogglePattern(pattern);
-            this._explorerGroups.DropDownItems.Add(item);
+            if (group.IsSource)
+            {
+                sources.DropDownItems.Add(this.GroupItem(group.Id, group.Title));
+                continue;
+            }
+
+            this._explorerGroups.DropDownItems.Add(this.GroupItem(group.Id, group.Title));
+            if (group.Id == "AI")
+            {
+                this._explorerGroups.DropDownItems.Add(sources);
+            }
         }
+
+        sources.DropDownItems.Add(new ToolStripSeparator());
+        sources.DropDownItems.Add(this.GroupItem(NamePatterns.DetectedSourcesId, "Detected sources"));
 
         foreach (int percent in GridPreview.GuideApproachChoices)
         {
@@ -3398,9 +3414,13 @@ internal sealed partial class MainForm : Form
             item.Checked = (int)item.Tag! == _explorer.PagesPerLoad;
         }
 
-        foreach (ToolStripMenuItem item in this._explorerGroups.DropDownItems)
+        foreach (var item in this._explorerGroups.DropDownItems.OfType<ToolStripMenuItem>()
+            .SelectMany(item => item.DropDownItems.OfType<ToolStripMenuItem>().Prepend(item)))
         {
-            item.Checked = !this._explorer.PatternsOff.Contains((NamePattern)item.Tag!);
+            if (item.Tag is string id)
+            {
+                item.Checked = !this._explorer.PatternsOff.Contains(id);
+            }
         }
 
         foreach (ToolStripMenuItem item in this._guideApproach.DropDownItems)
@@ -5240,16 +5260,25 @@ internal sealed partial class MainForm : Form
         }
     }
 
-    /// <summary>
-    /// The ⚙ menu's File explorer groups: a name pattern's group turned on or off, the folder view made
-    /// again, the choice remembered between sessions. See workfiles/20261103-file-explorer-groups.md.
-    /// </summary>
-    private void TogglePattern(NamePattern pattern)
+    /// <summary>A checkbox of the ⚙ menu's File explorer groups, for the group of <paramref name="id"/>.</summary>
+    private ToolStripMenuItem GroupItem(string id, string title)
     {
-        var off = new HashSet<NamePattern>(this._explorer.PatternsOff);
-        if (!off.Remove(pattern))
+        var item = new ToolStripMenuItem(title) { Tag = id, ToolTipText = GroupTip(id) };
+        UiIcons.Set(item, GroupIcon(id));
+        item.Click += (_, _) => this.TogglePattern(id);
+        return item;
+    }
+
+    /// <summary>
+    /// The ⚙ menu's File explorer groups: a name group turned on or off, the folder view made again, the
+    /// choice remembered between sessions. See workfiles/20261103-file-explorer-groups.md.
+    /// </summary>
+    private void TogglePattern(string id)
+    {
+        var off = new HashSet<string>(this._explorer.PatternsOff, StringComparer.Ordinal);
+        if (!off.Remove(id))
         {
-            off.Add(pattern);
+            off.Add(id);
         }
 
         this._explorer.PatternsOff = off;
@@ -5263,22 +5292,38 @@ internal sealed partial class MainForm : Form
         }
     }
 
-    private static UiIcon PatternIcon(NamePattern pattern) => pattern switch
+    private static UiIcon GroupIcon(string id) => id switch
     {
-        NamePattern.Camera => UiIcons.Camera,
-        NamePattern.Screenshots => UiIcons.Screenshots,
-        NamePattern.Messaging => UiIcons.Messaging,
-        NamePattern.Identifiers => UiIcons.Identifiers,
-        _ => UiIcons.Numbers,
+        NamePatterns.SeriesId => UiIcons.Series,
+        "Camera" => UiIcons.Camera,
+        "Screenshots" => UiIcons.Screenshots,
+        "Messaging" => UiIcons.Messaging,
+        "AI" => UiIcons.Ai,
+        "GenericNames" => UiIcons.GenericNames,
+        "Identifiers" => UiIcons.Identifiers,
+        "ShortCodes" => UiIcons.ShortCodes,
+        "DateStamps" => UiIcons.DateStamps,
+        "Timestamps" => UiIcons.Timestamps,
+        "Numbers" => UiIcons.Numbers,
+        NamePatterns.DetectedSourcesId => UiIcons.DetectedSources,
+        _ => UiIcons.Sources,
     };
 
-    private static string PatternTip(NamePattern pattern) => pattern switch
+    private static string GroupTip(string id) => id switch
     {
-        NamePattern.Camera => "Files named by a camera or a phone: IMG_20220321_132643, PXL_…, DSC_0042",
-        NamePattern.Screenshots => "Screenshots and screen recordings: Screenshot_2026-11-03-10-24-09, Capture d'écran 2026-11-03…",
-        NamePattern.Messaging => "Files saved from a messaging app: WhatsApp Image 2026-11-03 at 10.24.09, IMG-20220321-WA0001, Telegram, Signal…",
-        NamePattern.Identifiers => "Names made of an identifier: a GUID, a hash, a random token such as F3xKz9aWkAA1b2c",
-        _ => "Names made of digits only: 20220321_132643, 001",
+        NamePatterns.SeriesId => "Named files sharing their first words, 3 or more: marlène schiappa …, homme soja …",
+        "Camera" => "Files named by a camera or a phone: IMG_20220321_132643, PXL_…, DSC_0042",
+        "Screenshots" => "Screenshots and screen recordings: Screenshot_2026-11-03-10-24-09, Capture d'écran 2026-11-03…",
+        "Messaging" => "Files saved from a messaging app: WhatsApp Image 2026-11-03 at 10.24.09, IMG-20220321-WA0001, Telegram, Signal…",
+        "AI" => "Images and videos an AI made: OIG1 (10), grok_video_…, ChatGPT Image …, High_Performance_…",
+        "GenericNames" => "A browser's or a site's default name: téléchargement (1), images (2), videoplayback (12), maxresdefault",
+        "Identifiers" => "Names made of an identifier: a GUID, a hash, an X media id, a random token such as F3xKz9aWkAA1b2c",
+        "ShortCodes" => "A meme site's short code: d9omli, qy6xu8, -oong5f",
+        "DateStamps" => "A date and a time, digits only: 20230809_212344",
+        "Timestamps" => "A Unix time, in seconds or milliseconds: 1711612478, 1746944459842",
+        "Numbers" => "Any other name made of digits only: 001",
+        NamePatterns.DetectedSourcesId => "Any other source found by itself: a word shared by 3 files or more, followed by a date, a number or a code",
+        _ => $"Files named by {id}",
     };
 
     /// <summary>The file explorer's view was switched by the user: remembered between sessions.</summary>
