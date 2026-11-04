@@ -19,8 +19,8 @@ L'application montre la même liste, en anglais : <kbd>F1</kbd>, ou **Keyboard s
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> | Copier la grille, comme le bouton Copy |
 | <kbd>Ctrl</kbd>+<kbd>S</kbd> | Enregistrer la grille, comme le bouton Save |
 | <kbd>Ctrl</kbd>+<kbd>N</kbd> | Tout effacer, sans confirmation |
-| <kbd>Ctrl</kbd>+<kbd>R</kbd> | Tourner d'un quart de tour horaire l'image sous la souris — sinon l'image sélectionnée |
-| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> | La même chose, dans le sens antihoraire |
+| <kbd>Ctrl</kbd>+<kbd>R</kbd> | Tourner l'image sous la souris — sinon l'image sélectionnée — jusqu'au quart de tour suivant dans le sens horaire : +37° vers 90°, 90° vers 180° |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> | La même chose, dans le sens antihoraire : +37° vers 0°, 0° vers -90° |
 | <kbd>Ctrl</kbd>+<kbd>F</kbd> | Aller dans la zone de recherche de l'explorateur de fichiers ; pressé de nouveau là, la vue suivante — la vue dossiers atteinte ainsi s'ouvrant au dossier de base |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> | Dans la zone de recherche, la vue précédente — la vue dossiers, au dossier de base aussi |
 | <kbd>Space</kbd> | Lecture / pause de la grille — pas dans un champ de texte |

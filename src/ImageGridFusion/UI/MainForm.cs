@@ -1796,12 +1796,13 @@ internal sealed partial class MainForm : Form
     }
 
     /// <summary>
-    /// Ctrl+R / Ctrl+Shift+R: <paramref name="quarterTurns"/> quarter turns of the hovered cell's image,
-    /// else the selected one's, that cell selected and the Rotate tab with it; the effect is turned on from
-    /// its kept settings, and the fine angle goes back to 0°, like the rotation buttons
-    /// (see workfiles/20260930-rotation-ctrl-r.md).
+    /// Ctrl+R / Ctrl+Shift+R: the hovered cell's image, else the selected one's, turned onto the next
+    /// quarter turn clockwise (<paramref name="direction"/> positive) or counter-clockwise — +37° to 90°, or
+    /// to 0° — that cell selected and the Rotate tab with it; the effect is turned on from its kept settings,
+    /// and the fine angle goes back to 0°, like the quarter-turn thumbnails (see
+    /// workfiles/20260930-rotation-ctrl-r.md, workfiles/20260926-rotation-slider.md).
     /// </summary>
-    private void TurnQuarter(int quarterTurns)
+    private void TurnQuarter(int direction)
     {
         if (!this._preview.SelectUnderPointer())
         {
@@ -1809,7 +1810,7 @@ internal sealed partial class MainForm : Form
         }
 
         this.SelectEffect(ImageEffect.Rotate);
-        this.ChangeLook(ImageEffect.Rotate, look => look.WithRotation(look.Rotation + 90 * quarterTurns));
+        this.ChangeLook(ImageEffect.Rotate, look => look.WithRotation(look.NextQuarterTurn(direction)));
     }
 
     /// <summary>

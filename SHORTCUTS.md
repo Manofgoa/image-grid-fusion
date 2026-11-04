@@ -18,8 +18,8 @@ words, in the [Glossary](GLOSSARY.md).
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> | Copy the grid, like the Copy button |
 | <kbd>Ctrl</kbd>+<kbd>S</kbd> | Save the grid, like the Save button |
 | <kbd>Ctrl</kbd>+<kbd>N</kbd> | Clear all, with no confirmation |
-| <kbd>Ctrl</kbd>+<kbd>R</kbd> | Turn the image under the mouse — else the selected one — a quarter turn clockwise |
-| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> | The same, counter-clockwise |
+| <kbd>Ctrl</kbd>+<kbd>R</kbd> | Turn the image under the mouse — else the selected one — onto the next quarter turn clockwise: +37° to 90°, 90° to 180° |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> | The same, counter-clockwise: +37° to 0°, 0° to -90° |
 | <kbd>Ctrl</kbd>+<kbd>F</kbd> | Go to the file explorer's search box; pressed again there, the next view — the folder view reached that way opening at the base folder |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> | In the search box, the previous view — the folder view, at the base folder too |
 | <kbd>Space</kbd> | Play / Pause the grid — not in a text field |
