@@ -53,6 +53,11 @@ first. To confirm (Open Questions).
   sections buttons and the breadcrumb's folders do not apply there (disabled or hidden — Open
   Questions).
 - The breadcrumb reads `GIPHY` then the query, its trailing text what the list holds.
+- **Ctrl+F** cycles through it, last — Folders → People → Favorites → GIPHY — **skipped while no key is
+  set**, as People is while the face analysis is off (`NextMode`, Q&A 15); `SHORTCUTS.md` and its French
+  version updated with it.
+- **Content rating**: an app setting of the ⚙ menu — `g`, `pg`, `pg-13`, `r` — **`r` by default**
+  (`AppSettings.GiphyRating`, Q&A 13), carried by every request.
 - **Attribution**: GIPHY's API terms (section 5A) require its **Powered By GIPHY** mark, visible wherever
   its content shows. Where it sits is an Open Question.
 - **Without a key**, the view shows an invitation to set one, a link to GIPHY's developer site and the
@@ -146,11 +151,14 @@ this work is an Open Question; until then, the behaviours are checked by hand:
 - [x] ~~**Thumbnails**: still, or animated in the list?~~ → Animated, playing while the results show
   (Q&A 11)
 - [ ] **Page size**: how many results a load asks for (GIPHY's beta allows up to 50 a call)?
-- [ ] **Rating**: which content rating the requests carry (`g`, `pg`, `pg-13`, `r`), fixed or a setting?
+- [x] ~~**Rating**: which content rating the requests carry (`g`, `pg`, `pg-13`, `r`), fixed or a setting?~~
+  → An app setting of the ⚙ menu, `r` by default (Q&A 13)
+- [ ] **Search trigger**: the GIPHY view searches on Enter only, or after a pause in the typing as the
+  index search does — each search costing one of the 100 calls an hour?
 - [ ] **Attribution placement**: the Powered By GIPHY mark next to the search box, on the breadcrumb line,
   or under the list?
-- [ ] **Ctrl+F cycle**: does it go through the GIPHY view (skipped without a key, as People is without the
-  face analysis)?
+- [x] ~~**Ctrl+F cycle**: does it go through the GIPHY view (skipped without a key, as People is without the
+  face analysis)?~~ → Yes, last, skipped while no key is set (Q&A 15)
 - [ ] **Search criteria and sort**: hidden or disabled in the GIPHY view?
 - [ ] **Hearting a GIPHY tile**: no heart, or downloaded into a folder next to the exe and made a
   favorite (as the pasted favorites)?
@@ -189,6 +197,13 @@ tile, which can then be dragged, a double-click downloading and adding it. § Th
 The user, before the question was asked: the GIF animations play in the list during the search, not
 only once a tile is clicked (Q&A 11). § Thumbnails: animated tiles, a new capability of `ThumbnailGrid`.
 
+### Iteration 4 — 2026-11-05
+
+Second batch (Q&A 12–15): the content rating an app setting of the ⚙ menu, `r` by default; the Ctrl+F
+cycle goes through the GIPHY view, skipped without a key. The page size and the attribution's place
+were not understood: explained (100 calls an hour, not 100 images) and asked again, with a mockup. A new
+question follows from the budget: what triggers a search.
+
 ---
 
 ## Implementation Log
@@ -221,10 +236,13 @@ Questions asked by the agent during design, with user responses.
 | 9 | When the download happens | A click downloads, then the drag is possible | 2026-11-05 |
 | 10 | The empty search box: trending or nothing? | The trending | 2026-11-05 |
 | 11 | Thumbnails still or animated? | (User, before it was asked) The GIF animations play during the search, not only on a click | 2026-11-05 |
-| 12 | Page size of a load | | 2026-11-05 |
-| 13 | Content rating of the requests | | 2026-11-05 |
-| 14 | Where the Powered By GIPHY mark sits | | 2026-11-05 |
-| 15 | Does the Ctrl+F cycle go through the GIPHY view? | | 2026-11-05 |
+| 12 | Page size of a load | "Wait, 100 images an hour?" → explained: 100 API calls, each up to 50 results; the thumbnails and downloads come from the CDN and do not count. Asked again (#16) | 2026-11-05 |
+| 13 | Content rating of the requests | A ⚙ menu setting, `r` by default | 2026-11-05 |
+| 14 | Where the Powered By GIPHY mark sits | "I don't understand where you propose" → drawn as a mockup, asked again (#17) | 2026-11-05 |
+| 15 | Does the Ctrl+F cycle go through the GIPHY view? | Yes, skipped without a key | 2026-11-05 |
+| 16 | Page size of a load (again) | | 2026-11-05 |
+| 17 | Where the Powered By GIPHY mark sits (again, with a mockup) | | 2026-11-05 |
+| 18 | Search trigger: Enter only, or after a pause in the typing | | 2026-11-05 |
 
 ---
 
