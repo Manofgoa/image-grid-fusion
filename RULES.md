@@ -980,8 +980,9 @@ The file explorer's lists in sections under titled headers (origin: `workfiles/2
 - **The search** (`FileExplorerPanel.SearchSections`): *Path* then *Content*, by `FileSearch.IsPathTier`; a new tier
   says on which side it falls there. A file whose name and content both hold every word ranks first
   (`Rank.ByNameAndContent`), sections on or off.
-- Two buttons, 🗂️ and 🗃️, and the patterns turned off are app settings (`AppSettings.ExplorerGroups`,
-  `ExplorerPatternsOff`); out of the undo history.
+- Three buttons, 🗂️, 📚 (the series) and 🗃️, and the groups turned off are app settings
+  (`AppSettings.ExplorerGroups`, `ExplorerPatternsOff`) — 📚 and the submenu's **Series** one state; out of the
+  undo history.
 
 ## Keyboard Shortcuts
 
