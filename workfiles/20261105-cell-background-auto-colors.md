@@ -82,6 +82,8 @@ Relevant code:
   color, replacing the `Automatic` flag; acting on From turns the Background on, like any option.
 - Presets: a new `first` key (`Auto`, `Black`, `White`, `Chosen`); a preset without it reads the older
   `automatic` key (true → Auto, false → Chosen with its `color`). `LookPreset.Describe` names the source.
+- **Layout**: built on `feature/options-toolbar-layout` once merged (Q&A #9) — From leads its Background
+  line 3 in place of `☐ Automatic color`, `To` stays line 4.
 - **Cell only** (Q&A #7): the Grid background keeps its first color as it is; its *Auto, first cell* stays
   in the backlog row *Gradient fills, the rest*. `FillControls` gains the From choice for the cell's use only.
 
@@ -124,9 +126,9 @@ Checked by hand in the running app:
   live (backlog row *Gradient fills, the rest*) — since `FillControls` is shared?~~ → No: cell only, the
   Grid background's stays in the backlog
 - [x] ~~The cell's **To default**: stays Darker, or becomes Auto?~~ → Stays Darker
-- [ ] The worktree `feature/options-toolbar-layout` (go given) rebuilds the Background's options as one
+- [x] ~~The worktree `feature/options-toolbar-layout` (go given) rebuilds the Background's options as one
   feature per line, its line 3 led by the *Automatic color* checkbox: implement this after it is merged,
-  or now?
+  or now?~~ → After it is merged into `main`: From leads its line 3
 
 ---
 
@@ -152,6 +154,12 @@ Q&A #5–#8: From is a drop-down like `To` — Auto, Black, White, Chosen —, c
 fill and `From` for a gradient; the cell only, the Grid background untouched; `To` stays Darker by
 default. Derived: `BackgroundEffect`'s source becomes one value, a new `first` preset key with the older
 `automatic` one still read. The order with the `options-toolbar-layout` worktree stays open.
+
+### Iteration 3 — 2026-11-05
+
+Q&A #9: implemented **after** `feature/options-toolbar-layout` is merged into `main` — the From drop-down
+then leads that layout's Background line 3 (today `☐ Automatic color`), captioned `Color` / `From`, and
+`To` keeps its line 4. No question left open.
 
 ---
 
@@ -182,7 +190,7 @@ Questions asked by the agent during design, with user responses.
 | 6 | From's caption on a Solid fill? | `Color` while Solid, `From` for a gradient | 2026-11-05 |
 | 7 | Grid background gets From too? | No — cell only | 2026-11-05 |
 | 8 | The cell's To default? | Stays Darker | 2026-11-05 |
-| 9 | Order with the options-toolbar-layout worktree? | | |
+| 9 | Order with the options-toolbar-layout worktree? | After it is merged into `main` | 2026-11-05 |
 
 ---
 
