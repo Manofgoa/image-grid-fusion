@@ -160,6 +160,9 @@ The Upscale effect's enlargement is computed outside `Compositor`, and a GIF's i
   reopens the content's player (`GridPreview.FollowDrawnPages`, `AnimationPlayer.Reopen`).
 - The **canvas sizing reads the drawn size** (`SourceImage.Sizing` from `DrawnBitmap`, `Sharpening` 1): an enlarged image
   widens the PNG's native size.
+- **The preview draws a reduced copy**: an enlargement past `SourceImage.ShownMaxSide` (2048 px) is drawn in the preview
+  from `SourceImage.ShownBitmap`, reduced once; the exports, Cell copy and *Save upscaled image…* read `DrawnBitmap`, at
+  full resolution. A new preview reader of an image takes `ShownBitmap`, a new export `DrawnBitmap`.
 - It is asked for **at every paint** (`GridPreview.PaintUpscale`, before the Cutout's), the cell drawn as loaded with its
   *Upscaling… N %* badge meanwhile, preview only. **Exports wait** for it (`MainForm.WaitForUpscalesAsync`, before
   `WaitForCutoutsAsync`); one that fails is drawn as loaded, the status line saying why.
