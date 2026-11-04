@@ -402,6 +402,17 @@ internal sealed partial class MainForm : Form
     // The selected global tab belongs to its own toolbar, not to the cell effects' one; none at startup.
     private GlobalEffect? _selectedGlobalEffect;
     private readonly FormatStrip _formatStrip = new();
+
+    // The Custom format's fields, after the format thumbnails (workfiles/20261104-custom-output-format.md);
+    // unset, they show greyed the values the first pick of Custom takes.
+    private readonly Label _customWidthLabel = new() { Text = "Width", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(12, 3, 0, 3) };
+    private readonly NumericUpDown _customWidth = CustomField();
+    private readonly Label _customHeightLabel = new() { Text = "× Height", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(3, 3, 0, 3) };
+    private readonly NumericUpDown _customHeight = CustomField();
+    private readonly CheckBox _customExact = new() { Text = "Exact pixels", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(9, 3, 3, 3) };
+
+    // Set while the Custom fields are written from the state: their events then change nothing.
+    private bool _showingCustom;
     private readonly Button _soundtrackBrowse = new() { Text = "Browse…", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly Label _soundtrackFile = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly TrackBar _soundtrackVolume = OptionSlider(0, (int)(Soundtrack.MaxLevel * 100), 10);
@@ -661,7 +672,7 @@ internal sealed partial class MainForm : Form
         _globalOptionsRow.Controls.Add(_globalEffectResetButton, 1, 0);
         _globalOptionsHost.Controls.AddRange([.. _globalOptions.Values]);
         _bordersStyle.Items.AddRange(Enum.GetNames<BorderPattern>());
-        _globalOptions[GlobalEffect.Format].Controls.Add(_formatStrip);
+        _globalOptions[GlobalEffect.Format].Controls.AddRange([_formatStrip, this._customWidthLabel, this._customWidth, this._customHeightLabel, this._customHeight, this._customExact]);
         _globalOptions[GlobalEffect.Soundtrack].Controls.AddRange([_soundtrackBrowse, _soundtrackFile, _soundtrackVolume, _soundtrackVolumeLabel]);
         _globalOptions[GlobalEffect.Fade].Controls.AddRange([_fadeDuration, _fadeDurationLabel, _fadeSquared, _fadeLinear]);
         _globalOptions[GlobalEffect.Borders].Controls.AddRange(
@@ -941,6 +952,8 @@ internal sealed partial class MainForm : Form
         // The PNG sizes follow the grid as it stands — a zoom, a separator: computed as they are about to show.
         this._copyMenu.Opening += (_, _) => this.RefreshPngMaxSizes(this._copyPngMaxSize);
         this._saveMenu.Opening += (_, _) => this.RefreshPngMaxSizes(this._savePngMaxSize);
+        this._copyMenu.Opening += (_, _) => this.RefreshVideoSizeTooltips();
+        this._saveMenu.Opening += (_, _) => this.RefreshVideoSizeTooltips();
         this._copyButton.MouseEnter += (_, _) => this.RefreshPngSizeTooltips();
         this._saveButton.MouseEnter += (_, _) => this.RefreshPngSizeTooltips();
         this._copyButton.Menu = this._copyMenu;
@@ -1145,6 +1158,16 @@ internal sealed partial class MainForm : Form
         _globalTabs.TabClicked += (_, effect) => SelectGlobalEffect(effect);
         _globalTabs.CheckClicked += (_, effect) => ToggleGlobalEffect(effect);
         _formatStrip.Picked += (_, format) => SetFormat(format);
+        this._customWidth.ValueChanged += (_, _) => this.CustomFieldChanged(width: true, committed: true);
+        this._customHeight.ValueChanged += (_, _) => this.CustomFieldChanged(width: false, committed: true);
+        this._customWidth.TextChanged += (_, _) => this.CustomFieldChanged(width: true, committed: false);
+        this._customHeight.TextChanged += (_, _) => this.CustomFieldChanged(width: false, committed: false);
+        this._customExact.CheckedChanged += (_, _) => this.CustomExactChanged();
+        this.SetCustomFieldTip(this._customWidth, "The Custom format's width: a ratio's first term, or its pixels with Exact pixels; changing it picks Custom");
+        this.SetCustomFieldTip(this._customHeight, "The Custom format's height: a ratio's second term, or its pixels with Exact pixels; changing it picks Custom");
+        this._toolTip.SetToolTip(
+            this._customExact,
+            "Checked: Width × Height are the exported pixels, exactly — 100 to 8192 a side, reduced, ratio kept, only by a PNG max size entry or the Video size when smaller; unchecked, a ratio at the native size");
         _toolTip.SetToolTip(_globalEffectResetButton, "Brings this global setting back to its initial state");
         _toolTip.SetToolTip(_globalResetButton, "Brings the format back to Twitter and every global effect back to its initial state; the cells are left alone");
         _globalEffectResetButton.Click += (_, _) =>
@@ -1716,7 +1739,7 @@ internal sealed partial class MainForm : Form
         }
 
         // Typed in the file explorer's search box, or in a Frames field, these keys edit its text, not the grid.
-        if ((_explorer.IsEditingText || this.IsEditingFrameField || this._layerText.Focused) && keyData is (Keys.Control | Keys.V) or (Keys.Control | Keys.C) or Keys.Delete or Keys.Escape
+        if ((_explorer.IsEditingText || this.IsEditingFrameField || this._layerText.Focused || this.IsEditingCustomField) && keyData is (Keys.Control | Keys.V) or (Keys.Control | Keys.C) or Keys.Delete or Keys.Escape
             or (Keys.Control | Keys.Z) or (Keys.Control | Keys.Y) or (Keys.Control | Keys.Shift | Keys.Z))
         {
             return base.ProcessCmdKey(ref msg, keyData);
@@ -2921,6 +2944,21 @@ internal sealed partial class MainForm : Form
         }
     }
 
+    /// <summary>
+    /// The MP4 and GIF entries' tooltips: the size of the video they produce, the grid as it stands — clamped
+    /// to the Video size, its sides even (workfiles/20261104-custom-output-format.md § Sizing).
+    /// </summary>
+    private void RefreshVideoSizeTooltips()
+    {
+        string? text = this.PngSize(AppSettings.VideoMaxSide) is { } size && Animation.EvenSize(size) is var video
+            ? $"{video.Width} × {video.Height}, its longer side at most the Video size, {AppSettings.VideoMaxSide} px"
+            : null;
+        foreach (var item in new[] { this._copyMp4, this._copyGif, this._saveMp4, this._saveGif })
+        {
+            item.ToolTipText = text;
+        }
+    }
+
     /// <summary>The Copy and Save tooltips: the size of the PNG they produce, none while they produce a video.</summary>
     private void RefreshPngSizeTooltips()
     {
@@ -3031,7 +3069,124 @@ internal sealed partial class MainForm : Form
     private bool TwitterCornersApply => _preview.Format == OutputFormat.Twitter;
 
     /// <summary>Whether the format is as the app starts: Twitter.</summary>
-    private bool FormatInitial => _preview.Format == OutputFormat.Twitter;
+    private bool FormatInitial => _preview.Format == OutputFormat.Twitter && this._preview.Custom is null;
+
+    /// <summary>A Custom field focused: the keys a text field takes are its own.</summary>
+    private bool IsEditingCustomField => this._customWidth.ContainsFocus || this._customHeight.ContainsFocus;
+
+    /// <summary>A Custom format field: a number, its bounds set by the mode (<see cref="ShowCustomFields"/>).</summary>
+    private static NumericUpDown CustomField() => new()
+    {
+        Minimum = CustomFormat.MinRatioSide,
+        Maximum = CustomFormat.MaxSide,
+        Width = 64,
+        TextAlign = HorizontalAlignment.Right,
+        Anchor = AnchorStyles.Left,
+        Margin = new Padding(3, 3, 0, 3),
+    };
+
+    /// <summary>The tooltip of a Custom field, on its text box and its arrows too.</summary>
+    private void SetCustomFieldTip(NumericUpDown field, string tip)
+    {
+        this._toolTip.SetToolTip(field, tip);
+        foreach (Control part in field.Controls)
+        {
+            this._toolTip.SetToolTip(part, tip);
+        }
+    }
+
+    /// <summary>The Custom fields' values while unset: a ratio of the PNG native size of the format in force.</summary>
+    private CustomFormat CustomDefault() =>
+        CustomFormat.RatioOf(this.PngSize(CanvasSizer.MaxLongSide) ?? CanvasSizer.Smallest(this._preview.CanvasRatio));
+
+    /// <summary>
+    /// A Custom field changed: <paramref name="committed"/>, its value — arrows, wheel, Enter, focus leaving —
+    /// brought back within the bounds against the other field; else its text as typed, applied live only while it
+    /// fits as it is, so a number typed digit by digit is never rewritten under the caret. Picks Custom.
+    /// </summary>
+    private void CustomFieldChanged(bool width, bool committed)
+    {
+        if (this._showingCustom || this.IsExporting)
+        {
+            return;
+        }
+
+        var field = width ? this._customWidth : this._customHeight;
+        var current = this._preview.Custom ?? this.CustomDefault();
+        int value;
+        if (committed)
+        {
+            value = (int)field.Value;
+        }
+        else if (!int.TryParse(field.Text, out value) || !CustomFormat.Fits(value, width ? current.Height : current.Width, current.Exact))
+        {
+            return;
+        }
+
+        this.ApplyCustom(width ? current.WithWidth(value) : current.WithHeight(value), committed);
+    }
+
+    /// <summary>The Exact pixels checkbox changed: the fields brought within the new mode's bounds. Picks Custom.</summary>
+    private void CustomExactChanged()
+    {
+        if (this._showingCustom || this.IsExporting)
+        {
+            return;
+        }
+
+        this.ApplyCustom((this._preview.Custom ?? this.CustomDefault()).WithExact(this._customExact.Checked), rewrite: true);
+    }
+
+    /// <summary>
+    /// <paramref name="custom"/> in force: acting on a Custom field picks the Custom format (the Format's
+    /// <i>acting on any option activates the effect</i>); <paramref name="rewrite"/>, the fields show it at once,
+    /// the focused one included.
+    /// </summary>
+    private void ApplyCustom(CustomFormat custom, bool rewrite)
+    {
+        this._preview.Custom = custom;
+        if (this._preview.Format != OutputFormat.Custom)
+        {
+            this._preview.Format = OutputFormat.Custom;
+            this._preview.Borders = this.ActiveBorders;
+        }
+
+        this.UpdateButtons();
+        if (rewrite)
+        {
+            this.ShowCustomFields(all: true);
+        }
+    }
+
+    /// <summary>
+    /// The Custom fields and the Custom thumbnail as the state stands: its values, or, unset, the values its
+    /// first pick takes, greyed. A focused field keeps its text unless <paramref name="all"/>: the user is typing.
+    /// </summary>
+    private void ShowCustomFields(bool all = false)
+    {
+        var custom = this._preview.Custom ?? this.CustomDefault();
+        this._formatStrip.SetCustom(this._preview.Custom, custom.Ratio);
+        this._showingCustom = true;
+        try
+        {
+            this._customExact.Checked = custom.Exact;
+            foreach (var (field, value) in new[] { (this._customWidth, custom.Width), (this._customHeight, custom.Height) })
+            {
+                if (all || !field.ContainsFocus)
+                {
+                    field.Minimum = CustomFormat.MinRatioSide;
+                    field.Value = value;
+                    field.Minimum = custom.MinSide;
+                }
+
+                field.ForeColor = this._preview.Custom is null ? SystemColors.GrayText : SystemColors.WindowText;
+            }
+        }
+        finally
+        {
+            this._showingCustom = false;
+        }
+    }
 
     /// <summary>Whether the borders are as the app starts: off, with their initial settings.</summary>
     private bool BordersInitial => !_bordersOn && _borders == GridBorders.Initial(AppSettings.DefaultBorderColor, _roundedByDefault);
@@ -4766,6 +4921,12 @@ internal sealed partial class MainForm : Form
             return;
         }
 
+        // Custom first picked: its fields take the native size of the format in force (workfiles/20261104-custom-output-format.md).
+        if (format == OutputFormat.Custom && this._preview.Custom is null)
+        {
+            this._preview.Custom = this.CustomDefault();
+        }
+
         _preview.Format = format;
         _preview.Borders = ActiveBorders;
         UpdateButtons();
@@ -4787,6 +4948,7 @@ internal sealed partial class MainForm : Form
         if (effect is null or GlobalEffect.Format)
         {
             _preview.Format = OutputFormat.Twitter;
+            this._preview.Custom = null;
             _preview.Borders = ActiveBorders;
         }
 
@@ -4971,6 +5133,7 @@ internal sealed partial class MainForm : Form
         this._preview.LayersActive = this._selectedGlobalEffect == GlobalEffect.Layers && enabled;
         _formatStrip.Selected = _preview.Format;
         _formatStrip.SetGrid(_preview.ActiveLayout, _preview.FreeRatio);
+        this.ShowCustomFields();
         foreach (var (effect, row) in _globalOptions)
         {
             row.Visible = _selectedGlobalEffect == effect;
