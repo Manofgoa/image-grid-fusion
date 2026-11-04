@@ -270,6 +270,9 @@ internal sealed partial class MainForm : Form
         TextImageRelation = TextImageRelation.ImageBeforeText,
     };
 
+    // Why an upscale is not possible for the selected image, said after the Upscale button; empty when all are.
+    private readonly Label _upscaleReason = new() { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(12, 0, 0, 0), MaximumSize = new Size(320, 0) };
+
     // The Upscale options' setting chosen, for the image and the setting applied it was chosen from (UpscaleChosen).
     private (SourceImage Image, UpscaleEffect Applied, UpscaleEffect Chosen)? _upscaleChoice;
     private readonly PictureBox _blurIntensityIcon = new() { SizeMode = PictureBoxSizeMode.CenterImage, Anchor = AnchorStyles.Left };
@@ -585,7 +588,7 @@ internal sealed partial class MainForm : Form
         cutoutEnclosedLines.FlowDirection = FlowDirection.TopDown;
         cutoutEnclosedLines.Controls.AddRange([cutoutToleranceLine, cutoutGapsLine]);
         this._options[ImageEffect.Cutout].Controls.AddRange([this._cutoutMode, cutoutEnclosedLines, this._cutoutReach, this._cutoutBackground, cutoutLines]);
-        this._options[ImageEffect.Upscale].Controls.AddRange([this._upscaleModel, this._upscaleStrip, this._upscaleButton]);
+        this._options[ImageEffect.Upscale].Controls.AddRange([this._upscaleModel, this._upscaleStrip, this._upscaleButton, this._upscaleReason]);
         _options[ImageEffect.Zoom].Controls.AddRange([_zoom, _zoomLabel, this._zoomFit]);
         this._motionKind.Items.AddRange(Enum.GetNames<MotionKind>());
         this._motionKind.SelectedIndex = (int)MotionEffect.Default.Kind;
@@ -4008,6 +4011,31 @@ internal sealed partial class MainForm : Form
         return this._upscaleChoice!.Value.Chosen;
     }
 
+    /// <summary>
+    /// Why the Upscale cannot enlarge <paramref name="image"/>, or not every way: the content it does not apply to, else each
+    /// factor refused with the size it would make; empty when every factor is possible (workfiles/20261029-image-upscale.md
+    /// § Effect and Options).
+    /// </summary>
+    private static string UpscaleReason(SourceImage image)
+    {
+        if (!image.Upscales)
+        {
+            return Unavailable(ImageEffect.Upscale, image) ?? "";
+        }
+
+        // The smallest factor refused tells it all: the larger ones are refused with it.
+        var size = image.UpscaleSize;
+        var refused = UpscaleEffect.Factors.Where(factor => !UpscaleEffect.Fits(size, factor)).ToList();
+        if (refused.Count == 0)
+        {
+            return "";
+        }
+
+        int first = refused[0];
+        string make = $"×{first} would make {size.Width * first} × {size.Height * first} px, past the {CanvasSizer.MaxLongSide} px a PNG holds";
+        return refused.Count == UpscaleEffect.Factors.Count ? $"Too large to upscale: {make}" : make;
+    }
+
     /// <summary>A thumbnail of the Upscale options picked: the setting chosen changes, nothing is computed nor turned on.</summary>
     private void ChooseUpscale(Func<UpscaleEffect, UpscaleEffect> change)
     {
@@ -4446,6 +4474,7 @@ internal sealed partial class MainForm : Form
             this._upscaleModel.Selected = chosen.Model;
             this._upscaleStrip.Show(chosen.Factor, factor => UpscaleEffect.Fits(upscaled, factor));
             this._upscaleButton.Enabled = UpscaleEffect.Fits(upscaled, chosen.Factor) && (look.Upscale != chosen || image.UpscalePending);
+            this._upscaleReason.Text = UpscaleReason(image);
 
             if (look.TurnOn(ImageEffect.Blur).Blur is { } blur)
             {
