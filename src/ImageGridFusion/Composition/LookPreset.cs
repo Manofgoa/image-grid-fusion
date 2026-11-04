@@ -188,7 +188,9 @@ internal static class LookPreset
     {
         string trim = frames.Last is { } last ? $"frames {frames.First} → {last}"
             : frames.First > 0 ? $"from frame {frames.First}" : "whole";
-        return frames.Frozen ? $"{trim}, frozen" : $"{trim}, starting at {Percent(frames.Position)}";
+        return frames.Frozen ? $"{trim}, frozen"
+            : frames.Speed != FramesEffect.Default.Speed ? $"{trim}, starting at {Percent(frames.Position)}, {FramesEffect.SpeedText(frames.Speed)}"
+            : $"{trim}, starting at {Percent(frames.Position)}";
     }
 
     private static string RatioName(double ratio) =>

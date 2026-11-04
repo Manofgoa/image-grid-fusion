@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json.Nodes;
 
 namespace ImageGridFusion.Composition;
@@ -6,11 +7,21 @@ namespace ImageGridFusion.Composition;
 /// The frames effect of an animated image (video, animated GIF, PDF of several pages, long text):
 /// where it starts playing, or, frozen, the frame it shows — in the preview and in the exports. A
 /// video or an animated GIF may also be trimmed: only its frames from <see cref="First"/> to
-/// <see cref="Last"/> play (workfiles/20261008-video-trim.md).
+/// <see cref="Last"/> play (workfiles/20261008-video-trim.md). Every animated image plays at a
+/// <see cref="Speed"/>, a multiple of its own pace (workfiles/20260926-frames-speed.md).
 /// </summary>
 public sealed record FramesEffect
 {
-    /// <summary>From the beginning, playing, untrimmed.</summary>
+    /// <summary>The slowest speed: a quarter of the content's own pace.</summary>
+    public const double MinSpeed = 0.25;
+
+    /// <summary>The fastest speed: four times the content's own pace.</summary>
+    public const double MaxSpeed = 4;
+
+    /// <summary>The speed's step, from <see cref="MinSpeed"/> to <see cref="MaxSpeed"/>.</summary>
+    public const double SpeedStep = 0.25;
+
+    /// <summary>From the beginning, playing, untrimmed, at its own pace.</summary>
     public static readonly FramesEffect Default = new();
 
     /// <summary>
@@ -28,6 +39,12 @@ public sealed record FramesEffect
     /// <summary>Last frame of the trim, played too; <c>null</c> for the last frame of the content.</summary>
     public int? Last { get; private init; }
 
+    /// <summary>
+    /// Multiple of the content's own pace it plays at — a video's frame rate, a GIF's delays, the step of
+    /// a PDF or a text (<see cref="Animation.StepDuration"/>) — its sound with it: 1 by default.
+    /// </summary>
+    public double Speed { get; private init; } = 1;
+
     /// <summary>The frame at <see cref="Position"/> among <paramref name="count"/>.</summary>
     public int PageOf(int count) => count <= 1 ? 0 : (int)Math.Round(Position * (count - 1));
 
@@ -35,6 +52,16 @@ public sealed record FramesEffect
     public FramesEffect AtPage(int page, int count) => this with { Position = count <= 1 ? 0 : Math.Clamp(page / (double)(count - 1), 0, 1) };
 
     public FramesEffect WithFrozen(bool frozen) => this with { Frozen = frozen };
+
+    /// <summary>At <paramref name="speed"/>, brought onto a step of the range.</summary>
+    public FramesEffect WithSpeed(double speed) => this with { Speed = SpeedOf(speed) };
+
+    /// <summary><paramref name="speed"/> brought onto a step of the range.</summary>
+    public static double SpeedOf(double speed) =>
+        double.IsFinite(speed) ? Math.Clamp(Math.Round(speed / SpeedStep) * SpeedStep, MinSpeed, MaxSpeed) : Default.Speed;
+
+    /// <summary><paramref name="speed"/> as the options and the presets write it: <c>×1</c>, <c>×0.25</c>, <c>×1.5</c>.</summary>
+    public static string SpeedText(double speed) => "×" + speed.ToString("0.##", CultureInfo.InvariantCulture);
 
     /// <summary>The trim's first frame among <paramref name="count"/>.</summary>
     public int FirstOf(int count) => Math.Clamp(this.First, 0, Math.Max(0, count - 1));
@@ -62,6 +89,7 @@ public sealed record FramesEffect
         ["frozen"] = this.Frozen,
         ["first"] = this.First,
         ["last"] = this.Last,
+        ["speed"] = this.Speed,
     };
 
     /// <summary>The settings <see cref="ToJson"/> wrote.</summary>
@@ -74,6 +102,7 @@ public sealed record FramesEffect
             Frozen = PresetJson.Bool(json, "frozen", Default.Frozen),
             First = first,
             Last = PresetJson.NullableInt(json, "last") is { } last ? Math.Max(first, last) : null,
+            Speed = SpeedOf(PresetJson.Double(json, "speed", Default.Speed)),
         };
     }
 }
