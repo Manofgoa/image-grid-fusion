@@ -79,8 +79,9 @@ global effect.
   options turns it on; its own *Reset*, the tabs' *Reset* and *Clear all* bring back its **initial
   state** (off, the color following cell 1).
 - **Color while never activated**: as long as the effect has **never been on**, its color follows
-  the **automatic background color of cell 1** (`Compositor.AutomaticBackground`). The first time it
-  is turned on, that color is taken as its own and no longer follows cell 1. Its Resets and
+  the **automatic background color of cell 1** (`Compositor.AutomaticBackground`) — cell 1 empty, the
+  first cell holding an image; white when the grid holds none (Q&A #11). The first time it is turned
+  on, that color is taken as its own and no longer follows cell 1. Its Resets and
   **Clear all** bring back that following behaviour.
 
 ### Turning It On and Off
@@ -153,7 +154,9 @@ shared fill's settings (`BackgroundEffect.ToJson` / `FromJson`, a missing key gi
   - **White**;
   - **Chosen**: a color picked with the eyedropper or Color….
 
-  Its default and whether *Auto, last cell* follows the cells live: *Open questions*.
+  Its default is **Auto, last cell** in the global effect — **following the cells live** while it is
+  chosen, like the cell Background's automatic color (Q&A #14, #15) — and **Darker** in a cell's
+  Background, which has no Auto.
 
 ## UI
 
@@ -173,12 +176,12 @@ shared fill's settings (`BackgroundEffect.ToJson` / `FromJson`, a missing key gi
 
 ## Test Impact
 
-No test project exists in the repository (`src/` holds `ImageGridFusion` only). Pending the answer
-to the tests question below.
+**None** (Q&A #12): the repository has no test project, and none is created; the work is checked by
+hand on the launched app.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| *Pending — see Open Questions* | | |
+| — nothing: no test project | — | — |
 
 ---
 
@@ -199,14 +202,17 @@ to the tests question below.
   Two colors; an angle for the linear, the canvas center for the radial.
 - [x] ~~Gradient second color: what default?~~ → Not one default: a choice among Auto (last cell),
   Darker, Black, White and a chosen color.
-- [ ] Color 2: which of the five is the default?
-- [ ] Color 2 *Auto, last cell*: follows the cells live, or frozen like color 1 once activated?
+- [x] ~~Color 2: which of the five is the default?~~ → Auto, last cell in the global effect; Darker
+  in a cell.
+- [x] ~~Color 2 *Auto, last cell*: follows the cells live, or frozen like color 1 once activated?~~ →
+  Live.
 - [x] ~~Opacity: opaque only, or an opacity slider (PNG alpha, white under the other outputs)?~~ →
   An opacity per color, after its Color… — settled by RULES.md § Color Options, written since (see
   Iteration 4).
-- [ ] Color while never activated, when cell 1 holds no image: which color?
+- [x] ~~Color while never activated, when cell 1 holds no image: which color?~~ → The first cell
+  holding an image; white when none.
 - [x] ~~The tab's label?~~ → **Grid background**, the backlog's name.
-- [ ] Unit tests: none (no test project), or create one?
+- [x] ~~Unit tests: none (no test project), or create one?~~ → None.
 - [x] ~~Scope against the backlog: keep this workfile's own fill model, or move to the shared painter
   of *Shared fill and grid background*?~~ → The shared painter (§ Shared Fill).
 - [x] ~~A preset saved from a cell whose Background the forced background turned off: save the
@@ -297,6 +303,11 @@ labelled **Grid background**; the backlog rows are marked — *Shared fill and g
 *Gradient fills* (linear and radial) point here, conic, mesh, dominant-color Auto and grain split
 into *Gradient fills, the rest*.
 
+### Iteration 7 — 2026-11-04
+
+Last answers: color 2 defaults to Auto, last cell (global, live) and Darker (cell); cell 1 empty, the
+first cell holding an image, else white; no unit tests. No open question left.
+
 ---
 
 ## Implementation Log
@@ -323,11 +334,11 @@ into *Gradient fills, the rest*.
 | 8 | Gradient definition: two colors + angle / fixed center, or more? | Two colors, fixed center | 2026-10-10 |
 | 9 | Gradient second color default? | Offer the four (Auto last cell, Darker, Black, White) plus a chosen color | 2026-10-10 |
 | 10 | Opacity: opaque only or a slider? | Not asked — settled by RULES.md § Color Options (an opacity per color) | 2026-11-04 |
-| 11 | Color while never activated, cell 1 empty? | | |
-| 12 | Unit tests: none or create a test project? | | |
+| 11 | Color while never activated, cell 1 empty? | The first cell holding an image; white when none | 2026-11-04 |
+| 12 | Unit tests: none or create a test project? | None | 2026-11-04 |
 | 13 | The tab's label? | See #22 | 2026-11-04 |
-| 14 | Color 2: which of the five is the default? | | |
-| 15 | Color 2 Auto (last cell): live, or frozen once activated? | | |
+| 14 | Color 2: which of the five is the default? | Auto, last cell (global); Darker (cell) | 2026-11-04 |
+| 15 | Color 2 Auto (last cell): live, or frozen once activated? | Live | 2026-11-04 |
 | 16 | Scope against the backlog: own fill model, or the shared painter of *Shared fill and grid background*? | The shared painter | 2026-11-04 |
 | 17 | A preset saved from a cell whose Background the effect turned off: Background off or as before? | As before | 2026-11-04 |
 | 18 | Turning the effect on: the layers' Background left alone or turned off? | Left alone | 2026-11-04 |
