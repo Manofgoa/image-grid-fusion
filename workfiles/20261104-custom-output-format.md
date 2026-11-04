@@ -207,6 +207,12 @@ Bounds settled (Q&A #9): the shape between 1:10 and 10:1 — applied with *Exact
 an exact size cannot be more elongated than a ratio —, a side between 100 and 8192 px with exact
 pixels. No question left open.
 
+### Iteration 4 — 2026-11-04 — ✅ Implemented
+
+Go given: code, checks and documentation, in a worktree (`feature/custom-output-format`). The
+backlog row *Custom output format* is marked with this workfile. Scope frozen as the sections above
+stand.
+
 ---
 
 ## Implementation Log
