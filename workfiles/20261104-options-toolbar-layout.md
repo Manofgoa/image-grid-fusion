@@ -50,7 +50,7 @@ A, else B**.
 - **Lines top-aligned** in the toolbar, never centered.
 - **The toolbars' height is kept**: § Options Toolbar's rule stands — one height, the tallest options' —
   so nothing moves when another tab is selected. C fills that height with lines, then wraps into columns;
-  the toolbar never grows for it.
+  the toolbar never grows for it — beyond the room kept for the scrollbar (§ Fit Rule).
 
 ### Estimated Heights (to be measured in the run)
 
@@ -111,9 +111,15 @@ icon buttons, then the text field. Then the lines:
 
 - **Decided once per tab**, at design time: each migrated tab has **one layout**, C, A or B, fixed in its
   code — never recomputed when the window is resized. It is the first of C, A, B whose columns of lines fit
-  the toolbar's width at the **reference width** of the window (open question 7), the Reset button aside.
-- **A layout wider than the window** is scrolled sideways: a **horizontal scrollbar** shows under the options
-  while they do not fit (its place in the fixed height: open question 8). Nothing is clipped.
+  the toolbar's width with the window **1920 px wide** (maximized on a Full HD screen), the Reset button
+  aside. Estimated: Background in C (≈ 1 250 px), Frames in C (≈ 900 px), Layers in C if it fits once
+  measured (≈ 1 800 px), else in A. The run measures each pilot and reports the layout it fixed.
+- **A layout wider than the window** is scrolled sideways by a **horizontal scrollbar** under the options,
+  shown while they do not fit. Nothing is clipped in a migrated tab.
+- **Room is kept for the scrollbar** at the bottom of **both** options toolbars, in every tab, whether it
+  shows or not: each toolbar is taller by a scrollbar's height (`SystemInformation.HorizontalScrollBarHeight`,
+  ≈ 17 px), so nothing moves when it appears or when another tab is selected. A tab not migrated yet keeps
+  its `FlowLayoutPanel`, clipped at the right as today, the room left empty under it.
 - **In a column of lines**, the leading elements — checkboxes and captions — share **one width**, so the
   controls of its lines start aligned; a **thin vertical line** separates two columns (and a tall block from
   the next column).
@@ -126,27 +132,32 @@ One description of a tab's options, laid out three ways — never three hand-bui
   controls) plus, ahead of them, its **tall blocks** (the Layers' list and text field). Built once per tab
   in place of today's `OptionLine()` nesting, with the layout chosen for the tab (§ Fit Rule).
 - **A labeled slider** is one control: the slider, its name, its value — drawn as C wants it (name and
-  value above) or as A wants it (the value after it, the name in the label column).
+  value above) or as A wants it (the value after it, the name in the label column). **One compact width**,
+  ≈ 120 logical px, for every slider of a migrated tab — the Frames' trim and starting-point sliders aside,
+  ≈ 200, to aim at a frame. A slider with an icon (the opacity's) keeps it **at the left of the slider**, as
+  today, its name and value above the slider only.
 - **One layout panel** per options row, replacing the pilot tabs' `FlowLayoutPanel`: it arranges the lines
   in the tab's layout — C, A or B — within the toolbar's height, scrolled sideways when wider than the
   window (§ Fit Rule), the controls themselves never rebuilt — the events, tooltips and state updates of today's code keep their controls.
-- **The height** stays computed by `FitEffectRows()` from every tab's preferred height; a pilot tab's
-  preferred height is that of its tallest line or block — never more — so the toolbars' heights do not
-  change.
+- **The height** stays computed by `FitEffectRows()` from every tab's preferred height, plus the
+  scrollbar's room; a pilot tab's preferred height is that of its tallest line or block — never more.
 - The other tabs keep their `FlowLayoutPanel` until they are migrated.
 
 ---
 
 ## Rules and Backlog
 
-- **RULES.md § Options Toolbar** gains a **Feature Lines** part: one feature per line, C then A then B,
-  the fit rule, the labeled slider's shape — the rule every migrated tab follows (open question 6).
+- **RULES.md § Options Toolbar** gains a **Feature Lines** part, written now for every tab: one feature per
+  line, C then A then B fixed per tab at 1920 px, the leading elements' shared width and the columns' line,
+  the scrollbar and its kept room, the labeled slider's shape — the rule every migrated tab follows, the
+  pilots first; its *one height* sentence says the scrollbar's room is part of it. § Global Toolbar points
+  to it.
 - **RULES.md § Color Options** — the opacity's shape (*the opacity icon, a slider, `Opacity: N %`*)
-  becomes, in a migrated tab, the icon and `Opacity` over the slider, `N %` at the right (open question 5).
+  becomes, in a migrated tab, the icon at the left of the slider, `Opacity` and `N %` above it.
 - **GLOSSARY.md / GLOSSARY.fr.md**: *Feature line* (*ligne de fonctionnalité*).
 - **TODO-FEATURES.md**: no existing row matches this work. A row for the **tabs left to migrate**, and the
   Global toolbar's choices that are not option thumbnails yet (the Borders' style drop-down, the Fade's
-  curve radio buttons) — open question 6.
+  curve radio buttons) — added by the run.
 
 ---
 
@@ -157,9 +168,9 @@ unit test is created or updated. The run checks by hand:
 
 | Behaviour to check | Where | Create / Update |
 |---|---|---|
-| Background, Frames and Layers show one feature per line, top-aligned, in C at the usual window width | The running app | Manual check |
-| Narrowing the window switches a pilot tab to A, then B, as the fit rule says | The running app | Manual check |
-| Neither toolbar changes height; switching tabs moves nothing | The running app | Manual check |
+| Background, Frames and Layers show one feature per line, top-aligned, in their fixed layout, the window maximized at 1920 px | The running app | Manual check |
+| Narrowing the window shows the scrollbar under a pilot tab and scrolls it; the layout does not change | The running app | Manual check |
+| Each toolbar is taller by the scrollbar's room only; switching tabs and the scrollbar appearing move nothing | The running app | Manual check |
 | Every pilot control still works: activates its effect, undo, Resets, tooltips, eyedroppers | The running app | Manual check |
 | The other tabs look as before | The running app | Manual check |
 
@@ -175,13 +186,15 @@ unit test is created or updated. The run checks by hand:
   A thin line between two columns of lines?~~ → Both
 - [x] ~~4. **The feature lines of the pilot tabs** as listed in § Feature Lines of the Pilot Tabs.~~ → As listed;
   the Frames' hand-made separators go
-- [ ] 5. **The labeled slider**: one compact width for every slider (≈ 120 px; the Frames' frame sliders
-  wider), the opacity icon before its name above the slider (§ Color Options updated)?
-- [ ] 6. **Rules and backlog**: RULES.md § Options Toolbar › Feature Lines written now for every tab, and a
-  TODO-FEATURES row for the tabs left to migrate and the Global choices that are not thumbnails yet?
-- [ ] 7. **The reference width** at which each tab's layout is decided?
-- [ ] 8. **The scrollbar's place**: room kept for it under the options in every tab, the toolbar taller by
-  it; the toolbar growing only while it shows; or scroll arrows at the ends instead?
+- [x] ~~5. **The labeled slider**: one compact width for every slider (≈ 120 px; the Frames' frame sliders
+  wider), the opacity icon before its name above the slider (§ Color Options updated)?~~ → One width but the
+  Frames' frame sliders; the opacity icon stays at the left of the slider
+- [x] ~~6. **Rules and backlog**: RULES.md § Options Toolbar › Feature Lines written now for every tab, and a
+  TODO-FEATURES row for the tabs left to migrate and the Global choices that are not thumbnails yet?~~ → Both
+- [x] ~~7. **The reference width** at which each tab's layout is decided?~~ → 1920 px, the window maximized
+- [x] ~~8. **The scrollbar's place**: room kept for it under the options in every tab, the toolbar taller by
+  it; the toolbar growing only while it shows; or scroll arrows at the ends instead?~~ → Room kept in every
+  tab, both toolbars taller by it
 
 ---
 
@@ -201,6 +214,14 @@ Open questions 1 to 4 answered: each tab's layout is **fixed at design time** (n
 resize); a layout wider than the window gets a **horizontal scrollbar**; the leading elements of a column
 share one width and columns are split by a thin line; the pilot tabs' lines are agreed as listed. New § Fit
 Rule. Two questions follow from them: the reference width (7) and the scrollbar's place in a fixed height (8).
+
+### Iteration 3 — 2026-11-04
+
+Open questions 5 to 8 answered: the layouts are fixed at a **1920-px** window; the **room for the scrollbar
+is kept** at the bottom of both toolbars, in every tab, so they grow by its height once and never move
+afterwards; every slider of a migrated tab has **one compact width**, the Frames' frame sliders aside, the
+opacity icon **kept at the left of the slider**; RULES.md § Options Toolbar › Feature Lines is written now,
+and a TODO-FEATURES row keeps the tabs left to migrate. Every open question is answered.
 
 ---
 
@@ -229,10 +250,10 @@ Rule. Two questions follow from them: the reference width (7) and the scrollbar'
 | 6 | Open question 2 — when B does not fit: clipped or scrolled? | A horizontal scrollbar | 2026-11-04 |
 | 7 | Open question 3 — leading elements of a column one width; a line between columns? | Both | 2026-11-04 |
 | 8 | Open question 4 — the pilot tabs' feature lines as listed? | Yes, as listed | 2026-11-04 |
-| 9 | Open question 5 — the labeled slider's width and the opacity icon? | | 2026-11-04 |
-| 10 | Open question 6 — RULES.md Feature Lines now, and a backlog row for the rest? | | 2026-11-04 |
-| 11 | Open question 7 — the reference width? | | 2026-11-04 |
-| 12 | Open question 8 — the scrollbar's place in the fixed height? | | 2026-11-04 |
+| 9 | Open question 5 — the labeled slider's width and the opacity icon? | One width (Frames' wider); icon at the left of the slider | 2026-11-04 |
+| 10 | Open question 6 — RULES.md Feature Lines now, and a backlog row for the rest? | Both | 2026-11-04 |
+| 11 | Open question 7 — the reference width? | 1920 px, maximized | 2026-11-04 |
+| 12 | Open question 8 — the scrollbar's place in the fixed height? | Room kept in every tab | 2026-11-04 |
 
 ---
 
