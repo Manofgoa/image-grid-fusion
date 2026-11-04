@@ -156,6 +156,10 @@ itself unchanged, the cell untouched:
   covered by itself. **Exports wait** for the upscales they draw (`WaitForUpscalesAsync` beside
   `WaitForCutoutsAsync`, under `BeginExport`); one that fails is drawn as it is, the status line
   saying why.
+- **Once ready**, the cell is drawn again at once (its share of the preview's cache), as a cut-out is.
+- **The preview draws a reduced copy** (Q&A 18): an enlarged image larger than its cell is drawn in
+  the preview from a copy scaled down to about its cell, never from the full enlargement; the exports,
+  Cell copy and *Save upscaled image…* read the full enlargement, the highest resolution usable.
 - **Undo history**: nothing special — the effect is on the look; the upscaled bitmap is a cache of
   the `SourceImage`, weighed by `MemoryBytes` in the history's budget.
 
@@ -296,6 +300,20 @@ What the run decided on its own, the domain sections updated to match. No projec
   the Hugging Face API. The first run of the models is the user's test, once the engine is installed
   from the Component updates window.
 
+### Iteration 8 — 2026-11-04 — ⚙️ Post-implementation — Freeze after a ×4 upscale
+
+The user's first test: a 1024 × 1536 image upscaled ×4 reached 96 % (23 tiles of 24), then the app
+froze and Windows closed it (`AppHangB1`: the UI thread stopped answering, no exception). Measured
+apart: a tile takes ~12 s and ~800 MB; composing the preview with the 4096 × 6144 enlargement takes
+~0.1 s, the 8192 px PNG ~0.5 s, a paint of the preview after the delivery under 5 ms — the cause lies
+elsewhere, looked for with the frozen UI thread's stack.
+
+- **Found on the way**: the delivery only invalidated the preview, whose cache is drawn again only
+  when the images change — the cell kept showing the image as loaded. It is drawn again at once, as a
+  cut-out is (fixes code that betrayed the design).
+- **Asked by the user** (Q&A 18): the preview may draw the images reduced; the highest resolution is
+  what the final export needs. § Drawn Bitmap updated.
+
 ---
 
 ## Implementation Log
@@ -336,7 +354,9 @@ Questions asked by the agent during design, with user responses.
 | 15 | A GIF: animated GIF or the frame shown? | An animated GIF | 2026-11-03 |
 | 16 | Mark the backlog row *AI upscale* with this workfile? | Yes | 2026-11-03 |
 | 17 | Go for implementation — scope and where? | Code, tests and documentation — in a worktree | 2026-11-03 |
+| 18 | (User remark on the freeze) How must the preview draw an enlarged image? | Reduced if need be; the highest resolution is for the final export | 2026-11-04 |
+| 19 | Download dotnet-stack into the scratchpad to read the frozen stack? | Yes | 2026-11-04 |
 
 ---
 
-*Last updated: 2026-11-03*
+*Last updated: 2026-11-04*
