@@ -701,8 +701,8 @@ While the Cascade global effect is on, the videos and animated GIFs that play ta
 of playing at once (origin: `workfiles/20261008-video-cascade.md`), one definition,
 `Composition/CascadeSchedule`:
 
-- In **cell order**; a turn is one whole loop of the played part from the starting point
-  (`SourceImage.PlayedLength`), followed by the effect's pause; the cascade starts over after the last.
+- In **cell order**; a turn is one whole loop of the played part from the starting point, at its
+  speed (`SourceImage.LoopLength`), followed by the effect's pause; the cascade starts over after the last.
   Before its turn a content stands on its starting point, after it on the last frame it played; it is
   heard during its turn only.
 - The grid's loop is then the whole cascade, or a loop played alongside when longer — a content
@@ -724,6 +724,23 @@ and `SourceImage.PlayedLength`, the whole content untrimmed or for a PDF or a te
   content's time reads it there, never `PageSource.LoopDuration`.
 - A video's pages are its **frames**, at the file's frame rate (`VideoFrames`), so the trim and the
   starting point stand on any of them; the starting point stays inside the trim (`SourceImage.StartPage`).
+
+#### Speed
+
+A content plays at the Frames effect's **speed** (origin: `workfiles/20260926-frames-speed.md`), one
+definition, on `SourceImage`:
+
+- **Two clocks**: the **loop time**, on the grid's clock — what the clock, the Cascade, the video
+  length and the progress line count — and the **content time**, what the frames and the sound are
+  read at. `SourceImage.LoopLength` (`PlayedLength / Speed`) and `StartTime` are loop time;
+  `PlayedFrom` and `PlayedLength` are content time; `ContentTime` goes from one to the other
+  (`Animation.AtSpeed`, shared with the export's `GridExport.Item`).
+- A new reader of a content's loop reads `LoopLength`, never `PlayedLength`; a new reader of its
+  frames goes through `ContentTime`. `SourceImage.Speed` is 1 for a content that does not play.
+- **The sound follows, its pitch with it**: the preview's node plays at the speed
+  (`AudioFileInputNode.PlaybackSpeedFactor`, `PreviewSound.Sync`); the export's voice decodes the
+  file at the mix's rate divided by the speed and mixes it sample for sample (`MixedSound.Speed`).
+  No time-stretching.
 
 ## Export Memory
 
