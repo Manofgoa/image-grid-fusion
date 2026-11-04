@@ -43,9 +43,12 @@ Components: `UI/ThumbnailGrid` (layout, hit-test, keyboard, paint), `UI/FileExpl
   first, then the items without a group:
   1. one section per **folder prefix** group, A→Z by prefix;
   2. **Other folders** — the folders in no prefix group;
-  3. **Named files** — the files in no pattern group: the human names, and the machine names whose
+  3. one section per **series** — named files sharing their first words, 3 files or more —
+     A→Z (Iteration 8);
+  4. **Named files** — the files in no group: the human names, and the machine names whose
      pattern is turned off and no other pattern takes (Q&A 9, 10);
-  4. one section per **file pattern** group, in the patterns' order.
+  5. one section per **file pattern** group, in the patterns' order, a known source's and a
+     detected source's included.
 
   The files break "the groups first": the human names, the more telling, come before the pattern
   groups (Q&A 9).
@@ -71,15 +74,22 @@ Components: `UI/ThumbnailGrid` (layout, hit-test, keyboard, paint), `UI/FileExpl
 
 A file whose name a machine made up rather than a person falls into the group of its **pattern**,
 matched on the name without its extension (`Explorer/NamePatterns`, a new pure class). Every stamp
-kind counts (Q&A 7). Proposed patterns, **in the order they are tried**:
+kind counts (Q&A 7). The patterns, **in the order they are tried** (Iteration 8):
 
 | Group | Pattern | Examples |
 |---|---|---|
-| **Camera** | Camera / device stamp | `IMG_20220321_132643`, `VID_…`, `PXL_…`, `DSC_0042`, `DCIM…` |
+| **Camera** | Camera / device stamp; `P` and exactly 7 digits | `IMG_20220321_132643`, `VID_…`, `PXL_…`, `DSC_0042`, `P1010001` |
 | **Screenshots** | Screenshot stamp | `Screenshot_2026-11-03-10-24-09`, `Capture d'écran 2026-11-03 102409` |
-| **Messaging** | Messaging app stamp | `WhatsApp Image 2026-11-03 at 10.24.09`, Telegram, Signal… |
-| **Identifiers** | GUID, long hex run (hash, 16 hex digits or more), random token (10 characters or more, letters and digits mixed, no word-like run) | `3f2504e0-4f89-11d3-9a0c-0305e82c3301`, `a94a8fe5ccb19ba6…`, `F3xKz9aWkAA1b2c` |
-| **Numbers** | Digits and separators only | `20220321_132643`, `1698765432123`, `001` |
+| **Messaging** | Messaging app stamp | `WhatsApp Image 2026-11-03 at 10.24.09`, `IMG-20240614-WA0041`, Telegram, Signal… |
+| **AI** | An AI generator's stamp | `OIG1 (10)`, `grok_video_2025-09-17-…`, `grok_image_xgsztgj`, `grok-video-<guid>`, `ChatGPT Image 11 mai 2025, 22_56_56`, `High_Performance_16x9_…` |
+| **A known source** — one group each | A downloader's or an app's prefix, followed by anything | `ssstwitter.com_1751324860904`, `Snapinsta.app_video_…`, `twittervid.com_…`, `FaceApp_1677628281955`, `Videoleap_2025_07_08_…`, `VideoEditor_20240621_013522`, `VideoCapture_20230704-055003`, `sketch1669713742812`, `Clipped_image_20230917_082805` |
+| **Generic names** | A browser's or a site's default name, with or without a number | `téléchargement (1)`, `images (2)`, `image-6`, `videoplayback (12)`, `maxresdefault (5)`, `full`, `unnamed`, `untitled` |
+| **Identifiers** | GUID, long hex run (hash, 16 hex digits or more), random token (10 characters or more, letters and digits mixed, no word-like run), an X media id (15 characters, upper case, lower case and digits) | `3f2504e0-4f89-11d3-9a0c-0305e82c3301`, `a94a8fe5ccb19ba6…`, `F3xKz9aWkAA1b2c`, `GEhjfvEWQAE7EPO` |
+| **Short codes** | 5 to 8 lower-case letters and digits, a digit before the last character — or any such run after a leading `-` | `d9omli`, `qy6xu8`, `-oong5f`, `-htaykg` — never `breton2`, `aoc1` |
+| **Date stamps** | A date and a time, digits and separators only | `20230809_212344`, `2022-07-18 13.22.09` |
+| **Timestamps** | A Unix time, in seconds or milliseconds (10 or 13 digits) | `1711612478`, `1746944459842` |
+| **Numbers** | Any other name of digits and separators only | `001`, `12-3` |
+| **A detected source** — one group each | A leading word shared by 3 files or more of the folder, followed by a stamp (digits, a date, a code), no pattern above taking them; titled by that word as its first file writes it | a future `snaptik_…`, `y2mate.com - …` |
 
 - Everything else matches no pattern: `Wojak triste`, `Meme chat 2`, `facture EDF`.
 - **Each pattern is turned off on its own** (Iteration 3): a **⚙ menu submenu**, one checkbox per
@@ -88,7 +98,22 @@ kind counts (Q&A 7). Proposed patterns, **in the order they are tried**:
   **no catch-all section** (Q&A 10): `IMG_20220321_132643` with Camera off matches no other pattern
   and lands among the Named files. A pattern's place in the table is that fallback order.
 - **More patterns as they are identified**: a new pattern is a row of `NamePatterns` and a checkbox
-  of the submenu, nothing else.
+  of the submenu, nothing else; a new known source, a row of the known sources.
+- **The submenu** (Iteration 8): **Series** first, then one checkbox per pattern, the known sources in
+  a **Sources ▸** submenu of their own, one checkbox each, and one **Detected sources** checkbox for
+  every source found by itself — all checked by default.
+
+## File Series
+
+Named files sharing their first words, the `Outils RS` principle applied to files (Iteration 8):
+
+- A series is **3 files or more** of the folder whose names share their first word — compared
+  ignoring case and accents, words split on spaces, `-`, `_` and `.` — titled by the longest run of
+  leading words all of them share, as its first file writes it: `marlène schiappa …` (32),
+  `homme soja …` (22), `citation …` (12).
+- Only the files **no pattern took** are grouped in series: a pattern always wins.
+- **Turned on or off** by the submenu's **Series** checkbox, on by default; with it off, they stay
+  among the Named files.
 
 ## Search Result Groups
 
@@ -278,6 +303,25 @@ The scope is frozen as the sections above stand.
 - **Checks**: the worktree's build got a copy of the main build's `settings.json` and `index\` so
   the folder view could be seen on the real base folder; launched with `--new-instance`.
 
+### Iteration 8 — 2026-11-04 — ⚙️ Post-implementation — More name groups
+
+User request: list every group the patterns find in `X:\Dropbox\Outils RS` (2 995 files, its
+subfolders included); `ssstwitter.com_1751324860904.mp4` landed among the Named files, it should be
+a group of its own. The survey found, among the 1 366 named files, machine-made names left out —
+ssstwitter.com (175), OIG (60), Grok (24), ChatGPT Image (15), Videoleap (15), FaceApp (11)… —
+generic web names (~45), short meme codes (~150), human series (`marlène schiappa …` 32), and
+Numbers mixing date stamps with Unix times (1 172). Answers (Q&A 17–19):
+
+- **Sources**: both — the known ones fixed, each its own group and checkbox under a **Sources ▸**
+  submenu; the others **detected** by themselves, one **Detected sources** checkbox.
+- **New groups**: **AI** (OIG, Grok, ChatGPT Image, High_Performance together), **Generic names**,
+  **Short codes**, and **Numbers split** into **Date stamps** and **Timestamps**.
+- **Series**: the named files sharing their first words are grouped too, a new group option turned
+  on or off, on by default.
+
+§ Sections, § File Name Patterns and the new § File Series describe it. Also: Camera's `P` and
+7 digits now matches the whole name (`P34452747D6385635G` was taken for a camera's).
+
 ---
 
 ## Implementation Log
@@ -315,7 +359,11 @@ Questions asked by the agent during design, with user responses.
 | 14 | Toggles: placement, icon, default, the ⚙ submenu | Two buttons side by side | 2026-11-03 |
 | 15 | A unit test project for the name patterns and the grouping? | No, hand checks | 2026-11-03 |
 | 16 | Go for implementation? | Code, tests and documentation — in a worktree | 2026-11-03 |
+| 17 | Sources like ssstwitter.com, FaceApp, Videoleap, OIG: detected by themselves, a fixed known list, or both? | Both | 2026-11-04 |
+| 18 | Which other groups? (AI together, generic names, short codes, Numbers split) | All four | 2026-11-04 |
+| 19 | Do the named series (marlène schiappa …, homme soja …) become groups too? | Special cases: a new group option, turned on or off, on by default | 2026-11-04 |
+| 20 | Go for the More name groups adjustment? | | 2026-11-04 |
 
 ---
 
-*Last updated: 2026-11-03*
+*Last updated: 2026-11-04*
