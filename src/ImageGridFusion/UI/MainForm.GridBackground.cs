@@ -60,17 +60,22 @@ internal sealed partial class MainForm
     }
 
     /// <summary>
-    /// The cell Background's gradient options: its kinds after its fill modes, its angle after its color,
-    /// its second color on a line of its own, over the extended edges' line.
+    /// The cell Background's options, one feature per line (workfiles/20261104-options-toolbar-layout.md): the fill
+    /// modes, the gradient's kinds and angle, the color, the gradient's second color, the extended edges.
     /// </summary>
-    private void BuildBackgroundStyleOptions(FlowLayoutPanel options, FlowLayoutPanel colorLine, FlowLayoutPanel lines)
+    private void BuildBackgroundOptions(FeatureLinesPanel lines)
     {
         this._backgroundStyle = new FillControls(offersAuto: false, this.BackgroundSecondSwatch);
-        options.Controls.Add(this._backgroundStyle.Kind);
-        options.Controls.SetChildIndex(this._backgroundStyle.Kind, 1);
-        colorLine.Controls.AddRange(this._backgroundStyle.AngleControls);
-        lines.Controls.Add(this._backgroundStyle.SecondLine);
-        lines.Controls.SetChildIndex(this._backgroundStyle.SecondLine, 1);
+        var style = this._backgroundStyle;
+        lines.AddLine("Fill", this._backgroundFill);
+        lines.AddLine("Gradient", style.Kind, new SliderBox(style.Angle, style.AngleLabel));
+        lines.AddLine(this._backgroundAutomatic, this._backgroundColor, new SliderBox(this._backgroundOpacity, this._backgroundOpacityLabel, this._backgroundOpacityIcon));
+        lines.AddLine(style.SecondCaption, style.Second, style.SecondButton, new SliderBox(style.SecondOpacity, style.SecondOpacityLabel, style.SecondOpacityIcon));
+        lines.AddLine(
+            "Edges",
+            new SliderBox(this._backgroundEdgeOpacity, this._backgroundEdgeOpacityLabel),
+            new SliderBox(this._backgroundBlend, this._backgroundBlendLabel),
+            this._backgroundSoften);
         this._backgroundStyle.Describe(this._toolTip, "the cell");
         this._backgroundStyle.Changed += change =>
             this.ChangeLook(ImageEffect.Background, look => look.WithBackground(look.Background!.WithStyle(change(look.Background.Style))));
@@ -304,8 +309,9 @@ internal sealed partial class MainForm
             this.Second.DropDownWidth = 150;
             this.Second.DrawItem += (_, e) => this.DrawChoice(e);
             this.AngleControls = [this.Angle, this.AngleLabel];
+            this.SecondControls = [this.SecondCaption, this.Second, this.SecondButton, this.SecondOpacityIcon, this.SecondOpacity, this.SecondOpacityLabel];
             this.SecondLine = OptionLine();
-            this.SecondLine.Controls.AddRange([this.SecondCaption, this.Second, this.SecondButton, this.SecondOpacityIcon, this.SecondOpacity, this.SecondOpacityLabel]);
+            this.SecondLine.Controls.AddRange(this.SecondControls);
             this.Kind.Picked += (_, kind) => this.Changed?.Invoke(style => style.WithKind(kind));
             this.Angle.ValueChanged += (_, _) =>
             {
@@ -334,7 +340,7 @@ internal sealed partial class MainForm
 
         public StepSlider Angle { get; } = OptionSlider(0, 359, 15, controlStep: 5);
 
-        public Label AngleLabel { get; } = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+        public SliderCaption AngleLabel { get; } = new();
 
         public Label SecondCaption { get; } = new() { Text = "To", AutoSize = true, Anchor = AnchorStyles.Left };
 
@@ -352,13 +358,16 @@ internal sealed partial class MainForm
 
         public StepSlider SecondOpacity { get; } = OptionSlider(0, 100, 10);
 
-        public Label SecondOpacityLabel { get; } = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+        public SliderCaption SecondOpacityLabel { get; } = new();
 
         /// <summary>The angle's slider and its label, laid after the first color.</summary>
         public Control[] AngleControls { get; }
 
-        /// <summary>The second color's line: its source, its eyedropper + Color…, its opacity.</summary>
+        /// <summary>The second color's line: its source, its eyedropper + Color…, its opacity — the Grid background's.</summary>
         public FlowLayoutPanel SecondLine { get; }
+
+        /// <summary>The second color's controls, wherever they are laid: enabled for a gradient only.</summary>
+        public Control[] SecondControls { get; }
 
         public void Describe(ToolTip toolTip, string target)
         {
@@ -381,7 +390,7 @@ internal sealed partial class MainForm
 
             // Their values kept, the gradient's options rest while the fill is solid; the angle is the linear's only.
             this.Angle.Enabled = this.AngleLabel.Enabled = style.Kind == FillKind.Linear;
-            foreach (Control control in this.SecondLine.Controls)
+            foreach (var control in this.SecondControls)
             {
                 control.Enabled = style.IsGradient;
             }

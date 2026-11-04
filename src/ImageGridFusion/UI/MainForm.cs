@@ -205,8 +205,13 @@ internal sealed partial class MainForm : Form
     };
 
     // One row of options per effect, in the options row; only the selected tab's shows.
-    private readonly Dictionary<ImageEffect, FlowLayoutPanel> _options = Enum.GetValues<ImageEffect>()
-        .ToDictionary(e => e, _ => new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, Margin = Padding.Empty, Visible = false });
+    // The tabs laid out as feature lines have theirs (RULES.md § Options Toolbar › Feature Lines).
+    private readonly Dictionary<ImageEffect, Panel> _options = Enum.GetValues<ImageEffect>()
+        .ToDictionary(e => e, e => e switch
+        {
+            ImageEffect.Background or ImageEffect.Frames => new FeatureLinesPanel(OptionLayout.Lines),
+            _ => (Panel)new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, Margin = Padding.Empty, Visible = false },
+        });
 
     // A log scale, in hundredths of a doubling: 50 % → 100 % and each doubling take the same length.
     private readonly StepSlider _zoom = OptionSlider((int)Math.Round(Math.Log2(ImageLook.MinZoom) * 100), (int)Math.Round(Math.Log2(ImageLook.MaxZoom) * 100), 10);
@@ -226,34 +231,24 @@ internal sealed partial class MainForm : Form
     private readonly CropStrip _crop = new() { Anchor = AnchorStyles.Left };
     private readonly FlipStrip _flip = new() { Anchor = AnchorStyles.Left };
     private readonly StepSlider _frames = OptionSlider(0, 1, 10);
-    private readonly Label _framesLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly SliderCaption _framesLabel = new() { Caption = "" };
     private readonly CheckBox _freeze = new() { Text = "Freeze", AutoSize = true, Anchor = AnchorStyles.Left };
 
     // The Frames effect's speed, in steps of FramesEffect.SpeedStep: ×0.25 to ×4 (workfiles/20260926-frames-speed.md).
     private readonly StepSlider _speed = OptionSlider(
         (int)Math.Round(FramesEffect.MinSpeed / FramesEffect.SpeedStep), (int)Math.Round(FramesEffect.MaxSpeed / FramesEffect.SpeedStep), 4, controlStep: 1);
 
-    private readonly Label _speedLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly SliderCaption _speedLabel = new() { Caption = "" };
 
     // The Frames effect's trim and its starting point's fields (workfiles/20261008-video-trim.md).
     private readonly Label _framesCaption = new() { Text = "Starts at", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly FrameField _framesField = new();
-    private readonly Label _trimFromLabel = new() { Text = "From", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly Label _trimFromLabel = new() { Text = "Trim from", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly StepSlider _trimFrom = OptionSlider(0, 1, 10);
     private readonly FrameField _trimFromField = new();
-    private readonly Label _trimToLabel = new() { Text = "To", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly Label _trimToLabel = new() { Text = "Trim to", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly StepSlider _trimTo = OptionSlider(0, 1, 10);
     private readonly FrameField _trimToField = new();
-    // A grid, so the From and To sliders line up whatever their captions' widths.
-    private readonly TableLayoutPanel _trimLines = new()
-    {
-        AutoSize = true,
-        AutoSizeMode = AutoSizeMode.GrowAndShrink,
-        ColumnCount = 3,
-        RowCount = 2,
-        Margin = Padding.Empty,
-        Anchor = AnchorStyles.Left,
-    };
     private readonly TrackBar _saturation = ColorsSlider(100, 10);
     private readonly Label _saturationLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly TrackBar _hue = ColorsSlider(ColorsEffect.MaxHue, 15);
@@ -324,7 +319,7 @@ internal sealed partial class MainForm : Form
     private readonly CheckBox _backgroundAutomatic = new() { Text = "Automatic color", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly PictureBox _backgroundOpacityIcon = OpacityIcon();
     private readonly TrackBar _backgroundOpacity = OptionSlider(0, 100, 10);
-    private readonly Label _backgroundOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly SliderCaption _backgroundOpacityLabel = new();
 
     // The eyedropper, its sample in its menu, then a native button, the swatch of the background color in use before its
     // text (shared RULES.md § Colour Items).
@@ -334,9 +329,9 @@ internal sealed partial class MainForm : Form
     private Color? _backgroundSwatchColor;
     private readonly BackgroundFillStrip _backgroundFill = new() { Anchor = AnchorStyles.Left };
     private readonly TrackBar _backgroundEdgeOpacity = OptionSlider(0, 100, 10);
-    private readonly Label _backgroundEdgeOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly SliderCaption _backgroundEdgeOpacityLabel = new() { Caption = "Opacity" };
     private readonly TrackBar _backgroundBlend = OptionSlider(0, 100, 10);
-    private readonly Label _backgroundBlendLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly SliderCaption _backgroundBlendLabel = new();
     private readonly CheckBox _backgroundSoften = new() { Text = "Soften", AutoSize = true, Anchor = AnchorStyles.Left };
 
     // One dialog for the whole session, its custom colors remembered between sessions.
@@ -396,8 +391,12 @@ internal sealed partial class MainForm : Form
     };
 
     // One row of options per global effect, in the global options row; only the selected tab's shows.
-    private readonly Dictionary<GlobalEffect, FlowLayoutPanel> _globalOptions = Enum.GetValues<GlobalEffect>()
-        .ToDictionary(e => e, _ => new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, Margin = Padding.Empty, Visible = false });
+    private readonly Dictionary<GlobalEffect, Panel> _globalOptions = Enum.GetValues<GlobalEffect>()
+        .ToDictionary(e => e, e => e switch
+        {
+            GlobalEffect.Layers => new FeatureLinesPanel(OptionLayout.Grid),
+            _ => (Panel)new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, Margin = Padding.Empty, Visible = false },
+        });
 
     // The selected global tab belongs to its own toolbar, not to the cell effects' one; none at startup.
     private GlobalEffect? _selectedGlobalEffect;
@@ -574,16 +573,8 @@ internal sealed partial class MainForm : Form
         _optionsRow.Controls.Add(_optionsHost, 0, 0);
         _optionsRow.Controls.Add(_effectResetButton, 1, 0);
         _optionsHost.Controls.AddRange([.. _options.Values]);
-        // Beside the thumbnails, two lines: the flat color's settings over the extended edges' ones.
-        var backgroundColorLine = OptionLine();
-        backgroundColorLine.Controls.AddRange([_backgroundAutomatic, _backgroundColor, _backgroundOpacityIcon, _backgroundOpacity, _backgroundOpacityLabel]);
-        var backgroundEdgesLine = OptionLine();
-        backgroundEdgesLine.Controls.AddRange([this._backgroundEdgeOpacity, this._backgroundEdgeOpacityLabel, this._backgroundBlend, this._backgroundBlendLabel, this._backgroundSoften]);
-        var backgroundLines = OptionLine();
-        backgroundLines.FlowDirection = FlowDirection.TopDown;
-        backgroundLines.Controls.AddRange([backgroundColorLine, backgroundEdgesLine]);
-        _options[ImageEffect.Background].Controls.AddRange([this._backgroundFill, backgroundLines]);
-        this.BuildBackgroundStyleOptions(_options[ImageEffect.Background], backgroundColorLine, backgroundLines);
+        // One feature per line (workfiles/20261104-options-toolbar-layout.md § Feature Lines of the Pilot Tabs).
+        this.BuildBackgroundOptions((FeatureLinesPanel)this._options[ImageEffect.Background]);
         _options[ImageEffect.Crop].Controls.Add(this._crop);
         // The edge and the opacity on a first line, the other treatments on a second, as the Background's two lines.
         var cutoutEdgeLine = OptionLine();
@@ -626,25 +617,13 @@ internal sealed partial class MainForm : Form
         this._options[ImageEffect.Animations].Controls.AddRange([this._motionKind, this._motionCycle, this._motionCycleLabel]);
         _options[ImageEffect.Rotate].Controls.AddRange([this._quarterTurns, this._angle, this._angleLabel]);
         _options[ImageEffect.Flip].Controls.Add(this._flip);
-        // The trim on two lines at the left, the starting point and Freeze at the right (layout A).
-        this._trimLines.Controls.Add(this._trimFromLabel, 0, 0);
-        this._trimLines.Controls.Add(this._trimFrom, 1, 0);
-        this._trimLines.Controls.Add(this._trimFromField, 2, 0);
-        this._trimLines.Controls.Add(this._trimToLabel, 0, 1);
-        this._trimLines.Controls.Add(this._trimTo, 1, 1);
-        this._trimLines.Controls.Add(this._trimToField, 2, 1);
-        var framesStartLine = OptionLine();
-        framesStartLine.Controls.AddRange([this._framesCaption, _frames, this._framesField, _framesLabel]);
-        var framesStartLines = OptionLine();
-        framesStartLines.FlowDirection = FlowDirection.TopDown;
-        framesStartLines.Controls.AddRange([framesStartLine, _freeze]);
-        var framesSeparator = new Label { AutoSize = false, Width = 2, BorderStyle = BorderStyle.Fixed3D, Anchor = AnchorStyles.Top | AnchorStyles.Bottom, Margin = new Padding(8, 4, 8, 4) };
-        // The speed in a third column, its value over its slider (Iteration 4 of the workfile).
-        var framesSpeedLines = OptionLine();
-        framesSpeedLines.FlowDirection = FlowDirection.TopDown;
-        framesSpeedLines.Controls.AddRange([this._speedLabel, this._speed]);
-        var framesSpeedSeparator = new Label { AutoSize = false, Width = 2, BorderStyle = BorderStyle.Fixed3D, Anchor = AnchorStyles.Top | AnchorStyles.Bottom, Margin = framesSeparator.Margin };
-        _options[ImageEffect.Frames].Controls.AddRange([this._trimLines, framesSeparator, framesStartLines, framesSpeedSeparator, framesSpeedLines]);
+        // One feature per line: the trim's two ends, the starting point, Freeze, the speed — the frame sliders long.
+        var frames = (FeatureLinesPanel)this._options[ImageEffect.Frames];
+        frames.AddLine(this._trimFromLabel, new SliderBox(this._trimFrom, null, width: SliderBox.LongWidth), this._trimFromField);
+        frames.AddLine(this._trimToLabel, new SliderBox(this._trimTo, null, width: SliderBox.LongWidth), this._trimToField);
+        frames.AddLine(this._framesCaption, new SliderBox(this._frames, this._framesLabel, width: SliderBox.LongWidth), this._framesField);
+        frames.AddLine(this._freeze);
+        frames.AddLine("Speed", new SliderBox(this._speed, this._speedLabel));
         _options[ImageEffect.Colors].Controls.AddRange(
             [this._saturation, this._saturationLabel, this._hue, this._hueLabel, this._brightness, this._brightnessLabel, this._contrast, this._contrastLabel]);
 
@@ -684,6 +663,10 @@ internal sealed partial class MainForm : Form
         this.BuildGridBackgroundOptions();
         this._globalOptions[GlobalEffect.Cascade].Controls.AddRange([this._cascadePause, this._cascadePauseLabel]);
         this.BuildLayerOptions();
+        foreach (var lines in this._options.Values.Concat(this._globalOptions.Values).OfType<FeatureLinesPanel>())
+        {
+            lines.PreferredHeightChanged += (_, _) => this.FitEffectRows();
+        }
 
         // Docked in reverse order of addition: the options row and the tabs row, then the bottom bar,
         // the global options row above it, the global tabs row above that and the transport above them,
@@ -1548,11 +1531,14 @@ internal sealed partial class MainForm : Form
     private void FitEffectRows()
     {
         _effectTabs.Size = new Size(_effectTabs.GetPreferredSize(Size.Empty).Width, _resetButton.GetPreferredSize(Size.Empty).Height);
-        int options = _options.Values.Max(row => row.GetPreferredSize(Size.Empty).Height);
+        // Below the options, the room of the scrollbar a tab laid out as feature lines shows while wider than the
+        // window, kept in every tab so nothing moves (RULES.md § Options Toolbar › Feature Lines).
+        int room = FeatureLinesPanel.ScrollRoom(this.DeviceDpi);
+        int options = _options.Values.Max(row => row.GetPreferredSize(Size.Empty).Height) + room;
         int reset = _effectResetButton.GetPreferredSize(Size.Empty).Height + _effectResetButton.Margin.Vertical;
         _optionsRow.Height = Math.Max(options, reset) + _optionsRow.Padding.Vertical;
         _globalTabs.Size = new Size(_globalTabs.GetPreferredSize(Size.Empty).Width, _globalResetButton.GetPreferredSize(Size.Empty).Height);
-        int globalOptions = _globalOptions.Values.Max(row => row.GetPreferredSize(Size.Empty).Height);
+        int globalOptions = _globalOptions.Values.Max(row => row.GetPreferredSize(Size.Empty).Height) + room;
         int globalReset = _globalEffectResetButton.GetPreferredSize(Size.Empty).Height + _globalEffectResetButton.Margin.Vertical;
         _globalOptionsRow.Height = Math.Max(globalOptions, globalReset) + _globalOptionsRow.Padding.Vertical;
     }
@@ -4794,8 +4780,13 @@ internal sealed partial class MainForm : Form
 
             // Only a video or a GIF is trimmed and gets the starting point's fields.
             bool trims = image?.Trims == true;
-            this._trimLines.Enabled = trims;
-            this._toolTip.SetToolTip(this._trimLines, trims ? null : "The trim only applies to videos and animated GIFs");
+            foreach (var control in new Control[] { this._trimFromLabel, this._trimFrom, this._trimFromField, this._trimToLabel, this._trimTo, this._trimToField })
+            {
+                control.Enabled = trims;
+            }
+
+            this._toolTip.SetToolTip(this._trimFromLabel, trims ? null : "The trim only applies to videos and animated GIFs");
+            this._toolTip.SetToolTip(this._trimToLabel, trims ? null : "The trim only applies to videos and animated GIFs");
             this._framesField.Visible = trims;
             _framesLabel.Visible = !trims;
 
