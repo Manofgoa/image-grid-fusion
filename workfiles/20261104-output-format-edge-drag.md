@@ -156,6 +156,11 @@ fitted and centered again on release; without exact pixels, the fields take the 
 green grips at the middle of each edge and at the corners while the Format tab is selected; the live
 readout at the canvas's center, the ratio in decimal form. No question left open.
 
+### Iteration 3 — 2026-11-04 — ✅ Implemented
+
+Go given: code, checks and documentation, in a worktree (`feature/output-format-edge-drag`). Scope
+frozen as the sections above stand.
+
 ---
 
 ## Implementation Log
