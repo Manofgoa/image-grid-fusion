@@ -65,9 +65,11 @@ Settled with the user before exploration (Q&A 1–4):
   window** (Q&A 22) — a Cancel leaves the effect off; with one, it turns on at once. Unchecked, the effect
   is off, the enlargement kept in memory for a later check.
 - **Size limit**: a factor whose result would exceed `CanvasSizer.MaxLongSide` (8192) on the longer
-  side is **refused and faded**, its tooltip saying why; when even ×2 would, the checkbox is disabled
-  too (`UpscaleEffect.Fits`).
+  side is **refused and faded**; when even ×2 would, the checkbox is disabled too (`UpscaleEffect.Fits`).
   What exceeds the PNG cap can never be drawn at its size.
+- **Why, said in the options row** (Q&A 26): a line after the Upscale button names each factor refused
+  and the size it would make (`×2 would make 10000 × 5138 px, past the 8192 px a PNG holds`), or why the
+  effect does not apply to the image; empty otherwise.
 - **Layers**: a layer gets it like any cell effect (RULES.md § Layers) — a text layer's checkbox
   disabled (it sharpens).
 - **Effect presets**: the factor and the model are saved when the effect is on (`LookPreset.Saved`).
@@ -394,6 +396,16 @@ The user's look at the delivery: the **Upscale** button cramped — its icon aga
 button against the ×4 thumbnail. It gets an inner padding, a gap after its icon (drawn into the icon's image: a
 WinForms button lays its image and its text touching) and a margin from the thumbnails.
 
+### Iteration 12 — 2026-11-04 — ⚙️ Post-implementation — Why an upscale is not possible, said
+
+The user's test on a 5000 × 2569 JPEG: the Upscale tab greyed, nothing to click, the reason in the checkbox's tooltip
+only — ×2 would make 10000 × 5138, past the PNG's 8192 px. Asked (Q&A 25, 26): explain why an upscale is not possible,
+keep possible the ones that are; the reason as a visible text in the options row.
+
+- The rule stays: a factor whose result passes 8192 px is refused, the effect unavailable only when every factor is.
+- **The options row says why**, in a line after the Upscale button: each factor refused with the size it would make,
+  or why the effect does not apply to the image (a video, a PDF, a text, a thumbnail).
+
 ---
 
 ## Implementation Log
@@ -441,6 +453,8 @@ Questions asked by the agent during design, with user responses.
 | 22 | The tab's checkbox without an enlargement? | Opens the Upscale window | 2026-11-04 |
 | 23 | Keep the enlargement between sessions? | No, per session | 2026-11-04 |
 | 24 | Go for the Upscale window adjustment? | Code and documentation | 2026-11-04 |
+| 25 | An image whose enlargement would pass 8192 px: enlarge then cap, cap ×2 only, or refuse? | Explain why some upscales are not possible; make possible those that are | 2026-11-04 |
+| 26 | Show the reason as a visible text in the options row? | Yes | 2026-11-04 |
 
 ---
 
