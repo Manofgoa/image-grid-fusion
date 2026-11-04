@@ -13,6 +13,20 @@ public static class Animation
     public static TimeSpan LoopTime(TimeSpan time, TimeSpan loop) =>
         loop <= TimeSpan.Zero ? TimeSpan.Zero : TimeSpan.FromTicks(((time.Ticks % loop.Ticks) + loop.Ticks) % loop.Ticks);
 
+    /// <summary>
+    /// The loop, on the grid's clock, of a played part of <paramref name="played"/> content time played
+    /// at <paramref name="speed"/> (workfiles/20260926-frames-speed.md).
+    /// </summary>
+    public static TimeSpan LoopAtSpeed(TimeSpan played, double speed) =>
+        speed == 1 ? played : TimeSpan.FromTicks((long)Math.Round(played.Ticks / speed));
+
+    /// <summary>
+    /// Content time from the beginning of the played part at <paramref name="loopTime"/> of a loop of
+    /// <paramref name="loop"/> on the grid's clock, played at <paramref name="speed"/>: kept inside the part.
+    /// </summary>
+    public static TimeSpan AtSpeed(TimeSpan loopTime, TimeSpan loop, double speed) =>
+        speed == 1 ? loopTime : TimeSpan.FromTicks(Math.Clamp((long)(loopTime.Ticks * speed), 0, Math.Max(0, (long)(loop.Ticks * speed) - 1)));
+
     /// <summary>Share of a loop of <paramref name="loop"/> played at <paramref name="time"/>, from 0 up to 1 excluded; 0 without a loop.</summary>
     public static double Progress(TimeSpan time, TimeSpan loop) =>
         loop <= TimeSpan.Zero ? 0 : LoopTime(time, loop).Ticks / (double)loop.Ticks;
@@ -46,7 +60,7 @@ public static class Animation
         {
             var list = images.ToList();
             var beside = list
-                .Select(i => LoopOf(CascadeSchedule.TakesPart(i) || !i.Plays ? TimeSpan.Zero : i.PlayedLength, i.Look))
+                .Select(i => LoopOf(CascadeSchedule.TakesPart(i) || !i.Plays ? TimeSpan.Zero : i.LoopLength, i.Look))
                 .DefaultIfEmpty(TimeSpan.Zero)
                 .Max();
             var whole = CascadeSchedule.Of(list, cascade).Length;
@@ -57,11 +71,11 @@ public static class Animation
     }
 
     /// <summary>
-    /// The loop <paramref name="image"/> plays: its content's while it plays — the trimmed part
-    /// (<see cref="SourceImage.PlayedLength"/>) — or the cycle of its motion when longer.
+    /// The loop <paramref name="image"/> plays: its content's while it plays — the trimmed part at its
+    /// speed (<see cref="SourceImage.LoopLength"/>) — or the cycle of its motion when longer.
     /// </summary>
     public static TimeSpan LoopOf(SourceImage image) =>
-        LoopOf(image.Plays ? image.PlayedLength : TimeSpan.Zero, image.Look);
+        LoopOf(image.Plays ? image.LoopLength : TimeSpan.Zero, image.Look);
 
     /// <summary>
     /// The loop of a cell whose content plays a loop of <paramref name="content"/> (zero for a still):

@@ -361,11 +361,11 @@ internal sealed class AnimationPlayer : IDisposable
             if (this.TurnOf(image) is var (schedule, index))
             {
                 return schedule.Plays(index, this.GridTime)
-                    ? Animation.Progress(schedule.Played(index, this.GridTime), image.PlayedLength)
+                    ? Animation.Progress(schedule.Played(index, this.GridTime), image.LoopLength)
                     : null;
             }
 
-            return Animation.Progress(this.Position(playback), image.PlayedLength);
+            return Animation.Progress(this.Position(playback), image.LoopLength);
         }
 
         return image.Look.Motion is { } motion && (this._images.Contains(image) || this._layers.Contains(image))

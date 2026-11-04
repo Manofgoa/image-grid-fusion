@@ -2765,7 +2765,7 @@ internal sealed partial class MainForm : Form
             : Animation.LoopOf(image);
 
         // A loop is a playing content's, or the cycle of an Animations effect when longer.
-        string Loop(SourceImage image) => image.Plays && Beside(image) == image.PlayedLength
+        string Loop(SourceImage image) => image.Plays && Beside(image) == image.LoopLength
             ? $"{Name(image)}'s"
             : $"{Name(image)}'s animation";
 

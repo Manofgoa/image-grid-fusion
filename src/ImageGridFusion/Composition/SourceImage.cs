@@ -285,8 +285,17 @@ public sealed class SourceImage : IDisposable
         ? (this.Trims ? Math.Clamp(frames.PageOf(pages.Count), this.FirstPage, this.LastPage) : frames.PageOf(pages.Count))
         : this.FirstPage;
 
-    /// <summary>Time in the loop — the trimmed part — where the image starts playing.</summary>
-    public TimeSpan StartTime => this.Pages is { } pages ? pages.TimeOf(this.StartPage) - this.PlayedFrom : TimeSpan.Zero;
+    /// <summary>
+    /// Time in the loop — the trimmed part at its speed, on the grid's clock — where the image starts
+    /// playing.
+    /// </summary>
+    public TimeSpan StartTime => this.Pages is { } pages ? (pages.TimeOf(this.StartPage) - this.PlayedFrom) / this.Speed : TimeSpan.Zero;
+
+    /// <summary>
+    /// Multiple of its own pace the image plays at: its frames effect's speed while it plays, 1 otherwise
+    /// (workfiles/20260926-frames-speed.md).
+    /// </summary>
+    public double Speed => this.Plays && this.Look.Frames is { } frames ? frames.Speed : 1;
 
     /// <summary>
     /// A video or an animated GIF: its frames effect may trim it. The one definition of the part that
@@ -330,8 +339,21 @@ public sealed class SourceImage : IDisposable
         }
     }
 
-    /// <summary>Content time shown at <paramref name="position"/> of the loop: within the played part, starting over at its end.</summary>
-    public TimeSpan ContentTime(TimeSpan position) => this.PlayedFrom + Animation.LoopTime(position, this.PlayedLength);
+    /// <summary>
+    /// The loop of the played part on the grid's clock — <see cref="PlayedLength"/> at the image's
+    /// <see cref="Speed"/> — what the grid's loop, the Cascade's turn and the progress line count.
+    /// </summary>
+    public TimeSpan LoopLength => Animation.LoopAtSpeed(this.PlayedLength, this.Speed);
+
+    /// <summary>
+    /// Content time shown at <paramref name="position"/> of the loop, on the grid's clock: within the
+    /// played part at the image's speed, starting over at its end.
+    /// </summary>
+    public TimeSpan ContentTime(TimeSpan position)
+    {
+        var loop = this.LoopLength;
+        return this.PlayedFrom + Animation.AtSpeed(Animation.LoopTime(position, loop), loop, this.Speed);
+    }
 
     /// <summary>
     /// An image without a file, now saved into <paramref name="path"/>: it names that file from now
