@@ -56,6 +56,10 @@ global effect.
   **edge-extension** modes (Corner pixel, Miter, Background corners) stay its own, drawn over the
   fill as they are drawn over the flat fill today; *Blend* fades them into the fill, whatever its
   kind.
+- **Color 2 in a cell** offers Darker, Black, White and Chosen — no Auto, which belongs to the global
+  effect (Q&A #19).
+- **Seams** fade only the cells whose fill is **Solid**: a cell with a gradient does not fade, and its
+  neighbours do not fade toward it (Q&A #20).
 - **Auto colors** are given to the painter by its user: for the Background, the cell's band color
   (today's automatic color); for the global effect, cell 1's and the last cell's (§ Colors and
   Gradients). The backlog's "Auto from the grid's dominant colors" is **not** taken: the user chose
@@ -155,7 +159,7 @@ shared fill's settings (`BackgroundEffect.ToJson` / `FromJson`, a missing key gi
 
 - A new **tab** of the Global toolbar, with its activation checkbox and its **icon** (RULES.md
   § Icons: an emoji, else a drawing of `EffectIcons`), after `Seams` (before `Cascade` and
-  `Layers`): label *Open question* (proposal: `Backdrop`).
+  `Layers`), labelled **Grid background** (Q&A #22).
 - Its options, in the global options toolbar:
   - the **mode** — Solid / Linear / Radial — as **option thumbnails** (RULES.md § Options Toolbar,
     56 × 40 pictograms);
@@ -201,7 +205,7 @@ to the tests question below.
   An opacity per color, after its Color… — settled by RULES.md § Color Options, written since (see
   Iteration 4).
 - [ ] Color while never activated, when cell 1 holds no image: which color?
-- [ ] The tab's label — the backlog says *Grid background*?
+- [x] ~~The tab's label?~~ → **Grid background**, the backlog's name.
 - [ ] Unit tests: none (no test project), or create one?
 - [x] ~~Scope against the backlog: keep this workfile's own fill model, or move to the shared painter
   of *Shared fill and grid background*?~~ → The shared painter (§ Shared Fill).
@@ -209,12 +213,12 @@ to the tests question below.
   Background as off, or as the user left it before (on)?~~ → As the user left it before.
 - [x] ~~Turning the effect on: the layers' Background left alone, or turned off like the cells'?~~ →
   Left alone.
-- [ ] In a **cell's** Background, color 2's *Auto, last cell* means nothing: which choices does a cell
-  offer for color 2?
-- [ ] **Seams** fade the cells' flat colors into each other: with a gradient in a cell, what do they
-  fade?
-- [ ] The backlog rows: mark *Shared fill and grid background* as designed here, and split *Gradient
-  fills* (linear and radial here, the rest left)?
+- [x] ~~In a **cell's** Background, color 2's *Auto, last cell* means nothing: which choices does a
+  cell offer for color 2?~~ → Darker, Black, White, Chosen — no Auto.
+- [x] ~~**Seams** fade the cells' flat colors into each other: with a gradient in a cell, what do they
+  fade?~~ → Nothing: the Seams ignore the cells with a gradient.
+- [x] ~~The backlog rows: mark *Shared fill and grid background* as designed here, and split *Gradient
+  fills*?~~ → Yes: both marked, the rest of *Gradient fills* a row of its own.
 
 ---
 
@@ -286,6 +290,13 @@ backlog. A preset records the Background as the user left it before the forced b
 layers' Background is left alone. New questions: color 2's choices in a cell, the Seams over a
 gradient, marking the backlog rows; the tab's label now weighs *Grid background*.
 
+### Iteration 6 — 2026-11-04
+
+User answers: color 2 in a cell offers no Auto; the Seams ignore the cells with a gradient; the tab is
+labelled **Grid background**; the backlog rows are marked — *Shared fill and grid background* and
+*Gradient fills* (linear and radial) point here, conic, mesh, dominant-color Auto and grain split
+into *Gradient fills, the rest*.
+
 ---
 
 ## Implementation Log
@@ -314,15 +325,16 @@ gradient, marking the backlog rows; the tab's label now weighs *Grid background*
 | 10 | Opacity: opaque only or a slider? | Not asked — settled by RULES.md § Color Options (an opacity per color) | 2026-11-04 |
 | 11 | Color while never activated, cell 1 empty? | | |
 | 12 | Unit tests: none or create a test project? | | |
-| 13 | The tab's label? | | |
+| 13 | The tab's label? | See #22 | 2026-11-04 |
 | 14 | Color 2: which of the five is the default? | | |
 | 15 | Color 2 Auto (last cell): live, or frozen once activated? | | |
 | 16 | Scope against the backlog: own fill model, or the shared painter of *Shared fill and grid background*? | The shared painter | 2026-11-04 |
 | 17 | A preset saved from a cell whose Background the effect turned off: Background off or as before? | As before | 2026-11-04 |
 | 18 | Turning the effect on: the layers' Background left alone or turned off? | Left alone | 2026-11-04 |
-| 19 | In a cell's Background, which choices for color 2? | | |
-| 20 | Seams over a gradient in a cell: what do they fade? | | |
-| 21 | Mark the backlog rows (Shared fill: designed here; Gradient fills: split)? | | |
+| 19 | In a cell's Background, which choices for color 2? | No Auto: Darker, Black, White, Chosen | 2026-11-04 |
+| 20 | Seams over a gradient in a cell: what do they fade? | They ignore the gradient cells | 2026-11-04 |
+| 21 | Mark the backlog rows (Shared fill: designed here; Gradient fills: split)? | Yes | 2026-11-04 |
+| 22 | The tab's label? | Grid background | 2026-11-04 |
 
 ---
 
