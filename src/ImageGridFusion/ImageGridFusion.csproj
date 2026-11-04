@@ -35,6 +35,22 @@
   <!-- The shortcuts window's list: the repository's SHORTCUTS.md itself, one source with GitHub (workfiles/20261029-shortcuts-list.md). -->
   <ItemGroup>
     <EmbeddedResource Include="..\..\SHORTCUTS.md" LogicalName="ImageGridFusion.SHORTCUTS.md" Link="SHORTCUTS.md" />
+    <EmbeddedResource Include="..\..\SHORTCUTS.fr.md" LogicalName="ImageGridFusion.SHORTCUTS.fr.md" Link="SHORTCUTS.fr.md" />
+  </ItemGroup>
+
+  <!--
+    The UI's texts (RULES.md § UI Language, workfiles/20261105-french-translation.md § Lookup): Strings.resx in English,
+    Strings.fr.resx in French — built into a fr\ satellite assembly, bundled into the published exe — and the Strings class
+    generated from them at build time, so a missing key is a build error.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Update="Resources\Strings.resx">
+      <Generator>MSBuild:Compile</Generator>
+      <StronglyTypedFileName>$(IntermediateOutputPath)Strings.Designer.cs</StronglyTypedFileName>
+      <StronglyTypedLanguage>CSharp</StronglyTypedLanguage>
+      <StronglyTypedNamespace>ImageGridFusion.Resources</StronglyTypedNamespace>
+      <StronglyTypedClassName>Strings</StronglyTypedClassName>
+    </EmbeddedResource>
   </ItemGroup>
 
   <!--

@@ -7,6 +7,7 @@ using ImageGridFusion.Components;
 using ImageGridFusion.Composition;
 using ImageGridFusion.Explorer;
 using ImageGridFusion.Imaging;
+using ImageGridFusion.Resources;
 using ImageGridFusion.Web;
 
 namespace ImageGridFusion.UI;
@@ -455,6 +456,10 @@ internal sealed partial class MainForm : Form
     private readonly CheckBox _bordersRounded = new() { Text = "Twitter corners", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly ToolStripMenuItem _twitterCornersDefault = new("Twitter corners by default");
 
+    // The UI language, one of AppSettings.Languages, applied at the next start: its label bilingual, each language named in
+    // its own, whatever the language in force (workfiles/20261105-french-translation.md § UI Language Setting).
+    private readonly ToolStripMenuItem _language = new("Language / Langue");
+
     // The longer side an MP4 or GIF export is clamped to, one of AppSettings.VideoMaxSides (workfiles/20261010-optimisation-lack-of-memory.md § 2.3).
     private readonly ToolStripMenuItem _videoSize = new("Video size");
     private readonly ToolStripMenuItem _guideApproach = new("Guides show from");
@@ -747,8 +752,9 @@ internal sealed partial class MainForm : Form
         this._transportTimer.Tick += (_, _) => this.RefreshTransportPosition();
         this._transportTimer.Start();
         this._toolTip.SetToolTip(this._clearButton, "Removes every image and the global effects, and brings the format back to Twitter (Ctrl+N)");
-        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, this._explorerGroups, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._similarImages, this._captions, this._forgetVisual, new ToolStripSeparator(), this._componentUpdates, this._keyboardShortcuts, this._openAppFolder]);
+        _settingsMenu.Items.AddRange([this._language, _startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, this._explorerGroups, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._similarImages, this._captions, this._forgetVisual, new ToolStripSeparator(), this._componentUpdates, this._keyboardShortcuts, this._openAppFolder]);
         // An icon per action and toggle, never on a caption nor a submenu's values (RULES.md § Icons).
+        UiIcons.Set(this._language, UiIcons.Language);
         UiIcons.Set(this._startWithWindows, UiIcons.StartWithWindows);
         UiIcons.Set(this._twitterCornersDefault, UiIcons.TwitterCorners);
         UiIcons.Set(this._videoSize, UiIcons.Video);
@@ -849,6 +855,15 @@ internal sealed partial class MainForm : Form
             var item = new ToolStripMenuItem(VideoSizeLabel(choice)) { Tag = choice };
             item.Click += (_, _) => this.SetVideoMaxSide(choice);
             this._videoSize.DropDownItems.Add(item);
+        }
+
+        this._language.ToolTipText = Strings.MainLanguageTip;
+        foreach (string language in AppSettings.Languages)
+        {
+            string choice = language;
+            var item = new ToolStripMenuItem(LanguageName(choice)) { Tag = choice };
+            item.Click += (_, _) => this.SetLanguage(choice);
+            this._language.DropDownItems.Add(item);
         }
 
         _explorerFolder.ToolTipText = "The folder the file explorer searches, with its subfolders; remembered between sessions";
@@ -3721,6 +3736,12 @@ internal sealed partial class MainForm : Form
             item.Checked = (int)item.Tag! == AppSettings.VideoMaxSide;
         }
 
+        // The language saved, which may not be the one in force yet: it applies at the next start.
+        foreach (ToolStripMenuItem item in this._language.DropDownItems)
+        {
+            item.Checked = (string)item.Tag! == AppSettings.Language;
+        }
+
         foreach (ToolStripMenuItem item in _explorerPages.DropDownItems)
         {
             item.Checked = (int)item.Tag! == _explorer.PagesPerLoad;
@@ -5457,6 +5478,46 @@ internal sealed partial class MainForm : Form
         {
             this.ShowStatus($"Video size not remembered: {ex.Message}", error: true);
         }
+    }
+
+    /// <summary>A UI language named in its own language, whatever the one in force.</summary>
+    private static string LanguageName(string language) => language == "fr" ? "Français" : "English";
+
+    /// <summary>
+    /// The ⚙ menu's Language / Langue: the language picked is saved, then a restart is offered, asked in that language —
+    /// the texts are read once, at start-up. The language already saved does nothing.
+    /// See workfiles/20261105-french-translation.md § UI Language Setting.
+    /// </summary>
+    private void SetLanguage(string language)
+    {
+        if (language == AppSettings.Language)
+        {
+            return;
+        }
+
+        try
+        {
+            AppSettings.SaveLanguage(language);
+        }
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
+        {
+            this.ShowStatus(Texts.Format(Strings.MainLanguageNotSaved, ex.Message), error: true);
+            return;
+        }
+
+        var culture = Texts.CultureOf(language);
+        if (MessageBox.Show(
+                this,
+                Strings.ResourceManager.GetString(nameof(Strings.MainLanguageRestartAsk), culture),
+                Strings.ResourceManager.GetString(nameof(Strings.MainLanguageRestartCaption), culture),
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question) == DialogResult.Yes)
+        {
+            this.RestartApp();
+            return;
+        }
+
+        this.ShowStatus(Texts.Format(Strings.MainLanguageNextStart, LanguageName(language)));
     }
 
     /// <summary>

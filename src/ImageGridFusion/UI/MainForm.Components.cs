@@ -151,11 +151,13 @@ internal sealed partial class MainForm : IComponentsHost
         }
     }
 
+    void IComponentsHost.Restart() => this.RestartApp();
+
     /// <summary>
     /// Starts the exe again with this instance's second title and test flag — not its files —, the new process waiting for
-    /// this one to end; then quits as the tray's Exit does.
+    /// this one to end; then quits as the tray's Exit does. The Component updates window's restart and the language's.
     /// </summary>
-    void IComponentsHost.Restart()
+    internal void RestartApp()
     {
         var info = new ProcessStartInfo(Environment.ProcessPath ?? Application.ExecutablePath) { UseShellExecute = false };
         if (!this._savesWindowSize)

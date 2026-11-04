@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="FileSizeByte" xml:space="preserve"><value>{0} byte</value></data>
+  <data name="FileSizeBytes" xml:space="preserve"><value>{0} bytes</value></data>
+  <data name="FileSizeUnits" xml:space="preserve"><value>KB MB GB TB</value></data>
+  <data name="MainLanguageNextStart" xml:space="preserve"><value>Language: {0} — applied when the app starts again.</value></data>
+  <data name="MainLanguageNotSaved" xml:space="preserve"><value>Language not remembered: {0}</value></data>
+  <data name="MainLanguageRestartAsk" xml:space="preserve"><value>The app shows its texts in English once it starts again.
+
+Restart the app now?</value></data>
+  <data name="MainLanguageRestartCaption" xml:space="preserve"><value>Language</value></data>
+  <data name="MainLanguageTip" xml:space="preserve"><value>The language of the app's texts, applied when the app starts again; remembered between sessions</value></data>
+</root>

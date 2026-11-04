@@ -102,6 +102,7 @@ internal static class UiIcons
     // An icon's side in logical pixels, Windows' own.
     public const int LogicalSize = 16;
 
+    public static readonly UiIcon Language = UiIcon.Emoji("\U0001F310");
     public static readonly UiIcon StartWithWindows = UiIcon.Emoji("\U0001F680");
     public static readonly UiIcon TwitterCorners = UiIcon.Drawn(EffectIcons.Borders);
     public static readonly UiIcon Video = UiIcon.Emoji("\U0001F3AC");
