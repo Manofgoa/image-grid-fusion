@@ -41,13 +41,6 @@ internal static class Program
 
         bool hidden = args.Any(IsHidden);
 
-        // The UI language, read once: every text is looked up in it from here on, the background threads' included — a
-        // change in the ⚙ menu applies at the next start. Only the UI culture: sorting and casing keep the system's
-        // (workfiles/20261105-french-translation.md § UI Language Setting).
-        var uiCulture = Resources.Texts.CultureOf(AppSettings.Language);
-        System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = uiCulture;
-        System.Globalization.CultureInfo.CurrentUICulture = uiCulture;
-
         // Started again by the Component updates window: the instance before is waited for, so its lock and its files are
         // free (workfiles/20261102-component-update-verification.md § Restart).
         WaitForRestartedInstance();
@@ -94,6 +87,20 @@ internal static class Program
         var context = new TrayApplicationContext(form, hidden);
         instance?.Listen(context.Launched);
         Application.Run(context);
+    }
+
+    /// <summary>
+    /// The UI language, read once, before any code of the app runs — <see cref="Main"/> and every type initializer, such as
+    /// the components' purposes in <c>ComponentRegistry.All</c>: every text is looked up in it from then on, the background
+    /// threads' included; a change in the ⚙ menu applies at the next start. Only the UI culture: sorting and casing keep
+    /// the system's (workfiles/20261105-french-translation.md § UI Language Setting).
+    /// </summary>
+    [System.Runtime.CompilerServices.ModuleInitializer]
+    internal static void SetUiLanguage()
+    {
+        var uiCulture = Resources.Texts.CultureOf(AppSettings.Language);
+        System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = uiCulture;
+        System.Globalization.CultureInfo.CurrentUICulture = uiCulture;
     }
 
     /// <summary>
