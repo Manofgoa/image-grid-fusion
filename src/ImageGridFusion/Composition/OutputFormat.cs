@@ -13,6 +13,9 @@ public enum OutputFormat
     Portrait,
     Story,
     Landscape,
+
+    /// <summary>The user's own: a ratio, or exact pixel dimensions; see <see cref="CustomFormat"/>.</summary>
+    Custom,
 }
 
 /// <summary>The ratios (width ÷ height) and names of the output formats, and the computation of the free one.</summary>
@@ -41,13 +44,17 @@ public static class OutputFormats
         OutputFormat.Square => "Square 1:1",
         OutputFormat.Portrait => "Portrait 4:5",
         OutputFormat.Story => "Story 9:16",
+        OutputFormat.Custom => "Custom",
         _ => "Landscape 16:9",
     };
 
-    /// <summary>The fixed ratio of <paramref name="format"/>; <c>null</c> for <see cref="OutputFormat.Free"/>, computed from the content.</summary>
+    /// <summary>
+    /// The fixed ratio of <paramref name="format"/>; <c>null</c> for <see cref="OutputFormat.Free"/>, computed
+    /// from the content, and for <see cref="OutputFormat.Custom"/>, the user's (<see cref="CustomFormat.Ratio"/>).
+    /// </summary>
     public static double? Ratio(OutputFormat format) => format switch
     {
-        OutputFormat.Free => null,
+        OutputFormat.Free or OutputFormat.Custom => null,
         OutputFormat.Twitter => TwitterRatio,
         OutputFormat.Square => 1,
         OutputFormat.Portrait => 4.0 / 5,

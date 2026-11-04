@@ -20,7 +20,7 @@ internal static class GridExport
     /// </summary>
     public sealed class Job : IDisposable
     {
-        private Job(IReadOnlyList<Item> items, int cellCount, IReadOnlyList<LayerPlacement> layerPlaces, GridLayout? layout, double ratio, GridBorders? borders, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack, SoundFade? fade, SeamFade? seams, CascadeSchedule? cascade, int videoMaxSide, int stillMaxSide, GridBackground? background)
+        private Job(IReadOnlyList<Item> items, int cellCount, IReadOnlyList<LayerPlacement> layerPlaces, GridLayout? layout, double ratio, GridBorders? borders, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack, SoundFade? fade, SeamFade? seams, CascadeSchedule? cascade, int videoMaxSide, int stillMaxSide, GridBackground? background, Size? exact)
         {
             Items = items;
             this.CellCount = cellCount;
@@ -34,6 +34,7 @@ internal static class GridExport
             this.VideoMaxSide = videoMaxSide;
             this.StillMaxSide = stillMaxSide;
             this.Background = background;
+            this.Exact = exact;
 
             // In the cascade, a content taking part counts by its turn, the others by their loops beside it.
             var beside = items
@@ -97,6 +98,12 @@ internal static class GridExport
         /// </summary>
         public int StillMaxSide { get; }
 
+        /// <summary>
+        /// The Custom format's exact pixels as the export started, every canvas that size reduced to its cap
+        /// (<see cref="CanvasSizer.Exactly"/>); <c>null</c> for the native size (workfiles/20261104-custom-output-format.md).
+        /// </summary>
+        public Size? Exact { get; }
+
         /// <summary>The sounds mixed into the video: each from the starting point of its video, at its volume; the soundtrack last.</summary>
         public IReadOnlyList<MixedSound> Sounds { get; }
 
@@ -110,9 +117,10 @@ internal static class GridExport
         /// videos playing one after the other with <paramref name="cascade"/> when it is on; a video export's
         /// canvas clamped to <paramref name="videoMaxSide"/>, a still's to <paramref name="stillMaxSide"/>; the
         /// <paramref name="layers"/> over everything, playing beside the cells, never taking a turn in the cascade; the
-        /// Grid <paramref name="background"/> under everything when it is on.
+        /// Grid <paramref name="background"/> under everything when it is on; the canvas the Custom format's
+        /// <paramref name="exact"/> pixels when they are on.
         /// </summary>
-        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout? layout, double ratio, GridBorders? borders, Soundtrack? soundtrack = null, SoundFade? fade = null, SeamFade? seams = null, VideoCascade? cascade = null, int videoMaxSide = CanvasSizer.MaxSharedLongSide, int stillMaxSide = CanvasSizer.MaxLongSide, GridLayers? layers = null, GridBackground? background = null)
+        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout? layout, double ratio, GridBorders? borders, Soundtrack? soundtrack = null, SoundFade? fade = null, SeamFade? seams = null, VideoCascade? cascade = null, int videoMaxSide = CanvasSizer.MaxSharedLongSide, int stillMaxSide = CanvasSizer.MaxLongSide, GridLayers? layers = null, GridBackground? background = null, Size? exact = null)
         {
             var layered = layers?.Items ?? [];
             var contents = images.Concat(layered.Select(l => l.Image)).ToList();
@@ -130,7 +138,8 @@ internal static class GridExport
                 cascade is null ? null : CascadeSchedule.Of(images, cascade),
                 videoMaxSide,
                 stillMaxSide,
-                background);
+                background,
+                exact);
         }
 
         private static Item ItemOf(SourceImage i) => i.Plays
@@ -269,8 +278,8 @@ internal static class GridExport
             var layers = new LayerFrame[job.LayerPlaces.Count];
             job.Layers(frames, layers);
             var canvas = Animation.EvenSize(job.Layout is null
-                ? CanvasSizer.ForLayers(layers, job.Ratio, job.VideoMaxSide)
-                : CanvasSizer.Compute(job.Cells(frames).Select(f => f.Sizing).ToList(), job.Layout, job.Ratio, job.Borders, job.VideoMaxSide));
+                ? CanvasSizer.ForLayers(layers, job.Ratio, job.VideoMaxSide, job.Exact)
+                : CanvasSizer.Compute(job.Cells(frames).Select(f => f.Sizing).ToList(), job.Layout, job.Ratio, job.Borders, job.VideoMaxSide, job.Exact));
             using var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppRgb);
             using var g = Graphics.FromImage(bitmap);
             encoder = format == Format.Gif
@@ -364,7 +373,7 @@ internal static class GridExport
 
             var layers = new LayerFrame[job.LayerPlaces.Count];
             job.Layers(frames, layers);
-            return Compositor.Render(job.Cells(frames), job.Layout, job.Ratio, job.Borders, job.Seams, job.StillMaxSide, layers, job.Background);
+            return Compositor.Render(job.Cells(frames), job.Layout, job.Ratio, job.Borders, job.Seams, job.StillMaxSide, layers, job.Background, job.Exact);
         }
         finally
         {
