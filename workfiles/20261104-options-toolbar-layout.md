@@ -52,14 +52,13 @@ A, else B**.
   so nothing moves when another tab is selected. C fills that height with lines, then wraps into columns;
   the toolbar never grows for it — beyond the room kept for the scrollbar (§ Fit Rule).
 
-### Estimated Heights (to be measured in the run)
+### Heights
 
-Read from the code, not measured: the cell options toolbar is about **100 logical px** inside its padding
-(the Background's three lines of 26-px sliders), the Global one about **175** (the Layers' list of four
-34-px rows over its icon buttons). A C line holding a slider is about **44 px** (a 15-px name over a 26-px
-slider), a thumbnail strip about **62 px** (a 56 × 40 box and its name). So in the cell toolbar, C holds
-**about two slider lines, or one thumbnail line, per column**: C there is mostly a row of columns of one or
-two lines — the parent session's C, wrapped into columns.
+A tab laid out as feature lines asks for its tallest line or block **and room for two lines of sliders**, so C
+stacks two slider lines in a column: a slider line is about **44 logical px** (its name over a 26-px slider), a
+thumbnail line about **82** (a 56 × 40 box and its name). The cell options toolbar holds **two slider lines, or
+one thumbnail line, per column** — about as tall as before, plus the scrollbar's room; the Global one keeps
+the Layers' list height, about **206 px** of lines (§ Fit Rule).
 
 ---
 
@@ -87,7 +86,8 @@ One feature per line, agreed (open question 4):
 | 4 | ☐ `Freeze` | — |
 | 5 | `Speed` | The Speed slider |
 
-The two hand-made separators go: the columns of lines replace them.
+The two hand-made separators go: the columns of lines replace them. The trim's sliders have no caption — their
+line's names them — and the starting point's and the speed's captions show their value alone.
 
 ### Layers
 
@@ -96,7 +96,7 @@ icon buttons, then the text field. Then the lines:
 
 | # | Leads | Controls |
 |---|---|---|
-| 1 | `Style` | The text styles' strip (scrolled sideways as today), Save style… |
+| 1 | `Style` | The text styles' strip, as wide as its column, scrolled sideways past it (Save style… stays in its menu) |
 | 2 | `Font` | The font, the emoji font, Bold, Italic, ALL CAPS |
 | 3 | `Align` | The four alignments, Box |
 | 4 | `Color` | Eyedropper ▾, Color…, the opacity slider |
@@ -112,8 +112,8 @@ icon buttons, then the text field. Then the lines:
 - **Decided once per tab**, at design time: each migrated tab has **one layout**, C, A or B, fixed in its
   code — never recomputed when the window is resized. It is the first of C, A, B whose columns of lines fit
   the toolbar's width with the window **1920 px wide** (maximized on a Full HD screen), the Reset button
-  aside. Estimated: Background in C (≈ 1 250 px), Frames in C (≈ 900 px), Layers in C if it fits once
-  measured (≈ 1 800 px), else in A. The run measures each pilot and reports the layout it fixed.
+  aside — about 1 813 logical px for the lines. Measured: **Background in C** (1 799 px), **Frames in C**
+  (871 px), **Layers in A** (1 694 px; 1 890 px in C, wider than the toolbar).
 - **A layout wider than the window** is scrolled sideways by a **horizontal scrollbar** under the options,
   shown while they do not fit. Nothing is clipped in a migrated tab.
 - **Room is kept for the scrollbar** at the bottom of **both** options toolbars, in every tab, whether it
@@ -142,6 +142,10 @@ One description of a tab's options, laid out three ways — never three hand-bui
 - **The height** stays computed by `FitEffectRows()` from every tab's preferred height, plus the
   scrollbar's room; a pilot tab's preferred height is that of its tallest line or block — never more.
 - The other tabs keep their `FlowLayoutPanel` until they are migrated.
+- **In the code** (`UI/FeatureLines.cs`): `FeatureLinesPanel` (`AddBlock`, `AddLine`, the scrollbar, the room
+  `ScrollRoom`), `SliderBox` (a slider, its caption, its icon), `SliderCaption` (a `Label` drawing `Name: value`
+  split above its slider; `Caption` replacing the name), `OptionLayout` (Lines, Grid, Groups). A tab's layout is
+  chosen where its panel is created, in `MainForm`'s `_options` / `_globalOptions`.
 
 ---
 
@@ -228,18 +232,43 @@ and a TODO-FEATURES row keeps the tabs left to migrate. Every open question is a
 Go given: code, unit tests and documentation, in a worktree (`.claude/worktrees/options-toolbar-layout`,
 branch `feature/options-toolbar-layout`). Scope frozen as the sections above stand.
 
+### Iteration 5 — 2026-11-05 — 🧭 Implementation choices
+
+No project rule broken. The choices the frozen design left open:
+
+- **Layers fixed in A**: in C its lines are 1 890 logical px wide, more than the ≈ 1 813 px the toolbar leaves
+  with a 1920-px window; A is 1 694 px. Background (1 799 px) and Frames (871 px) fit in C. Measured on a 4K screen
+  at 125 %, the device widths divided by 1.25.
+- **Room for two lines of sliders** in a tab's preferred height: with the tallest line alone, the cell toolbar
+  shrank to one slider line a column and the Background overflowed 1920 px. The toolbar keeps about the height it had
+  (plus the scrollbar's room). A tab's height is computed again when its controls are scaled to the DPI
+  (`FeatureLinesPanel.PreferredHeightChanged`).
+- **Hidden controls keep their room** (the starting point's field and value, one shown at a time): the layout never
+  reads `Visible`, so nothing moves when one shows.
+- **Captions**: the trim's sliders have none, their leads renamed *Trim from* / *Trim to*; the starting point's and
+  the speed's show their value alone (`SliderCaption.Caption = ""`); the edges' opacity reads *Opacity*, under its
+  line's *Edges*.
+- **The trim's enabling and tooltip** go to its controls one by one — no container holds them any more — the tooltip
+  on its two leads.
+- **The Background's second color**: `FillControls.SecondControls` lists its controls, enabled for a gradient
+  wherever they are laid (its line here, `SecondLine` in the Grid background).
+- **A control anchored at the right fills its column** (the text styles' strip); a block anchored at the bottom
+  takes the toolbar's height (the text field).
+- **No wheel scrolling** of the lines: the scrollbar only, the sliders keeping the wheel.
+- **Style line**: no *Save style…* button exists — it stays in the strip's menu — so the line holds the strip alone.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | — | — | No test project in the repository |
-| RULES.md | | | |
-| GLOSSARY.md / .fr.md | | | |
-| README.md / .fr.md | | | |
-| TODO-FEATURES.md | | | |
+| Code | 5 | 2026-11-05 | `UI/FeatureLines.cs`; Background, Frames, Layers migrated; the scrollbar's room in `FitEffectRows` |
+| Unit tests | — | — | No test project in the repository; checked by hand in the running app |
+| RULES.md | 5 | 2026-11-05 | § Options Toolbar › Feature Lines, § Color Options' opacity, § Global Toolbar |
+| GLOSSARY.md / .fr.md | 5 | 2026-11-05 | *Feature line* / *Ligne de fonctionnalité* |
+| README.md / .fr.md | — | — | Not applicable: the READMEs do not describe the options toolbars |
+| TODO-FEATURES.md | 5 | 2026-11-05 | Row *Feature lines for the other tabs* |
 
 ---
 
@@ -262,4 +291,4 @@ branch `feature/options-toolbar-layout`). Scope frozen as the sections above sta
 
 ---
 
-*Last updated: 2026-11-04*
+*Last updated: 2026-11-05*
