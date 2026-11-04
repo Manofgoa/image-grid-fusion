@@ -50,7 +50,7 @@ internal sealed class BackgroundImageBox : Control
         g.DrawRectangle(pen, bounds);
         TextRenderer.DrawText(
             g,
-            "Drop an image here",
+            "Click or drop an image here",
             this.Font,
             bounds,
             this.Enabled ? SystemColors.ControlText : SystemColors.GrayText,

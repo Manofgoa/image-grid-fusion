@@ -20,6 +20,8 @@ internal sealed partial class MainForm
     private readonly PictureBox _backgroundImageOpacityIcon = OpacityIcon();
     private readonly StepSlider _backgroundImageOpacity = OptionSlider(0, 100, 10);
     private readonly Label _backgroundImageOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    // A click on a thumbnail holding an image waits for the double-click time: a double-click opens the edit view instead of the picker.
+    private readonly System.Windows.Forms.Timer _backgroundClickWait = new() { Interval = SystemInformation.DoubleClickTime };
     private int _backgroundIconSize;
     private bool? _backgroundEditShowsDone;
 
@@ -46,13 +48,38 @@ internal sealed partial class MainForm
         this._backgroundImageBox.Size = new Size(this._backgroundFit.Height * 16 / 10, this._backgroundFit.Height);
         this._backgroundImageOpacity.Width = 110;
 
-        this._toolTip.SetToolTip(this._backgroundImageBox, "The grid background's image, drawn over its fill, under the cells. Drop an image, a GIF or a video here — from the file explorer or Windows Explorer —; double-click to edit its effects");
         this._toolTip.SetToolTip(this._backgroundImageBrowse, "Browse… — chooses the grid background's image: an image, a GIF or a video");
         this._toolTip.SetToolTip(this._backgroundImagePaste, "Paste — the clipboard's image, or its first file, as the grid background's image");
         this._toolTip.SetToolTip(this._backgroundImageRemove, "Remove — the grid background's image gone, its fill alone");
         this._toolTip.SetToolTip(this._backgroundImageOpacity, "Opacity of the grid background's image, over its fill");
 
-        this._backgroundImageBox.DoubleClick += (_, _) => this.ToggleBackgroundEdit();
+        // A click loads an image, as Browse… does (workfiles/20261104-grid-background-image.md, Iteration 4); a double-click edits it.
+        this._backgroundImageBox.MouseClick += async (_, e) =>
+        {
+            if (e.Button != MouseButtons.Left)
+            {
+                return;
+            }
+
+            if (this._gridBackground.Image is null)
+            {
+                await this.BrowseBackgroundImageAsync();
+                return;
+            }
+
+            this._backgroundClickWait.Stop();
+            this._backgroundClickWait.Start();
+        };
+        this._backgroundClickWait.Tick += async (_, _) =>
+        {
+            this._backgroundClickWait.Stop();
+            await this.BrowseBackgroundImageAsync();
+        };
+        this._backgroundImageBox.DoubleClick += (_, _) =>
+        {
+            this._backgroundClickWait.Stop();
+            this.ToggleBackgroundEdit();
+        };
         this._backgroundImageBrowse.Click += async (_, _) => await this.BrowseBackgroundImageAsync();
         this._backgroundImagePaste.Click += async (_, _) => await this.PasteBackgroundImageAsync();
         this._backgroundImageEdit.Click += (_, _) => this.ToggleBackgroundEdit();
@@ -143,8 +170,8 @@ internal sealed partial class MainForm
             this._backgroundImageEdit,
             editing ? "Done — gives the grid back (Escape)" : "Edit — shows the grid background's image alone, its effects working as on a cell (double-click its thumbnail)");
         this._toolTip.SetToolTip(this._backgroundImageBox, image?.Image.FilePath is { } path
-            ? $"{Path.GetFileName(path)} — double-click to edit its effects; drop another file to replace it"
-            : "The grid background's image, drawn over its fill, under the cells. Drop an image, a GIF or a video here — from the file explorer or Windows Explorer —; double-click to edit its effects");
+            ? $"{Path.GetFileName(path)} — click to choose another image, or drop one here; double-click to edit its effects"
+            : "The grid background's image, drawn over its fill, under the cells. Click to choose an image, a GIF or a video, or drop one here — from the file explorer or Windows Explorer —; double-click to edit its effects");
     }
 
     /// <summary>The image's buttons drawn at the monitor's DPI; the ones replaced disposed.</summary>
