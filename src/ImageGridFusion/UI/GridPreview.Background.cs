@@ -30,6 +30,16 @@ internal sealed partial class GridPreview
     private IReadOnlyList<SourceImage> PlayedBesideCells =>
         this.ShownBackgroundImage is { } background ? [.. this.ShownLayerImages, background.Image] : this.ShownLayerImages;
 
+    /// <summary>
+    /// The grid starts over (RULES.md § Preview Playback): what an image arriving as the Grid background's does, as
+    /// one arriving in a cell — every content from its starting point, the soundtrack from its beginning.
+    /// </summary>
+    public void StartOver()
+    {
+        this.SyncPlayer();
+        this._player.Restart();
+    }
+
     /// <summary>Whether <paramref name="image"/> is the Grid background's image drawn now.</summary>
     private bool IsBackgroundImage(SourceImage image) => this.ShownBackgroundImage?.Image == image;
 

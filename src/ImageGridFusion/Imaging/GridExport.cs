@@ -116,6 +116,12 @@ internal static class GridExport
         {
             var layered = layers?.Items ?? [];
             var contents = images.Concat(layered.Select(l => l.Image)).ToList();
+
+            // The Grid background's image last, after the layers (workfiles/20261104-grid-background-image.md § Playback).
+            if (background?.Image is { } backgroundImage)
+            {
+                contents.Add(backgroundImage.Image);
+            }
             return new(
                 contents.Select(ItemOf).ToList(),
                 images.Count,
@@ -150,6 +156,12 @@ internal static class GridExport
                 layers[i] = new LayerFrame(frames[this.CellCount + i], this.LayerPlaces[i]);
             }
         }
+
+        /// <summary>The Grid background's image as drawn, its frame the item after the layers'; <c>null</c> without one.</summary>
+        public BackgroundFrame? BackgroundImage(Frame[] frames) =>
+            this.Background?.Image is { } image && this.CellCount + this.LayerPlaces.Count < frames.Length
+                ? new BackgroundFrame(frames[this.CellCount + this.LayerPlaces.Count], image.Placement, image.Opacity)
+                : null;
 
         /// <summary>
         /// Content time the cell at <paramref name="index"/> shows at <paramref name="time"/> of the video:
@@ -268,9 +280,7 @@ internal static class GridExport
             // The layers never size the canvas; their frames are rewritten into this array at each frame.
             var layers = new LayerFrame[job.LayerPlaces.Count];
             job.Layers(frames, layers);
-            var canvas = Animation.EvenSize(job.Layout is null
-                ? CanvasSizer.ForLayers(layers, job.Ratio, job.VideoMaxSide)
-                : CanvasSizer.Compute(job.Cells(frames).Select(f => f.Sizing).ToList(), job.Layout, job.Ratio, job.Borders, job.VideoMaxSide));
+            var canvas = Animation.EvenSize(CanvasSizer.For(job.Cells(frames), job.Layout, job.Ratio, job.Borders, job.VideoMaxSide, layers, job.BackgroundImage(frames)));
             using var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppRgb);
             using var g = Graphics.FromImage(bitmap);
             encoder = format == Format.Gif
@@ -302,7 +312,7 @@ internal static class GridExport
                 // cleared at each frame so the previous one does not show through.
                 g.Clear(Color.White);
                 job.Layers(frames, layers);
-                Compositor.Draw(g, job.Cells(frames), job.Layout, canvas, job.Borders, job.Seams, layers: layers, background: job.Background);
+                Compositor.Draw(g, job.Cells(frames), job.Layout, canvas, job.Borders, job.Seams, layers: layers, background: job.Background, backgroundImage: job.BackgroundImage(frames));
                 encoder.WriteFrame(bitmap, time, Animation.FrameTime(k + 1) - time);
                 if ((k + 1) % MemoryProbe.EveryFrames == 0)
                 {
@@ -364,7 +374,7 @@ internal static class GridExport
 
             var layers = new LayerFrame[job.LayerPlaces.Count];
             job.Layers(frames, layers);
-            return Compositor.Render(job.Cells(frames), job.Layout, job.Ratio, job.Borders, job.Seams, job.StillMaxSide, layers, job.Background);
+            return Compositor.Render(job.Cells(frames), job.Layout, job.Ratio, job.Borders, job.Seams, job.StillMaxSide, layers, job.Background, job.BackgroundImage(frames));
         }
         finally
         {
