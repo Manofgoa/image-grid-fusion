@@ -1171,6 +1171,32 @@ Apply to every setting remembered between sessions (origin:
 - A setting that cannot be saved says so in the status line; one that cannot be read falls back to
   its default.
 
+## UI Language
+
+The app shows its texts in **English** (the default) or **French**, the **UI language** chosen in the ⚙
+menu's **Language / Langue** (origin: `workfiles/20261105-french-translation.md`):
+
+- **One lookup for every user-visible text**: `Resources/Strings.resx` (English) and
+  `Resources/Strings.fr.resx` (French), read through the `Strings` class MSBuild generates from them —
+  a missing key is a build error; the French texts built into the `fr\` satellite assembly, bundled into
+  the published exe. Never a literal shown to the user in the code.
+- **A new text is added in both files in the same commit**, its key named after its place and meaning;
+  a text with values is **one** entry with numbered placeholders (`Texts.Format(Strings.X, a, b)`),
+  never fragments glued together. The French one uses the French terms of
+  [GLOSSARY.fr.md](GLOSSARY.fr.md).
+- **Read once, at start-up**: `Program.Main` sets the UI culture (`CultureInfo.DefaultThreadCurrentUICulture`)
+  from `AppSettings.Language` before any form exists; a change applies at the next start, a restart
+  offered (`MainForm.RestartApp`). No text is looked up into a `static readonly` field or a `const`.
+  Only the UI culture: sorting and casing keep the system's.
+- **Displayed numbers follow it** — `12.5 s` / `12,5 s`, the file sizes in `KB` / `Ko` — through
+  `Resources/Texts` (`Format`, `Number`); every parse and serialization stays `InvariantCulture`, and a
+  number the user types is read in the UI culture or the invariant one.
+- **Left as they are**: the app's name, product and format names, key names, the user's content,
+  what is written to disk for the app or the agents (`errors.log`, `settings.json`, file and folder
+  names), and the **Language / Langue** item — bilingual, each language named in its own.
+- **The shortcuts window** shows `SHORTCUTS.fr.md` in French (embedded beside `SHORTCUTS.md`, the same
+  parser): it is kept in step with the English one (§ Keyboard Shortcuts).
+
 ## Downloadable Components
 
 Every file or tool the app downloads rather than ships — the engines' models, the runtimes they run on,
