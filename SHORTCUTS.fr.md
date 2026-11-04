@@ -68,6 +68,7 @@ Tant que l'onglet Layers est sélectionné.
 | <kbd>Molette</kbd> sur le calque sélectionné | L'agrandir ou le réduire de 5 % par cran |
 | <kbd>Shift</kbd>+<kbd>Molette</kbd> sur le calque sélectionné | Le tourner de 5° par cran |
 | <kbd>Ctrl</kbd> maintenu en glissant un calque | En laisser une copie à sa place |
+| <kbd>Shift</kbd> maintenu en glissant un calque | Le déplacer librement, sans ses guides de placement |
 | <kbd>Shift</kbd> maintenu en glissant la poignée ronde | Tourner par pas de 15° |
 | <kbd>Double-clic</kbd> sur le calque sélectionné | Ouvrir sa vue d'édition |
 | <kbd>Double-clic</kbd> hors du calque, dans sa vue d'édition | Fermer la vue d'édition |

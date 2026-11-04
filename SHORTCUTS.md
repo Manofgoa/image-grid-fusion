@@ -67,6 +67,7 @@ While the Layers tab is selected.
 | <kbd>Wheel</kbd> over the selected layer | Grow or shrink it 5 % a notch |
 | <kbd>Shift</kbd>+<kbd>Wheel</kbd> over the selected layer | Turn it 5° a notch |
 | <kbd>Ctrl</kbd> held while dragging a layer | Leave a copy where it was |
+| <kbd>Shift</kbd> held while dragging a layer | Move it freely, its placement guides ignored |
 | <kbd>Shift</kbd> held while dragging the round handle | Turn by steps of 15° |
 | <kbd>Double-click</kbd> the selected layer | Open its edit view |
 | <kbd>Double-click</kbd> outside the layer, in its edit view | Close the edit view |

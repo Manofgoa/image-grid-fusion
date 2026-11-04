@@ -1190,6 +1190,7 @@ internal sealed partial class GridPreview : Control
         }
 
         PaintZoomBadge(g);
+        this.PaintLayerGuides(g, canvas);
         this.PaintLayerSelection(g, canvas);
 
         if (_dragging && _ghost is not null)
