@@ -91,8 +91,9 @@ Option thumbnails in the Grid background options (§ Options Toolbar › option 
 The Grid background options row, after its fill settings, before its Reset:
 
 - The **image thumbnail** — the image as drawn, its look applied — or an empty drop zone reading
-  *Click or drop an image here*. **A click** → the file picker at once, as **Browse…** (Iterations 4, 6). No
-  double-click: the edit view opens from **Edit** only (Iteration 6). Its tooltip names the file.
+  *Drop an image here*. **No click** on it: a file is chosen with **Browse…**, beside Paste (Iteration 8); **a
+  double-click** opens the background edit view, as **Edit** does (Q&A 6, back in Iteration 8). Its tooltip names
+  the file.
 - **Paste** (an image on the clipboard, read as Ctrl+V reads it, `UI/ClipboardImage`; Ctrl+V itself keeps filling
   the cells, Q&A 14), then **Browse…** right after it — its icon and its text, so it is seen (Iteration 6) —,
   **Edit** (the edit view) and **Remove** (✖, the image gone, the fill alone).
@@ -289,6 +290,14 @@ l'opacité — ça agit sur l'effet zoom bien sûr*): a **Zoom** slider right un
 background's options — the cell Zoom slider's scale (10 % to the maximum zoom, log, snapping onto 100 %), acting on
 the image's **Zoom effect**: a free zoom, its fit mode left (Fill / Contain unpressed), its center kept where it is.
 It shows the zoom drawn, the fit mode resolved; tiled, it is the tiles' size. Logged in the same pass as its code.
+
+### Iteration 8 — 2026-11-04 — ⚙️ Post-implementation — No click on the thumbnail
+
+The user's request of Iteration 6 misread (*t'as pas enlevé le simple clic*): what was dangerous is the
+thumbnail's **single click**, which changed the image. It is removed — the thumbnail only shows the image and takes
+a drop; a file is chosen with **Browse…**, beside Paste. With no click left to set it off by mistake, the
+**double-click** opens the edit view again, as agreed in Q&A 6. Iteration 4's click and Iteration 6's removal of
+the double-click are undone; § Options updated.
 
 ---
 
