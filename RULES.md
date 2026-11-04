@@ -595,6 +595,17 @@ Portrait 4:5, Story 9:16, Landscape 16:9, Custom — given by `GridPreview.Canva
   with exact pixels (`CustomFormat.Of` / `WithWidth` / `WithHeight`). With exact pixels the preview
   draws the canvas at its **real size** — one export pixel a device pixel — whenever it fits the working
   area (`GridPreview.CanvasBounds`), fitted otherwise.
+- **The canvas's edges set it too** (origin: `workfiles/20261104-output-format-edge-drag.md`),
+  `UI/GridPreview.CanvasEdges.cs`: while the Format tab is selected (`GridPreview.FormatActive`, as
+  `LayersActive`), green grips — helper indicators — mark the canvas's edges and corners, and a drag
+  there takes priority over the cells on its own reach only. A vertical edge sets the width, a horizontal
+  one the height, a corner both, Ctrl moving the opposite edge the other way. The canvas is drawn in the
+  drag's rectangle meanwhile, its opposite edge still, the ratio held (`UpdateRatio`), fitted and centered
+  again on release; a readout at its center gives what the format becomes. Each step goes through the
+  fields' route (`MainForm.ResizeCanvas` → `ApplyCustom`): the Custom format in force, its mode kept — a
+  ratio while unset —, its fields the PNG export's pixels of the format in force at the press
+  (`MainForm.StartCanvasResize`, `PngSize`) scaled by the drag, brought within their bounds by
+  `CustomFormat.WithWidth` / `WithHeight`; the canvas drawn at what they hold. One undo step (`InGesture`).
 
 - The **Free** ratio is computed by `OutputFormats.FreeRatio`: between 9:16 and 21:9, the one losing
   the least of the images (crops plus bands, weighted by the cells' area), images read through
