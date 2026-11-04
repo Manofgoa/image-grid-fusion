@@ -48,9 +48,10 @@ Components: `Composition/OutputFormat.cs` (`OutputFormat`, `OutputFormats`), `Co
 - **Part of the composed state**: `GridState` carries the `CustomFormat` beside the `OutputFormat`
   (equality, hash, the restore), so a change of its fields is one undo step like a format change
   (RULES.md § Undo History: a new piece of composed state joins the snapshot and the restore).
-- The global Resets and *Clear all* bring the format back to Twitter **and** the Custom fields to their
-  default (see *Open Questions* for that default); the Format tab's Reset button counts as modified
-  while the format is not Twitter (`FormatInitial` unchanged in meaning).
+- The global Resets and *Clear all* bring the format back to Twitter **and** the Custom fields to
+  unset (§ The Format Tab's Options); the Format tab's Reset button counts as modified while the
+  format is not Twitter (`FormatInitial` unchanged in meaning). `CustomFormat` is then `null` in the
+  composed state.
 
 ### Free and Custom
 
@@ -70,7 +71,15 @@ The row holds the `FormatStrip`, then the Custom fields (Q&A #2):
 ```
 
 - **The Custom thumbnail** draws the current layout at the Custom ratio, as the others do
-  (`FormatStrip.PaintThumbnail`); its label — see *Open Questions*.
+  (`FormatStrip.PaintThumbnail`). Its **label is its value** (Q&A #7): `3:2` with *Exact pixels* off —
+  the two fields divided by their greatest common divisor, `1910 × 1000` reading `191:100` — and
+  `1080×1350` with it on; its tooltip says *Custom*, then what it gives.
+- **Its default is taken from the format before it** (Q&A #6): while the fields are **unset** — at
+  launch, after the global Resets or *Clear all* — the first pick of Custom (its thumbnail or a field)
+  fills them with the PNG native size of the format then in force (`MainForm.PngSize`, the Copy cap),
+  *Exact pixels* off, so the ratio does not change until a field does. The Resets bring the fields back
+  to unset; the Format tab's Reset button counts as modified while the format is not Twitter.
+  Unset, the fields show that native size greyed, the next pick's values.
 - **Two numeric fields**, *Width* and *Height*, and an **Exact pixels** checkbox, after the strip,
   always shown, enabled whatever format is selected.
 - **Acting on any of them selects Custom** (the Format's equivalent of RULES.md § Options Toolbar,
@@ -107,8 +116,9 @@ side within [1200, cap].
 - The *PNG max size* entries keep their text `720p — W × H` and their tooltip; their size is read
   from the same rule (`MainForm.PngSize`), so they show what they give. The Copy / Save tooltips
   (`PNG W × H`) follow the same way.
-- The **video canvas** stays rounded to even sides (`Animation.EvenSize`) — see *Open Questions* for
-  an odd exact size.
+- The **video canvas** stays rounded down to even sides (`Animation.EvenSize`, Q&A #8): an odd exact
+  size — `1081 × 1350` — gives an exact PNG and a `1080 × 1350` MP4 / GIF; the MP4 / GIF entries'
+  tooltips give the size they really produce.
 - The **position readout** (`GridPreview.ExportOffsets`) reads the PNG export's canvas: it gives
   offsets in the exact size's pixels.
 - **Cell copy** is untouched: it has its own native size (RULES.md § Cell Copy).
@@ -153,9 +163,12 @@ unit test is created or updated. The run checks by hand:
 - [x] ~~How does Free coexist with it?~~ → Free unchanged, a thumbnail of its own, never exact
   (follows from Q&A #1–#2)
 - [ ] The fields' bounds: the ratio's range with *Exact pixels* off, the pixels' with it on?
-- [ ] The Custom fields' default — at launch, after a Reset or *Clear all*?
-- [ ] The Custom thumbnail's label: `Custom`, or its value (`3:2`, `1080 × 1350`)?
-- [ ] An odd exact size (`1081 × 1350`) in a video, which needs even sides?
+- [x] ~~The Custom fields' default — at launch, after a Reset or *Clear all*?~~ → Taken from the
+  format shown before Custom is first picked (Q&A #6)
+- [x] ~~The Custom thumbnail's label: `Custom`, or its value (`3:2`, `1080 × 1350`)?~~ → Its value
+  (Q&A #7)
+- [x] ~~An odd exact size (`1081 × 1350`) in a video, which needs even sides?~~ → Rounded to even in
+  the video only (Q&A #8)
 
 ---
 
@@ -175,6 +188,13 @@ size is smaller; a straightforward subject, one scout pass. The scout pass locat
 (`CanvasSizer.Compute` with its 1200 floor, the caps passed by every export). Initial design written:
 a `CustomFormat` record in the composed state, an optional exact size in `CanvasSizer`, the caps
 reducing it. Four questions left open.
+
+### Iteration 2 — 2026-11-04
+
+Three of the four questions answered (Q&A #6–#8): the Custom fields unset until Custom is first
+picked, then filled from the native size of the format in force, the Resets unsetting them; the
+thumbnail labelled with its value; an odd exact size rounded to even in the videos only. The bounds'
+question (#5) was not understood: asked again in plainer words (#9).
 
 ---
 
@@ -201,10 +221,11 @@ Questions asked by the agent during design, with user responses.
 | 2 | How are the ratio or the dimensions entered: one text field parsing `3:2` / `1080x1350`, two fields and a mode, or a small dialog? | **Two fields and a mode**: Width × Height, an *Exact pixels* checkbox (off = a ratio) | 2026-11-04 |
 | 3 | With exact dimensions, what becomes of the PNG max size entries and the Video size: exact everywhere, exact unless a cap is smaller, or exact PNG and capped video? | **Exact, unless a cap is smaller**: a PNG max size entry and the Video size still reduce it, the ratio kept | 2026-11-04 |
 | 4 | Is the subject straightforward or tricky / long to explore? | **Straightforward**: one scout pass | 2026-11-04 |
-| 5 | The fields' bounds, ratio and pixels? | | |
-| 6 | The Custom fields' default at launch and after a Reset? | | |
-| 7 | The Custom thumbnail's label? | | |
-| 8 | An odd exact size in a video? | | |
+| 5 | The fields' bounds: ratio 1:4–4:1 and pixels 100–8192, the Free ratio's range, or 1:10–10:1 and 16–8192? | Not understood — asked again in plainer words (#9) | 2026-11-04 |
+| 6 | The Custom fields' default: taken from the current format, a fixed 1080 × 1350, or a fixed 1920 × 1080? | **Taken from the current format**: the native size of the format shown before, *Exact pixels* off; a Reset empties them for next time | 2026-11-04 |
+| 7 | The Custom thumbnail's label: its value, or `Custom`? | **Its value**: `3:2`, or `1080×1350` with *Exact pixels* | 2026-11-04 |
+| 8 | An odd exact size in a video: rounded to even in the video, or even fields only? | **Rounded to even in the video**: the PNG exact, the MP4 / GIF one pixel less, their tooltip giving the real size | 2026-11-04 |
+| 9 | The bounds, re-explained: how elongated a Custom shape may be (*Exact pixels* off), the smallest and largest side in pixels (on)? | | |
 
 ---
 
