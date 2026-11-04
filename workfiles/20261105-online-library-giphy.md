@@ -39,9 +39,10 @@ Components concerned (from the scout pass):
 ## Terms
 
 The word **source** is taken: the folder view's *known sources* and *sources found by themselves* are
-file origins read from a name (GLOSSARY § Name pattern). The new concept needs its own word — proposed
-**online library** (*bibliothèque en ligne*): a web service searched from the file explorer, GIPHY the
-first. To confirm (Open Questions).
+file origins read from a name (GLOSSARY § Name pattern). The new concept takes its own word, **online
+library** (*bibliothèque en ligne*, Q&A 19): a web service searched from the file explorer, GIPHY the
+first. The code and the glossary use it; a later library (KLIPY, imgflip) is another online library on
+the same abstraction.
 
 ---
 
@@ -49,9 +50,9 @@ first. To confirm (Open Questions).
 
 - A value `Giphy` of `ExplorerMode`, its entry in the views drop-down after its icon (RULES.md § Icons),
   saved by name like the others.
-- The search box queries GIPHY instead of the index; the **🔠 / 💡 criteria**, the sort order, the
-  sections buttons and the breadcrumb's folders do not apply there (disabled or hidden — Open
-  Questions).
+- The search box queries GIPHY instead of the index; the **🔠 / 💡 criteria**, the sort order and the
+  sections buttons do not apply there: they are **hidden** in the GIPHY view (Q&A 20), the room freed
+  taking the GIFs / Stickers toggle, and come back in the other views.
 - The breadcrumb reads `GIPHY` then the query, its trailing text what the list holds.
 - **Ctrl+F** cycles through it, last — Folders → People → Favorites → GIPHY — **skipped while no key is
   set**, as People is while the face analysis is off (`NextMode`, Q&A 15); `SHORTCUTS.md` and its French
@@ -115,12 +116,22 @@ first. To confirm (Open Questions).
 - **The rendition downloaded** (Q&A 8): a GIF's **MP4** — light and sharp, the app plays videos; a
   sticker's **GIF** — the only rendition keeping its transparency.
 
+### Favorites
+
+- A GIPHY tile has its **heart** (Q&A 21): hearting it downloads the media — the same rendition — into
+  **`giphy-favorites\` next to the exe** (its name in one `FolderName` constant), and makes that file an
+  ordinary favorite, shown in the Favorites view like any other, as a pasted favorite is
+  (`favorites-from-pasted\`). Un-hearted, its file follows the pasted favorites' rule: to the Recycle
+  Bin once no effect preset holds it.
+- A GIPHY tile already a favorite shows its heart filled, matched by the GIPHY id kept in the file's
+  name.
+
 ### API Key
 
 - A string app setting, `AppSettings.GiphyApiKey`, in `settings.json` next to the exe (Q&A 6) — never in
   the repository.
-- Set from a **⚙ menu** entry, *GIPHY API key…*, through `NameDialog` (its value shown in clear — Open
-  Question), and from the view's invitation.
+- Set from a **⚙ menu** entry, *GIPHY API key…*, through `NameDialog`, its value **shown in clear**
+  (Q&A 22) — it lies in clear in `settings.json` anyway — and from the view's invitation.
 - Out of the undo history.
 
 ---
@@ -141,8 +152,8 @@ this work is an Open Question; until then, the behaviours are checked by hand:
 
 ## Open Questions
 
-- [ ] **Term**: *online library* (*bibliothèque en ligne*) for the new concept, the word *source* being
-  taken?
+- [x] ~~**Term**: *online library* (*bibliothèque en ligne*) for the new concept, the word *source* being
+  taken?~~ → *Online library* (Q&A 19)
 - [x] ~~**Empty search box**: GIPHY's trending GIFs (one call), or nothing until something is typed?~~ →
   The trending, of the kind chosen (Q&A 10)
 - [x] ~~**GIFs and stickers**: GIFs only, or the stickers too (transparent — the backlog's *Stickers in
@@ -164,10 +175,11 @@ this work is an Open Question; until then, the behaviours are checked by hand:
   or under the list?~~ → At the right end of the breadcrumb line (Q&A 17)
 - [x] ~~**Ctrl+F cycle**: does it go through the GIPHY view (skipped without a key, as People is without the
   face analysis)?~~ → Yes, last, skipped while no key is set (Q&A 15)
-- [ ] **Search criteria and sort**: hidden or disabled in the GIPHY view?
-- [ ] **Hearting a GIPHY tile**: no heart, or downloaded into a folder next to the exe and made a
-  favorite (as the pasted favorites)?
-- [ ] **API key dialog**: the key shown in clear in `NameDialog`, or masked?
+- [x] ~~**Search criteria and sort**: hidden or disabled in the GIPHY view?~~ → Hidden (Q&A 20)
+- [x] ~~**Hearting a GIPHY tile**: no heart, or downloaded into a folder next to the exe and made a
+  favorite (as the pasted favorites)?~~ → Downloaded into `giphy-favorites\`, an ordinary favorite
+  (Q&A 21)
+- [x] ~~**API key dialog**: the key shown in clear in `NameDialog`, or masked?~~ → In clear (Q&A 22)
 - [ ] **Unit tests**: create a test project for the GIPHY parsing and paging, or check by hand as the
   previous workfiles did?
 - [ ] **Backlog**: the *Stickers in layers* row of `TODO-FEATURES.md` names GIPHY stickers — mark the part
@@ -214,6 +226,12 @@ question follows from the budget: what triggers a search.
 Q&A 16–18: 50 results a call; the Powered By GIPHY mark at the right end of the breadcrumb line; a search
 starts on Enter only. § Requests, § Loads and the attribution updated.
 
+### Iteration 6 — 2026-11-05
+
+Q&A 19–22: the term *online library*; the criteria, sort and sections buttons hidden in the GIPHY view; a
+heart on a GIPHY tile keeps its file in `giphy-favorites\` as an ordinary favorite; the key shown in clear.
+§ Terms, § The GIPHY View, § Favorites (new) and § API Key updated.
+
 ---
 
 ## Implementation Log
@@ -253,10 +271,12 @@ Questions asked by the agent during design, with user responses.
 | 16 | Page size of a load (again) | 50, the largest | 2026-11-05 |
 | 17 | Where the Powered By GIPHY mark sits (again, with a mockup) | At the right end of the breadcrumb line | 2026-11-05 |
 | 18 | Search trigger: Enter only, or after a pause in the typing | Enter only | 2026-11-05 |
-| 19 | The term for the new concept | | 2026-11-05 |
-| 20 | Search criteria, sort and sections buttons in the GIPHY view | | 2026-11-05 |
-| 21 | Hearting a GIPHY tile | | 2026-11-05 |
-| 22 | The API key shown in clear or masked | | 2026-11-05 |
+| 19 | The term for the new concept | Online library | 2026-11-05 |
+| 20 | Search criteria, sort and sections buttons in the GIPHY view | Hidden | 2026-11-05 |
+| 21 | Hearting a GIPHY tile | Yes, the file kept in a folder next to the exe | 2026-11-05 |
+| 22 | The API key shown in clear or masked | In clear | 2026-11-05 |
+| 23 | Unit tests: a test project, or checks by hand | | 2026-11-05 |
+| 24 | The backlog's *Stickers in layers* row | | 2026-11-05 |
 
 ---
 
