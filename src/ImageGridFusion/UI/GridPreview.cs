@@ -2266,6 +2266,14 @@ internal sealed partial class GridPreview : Control
     }
 
     /// <summary>
+    /// The automatic colors of the first and the last cell holding an image, as the preview draws them: what the
+    /// Grid background's color follows until it is first turned on, and its gradient's Auto second color
+    /// (workfiles/20260926-forced-background.md). <c>null</c> with no image.
+    /// </summary>
+    public (Color? First, Color? Last) GridAutomaticColors =>
+        this._edit is not null ? (null, null) : Compositor.GridColors([.. this._images.Select(this.FrameOf)], this.CellBounds());
+
+    /// <summary>
     /// Largest rectangle at the canvas ratio that fits the control once the drop zone and its gap
     /// are reserved on the right, centered in what remains.
     /// </summary>

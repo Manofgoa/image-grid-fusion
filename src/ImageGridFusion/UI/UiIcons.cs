@@ -159,6 +159,7 @@ internal static class UiIcons
     public static readonly UiIcon Blur = UiIcon.Emoji("\U0001F4A7");
     public static readonly UiIcon Volume = UiIcon.Emoji("\U0001F50A");
     public static readonly UiIcon Soundtrack = UiIcon.Emoji("\U0001F3B5");
+    public static readonly UiIcon GridBackground = UiIcon.Emoji("\U0001F304");
     public static readonly UiIcon Cascade = UiIcon.Emoji("⏭️");
     public static readonly UiIcon Layers = UiIcon.Emoji("\U0001F4D1");
     public static readonly UiIcon Preset = UiIcon.Emoji("⭐");

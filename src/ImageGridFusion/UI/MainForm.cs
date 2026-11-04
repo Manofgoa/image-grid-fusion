@@ -354,7 +354,7 @@ internal sealed partial class MainForm : Form
     private readonly Label _globalLabel = new() { Text = "Global →", AutoSize = true, Anchor = AnchorStyles.Left };
 
     // The Format is a setting, always in force: its tab has no checkbox.
-    private readonly EffectTabs<GlobalEffect> _globalTabs = new(effect => effect.ToString(), standing: true, hasCheck: effect => effect != GlobalEffect.Format)
+    private readonly EffectTabs<GlobalEffect> _globalTabs = new(effect => effect == GlobalEffect.GridBackground ? "Grid background" : effect.ToString(), standing: true, hasCheck: effect => effect != GlobalEffect.Format)
     {
         Anchor = AnchorStyles.Left | AnchorStyles.Bottom,
         Margin = Padding.Empty,
@@ -563,6 +563,7 @@ internal sealed partial class MainForm : Form
         backgroundLines.FlowDirection = FlowDirection.TopDown;
         backgroundLines.Controls.AddRange([backgroundColorLine, backgroundEdgesLine]);
         _options[ImageEffect.Background].Controls.AddRange([this._backgroundFill, backgroundLines]);
+        this.BuildBackgroundStyleOptions(_options[ImageEffect.Background], backgroundColorLine, backgroundLines);
         _options[ImageEffect.Crop].Controls.Add(this._crop);
         // The edge and the opacity on a first line, the other treatments on a second, as the Background's two lines.
         var cutoutEdgeLine = OptionLine();
@@ -655,6 +656,7 @@ internal sealed partial class MainForm : Form
         _globalOptions[GlobalEffect.Borders].Controls.AddRange(
             [_bordersStyle, this._bordersColor, this._bordersOpacityIcon, _bordersOpacity, _bordersOpacityLabel, _bordersThickness, _bordersThicknessLabel, this._bordersInnerLines, _bordersOuterFrame, _bordersRounded]);
         this._globalOptions[GlobalEffect.Seams].Controls.AddRange([this._seamsDepth, this._seamsDepthLabel]);
+        this.BuildGridBackgroundOptions();
         this._globalOptions[GlobalEffect.Cascade].Controls.AddRange([this._cascadePause, this._cascadePauseLabel]);
         this.BuildLayerOptions();
 
@@ -1377,6 +1379,7 @@ internal sealed partial class MainForm : Form
         _globalTabs.SetIcon(GlobalEffect.Fade, EffectIcons.Fade(size));
         _globalTabs.SetIcon(GlobalEffect.Borders, EffectIcons.Borders(size));
         this._globalTabs.SetIcon(GlobalEffect.Seams, EffectIcons.Seams(size));
+        this._globalTabs.SetIcon(GlobalEffect.GridBackground, UiIcons.GridBackground.Copy(size));
         this._globalTabs.SetIcon(GlobalEffect.Cascade, UiIcons.Cascade.Copy(size));
         this._globalTabs.SetIcon(GlobalEffect.Layers, UiIcons.Layers.Copy(size));
         this.UpdateLayerIcons(size);
@@ -1423,6 +1426,8 @@ internal sealed partial class MainForm : Form
             {
                 button.SetIcon(eyedropper);
             }
+
+            this.UpdateFillIcons(size, eyedropper);
         }
 
         foreach (var image in previous)
@@ -2166,7 +2171,9 @@ internal sealed partial class MainForm : Form
             this._cascade,
             this._cascadeOn,
             this._preview.Layers,
-            this._layersOn),
+            this._layersOn,
+            this._gridBackground,
+            this._gridBackgroundOn),
         this._explorer.PeopleState);
 
     /// <summary>
@@ -2213,6 +2220,8 @@ internal sealed partial class MainForm : Form
         this._seamsOn = global.SeamsOn;
         this._cascade = global.Cascade;
         this._cascadeOn = global.CascadeOn;
+        this._gridBackground = global.GridBackground;
+        this._gridBackgroundOn = global.GridBackgroundOn;
 
         // The sound first: a grid starting over then starts the soundtrack restored from its beginning.
         this._preview.Soundtrack = this.ActiveSoundtrack;
@@ -2223,6 +2232,10 @@ internal sealed partial class MainForm : Form
         // After the format, which tells whether the Twitter corners apply.
         this._preview.Borders = this.ActiveBorders;
         this._preview.Seams = this.ActiveSeams;
+
+        // The cells' looks came back with their Background as the Grid background had them.
+        this._preview.GridBackground = this.ActiveGridBackground;
+        this._preview.BackgroundsForcedOff = this._gridBackgroundOn;
 
         // The layers as they stood, the selected one kept while it still stands at its place.
         this._layersOn = global.LayersOn;
@@ -2268,12 +2281,13 @@ internal sealed partial class MainForm : Form
         bool borders = !BordersInitial;
         bool fade = !FadeInitial;
         bool seams = !this.SeamsInitial;
+        bool gridBackground = !this.GridBackgroundInitial;
         bool cascade = !this.CascadeInitial;
         int layers = this._preview.Layers.Count;
         bool layersSet = !this.LayersInitial;
         bool format = !FormatInitial;
         bool soundtrackInitial = SoundtrackInitial;
-        if (count == 0 && soundtrackInitial && !borders && !fade && !seams && !cascade && !layersSet && !format)
+        if (count == 0 && soundtrackInitial && !borders && !fade && !seams && !gridBackground && !cascade && !layersSet && !format)
         {
             return;
         }
@@ -2318,6 +2332,11 @@ internal sealed partial class MainForm : Form
         if (seams)
         {
             reset.Add("seams");
+        }
+
+        if (gridBackground)
+        {
+            reset.Add("grid background");
         }
 
         if (cascade)
@@ -3083,7 +3102,7 @@ internal sealed partial class MainForm : Form
             try
             {
                 Cursor.Current = Cursors.WaitCursor;
-                return Compositor.Render(_preview.Images, _preview.ActiveLayout, _preview.CanvasRatio, ActiveBorders, this.ActiveSeams, maxLongSide, this.ActiveLayers);
+                return Compositor.Render(_preview.Images, _preview.ActiveLayout, _preview.CanvasRatio, ActiveBorders, this.ActiveSeams, maxLongSide, this.ActiveLayers, this.ActiveGridBackground);
             }
             catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
             {
@@ -3100,7 +3119,7 @@ internal sealed partial class MainForm : Form
         GridExport.Job job;
         try
         {
-            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout, _preview.CanvasRatio, ActiveBorders, seams: this.ActiveSeams, stillMaxSide: maxLongSide, layers: this.ActiveLayers);
+            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout, _preview.CanvasRatio, ActiveBorders, seams: this.ActiveSeams, stillMaxSide: maxLongSide, layers: this.ActiveLayers, background: this.ActiveGridBackground);
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
@@ -3144,7 +3163,7 @@ internal sealed partial class MainForm : Form
         GridExport.Job job;
         try
         {
-            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout, _preview.CanvasRatio, ActiveBorders, ActiveSoundtrack, ActiveFade, this.ActiveSeams, this.ActiveCascade, AppSettings.VideoMaxSide, layers: this.ActiveLayers);
+            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout, _preview.CanvasRatio, ActiveBorders, ActiveSoundtrack, ActiveFade, this.ActiveSeams, this.ActiveCascade, AppSettings.VideoMaxSide, layers: this.ActiveLayers, background: this.ActiveGridBackground);
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
@@ -3551,7 +3570,7 @@ internal sealed partial class MainForm : Form
     private void UpdateButtons()
     {
         bool any = this.HasContent && !IsExporting;
-        _clearButton.Enabled = (_preview.Images.Count > 0 || !SoundtrackInitial || !BordersInitial || !FadeInitial || !this.SeamsInitial || !this.CascadeInitial || !this.LayersInitial || !FormatInitial) && !IsExporting;
+        _clearButton.Enabled = (_preview.Images.Count > 0 || !SoundtrackInitial || !BordersInitial || !FadeInitial || !this.SeamsInitial || !this.GridBackgroundInitial || !this.CascadeInitial || !this.LayersInitial || !FormatInitial) && !IsExporting;
         // One system split button each: its main part acts with something to copy, its arrow with the last video too.
         this._copyButton.MainEnabled = any;
         this._saveButton.MainEnabled = any;
@@ -3734,7 +3753,9 @@ internal sealed partial class MainForm : Form
             };
         }
 
-        return effect is { } one ? image.Look.Reset(one) : ImageLook.None;
+        // While the Grid background is on, a cell's Background comes back off from its Reset (workfiles/20260926-forced-background.md).
+        var cleared = effect is { } one ? image.Look.Reset(one) : ImageLook.None;
+        return this._gridBackgroundOn && effect is null or ImageEffect.Background ? cleared.ForceBackgroundOff() : cleared;
     }
 
     /// <summary>The slider snaps to 100 % near its mark.</summary>
@@ -4474,6 +4495,7 @@ internal sealed partial class MainForm : Form
                 this._backgroundBlend.Value = (int)Math.Round(background.Blend * 100);
                 this._backgroundEdgeOpacity.Value = (int)Math.Round(background.EdgeOpacity * 100);
                 this._backgroundSoften.Checked = background.Soften;
+                this.ShowBackgroundStyle(background);
                 if (_selectedEffect == ImageEffect.Background)
                 {
                     ShowBackgroundColor(BackgroundShown(background));
@@ -4683,6 +4705,9 @@ internal sealed partial class MainForm : Form
             case GlobalEffect.Seams:
                 this.ToggleSeams();
                 break;
+            case GlobalEffect.GridBackground:
+                this.ToggleGridBackground();
+                break;
             case GlobalEffect.Cascade:
                 this.ToggleCascade();
                 break;
@@ -4757,6 +4782,18 @@ internal sealed partial class MainForm : Form
             this._seams = SeamFade.Initial;
             this._seamsOn = false;
             this._preview.Seams = this.ActiveSeams;
+        }
+
+        if (effect is null or GlobalEffect.GridBackground)
+        {
+            // Off: the cells' Background it turned off back on.
+            this._gridBackground = GridBackground.Initial;
+            this._gridBackgroundOn = false;
+            this._preview.GridBackground = this.ActiveGridBackground;
+            if (this._preview.BackgroundsForcedOff)
+            {
+                this._preview.ForceBackgrounds(false);
+            }
         }
 
         if (effect is null or GlobalEffect.Cascade)
@@ -4888,11 +4925,12 @@ internal sealed partial class MainForm : Form
         _globalTabs.SetState(GlobalEffect.Fade, ActiveFade is not null, fadeUnavailable);
         _globalTabs.SetState(GlobalEffect.Borders, ActiveBorders is not null, unavailable: null);
         this._globalTabs.SetState(GlobalEffect.Seams, this.ActiveSeams is not null, seamsUnavailable);
+        this._globalTabs.SetState(GlobalEffect.GridBackground, this.ActiveGridBackground is not null, unavailable: null);
         this._globalTabs.SetState(GlobalEffect.Cascade, this.ActiveCascade is not null, cascadeUnavailable);
         this._globalTabs.SetState(GlobalEffect.Layers, this._layersOn, unavailable: null);
         _globalTabs.Selected = _selectedGlobalEffect;
         _globalTabs.Enabled = enabled;
-        _globalResetButton.Enabled = enabled && !(SoundtrackInitial && BordersInitial && FadeInitial && this.SeamsInitial && this.CascadeInitial && this.LayersInitial && FormatInitial);
+        _globalResetButton.Enabled = enabled && !(SoundtrackInitial && BordersInitial && FadeInitial && this.SeamsInitial && this.GridBackgroundInitial && this.CascadeInitial && this.LayersInitial && FormatInitial);
 
         // The layers take the mouse only while their tab is selected; never during an export.
         this._preview.LayersActive = this._selectedGlobalEffect == GlobalEffect.Layers && enabled;
@@ -4916,6 +4954,7 @@ internal sealed partial class MainForm : Form
             GlobalEffect.Fade => !FadeInitial,
             GlobalEffect.Borders => !BordersInitial,
             GlobalEffect.Seams => !this.SeamsInitial,
+            GlobalEffect.GridBackground => !this.GridBackgroundInitial,
             GlobalEffect.Cascade => !this.CascadeInitial,
             GlobalEffect.Layers => !this.LayersInitial,
             GlobalEffect.Format => !FormatInitial,
@@ -4923,6 +4962,7 @@ internal sealed partial class MainForm : Form
         };
         UpdateBorders();
         this.UpdateLayerOptions();
+        this.ShowGridBackgroundOptions();
 
         // A long name is cut, the whole path in its tooltip; the file is kept while the soundtrack is off.
         const int MaxName = 32;

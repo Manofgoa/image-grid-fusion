@@ -11,6 +11,7 @@ public enum GlobalEffect
     Fade,
     Borders,
     Seams,
+    GridBackground,
     Cascade,
     Layers,
 }

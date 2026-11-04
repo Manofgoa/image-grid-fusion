@@ -22,7 +22,9 @@ internal sealed record GlobalState(
     VideoCascade Cascade,
     bool CascadeOn,
     GridLayers Layers,
-    bool LayersOn);
+    bool LayersOn,
+    GridBackground GridBackground,
+    bool GridBackgroundOn);
 
 /// <summary>
 /// Everything the user composes, as it stood after an action: the cells' images and looks, the layout
@@ -231,6 +233,11 @@ internal sealed class GridHistory : IDisposable
         if (o.Seams != n.Seams || o.SeamsOn != n.SeamsOn)
         {
             labels.Add(nameof(GlobalEffect.Seams));
+        }
+
+        if (o.GridBackground != n.GridBackground || o.GridBackgroundOn != n.GridBackgroundOn)
+        {
+            labels.Add("Grid background");
         }
 
         if (o.Cascade != n.Cascade || o.CascadeOn != n.CascadeOn)
