@@ -308,6 +308,15 @@ apart: a tile takes ~12 s and ~800 MB; composing the preview with the 4096 × 61
 ~0.1 s, the 8192 px PNG ~0.5 s, a paint of the preview after the delivery under 5 ms — the cause lies
 elsewhere, looked for with the frozen UI thread's stack.
 
+- **Not reproduced**: the real main window, hosted by a probe with a 1024 × 1536 image turned to ×4,
+  went through the 24 tiles (~6 min) and the delivery with no freeze, the version the user tested as
+  well as the fixed one — its UI answering throughout, a paint after the delivery 2 to 6 ms, the
+  process ~400 MB; the machine has room (31 GB, 10 GB free). The freeze depends on the user's session.
+- **Fixed all the same**: the cell drawn again at the delivery, and the preview drawing an enlargement
+  past 2048 px from a reduced copy (`SourceImage.ShownBitmap`, 32 bpp premultiplied, made once) — a
+  redraw of the cell went through the 25 Mpx bitmap, ~0.1 s each, every gesture.
+- The next test runs under a watcher reading the UI thread's stack if the window stops answering.
+
 - **Found on the way**: the delivery only invalidated the preview, whose cache is drawn again only
   when the images change — the cell kept showing the image as loaded. It is drawn again at once, as a
   cut-out is (fixes code that betrayed the design).
@@ -323,11 +332,11 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 6, 7 | 2026-11-03 | Effect, engine and component, drawn bitmap and GIF pages, tab, options, save action |
+| Code | 6, 7, 8 | 2026-11-04 | Effect, engine and component, drawn bitmap and GIF pages, tab, options, save action; the preview's reduced copy, the redraw at delivery |
 | Unit tests | 6 | 2026-11-03 | Not applicable: no test project in the repository — manual checks only |
 | README | 6 | 2026-11-03 | § Upscale, the tabs, the components, the tech credits — English and French |
 | Glossary | 6 | 2026-11-03 | Upscale, Upscale engine, the effects' list — English and French |
-| RULES.md | 6 | 2026-11-03 | § The Upscale Exception |
+| RULES.md | 6, 8 | 2026-11-04 | § The Upscale Exception, its reduced preview copy |
 
 ---
 
