@@ -36,6 +36,11 @@ the multiplier scales it like it scales a GIF's delays or a video's frame rate.
   *Reset*, and follows the image on a swap (RULES.md § Scope and State).
 - Range: **×0.25 to ×4**, in steps of **0.25** (16 notches, ×1 on the fourth). Constants
   `MinSpeed`, `MaxSpeed`, `SpeedStep` on `FramesEffect`; `WithSpeed` clamps to the range.
+- **Effect presets** (RULES.md § Effect Presets): the speed is saved with the Frames effect under its
+  own key — `"speed"` in `FramesEffect.ToJson`, read back clamped to the range by `FromJson`, ×1 when
+  missing — and `LookPreset.Describe` names it when it is not ×1 (`×1.5`).
+- It applies to a **layer**'s content as to a cell's (RULES.md § Layers): the same `SourceImage`
+  members are read for both, and a layer never takes part in the Cascade.
 
 ---
 
@@ -167,6 +172,22 @@ the trim.
 Placement chosen among three drawn layouts: a **third column** after a separator, the label over the
 slider, the toolbar's height unchanged. § UI updated. No open question remains.
 
+### Iteration 5 — 2026-11-04
+
+The user asked whether the developments since the design (≈ 600 commits) go against its choices.
+Checked: none does. The timing model is unchanged — the same readers of `PlayedLength` / `StartTime`
+(`Animation.LoopOf` and `GridLength`, `CascadeSchedule.TurnOf`, `GridExport`'s `Item` and
+`MixedSound`, `AnimationPlayer`'s offsets and progress, `MainForm`'s readout tooltip); the preview's
+sound still plays through an `AudioFileInputNode`, the export's mixer still decodes at a chosen rate;
+`Animation.StepDuration` is still the 1 s of PDFs and texts, nothing else sets a pace; no other
+workfile nor `TODO-FEATURES.md` designs a speed. The new developments add to the scope, never against
+it: **effect presets** (RULES.md § Effect Presets) require the speed in `FramesEffect.ToJson` /
+`FromJson` and in `LookPreset.Describe`; **layers** play their contents through the same members, so
+the speed reaches them unchanged; an **upscaled GIF**'s pages keep the source's timing
+(`UpscaledPages` delegates `TimeOf` / `LoopDuration`). The icons rule (RULES.md § Icons) covers
+menus, tabs, buttons and drop-down entries, not sliders: the speed slider needs none. § Settings
+updated with the presets and the layers.
+
 ---
 
 ## Implementation Log
@@ -199,8 +220,9 @@ Questions asked by the agent during design, with user responses.
 | 9 | Go for implementation? | Not answered — the session ended on the question | 2026-09-26 |
 | 10 | How do we resume the workfile? | Refresh the design first | 2026-10-10 |
 | 11 | Where does the speed slider go in the Frames options? | A — a third column after a separator | 2026-10-10 |
-| 12 | Go for implementation? | | |
+| 12 | Go for implementation? | Not answered — the user asked instead to check the new developments against the design | 2026-11-04 |
+| 13 | Go for implementation? | | |
 
 ---
 
-*Last updated: 2026-10-10*
+*Last updated: 2026-11-04*
