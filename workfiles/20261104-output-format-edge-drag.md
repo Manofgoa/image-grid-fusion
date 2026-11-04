@@ -42,13 +42,22 @@ preview flag next to `LayersActive`), `Composition/CustomFormat.cs` (`Of`, `With
   so the cells keep every gesture inside it.
 - **Cursors**: ↔ (`SizeWE`) over a vertical edge, ↕ (`SizeNS`) over a horizontal one, the diagonal
   ones (`SizeNWSE`, `SizeNESW`) over the corners.
+- **Grips** (Q&A #7): while the Format tab is selected, eight small grips — the middle of each edge and
+  the four corners — show where the canvas is dragged. **Helper indicators** (RULES.md § On-Cell Helper
+  Indicators): fluorescent green over the black halo, **white** while hovered or dragged, drawn in
+  `GridPreview.OnPaint` only. The hit area stays the whole band along each edge, not the grip alone.
 
 ## The Drag
 
+- **The opposite edge stays put** (Q&A #5): during the drag, the dragged edge follows the cursor and the
+  opposite one does not move — the canvas drawn in a **drag rectangle**, held by `CanvasBounds()` while
+  the drag runs, within the working area (the control less its margins and the drop zone). `UpdateRatio`
+  holds the ratio meanwhile, as for a separator or a crop bar. **On release**, the canvas is fitted and
+  centered again at the new ratio — or drawn at real size with exact pixels, when it fits.
 - **Edges** (Q&A #1): left / right change the width, top / bottom the height, the other side unchanged.
 - **Corners** (Q&A #3): width and height at once, freely — no ratio kept.
 - **Ctrl held — symmetric** (Q&A #3): the opposite edge moves too, by the same amount the other way, so
-  the canvas's center stays where it is. Read from `ModifierKeys` at each move, so it can be pressed or
+  the canvas's center stays where it is — the one case where the opposite edge moves during the drag. Read from `ModifierKeys` at each move, so it can be pressed or
   released during the drag.
 - **Puts the format in Custom**, through the same route as the fields (`MainForm.ApplyCustom`): the
   format becomes Custom at the first move, its fields and its thumbnail follow live.
@@ -59,6 +68,9 @@ preview flag next to `LayersActive`), `Composition/CustomFormat.cs` (`Of`, `With
   fields, taken **once, at the press** — the PNG export's size of the format in force
   (`MainForm.PngSize` at the Copy cap: the exact size with exact pixels, else the native size). At real
   size, one device pixel is one pixel.
+- **The fields after a drag** — the drag rectangle × that scale, rounded — in both modes (Q&A #6): with
+  exact pixels, the pixels; without, the **native size's pixels** as the ratio's terms (`1847 × 1200`,
+  the thumbnail reading `1847:1200`), precise rather than rounded to a readable ratio.
 - **Bounds**: the values go through `CustomFormat` (`WithWidth` / `WithHeight` / `Of`): a side within
   its mode's bounds, the shape within 1:10 – 10:1. The canvas drawn during the drag is the one the
   bounded values give, so it never shows a shape the format refuses.
@@ -69,7 +81,9 @@ preview flag next to `LayersActive`), `Composition/CustomFormat.cs` (`Of`, `With
 ## Live Indicator (Q&A #3)
 
 - While the drag runs, a **readout** of what the format becomes: `1080 × 1350 px` with exact pixels,
-  the ratio otherwise.
+  the ratio otherwise — its decimal form, `1.54:1`, the fields' terms being too long to read at a
+  glance.
+- **At the center of the canvas** (Q&A #8), in large type, over the cells; gone at the release.
 - A **helper indicator**: fluorescent green over its black halo (`HelperColor`, `HelperHalo`), drawn
   in `GridPreview.OnPaint` only, never in the exports (RULES.md § On-Cell Helper Indicators).
 
@@ -99,19 +113,23 @@ unit test is created or updated. The run checks by hand:
 | A corner changes both sides; Ctrl keeps the center in place | The running app | — |
 | The bounds: the shape stops at 1:10 / 10:1, a side at 100 px with exact pixels | The running app | — |
 | One drag is one undo step; Ctrl+Z gives the previous format back | The running app | — |
-| The readout shows during the drag only, and never in a Copy | The running app | — |
+| The readout shows during the drag only, at the canvas's center, and never in a Copy | The running app | — |
+| The grips show while the Format tab is selected only, white while hovered | The running app | — |
+| During a drag the opposite edge stays put; on release the canvas is centered again | The running app | — |
 
 ---
 
 ## Open Questions
 
-- [ ] During the drag, does the opposite edge stay where it is (the canvas re-centered and re-fitted on
-  release), or is the canvas re-fitted and re-centered at every move?
-- [ ] With *Exact pixels* off, what are the ratio's terms after a drag — the PNG native size's pixels
-  (`1847:1200`), or a ratio rounded to a readable one?
-- [ ] Are the draggable edges shown by drawn grips while the Format tab is selected, or by the cursor
-  only?
-- [ ] Where does the live readout stand — the canvas's center, or next to the cursor?
+- [x] ~~During the drag, does the opposite edge stay where it is (the canvas re-centered and re-fitted on
+  release), or is the canvas re-fitted and re-centered at every move?~~ → The opposite edge stays put,
+  the canvas fitted and centered on release (Q&A #5)
+- [x] ~~With *Exact pixels* off, what are the ratio's terms after a drag — the PNG native size's pixels
+  (`1847:1200`), or a ratio rounded to a readable one?~~ → The native size's pixels (Q&A #6)
+- [x] ~~Are the draggable edges shown by drawn grips while the Format tab is selected, or by the cursor
+  only?~~ → Green grips at the edges' middles and the corners (Q&A #7)
+- [x] ~~Where does the live readout stand — the canvas's center, or next to the cursor?~~ → At the
+  canvas's center (Q&A #8)
 
 ---
 
@@ -130,6 +148,13 @@ on top of the edges; a straightforward subject, one direct exploration pass. The
 rectangle (`GridPreview.CanvasBounds`), the Custom route (`MainForm.ApplyCustom`, `CustomFormat`'s
 bounds), the ratio held during gestures (`UpdateRatio`) and the global tab → preview flag
 (`LayersActive`). Initial design written; four questions left open.
+
+### Iteration 2 — 2026-11-04
+
+The four questions answered (Q&A #5–#8): the opposite edge stays put during the drag, the canvas
+fitted and centered again on release; without exact pixels, the fields take the native size's pixels;
+green grips at the middle of each edge and at the corners while the Format tab is selected; the live
+readout at the canvas's center, the ratio in decimal form. No question left open.
 
 ---
 
@@ -156,10 +181,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | With *Exact pixels* on, what does the drag do? | Changes Width / Height in pixels, exact pixels kept | 2026-11-04 |
 | 3 | Which extras on top of the edges? | Corners, a live readout, Ctrl for a symmetric drag (no snapping onto known formats) | 2026-11-04 |
 | 4 | Straightforward or tricky subject? | Straightforward | 2026-11-04 |
-| 5 | During the drag: the opposite edge fixed, or the canvas re-fitted at every move? | | |
-| 6 | Ratio mode: the ratio's terms after a drag? | | |
-| 7 | Drawn grips on the edges, or the cursor only? | | |
-| 8 | Where does the live readout stand? | | |
+| 5 | During the drag: the opposite edge fixed, or the canvas re-fitted at every move? | The opposite edge fixed, fitted and centered on release | 2026-11-04 |
+| 6 | Ratio mode: the ratio's terms after a drag? | The native size's pixels (`1847 × 1200`) | 2026-11-04 |
+| 7 | Drawn grips on the edges, or the cursor only? | Green grips at the edges' middles and the corners | 2026-11-04 |
+| 8 | Where does the live readout stand? | At the canvas's center | 2026-11-04 |
 
 ---
 
