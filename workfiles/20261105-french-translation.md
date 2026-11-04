@@ -225,6 +225,12 @@ The four Open Questions answered (Q&A 5–8):
 
 No Open Question left.
 
+### Iteration 3 — 2026-11-05 — ✅ Implemented
+
+Go given: **code, unit tests and documentation** — the code, the checks by hand of § Test Impact
+(no test project), the READMEs, the French docs, RULES.md, the glossaries and the shared rule of
+`../CLAUDE.md`. Scope frozen as the sections above stand.
+
 ---
 
 ## Implementation Log
