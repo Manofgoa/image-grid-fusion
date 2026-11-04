@@ -1,5 +1,6 @@
 using System.Drawing.Imaging;
 using ImageGridFusion.Composition;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -177,7 +178,7 @@ internal sealed partial class GridPreview
     {
         if (this._edit is { EditsBackground: true, Background.Image: { Placement: not BackgroundPlacement.Cell } background } && cells.Length > 0)
         {
-            this.PaintCutoutBadge(g, cells[0], background.Placement == BackgroundPlacement.Tile ? "▦ Tile" : "⇔ Stretch");
+            this.PaintCutoutBadge(g, cells[0], background.Placement == BackgroundPlacement.Tile ? Strings.UiBadgeTile : Strings.UiBadgeStretch);
         }
     }
 }

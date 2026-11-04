@@ -1,4 +1,5 @@
 using ImageGridFusion.Composition;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -28,18 +29,18 @@ internal sealed class BackgroundFillStrip : SelectionStrip<BackgroundFill>
 
     protected override string Label(BackgroundFill fill) => fill switch
     {
-        BackgroundFill.Color => "Color",
-        BackgroundFill.CornerPixel => "Corner pixel",
-        BackgroundFill.Miter => "Miter",
-        _ => "Background corners",
+        BackgroundFill.Color => Strings.UiFillColor,
+        BackgroundFill.CornerPixel => Strings.UiFillCornerPixel,
+        BackgroundFill.Miter => Strings.UiFillMiter,
+        _ => Strings.UiFillBackgroundCorners,
     };
 
     protected override string Tip(BackgroundFill fill) => fill switch
     {
-        BackgroundFill.Color => "A flat color around the image",
-        BackgroundFill.CornerPixel => "The image's edge pixels stretched to the cell's edges; each corner the color of the image's corner pixel",
-        BackgroundFill.Miter => "The image's edge pixels stretched to the cell's edges; each corner split on its diagonal, each half the color of its edge's pixel next to the image's corner, the corner pixel's color over the diagonal",
-        _ => "The image's edge pixels stretched to the cell's edges; the corners keep the background color",
+        BackgroundFill.Color => Strings.UiFillColorTip,
+        BackgroundFill.CornerPixel => Strings.UiFillCornerPixelTip,
+        BackgroundFill.Miter => Strings.UiFillMiterTip,
+        _ => Strings.UiFillBackgroundCornersTip,
     };
 
     protected override void PaintThumbnail(Graphics g, BackgroundFill fill, Rectangle box, bool pressed)

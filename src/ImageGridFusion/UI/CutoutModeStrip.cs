@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Drawing.Drawing2D;
 using ImageGridFusion.Composition;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -60,16 +61,16 @@ internal sealed class CutoutModeStrip : ThumbnailStrip<CutoutMode>
 
     protected override string Label(CutoutMode mode) => mode switch
     {
-        CutoutMode.Subject => "Subject",
-        CutoutMode.Plain => "Plain",
-        _ => "Pick",
+        CutoutMode.Subject => Strings.UiCutModeSubject,
+        CutoutMode.Plain => Strings.UiCutModePlain,
+        _ => Strings.UiCutModePick,
     };
 
     protected override string Tip(CutoutMode mode) => mode switch
     {
-        CutoutMode.Subject => "Keeps the image's main subject, found by the model; the rest becomes transparent",
-        CutoutMode.Plain => "Removes the plain background around the content — the color of the image's edges, from the edges inward — keeping everything it encloses; no engine needed",
-        _ => "Click an object of the selected cell to keep it instead; Shift + click adds a part, Ctrl + click leaves one out; Escape cancels",
+        CutoutMode.Subject => Strings.UiCutModeSubjectTip,
+        CutoutMode.Plain => Strings.UiCutModePlainTip,
+        _ => Strings.UiCutModePickTip,
     };
 
     protected override void PaintThumbnail(Graphics g, CutoutMode mode, Rectangle box, bool pressed)

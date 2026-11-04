@@ -1,5 +1,6 @@
 using System.Drawing.Drawing2D;
 using ImageGridFusion.Composition;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -23,11 +24,11 @@ internal sealed class BlurKindStrip : SelectionStrip<BlurKind>
 
     protected override bool PicksSelected => true;
 
-    protected override string Label(BlurKind kind) => kind.ToString();
+    protected override string Label(BlurKind kind) => kind == BlurKind.Gaussian ? Strings.UiBlurGaussian : Strings.UiBlurPixelate;
 
     protected override string Tip(BlurKind kind) => kind == BlurKind.Gaussian
-        ? "A smooth blur, fading every detail"
-        : "Coarse squares, each the average of its pixels";
+        ? Strings.UiBlurGaussianTip
+        : Strings.UiBlurPixelateTip;
 
     protected override void PaintThumbnail(Graphics g, BlurKind kind, Rectangle box, bool pressed)
     {

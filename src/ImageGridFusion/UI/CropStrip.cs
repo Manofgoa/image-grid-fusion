@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Drawing.Drawing2D;
 using ImageGridFusion.Composition;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -69,18 +70,18 @@ internal sealed class CropStrip : ThumbnailStrip<CropChoice>
     protected override string Label(CropChoice choice) => choice switch
     {
         { Whole: true } => "100 %",
-        { Keep: true } => "Keep",
+        { Keep: true } => Strings.UiCropKeep,
         { Ratio: { } ratio } => RatioText(ratio),
-        _ => "Free",
+        _ => Strings.UiCropFree,
     };
 
     protected override string Tip(CropChoice choice) => choice switch
     {
-        { Whole: true } => "Keeps the whole image: the bars back on its edges, the ratio freed",
+        { Whole: true } => Strings.UiCropWholeTip,
         { Keep: true } => this._keepRefusal is { } refusal ? refusal
-            : "Makes the kept part the cell's image — its effects kept, ready to be upscaled; Ctrl+Z gives the whole image back",
-        { Ratio: { } ratio } => $"Keeps the kept part at {RatioText(ratio)}",
-        _ => "Frees the kept part's ratio",
+            : Strings.UiCropKeepTip,
+        { Ratio: { } ratio } => Texts.Format(Strings.UiCropRatioTip, RatioText(ratio)),
+        _ => Strings.UiCropFreeTip,
     };
 
     protected override void PaintThumbnail(Graphics g, CropChoice choice, Rectangle box, bool pressed)

@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Drawing.Imaging;
 using ImageGridFusion.Composition;
 using ImageGridFusion.Imaging;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -4166,9 +4167,9 @@ internal sealed partial class GridPreview : Control
     /// <summary>The name the selected cell shows: its file's, else how it arrived.</summary>
     private static string SourceName(SourceImage image) =>
         image.FilePath is { } path ? Path.GetFileName(path)
-        : image.CroppedFrom is { } from ? $"{Path.GetFileNameWithoutExtension(from)} (crop)"
-        : image.Pages is TextPages ? (image.Dropped ? "Dropped text" : "Pasted text")
-        : "Pasted image";
+        : image.CroppedFrom is { } from ? Texts.Format(Strings.UiSourceCrop, Path.GetFileNameWithoutExtension(from))
+        : image.Pages is TextPages ? (image.Dropped ? Strings.UiSourceDroppedText : Strings.UiSourcePastedText)
+        : Strings.UiSourcePastedImage;
 
     /// <summary>The source name within <paramref name="width"/>, measured once per image and width.</summary>
     private string FittedSourceName(SourceImage image, float width, float size)
@@ -4369,7 +4370,7 @@ internal sealed partial class GridPreview : Control
     /// <summary>Dashed strip with a "+" above its label; brighter while the mouse is over it.</summary>
     private void PaintDropZone(Graphics g, Rectangle zone)
     {
-        PaintAddPrompt(g, zone, "Add images", _hoveringDropZone, TextFormatFlags.EndEllipsis);
+        PaintAddPrompt(g, zone, Strings.UiAddImages, _hoveringDropZone, TextFormatFlags.EndEllipsis);
     }
 
     /// <summary>The empty canvas opens the picker too, so it is drawn like the drop zone.</summary>
@@ -4377,7 +4378,7 @@ internal sealed partial class GridPreview : Control
         PaintAddPrompt(
             g,
             canvas,
-            "Click to pick 1 to 4 images, drop them here, or paste them with Ctrl+V",
+            Strings.UiEmptyCanvasPrompt,
             _hoveringCanvas,
             TextFormatFlags.WordBreak);
 

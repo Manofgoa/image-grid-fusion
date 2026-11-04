@@ -1,3 +1,5 @@
+using ImageGridFusion.Resources;
+
 namespace ImageGridFusion.Composition;
 
 /// <summary>Axis along which a layout can be mirrored; <see cref="None"/> for a symmetric layout.</summary>
@@ -87,6 +89,32 @@ public sealed class GridLayout
     public string Id { get; }
 
     public string Name { get; }
+
+    /// <summary>The layout's name as the UI language shows it (the layout strip's tooltip); <see cref="Name"/> stays the English one.</summary>
+    public string DisplayName => this.Name switch
+    {
+        "Single" => Strings.UiLayoutSingle,
+        "Two columns" => Strings.UiLayoutTwoColumns,
+        "Two rows" => Strings.UiLayoutTwoRows,
+        "Two thirds + one third" => Strings.UiLayoutTwoThirdsOneThird,
+        "Two thirds + one third, stacked" => Strings.UiLayoutTwoThirdsOneThirdStacked,
+        "Three quarters + one quarter" => Strings.UiLayoutThreeQuartersOneQuarter,
+        "Big left" => Strings.UiLayoutBigLeft,
+        "Three columns" => Strings.UiLayoutThreeColumns,
+        "Featured" => Strings.UiLayoutFeatured,
+        "Big top" => Strings.UiLayoutBigTop,
+        "Three rows" => Strings.UiLayoutThreeRows,
+        "Big centre" => Strings.UiLayoutBigCentre,
+        "Big top, uneven" => Strings.UiLayoutBigTopUneven,
+        "Corner" => Strings.UiLayoutCorner,
+        "Grid" => Strings.UiLayoutGrid,
+        "Four columns" => Strings.UiLayoutFourColumns,
+        "Four rows" => Strings.UiLayoutFourRows,
+        "Tall left, mixed" => Strings.UiLayoutTallLeftMixed,
+        "Uneven grid" => Strings.UiLayoutUnevenGrid,
+        "Bricks" => Strings.UiLayoutBricks,
+        _ => this.Name,
+    };
 
     public MirrorAxis MirrorAxis { get; }
 

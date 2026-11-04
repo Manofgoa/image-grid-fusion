@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Drawing.Drawing2D;
 using ImageGridFusion.Composition;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -38,11 +39,11 @@ internal sealed class ZoomFitStrip : ThumbnailStrip<ZoomFit>
 
     protected override bool IsPressed(ZoomFit fit) => fit == this._fit;
 
-    protected override string Label(ZoomFit fit) => fit.ToString();
+    protected override string Label(ZoomFit fit) => fit == ZoomFit.Contain ? Strings.UiFitContain : Strings.UiFitFill;
 
     protected override string Tip(ZoomFit fit) => fit == ZoomFit.Contain
-        ? "Keeps the whole image in its cell, whatever its size: bands on one side"
-        : "Keeps the cell covered by the image, whatever its size: the overflow cropped";
+        ? Strings.UiZoomContainTip
+        : Strings.UiZoomFillTip;
 
     protected override void PaintThumbnail(Graphics g, ZoomFit fit, Rectangle box, bool pressed)
     {

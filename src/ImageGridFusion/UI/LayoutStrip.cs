@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Drawing.Drawing2D;
 using ImageGridFusion.Composition;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -321,22 +322,22 @@ internal sealed class LayoutStrip : ScrollableControl
         {
             ItemKind.Mirror => MirrorTip(),
             ItemKind.AutoRow => this.AutoEnabled(true)
-                ? "↔ Auto — resize the cells side by side so their images, shown whole, get the same height"
-                : "↔ Auto (no cells side by side in this layout)",
+                ? Strings.UiLayoutAutoRowTip
+                : Strings.UiLayoutAutoRowNone,
             ItemKind.AutoColumn => this.AutoEnabled(false)
-                ? "↕ Auto — resize the stacked cells so their images, shown whole, get the same width"
-                : "↕ Auto (no stacked cells in this layout)",
-            ItemKind.AdvancedHeader => _expanded ? "Hide the extra layouts" : "Show more layouts",
-            _ => _items[index].Layout!.Name,
+                ? Strings.UiLayoutAutoColumnTip
+                : Strings.UiLayoutAutoColumnNone,
+            ItemKind.AdvancedHeader => _expanded ? Strings.UiLayoutHideExtra : Strings.UiLayoutShowMore,
+            _ => _items[index].Layout!.DisplayName,
         });
         Invalidate();
     }
 
     private string MirrorTip() => _active?.MirrorAxis switch
     {
-        MirrorAxis.Horizontal => "Mirror left ↔ right",
-        MirrorAxis.Vertical => "Mirror top ↔ bottom",
-        _ => "Mirror (not available for a symmetric layout)",
+        MirrorAxis.Horizontal => Strings.UiLayoutMirrorH,
+        MirrorAxis.Vertical => Strings.UiLayoutMirrorV,
+        _ => Strings.UiLayoutMirrorNone,
     };
 
     private int ItemAt(Point location)
@@ -383,7 +384,7 @@ internal sealed class LayoutStrip : ScrollableControl
     private void PaintHeader(Graphics g, Rectangle bounds)
     {
         TextRenderer.DrawText(
-            g, _expanded ? "More ▾" : "More ▸", Font, bounds, _active is null ? DisabledColor : ForeColor,
+            g, _expanded ? Strings.UiLayoutMoreOpen : Strings.UiLayoutMoreClosed, Font, bounds, _active is null ? DisabledColor : ForeColor,
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding |
             TextFormatFlags.SingleLine | TextFormatFlags.PreserveGraphicsTranslateTransform);
     }

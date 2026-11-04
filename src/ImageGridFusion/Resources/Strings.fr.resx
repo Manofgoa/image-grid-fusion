@@ -177,4 +177,218 @@ Les fonctionnalités qui en ont besoin les proposeront à nouveau.</value></data
 Redémarrer l'application maintenant ?</value></data>
   <data name="MainLanguageRestartCaption" xml:space="preserve"><value>Langue</value></data>
   <data name="MainLanguageTip" xml:space="preserve"><value>La langue des textes de l'application, appliquée à son prochain démarrage ; mémorisée d'une session à l'autre</value></data>
+  <data name="UiAddImages" xml:space="preserve"><value>Ajouter des images</value></data>
+  <data name="UiBadgeCuttingOut" xml:space="preserve"><value>✂ Détourage{0}</value></data>
+  <data name="UiBadgeNotUpscaled" xml:space="preserve"><value>⤢ Non agrandie</value></data>
+  <data name="UiBadgeStretch" xml:space="preserve"><value>⇔ Étirée</value></data>
+  <data name="UiBadgeTile" xml:space="preserve"><value>▦ Mosaïque</value></data>
+  <data name="UiBadgeWaitingEngine" xml:space="preserve"><value>✂ En attente du moteur de détourage</value></data>
+  <data name="UiBlurGaussian" xml:space="preserve"><value>Gaussien</value></data>
+  <data name="UiBlurGaussianTip" xml:space="preserve"><value>Un flou doux, qui estompe tous les détails</value></data>
+  <data name="UiBlurPixelate" xml:space="preserve"><value>Pixelisé</value></data>
+  <data name="UiBlurPixelateTip" xml:space="preserve"><value>De gros carrés, chacun la moyenne de ses pixels</value></data>
+  <data name="UiCropFree" xml:space="preserve"><value>Libre</value></data>
+  <data name="UiCropFreeTip" xml:space="preserve"><value>Libère le ratio de la partie gardée</value></data>
+  <data name="UiCropKeep" xml:space="preserve"><value>Garder</value></data>
+  <data name="UiCropKeepTip" xml:space="preserve"><value>Fait de la partie gardée l'image de la cellule — ses effets conservés, prête à être agrandie ; Ctrl+Z redonne l'image entière</value></data>
+  <data name="UiCropRatioTip" xml:space="preserve"><value>Garde la partie gardée à {0}</value></data>
+  <data name="UiCropWholeTip" xml:space="preserve"><value>Garde l'image entière : les barres reviennent sur ses bords, le ratio est libéré</value></data>
+  <data name="UiCutBgBlur" xml:space="preserve"><value>Flou</value></data>
+  <data name="UiCutBgBlurTip" xml:space="preserve"><value>Garde la partie écartée, floutée ; se combine avec les autres</value></data>
+  <data name="UiCutBgColorTip" xml:space="preserve"><value>Masque la partie écartée avec une couleur, selon son opacité ; se combine avec les autres</value></data>
+  <data name="UiCutBgOpacity" xml:space="preserve"><value>Opacité</value></data>
+  <data name="UiCutBgOpacityTip" xml:space="preserve"><value>Garde la partie écartée, en transparence selon son opacité ; se combine avec les autres</value></data>
+  <data name="UiCutBgPixelateTip" xml:space="preserve"><value>Garde la partie écartée, en carrés ; se combine avec les autres</value></data>
+  <data name="UiCutBgTransparent" xml:space="preserve"><value>Transparent</value></data>
+  <data name="UiCutBgTransparentTip" xml:space="preserve"><value>La partie écartée devient transparente : tous les traitements sont désactivés</value></data>
+  <data name="UiCutModePick" xml:space="preserve"><value>Sélection</value></data>
+  <data name="UiCutModePickTip" xml:space="preserve"><value>Cliquer sur un objet de la cellule sélectionnée pour le garder à la place ; Shift + clic ajoute une partie, Ctrl + clic en écarte une ; Escape annule</value></data>
+  <data name="UiCutModePlain" xml:space="preserve"><value>Uni</value></data>
+  <data name="UiCutModePlainTip" xml:space="preserve"><value>Retire le fond uni autour du contenu — la couleur des bords de l'image, des bords vers l'intérieur — en gardant tout ce qu'il entoure ; aucun moteur requis</value></data>
+  <data name="UiCutModeSubject" xml:space="preserve"><value>Sujet</value></data>
+  <data name="UiCutModeSubjectTip" xml:space="preserve"><value>Garde le sujet principal de l'image, trouvé par le modèle ; le reste devient transparent</value></data>
+  <data name="UiDescAutomaticColor" xml:space="preserve"><value>couleur automatique</value></data>
+  <data name="UiDescBackground" xml:space="preserve"><value>{0}, {1}, {2}{3}</value></data>
+  <data name="UiDescBlur" xml:space="preserve"><value>{0}, {1}</value></data>
+  <data name="UiDescColors" xml:space="preserve"><value>saturation {0}, teinte {1:+0;-0;0}°, luminosité {2}, contraste {3}</value></data>
+  <data name="UiDescCutGaps" xml:space="preserve"><value>interstices {0} %</value></data>
+  <data name="UiDescCutGrow" xml:space="preserve"><value>extension {0} %</value></data>
+  <data name="UiDescCutHoles" xml:space="preserve"><value>trous bouchés</value></data>
+  <data name="UiDescCutInverted" xml:space="preserve"><value>inversé</value></data>
+  <data name="UiDescCutPicked" xml:space="preserve"><value>sélection, {0} points</value></data>
+  <data name="UiDescCutPickedOne" xml:space="preserve"><value>sélection, {0} point</value></data>
+  <data name="UiDescCutPlain" xml:space="preserve"><value>fond uni, tolérance {0} %</value></data>
+  <data name="UiDescCutReach" xml:space="preserve"><value>, portée {0}</value></data>
+  <data name="UiDescCutSoften" xml:space="preserve"><value>adoucissement {0} %</value></data>
+  <data name="UiDescCutSubject" xml:space="preserve"><value>sujet</value></data>
+  <data name="UiDescCutTreatment" xml:space="preserve"><value>{0}{1} {2} %</value></data>
+  <data name="UiDescFillBackgroundCorners" xml:space="preserve"><value>Coins du fond</value></data>
+  <data name="UiDescFillColor" xml:space="preserve"><value>Couleur</value></data>
+  <data name="UiDescFillCornerPixel" xml:space="preserve"><value>Pixel de coin</value></data>
+  <data name="UiDescFillMiter" xml:space="preserve"><value>Onglet</value></data>
+  <data name="UiDescFlipBoth" xml:space="preserve"><value>horizontal et vertical</value></data>
+  <data name="UiDescFlipH" xml:space="preserve"><value>horizontal</value></data>
+  <data name="UiDescFlipV" xml:space="preserve"><value>vertical</value></data>
+  <data name="UiDescFramesFrom" xml:space="preserve"><value>à partir de l'image {0}</value></data>
+  <data name="UiDescFramesRange" xml:space="preserve"><value>images {0} → {1}</value></data>
+  <data name="UiDescFramesWhole" xml:space="preserve"><value>entier</value></data>
+  <data name="UiDescFree" xml:space="preserve"><value>libre</value></data>
+  <data name="UiDescFrozen" xml:space="preserve"><value>{0}, figé</value></data>
+  <data name="UiDescGradientLinear" xml:space="preserve"><value>, dégradé linéaire</value></data>
+  <data name="UiDescGradientRadial" xml:space="preserve"><value>, dégradé radial</value></data>
+  <data name="UiDescLine" xml:space="preserve"><value>{0} — {1}</value></data>
+  <data name="UiDescMotion" xml:space="preserve"><value>{0}, toutes les {1} s</value></data>
+  <data name="UiDescMotionZoom" xml:space="preserve"><value>Zoom</value></data>
+  <data name="UiDescMuted" xml:space="preserve"><value>muet</value></data>
+  <data name="UiDescNone" xml:space="preserve"><value>aucun</value></data>
+  <data name="UiDescOffNoFill" xml:space="preserve"><value>désactivé, sans remplissage</value></data>
+  <data name="UiDescRatio" xml:space="preserve"><value>ratio {0}</value></data>
+  <data name="UiDescReachAuto" xml:space="preserve"><value>auto</value></data>
+  <data name="UiDescReachObject" xml:space="preserve"><value>objet</value></data>
+  <data name="UiDescReachPart" xml:space="preserve"><value>partie</value></data>
+  <data name="UiDescReachWhole" xml:space="preserve"><value>tout</value></data>
+  <data name="UiDescStarting" xml:space="preserve"><value>{0}, départ à {1}</value></data>
+  <data name="UiDescStartingSpeed" xml:space="preserve"><value>{0}, départ à {1}, {2}</value></data>
+  <data name="UiDescTreatBlur" xml:space="preserve"><value>flou</value></data>
+  <data name="UiDescTreatColor" xml:space="preserve"><value>couleur</value></data>
+  <data name="UiDescTreatOpacity" xml:space="preserve"><value>opacité</value></data>
+  <data name="UiDescTreatPixelate" xml:space="preserve"><value>pixelisé</value></data>
+  <data name="UiDescTreatTransparent" xml:space="preserve"><value>transparent</value></data>
+  <data name="UiDescUpscale" xml:space="preserve"><value>×{0} {1}</value></data>
+  <data name="UiDescZoomMoved" xml:space="preserve"><value>image déplacée, entière à l'arrivée</value></data>
+  <data name="UiEffectNameAnimations" xml:space="preserve"><value>Animations</value></data>
+  <data name="UiEffectNameBackground" xml:space="preserve"><value>Fond</value></data>
+  <data name="UiEffectNameBlur" xml:space="preserve"><value>Flou</value></data>
+  <data name="UiEffectNameColors" xml:space="preserve"><value>Couleurs</value></data>
+  <data name="UiEffectNameCrop" xml:space="preserve"><value>Recadrage</value></data>
+  <data name="UiEffectNameCutout" xml:space="preserve"><value>Détourage</value></data>
+  <data name="UiEffectNameFlip" xml:space="preserve"><value>Miroir</value></data>
+  <data name="UiEffectNameFrames" xml:space="preserve"><value>Lecture</value></data>
+  <data name="UiEffectNameRotate" xml:space="preserve"><value>Rotation</value></data>
+  <data name="UiEffectNameUpscale" xml:space="preserve"><value>Agrandissement</value></data>
+  <data name="UiEffectNameVolume" xml:space="preserve"><value>Volume</value></data>
+  <data name="UiEffectNameZoom" xml:space="preserve"><value>Zoom</value></data>
+  <data name="UiEmptyCanvasPrompt" xml:space="preserve"><value>Cliquez pour choisir de 1 à 4 images, déposez-les ici ou collez-les avec Ctrl+V</value></data>
+  <data name="UiFillBackgroundCorners" xml:space="preserve"><value>Coins du fond</value></data>
+  <data name="UiFillBackgroundCornersTip" xml:space="preserve"><value>Les pixels de bord de l'image étirés jusqu'aux bords de la cellule ; les coins gardent la couleur du fond</value></data>
+  <data name="UiFillColor" xml:space="preserve"><value>Couleur</value></data>
+  <data name="UiFillColorTip" xml:space="preserve"><value>Une couleur unie autour de l'image</value></data>
+  <data name="UiFillCornerPixel" xml:space="preserve"><value>Pixel de coin</value></data>
+  <data name="UiFillCornerPixelTip" xml:space="preserve"><value>Les pixels de bord de l'image étirés jusqu'aux bords de la cellule ; chaque coin de la couleur du pixel de coin de l'image</value></data>
+  <data name="UiFillKindLinear" xml:space="preserve"><value>Linéaire</value></data>
+  <data name="UiFillKindLinearTip" xml:space="preserve"><value>De la première couleur à la seconde, selon l'angle</value></data>
+  <data name="UiFillKindRadial" xml:space="preserve"><value>Radial</value></data>
+  <data name="UiFillKindRadialTip" xml:space="preserve"><value>De la première couleur au centre à la seconde dans les coins</value></data>
+  <data name="UiFillKindSolid" xml:space="preserve"><value>Uni</value></data>
+  <data name="UiFillKindSolidTip" xml:space="preserve"><value>Une seule couleur</value></data>
+  <data name="UiFillMiter" xml:space="preserve"><value>Onglet</value></data>
+  <data name="UiFillMiterTip" xml:space="preserve"><value>Les pixels de bord de l'image étirés jusqu'aux bords de la cellule ; chaque coin coupé selon sa diagonale, chaque moitié de la couleur du pixel de son bord à côté du coin de l'image, la couleur du pixel de coin sur la diagonale</value></data>
+  <data name="UiFitContain" xml:space="preserve"><value>Contenir</value></data>
+  <data name="UiFitContainTip" xml:space="preserve"><value>Affichée en entier, son ratio conservé, le remplissage visible autour</value></data>
+  <data name="UiFitFill" xml:space="preserve"><value>Remplir</value></data>
+  <data name="UiFitFillTip" xml:space="preserve"><value>Couvre toute la grille, son ratio conservé, coupée là où elle dépasse</value></data>
+  <data name="UiFitStretch" xml:space="preserve"><value>Étirer</value></data>
+  <data name="UiFitStretchTip" xml:space="preserve"><value>Exactement la grille, son ratio non conservé</value></data>
+  <data name="UiFitTile" xml:space="preserve"><value>Mosaïque</value></data>
+  <data name="UiFitTileTip" xml:space="preserve"><value>Répétée sur la grille depuis son coin supérieur gauche ; son zoom règle la taille des mosaïques</value></data>
+  <data name="UiFlipHorizontal" xml:space="preserve"><value>Horizontal</value></data>
+  <data name="UiFlipHorizontalTip" xml:space="preserve"><value>Retourne l'image de gauche à droite</value></data>
+  <data name="UiFlipVertical" xml:space="preserve"><value>Vertical</value></data>
+  <data name="UiFlipVerticalTip" xml:space="preserve"><value>Retourne l'image de haut en bas</value></data>
+  <data name="UiFormatCustom" xml:space="preserve"><value>Personnalisé</value></data>
+  <data name="UiFormatCustomExactTip" xml:space="preserve"><value>Personnalisé : chaque export exactement {0} × {1} px — réduit, ratio conservé, par une entrée de taille max du PNG ou la taille des vidéos si elle est plus petite</value></data>
+  <data name="UiFormatCustomNoneTip" xml:space="preserve"><value>Personnalisé : un ratio, ou des pixels exacts, de votre choix — réglé dans les champs Largeur et Hauteur</value></data>
+  <data name="UiFormatCustomRatioTip" xml:space="preserve"><value>Personnalisé : le ratio {0}, à la taille native</value></data>
+  <data name="UiFormatFree" xml:space="preserve"><value>Libre</value></data>
+  <data name="UiFormatFreeTip" xml:space="preserve"><value>Le ratio qui perd le moins des images : {0:0.00}:1 pour cette grille</value></data>
+  <data name="UiFormatLandscape" xml:space="preserve"><value>Paysage 16:9</value></data>
+  <data name="UiFormatLandscapeTip" xml:space="preserve"><value>YouTube, vidéo LinkedIn, écrans</value></data>
+  <data name="UiFormatPortrait" xml:space="preserve"><value>Portrait 4:5</value></data>
+  <data name="UiFormatPortraitTip" xml:space="preserve"><value>Fil Instagram / Facebook en portrait</value></data>
+  <data name="UiFormatSquare" xml:space="preserve"><value>Carré 1:1</value></data>
+  <data name="UiFormatSquareTip" xml:space="preserve"><value>Fil Instagram / Facebook</value></data>
+  <data name="UiFormatStory" xml:space="preserve"><value>Story 9:16</value></data>
+  <data name="UiFormatStoryTip" xml:space="preserve"><value>Stories, Reels, TikTok, Shorts</value></data>
+  <data name="UiFormatTwitter" xml:space="preserve"><value>Twitter</value></data>
+  <data name="UiFormatTwitterTip" xml:space="preserve"><value>Image dans le fil Twitter / X, 1200:628</value></data>
+  <data name="UiHistCellsSwapped" xml:space="preserve"><value>cellules échangées</value></data>
+  <data name="UiHistClearAll" xml:space="preserve"><value>Tout effacer</value></data>
+  <data name="UiHistEffects" xml:space="preserve"><value>effets</value></data>
+  <data name="UiHistFormat" xml:space="preserve"><value>format</value></data>
+  <data name="UiHistGlobalBorders" xml:space="preserve"><value>Bordures</value></data>
+  <data name="UiHistGlobalCascade" xml:space="preserve"><value>Cascade</value></data>
+  <data name="UiHistGlobalFade" xml:space="preserve"><value>Fondu</value></data>
+  <data name="UiHistGlobalLayers" xml:space="preserve"><value>Calques</value></data>
+  <data name="UiHistGlobalSeams" xml:space="preserve"><value>Raccords</value></data>
+  <data name="UiHistGlobalSoundtrack" xml:space="preserve"><value>Bande son</value></data>
+  <data name="UiHistGridBackground" xml:space="preserve"><value>Fond de grille</value></data>
+  <data name="UiHistImageAdded" xml:space="preserve"><value>image ajoutée</value></data>
+  <data name="UiHistImageDeleted" xml:space="preserve"><value>image supprimée</value></data>
+  <data name="UiHistImageReplaced" xml:space="preserve"><value>image remplacée</value></data>
+  <data name="UiHistImages" xml:space="preserve"><value>images</value></data>
+  <data name="UiHistImagesAdded" xml:space="preserve"><value>images ajoutées</value></data>
+  <data name="UiHistImagesDeleted" xml:space="preserve"><value>images supprimées</value></data>
+  <data name="UiHistLayout" xml:space="preserve"><value>disposition</value></data>
+  <data name="UiHistNoChange" xml:space="preserve"><value>aucun changement visible</value></data>
+  <data name="UiHistPeople" xml:space="preserve"><value>personnes</value></data>
+  <data name="UiHistSeparators" xml:space="preserve"><value>séparateurs</value></data>
+  <data name="UiHistSeveral" xml:space="preserve"><value>plusieurs modifications</value></data>
+  <data name="UiLayoutAutoColumnNone" xml:space="preserve"><value>↕ Auto (aucune cellule empilée dans cette disposition)</value></data>
+  <data name="UiLayoutAutoColumnTip" xml:space="preserve"><value>↕ Auto — redimensionne les cellules empilées pour que leurs images, affichées en entier, aient la même largeur</value></data>
+  <data name="UiLayoutAutoRowNone" xml:space="preserve"><value>↔ Auto (aucune cellule côte à côte dans cette disposition)</value></data>
+  <data name="UiLayoutAutoRowTip" xml:space="preserve"><value>↔ Auto — redimensionne les cellules côte à côte pour que leurs images, affichées en entier, aient la même hauteur</value></data>
+  <data name="UiLayoutBigCentre" xml:space="preserve"><value>Grande au centre</value></data>
+  <data name="UiLayoutBigLeft" xml:space="preserve"><value>Grande à gauche</value></data>
+  <data name="UiLayoutBigTop" xml:space="preserve"><value>Grande en haut</value></data>
+  <data name="UiLayoutBigTopUneven" xml:space="preserve"><value>Grande en haut, inégale</value></data>
+  <data name="UiLayoutBricks" xml:space="preserve"><value>Briques</value></data>
+  <data name="UiLayoutCorner" xml:space="preserve"><value>Coin</value></data>
+  <data name="UiLayoutFeatured" xml:space="preserve"><value>Mise en avant</value></data>
+  <data name="UiLayoutFourColumns" xml:space="preserve"><value>Quatre colonnes</value></data>
+  <data name="UiLayoutFourRows" xml:space="preserve"><value>Quatre lignes</value></data>
+  <data name="UiLayoutGrid" xml:space="preserve"><value>Grille</value></data>
+  <data name="UiLayoutHideExtra" xml:space="preserve"><value>Masquer les dispositions supplémentaires</value></data>
+  <data name="UiLayoutMirrorH" xml:space="preserve"><value>Miroir gauche ↔ droite</value></data>
+  <data name="UiLayoutMirrorNone" xml:space="preserve"><value>Miroir (indisponible pour une disposition symétrique)</value></data>
+  <data name="UiLayoutMirrorV" xml:space="preserve"><value>Miroir haut ↔ bas</value></data>
+  <data name="UiLayoutMoreClosed" xml:space="preserve"><value>Plus ▸</value></data>
+  <data name="UiLayoutMoreOpen" xml:space="preserve"><value>Plus ▾</value></data>
+  <data name="UiLayoutShowMore" xml:space="preserve"><value>Afficher plus de dispositions</value></data>
+  <data name="UiLayoutSingle" xml:space="preserve"><value>Seule</value></data>
+  <data name="UiLayoutTallLeftMixed" xml:space="preserve"><value>Haute à gauche, mixte</value></data>
+  <data name="UiLayoutThreeColumns" xml:space="preserve"><value>Trois colonnes</value></data>
+  <data name="UiLayoutThreeQuartersOneQuarter" xml:space="preserve"><value>Trois quarts + un quart</value></data>
+  <data name="UiLayoutThreeRows" xml:space="preserve"><value>Trois lignes</value></data>
+  <data name="UiLayoutTwoColumns" xml:space="preserve"><value>Deux colonnes</value></data>
+  <data name="UiLayoutTwoRows" xml:space="preserve"><value>Deux lignes</value></data>
+  <data name="UiLayoutTwoThirdsOneThird" xml:space="preserve"><value>Deux tiers + un tiers</value></data>
+  <data name="UiLayoutTwoThirdsOneThirdStacked" xml:space="preserve"><value>Deux tiers + un tiers, empilés</value></data>
+  <data name="UiLayoutUnevenGrid" xml:space="preserve"><value>Grille inégale</value></data>
+  <data name="UiReachAuto" xml:space="preserve"><value>Auto</value></data>
+  <data name="UiReachAutoTip" xml:space="preserve"><value>Une sélection garde ce que le modèle juge le plus probable sous le clic</value></data>
+  <data name="UiReachObject" xml:space="preserve"><value>Objet</value></data>
+  <data name="UiReachObjectTip" xml:space="preserve"><value>Une sélection garde une portée moyenne sous le clic — la carrosserie de la voiture</value></data>
+  <data name="UiReachPart" xml:space="preserve"><value>Partie</value></data>
+  <data name="UiReachPartTip" xml:space="preserve"><value>Une sélection garde la plus petite partie sous le clic — un pneu</value></data>
+  <data name="UiReachWhole" xml:space="preserve"><value>Tout</value></data>
+  <data name="UiReachWholeTip" xml:space="preserve"><value>Une sélection garde le plus grand objet sous le clic — toute la voiture</value></data>
+  <data name="UiShadowDrop" xml:space="preserve"><value>Ombre portée</value></data>
+  <data name="UiShadowDropTip" xml:space="preserve"><value>Ombre portée — une ombre douce en bas à droite des lettres</value></data>
+  <data name="UiShadowHalo" xml:space="preserve"><value>Halo</value></data>
+  <data name="UiShadowHaloTip" xml:space="preserve"><value>Halo — une ombre douce tout autour des lettres, comme dans les mèmes</value></data>
+  <data name="UiSourceCrop" xml:space="preserve"><value>{0} (recadrage)</value></data>
+  <data name="UiSourceDroppedText" xml:space="preserve"><value>Texte déposé</value></data>
+  <data name="UiSourcePastedImage" xml:space="preserve"><value>Image collée</value></data>
+  <data name="UiSourcePastedText" xml:space="preserve"><value>Texte collé</value></data>
+  <data name="UiTurnClockwiseTip" xml:space="preserve"><value>Tourne l'image de {0}° dans le sens des aiguilles d'une montre</value></data>
+  <data name="UiTurnLeftTip" xml:space="preserve"><value>Tourne l'image de 90° dans le sens inverse des aiguilles d'une montre</value></data>
+  <data name="UiTurnZeroTip" xml:space="preserve"><value>L'image telle que chargée, l'angle revenu à 0°</value></data>
+  <data name="UiUpscaleFactorTip" xml:space="preserve"><value>Agrandit l'image {0} fois — calculé dès qu'on clique sur Agrandir</value></data>
+  <data name="UiUpscaleFast" xml:space="preserve"><value>Rapide</value></data>
+  <data name="UiUpscaleFastTip" xml:space="preserve"><value>Real-ESRGAN compact : bien plus rapide, un peu moins fin</value></data>
+  <data name="UiUpscaleQuality" xml:space="preserve"><value>Qualité</value></data>
+  <data name="UiUpscaleQualityTip" xml:space="preserve"><value>Real-ESRGAN : les détails les plus fins, lent sur cet ordinateur — des minutes pour un grand ×4</value></data>
+  <data name="UiUpscaleTooLarge" xml:space="preserve"><value>Trop grande pour ×{0} : l'image dépasserait {1} px sur son plus grand côté</value></data>
+  <data name="UiZoomContainTip" xml:space="preserve"><value>Garde toute l'image dans sa cellule, quelle que soit sa taille : des bandes d'un côté</value></data>
+  <data name="UiZoomFillTip" xml:space="preserve"><value>Garde la cellule couverte par l'image, quelle que soit sa taille : le surplus est rogné</value></data>
 </root>

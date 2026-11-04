@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using ImageGridFusion.Composition;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -42,9 +43,9 @@ internal sealed class QuarterTurnStrip : ThumbnailStrip<int>
 
     protected override string Tip(int degrees) => degrees switch
     {
-        0 => "The image as loaded, the angle back to 0°",
-        270 => "Turns the image 90° counter-clockwise",
-        _ => $"Turns the image {degrees}° clockwise",
+        0 => Strings.UiTurnZeroTip,
+        270 => Strings.UiTurnLeftTip,
+        _ => Texts.Format(Strings.UiTurnClockwiseTip, degrees),
     };
 
     protected override void PaintThumbnail(Graphics g, int degrees, Rectangle box, bool pressed)
