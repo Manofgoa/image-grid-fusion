@@ -36,7 +36,7 @@ In a text field, <kbd>Ctrl</kbd>+<kbd>V</kbd>, <kbd>Ctrl</kbd>+<kbd>C</kbd>, <kb
 | <kbd>Shift</kbd>+arrow | Move it ignoring the magnetic stops |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+arrow | Jump to the next stop — the center or an edge |
 | <kbd>Delete</kbd> | Remove the selected layer, else the selected cell's image |
-| <kbd>Escape</kbd> | Close the layer edit view, else deselect |
+| <kbd>Escape</kbd> | Close the layer or background edit view, else deselect |
 
 ## Mouse Over the Grid
 
@@ -96,6 +96,8 @@ While the Layers tab is selected.
 | <kbd>Enter</kbd> in a Frames field | Apply the number typed |
 | <kbd>Escape</kbd> in a Frames field | Put the value back |
 | <kbd>Wheel</kbd> over the layout strip | Scroll the layouts |
+| <kbd>Click</kbd> the Grid background's image thumbnail | Choose its image in the file picker |
+| <kbd>Double-click</kbd> the Grid background's image thumbnail | Open the background edit view, or close it |
 
 ## File Explorer
 

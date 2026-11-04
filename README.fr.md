@@ -311,6 +311,12 @@ Un panneau repliable à droite de l'aperçu, ouvert au démarrage : une zone de 
   - pour un dégradé, **To** : d'où vient la seconde couleur — **Auto, last cell** (par défaut : la couleur automatique de la dernière cellule qui contient une image, suivie en direct), **Darker** (la première couleur assombrie), **Black**, **White** ou **Chosen** (la pipette, puis **Color…**) — et son **Opacity**.
 - Sous 100 %, le remplissage laisse voir la transparence : un PNG la conserve, les autres sorties montrent du blanc dessous.
 - Il s'affiche dans l'aperçu et dans chaque export : PNG, JPEG pour le partage, GIF et vidéo MP4. Les bordures et les calques sont dessinés par-dessus.
+- **Son image** : une image, un GIF ou une vidéo dessinée par-dessus le remplissage, sous les cellules, sur toute la grille — après les options du remplissage :
+  - sa **miniature** : la **cliquer** pour choisir un fichier, ou en **déposer** un sur les options — depuis l'explorateur de fichiers ou l'Explorateur Windows, un preset d'effets arrivant avec ses effets — ; **Browse…** et **Paste** (l'image du presse-papiers ou son premier fichier) font de même. Une nouvelle image arrive sans autre effet que Fill — une vidéo coupée — et fait repartir la grille de zéro ;
+  - sa façon de couvrir la grille, en miniatures : **Fill** (la couvre, coupée là où elle déborde), **Contain** (entière, le remplissage autour), **Stretch** (exactement la grille, ses proportions non gardées), **Tile** (répétée depuis le coin en haut à gauche, son zoom réglant la taille des tuiles) ; et son **Opacity**, par-dessus le remplissage ;
+  - **double-cliquer** la miniature, ou **Edit**, pour la modifier : la grille mise de côté, l'image s'affiche seule à la forme de la grille, chaque effet de cellule agissant sur elle — la recadrer, la détourer, la flouter, la zoomer et la déplacer, monter son son… ; **Escape**, **Done** ou un double-clic à côté rend la grille. Étirée ou en mosaïque, elle s'affiche entière, un badge disant comment la grille la dessine ;
+  - **Remove** la retire, le remplissage seul. Désactiver le Grid background la garde ; ses Reset et **Clear all** la retirent.
+  - Elle joue avec la grille, compte dans la durée de la vidéo et s'entend une fois son volume monté. Sans image dans les cellules ni calque, une grille qui ne contient qu'elle est exportée à la taille de l'image.
 
 ### Cascade
 

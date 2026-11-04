@@ -311,6 +311,12 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
   - for a gradient, **To**: where the second color comes from — **Auto, last cell** (the default: the automatic color of the last cell holding an image, followed live), **Darker** (the first color darkened), **Black**, **White** or **Chosen** (the eyedropper, then **Color…**) — and its **Opacity**.
 - Below 100 %, the fill lets the transparency show: a PNG keeps it, the other outputs show white under it.
 - It shows in the preview and in every export: PNG, JPEG for sharing, GIF and MP4 video. The borders and the layers are drawn over it.
+- **Its image**: an image, a GIF or a video drawn over the fill, under the cells, across the whole grid — after the fill's options:
+  - its **thumbnail**: **click** it to choose a file, or **drop** one onto the options — from the file explorer or Windows Explorer, an effect preset arriving with its effects —; **Browse…** and **Paste** (the clipboard's image or first file) do the same. A new image arrives with no effect but Fill — a video muted — and starts the grid over;
+  - how it lies on the grid, as thumbnails: **Fill** (covers it, cut where it overflows), **Contain** (whole, the fill around it), **Stretch** (exactly the grid, its ratio not kept), **Tile** (repeated from the top-left corner, its zoom setting the tiles' size); and its **Opacity**, over the fill;
+  - **double-click** the thumbnail, or **Edit**, to edit it: the grid set aside, the image shows alone at the grid's shape, every cell effect working on it — crop it, cut it out, blur it, zoom and move it, turn its sound up…; **Escape**, **Done** or a double-click outside it gives the grid back. Stretched or tiled, it shows whole, a badge saying how the grid draws it;
+  - **Remove** takes it away, the fill alone. Turning the Grid background off keeps it; its Resets and **Clear all** remove it.
+  - It plays with the grid, counts in the video length and is heard once its volume is turned up. With no cell image and no layer, a grid holding it alone is exported at the image's size.
 
 ### Cascade
 
