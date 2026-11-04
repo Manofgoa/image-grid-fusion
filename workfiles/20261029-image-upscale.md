@@ -40,7 +40,8 @@ Settled with the user before exploration (Q&A 1–4):
 - **Contents**: still images and **animated GIFs**. Videos, PDFs, texts and thumbnails: checkbox
   disabled, its tooltip saying why (a PDF, a text and a thumbnail already render again at any
   resolution — `PageSource.Sharpens`; a video is out of scope).
-- **Factor**: ×2 or ×4, chosen in the options.
+- **Factor and model**: ×2 or ×4, **Quality** or **Fast**, chosen in the options; nothing is computed
+  until the **Upscale** button or the checkbox asks for it (Q&A 20–22).
 
 ---
 
@@ -50,33 +51,52 @@ Settled with the user before exploration (Q&A 1–4):
   order): the cut-out and the upscale are the two model-computed effects (the drawn bitmap is built
   upscale first, then the cut-out — § Drawn Bitmap). Its icon: 🆙 (`UiIcons.Upscale`) — 🔍 is the
   Zoom's.
-- **State**: a record `UpscaleEffect` (`Factor` 2 or 4), `Default` = ×2, with `ToJson` / `FromJson` /
-  `Describe` (RULES.md § Effect Presets) and a cache key (`Factor` and the model).
-- **Options toolbar**: the factors as **option thumbnails** (`UI/UpscaleStrip`, 56 × 40, RULES.md
-  § Options Toolbar): **×2** and **×4**, one pressed — the image as loaded in the corner of its
-  enlargement dashed in blue —, then, set apart, the **Save…** action; then the effect's **Reset**.
-  Acting on a factor turns the effect on; *Save…* does not.
+- **State**: a record `UpscaleEffect` — `Factor` 2 or 4 and `Model` (**Quality** or **Fast**), `Default` =
+  ×2 Quality — with `ToJson` / `FromJson` / `Describe` (RULES.md § Effect Presets) and a cache key. On the
+  look it is the **applied** setting: the one an enlargement was computed for (Q&A 22).
+- **Options toolbar**: two **option thumbnail** strips (`UI/UpscaleStrip`, 56 × 40, RULES.md § Options
+  Toolbar) — **Quality** / **Fast**, then **×2** / **×4** — then an **Upscale** button, then the effect's
+  **Reset**. The strips show the setting **chosen**, the look's while the effect is on, its kept one
+  otherwise. **Picking a thumbnail computes nothing and turns nothing on** (Q&A 20): it only chooses —
+  the exception to *acting on any option activates the effect*, as the eyedropper's sample is. The
+  **Upscale** button applies the choice: the **Upscale window** (below) for it, or at once when the image
+  already holds an enlargement for that setting in this session.
+- **The checkbox**: checked without an enlargement for the chosen setting, it **opens the Upscale
+  window** (Q&A 22) — a Cancel leaves the effect off; with one, it turns on at once. Unchecked, the effect
+  is off, the enlargement kept in memory for a later check.
 - **Size limit**: a factor whose result would exceed `CanvasSizer.MaxLongSide` (8192) on the longer
   side is **refused and faded**, its tooltip saying why; when even ×2 would, the checkbox is disabled
   too (`UpscaleEffect.Fits`).
   What exceeds the PNG cap can never be drawn at its size.
 - **Layers**: a layer gets it like any cell effect (RULES.md § Layers) — a text layer's checkbox
   disabled (it sharpens).
-- **Effect presets**: the factor is saved when the effect is on (`LookPreset.Saved`).
+- **Effect presets**: the factor and the model are saved when the effect is on (`LookPreset.Saved`).
 - **The effect stays temporary**: the upscaled image is a cache of the `SourceImage`, never a file of
-  its own, computed again in each session (Q&A 11).
+  its own, computed again in each session (Q&A 11, Q&A 23).
+
+### Upscale Window
+
+A modal, cancellable window computing an enlargement, so the grid is never touched meanwhile (Q&A 20):
+
+- **Before**: what it will make — the **size** (`1024 × 1536 → 4096 × 6144`), the **PNG's weight**
+  estimated (`≈ 45 MB`: the source file's bytes per pixel when it is a PNG, else about 2 bytes a pixel,
+  times the pixels), the **duration** estimated (tiles × a time per tile for the model and factor —
+  measured on this machine at the last run of the session, a constant before) — and the model and factor
+  chosen. **Upscale** starts, **Cancel** closes.
+- **During**: a progress bar, the share done and the time left (from the tiles done), **Cancel**
+  stopping it at the next tile; the rest of the app blocked behind the window.
+- **After**: the effect turned on with the setting computed — one step of the undo history — and the
+  window closed. A failure says why there, the effect left as it was.
+- A GIF: its frames one after the other, the share counting frames and tiles.
 
 ### Save Upscaled Image
 
 An **action** writing the upscaled image to a real file, for when one is wanted (Q&A 11) — the effect
 itself unchanged, the cell untouched:
 
-- **Two routes, one action** (Q&A 13): **Save…**, a thumbnail of the Upscale options after the ×2 / ×4
-  ones, set apart as an action (RULES.md § Options Toolbar — as Crop's 100 %); and **Save upscaled
-  image…** in the **cell's context menu** (`MainForm.ShowCellMenu`), 💾 (`UiIcons.SaveUpscaled`), shown
-  for an image the Upscale applies to. Both enabled while the effect is on for the image; when its
-  upscale is not ready yet, the action waits for it once the file is chosen, the grid locked as an
-  export waits (`MainForm.SaveUpscaledAsync`).
+- **One route** (Q&A 13, Q&A 21): **Save upscaled image…** in the **cell's context menu**
+  (`MainForm.ShowCellMenu`), 💾 (`UiIcons.SaveUpscaled`), shown for an image the Upscale applies to,
+  **enabled once its enlargement is computed** and the effect on — no thumbnail in the options any more.
 - **What it holds** (Q&A 14): the **upscaled image alone**, whole — the image as loaded, ×2 or ×4, the
   cut-out when the Cutout is on (§ Drawn Bitmap: upscale, then the mask) — never the crop, the
   orientation, the colors or any other effect: a source file to reuse. The cell as drawn stays Cell
@@ -105,14 +125,18 @@ itself unchanged, the cell untouched:
 - **Released before an update or an uninstall**: `IComponentsHost.ReleaseAsync` releases
   `UpscaleService`'s sessions once the upscale running is done (`ReleaseNowAsync`, as `CutoutService`),
   so the files can be swapped.
-- **Models**: RealESRGAN ×2 and ×4, **both in one download** (134 MB), the factor picking the model
-  — never one model resized for the other. Licence BSD-3-Clause, credited with the other engines;
+- **Two components** (Q&A 20), one per upstream, each installed on its own: **Quality** — RealESRGAN
+  ×2 and ×4, both in one download (134 MB), the factor picking the model; **Fast** — Real-ESRGAN's
+  compact model, `realesr-general-x4v3` (SRVGGNetCompact, 4.9 MB, many times faster on the CPU, a little
+  less fine), ×4 only: its ×2 is its ×4 reduced by half (high-quality bicubic). The window opens on the
+  row of the model chosen when it is missing. Licence BSD-3-Clause, credited with the other engines;
   input `float32 [1,3,h,w]` RGB in [0,1], dynamic height and width, output `[1,3,s·h,s·w]`:
 
   | Model | File | Size | Source |
   |---|---|---|---|
   | RealESRGAN ×2 (RRDBNet) | `real_esrgan_x2.onnx` | 67.1 MB | `SceneWorks/real-esrgan-onnx` @ `09f741bac80a246b407da3ee902bf5f3291b602f` |
   | RealESRGAN ×4 (RRDBNet) | `real_esrgan_x4.onnx` | 67.1 MB | same revision |
+  | realesr-general-x4v3 (compact) | `realesr-general-x4v3.onnx` | 4.9 MB | `jonathanst29/tinier-upscale-models` @ `899dc1e4b22bbf1955c2f1739c085edc080cb366` |
 
   The hashes are taken from the Hugging Face API by the scout and checked again at implementation;
   the ×2 file is checked to be a true ×2 on a test image.
@@ -151,11 +175,11 @@ itself unchanged, the cell untouched:
   is enlarged and applied to it with its treatments (`CutoutMask.Apply`, its strengths shares of the
   longer side, so resolution-independent). `DrawnBitmap` builds `Bitmap` → upscale → cut, the
   cut-out of an upscaled image cached on the upscale's key and the cutout's.
-- **While it is computed**: the cell shows the image as it is, with an *⤢ Upscaling…* badge (the
-  preview only), asked for **at every paint** like `PaintCutout`, so any route changing a look is
-  covered by itself. **Exports wait** for the upscales they draw (`WaitForUpscalesAsync` beside
-  `WaitForCutoutsAsync`, under `BeginExport`); one that fails is drawn as it is, the status line
-  saying why.
+- **Computed in the Upscale window only** (Q&A 20): never asked for at paint, never in the background.
+  An image whose look has the Upscale on without its enlargement — a preset restored, an undo after the
+  session's cache let it go — is drawn as loaded with a *⤢ Not upscaled* badge (preview only).
+- **No grid Copy or Save without it** (Q&A 21): a Copy / Save of the grid (PNG, MP4, GIF, JPEG) drawing
+  such an image opens the Upscale window for it first; a Cancel cancels the Copy / Save.
 - **Once ready**, the cell is drawn again at once (its share of the preview's cache), as a cut-out is.
 - **The preview draws a reduced copy** (Q&A 18): an enlarged image larger than its cell is drawn in
   the preview from a copy scaled down to about its cell, never from the full enlargement; the exports,
@@ -172,8 +196,8 @@ itself unchanged, the cell untouched:
   the upscale of a GIF is an **`UpscaledPages : PageSource`** wrapping its pages: `Render` and
   `OpenAnimation` give the upscaled frame, which covers the preview, the Frames slider and every
   export at once.
-- The frames are upscaled **in the background**, the badge showing the progress
-  (*⤢ Upscaling… 12 / 40*); the GIF keeps playing as it is until every frame is ready, then switches.
+- The frames are upscaled in the **Upscale window**, frame after frame; the GIF switches to them once
+  every one is ready.
 - **The upscaled frames are kept on disk**, never all in memory: each written as it is computed
   into a cache folder, **`%TEMP%\ImageGridFusion\upscale-cache\`** (kebab-case, its name in one
   constant `UpscaleCache.FolderName` — shared RULES § Folder Names), one file per frame keyed by the
@@ -193,13 +217,16 @@ app*). Nothing is created or updated; the checks are made by hand on the launche
 | Behaviour to check by hand | Where |
 |---|---|
 | A small still, ×2 then ×4: sharper in a large cell and in the PNG export; the PNG's native size grows (or not, per Question 1) | Preview, Copy / Save |
-| The badge while computing, an export waiting for it | Preview, Copy |
+| The Upscale window: size, weight and duration before; progress, time left and Cancel during; the app blocked meanwhile | Upscale window |
+| Picking Quality / Fast or ×2 / ×4 computes nothing; Upscale or the checkbox opens the window; a setting already computed applies at once | Options toolbar |
+| Fast ×2 and ×4: much quicker than Quality, the sizes exact | Upscale window |
+| A grid Copy / Save with an Upscale not computed (a preset restored): the window first, Cancel cancels | Copy / Save |
 | Crop, zoom, focus, blur and fine angle unchanged when the effect is turned on | Preview |
 | Cutout + Upscale on one image | Preview, PNG |
 | An animated GIF: progress badge, then upscaled frames in the MP4 / GIF export | Preview, export |
 | Video, PDF, text: checkbox disabled with its tooltip; a factor over 8192 disabled | Effects toolbar |
 | Engine missing: the Component updates window opened on its row, the effect back to off; installed, updated, uninstalled from the window, the sessions released | Component updates window |
-| *Save upscaled image…* from the options and from the cell's menu: a still's PNG at the upscaled size, cut out with the Cutout on; a GIF's animated GIF, its delays kept | File dialog, Explorer |
+| *Save upscaled image…* from the cell's menu, enabled once computed: a still's PNG at the upscaled size, cut out with the Cutout on; a GIF's animated GIF, its delays kept | File dialog, Explorer |
 | An effect preset with Upscale restored | File explorer |
 
 ---
@@ -323,6 +350,24 @@ elsewhere, looked for with the frozen UI thread's stack.
 - **Asked by the user** (Q&A 18): the preview may draw the images reduced; the highest resolution is
   what the final export needs. § Drawn Bitmap updated.
 
+### Iteration 9 — 2026-11-04 — ⚙️ Post-implementation — The Upscale window, a fast model
+
+Asked by the user while retesting ×4: a confirmation saying the size and the weight of the result before
+an enlargement starts, so a ×4 is not launched instead of a ×2; a faster model, even a little less fine;
+the options choosing only, an **Upscale** button computing, in a modal, cancellable window blocking the
+app meanwhile; *Save* in the cell's right-click menu only, enabled once the image is upscaled.
+
+- **Options** (Q&A 20): **Quality** (RRDBNet ×2 / ×4) and **Fast** (`realesr-general-x4v3`, its ×2 its ×4
+  halved) beside ×2 / ×4; picking one computes nothing — the exception to *acting on any option activates
+  the effect*. The **Upscale** button applies the choice; the look holds the setting applied.
+- **The Upscale window**: size, estimated PNG weight and duration before; progress, time left and Cancel
+  during. Computed there only — never at paint, no background service queue, no *Upscaling…* badge.
+- **The checkbox** (Q&A 22) opens the window when the chosen setting has no enlargement yet.
+- **No grid Copy / Save without the enlargement** (Q&A 21): the window opens first, Cancel cancels it.
+- **Save upscaled image…** (Q&A 21): the cell's menu only, enabled once computed; the options' *Save…*
+  thumbnail goes.
+- **Per session** (Q&A 23), as before.
+
 ---
 
 ## Implementation Log
@@ -365,6 +410,11 @@ Questions asked by the agent during design, with user responses.
 | 17 | Go for implementation — scope and where? | Code, tests and documentation — in a worktree | 2026-11-03 |
 | 18 | (User remark on the freeze) How must the preview draw an enlarged image? | Reduced if need be; the highest resolution is for the final export | 2026-11-04 |
 | 19 | Download dotnet-stack into the scratchpad to read the frozen stack? | Yes | 2026-11-04 |
+| 20 | Which models in the options? | Quality (RRDBNet) and Fast (realesr-general-x4v3) | 2026-11-04 |
+| 21 | A grid Copy / Save with the Upscale on and not computed? | No Copy / Save until computed; *Save…* in the options removed, the cell's menu instead | 2026-11-04 |
+| 22 | The tab's checkbox without an enlargement? | Opens the Upscale window | 2026-11-04 |
+| 23 | Keep the enlargement between sessions? | No, per session | 2026-11-04 |
+| 24 | Go for the Upscale window adjustment? | | |
 
 ---
 
