@@ -352,6 +352,9 @@ internal sealed partial class FileExplorerPanel : Panel
             this._modes.Items.Add(mode);
         }
 
+        // The entries' text as drawn, also what the accessibility tree reads — never the enum's name.
+        this._modes.FormattingEnabled = true;
+        this._modes.Format += (_, e) => e.Value = ModeText((ExplorerMode)e.ListItem!);
         this._modes.SelectedIndex = (int)this.Mode;
         this.ApplyView();
         this._searchRow.Controls.Add(this._modes, 0, 0);
