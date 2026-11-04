@@ -3877,7 +3877,7 @@ internal sealed partial class MainForm : Form
 
         // A frozen content plays nothing: its speed is kept for when it plays again.
         this._speedLabel.Text = "Speed: " + FramesEffect.SpeedText(this._speed.Value * FramesEffect.SpeedStep);
-        this._speed.Enabled = !_freeze.Checked;
+        this._speed.Enabled = !this._freeze.Checked;
     }
 
     /// <summary>A ratio button: the kept part reshaped to it around its center, or freed.</summary>

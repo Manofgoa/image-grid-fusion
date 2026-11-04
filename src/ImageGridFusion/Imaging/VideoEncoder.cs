@@ -540,10 +540,10 @@ internal sealed class VideoEncoder : IFrameEncoder
             _position = _start * rate / TimeSpan.TicksPerSecond % _loopFrames;
             this._turnFrame = this._turnAt * rate / TimeSpan.TicksPerSecond;
             this._cycleFrames = this._cycle * rate / TimeSpan.TicksPerSecond;
-            long start = this._from + (long)(_start * this._speed);
+            long start = this._from + (long)(this._start * this._speed);
             if (start > 0)
             {
-                _reader.SetCurrentPosition(Guid.Empty, PropVariant.FromLong(start));
+                this._reader.SetCurrentPosition(Guid.Empty, PropVariant.FromLong(start));
             }
         }
 
