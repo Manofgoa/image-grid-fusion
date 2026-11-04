@@ -551,8 +551,8 @@ The Grid background's image (origin: `workfiles/20261104-grid-background-image.m
   `CanvasSizer.For`); `MainForm.HasContent` counts it.
 - **Its default state**: no Background, Fill pressed, a video with sound muted — its Volume on at 0 %
   (`BackgroundImage.DefaultLookFor` / `DefaultOf`), what an arrival and every Reset of the background edit view
-  bring back. A new image — a click on its thumbnail, a drop onto the options, Browse…, Paste — starts the grid
-  over; the one it replaces goes through `GridPreview.ReleaseImage` (`MainForm.ReleaseGoneBackgroundImage`), as on a
+  bring back. A new image — a drop onto the options, Paste, Browse… — starts the grid over (its thumbnail takes no
+  click: a double-click there opens the edit view); the one it replaces goes through `GridPreview.ReleaseImage` (`MainForm.ReleaseGoneBackgroundImage`), as on a
   Reset, *Clear all* or an undo.
 - **The background edit view** is the layer edit view with the background as its target (`EditState.EditsBackground`,
   `GridPreview.BeginBackgroundEdit`): the one cell at the canvas's ratio — the image's own, shown whole with a badge,
