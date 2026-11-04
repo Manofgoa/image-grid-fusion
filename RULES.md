@@ -146,7 +146,8 @@ pages of its own (origin: `workfiles/20261029-image-upscale.md`):
 
 - Its state holds the **setting applied** only — the factor, ×2 or ×4, and the model, Quality or Fast — the one an
   enlargement was computed for; a factor whose result would pass `CanvasSizer.MaxLongSide` on the longer side is refused
-  (`UpscaleEffect.Fits`), its thumbnail faded.
+  (`UpscaleEffect.Fits`), its thumbnail faded, **the reason said in the options row** — the size it would make — after the
+  Upscale button (`MainForm.UpscaleReason`), as is why the effect does not apply to the image.
 - **Its options choose, they apply nothing** — the exception to *acting on any option activates the effect*: the setting
   chosen is the toolbar's (`MainForm.UpscaleChosen`), applied by the **Upscale** button or the checkbox through
   `MainForm.ApplyUpscale` — at once when the image holds that enlargement already, else after the **Upscale window**
