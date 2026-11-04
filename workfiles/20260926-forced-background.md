@@ -78,14 +78,24 @@ while it is on the Background's default state is off: both are exceptions the ru
   leave between the cells shows the forced fill.
 - **Seams**: they fade the cells' **flat fills** into each other; cells whose Background is off have
   none, so the Seams only act between cells whose Background was turned back on.
+- **Layers**: drawn last, over the forced fill and the borders. Whether turning the effect on touches
+  the layers' Background (off by default on a layer, RULES.md § Layers): *Open question*.
+
+### Effect Presets
+
+A preset saves the Background **turned off** as a choice (RULES.md § Effect Presets). A Background
+the forced background turned off is not the user's choice: what a preset saved from such a cell
+records — *Open question*.
 
 ---
 
 ## Rendering
 
 - The forced fill covers the **whole canvas** — every cell and every gap — and is painted **first**,
-  in `Compositor.Draw`, before the cells and the borders, so the preview, PNG / JPG, GIF and MP4 all
-  get it from one place.
+  in `Compositor.Draw`, before the cells, the borders and the layers, so the preview, PNG / JPG, GIF
+  and MP4 all get it from one place.
+- **A grid of layers only** (no layout, `Compositor.Draw`'s early return, the canvas transparent
+  around the layers today): the forced fill covers its canvas too.
 - Its geometry is **relative to the canvas** (fractions of its width / height, an angle), so the
   preview and an export at another size look the same.
 - Cells whose Background is off are transparent behind their image, so the forced fill shows
@@ -103,25 +113,29 @@ while it is on the Background's default state is off: both are exceptions the ru
 - **Linear**: from color 1 to color 2 across the whole canvas, along an **angle**.
 - **Radial**: from color 1 at the **center of the canvas** (fixed) to color 2 at its corners.
 - **Color 1**: the effect's color — following cell 1's automatic background until first activated,
-  then its own (§ State); the Color… button sets it.
+  then its own (§ State); set through the eyedropper and Color… (RULES.md § Color Options).
+- **Each color has an opacity**, right after its Color… (RULES.md § Color Options): transparent
+  where it is below 100 % in a PNG, over white in the outputs without alpha.
 - **Color 2** (gradients): one choice among five —
   - **Auto, last cell**: the automatic background color of the last cell holding an image;
   - **Darker**: color 1 darkened;
   - **Black**;
   - **White**;
-  - **Chosen**: a color picked with a Color… button.
+  - **Chosen**: a color picked with the eyedropper or Color….
 
   Its default and whether *Auto, last cell* follows the cells live: *Open questions*.
 
 ## UI
 
-- A new **tab** of the Global toolbar, with its activation checkbox, after `Seams` (before
-  `Cascade`): label *Open question* (proposal: `Backdrop`).
+- A new **tab** of the Global toolbar, with its activation checkbox and its **icon** (RULES.md
+  § Icons: an emoji, else a drawing of `EffectIcons`), after `Seams` (before `Cascade` and
+  `Layers`): label *Open question* (proposal: `Backdrop`).
 - Its options, in the global options toolbar:
   - the **mode** — Solid / Linear / Radial — as **option thumbnails** (RULES.md § Options Toolbar,
     56 × 40 pictograms);
-  - color 1's **Color…** button;
-  - for the gradients, color 2's choice among its five, then its Color… button for *Chosen*;
+  - color 1's **eyedropper + Color…** buttons and its **opacity** (RULES.md § Color Options);
+  - for the gradients, color 2's choice among its five, then, for *Chosen*, its eyedropper + Color…
+    buttons; its opacity;
   - the mode's geometry control (the angle for Linear);
   - its own **Reset**, ending the row.
 
@@ -157,10 +171,19 @@ to the tests question below.
   Darker, Black, White and a chosen color.
 - [ ] Color 2: which of the five is the default?
 - [ ] Color 2 *Auto, last cell*: follows the cells live, or frozen like color 1 once activated?
-- [ ] Opacity: opaque only, or an opacity slider (PNG alpha, white under the other outputs)?
+- [x] ~~Opacity: opaque only, or an opacity slider (PNG alpha, white under the other outputs)?~~ →
+  An opacity per color, after its Color… — settled by RULES.md § Color Options, written since (see
+  Iteration 4).
 - [ ] Color while never activated, when cell 1 holds no image: which color?
 - [ ] The tab's label?
 - [ ] Unit tests: none (no test project), or create one?
+- [ ] Scope against the backlog (`TODO-FEATURES.md`, 2026-10-29): *Shared fill and grid background*
+  plans a global effect **Grid background** drawn by **one painter shared with the cell's
+  Background**, and *Gradient fills* adds conic, mesh, a grain, and **Auto colors from the grid's
+  dominant colors**. Keep this workfile's own fill model, or move to the shared painter?
+- [ ] A preset saved from a cell whose Background the forced background turned off: save the
+  Background as off, or as the user left it before (on)?
+- [ ] Turning the effect on: the layers' Background left alone, or turned off like the cells'?
 
 ---
 
@@ -199,6 +222,29 @@ colors, an angle for the linear, a fixed canvas center for the radial; color 2 i
 Auto (last cell), Darker, Black, White and a chosen color. New questions: color 2's default, and
 whether its Auto follows the cells live.
 
+### Iteration 4 — 2026-11-04
+
+Review against `main` at the user's request ("see whether new developments go against choices made
+here"). Nothing implemented since conflicts head-on with a decision; what changed:
+
+- **RULES.md § Color Options** (2026-10-21, 2026-10-29): every color option takes the eyedropper +
+  Color… and an **opacity** — the opacity question is settled, one per color.
+- **Layers** (2026-10-29): drawn last, over the borders; a grid of layers only skips the cells in
+  `Compositor.Draw` and leaves its canvas transparent — the forced fill must cover it too. A layer's
+  Background is off by default: whether the effect touches it is a new question.
+- **Effect presets** (2026-10-26): a preset records a Background turned off as a choice — one turned
+  off by the forced background would be recorded too: new question.
+- **RULES.md § Icons** (2026-10-29): the tab takes an icon.
+- **Backlog** (`TODO-FEATURES.md`, 2026-10-29 and 2026-11-04): *Shared fill and grid background*,
+  *Gradient fills* and *Image cards over a gradient background* cover the same ground in a wider
+  direction — a **Grid background** sharing one painter with the cell's Background, Auto colors from
+  the grid's dominant colors (here: cell 1's and the last cell's band colors, the user's choice). The
+  *Image cards* row relies on the cells' Background turned off under a global gradient, as decided
+  here. Not marked yet: the scope question decides how.
+- Consistent, nothing to change: the Cell copy leaves the Background out (the forced fill, grid-level,
+  is not copied); the eyedropper reads `Compositor.Draw`, so it picks the forced fill; the Twitter
+  corners' exports fill them.
+
 ---
 
 ## Implementation Log
@@ -224,13 +270,16 @@ whether its Auto follows the cells live.
 | 7 | The effect's own Reset: back to off, or stays on with defaults? | Not asked — settled by RULES.md § Global Toolbar (back to the initial state, off) | 2026-10-10 |
 | 8 | Gradient definition: two colors + angle / fixed center, or more? | Two colors, fixed center | 2026-10-10 |
 | 9 | Gradient second color default? | Offer the four (Auto last cell, Darker, Black, White) plus a chosen color | 2026-10-10 |
-| 10 | Opacity: opaque only or a slider? | | |
+| 10 | Opacity: opaque only or a slider? | Not asked — settled by RULES.md § Color Options (an opacity per color) | 2026-11-04 |
 | 11 | Color while never activated, cell 1 empty? | | |
 | 12 | Unit tests: none or create a test project? | | |
 | 13 | The tab's label? | | |
 | 14 | Color 2: which of the five is the default? | | |
 | 15 | Color 2 Auto (last cell): live, or frozen once activated? | | |
+| 16 | Scope against the backlog: own fill model, or the shared painter of *Shared fill and grid background*? | | |
+| 17 | A preset saved from a cell whose Background the effect turned off: Background off or as before? | | |
+| 18 | Turning the effect on: the layers' Background left alone or turned off? | | |
 
 ---
 
-*Last updated: 2026-10-10*
+*Last updated: 2026-11-04*
