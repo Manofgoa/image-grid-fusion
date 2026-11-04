@@ -150,7 +150,7 @@ internal sealed partial class FileExplorerPanel : Panel
     private readonly Breadcrumb _breadcrumb = new() { Dock = DockStyle.Fill, Visible = false };
     private readonly Panel _listHost = new() { Dock = DockStyle.Fill, Margin = Padding.Empty, BorderStyle = BorderStyle.FixedSingle };
     private readonly ThumbnailGrid _grid = new() { Dock = DockStyle.Fill };
-    private readonly TableLayoutPanel _sizeRow = new() { ColumnCount = 6, RowCount = 1, Dock = DockStyle.Fill, Margin = Padding.Empty };
+    private readonly TableLayoutPanel _sizeRow = new() { ColumnCount = 9, RowCount = 1, Dock = DockStyle.Fill, Margin = Padding.Empty };
     private readonly Label _smallerGlyph = new() { Text = "▭", AutoSize = true, Anchor = AnchorStyles.Left, TextAlign = ContentAlignment.MiddleCenter, Margin = new Padding(0, 0, 4, 0) };
     // No ticks: the thumb then sits on the row's centre line, level with the glyphs at any DPI.
     private readonly TrackBar _size = new() { AutoSize = false, Dock = DockStyle.Fill, Margin = Padding.Empty, Minimum = ThumbnailGrid.MinTileSize, Maximum = ThumbnailGrid.MaxTileSize, TickStyle = TickStyle.None, SmallChange = 20, LargeChange = 100 };
@@ -165,6 +165,7 @@ internal sealed partial class FileExplorerPanel : Panel
     private readonly CheckBox _thumbnailsView = new() { AccessibleName = "Thumbnails", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(6, 0, 0, 0), AutoCheck = false, Checked = true };
     private readonly CheckBox _detailsView = new() { AccessibleName = "Details", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(2, 0, 0, 0), AutoCheck = false };
     private readonly CheckBox _folderGroupsButton = new() { AccessibleName = "Folder groups", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(6, 0, 0, 0), AutoCheck = false, Checked = true };
+    private readonly CheckBox _seriesButton = new() { AccessibleName = "Series", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(2, 0, 0, 0), AutoCheck = false, Checked = true };
     private readonly CheckBox _searchGroupsButton = new() { AccessibleName = "Search groups", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(2, 0, 0, 0), AutoCheck = false, Checked = true };
     private readonly Panel _invite = new() { Dock = DockStyle.Fill, Visible = false };
     private readonly Label _inviteText = new()
@@ -368,6 +369,7 @@ internal sealed partial class FileExplorerPanel : Panel
         this._sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         this._sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         this._sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        this._sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _sizeRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         _sizeRow.Controls.Add(_smallerGlyph, 0, 0);
         _sizeRow.Controls.Add(_size, 1, 0);
@@ -376,7 +378,8 @@ internal sealed partial class FileExplorerPanel : Panel
         this._sizeRow.Controls.Add(this._thumbnailsView, 4, 0);
         this._sizeRow.Controls.Add(this._detailsView, 5, 0);
         this._sizeRow.Controls.Add(this._folderGroupsButton, 6, 0);
-        this._sizeRow.Controls.Add(this._searchGroupsButton, 7, 0);
+        this._sizeRow.Controls.Add(this._seriesButton, 7, 0);
+        this._sizeRow.Controls.Add(this._searchGroupsButton, 8, 0);
         this._thumbnailsView.Font = new Font("Segoe UI Symbol", this.Font.SizeInPoints);
         this._detailsView.Font = new Font("Segoe UI Symbol", this.Font.SizeInPoints);
         this._sort.Items.AddRange([SortNewestText, SortNameText, SortSmallestText]);
@@ -453,6 +456,8 @@ internal sealed partial class FileExplorerPanel : Panel
         this._toolTip.SetToolTip(this._searchGroupsButton, "Search groups: the search results in two sections — Path, found by their name or folders, then Content, found by what they hold");
         this._folderGroupsButton.Click += (_, _) => this.ChangeGroups(!this._folderGroups, this._searchGroups);
         this._searchGroupsButton.Click += (_, _) => this.ChangeGroups(this._folderGroups, !this._searchGroups);
+        this._toolTip.SetToolTip(this._seriesButton, "Series: the named files sharing their first words — marlène schiappa …, homme soja … — in a section each, before the other named files (with Folder groups on; ⚙ menu: File explorer groups)");
+        this._seriesButton.Click += (_, _) => this.ToggleSeries();
         _collapse.Click += (_, _) => SetOpen(false);
         _expand.Click += (_, _) => SetOpen(true);
         _size.ValueChanged += (_, _) => OnSliderChanged();
@@ -586,6 +591,9 @@ internal sealed partial class FileExplorerPanel : Panel
     /// <summary>The user turned the folder groups or the search groups on or off with their buttons: to remember.</summary>
     public event EventHandler? GroupsChanged;
 
+    /// <summary>The user turned the series on or off with their button: <see cref="PatternsOff"/> to remember.</summary>
+    public event EventHandler? PatternsOffChanged;
+
     /// <summary>
     /// Whether the folder view shows its sections — the folder prefix groups, the other folders, the named
     /// files, the name patterns' groups; the list shown is made again at once. Setting it raises nothing.
@@ -647,6 +655,7 @@ internal sealed partial class FileExplorerPanel : Panel
             }
 
             this._patternsOff = new HashSet<string>(value, StringComparer.Ordinal);
+            this._seriesButton.Checked = !this._patternsOff.Contains(NamePatterns.SeriesId);
             this.RefreshRows(keepPlace: true);
         }
     }
@@ -1503,7 +1512,7 @@ internal sealed partial class FileExplorerPanel : Panel
             (this._byName, UiIcons.ByName), (this._byContent, UiIcons.Caption), (this._rescan, UiIcons.Rescan),
             (this._collapse, UiIcons.Collapse), (this._expand, UiIcons.Expand), (this._similarClear, UiIcons.Clear),
             (this._thumbnailsView, UiIcons.Thumbnails), (this._detailsView, UiIcons.Details), (this._chooseFolder, UiIcons.Folder),
-            (this._folderGroupsButton, UiIcons.FolderGroups), (this._searchGroupsButton, UiIcons.SearchGroups),
+            (this._folderGroupsButton, UiIcons.FolderGroups), (this._seriesButton, UiIcons.Series), (this._searchGroupsButton, UiIcons.SearchGroups),
         })
         {
             UiIcons.SetImage(button, icon, size);
@@ -1605,6 +1614,19 @@ internal sealed partial class FileExplorerPanel : Panel
 
         this.View = view;
         this.ViewChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>The Series button clicked: the series turned on or off, the list made again, the choice to remember.</summary>
+    private void ToggleSeries()
+    {
+        var off = new HashSet<string>(this._patternsOff, StringComparer.Ordinal);
+        if (!off.Remove(NamePatterns.SeriesId))
+        {
+            off.Add(NamePatterns.SeriesId);
+        }
+
+        this.PatternsOff = off;
+        this.PatternsOffChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>A groups button clicked: its groups turned on or off, the list made again, the choice to remember.</summary>

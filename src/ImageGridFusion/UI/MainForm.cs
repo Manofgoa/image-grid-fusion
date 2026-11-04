@@ -854,6 +854,7 @@ internal sealed partial class MainForm : Form
         this._explorer.FileOrderChanged += (_, _) => this.SaveExplorerFileOrder();
         this._explorer.ViewChanged += (_, _) => this.SaveExplorerView();
         this._explorer.GroupsChanged += (_, _) => this.SaveExplorerGroups();
+        this._explorer.PatternsOffChanged += (_, _) => this.SavePatternsOff();
         _explorer.ChooseFolderRequested += (_, _) => PickExplorerFolder();
         this._explorer.FaceAnalysisRequested += (_, _) =>
         {
@@ -5282,9 +5283,15 @@ internal sealed partial class MainForm : Form
         }
 
         this._explorer.PatternsOff = off;
+        this.SavePatternsOff();
+    }
+
+    /// <summary>The name groups turned off — from the ⚙ menu or the Series button — remembered between sessions.</summary>
+    private void SavePatternsOff()
+    {
         try
         {
-            AppSettings.SaveExplorerPatternsOff(off);
+            AppSettings.SaveExplorerPatternsOff(this._explorer.PatternsOff);
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
