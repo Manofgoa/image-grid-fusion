@@ -405,6 +405,9 @@ keep possible the ones that are; the reason as a visible text in the options row
 - The rule stays: a factor whose result passes 8192 px is refused, the effect unavailable only when every factor is.
 - **The options row says why**, in a line after the Upscale button: each factor refused with the size it would make,
   or why the effect does not apply to the image (a video, a PDF, a text, a thumbnail).
+- **Delivered**: `MainForm.UpscaleReason`, a label wrapping at 320 px after the button; the smallest factor refused named,
+  the larger ones refused with it (`Too large to upscale: ×2 would make 10000 × 5138 px, past the 8192 px a PNG holds`;
+  `×4 would make 8192 × 12288 px, …` for a 2048 × 3072). Checked on a render of the options row on both images.
 
 ---
 
