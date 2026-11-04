@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using ImageGridFusion.Resources;
 using ImageGridFusion.Web;
 
 namespace ImageGridFusion.Components;
@@ -35,11 +36,11 @@ internal abstract class ComponentSource
         Downloader.EnsureSuccess(response);
         try
         {
-            return JsonNode.Parse(await response.Content.ReadAsStringAsync(token)) ?? throw new UrlLoadException($"{url.Host} answered nothing");
+            return JsonNode.Parse(await response.Content.ReadAsStringAsync(token)) ?? throw new UrlLoadException(Texts.Format(Strings.CompSourceAnsweredNothing, url.Host));
         }
         catch (JsonException e)
         {
-            throw new UrlLoadException($"{url.Host} answered something unreadable", e);
+            throw new UrlLoadException(Texts.Format(Strings.CompSourceAnsweredUnreadable, url.Host), e);
         }
     }
 
@@ -87,7 +88,7 @@ internal sealed class HuggingFaceSource(string repository, IReadOnlyDictionary<s
     public override async Task<LatestVersion> LatestAsync(Component component, CancellationToken token)
     {
         var json = await GetJsonAsync(new Uri($"https://huggingface.co/api/models/{repository}/revision/main?blobs=true"), token);
-        string commit = TextOf(json["sha"]) ?? throw new UrlLoadException("huggingface.co gave no commit");
+        string commit = TextOf(json["sha"]) ?? throw new UrlLoadException(Strings.CompSourceHfNoCommit);
         var siblings = (json["siblings"] as JsonArray ?? []).OfType<JsonObject>().ToDictionary(s => TextOf(s["rfilename"]) ?? "", s => s);
         var latest = new List<ComponentFile>();
         var fingerprints = new Dictionary<string, string>();
@@ -96,7 +97,7 @@ internal sealed class HuggingFaceSource(string repository, IReadOnlyDictionary<s
             string path = files[pinned.Name];
             if (!siblings.TryGetValue(path, out var sibling))
             {
-                throw new UrlLoadException($"{path} is no longer in {repository}");
+                throw new UrlLoadException(Texts.Format(Strings.CompSourceNoLongerIn, path, repository));
             }
 
             string? sha256 = TextOf(sibling["lfs"]?["sha256"]);
@@ -130,13 +131,13 @@ internal sealed class GitHubReleaseSource(string repository, string? tag, string
     public override async Task<LatestVersion> LatestAsync(Component component, CancellationToken token)
     {
         var release = await GetJsonAsync(new Uri($"https://api.github.com/repos/{repository}/releases/{(tag is null ? "latest" : "tags/" + Uri.EscapeDataString(tag))}"), token);
-        string label = TextOf(release["tag_name"]) ?? throw new UrlLoadException("github.com gave no release tag");
+        string label = TextOf(release["tag_name"]) ?? throw new UrlLoadException(Strings.CompSourceGhNoTag);
         string name = component.Pinned.Files[0].Name;
         if (asset is not null)
         {
             var found = (release["assets"] as JsonArray ?? []).OfType<JsonObject>().FirstOrDefault(a => TextOf(a["name"]) == asset)
-                ?? throw new UrlLoadException($"no {asset} in its release {label}");
-            string url = TextOf(found["browser_download_url"]) ?? throw new UrlLoadException($"no link to {asset}");
+                ?? throw new UrlLoadException(Texts.Format(Strings.CompSourceNoAssetInRelease, asset, label));
+            string url = TextOf(found["browser_download_url"]) ?? throw new UrlLoadException(Texts.Format(Strings.CompSourceNoLinkToAsset, asset));
             string? sha256 = TextOf(found["digest"]) is { } digest && digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase) ? digest[7..] : null;
             long size = found["size"] is JsonValue s && s.TryGetValue(out long bytes) ? bytes : 0;
             var fingerprints = sha256 is null ? new Dictionary<string, string>() : new Dictionary<string, string> { [name] = sha256 };
@@ -170,7 +171,7 @@ internal sealed class NuGetSource(string package, IReadOnlyDictionary<string, st
     {
         var index = await GetJsonAsync(new Uri($"https://api.nuget.org/v3-flatcontainer/{package}/index.json"), token);
         string version = (index["versions"] as JsonArray ?? []).Select(TextOf).OfType<string>().LastOrDefault(v => !v.Contains('-'))
-            ?? throw new UrlLoadException($"nuget.org lists no stable version of {package}");
+            ?? throw new UrlLoadException(Texts.Format(Strings.CompSourceNuGetNoStable, package));
         DateTimeOffset? released = null;
         try
         {
@@ -209,7 +210,7 @@ internal sealed partial class WingetSource(WingetTool tool, string homepage) : C
         int rule = lines.FindIndex(l => l.Trim() is { Length: >= 3 } t && t.All(c => c == '-'));
         string version = rule >= 0 && lines.Skip(rule + 1).Select(l => l.Trim()).FirstOrDefault(l => l.Length > 0) is { } first
             ? first
-            : throw new UrlLoadException($"winget lists no version of {this.Tool.PackageId}");
+            : throw new UrlLoadException(Texts.Format(Strings.CompSourceWingetNoVersion, this.Tool.PackageId));
         DateTimeOffset? released = null;
         var details = await Winget(["show", "--id", this.Tool.PackageId, "--exact", "--version", version, "--disable-interactivity", "--accept-source-agreements"], token);
         if (details.Select(l => DateLine().Match(l)).FirstOrDefault(m => m.Success) is { } date
@@ -255,7 +256,7 @@ internal sealed partial class WingetSource(WingetTool tool, string homepage) : C
         }
         catch (Win32Exception e)
         {
-            throw new UrlLoadException("winget isn't available", e);
+            throw new UrlLoadException(Strings.CompSourceWingetUnavailable, e);
         }
     }
 

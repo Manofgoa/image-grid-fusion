@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows.Forms.VisualStyles;
 using ImageGridFusion.Components;
 using ImageGridFusion.Explorer;
+using ImageGridFusion.Resources;
 using ImageGridFusion.Web;
 
 namespace ImageGridFusion.UI;
@@ -66,14 +67,14 @@ internal sealed class ComponentsWindow : Form
     };
 
     private readonly Label _checkedAt = new() { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 12, 0) };
-    private readonly Button _checkNow = new() { Text = "Check now", AutoSize = true };
+    private readonly Button _checkNow = new() { Text = Strings.CompWinCheckNow, AutoSize = true };
     private readonly Label _total = new() { AutoSize = true };
     private readonly Font _linkFont;
     private Row? _hoveredName;
-    private readonly Button _installAll = new() { Text = "Install all", AutoSize = true };
-    private readonly Button _uninstallAll = new() { Text = "Uninstall all", AutoSize = true };
-    private readonly Button _updateAll = new() { Text = "Update all", AutoSize = true };
-    private readonly ToolTip _balloon = new() { IsBalloon = true, ToolTipTitle = "Needed" };
+    private readonly Button _installAll = new() { Text = Strings.CompWinInstallAll, AutoSize = true };
+    private readonly Button _uninstallAll = new() { Text = Strings.CompWinUninstallAll, AutoSize = true };
+    private readonly Button _updateAll = new() { Text = Strings.CompWinUpdateAll, AutoSize = true };
+    private readonly ToolTip _balloon = new() { IsBalloon = true, ToolTipTitle = Strings.CompWinNeeded };
     private readonly ContextMenuStrip _backMenu = new();
     private readonly System.Windows.Forms.Timer _spin = new() { Interval = SpinInterval };
     private readonly Dictionary<ListViewItem, Row> _rows = [];
@@ -87,7 +88,7 @@ internal sealed class ComponentsWindow : Form
     public ComponentsWindow(IComponentsHost host)
     {
         this._host = host;
-        this.Text = "Component updates";
+        this.Text = Strings.CompWinTitle;
         this.Icon = AppIcon.Load();
         this.ShowInTaskbar = false;
         this.MinimizeBox = false;
@@ -98,8 +99,8 @@ internal sealed class ComponentsWindow : Form
 
         (string Text, int Width)[] columns =
         [
-            ("Component", 290), ("Installed", 100), ("Size", 90), ("Installed on", 90), ("Updated on", 90), ("Pinned", 110), ("Forced", 90),
-            ("Latest", 150), ("Released", 90), ("", 190),
+            (Strings.CompWinColComponent, 290), (Strings.CompWinColInstalled, 100), (Strings.CompWinColSize, 90), (Strings.CompWinColInstalledOn, 90), (Strings.CompWinColUpdatedOn, 90), (Strings.CompWinColPinned, 110), (Strings.CompWinColForced, 90),
+            (Strings.CompWinColLatest, 150), (Strings.CompWinColReleased, 90), ("", 190 + this.MainButtonExtra()),
         ];
         foreach (var (text, width) in columns)
         {
@@ -209,8 +210,8 @@ internal sealed class ComponentsWindow : Form
 
         if (MessageBox.Show(
                 this,
-                running == 1 ? "A download is running. Cancel it and close?" : $"{running} downloads are running. Cancel them and close?",
-                "Component updates",
+                running == 1 ? Strings.CompWinOneDownload : Texts.Format(Strings.CompWinManyDownloads, running),
+                Strings.CompWinTitle,
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning,
                 MessageBoxDefaultButton.Button2) != DialogResult.Yes)
@@ -388,18 +389,18 @@ internal sealed class ComponentsWindow : Form
 
     private static string GroupName(ComponentGroup group) => group switch
     {
-        ComponentGroup.Engines => "Engines",
-        ComponentGroup.Runtimes => "Runtimes",
-        ComponentGroup.WebTools => "Web tools",
-        _ => "Emoji fonts",
+        ComponentGroup.Engines => Strings.CompWinGroupEngines,
+        ComponentGroup.Runtimes => Strings.CompWinGroupRuntimes,
+        ComponentGroup.WebTools => Strings.CompWinGroupWebTools,
+        _ => Strings.CompWinGroupEmojiFonts,
     };
 
     internal static string SizeText(long bytes) => bytes switch
     {
         <= 0 => "—",
-        < 1_000_000 => $"{Math.Max(1, bytes / 1000)} KB",
-        < 100_000_000 => (bytes / 1e6).ToString("0.0", CultureInfo.InvariantCulture) + " MB",
-        _ => (bytes / 1e6).ToString("0", CultureInfo.InvariantCulture) + " MB",
+        < 1_000_000 => Texts.Format(Strings.CompWinKilobytes, Math.Max(1, bytes / 1000)),
+        < 100_000_000 => Texts.Format(Strings.CompWinMegabytes, Texts.Number(bytes / 1e6, "0.0")),
+        _ => Texts.Format(Strings.CompWinMegabytes, Texts.Number(bytes / 1e6, "0")),
     };
 
     private static string DateText(DateTimeOffset? date) => date is { } d ? d.ToLocalTime().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : "—";
@@ -431,7 +432,7 @@ internal sealed class ComponentsWindow : Form
         Set(cells[ReleasedColumn], DateText(row.Latest?.Released));
         string tip = $"{row.Component.Purpose}\n{row.Component.Upstream} — {row.Component.License}"
             + (row.Error is { } error ? $"\n\n⚠ {error}" : "")
-            + (row.CheckError is { } check ? $"\n\nCouldn't check: {check}" : "");
+            + (row.CheckError is { } check ? "\n\n" + Texts.Format(Strings.CompWinCheckFailedTip, check) : "");
         if (row.Item.ToolTipText != tip)
         {
             row.Item.ToolTipText = tip;
@@ -444,7 +445,7 @@ internal sealed class ComponentsWindow : Form
         this._check?.Cancel();
         var check = new CancellationTokenSource();
         this._check = check;
-        this._checkedAt.Text = $"Checked {DateTime.Now:HH:mm}";
+        this._checkedAt.Text = Texts.Format(Strings.CompWinCheckedAt, DateTime.Now);
         foreach (var row in this._rows.Values)
         {
             row.Checking = true;
@@ -570,15 +571,15 @@ internal sealed class ComponentsWindow : Form
     private void UpdateButtons()
     {
         int count = this.Updatable().Count();
-        this._updateAll.Text = $"Update all ({count})";
+        this._updateAll.Text = Texts.Format(Strings.CompWinUpdateAllCount, count);
         this._updateAll.Enabled = count > 0;
         int missing = this.Installable().Count();
-        this._installAll.Text = $"Install all ({missing})";
+        this._installAll.Text = Texts.Format(Strings.CompWinInstallAllCount, missing);
         this._installAll.Enabled = missing > 0;
         long total = this._rows.Values.Sum(r => r.Size);
-        this._total.Text = $"Total on disk: {(total > 0 ? SizeText(total) : "0 MB")}";
+        this._total.Text = Texts.Format(Strings.CompWinTotal, total > 0 ? SizeText(total) : Texts.Format(Strings.CompWinMegabytes, 0));
         int installed = this.Uninstallable().Count();
-        this._uninstallAll.Text = $"Uninstall all ({installed})";
+        this._uninstallAll.Text = Texts.Format(Strings.CompWinUninstallAllCount, installed);
         this._uninstallAll.Enabled = installed > 0;
     }
 
@@ -595,7 +596,7 @@ internal sealed class ComponentsWindow : Form
         }
 
         var component = row.Component;
-        var run = new RowRun(new CancellationTokenSource(), new InstallProgress(0, "Starting…"));
+        var run = new RowRun(new CancellationTokenSource(), new InstallProgress(0, Strings.CompWinStarting));
         row.Run = run;
         row.Error = null;
         this.Fill(row);
@@ -621,7 +622,7 @@ internal sealed class ComponentsWindow : Form
             else
             {
                 var staged = await Task.Run(() => ComponentInstaller.DownloadAsync(component, target, progress, run.Cancellation.Token));
-                run.Progress = new InstallProgress(1, "Installing…");
+                run.Progress = new InstallProgress(1, Strings.CompWinInstalling);
                 await this._host.ReleaseAsync(component);
                 var installed = record.Installed;
                 bool swapped = await Task.Run(() => ComponentInstaller.Swap(component, staged, installed));
@@ -689,7 +690,7 @@ internal sealed class ComponentsWindow : Form
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            MessageBox.Show(this, $"{ComponentManifest.FileName} couldn't be saved: {e.Message}", "Component updates", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, Texts.Format(Strings.CompWinManifestNotSaved, ComponentManifest.FileName, e.Message), Strings.CompWinTitle, MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
 
@@ -705,8 +706,8 @@ internal sealed class ComponentsWindow : Form
         string names = string.Join(", ", this._rows.Values.Where(r => r.PendingRestart).Select(r => r.Component.Name));
         if (MessageBox.Show(
                 this,
-                $"{names}: some files were in use and are replaced when the app starts again.\n\nRestart the app now?",
-                "Component updates",
+                Texts.Format(Strings.CompWinRestartAsk, names),
+                Strings.CompWinTitle,
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question) == DialogResult.Yes)
         {
@@ -725,7 +726,7 @@ internal sealed class ComponentsWindow : Form
         row.Item.EnsureVisible();
         var cell = row.Item.SubItems[NameColumn].Bounds;
         string names = string.Join(", ", need.Components.Select(c => c.Name));
-        this._balloon.Show($"{need.Reason}\n\n{names}: {need.Components[0].Purpose}.\n\nClick Install on the rows highlighted.", this._list,
+        this._balloon.Show(Texts.Format(Strings.CompWinBalloon, need.Reason, names, need.Components[0].Purpose), this._list,
             cell.Left + this.LogicalToDeviceUnits(40), cell.Top + cell.Height / 2, BalloonMs);
         this._need = null;
     }
@@ -815,11 +816,11 @@ internal sealed class ComponentsWindow : Form
     {
         if (row.Checking)
         {
-            TextRenderer.DrawText(g, $"{Spinner[this._frame]} Checking…", this._list.Font, text, SystemColors.GrayText, flags);
+            TextRenderer.DrawText(g, Texts.Format(Strings.CompWinChecking, Spinner[this._frame]), this._list.Font, text, SystemColors.GrayText, flags);
         }
         else if (row.CheckError is not null)
         {
-            TextRenderer.DrawText(g, "Couldn't check", this._list.Font, text, SystemColors.GrayText, flags);
+            TextRenderer.DrawText(g, Strings.CompWinCouldntCheck, this._list.Font, text, SystemColors.GrayText, flags);
         }
         else if (row.Latest is { } latest)
         {
@@ -867,7 +868,7 @@ internal sealed class ComponentsWindow : Form
 
         if (row.PendingRestart)
         {
-            TextRenderer.DrawText(g, "Restart to finish", this._list.Font, area, fore, TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
+            TextRenderer.DrawText(g, Strings.CompWinRestartToFinish, this._list.Font, area, fore, TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
             return;
         }
 
@@ -878,7 +879,7 @@ internal sealed class ComponentsWindow : Form
             ButtonRenderer.DrawButton(g, rect, false, PushButtonState.Normal);
             int icon = this.LogicalToDeviceUnits(14);
             var image = (install ? UiIcons.Download : UiIcons.UpdateComponent).At(icon);
-            string label = install ? "Install" : "Update";
+            string label = install ? Strings.CompWinInstall : Strings.CompWinUpdate;
             int textWidth = TextRenderer.MeasureText(g, label, this._list.Font).Width;
             int left = rect.Left + (rect.Width - icon - pad - textWidth) / 2;
             g.DrawImage(image, left, rect.Top + (rect.Height - icon) / 2, icon, icon);
@@ -893,7 +894,7 @@ internal sealed class ComponentsWindow : Form
         if (row.Error is not null)
         {
             int left = (back ?? main)?.Right + pad ?? area.Left;
-            TextRenderer.DrawText(g, "⚠ Failed", this._list.Font, Rectangle.FromLTRB(left, area.Top, area.Right, area.Bottom), Color.FromArgb(192, 0, 0),
+            TextRenderer.DrawText(g, Strings.CompWinFailed, this._list.Font, Rectangle.FromLTRB(left, area.Top, area.Right, area.Bottom), Color.FromArgb(192, 0, 0),
                 TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
         }
     }
@@ -987,7 +988,7 @@ internal sealed class ComponentsWindow : Form
         }
         catch (System.ComponentModel.Win32Exception e)
         {
-            MessageBox.Show(this, $"Couldn't open {row.Component.PageUrl}: {e.Message}", "Component updates", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, Texts.Format(Strings.CompWinCouldntOpen, row.Component.PageUrl, e.Message), Strings.CompWinTitle, MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
 
@@ -1049,7 +1050,7 @@ internal sealed class ComponentsWindow : Form
                 this._backMenu.Items.Add(new ToolStripSeparator());
             }
 
-            var uninstall = new ToolStripMenuItem("Uninstall…");
+            var uninstall = new ToolStripMenuItem(Strings.CompWinUninstall);
             UiIcons.Set(uninstall, UiIcons.Uninstall);
             uninstall.Click += (_, _) => _ = this.UninstallAsync(row);
             this._backMenu.Items.Add(uninstall);
@@ -1073,8 +1074,8 @@ internal sealed class ComponentsWindow : Form
         var component = row.Component;
         if (MessageBox.Show(
                 this,
-                $"Uninstall {component.Name}? Its files are deleted ({SizeText(ComponentInstaller.SizeOf(component, installed))}); the features needing it are offered it again.",
-                "Component updates",
+                Texts.Format(Strings.CompWinUninstallAsk, component.Name, SizeText(ComponentInstaller.SizeOf(component, installed))),
+                Strings.CompWinTitle,
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning,
                 MessageBoxDefaultButton.Button2) != DialogResult.Yes)
@@ -1100,8 +1101,8 @@ internal sealed class ComponentsWindow : Form
         long size = rows.Sum(r => ComponentInstaller.SizeOf(r.Component, this.RecordOf(r).Installed!));
         if (MessageBox.Show(
                 this,
-                $"Uninstall {rows.Count} components? Their files are deleted ({SizeText(size)}):\n\n{string.Join("\n", rows.Select(r => r.Component.Name))}\n\nThe features needing them are offered them again.",
-                "Component updates",
+                Texts.Format(Strings.CompWinUninstallAllAsk, rows.Count, SizeText(size), string.Join("\n", rows.Select(r => r.Component.Name))),
+                Strings.CompWinTitle,
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning,
                 MessageBoxDefaultButton.Button2) != DialogResult.Yes)
@@ -1148,7 +1149,7 @@ internal sealed class ComponentsWindow : Form
             }
             else
             {
-                row.Error = "Some of its files are in use: restart the app, then uninstall it again";
+                row.Error = Strings.CompWinFilesInUse;
             }
 
             if (!this.IsDisposed)
@@ -1182,12 +1183,12 @@ internal sealed class ComponentsWindow : Form
 
         if (record.Forced is { } forced && !string.Equals(forced.Label, installed.Label, StringComparison.OrdinalIgnoreCase))
         {
-            targets.Add(($"Back to the forced version ({forced.Label})", forced));
+            targets.Add((Texts.Format(Strings.CompWinBackForced, forced.Label), forced));
         }
 
         if (!string.Equals(record.Pinned.Label, installed.Label, StringComparison.OrdinalIgnoreCase))
         {
-            targets.Add(($"Back to the pinned version ({record.Pinned.Label})", record.Pinned));
+            targets.Add((Texts.Format(Strings.CompWinBackPinned, record.Pinned.Label), record.Pinned));
         }
 
         return targets;
@@ -1199,13 +1200,26 @@ internal sealed class ComponentsWindow : Form
         var record = this.RecordOf(row);
         bool main = record.Installed is null || (row.Latest is not null && !row.UpToDate);
         bool back = record.Installed is not null;
-        int width = this.LogicalToDeviceUnits(96);
+        int width = this.MainButtonWidth();
         int arrow = this.LogicalToDeviceUnits(24);
         int gap = this.LogicalToDeviceUnits(4);
         Rectangle? mainRect = main ? new Rectangle(area.Left, area.Top, width, area.Height) : null;
         Rectangle? backRect = back ? new Rectangle(main ? area.Left + width + gap : area.Left, area.Top, arrow, area.Height) : null;
         return (mainRect, backRect);
     }
+
+    /// <summary>The Install / Update button's width in device pixels: at least 96 logical px, wider for the longer label.</summary>
+    private int MainButtonWidth()
+    {
+        int label = Math.Max(
+            TextRenderer.MeasureText(Strings.CompWinInstall, this._list.Font).Width,
+            TextRenderer.MeasureText(Strings.CompWinUpdate, this._list.Font).Width);
+        return Math.Max(this.LogicalToDeviceUnits(96), label + this.LogicalToDeviceUnits(14 + 4 + 16));
+    }
+
+    /// <summary>What the Actions column grows by for the button's width, in logical px.</summary>
+    private int MainButtonExtra() =>
+        (int)Math.Ceiling((this.MainButtonWidth() - this.LogicalToDeviceUnits(96)) * 96.0 / Math.Max(96, this.DeviceDpi));
 
     /// <summary>The 📂 button of a row installed, at the right end of its Actions cell; null otherwise.</summary>
     private Rectangle? FolderRect(Row row, Rectangle area) =>
@@ -1231,7 +1245,7 @@ internal sealed class ComponentsWindow : Form
         }
         catch (System.ComponentModel.Win32Exception e)
         {
-            MessageBox.Show(this, $"Couldn't open Explorer: {e.Message}", "Component updates", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, Texts.Format(Strings.CompWinCouldntOpenExplorer, e.Message), Strings.CompWinTitle, MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
 

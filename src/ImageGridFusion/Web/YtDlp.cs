@@ -1,4 +1,5 @@
 using System.Globalization;
+using ImageGridFusion.Resources;
 using ImageGridFusion.UI;
 
 namespace ImageGridFusion.Web;
@@ -120,7 +121,7 @@ internal static class YtDlp
             return file;
         }
 
-        string message = error is null ? $"yt-dlp failed (exit code {exitCode})" : $"yt-dlp: {error}";
+        string message = error is null ? Texts.Format(Strings.CompYtDlpFailed, exitCode) : $"yt-dlp: {error}";
         throw companionsMissing ? new YtDlpCompanionsMissingException(message) : new UrlLoadException(message);
     }
 

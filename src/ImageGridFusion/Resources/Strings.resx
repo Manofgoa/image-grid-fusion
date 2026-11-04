@@ -4,6 +4,169 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="CompCutoutFailed" xml:space="preserve"><value>Couldn't cut the image out: {0}</value></data>
+  <data name="CompErrorDetailsNotWritten" xml:space="preserve"><value>The details could not be written to {0}, next to the app.</value></data>
+  <data name="CompErrorDetailsWritten" xml:space="preserve"><value>The details were written to {0}, next to the app.</value></data>
+  <data name="CompErrorOutOfMemory" xml:space="preserve"><value>Not enough memory. Close other applications, or lower the video size (⚙ menu).</value></data>
+  <data name="CompErrorSomethingWrong" xml:space="preserve"><value>Something went wrong; the app keeps running.
+
+{0}
+
+{1}</value></data>
+  <data name="CompInstallChecking" xml:space="preserve"><value>Checking…</value></data>
+  <data name="CompInstallCouldntSave" xml:space="preserve"><value>Couldn't save it: {0}</value></data>
+  <data name="CompInstallDownloadBroke" xml:space="preserve"><value>The download broke off</value></data>
+  <data name="CompInstallHashMismatch" xml:space="preserve"><value>{0} does not match its expected content</value></data>
+  <data name="CompInstallInstallingWinget" xml:space="preserve"><value>Installing with winget…</value></data>
+  <data name="CompInstallNotWhatNeeded" xml:space="preserve"><value>{0} is not what {1} needs</value></data>
+  <data name="CompInstallPackageDamaged" xml:space="preserve"><value>The package arrived damaged</value></data>
+  <data name="CompInstallPackageMissingEntry" xml:space="preserve"><value>the package has no {0}</value></data>
+  <data name="CompInstallProgressMegabytes" xml:space="preserve"><value>{0} / {1} MB</value></data>
+  <data name="CompInstallReadingPackage" xml:space="preserve"><value>Reading the package…</value></data>
+  <data name="CompInstallToolInUse" xml:space="preserve"><value>{0} is in use: try again once the URL load ends</value></data>
+  <data name="CompInstallWaitingWinget" xml:space="preserve"><value>Waiting for winget…</value></data>
+  <data name="CompManifestUnreadable" xml:space="preserve"><value>{0} couldn't be read ({1}): recreated</value></data>
+  <data name="CompManifestUnwritable" xml:space="preserve"><value>{0} couldn't be written: {1}</value></data>
+  <data name="CompPurposeDeno" xml:space="preserve"><value>Lets yt-dlp read YouTube's formats, to load the largest ones</value></data>
+  <data name="CompPurposeEmojiFont" xml:space="preserve"><value>Draws a text layer's emojis in {0}'s style, picked in the Emoji drop-down beside the text's font</value></data>
+  <data name="CompPurposeFfmpeg" xml:space="preserve"><value>Joins a video track and its sound into one MP4 for yt-dlp, to load the largest formats</value></data>
+  <data name="CompPurposeFlorence" xml:space="preserve"><value>Writes a sentence describing each image, found by the search under 💡 (the captions)</value></data>
+  <data name="CompPurposeIsNet" xml:space="preserve"><value>Finds an image's main subject, for the Cutout's Subject mode</value></data>
+  <data name="CompPurposeMobileSam" xml:space="preserve"><value>Picks the object under a click, for the Cutout's Pick mode</value></data>
+  <data name="CompPurposeOcrModels" xml:space="preserve"><value>Reads the text in images and PDF pages for the content search (💡), in a pass of its own after Windows OCR</value></data>
+  <data name="CompPurposeOnnxRuntime" xml:space="preserve"><value>Runs every engine's models: needed by all of them. Loaded once an engine has run: replaced at the next start</value></data>
+  <data name="CompPurposeRealEsrgan" xml:space="preserve"><value>Enlarges a small image ×2 or ×4, for the Upscale effect's Quality model</value></data>
+  <data name="CompPurposeRealEsrganCompact" xml:space="preserve"><value>Enlarges a small image ×2 or ×4 many times faster, a little less finely, for the Upscale effect's Fast model</value></data>
+  <data name="CompPurposeSFace" xml:space="preserve"><value>Tells the faces apart, to group them into people in the People view</value></data>
+  <data name="CompPurposeSigLipModels" xml:space="preserve"><value>Sees what the images show: their tags, the similarity search under 💡 and Find similar images (the visual analysis)</value></data>
+  <data name="CompPurposeSigLipTokenizer" xml:space="preserve"><value>Turns a search's words into what the SigLIP 2 text model reads, for the similarity search under 💡</value></data>
+  <data name="CompPurposeSkiaSharp" xml:space="preserve"><value>Decodes the images for RapidOCR, the OCR engine. Loaded once RapidOCR has run: replaced at the next start</value></data>
+  <data name="CompPurposeYtDlp" xml:space="preserve"><value>Downloads the media of a URL the URL zone's own resolvers do not know</value></data>
+  <data name="CompPurposeYuNet" xml:space="preserve"><value>Finds the faces in the indexed images, for the People view (the face analysis)</value></data>
+  <data name="CompShortcutsTitle" xml:space="preserve"><value>Keyboard shortcuts</value></data>
+  <data name="CompSourceAnsweredNothing" xml:space="preserve"><value>{0} answered nothing</value></data>
+  <data name="CompSourceAnsweredUnreadable" xml:space="preserve"><value>{0} answered something unreadable</value></data>
+  <data name="CompSourceGhNoTag" xml:space="preserve"><value>github.com gave no release tag</value></data>
+  <data name="CompSourceHfNoCommit" xml:space="preserve"><value>huggingface.co gave no commit</value></data>
+  <data name="CompSourceNoAssetInRelease" xml:space="preserve"><value>no {0} in its release {1}</value></data>
+  <data name="CompSourceNoLinkToAsset" xml:space="preserve"><value>no link to {0}</value></data>
+  <data name="CompSourceNoLongerIn" xml:space="preserve"><value>{0} is no longer in {1}</value></data>
+  <data name="CompSourceNuGetNoStable" xml:space="preserve"><value>nuget.org lists no stable version of {0}</value></data>
+  <data name="CompSourceWingetNoVersion" xml:space="preserve"><value>winget lists no version of {0}</value></data>
+  <data name="CompSourceWingetUnavailable" xml:space="preserve"><value>winget isn't available</value></data>
+  <data name="CompTrayOpen" xml:space="preserve"><value>Open</value></data>
+  <data name="CompTrayQuit" xml:space="preserve"><value>Quit</value></data>
+  <data name="CompUpscaleButton" xml:space="preserve"><value>Upscale</value></data>
+  <data name="CompUpscaleCancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="CompUpscaleCancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="CompUpscaleFailed" xml:space="preserve"><value>Couldn't upscale the image: {0}</value></data>
+  <data name="CompUpscaleFile" xml:space="preserve"><value>File: ≈ {0} as a {1} (an estimate)</value></data>
+  <data name="CompUpscaleLeft" xml:space="preserve"><value>, ≈ {0} left</value></data>
+  <data name="CompUpscaleModel" xml:space="preserve"><value>{0} model, ×{1}</value></data>
+  <data name="CompUpscaleModelFast" xml:space="preserve"><value>Fast</value></data>
+  <data name="CompUpscaleModelFrames" xml:space="preserve"><value>{0} model, ×{1}, {2} frames</value></data>
+  <data name="CompUpscaleModelQuality" xml:space="preserve"><value>Quality</value></data>
+  <data name="CompUpscaleProgress" xml:space="preserve"><value>Upscaling… {0} %{1}</value></data>
+  <data name="CompUpscaleRunning" xml:space="preserve"><value>Upscaling…</value></data>
+  <data name="CompUpscaleSize" xml:space="preserve"><value>Size: {0} × {1}  →  {2} × {3}</value></data>
+  <data name="CompUpscaleStopping" xml:space="preserve"><value>Stopping after the current tile…</value></data>
+  <data name="CompUpscaleTime" xml:space="preserve"><value>Time: ≈ {0} on this computer (an estimate)</value></data>
+  <data name="CompUpscaleTitle" xml:space="preserve"><value>Upscale — {0}</value></data>
+  <data name="CompUrlCompanionsHint" xml:space="preserve"><value>{0} for a larger format · {1} · {2}</value></data>
+  <data name="CompUrlCompanionsLink" xml:space="preserve"><value>Install yt-dlp companions…</value></data>
+  <data name="CompUrlCompanionsNeed" xml:space="preserve"><value>yt-dlp loads the largest formats with its companions: Deno, the JavaScript runtime YouTube's formats need, and ffmpeg, which joins a video track and its sound. Load the URL again once they are installed.</value></data>
+  <data name="CompUrlDownloadingPercent" xml:space="preserve"><value>Downloading… {0} %</value></data>
+  <data name="CompUrlDownloadingSize" xml:space="preserve"><value>Downloading… {0}</value></data>
+  <data name="CompUrlEmptyCaption" xml:space="preserve"><value>Load a URL, then drag its media into a cell</value></data>
+  <data name="CompUrlGone" xml:space="preserve"><value>The downloaded file is gone: load it again</value></data>
+  <data name="CompUrlInstallLink" xml:space="preserve"><value>Install yt-dlp…</value></data>
+  <data name="CompUrlInstallOffer" xml:space="preserve"><value>{0} {1}</value></data>
+  <data name="CompUrlLoad" xml:space="preserve"><value>Load</value></data>
+  <data name="CompUrlLoadTip" xml:space="preserve"><value>Fetch the photo or video behind the URL</value></data>
+  <data name="CompUrlMegabytes" xml:space="preserve"><value>{0} MB</value></data>
+  <data name="CompUrlMerging" xml:space="preserve"><value>Joining the video and its sound…</value></data>
+  <data name="CompUrlNotAddress" xml:space="preserve"><value>Not a web address</value></data>
+  <data name="CompUrlPlaceholder" xml:space="preserve"><value>Paste a URL (X post, image, video…)</value></data>
+  <data name="CompUrlReadyTooltip" xml:space="preserve"><value>Drag into a cell · right-click for more</value></data>
+  <data name="CompUrlResolving" xml:space="preserve"><value>Looking for the media…</value></data>
+  <data name="CompUrlSiteNeedsYtDlp" xml:space="preserve"><value>This site needs yt-dlp</value></data>
+  <data name="CompUrlYtDlpNeed" xml:space="preserve"><value>This site's media is loaded with yt-dlp — with Deno and ffmpeg, its companions, for the largest formats. Load the URL again once they are installed.</value></data>
+  <data name="CompWebCouldntReach" xml:space="preserve"><value>Couldn't reach {0}: {1}</value></data>
+  <data name="CompWebCouldntSaveFile" xml:space="preserve"><value>Couldn't save the file: {0}</value></data>
+  <data name="CompWebNoAnswerInTime" xml:space="preserve"><value>{0} didn't answer in time</value></data>
+  <data name="CompWebServerAnswered" xml:space="preserve"><value>The server answered {0} {1}</value></data>
+  <data name="CompWinBackForced" xml:space="preserve"><value>Back to the forced version ({0})</value></data>
+  <data name="CompWinBackPinned" xml:space="preserve"><value>Back to the pinned version ({0})</value></data>
+  <data name="CompWinBalloon" xml:space="preserve"><value>{0}
+
+{1}: {2}.
+
+Click Install on the rows highlighted.</value></data>
+  <data name="CompWinCheckFailedTip" xml:space="preserve"><value>Couldn't check: {0}</value></data>
+  <data name="CompWinCheckNow" xml:space="preserve"><value>Check now</value></data>
+  <data name="CompWinCheckedAt" xml:space="preserve"><value>Checked {0:HH:mm}</value></data>
+  <data name="CompWinChecking" xml:space="preserve"><value>{0} Checking…</value></data>
+  <data name="CompWinColComponent" xml:space="preserve"><value>Component</value></data>
+  <data name="CompWinColForced" xml:space="preserve"><value>Forced</value></data>
+  <data name="CompWinColInstalled" xml:space="preserve"><value>Installed</value></data>
+  <data name="CompWinColInstalledOn" xml:space="preserve"><value>Installed on</value></data>
+  <data name="CompWinColLatest" xml:space="preserve"><value>Latest</value></data>
+  <data name="CompWinColPinned" xml:space="preserve"><value>Pinned</value></data>
+  <data name="CompWinColReleased" xml:space="preserve"><value>Released</value></data>
+  <data name="CompWinColSize" xml:space="preserve"><value>Size</value></data>
+  <data name="CompWinColUpdatedOn" xml:space="preserve"><value>Updated on</value></data>
+  <data name="CompWinCouldntCheck" xml:space="preserve"><value>Couldn't check</value></data>
+  <data name="CompWinCouldntOpen" xml:space="preserve"><value>Couldn't open {0}: {1}</value></data>
+  <data name="CompWinCouldntOpenExplorer" xml:space="preserve"><value>Couldn't open Explorer: {0}</value></data>
+  <data name="CompWinFailed" xml:space="preserve"><value>⚠ Failed</value></data>
+  <data name="CompWinFilesInUse" xml:space="preserve"><value>Some of its files are in use: restart the app, then uninstall it again</value></data>
+  <data name="CompWinGroupEmojiFonts" xml:space="preserve"><value>Emoji fonts</value></data>
+  <data name="CompWinGroupEngines" xml:space="preserve"><value>Engines</value></data>
+  <data name="CompWinGroupRuntimes" xml:space="preserve"><value>Runtimes</value></data>
+  <data name="CompWinGroupWebTools" xml:space="preserve"><value>Web tools</value></data>
+  <data name="CompWinInstall" xml:space="preserve"><value>Install</value></data>
+  <data name="CompWinInstallAll" xml:space="preserve"><value>Install all</value></data>
+  <data name="CompWinInstallAllCount" xml:space="preserve"><value>Install all ({0})</value></data>
+  <data name="CompWinInstalling" xml:space="preserve"><value>Installing…</value></data>
+  <data name="CompWinKilobytes" xml:space="preserve"><value>{0} KB</value></data>
+  <data name="CompWinManifestNotSaved" xml:space="preserve"><value>{0} couldn't be saved: {1}</value></data>
+  <data name="CompWinManyDownloads" xml:space="preserve"><value>{0} downloads are running. Cancel them and close?</value></data>
+  <data name="CompWinMegabytes" xml:space="preserve"><value>{0} MB</value></data>
+  <data name="CompWinNeeded" xml:space="preserve"><value>Needed</value></data>
+  <data name="CompWinOneDownload" xml:space="preserve"><value>A download is running. Cancel it and close?</value></data>
+  <data name="CompWinRestartAsk" xml:space="preserve"><value>{0}: some files were in use and are replaced when the app starts again.
+
+Restart the app now?</value></data>
+  <data name="CompWinRestartToFinish" xml:space="preserve"><value>Restart to finish</value></data>
+  <data name="CompWinStarting" xml:space="preserve"><value>Starting…</value></data>
+  <data name="CompWinTitle" xml:space="preserve"><value>Component updates</value></data>
+  <data name="CompWinTotal" xml:space="preserve"><value>Total on disk: {0}</value></data>
+  <data name="CompWinUninstall" xml:space="preserve"><value>Uninstall…</value></data>
+  <data name="CompWinUninstallAll" xml:space="preserve"><value>Uninstall all</value></data>
+  <data name="CompWinUninstallAllAsk" xml:space="preserve"><value>Uninstall {0} components? Their files are deleted ({1}):
+
+{2}
+
+The features needing them are offered them again.</value></data>
+  <data name="CompWinUninstallAllCount" xml:space="preserve"><value>Uninstall all ({0})</value></data>
+  <data name="CompWinUninstallAsk" xml:space="preserve"><value>Uninstall {0}? Its files are deleted ({1}); the features needing it are offered it again.</value></data>
+  <data name="CompWinUpdate" xml:space="preserve"><value>Update</value></data>
+  <data name="CompWinUpdateAll" xml:space="preserve"><value>Update all</value></data>
+  <data name="CompWinUpdateAllCount" xml:space="preserve"><value>Update all ({0})</value></data>
+  <data name="CompWingetCouldntInstall" xml:space="preserve"><value>winget couldn't install {0} ({1}): put {2} in {3}</value></data>
+  <data name="CompWingetExitCode" xml:space="preserve"><value>exit code {0}</value></data>
+  <data name="CompWingetUnavailablePut" xml:space="preserve"><value>winget isn't available: put {0} in {1}</value></data>
+  <data name="CompXPostCouldntRead" xml:space="preserve"><value>Couldn't read X's answer: {0}</value></data>
+  <data name="CompXPostNoMedia" xml:space="preserve"><value>No photo or video in this post</value></data>
+  <data name="CompXPostNotFound" xml:space="preserve"><value>Post not found or private</value></data>
+  <data name="CompXPostUnreadable" xml:space="preserve"><value>X answered something unreadable</value></data>
+  <data name="CompYtDlpFailed" xml:space="preserve"><value>yt-dlp failed (exit code {0})</value></data>
+  <data name="CompZipAnswered" xml:space="preserve"><value>{0} answered {1} {2}</value></data>
+  <data name="CompZipDamaged" xml:space="preserve"><value>{0} sent a damaged zip</value></data>
+  <data name="CompZipNoRanges" xml:space="preserve"><value>{0} does not send parts of a file</value></data>
+  <data name="CompZipNotZip" xml:space="preserve"><value>{0} did not send a zip</value></data>
+  <data name="CompZipShortAnswer" xml:space="preserve"><value>{0} sent a short answer</value></data>
+  <data name="CompZipUnsupportedCompression" xml:space="preserve"><value>{0}: unsupported compression {1}</value></data>
   <data name="FileSizeByte" xml:space="preserve"><value>{0} byte</value></data>
   <data name="FileSizeBytes" xml:space="preserve"><value>{0} bytes</value></data>
   <data name="FileSizeUnits" xml:space="preserve"><value>KB MB GB TB</value></data>

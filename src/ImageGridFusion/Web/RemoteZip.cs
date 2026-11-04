@@ -3,6 +3,7 @@ using System.IO.Compression;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.Web;
 
@@ -44,7 +45,7 @@ internal static class RemoteZip
 
         if (end < 0)
         {
-            throw new UrlLoadException($"{url.Host} did not send a zip");
+            throw new UrlLoadException(Texts.Format(Strings.CompZipNotZip, url.Host));
         }
 
         long directorySize = BinaryPrimitives.ReadUInt32LittleEndian(tail.AsSpan(end + 12));
@@ -56,7 +57,7 @@ internal static class RemoteZip
             byte[] record = await ReadRangeAsync(url, zip64End, 56, token);
             if (BinaryPrimitives.ReadUInt32LittleEndian(record) != Zip64EndSignature)
             {
-                throw new UrlLoadException($"{url.Host} sent a damaged zip");
+                throw new UrlLoadException(Texts.Format(Strings.CompZipDamaged, url.Host));
             }
 
             directorySize = (long)BinaryPrimitives.ReadUInt64LittleEndian(record.AsSpan(40));
@@ -79,7 +80,7 @@ internal static class RemoteZip
         byte[] header = await ReadRangeAsync(url, entry.LocalHeaderOffset, 30, token);
         if (BinaryPrimitives.ReadUInt32LittleEndian(header) != LocalHeaderSignature)
         {
-            throw new UrlLoadException($"{url.Host} sent a damaged zip");
+            throw new UrlLoadException(Texts.Format(Strings.CompZipDamaged, url.Host));
         }
 
         long data = entry.LocalHeaderOffset + 30 + BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(26)) + BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(28));
@@ -90,7 +91,7 @@ internal static class RemoteZip
         {
             0 => counted,
             8 => new DeflateStream(counted, CompressionMode.Decompress),
-            _ => throw new UrlLoadException($"{entry.Name}: unsupported compression {entry.Method}"),
+            _ => throw new UrlLoadException(Texts.Format(Strings.CompZipUnsupportedCompression, entry.Name, entry.Method)),
         };
         await content.CopyToAsync(target, BufferSize, token);
     }
@@ -137,7 +138,7 @@ internal static class RemoteZip
             at += 46 + nameLength + extraLength + commentLength;
         }
 
-        return entries.Count > 0 ? entries : throw new UrlLoadException($"{url.Host} sent a damaged zip");
+        return entries.Count > 0 ? entries : throw new UrlLoadException(Texts.Format(Strings.CompZipDamaged, url.Host));
     }
 
     /// <summary>A 32-bit value, or its 64-bit form taken from the zip64 extra field when it overflowed.</summary>
@@ -168,7 +169,7 @@ internal static class RemoteZip
     {
         using var response = await SendRangeAsync(url, from, length, token);
         byte[] bytes = await response.Content.ReadAsByteArrayAsync(token);
-        return bytes.Length == length ? bytes : throw new UrlLoadException($"{url.Host} sent a short answer");
+        return bytes.Length == length ? bytes : throw new UrlLoadException(Texts.Format(Strings.CompZipShortAnswer, url.Host));
     }
 
     private static async Task<HttpResponseMessage> SendRangeAsync(Uri url, long from, long length, CancellationToken token)
@@ -188,19 +189,19 @@ internal static class RemoteZip
         }
         catch (HttpRequestException e)
         {
-            throw new UrlLoadException($"Couldn't reach {url.Host}: {e.Message}", e);
+            throw new UrlLoadException(Texts.Format(Strings.CompWebCouldntReach, url.Host, e.Message), e);
         }
         catch (TaskCanceledException e) when (!token.IsCancellationRequested)
         {
-            throw new UrlLoadException($"{url.Host} didn't answer in time", e);
+            throw new UrlLoadException(Texts.Format(Strings.CompWebNoAnswerInTime, url.Host), e);
         }
 
         if (response.StatusCode != HttpStatusCode.PartialContent)
         {
             response.Dispose();
             throw response.IsSuccessStatusCode
-                ? new UrlLoadException($"{url.Host} does not send parts of a file")
-                : new UrlLoadException($"{url.Host} answered {(int)response.StatusCode} {response.ReasonPhrase}");
+                ? new UrlLoadException(Texts.Format(Strings.CompZipNoRanges, url.Host))
+                : new UrlLoadException(Texts.Format(Strings.CompZipAnswered, url.Host, (int)response.StatusCode, response.ReasonPhrase));
         }
 
         return response;

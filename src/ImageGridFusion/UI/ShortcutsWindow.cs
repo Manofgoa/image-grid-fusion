@@ -1,4 +1,5 @@
 using System.Drawing.Drawing2D;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -14,7 +15,7 @@ internal sealed class ShortcutsWindow : Form
 
     public ShortcutsWindow(IReadOnlyList<ShortcutSection> sections)
     {
-        this.Text = "Keyboard shortcuts";
+        this.Text = Strings.CompShortcutsTitle;
         this.Icon = AppIcon.Load();
         this.ShowInTaskbar = false;
         this.MinimizeBox = false;

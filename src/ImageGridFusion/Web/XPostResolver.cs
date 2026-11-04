@@ -3,6 +3,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.Web;
 
@@ -56,10 +57,10 @@ internal static partial class XPostResolver
         var root = post.RootElement;
         if (root.ValueKind != JsonValueKind.Object || Text(root, "__typename") == "TweetTombstone" || !root.TryGetProperty("id_str", out _))
         {
-            throw new UrlLoadException("Post not found or private");
+            throw new UrlLoadException(Strings.CompXPostNotFound);
         }
 
-        var (media, poster) = FirstMedia(root) ?? throw new UrlLoadException("No photo or video in this post");
+        var (media, poster) = FirstMedia(root) ?? throw new UrlLoadException(Strings.CompXPostNoMedia);
         if (poster is not null)
         {
             progress.Report(new PosterStep(poster));
@@ -86,7 +87,7 @@ internal static partial class XPostResolver
         using var response = await Downloader.GetAsync(url, token);
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
-            throw new UrlLoadException("Post not found or private");
+            throw new UrlLoadException(Strings.CompXPostNotFound);
         }
 
         Downloader.EnsureSuccess(response);
@@ -95,18 +96,18 @@ internal static partial class XPostResolver
             string body = await response.Content.ReadAsStringAsync(token);
             if (string.IsNullOrWhiteSpace(body))
             {
-                throw new UrlLoadException("Post not found or private");
+                throw new UrlLoadException(Strings.CompXPostNotFound);
             }
 
             return JsonDocument.Parse(body);
         }
         catch (JsonException e)
         {
-            throw new UrlLoadException("X answered something unreadable", e);
+            throw new UrlLoadException(Strings.CompXPostUnreadable, e);
         }
         catch (HttpRequestException e)
         {
-            throw new UrlLoadException($"Couldn't read X's answer: {e.Message}", e);
+            throw new UrlLoadException(Texts.Format(Strings.CompXPostCouldntRead, e.Message), e);
         }
     }
 

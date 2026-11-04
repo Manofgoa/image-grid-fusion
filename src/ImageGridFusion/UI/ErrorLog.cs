@@ -1,4 +1,5 @@
 using System.Security;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -28,7 +29,7 @@ internal static class ErrorLog
 
     /// <summary>What an exception means to the user: a memory shortage named as such, with what to do about it.</summary>
     public static string Describe(Exception exception) => exception is OutOfMemoryException
-        ? "Not enough memory. Close other applications, or lower the video size (⚙ menu)."
+        ? Strings.CompErrorOutOfMemory
         : exception.Message;
 
     /// <summary>Appends <paramref name="exception"/> to the log; false when the file cannot be written.</summary>
@@ -49,10 +50,10 @@ internal static class ErrorLog
     private static void Report(Exception exception)
     {
         string details = Write(exception)
-            ? $"The details were written to {FileName}, next to the app."
-            : $"The details could not be written to {FileName}, next to the app.";
+            ? Texts.Format(Strings.CompErrorDetailsWritten, FileName)
+            : Texts.Format(Strings.CompErrorDetailsNotWritten, FileName);
         MessageBox.Show(
-            $"Something went wrong; the app keeps running.\n\n{Describe(exception)}\n\n{details}",
+            Texts.Format(Strings.CompErrorSomethingWrong, Describe(exception), details),
             "Image Grid Fusion",
             MessageBoxButtons.OK,
             MessageBoxIcon.Error);

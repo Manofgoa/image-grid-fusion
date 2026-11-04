@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -32,9 +33,9 @@ internal sealed class TrayApplicationContext : ApplicationContext
         // Not set as MainForm: Application.Run would show it, and closing it would end the app.
         _form.FormClosed += OnFormClosed;
 
-        UiIcons.Set(_menu.Items.Add("Open", null, (_, _) => ShowForm()), UiIcons.App);
+        UiIcons.Set(_menu.Items.Add(Strings.CompTrayOpen, null, (_, _) => ShowForm()), UiIcons.App);
         _menu.Items.Add(new ToolStripSeparator());
-        UiIcons.Set(_menu.Items.Add("Quit", null, (_, _) => Quit()), UiIcons.Quit);
+        UiIcons.Set(_menu.Items.Add(Strings.CompTrayQuit, null, (_, _) => Quit()), UiIcons.Quit);
         UiIcons.Attach(this._menu);
         _tray = new NotifyIcon
         {

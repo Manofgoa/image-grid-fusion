@@ -1,5 +1,6 @@
 using ImageGridFusion.Composition;
 using ImageGridFusion.Imaging;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -203,7 +204,7 @@ internal sealed class CutoutService : IDisposable
             catch (Exception e) when (e is Microsoft.ML.OnnxRuntime.OnnxRuntimeException or OutOfMemoryException or IOException or UnauthorizedAccessException or DllNotFoundException or ArgumentException)
             {
                 this._failed.Add((image, page, key));
-                this.Failed?.Invoke(this, $"Couldn't cut the image out: {ErrorLog.Describe(e)}");
+                this.Failed?.Invoke(this, Texts.Format(Strings.CompCutoutFailed, ErrorLog.Describe(e)));
                 return;
             }
             finally
