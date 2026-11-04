@@ -592,7 +592,9 @@ Portrait 4:5, Story 9:16, Landscape 16:9, Custom — given by `GridPreview.Canva
   every export, read by `CanvasSizer.Compute` / `ForLayers` (`CanvasSizer.Exactly`): that size, no 1200
   floor, reduced, the ratio kept, by the export's cap when smaller. A new consumer of the canvas size
   passes `ExactSize` with the ratio. Its shape stays within 1:10 to 10:1, a side within 100 to 8192 px
-  with exact pixels (`CustomFormat.Of` / `WithWidth` / `WithHeight`).
+  with exact pixels (`CustomFormat.Of` / `WithWidth` / `WithHeight`). With exact pixels the preview
+  draws the canvas at its **real size** — one export pixel a device pixel — whenever it fits the working
+  area (`GridPreview.CanvasBounds`), fitted otherwise.
 
 - The **Free** ratio is computed by `OutputFormats.FreeRatio`: between 9:16 and 21:9, the one losing
   the least of the images (crops plus bands, weighted by the cells' area), images read through
