@@ -138,12 +138,12 @@ the same abstraction.
 
 ## Test Impact
 
-The app has **no unit test project** (`src/` holds `ImageGridFusion` only). Whether one is created for
-this work is an Open Question; until then, the behaviours are checked by hand:
+The app has **no unit test project** (`src/` holds `ImageGridFusion` only), and none is created for
+this work (Q&A 23): the behaviours below are checked by hand in the app launched.
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| A GIPHY search answer parsed into rows (id, title, renditions, total count) | — (by hand, or a test project — Open Questions) | — |
+| A GIPHY search answer parsed into rows (id, title, renditions, total count) | — (by hand) | — |
 | The next page asked with the right offset, none once the total is reached | — | — |
 | A 429 / an invalid key reported in the caption, the list kept | — | — |
 | `ExplorerMode.Giphy` saved and read back by name | — | — |
@@ -180,10 +180,11 @@ this work is an Open Question; until then, the behaviours are checked by hand:
   favorite (as the pasted favorites)?~~ → Downloaded into `giphy-favorites\`, an ordinary favorite
   (Q&A 21)
 - [x] ~~**API key dialog**: the key shown in clear in `NameDialog`, or masked?~~ → In clear (Q&A 22)
-- [ ] **Unit tests**: create a test project for the GIPHY parsing and paging, or check by hand as the
-  previous workfiles did?
-- [ ] **Backlog**: the *Stickers in layers* row of `TODO-FEATURES.md` names GIPHY stickers — mark the part
-  this workfile covers, split the row, or leave it?
+- [x] ~~**Unit tests**: create a test project for the GIPHY parsing and paging, or check by hand as the
+  previous workfiles did?~~ → By hand (Q&A 23)
+- [x] ~~**Backlog**: the *Stickers in layers* row of `TODO-FEATURES.md` names GIPHY stickers — mark the part
+  this workfile covers, split the row, or leave it?~~ → Split: *Stickers in layers, GIPHY* marked with this
+  workfile, the rest left to discuss (Q&A 24)
 
 ---
 
@@ -232,6 +233,11 @@ Q&A 19–22: the term *online library*; the criteria, sort and sections buttons 
 heart on a GIPHY tile keeps its file in `giphy-favorites\` as an ordinary favorite; the key shown in clear.
 § Terms, § The GIPHY View, § Favorites (new) and § API Key updated.
 
+### Iteration 7 — 2026-11-05
+
+Q&A 23–24: no test project, the behaviours checked by hand; the backlog's *Stickers in layers* row split,
+its GIPHY part marked with this workfile. No open question left.
+
 ---
 
 ## Implementation Log
@@ -242,8 +248,11 @@ says so rather than staying blank.
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
 | Code | | | |
-| Unit tests | | | |
-| README | | | |
+| Unit tests | — | | None: no test project, checks by hand (Q&A 23) |
+| README (EN + FR) | | | The GIPHY view, the key, the attribution |
+| GLOSSARY (EN + FR) | | | *Online library*, *GIPHY view*; the file explorer's views |
+| SHORTCUTS (EN + FR) | | | Ctrl+F through the GIPHY view; Enter searching it |
+| RULES.md | | | A § Online Libraries: budget, files' route, attribution, key |
 
 ---
 
@@ -275,8 +284,8 @@ Questions asked by the agent during design, with user responses.
 | 20 | Search criteria, sort and sections buttons in the GIPHY view | Hidden | 2026-11-05 |
 | 21 | Hearting a GIPHY tile | Yes, the file kept in a folder next to the exe | 2026-11-05 |
 | 22 | The API key shown in clear or masked | In clear | 2026-11-05 |
-| 23 | Unit tests: a test project, or checks by hand | | 2026-11-05 |
-| 24 | The backlog's *Stickers in layers* row | | 2026-11-05 |
+| 23 | Unit tests: a test project, or checks by hand | Checks by hand | 2026-11-05 |
+| 24 | The backlog's *Stickers in layers* row | Split the row | 2026-11-05 |
 
 ---
 
