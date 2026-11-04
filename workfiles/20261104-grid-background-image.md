@@ -227,6 +227,11 @@ background image only is content of its own, its canvas sized on the image; a pr
 with its effects; a Paste button beside Browse…. Sections *Drawing*, *Fitting*, *Options*, *Drop and
 Browse*, *Background Edit View* and *Playback* updated.
 
+### Iteration 3 — 2026-11-04 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in the worktree `.claude/worktrees/grid-background-image` on
+the branch `feature/grid-background-image`. No test project: the unit-test step does not apply.
+
 ---
 
 ## Implementation Log
