@@ -84,6 +84,11 @@ The Crop effect's geometry is **not in fractions of the cell**, and its kept par
   wheel scaling it (§ On-Cell Handles › Resizable Zones) — is
   drawn by `GridPreview` only, while its tab is selected and it is on; `Compositor` and the
   exports always draw the cropped image.
+- **Keep** (`MainForm.KeepCrop`, origin: `workfiles/20261029-image-upscale.md` § Crop to a New Image) makes the kept part
+  of the image **as loaded** the cell's image — no effect drawn into its pixels — through `GridPreview.ReplaceSelectedCell`,
+  one undo step: the look carries over as effects, the Crop and the Cutout reset, the Upscale off; an image without a
+  file keeping the one it was cut from (`SourceImage.CroppedFrom`) for its name. Stills in cells only. A new effect whose
+  state is tied to the image's pixels (as the Cutout's mask) is reset there too.
 
 #### The Cutout Exception
 

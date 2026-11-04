@@ -144,6 +144,7 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 - The crop **follows the image**: turning or flipping it keeps the same part. Zoom, fine angle and Blur apply to the cropped image.
 - Options: the ratios **Free**, **1:1**, **4:3**, **16:9** and **9:16**, each thumbnail drawing the kept part at its ratio. Picking one reshapes the kept part to the largest rectangle at that ratio inside it, around its center; under a ratio, a dragged bar takes the two across along, around the center, so the ratio holds. The ratio is in pixels, so 1:1 is square whatever the image. A quarter turn turns it along — 16:9 becomes 9:16 — and frees a 4:3, which has no 3:4 thumbnail.
 - **100 %**, set apart after the ratios by a line, keeps the **whole image**: every bar back on its edge, the ratio freed (Free pressed). Like any option it turns the crop on first — one click on a crop that is off turns it on at 100 %. The crop's own Reset still brings back 10 % in from each edge, off.
+- **Keep**, after 100 %, makes the **kept part the cell's image**: a new image of its own — the part of the image as loaded, no effect drawn into it — named after its file, `<name> (crop)`, as a pasted image is. Its other effects carry over as effects, the cell looking the same; the Crop and the Cutout start over, the Upscale is turned off. A part too small to see sharp can then be [upscaled](#upscale). Still images in cells only; Ctrl+Z gives the whole image back with its crop.
 
 ### Cutout
 
