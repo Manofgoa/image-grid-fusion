@@ -1241,6 +1241,11 @@ internal sealed partial class MainForm : Form
                 {
                     await this.DropLayerFilesAsync(paths);
                 }
+                else if (this.DroppedOnGridBackground(new Point(e.X, e.Y)))
+                {
+                    // Onto the Grid background's options: its image (workfiles/20261104-grid-background-image.md § Drop and Browse).
+                    await this.SetBackgroundImageFromFilesAsync(paths, FileExplorerPanel.PresetLookOf(e.Data));
+                }
                 else
                 {
                     await LoadSoundtrackAsync(paths[0]);
@@ -2258,6 +2263,7 @@ internal sealed partial class MainForm : Form
         this._seamsOn = global.SeamsOn;
         this._cascade = global.Cascade;
         this._cascadeOn = global.CascadeOn;
+        var goneBackgroundImage = this._gridBackground.Image?.Image;
         this._gridBackground = global.GridBackground;
         this._gridBackgroundOn = global.GridBackgroundOn;
 
@@ -2274,6 +2280,7 @@ internal sealed partial class MainForm : Form
         // The cells' looks came back with their Background as the Grid background had them.
         this._preview.GridBackground = this.ActiveGridBackground;
         this._preview.BackgroundsForcedOff = this._gridBackgroundOn;
+        this.ReleaseGoneBackgroundImage(goneBackgroundImage);
 
         // The layers as they stood, the selected one kept while it still stands at its place.
         this._layersOn = global.LayersOn;
@@ -2701,7 +2708,7 @@ internal sealed partial class MainForm : Form
     {
         var images = _preview.Images;
         var soundtrack = ActiveSoundtrack;
-        var length = !this.HasContent ? TimeSpan.Zero : Animation.VideoLength(images, soundtrack, this.ActiveCascade, this.ActiveLayerImages);
+        var length = !this.HasContent ? TimeSpan.Zero : Animation.VideoLength(images, soundtrack, this.ActiveCascade, this.ActiveBesideCells);
         _lengthReadout.Text = length > TimeSpan.Zero ? $"⏱ {Seconds(length)}" : "⏱ —";
         // As wide as a length under 1000 s: the digits change without moving the gear.
         _lengthReadout.MinimumSize = new Size(TextRenderer.MeasureText("⏱ 000.0 s", _lengthReadout.Font).Width, 0);
@@ -2972,6 +2979,8 @@ internal sealed partial class MainForm : Form
         this._preview.Images.Count == 0
             ? this.ActiveLayers is { } layers
                 ? CanvasSizer.ForLayers(layers.Items.Select(l => new LayerFrame(l.FrameAt(TimeSpan.Zero), l.Place)), this._preview.CanvasRatio, maxLongSide, this._preview.ExactSize)
+                : this.ActiveGridBackground?.Image is { } background
+                ? CanvasSizer.ForBackground(background.FrameAt(TimeSpan.Zero), this._preview.CanvasRatio, maxLongSide, this._preview.ExactSize)
                 : null
             : this._preview.ActiveLayout is not { } layout || layout.Count != this._preview.Images.Count
             ? null
@@ -3039,7 +3048,7 @@ internal sealed partial class MainForm : Form
     private bool IsExporting => _export is not null;
 
     /// <summary>Content that plays, or moves by its Animations effect — a layer's too: a frozen one that does not move is exported as a still.</summary>
-    private bool HasAnimation => _preview.Images.Any(i => i.Moves) || this.ActiveLayerImages.Any(i => i.Moves);
+    private bool HasAnimation => _preview.Images.Any(i => i.Moves) || this.ActiveBesideCells.Any(i => i.Moves);
 
     /// <summary>The layers drawn over the grid, in the preview and every export; <c>null</c> while their effect is off.</summary>
     private GridLayers? ActiveLayers => this._layersOn ? this._preview.Layers.Shown : null;
@@ -3054,7 +3063,7 @@ internal sealed partial class MainForm : Form
     /// Whether the grid gives an image: cells, or layers alone over a transparent canvas
     /// (workfiles/20261029-layers.md, Iteration 12).
     /// </summary>
-    private bool HasContent => this._preview.Images.Count > 0 || this.ActiveLayers is not null;
+    private bool HasContent => this._preview.Images.Count > 0 || this.ActiveLayers is not null || this.ActiveBackgroundImage is not null;
 
     /// <summary>The soundtrack mixed into the preview and the MP4 export; <c>null</c> while off.</summary>
     private Soundtrack? ActiveSoundtrack => _soundtrackOn ? _soundtrack : null;
@@ -3205,7 +3214,7 @@ internal sealed partial class MainForm : Form
     /// is on above 0 % — or <c>null</c> when it does.
     /// </summary>
     private string? FadeUnavailable =>
-        Animation.Heard(_preview.Images.Concat(this.ActiveLayerImages)).Count > 0 || ActiveSoundtrack is { Level: > 0 }
+        Animation.Heard(_preview.Images.Concat(this.ActiveBesideCells)).Count > 0 || ActiveSoundtrack is { Level: > 0 }
             ? null
             : "Nothing is heard: no video plays with its sound, and no soundtrack is on";
 
@@ -3265,7 +3274,7 @@ internal sealed partial class MainForm : Form
         }
 
         await this.WaitForCutoutsAsync();
-        if (!_preview.Images.Concat(this.ActiveLayerImages).Any(i => i.IsAnimated))
+        if (!_preview.Images.Concat(this.ActiveBesideCells).Any(i => i.IsAnimated))
         {
             // Rendered at once on the UI thread, the grid held all the same: its motions and soundtrack stand still.
             this._preview.HoldPlayback();
@@ -3923,6 +3932,16 @@ internal sealed partial class MainForm : Form
             return null;
         }
 
+        // On the Grid background's image, its default state: the Background off, its sound muted, Fill pressed
+        // (workfiles/20261104-grid-background-image.md § Playback).
+        if (this._preview.EditingBackground)
+        {
+            // Composition's record: the form's own BackgroundImage is its picture.
+            return effect is { } reset
+                ? Composition.BackgroundImage.DefaultOf(reset, image.Look.Reset(reset), image)
+                : Composition.BackgroundImage.DefaultLookFor(image);
+        }
+
         // On a layer, the Background's default state is off: its content's transparency kept (workfiles/20261029-layers.md).
         if (this._preview.HasLayerSelection)
         {
@@ -4213,7 +4232,7 @@ internal sealed partial class MainForm : Form
     /// </summary>
     private async Task WaitForCutoutsAsync()
     {
-        var images = this._preview.Images.Concat(this.ActiveLayerImages).ToList();
+        var images = this._preview.Images.Concat(this.ActiveBesideCells).ToList();
         if (!images.Any(i => i.CutoutPending && (CutoutEngineFiles.IsAvailable || i.Look.Cutout?.NeedsEngine == false)))
         {
             return;
@@ -4280,7 +4299,7 @@ internal sealed partial class MainForm : Form
     /// </summary>
     private bool EnsureUpscaled()
     {
-        foreach (var image in this._preview.Images.Concat(this.ActiveLayerImages).Where(i => i.UpscalePending).ToList())
+        foreach (var image in this._preview.Images.Concat(this.ActiveBesideCells).Where(i => i.UpscalePending).ToList())
         {
             if (!this.ApplyUpscale(image, image.Look.Upscale!))
             {
@@ -4983,10 +5002,12 @@ internal sealed partial class MainForm : Form
 
         if (effect is null or GlobalEffect.GridBackground)
         {
-            // Off: the cells' Background it turned off back on.
+            // Off: the cells' Background it turned off back on; its image let go.
+            var goneImage = this._gridBackground.Image?.Image;
             this._gridBackground = GridBackground.Initial;
             this._gridBackgroundOn = false;
             this._preview.GridBackground = this.ActiveGridBackground;
+            this.ReleaseGoneBackgroundImage(goneImage);
             if (this._preview.BackgroundsForcedOff)
             {
                 this._preview.ForceBackgrounds(false);

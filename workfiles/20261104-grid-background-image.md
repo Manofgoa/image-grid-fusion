@@ -91,12 +91,15 @@ Option thumbnails in the Grid background options (§ Options Toolbar › option 
 The Grid background options row, after its fill settings, before its Reset:
 
 - The **image thumbnail** — the image as drawn, its look applied — or an empty drop zone reading
-  *Drop an image here*. **Double-click** → the background edit view. Its tooltip names the file.
-- **Browse…** (file picker), **Paste** (an image on the clipboard, read as Ctrl+V reads it,
-  `UI/ClipboardImage`; Ctrl+V itself keeps filling the cells, Q&A 14), **Edit** (the edit view, the double-click's twin, § Icons: one icon per
-  action) and **Remove** (✖, the image gone, the fill alone).
+  *Drop an image here*. **No click** on it: a file is chosen with **Browse…**, beside Paste (Iteration 8); **a
+  double-click** opens the background edit view, as **Edit** does (Q&A 6, back in Iteration 8). Its tooltip names
+  the file.
+- **Paste** (an image on the clipboard, read as Ctrl+V reads it, `UI/ClipboardImage`; Ctrl+V itself keeps filling
+  the cells, Q&A 14), then **Browse…** right after it — its icon and its text, so it is seen (Iteration 6) —,
+  **Edit** (the edit view) and **Remove** (✖, the image gone, the fill alone).
 - The **placement thumbnails** (§ Fitting) and the image's **Opacity** slider (the opacity icon,
-  `Opacity: N %`, § Color Options' shape).
+  `Opacity: N %`, § Color Options' shape), with its **Zoom** slider right under it (🔍, `Zoom: N %`, Iteration 7):
+  the image's Zoom effect, a free zoom around its center, the zoom drawn shown — Fill or Contain resolved.
 - **Acting on any option turns the Grid background on** (§ Options Toolbar), a dropped or browsed image
   included.
 - The row keeps the options toolbar's one height (`ThumbnailStrip.EffectBox`).
@@ -135,8 +138,10 @@ target that is either a layer or the background image:
   `FreeRatio` give the grid set aside; any change of the grid from outside closes the view first;
   Escape, **Done** or a double-click outside close it. The effects toolbar acts on the background image
   meanwhile (`SelectedImage`).
-- **Stretch and Tile** in the edit view: the cell shows the image as **Contain** would, a *Stretch* or
-  *Tile* badge in its corner; the placement applies once back in the grid (Q&A 10).
+- **Stretch and Tile** in the edit view: the one cell takes the **image's own shape**, so the image shows
+  whole — what Contain shows —, a *⇔ Stretch* or *▦ Tile* badge in its corner; the placement applies once back
+  in the grid (Q&A 10, Iteration 5).
+- Opening it turns the Grid background on when it is off, and closes a layer's edit view first.
 
 ## Playback, Sound and Exports
 
@@ -175,6 +180,8 @@ There is no test project (CONTRIBUTING.md): the change is checked by hand in the
 
 ## Open Questions
 
+- [ ] **An Animations motion on a still background image** does not move between redraws (Iteration 5): drive it
+  by the progress lines' timer, as the cells' motions?
 - [x] ~~Grid background only, or the cell's Background too?~~ → Grid background only (Q&A 1)
 - [x] ~~How is the image fitted?~~ → Fill / Contain / Stretch / Tile thumbnails, a zoom and a position,
   the edit view by double-click (Q&A 2)
@@ -227,6 +234,71 @@ background image only is content of its own, its canvas sized on the image; a pr
 with its effects; a Paste button beside Browse…. Sections *Drawing*, *Fitting*, *Options*, *Drop and
 Browse*, *Background Edit View* and *Playback* updated.
 
+### Iteration 3 — 2026-11-04 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in the worktree `.claude/worktrees/grid-background-image` on
+the branch `feature/grid-background-image`. No test project: the unit-test step does not apply.
+
+### Iteration 4 — 2026-11-04 — ⚙️ Post-implementation — Click on the thumbnail loads an image
+
+Requested by the user while testing the run's first build (*il faut en plus du drag & drop et du « coller »,
+cliquer sur la miniature pour charger une image*): a click on the image thumbnail opens the file picker, as
+Browse… does, beside the drop and Paste. The double-click keeps opening the edit view: on a thumbnail holding
+an image, the click waits for the double-click time before opening the picker. § Options updated.
+
+### Iteration 5 — 2026-11-04 — 🧭 Implementation choices
+
+What the run decided on its own, beyond the frozen design:
+
+- ⚠️ **Rule broken — SHORTCUTS.md / .fr.md in the same commit as the code** (RULES.md § Keyboard Shortcuts): the
+  thumbnail's click and double-click went in with the code (`471b4c1`), their rows in the docs commit (`cc8444a`).
+  Why: the docs were written as one pass at the end of the run. Autonomous run: reported instead of asked.
+- **Stretch and Tile in the edit view** (Q&A 10): the cell takes the image's own shape rather than showing it as
+  Contain inside the canvas's shape — the closest workable variant: the image shows whole either way, and its bars
+  and zoom then act on the image alone, not on a canvas it does not fill.
+- **An effect preset dropped**: its look is taken, its Background turned off when the preset left it at its
+  default (a preset only saves a Background turned off), so the fill keeps showing.
+- **A replaced image keeps the opacity** of the one it replaces — the Grid background's option, not the image's
+  look; the look is the new image's default.
+- **Fill and Contain recenter the image** when pressed, as the Zoom effect's fit modes do (RULES.md § Zoom Keeps
+  the Image in Place).
+- **Tile**: the image is drawn once into a tile bitmap per draw, at least 8 px a side, then repeated over what the
+  graphics' clip shows.
+- **Icons**: Browse… 🖼️ (`UiIcons.AddImage`, Add image…'s), Paste 📋 (`UiIcons.Copy`, the layers' Paste), Edit ✏️ /
+  Done ✅, Remove ❌ (`UiIcons.DeleteLayer`).
+- **A grid holding the background image only** is not the empty grid: the canvas's click no longer opens the Add
+  images picker there, as for a grid of layers only.
+- **A playing background** draws the whole canvas again at each of its frames, fast while the grid runs, in full
+  once it pauses (`RedrawAnimatedInFull`).
+- **Not covered**: an Animations motion on a *still* background image moves only when the preview is drawn again
+  for another reason — the progress lines' timer redraws the cells only. Offered as an open question.
+- **Not verified in the running app beyond start-up**: the options row was checked on screen; the drop, Paste, the
+  placements, the edit view, playback and exports were not driven by the agent — the user's desktop was in use.
+
+### Iteration 6 — 2026-11-04 — ⚙️ Post-implementation — No double-click on the thumbnail, Browse… beside Paste
+
+Requested by the user after testing (*le double clic sur la miniature est dangereux car le simple clic sert à
+changer — mettre un bouton à côté de « coller » pour choisir une image*): the thumbnail's click changes the image,
+so a double-click there risks the picker. The double-click is dropped — the edit view opens from **Edit** only —,
+the click opens the picker at once (no wait), and the button choosing an image stands right after **Paste**, with
+its text **Browse…** beside its icon. § Options updated; Iteration 4's double-click wait undone.
+
+### Iteration 7 — 2026-11-04 — ⚙️ Post-implementation — A Zoom slider under the opacity
+
+Requested by the user (*le zoom va être une feature intéressante, mettre le zoom directement en dessous de
+l'opacité — ça agit sur l'effet zoom bien sûr*): a **Zoom** slider right under the image's Opacity, in the Grid
+background's options — the cell Zoom slider's scale (10 % to the maximum zoom, log, snapping onto 100 %), acting on
+the image's **Zoom effect**: a free zoom, its fit mode left (Fill / Contain unpressed), its center kept where it is.
+It shows the zoom drawn, the fit mode resolved; tiled, it is the tiles' size. Logged in the same pass as its code.
+
+### Iteration 8 — 2026-11-04 — ⚙️ Post-implementation — No click on the thumbnail
+
+The user's request of Iteration 6 misread (*t'as pas enlevé le simple clic*): what was dangerous is the
+thumbnail's **single click**, which changed the image. It is removed — the thumbnail only shows the image and takes
+a drop; a file is chosen with **Browse…**, beside Paste. With no click left to set it off by mistake, the
+**double-click** opens the edit view again, as agreed in Q&A 6. Iteration 4's click and Iteration 6's removal of
+the double-click are undone; § Options updated.
+
 ---
 
 ## Implementation Log
@@ -236,11 +308,12 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project |
-| RULES.md | | | § Global Effects (the Grid background image, the third source of contents), § The Shared Fill (the image not a `FillKind`), § Layers (the edit view's target) |
-| GLOSSARY.md / .fr.md | | | *Grid background*, *Background image*, *Background edit view* |
-| README.md / .fr.md | | | The Grid background's image |
+| Code | Iterations 3, 4, 6, 7 | 2026-11-04 | `fad6f58` model and drawing · `b94ddc2` preview · `5609ab7` window, history, exports · `471b4c1` click on the thumbnail · `3ef9d7b` no double-click, Browse beside Paste, Zoom slider |
+| Unit tests | Iteration 3 | 2026-11-04 | Does not apply: no test project |
+| RULES.md | Iteration 3 | 2026-11-04 | `0ebf9c1` § Grid Background Image (under § Global Effects), § The Shared Fill |
+| GLOSSARY.md / .fr.md | Iteration 3 | 2026-11-04 | `cc8444a` *Grid background*, *Background image*, *Background edit view* |
+| README.md / .fr.md | Iterations 3, 4, 6, 7 | 2026-11-04 | `cc8444a` § Grid background › its image · then the Zoom slider, Browse beside Paste, no double-click |
+| SHORTCUTS.md / .fr.md | Iterations 4, 6 | 2026-11-04 | `cc8444a` the thumbnail's click, Escape closing the background edit view · `3ef9d7b` its double-click row removed |
 
 ---
 

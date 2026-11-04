@@ -62,6 +62,7 @@ public static class Compositor
             maxLongSide,
             layers?.Items.Select(l => new LayerFrame(l.FrameAt(TimeSpan.Zero), l.Place)).ToList(),
             background,
+            background?.Image?.FrameAt(TimeSpan.Zero),
             exact);
 
     /// <summary>
@@ -71,15 +72,14 @@ public static class Compositor
     /// between the cells, has no fill — none while the Grid <paramref name="background"/> is on: a PNG keeps it.
     /// With the Custom format's <paramref name="exact"/> pixels, the canvas is that size, reduced to the cap.
     /// </summary>
-    public static Bitmap Render(IReadOnlyList<Frame> frames, GridLayout? layout, double ratio, GridBorders? borders = null, SeamFade? seams = null, int maxLongSide = CanvasSizer.MaxLongSide, IReadOnlyList<LayerFrame>? layers = null, GridBackground? background = null, Size? exact = null)
+    public static Bitmap Render(IReadOnlyList<Frame> frames, GridLayout? layout, double ratio, GridBorders? borders = null, SeamFade? seams = null, int maxLongSide = CanvasSizer.MaxLongSide, IReadOnlyList<LayerFrame>? layers = null, GridBackground? background = null, BackgroundFrame? backgroundImage = null, Size? exact = null)
     {
-        // A grid holding layers only is sized by them, transparent around them (workfiles/20261029-layers.md, Iteration 12).
-        var canvas = layout is null
-            ? CanvasSizer.ForLayers(layers ?? [], ratio, maxLongSide, exact)
-            : CanvasSizer.Compute(frames.Select(f => f.Sizing).ToList(), layout, ratio, borders, maxLongSide, exact);
+        // A grid holding layers only is sized by them, transparent around them (workfiles/20261029-layers.md, Iteration 12);
+        // one holding the Grid background's image alone, by it (workfiles/20261104-grid-background-image.md § Drawing).
+        var canvas = CanvasSizer.For(frames, layout, ratio, borders, maxLongSide, layers, background is null ? null : backgroundImage, exact);
         var bitmap = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppArgb);
         using var g = Graphics.FromImage(bitmap);
-        Draw(g, frames, layout, canvas, borders, seams, layers: layers, background: background);
+        Draw(g, frames, layout, canvas, borders, seams, layers: layers, background: background, backgroundImage: backgroundImage);
         return bitmap;
     }
 
@@ -157,19 +157,26 @@ public static class Compositor
             seams,
             fast,
             layers?.Items.Select(l => new LayerFrame(l.FrameAt(time), l.Place)).ToList(),
-            background);
+            background,
+            background?.Image?.ShownFrameAt(time));
 
     /// <summary>
     /// Draws the grid in the rectangle (0, 0, canvas) of <paramref name="g"/>; frame i goes into cell i of
     /// the layout. The Grid background, the borders, the seams and the layers, global effects, are drawn here
-    /// too, at the grid level — the Grid background first, under everything, the layers last, over everything.
+    /// too, at the grid level — the Grid background first, under everything: its fill, then its image
+    /// <paramref name="backgroundImage"/> —, the layers last, over everything.
     /// </summary>
-    public static void Draw(Graphics g, IReadOnlyList<Frame> frames, GridLayout? layout, Size canvas, GridBorders? borders = null, SeamFade? seams = null, bool fast = false, IReadOnlyList<LayerFrame>? layers = null, GridBackground? background = null)
+    public static void Draw(Graphics g, IReadOnlyList<Frame> frames, GridLayout? layout, Size canvas, GridBorders? borders = null, SeamFade? seams = null, bool fast = false, IReadOnlyList<LayerFrame>? layers = null, GridBackground? background = null, BackgroundFrame? backgroundImage = null)
     {
         // No cell: the layers alone, over the Grid background or nothing.
         if (layout is null)
         {
             background?.Paint(g, new Rectangle(Point.Empty, canvas), (null, null));
+            if (background is not null && backgroundImage is { } lone)
+            {
+                DrawBackgroundImage(g, lone, canvas, fast);
+            }
+
             if (layers is not null)
             {
                 DrawLayers(g, layers, canvas, fast);
@@ -181,6 +188,11 @@ public static class Compositor
         var slots = layout.Cells(canvas);
         var cells = borders?.Inset(slots, canvas) ?? slots;
         background?.Paint(g, new Rectangle(Point.Empty, canvas), GridColors(frames, cells));
+        if (background is not null && backgroundImage is { } image)
+        {
+            DrawBackgroundImage(g, image, canvas, fast);
+        }
+
         var field = SeamField.Of(frames, cells, seams, borders);
         for (int i = 0; i < frames.Count; i++)
         {
@@ -191,6 +203,106 @@ public static class Compositor
         if (layers is not null)
         {
             DrawLayers(g, layers, canvas, fast);
+        }
+    }
+
+    /// <summary>
+    /// The Grid background's image over the canvas (workfiles/20261104-grid-background-image.md § Fitting), at its
+    /// opacity: the canvas its cell, fitted by its Zoom effect; stretched to the canvas, drawn into a cell of its
+    /// own shape covering it; or repeated from the canvas's top-left corner, a tile being the image fitted whole
+    /// into the canvas, scaled by its zoom. Every cell effect shows, drawn by <see cref="DrawCell"/>.
+    /// </summary>
+    public static void DrawBackgroundImage(Graphics g, BackgroundFrame background, Size canvas, bool fast = false)
+    {
+        var shown = background.Frame.Size;
+        if (background.Opacity <= 0 || canvas.Width < 1 || canvas.Height < 1 || shown.Width < 1 || shown.Height < 1)
+        {
+            return;
+        }
+
+        if (background.Opacity >= 1)
+        {
+            DrawPlaced(g, background, canvas, fast);
+            return;
+        }
+
+        // At an opacity: drawn alone, then blended.
+        using var alone = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppPArgb);
+        using (var ag = Graphics.FromImage(alone))
+        {
+            DrawPlaced(ag, background, canvas, fast);
+        }
+
+        using var faded = new ImageAttributes();
+        faded.SetColorMatrix(new ColorMatrix { Matrix33 = (float)background.Opacity });
+        g.DrawImage(alone, new Rectangle(Point.Empty, canvas), 0, 0, canvas.Width, canvas.Height, GraphicsUnit.Pixel, faded);
+    }
+
+    /// <summary>The image placed on the canvas, fully opaque.</summary>
+    private static void DrawPlaced(Graphics g, BackgroundFrame background, Size canvas, bool fast)
+    {
+        var frame = background.Frame;
+        var shown = frame.Size;
+        switch (background.Placement)
+        {
+            case BackgroundPlacement.Stretch:
+            {
+                // A cell of the image's own shape covering the canvas, scaled down onto it: the blur's small
+                // bitmap reads the scale as at most 1 on each axis.
+                double cover = Math.Max(canvas.Width / (double)shown.Width, canvas.Height / (double)shown.Height);
+                var cell = new Rectangle(0, 0, Math.Max(1, (int)Math.Ceiling(shown.Width * cover)), Math.Max(1, (int)Math.Ceiling(shown.Height * cover)));
+                var state = g.Save();
+                g.ScaleTransform(canvas.Width / (float)cell.Width, canvas.Height / (float)cell.Height);
+                DrawCell(g, frame, cell, fast);
+                g.Restore(state);
+                break;
+            }
+
+            case BackgroundPlacement.Tile:
+                DrawTiled(g, frame, canvas, fast);
+                break;
+
+            default:
+                DrawCell(g, frame, new Rectangle(Point.Empty, canvas), fast);
+                break;
+        }
+    }
+
+    /// <summary>The smallest a tile may be, in pixels of the canvas: a zoom out to the minimum still draws a bounded number of them.</summary>
+    private const int MinTileSide = 8;
+
+    /// <summary>A tile's size on <paramref name="canvas"/>: the image fitted whole into it, scaled by its zoom.</summary>
+    public static Size TileSize(Frame frame, Size canvas)
+    {
+        var shown = frame.Size;
+        var look = frame.Look ?? ImageLook.None;
+        double contain = Math.Min(canvas.Width / (double)shown.Width, canvas.Height / (double)shown.Height);
+        var fitted = new Rectangle(0, 0, Math.Max(1, (int)Math.Round(shown.Width * contain)), Math.Max(1, (int)Math.Round(shown.Height * contain)));
+        double zoom = look.ZoomIn(fitted, shown);
+        return new Size(Math.Max(MinTileSide, (int)Math.Round(fitted.Width * zoom)), Math.Max(MinTileSide, (int)Math.Round(fitted.Height * zoom)));
+    }
+
+    /// <summary>
+    /// The image drawn once into a tile — its zoom read as the tile's scale, so drawn at 1 there —, the tile then
+    /// repeated over what <paramref name="g"/> shows of the canvas.
+    /// </summary>
+    private static void DrawTiled(Graphics g, Frame frame, Size canvas, bool fast)
+    {
+        var tile = TileSize(frame, canvas);
+        var look = (frame.Look ?? ImageLook.None).WithZoom(1).WithFocus(new PointF(0.5f, 0.5f));
+        using var one = new Bitmap(tile.Width, tile.Height, PixelFormat.Format32bppPArgb);
+        using (var tg = Graphics.FromImage(one))
+        {
+            DrawCell(tg, frame with { Look = look }, new Rectangle(Point.Empty, tile), fast);
+        }
+
+        var reached = Rectangle.Intersect(new Rectangle(Point.Empty, canvas), Rectangle.Ceiling(g.VisibleClipBounds));
+        for (int y = reached.Top / tile.Height * tile.Height; y < reached.Bottom; y += tile.Height)
+        {
+            for (int x = reached.Left / tile.Width * tile.Width; x < reached.Right; x += tile.Width)
+            {
+                g.DrawImageUnscaled(one, x, y);
+            }
         }
     }
 

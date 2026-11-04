@@ -263,7 +263,11 @@ internal sealed partial class MainForm
         this._preview.LayerEditChanged += (_, _) =>
         {
             this.UpdateButtons();
-            if (this._preview.EditingLayer)
+            if (this._preview.EditingBackground)
+            {
+                this.ShowStatus("Editing the grid background's image: its effects work as on a cell. Escape, Done or a double-click outside it gives the grid back.");
+            }
+            else if (this._preview.EditingLayer)
             {
                 this.ShowStatus("Editing the layer: its effects work as on a cell. Escape, Done or a double-click outside it gives the grid back.");
             }

@@ -26,6 +26,15 @@ public sealed record GridBackground
 
     public FillStyle Style { get; private init; } = FillStyle.Grid;
 
+    /// <summary>
+    /// The image drawn over the fill, under the cells; <c>null</c> for none, the fill alone
+    /// (workfiles/20261104-grid-background-image.md). Compared by its content's reference and its look's value.
+    /// </summary>
+    public BackgroundImage? Image { get; private init; }
+
+    /// <summary>The image set, replaced or removed (<c>null</c>), the fill's settings kept.</summary>
+    public GridBackground WithImage(BackgroundImage? image) => this with { Image = image };
+
     /// <summary>The first color chosen: it no longer follows the first cell.</summary>
     public GridBackground WithColor(Color color) => this with { FollowsCell = false, Color = Color.FromArgb(255, color) };
 

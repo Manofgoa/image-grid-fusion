@@ -61,8 +61,18 @@ internal sealed class GridState(IReadOnlyList<CellState> cells, GridLayout? layo
 
     public override int GetHashCode() => HashCode.Combine(this.Cells.Count, this.Format, this.Custom, this.Global);
 
-    /// <summary>Every image the step holds: the cells', then the layers' contents (workfiles/20261029-layers.md).</summary>
-    public IEnumerable<SourceImage> Images => this.Cells.Select(c => c.Image).Concat(this.Global.Layers.Items.Select(l => l.Image));
+    /// <summary>
+    /// Every image the step holds: the cells', the layers' contents (workfiles/20261029-layers.md), then the Grid
+    /// background's image, kept while it is off too (workfiles/20261104-grid-background-image.md § State).
+    /// </summary>
+    public IEnumerable<SourceImage> Images
+    {
+        get
+        {
+            var images = this.Cells.Select(c => c.Image).Concat(this.Global.Layers.Items.Select(l => l.Image));
+            return this.Global.GridBackground.Image is { } background ? images.Append(background.Image) : images;
+        }
+    }
 
     public bool Holds(SourceImage image) => this.Images.Contains(image);
 

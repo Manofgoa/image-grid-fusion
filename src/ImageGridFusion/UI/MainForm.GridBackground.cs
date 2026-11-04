@@ -43,6 +43,7 @@ internal sealed partial class MainForm
         lines.FlowDirection = FlowDirection.TopDown;
         lines.Controls.AddRange([firstLine, this._gridFill.SecondLine]);
         this._globalOptions[GlobalEffect.GridBackground].Controls.AddRange([this._gridFill.Kind, lines]);
+        this.BuildBackgroundImageOptions();
 
         this._gridBackgroundColor.Describe(this._toolTip, "the grid background's color", ". Until the Grid background is first turned on, it follows the first cell's automatic color");
         this._gridBackgroundColor.Dialog.Click += (_, _) => this.PickColor(this.GridBackgroundRoute());
@@ -95,6 +96,9 @@ internal sealed partial class MainForm
         {
             button?.SetIcon(eyedropper);
         }
+
+        using var opacity = EffectIcons.Opacity(size);
+        this.UpdateBackgroundImageIcons(size, opacity);
     }
 
     /// <summary>The Grid background's checkbox: on or off, its settings kept.</summary>
@@ -132,9 +136,24 @@ internal sealed partial class MainForm
     /// </summary>
     private void SetGridBackground(GridBackground background, bool on)
     {
+        var gone = this._gridBackground.Image?.Image;
         this._gridBackground = on && !this._gridBackgroundOn ? background.Frozen(this.GridBackgroundFirst) : background;
         this._gridBackgroundOn = on;
         this.ApplyGridBackground();
+        this.ReleaseGoneBackgroundImage(gone);
+    }
+
+    /// <summary>
+    /// The Grid background's image <paramref name="gone"/> let go once the settings no longer hold it — replaced,
+    /// removed, reset, undone —, through the preview's <see cref="GridPreview.ReleaseImage"/>: the undo history
+    /// keeps it while a step holds it.
+    /// </summary>
+    private void ReleaseGoneBackgroundImage(SourceImage? gone)
+    {
+        if (gone is not null && gone != this._gridBackground.Image?.Image)
+        {
+            this._preview.ReleaseImage(gone);
+        }
     }
 
     /// <summary>The Grid background as it stands, to the preview — the cells' Background with it — then to the rows and the output buttons.</summary>
@@ -163,6 +182,7 @@ internal sealed partial class MainForm
         this._gridFill.Show(this._gridBackground.Style);
         this._syncingEffects = syncing;
         this._gridBackgroundOpacityLabel.Text = OpacityText(this._gridBackgroundOpacity.Value);
+        this.ShowBackgroundImageOptions();
 
         // The swatches only while its tab shows: the automatic colors are read from the cells.
         if (this._selectedGlobalEffect == GlobalEffect.GridBackground)

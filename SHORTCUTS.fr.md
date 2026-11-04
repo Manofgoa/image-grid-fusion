@@ -37,7 +37,7 @@ Dans un champ de texte, <kbd>Ctrl</kbd>+<kbd>V</kbd>, <kbd>Ctrl</kbd>+<kbd>C</kb
 | <kbd>Shift</kbd>+flèche | La déplacer en ignorant les arrêts magnétiques |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+flèche | Sauter à l'arrêt suivant — le centre ou un bord |
 | <kbd>Delete</kbd> | Retirer le calque sélectionné, sinon l'image de la cellule sélectionnée |
-| <kbd>Escape</kbd> | Fermer la vue d'édition du calque, sinon désélectionner |
+| <kbd>Escape</kbd> | Fermer la vue d'édition du calque ou du fond, sinon désélectionner |
 
 ## Souris sur la grille
 
@@ -99,6 +99,7 @@ Tant que l'onglet Layers est sélectionné.
 | <kbd>↑</kbd> <kbd>↓</kbd>, <kbd>Molette</kbd> dans le champ Width ou Height du Format | Un de plus ou de moins, en choisissant Custom |
 | <kbd>Enter</kbd> dans le champ Width ou Height du Format | Appliquer le nombre saisi, ramené dans les bornes |
 | <kbd>Molette</kbd> sur la bande des dispositions | Faire défiler les dispositions |
+| <kbd>Double-clic</kbd> sur la miniature de l'image du Grid background | Ouvrir la vue d'édition du fond, ou la fermer |
 
 ## Explorateur de fichiers
 

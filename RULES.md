@@ -71,7 +71,8 @@ The **Grid background** global effect acts on the cells' Background (origin:
 The cell's Background and the Grid background draw **one fill**, `Composition/FillStyle` (origin:
 `workfiles/20260926-forced-background.md`): Solid, Linear or Radial, a second color and its opacity, painted by
 `FillStyle.Paint` into the rectangle its user gives — the cell, or the canvas — its geometry relative to it. A
-new fill kind is a value of `FillKind`, painted there, for both users at once. The Background's extended edges
+new fill kind is a value of `FillKind`, painted there, for both users at once — the Grid background's image aside,
+a member of its own (§ Grid Background Image). The Background's extended edges
 lie over it pixel by pixel (`FillStyle.OpaquePixels`), and the Seams fade solid fills only
 (`Compositor.FlatFill`).
 
@@ -528,6 +529,35 @@ one definition, `Composition/GridLayers`:
 - A **text layer** is drawn into a bitmap by `Imaging/TextRaster` — DirectWrite through Direct2D, called
   through their COM tables: the only way the app draws emojis in color; GDI and GDI+ never do (§ Text
   Emojis).
+
+### Grid Background Image
+
+The Grid background's image (origin: `workfiles/20261104-grid-background-image.md`), `Composition/BackgroundImage`:
+
+- **A member of the Grid background**, never a `FillKind` — the exception to § The Shared Fill: the cell's
+  Background has no image. `GridBackground.Image` holds the content (`SourceImage`), its `ImageLook` (kept equal
+  on both, as a layer's), its placement and its opacity; the record compares the content by reference.
+- **A floating cell as large as the canvas**: `Compositor.DrawBackgroundImage` draws it by `Compositor.DrawCell`
+  over the fill, under the cells — in the canvas (`Cell`, its Zoom effect's Fill / Contain or a free zoom), into a
+  cell of its own shape scaled onto the canvas (`Stretch`), or repeated (`Tile`, a tile the image fitted Contain,
+  scaled by its zoom) —, so every cell effect applies to it from the one place. A new cell effect works on it by itself.
+- **The preview draws it from one rendered copy** (`GridPreview.PaintBackgroundImage`), clipped under every cell
+  drawn again; a new frame of it draws the whole canvas again (`RedrawOverBackground`).
+- **A third source of contents** beside the cells and the layers, while the Grid background is on: the player
+  (`GridPreview.PlayedBesideCells`), the video length, the sound, the cut-outs, the enlargements and the exports
+  (`MainForm.ActiveBesideCells`, `GridExport.Job.BackgroundImage`, its item after the layers'), the undo history
+  (`GridState.Images`, while it is off too). A new reader of the contents beside the cells takes it there too.
+- **It never sizes the canvas** but alone — no cell image, no layer —, as a one-cell grid (`CanvasSizer.ForBackground`,
+  `CanvasSizer.For`); `MainForm.HasContent` counts it.
+- **Its default state**: no Background, Fill pressed, a video with sound muted — its Volume on at 0 %
+  (`BackgroundImage.DefaultLookFor` / `DefaultOf`), what an arrival and every Reset of the background edit view
+  bring back. A new image — a drop onto the options, Paste, Browse… — starts the grid over (its thumbnail takes no
+  click: a double-click there opens the edit view); the one it replaces goes through `GridPreview.ReleaseImage` (`MainForm.ReleaseGoneBackgroundImage`), as on a
+  Reset, *Clear all* or an undo.
+- **The background edit view** is the layer edit view with the background as its target (`EditState.EditsBackground`,
+  `GridPreview.BeginBackgroundEdit`): the one cell at the canvas's ratio — the image's own, shown whole with a badge,
+  while stretched or tiled —; its look written back by `SyncEditedBackground`, the window told by
+  `GridBackgroundEdited`.
 
 ### Text Styles
 
