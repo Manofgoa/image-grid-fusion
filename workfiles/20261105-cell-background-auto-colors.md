@@ -96,6 +96,10 @@ Relevant code:
 - `GLOSSARY.md` / `GLOSSARY.fr.md` — *Shared fill*: Auto no longer the Grid background's only.
 - `RULES.md` § Options Toolbar — the checkbox list names *Automatic color*: removed from it.
 - `SHORTCUTS.md`: no shortcut changes.
+- **French UI labels** (`../CLAUDE.md` § French Versions › UI labels): the French docs quote the labels as
+  the app shows them in French. If `feature/french-translation` is merged when the run starts, the new
+  texts (`Color` / `From`, `Auto`, the tooltips) get their French version in the UI too, and
+  `README.fr.md` / `GLOSSARY.fr.md` quote those French labels; otherwise, the English labels, as today.
 
 ---
 
@@ -165,6 +169,12 @@ then leads that layout's Background line 3 (today `☐ Automatic color`), captio
 
 Go given: code, unit tests and documentation, in a worktree (`feature/cell-background-auto-colors`). The
 run starts once `feature/options-toolbar-layout` is merged into `main` (Q&A #9) — not merged at the go.
+
+### Iteration 5 — 2026-11-05 — ⚙️ Post-implementation — French UI labels rule
+
+Shared rule changed (`../CLAUDE.md` § French Versions › UI labels, relayed by the French translation
+session): the French docs quote the UI labels in French for an app whose UI is translated. § Docs says how
+it applies here, depending on whether `feature/french-translation` is merged when the run starts.
 
 ---
 
