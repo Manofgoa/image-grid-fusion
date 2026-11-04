@@ -161,6 +161,11 @@ Q&A #9: implemented **after** `feature/options-toolbar-layout` is merged into `m
 then leads that layout's Background line 3 (today `☐ Automatic color`), captioned `Color` / `From`, and
 `To` keeps its line 4. No question left open.
 
+### Iteration 4 — 2026-11-05 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree (`feature/cell-background-auto-colors`). The
+run starts once `feature/options-toolbar-layout` is merged into `main` (Q&A #9) — not merged at the go.
+
 ---
 
 ## Implementation Log
