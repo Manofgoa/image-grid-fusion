@@ -42,6 +42,29 @@ Relevant components (checked against `main` on 2026-10-10):
 
 ---
 
+## Shared Fill
+
+Decided 2026-11-04 (Q&A #16): the backlog's *Shared fill and grid background* direction. **One fill**
+— a kind and its settings — drawn by **one painter**, used by the cell's **Background** and by this
+global effect.
+
+- **The fill** (a record in `Composition/`): its kind — **Solid**, **Linear**, **Radial** — color 1,
+  color 2 (the gradients), the angle (Linear), an opacity per color (RULES.md § Color Options).
+- **The painter** paints a fill into a rectangle: the **cell** for the Background, the **canvas** for
+  the global effect. Its geometry is relative to that rectangle (resolution-independent).
+- **The cell's Background** gets the three kinds: its flat fill becomes the shared fill. Its
+  **edge-extension** modes (Corner pixel, Miter, Background corners) stay its own, drawn over the
+  fill as they are drawn over the flat fill today; *Blend* fades them into the fill, whatever its
+  kind.
+- **Auto colors** are given to the painter by its user: for the Background, the cell's band color
+  (today's automatic color); for the global effect, cell 1's and the last cell's (§ Colors and
+  Gradients). The backlog's "Auto from the grid's dominant colors" is **not** taken: the user chose
+  cell 1 and the last cell.
+- Out of scope, left in the backlog: conic and mesh gradients, the grain against banding, the
+  pattern, blurred-image, mirror, chosen-image, frosted-glass and palette fills.
+
+---
+
 ## Behaviour
 
 ### State
@@ -78,14 +101,17 @@ while it is on the Background's default state is off: both are exceptions the ru
   leave between the cells shows the forced fill.
 - **Seams**: they fade the cells' **flat fills** into each other; cells whose Background is off have
   none, so the Seams only act between cells whose Background was turned back on.
-- **Layers**: drawn last, over the forced fill and the borders. Whether turning the effect on touches
-  the layers' Background (off by default on a layer, RULES.md § Layers): *Open question*.
+- **Layers**: drawn last, over the forced fill and the borders. Turning the effect on or off
+  **leaves the layers' Background alone** (Q&A #18): off by default on a layer, a layer whose
+  Background the user turned on keeps it.
 
 ### Effect Presets
 
 A preset saves the Background **turned off** as a choice (RULES.md § Effect Presets). A Background
-the forced background turned off is not the user's choice: what a preset saved from such a cell
-records — *Open question*.
+the forced background turned off is not the user's choice: a preset saved from such a cell records
+the Background **as the user left it before** — on, its settings (Q&A #17). A Background the user
+turned off by hand while the effect is on is a choice, recorded as off. The preset's JSON gains the
+shared fill's settings (`BackgroundEffect.ToJson` / `FromJson`, a missing key giving the default).
 
 ---
 
@@ -175,15 +201,20 @@ to the tests question below.
   An opacity per color, after its Color… — settled by RULES.md § Color Options, written since (see
   Iteration 4).
 - [ ] Color while never activated, when cell 1 holds no image: which color?
-- [ ] The tab's label?
+- [ ] The tab's label — the backlog says *Grid background*?
 - [ ] Unit tests: none (no test project), or create one?
-- [ ] Scope against the backlog (`TODO-FEATURES.md`, 2026-10-29): *Shared fill and grid background*
-  plans a global effect **Grid background** drawn by **one painter shared with the cell's
-  Background**, and *Gradient fills* adds conic, mesh, a grain, and **Auto colors from the grid's
-  dominant colors**. Keep this workfile's own fill model, or move to the shared painter?
-- [ ] A preset saved from a cell whose Background the forced background turned off: save the
-  Background as off, or as the user left it before (on)?
-- [ ] Turning the effect on: the layers' Background left alone, or turned off like the cells'?
+- [x] ~~Scope against the backlog: keep this workfile's own fill model, or move to the shared painter
+  of *Shared fill and grid background*?~~ → The shared painter (§ Shared Fill).
+- [x] ~~A preset saved from a cell whose Background the forced background turned off: save the
+  Background as off, or as the user left it before (on)?~~ → As the user left it before.
+- [x] ~~Turning the effect on: the layers' Background left alone, or turned off like the cells'?~~ →
+  Left alone.
+- [ ] In a **cell's** Background, color 2's *Auto, last cell* means nothing: which choices does a cell
+  offer for color 2?
+- [ ] **Seams** fade the cells' flat colors into each other: with a gradient in a cell, what do they
+  fade?
+- [ ] The backlog rows: mark *Shared fill and grid background* as designed here, and split *Gradient
+  fills* (linear and radial here, the rest left)?
 
 ---
 
@@ -245,6 +276,16 @@ here"). Nothing implemented since conflicts head-on with a decision; what change
   is not copied); the eyedropper reads `Compositor.Draw`, so it picks the forced fill; the Twitter
   corners' exports fill them.
 
+### Iteration 5 — 2026-11-04
+
+User answers: the scope moves to the backlog's **shared fill** — one fill and one painter for the
+cell's Background and the global effect (§ Shared Fill), the cell's Background gaining the Linear and
+Radial kinds, its edge extension unchanged over the fill; the auto colors stay the user's (cell 1,
+last cell), not the grid's dominant colors; conic, mesh, grain and the other fills stay in the
+backlog. A preset records the Background as the user left it before the forced background; the
+layers' Background is left alone. New questions: color 2's choices in a cell, the Seams over a
+gradient, marking the backlog rows; the tab's label now weighs *Grid background*.
+
 ---
 
 ## Implementation Log
@@ -276,9 +317,12 @@ here"). Nothing implemented since conflicts head-on with a decision; what change
 | 13 | The tab's label? | | |
 | 14 | Color 2: which of the five is the default? | | |
 | 15 | Color 2 Auto (last cell): live, or frozen once activated? | | |
-| 16 | Scope against the backlog: own fill model, or the shared painter of *Shared fill and grid background*? | | |
-| 17 | A preset saved from a cell whose Background the effect turned off: Background off or as before? | | |
-| 18 | Turning the effect on: the layers' Background left alone or turned off? | | |
+| 16 | Scope against the backlog: own fill model, or the shared painter of *Shared fill and grid background*? | The shared painter | 2026-11-04 |
+| 17 | A preset saved from a cell whose Background the effect turned off: Background off or as before? | As before | 2026-11-04 |
+| 18 | Turning the effect on: the layers' Background left alone or turned off? | Left alone | 2026-11-04 |
+| 19 | In a cell's Background, which choices for color 2? | | |
+| 20 | Seams over a gradient in a cell: what do they fade? | | |
+| 21 | Mark the backlog rows (Shared fill: designed here; Gradient fills: split)? | | |
 
 ---
 
