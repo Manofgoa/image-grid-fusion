@@ -144,6 +144,9 @@ The search view's results grouped by **how they were found** (Q&A 8):
   side, always visible**, in the tile size row next to the 🔳 / 📃 view buttons (Q&A 14): 🗂️ **Folder
   groups** and 🗃️ **Search groups**, their tooltips saying which view they group; pressed while on
   (Iteration 7).
+- A third button between them, 📚 **Series**, turns the series on or off — the same state as the
+  submenu's **Series** checkbox, both kept in step, remembered with the groups turned off
+  (Iteration 10).
 - **Remembered** between sessions in `settings.json`; **on** by default.
 - The pattern checkboxes live in the **⚙ menu's File explorer groups**, after *File explorer pages
   per load*: 📷 Camera, 🖥️ Screenshots, 💬 Messaging, 🆔 Identifiers, 🔢 Numbers, each with examples in its
@@ -343,6 +346,15 @@ Iteration 8 implemented (Q&A 20: code and documentation). No rule broken.
 - **On `X:\Dropbox\Outils RS`** (2 995 files): Date stamps 1 149, Identifiers 419, Short codes 229,
   ssstwitter.com 175, Screenshots 110, AI 108, Generic names 44, the other sources 5 to 15 each, 31
   series (`marlène schiappa` 32, `homme soja` 22…), Named files 552 — down from 1 366.
+
+### Iteration 10 — 2026-11-04 — ⚙️ Post-implementation — Buttons shown, Series button
+
+User report: the buttons turning the groups on or off do not show, and the series want one of their
+own.
+
+- **Fix**: the tile size row is a table of 6 columns (`_sizeRow.ColumnCount`); the two buttons added in
+  columns 6 and 7 went to a second row, out of sight. The table gets its columns.
+- **New**: a 📚 **Series** button between 🗂️ and 🗃️ (§ Toggles).
 
 ---
 
