@@ -388,6 +388,12 @@ The Upscale window adjustment delivered (Q&A 24: code and documentation). What t
   Hugging Face API, the file not downloaded by the agent. Its first run is the user's, once installed.
 - **No project rule broken.**
 
+### Iteration 11 — 2026-11-04 — ⚙️ Post-implementation — The Upscale button's spacing
+
+The user's look at the delivery: the **Upscale** button cramped — its icon against its border and its text, the
+button against the ×4 thumbnail. It gets an inner padding, a gap after its icon (drawn into the icon's image: a
+WinForms button lays its image and its text touching) and a margin from the thumbnails.
+
 ---
 
 ## Implementation Log
