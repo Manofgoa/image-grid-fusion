@@ -167,35 +167,6 @@ kept part on the same content; the Crop's consumers read `ImageLook.Shown`, whic
 fine decomposition leaves unchanged. The rest of the rotation code (quarter-turn buttons, fine-angle
 slider, `WithRotation` / `WithFineAngle`) is as the design describes. No open question.
 
-### Iteration 8 — 2026-11-04
-
-Design re-checked against the code once more. Two consumers of the rotation landed since: the
-effect presets save it as `rotation` + `fineAngle` and describe it (`LookPreset`), and the layers
-carry an `ImageLook` of their own. The presets keep their format, restore through `WithAngle` and
-describe the angle as the slider shows it; the layers need nothing. The new Keyboard Shortcuts rule
-puts `SHORTCUTS.md` / `SHORTCUTS.fr.md` in the Ctrl+R commit. No open question.
-
-### Iteration 9 — 2026-11-04
-
-The user asked whether newer work goes against the choices made here. Every workfile since the
-design that touches the rotation was read (Crop, Ctrl+R, option thumbnails, undo, wheel steps,
-position readout, zoom fit and arrival, native size, presets, cell copy, Cutout, Upscale, Layers,
-text layers, shortcuts list): **none contradicts it**. Their fine-angle rules — the cover zoom, the
-box the stops use, the native size's cover scale, the edge extension — keep holding, since the
-decomposition into quarter turn + fine angle is kept. Points added to the design rather than
-conflicts:
-- The option sliders now step onto multiples with Ctrl + wheel (`StepSlider.ControlStep`): the angle
-  slider takes the default, 5°.
-- Ctrl+R acts on the selected layer when the pointer is over no cell: the next-quarter rule applies
-  to it the same way.
-- The quarter-turn thumbnails' last label becomes −90° (Iteration 6), where
-  `workfiles/20261007-effect-option-buttons.md` wrote 270°: a change of that workfile's label only.
-
-### Iteration 10 — 2026-11-04 — ✅ Implemented
-
-Go given ("Go", Q&A #16), read as **code, unit tests and documentation**: the design sections as
-they stand at Iteration 9 are the frozen scope. No test project: the unit tests step does not apply.
-
 ### Iteration 5 — 2026-10-10
 
 Design re-checked against the code again. Two changes landed since: the quarter turns became option
