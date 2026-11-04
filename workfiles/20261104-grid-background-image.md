@@ -61,8 +61,11 @@ Backlog: the Grid background half of *Chosen image fill* (`TODO-FEATURES.md`), s
   frame, look, placement, opacity or the canvas change, so a partial redraw of one cell does not render
   the whole background again.
 - **The image never sizes the canvas** (`CanvasSizer.Compute` / `ForLayers` untouched), like the layers.
-- **A grid holding the background image only** — no cell image, no layer — counts as empty
-  (`MainForm.HasContent` unchanged): see Open Questions.
+- **A grid holding the background image only** — no cell image, no layer, the Grid background on with
+  its image — is **content of its own** (Q&A 12): `MainForm.HasContent` and the preview's empty-grid
+  tests (`_images.Count == 0 && ShownLayers is null`) count it, Copy and Save export it, the canvas sized
+  on the image alone as `CanvasSizer.ForLayers` sizes a grid of layers only — the smallest canvas where
+  the image is not shrunk, at the canvas ratio. With a cell or a layer, the image never sizes the canvas.
 
 ## Fitting
 
@@ -73,13 +76,15 @@ Option thumbnails in the Grid background options (§ Options Toolbar › option 
 | **Fill** (default) | Covers the canvas, its ratio kept, cut where it overflows — the Zoom effect's **Fill** fit mode |
 | **Contain** | Whole, its ratio kept, the fill showing in the bands — the Zoom effect's **Contain** |
 | **Stretch** | Exactly the canvas, its ratio not kept |
-| **Tile** | Repeated over the canvas at a tile size, from its top-left corner |
+| **Tile** | Repeated over the canvas from its top-left corner, a tile being the image fitted whole (Contain) into the canvas, scaled by its zoom — 100 % one tile, 50 % tiles half as large (Q&A 9) |
 
 - **Fill and Contain are the Zoom effect's fit modes** — one state, `ImageLook.ZoomFit`, shown pressed in
   both places: the Grid background thumbnails and the Zoom effect's options in the edit view.
 - **The zoom and the position** are the image's own, its Zoom effect and its focus, set in the edit view
   by the wheel and a drag as on any cell (§ Zoom Keeps the Image in Place), or by the Zoom slider.
-- **Stretch and Tile** are the background's own placement, outside `ImageLook` (see Open Questions).
+- **Stretch and Tile** are the background's own placement, outside `ImageLook`; the image's look is drawn
+  into the tile — or the stretched canvas — as it would be into a cell of the image's own shape. No Tile
+  size slider: the zoom is the tile's scale.
 
 ## Options
 
@@ -87,7 +92,8 @@ The Grid background options row, after its fill settings, before its Reset:
 
 - The **image thumbnail** — the image as drawn, its look applied — or an empty drop zone reading
   *Drop an image here*. **Double-click** → the background edit view. Its tooltip names the file.
-- **Browse…** (file picker), **Edit** (the edit view, the double-click's twin, § Icons: one icon per
+- **Browse…** (file picker), **Paste** (an image on the clipboard, read as Ctrl+V reads it,
+  `UI/ClipboardImage`; Ctrl+V itself keeps filling the cells, Q&A 14), **Edit** (the edit view, the double-click's twin, § Icons: one icon per
   action) and **Remove** (✖, the image gone, the fill alone).
 - The **placement thumbnails** (§ Fitting) and the image's **Opacity** slider (the opacity icon,
   `Opacity: N %`, § Color Options' shape).
@@ -104,11 +110,13 @@ The Grid background options row, after its fill settings, before its Reset:
 - Several files dropped: the first one that loads is taken, the status line saying the others were
   ignored.
 - A file that does not load: the image unchanged, the status line saying why.
-- An image replaced — drop or Browse — gets the **default look** (every effect reset, § Scope and State),
-  Fill pressed, released through `ReleaseImage`.
+- An image replaced — drop, Browse or Paste — gets the **default look** (every effect reset, § Scope and
+  State, its sound muted, § Playback), Fill pressed, the image replaced released through `ReleaseImage`.
+- **An effect preset tile** dropped arrives **with its effects** (`FileExplorerPanel.PresetLookOf`), as
+  into a cell (Q&A 13).
 - Loaded off the UI thread (`ImageLoader.TryLoadFile`), refused while exporting
   (`RefuseWhileExporting`), as `AddLayerFilesAsync` does.
-- One undo step per drop or Browse.
+- One undo step per drop, Browse or Paste.
 
 ## Background Edit View
 
@@ -127,7 +135,8 @@ target that is either a layer or the background image:
   `FreeRatio` give the grid set aside; any change of the grid from outside closes the view first;
   Escape, **Done** or a double-click outside close it. The effects toolbar acts on the background image
   meanwhile (`SelectedImage`).
-- **Stretch and Tile** in the edit view: see Open Questions.
+- **Stretch and Tile** in the edit view: the cell shows the image as **Contain** would, a *Stretch* or
+  *Tile* badge in its corner; the placement applies once back in the grid (Q&A 10).
 
 ## Playback, Sound and Exports
 
@@ -145,6 +154,10 @@ layers are fed in:
 | Undo history | `GridState.Images`, `GridHistory.Holds` / `Release` |
 | Export lock | `GridPreview.SuspendPlayback` / `ResumePlayback` close and reopen its reader too |
 
+- **Muted on arrival** (Q&A 11): a background video arrives with its Volume effect **on at 0 %** — its
+  default state, which its Volume Reset and the effects toolbar's Reset in the edit view bring back; the
+  background's exception to § The Volume Exception's *a video arrives heard*. Turned up in the edit view,
+  it is heard in the mix like a layer's.
 - **Starts over** like a cell's content: an image arriving as the background — drop or Browse — starts
   the grid over (§ Preview Playback); its starting point and trim are its Frames effect's.
 
@@ -169,22 +182,22 @@ There is no test project (CONTRIBUTING.md): the change is checked by hand in the
 - [x] ~~Image with its own look, or dedicated options only?~~ → its own `ImageLook`, like a layer (Q&A 5)
 - [x] ~~Where is the double-click?~~ → on the thumbnail in the options (Q&A 6)
 - [x] ~~Which contents?~~ → stills, GIFs and videos (Q&A 7)
-- [ ] **Tile**: the tile's size — a **Tile size** slider (a share of the canvas's longer side, 10 to 100 %)
+- [x] ~~**Tile**: the tile's size — a **Tile size** slider (a share of the canvas's longer side, 10 to 100 %)
   set apart from the zoom, or the image's zoom read as the tile's scale? Proposed: the zoom is the
-  tile's scale (100 % = the image fitted Contain into the canvas), no new slider.
-- [ ] **Stretch and Tile in the edit view**: the one cell shows the image as Contain does, the
+  tile's scale (100 % = the image fitted Contain into the canvas), no new slider.~~ → The zoom is the tile's scale (Q&A 9)
+- [x] ~~**Stretch and Tile in the edit view**: the one cell shows the image as Contain does, the
   placement applied only once back in the grid — or the edit view draws them too? Proposed: shown as
-  Contain, with a *Stretch* / *Tile* badge, the effects being edited on the image itself.
-- [ ] **A background video's sound**: heard by default like any video (the Volume effect's default), or
+  Contain, with a *Stretch* / *Tile* badge, the effects being edited on the image itself.~~ → Shown as Contain with a badge (Q&A 10)
+- [x] ~~**A background video's sound**: heard by default like any video (the Volume effect's default), or
   muted by default since it is a background? Proposed: muted by default (its Volume effect off and at
-  0 %), the user turning it up in the edit view.
-- [ ] **A grid holding the background image only**: empty (Copy and Save disabled, as today) or content
+  0 %), the user turning it up in the edit view.~~ → Muted by default (Q&A 11)
+- [x] ~~**A grid holding the background image only**: empty (Copy and Save disabled, as today) or content
   of its own (exported at the canvas size `ForLayers` would give the image alone)? Proposed: empty — a
-  background is under something.
-- [ ] **An effect preset tile dropped** onto the options: arrives with its effects
-  (`FileExplorerPanel.PresetLookOf`), as into a cell? Proposed: yes.
-- [ ] **Paste**: a **Paste** button (and Ctrl+V while the Grid background options have the focus) for an
-  image on the clipboard? Proposed: a Paste button only, beside Browse…; Ctrl+V keeps filling the cells.
+  background is under something.~~ → Content of its own, the canvas sized on the image (Q&A 12)
+- [x] ~~**An effect preset tile dropped** onto the options: arrives with its effects
+  (`FileExplorerPanel.PresetLookOf`), as into a cell? Proposed: yes.~~ → Yes, with its effects (Q&A 13)
+- [x] ~~**Paste**: a **Paste** button (and Ctrl+V while the Grid background options have the focus) for an
+  image on the clipboard? Proposed: a Paste button only, beside Browse…; Ctrl+V keeps filling the cells.~~ → A Paste button only (Q&A 14)
 
 ---
 
@@ -205,6 +218,14 @@ layer edit view, playing and heard as a third source of contents beside the cell
 Scouted in the code: `GridBackground` / `MainForm.GridBackground.cs` (state, options, reset),
 `GridPreview.Layers.cs` (`EditState`, `BeginLayerEdit`), `MainForm.DroppedOnLayers` (global rows' drop),
 and the places the layers are fed in (player, export, length, sound, history).
+
+### Iteration 2 — 2026-11-04
+
+The six open questions answered (Q&A 9–14): the image's zoom is the Tile's scale; Stretch and Tile shown
+as Contain with a badge in the edit view; a background video muted on arrival; a grid holding the
+background image only is content of its own, its canvas sized on the image; a preset tile dropped arrives
+with its effects; a Paste button beside Browse…. Sections *Drawing*, *Fitting*, *Options*, *Drop and
+Browse*, *Background Edit View* and *Playback* updated.
 
 ---
 
@@ -237,12 +258,12 @@ Questions asked by the agent during design, with user responses.
 | 6 | Where is the double-click opening the edit view — the options' thumbnail, the background in the preview? | The options' thumbnail | 2026-11-04 |
 | 7 | Which contents — stills, GIFs and videos, or stills only? | Stills, GIFs and videos | 2026-11-04 |
 | 8 | Split the backlog row *Chosen image fill*: its Grid background half marked by this workfile, its cell half left *To design*? | Yes, split | 2026-11-04 |
-| 9 | Tile: the image's zoom as the tile's scale, or a Tile size slider of its own? | | 2026-11-04 |
-| 10 | Stretch and Tile in the edit view: shown as Contain with a badge, or drawn as placed? | | 2026-11-04 |
-| 11 | A background video's sound: muted by default, or heard like any video? | | 2026-11-04 |
-| 12 | A grid holding the background image only: empty, or content of its own? | | 2026-11-04 |
-| 13 | An effect preset tile dropped onto the options: with its effects? | | 2026-11-04 |
-| 14 | Paste: a Paste button beside Browse…, or also Ctrl+V in the options? | | 2026-11-04 |
+| 9 | Tile: the image's zoom as the tile's scale, or a Tile size slider of its own? | The image's zoom | 2026-11-04 |
+| 10 | Stretch and Tile in the edit view: shown as Contain with a badge, or drawn as placed? | As Contain with a badge | 2026-11-04 |
+| 11 | A background video's sound: muted by default, or heard like any video? | Muted by default | 2026-11-04 |
+| 12 | A grid holding the background image only: empty, or content of its own? | Content of its own | 2026-11-04 |
+| 13 | An effect preset tile dropped onto the options: with its effects? | Yes, with its effects | 2026-11-04 |
+| 14 | Paste: a Paste button beside Browse…, or also Ctrl+V in the options? | A Paste button only | 2026-11-04 |
 
 ---
 
