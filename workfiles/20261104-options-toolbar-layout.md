@@ -121,8 +121,14 @@ icon buttons, then the text field. Then the lines:
   ≈ 17 px), so nothing moves when it appears or when another tab is selected. A tab not migrated yet keeps
   its `FlowLayoutPanel`, clipped at the right as today, the room left empty under it.
 - **In a column of lines**, the leading elements — checkboxes and captions — share **one width**, so the
-  controls of its lines start aligned; a **thin vertical line** separates two columns (and a tall block from
-  the next column).
+  controls of its lines start aligned, and stand at the **top of their line**, never centered on it; a **thin
+  vertical line**, plainly visible (`SystemColors.ControlDark`), separates two columns (and a tall block from the
+  next column).
+- **The controls of a column line up**: its color buttons, then its first slider, its second… stand at one x in
+  every line holding them, a line lacking one leaving the room empty (the *To* line's drop-down pushes the
+  *Automatic color* line's color buttons and slider along).
+- **One spacing everywhere**: one gap between two controls (6 logical px), one after the leading element (8),
+  one between columns (24), whatever the controls' own margins — the text alignment buttons, touching, aside.
 
 ## Mechanism
 
@@ -142,6 +148,9 @@ One description of a tab's options, laid out three ways — never three hand-bui
 - **The height** stays computed by `FitEffectRows()` from every tab's preferred height, plus the
   scrollbar's room; a pilot tab's preferred height is that of its tallest line or block — never more.
 - The other tabs keep their `FlowLayoutPanel` until they are migrated.
+- **The value's place**: `SliderCaption.ValueBounds` gives where the value is drawn — at the right above the
+  slider, or after `Name: ` inline — for the typed field of `workfiles/20261105-slider-exact-value.md`. A caption's
+  name is trimmed, so the French `Mélange : 40 %` splits as the English one.
 - **In the code** (`UI/FeatureLines.cs`): `FeatureLinesPanel` (`AddBlock`, `AddLine`, the scrollbar, the room
   `ScrollRoom`), `SliderBox` (a slider, its caption, its icon), `SliderCaption` (a `Label` drawing `Name: value`
   split above its slider; `Caption` replacing the name), `OptionLayout` (Lines, Grid, Groups). A tab's layout is
@@ -257,6 +266,15 @@ No project rule broken. The choices the frozen design left open:
 - **No wheel scrolling** of the lines: the scrollbar only, the sliders keeping the wheel.
 - **Style line**: no *Save style…* button exists — it stays in the strip's menu — so the line holds the strip alone.
 
+### Iteration 6 — 2026-11-05 — ⚙️ Post-implementation — Alignment, spacing, separators
+
+The user finds the pilot tabs still ugly; every remedy proposed is taken (Q&A #15): the leading elements at the
+top of their line instead of floating at its middle; the controls of a column lined up — color buttons, then
+sliders — across its lines; one spacing everywhere; the separators between columns visible. Also (Q&A #14) the
+value's place on `SliderCaption` for the *Slider exact value* field. The merge waits for
+`feature/french-translation` (Q&A #13): this branch then takes main, its new captions moved into `Strings.resx` /
+`Strings.fr.resx`, the French glossary's row quoting the French labels.
+
 ---
 
 ## Implementation Log
@@ -288,9 +306,9 @@ No project rule broken. The choices the frozen design left open:
 | 10 | Open question 6 — RULES.md Feature Lines now, and a backlog row for the rest? | Both | 2026-11-04 |
 | 11 | Open question 7 — the reference width? | 1920 px, maximized | 2026-11-04 |
 | 12 | Open question 8 — the scrollbar's place in the fixed height? | Room kept in every tab | 2026-11-04 |
-| 13 | Merge order with `feature/french-translation` (both rewrite `MainForm`'s options; this branch's new captions are English literals): merge after it and move the captions into `Strings.resx`, or merge now? | | 2026-11-05 |
-| 14 | *Slider exact value*: give `SliderCaption` the place where it draws the value, for its field? | | 2026-11-05 |
-| 15 | The user finds the pilot tabs still ugly: what to change first? | | 2026-11-05 |
+| 13 | Merge order with `feature/french-translation` (both rewrite `MainForm`'s options; this branch's new captions are English literals): merge after it and move the captions into `Strings.resx`, or merge now? | After the translation, this branch adapting | 2026-11-05 |
+| 14 | *Slider exact value*: give `SliderCaption` the place where it draws the value, for its field? | Yes, added here | 2026-11-05 |
+| 15 | The user finds the pilot tabs still ugly: what to change first? | All four: leads floating, controls not aligned, uneven spacing, invisible separators | 2026-11-05 |
 
 ---
 
