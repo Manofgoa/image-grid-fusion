@@ -582,7 +582,17 @@ The emojis of the texts — a text layer's and a text cell's — in color, flags
 
 The canvas ratio has **one definition** (origin: `workfiles/20261001-output-formats.md`): the
 **output format** chosen in the Format tab — Free, Twitter (1200:628, the default), Square 1:1,
-Portrait 4:5, Story 9:16, Landscape 16:9 — given by `GridPreview.CanvasRatio`.
+Portrait 4:5, Story 9:16, Landscape 16:9, Custom — given by `GridPreview.CanvasRatio`.
+
+- The **Custom** format (origin: `workfiles/20261104-custom-output-format.md`) is the user's
+  `CustomFormat` — Width, Height, Exact pixels — held by `GridPreview.Custom`, part of the composed state
+  (`GridState.Custom`), not persisted, `null` while unset: the first pick of Custom fills it with the PNG
+  native size of the format in force (`MainForm.CustomDefault`), the Resets and *Clear all* unset it.
+  Exact pixels off, its ratio follows the native size rule; on, **`GridPreview.ExactSize`** is the size of
+  every export, read by `CanvasSizer.Compute` / `ForLayers` (`CanvasSizer.Exactly`): that size, no 1200
+  floor, reduced, the ratio kept, by the export's cap when smaller. A new consumer of the canvas size
+  passes `ExactSize` with the ratio. Its shape stays within 1:10 to 10:1, a side within 100 to 8192 px
+  with exact pixels (`CustomFormat.Of` / `WithWidth` / `WithHeight`).
 
 - The **Free** ratio is computed by `OutputFormats.FreeRatio`: between 9:16 and 21:9, the one losing
   the least of the images (crops plus bands, weighted by the cells' area), images read through
