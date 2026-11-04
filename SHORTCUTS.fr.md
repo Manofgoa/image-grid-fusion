@@ -3,8 +3,8 @@
 # Raccourcis clavier — Image Grid Fusion
 
 Toutes les touches et tous les gestes de souris de l'application, selon l'endroit où ils agissent.
-L'application montre la même liste, en anglais : <kbd>F1</kbd>, ou **Keyboard shortcuts…** dans le menu
-**⚙**. Ce que fait chaque fonction est dans le [README](README.fr.md) ; les mots, dans le
+L'application montre cette liste quand sa langue est le français (menu **⚙** › **Language / Langue**) :
+<kbd>F1</kbd>, ou **Raccourcis clavier…** dans le menu **⚙**. Ce que fait chaque fonction est dans le [README](README.fr.md) ; les mots, dans le
 [Glossaire](GLOSSARY.fr.md).
 
 ## Partout
@@ -16,8 +16,8 @@ L'application montre la même liste, en anglais : <kbd>F1</kbd>, ou **Keyboard s
 | <kbd>Ctrl</kbd>+<kbd>Y</kbd>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> | Rétablir |
 | <kbd>Ctrl</kbd>+<kbd>V</kbd> | Coller des fichiers, une image ou un texte dans une cellule |
 | <kbd>Ctrl</kbd>+<kbd>C</kbd> | Copier à part la cellule ou le calque sélectionné — la grille sans sélection, le fichier sélectionné quand les tuiles de l'explorateur ont le focus |
-| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> | Copier la grille, comme le bouton Copy |
-| <kbd>Ctrl</kbd>+<kbd>S</kbd> | Enregistrer la grille, comme le bouton Save |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> | Copier la grille, comme le bouton Copier |
+| <kbd>Ctrl</kbd>+<kbd>S</kbd> | Enregistrer la grille, comme le bouton Enregistrer |
 | <kbd>Ctrl</kbd>+<kbd>N</kbd> | Tout effacer, sans confirmation |
 | <kbd>Ctrl</kbd>+<kbd>R</kbd> | Tourner l'image sous la souris — sinon l'image sélectionnée — jusqu'au quart de tour suivant dans le sens horaire : +37° vers 90°, 90° vers 180° |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> | La même chose, dans le sens antihoraire : +37° vers 0°, 0° vers -90° |
@@ -50,7 +50,7 @@ Dans un champ de texte, <kbd>Ctrl</kbd>+<kbd>V</kbd>, <kbd>Ctrl</kbd>+<kbd>C</kb
 
 ## Barres du recadrage et du flou
 
-Tant que l'onglet Crop ou Blur montre ses barres sur la cellule sélectionnée.
+Tant que l'onglet Recadrage ou Flou montre ses barres sur la cellule sélectionnée.
 
 | Raccourci | Effet |
 |---|---|
@@ -61,7 +61,7 @@ Tant que l'onglet Crop ou Blur montre ses barres sur la cellule sélectionnée.
 
 ## Calques
 
-Tant que l'onglet Layers est sélectionné.
+Tant que l'onglet Calques est sélectionné.
 
 | Raccourci | Effet |
 |---|---|
@@ -79,18 +79,18 @@ Tant que l'onglet Format est sélectionné : les bords et les coins du canevas m
 
 | Raccourci | Effet |
 |---|---|
-| <kbd>Glisser</kbd> un bord gauche ou droit du canevas | Changer sa largeur — le format passe en Custom, le bord opposé restant en place |
-| <kbd>Glisser</kbd> un bord haut ou bas du canevas | Changer sa hauteur — le format passe en Custom |
+| <kbd>Glisser</kbd> un bord gauche ou droit du canevas | Changer sa largeur — le format passe en Personnalisé, le bord opposé restant en place |
+| <kbd>Glisser</kbd> un bord haut ou bas du canevas | Changer sa hauteur — le format passe en Personnalisé |
 | <kbd>Glisser</kbd> un coin du canevas | Changer sa largeur et sa hauteur à la fois |
 | <kbd>Ctrl</kbd> maintenu en glissant un bord ou un coin | Déplacer aussi le bord opposé, le centre du canevas restant en place |
 
-## Pick et pipette
+## Sélection et pipette
 
 | Raccourci | Effet |
 |---|---|
-| <kbd>Shift</kbd>+<kbd>Clic</kbd>, Pick armé | Ajouter une partie à garder — Pick reste armé |
-| <kbd>Ctrl</kbd>+<kbd>Clic</kbd>, Pick armé | Ajouter une partie à laisser de côté — Pick reste armé |
-| <kbd>Escape</kbd>, <kbd>Clic droit</kbd>, Pick armé | Annuler Pick |
+| <kbd>Shift</kbd>+<kbd>Clic</kbd>, Sélection armée | Ajouter une partie à garder — Sélection reste armée |
+| <kbd>Ctrl</kbd>+<kbd>Clic</kbd>, Sélection armée | Ajouter une partie à laisser de côté — Sélection reste armée |
+| <kbd>Escape</kbd>, <kbd>Clic droit</kbd>, Sélection armée | Annuler Sélection |
 | <kbd>Clic</kbd>, pipette armée | Prendre la couleur sous la souris |
 | <kbd>Escape</kbd>, <kbd>Clic droit</kbd>, toute autre touche, pipette armée | Annuler la pipette |
 
@@ -102,15 +102,15 @@ Tant que l'onglet Format est sélectionné : les bords et les coins du canevas m
 | <kbd>Ctrl</kbd>+<kbd>Molette</kbd> sur un curseur | 5 % par cran, sur les multiples de 5 |
 | <kbd>Molette</kbd> sur le curseur Zoom | Les pas de zoom de la molette sur une cellule — <kbd>Ctrl</kbd> pour les plus fins |
 | <kbd>←</kbd> <kbd>→</kbd>, <kbd>PageUp</kbd> <kbd>PageDown</kbd>, <kbd>Home</kbd> <kbd>End</kbd> sur un curseur | Le déplacer d'un petit pas, d'un grand pas, jusqu'à un bout |
-| <kbd>↑</kbd> <kbd>↓</kbd> dans un champ Frames | Une image de plus ou de moins, reportée d'un champ à l'autre |
-| <kbd>Ctrl</kbd>+<kbd>↑</kbd> <kbd>Ctrl</kbd>+<kbd>↓</kbd> dans un champ Frames | 5 images |
-| <kbd>Molette</kbd> sur un champ Frames | Une image par cran — 5 avec <kbd>Ctrl</kbd> |
-| <kbd>Enter</kbd> dans un champ Frames | Appliquer le nombre saisi |
-| <kbd>Escape</kbd> dans un champ Frames | Remettre la valeur |
-| <kbd>↑</kbd> <kbd>↓</kbd>, <kbd>Molette</kbd> dans le champ Width ou Height du Format | Un de plus ou de moins, en choisissant Custom |
-| <kbd>Enter</kbd> dans le champ Width ou Height du Format | Appliquer le nombre saisi, ramené dans les bornes |
+| <kbd>↑</kbd> <kbd>↓</kbd> dans un champ Lecture | Une image de plus ou de moins, reportée d'un champ à l'autre |
+| <kbd>Ctrl</kbd>+<kbd>↑</kbd> <kbd>Ctrl</kbd>+<kbd>↓</kbd> dans un champ Lecture | 5 images |
+| <kbd>Molette</kbd> sur un champ Lecture | Une image par cran — 5 avec <kbd>Ctrl</kbd> |
+| <kbd>Enter</kbd> dans un champ Lecture | Appliquer le nombre saisi |
+| <kbd>Escape</kbd> dans un champ Lecture | Remettre la valeur |
+| <kbd>↑</kbd> <kbd>↓</kbd>, <kbd>Molette</kbd> dans le champ Largeur ou Hauteur du Format | Un de plus ou de moins, en choisissant Personnalisé |
+| <kbd>Enter</kbd> dans le champ Largeur ou Hauteur du Format | Appliquer le nombre saisi, ramené dans les bornes |
 | <kbd>Molette</kbd> sur la bande des dispositions | Faire défiler les dispositions |
-| <kbd>Double-clic</kbd> sur la miniature de l'image du Grid background | Ouvrir la vue d'édition du fond, ou la fermer |
+| <kbd>Double-clic</kbd> sur la miniature de l'image du Fond de grille | Ouvrir la vue d'édition du fond, ou la fermer |
 
 ## Explorateur de fichiers
 
@@ -143,7 +143,7 @@ Tant que ses tuiles ont le focus.
 | Raccourci | Effet |
 |---|---|
 | <kbd>Enter</kbd> | OK |
-| <kbd>Escape</kbd> | Annuler, ou fermer cette liste ou la fenêtre Component updates |
+| <kbd>Escape</kbd> | Annuler, ou fermer cette liste ou la fenêtre Mises à jour des composants |
 | <kbd>↑</kbd> <kbd>↓</kbd>, <kbd>PageUp</kbd> <kbd>PageDown</kbd>, <kbd>Home</kbd> <kbd>End</kbd> dans cette liste | La faire défiler |
 | <kbd>Ctrl</kbd>+<kbd>Enter</kbd> dans la description d'un preset | Enregistrer le preset — <kbd>Enter</kbd> seul commence une nouvelle ligne |
 
