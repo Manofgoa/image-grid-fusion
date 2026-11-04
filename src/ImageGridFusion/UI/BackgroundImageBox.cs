@@ -15,7 +15,6 @@ internal sealed class BackgroundImageBox : Control
     {
         this.SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.UserPaint, true);
         this.SetStyle(ControlStyles.StandardDoubleClick, true);
-        this.Cursor = Cursors.Hand;
     }
 
     /// <summary>The image shown; <c>null</c> for the empty drop zone.</summary>
@@ -50,7 +49,7 @@ internal sealed class BackgroundImageBox : Control
         g.DrawRectangle(pen, bounds);
         TextRenderer.DrawText(
             g,
-            "Click or drop an image here",
+            "Drop an image here",
             this.Font,
             bounds,
             this.Enabled ? SystemColors.ControlText : SystemColors.GrayText,

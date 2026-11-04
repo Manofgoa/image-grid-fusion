@@ -96,7 +96,7 @@ While the Layers tab is selected.
 | <kbd>Enter</kbd> in a Frames field | Apply the number typed |
 | <kbd>Escape</kbd> in a Frames field | Put the value back |
 | <kbd>Wheel</kbd> over the layout strip | Scroll the layouts |
-| <kbd>Click</kbd> the Grid background's image thumbnail | Choose its image in the file picker |
+| <kbd>Double-click</kbd> the Grid background's image thumbnail | Open the background edit view, or close it |
 
 ## File Explorer
 

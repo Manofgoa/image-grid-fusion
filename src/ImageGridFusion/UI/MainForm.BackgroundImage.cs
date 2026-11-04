@@ -7,7 +7,7 @@ namespace ImageGridFusion.UI;
 /// <summary>
 /// The Grid background's image (workfiles/20261104-grid-background-image.md): its options after the fill's — its
 /// thumbnail and drop zone, Browse…, Paste, Edit, Remove, its placements and its opacity —, the files dropped onto
-/// them, and the background edit view Edit opens.
+/// them, and the background edit view Edit or the thumbnail's double-click opens.
 /// </summary>
 internal sealed partial class MainForm
 {
@@ -56,20 +56,14 @@ internal sealed partial class MainForm
         this._backgroundImageBox.Size = new Size(this._backgroundFit.Height * 16 / 10, this._backgroundFit.Height);
         this._backgroundImageOpacity.Width = this._backgroundImageZoom.Width = 110;
 
-        this._toolTip.SetToolTip(this._backgroundImageBrowse, "Browse… — chooses the grid background's image: an image, a GIF or a video (a click on its thumbnail too)");
+        this._toolTip.SetToolTip(this._backgroundImageBrowse, "Browse… — chooses the grid background's image: an image, a GIF or a video");
         this._toolTip.SetToolTip(this._backgroundImagePaste, "Paste — the clipboard's image, or its first file, as the grid background's image");
         this._toolTip.SetToolTip(this._backgroundImageRemove, "Remove — the grid background's image gone, its fill alone");
         this._toolTip.SetToolTip(this._backgroundImageOpacity, "Opacity of the grid background's image, over its fill");
         this._toolTip.SetToolTip(this._backgroundImageZoom, "Zoom of the grid background's image — its Zoom effect, around its center; tiled, the tiles' size");
 
-        // A click loads an image, as Browse… does; no double-click — the edit view is Edit's (Iteration 6).
-        this._backgroundImageBox.MouseClick += async (_, e) =>
-        {
-            if (e.Button == MouseButtons.Left)
-            {
-                await this.BrowseBackgroundImageAsync();
-            }
-        };
+        // No click on the thumbnail — Browse… chooses a file —; a double-click edits the image (Iteration 8).
+        this._backgroundImageBox.DoubleClick += (_, _) => this.ToggleBackgroundEdit();
         this._backgroundImageZoom.ValueChanged += (_, _) =>
         {
             double value = Math.Abs(this._backgroundImageZoom.Value) <= 4 ? 1 : Math.Pow(2, this._backgroundImageZoom.Value / 100.0);
@@ -168,10 +162,10 @@ internal sealed partial class MainForm
 
         this._toolTip.SetToolTip(
             this._backgroundImageEdit,
-            editing ? "Done — gives the grid back (Escape)" : "Edit — shows the grid background's image alone, its effects working as on a cell");
+            editing ? "Done — gives the grid back (Escape)" : "Edit — shows the grid background's image alone, its effects working as on a cell (double-click its thumbnail)");
         this._toolTip.SetToolTip(this._backgroundImageBox, image?.Image.FilePath is { } path
-            ? $"{Path.GetFileName(path)} — click to choose another image, or drop one here; Edit to edit its effects"
-            : "The grid background's image, drawn over its fill, under the cells. Click to choose an image, a GIF or a video, or drop one here — from the file explorer or Windows Explorer");
+            ? $"{Path.GetFileName(path)} — double-click to edit its effects; drop another file here, or Browse…, to replace it"
+            : "The grid background's image, drawn over its fill, under the cells. Drop an image, a GIF or a video here — from the file explorer or Windows Explorer —, or choose one with Browse…");
     }
 
     private static string ZoomText(double zoom) => $"Zoom: {zoom * 100:0} %";
@@ -374,7 +368,7 @@ internal sealed partial class MainForm
         this._preview.StartOver();
     }
 
-    /// <summary>The Edit button: the background edit view opened, or closed when it shows (Done).</summary>
+    /// <summary>The Edit button and the thumbnail's double-click: the background edit view opened, or closed when it shows (Done).</summary>
     private void ToggleBackgroundEdit()
     {
         if (this._preview.EditingBackground)
