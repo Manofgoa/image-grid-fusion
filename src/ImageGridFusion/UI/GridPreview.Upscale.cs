@@ -101,8 +101,9 @@ internal sealed partial class GridPreview
     {
         if (!this.IsDisposed)
         {
-            // The whole preview: an enlarged image may widen the export's canvas, the readouts with it.
+            // Its cell drawn again from the enlargement, then the whole preview: the export's canvas may widen, the readouts with it.
             this.FollowDrawnPages(image);
+            this.RedrawCell(image);
             this.Invalidate();
         }
     }

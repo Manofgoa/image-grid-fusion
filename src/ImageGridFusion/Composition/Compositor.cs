@@ -141,12 +141,13 @@ public static class Compositor
     /// <summary>
     /// Draws the grid in the rectangle (0, 0, canvas) of <paramref name="g"/>; image i goes into cell i of
     /// the layout, its motion at <paramref name="time"/> on the clock of the grid; <paramref name="fast"/> as
-    /// <see cref="DrawCell"/> takes it.
+    /// <see cref="DrawCell"/> takes it. The preview's: each image from <see cref="SourceImage.ShownBitmap"/>, an
+    /// enlargement reduced; the exports draw their own frames, at full resolution.
     /// </summary>
     public static void Draw(Graphics g, IReadOnlyList<SourceImage> images, GridLayout? layout, Size canvas, GridBorders? borders = null, TimeSpan time = default, SeamFade? seams = null, bool fast = false, GridLayers? layers = null) =>
         Draw(
             g,
-            images.Select(i => new Frame(i.DrawnBitmap, i.BandColor, i.DrawnLook, time, i.Sharpening, i.Sharpens)).ToList(),
+            images.Select(i => new Frame(i.ShownBitmap, i.BandColor, i.DrawnLook, time, i.Sharpening, i.Sharpens)).ToList(),
             layout,
             canvas,
             borders,

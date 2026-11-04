@@ -21,6 +21,12 @@ public sealed class SourceImage : IDisposable
     // An animated GIF's pages enlarged by its Upscale effect, every frame ready, for a factor (workfiles/20261029-image-upscale.md).
     private (int Factor, PageSource Pages)? _upscaledPages;
 
+    // The preview's copy of an enlarged drawn bitmap, and the bitmap it was reduced from (workfiles/20261029-image-upscale.md § Drawn Bitmap).
+    private (Bitmap From, Bitmap Copy)? _shown;
+
+    /// <summary>The longest side the preview draws an enlarged image from: past it, from a reduced copy (<see cref="ShownBitmap"/>).</summary>
+    public const int ShownMaxSide = 2048;
+
     public SourceImage(Bitmap bitmap, string? filePath, PageSource? pages = null, int page = 0)
     {
         Bitmap = bitmap;
@@ -112,6 +118,48 @@ public sealed class SourceImage : IDisposable
         this.Look.Cutout is { } effect && this.CutsOut
         && !(this._cut is { } cut && cut.Page == this.Page && cut.Effect.Equals(effect) && cut.Bitmap.Size == this.UpscaleBase.Size);
 
+    /// <summary>
+    /// The bitmap the preview draws: <see cref="DrawnBitmap"/>, but an enlargement past <see cref="ShownMaxSide"/> on its
+    /// longer side drawn from a copy reduced to it — made once per enlargement, kept beside it. The exports, a cell
+    /// copy and a save read <see cref="DrawnBitmap"/>, the highest resolution usable (workfiles/20261029-image-upscale.md
+    /// § Drawn Bitmap).
+    /// </summary>
+    public Bitmap ShownBitmap
+    {
+        get
+        {
+            var drawn = this.DrawnBitmap;
+            if (ReferenceEquals(drawn, this.Bitmap) || Math.Max(drawn.Width, drawn.Height) <= ShownMaxSide)
+            {
+                return drawn;
+            }
+
+            if (this._shown is { } shown && ReferenceEquals(shown.From, drawn))
+            {
+                return shown.Copy;
+            }
+
+            double scale = ShownMaxSide / (double)Math.Max(drawn.Width, drawn.Height);
+            var copy = new Bitmap(Math.Max(1, (int)Math.Round(drawn.Width * scale)), Math.Max(1, (int)Math.Round(drawn.Height * scale)), System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+            try
+            {
+                using var g = Graphics.FromImage(copy);
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                g.DrawImage(drawn, new Rectangle(Point.Empty, copy.Size));
+            }
+            catch
+            {
+                copy.Dispose();
+                throw;
+            }
+
+            this._shown?.Copy.Dispose();
+            this._shown = (drawn, copy);
+            return copy;
+        }
+    }
+
     /// <summary>The image the Cutout's model last read, while a pick reads it again (<see cref="PickEmbedding"/>).</summary>
     public PickEmbedding? PickEmbedding { get; set; }
 
@@ -181,6 +229,7 @@ public sealed class SourceImage : IDisposable
     public long MemoryBytes => this.IsDisposed ? 0 : (long)this.Bitmap.Width * this.Bitmap.Height * 4 + (this.Pages?.MemoryBytes ?? 0)
         + (this._cut is { } cut ? (long)cut.Bitmap.Width * cut.Bitmap.Height * 4 : 0)
         + (this._upscaled is { } up ? (long)up.Bitmap.Width * up.Bitmap.Height * 4 : 0)
+        + (this._shown is { } shown ? (long)shown.Copy.Width * shown.Copy.Height * 4 : 0)
         + this._masks.Sum(m => m.Mask.MemoryBytes) + (this.PickEmbedding?.MemoryBytes ?? 0);
 
     /// <summary>Plays when shown: a video, an animated GIF, a PDF of several pages, a text longer than its cell.</summary>
@@ -294,6 +343,7 @@ public sealed class SourceImage : IDisposable
         Bitmap.Dispose();
         this._cut?.Bitmap.Dispose();
         this._upscaled?.Bitmap.Dispose();
+        this._shown?.Copy.Dispose();
         Pages?.Dispose();
     }
 }
