@@ -283,7 +283,7 @@ Questions asked by the agent during design, with user responses.
 | 14 | Go for the implementation? | Dismissed | 2026-10-22 |
 | 15 | Go for the implementation? | Not answered — the user asked instead to check newer work against this design | 2026-11-04 |
 | 16 | Go for the implementation? | "Go" — read as code, tests and documentation | 2026-11-04 |
-| 17 | Branch gate: a dedicated worktree, or the main checkout? | | |
+| 17 | Branch gate: a dedicated worktree, or the main checkout? | A dedicated worktree, `feature/rotation-slider` | 2026-11-04 |
 
 ---
 
