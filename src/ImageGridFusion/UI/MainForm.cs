@@ -2172,6 +2172,7 @@ internal sealed partial class MainForm : Form
         [.. this._preview.Images.Select(i => new CellState(i, i.Look))],
         this._preview.ActiveLayout,
         this._preview.Format,
+        this._preview.Custom,
         new GlobalState(
             this._soundtrack,
             this._soundtrackOn,
@@ -2241,7 +2242,7 @@ internal sealed partial class MainForm : Form
         this._preview.Soundtrack = this.ActiveSoundtrack;
         this._preview.Fade = this.ActiveFade;
         this._preview.Cascade = this.ActiveCascade;
-        this._preview.Restore(to.Cells, to.Layout, to.Format, RestoredSelection(from, to, this._preview.SelectedImage));
+        this._preview.Restore(to.Cells, to.Layout, to.Format, to.Custom, RestoredSelection(from, to, this._preview.SelectedImage));
 
         // After the format, which tells whether the Twitter corners apply.
         this._preview.Borders = this.ActiveBorders;
@@ -2932,11 +2933,11 @@ internal sealed partial class MainForm : Form
     private Size? PngSize(int maxLongSide) =>
         this._preview.Images.Count == 0
             ? this.ActiveLayers is { } layers
-                ? CanvasSizer.ForLayers(layers.Items.Select(l => new LayerFrame(l.FrameAt(TimeSpan.Zero), l.Place)), this._preview.CanvasRatio, maxLongSide)
+                ? CanvasSizer.ForLayers(layers.Items.Select(l => new LayerFrame(l.FrameAt(TimeSpan.Zero), l.Place)), this._preview.CanvasRatio, maxLongSide, this._preview.ExactSize)
                 : null
             : this._preview.ActiveLayout is not { } layout || layout.Count != this._preview.Images.Count
             ? null
-            : CanvasSizer.Compute(this._preview.Images.Select(i => i.Sizing).ToList(), layout, this._preview.CanvasRatio, this.ActiveBorders, maxLongSide);
+            : CanvasSizer.Compute(this._preview.Images.Select(i => i.Sizing).ToList(), layout, this._preview.CanvasRatio, this.ActiveBorders, maxLongSide, this._preview.ExactSize);
 
     /// <summary>Saves the grid in the format its content suits: a PNG, or an MP4 video while a content plays or a soundtrack is on.</summary>
     private void Save() => SaveAs(AdaptedFormat);
@@ -3116,7 +3117,7 @@ internal sealed partial class MainForm : Form
             try
             {
                 Cursor.Current = Cursors.WaitCursor;
-                return Compositor.Render(_preview.Images, _preview.ActiveLayout, _preview.CanvasRatio, ActiveBorders, this.ActiveSeams, maxLongSide, this.ActiveLayers, this.ActiveGridBackground);
+                return Compositor.Render(_preview.Images, _preview.ActiveLayout, _preview.CanvasRatio, ActiveBorders, this.ActiveSeams, maxLongSide, this.ActiveLayers, this.ActiveGridBackground, this._preview.ExactSize);
             }
             catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
             {
@@ -3133,7 +3134,7 @@ internal sealed partial class MainForm : Form
         GridExport.Job job;
         try
         {
-            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout, _preview.CanvasRatio, ActiveBorders, seams: this.ActiveSeams, stillMaxSide: maxLongSide, layers: this.ActiveLayers, background: this.ActiveGridBackground);
+            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout, _preview.CanvasRatio, ActiveBorders, seams: this.ActiveSeams, stillMaxSide: maxLongSide, layers: this.ActiveLayers, background: this.ActiveGridBackground, exact: this._preview.ExactSize);
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
@@ -3177,7 +3178,7 @@ internal sealed partial class MainForm : Form
         GridExport.Job job;
         try
         {
-            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout, _preview.CanvasRatio, ActiveBorders, ActiveSoundtrack, ActiveFade, this.ActiveSeams, this.ActiveCascade, AppSettings.VideoMaxSide, layers: this.ActiveLayers, background: this.ActiveGridBackground);
+            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout, _preview.CanvasRatio, ActiveBorders, ActiveSoundtrack, ActiveFade, this.ActiveSeams, this.ActiveCascade, AppSettings.VideoMaxSide, layers: this.ActiveLayers, background: this.ActiveGridBackground, exact: this._preview.ExactSize);
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {

@@ -28,11 +28,11 @@ internal sealed record GlobalState(
 
 /// <summary>
 /// Everything the user composes, as it stood after an action: the cells' images and looks, the layout
-/// with its separators, the output format, the global effects, and the decisions on the people
+/// with its separators, the output format and the Custom format's fields, the global effects, and the decisions on the people
 /// (workfiles/20261028-open-people-from-image.md § Undo). Only references and immutable values: a step
 /// never copies a bitmap.
 /// </summary>
-internal sealed class GridState(IReadOnlyList<CellState> cells, GridLayout? layout, OutputFormat format, GlobalState global, PeopleState people)
+internal sealed class GridState(IReadOnlyList<CellState> cells, GridLayout? layout, OutputFormat format, CustomFormat? custom, GlobalState global, PeopleState people)
     : IEquatable<GridState>
 {
     public PeopleState People { get; } = people;
@@ -43,6 +43,9 @@ internal sealed class GridState(IReadOnlyList<CellState> cells, GridLayout? layo
 
     public OutputFormat Format { get; } = format;
 
+    /// <summary>The Custom format's fields; <c>null</c> while unset (workfiles/20261104-custom-output-format.md).</summary>
+    public CustomFormat? Custom { get; } = custom;
+
     public GlobalState Global { get; } = global;
 
     public bool Equals(GridState? other) =>
@@ -50,12 +53,13 @@ internal sealed class GridState(IReadOnlyList<CellState> cells, GridLayout? layo
         && this.Cells.SequenceEqual(other.Cells)
         && (this.Layout is null ? other.Layout is null : this.Layout.SameAs(other.Layout))
         && this.Format == other.Format
+        && this.Custom == other.Custom
         && this.Global == other.Global
         && ReferenceEquals(this.People, other.People);
 
     public override bool Equals(object? obj) => this.Equals(obj as GridState);
 
-    public override int GetHashCode() => HashCode.Combine(this.Cells.Count, this.Format, this.Global);
+    public override int GetHashCode() => HashCode.Combine(this.Cells.Count, this.Format, this.Custom, this.Global);
 
     /// <summary>Every image the step holds: the cells', then the layers' contents (workfiles/20261029-layers.md).</summary>
     public IEnumerable<SourceImage> Images => this.Cells.Select(c => c.Image).Concat(this.Global.Layers.Items.Select(l => l.Image));
@@ -63,7 +67,7 @@ internal sealed class GridState(IReadOnlyList<CellState> cells, GridLayout? layo
     public bool Holds(SourceImage image) => this.Images.Contains(image);
 
     /// <summary>The same state, the people's replaced by <paramref name="people"/>.</summary>
-    public GridState WithPeople(PeopleState people) => new(this.Cells, this.Layout, this.Format, this.Global, people);
+    public GridState WithPeople(PeopleState people) => new(this.Cells, this.Layout, this.Format, this.Custom, this.Global, people);
 }
 
 /// <summary>
@@ -178,7 +182,7 @@ internal sealed class GridHistory : IDisposable
         var labels = new List<string>();
         var before = older.Cells.Select(c => c.Image).ToList();
         var after = newer.Cells.Select(c => c.Image).ToList();
-        bool globals = older.Global != newer.Global || older.Format != newer.Format;
+        bool globals = older.Global != newer.Global || older.Format != newer.Format || older.Custom != newer.Custom;
         if (after.Count == 0 && before.Count > 0 && (before.Count > 1 || globals))
         {
             return "Clear all";
@@ -209,7 +213,7 @@ internal sealed class GridHistory : IDisposable
             }
         }
 
-        if (older.Format != newer.Format)
+        if (older.Format != newer.Format || older.Custom != newer.Custom)
         {
             labels.Add("format");
         }
