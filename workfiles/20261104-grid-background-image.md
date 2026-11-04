@@ -91,7 +91,10 @@ Option thumbnails in the Grid background options (§ Options Toolbar › option 
 The Grid background options row, after its fill settings, before its Reset:
 
 - The **image thumbnail** — the image as drawn, its look applied — or an empty drop zone reading
-  *Drop an image here*. **Double-click** → the background edit view. Its tooltip names the file.
+  *Drop an image here*. **A click** → the file picker, as **Browse…** (Iteration 4); **a double-click** → the
+  background edit view. On a thumbnail holding an image, the click waits for the double-click time
+  (`SystemInformation.DoubleClickTime`), so a double-click opens the edit view without the picker; an empty one
+  opens the picker at once. Its tooltip names the file.
 - **Browse…** (file picker), **Paste** (an image on the clipboard, read as Ctrl+V reads it,
   `UI/ClipboardImage`; Ctrl+V itself keeps filling the cells, Q&A 14), **Edit** (the edit view, the double-click's twin, § Icons: one icon per
   action) and **Remove** (✖, the image gone, the fill alone).
@@ -231,6 +234,13 @@ Browse*, *Background Edit View* and *Playback* updated.
 
 Go given: code, unit tests and documentation, in the worktree `.claude/worktrees/grid-background-image` on
 the branch `feature/grid-background-image`. No test project: the unit-test step does not apply.
+
+### Iteration 4 — 2026-11-04 — ⚙️ Post-implementation — Click on the thumbnail loads an image
+
+Requested by the user while testing the run's first build (*il faut en plus du drag & drop et du « coller »,
+cliquer sur la miniature pour charger une image*): a click on the image thumbnail opens the file picker, as
+Browse… does, beside the drop and Paste. The double-click keeps opening the edit view: on a thumbnail holding
+an image, the click waits for the double-click time before opening the picker. § Options updated.
 
 ---
 
