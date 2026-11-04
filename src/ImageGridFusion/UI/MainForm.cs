@@ -259,7 +259,16 @@ internal sealed partial class MainForm : Form
     private readonly BlurKindStrip _blurKind = new() { Anchor = AnchorStyles.Left };
     private readonly UpscaleStrip _upscaleStrip = new() { Anchor = AnchorStyles.Left };
     private readonly UpscaleModelStrip _upscaleModel = new() { Anchor = AnchorStyles.Left };
-    private readonly Button _upscaleButton = new() { Text = "Upscale", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly Button _upscaleButton = new()
+    {
+        Text = "Upscale",
+        AutoSize = true,
+        Anchor = AnchorStyles.Left,
+        Margin = new Padding(12, 0, 0, 0),
+        Padding = new Padding(6, 4, 10, 4),
+        ImageAlign = ContentAlignment.MiddleLeft,
+        TextImageRelation = TextImageRelation.ImageBeforeText,
+    };
 
     // The Upscale options' setting chosen, for the image and the setting applied it was chosen from (UpscaleChosen).
     private (SourceImage Image, UpscaleEffect Applied, UpscaleEffect Chosen)? _upscaleChoice;
@@ -1311,7 +1320,20 @@ internal sealed partial class MainForm : Form
             });
         }
 
-        UiIcons.SetImage(this._upscaleButton, UiIcons.Upscale, size);
+        // Its icon with a gap after it: a button lays its image and its text side by side, touching.
+        using (var icon = UiIcons.Upscale.Copy(size))
+        {
+            var spaced = new Bitmap(size + this.LogicalToDeviceUnits(6), size);
+            using (var g = Graphics.FromImage(spaced))
+            {
+                g.DrawImage(icon, 0, 0, size, size);
+            }
+
+            var previousIcon = this._upscaleButton.Image;
+            this._upscaleButton.Image = spaced;
+            previousIcon?.Dispose();
+        }
+
         _globalTabs.SetIcon(GlobalEffect.Format, EffectIcons.Format(size));
         _globalTabs.SetIcon(GlobalEffect.Soundtrack, UiIcons.Soundtrack.Copy(size));
         _globalTabs.SetIcon(GlobalEffect.Fade, EffectIcons.Fade(size));
