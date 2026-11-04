@@ -223,6 +223,11 @@ afterwards; every slider of a migrated tab has **one compact width**, the Frames
 opacity icon **kept at the left of the slider**; RULES.md § Options Toolbar › Feature Lines is written now,
 and a TODO-FEATURES row keeps the tabs left to migrate. Every open question is answered.
 
+### Iteration 4 — 2026-11-04 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree (`.claude/worktrees/options-toolbar-layout`,
+branch `feature/options-toolbar-layout`). Scope frozen as the sections above stand.
+
 ---
 
 ## Implementation Log
