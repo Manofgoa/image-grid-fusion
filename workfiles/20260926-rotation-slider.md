@@ -257,7 +257,7 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 11 | 2026-11-04 | Model, options, Ctrl+R (with SHORTCUTS.md / .fr) — see Iteration 11 |
+| Code | 11 | 2026-11-04 | Model, options, Ctrl+R (with SHORTCUTS.md / .fr) — see Iteration 11; tested by the user in the app, merged into `main` (2bc02ef) |
 | Unit tests | | | Not applicable — no test project |
 | README | 11 | 2026-11-04 | README / README.fr § Rotate, GLOSSARY / GLOSSARY.fr: Angle, Fine angle |
 
