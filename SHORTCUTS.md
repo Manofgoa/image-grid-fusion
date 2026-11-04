@@ -72,6 +72,17 @@ While the Layers tab is selected.
 | <kbd>Double-click</kbd> the selected layer | Open its edit view |
 | <kbd>Double-click</kbd> outside the layer, in its edit view | Close the edit view |
 
+## Format
+
+While the Format tab is selected: the canvas's edges and corners show green grips.
+
+| Shortcut | Does |
+|---|---|
+| <kbd>Drag</kbd> a left or right edge of the canvas | Change its width — the format becomes Custom, the opposite edge staying put |
+| <kbd>Drag</kbd> a top or bottom edge of the canvas | Change its height — the format becomes Custom |
+| <kbd>Drag</kbd> a corner of the canvas | Change its width and its height at once |
+| <kbd>Ctrl</kbd> held while dragging an edge or a corner | Move the opposite edge too, the canvas's center staying put |
+
 ## Pick and Eyedropper
 
 | Shortcut | Does |

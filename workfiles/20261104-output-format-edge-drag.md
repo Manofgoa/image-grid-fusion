@@ -74,8 +74,13 @@ preview flag next to `LayersActive`), `Composition/CustomFormat.cs` (`Of`, `With
 - **Bounds**: the values go through `CustomFormat` (`WithWidth` / `WithHeight` / `Of`): a side within
   its mode's bounds, the shape within 1:10 – 10:1. The canvas drawn during the drag is the one the
   bounded values give, so it never shows a shape the format refuses.
-- **One undo step**: the mouse button is held, so `GridHistory` commits once the drag ends (RULES.md
-  § Undo History) — nothing to add.
+- **One undo step**: the drag is a gesture (`GridPreview.InGesture`), so `GridHistory` commits once it
+  ends (RULES.md § Undo History).
+- **The route** (`UI/GridPreview.CanvasEdges.cs`): at the press, `CanvasResizeStarting` asks the form for
+  the canvas's size in the fields' units (`MainForm.StartCanvasResize`); each move raises `CanvasResized`
+  with the new size, which the form turns into the Custom format through `ApplyCustom`
+  (`MainForm.ResizeCanvas`); the preview then draws the canvas at what `Custom` holds. A press without a
+  move changes nothing. The cells are drawn fast during the drag, in full on release.
 - The **Free ratio** is not involved: the format is Custom from the first move.
 
 ## Live Indicator (Q&A #3)
@@ -94,9 +99,10 @@ preview flag next to `LayersActive`), `Composition/CustomFormat.cs` (`Of`, `With
 - `RULES.md` § Output Format: the Custom format also set by dragging the canvas's edges while the
   Format tab is selected.
 - `GLOSSARY.md` / `GLOSSARY.fr.md`: the *Custom format* row mentions the drag.
-- `SHORTCUTS.md` / `SHORTCUTS.fr.md`: the edge / corner drag and Ctrl held during it, in § Mouse Over
-  the Grid.
-- `README.md` / `README.fr.md`: the Format tab's paragraph, if it describes the Custom format.
+- `SHORTCUTS.md` / `SHORTCUTS.fr.md`: the edge / corner drag and Ctrl held during it, in a § Format of
+  their own, after § Layers (the gestures work while the Format tab is selected, as the Layers' do).
+- `README.md` / `README.fr.md`: the Format section's Custom paragraph, linking to § Format of the
+  shortcuts for the keys.
 
 ---
 
@@ -156,6 +162,33 @@ fitted and centered again on release; without exact pixels, the fields take the 
 green grips at the middle of each edge and at the corners while the Format tab is selected; the live
 readout at the canvas's center, the ratio in decimal form. No question left open.
 
+### Iteration 3 — 2026-11-04 — ✅ Implemented
+
+Go given: code, checks and documentation, in a worktree (`feature/output-format-edge-drag`). Scope
+frozen as the sections above stand.
+
+### Iteration 4 — 2026-11-04 — 🧭 Implementation choices
+
+No rule broken. Choices the frozen design did not state:
+
+- **Code and `SHORTCUTS.md` / `.fr.md` in one commit** (`ee3058d`): RULES.md § Keyboard Shortcuts makes a
+  commit touching a mouse handler without them incomplete — it wins over the workfile's *code and docs in
+  separate commits*; the other docs have their own commit.
+- **A § Format of its own** in the shortcuts, after § Layers, rather than rows in § Mouse Over the Grid:
+  the gestures only work while the Format tab is selected, as the Layers' only work with theirs.
+- **The READMEs** describe the drag without its keys, linking to § Format of the shortcuts (RULES.md
+  § Keyboard Shortcuts › One place per fact).
+- **The mode** a drag starts in is `Custom.Exact`, a ratio while the Custom fields are unset.
+- **Grips**: the edges' are the crop bars' (32 × 8 logical px), the corners' squares of 16; the reach
+  6 logical px on both sides of an edge, a corner winning where two meet.
+- **The drag rectangle** is never under 24 logical px a side, whatever the fields' bounds.
+- **The readout**: `1080 × 1350 px`, or the ratio with two decimals and a point, `1.54:1`, bold, 28
+  logical px, over the halo; shown once the drag has moved, the format then Custom.
+- **The ratio is held** during the drag, as for the other gestures: text pages are laid out again on
+  release only; with exact pixels, the position readouts may show during the drag, the export canvas
+  changing (RULES.md § Position Readout).
+- **Hand checks** of § Test Impact not run by the agent: the app is launched for the user.
+
 ---
 
 ## Implementation Log
@@ -165,9 +198,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project — hand checks |
-| README | | | |
+| Code | 3 | 2026-11-04 | `GridPreview.CanvasEdges.cs`, `GridPreview`, `MainForm` — with `SHORTCUTS.md` / `.fr.md` (`ee3058d`) |
+| Unit tests | 3 | 2026-11-04 | No test project — hand checks left to the user, the app launched |
+| README | 3 | 2026-11-04 | `README.md` / `.fr.md`, `RULES.md`, `GLOSSARY.md` / `.fr.md` (`e4ef3e9`) |
 
 ---
 
