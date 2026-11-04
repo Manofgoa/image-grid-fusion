@@ -237,6 +237,12 @@ Questions asked by the agent during design, with user responses.
 | 6 | Where is the double-click opening the edit view — the options' thumbnail, the background in the preview? | The options' thumbnail | 2026-11-04 |
 | 7 | Which contents — stills, GIFs and videos, or stills only? | Stills, GIFs and videos | 2026-11-04 |
 | 8 | Split the backlog row *Chosen image fill*: its Grid background half marked by this workfile, its cell half left *To design*? | Yes, split | 2026-11-04 |
+| 9 | Tile: the image's zoom as the tile's scale, or a Tile size slider of its own? | | 2026-11-04 |
+| 10 | Stretch and Tile in the edit view: shown as Contain with a badge, or drawn as placed? | | 2026-11-04 |
+| 11 | A background video's sound: muted by default, or heard like any video? | | 2026-11-04 |
+| 12 | A grid holding the background image only: empty, or content of its own? | | 2026-11-04 |
+| 13 | An effect preset tile dropped onto the options: with its effects? | | 2026-11-04 |
+| 14 | Paste: a Paste button beside Browse…, or also Ctrl+V in the options? | | 2026-11-04 |
 
 ---
 
