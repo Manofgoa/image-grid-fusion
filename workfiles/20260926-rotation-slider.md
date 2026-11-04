@@ -22,6 +22,7 @@ Relevant components:
 | `Composition/FitCalculator.cs` | `ComputeTurned(cell, orientedSize, zoom, focus, fineAngle)` — the cover zoom and the turn transform around the cell's center |
 | `Composition/Compositor.cs` | `DrawCell`: orients the bitmap (quarter turn + flips), then applies the fine-angle turn |
 | `UI/MainForm.cs` | `_quarterTurns` (a `QuarterTurnStrip`), `_fineAngle` (`OptionSlider(-45, 45, 5)`, 160 × 26 px), `_fineAngleLabel`, `SetFineAngle`, `TurnQuarter` (Ctrl+R / Ctrl+Shift+R, `workfiles/20260930-rotation-ctrl-r.md`), the sync of the options with the selected cell |
+| `Composition/LookPreset.cs` | An effect preset saves the Rotate effect as `rotation` + `fineAngle`, restores it through `WithRotation` / `WithFineAngle`, and describes it (`Describe`: `90° +37°`) |
 | `UI/QuarterTurnStrip.cs` | The four quarter-turn option thumbnails (`ThumbnailStrip<int>`), the one the angle falls exactly on pressed |
 | `UI/GridPreview.cs` | Pan stops and zoom around the cursor, computed with `FineAngle` |
 
@@ -66,6 +67,17 @@ Relevant components:
   Ctrl+Shift+R strictly counter-clockwise (+37° → 0°, 0° → −90°). On a quarter turn, that is ±90°
   as today.
 
+## Effect Presets
+
+- The preset's JSON keeps its keys, `rotation` and `fineAngle`: the decomposition is unchanged, so
+  the presets already saved restore as before. Restoring goes through `WithAngle`.
+- Its description line shows the angle as the slider does — `+127°` instead of `90° +37°`.
+
+## Layers
+
+- A layer's look is an `ImageLook` too: its Rotate effect gets the slider with nothing else to do.
+  The layer's own angle (its round handle, `LayerPlacement`) is not the Rotate effect, and is left alone.
+
 ## Cover
 
 - Unchanged behaviour, now on the whole circle: at any angle, the image turns around the center of
@@ -78,6 +90,9 @@ Relevant components:
   fine angle becomes one angle slider from −180° to +180° by 1°, after the quarter-turn thumbnails
   (0°, 90°, 180°, −90°); Ctrl+R / Ctrl+Shift+R go to the next quarter turn; the 8 mentions of "fine angle" (Background edges, Crop, Zoom…) become "an angle
   other than a quarter turn" where they speak to the user.
+- **SHORTCUTS.md** and **SHORTCUTS.fr.md**, **in the same commit as the Ctrl+R code** (RULES.md
+  § Keyboard Shortcuts): Ctrl+R / Ctrl+Shift+R go to the next quarter turn clockwise /
+  counter-clockwise.
 - **GLOSSARY** and **GLOSSARY.fr**: a new **Angle** row — the Rotate effect's angle, −180° to +180°,
   the image zoomed to keep covering its cell. *Fine angle* stays, redefined as the code's ±45° part
   of the angle beyond its nearest quarter turn (`ImageLook.FineAngle`), so RULES.md, which names it
@@ -146,6 +161,14 @@ kept part on the same content; the Crop's consumers read `ImageLook.Shown`, whic
 fine decomposition leaves unchanged. The rest of the rotation code (quarter-turn buttons, fine-angle
 slider, `WithRotation` / `WithFineAngle`) is as the design describes. No open question.
 
+### Iteration 8 — 2026-11-04
+
+Design re-checked against the code once more. Two consumers of the rotation landed since: the
+effect presets save it as `rotation` + `fineAngle` and describe it (`LookPreset`), and the layers
+carry an `ImageLook` of their own. The presets keep their format, restore through `WithAngle` and
+describe the angle as the slider shows it; the layers need nothing. The new Keyboard Shortcuts rule
+puts `SHORTCUTS.md` / `SHORTCUTS.fr.md` in the Ctrl+R commit. No open question.
+
 ### Iteration 5 — 2026-10-10
 
 Design re-checked against the code again. Two changes landed since: the quarter turns became option
@@ -166,6 +189,14 @@ turn that way (Q&A #12). No open question remains.
 Design re-checked against the code: the changes since (Colors replacing Black & white, the arrival
 zoom, documents laid out for their zoom) leave the rotation code as the design describes it. No
 open question.
+
+### Iteration 8 — 2026-11-04
+
+Design re-checked against the code once more. Two consumers of the rotation landed since: the
+effect presets save it as `rotation` + `fineAngle` and describe it (`LookPreset`), and the layers
+carry an `ImageLook` of their own. The presets keep their format, restore through `WithAngle` and
+describe the angle as the slider shows it; the layers need nothing. The new Keyboard Shortcuts rule
+puts `SHORTCUTS.md` / `SHORTCUTS.fr.md` in the Ctrl+R commit. No open question.
 
 ---
 
@@ -201,8 +232,9 @@ Questions asked by the agent during design, with user responses.
 | 11 | Quarter-turn thumbnails: removed, or kept beside the slider? | Kept beside the slider | 2026-10-10 |
 | 12 | Ctrl+R on an angle off a quarter: +90° keeping the rest, or the next quarter turn? | The next quarter turn | 2026-10-10 |
 | 13 | Go for the implementation? | Dismissed | 2026-10-10 |
-| 14 | Go for the implementation? | | |
+| 14 | Go for the implementation? | Dismissed | 2026-10-22 |
+| 15 | Go for the implementation? | | |
 
 ---
 
-*Last updated: 2026-10-22*
+*Last updated: 2026-11-04*
