@@ -368,6 +368,26 @@ app meanwhile; *Save* in the cell's right-click menu only, enabled once the imag
   thumbnail goes.
 - **Per session** (Q&A 23), as before.
 
+### Iteration 10 — 2026-11-04 — 🧭 Implementation choices
+
+The Upscale window adjustment delivered (Q&A 24: code and documentation). What the run decided on its own:
+
+- **The duration estimate**: seconds per megapixel of the image as loaded — every frame of a GIF's — for each model
+  and factor: measured at the last run of the session, constants before (Quality ×4 230 s, ×2 60 s, Fast 15 s, from
+  the ~15 s a 256 px tile took here). Measured on the probe: 1 min 34 s estimated, ~1 min 22 s taken (Quality ×2,
+  1024 × 1536).
+- **The weight estimate**: the source file's bytes per pixel when it is of the format written (PNG, GIF), else 2
+  bytes a pixel — shown `≈`, *an estimate*.
+- **Two enlargements kept per still** (`SourceImage.KeptUpscales`), the oldest disposed: going back to the previous
+  setting is instant, without holding every one (100 MB for a 4096 × 6144).
+- **The setting chosen** lives in the toolbar, reset to the image's applied — or kept — setting when another image is
+  selected or another setting applied (`MainForm.UpscaleChosen`). **Upscale** is enabled unless the setting chosen is
+  the one applied.
+- **A cancelled Copy or Save of the grid** says so in the status line.
+- **The Fast model is not run here**: its hash and its contract (RGB in [0, 1], ×4, dynamic size) were checked on the
+  Hugging Face API, the file not downloaded by the agent. Its first run is the user's, once installed.
+- **No project rule broken.**
+
 ---
 
 ## Implementation Log
@@ -377,11 +397,11 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 6, 7, 8 | 2026-11-04 | Effect, engine and component, drawn bitmap and GIF pages, tab, options, save action; the preview's reduced copy, the redraw at delivery |
+| Code | 6, 7, 8, 10 | 2026-11-04 | Effect, engine and component, drawn bitmap and GIF pages, tab, options, save action; the preview's reduced copy, the redraw at delivery; the Upscale window, the Fast model |
 | Unit tests | 6 | 2026-11-03 | Not applicable: no test project in the repository — manual checks only |
-| README | 6 | 2026-11-03 | § Upscale, the tabs, the components, the tech credits — English and French |
-| Glossary | 6 | 2026-11-03 | Upscale, Upscale engine, the effects' list — English and French |
-| RULES.md | 6, 8 | 2026-11-04 | § The Upscale Exception, its reduced preview copy |
+| README | 6, 10 | 2026-11-04 | § Upscale, the tabs, the components, the tech credits — English and French |
+| Glossary | 6, 10 | 2026-11-04 | Upscale, Upscale window, Upscale engine, the effects' list — English and French |
+| RULES.md | 6, 8, 10 | 2026-11-04 | § The Upscale Exception — its reduced preview copy, its window; § Options Toolbar's exception |
 
 ---
 
@@ -414,7 +434,7 @@ Questions asked by the agent during design, with user responses.
 | 21 | A grid Copy / Save with the Upscale on and not computed? | No Copy / Save until computed; *Save…* in the options removed, the cell's menu instead | 2026-11-04 |
 | 22 | The tab's checkbox without an enlargement? | Opens the Upscale window | 2026-11-04 |
 | 23 | Keep the enlargement between sessions? | No, per session | 2026-11-04 |
-| 24 | Go for the Upscale window adjustment? | | |
+| 24 | Go for the Upscale window adjustment? | Code and documentation | 2026-11-04 |
 
 ---
 
