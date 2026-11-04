@@ -540,7 +540,8 @@ internal sealed partial class GridPreview : Control
     /// </summary>
     public bool InGesture =>
         this.ColorDialogOpen || this._pressed >= 0 || this._draggedBar is not null || this._draggedCorner is not null || this._draggedSeparator is not null
-        || this._movedCrop is not null || this._live is not null || this._wheelEnd.Enabled || this._eyedropper is not null || this._pressedLayer >= 0 || this._rotatingLayer || this._resizingBox != 0 || this._layerCopyPending;
+        || this._movedCrop is not null || this._live is not null || this._wheelEnd.Enabled || this._eyedropper is not null || this._pressedLayer >= 0 || this._rotatingLayer || this._resizingBox != 0 || this._layerCopyPending
+        || this._edgeDrag is not null;
 
     /// <summary>
     /// Whether the wheel was turned over the grid with Alt held since the last call, cleared by it: the
@@ -1126,6 +1127,7 @@ internal sealed partial class GridPreview : Control
             PaintEmptyState(g, canvas);
             g.FillRectangle(highlight, _externalTarget);
             PaintHoverOutline(g, HoverOutlineBounds(canvas, []));
+            this.PaintCanvasEdges(g, canvas);
             this.PaintEyedropper(g);
             return;
         }
@@ -1138,8 +1140,8 @@ internal sealed partial class GridPreview : Control
             _cache = new Bitmap(canvas.Width, canvas.Height, PixelFormat.Format32bppPArgb);
             using (var cacheGraphics = Graphics.FromImage(_cache))
             {
-                // Fast while the eyedropper previews a color, drawn in full once it ends.
-                Compositor.Draw(cacheGraphics, _images, _layout, canvas.Size, _borders, this._player.GridTime, this._seams, fast: this._eyedropper is not null, this.ShownLayers, this._gridBackground);
+                // Fast while the eyedropper previews a color or the canvas's edges are dragged, drawn in full once it ends.
+                Compositor.Draw(cacheGraphics, _images, _layout, canvas.Size, _borders, this._player.GridTime, this._seams, fast: this._eyedropper is not null || this._edgeDrag is not null, this.ShownLayers, this._gridBackground);
             }
 
             this._gridColors = _layout is null ? (null, null) : this.GridColorsOf(Compositor.Cells(_layout, canvas.Size, _borders));
@@ -1226,6 +1228,7 @@ internal sealed partial class GridPreview : Control
         PaintZoomBadge(g);
         this.PaintLayerGuides(g, canvas);
         this.PaintLayerSelection(g, canvas);
+        this.PaintCanvasEdges(g, canvas);
 
         if (_dragging && _ghost is not null)
         {
@@ -1262,6 +1265,13 @@ internal sealed partial class GridPreview : Control
 
         // The selection is kept: a full grid replaces the selected cell with the first added image.
         if (_locked)
+        {
+            return;
+        }
+
+        // While the Format tab is selected, the canvas's edges come first, on their own reach only
+        // (workfiles/20261104-output-format-edge-drag.md).
+        if (this.EdgeMouseDown(e))
         {
             return;
         }
@@ -1388,6 +1398,13 @@ internal sealed partial class GridPreview : Control
             return;
         }
 
+        // While no other gesture runs: a drag elsewhere keeps its own cursor over the edges.
+        if ((this._edgeDrag is not null || (this._pressed < 0 && this._draggedSeparator is null && this._draggedCorner is null
+            && this._draggedBar is null && this._movedCrop is null)) && this.EdgeMouseMove(e))
+        {
+            return;
+        }
+
         if (this.LayerMouseMove(e))
         {
             return;
@@ -1466,6 +1483,17 @@ internal sealed partial class GridPreview : Control
     protected override void OnMouseUp(MouseEventArgs e)
     {
         base.OnMouseUp(e);
+        // Released off the edges, the cells' hover gives the cursor back.
+        if (this.EndEdgeDrag())
+        {
+            if (!this.EdgeMouseMove(new MouseEventArgs(MouseButtons.None, 0, e.X, e.Y, 0)))
+            {
+                this.UpdateHover(e.Location);
+            }
+
+            return;
+        }
+
         if (this.EndLayerPress())
         {
             return;
@@ -1538,7 +1566,7 @@ internal sealed partial class GridPreview : Control
     protected override void OnMouseWheel(MouseEventArgs e)
     {
         base.OnMouseWheel(e);
-        if (this._eyedropper is not null || this.LayerWheel(e))
+        if (this._eyedropper is not null || this._edgeDrag is not null || this.LayerWheel(e))
         {
             return;
         }
@@ -1587,6 +1615,7 @@ internal sealed partial class GridPreview : Control
     protected override void OnMouseCaptureChanged(EventArgs e)
     {
         base.OnMouseCaptureChanged(e);
+        this.EndEdgeDrag();
         this.EndLayerPress();
         if (_pressed >= 0)
         {
@@ -1613,6 +1642,13 @@ internal sealed partial class GridPreview : Control
         {
             this.HoverEyedropper(null);
             return;
+        }
+
+        if (this._hoveredEdges != CanvasEdge.None && this._edgeDrag is null)
+        {
+            this._hoveredEdges = CanvasEdge.None;
+            this.Cursor = Cursors.Default;
+            this.Invalidate();
         }
 
         if ((_hovered >= 0 || _hoveringCanvas || _hoveringDropZone) && !_dragging && !_panning && _draggedBar is null && this._draggedCorner is null
@@ -2316,9 +2352,14 @@ internal sealed partial class GridPreview : Control
     /// </summary>
     private Rectangle CanvasBounds()
     {
-        int margin = LogicalToDeviceUnits(CanvasMargin);
-        var area = Rectangle.Inflate(ClientRectangle, -margin, -margin);
-        area.Width -= LogicalToDeviceUnits(DropZoneWidth) + margin;
+        // Its edges dragged, the canvas is drawn where the drag puts it, its opposite edge still
+        // (workfiles/20261104-output-format-edge-drag.md).
+        if (this._edgeDrag is { } drag)
+        {
+            return drag.Shown;
+        }
+
+        var area = this.CanvasArea();
         if (area.Width <= 0 || area.Height <= 0)
         {
             return Rectangle.Empty;
@@ -3646,8 +3687,9 @@ internal sealed partial class GridPreview : Control
     /// </summary>
     private void UpdateRatio()
     {
+        // The canvas's edges dragged hold it too: the canvas follows the drag, laid out at its new ratio on release.
         if (_draggedSeparator is not null || _draggedBar is not null || this._draggedCorner is not null || _movedCrop is not null
-            || this._wheelHoldsRatio)
+            || this._wheelHoldsRatio || this._edgeDrag is not null)
         {
             return;
         }

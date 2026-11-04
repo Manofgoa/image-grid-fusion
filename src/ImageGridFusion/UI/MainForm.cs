@@ -413,6 +413,9 @@ internal sealed partial class MainForm : Form
 
     // Set while the Custom fields are written from the state: their events then change nothing.
     private bool _showingCustom;
+
+    // The Custom format the canvas's edges drag from: the canvas at the press, in the Custom fields' units and mode.
+    private CustomFormat? _canvasResizeFrom;
     private readonly Button _soundtrackBrowse = new() { Text = "Browse…", AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly Label _soundtrackFile = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly TrackBar _soundtrackVolume = OptionSlider(0, (int)(Soundtrack.MaxLevel * 100), 10);
@@ -1262,6 +1265,8 @@ internal sealed partial class MainForm : Form
             _layouts.Ratio = _preview.CanvasRatio;
             UpdateButtons();
         };
+        this._preview.CanvasResizeStarting += (_, e) => this.StartCanvasResize(e);
+        this._preview.CanvasResized += (_, pixels) => this.ResizeCanvas(pixels);
         _layouts.LayoutPicked += (_, layout) => _preview.SetLayout(layout);
         _layouts.MirrorToggled += (_, _) => _preview.SetLayout(_preview.ActiveLayout!.Mirrored());
         _layouts.ActiveLayoutClicked += (_, _) => _preview.ResetCellSizes();
@@ -3135,6 +3140,38 @@ internal sealed partial class MainForm : Form
         }
 
         this.ApplyCustom((this._preview.Custom ?? this.CustomDefault()).WithExact(this._customExact.Checked), rewrite: true);
+    }
+
+    /// <summary>
+    /// A drag of the canvas's edges begins (workfiles/20261104-output-format-edge-drag.md): the canvas's size in
+    /// the Custom fields' units is the PNG export's size of the format in force — exact pixels, or the native
+    /// size —, the Custom format keeping its mode, a ratio while unset. Nothing while exporting.
+    /// </summary>
+    private void StartCanvasResize(CanvasResizeStartingEventArgs e)
+    {
+        this._canvasResizeFrom = null;
+        if (this.IsExporting)
+        {
+            return;
+        }
+
+        var pixels = this.PngSize(CanvasSizer.MaxLongSide) ?? CanvasSizer.Smallest(this._preview.CanvasRatio);
+        this._canvasResizeFrom = CustomFormat.Of(pixels.Width, pixels.Height, this._preview.Custom?.Exact ?? false);
+        e.Pixels = pixels;
+    }
+
+    /// <summary>
+    /// The canvas dragged to <paramref name="pixels"/>, in the Custom fields' units: the Custom format in force
+    /// with them, each side brought within the bounds against the other — the route of the fields themselves.
+    /// </summary>
+    private void ResizeCanvas(Size pixels)
+    {
+        if (this._canvasResizeFrom is not { } from || this.IsExporting)
+        {
+            return;
+        }
+
+        this.ApplyCustom(from.WithWidth(pixels.Width).WithHeight(pixels.Height), rewrite: true);
     }
 
     /// <summary>
@@ -5131,6 +5168,9 @@ internal sealed partial class MainForm : Form
 
         // The layers take the mouse only while their tab is selected; never during an export.
         this._preview.LayersActive = this._selectedGlobalEffect == GlobalEffect.Layers && enabled;
+
+        // The canvas's edges likewise, with the Format tab (workfiles/20261104-output-format-edge-drag.md).
+        this._preview.FormatActive = this._selectedGlobalEffect == GlobalEffect.Format && enabled;
         _formatStrip.Selected = _preview.Format;
         _formatStrip.SetGrid(_preview.ActiveLayout, _preview.FreeRatio);
         this.ShowCustomFields();

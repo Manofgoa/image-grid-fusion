@@ -73,6 +73,17 @@ Tant que l'onglet Layers est sélectionné.
 | <kbd>Double-clic</kbd> sur le calque sélectionné | Ouvrir sa vue d'édition |
 | <kbd>Double-clic</kbd> hors du calque, dans sa vue d'édition | Fermer la vue d'édition |
 
+## Format
+
+Tant que l'onglet Format est sélectionné : les bords et les coins du canevas montrent des poignées vertes.
+
+| Raccourci | Effet |
+|---|---|
+| <kbd>Glisser</kbd> un bord gauche ou droit du canevas | Changer sa largeur — le format passe en Custom, le bord opposé restant en place |
+| <kbd>Glisser</kbd> un bord haut ou bas du canevas | Changer sa hauteur — le format passe en Custom |
+| <kbd>Glisser</kbd> un coin du canevas | Changer sa largeur et sa hauteur à la fois |
+| <kbd>Ctrl</kbd> maintenu en glissant un bord ou un coin | Déplacer aussi le bord opposé, le centre du canevas restant en place |
+
 ## Pick et pipette
 
 | Raccourci | Effet |
