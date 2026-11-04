@@ -191,6 +191,11 @@ conflicts:
 - The quarter-turn thumbnails' last label becomes −90° (Iteration 6), where
   `workfiles/20261007-effect-option-buttons.md` wrote 270°: a change of that workfile's label only.
 
+### Iteration 10 — 2026-11-04 — ✅ Implemented
+
+Go given ("Go", Q&A #16), read as **code, unit tests and documentation**: the design sections as
+they stand at Iteration 9 are the frozen scope. No test project: the unit tests step does not apply.
+
 ### Iteration 5 — 2026-10-10
 
 Design re-checked against the code again. Two changes landed since: the quarter turns became option
@@ -236,6 +241,11 @@ conflicts:
 - The quarter-turn thumbnails' last label becomes −90° (Iteration 6), where
   `workfiles/20261007-effect-option-buttons.md` wrote 270°: a change of that workfile's label only.
 
+### Iteration 10 — 2026-11-04 — ✅ Implemented
+
+Go given ("Go", Q&A #16), read as **code, unit tests and documentation**: the design sections as
+they stand at Iteration 9 are the frozen scope. No test project: the unit tests step does not apply.
+
 ---
 
 ## Implementation Log
@@ -272,6 +282,8 @@ Questions asked by the agent during design, with user responses.
 | 13 | Go for the implementation? | Dismissed | 2026-10-10 |
 | 14 | Go for the implementation? | Dismissed | 2026-10-22 |
 | 15 | Go for the implementation? | Not answered — the user asked instead to check newer work against this design | 2026-11-04 |
+| 16 | Go for the implementation? | "Go" — read as code, tests and documentation | 2026-11-04 |
+| 17 | Branch gate: a dedicated worktree, or the main checkout? | | |
 
 ---
 
