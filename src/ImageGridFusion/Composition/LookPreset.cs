@@ -17,12 +17,13 @@ internal static class LookPreset
     /// <summary>
     /// The effects a preset saves from <paramref name="look"/>, in the toolbar's order: those turned on —
     /// the Zoom only once changed since the image arrived, or the image moved meanwhile — and the
-    /// Background when it differs from its default state, off included.
+    /// Background when it differs from its default state, off included — as the user left it, never turned
+    /// off by the Grid background (workfiles/20260926-forced-background.md, Q&amp;A #17).
     /// </summary>
     public static IReadOnlyList<ImageEffect> Saved(ImageLook look) =>
         Enum.GetValues<ImageEffect>().Where(effect => effect switch
         {
-            ImageEffect.Background => look.Background != BackgroundEffect.Default,
+            ImageEffect.Background => look.UnforcedBackground().Background != BackgroundEffect.Default,
             ImageEffect.Zoom => look.IsActive(effect) && (!look.ZoomOnArrival || MovedOnArrival(look)),
             _ => look.IsActive(effect),
         }).ToList();
@@ -32,6 +33,7 @@ internal static class LookPreset
 
     public static JsonObject ToJson(ImageLook look)
     {
+        look = look.UnforcedBackground();
         var json = new JsonObject { ["version"] = Version };
         foreach (var effect in Saved(look))
         {
@@ -151,13 +153,16 @@ internal static class LookPreset
     /// One line per effect <paramref name="look"/> saves, its key values after its name
     /// (<c>Crop — 16:9</c>): what the preset dialog lists.
     /// </summary>
-    public static IReadOnlyList<string> Describe(ImageLook look) =>
-        Saved(look).Select(effect => $"{effect} — {Values(look, effect)}").ToList();
+    public static IReadOnlyList<string> Describe(ImageLook look)
+    {
+        look = look.UnforcedBackground();
+        return Saved(look).Select(effect => $"{effect} — {Values(look, effect)}").ToList();
+    }
 
     private static string Values(ImageLook look, ImageEffect effect) => effect switch
     {
         ImageEffect.Background => look.Background is not { } background ? "off, no fill"
-            : $"{(background.Automatic ? "automatic color" : $"#{background.Color.R:X2}{background.Color.G:X2}{background.Color.B:X2}")}, {Percent(background.Opacity)}, {background.Mode}",
+            : $"{(background.Automatic ? "automatic color" : $"#{background.Color.R:X2}{background.Color.G:X2}{background.Color.B:X2}")}, {Percent(background.Opacity)}, {background.Mode}{(background.Style.IsGradient ? $", {background.Style.Kind} gradient" : "")}",
         ImageEffect.Crop => look.Crop!.SeenRatio(look) is { } ratio ? $"ratio {RatioName(ratio)}" : "free",
         ImageEffect.Cutout => look.Cutout!.Describe(),
         ImageEffect.Upscale => look.Upscale!.Describe(),

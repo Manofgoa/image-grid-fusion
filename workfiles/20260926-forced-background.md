@@ -66,6 +66,12 @@ global effect.
   cell 1 and the last cell.
 - Out of scope, left in the backlog: conic and mesh gradients, the grain against banding, the
   pattern, blurred-image, mirror, chosen-image, frosted-glass and palette fills.
+- **As implemented**: `Composition/FillStyle` (kind, angle, second color, its opacity; `Paint`,
+  `OpaquePixels`) and `Composition/GridBackground` (first color, opacity, style, `FollowsCell`). **Darker**
+  keeps 45 % of the first color's brightness. The **angle** defaults to 90° (top to bottom), 0–359°. The
+  **radial** gradient's ellipse passes through the rectangle's corners, at its shape. The cell's **Colors**
+  effect turns both colors of its gradient. Under the **extended edges**, the gradient's colors are made
+  opaque, the whole at the Background's opacity: the second color's own opacity does not apply there.
 
 ---
 
@@ -93,8 +99,9 @@ global effect.
 | Turned off (checkbox, its Reset, the tabs' Reset, Clear all) | Turned back **on** in the cells **it** turned off, their settings as kept; a cell whose Background the user turned on or off meanwhile stays as left | Not painted |
 | While on: an image enters a cell (any route), an image shifts after a deletion, a cell *Reset* or the effects toolbar's *Reset* | Comes **off** instead of its default on, so the forced fill keeps showing; turning the effect off turns it back on like the others | Painted |
 
-The effect remembers **which cells it turned off** (the images, so the memory follows a swap); a
-cell the user turns on or off by hand leaves that memory.
+The effect remembers **which cells it turned off** through a mark on each image's look
+(`ImageLook.BackgroundForced`), so the memory follows a swap and the undo history covers it; a cell the
+user turns on or off by hand, changes the options of, or resets, leaves that memory.
 
 Turning it on and off changes the cells, which RULES.md's global effects otherwise leave alone, and
 while it is on the Background's default state is off: both are exceptions the rules will state
@@ -127,6 +134,9 @@ shared fill's settings (`BackgroundEffect.ToJson` / `FromJson`, a missing key gi
   and MP4 all get it from one place.
 - **A grid of layers only** (no layout, `Compositor.Draw`'s early return, the canvas transparent
   around the layers today): the forced fill covers its canvas too.
+- **The preview** paints it again under every cell it draws again (a playing video): when the last
+  cell's automatic color moves — a gradient going to *Auto, last cell* — the whole canvas is drawn again.
+  A layer's edit view sets it aside with the rest of the grid.
 - Its geometry is **relative to the canvas** (fractions of its width / height, an angle), so the
   preview and an export at another size look the same.
 - Cells whose Background is off are transparent behind their image, so the forced fill shows
@@ -160,9 +170,15 @@ shared fill's settings (`BackgroundEffect.ToJson` / `FromJson`, a missing key gi
 
 ## UI
 
-- A new **tab** of the Global toolbar, with its activation checkbox and its **icon** (RULES.md
-  § Icons: an emoji, else a drawing of `EffectIcons`), after `Seams` (before `Cascade` and
-  `Layers`), labelled **Grid background** (Q&A #22).
+- A new **tab** of the Global toolbar, with its activation checkbox and its **icon** 🌄
+  (`UiIcons.GridBackground`), after `Seams` (before `Cascade` and `Layers`), labelled **Grid background**
+  (Q&A #22).
+- Its options: the kind thumbnails (`UI/FillKindStrip`), then two lines — the first color (eyedropper +
+  Color…), its opacity and the angle; then **To**, a drop-down of the second color's source, each entry
+  after the swatch of the color it gives, the second color's eyedropper + Color… and its opacity.
+- **The cell's Background** gets the same controls (`MainForm.FillControls`): the kind thumbnails after its
+  fill modes, the angle after its color, the second color on a third line, over the extended edges' line.
+  The gradient's options are disabled while the fill is solid, the angle while it is not linear.
 - Its options, in the global options toolbar:
   - the **mode** — Solid / Linear / Radial — as **option thumbnails** (RULES.md § Options Toolbar,
     56 × 40 pictograms);
@@ -314,15 +330,37 @@ Go given: **code and documentation** (no unit tests, as decided). The scope is f
 sections stand. Run in a dedicated worktree, branch `feature/forced-background`, merged into `main`
 on the user's go.
 
+### Iteration 9 — 2026-11-04 — 🧭 Implementation choices
+
+No project rule broken. Decisions the frozen design left open:
+
+- **The memory of the cells it turned off** is a mark on the look (`ImageLook.BackgroundForced`), not a list:
+  it follows the image on a swap and is restored by the undo history with the look.
+- **Under the extended edges** (Corner pixel, Miter, Background corners), the gradient is laid pixel by pixel,
+  its colors opaque, the whole at the Background's opacity: the second color's opacity is ignored there.
+- **Darker** is 45 % of the first color's brightness; the **angle** defaults to 90°, its slider 0–359° by 15
+  (Ctrl: 5); the **radial** ellipse passes through the corners.
+- **The second color's source** is a drop-down with a swatch per entry (RULES.md allows a drop-down of a
+  single value), captioned **To**, not thumbnails: five thumbnails would not fit the options row.
+- **The cell Background's options take a third line** (the second color), between the color's and the edges':
+  the options toolbar may grow by one line's height.
+- **Icon** 🌄 (U+1F304) for the tab, after Seams.
+- **The preview** draws the whole canvas again when the last cell's automatic color moves under a gradient
+  going to Auto, rather than tracking it cell by cell.
+- **Resets while it is on**: the cell's Background Reset and the effects toolbar's Reset leave the Background
+  off; the other effects' own Resets do not touch it.
+- **The rules** gain *The Grid Background Exception* and *The Shared Fill* (RULES.md § Effects), and the
+  Global Effects section a line on a global effect painted under the cells.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
+| Code | 8 | 2026-11-04 | Shared fill, Grid background, preview and exports, the tab and its options, the cell Background's gradients — branch `feature/forced-background` |
+| Unit tests | 8 | 2026-11-04 | Declined at design (Q&A #12): no test project |
+| README | 8 | 2026-11-04 | README, GLOSSARY (EN + FR) and RULES.md |
 
 ---
 

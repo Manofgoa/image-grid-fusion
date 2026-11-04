@@ -124,16 +124,18 @@ Un panneau repliable à droite de l'aperçu, ouvert au démarrage : une zone de 
   - **Color** : l'aplat de couleur autour de l'image.
   - **Corner pixel**, **Miter** et **Background corners** étendent les **bords** de l'image : sa rangée de pixels du haut est étirée jusqu'en haut de la cellule, celle du bas jusqu'en bas, ses colonnes latérales jusqu'aux côtés — l'image telle que dessinée dans la cellule, donc recadrée, tournée, retournée, zoomée et avec ses couleurs ajustées. Là où l'image est plus petite que sa cellule dans les deux sens, chaque mode remplit les quatre coins à sa façon : la couleur du pixel de coin de l'image ; un joint en onglet — chaque coin partagé sur sa diagonale, chaque moitié de la couleur unie du pixel de son bord voisin du coin de l'image, une ligne de 1 px de la couleur du pixel de coin tracée sur la diagonale à 50 % d'opacité ; ou la couleur du fond. Avec un angle fin, les bords étendus sont ceux du rectangle que couvre l'image tournée, ses coins débordant dessus.
   - Les réglages de couleur comptent toujours : l'aplat reste sous l'image (ses pixels transparents le montrent), remplit les coins de Background corners, et c'est vers lui que va Blend.
-- Les réglages du remplissage tiennent sur deux lignes à côté des miniatures : ceux de la couleur (*Automatic color*, la pipette et *Color…* qui montre la couleur actuelle dans un échantillon, Opacity) au-dessus de ceux des bords étendus (Edges, Blend, Soften).
+- Les réglages du remplissage tiennent sur trois lignes à côté des miniatures : ceux de la couleur (*Automatic color*, la pipette et *Color…* qui montre la couleur actuelle dans un échantillon, Opacity, l'Angle du dégradé), la seconde couleur du dégradé (To, la pipette et *Color…*, Opacity), puis ceux des bords étendus (Edges, Blend, Soften).
 - **Edges** : de 0 à 100 % (100 % par défaut) : l'opacité propre des bords étendus sur la couleur du fond, qui garde la sienne — à 0 %, les bandes ne montrent que la couleur du fond.
 - **Blend** : de 0 à 100 % (0 % par défaut) : les bords étendus s'estompent dans la couleur du fond avec la distance à l'image, jusqu'à cette part au bord de la cellule — à 100 %, ils y disparaissent.
 - **Soften** (décochée par défaut) : floute les bords étendus, d'autant plus loin de l'image, l'image elle-même restant nette.
 - Edges, Blend et Soften n'agissent que sur les bords étendus : désactivés avec le remplissage Color, leurs valeurs gardées.
+- **Dégradé** : trois miniatures de plus après celles du remplissage — **Solid** (par défaut), **Linear** et **Radial** — étalent la couleur du fond vers une seconde couleur sur la cellule : selon l'**Angle** placé après la couleur (0° de gauche à droite, 90° de haut en bas), ou du centre vers les coins. La seconde couleur, sur une ligne à elle sous celle de la couleur, vient de **To** — **Darker** (par défaut : la couleur du fond assombrie), **Black**, **White** ou **Chosen** (la pipette, puis **Color…**) — à sa propre **Opacity**. Avec un remplissage qui étend les bords, le dégradé passe sous les bords étendus et Blend va vers lui. Les options du dégradé sont désactivées avec Solid, leurs valeurs gardées. Une cellule en dégradé ne prend pas part aux Seams.
+- Tant que le **Grid background** est activé (voir Global), le Background est désactivé dans chaque cellule où il l'a désactivé, et une image qui arrive l'a désactivé aussi ; le recocher dessine le fond propre de la cellule par-dessus le remplissage de la grille.
 - La vue d'édition du Crop étend les bords de l'image entière qu'elle montre.
 - Le **bouton de couleur** est scindé en deux : sa **pipette** prélève la couleur dans l'aperçu, sa partie **Color…**, peinte avec la couleur utilisée, ouvre la boîte de dialogue de couleur standard sur cette couleur (voir Choisir une couleur) ; une couleur choisie de l'une ou l'autre façon décoche *Automatic color*. La cocher de nouveau abandonne la couleur choisie ; la décocher garde la couleur automatique du moment comme couleur choisie.
 - **Colors** ajuste aussi le fond, quelle que soit sa couleur.
 - **Désactivé**, ou sous 100 %, la cellule est transparente derrière son image : l'aperçu y montre des carreaux gris et blancs, comme les applications de dessin. Un PNG — enregistré, ou le format PNG d'une copie — conserve la transparence ; le bitmap copié, la vidéo MP4 et le GIF affichent du blanc à la place.
-- Remplacer l'image, le Reset propre à Background et le Reset des onglets le remettent activé, automatique, à 100 %, avec le remplissage Color, Edges à 100 %, Blend à 0 % et Soften décochée.
+- Remplacer l'image, le Reset propre à Background et le Reset des onglets le remettent activé, automatique, à 100 %, avec le remplissage Color, Solid, Edges à 100 %, Blend à 0 % et Soften décochée — désactivé à la place tant que le Grid background est activé.
 
 ### Crop (recadrage)
 
@@ -241,7 +243,7 @@ Un panneau repliable à droite de l'aperçu, ouvert au démarrage : une zone de 
 
 ## Global
 
-- Ce qui concerne toute la grille — pas une cellule — se trouve en bas de la fenêtre, le miroir des effets de cellule en haut : les onglets, puis la rangée d'options en dessous, juste au-dessus de la barre du bas. La rangée d'onglets contient une étiquette **Global**, l'onglet **Format**, un onglet par effet global — **Soundtrack**, **Fade**, **Borders**, **Cascade**, **Layers** — et, tout à droite, un bouton **Reset** aussi haut que les onglets.
+- Ce qui concerne toute la grille — pas une cellule — se trouve en bas de la fenêtre, le miroir des effets de cellule en haut : les onglets, puis la rangée d'options en dessous, juste au-dessus de la barre du bas. La rangée d'onglets contient une étiquette **Global**, l'onglet **Format**, un onglet par effet global — **Soundtrack**, **Fade**, **Borders**, **Grid background**, **Cascade**, **Layers** — et, tout à droite, un bouton **Reset** aussi haut que les onglets.
 - L'onglet de chaque effet global contient une case à cocher, cochée tant que son effet est activé. Cliquer dessus active ou désactive l'effet, en gardant ses réglages, et sélectionne l'onglet. Cliquer sur un onglet ailleurs le sélectionne : ses options s'affichent dans la rangée en dessous, jointe à lui. Aucun onglet n'est sélectionné au démarrage ; la rangée d'options est toujours là, aussi haute que les miniatures du Format, vide tant qu'aucun onglet n'est sélectionné.
 - Le **Format** est un réglage, toujours en vigueur : son onglet n'a pas de case à cocher.
 - Un effet désactivé affiche ses réglages conservés dans ses options, et en modifier un l'active.
@@ -293,6 +295,20 @@ Un panneau repliable à droite de l'aperçu, ouvert au démarrage : une zone de 
   - Dans tout autre **format** (voir Format), l'option est désactivée — son libellé disant *Twitter format only* — son réglage conservé, et les coins sont droits ; de retour en Twitter, ils sont de nouveau arrondis comme réglé.
   - **Twitter corners by default**, un élément cochable du menu **⚙**, activé jusqu'à modification et mémorisé d'une session à l'autre, règle si l'option est activée au démarrage et après **Clear all**. Le modifier laisse la grille ouverte telle qu'elle est.
 - Les bordures s'affichent dans l'aperçu et dans chaque export : PNG, JPEG pour le partage, GIF et vidéo MP4.
+
+### Grid background (fond de grille)
+
+- **Un seul remplissage sous toute la grille** : les cellules, l'espace que les Borders laissent entre elles, les coins Twitter et une grille faite uniquement de calques — un seul dégradé sur toute l'image, jamais répété cellule par cellule.
+- **Désactivé au démarrage**, et ramené à cet état par **Clear all** et les Reset. Cocher l'onglet **Grid background** l'active ou le désactive, ses réglages gardés ; agir sur n'importe laquelle de ses options l'active.
+- **Activé, il désactive le Background de chaque cellule**, pour que le remplissage se voie derrière chaque image ; une cellule peut réactiver le sien ensuite, dessiné par-dessus le remplissage. **Désactivé** — sa case, un Reset, **Clear all** — il réactive les Background qu'il avait désactivés, ceux-là seulement : une cellule modifiée entre-temps reste telle qu'on l'a laissée. Le Background des calques n'est pas touché.
+- Tant qu'il est activé, une image qui arrive dans une cellule ou qui se décale après une suppression, ainsi que le Reset du Background d'une cellule ou le Reset des onglets d'effets, laissent le Background désactivé.
+- Un preset enregistré depuis une cellule dont il a désactivé le Background enregistre le Background tel qu'il était avant (voir Presets d'effets).
+- Options :
+  - le type, en miniatures : **Solid**, **Linear** — de la première couleur à la seconde selon l'**Angle** (0° de gauche à droite, 90° de haut en bas, par défaut) — ou **Radial**, de la première couleur au centre à la seconde dans les coins ;
+  - la **première couleur** — la pipette, puis **Color…** — et son **Opacity** : tant que le Grid background n'a jamais été activé, elle suit la couleur automatique de la première cellule qui contient une image (blanc s'il n'y en a aucune), puis elle garde celle qu'elle avait ;
+  - pour un dégradé, **To** : d'où vient la seconde couleur — **Auto, last cell** (par défaut : la couleur automatique de la dernière cellule qui contient une image, suivie en direct), **Darker** (la première couleur assombrie), **Black**, **White** ou **Chosen** (la pipette, puis **Color…**) — et son **Opacity**.
+- Sous 100 %, le remplissage laisse voir la transparence : un PNG la conserve, les autres sorties montrent du blanc dessous.
+- Il s'affiche dans l'aperçu et dans chaque export : PNG, JPEG pour le partage, GIF et vidéo MP4. Les bordures et les calques sont dessinés par-dessus.
 
 ### Cascade
 

@@ -104,6 +104,11 @@ internal sealed partial class GridPreview : Control
     // The seams global effect, and the fills its strips were last drawn from in the cache: a cell drawn
     // again whose fill changed draws its neighbours again too.
     private SeamFade? _seams;
+
+    // The Grid background global effect, and the automatic colors it was last drawn with in the cache: a cell
+    // drawn again while they changed draws the whole canvas again (workfiles/20260926-forced-background.md).
+    private GridBackground? _gridBackground;
+    private (Color? First, Color? Last) _gridColors;
     private VideoCascade? _cascade;
     private IReadOnlyList<Color?>? _seamFills;
     private bool _locked;
@@ -376,6 +381,67 @@ internal sealed partial class GridPreview : Control
     }
 
     /// <summary>
+    /// The Grid background, one fill under the whole canvas; <c>null</c> when it is off. Drawn by
+    /// <see cref="Compositor"/>, under the cells, the borders and the layers (workfiles/20260926-forced-background.md).
+    /// </summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public GridBackground? GridBackground
+    {
+        get => this._gridBackground;
+        set
+        {
+            // The grid changes: a layer's edit view gives it back first.
+            this.EndLayerEdit();
+            if (value == this._gridBackground)
+            {
+                return;
+            }
+
+            this._gridBackground = value;
+            this._cache?.Dispose();
+            this._cache = null;
+            this.Invalidate();
+            this.ContentVersion++;
+        }
+    }
+
+    /// <summary>
+    /// While the Grid background is on: an image arriving in a cell, or shifting into another after a deletion,
+    /// gets its Background turned off by it (<see cref="ImageLook.ForceBackgroundOff"/>), so the fill keeps showing.
+    /// </summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool BackgroundsForcedOff { get; set; }
+
+    /// <summary>
+    /// The Grid background turned on (<paramref name="off"/>) or off: every cell's Background turned off by it,
+    /// or turned back on where it was the one that turned it off — a cell the user changed meanwhile left as it is.
+    /// The layers are left alone.
+    /// </summary>
+    public void ForceBackgrounds(bool off)
+    {
+        this.EndLayerEdit();
+        this.BackgroundsForcedOff = off;
+        bool changed = false;
+        foreach (var image in this._images)
+        {
+            var look = off ? image.Look.ForceBackgroundOff() : image.Look.UnforcedBackground();
+            if (look != image.Look)
+            {
+                image.Look = look;
+                changed = true;
+            }
+        }
+
+        if (changed)
+        {
+            this.ContentVersion++;
+            this._cache?.Dispose();
+            this._cache = null;
+            this.Invalidate();
+        }
+    }
+
+    /// <summary>
     /// The Cascade playing the videos and animated GIFs one after the other; <c>null</c> when it is off.
     /// Turned on or off, or its pause changed, it starts the grid over, so the first one plays at once
     /// (workfiles/20261008-video-cascade.md).
@@ -563,6 +629,11 @@ internal sealed partial class GridPreview : Control
         for (int i = 0; i < images.Count; i++)
         {
             var image = images[i];
+            if (this.BackgroundsForcedOff)
+            {
+                image.Look = image.Look.ForceBackgroundOff();
+            }
+
             if (i == 0 && targetCell >= 0 && targetCell < _images.Count)
             {
                 Replace(targetCell, image);
@@ -1034,8 +1105,10 @@ internal sealed partial class GridPreview : Control
             using (var cacheGraphics = Graphics.FromImage(_cache))
             {
                 // Fast while the eyedropper previews a color, drawn in full once it ends.
-                Compositor.Draw(cacheGraphics, _images, _layout, canvas.Size, _borders, this._player.GridTime, this._seams, fast: this._eyedropper is not null, this.ShownLayers);
+                Compositor.Draw(cacheGraphics, _images, _layout, canvas.Size, _borders, this._player.GridTime, this._seams, fast: this._eyedropper is not null, this.ShownLayers, this._gridBackground);
             }
+
+            this._gridColors = _layout is null ? (null, null) : this.GridColorsOf(Compositor.Cells(_layout, canvas.Size, _borders));
 
             this._seamFills = _layout is null ? null : this.SeamsOf(Compositor.Cells(_layout, canvas.Size, _borders))?.Fills;
 
@@ -1756,7 +1829,7 @@ internal sealed partial class GridPreview : Control
         // The images after it move into another cell: effects belong to the cell and its image (RULES.md).
         for (int i = index; i < _images.Count; i++)
         {
-            _images[i].Look = _images[i].Look.WithoutEffects();
+            _images[i].Look = this.BackgroundsForcedOff ? _images[i].Look.WithoutEffects().ForceBackgroundOff() : _images[i].Look.WithoutEffects();
         }
 
         Select(-1);
@@ -2039,6 +2112,17 @@ internal sealed partial class GridPreview : Control
     private Rectangle DrawIntoCache(int[] indices, Size canvas, bool fast)
     {
         var cells = Compositor.Cells(this._layout!, canvas, this._borders);
+
+        // The Grid background's automatic colors moved: the whole canvas is drawn again at the next paint.
+        var colors = this.GridColorsOf(cells);
+        if (this._gridBackground is not null && !SameColors(colors, this._gridColors))
+        {
+            this._cache?.Dispose();
+            this._cache = null;
+            this.Invalidate();
+            return Rectangle.Empty;
+        }
+
         var seams = this.SeamsOf(cells);
         var drawn = indices.Where(i => i < this._images.Count).ToList();
         if (seams is not null && !SameFills(seams.Fills, this._seamFills))
@@ -2053,6 +2137,7 @@ internal sealed partial class GridPreview : Control
             foreach (int i in drawn)
             {
                 ClearCell(g, cells[i]);
+                this.PaintGridBackground(g, cells[i], canvas, colors);
                 Compositor.DrawCell(g, this.FrameOf(this._images[i]), cells[i], fast, seams);
                 this.DrawBordersOver(g, cells[i], canvas);
                 area = area.IsEmpty ? cells[i] : Rectangle.Union(area, cells[i]);
@@ -2079,6 +2164,32 @@ internal sealed partial class GridPreview : Control
 
         return area;
     }
+
+    /// <summary>The Grid background under <paramref name="area"/> of the cache, the rest of it left alone; nothing while it is off.</summary>
+    private void PaintGridBackground(Graphics g, Rectangle area, Size canvas, (Color? First, Color? Last) colors)
+    {
+        if (this._gridBackground is not { } background)
+        {
+            return;
+        }
+
+        g.SetClip(area);
+        background.Paint(g, new Rectangle(Point.Empty, canvas), colors);
+        g.ResetClip();
+    }
+
+    /// <summary>
+    /// The automatic colors the Grid background reads on <paramref name="cells"/>: the last cell's for a gradient
+    /// going to Auto — read live, as the cells play —, none otherwise, its color its own once turned on.
+    /// </summary>
+    private (Color? First, Color? Last) GridColorsOf(Rectangle[] cells) =>
+        this._gridBackground is { Style: { IsGradient: true, Second: SecondColor.Auto } }
+            ? Compositor.GridColors([.. this._images.Select(this.FrameOf)], cells)
+            : (null, null);
+
+    /// <summary>Whether two pairs of automatic colors are the same, compared by value.</summary>
+    private static bool SameColors((Color? First, Color? Last) colors, (Color? First, Color? Last) others) =>
+        colors.First?.ToArgb() == others.First?.ToArgb() && colors.Last?.ToArgb() == others.Last?.ToArgb();
 
     /// <summary>The seams of the grid as it plays now, on <paramref name="cells"/>; <c>null</c> when none fades.</summary>
     private SeamField? SeamsOf(Rectangle[] cells) =>
@@ -2153,6 +2264,14 @@ internal sealed partial class GridPreview : Control
             return Compositor.AutomaticBackground(this.FrameOf(image), cells[_selected]);
         }
     }
+
+    /// <summary>
+    /// The automatic colors of the first and the last cell holding an image, as the preview draws them: what the
+    /// Grid background's color follows until it is first turned on, and its gradient's Auto second color
+    /// (workfiles/20260926-forced-background.md). <c>null</c> with no image.
+    /// </summary>
+    public (Color? First, Color? Last) GridAutomaticColors =>
+        this._edit is not null ? (null, null) : Compositor.GridColors([.. this._images.Select(this.FrameOf)], this.CellBounds());
 
     /// <summary>
     /// Largest rectangle at the canvas ratio that fits the control once the drop zone and its gap

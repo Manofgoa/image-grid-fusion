@@ -157,6 +157,13 @@ public sealed record ImageLook
     /// <summary>The background effect, on by default; <c>null</c> while off: nothing is then painted behind the image.</summary>
     public BackgroundEffect? Background { get; private init; } = BackgroundEffect.Default;
 
+    /// <summary>
+    /// The Background turned off by the Grid background, not by the user (workfiles/20260926-forced-background.md):
+    /// turned back on when the Grid background goes off, and saved by a preset as it was before. The user
+    /// turning the Background on, a change of its options or its Reset clears it.
+    /// </summary>
+    public bool BackgroundForced { get; private init; }
+
     /// <summary>Scale the image's sound is mixed at: 0 while muted, 1 while the volume effect is off.</summary>
     public double SoundGain => Volume?.Gain ?? 1;
 
@@ -208,6 +215,12 @@ public sealed record ImageLook
     /// </summary>
     public ImageLook TurnOn(ImageEffect effect)
     {
+        // The user's Background from now on: the Grid background no longer holds it off.
+        if (effect == ImageEffect.Background && this.BackgroundForced)
+        {
+            return (this with { BackgroundForced = false }).TurnOn(effect);
+        }
+
         if (IsActive(effect))
         {
             return this;
@@ -283,7 +296,7 @@ public sealed record ImageLook
         var look = Deactivate(effect);
         return effect switch
         {
-            ImageEffect.Background => look with { Background = BackgroundEffect.Default, KeptBackground = null },
+            ImageEffect.Background => look with { Background = BackgroundEffect.Default, KeptBackground = null, BackgroundForced = false },
             ImageEffect.Zoom => look with { KeptZoom = null },
             ImageEffect.Rotate => look with { KeptRotation = null },
             ImageEffect.Flip => look with { KeptFlip = null },
@@ -447,7 +460,16 @@ public sealed record ImageLook
 
     public ImageLook WithVolume(VolumeEffect? volume) => this with { Volume = volume };
 
-    public ImageLook WithBackground(BackgroundEffect? background) => this with { Background = background };
+    public ImageLook WithBackground(BackgroundEffect? background) => this with { Background = background, BackgroundForced = false };
+
+    /// <summary>
+    /// The Background turned off by the Grid background, its settings kept (<see cref="BackgroundForced"/>); a look
+    /// whose Background is off already is left as it is — the user's choice.
+    /// </summary>
+    public ImageLook ForceBackgroundOff() => this.Background is null ? this : this.TurnOff(ImageEffect.Background) with { BackgroundForced = true };
+
+    /// <summary>The look with its Background as the user left it: turned back on when the Grid background turned it off.</summary>
+    public ImageLook UnforcedBackground() => this.BackgroundForced ? this.TurnOn(ImageEffect.Background) : this;
 
     public ImageLook WithMotion(MotionEffect? motion) => this with { Motion = motion };
 

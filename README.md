@@ -124,16 +124,18 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
   - **Color**: the flat fill around the image.
   - **Corner pixel**, **Miter** and **Background corners** extend the image's **edges**: its top row of pixels is stretched up to the top of the cell, its bottom row down to the bottom, its side columns out to the sides — the image as drawn in the cell, so cropped, rotated, flipped, zoomed and with its colors adjusted. Where the image is smaller than its cell both ways, each mode fills the four corners its own way: the color of the image's corner pixel; a mitered joint — each corner split on its diagonal, each half the flat color of its edge's pixel next to the image's corner, a 1 px line in the corner pixel's color drawn over the diagonal at 50 % opacity; or the background color. With a fine angle, the edges extended are those of the rectangle the turned image covers, its corners spilling over them.
   - The color settings still count: the flat fill stays under the image (its transparent pixels show it), fills the Background corners, and is what Blend goes to.
-- The fill's settings sit on two lines beside the thumbnails: the color's (*Automatic color*, the eyedropper and *Color…* showing the color in use as a swatch, Opacity) over the extended edges' (Edges, Blend, Soften).
+- The fill's settings sit on three lines beside the thumbnails: the color's (*Automatic color*, the eyedropper and *Color…* showing the color in use as a swatch, Opacity, the gradient's Angle), the gradient's second color (To, the eyedropper and *Color…*, Opacity), then the extended edges' (Edges, Blend, Soften).
 - **Edges**: from 0 to 100 % (default 100 %): the extended edges' own opacity over the background color, which keeps its own — at 0 %, the bands show the background color only.
 - **Blend**: from 0 to 100 % (default 0 %): the extended edges blend into the background color with the distance from the image, reaching that share of it at the cell's edge — at 100 %, they vanish there.
 - **Soften** (unchecked by default): blurs the extended edges, more with the distance from the image, the image itself staying sharp.
 - Edges, Blend and Soften act on the extended edges only: disabled with the Color fill, their values kept.
+- **Gradient**: three more thumbnails after the fill's — **Solid** (the default), **Linear** and **Radial** — spread the background color into a second one across the cell: along the **Angle** after the color (0° from left to right, 90° from top to bottom), or from the center to the corners. The second color, on a line of its own under the color's, comes from **To** — **Darker** (the default: the background color darkened), **Black**, **White** or **Chosen** (the eyedropper, then **Color…**) — at its own **Opacity**. With an extending fill, the gradient lies under the extended edges and Blend goes to it. The gradient's options are disabled with Solid, their values kept. A cell with a gradient takes no part in the Seams.
+- While the **Grid background** is on (see Global), the Background is off in every cell it turned off, and an arriving image gets it off too; checking it again draws the cell's own over the grid's fill.
 - The Crop's edit view extends the edges of the whole image it shows.
 - The **color button** is split in two: its **eyedropper** takes the color from the preview, its **Color…** part, painted with the color in use, opens the standard color dialog on that color (see Picking a color); a color chosen either way unchecks *Automatic color*. Checking it again drops the chosen color; unchecking it keeps the automatic color of the moment as the chosen one.
 - **Colors** adjusts the background too, whatever its color.
 - **Off**, or below 100 %, the cell is transparent behind its image: the preview shows grey and white squares there, as drawing apps do. A PNG — saved, or the PNG format of a copy — keeps the transparency; the copied bitmap, the MP4 video and the GIF show white instead.
-- Replacing the image, the Background's own Reset and the tabs' Reset bring it back on, automatic, at 100 %, with the Color fill, Edges at 100 %, Blend at 0 % and Soften unchecked.
+- Replacing the image, the Background's own Reset and the tabs' Reset bring it back on, automatic, at 100 %, with the Color fill, Solid, Edges at 100 %, Blend at 0 % and Soften unchecked — off instead while the Grid background is on.
 
 ### Crop
 
@@ -241,7 +243,7 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 
 ## Global
 
-- What concerns the whole grid — not a cell — sits at the bottom of the window, the mirror of the cell effects at the top: the tabs, then the options row below them, just above the bottom bar. The tabs row holds a **Global** label, the **Format** tab, one tab per global effect — **Soundtrack**, **Fade**, **Borders**, **Cascade**, **Layers** — and, at the far right, a **Reset** button as tall as the tabs.
+- What concerns the whole grid — not a cell — sits at the bottom of the window, the mirror of the cell effects at the top: the tabs, then the options row below them, just above the bottom bar. The tabs row holds a **Global** label, the **Format** tab, one tab per global effect — **Soundtrack**, **Fade**, **Borders**, **Grid background**, **Cascade**, **Layers** — and, at the far right, a **Reset** button as tall as the tabs.
 - Each global effect's tab holds a checkbox, checked while its effect is on. Clicking it turns the effect on or off, keeping its settings, and selects the tab. Clicking a tab elsewhere selects it: its options show in the row below, joined to it. No tab is selected at start-up; the options row is always there, as tall as the Format's thumbnails, empty until a tab is selected.
 - The **Format** is a setting, always in force: its tab has no checkbox.
 - An effect that is off shows its kept settings in its options, and changing any of them turns it on.
@@ -294,6 +296,20 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
   - **Twitter corners by default**, a checkable item of the **⚙** menu, on until changed and remembered between sessions, sets whether the option is on at start-up and after **Clear all**. Changing it leaves the open grid as it is.
 - The borders show in the preview and in every export: PNG, JPEG for sharing, GIF and MP4 video.
 
+### Grid background
+
+- **One fill under the whole grid**: the cells, the gap the Borders leave between them, the Twitter corners and a grid of layers only — one gradient across the whole image, never repeated cell by cell.
+- **Off at start-up**, and back to that state with **Clear all** and the Resets. Check the **Grid background** tab to turn it on or off, its settings kept; acting on any of its options turns it on.
+- **Turned on, it turns off the Background of every cell**, so the fill shows behind every image; a cell can turn its own back on afterwards, drawn over the fill. **Turned off** — its checkbox, a Reset, **Clear all** — it turns back on the Backgrounds it turned off, those only: a cell changed meanwhile stays as left. The layers' Backgrounds are left alone.
+- While it is on, an image arriving in a cell or shifting after a deletion, and a cell's Background Reset or the effect tabs' Reset, leave the Background off.
+- A preset saved from a cell whose Background it turned off saves the Background as it was before (see Effect presets).
+- Options:
+  - the kind, as thumbnails: **Solid**, **Linear** — from the first color to the second along the **Angle** (0° from left to right, 90° from top to bottom, the default) — or **Radial**, from the first color at the center to the second at the corners;
+  - the **first color** — the eyedropper, then **Color…** — and its **Opacity**: until the Grid background is first turned on, it follows the automatic color of the first cell holding an image (white with none), then it keeps the one it had;
+  - for a gradient, **To**: where the second color comes from — **Auto, last cell** (the default: the automatic color of the last cell holding an image, followed live), **Darker** (the first color darkened), **Black**, **White** or **Chosen** (the eyedropper, then **Color…**) — and its **Opacity**.
+- Below 100 %, the fill lets the transparency show: a PNG keeps it, the other outputs show white under it.
+- It shows in the preview and in every export: PNG, JPEG for sharing, GIF and MP4 video. The borders and the layers are drawn over it.
+
 ### Cascade
 
 - The videos and animated GIFs play **one after the other** instead of all at once: the first cell's, then the second's, then the third's… in **cell order** — a swap or another layout changes the order. Once the last one has played, the cascade starts over from the first.
@@ -331,7 +347,7 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 
 ## Picking a color
 
-Every color option of an effect — the Background's, the Borders', the Cutout's, a text layer's — offers two routes, two buttons touching in its options: the **eyedropper** first, then **Color…**; its **opacity** follows them.
+Every color option of an effect — the Background's two, the Borders', the Grid background's two, the Cutout's, a text layer's — offers two routes, two buttons touching in its options: the **eyedropper** first, then **Color…**; its **opacity** follows them.
 
 - **Eyedropper**: click it, then click a cell of the preview to take its color. Meanwhile:
   - the grid stands still, and the eyedropper reads the cells as they stood when it was clicked, as the export draws them — images, backgrounds, effects, borders — never the green helpers nor the selection outline;
