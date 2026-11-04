@@ -97,7 +97,8 @@ The Grid background options row, after its fill settings, before its Reset:
   the cells, Q&A 14), then **Browse…** right after it — its icon and its text, so it is seen (Iteration 6) —,
   **Edit** (the edit view) and **Remove** (✖, the image gone, the fill alone).
 - The **placement thumbnails** (§ Fitting) and the image's **Opacity** slider (the opacity icon,
-  `Opacity: N %`, § Color Options' shape).
+  `Opacity: N %`, § Color Options' shape), with its **Zoom** slider right under it (🔍, `Zoom: N %`, Iteration 7):
+  the image's Zoom effect, a free zoom around its center, the zoom drawn shown — Fill or Contain resolved.
 - **Acting on any option turns the Grid background on** (§ Options Toolbar), a dropped or browsed image
   included.
 - The row keeps the options toolbar's one height (`ThumbnailStrip.EffectBox`).
@@ -280,6 +281,14 @@ changer — mettre un bouton à côté de « coller » pour choisir une image*):
 so a double-click there risks the picker. The double-click is dropped — the edit view opens from **Edit** only —,
 the click opens the picker at once (no wait), and the button choosing an image stands right after **Paste**, with
 its text **Browse…** beside its icon. § Options updated; Iteration 4's double-click wait undone.
+
+### Iteration 7 — 2026-11-04 — ⚙️ Post-implementation — A Zoom slider under the opacity
+
+Requested by the user (*le zoom va être une feature intéressante, mettre le zoom directement en dessous de
+l'opacité — ça agit sur l'effet zoom bien sûr*): a **Zoom** slider right under the image's Opacity, in the Grid
+background's options — the cell Zoom slider's scale (10 % to the maximum zoom, log, snapping onto 100 %), acting on
+the image's **Zoom effect**: a free zoom, its fit mode left (Fill / Contain unpressed), its center kept where it is.
+It shows the zoom drawn, the fit mode resolved; tiled, it is the tiles' size. Logged in the same pass as its code.
 
 ---
 
