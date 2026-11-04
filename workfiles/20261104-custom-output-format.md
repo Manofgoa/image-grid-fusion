@@ -270,7 +270,7 @@ says so rather than staying blank.
 |---|---|---|---|
 | Code | 5, 6 | 2026-11-04 | `4ea7f45` model and sizing, `59b0a4b` preview / history / exports, `2918b1a` Format tab UI; Iteration 6: the preview at real size |
 | Unit tests | 5 | 2026-11-04 | No test project — checks by hand (see Test Impact), left to the user |
-| README | 5 | 2026-11-04 | `19779f4` RULES, READMEs, glossaries; `3ef05ad` shortcuts |
+| README | 5, 6 | 2026-11-04 | `19779f4` RULES, READMEs, glossaries; `3ef05ad` shortcuts; Iteration 6: `2d36b3d` the real size in RULES and the READMEs |
 
 ---
 
