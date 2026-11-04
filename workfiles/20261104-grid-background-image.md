@@ -91,13 +91,11 @@ Option thumbnails in the Grid background options (§ Options Toolbar › option 
 The Grid background options row, after its fill settings, before its Reset:
 
 - The **image thumbnail** — the image as drawn, its look applied — or an empty drop zone reading
-  *Click or drop an image here*. **A click** → the file picker, as **Browse…** (Iteration 4); **a double-click** → the
-  background edit view. On a thumbnail holding an image, the click waits for the double-click time
-  (`SystemInformation.DoubleClickTime`), so a double-click opens the edit view without the picker; an empty one
-  opens the picker at once. Its tooltip names the file.
-- **Browse…** (file picker), **Paste** (an image on the clipboard, read as Ctrl+V reads it,
-  `UI/ClipboardImage`; Ctrl+V itself keeps filling the cells, Q&A 14), **Edit** (the edit view, the double-click's twin, § Icons: one icon per
-  action) and **Remove** (✖, the image gone, the fill alone).
+  *Click or drop an image here*. **A click** → the file picker at once, as **Browse…** (Iterations 4, 6). No
+  double-click: the edit view opens from **Edit** only (Iteration 6). Its tooltip names the file.
+- **Paste** (an image on the clipboard, read as Ctrl+V reads it, `UI/ClipboardImage`; Ctrl+V itself keeps filling
+  the cells, Q&A 14), then **Browse…** right after it — its icon and its text, so it is seen (Iteration 6) —,
+  **Edit** (the edit view) and **Remove** (✖, the image gone, the fill alone).
 - The **placement thumbnails** (§ Fitting) and the image's **Opacity** slider (the opacity icon,
   `Opacity: N %`, § Color Options' shape).
 - **Acting on any option turns the Grid background on** (§ Options Toolbar), a dropped or browsed image
@@ -274,6 +272,14 @@ What the run decided on its own, beyond the frozen design:
   for another reason — the progress lines' timer redraws the cells only. Offered as an open question.
 - **Not verified in the running app beyond start-up**: the options row was checked on screen; the drop, Paste, the
   placements, the edit view, playback and exports were not driven by the agent — the user's desktop was in use.
+
+### Iteration 6 — 2026-11-04 — ⚙️ Post-implementation — No double-click on the thumbnail, Browse… beside Paste
+
+Requested by the user after testing (*le double clic sur la miniature est dangereux car le simple clic sert à
+changer — mettre un bouton à côté de « coller » pour choisir une image*): the thumbnail's click changes the image,
+so a double-click there risks the picker. The double-click is dropped — the edit view opens from **Edit** only —,
+the click opens the picker at once (no wait), and the button choosing an image stands right after **Paste**, with
+its text **Browse…** beside its icon. § Options updated; Iteration 4's double-click wait undone.
 
 ---
 
