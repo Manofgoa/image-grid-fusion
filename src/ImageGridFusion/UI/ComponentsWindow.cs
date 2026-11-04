@@ -394,7 +394,7 @@ internal sealed class ComponentsWindow : Form
         _ => "Emoji fonts",
     };
 
-    private static string SizeText(long bytes) => bytes switch
+    internal static string SizeText(long bytes) => bytes switch
     {
         <= 0 => "—",
         < 1_000_000 => $"{Math.Max(1, bytes / 1000)} KB",

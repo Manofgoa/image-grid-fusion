@@ -3,91 +3,62 @@ using ImageGridFusion.Composition;
 
 namespace ImageGridFusion.UI;
 
-/// <summary>The Upscale tab's thumbnails: its two factors, then the save action.</summary>
-internal enum UpscaleChoice
+/// <summary>The Upscale tab's factors.</summary>
+internal enum UpscaleFactor
 {
     Times2,
     Times4,
-    Save,
 }
 
 /// <summary>
-/// The Upscale tab's factors, ×2 and ×4 — the one in use pressed, one that would go past the PNG's cap faded and
-/// refused — then, set apart, <i>Save…</i>, the action writing the upscaled image to a file, never pressed. A click on
-/// a factor picks it — the one already shown included, so it still turns the Upscale on.
-/// See workfiles/20261029-image-upscale.md § Effect and Options.
+/// The Upscale tab's factors, ×2 and ×4: the one chosen pressed, one that would go past the PNG's cap faded and refused.
+/// A pick only chooses — the <b>Upscale</b> button applies (workfiles/20261029-image-upscale.md § Effect and Options).
 /// </summary>
-internal sealed class UpscaleStrip : ThumbnailStrip<UpscaleChoice>
+internal sealed class UpscaleStrip : SelectionStrip<UpscaleFactor>
 {
-    private int _factor = UpscaleEffect.Default.Factor;
     private Func<int, bool> _fits = _ => true;
-    private bool _saves;
 
     public UpscaleStrip()
-        : base(Enum.GetValues<UpscaleChoice>())
+        : base(UpscaleFactor.Times2)
     {
         this.FitSize();
     }
 
-    /// <summary>The factor of a thumbnail; 0 for the save action.</summary>
-    public static int FactorOf(UpscaleChoice choice) => choice switch
-    {
-        UpscaleChoice.Times2 => 2,
-        UpscaleChoice.Times4 => 4,
-        _ => 0,
-    };
+    public static int FactorOf(UpscaleFactor factor) => factor == UpscaleFactor.Times4 ? 4 : 2;
 
-    /// <summary>
-    /// Shows <paramref name="factor"/> pressed, the factors <paramref name="fits"/> refuses faded, and the save action
-    /// usable while <paramref name="saves"/>.
-    /// </summary>
-    public void Show(int factor, Func<int, bool> fits, bool saves)
+    public static UpscaleFactor Of(int factor) => factor == 4 ? UpscaleFactor.Times4 : UpscaleFactor.Times2;
+
+    /// <summary>Shows <paramref name="factor"/> chosen, the factors <paramref name="fits"/> refuses faded.</summary>
+    public void Show(int factor, Func<int, bool> fits)
     {
-        this._factor = factor;
         this._fits = fits;
-        this._saves = saves;
+        this.Selected = Of(factor);
         this.Invalidate();
     }
 
     protected override Size Box => EffectBox;
 
-    protected override bool IsPressed(UpscaleChoice choice) => choice != UpscaleChoice.Save && FactorOf(choice) == this._factor;
+    protected override bool Picks(UpscaleFactor factor) => base.Picks(factor) && this._fits(FactorOf(factor));
 
-    protected override bool Picks(UpscaleChoice choice) => choice == UpscaleChoice.Save ? this._saves : this._fits(FactorOf(choice));
+    protected override string Label(UpscaleFactor factor) => $"×{FactorOf(factor)}";
 
-    protected override bool IsApart(UpscaleChoice choice) => choice == UpscaleChoice.Save;
-
-    protected override string Label(UpscaleChoice choice) => choice == UpscaleChoice.Save ? "Save…" : $"×{FactorOf(choice)}";
-
-    protected override string Tip(UpscaleChoice choice)
+    protected override string Tip(UpscaleFactor factor)
     {
-        if (choice == UpscaleChoice.Save)
-        {
-            return this._saves
-                ? "Save upscaled image… — the image enlarged, whole, as a PNG (an animated GIF for a GIF); the cell stays as it is"
-                : "Save upscaled image… — turn the Upscale on first";
-        }
-
-        int factor = FactorOf(choice);
-        return this._fits(factor)
-            ? $"Enlarges the image {factor} times with Real-ESRGAN, computed on this computer"
-            : $"Too large for ×{factor}: the image would go past {CanvasSizer.MaxLongSide} px on its longer side";
+        int times = FactorOf(factor);
+        return this._fits(times)
+            ? $"Enlarges the image {times} times — computed once Upscale is clicked"
+            : $"Too large for ×{times}: the image would go past {CanvasSizer.MaxLongSide} px on its longer side";
     }
 
-    protected override void PaintThumbnail(Graphics g, UpscaleChoice choice, Rectangle box, bool pressed)
+    protected override void PaintThumbnail(Graphics g, UpscaleFactor factor, Rectangle box, bool pressed)
     {
         this.PaintCell(g, box);
-        int pad = Math.Max(2, box.Height / 8);
-        if (choice == UpscaleChoice.Save)
-        {
-            this.PaintSave(g, box, pad);
-            return;
-        }
 
         // The enlargement dashed in the marker's blue, the image as loaded at its bottom left, an arrow between them.
-        int factor = FactorOf(choice);
+        int times = FactorOf(factor);
+        int pad = Math.Max(2, box.Height / 8);
         var enlarged = new Rectangle(box.X + 2 * pad, box.Y + pad, box.Width - 4 * pad, box.Height - 2 * pad);
-        var loaded = new Rectangle(enlarged.X, enlarged.Bottom - enlarged.Height / factor, Math.Max(3, enlarged.Width / factor), Math.Max(3, enlarged.Height / factor));
+        var loaded = new Rectangle(enlarged.X, enlarged.Bottom - enlarged.Height / times, Math.Max(3, enlarged.Width / times), Math.Max(3, enlarged.Height / times));
         this.Fill(g, SystemColors.Window, enlarged);
         using (var dashed = new Pen(this.Shade(Marker)) { DashStyle = DashStyle.Dash })
         {
@@ -105,27 +76,68 @@ internal sealed class UpscaleStrip : ThumbnailStrip<UpscaleChoice>
         }
 
         // A factor refused: faded under the control's color.
-        if (!this._fits(factor))
+        if (!this._fits(times))
         {
             using var veil = new SolidBrush(Color.FromArgb(160, SystemColors.Control));
             g.FillRectangle(veil, box);
         }
     }
+}
 
-    // The save action: the image, and a blue arrow going down into a tray beside it.
-    private void PaintSave(Graphics g, Rectangle box, int pad)
+/// <summary>
+/// The Upscale tab's models, Quality and Fast: the one chosen pressed. A pick only chooses — the <b>Upscale</b> button
+/// applies (workfiles/20261029-image-upscale.md § Effect and Options).
+/// </summary>
+internal sealed class UpscaleModelStrip : SelectionStrip<UpscaleModel>
+{
+    public UpscaleModelStrip()
+        : base(UpscaleModel.Quality)
     {
-        var image = new Rectangle(box.X + 2 * pad, box.Y + pad, box.Width / 2 - 2 * pad, box.Height - 2 * pad);
+        this.FitSize();
+    }
+
+    protected override Size Box => EffectBox;
+
+    protected override string Label(UpscaleModel model) => model.ToString();
+
+    protected override string Tip(UpscaleModel model) => model == UpscaleModel.Quality
+        ? "Real-ESRGAN: the finest details, slow on this computer — minutes for a large ×4"
+        : "Real-ESRGAN compact: many times faster, a little less fine";
+
+    protected override void PaintThumbnail(Graphics g, UpscaleModel model, Rectangle box, bool pressed)
+    {
+        this.PaintCell(g, box);
+        int width = box.Width * 5 / 7;
+        int height = box.Height * 7 / 10;
+        var image = new Rectangle(box.X + (box.Width - width) / 2, box.Y + (box.Height - height) / 2, width, height);
         this.Fill(g, SystemColors.Window, image);
-        this.Outline(g, image);
-        int x = box.X + box.Width * 3 / 4, top = box.Y + pad, bottom = box.Bottom - 2 * pad, half = Math.Max(3, box.Width / 10);
-        this.Fill(g, Marker, new Rectangle(x - half / 3, top, Math.Max(2, 2 * half / 3), bottom - top - half));
-        this.Fill(g, Marker, [new Point(x - half, bottom - half), new Point(x + half, bottom - half), new Point(x, bottom)]);
-        this.Fill(g, SystemColors.ControlDarkDark, new Rectangle(x - half - 1, bottom + 1, 2 * half + 2, Math.Max(1, pad / 2)));
-        if (!this._saves)
+        if (model == UpscaleModel.Quality)
         {
-            using var veil = new SolidBrush(Color.FromArgb(160, SystemColors.Control));
-            g.FillRectangle(veil, box);
+            // Fine detail: a checker of small blue squares.
+            int side = Math.Max(2, box.Height / 10);
+            for (int y = image.Top + side; y + side <= image.Bottom - side; y += side)
+            {
+                for (int x = image.Left + side + ((y - image.Top) / side % 2 * side); x + side <= image.Right - side; x += 2 * side)
+                {
+                    this.Fill(g, Marker, new Rectangle(x, y, side, side));
+                }
+            }
         }
+        else
+        {
+            // Speed: two chevrons pointing right.
+            int middle = image.Top + image.Height / 2, reach = image.Height / 3;
+            using var pen = new Pen(this.Shade(Marker), Math.Max(2, box.Height / 14f)) { LineJoin = LineJoin.Miter };
+            var smoothing = g.SmoothingMode;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            foreach (int left in (int[])[image.Left + image.Width / 4, image.Left + image.Width / 2])
+            {
+                g.DrawLines(pen, [new Point(left, middle - reach), new Point(left + reach, middle), new Point(left, middle + reach)]);
+            }
+
+            g.SmoothingMode = smoothing;
+        }
+
+        this.Outline(g, image);
     }
 }

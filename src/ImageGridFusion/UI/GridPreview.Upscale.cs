@@ -1,14 +1,13 @@
 using System.ComponentModel;
 using ImageGridFusion.Composition;
-using ImageGridFusion.Imaging;
 
 namespace ImageGridFusion.UI;
 
 /// <summary>
-/// The Upscale effect in the preview: its enlargements asked for at every paint and their cells drawn again once
-/// ready, the <i>Upscaling…</i> badge on a cell waiting for one, and a GIF's player moved onto its enlarged frames
-/// once they are all there — or back onto the GIF's own when the effect is turned off. See
-/// workfiles/20261029-image-upscale.md § Drawn Bitmap.
+/// The Upscale effect in the preview: a cell drawn again once its enlargement is computed in the Upscale window, the
+/// <i>Not upscaled</i> badge on a cell whose Upscale is on without one, and a GIF's player moved onto its enlarged
+/// frames — or back onto the GIF's own when the effect is turned off. See workfiles/20261029-image-upscale.md
+/// § Drawn Bitmap.
 /// </summary>
 internal sealed partial class GridPreview
 {
@@ -17,7 +16,7 @@ internal sealed partial class GridPreview
     // The pages each animated content was last seen playing from: a change reopens its player.
     private readonly Dictionary<SourceImage, PageSource?> _playedPages = [];
 
-    /// <summary>What computes the enlargements; the preview asks it for every image drawn as loaded and draws a cell again once its enlargement is ready.</summary>
+    /// <summary>What computes the enlargements, in the Upscale window; the preview draws a cell again once its enlargement is ready.</summary>
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public UpscaleService? Upscales
     {
@@ -38,9 +37,31 @@ internal sealed partial class GridPreview
     }
 
     /// <summary>
-    /// The Upscale's share of a paint, before the Cutout's — which cuts the enlarged image: every image drawn as loaded
-    /// asked for its enlargement, every animated content's pages followed.
+    /// Gives <paramref name="image"/> — a cell's or a layer's, selected or not — a new look: the Upscale window's
+    /// setting applied to an image a Copy or a Save waits for, as the toolbars give the selected one theirs.
     /// </summary>
+    public void SetLookOf(SourceImage image, ImageLook look)
+    {
+        int index = this._images.IndexOf(image);
+        if (index >= 0)
+        {
+            this.SetLook(index, look);
+            return;
+        }
+
+        var layers = this._layers.Items;
+        for (int i = 0; i < layers.Count; i++)
+        {
+            if (layers[i].Image == image && layers[i].Look != look)
+            {
+                this.SetLayers(this._layers.With(i, layers[i] with { Look = look }));
+                this.SelectedImageChanged?.Invoke(this, EventArgs.Empty);
+                return;
+            }
+        }
+    }
+
+    /// <summary>The Upscale's share of a paint, before the Cutout's — which cuts the enlarged image: every animated content's pages followed.</summary>
     private void PaintUpscale()
     {
         var shown = this._images.ToList();
@@ -51,7 +72,6 @@ internal sealed partial class GridPreview
 
         foreach (var image in shown)
         {
-            this._upscales?.Request(image);
             this.FollowDrawnPages(image);
         }
 
@@ -79,23 +99,8 @@ internal sealed partial class GridPreview
         this._playedPages[image] = pages;
     }
 
-    // What the badge of an image says while its enlargement is not ready; null for none.
-    private string? UpscaleBadge(SourceImage image)
-    {
-        if (!image.UpscalePending)
-        {
-            return null;
-        }
-
-        if (this._upscales?.IsWorking(image) == true)
-        {
-            return this._upscales.ProgressOf(image) is { } done
-                ? $"⤢ Upscaling… {done * 100:0} %"
-                : $"⤢ Upscaling{new string('.', 1 + (int)(Environment.TickCount64 / CutoutBadgeTick % 3))}";
-        }
-
-        return UpscaleEngineFiles.IsAvailable ? null : "⤢ Waiting for the upscale engine";
-    }
+    // What the badge of an image says while its Upscale is on without its enlargement; null for none.
+    private static string? UpscaleBadge(SourceImage image) => image.UpscalePending ? "⤢ Not upscaled" : null;
 
     private void OnUpscaleCompleted(object? sender, SourceImage image)
     {

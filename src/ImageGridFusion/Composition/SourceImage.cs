@@ -15,11 +15,14 @@ public sealed class SourceImage : IDisposable
     // The image cut out as its look's Cutout effect says, for a page; drawn while they still match.
     private (int Page, CutoutEffect Effect, Bitmap Bitmap)? _cut;
 
-    // A still enlarged by its look's Upscale effect, for a page and a factor; drawn while they still match.
-    private (int Page, int Factor, Bitmap Bitmap)? _upscaled;
+    // The enlargements kept for a setting chosen again to apply at once — a still's being heavy, a few only.
+    private const int KeptUpscales = 2;
 
-    // An animated GIF's pages enlarged by its Upscale effect, every frame ready, for a factor (workfiles/20261029-image-upscale.md).
-    private (int Factor, PageSource Pages)? _upscaledPages;
+    // A still enlarged by the Upscale window, each for a page and a setting, the latest first; drawn while the look applies it.
+    private readonly List<(int Page, UpscaleEffect Setting, Bitmap Bitmap)> _upscaled = [];
+
+    // An animated GIF's pages enlarged by the Upscale window, every frame ready, per setting (workfiles/20261029-image-upscale.md).
+    private readonly Dictionary<UpscaleEffect, PageSource> _upscaledPages = [];
 
     // The preview's copy of an enlarged drawn bitmap, and the bitmap it was reduced from (workfiles/20261029-image-upscale.md § Drawn Bitmap).
     private (Bitmap From, Bitmap Copy)? _shown;
@@ -72,14 +75,21 @@ public sealed class SourceImage : IDisposable
     public Size UpscaleSize => this.Pages?.UpscaledFrom ?? this.Bitmap.Size;
 
     /// <summary>
-    /// The still's bitmap enlarged by its Upscale effect, while it is on and ready for the page and the factor;
-    /// <c>null</c> otherwise. Exactly the factor times <see cref="Bitmap"/>'s size.
+    /// The still's bitmap enlarged as its Upscale effect applies it, while it is on and its enlargement computed for the
+    /// page shown; <c>null</c> otherwise. Exactly the factor times <see cref="Bitmap"/>'s size.
     /// </summary>
-    public Bitmap? UpscaledBitmap =>
-        this.Look.Upscale is { } upscale && this.Pages is null && this._upscaled is { } up && up.Page == this.Page && up.Factor == upscale.Factor
-            && up.Bitmap.Size == new Size(this.Bitmap.Width * up.Factor, this.Bitmap.Height * up.Factor)
-            ? up.Bitmap
-            : null;
+    public Bitmap? UpscaledBitmap => this.Look.Upscale is { } upscale && this.Pages is null ? this.UpscaledFor(upscale) : null;
+
+    /// <summary>The still enlarged as <paramref name="setting"/> says for the page shown, when the Upscale window computed it this session.</summary>
+    public Bitmap? UpscaledFor(UpscaleEffect setting)
+    {
+        var size = new Size(this.Bitmap.Width * setting.Factor, this.Bitmap.Height * setting.Factor);
+        return this._upscaled.FirstOrDefault(u => u.Page == this.Page && u.Setting == setting && u.Bitmap.Size == size).Bitmap;
+    }
+
+    /// <summary>Whether an enlargement as <paramref name="setting"/> says is ready: the Upscale applies it at once, without its window.</summary>
+    public bool HasUpscale(UpscaleEffect setting) =>
+        this.Pages is null ? this.UpscaledFor(setting) is not null : this._upscaledPages.ContainsKey(setting);
 
     /// <summary>What the Cutout cuts: the still enlarged while its upscale is ready, else <see cref="Bitmap"/> (workfiles/20261029-image-upscale.md § Drawn Bitmap).</summary>
     public Bitmap UpscaleBase => this.UpscaledBitmap ?? this.Bitmap;
@@ -89,12 +99,14 @@ public sealed class SourceImage : IDisposable
     /// GIF's enlarged by its Upscale effect while it is on and every frame ready, else <see cref="Pages"/>.
     /// </summary>
     public PageSource? DrawnPages =>
-        this.Look.Upscale is { } upscale && this._upscaledPages is { } up && up.Factor == upscale.Factor ? up.Pages : this.Pages;
+        this.Look.Upscale is { } upscale && this._upscaledPages.TryGetValue(upscale, out var pages) ? pages : this.Pages;
 
-    /// <summary>The Upscale on and within the PNG's cap, its enlargement not ready yet: the image is drawn as loaded meanwhile.</summary>
+    /// <summary>
+    /// The Upscale on and within the PNG's cap, its enlargement not computed — a preset restored, an enlargement let go:
+    /// the image is drawn as loaded, and a Copy or a Save of the grid opens the Upscale window first.
+    /// </summary>
     public bool UpscalePending =>
-        this.Look.Upscale is { } upscale && this.Upscales && UpscaleEffect.Fits(this.UpscaleSize, upscale.Factor)
-        && (this.Pages is null ? this.UpscaledBitmap is null : ReferenceEquals(this.DrawnPages, this.Pages));
+        this.Look.Upscale is { } upscale && this.Upscales && UpscaleEffect.Fits(this.UpscaleSize, upscale.Factor) && !this.HasUpscale(upscale);
 
     /// <summary>
     /// The bitmap the image is drawn from — by the preview, the exports and the layers: enlarged while its Upscale
@@ -186,16 +198,25 @@ public sealed class SourceImage : IDisposable
         previous?.Dispose();
     }
 
-    /// <summary>Takes <paramref name="bitmap"/>, the still enlarged <paramref name="factor"/> times on <paramref name="page"/>, disposing the previous one.</summary>
-    public void SetUpscaled(int page, int factor, Bitmap bitmap)
+    /// <summary>Takes <paramref name="bitmap"/>, the still enlarged as <paramref name="setting"/> says on <paramref name="page"/>, the oldest ones disposed past a few.</summary>
+    public void SetUpscaled(int page, UpscaleEffect setting, Bitmap bitmap)
     {
-        var previous = this._upscaled?.Bitmap;
-        this._upscaled = (page, factor, bitmap);
-        previous?.Dispose();
+        foreach (var replaced in this._upscaled.Where(u => u.Page == page && u.Setting == setting).ToList())
+        {
+            this._upscaled.Remove(replaced);
+            replaced.Bitmap.Dispose();
+        }
+
+        this._upscaled.Insert(0, (page, setting, bitmap));
+        while (this._upscaled.Count > KeptUpscales)
+        {
+            this._upscaled[^1].Bitmap.Dispose();
+            this._upscaled.RemoveAt(this._upscaled.Count - 1);
+        }
     }
 
-    /// <summary>Takes <paramref name="pages"/>, the GIF's frames enlarged <paramref name="factor"/> times, every one ready.</summary>
-    public void SetUpscaledPages(int factor, PageSource pages) => this._upscaledPages = (factor, pages);
+    /// <summary>Takes <paramref name="pages"/>, the GIF's frames enlarged as <paramref name="setting"/> says, every one ready.</summary>
+    public void SetUpscaledPages(UpscaleEffect setting, PageSource pages) => this._upscaledPages[setting] = pages;
 
     /// <summary>
     /// A text laying its content out for its zoom: its pages hold the zoom, so it is drawn at 100 %,
@@ -228,7 +249,7 @@ public sealed class SourceImage : IDisposable
     /// </summary>
     public long MemoryBytes => this.IsDisposed ? 0 : (long)this.Bitmap.Width * this.Bitmap.Height * 4 + (this.Pages?.MemoryBytes ?? 0)
         + (this._cut is { } cut ? (long)cut.Bitmap.Width * cut.Bitmap.Height * 4 : 0)
-        + (this._upscaled is { } up ? (long)up.Bitmap.Width * up.Bitmap.Height * 4 : 0)
+        + this._upscaled.Sum(u => (long)u.Bitmap.Width * u.Bitmap.Height * 4)
         + (this._shown is { } shown ? (long)shown.Copy.Width * shown.Copy.Height * 4 : 0)
         + this._masks.Sum(m => m.Mask.MemoryBytes) + (this.PickEmbedding?.MemoryBytes ?? 0);
 
@@ -342,7 +363,7 @@ public sealed class SourceImage : IDisposable
         IsDisposed = true;
         Bitmap.Dispose();
         this._cut?.Bitmap.Dispose();
-        this._upscaled?.Bitmap.Dispose();
+        this._upscaled.ForEach(u => u.Bitmap.Dispose());
         this._shown?.Copy.Dispose();
         Pages?.Dispose();
     }
