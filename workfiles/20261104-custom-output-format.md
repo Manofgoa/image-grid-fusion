@@ -133,6 +133,15 @@ side within [1200, cap].
 - The **position readout** (`GridPreview.ExportOffsets`) reads the PNG export's canvas: it gives
   offsets in the exact size's pixels.
 - **Cell copy** is untouched: it has its own native size (RULES.md § Cell Copy).
+
+### The Preview at Real Size
+
+With *Exact pixels*, the preview's canvas is drawn at its **real final size** — one pixel of the PNG
+export (`CanvasSizer.Exactly` at the Copy cap, the exact size itself) one device pixel of the screen —
+whenever it **fits the working area** (`GridPreview.CanvasBounds`: the control less its margins and the
+drop zone), centered there; larger, it is fitted as for every format. The ratio alone (*Exact pixels*
+off), the other formats and a layer's edit view keep the fitted canvas. Turning *Exact pixels* on or
+off, or a size change with the same ratio, lays the preview out again (`GridPreview.UpdateRatio`).
 - `GridExport.Job.Capture` captures the exact size beside the ratio when an export starts, so a
   change during an export cannot reach it (the Format tab is locked meanwhile anyway).
 
@@ -159,6 +168,7 @@ unit test is created or updated. The run checks by hand:
 | Exact `1080 × 1350`: PNG Copy / Save exactly 1080 × 1350, under the 1200 floor | The running app | — |
 | Exact `4000 × 5000`: the 1080p entry gives 1536 × 1920, the MP4 at the Video size | The running app | — |
 | Editing a field selects Custom; Ctrl+Z gives the previous values back | The running app | — |
+| Exact `800 × 600` in a large window: the canvas drawn 800 × 600 device pixels; `4000 × 5000`: fitted | The running app | — |
 | The global Reset brings back Twitter and the Custom default | The running app | — |
 
 ---
@@ -243,6 +253,12 @@ Choices the frozen design did not state:
   100, then the elongation's limit — as the design's bounds say.
 - **Hand checks** of § Test Impact not run by the agent: the app is launched for the user.
 
+### Iteration 6 — 2026-11-04 — ⚙️ Post-implementation — Exact pixels shown at real size
+
+User request: with *Exact pixels*, when the size fits the working area, the preview shows it at its
+real final size. Added § Sizing › The Preview at Real Size: one export pixel a device pixel, centered,
+the fitted canvas otherwise; the preview laid out again when only the exact size changes.
+
 ---
 
 ## Implementation Log
@@ -252,7 +268,7 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 5 | 2026-11-04 | `4ea7f45` model and sizing, `59b0a4b` preview / history / exports, `2918b1a` Format tab UI |
+| Code | 5, 6 | 2026-11-04 | `4ea7f45` model and sizing, `59b0a4b` preview / history / exports, `2918b1a` Format tab UI; Iteration 6: the preview at real size |
 | Unit tests | 5 | 2026-11-04 | No test project — checks by hand (see Test Impact), left to the user |
 | README | 5 | 2026-11-04 | `19779f4` RULES, READMEs, glossaries; `3ef05ad` shortcuts |
 
