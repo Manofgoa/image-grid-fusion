@@ -308,6 +308,12 @@ into *Gradient fills, the rest*.
 Last answers: color 2 defaults to Auto, last cell (global, live) and Darker (cell); cell 1 empty, the
 first cell holding an image, else white; no unit tests. No open question left.
 
+### Iteration 8 — 2026-11-04 — ✅ Implemented
+
+Go given: **code and documentation** (no unit tests, as decided). The scope is frozen as the design
+sections stand. Run in a dedicated worktree, branch `feature/forced-background`, merged into `main`
+on the user's go.
+
 ---
 
 ## Implementation Log
