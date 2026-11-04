@@ -49,9 +49,9 @@ Components: `Composition/OutputFormat.cs` (`OutputFormat`, `OutputFormats`), `Co
   (equality, hash, the restore), so a change of its fields is one undo step like a format change
   (RULES.md § Undo History: a new piece of composed state joins the snapshot and the restore).
 - The global Resets and *Clear all* bring the format back to Twitter **and** the Custom fields to
-  unset (§ The Format Tab's Options); the Format tab's Reset button counts as modified while the
-  format is not Twitter (`FormatInitial` unchanged in meaning). `CustomFormat` is then `null` in the
-  composed state.
+  unset (§ The Format Tab's Options); the Format tab's Reset button, the global Reset and *Clear all*
+  count as modified while the format is not Twitter **or the Custom fields are set** (`FormatInitial`).
+  `CustomFormat` is then `null` in the composed state.
 
 ### Free and Custom
 
@@ -84,8 +84,12 @@ The row holds the `FormatStrip`, then the Custom fields (Q&A #2):
   always shown, enabled whatever format is selected.
 - **Acting on any of them selects Custom** (the Format's equivalent of RULES.md § Options Toolbar,
   *acting on any option activates the effect*), then applies the change.
-- A change applies **live**, on each value change; the undo history commits the step once it settles
-  (RULES.md § Undo History), so typing `1350` is one step.
+- A change applies **live**: a number typed applies digit by digit **while it fits** the bounds as it
+  stands, never rewritten under the caret; one that does not fit waits for its commit — Enter, the focus
+  leaving, the arrows or the wheel — then is brought back within the bounds, the field rewritten. The
+  undo history commits the step once it settles (RULES.md § Undo History), so typing `1350` is one step.
+- A focused field keeps the keys a text field takes — Ctrl+Z / Y, Ctrl+C / V, Delete, Escape
+  (`MainForm.IsEditingCustomField` in the `ProcessCmdKey` whitelist); Space already did.
 - **Bounds** (Q&A #9), `CustomFormat.MinSide` / `MaxSide` / `MaxElongation`:
   - each field from **1 to 8192** with *Exact pixels* off, **100 to 8192** with it on — turning it on
     brings a smaller value up to 100;
@@ -119,7 +123,10 @@ side within [1200, cap].
 
 - The *PNG max size* entries keep their text `720p — W × H` and their tooltip; their size is read
   from the same rule (`MainForm.PngSize`), so they show what they give. The Copy / Save tooltips
-  (`PNG W × H`) follow the same way.
+  (`PNG W × H`) follow the same way. The MP4 and GIF entries, which had no tooltip, get one giving the
+  video's size (`MainForm.RefreshVideoSizeTooltips`), for every format.
+- The preview's ratio skips its 0.2 % tolerance for Custom (`GridPreview.UpdateRatio`), kept for the
+  other formats: the exact size and the preview's shape agree to the pixel.
 - The **video canvas** stays rounded down to even sides (`Animation.EvenSize`, Q&A #8): an odd exact
   size — `1081 × 1350` — gives an exact PNG and a `1080 × 1350` MP4 / GIF; the MP4 / GIF entries'
   tooltips give the size they really produce.
@@ -137,7 +144,7 @@ side within [1200, cap].
 - `GLOSSARY.md` / `GLOSSARY.fr.md`: a *Custom format* (*format personnalisé*) row; *Output format* and
   *Native size* rows mention it.
 - `README.md` / `README.fr.md`: the formats' list, if it names them.
-- `SHORTCUTS.md`: unchanged — no key.
+- `SHORTCUTS.md` / `SHORTCUTS.fr.md`: the Width and Height fields' arrows, wheel and Enter (§ Options).
 
 ---
 
@@ -213,6 +220,29 @@ Go given: code, checks and documentation, in a worktree (`feature/custom-output-
 backlog row *Custom output format* is marked with this workfile. Scope frozen as the sections above
 stand.
 
+### Iteration 5 — 2026-11-04 — 🧭 Implementation choices
+
+⚠️ Rule broken — *Keyboard Shortcuts* (RULES.md: a commit touching `ProcessCmdKey` updates
+`SHORTCUTS.md` / `.fr.md` in the same commit). The whitelist change went in with the UI commit
+(`2918b1a`), the rows in the next one (`3ef05ad`): spotted after the commit, a new commit chosen over
+rewriting it. Autonomous run: reported instead of asked.
+
+Choices the frozen design did not state:
+
+- **`FormatInitial`** counts the Custom fields too: set, the Resets and *Clear all* are enabled, so
+  they really bring back the initial state (the design said *unchanged in meaning*).
+- **Live typing** applies a number only while it fits the bounds; out of them, it waits for its commit,
+  then is clamped — so the caret never jumps while typing `1350` with exact pixels (`1` is under 100).
+- **Keys** of a focused Custom field stay its own (Delete would otherwise delete the selected image).
+- **No 0.2 % ratio tolerance** for Custom in `UpdateRatio`.
+- **MP4 / GIF entries' tooltips** added for every format, the design asking for the size they produce.
+- **Fields**: `NumericUpDown`, 64 px, the first used in the app; *Width* and *× Height* labels; the
+  Exact pixels checkbox without icon, as the app's other plain checkboxes.
+- **Cell copy** untouched: `GridPreview.RenderCellAlone` reads the ratio alone, as designed.
+- **Turning Exact pixels on** with a ratio such as `3 × 2` gives `100 × 100`: each value brought up to
+  100, then the elongation's limit — as the design's bounds say.
+- **Hand checks** of § Test Impact not run by the agent: the app is launched for the user.
+
 ---
 
 ## Implementation Log
@@ -222,9 +252,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project — checks by hand (see Test Impact) |
-| README | | | |
+| Code | 5 | 2026-11-04 | `4ea7f45` model and sizing, `59b0a4b` preview / history / exports, `2918b1a` Format tab UI |
+| Unit tests | 5 | 2026-11-04 | No test project — checks by hand (see Test Impact), left to the user |
+| README | 5 | 2026-11-04 | `19779f4` RULES, READMEs, glossaries; `3ef05ad` shortcuts |
 
 ---
 
