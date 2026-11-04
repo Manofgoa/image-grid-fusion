@@ -1,6 +1,7 @@
 using System.Drawing.Imaging;
 using System.Security.Cryptography;
 using System.Text;
+using ImageGridFusion.Composition;
 
 namespace ImageGridFusion.Imaging;
 
@@ -38,23 +39,24 @@ internal static class UpscaleCache
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(what)))[..16];
     }
 
-    /// <summary>The file of frame <paramref name="page"/> of the GIF tagged <paramref name="tag"/>, enlarged <paramref name="factor"/> times.</summary>
-    public static string PathOf(string tag, int factor, int page) => Path.Combine(Folder, $"{tag}-x{factor}-{page:D5}.png");
+    /// <summary>The file of frame <paramref name="page"/> of the GIF tagged <paramref name="tag"/>, enlarged <paramref name="factor"/> times by <paramref name="model"/>.</summary>
+    public static string PathOf(string tag, int factor, UpscaleModel model, int page) =>
+        Path.Combine(Folder, $"{tag}-x{factor}-{model.ToString().ToLowerInvariant()}-{page:D5}.png");
 
     /// <summary>Writes <paramref name="frame"/> as the file of <see cref="PathOf"/>, through a partial file so a frame read back is whole.</summary>
-    public static void Save(string tag, int factor, int page, Bitmap frame)
+    public static void Save(string tag, int factor, UpscaleModel model, int page, Bitmap frame)
     {
         Directory.CreateDirectory(Folder);
-        string path = PathOf(tag, factor, page);
+        string path = PathOf(tag, factor, model, page);
         string partial = path + ".~writing";
         frame.Save(partial, ImageFormat.Png);
         File.Move(partial, path, overwrite: true);
     }
 
     /// <summary>The frame <see cref="Save"/> wrote, read into memory so the file stays free; <c>null</c> when it is not there.</summary>
-    public static Bitmap? Load(string tag, int factor, int page)
+    public static Bitmap? Load(string tag, int factor, UpscaleModel model, int page)
     {
-        string path = PathOf(tag, factor, page);
+        string path = PathOf(tag, factor, model, page);
         if (!File.Exists(path))
         {
             return null;

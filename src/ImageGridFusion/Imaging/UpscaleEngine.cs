@@ -1,5 +1,7 @@
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
+using ImageGridFusion.Composition;
 using ImageGridFusion.Explorer;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
@@ -7,8 +9,8 @@ using Microsoft.ML.OnnxRuntime.Tensors;
 namespace ImageGridFusion.Imaging;
 
 /// <summary>
-/// The Upscale's models, from the downloaded engine (<see cref="UpscaleEngineFiles"/>): Real-ESRGAN ×2 and ×4, each
-/// loaded the first time it is needed, run in tiles so a large image stays within memory. Used from one thread at a
+/// The Upscale's models, from the downloaded engine (<see cref="UpscaleEngineFiles"/>): Real-ESRGAN's RRDBNet ×2 and ×4
+/// (Quality) and its compact ×4 (Fast), each loaded the first time it is needed, run in tiles so a large image stays within memory. Used from one thread at a
 /// time. See workfiles/20261029-image-upscale.md § Engine.
 /// </summary>
 internal sealed class UpscaleEngine : IDisposable
@@ -20,7 +22,7 @@ internal sealed class UpscaleEngine : IDisposable
     // A tile's sides are padded up to a multiple of it: the ×2 model folds its input in two before anything else.
     private const int SideMultiple = 4;
 
-    private readonly Dictionary<int, InferenceSession> _sessions = [];
+    private readonly Dictionary<string, InferenceSession> _sessions = [];
 
     public void Dispose()
     {
@@ -33,17 +35,56 @@ internal sealed class UpscaleEngine : IDisposable
     }
 
     /// <summary>
-    /// <paramref name="source"/> enlarged <paramref name="factor"/> times by the model: exactly <paramref name="factor"/>
-    /// times its width and height, so the effects' fractions stay exact. The model reads the colors only; the alpha is
-    /// enlarged on its own, bilinear, and put back. <paramref name="progress"/> gets the share done after each tile;
-    /// <paramref name="cancelled"/>, asked between tiles, stops it with an <see cref="OperationCanceledException"/>.
+    /// <paramref name="source"/> enlarged <paramref name="factor"/> times by <paramref name="model"/>: exactly
+    /// <paramref name="factor"/> times its width and height, so the effects' fractions stay exact — the Fast model's ×2
+    /// its ×4 halved. The model reads the colors only; the alpha is enlarged on its own, bilinear, and put back.
+    /// <paramref name="progress"/> gets the share done after each tile; <paramref name="cancelled"/>, asked between
+    /// tiles, stops it with an <see cref="OperationCanceledException"/>.
     /// </summary>
-    public Bitmap Upscale(Bitmap source, int factor, Action<double>? progress = null, Func<bool>? cancelled = null)
+    public Bitmap Upscale(Bitmap source, UpscaleModel model, int factor, Action<double>? progress = null, Func<bool>? cancelled = null)
     {
-        if (!this._sessions.TryGetValue(factor, out var session))
+        int scale = UpscaleEngineFiles.ScaleOf(model, factor);
+        var upscaled = this.Run(source, UpscaleEngineFiles.ModelFor(model, factor), scale, progress, cancelled);
+        if (scale == factor)
         {
-            session = Load(UpscaleEngineFiles.ModelFor(factor));
-            this._sessions[factor] = session;
+            return upscaled;
+        }
+
+        using (upscaled)
+        {
+            return Reduced(upscaled, source.Width * factor, source.Height * factor);
+        }
+    }
+
+    // The bitmap halved — or reduced to any size — in high-quality bicubic, its alpha kept.
+    private static Bitmap Reduced(Bitmap bitmap, int width, int height)
+    {
+        var reduced = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+        try
+        {
+            using var g = Graphics.FromImage(reduced);
+            using var attributes = new ImageAttributes();
+            attributes.SetWrapMode(WrapMode.TileFlipXY);
+            g.CompositingMode = CompositingMode.SourceCopy;
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.DrawImage(bitmap, new Rectangle(0, 0, width, height), 0, 0, bitmap.Width, bitmap.Height, GraphicsUnit.Pixel, attributes);
+            return reduced;
+        }
+        catch
+        {
+            reduced.Dispose();
+            throw;
+        }
+    }
+
+    // The file's model run over the image in tiles, its output exactly scale times the image.
+    private Bitmap Run(Bitmap source, string file, int factor, Action<double>? progress, Func<bool>? cancelled)
+    {
+        if (!this._sessions.TryGetValue(file, out var session))
+        {
+            session = Load(file);
+            this._sessions[file] = session;
         }
 
         int width = source.Width, height = source.Height;

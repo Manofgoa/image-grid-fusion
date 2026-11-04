@@ -15,11 +15,12 @@ public sealed class UpscaledPages : PageSource
     private readonly string _tag;
     private readonly TimeSpan[] _durations;
 
-    public UpscaledPages(PageSource pages, string tag, int factor)
+    public UpscaledPages(PageSource pages, string tag, int factor, UpscaleModel model)
     {
         this._pages = pages;
         this._tag = tag;
         this.Factor = factor;
+        this.Model = model;
         this._durations = new TimeSpan[pages.Count];
         for (int page = 0; page < pages.Count; page++)
         {
@@ -30,6 +31,9 @@ public sealed class UpscaledPages : PageSource
 
     /// <summary>How many times larger its frames are than the GIF's.</summary>
     public int Factor { get; }
+
+    /// <summary>The model that enlarged them.</summary>
+    public UpscaleModel Model { get; }
 
     /// <summary>The GIF's own pages, enlarged here.</summary>
     public PageSource Source => this._pages;
@@ -50,7 +54,7 @@ public sealed class UpscaledPages : PageSource
 
     /// <summary>The frame enlarged; the GIF's own, should its file have gone from the cache.</summary>
     public override Bitmap Render(int page) =>
-        UpscaleCache.Load(this._tag, this.Factor, Math.Clamp(page, 0, this.Count - 1)) ?? this._pages.Render(page);
+        UpscaleCache.Load(this._tag, this.Factor, this.Model, Math.Clamp(page, 0, this.Count - 1)) ?? this._pages.Render(page);
 
     public override AnimationReader OpenAnimation() => new StepReader(() => this._durations, this.Render);
 }
