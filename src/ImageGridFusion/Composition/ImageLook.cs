@@ -53,8 +53,8 @@ public sealed record ImageLook
     /// </summary>
     public static double MaxZoom { get; set; } = 20;
 
-    /// <summary>A fine angle goes this far either way from the quarter turn; beyond, the next quarter turn is nearer.</summary>
-    public const int MaxFineAngle = 45;
+    /// <summary>A fine angle goes this far either way from the quarter turn: the whole circle (see workfiles/20260926-rotation-slider.md).</summary>
+    public const int MaxFineAngle = 180;
 
     // An arrival zoom this close to 100 % shows the image as the fitting rule does: the Zoom effect stays off.
     private const double ArrivalZoomTolerance = 0.005;
@@ -92,6 +92,12 @@ public sealed record ImageLook
     /// the image turns around the center of its cell, zoomed just enough to keep covering it.
     /// </summary>
     public int FineAngle { get; private init; }
+
+    /// <summary>
+    /// The Rotate effect's angle as the slider shows it, clockwise, in degrees from −179 to +180: the
+    /// quarter turn plus the fine angle, a half turn reading +180.
+    /// </summary>
+    public int Angle => WrappedAngle(Rotation + FineAngle);
 
     /// <summary>Left↔right flip, as the image is seen once rotated.</summary>
     public bool FlipX { get; private init; }
@@ -393,6 +399,31 @@ public sealed record ImageLook
     public ImageLook WithRotation(int degrees) => Rotate((degrees - Rotation) / 90) with { FineAngle = 0 };
 
     public ImageLook WithFineAngle(int degrees) => Activated(ImageEffect.Rotate) with { FineAngle = Math.Clamp(degrees, -MaxFineAngle, MaxFineAngle) };
+
+    /// <summary>
+    /// Turns the image to the <see cref="Angle"/> <paramref name="degrees"/>, the whole circle: the quarter
+    /// turn stays, the fine angle takes the rest. The image is fitted in its quarter turn before it is
+    /// turned, so changing the quarter on the way would change its size: the angle turns it smoothly.
+    /// </summary>
+    public ImageLook WithAngle(int degrees) => this.WithFineAngle(WrappedAngle(degrees - this.Rotation));
+
+    /// <summary>
+    /// The quarter turn next to <see cref="Angle"/>, strictly clockwise (<paramref name="direction"/>
+    /// positive) or counter-clockwise, in degrees from 0 to 270: +37° gives 90° clockwise, 0° the other way.
+    /// </summary>
+    public int NextQuarterTurn(int direction)
+    {
+        double quarters = this.Angle / 90.0;
+        int next = direction > 0 ? (int)Math.Floor(quarters) + 1 : (int)Math.Ceiling(quarters) - 1;
+        return ((next % 4) + 4) % 4 * 90;
+    }
+
+    /// <summary><paramref name="degrees"/> brought within −179…+180, as <see cref="Angle"/> reads.</summary>
+    public static int WrappedAngle(int degrees)
+    {
+        int turned = ((degrees % 360) + 360) % 360;
+        return turned > 180 ? turned - 360 : turned;
+    }
 
     public ImageLook ToggleFlipX() => Activated(ImageEffect.Flip) with
     {

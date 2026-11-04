@@ -200,8 +200,9 @@ A collapsible panel at the right of the preview, open at start-up: a search box 
 
 ### Rotate
 
-- Options: the four rotations, **0°**, **90°**, **180°** and **270°**, and a fine angle from −45° to +45° by 1°, added to the rotation. A rotation is pressed only while the angle falls exactly on it; clicking one sets that angle, the fine angle back to 0°.
-- At a fine angle, the image turns around the center of its cell, zoomed just enough to keep covering the part of the cell it covers unturned: no corner of the cell is left empty.
+- Options: the four quarter turns, **0°**, **90°**, **180°** and **−90°**, then the **angle**, a slider going all the way round, from −180° to +180° by 1° — 15° a click beside its thumb. A quarter turn is pressed only while the angle falls exactly on it; clicking one sets that angle. The image turns smoothly as the slider moves: it keeps the quarter turn last chosen, the slider turning it further, so the same angle reached from another quarter turn may be zoomed differently.
+- A shortcut turns the image onto the next quarter turn, either way — +37° to 90°, or to 0° ([keys](SHORTCUTS.md#anywhere)).
+- At an angle other than its quarter turn (a fine angle), the image turns around the center of its cell, zoomed just enough to keep covering the part of the cell it covers unturned: no corner of the cell is left empty.
 - Moving a turned image: the magnetic stops, their guides and the 10 % margin apply to the box around the turned image. Within its stops it keeps covering its cell; pushed beyond them, it keeps its place and zoom, and its uncovered corners get the band color.
 
 ### Flip

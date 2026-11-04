@@ -169,7 +169,7 @@ internal static class LookPreset
         ImageEffect.Zoom => look.ZoomOnArrival ? "image moved, whole at arrival"
             : look.ZoomFit != ZoomFit.None ? look.ZoomFit.ToString() : Percent(look.Zoom),
         ImageEffect.Animations => $"{look.Motion!.Kind}, every {look.Motion.Cycle.TotalSeconds.ToString("0.#", CultureInfo.InvariantCulture)} s",
-        ImageEffect.Rotate => look.FineAngle == 0 ? $"{look.Rotation}°" : $"{look.Rotation}° {look.FineAngle:+0;-0}°",
+        ImageEffect.Rotate => $"{look.Angle:+0;-0;0}°",
         ImageEffect.Flip => (look.FlipX, look.FlipY) switch
         {
             (true, true) => "horizontal and vertical",

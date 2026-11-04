@@ -51,18 +51,20 @@ Relevant components:
 
 ## Angle Model
 
-- The model keeps its current decomposition, so the renderer, the cover zoom and the pan stops are
-  untouched: `Rotation` = the quarter turn **nearest** to the angle, `FineAngle` = the rest, within
-  ±45°. Example: +130° → `Rotation` 90, `FineAngle` +40; −100° → `Rotation` 270, `FineAngle` −10.
-- A new `ImageLook.Angle` (−180…+180, derived: `Rotation + FineAngle` brought into that range) and
-  `ImageLook.WithAngle(int degrees)` replace `WithRotation` / `WithFineAngle` on the UI side.
-- `WithAngle` crosses a quarter-turn boundary through `Rotate(quarterTurns)`, as the quarter-turn
-  buttons did: the flips swap axis, the focus and the Crop's kept part (`CropEffect.QuarterTurned`)
-  turn with the image, so the image seen on screen turns continuously — no jump when the slider
-  passes ±45°, ±135°.
-- At ±45° exactly, the nearer quarter is the current one (no flip-flop around the boundary).
+- **The quarter turn stays while the slider moves; the fine angle takes the whole rest**, within
+  ±180° (`ImageLook.MaxFineAngle` = 180): `ImageLook.WithAngle(degrees)` sets
+  `FineAngle = WrappedAngle(degrees − Rotation)`, `Rotation` untouched. The image is fitted in its
+  quarter turn before it is turned, so the slider turns it **smoothly**, with no jump anywhere.
+- `ImageLook.Angle` = `WrappedAngle(Rotation + FineAngle)`, −179…+180, what the slider and the
+  presets' description show; `ImageLook.WrappedAngle` is the one wrapping rule, read by the UI too.
+- The **quarter turn** changes only through the thumbnails and Ctrl+R (`WithRotation`, the fine angle
+  back to 0°, the flips, the focus and the crop turning with it as before).
+- Hence the same angle reached from two quarter turns is not the same look: at +90° by the slider from
+  0°, the image is fitted landscape then turned, so zoomed more than the **90°** thumbnail, which
+  fits it portrait. The thumbnail is pressed only on its exact quarter with no fine angle.
 - `KeptRotation`, `TurnOn` / `TurnOff` / `Reset` keep working on (`Rotation`, `FineAngle`), unchanged.
-- `MaxFineAngle` stays (internal bound of the decomposition); the UI no longer uses it.
+- `FitCalculator`, `CanvasSizer`, `CellCopy`, the stops and the zoom routes take any fine angle as
+  they are: their geometry is cos / sin based, never bounded to ±45°.
 
 ## Ctrl+R / Ctrl+Shift+R
 
@@ -71,12 +73,14 @@ Relevant components:
 - They go to the **next quarter turn** that way (Q&A #12), so they always land on a right angle:
   Ctrl+R to the nearest quarter turn strictly clockwise (+37° → +90°, +90° → +180°, +180° → −90°),
   Ctrl+Shift+R strictly counter-clockwise (+37° → 0°, 0° → −90°). On a quarter turn, that is ±90°
-  as today.
+  as today. `ImageLook.NextQuarterTurn(direction)` gives it, `WithRotation` sets it, the fine angle
+  back to 0°.
 
 ## Effect Presets
 
-- The preset's JSON keeps its keys, `rotation` and `fineAngle`: the decomposition is unchanged, so
-  the presets already saved restore as before. Restoring goes through `WithAngle`.
+- The preset's JSON keeps its keys, `rotation` and `fineAngle`, so the presets already saved restore
+  as before. Restoring sets them exactly (`WithRotation` then `WithFineAngle`, now within ±180°):
+  the quarter turn decides the fit, so it is never re-derived from the angle.
 - Its description line shows the angle as the slider does — `+127°` instead of `90° +37°`.
 
 ## Layers
@@ -87,8 +91,10 @@ Relevant components:
 ## Cover
 
 - Unchanged behaviour, now on the whole circle: at any angle, the image turns around the center of
-  its cell, zoomed just enough to keep covering it (no empty corner). Since the fine part never
-  exceeds ±45° on the oriented image, `FitCalculator.ComputeTurned` already computes it.
+  its cell, zoomed just enough to keep covering it (no empty corner): `FitCalculator.ComputeTurned`
+  computes it for any fine angle, its cover scale capped at 8 as before.
+- The Crop's edit view still shows the image in its quarter turn, without the fine angle: with a fine
+  angle beyond ±45°, it can stand at another quarter than the cell shows.
 
 ## Documentation
 
@@ -100,9 +106,9 @@ Relevant components:
   § Keyboard Shortcuts): Ctrl+R / Ctrl+Shift+R go to the next quarter turn clockwise /
   counter-clockwise.
 - **GLOSSARY** and **GLOSSARY.fr**: a new **Angle** row — the Rotate effect's angle, −180° to +180°,
-  the image zoomed to keep covering its cell. *Fine angle* stays, redefined as the code's ±45° part
-  of the angle beyond its nearest quarter turn (`ImageLook.FineAngle`), so RULES.md, which names it
-  in the Crop and Zoom rules, stays true untouched.
+  the quarter turn last chosen plus the fine angle. *Fine angle* stays, redefined as the part of the
+  angle beyond its quarter turn, within ±180° (`ImageLook.FineAngle`), so RULES.md, which names it in
+  the Crop and Zoom rules, stays true untouched.
 
 ---
 
@@ -167,35 +173,6 @@ kept part on the same content; the Crop's consumers read `ImageLook.Shown`, whic
 fine decomposition leaves unchanged. The rest of the rotation code (quarter-turn buttons, fine-angle
 slider, `WithRotation` / `WithFineAngle`) is as the design describes. No open question.
 
-### Iteration 8 — 2026-11-04
-
-Design re-checked against the code once more. Two consumers of the rotation landed since: the
-effect presets save it as `rotation` + `fineAngle` and describe it (`LookPreset`), and the layers
-carry an `ImageLook` of their own. The presets keep their format, restore through `WithAngle` and
-describe the angle as the slider shows it; the layers need nothing. The new Keyboard Shortcuts rule
-puts `SHORTCUTS.md` / `SHORTCUTS.fr.md` in the Ctrl+R commit. No open question.
-
-### Iteration 9 — 2026-11-04
-
-The user asked whether newer work goes against the choices made here. Every workfile since the
-design that touches the rotation was read (Crop, Ctrl+R, option thumbnails, undo, wheel steps,
-position readout, zoom fit and arrival, native size, presets, cell copy, Cutout, Upscale, Layers,
-text layers, shortcuts list): **none contradicts it**. Their fine-angle rules — the cover zoom, the
-box the stops use, the native size's cover scale, the edge extension — keep holding, since the
-decomposition into quarter turn + fine angle is kept. Points added to the design rather than
-conflicts:
-- The option sliders now step onto multiples with Ctrl + wheel (`StepSlider.ControlStep`): the angle
-  slider takes the default, 5°.
-- Ctrl+R acts on the selected layer when the pointer is over no cell: the next-quarter rule applies
-  to it the same way.
-- The quarter-turn thumbnails' last label becomes −90° (Iteration 6), where
-  `workfiles/20261007-effect-option-buttons.md` wrote 270°: a change of that workfile's label only.
-
-### Iteration 10 — 2026-11-04 — ✅ Implemented
-
-Go given ("Go", Q&A #16), read as **code, unit tests and documentation**: the design sections as
-they stand at Iteration 9 are the frozen scope. No test project: the unit tests step does not apply.
-
 ### Iteration 5 — 2026-10-10
 
 Design re-checked against the code again. Two changes landed since: the quarter turns became option
@@ -246,6 +223,31 @@ conflicts:
 Go given ("Go", Q&A #16), read as **code, unit tests and documentation**: the design sections as
 they stand at Iteration 9 are the frozen scope. No test project: the unit tests step does not apply.
 
+### Iteration 11 — 2026-11-04 — 🧭 Implementation choices
+
+- **Divergent — the angle model.** The frozen design took the quarter turn nearest to the angle and
+  promised no jump at ±45°. It cannot work as written: the fitting rule fits the image in its quarter
+  turn **before** turning it (`FitCalculator.ComputeTurned` → `DrawnSize` on the oriented size), so a
+  landscape image fitted landscape at +45° and portrait at −45° from the next quarter is drawn at
+  another size — the image would jump in size, its crop ratio and the Free format with it. Closest
+  workable variant: the slider keeps the quarter turn and moves the fine angle over ±180°; the
+  geometry already took any angle. Cost: the same angle reached from two quarter turns is zoomed
+  differently, and the Crop's edit view stays in the quarter turn (see § Angle Model, § Cover).
+- **Divergent — presets.** Restored exactly (`WithRotation` + `WithFineAngle`), not through
+  `WithAngle`: the quarter turn decides the fit, so it is never re-derived.
+- `ImageLook.WrappedAngle` is public, the one wrapping rule: the slider's ±180° check and the
+  thumbnails' −90° label read it. The slider is a `StepSlider` from `MainForm.AngleSlider`, as the
+  Colors' sliders are made; its fields renamed `_angle` / `_angleLabel`.
+- The thumbnails' tooltips drop "the fine angle back to 0°" and say "90° counter-clockwise" for −90°.
+- `SHORTCUTS.md` / `SHORTCUTS.fr.md`: the two Ctrl+R rows give examples of the next quarter turn.
+- README: only the Rotate section changes; its other mentions of the fine angle stay true and are
+  left as they are.
+- The workfile's Iterations 8 to 10 had been written twice, a copy misplaced after Iteration 4 by an
+  edit of this session: that copy was removed.
+- Checked by a scratchpad program on the built assembly (not in the repo): angles, wrapping at ±180°,
+  the next quarter turn both ways, the effect turned off and on again keeping its angle — all as
+  designed.
+
 ---
 
 ## Implementation Log
@@ -255,9 +257,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 11 | 2026-11-04 | Model, options, Ctrl+R (with SHORTCUTS.md / .fr) — see Iteration 11 |
 | Unit tests | | | Not applicable — no test project |
-| README | | | |
+| README | 11 | 2026-11-04 | README / README.fr § Rotate, GLOSSARY / GLOSSARY.fr: Angle, Fine angle |
 
 ---
 

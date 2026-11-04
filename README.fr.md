@@ -200,8 +200,9 @@ Un panneau repliable à droite de l'aperçu, ouvert au démarrage : une zone de 
 
 ### Rotate (rotation)
 
-- Options : les quatre rotations, **0°**, **90°**, **180°** et **270°**, et un angle fin de −45° à +45° par pas de 1°, ajouté à la rotation. Une rotation n'est enfoncée que tant que l'angle tombe exactement dessus ; en cliquer un règle cet angle, l'angle fin revenant à 0°.
-- À un angle fin, l'image tourne autour du centre de sa cellule, zoomée juste assez pour continuer à couvrir la partie de la cellule qu'elle couvre sans rotation : aucun coin de la cellule ne reste vide.
+- Options : les quatre quarts de tour, **0°**, **90°**, **180°** et **−90°**, puis l'**angle**, un curseur qui fait tout le tour, de −180° à +180° par pas de 1° — 15° par clic à côté de son pouce. Un quart de tour n'est enfoncé que tant que l'angle tombe exactement dessus ; en cliquer un règle cet angle. L'image tourne sans à-coup pendant que le curseur bouge : elle garde le dernier quart de tour choisi, que le curseur prolonge, si bien que le même angle atteint depuis un autre quart de tour peut être zoomé autrement.
+- Un raccourci tourne l'image jusqu'au quart de tour suivant, dans un sens ou dans l'autre — +37° vers 90°, ou vers 0° ([raccourcis](SHORTCUTS.fr.md#partout)).
+- À un angle autre que son quart de tour (un angle fin), l'image tourne autour du centre de sa cellule, zoomée juste assez pour continuer à couvrir la partie de la cellule qu'elle couvre sans rotation : aucun coin de la cellule ne reste vide.
 - Déplacer une image tournée : les arrêts magnétiques, leurs guides et la marge de 10 % s'appliquent à la boîte autour de l'image tournée. Dans ses arrêts, elle continue de couvrir sa cellule ; poussée au-delà, elle garde sa place et son zoom, et ses coins découverts prennent la couleur des bandes.
 
 ### Flip (retournement)
