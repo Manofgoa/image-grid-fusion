@@ -437,6 +437,20 @@ the user: a Crop option making the cropped image a new image of the cell, as a p
 upscale. Settled (Q&A 27–30): the kept part of the source as loaded; every effect kept as an effect, the Crop and
 the Cutout reset, the Upscale off; named after its file; in this workfile. § Crop to a New Image.
 
+### Iteration 14 — 2026-11-04 — 🧭 Implementation choices
+
+Crop to a new image delivered (Q&A 31: code and documentation). Decided by the run, no project rule broken:
+
+- **Keep** after **100 %** in the Crop strip, an action like it (`CropChoice.Keep`); refused — faded, its tooltip saying
+  why — without the Crop on, on a layer, on a content with pages (`MainForm.CropKeepRefusal`), and while exporting.
+- The kept part copied with `CompositingMode.SourceCopy`, its alpha kept; the status line gives its size and Ctrl+Z.
+- The Upscale **turned off**, its setting kept for the next Upscale; a Keep of an image already cropped keeps the first
+  file as its origin (`CroppedFrom = FilePath ?? CroppedFrom`).
+- The preview names it `<stem> (crop)`, without the extension; the Upscale window too.
+- Checked on a probe with the user's 5000 × 2569 JPEG, the Crop on and a quarter turn: a 4000 × 2055 image, its file
+  none, its origin kept, the turn kept as an effect, the image as shown unchanged (2055 × 4000); ×2 then possible, ×4
+  refused with its reason; Ctrl+Z gave the 5000 × 2569 image back with its crop.
+
 ---
 
 ## Implementation Log
@@ -448,8 +462,8 @@ says so rather than staying blank.
 |---|---|---|---|
 | Code | 6, 7, 8, 10 | 2026-11-04 | Effect, engine and component, drawn bitmap and GIF pages, tab, options, save action; the preview's reduced copy, the redraw at delivery; the Upscale window, the Fast model |
 | Unit tests | 6 | 2026-11-03 | Not applicable: no test project in the repository — manual checks only |
-| README | 6, 10 | 2026-11-04 | § Upscale, the tabs, the components, the tech credits — English and French |
-| Glossary | 6, 10 | 2026-11-04 | Upscale, Upscale window, Upscale engine, the effects' list — English and French |
+| README | 6, 10, 12, 14 | 2026-11-04 | § Upscale, the tabs, the components, the tech credits — English and French |
+| Glossary | 6, 10, 14 | 2026-11-04 | Upscale, Upscale window, Upscale engine, the effects' list — English and French |
 | RULES.md | 6, 8, 10 | 2026-11-04 | § The Upscale Exception — its reduced preview copy, its window; § Options Toolbar's exception |
 
 ---
@@ -490,7 +504,7 @@ Questions asked by the agent during design, with user responses.
 | 28 | The cell's other effects afterwards? | Kept, but the Crop and the Cutout | 2026-11-04 |
 | 29 | The link to the original file? | Kept for the name | 2026-11-04 |
 | 30 | Where is it designed and implemented? | Here, in this workfile | 2026-11-04 |
-| 31 | Go for Crop to a new image? | | |
+| 31 | Go for Crop to a new image? | Code and documentation | 2026-11-04 |
 
 ---
 
