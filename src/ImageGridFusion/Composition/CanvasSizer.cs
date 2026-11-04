@@ -130,6 +130,24 @@ public static class CanvasSizer
         return At(Clamped(Math.Ceiling(LongSide(smallest) * need), cap), ratio);
     }
 
+    /// <summary>
+    /// The canvas of a grid holding the Grid background's image alone — no cell, no layer —: the image sized as the
+    /// one cell of a one-cell grid at <paramref name="ratio"/>, the smallest where it is not shrunk as drawn there
+    /// (workfiles/20261104-grid-background-image.md § Drawing, Q&amp;A 12). With a cell or a layer, it never sizes the canvas.
+    /// </summary>
+    public static Size ForBackground(BackgroundFrame background, double ratio, int maxLongSide = MaxLongSide) =>
+        Compute([background.Frame.Sizing], GridLayout.Default(1), ratio, null, maxLongSide);
+
+    /// <summary>
+    /// The canvas of any grid: the cells' (<see cref="Compute"/>), else the layers' (<see cref="ForLayers"/>), else the
+    /// Grid background's image's (<see cref="ForBackground"/>) — <paramref name="backgroundImage"/> given only while
+    /// the Grid background is on.
+    /// </summary>
+    public static Size For(IReadOnlyList<Frame> frames, GridLayout? layout, double ratio, GridBorders? borders, int maxLongSide, IReadOnlyList<LayerFrame>? layers, BackgroundFrame? backgroundImage) =>
+        layout is not null ? Compute(frames.Select(f => f.Sizing).ToList(), layout, ratio, borders, maxLongSide)
+        : layers is not { Count: > 0 } && backgroundImage is { } background ? ForBackground(background, ratio, maxLongSide)
+        : ForLayers(layers ?? [], ratio, maxLongSide);
+
     private static int Clamped(double longSide, int cap) => (int)Math.Round(Math.Clamp(longSide, MinLongSide, cap));
 
     private static int LongSide(Size canvas) => Math.Max(canvas.Width, canvas.Height);
