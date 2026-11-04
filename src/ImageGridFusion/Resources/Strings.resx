@@ -305,6 +305,7 @@ It shows inside it as a sub-group, every file of both listed there. Un-merge, on
   <data name="ExplorerNotStarted" xml:space="preserve"><value>not started</value></data>
   <data name="ExplorerNothingAddedFolders" xml:space="preserve"><value>Nothing added: folders do not become favorites</value></data>
   <data name="ExplorerNothingAddedNoFile" xml:space="preserve"><value>Nothing added: no file to add</value></data>
+  <data name="ExplorerOcrProgress" xml:space="preserve"><value>OCR {0}/{1} · {2}: {3:N0}/{4:N0}</value></data>
   <data name="ExplorerOpenFailed" xml:space="preserve"><value>Explorer could not be opened: {0}</value></data>
   <data name="ExplorerPassCaptions" xml:space="preserve"><value>Captions</value></data>
   <data name="ExplorerPassFaces" xml:space="preserve"><value>Faces</value></data>

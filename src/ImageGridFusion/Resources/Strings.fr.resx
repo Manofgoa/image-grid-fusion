@@ -305,6 +305,7 @@ Il s'affiche à l'intérieur comme un sous-groupe, tous les fichiers des deux y 
   <data name="ExplorerNotStarted" xml:space="preserve"><value>non démarré</value></data>
   <data name="ExplorerNothingAddedFolders" xml:space="preserve"><value>Rien ajouté : les dossiers ne deviennent pas des favoris</value></data>
   <data name="ExplorerNothingAddedNoFile" xml:space="preserve"><value>Rien ajouté : aucun fichier à ajouter</value></data>
+  <data name="ExplorerOcrProgress" xml:space="preserve"><value>OCR {0}/{1} · {2} : {3:N0}/{4:N0}</value></data>
   <data name="ExplorerOpenFailed" xml:space="preserve"><value>Impossible d'ouvrir l'Explorateur : {0}</value></data>
   <data name="ExplorerPassCaptions" xml:space="preserve"><value>Descriptions</value></data>
   <data name="ExplorerPassFaces" xml:space="preserve"><value>Visages</value></data>
@@ -401,9 +402,9 @@ Dans la vue Dossiers, les dossiers viennent en premier, de A à Z.</value></data
   <data name="MainBordersTwitterCornersOnly" xml:space="preserve"><value>Coins Twitter (format Twitter uniquement)</value></data>
   <data name="MainBrowse" xml:space="preserve"><value>Parcourir…</value></data>
   <data name="MainButtonCopyFormat" xml:space="preserve"><value>Copier {0}</value></data>
-  <data name="MainButtonCopyLast" xml:space="preserve"><value>Copier la dernière {0}</value></data>
+  <data name="MainButtonCopyLast" xml:space="preserve"><value>Copier le dernier {0}</value></data>
   <data name="MainButtonSaveFormat" xml:space="preserve"><value>Enregistrer {0}…</value></data>
-  <data name="MainButtonSaveLast" xml:space="preserve"><value>Enregistrer la dernière {0}…</value></data>
+  <data name="MainButtonSaveLast" xml:space="preserve"><value>Enregistrer le dernier {0}…</value></data>
   <data name="MainCancel" xml:space="preserve"><value>Annuler</value></data>
   <data name="MainCascadePauseTip" xml:space="preserve"><value>Combien de temps chaque vidéo et GIF animé reste immobile après chaque tour, avant que le suivant ne joue</value></data>
   <data name="MainCascadeUnavailable" xml:space="preserve"><value>Aucune vidéo ni aucun GIF animé n'est en lecture : il n'y a rien à jouer l'un après l'autre</value></data>
@@ -565,7 +566,7 @@ Redémarrer l'application maintenant ?</value></data>
   <data name="MainLengthTurn" xml:space="preserve"><value>{0} — tour de {1}, à partir de {2}</value></data>
   <data name="MainListAnd" xml:space="preserve"><value>{0} et {1}</value></data>
   <data name="MainMenuCopyCell" xml:space="preserve"><value>Copier la cellule</value></data>
-  <data name="MainMenuCopyLastAt" xml:space="preserve"><value>Copier la dernière {0} ({1:HH:mm})</value></data>
+  <data name="MainMenuCopyLastAt" xml:space="preserve"><value>Copier le dernier {0} ({1:HH:mm})</value></data>
   <data name="MainMenuFindSimilar" xml:space="preserve"><value>Trouver des images similaires</value></data>
   <data name="MainMenuSaveUpscaled" xml:space="preserve"><value>Enregistrer l'image agrandie…</value></data>
   <data name="MainMotionCycleTip" xml:space="preserve"><value>La durée d'un aller-retour : plus à droite, plus rapide</value></data>

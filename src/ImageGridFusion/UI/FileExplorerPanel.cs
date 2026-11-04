@@ -1942,7 +1942,7 @@ internal sealed partial class FileExplorerPanel : Panel
 
             // The pass, the file's rank in it, then its name — none for a file that has no text to find.
             string doing = ContentPasses.IsOcr(p.Pass)
-                ? Texts.Format("OCR {0}/{1} · {2}: {3:N0}/{4:N0}", Array.IndexOf(ContentPasses.Ocr, p.Pass) + 1, ContentPasses.Ocr.Length, ContentPasses.NameOf(p.Pass), p.Done + 1, p.Total)
+                ? Texts.Format(Strings.ExplorerOcrProgress, Array.IndexOf(ContentPasses.Ocr, p.Pass) + 1, ContentPasses.Ocr.Length, ContentPasses.NameOf(p.Pass), p.Done + 1, p.Total)
                 : Texts.Format("{0}: {1:N0}/{2:N0}", ContentPasses.NameOf(p.Pass), p.Done + 1, p.Total);
             this.SetActivity(p.File is null ? null
                 : p.Kind == ContentKind.None ? doing
