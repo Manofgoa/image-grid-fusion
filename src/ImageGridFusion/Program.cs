@@ -77,6 +77,7 @@ internal static class Program
             StartupRegistration.Refresh();
             Favorites.Migrate();
             _ = Task.Run(UrlDownloads.Clean);
+            _ = Task.Run(Imaging.UpscaleCache.Clean);
         }
 
         // Before the main window: its zoom slider takes its range from it.

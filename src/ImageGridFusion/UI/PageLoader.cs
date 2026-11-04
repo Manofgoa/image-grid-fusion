@@ -31,7 +31,7 @@ internal sealed class PageLoader
 
     private async Task RenderAsync(SourceImage image)
     {
-        var pages = image.Pages!;
+        var pages = image.DrawnPages!;
         while (!image.IsDisposed && _pending.Remove(image, out int page))
         {
             Bitmap bitmap;

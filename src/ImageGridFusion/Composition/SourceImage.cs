@@ -15,6 +15,21 @@ public sealed class SourceImage : IDisposable
     // The image cut out as its look's Cutout effect says, for a page; drawn while they still match.
     private (int Page, CutoutEffect Effect, Bitmap Bitmap)? _cut;
 
+    // The enlargements kept for a setting chosen again to apply at once — a still's being heavy, a few only.
+    private const int KeptUpscales = 2;
+
+    // A still enlarged by the Upscale window, each for a page and a setting, the latest first; drawn while the look applies it.
+    private readonly List<(int Page, UpscaleEffect Setting, Bitmap Bitmap)> _upscaled = [];
+
+    // An animated GIF's pages enlarged by the Upscale window, every frame ready, per setting (workfiles/20261029-image-upscale.md).
+    private readonly Dictionary<UpscaleEffect, PageSource> _upscaledPages = [];
+
+    // The preview's copy of an enlarged drawn bitmap, and the bitmap it was reduced from (workfiles/20261029-image-upscale.md § Drawn Bitmap).
+    private (Bitmap From, Bitmap Copy)? _shown;
+
+    /// <summary>The longest side the preview draws an enlarged image from: past it, from a reduced copy (<see cref="ShownBitmap"/>).</summary>
+    public const int ShownMaxSide = 2048;
+
     public SourceImage(Bitmap bitmap, string? filePath, PageSource? pages = null, int page = 0)
     {
         Bitmap = bitmap;
@@ -27,6 +42,12 @@ public sealed class SourceImage : IDisposable
     public Bitmap Bitmap { get; private set; }
 
     public string? FilePath { get; private set; }
+
+    /// <summary>
+    /// The file an image without one was cut from by the Crop's Keep — its name and folder kept for naming it
+    /// (workfiles/20261029-image-upscale.md § Crop to a New Image); <c>null</c> otherwise.
+    /// </summary>
+    public string? CroppedFrom { get; init; }
 
     /// <summary>A text pasted or dropped: the form it was read from, saved as is when it becomes a favorite.</summary>
     public TextOrigin? TextOrigin { get; set; }
@@ -51,16 +72,111 @@ public sealed class SourceImage : IDisposable
     public bool CutsOut => !this.IsAnimated;
 
     /// <summary>
-    /// The bitmap the image is drawn from — by the preview, the exports and the layers: cut out while
-    /// its Cutout effect is on and its cut-out ready, else <see cref="Bitmap"/>. Same size as it.
+    /// Whether the Upscale effect applies to it: a still, or an animated GIF — its frames enlarged one by one. A video,
+    /// a PDF, a text or a thumbnail is left alone: the latter three render again at any resolution already.
     /// </summary>
-    public Bitmap DrawnBitmap =>
-        this.Look.Cutout is { } effect && this.CutsOut && this._cut is { } cut && cut.Page == this.Page && cut.Effect.Equals(effect) && cut.Bitmap.Size == this.Bitmap.Size
-            ? cut.Bitmap
-            : this.Bitmap;
+    public bool Upscales => this.Pages is null || this.Pages.UpscaledFrom is not null;
 
-    /// <summary>The Cutout on, its cut-out not ready yet: the image is drawn uncut meanwhile.</summary>
-    public bool CutoutPending => this.Look.Cutout is not null && this.CutsOut && ReferenceEquals(this.DrawnBitmap, this.Bitmap);
+    /// <summary>The size the Upscale enlarges: the image as loaded — a GIF's frames, whatever size the player shows them at.</summary>
+    public Size UpscaleSize => this.Pages?.UpscaledFrom ?? this.Bitmap.Size;
+
+    /// <summary>
+    /// The still's bitmap enlarged as its Upscale effect applies it, while it is on and its enlargement computed for the
+    /// page shown; <c>null</c> otherwise. Exactly the factor times <see cref="Bitmap"/>'s size.
+    /// </summary>
+    public Bitmap? UpscaledBitmap => this.Look.Upscale is { } upscale && this.Pages is null ? this.UpscaledFor(upscale) : null;
+
+    /// <summary>The still enlarged as <paramref name="setting"/> says for the page shown, when the Upscale window computed it this session.</summary>
+    public Bitmap? UpscaledFor(UpscaleEffect setting)
+    {
+        var size = new Size(this.Bitmap.Width * setting.Factor, this.Bitmap.Height * setting.Factor);
+        return this._upscaled.FirstOrDefault(u => u.Page == this.Page && u.Setting == setting && u.Bitmap.Size == size).Bitmap;
+    }
+
+    /// <summary>Whether an enlargement as <paramref name="setting"/> says is ready: the Upscale applies it at once, without its window.</summary>
+    public bool HasUpscale(UpscaleEffect setting) =>
+        this.Pages is null ? this.UpscaledFor(setting) is not null : this._upscaledPages.ContainsKey(setting);
+
+    /// <summary>What the Cutout cuts: the still enlarged while its upscale is ready, else <see cref="Bitmap"/> (workfiles/20261029-image-upscale.md § Drawn Bitmap).</summary>
+    public Bitmap UpscaleBase => this.UpscaledBitmap ?? this.Bitmap;
+
+    /// <summary>
+    /// The pages the image plays and shows its pages from — by the player, the page slider and the exports: an animated
+    /// GIF's enlarged by its Upscale effect while it is on and every frame ready, else <see cref="Pages"/>.
+    /// </summary>
+    public PageSource? DrawnPages =>
+        this.Look.Upscale is { } upscale && this._upscaledPages.TryGetValue(upscale, out var pages) ? pages : this.Pages;
+
+    /// <summary>
+    /// The Upscale on and within the PNG's cap, its enlargement not computed — a preset restored, an enlargement let go:
+    /// the image is drawn as loaded, and a Copy or a Save of the grid opens the Upscale window first.
+    /// </summary>
+    public bool UpscalePending =>
+        this.Look.Upscale is { } upscale && this.Upscales && UpscaleEffect.Fits(this.UpscaleSize, upscale.Factor) && !this.HasUpscale(upscale);
+
+    /// <summary>
+    /// The bitmap the image is drawn from — by the preview, the exports and the layers: enlarged while its Upscale
+    /// effect is on and ready (<see cref="UpscaleBase"/>), then cut out while its Cutout effect is on and its cut-out
+    /// ready — a cut-out of the image as loaded still drawn while the enlarged one is computed.
+    /// </summary>
+    public Bitmap DrawnBitmap
+    {
+        get
+        {
+            var drawn = this.UpscaleBase;
+            return this.Look.Cutout is { } effect && this.CutsOut && this._cut is { } cut && cut.Page == this.Page && cut.Effect.Equals(effect)
+                && (cut.Bitmap.Size == drawn.Size || cut.Bitmap.Size == this.Bitmap.Size)
+                ? cut.Bitmap
+                : drawn;
+        }
+    }
+
+    /// <summary>The Cutout on, its cut-out of <see cref="UpscaleBase"/> not ready yet: the image is drawn uncut — or cut at its loaded size — meanwhile.</summary>
+    public bool CutoutPending =>
+        this.Look.Cutout is { } effect && this.CutsOut
+        && !(this._cut is { } cut && cut.Page == this.Page && cut.Effect.Equals(effect) && cut.Bitmap.Size == this.UpscaleBase.Size);
+
+    /// <summary>
+    /// The bitmap the preview draws: <see cref="DrawnBitmap"/>, but an enlargement past <see cref="ShownMaxSide"/> on its
+    /// longer side drawn from a copy reduced to it — made once per enlargement, kept beside it. The exports, a cell
+    /// copy and a save read <see cref="DrawnBitmap"/>, the highest resolution usable (workfiles/20261029-image-upscale.md
+    /// § Drawn Bitmap).
+    /// </summary>
+    public Bitmap ShownBitmap
+    {
+        get
+        {
+            var drawn = this.DrawnBitmap;
+            if (ReferenceEquals(drawn, this.Bitmap) || Math.Max(drawn.Width, drawn.Height) <= ShownMaxSide)
+            {
+                return drawn;
+            }
+
+            if (this._shown is { } shown && ReferenceEquals(shown.From, drawn))
+            {
+                return shown.Copy;
+            }
+
+            double scale = ShownMaxSide / (double)Math.Max(drawn.Width, drawn.Height);
+            var copy = new Bitmap(Math.Max(1, (int)Math.Round(drawn.Width * scale)), Math.Max(1, (int)Math.Round(drawn.Height * scale)), System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+            try
+            {
+                using var g = Graphics.FromImage(copy);
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                g.DrawImage(drawn, new Rectangle(Point.Empty, copy.Size));
+            }
+            catch
+            {
+                copy.Dispose();
+                throw;
+            }
+
+            this._shown?.Copy.Dispose();
+            this._shown = (drawn, copy);
+            return copy;
+        }
+    }
 
     /// <summary>The image the Cutout's model last read, while a pick reads it again (<see cref="PickEmbedding"/>).</summary>
     public PickEmbedding? PickEmbedding { get; set; }
@@ -88,6 +204,26 @@ public sealed class SourceImage : IDisposable
         previous?.Dispose();
     }
 
+    /// <summary>Takes <paramref name="bitmap"/>, the still enlarged as <paramref name="setting"/> says on <paramref name="page"/>, the oldest ones disposed past a few.</summary>
+    public void SetUpscaled(int page, UpscaleEffect setting, Bitmap bitmap)
+    {
+        foreach (var replaced in this._upscaled.Where(u => u.Page == page && u.Setting == setting).ToList())
+        {
+            this._upscaled.Remove(replaced);
+            replaced.Bitmap.Dispose();
+        }
+
+        this._upscaled.Insert(0, (page, setting, bitmap));
+        while (this._upscaled.Count > KeptUpscales)
+        {
+            this._upscaled[^1].Bitmap.Dispose();
+            this._upscaled.RemoveAt(this._upscaled.Count - 1);
+        }
+    }
+
+    /// <summary>Takes <paramref name="pages"/>, the GIF's frames enlarged as <paramref name="setting"/> says, every one ready.</summary>
+    public void SetUpscaledPages(UpscaleEffect setting, PageSource pages) => this._upscaledPages[setting] = pages;
+
     /// <summary>
     /// A text laying its content out for its zoom: its pages hold the zoom, so it is drawn at 100 %,
     /// filling its cell. Not while cropped — a cropped text keeps its layout and zooms like an image
@@ -109,7 +245,7 @@ public sealed class SourceImage : IDisposable
     public bool Sharpens => this.Pages?.Sharpens ?? false;
 
     /// <summary>What the canvas sizing reads: the image as drawn, at its unzoomed resolution, with the look it is drawn with.</summary>
-    public SizedImage Sizing => new(Frame.Unsharpened(this.Look.Shown(this.Bitmap.Size), this.Sharpening), this.DrawnLook, this.Sharpens);
+    public SizedImage Sizing => new(Frame.Unsharpened(this.Look.Shown(this.DrawnBitmap.Size), this.Sharpening), this.DrawnLook, this.Sharpens);
 
     public bool IsDisposed { get; private set; }
 
@@ -119,6 +255,8 @@ public sealed class SourceImage : IDisposable
     /// </summary>
     public long MemoryBytes => this.IsDisposed ? 0 : (long)this.Bitmap.Width * this.Bitmap.Height * 4 + (this.Pages?.MemoryBytes ?? 0)
         + (this._cut is { } cut ? (long)cut.Bitmap.Width * cut.Bitmap.Height * 4 : 0)
+        + this._upscaled.Sum(u => (long)u.Bitmap.Width * u.Bitmap.Height * 4)
+        + (this._shown is { } shown ? (long)shown.Copy.Width * shown.Copy.Height * 4 : 0)
         + this._masks.Sum(m => m.Mask.MemoryBytes) + (this.PickEmbedding?.MemoryBytes ?? 0);
 
     /// <summary>Plays when shown: a video, an animated GIF, a PDF of several pages, a text longer than its cell.</summary>
@@ -231,6 +369,8 @@ public sealed class SourceImage : IDisposable
         IsDisposed = true;
         Bitmap.Dispose();
         this._cut?.Bitmap.Dispose();
+        this._upscaled.ForEach(u => u.Bitmap.Dispose());
+        this._shown?.Copy.Dispose();
         Pages?.Dispose();
     }
 }

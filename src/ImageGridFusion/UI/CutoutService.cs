@@ -55,7 +55,8 @@ internal sealed class CutoutService : IDisposable
             return;
         }
 
-        var key = (image, image.Page, effect, image.Bitmap.Size);
+        // Keyed on what it cuts: the image enlarged while its Upscale is ready (workfiles/20261029-image-upscale.md § Drawn Bitmap).
+        var key = (image, image.Page, effect, image.UpscaleBase.Size);
         if (this._running.ContainsKey(key) || this._failed.Contains((image, image.Page, effect.MaskKey)))
         {
             return;
@@ -162,7 +163,7 @@ internal sealed class CutoutService : IDisposable
         try
         {
             // Its turn come, the request may be stale: the look, the page or the size changed, or the image left.
-            if (this._disposed || image.IsDisposed || image.Look.Cutout != effect || image.Page != page || image.Bitmap.Size != size || !image.CutoutPending)
+            if (this._disposed || image.IsDisposed || image.Look.Cutout != effect || image.Page != page || image.UpscaleBase.Size != size || !image.CutoutPending)
             {
                 return;
             }
@@ -170,7 +171,9 @@ internal sealed class CutoutService : IDisposable
             string key = effect.MaskKey;
             var mask = image.MaskFor(key);
             var embedding = image.PickEmbedding is { } kept && kept.Page == page ? kept : null;
+            // The mask read on the image as loaded, applied to the image enlarged when it is: upscale, then the mask.
             var copy = new Bitmap(image.Bitmap);
+            var cutFrom = ReferenceEquals(image.UpscaleBase, image.Bitmap) ? null : new Bitmap(image.UpscaleBase);
             (CutoutMask Mask, PickEmbedding? Embedding, Bitmap Cut) result;
             try
             {
@@ -194,7 +197,7 @@ internal sealed class CutoutService : IDisposable
                         }
                     }
 
-                    return (mask, embedding, mask.Apply(copy, effect));
+                    return (mask, embedding, mask.Apply(cutFrom ?? copy, effect));
                 });
             }
             catch (Exception e) when (e is Microsoft.ML.OnnxRuntime.OnnxRuntimeException or OutOfMemoryException or IOException or UnauthorizedAccessException or DllNotFoundException or ArgumentException)
@@ -206,6 +209,7 @@ internal sealed class CutoutService : IDisposable
             finally
             {
                 copy.Dispose();
+                cutFrom?.Dispose();
                 this._usedAt = Environment.TickCount64;
             }
 
@@ -221,7 +225,7 @@ internal sealed class CutoutService : IDisposable
                 image.PickEmbedding = read;
             }
 
-            if (image.Page == page && image.Bitmap.Size == size)
+            if (image.Page == page && image.UpscaleBase.Size == size)
             {
                 image.SetCut(page, effect, result.Cut);
                 this.Completed?.Invoke(this, image);

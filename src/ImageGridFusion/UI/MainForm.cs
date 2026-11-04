@@ -62,6 +62,7 @@ internal sealed partial class MainForm : Form
     private readonly ContextMenuStrip _cellMenu = new();
     private readonly ToolStripMenuItem _findSimilarCell = new("Find similar images");
     private readonly ToolStripMenuItem _copyCell = new("Copy cell") { ShortcutKeyDisplayString = "Ctrl+C" };
+    private readonly ToolStripMenuItem _saveUpscaledCell = new("Save upscaled image…");
 
     /// <summary>The cell the context menu was opened on, by its slot.</summary>
     private int _cellMenuCell = -1;
@@ -256,6 +257,24 @@ internal sealed partial class MainForm : Form
     private readonly Label _contrastLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
 
     private readonly BlurKindStrip _blurKind = new() { Anchor = AnchorStyles.Left };
+    private readonly UpscaleStrip _upscaleStrip = new() { Anchor = AnchorStyles.Left };
+    private readonly UpscaleModelStrip _upscaleModel = new() { Anchor = AnchorStyles.Left };
+    private readonly Button _upscaleButton = new()
+    {
+        Text = "Upscale",
+        AutoSize = true,
+        Anchor = AnchorStyles.Left,
+        Margin = new Padding(12, 0, 0, 0),
+        Padding = new Padding(6, 4, 10, 4),
+        ImageAlign = ContentAlignment.MiddleLeft,
+        TextImageRelation = TextImageRelation.ImageBeforeText,
+    };
+
+    // Why an upscale is not possible for the selected image, said after the Upscale button; empty when all are.
+    private readonly Label _upscaleReason = new() { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(12, 0, 0, 0), MaximumSize = new Size(320, 0) };
+
+    // The Upscale options' setting chosen, for the image and the setting applied it was chosen from (UpscaleChosen).
+    private (SourceImage Image, UpscaleEffect Applied, UpscaleEffect Chosen)? _upscaleChoice;
     private readonly PictureBox _blurIntensityIcon = new() { SizeMode = PictureBoxSizeMode.CenterImage, Anchor = AnchorStyles.Left };
     private readonly TrackBar _blurIntensity = OptionSlider(0, 100, 10);
     private readonly Label _blurIntensityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
@@ -289,6 +308,7 @@ internal sealed partial class MainForm : Form
 
     // The Cutout's cut-outs, computed off the UI thread, and its engine's download while it runs (workfiles/20261029-cutout.md).
     private readonly CutoutService _cutouts = new();
+    private readonly UpscaleService _upscales = new();
 
     // The emoji fonts' download or update while it runs (workfiles/20261102-emoji-fonts.md § Shipped Fonts).
     private readonly TrackBar _volume = OptionSlider(0, (int)(VolumeEffect.MaxLevel * 100), 10);
@@ -568,6 +588,7 @@ internal sealed partial class MainForm : Form
         cutoutEnclosedLines.FlowDirection = FlowDirection.TopDown;
         cutoutEnclosedLines.Controls.AddRange([cutoutToleranceLine, cutoutGapsLine]);
         this._options[ImageEffect.Cutout].Controls.AddRange([this._cutoutMode, cutoutEnclosedLines, this._cutoutReach, this._cutoutBackground, cutoutLines]);
+        this._options[ImageEffect.Upscale].Controls.AddRange([this._upscaleModel, this._upscaleStrip, this._upscaleButton, this._upscaleReason]);
         _options[ImageEffect.Zoom].Controls.AddRange([_zoom, _zoomLabel, this._zoomFit]);
         this._motionKind.Items.AddRange(Enum.GetNames<MotionKind>());
         this._motionKind.SelectedIndex = (int)MotionEffect.Default.Kind;
@@ -917,7 +938,11 @@ internal sealed partial class MainForm : Form
         _fineAngle.ValueChanged += (_, _) => SetFineAngle();
         this._crop.Picked += (_, choice) =>
         {
-            if (choice.Whole)
+            if (choice.Keep)
+            {
+                this.KeepCrop();
+            }
+            else if (choice.Whole)
             {
                 this.SetCropWhole();
             }
@@ -997,6 +1022,17 @@ internal sealed partial class MainForm : Form
         this._toolTip.SetToolTip(this._cutoutGaps, "Closes the outline over gaps up to this width, so what it almost encloses is kept too — Plain mode, or Fill holes");
         this._preview.Cutouts = this._cutouts;
         this._cutouts.Failed += (_, message) => this.ShowStatus(message, error: true);
+        this._preview.Upscales = this._upscales;
+        this._upscaleModel.Picked += (_, model) => this.ChooseUpscale(setting => setting.WithModel(model));
+        this._upscaleStrip.Picked += (_, factor) => this.ChooseUpscale(setting => setting.WithFactor(UpscaleStrip.FactorOf(factor)));
+        this._upscaleButton.Click += (_, _) =>
+        {
+            if (this._preview.SelectedImage is { } image)
+            {
+                this.ApplyUpscale(image, this.UpscaleChosen(image));
+            }
+        };
+        this._toolTip.SetToolTip(this._upscaleButton, "Computes the enlargement chosen, after showing its size, its weight and its duration");
         this._preview.CutoutPicked += (_, pick) => this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithPoint(pick.Point, pick.Add)));
         this._preview.CutoutPickEnded += (_, _) => this._cutoutMode.Armed = false;
         this._cutoutReach.Picked += (_, reach) => this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithReach(reach)));
@@ -1203,9 +1239,18 @@ internal sealed partial class MainForm : Form
             int cell = this._cellMenuCell;
             this.CopyAlone(() => this._preview.RenderCellAlone(cell), "Cell");
         };
+        this._saveUpscaledCell.Click += (_, _) =>
+        {
+            if (this._cellMenu.Tag is SourceImage image && this._preview.Images.Contains(image))
+            {
+                _ = this.SaveUpscaledAsync(image);
+            }
+        };
         this._cellMenu.Items.Add(this._copyCell);
         this._cellMenu.Items.Add(this._findSimilarCell);
+        this._cellMenu.Items.Add(this._saveUpscaledCell);
         UiIcons.Set(this._copyCell, UiIcons.Copy);
+        UiIcons.Set(this._saveUpscaledCell, UiIcons.SaveUpscaled);
         UiIcons.Set(this._findSimilarCell, UiIcons.FindSimilar);
         UiIcons.Attach(this._cellMenu);
         _explorer.MessageWhileCollapsed += (_, message) => ShowStatus(message.Text, message.Error);
@@ -1224,6 +1269,7 @@ internal sealed partial class MainForm : Form
             // Before the preview, which disposes the images it shows: the history disposes the others.
             this._history.Dispose();
             this._cutouts.Dispose();
+            this._upscales.Dispose();
             this._transportTimer.Dispose();
             _settingsMenu.Dispose();
             this._cellMenu.Dispose();
@@ -1269,6 +1315,7 @@ internal sealed partial class MainForm : Form
                 ImageEffect.Background => UiIcons.Background.Copy(size),
                 ImageEffect.Crop => EffectIcons.Crop(size),
                 ImageEffect.Cutout => UiIcons.Cutout.Copy(size),
+                ImageEffect.Upscale => UiIcons.Upscale.Copy(size),
                 ImageEffect.Zoom => UiIcons.Zoom.Copy(size),
                 ImageEffect.Animations => UiIcons.Animations.Copy(size),
                 ImageEffect.Rotate => UiIcons.Rotate.Copy(size),
@@ -1278,6 +1325,20 @@ internal sealed partial class MainForm : Form
                 ImageEffect.Volume => UiIcons.Volume.Copy(size),
                 _ => UiIcons.Blur.Copy(size),
             });
+        }
+
+        // Its icon with a gap after it: a button lays its image and its text side by side, touching.
+        using (var icon = UiIcons.Upscale.Copy(size))
+        {
+            var spaced = new Bitmap(size + this.LogicalToDeviceUnits(6), size);
+            using (var g = Graphics.FromImage(spaced))
+            {
+                g.DrawImage(icon, 0, 0, size, size);
+            }
+
+            var previousIcon = this._upscaleButton.Image;
+            this._upscaleButton.Image = spaced;
+            previousIcon?.Dispose();
         }
 
         _globalTabs.SetIcon(GlobalEffect.Format, EffectIcons.Format(size));
@@ -2363,6 +2424,11 @@ internal sealed partial class MainForm : Form
             return;
         }
 
+        if (!this.EnsureUpscaled())
+        {
+            return;
+        }
+
         await this.WaitForCutoutsAsync();
         var clock = Stopwatch.StartNew();
         (Bitmap Bitmap, SourceImage Image)? rendered;
@@ -2973,6 +3039,11 @@ internal sealed partial class MainForm : Form
     /// </summary>
     private async Task<Bitmap?> RenderStillAsync(int maxLongSide)
     {
+        if (!this.EnsureUpscaled())
+        {
+            return null;
+        }
+
         await this.WaitForCutoutsAsync();
         if (!_preview.Images.Concat(this.ActiveLayerImages).Any(i => i.IsAnimated))
         {
@@ -3032,6 +3103,11 @@ internal sealed partial class MainForm : Form
     /// </summary>
     private async Task<GridExport.Result?> ExportAnimationAsync(string path, GridExport.Format format)
     {
+        if (!this.EnsureUpscaled())
+        {
+            return null;
+        }
+
         await this.WaitForCutoutsAsync();
         // The stills are copied here, on the UI thread: a copy failing for want of memory fails like the export.
         GridExport.Job job;
@@ -3554,7 +3630,12 @@ internal sealed partial class MainForm : Form
     private void ToggleEffect(ImageEffect effect)
     {
         _selectedEffect = effect;
-        if (_preview.SelectedImage?.Look is { } look && (effect != ImageEffect.Cutout || this.CutoutEngineReady(look, look.TurnOn(effect))))
+        // The Upscale turned on through its window, unless the setting chosen is computed already (workfiles/20261029-image-upscale.md).
+        if (effect == ImageEffect.Upscale && this._preview.SelectedImage is { } image && !image.Look.IsActive(effect))
+        {
+            this.ApplyUpscale(image, this.UpscaleChosen(image));
+        }
+        else if (_preview.SelectedImage?.Look is { } look && (effect != ImageEffect.Cutout || this.CutoutEngineReady(look, look.TurnOn(effect))))
         {
             _preview.SetSelectedLook(look.IsActive(effect) ? look.TurnOff(effect) : look.TurnOn(effect));
         }
@@ -3734,6 +3815,50 @@ internal sealed partial class MainForm : Form
     private void SetCropWhole() =>
         this.ChangeLook(ImageEffect.Crop, look => look.Crop is { } crop ? look.WithCrop(crop.Whole()) : look);
 
+    /// <summary>Why the Crop's Keep cannot make the kept part the selected cell's image; <c>null</c> when it can.</summary>
+    private string? CropKeepRefusal(SourceImage? image) =>
+        image is null ? "Select a cell first"
+        : this._preview.HasLayerSelection ? "Keep works on a cell's image, not on a layer"
+        : image.Pages is not null ? "Keep works on still images: a GIF, a video, a PDF or a text keeps its crop"
+        : image.Look.Crop is null ? "Turn the Crop on first: Keep makes its kept part the cell's image"
+        : null;
+
+    /// <summary>
+    /// The Crop's Keep: the kept part of the image as loaded becomes the cell's image — no orientation, color nor any
+    /// effect drawn into it — its look carried over as effects but the Crop and the Cutout, back to their defaults, and
+    /// the Upscale, turned off; named after the file it was cut from (workfiles/20261029-image-upscale.md § Crop to a New
+    /// Image).
+    /// </summary>
+    private void KeepCrop()
+    {
+        if (this.IsExporting || this._preview.SelectedImage is not { } image || this.CropKeepRefusal(image) is not null || image.Look.Crop is not { } crop)
+        {
+            return;
+        }
+
+        var part = crop.Pixels(image.Bitmap.Size);
+        var kept = new Bitmap(Math.Max(1, part.Width), Math.Max(1, part.Height), PixelFormat.Format32bppArgb);
+        try
+        {
+            using var g = Graphics.FromImage(kept);
+            g.CompositingMode = CompositingMode.SourceCopy;
+            g.DrawImage(image.Bitmap, new Rectangle(Point.Empty, kept.Size), part, GraphicsUnit.Pixel);
+        }
+        catch
+        {
+            kept.Dispose();
+            throw;
+        }
+
+        var look = image.Look.Reset(ImageEffect.Crop).Reset(ImageEffect.Cutout);
+        this._preview.ReplaceSelectedCell(new SourceImage(kept, filePath: null)
+        {
+            CroppedFrom = image.FilePath ?? image.CroppedFrom,
+            Look = look.IsActive(ImageEffect.Upscale) ? look.TurnOff(ImageEffect.Upscale) : look,
+        });
+        this.ShowStatus($"The kept part is the cell's image now — {kept.Width} × {kept.Height} px; Ctrl+Z gives the whole image back");
+    }
+
     /// <summary>
     /// The Cutout's modes: Subject brings the main subject back; Pick turns the effect on and waits for a
     /// click on the selected cell — a layer is picked on in its edit view.
@@ -3857,6 +3982,215 @@ internal sealed partial class MainForm : Form
         {
             this.EndExport();
         }
+    }
+
+    /// <summary>The upscale engine's <paramref name="model"/> missing: the Component updates window opened on its rows.</summary>
+    private void OfferUpscaleEngine(UpscaleModel model) =>
+        this.ShowComponents(new ComponentNeed(
+            ComponentRegistry.Of(model == UpscaleModel.Fast ? ComponentRegistry.UpscaleFast : ComponentRegistry.Upscale, ComponentRegistry.OnnxRuntime).Where(c => !c.IsInstalled).ToList(),
+            $"The Upscale effect's {model} model enlarges an image with the upscale engine. Click Upscale again once it is installed."));
+
+    /// <summary>
+    /// Turns the Upscale on for <paramref name="image"/> with <paramref name="setting"/>: at once when the image holds its
+    /// enlargement already, else once the Upscale window has computed it — the engine's model installed first. Returns
+    /// whether the image now holds it (workfiles/20261029-image-upscale.md § Upscale Window).
+    /// </summary>
+    private bool ApplyUpscale(SourceImage image, UpscaleEffect setting)
+    {
+        if (this.IsExporting || image.IsDisposed || !image.Upscales || !UpscaleEffect.Fits(image.UpscaleSize, setting.Factor))
+        {
+            return false;
+        }
+
+        if (!image.HasUpscale(setting))
+        {
+            if (!UpscaleEngineFiles.IsAvailable(setting.Model))
+            {
+                this.OfferUpscaleEngine(setting.Model);
+                this.UpdateEffects();
+                return false;
+            }
+
+            string name = image.FilePath is { } path ? Path.GetFileName(path)
+                : image.CroppedFrom is { } from ? $"{Path.GetFileNameWithoutExtension(from)} (crop)"
+                : "the cell's image";
+            using var window = new UpscaleWindow(image, setting, this._upscales, name);
+            if (window.ShowDialog(this) != DialogResult.OK || image.IsDisposed || !image.HasUpscale(setting))
+            {
+                this.UpdateEffects();
+                return false;
+            }
+        }
+
+        this._preview.SetLookOf(image, image.Look.TurnOn(ImageEffect.Upscale).WithUpscale(setting));
+        this.UpdateEffects();
+        return true;
+    }
+
+    /// <summary>
+    /// A Copy or a Save of the grid draws no image whose Upscale is on without its enlargement: the Upscale window opens
+    /// for each first. Returns false when one is cancelled — the Copy or the Save is then cancelled too
+    /// (workfiles/20261029-image-upscale.md § Drawn Bitmap).
+    /// </summary>
+    private bool EnsureUpscaled()
+    {
+        foreach (var image in this._preview.Images.Concat(this.ActiveLayerImages).Where(i => i.UpscalePending).ToList())
+        {
+            if (!this.ApplyUpscale(image, image.Look.Upscale!))
+            {
+                this.ShowStatus("Copy cancelled: an image's Upscale is not computed", error: true);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// The setting the Upscale options show chosen: the selected image's — applied while it is on, kept otherwise —
+    /// until a thumbnail picks another, the Upscale button or the checkbox applying it.
+    /// </summary>
+    private UpscaleEffect UpscaleChosen(SourceImage image)
+    {
+        var applied = image.Look.TurnOn(ImageEffect.Upscale).Upscale!;
+        if (this._upscaleChoice is not { } choice || choice.Image != image || choice.Applied != applied)
+        {
+            this._upscaleChoice = (image, applied, applied);
+        }
+
+        return this._upscaleChoice!.Value.Chosen;
+    }
+
+    /// <summary>
+    /// Why the Upscale cannot enlarge <paramref name="image"/>, or not every way: the content it does not apply to, else each
+    /// factor refused with the size it would make; empty when every factor is possible (workfiles/20261029-image-upscale.md
+    /// § Effect and Options).
+    /// </summary>
+    private static string UpscaleReason(SourceImage image)
+    {
+        if (!image.Upscales)
+        {
+            return Unavailable(ImageEffect.Upscale, image) ?? "";
+        }
+
+        // The smallest factor refused tells it all: the larger ones are refused with it.
+        var size = image.UpscaleSize;
+        var refused = UpscaleEffect.Factors.Where(factor => !UpscaleEffect.Fits(size, factor)).ToList();
+        if (refused.Count == 0)
+        {
+            return "";
+        }
+
+        int first = refused[0];
+        string make = $"×{first} would make {size.Width * first} × {size.Height * first} px, past the {CanvasSizer.MaxLongSide} px a PNG holds";
+        return refused.Count == UpscaleEffect.Factors.Count ? $"Too large to upscale: {make}" : make;
+    }
+
+    /// <summary>A thumbnail of the Upscale options picked: the setting chosen changes, nothing is computed nor turned on.</summary>
+    private void ChooseUpscale(Func<UpscaleEffect, UpscaleEffect> change)
+    {
+        if (this._syncingEffects || this._preview.SelectedImage is not { } image)
+        {
+            return;
+        }
+
+        var chosen = change(this.UpscaleChosen(image));
+        this._upscaleChoice = (image, this._upscaleChoice!.Value.Applied, chosen);
+        this.UpdateEffects();
+    }
+
+    /// <summary>
+    /// Save upscaled image…: the image enlarged by its Upscale, whole — cut out while its Cutout is on — written where the
+    /// user chooses, a still as a PNG, an animated GIF as an animated GIF of its enlarged frames; the cell untouched.
+    /// Offered once the enlargement is computed (workfiles/20261029-image-upscale.md § Save Upscaled Image).
+    /// </summary>
+    private async Task SaveUpscaledAsync(SourceImage image)
+    {
+        if (this.RefuseWhileExporting() || image.IsDisposed || image.Look.Upscale is not { } upscale || image.UpscalePending)
+        {
+            return;
+        }
+
+        bool animated = image.Pages is not null;
+        string extension = animated ? ".gif" : ".png";
+        using (var dialog = new SaveFileDialog
+        {
+            Filter = animated ? "Animated GIF (*.gif)|*.gif" : "PNG image (*.png)|*.png",
+            DefaultExt = extension,
+            FileName = $"{(image.FilePath is { } file ? Path.GetFileNameWithoutExtension(file)
+                : image.CroppedFrom is { } from ? Path.GetFileNameWithoutExtension(from) + "-crop"
+                : "upscaled")}-x{upscale.Factor}{extension}",
+            InitialDirectory = (image.FilePath ?? image.CroppedFrom) is { } path ? Path.GetDirectoryName(path) : Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+        })
+        {
+            if (dialog.ShowDialog(this) != DialogResult.OK)
+            {
+                return;
+            }
+
+            string target = dialog.FileName;
+            if (image.CutoutPending)
+            {
+                this.BeginExport("Cutting out the image…", cancellable: false);
+                try
+                {
+                    await this._cutouts.WhenReadyAsync([image]);
+                }
+                finally
+                {
+                    this.EndExport();
+                }
+            }
+
+            if (image.IsDisposed || image.Look.Upscale != upscale || image.UpscalePending)
+            {
+                this.ShowStatus("The upscaled image is not ready: nothing saved", error: true);
+                return;
+            }
+
+            try
+            {
+                Size size;
+                if (image.DrawnPages is UpscaledPages pages)
+                {
+                    size = await Task.Run(() => WriteUpscaledGif(pages, target));
+                }
+                else
+                {
+                    using var copy = new Bitmap(image.DrawnBitmap);
+                    size = copy.Size;
+                    await Task.Run(() => copy.Save(target, ImageFormat.Png));
+                }
+
+                this.ShowStatus($"Saved {Path.GetFileName(target)} — {size.Width} × {size.Height} px, upscaled {upscale.Describe()}");
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ExternalException or OutOfMemoryException or ArgumentException)
+            {
+                this.ShowStatus($"Save failed: {ErrorLog.Describe(ex)}", error: true);
+            }
+        }
+    }
+
+    /// <summary>Writes a GIF's enlarged frames as an animated GIF at <paramref name="path"/>, each with its own delay; returns its size.</summary>
+    private static Size WriteUpscaledGif(UpscaledPages pages, string path)
+    {
+        Size size;
+        using (var first = pages.Render(0))
+        {
+            size = first.Size;
+        }
+
+        using var encoder = GifEncoder.Create(path, size);
+        for (int page = 0; page < pages.Count; page++)
+        {
+            using var frame = pages.Render(page);
+            var start = pages.TimeOf(page);
+            var end = page + 1 < pages.Count ? pages.TimeOf(page + 1) : pages.LoopDuration;
+            encoder.WriteFrame(frame, start, end - start);
+        }
+
+        encoder.Finish();
+        return size;
     }
 
     private void SetBlurKind(BlurKind kind) =>
@@ -4126,6 +4460,8 @@ internal sealed partial class MainForm : Form
                 this._crop.Kept = crop.SeenRatio(look);
             }
 
+            this._crop.KeepRefusal = this.IsExporting ? "Not while exporting" : this.CropKeepRefusal(image);
+
             var flipped = look.TurnOn(ImageEffect.Flip);
             this._flip.FlipX = flipped.FlipX;
             this._flip.FlipY = flipped.FlipY;
@@ -4185,6 +4521,14 @@ internal sealed partial class MainForm : Form
                     this.SetSwatch(this._cutoutColor.Dialog, cutout.Color);
                 }
             }
+
+            // The setting chosen, a factor past the PNG's cap refused; Upscale offered unless that setting is the one applied.
+            var chosen = this.UpscaleChosen(image!);
+            var upscaled = image!.UpscaleSize;
+            this._upscaleModel.Selected = chosen.Model;
+            this._upscaleStrip.Show(chosen.Factor, factor => UpscaleEffect.Fits(upscaled, factor));
+            this._upscaleButton.Enabled = UpscaleEffect.Fits(upscaled, chosen.Factor) && (look.Upscale != chosen || image.UpscalePending);
+            this._upscaleReason.Text = UpscaleReason(image);
 
             if (look.TurnOn(ImageEffect.Blur).Blur is { } blur)
             {
@@ -5034,6 +5378,9 @@ internal sealed partial class MainForm : Form
 
         this._cellMenuCell = cell;
         this._copyCell.Enabled = !this.IsExporting;
+        var menuImage = this._preview.Images[cell];
+        this._saveUpscaledCell.Visible = menuImage.Upscales;
+        this._saveUpscaledCell.Enabled = !this.IsExporting && menuImage.Look.IsActive(ImageEffect.Upscale) && !menuImage.UpscalePending;
         this._findSimilarCell.Visible = this._explorer.CanFindSimilar;
         this._cellMenu.Tag = this._preview.Images[cell];
         this._cellMenu.Show(this._preview, e.Location);
@@ -5320,6 +5667,8 @@ internal sealed partial class MainForm : Form
         ImageEffect.Frames when image is { IsAnimated: false } => "Frames only applies to videos, animated GIFs and content of several pages",
         ImageEffect.Volume when image is { HasSound: false } => "Volume only applies to videos with a sound track",
         ImageEffect.Cutout when image is { CutsOut: false } => "Cutout works on still images only for now: not on videos, animated GIFs nor content of several pages",
+        ImageEffect.Upscale when image is { Upscales: false } => "Upscale works on still images and animated GIFs: a video is out of reach, a PDF, a text or a thumbnail is drawn sharp at any size already",
+        ImageEffect.Upscale when image is not null && !UpscaleEffect.Fits(image.UpscaleSize, UpscaleEffect.Factors[0]) => $"This image is too large to upscale: ×2 would go past {CanvasSizer.MaxLongSide} px on its longer side",
         _ => null,
     };
 

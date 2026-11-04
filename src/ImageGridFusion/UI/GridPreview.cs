@@ -1102,6 +1102,7 @@ internal sealed partial class GridPreview : Control
         }
 
         this.PaintReadouts(g, cells);
+        this.PaintUpscale();
         this.PaintCutout(g, cells);
 
         PaintHoverOutline(g, HoverOutlineBounds(canvas, cells));
@@ -1955,7 +1956,7 @@ internal sealed partial class GridPreview : Control
     }
 
     /// <summary>What the cell of <paramref name="image"/> shows now: its frame, its motion at the grid's time.</summary>
-    private Frame FrameOf(SourceImage image) => new(image.DrawnBitmap, image.BandColor, image.DrawnLook, this._player.GridTime, image.Sharpening);
+    private Frame FrameOf(SourceImage image) => new(image.ShownBitmap, image.BandColor, image.DrawnLook, this._player.GridTime, image.Sharpening);
 
     /// <summary>Draws the new frame of an image into the cached preview, and repaints only its cell.</summary>
     private void RedrawCell(SourceImage image)
@@ -3539,7 +3540,7 @@ internal sealed partial class GridPreview : Control
         g.TranslateTransform(canvas.X, canvas.Y);
         var local = cell;
         local.Offset(-canvas.X, -canvas.Y);
-        Compositor.DrawUncropped(g, new Frame(image.DrawnBitmap, image.BandColor, image.DrawnLook), local);
+        Compositor.DrawUncropped(g, new Frame(image.ShownBitmap, image.BandColor, image.DrawnLook), local);
         DrawBordersOver(g, local, canvas.Size);
         g.Restore(state);
 
@@ -3923,6 +3924,7 @@ internal sealed partial class GridPreview : Control
     /// <summary>The name the selected cell shows: its file's, else how it arrived.</summary>
     private static string SourceName(SourceImage image) =>
         image.FilePath is { } path ? Path.GetFileName(path)
+        : image.CroppedFrom is { } from ? $"{Path.GetFileNameWithoutExtension(from)} (crop)"
         : image.Pages is TextPages ? (image.Dropped ? "Dropped text" : "Pasted text")
         : "Pasted image";
 

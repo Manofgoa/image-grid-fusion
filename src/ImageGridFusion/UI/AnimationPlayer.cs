@@ -387,6 +387,24 @@ internal sealed class AnimationPlayer : IDisposable
         }
     }
 
+    /// <summary>
+    /// The pages <paramref name="image"/> plays from changed — its Upscale's frames ready, or the effect turned off
+    /// (<see cref="SourceImage.DrawnPages"/>): its loop reads the new ones from now on, where it stands, paused or not.
+    /// </summary>
+    public void Reopen(SourceImage image)
+    {
+        if (this._playbacks.TryGetValue(image, out var previous))
+        {
+            previous.Stop();
+            var playback = new Playback(image, previous.Offset) { PausedAt = previous.PausedAt, DisplaySize = previous.DisplaySize };
+            this._playbacks[image] = playback;
+            if (!this._suspended)
+            {
+                _ = this.RunAsync(playback);
+            }
+        }
+    }
+
     /// <summary>The pages were laid out again: the next frame is rendered even if at the same step.</summary>
     public void Refresh(SourceImage image)
     {
@@ -613,7 +631,7 @@ internal sealed class AnimationPlayer : IDisposable
     private async Task RunAsync(Playback playback)
     {
         var image = playback.Image;
-        var pages = image.Pages!;
+        var pages = image.DrawnPages!;
         var cancellation = playback.Cancellation.Token;
         try
         {

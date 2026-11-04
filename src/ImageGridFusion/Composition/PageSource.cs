@@ -81,6 +81,12 @@ public abstract class PageSource : IDisposable
     /// </summary>
     public virtual bool HasFrames => false;
 
+    /// <summary>
+    /// The size every page is rendered at, when the Upscale effect enlarges them (workfiles/20261029-image-upscale.md
+    /// § Animated GIFs): an animated GIF's; <c>null</c> for a source the Upscale leaves alone.
+    /// </summary>
+    public virtual Size? UpscaledFrom => null;
+
     /// <summary>Frames per second of a video, for its minutes : seconds : frame fields; <c>null</c> for a GIF, its frames numbered.</summary>
     public virtual double? FrameRate => null;
 

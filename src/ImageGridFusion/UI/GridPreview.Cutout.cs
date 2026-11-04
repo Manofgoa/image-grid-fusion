@@ -340,7 +340,7 @@ internal sealed partial class GridPreview
         this._cutoutBadges.Clear();
         for (int i = 0; i < this._images.Count && i < cells.Length; i++)
         {
-            if (this.CutoutBadge(this._images[i]) is { } text)
+            if ((UpscaleBadge(this._images[i]) ?? this.CutoutBadge(this._images[i])) is { } text)
             {
                 this._cutoutBadges.Add(this.PaintCutoutBadge(g, cells[i], text));
             }
