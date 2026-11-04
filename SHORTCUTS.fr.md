@@ -98,7 +98,6 @@ Tant que l'onglet Layers est sélectionné.
 | <kbd>Escape</kbd> dans un champ Frames | Remettre la valeur |
 | <kbd>Molette</kbd> sur la bande des dispositions | Faire défiler les dispositions |
 | <kbd>Clic</kbd> sur la miniature de l'image du Grid background | Choisir son image dans le sélecteur de fichiers |
-| <kbd>Double-clic</kbd> sur la miniature de l'image du Grid background | Ouvrir la vue d'édition du fond, ou la fermer |
 
 ## Explorateur de fichiers
 

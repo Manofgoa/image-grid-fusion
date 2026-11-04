@@ -7,7 +7,7 @@ namespace ImageGridFusion.UI;
 /// <summary>
 /// The Grid background's image (workfiles/20261104-grid-background-image.md): its options after the fill's — its
 /// thumbnail and drop zone, Browse…, Paste, Edit, Remove, its placements and its opacity —, the files dropped onto
-/// them, and the background edit view the thumbnail's double-click opens.
+/// them, and the background edit view Edit opens.
 /// </summary>
 internal sealed partial class MainForm
 {
@@ -20,8 +20,11 @@ internal sealed partial class MainForm
     private readonly PictureBox _backgroundImageOpacityIcon = OpacityIcon();
     private readonly StepSlider _backgroundImageOpacity = OptionSlider(0, 100, 10);
     private readonly Label _backgroundImageOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
-    // A click on a thumbnail holding an image waits for the double-click time: a double-click opens the edit view instead of the picker.
-    private readonly System.Windows.Forms.Timer _backgroundClickWait = new() { Interval = SystemInformation.DoubleClickTime };
+
+    // The image's Zoom effect, under its opacity (workfiles/20261104-grid-background-image.md, Iteration 7): the cell Zoom slider's scale.
+    private readonly PictureBox _backgroundImageZoomIcon = OpacityIcon();
+    private readonly StepSlider _backgroundImageZoom = OptionSlider((int)Math.Round(Math.Log2(ImageLook.MinZoom) * 100), (int)Math.Round(Math.Log2(ImageLook.MaxZoom) * 100), 10);
+    private readonly Label _backgroundImageZoomLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private int _backgroundIconSize;
     private bool? _backgroundEditShowsDone;
 
@@ -36,49 +39,42 @@ internal sealed partial class MainForm
     private void BuildBackgroundImageOptions()
     {
         var buttons = OptionLine();
-        buttons.Controls.AddRange([this._backgroundImageBrowse, this._backgroundImagePaste, this._backgroundImageEdit, this._backgroundImageRemove]);
+        // Browse… right after Paste, its text beside its icon so it is seen (workfiles/20261104-grid-background-image.md, Iteration 6).
+        this._backgroundImageBrowse.Text = "Browse…";
+        this._backgroundImageBrowse.TextImageRelation = TextImageRelation.ImageBeforeText;
+        buttons.Controls.AddRange([this._backgroundImagePaste, this._backgroundImageBrowse, this._backgroundImageEdit, this._backgroundImageRemove]);
         var opacity = OptionLine();
         opacity.Controls.AddRange([this._backgroundImageOpacityIcon, this._backgroundImageOpacity, this._backgroundImageOpacityLabel]);
+        var zoom = OptionLine();
+        zoom.Controls.AddRange([this._backgroundImageZoomIcon, this._backgroundImageZoom, this._backgroundImageZoomLabel]);
         var lines = OptionLine();
         lines.FlowDirection = FlowDirection.TopDown;
-        lines.Controls.AddRange([buttons, opacity]);
+        lines.Controls.AddRange([buttons, opacity, zoom]);
         this._globalOptions[GlobalEffect.GridBackground].Controls.AddRange([this._backgroundImageBox, lines, this._backgroundFit]);
 
         // As tall as the placements' thumbnails, so the row keeps its height; the canvas's usual shape.
         this._backgroundImageBox.Size = new Size(this._backgroundFit.Height * 16 / 10, this._backgroundFit.Height);
-        this._backgroundImageOpacity.Width = 110;
+        this._backgroundImageOpacity.Width = this._backgroundImageZoom.Width = 110;
 
-        this._toolTip.SetToolTip(this._backgroundImageBrowse, "Browse… — chooses the grid background's image: an image, a GIF or a video");
+        this._toolTip.SetToolTip(this._backgroundImageBrowse, "Browse… — chooses the grid background's image: an image, a GIF or a video (a click on its thumbnail too)");
         this._toolTip.SetToolTip(this._backgroundImagePaste, "Paste — the clipboard's image, or its first file, as the grid background's image");
         this._toolTip.SetToolTip(this._backgroundImageRemove, "Remove — the grid background's image gone, its fill alone");
         this._toolTip.SetToolTip(this._backgroundImageOpacity, "Opacity of the grid background's image, over its fill");
+        this._toolTip.SetToolTip(this._backgroundImageZoom, "Zoom of the grid background's image — its Zoom effect, around its center; tiled, the tiles' size");
 
-        // A click loads an image, as Browse… does (workfiles/20261104-grid-background-image.md, Iteration 4); a double-click edits it.
+        // A click loads an image, as Browse… does; no double-click — the edit view is Edit's (Iteration 6).
         this._backgroundImageBox.MouseClick += async (_, e) =>
         {
-            if (e.Button != MouseButtons.Left)
-            {
-                return;
-            }
-
-            if (this._gridBackground.Image is null)
+            if (e.Button == MouseButtons.Left)
             {
                 await this.BrowseBackgroundImageAsync();
-                return;
             }
-
-            this._backgroundClickWait.Stop();
-            this._backgroundClickWait.Start();
         };
-        this._backgroundClickWait.Tick += async (_, _) =>
+        this._backgroundImageZoom.ValueChanged += (_, _) =>
         {
-            this._backgroundClickWait.Stop();
-            await this.BrowseBackgroundImageAsync();
-        };
-        this._backgroundImageBox.DoubleClick += (_, _) =>
-        {
-            this._backgroundClickWait.Stop();
-            this.ToggleBackgroundEdit();
+            double value = Math.Abs(this._backgroundImageZoom.Value) <= 4 ? 1 : Math.Pow(2, this._backgroundImageZoom.Value / 100.0);
+            this._backgroundImageZoomLabel.Text = ZoomText(value);
+            this.ChangeBackgroundImage(image => this.Zoomed(image, value));
         };
         this._backgroundImageBrowse.Click += async (_, _) => await this.BrowseBackgroundImageAsync();
         this._backgroundImagePaste.Click += async (_, _) => await this.PasteBackgroundImageAsync();
@@ -149,13 +145,17 @@ internal sealed partial class MainForm
         this._backgroundImageEdit.Enabled = enabled && (editing || image is not null);
         this._backgroundImageRemove.Enabled = enabled && image is not null;
         this._backgroundFit.Enabled = this._backgroundImageOpacity.Enabled = this._backgroundImageOpacityLabel.Enabled = enabled && image is not null;
+        this._backgroundImageZoom.Enabled = this._backgroundImageZoomLabel.Enabled = enabled && image is not null;
         this._backgroundFit.Pressed = image is null ? null : FitOf(image);
 
+        double zoom = image is null ? 1 : ShownZoom(image, this._preview.CanvasRatio);
         bool syncing = this._syncingEffects;
         this._syncingEffects = true;
         this._backgroundImageOpacity.Value = (int)Math.Round((image?.Opacity ?? 1) * 100);
+        this._backgroundImageZoom.Value = Math.Clamp((int)Math.Round(Math.Log2(zoom) * 100), this._backgroundImageZoom.Minimum, this._backgroundImageZoom.Maximum);
         this._syncingEffects = syncing;
         this._backgroundImageOpacityLabel.Text = OpacityText(this._backgroundImageOpacity.Value);
+        this._backgroundImageZoomLabel.Text = ZoomText(zoom);
 
         // Edit, or Done while the background edit view shows.
         if (this._backgroundIconSize > 0 && this._backgroundEditShowsDone != editing)
@@ -168,10 +168,32 @@ internal sealed partial class MainForm
 
         this._toolTip.SetToolTip(
             this._backgroundImageEdit,
-            editing ? "Done — gives the grid back (Escape)" : "Edit — shows the grid background's image alone, its effects working as on a cell (double-click its thumbnail)");
+            editing ? "Done — gives the grid back (Escape)" : "Edit — shows the grid background's image alone, its effects working as on a cell");
         this._toolTip.SetToolTip(this._backgroundImageBox, image?.Image.FilePath is { } path
-            ? $"{Path.GetFileName(path)} — click to choose another image, or drop one here; double-click to edit its effects"
-            : "The grid background's image, drawn over its fill, under the cells. Click to choose an image, a GIF or a video, or drop one here — from the file explorer or Windows Explorer —; double-click to edit its effects");
+            ? $"{Path.GetFileName(path)} — click to choose another image, or drop one here; Edit to edit its effects"
+            : "The grid background's image, drawn over its fill, under the cells. Click to choose an image, a GIF or a video, or drop one here — from the file explorer or Windows Explorer");
+    }
+
+    private static string ZoomText(double zoom) => $"Zoom: {zoom * 100:0} %";
+
+    /// <summary>The cell the image's zoom is read in: the canvas, at <paramref name="ratio"/>, for an image in its cell; a box of its own shape stretched or tiled.</summary>
+    private static Rectangle ZoomCell(BackgroundImage image, double ratio) => image.Placement == BackgroundPlacement.Cell
+        ? new Rectangle(0, 0, Math.Max(1, (int)Math.Round(1000 * ratio)), 1000)
+        : new Rectangle(Point.Empty, image.Shown);
+
+    /// <summary>The zoom the image is drawn at, its fit mode resolved (RULES.md § Rendering): what the Zoom slider shows.</summary>
+    private static double ShownZoom(BackgroundImage image, double ratio) => image.Look.ZoomIn(ZoomCell(image, ratio), image.Shown);
+
+    /// <summary>
+    /// The image at a free <paramref name="zoom"/> from the Zoom slider: its Zoom effect turned on, the fit mode left,
+    /// its center kept where it is (RULES.md § Zoom Keeps the Image in Place).
+    /// </summary>
+    private BackgroundImage Zoomed(BackgroundImage image, double zoom)
+    {
+        var shown = image.Shown;
+        var cell = ZoomCell(image, this._preview.CanvasRatio);
+        var focus = FitCalculator.FocusKeeping(cell, shown, image.Look.ZoomIn(cell, shown), zoom, image.Look.Focus, image.Look.FineAngle, FitCalculator.ImageCenter);
+        return image.WithLook(image.Look.WithZoom(zoom).WithFocus(focus));
     }
 
     /// <summary>The image's buttons drawn at the monitor's DPI; the ones replaced disposed.</summary>
@@ -192,6 +214,11 @@ internal sealed partial class MainForm
         this._backgroundImageOpacityIcon.Image = (Bitmap)opacity.Clone();
         this._backgroundImageOpacityIcon.Size = new Size(size, size);
         previousOpacity?.Dispose();
+
+        var previousZoom = this._backgroundImageZoomIcon.Image;
+        this._backgroundImageZoomIcon.Image = UiIcons.Zoom.Copy(size);
+        this._backgroundImageZoomIcon.Size = new Size(size, size);
+        previousZoom?.Dispose();
 
         this._backgroundIconSize = size;
         this._backgroundEditShowsDone = null;
@@ -347,7 +374,7 @@ internal sealed partial class MainForm
         this._preview.StartOver();
     }
 
-    /// <summary>The Edit button and the thumbnail's double-click: the background edit view opened, or closed when it shows (Done).</summary>
+    /// <summary>The Edit button: the background edit view opened, or closed when it shows (Done).</summary>
     private void ToggleBackgroundEdit()
     {
         if (this._preview.EditingBackground)
