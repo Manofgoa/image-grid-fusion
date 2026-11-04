@@ -188,6 +188,12 @@ the speed reaches them unchanged; an **upscaled GIF**'s pages keep the source's 
 menus, tabs, buttons and drop-down entries, not sliders: the speed slider needs none. § Settings
 updated with the presets and the layers.
 
+### Iteration 6 — 2026-11-04 — ✅ Implemented
+
+Go given: **code, unit tests and documentation**. Unit tests: none to write — the repository has no
+test project (§ Test Impact). Branch Gate: a **dedicated worktree**, `feature/frames-speed`, merged
+into `main` with `--no-ff` at the end. Scope frozen on the design sections as they stand.
+
 ---
 
 ## Implementation Log
@@ -221,7 +227,8 @@ Questions asked by the agent during design, with user responses.
 | 10 | How do we resume the workfile? | Refresh the design first | 2026-10-10 |
 | 11 | Where does the speed slider go in the Frames options? | A — a third column after a separator | 2026-10-10 |
 | 12 | Go for implementation? | Not answered — the user asked instead to check the new developments against the design | 2026-11-04 |
-| 13 | Go for implementation? | | |
+| 13 | Go for implementation? | Code, unit tests and documentation | 2026-11-04 |
+| 14 | Branch Gate: where does the run work? | A dedicated worktree, merged into `main` at the end | 2026-11-04 |
 
 ---
 
