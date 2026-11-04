@@ -3,100 +3,254 @@ using System.Text.RegularExpressions;
 namespace ImageGridFusion.Explorer;
 
 /// <summary>
-/// A kind of file name a machine made up rather than a person, a group of the folder view of its own;
-/// the values in the order they are tried, which is the fallback order when one is turned off.
-/// See workfiles/20261103-file-explorer-groups.md § File Name Patterns.
+/// A group of the folder view gathering files a machine named: <paramref name="Id"/> keeps it turned off in
+/// the settings, <paramref name="Title"/> heads its section, <paramref name="IsSource"/> marks a known source —
+/// a downloader's or an app's prefix — listed in the ⚙ menu's Sources submenu. See
+/// workfiles/20261103-file-explorer-groups.md § File Name Patterns.
 /// </summary>
-internal enum NamePattern
-{
-    /// <summary>A camera or device stamp: <c>IMG_20220321_132643</c>, <c>PXL_…</c>, <c>DSC_0042</c>.</summary>
-    Camera,
-
-    /// <summary>A screenshot or screen recording stamp: <c>Screenshot_2026-11-03-10-24-09</c>.</summary>
-    Screenshots,
-
-    /// <summary>A messaging app's stamp: <c>WhatsApp Image 2026-11-03 at 10.24.09</c>, <c>IMG-20220321-WA0001</c>.</summary>
-    Messaging,
-
-    /// <summary>A GUID, a hash, a random token: <c>3f2504e0-4f89-…</c>, <c>F3xKz9aWkAA1b2c</c>.</summary>
-    Identifiers,
-
-    /// <summary>Digits and separators only: <c>20220321_132643</c>, <c>001</c>.</summary>
-    Numbers,
-}
+internal sealed record NameGroup(string Id, string Title, Func<string, bool> Matches, bool IsSource = false);
 
 /// <summary>
-/// Which <see cref="NamePattern"/> a file name falls into, on its name without its extension. A new
-/// pattern is a value of <see cref="NamePattern"/>, its case in <see cref="Matches"/>, its
-/// <see cref="Title"/>, and its checkbox in the ⚙ menu's submenu.
+/// Which <see cref="NameGroup"/> a file name falls into, on its name without its extension: the first of
+/// <see cref="Groups"/> still on that matches it — their order is the fallback order when one is turned off —
+/// then a <see cref="DetectSources">detected source</see>, then a <see cref="Series">series</see>. A new pattern
+/// is a group of <see cref="Groups"/>, its icon and tooltip in the ⚙ menu's File explorer groups; a new known
+/// source, a row of <see cref="KnownSources"/>.
 /// </summary>
 internal static class NamePatterns
 {
+    /// <summary>The id turning the series off (<see cref="Series"/>).</summary>
+    public const string SeriesId = "Series";
+
+    /// <summary>The id turning every detected source off (<see cref="DetectSources"/>).</summary>
+    public const string DetectedSourcesId = "DetectedSources";
+
     private const RegexOptions Options = RegexOptions.IgnoreCase | RegexOptions.CultureInvariant;
 
     // The camera's stamp, a WhatsApp file's (IMG-20220321-WA0001) left to Messaging.
     private static readonly Regex CameraName = new(
-        @"^(?!.*-WA\d)(?:(?:IMG|VID|PXL|MVIMG|PANO|BURST\d*|DSC[NF]?|DCIM|GOPR|GX\d\d|PICT|CIMG|SAM|WP|MOV)[_\- ]?\d{3,}|P\d{7})",
+        @"^(?!.*-WA\d)(?:(?:IMG|VID|PXL|MVIMG|PANO|BURST\d*|DSC[NF]?|DCIM|GOPR|GX\d\d|PICT|CIMG|SAM|WP|MOV)[_\- ]?\d{3,}|P\d{7}(?:$|[\s_(-]))",
         Options);
 
     // A screenshot's or a screen recording's word, in a few languages, followed by its date or number.
     private static readonly Regex ScreenshotName = new(
-        @"^(?:screenshot|screen[ _]?shot|screen[ _]?recording|screenrecorder|capture d.[ée]cran|enregistrement de l.[ée]cran|capture|captura de pantalla|bildschirmfoto|schermafbeelding|snapshot)[\s_\-(]*\d",
+        @"^(?:screenshot|screen[ _]?shot|screen[ _]?recording|screenrecorder|capture[\s_\-]?(?:d.?)?[ée]cran|enregistrement de l.[ée]cran|capture|captura de pantalla|bildschirmfoto|schermafbeelding|snapshot)[\s_\-(]*\d",
         Options);
 
     private static readonly Regex MessagingName = new(
         @"^(?:whatsapp (?:image|video|audio|ptt)|(?:img|vid|aud|ptt|doc)-\d{8}-wa\d+|photo_\d{4}-\d\d-\d\d_|video_\d{4}-\d\d-\d\d_|signal-\d{4}-\d\d-\d\d|fb_img_\d+|received_\d+|snapchat-\d+)",
         Options);
 
+    // An AI generator's stamp: Bing Image Creator, Grok, ChatGPT, the High_Performance videos, DALL·E, Firefly.
+    private static readonly Regex AiName = new(
+        @"^(?:OIG\d*(?:$|[\s_.(-])|grok[_-](?:video|image)|chatgpt image|high_performance_|dall[·-]?e[\s_]|firefly[\s_])",
+        Options);
+
+    // A browser's or a site's default name, with its numbers: téléchargement (1), image-w856, videoplayback (12),
+    // YouTube's thumbnails (maxresdefault, hq720).
+    private static readonly Regex GenericName = new(
+        @"^(?:t[ée]l[ée]chargement|downloads?|images?|videoplayback|maxresdefault|hqdefault|sddefault|hq\d+|full|unnamed|untitled|sans[ _]titre)(?:[\s_\-]*(?:\(\d+\)|\d+|w\d+))*$",
+        Options);
+
     private static readonly Regex Guid = new(@"^\{?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\}?$", Options);
 
     private static readonly Regex Hash = new(@"^(?=.*\d)(?=.*[a-f])[0-9a-f]{16,}$", Options);
 
+    // An X media id: 15 characters, upper and lower case mixed (GEhjfvEWQAE7EPO, GFGxk-FWMAEPZym).
+    private static readonly Regex XMediaId = new(@"^(?=(?:.*[A-Z]){2})(?=(?:.*[a-z]){2})[A-Za-z0-9_-]{15}$", RegexOptions.CultureInvariant);
+
+    // A date, then maybe a time and a counter, digits and separators only: 20230809_212344, 2022-07-18 13.22.09.
+    private static readonly Regex DateStamp = new(
+        @"^(?:19|20)\d\d[-_.]?(?:0[1-9]|1[0-2])[-_.]?(?:0[1-9]|[12]\d|3[01])(?:[\s_\-.T]?\d\d[-_.:]?\d\d(?:[-_.:]?\d\d)?)?(?:[\s_\-.(]*\d+\)?)*$",
+        Options);
+
+    // A Unix time in seconds or milliseconds, 2001 to 2033, maybe followed by a counter.
+    private static readonly Regex Timestamp = new(@"^1\d{9}(?:\d{3})?(?:[\s_\-(]*\d+\)?)*$", Options);
+
     private static readonly Regex Digits = new(@"^(?=.*\d)[\d\s_\-.()]+$", Options);
+
+    // A detected source's word — every letter of it, dots inside — and the stamp right after it: 4 digits or
+    // more, or a code of 5 letters and digits or more holding a digit — never a lone counter (jaune 1, Make My
+    // Day (2)). The word is atomic: never shortened to find a stamp inside it.
+    private static readonly Regex SourceWord = new(@"^((?>[A-Za-z](?:[A-Za-z]|\.(?=[A-Za-z]))*))(?=[\s_\-.]*(?:\d{4}|(?=[A-Za-z0-9]{5})[A-Za-z]*\d))", RegexOptions.CultureInvariant);
 
     // The shortest random token: shorter names mixing letters and digits are often a person's (A320neo).
     private const int MinTokenLength = 10;
 
-    /// <summary>Every pattern, in the order they are tried.</summary>
-    public static IReadOnlyList<NamePattern> All { get; } = Enum.GetValues<NamePattern>();
+    // The shortest series: two files sharing a word are a coincidence more often than a series.
+    private const int MinSeries = 3;
 
-    /// <summary>A pattern's group title, as its header and its checkbox show it.</summary>
-    public static string Title(NamePattern pattern) => pattern switch
+    // The words a series never stands on alone: articles and small words, French and English.
+    private static readonly HashSet<string> SmallWords = new(StringComparer.Ordinal)
     {
-        NamePattern.Camera => "Camera",
-        NamePattern.Screenshots => "Screenshots",
-        NamePattern.Messaging => "Messaging",
-        NamePattern.Identifiers => "Identifiers",
-        _ => "Numbers",
+        "a", "à", "au", "aux", "ce", "ces", "d", "de", "des", "du", "en", "et", "il", "elle", "j", "je", "l", "la", "le",
+        "les", "ma", "mes", "mon", "on", "ou", "par", "pour", "sa", "se", "ses", "son", "sur", "un", "une", "y",
+        "an", "and", "at", "for", "i", "in", "is", "it", "my", "of", "the", "to", "with",
     };
 
+    /// <summary>The known sources, one group each, in the ⚙ menu's Sources submenu.</summary>
+    public static IReadOnlyList<NameGroup> KnownSources { get; } =
+    [
+        Source("ssstwitter.com", @"^ssstwitter\.com"),
+        Source("snapinsta.app", @"^snapinsta\.app"),
+        Source("twittervid.com", @"^twittervid\.com"),
+        Source("FaceApp", @"^faceapp_"),
+        Source("Videoleap", @"^videoleap_"),
+        Source("VideoEditor", @"^videoeditor_"),
+        Source("VideoCapture", @"^videocapture_"),
+        Source("sketch", @"^sketch\d{10,}"),
+        Source("Clipped_image", @"^clipped_image_"),
+    ];
+
+    /// <summary>Every group, in the order they are tried: the known sources between AI and Generic names.</summary>
+    public static IReadOnlyList<NameGroup> Groups { get; } =
+    [
+        new("Camera", "Camera", CameraName.IsMatch),
+        new("Screenshots", "Screenshots", ScreenshotName.IsMatch),
+        new("Messaging", "Messaging", MessagingName.IsMatch),
+        new("AI", "AI", AiName.IsMatch),
+        .. KnownSources,
+        new("GenericNames", "Generic names", GenericName.IsMatch),
+        new("Identifiers", "Identifiers", stem => Guid.IsMatch(stem) || Hash.IsMatch(stem) || XMediaId.IsMatch(stem) || IsToken(stem)),
+        new("ShortCodes", "Short codes", IsShortCode),
+        new("DateStamps", "Date stamps", DateStamp.IsMatch),
+        new("Timestamps", "Timestamps", Timestamp.IsMatch),
+        new("Numbers", "Numbers", Digits.IsMatch),
+    ];
+
     /// <summary>
-    /// The first pattern still on that <paramref name="fileName"/> — with its extension — matches; null
-    /// for a name a person gave, or a machine's whose every pattern is in <paramref name="off"/>.
+    /// The first group still on — none of its id in <paramref name="off"/> — that <paramref name="fileName"/>,
+    /// with its extension, matches; null for a name a person gave, or a machine's whose every group is off.
     /// </summary>
-    public static NamePattern? Of(string fileName, IReadOnlySet<NamePattern> off)
+    public static NameGroup? Of(string fileName, IReadOnlySet<string> off)
     {
-        string stem = Path.GetFileNameWithoutExtension(fileName).Trim();
-        foreach (var pattern in All)
+        string stem = Stem(fileName);
+        foreach (var group in Groups)
         {
-            if (!off.Contains(pattern) && Matches(pattern, stem))
+            if (!off.Contains(group.Id) && group.Matches(stem))
             {
-                return pattern;
+                return group;
             }
         }
 
         return null;
     }
 
-    /// <summary>Whether a name without its extension matches a pattern.</summary>
-    public static bool Matches(NamePattern pattern, string stem) => pattern switch
+    /// <summary>
+    /// The sources found among <paramref name="fileNames"/> — names no group took — by themselves: a leading
+    /// word, dots allowed (<c>y2mate.com</c>), followed by a stamp, shared by <see cref="MinSeries"/> files or
+    /// more, ignoring case; titled by that word as the first of them writes it. By name; a file of no source
+    /// is left out.
+    /// </summary>
+    public static Dictionary<string, string> DetectSources(IEnumerable<string> fileNames)
     {
-        NamePattern.Camera => CameraName.IsMatch(stem),
-        NamePattern.Screenshots => ScreenshotName.IsMatch(stem),
-        NamePattern.Messaging => MessagingName.IsMatch(stem),
-        NamePattern.Identifiers => Guid.IsMatch(stem) || Hash.IsMatch(stem) || IsToken(stem),
-        _ => Digits.IsMatch(stem),
-    };
+        var sources = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var byWord = fileNames
+            .Select(name => (Name: name, Word: SourceWord.Match(Stem(name))))
+            .Where(file => file.Word.Success && !SmallWords.Contains(file.Word.Groups[1].Value.ToLowerInvariant()))
+            .GroupBy(file => file.Word.Groups[1].Value, StringComparer.OrdinalIgnoreCase);
+        foreach (var group in byWord)
+        {
+            var members = group.ToList();
+            if (members.Count >= MinSeries)
+            {
+                string title = members[0].Word.Groups[1].Value;
+                foreach (var (name, _) in members)
+                {
+                    sources[name] = title;
+                }
+            }
+        }
+
+        return sources;
+    }
+
+    /// <summary>
+    /// The series among <paramref name="fileNames"/> — names no group nor source took: <see cref="MinSeries"/>
+    /// files or more sharing their first word, ignoring case and accents, titled by the longest run of leading
+    /// words all of them share, as the first of them writes it — <c>marlène schiappa</c> — small words left off
+    /// its end; a run of small words alone (<c>les</c>, <c>the</c>) makes none. By name; a file of no series is left out. See
+    /// workfiles/20261103-file-explorer-groups.md § File Series.
+    /// </summary>
+    public static Dictionary<string, string> Series(IEnumerable<string> fileNames)
+    {
+        var series = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var byFirstWord = fileNames
+            .Select(name => (Name: name, Stem: Stem(name)))
+            .Select(file => (file.Name, file.Stem, Words: Words(file.Stem)))
+            .Where(file => file.Words.Count > 0)
+            .GroupBy(file => file.Words[0].Folded, StringComparer.Ordinal);
+        foreach (var group in byFirstWord)
+        {
+            var members = group.ToList();
+            if (members.Count < MinSeries)
+            {
+                continue;
+            }
+
+            var (_, firstStem, firstWords) = members[0];
+            int shared = firstWords.Count;
+            foreach (var (_, _, words) in members.Skip(1))
+            {
+                int common = 0;
+                while (common < shared && common < words.Count && words[common].Folded == firstWords[common].Folded)
+                {
+                    common++;
+                }
+
+                shared = common;
+            }
+
+            // Small words never end a title (Taxez les crabes, Taxez les riches → Taxez), nor make one alone.
+            while (shared > 0 && SmallWords.Contains(firstWords[shared - 1].Folded))
+            {
+                shared--;
+            }
+
+            if (shared == 0)
+            {
+                continue;
+            }
+
+            string title = firstStem[..firstWords[shared - 1].End];
+            foreach (var (name, _, _) in members)
+            {
+                series[name] = title;
+            }
+        }
+
+        return series;
+    }
+
+    private static NameGroup Source(string title, string pattern)
+    {
+        var regex = new Regex(pattern, Options);
+        return new NameGroup(title, title, regex.IsMatch, IsSource: true);
+    }
+
+    private static string Stem(string fileName) => Path.GetFileNameWithoutExtension(fileName).Trim();
+
+    // A name's words, folded, with where each ends: the runs between spaces, -, _ and the dots.
+    private static List<(string Folded, int End)> Words(string stem)
+    {
+        var words = new List<(string Folded, int End)>();
+        int start = -1;
+        for (int i = 0; i <= stem.Length; i++)
+        {
+            bool separator = i == stem.Length || stem[i] is ' ' or '-' or '_' or '.';
+            if (separator && start >= 0)
+            {
+                words.Add((FileSearch.Fold(stem[start..i]), i));
+                start = -1;
+            }
+            else if (!separator && start < 0)
+            {
+                start = i;
+            }
+        }
+
+        return words;
+    }
 
     /// <summary>
     /// A random token — an X media name, a video id: <see cref="MinTokenLength"/> letters and digits or
@@ -135,5 +289,22 @@ internal static class NamePatterns
         }
 
         return length >= MinTokenLength && letter && digit && switches * 3 >= length;
+    }
+
+    /// <summary>
+    /// A meme site's short code: after a leading <c>-</c>, 5 to 8 lower-case letters and digits
+    /// (<c>-oong5f</c>, <c>-htaykg</c>); else 5 to 8 of them holding a letter and a digit before the last
+    /// character (<c>d9omli</c>, <c>qy6xu8</c>) — never a word with its counter (<c>breton2</c>).
+    /// </summary>
+    private static bool IsShortCode(string stem)
+    {
+        bool dashed = stem.StartsWith('-');
+        string code = dashed ? stem[1..] : stem;
+        if (code.Length is < 5 or > 8 || !code.All(c => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c)))
+        {
+            return false;
+        }
+
+        return dashed || (code.Any(char.IsAsciiLetterLower) && code[..^1].Any(char.IsAsciiDigit));
     }
 }
