@@ -103,7 +103,7 @@ Tant que ses tuiles ont le focus.
 
 | Raccourci | Effet |
 |---|---|
-| <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> | Passer d'une tuile à l'autre |
+| <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> | Passer d'une tuile à l'autre — vers le haut et le bas d'une ligne, par-dessus les en-têtes des sections |
 | <kbd>PageUp</kbd> <kbd>PageDown</kbd> | Avancer d'une page |
 | <kbd>Home</kbd> <kbd>End</kbd> | Première / dernière tuile |
 | <kbd>Enter</kbd>, <kbd>Double-clic</kbd> | Ajouter le fichier à la grille, ou ouvrir le dossier ou le groupe |

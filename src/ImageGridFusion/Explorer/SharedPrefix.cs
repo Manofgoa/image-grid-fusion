@@ -59,6 +59,45 @@ internal static class SharedPrefix
         return split;
     }
 
+    /// <summary>
+    /// The folder groups of the folder view among sibling <paramref name="names"/>: the folders whose first
+    /// word — ignoring case — another one shares, each group under the longest run of leading words all its
+    /// folders share (<c>Outils RS Alpha</c>, <c>Outils RS Alpha 2</c>, <c>Outils RS Beta</c> and
+    /// <c>Outils RS</c> itself → <c>Outils RS</c>), written as its first folder writes it. By name; a folder
+    /// sharing nothing is left out. See workfiles/20261103-file-explorer-groups.md § Folder Prefix Groups.
+    /// </summary>
+    public static Dictionary<string, string> Groups(IEnumerable<string> names)
+    {
+        var groups = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var byFirstWord = names
+            .Select(name => (Name: name, Words: Words(name)))
+            .Where(folder => folder.Words.Count > 0)
+            .GroupBy(folder => folder.Name[folder.Words[0].Start..folder.Words[0].End], StringComparer.OrdinalIgnoreCase);
+        foreach (var group in byFirstWord)
+        {
+            var members = group.ToList();
+            if (members.Count < 2)
+            {
+                continue;
+            }
+
+            var (firstName, firstWords) = members[0];
+            int shared = firstWords.Count;
+            foreach (var (name, words) in members.Skip(1))
+            {
+                shared = Math.Min(shared, Common(firstName, firstWords, name, words));
+            }
+
+            string prefix = firstName[..firstWords[shared - 1].End];
+            foreach (var (name, _) in members)
+            {
+                groups[name] = prefix;
+            }
+        }
+
+        return groups;
+    }
+
     // The words of a name, as ranges: the runs between separators.
     private static List<(int Start, int End)> Words(string name)
     {

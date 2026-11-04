@@ -189,6 +189,23 @@ internal static class UiIcons
     public static readonly UiIcon Clear = UiIcon.Emoji("✖️");
     public static readonly UiIcon Thumbnails = UiIcon.Emoji("\U0001F533");
     public static readonly UiIcon Details = UiIcon.Emoji("\U0001F4C3");
+    public static readonly UiIcon FolderGroups = UiIcon.Emoji("🗂️");
+    public static readonly UiIcon SearchGroups = UiIcon.Emoji("🗃️");
+
+    // The file explorer's name groups, in the ⚙ menu's groups submenu.
+    public static readonly UiIcon Series = UiIcon.Emoji("\U0001F4DA");
+    public static readonly UiIcon Camera = UiIcon.Emoji("\U0001F4F7");
+    public static readonly UiIcon Screenshots = UiIcon.Emoji("🖥️");
+    public static readonly UiIcon Messaging = UiIcon.Emoji("\U0001F4AC");
+    public static readonly UiIcon Ai = UiIcon.Emoji("\U0001F916");
+    public static readonly UiIcon Sources = UiIcon.Emoji("\U0001F310");
+    public static readonly UiIcon DetectedSources = UiIcon.Emoji("\U0001F52D");
+    public static readonly UiIcon GenericNames = UiIcon.Emoji("🗒️");
+    public static readonly UiIcon Identifiers = UiIcon.Emoji("\U0001F194");
+    public static readonly UiIcon ShortCodes = UiIcon.Emoji("\U0001F523");
+    public static readonly UiIcon DateStamps = UiIcon.Emoji("🗓️");
+    public static readonly UiIcon Timestamps = UiIcon.Emoji("⏱️");
+    public static readonly UiIcon Numbers = UiIcon.Emoji("\U0001F522");
 
     // The drop-downs' entries.
     public static readonly UiIcon Favorites = UiIcon.Emoji("❤️");

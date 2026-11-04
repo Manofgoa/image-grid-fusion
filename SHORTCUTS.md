@@ -102,7 +102,7 @@ While its tiles have the focus.
 
 | Shortcut | Does |
 |---|---|
-| <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> | Move between the tiles |
+| <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> | Move between the tiles — up and down a line, across the sections' headers |
 | <kbd>PageUp</kbd> <kbd>PageDown</kbd> | Move by a page |
 | <kbd>Home</kbd> <kbd>End</kbd> | First / last tile |
 | <kbd>Enter</kbd>, <kbd>Double-click</kbd> | Add the file to the grid, or open the folder or the group |

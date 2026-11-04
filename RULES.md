@@ -1012,6 +1012,26 @@ What the indexed images **show**, analysed offline and searched under 💡 in Fr
   there.
 - Everything stays on this machine; out of the undo history.
 
+## File Explorer Sections
+
+The file explorer's lists in sections under titled headers (origin: `workfiles/20261103-file-explorer-groups.md`):
+
+- **One field carries them**: `ExplorerRow.Section`, its title with its count; `ThumbnailGrid` draws a header above
+  each run of equal titles and starts it on a line of its own (`LayoutSlots`) — every place, hit-test and arrow key
+  reads that layout, never `index % perRow`. A new list in sections only sets the titles, in one run each.
+- **The folder view** (`FileExplorerPanel.FolderSections`): the folder groups (`SharedPrefix.Groups`), *Other
+  folders*, the **series** (`NamePatterns.Series`), *Named files*, one section per **name group**
+  (`NamePatterns.Groups`), then the sources found by themselves (`NamePatterns.DetectSources`). A file takes a name
+  group first, else a detected source, else a series. A new pattern is a `NameGroup` of `NamePatterns.Groups` — its
+  place the fallback order — its id kept in the settings, its icon and tooltip in the ⚙ menu's **File explorer
+  groups** (`MainForm.GroupIcon` / `GroupTip`); a new known source, a row of `NamePatterns.KnownSources`.
+- **The search** (`FileExplorerPanel.SearchSections`): *Path* then *Content*, by `FileSearch.IsPathTier`; a new tier
+  says on which side it falls there. A file whose name and content both hold every word ranks first
+  (`Rank.ByNameAndContent`), sections on or off.
+- Three buttons, 🗂️, 📚 (the series) and 🗃️, and the groups turned off are app settings
+  (`AppSettings.ExplorerGroups`, `ExplorerPatternsOff`) — 📚 and the submenu's **Series** one state; out of the
+  undo history.
+
 ## Keyboard Shortcuts
 
 Every shortcut of the app is documented, in one place (origin: `workfiles/20261029-shortcuts-list.md`):

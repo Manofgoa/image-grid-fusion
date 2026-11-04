@@ -83,6 +83,12 @@ internal sealed partial class FileExplorerPanel : Panel
     internal const string CopyPngText = "Copy PNG";
     internal const string CopyFullPathText = "Copy full path";
     private const string SortNewestText = "Date ↓";
+
+    // The sections' titles beside the folder groups' and the name patterns' (workfiles/20261103-file-explorer-groups.md).
+    private const string OtherFoldersTitle = "Other folders";
+    private const string NamedFilesTitle = "Named files";
+    private const string PathTitle = "Path";
+    private const string ContentTitle = "Content";
     private const string SortNameText = "Name A→Z";
     private const string SortSmallestText = "Size ↑";
 
@@ -144,7 +150,7 @@ internal sealed partial class FileExplorerPanel : Panel
     private readonly Breadcrumb _breadcrumb = new() { Dock = DockStyle.Fill, Visible = false };
     private readonly Panel _listHost = new() { Dock = DockStyle.Fill, Margin = Padding.Empty, BorderStyle = BorderStyle.FixedSingle };
     private readonly ThumbnailGrid _grid = new() { Dock = DockStyle.Fill };
-    private readonly TableLayoutPanel _sizeRow = new() { ColumnCount = 6, RowCount = 1, Dock = DockStyle.Fill, Margin = Padding.Empty };
+    private readonly TableLayoutPanel _sizeRow = new() { ColumnCount = 9, RowCount = 1, Dock = DockStyle.Fill, Margin = Padding.Empty };
     private readonly Label _smallerGlyph = new() { Text = "▭", AutoSize = true, Anchor = AnchorStyles.Left, TextAlign = ContentAlignment.MiddleCenter, Margin = new Padding(0, 0, 4, 0) };
     // No ticks: the thumb then sits on the row's centre line, level with the glyphs at any DPI.
     private readonly TrackBar _size = new() { AutoSize = false, Dock = DockStyle.Fill, Margin = Padding.Empty, Minimum = ThumbnailGrid.MinTileSize, Maximum = ThumbnailGrid.MaxTileSize, TickStyle = TickStyle.None, SmallChange = 20, LargeChange = 100 };
@@ -158,6 +164,9 @@ internal sealed partial class FileExplorerPanel : Panel
     // current view's pressed, toggled by hand (AutoCheck off) so one is always pressed.
     private readonly CheckBox _thumbnailsView = new() { AccessibleName = "Thumbnails", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(6, 0, 0, 0), AutoCheck = false, Checked = true };
     private readonly CheckBox _detailsView = new() { AccessibleName = "Details", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(2, 0, 0, 0), AutoCheck = false };
+    private readonly CheckBox _folderGroupsButton = new() { AccessibleName = "Folder groups", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(6, 0, 0, 0), AutoCheck = false, Checked = true };
+    private readonly CheckBox _seriesButton = new() { AccessibleName = "Series", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(2, 0, 0, 0), AutoCheck = false, Checked = true };
+    private readonly CheckBox _searchGroupsButton = new() { AccessibleName = "Search groups", Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Right, Margin = new Padding(2, 0, 0, 0), AutoCheck = false, Checked = true };
     private readonly Panel _invite = new() { Dock = DockStyle.Fill, Visible = false };
     private readonly Label _inviteText = new()
     {
@@ -251,6 +260,12 @@ internal sealed partial class FileExplorerPanel : Panel
     // derived, and the list being built — a later refresh making an earlier folder read stale.
     private bool _folderView = true;
     private string _openFolder = "";
+
+    // The groups (workfiles/20261103-file-explorer-groups.md): the folder view's, the search results', and
+    // the name groups turned off in the ⚙ menu, by id.
+    private bool _folderGroups = true;
+    private bool _searchGroups = true;
+    private IReadOnlySet<string> _patternsOff = new HashSet<string>(StringComparer.Ordinal);
     private FolderTree? _tree;
     private int _listVersion;
     private bool _clearingSearch;
@@ -352,6 +367,9 @@ internal sealed partial class FileExplorerPanel : Panel
         this._sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         this._sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         this._sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        this._sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        this._sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        this._sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _sizeRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         _sizeRow.Controls.Add(_smallerGlyph, 0, 0);
         _sizeRow.Controls.Add(_size, 1, 0);
@@ -359,6 +377,9 @@ internal sealed partial class FileExplorerPanel : Panel
         this._sizeRow.Controls.Add(this._sort, 3, 0);
         this._sizeRow.Controls.Add(this._thumbnailsView, 4, 0);
         this._sizeRow.Controls.Add(this._detailsView, 5, 0);
+        this._sizeRow.Controls.Add(this._folderGroupsButton, 6, 0);
+        this._sizeRow.Controls.Add(this._seriesButton, 7, 0);
+        this._sizeRow.Controls.Add(this._searchGroupsButton, 8, 0);
         this._thumbnailsView.Font = new Font("Segoe UI Symbol", this.Font.SizeInPoints);
         this._detailsView.Font = new Font("Segoe UI Symbol", this.Font.SizeInPoints);
         this._sort.Items.AddRange([SortNewestText, SortNameText, SortSmallestText]);
@@ -431,6 +452,12 @@ internal sealed partial class FileExplorerPanel : Panel
         this.ApplySortTip();
         this._toolTip.SetToolTip(this._thumbnailsView, "Thumbnails: tiles, as many per row as fit");
         this._toolTip.SetToolTip(this._detailsView, "Details: one row per file — its name, its size, and the words a search found in its content");
+        this._toolTip.SetToolTip(this._folderGroupsButton, "Folder groups: the folder view in sections — the folders sharing their first words, the other folders, the series of named files, the named files, then the files named by a camera, a screenshot, an AI, a site… (⚙ menu: File explorer groups)");
+        this._toolTip.SetToolTip(this._searchGroupsButton, "Search groups: the search results in two sections — Path, found by their name or folders, then Content, found by what they hold");
+        this._folderGroupsButton.Click += (_, _) => this.ChangeGroups(!this._folderGroups, this._searchGroups);
+        this._searchGroupsButton.Click += (_, _) => this.ChangeGroups(this._folderGroups, !this._searchGroups);
+        this._toolTip.SetToolTip(this._seriesButton, "Series: the named files sharing their first words — marlène schiappa …, homme soja … — in a section each, before the other named files (with Folder groups on; ⚙ menu: File explorer groups)");
+        this._seriesButton.Click += (_, _) => this.ToggleSeries();
         _collapse.Click += (_, _) => SetOpen(false);
         _expand.Click += (_, _) => SetOpen(true);
         _size.ValueChanged += (_, _) => OnSliderChanged();
@@ -560,6 +587,78 @@ internal sealed partial class FileExplorerPanel : Panel
 
     /// <summary>The user switched the view with its buttons: <see cref="View"/> to remember.</summary>
     public event EventHandler? ViewChanged;
+
+    /// <summary>The user turned the folder groups or the search groups on or off with their buttons: to remember.</summary>
+    public event EventHandler? GroupsChanged;
+
+    /// <summary>The user turned the series on or off with their button: <see cref="PatternsOff"/> to remember.</summary>
+    public event EventHandler? PatternsOffChanged;
+
+    /// <summary>
+    /// Whether the folder view shows its sections — the folder prefix groups, the other folders, the named
+    /// files, the name patterns' groups; the list shown is made again at once. Setting it raises nothing.
+    /// See workfiles/20261103-file-explorer-groups.md.
+    /// </summary>
+    [DefaultValue(true)]
+    public bool FolderGroups
+    {
+        get => this._folderGroups;
+        set
+        {
+            if (value == this._folderGroups)
+            {
+                return;
+            }
+
+            this._folderGroups = value;
+            this._folderGroupsButton.Checked = value;
+            this.RefreshRows(keepPlace: true);
+        }
+    }
+
+    /// <summary>
+    /// Whether the search results show their sections, Path then Content; the list shown is made again
+    /// at once. Setting it raises nothing.
+    /// </summary>
+    [DefaultValue(true)]
+    public bool SearchGroups
+    {
+        get => this._searchGroups;
+        set
+        {
+            if (value == this._searchGroups)
+            {
+                return;
+            }
+
+            this._searchGroups = value;
+            this._searchGroupsButton.Checked = value;
+            this.RefreshRows(keepPlace: true);
+        }
+    }
+
+    /// <summary>
+    /// The name groups turned off, by id (<see cref="NameGroup.Id"/>, <see cref="NamePatterns.SeriesId"/>,
+    /// <see cref="NamePatterns.DetectedSourcesId"/>) — the ⚙ menu's File explorer groups: their files go to the
+    /// next group they fit, else among the named files. The list shown is made again at once.
+    /// </summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public IReadOnlySet<string> PatternsOff
+    {
+        get => this._patternsOff;
+        set
+        {
+            if (value.SetEquals(this._patternsOff))
+            {
+                return;
+            }
+
+            this._patternsOff = new HashSet<string>(value, StringComparer.Ordinal);
+            this._seriesButton.Checked = !this._patternsOff.Contains(NamePatterns.SeriesId);
+            this.RefreshRows(keepPlace: true);
+        }
+    }
 
     /// <summary>A tile was double-clicked or entered: its file, to be added like Add images.</summary>
     public event EventHandler<string>? FileActivated;
@@ -1413,6 +1512,7 @@ internal sealed partial class FileExplorerPanel : Panel
             (this._byName, UiIcons.ByName), (this._byContent, UiIcons.Caption), (this._rescan, UiIcons.Rescan),
             (this._collapse, UiIcons.Collapse), (this._expand, UiIcons.Expand), (this._similarClear, UiIcons.Clear),
             (this._thumbnailsView, UiIcons.Thumbnails), (this._detailsView, UiIcons.Details), (this._chooseFolder, UiIcons.Folder),
+            (this._folderGroupsButton, UiIcons.FolderGroups), (this._seriesButton, UiIcons.Series), (this._searchGroupsButton, UiIcons.SearchGroups),
         })
         {
             UiIcons.SetImage(button, icon, size);
@@ -1514,6 +1614,27 @@ internal sealed partial class FileExplorerPanel : Panel
 
         this.View = view;
         this.ViewChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>The Series button clicked: the series turned on or off, the list made again, the choice to remember.</summary>
+    private void ToggleSeries()
+    {
+        var off = new HashSet<string>(this._patternsOff, StringComparer.Ordinal);
+        if (!off.Remove(NamePatterns.SeriesId))
+        {
+            off.Add(NamePatterns.SeriesId);
+        }
+
+        this.PatternsOff = off;
+        this.PatternsOffChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>A groups button clicked: its groups turned on or off, the list made again, the choice to remember.</summary>
+    private void ChangeGroups(bool folders, bool search)
+    {
+        this.FolderGroups = folders;
+        this.SearchGroups = search;
+        this.GroupsChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>
@@ -2574,7 +2695,8 @@ internal sealed partial class FileExplorerPanel : Panel
         {
             var found = this.Find(_index.Entries, words, everything);
 
-            rows.AddRange(this.WithFavorites(found, _index, words, everything));
+            var inPath = new List<bool>();
+            rows.AddRange(this.SearchSections(this.WithFavorites(found, _index, words, everything, inPath), inPath, everything));
 
             _caption.Text = everything
                 ? $"All files ({found.Count:N0})"
@@ -2659,18 +2781,9 @@ internal sealed partial class FileExplorerPanel : Panel
             Report($"Folder not found: {asked} — back to {SegmentsOf(listing.Folder)[^1]}", error: false);
         }
 
-        var rows = new List<ExplorerRow>(listing.Folders.Count + listing.Files.Count);
-        foreach (string folder in listing.Folders)
-        {
-            rows.Add(FolderRow(folder));
-        }
-
-        foreach (var file in listing.Files)
-        {
-            rows.Add(new ExplorerRow(Path.Combine(root, file.RelativePath), file.Name, Size: file.Size));
-        }
-
-        ShowRows(rows, keepPlace, select);
+        var folders = listing.Folders.Select(this.FolderRow).ToList();
+        var files = listing.Files.Select(file => new ExplorerRow(Path.Combine(root, file.RelativePath), file.Name, Size: file.Size)).ToList();
+        ShowRows(this._folderGroups ? this.FolderSections(folders, files) : [.. folders, .. files], keepPlace, select);
         ShowBreadcrumb(listing.Error ?? $"{Folders(listing.Folders.Count)}, {Files(listing.Files.Count)}");
     }
 
@@ -2727,12 +2840,15 @@ internal sealed partial class FileExplorerPanel : Panel
         var foundFiles = this.Find(files, words, everything);
 
         var rows = new List<ExplorerRow>(foundFolders.Count + foundFiles.Count);
+        var inPath = new List<bool>();
         foreach (var folder in foundFolders)
         {
             rows.Add(FolderRow(index.FullPath(folder)));
+            inPath.Add(true);
         }
 
-        rows.AddRange(this.WithFavorites(foundFiles, index, words, everything));
+        rows.AddRange(this.WithFavorites(foundFiles, index, words, everything, inPath));
+        rows = this.SearchSections(rows, inPath, everything);
 
         int total = rows.Count;
         string trailing = everything
@@ -2751,9 +2867,10 @@ internal sealed partial class FileExplorerPanel : Panel
     /// files of theirs (<see cref="FileSearch.SearchFavorites"/>): every effect preset — by its file's name
     /// or its description — and the file favorites not found already, wherever they are, in the folder
     /// view too. Under the Aa criterion only; never in <c>*</c>. See
-    /// workfiles/20261026-effect-preset-favorites.md, Iteration 6.
+    /// workfiles/20261026-effect-preset-favorites.md, Iteration 6. <paramref name="inPath"/>, when given,
+    /// gets for each row whether it was found by a name (<see cref="FileSearch.IsPathTier"/>).
     /// </summary>
-    private List<ExplorerRow> WithFavorites(IReadOnlyList<SearchMatch> found, FileIndex index, string[] words, bool everything)
+    private List<ExplorerRow> WithFavorites(IReadOnlyList<SearchMatch> found, FileIndex index, string[] words, bool everything, List<bool>? inPath = null)
     {
         var rows = new List<ExplorerRow>(found.Count);
         var shown = new HashSet<string>(found.Select(match => index.FullPath(match.Entry)), StringComparer.OrdinalIgnoreCase);
@@ -2787,20 +2904,94 @@ internal sealed partial class FileExplorerPanel : Panel
             for (; next < ordered.Count && ordered[next].Tier <= match.Tier; next++)
             {
                 rows.Add(ordered[next].Row);
+                inPath?.Add(FileSearch.IsPathTier(ordered[next].Tier, words.Length));
             }
 
             rows.Add(new ExplorerRow(index.FullPath(match.Entry), match.Entry.Name, ContentWord: match.ContentWord, Size: match.Entry.Size, Closeness: Closeness(match)));
+            inPath?.Add(FileSearch.IsPathTier(match.Tier, words.Length));
         }
 
         for (; next < ordered.Count; next++)
         {
             rows.Add(ordered[next].Row);
+            inPath?.Add(FileSearch.IsPathTier(ordered[next].Tier, words.Length));
         }
 
         return rows;
 
         static ExplorerRow FavoriteRow(FavoriteMatch match) =>
             new(match.Favorite.FullPath, Path.GetFileName(match.Favorite.FullPath), Preset: match.Favorite.Preset, DescriptionWord: match.DescriptionWord);
+    }
+
+    /// <summary>
+    /// The folder view's sections, in order (workfiles/20261103-file-explorer-groups.md § Sections): one per
+    /// group of folders sharing their first words, A→Z by the words they share; the other folders; one per
+    /// series of named files, A→Z; the files named by a person — and those whose every group is turned off —
+    /// then one per name group, in the groups' order, the known sources among them; then one per source found
+    /// by itself, A→Z. Each keeps the listing's order; a section left empty shows nothing.
+    /// </summary>
+    private List<ExplorerRow> FolderSections(IReadOnlyList<ExplorerRow> folders, IReadOnlyList<ExplorerRow> files)
+    {
+        var rows = new List<ExplorerRow>(folders.Count + files.Count);
+        var prefixes = SharedPrefix.Groups(folders.Select(folder => folder.Name));
+        foreach (var group in folders.Where(folder => prefixes.ContainsKey(folder.Name))
+            .GroupBy(folder => prefixes[folder.Name], StringComparer.OrdinalIgnoreCase)
+            .OrderBy(group => group.Key, StringComparer.CurrentCultureIgnoreCase))
+        {
+            Add(group.ToList(), group.Key);
+        }
+
+        Add(folders.Where(folder => !prefixes.ContainsKey(folder.Name)).ToList(), OtherFoldersTitle);
+
+        // The files: a name group first, else a source found by itself, else a series.
+        var groups = files.Select(file => NamePatterns.Of(file.Name, this._patternsOff)).ToArray();
+        var left = files.Where((_, i) => groups[i] is null).Select(file => file.Name).ToList();
+        var sources = this._patternsOff.Contains(NamePatterns.DetectedSourcesId) ? new Dictionary<string, string>() : NamePatterns.DetectSources(left);
+        var series = this._patternsOff.Contains(NamePatterns.SeriesId) ? new Dictionary<string, string>() : NamePatterns.Series(left.Where(name => !sources.ContainsKey(name)));
+        AddRuns(series);
+        Add(files.Where((file, i) => groups[i] is null && !sources.ContainsKey(file.Name) && !series.ContainsKey(file.Name)).ToList(), NamedFilesTitle);
+        foreach (var group in NamePatterns.Groups)
+        {
+            Add(files.Where((_, i) => groups[i] == group).ToList(), group.Title);
+        }
+
+        AddRuns(sources);
+        return rows;
+
+        // A section per title of a file's, A→Z.
+        void AddRuns(Dictionary<string, string> titles)
+        {
+            foreach (var run in files.Where(file => titles.ContainsKey(file.Name))
+                .GroupBy(file => titles[file.Name], StringComparer.OrdinalIgnoreCase)
+                .OrderBy(run => run.Key, StringComparer.CurrentCultureIgnoreCase))
+            {
+                Add(run.ToList(), run.Key);
+            }
+        }
+
+        void Add(List<ExplorerRow> section, string title)
+        {
+            string header = $"{title} ({section.Count:N0})";
+            rows.AddRange(section.Select(row => row with { Section = header }));
+        }
+    }
+
+    /// <summary>
+    /// A search's rows in their two sections while the search groups are on — Path, found by a name, then
+    /// Content (<paramref name="inPath"/>, one per row) — as they come, the tiers keeping each section in
+    /// one run; <c>*</c> unsectioned. See workfiles/20261103-file-explorer-groups.md § Search Result Groups.
+    /// </summary>
+    private List<ExplorerRow> SearchSections(List<ExplorerRow> rows, List<bool> inPath, bool everything)
+    {
+        if (!this._searchGroups || everything)
+        {
+            return rows;
+        }
+
+        int path = inPath.Count(found => found);
+        string pathHeader = $"{PathTitle} ({path:N0})";
+        string contentHeader = $"{ContentTitle} ({rows.Count - path:N0})";
+        return [.. rows.Select((row, i) => row with { Section = inPath[i] ? pathHeader : contentHeader })];
     }
 
     /// <summary>
