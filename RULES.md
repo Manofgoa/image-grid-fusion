@@ -49,6 +49,32 @@ The Background effect is **on by default**, and **off does not draw its defaults
 - Its **default state is on** — automatic color, 100 % opacity: a new image, a replaced one, an
   image shifting after a deletion, and every *Reset* — its own and the toolbar's — bring it back on.
 
+#### The Grid Background Exception
+
+The **Grid background** global effect acts on the cells' Background (origin:
+`workfiles/20260926-forced-background.md`), the one global effect that does:
+
+- **Turned on**, it turns off every cell's Background, its settings kept, marking it as its own
+  (`ImageLook.BackgroundForced`, through `ImageLook.ForceBackgroundOff` and `GridPreview.ForceBackgrounds`);
+  **turned off** — its checkbox, its Resets, *Clear all* — it turns back on the marked ones only
+  (`ImageLook.UnforcedBackground`). The user turning a Background on, changing its options or resetting it
+  clears the mark. The layers are left alone.
+- **While it is on**, the Background's default state is **off**: an image arriving or shifting after a
+  deletion (`GridPreview.BackgroundsForcedOff`), and the cell's Background Reset or the effects toolbar's Reset
+  (`MainForm.ResetLook`), leave it off, marked. A new route bringing a cell's Background back to its default
+  goes through them.
+- An effect preset saves a marked Background **as it was before** (`LookPreset` reads
+  `UnforcedBackground`).
+
+#### The Shared Fill
+
+The cell's Background and the Grid background draw **one fill**, `Composition/FillStyle` (origin:
+`workfiles/20260926-forced-background.md`): Solid, Linear or Radial, a second color and its opacity, painted by
+`FillStyle.Paint` into the rectangle its user gives — the cell, or the canvas — its geometry relative to it. A
+new fill kind is a value of `FillKind`, painted there, for both users at once. The Background's extended edges
+lie over it pixel by pixel (`FillStyle.OpaquePixels`), and the Seams fade solid fills only
+(`Compositor.FlatFill`).
+
 #### The Background's Edge Extension
 
 In its extending fills (Corner pixel, Miter, Background corners), the Background stretches the
@@ -240,8 +266,8 @@ pages of its own (origin: `workfiles/20261029-image-upscale.md`):
 
 ### Color Options
 
-Every color option of an effect — the Background's, the Borders', the Cutout's mask, a text layer's
-four, a future one — takes its color two ways, and has an opacity (origin:
+Every color option of an effect — the Background's two, the Borders', the Grid background's two, the
+Cutout's mask, a text layer's four, a future one — takes its color two ways, and has an opacity (origin:
 `workfiles/20261021-color-eyedropper.md`, `workfiles/20261029-eyedropper-ergonomics.md`):
 
 - **Two buttons touching** (`UI/ColorSplitButton`): the **eyedropper**, Windows' own split button
@@ -422,6 +448,9 @@ drafted by `workfiles/20260925-global-fade.md`). § Effects above covers the cel
   It stays an ordinary option otherwise: the Resets and *Clear all* bring back its default, the undo
   history covers it, and only a value chosen by the user is saved — never one a Reset, *Clear all* or
   a restore puts back.
+- A global effect painting **under** the cells (the Grid background) is painted first in
+  `Compositor.Draw`, before the cells, the borders and the layers — over a grid of layers only too — and the
+  preview paints it again under every cell it draws again (`GridPreview.DrawIntoCache`, `RedrawArea`).
 - A global effect that changes the cells' geometry (the Borders' gap) does it in
   `Compositor.Cells` / `Compositor.Draw`, so the preview and every export shrink the cells alike;
   hit-testing keeps the **unshrunk slots**, so no dead zone appears between the cells.
