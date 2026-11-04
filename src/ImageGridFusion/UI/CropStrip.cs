@@ -4,20 +4,22 @@ using ImageGridFusion.Composition;
 
 namespace ImageGridFusion.UI;
 
-/// <summary>One thumbnail of the Crop tab: a ratio to keep — none for Free — or the 100 % action.</summary>
-internal readonly record struct CropChoice(double? Ratio, bool Whole = false);
+/// <summary>One thumbnail of the Crop tab: a ratio to keep — none for Free — or the 100 % or the Keep action.</summary>
+internal readonly record struct CropChoice(double? Ratio, bool Whole = false, bool Keep = false);
 
 /// <summary>
 /// The Crop tab's options: Free then the listed ratios, the one the kept part keeps pressed, each drawing
-/// the kept part at its ratio; then, set apart, 100 % — an action, never pressed — bringing the kept part
-/// back to the whole image.
+/// the kept part at its ratio; then, set apart, two actions, never pressed: 100 %, bringing the kept part
+/// back to the whole image, and Keep, making the kept part the cell's image (workfiles/20261029-image-upscale.md
+/// § Crop to a New Image).
 /// </summary>
 internal sealed class CropStrip : ThumbnailStrip<CropChoice>
 {
     private double? _kept;
+    private string? _keepRefusal;
 
     public CropStrip()
-        : base([new CropChoice(null), .. CropEffect.Ratios.Select(ratio => new CropChoice(ratio)), new CropChoice(null, Whole: true)])
+        : base([new CropChoice(null), .. CropEffect.Ratios.Select(ratio => new CropChoice(ratio)), new CropChoice(null, Whole: true), new CropChoice(null, Keep: true)])
     {
         this.FitSize();
     }
@@ -38,9 +40,27 @@ internal sealed class CropStrip : ThumbnailStrip<CropChoice>
         }
     }
 
+    /// <summary>Why Keep cannot make the kept part the cell's image now; <c>null</c> while it can.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public string? KeepRefusal
+    {
+        get => this._keepRefusal;
+        set
+        {
+            if (value != this._keepRefusal)
+            {
+                this._keepRefusal = value;
+                this.Invalidate();
+            }
+        }
+    }
+
     protected override Size Box => EffectBox;
 
-    protected override bool IsPressed(CropChoice choice) => !choice.Whole && (choice.Ratio is { } ratio
+    protected override bool Picks(CropChoice choice) => !choice.Keep || this._keepRefusal is null;
+
+    protected override bool IsPressed(CropChoice choice) => !choice.Whole && !choice.Keep && (choice.Ratio is { } ratio
         ? this._kept is { } kept && CropEffect.Same(ratio, kept)
         : this._kept is null);
 
@@ -49,6 +69,7 @@ internal sealed class CropStrip : ThumbnailStrip<CropChoice>
     protected override string Label(CropChoice choice) => choice switch
     {
         { Whole: true } => "100 %",
+        { Keep: true } => "Keep",
         { Ratio: { } ratio } => RatioText(ratio),
         _ => "Free",
     };
@@ -56,12 +77,20 @@ internal sealed class CropStrip : ThumbnailStrip<CropChoice>
     protected override string Tip(CropChoice choice) => choice switch
     {
         { Whole: true } => "Keeps the whole image: the bars back on its edges, the ratio freed",
+        { Keep: true } => this._keepRefusal is { } refusal ? refusal
+            : "Makes the kept part the cell's image — its effects kept, ready to be upscaled; Ctrl+Z gives the whole image back",
         { Ratio: { } ratio } => $"Keeps the kept part at {RatioText(ratio)}",
         _ => "Frees the kept part's ratio",
     };
 
     protected override void PaintThumbnail(Graphics g, CropChoice choice, Rectangle box, bool pressed)
     {
+        if (choice.Keep)
+        {
+            this.PaintKeep(g, box);
+            return;
+        }
+
         if (choice.Whole)
         {
             // The whole image kept, the crop bars along its edges.
@@ -103,6 +132,34 @@ internal sealed class CropStrip : ThumbnailStrip<CropChoice>
             using var dashed = this.OutlinePen();
             dashed.DashStyle = DashStyle.Dash;
             g.DrawRectangle(dashed, kept.X, kept.Y, kept.Width - 1, kept.Height - 1);
+        }
+    }
+
+    // Keep: the kept part, small in its image, then filling the cell, an arrow between them; faded while refused.
+    private void PaintKeep(Graphics g, Rectangle box)
+    {
+        this.PaintCell(g, box);
+        int pad = Math.Max(2, box.Height / 8);
+        var whole = new Rectangle(box.X + pad, box.Y + pad, box.Width / 2 - 2 * pad, box.Height - 2 * pad);
+        this.Fill(g, SystemColors.Window, whole);
+        var kept = new Rectangle(whole.X + whole.Width / 4, whole.Y + whole.Height / 4, whole.Width / 2, whole.Height / 2);
+        this.Fill(g, Marker, kept);
+        this.Outline(g, whole);
+        var made = new Rectangle(box.X + box.Width / 2 + pad, box.Y + pad, box.Width / 2 - 2 * pad, box.Height - 2 * pad);
+        this.Fill(g, Marker, made);
+        this.Outline(g, made);
+        using (var arrow = new Pen(this.Shade(SystemColors.ControlDarkDark), 1.5f) { CustomEndCap = new AdjustableArrowCap(3, 3) })
+        {
+            var smoothing = g.SmoothingMode;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.DrawLine(arrow, kept.Right, kept.Y + kept.Height / 2, made.Left - 1, made.Y + made.Height / 2);
+            g.SmoothingMode = smoothing;
+        }
+
+        if (this._keepRefusal is not null)
+        {
+            using var veil = new SolidBrush(Color.FromArgb(160, SystemColors.Control));
+            g.FillRectangle(veil, box);
         }
     }
 

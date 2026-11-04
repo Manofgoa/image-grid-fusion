@@ -43,6 +43,12 @@ public sealed class SourceImage : IDisposable
 
     public string? FilePath { get; private set; }
 
+    /// <summary>
+    /// The file an image without one was cut from by the Crop's Keep — its name and folder kept for naming it
+    /// (workfiles/20261029-image-upscale.md § Crop to a New Image); <c>null</c> otherwise.
+    /// </summary>
+    public string? CroppedFrom { get; init; }
+
     /// <summary>A text pasted or dropped: the form it was read from, saved as is when it becomes a favorite.</summary>
     public TextOrigin? TextOrigin { get; set; }
 

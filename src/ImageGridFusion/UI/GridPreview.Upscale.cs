@@ -61,6 +61,25 @@ internal sealed partial class GridPreview
         }
     }
 
+    /// <summary>
+    /// The selected cell's image replaced by <paramref name="image"/>, its look as given — the Crop's Keep: the grid neither
+    /// starts over nor shows it anew, one step of the undo history; the former image released, the history keeping it
+    /// (workfiles/20261029-image-upscale.md § Crop to a New Image).
+    /// </summary>
+    public void ReplaceSelectedCell(SourceImage image)
+    {
+        if (this.HasLayerSelection || this._selected < 0 || this._selected >= this._images.Count)
+        {
+            image.Dispose();
+            return;
+        }
+
+        this.EndLayerEdit();
+        this.Replace(this._selected, image);
+        this.OnImagesChanged();
+        this.SelectedImageChanged?.Invoke(this, EventArgs.Empty);
+    }
+
     /// <summary>The Upscale's share of a paint, before the Cutout's — which cuts the enlarged image: every animated content's pages followed.</summary>
     private void PaintUpscale()
     {

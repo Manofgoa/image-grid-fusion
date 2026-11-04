@@ -3924,6 +3924,7 @@ internal sealed partial class GridPreview : Control
     /// <summary>The name the selected cell shows: its file's, else how it arrived.</summary>
     private static string SourceName(SourceImage image) =>
         image.FilePath is { } path ? Path.GetFileName(path)
+        : image.CroppedFrom is { } from ? $"{Path.GetFileNameWithoutExtension(from)} (crop)"
         : image.Pages is TextPages ? (image.Dropped ? "Dropped text" : "Pasted text")
         : "Pasted image";
 

@@ -938,7 +938,11 @@ internal sealed partial class MainForm : Form
         _fineAngle.ValueChanged += (_, _) => SetFineAngle();
         this._crop.Picked += (_, choice) =>
         {
-            if (choice.Whole)
+            if (choice.Keep)
+            {
+                this.KeepCrop();
+            }
+            else if (choice.Whole)
             {
                 this.SetCropWhole();
             }
@@ -3811,6 +3815,50 @@ internal sealed partial class MainForm : Form
     private void SetCropWhole() =>
         this.ChangeLook(ImageEffect.Crop, look => look.Crop is { } crop ? look.WithCrop(crop.Whole()) : look);
 
+    /// <summary>Why the Crop's Keep cannot make the kept part the selected cell's image; <c>null</c> when it can.</summary>
+    private string? CropKeepRefusal(SourceImage? image) =>
+        image is null ? "Select a cell first"
+        : this._preview.HasLayerSelection ? "Keep works on a cell's image, not on a layer"
+        : image.Pages is not null ? "Keep works on still images: a GIF, a video, a PDF or a text keeps its crop"
+        : image.Look.Crop is null ? "Turn the Crop on first: Keep makes its kept part the cell's image"
+        : null;
+
+    /// <summary>
+    /// The Crop's Keep: the kept part of the image as loaded becomes the cell's image — no orientation, color nor any
+    /// effect drawn into it — its look carried over as effects but the Crop and the Cutout, back to their defaults, and
+    /// the Upscale, turned off; named after the file it was cut from (workfiles/20261029-image-upscale.md § Crop to a New
+    /// Image).
+    /// </summary>
+    private void KeepCrop()
+    {
+        if (this.IsExporting || this._preview.SelectedImage is not { } image || this.CropKeepRefusal(image) is not null || image.Look.Crop is not { } crop)
+        {
+            return;
+        }
+
+        var part = crop.Pixels(image.Bitmap.Size);
+        var kept = new Bitmap(Math.Max(1, part.Width), Math.Max(1, part.Height), PixelFormat.Format32bppArgb);
+        try
+        {
+            using var g = Graphics.FromImage(kept);
+            g.CompositingMode = CompositingMode.SourceCopy;
+            g.DrawImage(image.Bitmap, new Rectangle(Point.Empty, kept.Size), part, GraphicsUnit.Pixel);
+        }
+        catch
+        {
+            kept.Dispose();
+            throw;
+        }
+
+        var look = image.Look.Reset(ImageEffect.Crop).Reset(ImageEffect.Cutout);
+        this._preview.ReplaceSelectedCell(new SourceImage(kept, filePath: null)
+        {
+            CroppedFrom = image.FilePath ?? image.CroppedFrom,
+            Look = look.IsActive(ImageEffect.Upscale) ? look.TurnOff(ImageEffect.Upscale) : look,
+        });
+        this.ShowStatus($"The kept part is the cell's image now — {kept.Width} × {kept.Height} px; Ctrl+Z gives the whole image back");
+    }
+
     /// <summary>
     /// The Cutout's modes: Subject brings the main subject back; Pick turns the effect on and waits for a
     /// click on the selected cell — a layer is picked on in its edit view.
@@ -3963,7 +4011,9 @@ internal sealed partial class MainForm : Form
                 return false;
             }
 
-            string name = image.FilePath is { } path ? Path.GetFileName(path) : "the cell's image";
+            string name = image.FilePath is { } path ? Path.GetFileName(path)
+                : image.CroppedFrom is { } from ? $"{Path.GetFileNameWithoutExtension(from)} (crop)"
+                : "the cell's image";
             using var window = new UpscaleWindow(image, setting, this._upscales, name);
             if (window.ShowDialog(this) != DialogResult.OK || image.IsDisposed || !image.HasUpscale(setting))
             {
@@ -4067,8 +4117,10 @@ internal sealed partial class MainForm : Form
         {
             Filter = animated ? "Animated GIF (*.gif)|*.gif" : "PNG image (*.png)|*.png",
             DefaultExt = extension,
-            FileName = $"{(image.FilePath is { } file ? Path.GetFileNameWithoutExtension(file) : "upscaled")}-x{upscale.Factor}{extension}",
-            InitialDirectory = image.FilePath is { } path ? Path.GetDirectoryName(path) : Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+            FileName = $"{(image.FilePath is { } file ? Path.GetFileNameWithoutExtension(file)
+                : image.CroppedFrom is { } from ? Path.GetFileNameWithoutExtension(from) + "-crop"
+                : "upscaled")}-x{upscale.Factor}{extension}",
+            InitialDirectory = (image.FilePath ?? image.CroppedFrom) is { } path ? Path.GetDirectoryName(path) : Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
         })
         {
             if (dialog.ShowDialog(this) != DialogResult.OK)
@@ -4407,6 +4459,8 @@ internal sealed partial class MainForm : Form
             {
                 this._crop.Kept = crop.SeenRatio(look);
             }
+
+            this._crop.KeepRefusal = this.IsExporting ? "Not while exporting" : this.CropKeepRefusal(image);
 
             var flipped = look.TurnOn(ImageEffect.Flip);
             this._flip.FlipX = flipped.FlipX;
