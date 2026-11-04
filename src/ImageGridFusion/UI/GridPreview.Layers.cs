@@ -64,7 +64,7 @@ internal sealed partial class GridPreview
     private EditState? _edit;
 
     /// <summary>What a layer's edit view sets aside, given back when it closes.</summary>
-    private sealed record EditState(int Layer, List<SourceImage> Images, GridLayout? Layout, double Ratio, double FreeRatio, GridBorders? Borders, SeamFade? Seams);
+    private sealed record EditState(int Layer, List<SourceImage> Images, GridLayout? Layout, double Ratio, double FreeRatio, GridBorders? Borders, SeamFade? Seams, GridBackground? Background);
 
     /// <summary>Raised when a layer's edit view opens or closes.</summary>
     public event EventHandler? LayerEditChanged;
@@ -948,6 +948,11 @@ internal sealed partial class GridPreview
         {
             g.SetClip(area);
             g.Clear(Color.Transparent);
+            if (this._gridBackground is { } background)
+            {
+                background.Paint(g, new Rectangle(Point.Empty, canvas.Size), this.GridColorsOf(cells));
+            }
+
             for (int i = 0; i < cells.Length && i < this._images.Count; i++)
             {
                 if (cells[i].IntersectsWith(area))
@@ -994,13 +999,14 @@ internal sealed partial class GridPreview
         this.EndLayerPress();
         this.EndDrag();
         this.EndKeyPan();
-        this._edit = new EditState(this._selectedLayer, [.. this._images], this._layout, this._ratio, this.FreeRatio, this._borders, this._seams);
+        this._edit = new EditState(this._selectedLayer, [.. this._images], this._layout, this._ratio, this.FreeRatio, this._borders, this._seams, this._gridBackground);
         this._images.Clear();
         layer.Image.Look = layer.Look;
         this._images.Add(layer.Image);
         this._layout = GridLayout.Default(1);
         this._borders = null;
         this._seams = null;
+        this._gridBackground = null;
         this._selected = 0;
         this.ResetHover();
         this._ratio = this.EditRatio();
@@ -1025,6 +1031,7 @@ internal sealed partial class GridPreview
         this._layout = edit.Layout;
         this._borders = edit.Borders;
         this._seams = edit.Seams;
+        this._gridBackground = edit.Background;
         this._ratio = edit.Ratio;
         this._selected = -1;
         this._selectedLayer = edit.Layer < this._layers.Count ? edit.Layer : -1;
