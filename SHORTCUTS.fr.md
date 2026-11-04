@@ -96,6 +96,8 @@ Tant que l'onglet Layers est sélectionné.
 | <kbd>Molette</kbd> sur un champ Frames | Une image par cran — 5 avec <kbd>Ctrl</kbd> |
 | <kbd>Enter</kbd> dans un champ Frames | Appliquer le nombre saisi |
 | <kbd>Escape</kbd> dans un champ Frames | Remettre la valeur |
+| <kbd>↑</kbd> <kbd>↓</kbd>, <kbd>Molette</kbd> dans le champ Width ou Height du Format | Un de plus ou de moins, en choisissant Custom |
+| <kbd>Enter</kbd> dans le champ Width ou Height du Format | Appliquer le nombre saisi, ramené dans les bornes |
 | <kbd>Molette</kbd> sur la bande des dispositions | Faire défiler les dispositions |
 
 ## Explorateur de fichiers
