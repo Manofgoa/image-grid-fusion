@@ -356,6 +356,16 @@ own.
   columns 6 and 7 went to a second row, out of sight. The table gets its columns.
 - **New**: a 📚 **Series** button between 🗂️ and 🗃️ (§ Toggles).
 
+### Iteration 11 — 2026-11-04 — 🧭 Implementation choices
+
+Iteration 10 implemented. No rule broken.
+
+- The row has 9 columns now; the three buttons show after 🔳 / 📃: 🗂️, 📚, 🗃️.
+- 📚 changes the same state as the submenu's **Series** (`PatternsOff`), saved through
+  `FileExplorerPanel.PatternsOffChanged`.
+- **Seen, out of scope**: in a window narrower than the panel's saved width, the panel overflows on
+  the right and its last controls are cut off — `main` does the same; not changed here.
+
 ---
 
 ## Implementation Log
@@ -365,9 +375,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 7, 9 | 2026-11-03 | `NamePatterns`, `SharedPrefix.Groups`, the name-and-content tier, the grid's sections, the panel's sections and buttons, the ⚙ submenu and the settings |
+| Code | 7, 9, 11 | 2026-11-03 | `NamePatterns`, `SharedPrefix.Groups`, the name-and-content tier, the grid's sections, the panel's sections and buttons, the ⚙ submenu and the settings |
 | Unit tests | 7 | 2026-11-03 | None: no test project (Q&A 15); the patterns and the folder groups checked on sample names in a throw-away console, the sections in the app |
-| README | 7, 9 | 2026-11-03 | README / GLOSSARY in English and French, SHORTCUTS in English and French, RULES.md § File Explorer Sections |
+| README | 7, 9, 11 | 2026-11-03 | README / GLOSSARY in English and French, SHORTCUTS in English and French, RULES.md § File Explorer Sections |
 
 ---
 
