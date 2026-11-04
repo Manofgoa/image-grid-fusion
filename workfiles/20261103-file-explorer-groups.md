@@ -322,6 +322,28 @@ Numbers mixing date stamps with Unix times (1 172). Answers (Q&A 17–19):
 § Sections, § File Name Patterns and the new § File Series describe it. Also: Camera's `P` and
 7 digits now matches the whole name (`P34452747D6385635G` was taken for a camera's).
 
+### Iteration 9 — 2026-11-04 — 🧭 Implementation choices
+
+Iteration 8 implemented (Q&A 20: code and documentation). No rule broken.
+
+- **A group is a `NameGroup`** — an id, a title, a match — instead of an enum value: the known sources
+  are groups like the others. The ids turned off are kept as text in `settings.json`; the ones saved
+  before (`Camera`, `Numbers`…) keep their meaning.
+- **Detected sources**: the leading word — every letter of it, dots inside (`y2mate.com`) — then a
+  stamp right after it: 4 digits or more, or a code of 5 letters and digits holding a digit. Never a
+  small word (`les`, `the`). Their checkbox, **Detected sources**, ends the **Sources** submenu.
+- **Series**: accents folded too (`marlène` and `marlene` one series); small words never end a title
+  (`Taxez les crabes`, `Taxez les riches` → `Taxez`) nor make one alone.
+- **AI** also takes DALL·E and Firefly; **Generic names** also `hq720`, `hqdefault`, `sddefault`,
+  `unnamed`, `untitled`, `sans titre`, `downloads`; **Screenshots** also `Capture-décran-…` and
+  `Capture-ecran-…`; **Identifiers** also an X media id (`GEhjfvEWQAE7EPO`, 15 characters, upper and
+  lower case).
+- **Icons**: 📚 Series, 🤖 AI, 🌐 Sources and each known source, 🔭 Detected sources, 🗒️ Generic names,
+  🔣 Short codes, 🗓️ Date stamps, ⏱️ Timestamps.
+- **On `X:\Dropbox\Outils RS`** (2 995 files): Date stamps 1 149, Identifiers 419, Short codes 229,
+  ssstwitter.com 175, Screenshots 110, AI 108, Generic names 44, the other sources 5 to 15 each, 31
+  series (`marlène schiappa` 32, `homme soja` 22…), Named files 552 — down from 1 366.
+
 ---
 
 ## Implementation Log
@@ -331,9 +353,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 7 | 2026-11-03 | `NamePatterns`, `SharedPrefix.Groups`, the name-and-content tier, the grid's sections, the panel's sections and buttons, the ⚙ submenu and the settings |
+| Code | 7, 9 | 2026-11-03 | `NamePatterns`, `SharedPrefix.Groups`, the name-and-content tier, the grid's sections, the panel's sections and buttons, the ⚙ submenu and the settings |
 | Unit tests | 7 | 2026-11-03 | None: no test project (Q&A 15); the patterns and the folder groups checked on sample names in a throw-away console, the sections in the app |
-| README | 7 | 2026-11-03 | README / GLOSSARY in English and French, SHORTCUTS in English and French, RULES.md § File Explorer Sections |
+| README | 7, 9 | 2026-11-03 | README / GLOSSARY in English and French, SHORTCUTS in English and French, RULES.md § File Explorer Sections |
 
 ---
 
@@ -362,7 +384,7 @@ Questions asked by the agent during design, with user responses.
 | 17 | Sources like ssstwitter.com, FaceApp, Videoleap, OIG: detected by themselves, a fixed known list, or both? | Both | 2026-11-04 |
 | 18 | Which other groups? (AI together, generic names, short codes, Numbers split) | All four | 2026-11-04 |
 | 19 | Do the named series (marlène schiappa …, homme soja …) become groups too? | Special cases: a new group option, turned on or off, on by default | 2026-11-04 |
-| 20 | Go for the More name groups adjustment? | | 2026-11-04 |
+| 20 | Go for the More name groups adjustment? | Code and documentation | 2026-11-04 |
 
 ---
 
