@@ -39,7 +39,11 @@ Relevant components:
 - **No snapping**: the angle moves freely, degree by degree.
 - Keyboard: arrows move by 1° (`SmallChange`); a click on the slider's bar beside the thumb, and
   PageUp / PageDown, jump by **15°** (`LargeChange`).
-- Width: **360 px** (1 px per degree with the mouse), instead of the 160 px of the other option sliders.
+- Ctrl + wheel: onto the next multiple of **5°**, the default `ControlStep` of every option slider
+  (`StepSlider`, `workfiles/20260926-ctrl-wheel-5-percent-step.md`); the plain wheel keeps the stock
+  step, as the fine angle does (`workfiles/20261006-wheel-zoom-step.md`).
+- Width: **360 px** (1 px per degree with the mouse), instead of the 160 px of the other option sliders
+  — a deliberate exception, like the Colors effect's 90 px ones.
 - −180° and +180° are the same look. The slider keeps the value the user put it on: when the cell's
   angle is re-read into the slider and the slider's current value is equivalent (mod 360°), the
   slider is left where it is, so dragging to −180° does not make the thumb jump to +180°. On
@@ -62,6 +66,8 @@ Relevant components:
 
 ## Ctrl+R / Ctrl+Shift+R
 
+- They act on the cell under the pointer, else the selected layer (`workfiles/20261029-layers.md`):
+  the same rule for both, through the Rotate effect of its look.
 - They go to the **next quarter turn** that way (Q&A #12), so they always land on a right angle:
   Ctrl+R to the nearest quarter turn strictly clockwise (+37° → +90°, +90° → +180°, +180° → −90°),
   Ctrl+Shift+R strictly counter-clockwise (+37° → 0°, 0° → −90°). On a quarter turn, that is ±90°
@@ -169,6 +175,22 @@ carry an `ImageLook` of their own. The presets keep their format, restore throug
 describe the angle as the slider shows it; the layers need nothing. The new Keyboard Shortcuts rule
 puts `SHORTCUTS.md` / `SHORTCUTS.fr.md` in the Ctrl+R commit. No open question.
 
+### Iteration 9 — 2026-11-04
+
+The user asked whether newer work goes against the choices made here. Every workfile since the
+design that touches the rotation was read (Crop, Ctrl+R, option thumbnails, undo, wheel steps,
+position readout, zoom fit and arrival, native size, presets, cell copy, Cutout, Upscale, Layers,
+text layers, shortcuts list): **none contradicts it**. Their fine-angle rules — the cover zoom, the
+box the stops use, the native size's cover scale, the edge extension — keep holding, since the
+decomposition into quarter turn + fine angle is kept. Points added to the design rather than
+conflicts:
+- The option sliders now step onto multiples with Ctrl + wheel (`StepSlider.ControlStep`): the angle
+  slider takes the default, 5°.
+- Ctrl+R acts on the selected layer when the pointer is over no cell: the next-quarter rule applies
+  to it the same way.
+- The quarter-turn thumbnails' last label becomes −90° (Iteration 6), where
+  `workfiles/20261007-effect-option-buttons.md` wrote 270°: a change of that workfile's label only.
+
 ### Iteration 5 — 2026-10-10
 
 Design re-checked against the code again. Two changes landed since: the quarter turns became option
@@ -197,6 +219,22 @@ effect presets save it as `rotation` + `fineAngle` and describe it (`LookPreset`
 carry an `ImageLook` of their own. The presets keep their format, restore through `WithAngle` and
 describe the angle as the slider shows it; the layers need nothing. The new Keyboard Shortcuts rule
 puts `SHORTCUTS.md` / `SHORTCUTS.fr.md` in the Ctrl+R commit. No open question.
+
+### Iteration 9 — 2026-11-04
+
+The user asked whether newer work goes against the choices made here. Every workfile since the
+design that touches the rotation was read (Crop, Ctrl+R, option thumbnails, undo, wheel steps,
+position readout, zoom fit and arrival, native size, presets, cell copy, Cutout, Upscale, Layers,
+text layers, shortcuts list): **none contradicts it**. Their fine-angle rules — the cover zoom, the
+box the stops use, the native size's cover scale, the edge extension — keep holding, since the
+decomposition into quarter turn + fine angle is kept. Points added to the design rather than
+conflicts:
+- The option sliders now step onto multiples with Ctrl + wheel (`StepSlider.ControlStep`): the angle
+  slider takes the default, 5°.
+- Ctrl+R acts on the selected layer when the pointer is over no cell: the next-quarter rule applies
+  to it the same way.
+- The quarter-turn thumbnails' last label becomes −90° (Iteration 6), where
+  `workfiles/20261007-effect-option-buttons.md` wrote 270°: a change of that workfile's label only.
 
 ---
 
@@ -233,7 +271,7 @@ Questions asked by the agent during design, with user responses.
 | 12 | Ctrl+R on an angle off a quarter: +90° keeping the rest, or the next quarter turn? | The next quarter turn | 2026-10-10 |
 | 13 | Go for the implementation? | Dismissed | 2026-10-10 |
 | 14 | Go for the implementation? | Dismissed | 2026-10-22 |
-| 15 | Go for the implementation? | | |
+| 15 | Go for the implementation? | Not answered — the user asked instead to check newer work against this design | 2026-11-04 |
 
 ---
 
