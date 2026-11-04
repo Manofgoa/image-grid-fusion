@@ -58,10 +58,18 @@ first. To confirm (Open Questions).
 - **Without a key**, the view shows an invitation to set one, a link to GIPHY's developer site and the
   ⚙ menu's entry.
 
+### GIFs and Stickers
+
+- A **GIFs / Stickers** toggle beside the search box chooses what the view searches (Q&A 7): GIPHY's
+  GIFs, or its **stickers** — transparent, made to lie over something, so the natural content of a
+  layer. One kind at a time: a load stays one call.
+
 ### Requests
 
-- `GET /v1/gifs/search` (`q`, `limit`, `offset`, `rating`, `lang`) through `Downloader.Client`, parsed
-  with `JsonDocument` as `XPostResolver` does; the empty box — Open Question.
+- `GET /v1/gifs/search` or `/v1/stickers/search` (`q`, `limit`, `offset`, `rating`, `lang`) through
+  `Downloader.Client`, parsed with `JsonDocument` as `XPostResolver` does.
+- **The empty box shows the trending** (Q&A 10): `/v1/gifs/trending` or `/v1/stickers/trending`, one
+  call when the view opens or the box is emptied — as File System shows the favorites.
 - **Budget**: a beta key allows **100 calls an hour**. A load is one call; nothing is fetched in the
   background, nothing per tile. A refused call (429) says so in the list's caption, the list kept.
 - A newer query cancels the one running.
@@ -78,17 +86,25 @@ first. To confirm (Open Questions).
   requests do not count against the key's budget), kept in memory for the session.
 - The loader learns a **pseudo-path** for it, as `FaceCrops` did: no file on the disk until the media
   is used.
-- Still or animated in the list — Open Question.
+- **The thumbnails play** (Q&A 11): every GIPHY tile in view plays its animation while the results show,
+  not only once clicked — a small animated rendition (a few hundred KB at most), its frames decoded
+  once, the tiles scrolled out of view not drawn. `ThumbnailGrid` has no animated tile today: it gets
+  one, for this view only.
 
 ### Reaching the Grid
 
 - A GIPHY tile is **downloaded before it is used**: into the temp folder (kebab-case folder, its name in
   one `FolderName` constant — `CLAUDE.md` § Folder Names), the same media reused, the folder emptied at
   start-up by the normal instance only, as `UrlDownloads` is.
-- Then it goes the file's way: a **drag** carries `DataFormats.FileDrop`, a **double-click** calls
-  `AddFilesAsync` — a cell, a layer, the Grid background alike, with no route of its own.
-- `StartDrag` needs the file to exist: when the download happens — Open Question.
-- Which rendition is downloaded (MP4 or GIF) — Open Question.
+- **A click downloads, then the tile can be dragged** (Q&A 9): a click on a GIPHY tile starts its
+  download, a gauge on the tile while it runs; once the file is there the tile is marked ready, and a
+  drag from it carries `DataFormats.FileDrop` as a file tile's does. A drag started from a tile not
+  downloaded yet does nothing but start the download. A **double-click** downloads if needed, then calls
+  `AddFilesAsync` — a cell, as a file tile's double-click does.
+- From then on it goes the file's way — a cell, a layer (a drop on the Layers tab), the Grid background
+  alike, with no route of its own.
+- **The rendition downloaded** (Q&A 8): a GIF's **MP4** — light and sharp, the app plays videos; a
+  sticker's **GIF** — the only rendition keeping its transparency.
 
 ### API Key
 
@@ -118,14 +134,17 @@ this work is an Open Question; until then, the behaviours are checked by hand:
 
 - [ ] **Term**: *online library* (*bibliothèque en ligne*) for the new concept, the word *source* being
   taken?
-- [ ] **Empty search box**: GIPHY's trending GIFs (one call), or nothing until something is typed?
-- [ ] **GIFs and stickers**: GIFs only, or the stickers too (transparent — the backlog's *Stickers in
-  layers*), and how chosen (a toggle, sections)?
-- [ ] **Downloaded rendition**: MP4 (light, sharp, no transparency) or GIF (heavier, 256 colours,
-  transparency for the stickers)?
-- [ ] **When the download happens**: at the drag's start (the drag waits for it, a gauge on the tile), or
-  ahead (on hover / selection), or a first click then a drag?
-- [ ] **Thumbnails**: still, or animated in the list?
+- [x] ~~**Empty search box**: GIPHY's trending GIFs (one call), or nothing until something is typed?~~ →
+  The trending, of the kind chosen (Q&A 10)
+- [x] ~~**GIFs and stickers**: GIFs only, or the stickers too (transparent — the backlog's *Stickers in
+  layers*), and how chosen (a toggle, sections)?~~ → Both, a GIFs / Stickers toggle (Q&A 7)
+- [x] ~~**Downloaded rendition**: MP4 (light, sharp, no transparency) or GIF (heavier, 256 colours,
+  transparency for the stickers)?~~ → MP4 for a GIF, GIF for a sticker (Q&A 8)
+- [x] ~~**When the download happens**: at the drag's start (the drag waits for it, a gauge on the tile), or
+  ahead (on hover / selection), or a first click then a drag?~~ → A click downloads, then the tile can be
+  dragged; a double-click downloads and adds (Q&A 9)
+- [x] ~~**Thumbnails**: still, or animated in the list?~~ → Animated, playing while the results show
+  (Q&A 11)
 - [ ] **Page size**: how many results a load asks for (GIPHY's beta allows up to 50 a call)?
 - [ ] **Rating**: which content rating the requests carry (`g`, `pg`, `pg-13`, `r`), fixed or a setting?
 - [ ] **Attribution placement**: the Powered By GIPHY mark next to the search box, on the breadcrumb line,
@@ -159,6 +178,17 @@ and the HTTP code (§ Overview). Two points were checked against later work: the
 2026-10-27 replaces the tabs of the original request, and the word *source* is taken by the name
 patterns. Every design choice left is listed in § Open Questions.
 
+### Iteration 2 — 2026-11-05
+
+First batch of open questions answered (Q&A 7–10): a GIFs / Stickers toggle, one kind a load; the
+trending shown in the empty box; a GIF downloaded as its MP4, a sticker as its GIF; a click downloads a
+tile, which can then be dragged, a double-click downloading and adding it. § The GIPHY View updated.
+
+### Iteration 3 — 2026-11-05
+
+The user, before the question was asked: the GIF animations play in the list during the search, not
+only once a tile is clicked (Q&A 11). § Thumbnails: animated tiles, a new capability of `ThumbnailGrid`.
+
 ---
 
 ## Implementation Log
@@ -186,6 +216,15 @@ Questions asked by the agent during design, with user responses.
 | 4 | Where the library lives (source tabs or a view of the drop-down), which library | A view of the views drop-down; GIPHY — with an explanation of the Powered By GIPHY attribution | 2026-11-05 |
 | 5 | Depth of the subject | Tricky / long | 2026-11-05 |
 | 6 | Where the API key lives | ⚙ menu → `settings.json` | 2026-11-05 |
+| 7 | GIFs only, or the stickers too? | Both, a GIFs / Stickers toggle | 2026-11-05 |
+| 8 | Downloaded rendition: MP4 or GIF? | MP4 for a GIF, GIF for a sticker | 2026-11-05 |
+| 9 | When the download happens | A click downloads, then the drag is possible | 2026-11-05 |
+| 10 | The empty search box: trending or nothing? | The trending | 2026-11-05 |
+| 11 | Thumbnails still or animated? | (User, before it was asked) The GIF animations play during the search, not only on a click | 2026-11-05 |
+| 12 | Page size of a load | | 2026-11-05 |
+| 13 | Content rating of the requests | | 2026-11-05 |
+| 14 | Where the Powered By GIPHY mark sits | | 2026-11-05 |
+| 15 | Does the Ctrl+F cycle go through the GIPHY view? | | 2026-11-05 |
 
 ---
 
