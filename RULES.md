@@ -141,18 +141,23 @@ The Cutout effect's state holds no pixel, and its mask is computed outside `Comp
 
 #### The Upscale Exception
 
-The Upscale effect's enlargement is computed outside `Compositor`, and a GIF's is played from pages of its own
-(origin: `workfiles/20261029-image-upscale.md`):
+The Upscale effect's enlargement is computed outside `Compositor`, in a window of its own, and a GIF's is played from
+pages of its own (origin: `workfiles/20261029-image-upscale.md`):
 
-- Its state holds the **factor** only, ×2 or ×4; a factor whose result would pass `CanvasSizer.MaxLongSide` on the
-  longer side is refused (`UpscaleEffect.Fits`), its thumbnail faded.
+- Its state holds the **setting applied** only — the factor, ×2 or ×4, and the model, Quality or Fast — the one an
+  enlargement was computed for; a factor whose result would pass `CanvasSizer.MaxLongSide` on the longer side is refused
+  (`UpscaleEffect.Fits`), its thumbnail faded.
+- **Its options choose, they apply nothing** — the exception to *acting on any option activates the effect*: the setting
+  chosen is the toolbar's (`MainForm.UpscaleChosen`), applied by the **Upscale** button or the checkbox through
+  `MainForm.ApplyUpscale` — at once when the image holds that enlargement already, else after the **Upscale window**
+  (`UI/UpscaleWindow`) has computed it: size, estimated weight and duration first, then progress, time left and Cancel,
+  modal. Nothing computes an enlargement anywhere else: never at paint, never in the background.
 - On **stills and animated GIFs** only (`SourceImage.Upscales`, `PageSource.UpscaledFrom`): a video, a PDF, a text and a
   thumbnail have their checkbox disabled.
 - A still's enlargement is computed off the UI thread by `UI/UpscaleService`, one at a time, and kept on the
-  `SourceImage` (`SetUpscaled`), counted in its `MemoryBytes`; a GIF's frames go one by one into
-  **`%TEMP%\ImageGridFusion\upscale-cache\`** (`UpscaleCache`, emptied at start-up by the normal instance only), its pages
-  then `UpscaledPages` (`SetUpscaledPages`). Never in `Compositor.DrawCell`, which runs at every frame; never kept
-  between sessions.
+  `SourceImage` per setting, a few at most (`SetUpscaled`, `HasUpscale`), counted in its `MemoryBytes`; a GIF's frames go
+  one by one into **`%TEMP%\ImageGridFusion\upscale-cache\`** (`UpscaleCache`, emptied at start-up by the normal instance
+  only), its pages then `UpscaledPages` (`SetUpscaledPages`). Never kept between sessions.
 - **Upscale, then the cut-out**: `SourceImage.DrawnBitmap` builds the bitmap → its enlargement (`UpscaleBase`) → the
   cut-out; the Cutout's mask, read on the image as loaded, is applied to the enlarged image.
 - Every reader of a content's pages that draws them reads **`SourceImage.DrawnPages`** — the player
@@ -163,14 +168,15 @@ The Upscale effect's enlargement is computed outside `Compositor`, and a GIF's i
 - **The preview draws a reduced copy**: an enlargement past `SourceImage.ShownMaxSide` (2048 px) is drawn in the preview
   from `SourceImage.ShownBitmap`, reduced once; the exports, Cell copy and *Save upscaled image…* read `DrawnBitmap`, at
   full resolution. A new preview reader of an image takes `ShownBitmap`, a new export `DrawnBitmap`.
-- It is asked for **at every paint** (`GridPreview.PaintUpscale`, before the Cutout's), the cell drawn as loaded with its
-  *Upscaling… N %* badge meanwhile, preview only. **Exports wait** for it (`MainForm.WaitForUpscalesAsync`, before
-  `WaitForCutoutsAsync`); one that fails is drawn as loaded, the status line saying why.
-- **The upscale engine is never shipped**: Real-ESRGAN ×2 and ×4, `Imaging/UpscaleEngineFiles`, one component installed
-  from the Component updates window into **`upscale-engine\` next to the exe** (§ Downloadable Components) — the window
-  opened on its row when the effect is turned on without it, the effect left off. It runs on the OCR engine's ONNX
-  Runtime in tiles (`Imaging/UpscaleEngine`), the alpha enlarged on its own, its sessions released after 5 minutes unused.
-- **Save upscaled image…** (`MainForm.SaveUpscaledAsync`, from the options' *Save…* and the cell's menu) writes the
+- **No Copy or Save of the grid without the enlargement**: an image whose Upscale is on without it (`UpscalePending` — a
+  preset restored) shows a *Not upscaled* badge, and a Copy or a Save of the grid opens the Upscale window for it first
+  (`MainForm.EnsureUpscaled`), a Cancel cancelling the Copy or the Save. A new export route calls it.
+- **The upscale engine is never shipped**: Real-ESRGAN ×2 and ×4 (Quality) and Real-ESRGAN compact (Fast — its ×2 its ×4
+  halved), `Imaging/UpscaleEngineFiles`, two components installed from the Component updates window into
+  **`upscale-engine\` next to the exe** (§ Downloadable Components) — the window opened on the model's row when Upscale is
+  clicked without it. It runs on the OCR engine's ONNX Runtime in tiles (`Imaging/UpscaleEngine`), the alpha enlarged on
+  its own, its sessions released after 5 minutes unused.
+- **Save upscaled image…** (`MainForm.SaveUpscaledAsync`, the cell's menu, once the enlargement is computed) writes the
   enlargement alone — cut out with the Cutout on, no other effect — as a PNG, a GIF's as an animated GIF; the cell
   untouched, out of the undo history.
 
@@ -212,7 +218,8 @@ The Upscale effect's enlargement is computed outside `Compositor`, and a GIF's i
 - **Acting on any option activates the effect**: changing any control of an effect's options turns
   the effect on (its checkbox gets checked) before applying the change, starting from its kept
   settings, so a change never happens without showing. The only exception is the effect's own
-  **Reset** button, ending the row, which brings the effect back to its default state.
+  **Reset** button, ending the row, which brings the effect back to its default state — and the
+  Upscale's options, which only choose what its **Upscale** button computes (§ The Upscale Exception).
 - **A choice among values is an option thumbnail** (origin: `workfiles/20261007-effect-option-buttons.md`):
   the Background's format — a pictogram in a **56 × 40** box (`ThumbnailStrip.EffectBox`), its name
   below, the pressed ones highlighted, its tooltip saying what it does — never a text button. Every
