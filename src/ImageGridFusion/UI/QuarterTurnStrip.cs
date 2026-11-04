@@ -1,10 +1,12 @@
 using System.ComponentModel;
+using ImageGridFusion.Composition;
 
 namespace ImageGridFusion.UI;
 
 /// <summary>
-/// The Rotate tab's quarter turns, 0°, 90°, 180° and 270°: the one the angle falls exactly on pressed,
-/// none with a fine angle. A click on any one sets that rotation, the fine angle back to 0°.
+/// The Rotate tab's quarter turns, 0°, 90°, 180° and 270° — labelled −90°, as the angle slider reads it:
+/// the one the angle falls exactly on pressed, none with a fine angle. A click on any one sets that
+/// rotation, the fine angle back to 0°.
 /// </summary>
 internal sealed class QuarterTurnStrip : ThumbnailStrip<int>
 {
@@ -36,11 +38,14 @@ internal sealed class QuarterTurnStrip : ThumbnailStrip<int>
 
     protected override bool IsPressed(int degrees) => degrees == this._rotation;
 
-    protected override string Label(int degrees) => $"{degrees}°";
+    protected override string Label(int degrees) => $"{ImageLook.WrappedAngle(degrees)}°";
 
-    protected override string Tip(int degrees) => degrees == 0
-        ? "The image as loaded, the fine angle back to 0°"
-        : $"Turns the image {degrees}° clockwise, the fine angle back to 0°";
+    protected override string Tip(int degrees) => degrees switch
+    {
+        0 => "The image as loaded, the angle back to 0°",
+        270 => "Turns the image 90° counter-clockwise",
+        _ => $"Turns the image {degrees}° clockwise",
+    };
 
     protected override void PaintThumbnail(Graphics g, int degrees, Rectangle box, bool pressed)
     {

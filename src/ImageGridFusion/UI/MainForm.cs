@@ -220,8 +220,8 @@ internal sealed partial class MainForm : Form
     private readonly StepSlider _motionCycle = OptionSlider(-(int)MotionEffect.MaxCycle.TotalSeconds, -(int)MotionEffect.MinCycle.TotalSeconds, 5, controlStep: 1);
     private readonly Label _motionCycleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly QuarterTurnStrip _quarterTurns = new() { Anchor = AnchorStyles.Left };
-    private readonly TrackBar _fineAngle = OptionSlider(-ImageLook.MaxFineAngle, ImageLook.MaxFineAngle, 5);
-    private readonly Label _fineAngleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly StepSlider _angle = AngleSlider();
+    private readonly Label _angleLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     // Free first, then the listed ratios, each drawing its kept part; then 100 %, an action, never pressed.
     private readonly CropStrip _crop = new() { Anchor = AnchorStyles.Left };
     private readonly FlipStrip _flip = new() { Anchor = AnchorStyles.Left };
@@ -604,7 +604,7 @@ internal sealed partial class MainForm : Form
         };
         this._motionCycle.Value = -(int)MotionEffect.Default.Cycle.TotalSeconds;
         this._options[ImageEffect.Animations].Controls.AddRange([this._motionKind, this._motionCycle, this._motionCycleLabel]);
-        _options[ImageEffect.Rotate].Controls.AddRange([this._quarterTurns, _fineAngle, _fineAngleLabel]);
+        _options[ImageEffect.Rotate].Controls.AddRange([this._quarterTurns, this._angle, this._angleLabel]);
         _options[ImageEffect.Flip].Controls.Add(this._flip);
         // The trim on two lines at the left, the starting point and Freeze at the right (layout A).
         this._trimLines.Controls.Add(this._trimFromLabel, 0, 0);
@@ -968,7 +968,7 @@ internal sealed partial class MainForm : Form
         };
         this._quarterTurns.Picked += (_, degrees) => this.ChangeLook(ImageEffect.Rotate, look => look.WithRotation(degrees));
 
-        _fineAngle.ValueChanged += (_, _) => SetFineAngle();
+        this._angle.ValueChanged += (_, _) => this.SetAngle();
         this._crop.Picked += (_, choice) =>
         {
             if (choice.Keep)
@@ -3642,6 +3642,17 @@ internal sealed partial class MainForm : Form
     internal static string EffectTitle(ImageEffect effect) => effect.ToString();
 
     /// <summary>A slider of the Colors effect, centered on 0: narrower than the others, so its four fit one row.</summary>
+    /// <summary>
+    /// The Rotate effect's angle, the whole circle by 1°: 1 px a degree, wider than the others; a click
+    /// beside the thumb, or PageUp / PageDown, turns 15°.
+    /// </summary>
+    private static StepSlider AngleSlider()
+    {
+        var slider = OptionSlider(-180, 180, 15);
+        slider.Width = 360;
+        return slider;
+    }
+
     private static StepSlider ColorsSlider(int maximum, int largeChange)
     {
         var slider = OptionSlider(-maximum, maximum, largeChange);
@@ -3826,10 +3837,10 @@ internal sealed partial class MainForm : Form
     /// <summary>The frames, or pages, of the selected image's content; 1 without one.</summary>
     private int FrameCount => this._preview.SelectedImage?.Pages?.Count ?? 1;
 
-    private void SetFineAngle()
+    private void SetAngle()
     {
-        _fineAngleLabel.Text = AngleText(_fineAngle.Value);
-        ChangeLook(ImageEffect.Rotate, look => look.WithFineAngle(_fineAngle.Value));
+        this._angleLabel.Text = AngleText(this._angle.Value);
+        this.ChangeLook(ImageEffect.Rotate, look => look.WithAngle(this._angle.Value));
     }
 
     private static string AngleText(int degrees) => $"Angle: {degrees:+0;-0;0}°";
@@ -4515,7 +4526,11 @@ internal sealed partial class MainForm : Form
             var rotated = look.TurnOn(ImageEffect.Rotate);
             this._quarterTurns.Rotation = rotated.FineAngle == 0 ? rotated.Rotation : null;
 
-            _fineAngle.Value = rotated.FineAngle;
+            // −180° and +180° are one look: the slider stays where it was put, its thumb never jumping across.
+            if (ImageLook.WrappedAngle(this._angle.Value) != rotated.Angle)
+            {
+                this._angle.Value = rotated.Angle;
+            }
 
             if (look.TurnOn(ImageEffect.Crop).Crop is { } crop)
             {
@@ -4607,7 +4622,7 @@ internal sealed partial class MainForm : Form
         }
 
         _zoomLabel.Text = $"Zoom: {this._preview.SelectedZoom(look?.TurnOn(ImageEffect.Zoom)) * 100:0} %";
-        _fineAngleLabel.Text = AngleText(_fineAngle.Value);
+        this._angleLabel.Text = AngleText(this._angle.Value);
         this._motionCycleLabel.Text = CycleText(-this._motionCycle.Value);
         UpdateFramesLabel();
         this.UpdateColorsLabels();
