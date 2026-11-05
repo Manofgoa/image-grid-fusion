@@ -289,6 +289,14 @@ sections:
   checked against the live API (401, *Unauthorized*). The results, the paging, the thumbnails, the
   download and the drag could not be checked without a GIPHY key: they are left to the user's checks.
 
+### Iteration 10 — 2026-11-05 — ⚙️ Post-implementation — Quota and load counts
+
+The user asks whether the key's usable / remaining quota can be known, and for each load to say how many
+images it brought. Findings: GIPHY's answers carry no rate-limit header (checked on its live API: no
+`X-RateLimit-*`, only `Retry-After`; a valid key's answer could not be checked) — the remaining calls can
+only be **counted by the app**, over a sliding hour, its own calls only. Where and how the count and the
+load's images show: asked (Q&A 25–27).
+
 ---
 
 ## Implementation Log
@@ -337,6 +345,9 @@ Questions asked by the agent during design, with user responses.
 | 22 | The API key shown in clear or masked | In clear | 2026-11-05 |
 | 23 | Unit tests: a test project, or checks by hand | Checks by hand | 2026-11-05 |
 | 24 | The backlog's *Stickers in layers* row | Split the row | 2026-11-05 |
+| 25 | (User) Can the usable / remaining quota be known? How is it counted and kept? | | 2026-11-05 |
+| 26 | Where the quota shows | | 2026-11-05 |
+| 27 | (User) Say at each load how many images it brought — where? | | 2026-11-05 |
 
 ---
 
