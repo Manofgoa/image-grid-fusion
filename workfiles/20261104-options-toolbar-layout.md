@@ -288,6 +288,8 @@ value's place on `SliderCaption` for the *Slider exact value* field. The merge w
 | GLOSSARY.md / .fr.md | 5 | 2026-11-05 | *Feature line* / *Ligne de fonctionnalité* |
 | README.md / .fr.md | — | — | Not applicable: the READMEs do not describe the options toolbars |
 | TODO-FEATURES.md | 5 | 2026-11-05 | Row *Feature lines for the other tabs* |
+| UI language | 6 | 2026-11-05 | After `feature/french-translation`: main taken in (`a46b999`), the captions in `Strings.resx` / `Strings.fr.resx` (`MainLine…`), `MainFrom` / `MainTo` dropped, the French glossary's row in the French labels (Fond, Lecture, Calques) |
+| Merge | 6 | 2026-11-05 | Merged into `main` (`73b8564`, `--no-ff`); worktree and branch removed |
 
 ---
 
