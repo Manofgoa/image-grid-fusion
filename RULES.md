@@ -76,6 +76,12 @@ a member of its own (§ Grid Background Image). The Background's extended edges
 lie over it pixel by pixel (`FillStyle.OpaquePixels`), and the Seams fade solid fills only
 (`Compositor.FlatFill`).
 
+- **Auto is its user's automatic color**, given at paint (`FillStyle.Paint`'s `automatic`): the last cell's for the
+  Grid background, the cell's own for a cell's Background — whose first color has an Auto too, its **From**
+  (`BackgroundEffect.First`: Auto, Black, White, Chosen; origin: `workfiles/20261105-cell-background-auto-colors.md`).
+  A cell reads its band color only when one of them is Auto (`BackgroundEffect.NeedsAutomatic`); a new painter of a
+  cell's fill passes it the same way.
+
 #### The Background's Edge Extension
 
 In its extending fills (Corner pixel, Miter, Background corners), the Background stretches the
@@ -262,8 +268,9 @@ pages of its own (origin: `workfiles/20261029-image-upscale.md`):
     (`ThumbnailStrip.PaintCell` / `PaintImage`); faded while disabled.
   - Zero, one or several thumbnails may be pressed, as the effect's state says; an **action** among
     them, never pressed (Crop's 100 %), is **set apart** after them by a wider gap and a line.
-  - Out of it: plain on / off checkboxes (Freeze, Mute, Automatic color, Soften, Invert, Fill holes), the Color… button,
-    the sliders and a drop-down of a single value (the Animations' Type).
+  - Out of it: plain on / off checkboxes (Freeze, Mute, Soften, Invert, Fill holes), the Color… button,
+    the sliders and a drop-down of a single value (the Animations' Type, a fill's From and To — each choice after
+    its color's swatch, `UI/ColorChoiceBox`).
 
 #### Feature Lines
 
