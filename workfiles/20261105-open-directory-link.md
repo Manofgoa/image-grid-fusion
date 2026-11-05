@@ -30,7 +30,9 @@ Components involved:
 
 - A `LinkLabel` in `_statusLine`, **right after `_status`** and before `_cancelButton`: the link reads as
   the end of the message. Hidden by default.
-- Text: **Open directory** (English UI), its French text in `Strings.fr.resx` — see Open Questions.
+- Text: **Open directory** (`Strings.resx`), **Ouvrir le dossier** in French (`Strings.fr.resx`).
+- Its icon: **📂** before the text (§ Icons), one `UiIcons` field, drawn at 16 logical px and again when
+  the DPI changes, as the buttons' icons.
 - The `LinkLabel`'s own colors — Windows' link blue, the hand cursor, underlined on hover.
 - Its tooltip: the **full path** of the file it opens.
 - `FitStatusWidth` subtracts the link's width while it shows, so a long message wraps before pushing the
@@ -59,11 +61,12 @@ Every route the user chose: Save, Copy, Save last / Save upscaled, Cell copy.
 | Copy MP4 / GIF | `Copy` (animated) | The previous copy in `previous\` |
 | Copy ▾ JPEG for sharing | the sharing copy | The previous copy in `previous\` |
 | Cell copy (key, *Copy cell*, layer list *Copy*) | `CopyAlone` | The previous copy in `previous\` |
-| Copy last MP4 / GIF | `CopyLastVideo` | See Open Questions |
+| Copy last MP4 / GIF | `CopyLastVideo` | The last video's file in `%TEMP%\ImageGridFusion` — the one the clipboard points at, emptied at the next start |
 
 - `PreviousCopy.Keep` / `KeepCopyOf` **return the path** of the file kept; `KeepPrevious` returns it with
   the status suffix, `null` when the copy could not be kept.
-- A Copy whose previous copy could not be kept (`MainStatusNotKept`): see Open Questions.
+- A Copy whose previous copy could not be kept (`MainStatusNotKept`): **no link** — the message says why,
+  and a PNG copied has no other file.
 
 ---
 
@@ -89,12 +92,12 @@ nothing is created or updated. The behaviour is checked by hand in the launched 
 
 ## Open Questions
 
-- [ ] French text of the link: *Ouvrir le dossier*?
-- [ ] Does the link take an icon (📂) before its text, as § Icons asks of buttons?
-- [ ] *Copy last MP4 / GIF* puts back the last video's temp file without keeping a new previous copy:
-      link to that temp file, or no link?
-- [ ] A Copy whose previous copy could not be kept: no link, or (MP4 / GIF / JPEG) a link to the temp
-      file the clipboard points at?
+- [x] ~~French text of the link: *Ouvrir le dossier*?~~ → **Ouvrir le dossier**
+- [x] ~~Does the link take an icon (📂) before its text, as § Icons asks of buttons?~~ → Yes, 📂 before it
+- [x] ~~*Copy last MP4 / GIF* puts back the last video's temp file without keeping a new previous copy:
+      link to that temp file, or no link?~~ → A link to that temp file
+- [x] ~~A Copy whose previous copy could not be kept: no link, or (MP4 / GIF / JPEG) a link to the temp
+      file the clipboard points at?~~ → No link
 
 ---
 
@@ -112,6 +115,12 @@ shown by `ShowStatus` when given the file written, hidden by any other message; 
 with the file selected through the existing `ShowInExplorer`; every Save and Copy route, Save last,
 Save upscaled and the cell copy included — a Copy pointing at its previous copy in `previous\`, whose
 path `PreviousCopy` now returns. Four details left open.
+
+### Iteration 2 — 2026-11-05
+
+The four open details settled (Q5–Q8): the French text *Ouvrir le dossier*; a 📂 icon before the text;
+*Copy last MP4 / GIF* shows the link on the last video's temp file; a Copy whose previous copy was not
+kept shows none. No open question left.
 
 ---
 
@@ -138,10 +147,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | What does a click do? | Opens Explorer, the file selected | 2026-11-05 |
 | 3 | Which routes show it? | Save (PNG / MP4 / GIF / JPEG), Copy (previous copy), Save last / Save upscaled, Cell copy | 2026-11-05 |
 | 4 | Is the subject straightforward or tricky? | Straightforward — a single scout pass | 2026-11-05 |
-| 5 | French text of the link? | | |
-| 6 | An icon before it? | | |
-| 7 | Copy last MP4 / GIF: link or not? | | |
-| 8 | Copy whose previous copy was not kept: link or not? | | |
+| 5 | French text of the link? | Ouvrir le dossier | 2026-11-05 |
+| 6 | An icon before it? | Yes, 📂 | 2026-11-05 |
+| 7 | Copy last MP4 / GIF: link or not? | A link to the last video's temp file | 2026-11-05 |
+| 8 | Copy whose previous copy was not kept: link or not? | No link | 2026-11-05 |
 
 ---
 
