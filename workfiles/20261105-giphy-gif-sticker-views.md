@@ -35,7 +35,8 @@ Enter key, ↑ / breadcrumb), `UI/FileExplorerPanel.Giphy.cs` (the view's lists,
 |---|---|
 | The views | `ExplorerMode.GiphyGifs` and `ExplorerMode.GiphyStickers` in place of `ExplorerMode.Giphy`, in this order, after Favorites: the drop-down lists **Folders, People, Favorites, GIPHY GIFs, GIPHY Stickers** |
 | Their names | `GIPHY GIFs` / `GIPHY Stickers` in English, `GIPHY GIF` / `GIPHY Stickers` in French |
-| The kind | Each view's kind is fixed (`GiphyKind.Gifs` / `Stickers`): `_giphyKind` follows the mode, the GIFs / Stickers toggle and `ChangeGiphyKind` are removed, with their strings (`ExplorerAccGiphy*`, `ExplorerTipGiphyGifs` / `Stickers`) — their tooltips' content (*arrives as an MP4*, *made for the layers*) moved to the views' entries if the drop-down has tooltips, else dropped *(see Open Questions)* |
+| Their icon | 🌍 (`UiIcons.OnlineLibrary`) for both, their names telling them apart |
+| The kind | Each view's kind is fixed (`GiphyKind.Gifs` / `Stickers`): `_giphyKind` follows the mode, the GIFs / Stickers toggle and `ChangeGiphyKind` are removed, with their strings (`ExplorerAccGiphy*`, `ExplorerTipGiphyGifs` / `Stickers`) — what their tooltips said (*arrives as an MP4*, *made for the layers*) stays in the README |
 | Ctrl+F | Both views in the cycle (`NextMode`), both skipped while no key is set |
 | The saved view | Saved by name, as now; a `Giphy` saved by the previous version is read as `GiphyGifs` (`AppSettings.ExplorerMode`) |
 | Everything else | Shared by both: the key, the rating, the quota and its breadcrumb count, the downloads, the hearts, the attribution, the hidden sort / groups buttons |
@@ -55,20 +56,21 @@ What calls GIPHY, and what no longer does:
 | The box emptied | The trending — a call unless kept | **No call**: the list shown stays, the breadcrumb saying *Enter to search* as for a text typed |
 | The key set or changed | The trending — a call | **No call**: the invitation; the lists kept forgotten (another key) |
 | The other kind chosen (the toggle) | The same search in the other kind — a call | Gone with the toggle: entering the other view shows its own kept list |
-| ↑, Backspace, Alt+↑, the breadcrumb's *GIPHY* | The trending — a call unless kept | *(see Open Questions)* |
-| The rating changed in the ⚙ menu | The search shown done again — a call | *(see Open Questions)* |
+| ↑, Backspace, Alt+↑, the breadcrumb's *GIPHY* | The trending — a call unless kept | Unchanged: an explicit request for the trending, as the invitation's **Trending** button |
+| The invitation's **🔥 Trending** button | — | The trending, as Enter on the empty box — a call unless kept |
+| The rating changed in the ⚙ menu | The search shown done again — a call | **No call**: both views' lists and trending forgotten (another rating), the invitation shown |
 
 ### What Each View Keeps
 
 - **Its last list**, for the session: the rows, the query (null: the trending), whether GIPHY holds more —
   per kind, beside the trending already kept per kind (`_giphyTrending`). Entering the view shows it as it was
   left, its thumbnails loaded again from the CDN (out of the budget).
-- **Nothing yet** → the **invitation**: the view's grid replaced by the invite panel, as without a key, saying
-  to type a search and press Enter — Enter on the empty box showing the trending *(its exact form: see Open
-  Questions)*.
+- **Nothing yet** → the **invitation**: the view's grid replaced by the invite panel, as without a key — its
+  text *Type a search, then press Enter*, and a **🔥 Trending** button doing what Enter on the empty box does (a
+  new `InviteAction`, its icon a new `UiIcons` field, no link).
 - The **box's text** stays as the cycle leaves it (Ctrl+F selects it, as in every view): a text differing from
   the list's query shows *Enter to search* in the breadcrumb, as today.
-- A change of the key forgets both views' lists and trending; a change of the rating *(see Open Questions)*.
+- A change of the key or of the rating forgets both views' lists and trending: the invitation shows.
 
 ---
 
@@ -97,13 +99,13 @@ after cycling Ctrl+F through both views.
 
 ## Open Questions
 
-- [ ] The views' icons in the drop-down: 🎞️ / 😎 (the buttons' today), 🌍 for both, or 🌍 GIFs / another?
-- [ ] The invitation at a view's first entry: a text only (*type a search, then Enter — Enter on an empty box
-      shows the trending*), or the same text with a **Trending** button?
-- [ ] ↑, Backspace, Alt+↑ and the breadcrumb's *GIPHY*: still the trending (an explicit action — a call unless
-      kept), or the box emptied only, Enter then needed?
-- [ ] The rating changed while a GIPHY view shows: the search shown done again (a call, as today), or the kept
-      lists forgotten and the invitation shown?
+- [x] ~~The views' icons in the drop-down: 🎞️ / 😎 (the buttons' today), 🌍 for both, or 🌍 GIFs / another?~~ → 🌍 for both
+- [x] ~~The invitation at a view's first entry: a text only, or the same text with a **Trending** button?~~ → The
+      text and a **🔥 Trending** button
+- [x] ~~↑, Backspace, Alt+↑ and the breadcrumb's *GIPHY*: still the trending, or the box emptied only?~~ → Still
+      the trending, an explicit action — a call unless kept
+- [x] ~~The rating changed while a GIPHY view shows: the search done again, or the kept lists forgotten?~~ → The
+      kept lists forgotten, the invitation shown, no call
 
 ---
 
@@ -119,6 +121,13 @@ in the order the requests were made.
 Initial design from the request and the scoping batch (Q&A 1–4): a new workfile; two views, both in the
 Ctrl+F cycle, the GIFs / Stickers buttons removed; a view entered shows its last list kept for the session,
 else an invitation, never a call; only Enter and a next page call GIPHY. Four questions left open.
+
+### Iteration 2 — 2026-11-05
+
+The four open questions answered (Q&A 5–8): 🌍 for both views; the invitation gets a **🔥 Trending** button; ↑,
+Backspace, Alt+↑ and the breadcrumb's *GIPHY* keep showing the trending, an explicit action; a rating change
+forgets the kept lists and shows the invitation, no call. The buttons' tooltips are dropped, the README keeping
+what they said. No question left.
 
 ---
 
@@ -145,10 +154,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | How the two categories show | Two views of the views drop-down, both in the Ctrl+F cycle | 2026-11-05 |
 | 3 | What a GIPHY view shows when entered without a search validated | Its last results kept for the session, else an invitation | 2026-11-05 |
 | 4 | Depth of the exploration | Straightforward: one pass | 2026-11-05 |
-| 5 | The views' icons | | 2026-11-05 |
-| 6 | The invitation's form | | 2026-11-05 |
-| 7 | ↑ / Backspace / Alt+↑ / breadcrumb *GIPHY* | | 2026-11-05 |
-| 8 | The rating changed while a view shows | | 2026-11-05 |
+| 5 | The views' icons | 🌍 for both | 2026-11-05 |
+| 6 | The invitation's form | Its text and a Trending button | 2026-11-05 |
+| 7 | ↑ / Backspace / Alt+↑ / breadcrumb *GIPHY* | The trending, an explicit action — a call unless kept | 2026-11-05 |
+| 8 | The rating changed while a view shows | The kept lists forgotten, the invitation shown | 2026-11-05 |
 
 ---
 
