@@ -1034,8 +1034,9 @@ How the content search reads the images and PDF pages (origin:
   declares itself. The search ranks the content matches by `ContentGrade`: a sure slot holding the word,
   then a sure slot holding it once its spaces are removed (**spaces-ignored match**, query words of
   `FileSearch.JoinedMinLength` characters or more, OCR texts only), then a weak slot, then the **seen**
-  slots — the tags and the caption (`ContentPasses.IsSeen`, § Image Content Analysis). The excerpt and the
-  arrow come from the slot that gave the grade (`ContentIndex.Find`).
+  slots — the tags and the caption (`ContentPasses.IsSeen`, § Image Content Analysis). Within a grade, the slot holding the word at its best **level** — whole, at a word's start, inside one
+  (§ Search Word Levels) — a word found joined being inside one. The excerpt and the arrow come from the slot
+  that gave the grade and the level (`ContentIndex.Find`).
 - **RapidOCR is never shipped**: its models and the native DLLs of ONNX Runtime and SkiaSharp are kept
   out of the build and installed from the Component updates window into **`ocr-engine\` next to the exe**
   (`OcrEngineFiles`) — only the zip entries needed, by HTTP ranges (`Web/RemoteZip`), each checked against
@@ -1221,6 +1222,23 @@ The file explorer's lists in sections under titled headers (origin: `workfiles/2
 - Three buttons, 🗂️, 📚 (the series) and 🗃️, and the groups turned off are app settings
   (`AppSettings.ExplorerGroups`, `ExplorerPatternsOff`) — 📚 and the submenu's **Series** one state; out of the
   undo history.
+
+## Search Word Levels
+
+How a query word stands where it is found ranks the search (origin: `workfiles/20261105-whole-word-search-ranking.md`),
+one definition, `FileSearch.LevelOf`:
+
+- **Three levels**, best first (`WordLevel`): **whole** — *tique* in *Tique bulle* —, at a **word's start** — *Tiques* —,
+  **inside** one — *Soviétique*. A word is a run of letters or of digits of the folded text: anything else, and a change
+  between a letter and a digit, separates two words (*tique2* holds *tique* whole); a change of case does not.
+- **They refine a tier, never cross it**: in every path tier — the name before the subfolders, as before — and every
+  content grade (`ContentHit`), the matches holding more query words whole, then more at a word's start, come first
+  (`Rank.CompareTier`) — **before the sort order**. The favorites' file names are ranked alike (`SearchFavorites`); a
+  preset's description and a person's name keep their tier unranked inside.
+- **One comparable number**: `SearchMatch.Tier` and `FavoriteMatch.Tier` fold the levels into the tier
+  (`FileSearch.Numbered`, a tier spanning `Levels(words)` numbers), so the merge of the favorites, presets and people
+  and `IsPathTier` read them unchanged. A new tier is numbered there.
+- A new place matching a query word against a name or a text ranks it through `LevelOf`.
 
 ## Secondary Sources
 
