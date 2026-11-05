@@ -67,9 +67,10 @@ Components involved (all under `src/ImageGridFusion/`):
   environment. The folders inside a source keep the usual manila color *(Iteration 6)*.
 - **Opened** (double-click, Enter), the folder view browses the source as it browses the base folder:
   its subfolders A→Z, its files in the sort order, read from the disk; the **breadcrumb** reads
-  `← <source name> › …` — no base folder's name *(Iteration 6)* — the **←** going back to the base
-  folder's root, the source's name to the source's root; ↑ at the source's root leaves it, its tile
-  selected. The open folder
+  `<base> │ <source name> › …` — a **clear separator** `│` between the base folder's name and the
+  source's, never the child's `›` *(Iteration 7, replacing Iteration 6's ←)* — the base folder's name
+  going back to its root, the source's name to the source's root; ↑ at the source's root leaves it, its
+  tile selected. The open folder
   is `_openSource` (null: the base folder) plus `_openFolder`, relative to it; the folder view reads
   through `ViewSource` / `ViewRoot` / `ViewIndex` / `ViewContents` / `ViewTree`.
 - **Not remembered**: `OpenFolder` gives "" while a source is open, so the next start opens at the base
@@ -278,6 +279,12 @@ The user, after a first look:
   place, going back to the base folder's root, then the source's name and the folders down to the open one.
 - Agent's reading, by the same rule: in the breadcrumb, only the source's name is blue.
 
+### Iteration 7 — 2026-11-05 — ⚙️ Post-implementation — A clear separator rather than the back arrow
+
+The user's alternative, then chosen over Iteration 6's ←: the breadcrumb inside a source **keeps the base
+folder's name**, followed by a **clear separator** — `│` — rather than `›`, which would show a child; then
+the source's name, blue, and its folders separated by `›`. The blue root tile only (Iteration 6) stands.
+
 ---
 
 ## Implementation Log
@@ -319,6 +326,7 @@ Questions asked by the agent during design, with user responses.
 | 15 | *(user, unprompted)* | A source's index lives in files other than the main index's — in subfolders of the main `index\` folder, for example | 2026-11-05 |
 | 16 | Does *Find similar images* span the base folder and every analysed source, whatever the image it starts from? | Yes, everywhere — from any tile, cell or dropped image | 2026-11-05 |
 | 17 | *(user, after delivery)* | The subfolders of a source need not be blue, only its root; the breadcrumb does not start with the base folder inside a source — a left arrow back to the root instead | 2026-11-05 |
+| 18 | Breadcrumb inside a source: the base folder's name with a clear separator, or the ← alone? | The base folder's name, then a clear separator `│`, then the source | 2026-11-05 |
 
 ---
 
