@@ -23,8 +23,10 @@ namespace ImageGridFusion.UI;
 /// stands out of the others, 0 to 1 (<see cref="VisionSimilarity.Closeness"/>). <paramref name="Section"/>: the
 /// title of the section the tile belongs to — <c>Outils RS (3)</c> — a header drawn above the first tile of
 /// each run of equal titles; null in a list without sections (workfiles/20261103-file-explorer-groups.md).
+/// <paramref name="Online"/>: a result of an online library — GIPHY's — its picture its animated thumbnail, its
+/// <paramref name="FullPath"/> a key of no file, a file only once fetched (workfiles/20261105-online-library-giphy.md).
 /// </summary>
-internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false, string? ContentWord = null, long? Size = null, int? Count = null, EffectPreset? Preset = null, string? DescriptionWord = null, string? GroupId = null, RectangleF? Face = null, string? FaceKey = null, float? Closeness = null, string? Section = null)
+internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false, string? ContentWord = null, long? Size = null, int? Count = null, EffectPreset? Preset = null, string? DescriptionWord = null, string? GroupId = null, RectangleF? Face = null, string? FaceKey = null, float? Closeness = null, string? Section = null, Web.GiphyItem? Online = null)
 {
     /// <summary>What tells a tile from the others: a file's presets share its path, and its faces.</summary>
     public string Key => this.GroupId is { } group ? "group:" + group : this.FaceKey ?? this.Preset?.Id ?? this.FullPath;
@@ -38,8 +40,9 @@ internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder =
     /// <summary>What its picture is asked for by: its file's thumbnail, or a face cut out of it.</summary>
     public string ThumbnailKey => this.Face is { } face ? FaceCrops.Key(this.FullPath, face) : this.FullPath;
 
-    /// <summary>The tile's tooltip: its path, after a preset's description, then its closeness; a group's name and files.</summary>
-    public string Tip => this.IsGroup ? $"{this.Name}\n{ThumbnailGrid.FileCount(this.Count ?? 0)}"
+    /// <summary>The tile's tooltip: its path, after a preset's description, then its closeness; a group's name and files; an online result's title.</summary>
+    public string Tip => this.Online is not null ? this.Name
+        : this.IsGroup ? $"{this.Name}\n{ThumbnailGrid.FileCount(this.Count ?? 0)}"
         : (this.Preset is { Description.Length: > 0 } preset ? $"{preset.Description.Trim()}\n\n{this.FullPath}" : this.FullPath)
             + (this.ClosenessText is { } closeness ? Texts.Format(Strings.ExplorerTileCloseness, closeness) : "");
 
@@ -189,6 +192,9 @@ internal sealed class ThumbnailGrid : ScrollableControl
     /// <summary>A tile was double-clicked outside its heart, or Enter pressed on the selected one.</summary>
     public event EventHandler<ExplorerRow>? RowActivated;
 
+    /// <summary>A tile was pressed with the left button outside its heart — a GIPHY result's download starts there.</summary>
+    public event EventHandler<ExplorerRow>? RowPressed;
+
     /// <summary>A pressed tile was moved past the drag threshold: the owner may start a drag.</summary>
     public event EventHandler<ExplorerRow>? DragRequested;
 
@@ -237,6 +243,23 @@ internal sealed class ThumbnailGrid : ScrollableControl
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public Func<string, bool> IsFavorite { get; set; } = _ => false;
+
+    /// <summary>
+    /// The picture an online library's tile shows now — its animated thumbnail's frame of the moment; null while
+    /// it is fetched. See workfiles/20261105-online-library-giphy.md § Thumbnails.
+    /// </summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Func<ExplorerRow, Image?> OnlineFrame { get; set; } = _ => null;
+
+    /// <summary>
+    /// How far an online library's tile is fetched: null when it is not, 0 to 1 while it downloads — a gauge on
+    /// the tile — 1 once its file is there, ready to drag — a ✓ on it. See workfiles/20261105-online-library-giphy.md
+    /// § Reaching the Grid.
+    /// </summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Func<ExplorerRow, double?> Fetched { get; set; } = _ => null;
 
     /// <summary>The words around the one a search found in a tile's content text, for its light bulb's tooltip; null when unknown.</summary>
     [Browsable(false)]
@@ -455,6 +478,23 @@ internal sealed class ThumbnailGrid : ScrollableControl
         }
     }
 
+    /// <summary>Repaints the online library's tiles in view: their thumbnails play.</summary>
+    public void InvalidateOnline()
+    {
+        var view = this.ClientRectangle;
+        for (int i = 0; i < this._rows.Count; i++)
+        {
+            if (this._rows[i].Online is not null)
+            {
+                var cell = this.Scrolled(this.CellBounds(i));
+                if (cell.IntersectsWith(view))
+                {
+                    this.Invalidate(cell);
+                }
+            }
+        }
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (disposing)
@@ -626,6 +666,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         {
             _pressed = index;
             _pressedAt = e.Location;
+            this.RowPressed?.Invoke(this, this._rows[index]);
         }
     }
 
@@ -1154,7 +1195,20 @@ internal sealed class ThumbnailGrid : ScrollableControl
 
         // Loaded at its bucket's size: scaled to the tile — enlarged when smaller — its proportions kept,
         // centered. A folder Windows has no thumbnail for gets a drawn folder.
-        bool known = _thumbnails.TryGet(row.ThumbnailKey, out var image);
+        // An online library's tile plays its thumbnail, never asked from the Shell: it has no file yet.
+        bool known;
+        Image? image;
+        if (row.Online is not null)
+        {
+            image = this.OnlineFrame(row);
+            known = image is not null;
+        }
+        else
+        {
+            known = _thumbnails.TryGet(row.ThumbnailKey, out var thumbnail);
+            image = thumbnail;
+        }
+
         Rectangle? drawn = null;
         Rectangle? flap = null;
         if (known && image is null && row.IsFolder)
@@ -1243,6 +1297,30 @@ internal sealed class ThumbnailGrid : ScrollableControl
         {
             this.PaintCornerLabel(g, closeness, tile, right: false);
         }
+
+        if (row.Online is not null && this.Fetched(row) is { } fetched)
+        {
+            this.PaintFetched(g, tile, fetched);
+        }
+    }
+
+    /// <summary>
+    /// An online library's tile being fetched: a gauge along its bottom edge; fetched, a ✓ in a dark label at its
+    /// bottom left — ready to drag.
+    /// </summary>
+    private void PaintFetched(Graphics g, Rectangle tile, double fetched)
+    {
+        if (fetched >= 1)
+        {
+            this.PaintCornerLabel(g, "✓", tile, right: false);
+            return;
+        }
+
+        int height = Math.Max(3, this.LogicalToDeviceUnits(5));
+        var track = new Rectangle(tile.X + 1, tile.Bottom - height - 1, tile.Width - 2, height);
+        using var back = new SolidBrush(Color.FromArgb(200, 24, 24, 24));
+        g.FillRectangle(back, track);
+        g.FillRectangle(SystemBrushes.Highlight, track with { Width = (int)Math.Round(track.Width * Math.Clamp(fetched, 0, 1)) });
     }
 
     /// <summary>A short text in a dark label at a bottom corner of a picture: a group's file count, a result's closeness.</summary>
@@ -1608,7 +1686,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
     }
 
     /// <summary>A tile's indexed content for its tooltip: a file's only, groups and folders none.</summary>
-    private TileIndex? IndexOf(ExplorerRow row) => row.IsFile ? this.IndexedContent(row) : null;
+    private TileIndex? IndexOf(ExplorerRow row) => row.IsFile && row.Online is null ? this.IndexedContent(row) : null;
 
     private bool OnBulb(int index, Point client) => index >= 0 && this._rows[index].ByContent && this.BulbBounds(index).Contains(this.Unscrolled(client));
 

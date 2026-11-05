@@ -209,6 +209,13 @@ internal static class UiIcons
     public static readonly UiIcon Timestamps = UiIcon.Emoji("⏱️");
     public static readonly UiIcon Numbers = UiIcon.Emoji("\U0001F522");
 
+    // The online libraries (workfiles/20261105-online-library-giphy.md): the GIPHY view, its stickers, its key and
+    // its content rating; its GIFs take Gif's.
+    public static readonly UiIcon OnlineLibrary = UiIcon.Emoji("\U0001F30D");
+    public static readonly UiIcon Sticker = UiIcon.Emoji("\U0001F60E");
+    public static readonly UiIcon ApiKey = UiIcon.Emoji("\U0001F511");
+    public static readonly UiIcon ContentRating = UiIcon.Emoji("\U0001F51E");
+
     // The drop-downs' entries.
     public static readonly UiIcon Favorites = UiIcon.Emoji("❤️");
     public static readonly UiIcon Date = UiIcon.Emoji("\U0001F4C5");

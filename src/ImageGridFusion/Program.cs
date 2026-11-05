@@ -77,6 +77,7 @@ internal static class Program
             StartupRegistration.Refresh();
             Favorites.Migrate();
             _ = Task.Run(UrlDownloads.Clean);
+            _ = Task.Run(GiphyFiles.Clean);
             _ = Task.Run(Imaging.UpscaleCache.Clean);
         }
 

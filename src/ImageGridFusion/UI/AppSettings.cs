@@ -55,6 +55,9 @@ internal static class AppSettings
     private const string CustomColorsName = "CustomColors";
     private const string CustomColorsNextName = "CustomColorsNext";
     private const string LanguageName = "Language";
+    private const string GiphyApiKeyName = "GiphyApiKey";
+    private const string GiphyRatingName = "GiphyRating";
+    private const string GiphyCallsName = "GiphyCalls";
 
     /// <summary>
     /// The names the settings had as registry values, in the same types (DWORD → int, string → string):
@@ -168,6 +171,38 @@ internal static class AppSettings
 
     /// <summary>Saves the file explorer's folder; throws an <see cref="IsSaveError"/> exception on failure.</summary>
     public static void SaveExplorerFolder(string folder) => Save((ExplorerFolderName, folder));
+
+    /// <summary>
+    /// The user's GIPHY API key, the GIPHY view's searches sent with it — kept here only, never in the repository;
+    /// null when none was saved. See workfiles/20261105-online-library-giphy.md § API Key.
+    /// </summary>
+    public static string? GiphyApiKey => Text(GiphyApiKeyName)?.Trim() is { Length: > 0 } key ? key : null;
+
+    /// <summary>Saves the GIPHY API key, "" to forget it; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveGiphyApiKey(string key) => Save((GiphyApiKeyName, key.Trim()));
+
+    /// <summary>
+    /// The content rating every GIPHY request carries, one of <see cref="Web.Giphy.Ratings"/> —
+    /// <see cref="Web.Giphy.DefaultRating"/> when nothing was saved or the value is none of them.
+    /// </summary>
+    public static string GiphyRating => Text(GiphyRatingName) is { } value && Web.Giphy.Ratings.Contains(value) ? value : Web.Giphy.DefaultRating;
+
+    /// <summary>Saves the GIPHY content rating; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveGiphyRating(string rating) => Save((GiphyRatingName, rating));
+
+    /// <summary>
+    /// When the app called GIPHY in the last hour, in Unix seconds — the quota counted across sessions, GIPHY giving
+    /// none; empty when nothing was saved or the value is no list of numbers. See workfiles/20261105-online-library-giphy.md
+    /// § Quota.
+    /// </summary>
+    public static long[] GiphyCalls =>
+        Values[GiphyCallsName] is JsonArray array && array.All(node => node is JsonValue value && value.TryGetValue(out long _))
+            ? [.. array.Select(node => node!.GetValue<long>())]
+            : [];
+
+    /// <summary>Saves when the app called GIPHY in the last hour; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveGiphyCalls(IEnumerable<long> calls) =>
+        Save((GiphyCallsName, new JsonArray([.. calls.Select(call => (JsonNode?)call)])));
 
     /// <summary>Whether the file explorer's panel is open; true when nothing was saved.</summary>
     public static bool ExplorerPanelOpen => Int(ExplorerPanelOpenName) is not int value || value != 0;

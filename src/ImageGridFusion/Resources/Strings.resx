@@ -172,6 +172,8 @@ The features needing them are offered them again.</value></data>
   <data name="ExplorerAccDetails" xml:space="preserve"><value>Details</value></data>
   <data name="ExplorerAccExpand" xml:space="preserve"><value>Expand</value></data>
   <data name="ExplorerAccFolderGroups" xml:space="preserve"><value>Folder groups</value></data>
+  <data name="ExplorerAccGiphyGifs" xml:space="preserve"><value>GIFs</value></data>
+  <data name="ExplorerAccGiphyStickers" xml:space="preserve"><value>Stickers</value></data>
   <data name="ExplorerAccName" xml:space="preserve"><value>Name</value></data>
   <data name="ExplorerAccRescan" xml:space="preserve"><value>Rescan</value></data>
   <data name="ExplorerAccSearchGroups" xml:space="preserve"><value>Search groups</value></data>
@@ -239,6 +241,16 @@ The features needing them are offered them again.</value></data>
   <data name="ExplorerForSessionNotSaved" xml:space="preserve"><value>{0} — for the session, not saved: {1}</value></data>
   <data name="ExplorerFoundInContent" xml:space="preserve"><value>Found in its content</value></data>
   <data name="ExplorerFoundInContentExcerpt" xml:space="preserve"><value>Found in its content: {0}</value></data>
+  <data name="ExplorerGiphyCalls" xml:space="preserve"><value> · {0}/{1} calls this hour</value></data>
+  <data name="ExplorerGiphyDownloadFailed" xml:space="preserve"><value>{0} could not be downloaded: {1}</value></data>
+  <data name="ExplorerGiphyGifsCount" xml:space="preserve"><value>{0:N0} GIFs</value></data>
+  <data name="ExplorerGiphyLoadedGifs" xml:space="preserve"><value>+{0:N0} GIFs loaded — {1:N0} in the list</value></data>
+  <data name="ExplorerGiphyLoadedStickers" xml:space="preserve"><value>+{0:N0} stickers loaded — {1:N0} in the list</value></data>
+  <data name="ExplorerGiphyPlaceholder" xml:space="preserve"><value>Search GIPHY, then Enter</value></data>
+  <data name="ExplorerGiphyPressEnter" xml:space="preserve"><value>Enter to search</value></data>
+  <data name="ExplorerGiphySearching" xml:space="preserve"><value>Searching…</value></data>
+  <data name="ExplorerGiphyStickersCount" xml:space="preserve"><value>{0:N0} stickers</value></data>
+  <data name="ExplorerGiphyTrending" xml:space="preserve"><value>Trending</value></data>
   <data name="ExplorerGroupAi" xml:space="preserve"><value>AI</value></data>
   <data name="ExplorerGroupCamera" xml:space="preserve"><value>Camera</value></data>
   <data name="ExplorerGroupDateStamps" xml:space="preserve"><value>Date stamps</value></data>
@@ -263,6 +275,8 @@ The features needing them are offered them again.</value></data>
   <data name="ExplorerInviteFacesOff" xml:space="preserve"><value>The face analysis is off. Turned on, it looks for the faces in the base folder's images and PDFs — on this computer only — and groups them into people.</value></data>
   <data name="ExplorerInviteFacesOffButton" xml:space="preserve"><value>Turn on face analysis…</value></data>
   <data name="ExplorerInviteFolder" xml:space="preserve"><value>No base folder yet. The search looks through one folder and its subfolders: choose it to index your files.</value></data>
+  <data name="ExplorerInviteGiphy" xml:space="preserve"><value>Searching GIPHY needs your own API key, free: create an app on GIPHY's developer site, then paste its key here. It stays on this computer, in the settings file.</value></data>
+  <data name="ExplorerInviteGiphyButton" xml:space="preserve"><value>GIPHY API key…</value></data>
   <data name="ExplorerLoading" xml:space="preserve"><value>Loading…</value></data>
   <data name="ExplorerLoadingIndex" xml:space="preserve"><value>Loading the index…</value></data>
   <data name="ExplorerLookingAtImage" xml:space="preserve"><value>Looking at the image…</value></data>
@@ -292,6 +306,7 @@ It shows inside it as a sub-group, every file of both listed there. Un-merge, on
   <data name="ExplorerMergeTitle" xml:space="preserve"><value>Merge groups</value></data>
   <data name="ExplorerModeFavorites" xml:space="preserve"><value>Favorites</value></data>
   <data name="ExplorerModeFolders" xml:space="preserve"><value>Folders</value></data>
+  <data name="ExplorerModeGiphy" xml:space="preserve"><value>GIPHY</value></data>
   <data name="ExplorerNameRemoved" xml:space="preserve"><value>Name removed</value></data>
   <data name="ExplorerNamed" xml:space="preserve"><value>Named: {0}</value></data>
   <data name="ExplorerNamedAndUnnamed" xml:space="preserve"><value>{0} (+ {1} unnamed)</value></data>
@@ -351,8 +366,11 @@ It shows inside it as a sub-group, every file of both listed there. Un-merge, on
   <data name="ExplorerTipDetails" xml:space="preserve"><value>Details: one row per file — its name, its size, and the words a search found in its content</value></data>
   <data name="ExplorerTipExpand" xml:space="preserve"><value>Show the file explorer</value></data>
   <data name="ExplorerTipFolderGroups" xml:space="preserve"><value>Folder groups: the folder view in sections — the folders sharing their first words, the other folders, the series of named files, the named files, then the files named by a camera, a screenshot, an AI, a site… (⚙ menu: File explorer groups)</value></data>
+  <data name="ExplorerTipGiphyAttribution" xml:space="preserve"><value>The results come from GIPHY, as its terms require to say</value></data>
+  <data name="ExplorerTipGiphyGifs" xml:space="preserve"><value>GIPHY's GIFs — a click downloads one, then it can be dragged into a cell; it arrives as an MP4 video</value></data>
+  <data name="ExplorerTipGiphyStickers" xml:space="preserve"><value>GIPHY's stickers, transparent, made for the layers — a click downloads one, then it can be dragged; it arrives as a GIF</value></data>
   <data name="ExplorerTipLargerTiles" xml:space="preserve"><value>Larger tiles</value></data>
-  <data name="ExplorerTipModes" xml:space="preserve"><value>What the list shows: the base folder folder by folder, the people the faces were grouped into, or the favorites and the search over every file — Ctrl+F again in the search box: the next view, Ctrl+Shift+F: the previous one</value></data>
+  <data name="ExplorerTipModes" xml:space="preserve"><value>What the list shows: the base folder folder by folder, the people the faces were grouped into, the favorites and the search over every file, or GIPHY's GIFs and stickers — Ctrl+F again in the search box: the next view, Ctrl+Shift+F: the previous one</value></data>
   <data name="ExplorerTipRescan" xml:space="preserve"><value>Rescan the folder</value></data>
   <data name="ExplorerTipSearchGroups" xml:space="preserve"><value>Search groups: the search results in two sections — Path, found by their name or folders, then Content, found by what they hold</value></data>
   <data name="ExplorerTipSeries" xml:space="preserve"><value>Series: the named files sharing their first words — marlène schiappa …, homme soja … — in a section each, before the other named files (with Folder groups on; ⚙ menu: File explorer groups)</value></data>
@@ -375,6 +393,11 @@ In the folder view, the folders come first, A→Z.</value></data>
   <data name="FileSizeByte" xml:space="preserve"><value>{0} byte</value></data>
   <data name="FileSizeBytes" xml:space="preserve"><value>{0} bytes</value></data>
   <data name="FileSizeUnits" xml:space="preserve"><value>KB MB GB TB</value></data>
+  <data name="GiphyAttribution" xml:space="preserve"><value>Powered by GIPHY</value></data>
+  <data name="GiphyBrokeOff" xml:space="preserve"><value>GIPHY's answer broke off.</value></data>
+  <data name="GiphyKeyRefused" xml:space="preserve"><value>GIPHY refused the API key: check it in the ⚙ menu, GIPHY API key…</value></data>
+  <data name="GiphyTooManyCalls" xml:space="preserve"><value>The GIPHY key's calls for the hour are used up — a free key allows 100 an hour. Try again later.</value></data>
+  <data name="GiphyUnreadable" xml:space="preserve"><value>GIPHY answered something unreadable.</value></data>
   <data name="MainArrowThicknessNone" xml:space="preserve"><value>0 (none)</value></data>
   <data name="MainBackgroundBlendTip" xml:space="preserve"><value>Blends the extended edges into the background color, more with the distance from the image: at 100 %, they vanish by the cell's edge</value></data>
   <data name="MainBackgroundColorNote" xml:space="preserve"><value>. A color chosen sets the color to Chosen</value></data>
@@ -483,6 +506,12 @@ The engines and your tags file (vision-tags.txt) stay.</value></data>
   <data name="MainFramesFrozenOn" xml:space="preserve"><value>Frozen on</value></data>
   <data name="MainFramesStartsAt" xml:space="preserve"><value>Starts at</value></data>
   <data name="MainFreeze" xml:space="preserve"><value>Freeze</value></data>
+  <data name="MainGiphyKeyPrompt" xml:space="preserve"><value>Your GIPHY API key, from developers.giphy.com — empty to forget it:</value></data>
+  <data name="MainGiphyKeyTitle" xml:space="preserve"><value>GIPHY API key</value></data>
+  <data name="MainGiphyRatingG" xml:space="preserve"><value>G — all audiences</value></data>
+  <data name="MainGiphyRatingPg" xml:space="preserve"><value>PG</value></data>
+  <data name="MainGiphyRatingPg13" xml:space="preserve"><value>PG-13</value></data>
+  <data name="MainGiphyRatingR" xml:space="preserve"><value>R — no filter</value></data>
   <data name="MainGlobalBorders" xml:space="preserve"><value>Borders</value></data>
   <data name="MainGlobalCascade" xml:space="preserve"><value>Cascade</value></data>
   <data name="MainGlobalEffectResetTip" xml:space="preserve"><value>Brings this global setting back to its initial state</value></data>
@@ -661,6 +690,10 @@ Restart the app now?</value></data>
   <data name="MainSettingsGapBarsEdges" xml:space="preserve"><value>Image edges</value></data>
   <data name="MainSettingsGapBarsFrom" xml:space="preserve"><value>Gap bars from</value></data>
   <data name="MainSettingsGapBarsFromTip" xml:space="preserve"><value>The point of the image every guide's bar runs from to the guide: the image's center, or its edge nearest the guide — the same for every guide; remembered between sessions</value></data>
+  <data name="MainSettingsGiphyKey" xml:space="preserve"><value>GIPHY API key…</value></data>
+  <data name="MainSettingsGiphyKeyTip" xml:space="preserve"><value>The key the file explorer's GIPHY view searches with — made free on developers.giphy.com, kept in the settings file</value></data>
+  <data name="MainSettingsGiphyRating" xml:space="preserve"><value>GIPHY content rating</value></data>
+  <data name="MainSettingsGiphyRatingTip" xml:space="preserve"><value>The most a GIPHY search may show, from G (all audiences) to R (no filter)</value></data>
   <data name="MainSettingsGuideApproach" xml:space="preserve"><value>Guides show from</value></data>
   <data name="MainSettingsGuideApproachTip" xml:space="preserve"><value>How far before its magnetic stop a moved image's guide shows, with a bar measuring the gap left; remembered between sessions</value></data>
   <data name="MainSettingsImageContent" xml:space="preserve"><value>Image content</value></data>
@@ -743,6 +776,9 @@ Restart the app now?</value></data>
   <data name="MainStatusNotSavedFaceAnalysis" xml:space="preserve"><value>Face analysis not remembered: {0}</value></data>
   <data name="MainStatusNotSavedFaceGrouping" xml:space="preserve"><value>Face grouping not remembered: {0}</value></data>
   <data name="MainStatusNotSavedGapBars" xml:space="preserve"><value>Gap bars setting not remembered: {0}</value></data>
+  <data name="MainStatusNotSavedGiphyCalls" xml:space="preserve"><value>GIPHY calls of the hour not remembered: {0}</value></data>
+  <data name="MainStatusNotSavedGiphyKey" xml:space="preserve"><value>GIPHY API key not remembered: {0}</value></data>
+  <data name="MainStatusNotSavedGiphyRating" xml:space="preserve"><value>GIPHY content rating not remembered: {0}</value></data>
   <data name="MainStatusNotSavedGuideApproach" xml:space="preserve"><value>Guides distance not remembered: {0}</value></data>
   <data name="MainStatusNotSavedOcrResultStyle" xml:space="preserve"><value>OCR result style not remembered: {0}</value></data>
   <data name="MainStatusNotSavedSimilarImages" xml:space="preserve"><value>Similar images not remembered: {0}</value></data>
