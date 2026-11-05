@@ -3476,8 +3476,10 @@ internal sealed partial class MainForm : Form
 
     private CancellationToken BeginExport(string message, bool cancellable)
     {
-        // The export keeps the settings it starts with: an eyedropper's preview is given back first.
+        // The export keeps the settings it starts with: an eyedropper's preview is given back first, a text layer
+        // still being drawn put in place.
         this._preview.CancelEyedropper();
+        this.FlushTextRender();
         _export = new CancellationTokenSource();
         // The preview stands still while the export runs (workfiles/20261009-playback-controls.md), its
         // readers closed meanwhile: the export's own are the only ones open (workfiles/20261010-optimisation-lack-of-memory.md § 2.1).
@@ -4408,10 +4410,12 @@ internal sealed partial class MainForm : Form
     /// <summary>
     /// A Copy or a Save of the grid draws no image whose Upscale is on without its enlargement: the Upscale window opens
     /// for each first. Returns false when one is cancelled — the Copy or the Save is then cancelled too
-    /// (workfiles/20261029-image-upscale.md § Drawn Bitmap).
+    /// (workfiles/20261029-image-upscale.md § Drawn Bitmap). A text layer still being drawn is put in place first, in
+    /// full (workfiles/20261105-text-layer-typing-refresh.md): every export route goes through here.
     /// </summary>
     private bool EnsureUpscaled()
     {
+        this.FlushTextRender();
         foreach (var image in this._preview.Images.Concat(this.ActiveBesideCells).Where(i => i.UpscalePending).ToList())
         {
             if (!this.ApplyUpscale(image, image.Look.Upscale!))
