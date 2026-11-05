@@ -13,7 +13,11 @@ Thanks for your interest in Image Grid Fusion. Issues and pull requests are welc
   a framework-dependent single-file ReadyToRun exe that requires the .NET 10 Desktop Runtime and
   Windows 10 version 2004 or later.
 
-There is no test project: check a change by hand in the running app.
+## Tests
+
+- Run: `dotnet test tests/ImageGridFusion.Tests` — MSTest, a test-only dependency, never shipped.
+- The tests cover what can be checked without the window (the icon cache, the emoji icons' drawing); check
+  everything else by hand in the running app.
 
 ## Flag Font
 

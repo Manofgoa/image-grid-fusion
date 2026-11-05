@@ -13,7 +13,11 @@ Merci de votre intérêt pour Image Grid Fusion. Les tickets et les pull request
   un exe unique ReadyToRun dépendant du framework, qui nécessite le .NET 10 Desktop Runtime et
   Windows 10 version 2004 ou ultérieure.
 
-Il n'y a pas de projet de tests : vérifiez une modification à la main, dans l'application lancée.
+## Tests
+
+- Exécuter : `dotnet test tests/ImageGridFusion.Tests` — MSTest, une dépendance des tests seuls, jamais livrée.
+- Les tests couvrent ce qui se vérifie sans la fenêtre (le cache des icônes, le dessin des icônes emoji) ;
+  vérifiez tout le reste à la main, dans l'application lancée.
 
 ## Police des drapeaux
 

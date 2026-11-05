@@ -219,6 +219,8 @@ internal sealed partial class FileExplorerPanel : Panel
     private readonly People _peopleStore = new(People.DefaultPath);
 
     private bool _open = true;
+    private bool _contentHeld;
+
     private int _openWidth = DefaultOpenWidth;
     private int _tileSize = ThumbnailGrid.DefaultTileSize;
     private bool _syncingSize;
@@ -745,10 +747,26 @@ internal sealed partial class FileExplorerPanel : Panel
 
             _open = value;
             SuspendLayout();
-            _content.Visible = value;
+            _content.Visible = value && !this._contentHeld;
             _expand.Visible = !value;
             ApplyWidth();
             ResumeLayout();
+        }
+    }
+
+    /// <summary>
+    /// While set, the panel shows its background alone, its content hidden: none of its controls is created, laid out or
+    /// painted — the main window shows without waiting for them, then lets them go (workfiles/20261105-initial-load-speed.md § C).
+    /// </summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool ContentHeld
+    {
+        get => this._contentHeld;
+        set
+        {
+            this._contentHeld = value;
+            this._content.Visible = this._open && !value;
         }
     }
 
