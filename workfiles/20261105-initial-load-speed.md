@@ -138,6 +138,13 @@ plain words (Q&A 8, 10). Test Impact filled: no test project exists yet.
 B explained in plain words, then not taken (Q&A 10): the build settings stay as they are. No open question left;
 the scope is A and the two parts of C.
 
+### Iteration 5 — 2026-11-05 — ✅ Implemented
+
+Go given: code, unit tests and documentation (Q&A 11), in a worktree on `feature/initial-load-speed`. The scope is
+frozen as the sections above stand: the emoji icons drawn at their size and cached on disk by the normal
+instance, the font drop-down filled at its first opening, the file explorer panel built after the window shows,
+the icons drawn after it while their cache is empty.
+
 ---
 
 ## Implementation Log
@@ -164,6 +171,7 @@ the scope is A and the two parts of C.
 | 8 | B explained: taken or not? | Asked again what B does — the explanation had not reached them; re-asked in plain text below | 2026-11-05 |
 | 9 | Which parts of C are deferred after the window shows? | The file explorer panel, and the icons on a launch whose cache is empty; not the tabs' options | 2026-11-05 |
 | 10 | B, explained in plain words: taken or not? | No, without B | 2026-11-05 |
+| 11 | Implementation go: scope, and where? | Code, unit tests and documentation; in a worktree | 2026-11-05 |
 
 ---
 
