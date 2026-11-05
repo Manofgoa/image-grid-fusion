@@ -55,7 +55,7 @@ internal static class UrlDownloads
         }
     }
 
-    private static string SafeStem(string stem)
+    internal static string SafeStem(string stem)
     {
         var invalid = Path.GetInvalidFileNameChars();
         var safe = new StringBuilder(stem.Length);
