@@ -61,14 +61,6 @@ internal sealed class SecondarySourcesWindow : Form
         this._add.Click += (_, _) => this.AddSource();
         this._remove.Click += (_, _) => this.RemoveSelected();
         this._list.SelectedIndexChanged += (_, _) => this._remove.Enabled = this._list.SelectedIndex >= 0;
-        this._list.KeyDown += (_, e) =>
-        {
-            if (e.KeyCode == Keys.Delete)
-            {
-                e.Handled = true;
-                this.RemoveSelected();
-            }
-        };
         this.Fill();
     }
 
