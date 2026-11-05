@@ -129,6 +129,23 @@ internal sealed partial class MainForm : Form
     private readonly ToolStripMenuItem _saveLast = new(Strings.MainSaveLastVideo) { Enabled = false };
     private readonly Button _cancelButton = new() { Text = Strings.MainCancel, AutoSize = true, Visible = false };
     private readonly Label _status = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+
+    /// <summary>
+    /// After a Save or a Copy that wrote a file, the link at the end of the status line opening Explorer on it, the
+    /// file selected (workfiles/20261105-open-directory-link.md); hidden by any other message.
+    /// </summary>
+    private readonly LinkLabel _openFolderLink = new()
+    {
+        Text = Strings.MainStatusOpenFolder,
+        AutoSize = true,
+        Anchor = AnchorStyles.Left,
+        Visible = false,
+        ImageAlign = ContentAlignment.MiddleLeft,
+        TextAlign = ContentAlignment.MiddleLeft,
+    };
+
+    /// <summary>The file <see cref="_openFolderLink"/> opens, while it shows.</summary>
+    private string? _savedFile;
     private readonly TableLayoutPanel _bottom;
     private readonly FlowLayoutPanel _outputButtons;
     private readonly FlowLayoutPanel _statusLine;
@@ -547,6 +564,7 @@ internal sealed partial class MainForm : Form
             Anchor = AnchorStyles.Left,
         };
         _statusLine.Controls.Add(_status);
+        _statusLine.Controls.Add(this._openFolderLink);
         _statusLine.Controls.Add(_cancelButton);
         _bottom.Controls.Add(_statusLine, 1, 0);
         _bottom.Controls.Add(_outputButtons, 2, 0);
@@ -715,6 +733,15 @@ internal sealed partial class MainForm : Form
         _bottom.SizeChanged += (_, _) => FitStatusWidth();
         _outputButtons.SizeChanged += (_, _) => FitStatusWidth();
         _cancelButton.VisibleChanged += (_, _) => FitStatusWidth();
+        this._openFolderLink.VisibleChanged += (_, _) => this.FitStatusWidth();
+        this._openFolderLink.SizeChanged += (_, _) => this.FitStatusWidth();
+        this._openFolderLink.LinkClicked += (_, _) =>
+        {
+            if (this._savedFile is { } saved)
+            {
+                this.ShowInExplorer(saved);
+            }
+        };
         _clearButton.Click += (_, _) => ClearAll();
 
         // The transport: the button gives the focus back to the preview, so Space and the arrows act on the grid.
@@ -1431,6 +1458,7 @@ internal sealed partial class MainForm : Form
         _effectResetButton.Image = UiIcons.Reset.Copy(size);
         _globalResetButton.Image = UiIcons.Reset.Copy(size);
         _globalEffectResetButton.Image = UiIcons.Reset.Copy(size);
+        this.UpdateOpenFolderLinkIcon(size);
         foreach (var (button, icon) in new (ButtonBase, UiIcon)[]
         {
             (this._presetButton, UiIcons.Preset), (this._clearButton, UiIcons.ClearAll), (this._settingsButton, UiIcons.Settings),
@@ -2453,8 +2481,8 @@ internal sealed partial class MainForm : Form
                     _lastVideo = last;
                     UpdateButtons();
                     PutOnClipboard(last);
-                    string kept = KeepPrevious(() => PreviousCopy.KeepCopyOf(path, cellFiles));
-                    ShowStatus(AnimationSummary(Texts.Format(Strings.MainStatusCopied, last.FileName), last) + kept);
+                    var (kept, keptFile) = KeepPrevious(() => PreviousCopy.KeepCopyOf(path, cellFiles));
+                    ShowStatus(AnimationSummary(Texts.Format(Strings.MainStatusCopied, last.FileName), last) + kept, savedFile: keptFile);
                     NotifyIfAway(Texts.Format(Strings.MainNotifyCopied, FormatName(animated)), Texts.Format(Strings.MainNotifyCopiedBody, last.FileName, FormatName(animated)), error: false);
                 }
                 catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException or OutOfMemoryException)
@@ -2481,8 +2509,8 @@ internal sealed partial class MainForm : Form
             result.Save(png, ImageFormat.Png);
             var encoding = clock.Elapsed;
             PutStillOnClipboard(result, png);
-            string kept = KeepPrevious(() => PreviousCopy.Keep(png.ToArray(), ".png", cellFiles));
-            ShowStatus(StillSummary(Strings.MainStatusCopiedToClipboard, "PNG", result.Size, png.Length, encoding) + kept);
+            var (kept, keptFile) = KeepPrevious(() => PreviousCopy.Keep(png.ToArray(), ".png", cellFiles));
+            ShowStatus(StillSummary(Strings.MainStatusCopiedToClipboard, "PNG", result.Size, png.Length, encoding) + kept, savedFile: keptFile);
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
@@ -2571,8 +2599,8 @@ internal sealed partial class MainForm : Form
             result.Save(png, ImageFormat.Png);
             var encoding = clock.Elapsed;
             PutStillOnClipboard(result, png);
-            string kept = KeepPrevious(() => PreviousCopy.Keep(png.ToArray(), ".png", [copy.Image.FilePath]));
-            ShowStatus(StillSummary(Texts.Format(Strings.MainStatusWhatCopied, what), "PNG", result.Size, png.Length, encoding) + kept);
+            var (kept, keptFile) = KeepPrevious(() => PreviousCopy.Keep(png.ToArray(), ".png", [copy.Image.FilePath]));
+            ShowStatus(StillSummary(Texts.Format(Strings.MainStatusWhatCopied, what), "PNG", result.Size, png.Length, encoding) + kept, savedFile: keptFile);
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
@@ -2585,18 +2613,18 @@ internal sealed partial class MainForm : Form
 
     /// <summary>
     /// Keeps the copied content in the previous folder (<see cref="PreviousCopy"/>). Returns the status
-    /// line's suffix saying why it could not, empty when it was kept: the Copy succeeded either way.
+    /// line's suffix saying why it could not, empty when it was kept: the Copy succeeded either way — and the
+    /// file kept, for the Open directory link, <c>null</c> when none was (workfiles/20261105-open-directory-link.md).
     /// </summary>
-    private static string KeepPrevious(Action keep)
+    private static (string Suffix, string? File) KeepPrevious(Func<string> keep)
     {
         try
         {
-            keep();
-            return string.Empty;
+            return (string.Empty, keep());
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            return " · " + Texts.Format(Strings.MainStatusNotKept, PreviousCopy.FolderName, e.Message);
+            return (" · " + Texts.Format(Strings.MainStatusNotKept, PreviousCopy.FolderName, e.Message), null);
         }
     }
 
@@ -2635,7 +2663,7 @@ internal sealed partial class MainForm : Form
         try
         {
             PutOnClipboard(last);
-            ShowStatus(AnimationSummary(Texts.Format(Strings.MainStatusCopiedAgain, last.FileName, last.GeneratedAt), last));
+            ShowStatus(AnimationSummary(Texts.Format(Strings.MainStatusCopiedAgain, last.FileName, last.GeneratedAt), last), savedFile: last.FilePath);
         }
         catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException or OutOfMemoryException)
         {
@@ -2668,7 +2696,7 @@ internal sealed partial class MainForm : Form
         try
         {
             File.Copy(last.FilePath, dialog.FileName, overwrite: true);
-            ShowStatus(AnimationSummary(Texts.Format(Strings.MainStatusSavedLast, Path.GetFileName(dialog.FileName), FormatName(last.Format), last.GeneratedAt), last));
+            ShowStatus(AnimationSummary(Texts.Format(Strings.MainStatusSavedLast, Path.GetFileName(dialog.FileName), FormatName(last.Format), last.GeneratedAt), last), savedFile: dialog.FileName);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -2928,8 +2956,8 @@ internal sealed partial class MainForm : Form
             data.SetFileDropList(new StringCollection { path });
             data.SetImage(light);
             Clipboard.SetDataObject(data, copy: true);
-            string kept = KeepPrevious(() => PreviousCopy.KeepCopyOf(path, cellFiles));
-            ShowStatus(StillSummary(Strings.MainStatusCopiedForSharing, "JPEG", light.Size, new FileInfo(path).Length, encoding) + kept);
+            var (kept, keptFile) = KeepPrevious(() => PreviousCopy.KeepCopyOf(path, cellFiles));
+            ShowStatus(StillSummary(Strings.MainStatusCopiedForSharing, "JPEG", light.Size, new FileInfo(path).Length, encoding) + kept, savedFile: keptFile);
         }
         catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException or OutOfMemoryException)
         {
@@ -3034,7 +3062,7 @@ internal sealed partial class MainForm : Form
         {
             if (await ExportAnimationAsync(dialog.FileName, animated) is { } result)
             {
-                ShowStatus(AnimationSummary(saved, dialog.FileName, animated, result, clock.Elapsed));
+                ShowStatus(AnimationSummary(saved, dialog.FileName, animated, result, clock.Elapsed), savedFile: dialog.FileName);
                 NotifyIfAway(Texts.Format(Strings.MainNotifySaved, FormatName(animated)), Path.GetFileName(dialog.FileName), error: false);
             }
 
@@ -3050,7 +3078,7 @@ internal sealed partial class MainForm : Form
         try
         {
             still.Save(dialog.FileName, ImageFormat.Png);
-            ShowStatus(StillSummary(saved, "PNG", still.Size, new FileInfo(dialog.FileName).Length, clock.Elapsed));
+            ShowStatus(StillSummary(saved, "PNG", still.Size, new FileInfo(dialog.FileName).Length, clock.Elapsed), savedFile: dialog.FileName);
         }
         catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException or OutOfMemoryException)
         {
@@ -4512,7 +4540,7 @@ internal sealed partial class MainForm : Form
                     await Task.Run(() => copy.Save(target, ImageFormat.Png));
                 }
 
-                this.ShowStatus(Texts.Format(Strings.MainStatusSavedUpscaled, Path.GetFileName(target), size.Width, size.Height, upscale.Describe()));
+                this.ShowStatus(Texts.Format(Strings.MainStatusSavedUpscaled, Path.GetFileName(target), size.Width, size.Height, upscale.Describe()), savedFile: target);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ExternalException or OutOfMemoryException or ArgumentException)
             {
@@ -6202,10 +6230,32 @@ internal sealed partial class MainForm : Form
         }
     }
 
-    private void ShowStatus(string message, bool error = false)
+    /// <summary>
+    /// Shows <paramref name="message"/> on the status line. <paramref name="savedFile"/>, the file a Save or a Copy
+    /// has just written, shows the Open directory link on it; every other message hides the link, so it never
+    /// outlives the message it belongs to (workfiles/20261105-open-directory-link.md).
+    /// </summary>
+    private void ShowStatus(string message, bool error = false, string? savedFile = null)
     {
         _status.ForeColor = error ? Color.Firebrick : SystemColors.ControlText;
         _status.Text = message;
+        this._savedFile = error ? null : savedFile;
+        if (this._savedFile is { } saved)
+        {
+            this._toolTip.SetToolTip(this._openFolderLink, saved);
+        }
+
+        this._openFolderLink.Visible = this._savedFile is not null;
+    }
+
+    /// <summary>The Open directory link's 📂 before its text, at <paramref name="size"/> device pixels (RULES.md § Icons).</summary>
+    private void UpdateOpenFolderLinkIcon(int size)
+    {
+        var previous = this._openFolderLink.Image;
+        this._openFolderLink.Image = UiIcons.OpenFolder.Copy(size);
+        this._openFolderLink.Padding = new Padding(size + this.LogicalToDeviceUnits(4), 0, 0, 0);
+        this._openFolderLink.MinimumSize = new Size(0, size);
+        previous?.Dispose();
     }
 
     /// <summary>
@@ -6249,7 +6299,8 @@ internal sealed partial class MainForm : Form
             - _clearButton.Width - _clearButton.Margin.Horizontal
             - _outputButtons.Width - _outputButtons.Margin.Horizontal
             - _statusLine.Margin.Horizontal - _status.Margin.Horizontal
-            - (_cancelButton.Visible ? _cancelButton.Width + _cancelButton.Margin.Horizontal : 0);
+            - (_cancelButton.Visible ? _cancelButton.Width + _cancelButton.Margin.Horizontal : 0)
+            - (this._openFolderLink.Visible ? this._openFolderLink.Width + this._openFolderLink.Margin.Horizontal : 0);
         var maximum = new Size(Math.Max(1, width), 0);
         if (_status.MaximumSize != maximum)
         {

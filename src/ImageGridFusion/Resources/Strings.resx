@@ -796,6 +796,7 @@ Restart the app now?</value></data>
   <data name="MainStatusRemoved" xml:space="preserve"><value>{0} removed.</value></data>
   <data name="MainStatusRendering" xml:space="preserve"><value>Rendering the image…</value></data>
   <data name="MainStatusSaveFailed" xml:space="preserve"><value>Save failed: {0}</value></data>
+  <data name="MainStatusOpenFolder" xml:space="preserve"><value>Open directory</value></data>
   <data name="MainStatusSaved" xml:space="preserve"><value>Saved {0}</value></data>
   <data name="MainStatusSavedLast" xml:space="preserve"><value>Saved {0} (the last generated {1}, from {2:HH:mm})</value></data>
   <data name="MainStatusSavedUpscaled" xml:space="preserve"><value>Saved {0} — {1} × {2} px, upscaled {3}</value></data>

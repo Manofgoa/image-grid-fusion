@@ -34,21 +34,21 @@ internal static class PreviousCopy
         return names.Count > 0 ? string.Join(Separator, names) : $"fusion-{now:yyyyMMdd-HHmmss}";
     }
 
-    /// <summary>Keeps a copy of <paramref name="sourcePath"/>, a file the Copy wrote, with its extension.</summary>
-    public static void KeepCopyOf(string sourcePath, IEnumerable<string?> cellFiles) =>
+    /// <summary>Keeps a copy of <paramref name="sourcePath"/>, a file the Copy wrote, with its extension. Returns the kept file's path.</summary>
+    public static string KeepCopyOf(string sourcePath, IEnumerable<string?> cellFiles) =>
         Keep(Path.GetExtension(sourcePath), cellFiles, path => File.Copy(sourcePath, path, overwrite: true));
 
-    /// <summary>Keeps <paramref name="content"/> as a file with <paramref name="extension"/> (dot included).</summary>
-    public static void Keep(byte[] content, string extension, IEnumerable<string?> cellFiles) =>
+    /// <summary>Keeps <paramref name="content"/> as a file with <paramref name="extension"/> (dot included). Returns the kept file's path.</summary>
+    public static string Keep(byte[] content, string extension, IEnumerable<string?> cellFiles) =>
         Keep(extension, cellFiles, path => File.WriteAllBytes(path, content));
 
     /// <summary>
     /// Writes the new file, then deletes every other file of the folder — subfolders left alone, a file
     /// in use left for the next Copy; the folder made when missing. Throws an <see cref="IOException"/>
     /// or an <see cref="UnauthorizedAccessException"/> when the new file cannot be written, the folder
-    /// then holding what it held.
+    /// then holding what it held. Returns the new file's path.
     /// </summary>
-    private static void Keep(string extension, IEnumerable<string?> cellFiles, Action<string> write)
+    private static string Keep(string extension, IEnumerable<string?> cellFiles, Action<string> write)
     {
         Directory.CreateDirectory(Folder);
         string path = Path.Combine(Folder, Name(cellFiles, DateTime.Now) + extension);
@@ -71,6 +71,8 @@ internal static class PreviousCopy
                 TryDelete(file);
             }
         }
+
+        return path;
     }
 
     private static void TryDelete(string path)
