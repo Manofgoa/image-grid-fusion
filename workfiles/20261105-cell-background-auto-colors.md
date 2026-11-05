@@ -97,9 +97,12 @@ Relevant code:
 - `RULES.md` § Options Toolbar — the checkbox list names *Automatic color*: removed from it.
 - `SHORTCUTS.md`: no shortcut changes.
 - **French UI labels** (`../CLAUDE.md` § French Versions › UI labels): the French docs quote the labels as
-  the app shows them in French. If `feature/french-translation` is merged when the run starts, the new
-  texts (`Color` / `From`, `Auto`, the tooltips) get their French version in the UI too, and
-  `README.fr.md` / `GLOSSARY.fr.md` quote those French labels; otherwise, the English labels, as today.
+  the app shows them in French — `README.fr.md` / `GLOSSARY.fr.md` quote the French texts of From / To and
+  their values.
+- **UI texts** (RULES.md § UI Language, merged into `main` with `feature/french-translation`): every new
+  text — the `Color` / `From` caption, the cell's `Auto`, the From values, the tooltips — is a key of
+  `Resources/Strings.resx` **and** `Resources/Strings.fr.resx`, added in the same commit, read through
+  `Strings`, never a literal; the build's `CheckFrenchTexts` warning is not left behind.
 
 ---
 
@@ -175,6 +178,12 @@ run starts once `feature/options-toolbar-layout` is merged into `main` (Q&A #9) 
 Shared rule changed (`../CLAUDE.md` § French Versions › UI labels, relayed by the French translation
 session): the French docs quote the UI labels in French for an app whose UI is translated. § Docs says how
 it applies here, depending on whether `feature/french-translation` is merged when the run starts.
+
+### Iteration 6 — 2026-11-05 — ⚙️ Post-implementation — UI Language rule
+
+`feature/french-translation` merged into `main` with RULES.md § UI Language (relayed by the French
+translation session): the new texts go through `Strings.resx` / `Strings.fr.resx`, both in the same
+commit; the French docs quote the French labels. § Docs updated.
 
 ---
 
