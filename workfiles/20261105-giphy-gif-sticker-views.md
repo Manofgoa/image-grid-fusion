@@ -41,7 +41,7 @@ Enter key, ↑ / breadcrumb), `UI/FileExplorerPanel.Giphy.cs` (the view's lists,
 | The kind | Each view's kind is fixed (`GiphyKind.Gifs` / `Stickers`): `_giphyKind` follows the mode, the GIFs / Stickers toggle and `ChangeGiphyKind` are removed, with their strings (`ExplorerAccGiphy*`, `ExplorerTipGiphyGifs` / `Stickers`) — what their tooltips said (*arrives as an MP4*, *made for the layers*) stays in the README |
 | Ctrl+F | Both views in the cycle (`NextMode`), both skipped while no key is set, each skipped while hidden |
 | Shown or hidden | Each view an app setting, **shown by default** (`AppSettings`, `settings.json`): hidden, it is out of the views drop-down and out of the Ctrl+F cycle; both hidden, GIPHY is out of the explorer |
-| The saved view | Saved by name, as now; a `Giphy` saved by the previous version is read as `GiphyGifs` (`AppSettings.ExplorerMode`) |
+| The saved view | None read: every start opens on the favorites (`workfiles` of main, merged 2026-11-05, see Iteration 7) — the view is still saved by name, for an older version |
 | Everything else | Shared by both: the key, the rating, the quota and its breadcrumb count, the downloads, the hearts, the attribution, the hidden sort / groups buttons |
 | The breadcrumb | Its first segment the view's name (`GIPHY GIFs` / `GIPHY Stickers`), then the search or *Trending*; while the view invites to search, the view's name alone, then *Enter to search* if a text is typed, and the calls of the hour |
 | The views drop-down | Filled with the views offered only (`FileExplorerPanel.FillModes`), its entries the modes themselves (`SelectedItem`, never an index) |
@@ -63,7 +63,7 @@ The ⚙ menu's two GIPHY entries (`MainForm.Giphy.cs`: `_giphyKeyItem`, `_giphyR
 
 - A change is saved at once; one that cannot be saved says so on the status line (RULES.md § App Settings).
 - Hiding the view shown sends the explorer to the **folder view** — the drop-down's first, as at the first
-  launch; the saved view at start-up being a hidden one, the same.
+  launch.
 - Out of the undo history, like every app setting.
 
 ---
@@ -200,6 +200,13 @@ No rule broken. The choices the design left open:
   the Stickers view (`DropGiphyCall`, also on a new key or rating).
 - **Two code commits**, not three: the two views and the no-call rule share the same lines of
   `FileExplorerPanel.Giphy.cs` (the toggle's removal, the kind per view); the ⚙ submenu is its own commit.
+
+### Iteration 7 — 2026-11-05 — ⚙️ Post-implementation — Merged with the favorites at start-up
+
+The merge into `main` met `bbfb145` (another session): every start now opens on the favorites, the saved view no
+longer read — `AppSettings.ExplorerMode` removed there. Resolved by keeping that: the older `Giphy` name's reading
+(`AppSettings.OlderGiphyMode`) went with the getter, and the fallback for a hidden view saved at start-up is moot.
+The GIPHY views shown are still set before the start-up view (`MainForm`). The glossary rows took both changes.
 
 ---
 
