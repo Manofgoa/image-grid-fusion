@@ -796,6 +796,7 @@ Redémarrer l'application maintenant ?</value></data>
   <data name="MainStatusRemoved" xml:space="preserve"><value>Retiré : {0}.</value></data>
   <data name="MainStatusRendering" xml:space="preserve"><value>Rendu de l'image…</value></data>
   <data name="MainStatusSaveFailed" xml:space="preserve"><value>Échec de l'enregistrement : {0}</value></data>
+  <data name="MainStatusOpenFolder" xml:space="preserve"><value>Ouvrir le dossier</value></data>
   <data name="MainStatusSaved" xml:space="preserve"><value>Enregistré : {0}</value></data>
   <data name="MainStatusSavedLast" xml:space="preserve"><value>{0} enregistré (le dernier {1} généré, de {2:HH:mm})</value></data>
   <data name="MainStatusSavedUpscaled" xml:space="preserve"><value>{0} enregistré — {1} × {2} px, agrandi {3}</value></data>
