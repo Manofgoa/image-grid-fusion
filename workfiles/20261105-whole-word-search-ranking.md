@@ -73,10 +73,16 @@ and the people's names keep their own tier, unchanged inside.
 
 ### The Tier Numbers
 
-`SearchMatch.Tier` and `FavoriteMatch.Tier` stay one comparable number: the path tiers are numbered with
-their levels folded in (e.g. `tier × (words + 1)² + (words − whole) × (words + 1) + (words − start)`), and
-`DescriptionTier`, `PersonTier`, `SimilarityTier`, `IsPathTier` follow, so the **Path** / **Content**
+`SearchMatch.Tier` and `FavoriteMatch.Tier` stay one comparable number: the path and content tiers are
+numbered with their levels folded in — `FileSearch.Numbered`: `tier × (words + 1)² + (words − whole) ×
+(words + 1) + (words − start)` — and `DescriptionTier`, `PersonTier`, `SimilarityTier` take their tier's
+first number (`First`), `IsPathTier` any number below the first content tier, so the **Path** / **Content**
 sections and the merge keep working unchanged.
+
+### The Folders
+
+The folder view's search ranks its matching folders through the same `FileSearch.Search` (no sort order):
+they get the levels by themselves — a folder *Tique* before a folder *Soviétique*.
 
 ---
 
@@ -92,16 +98,18 @@ user's answer, Q&A 2). Inside the content:
 - **Joined** has no word boundary (the spaces are removed): a word found joined counts as **inside**.
 - **Seen** and **SeenInside** already split a tag or caption word found whole from one found inside; a
   word found at the start of a tag word (`chien` in `chiens`) is **SeenInside** with a start level, so it
-  ranks first inside that grade.
+  ranks first inside that grade. Whole is now read by `LevelOf`'s boundaries, no longer by a split on spaces:
+  *field* is whole in a caption ending *on a field.*
 - `ContentIndex.Find` returns, for each grade, the slot holding the word at its **best level** rather than
-  the first slot holding it, and that level; the excerpt and the arrow follow that slot.
+  the first slot holding it, and that level; `ContentIndex.HitOf` (formerly `GradeOf`) gives both as a
+  `ContentHit`. The excerpt and the arrow follow that slot — within it, still its first word holding the
+  query word, at whatever level.
 
 ---
 
 ## Docs
 
-- `RULES.md` § Content OCR Passes (the grades' order) and § File Explorer Sections (the search's ranking)
-  gain the levels.
+- `RULES.md` § Content OCR Passes (the level within a grade) and a new § Search Word Levels.
 - `GLOSSARY.md` / `GLOSSARY.fr.md` — *Sort order*'s relevance tiers mention the whole-word levels.
 - `README.md` / `README.fr.md`: changed only where they describe the ranking.
 
@@ -158,6 +166,27 @@ and Their Boundaries updated.
 Go given: code and documentation (no test project), in the worktree
 `.claude/worktrees/whole-word-search-ranking`, branch `feature/whole-word-search-ranking`.
 
+### Iteration 4 — 2026-11-05 — 🧭 Implementation choices
+
+No rule broken. Choices the frozen design did not state:
+
+- **Names**: `WordLevel` (Whole, Start, Inside) in `FileSearch.cs`, `FileSearch.LevelOf(folded, word, from)`,
+  `ContentHit(Grade, Level)` beside `ContentGrade`; `ContentIndex.GradeOf` renamed `HitOf`.
+- **The tier numbers**: `Numbered(tier, words, whole, start)` for the path and content tiers, `First(tier, words)`
+  for the description, people and similarity tiers; `IsPathTier` reads "below the first content tier".
+- **A word in the subfolders only** takes its level from the whole path (`LevelOf(folded, word)`): its
+  occurrences are all in the subfolders, since the name does not hold it.
+- **The folders** of the folder view's search get the levels by themselves, through the same `Search`
+  (§ The Folders) — not described by the design, but no code of their own.
+- **Seen vs SeenInside** read by `LevelOf`'s boundaries rather than a split on spaces: punctuation now ends a
+  caption word too (§ Content Ranking).
+- **A weak slot**: a word found in its words beats one found only joined in an earlier weak slot when its level
+  is better; at the same level, the earlier slot stays.
+- **The excerpt and the arrow** keep the first word of the chosen slot holding the query word, not the word at
+  the best level — the design said the slot only. Left as a possible follow-up.
+- **Checked** by a copy of `LevelOf` run on the example names (whole, start, inside, `tique2`, a folder,
+  `TiqueBulle`, `x-tique-y`): every level as designed. The ranking itself is checked by hand in the app.
+
 ---
 
 ## Implementation Log
@@ -167,9 +196,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable: no test project in the repository |
-| README | | | |
+| Code | 3 | 2026-11-05 | Path levels and favorites (`FileSearch`), content levels (`ContentIndex.Find`) |
+| Unit tests | 3 | 2026-11-05 | Not applicable: no test project in the repository |
+| README | 3 | 2026-11-05 | README / README.fr § Search; GLOSSARY / GLOSSARY.fr *Sort order*; RULES § Search Word Levels, § Content OCR Passes |
 
 ---
 
