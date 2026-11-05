@@ -23,7 +23,7 @@ call of the key's 100 an hour**.
    the trending, as today — or on the next page of the list it shows (the scroll's Loading… slot). Entering the
    view, emptying the box, setting the key call nothing.
 3. **Each view shown or hidden**: a **🌍 GIPHY** submenu of the ⚙ menu, a checkbox per view, the **GIPHY API
-   key…** entry moved into it.
+   key…** and **GIPHY content rating** entries moved into it.
 
 Components: `Explorer/ExplorerMode.cs`, `UI/FileExplorerPanel.cs` (the mode, the cycle, the drop-down, the
 Enter key, ↑ / breadcrumb), `UI/FileExplorerPanel.Giphy.cs` (the view's lists, the kind), `UI/AppSettings.cs`
@@ -57,11 +57,11 @@ The ⚙ menu's two GIPHY entries (`MainForm.Giphy.cs`: `_giphyKeyItem`, `_giphyR
 | ☑ **GIPHY Stickers** | Shows or hides the GIPHY Stickers view, the same way |
 | — | A separator |
 | 🔑 **GIPHY API key…** | Unchanged, moved here |
-| **GIPHY content rating** ▸ | *(see Open Questions: moved here, or left where it is)* |
+| **GIPHY content rating** ▸ | Unchanged, moved here, under the key |
 
 - A change is saved at once; one that cannot be saved says so on the status line (RULES.md § App Settings).
-- Hiding the view shown *(see Open Questions: which view the explorer goes to)*.
-- The saved view at start-up being a hidden one: the same fallback.
+- Hiding the view shown sends the explorer to the **folder view** — the drop-down's first, as at the first
+  launch; the saved view at start-up being a hidden one, the same.
 - Out of the undo history, like every app setting.
 
 ---
@@ -130,9 +130,10 @@ after cycling Ctrl+F through both views.
 - [x] ~~The rating changed while a GIPHY view shows: the search done again, or the kept lists forgotten?~~ → The
       kept lists forgotten, the invitation shown, no call
 
-- [ ] The ⚙ menu's **GIPHY content rating**: moved into the GIPHY submenu too, or left where it is?
-- [ ] Hiding the view the explorer shows (and a hidden view saved at start-up): the folder view, or the view
-      before it in the drop-down's order?
+- [x] ~~The ⚙ menu's **GIPHY content rating**: moved into the GIPHY submenu too, or left where it is?~~ → Moved
+      into it, under the key
+- [x] ~~Hiding the view the explorer shows (and a hidden view saved at start-up): the folder view, or the view
+      before it in the drop-down's order?~~ → The folder view
 
 ---
 
@@ -163,6 +164,11 @@ moved into it. Each view an app setting, shown by default; a hidden view out of 
 Ctrl+F cycle. Two questions opened: the rating's entry, and where the explorer goes when the view shown is
 hidden.
 
+### Iteration 4 — 2026-11-05
+
+Q&A 9–10 answered: the content rating moves into the GIPHY submenu too, under the key; hiding the view shown —
+or a hidden view saved at start-up — gives the folder view. No question left.
+
 ---
 
 ## Implementation Log
@@ -192,8 +198,8 @@ Questions asked by the agent during design, with user responses.
 | 6 | The invitation's form | Its text and a Trending button | 2026-11-05 |
 | 7 | ↑ / Backspace / Alt+↑ / breadcrumb *GIPHY* | The trending, an explicit action — a call unless kept | 2026-11-05 |
 | 8 | The rating changed while a view shows | The kept lists forgotten, the invitation shown | 2026-11-05 |
-| 9 | The content rating's entry: into the GIPHY submenu, or left where it is? | | 2026-11-05 |
-| 10 | Hiding the view shown: the folder view, or the view before it? | | 2026-11-05 |
+| 9 | The content rating's entry: into the GIPHY submenu, or left where it is? | Moved into it | 2026-11-05 |
+| 10 | Hiding the view shown: the folder view, or the view before it? | The folder view | 2026-11-05 |
 
 ---
 
