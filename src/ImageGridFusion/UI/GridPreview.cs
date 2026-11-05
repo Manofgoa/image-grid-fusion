@@ -2347,8 +2347,8 @@ internal sealed partial class GridPreview : Control
 
     /// <summary>
     /// The automatic background color of the selected image in its cell, as the preview draws it: what
-    /// the Background's color button shows while <i>Automatic color</i> is checked, and what unchecking
-    /// it freezes. <c>null</c> with no cell selected.
+    /// the Background's color button shows while its From is Auto, what From set to Chosen freezes, and its
+    /// gradient's To Auto. <c>null</c> with no cell selected.
     /// </summary>
     public Color? SelectedAutomaticBackground
     {
