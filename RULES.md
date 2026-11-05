@@ -916,7 +916,8 @@ One running instance **per exe location** and Windows session (origin:
   does) and loads them like a drop (`MainForm.AddLaunchFiles`). With `--tray`, it hands nothing over;
   its `--title` is ignored. No answer within 3 s: it ends with nothing done.
 - A `--new-instance` instance takes **no lock** and answers no launch, and makes **no write of its
-  own accord**: no `RegistryMigration.Run`, no `StartupRegistration.Refresh`, no window size saved.
+  own accord**: no `RegistryMigration.Run`, no `StartupRegistration.Refresh`, no window size saved, no icon
+  written to the icon cache (`IconCache.Writes`).
   A new automatic write at start-up or exit is skipped for it too.
 - **Agents launch with `--new-instance`, always** (`CLAUDE.md` § Launch): without it, an agent's launch
   would bring back, and load its files into, the user's instance or another session's.
@@ -1273,6 +1274,21 @@ Other folders shown in the folder view beside the base folder, each indexed apar
   the child's `›` (`Breadcrumb.SetPath`'s `sourceAt`); the folders inside it keep their usual color. A source not found
   stays, faded (`ExplorerRow.Unavailable`). Not remembered as the open folder.
 
+## Start-Up
+
+What the main window does not wait for before it shows (origin: `workfiles/20261105-initial-load-speed.md`):
+
+- **The emoji icons the icon cache does not hold** (§ Icons): while `UiIcon.Deferring` — set in `Program.Main`,
+  unless the app starts hidden — such an icon is handed out **blank**, then drawn at the first idle moment after the
+  window has shown (`MainForm.FinishStartup` → `UiIcon.DrawDeferred`), painted into its shared bitmap and every copy
+  still alive, the window repainted. A control keeping a copy of its own — a split button's image list — is given
+  its icon again there (`UpdateEffectIcons`); a new one does the same.
+- **The file explorer's content**: held hidden (`FileExplorerPanel.ContentHeld`), the panel showing its background
+  at its width, let go in `FinishStartup`, before the icons; `FileExplorerPanel.Start` still runs from `OnShown`.
+- **The font drop-down's families**: the selected one alone until the list is first opened or focused
+  (`MainForm.FillFonts`). A new long list built at start-up waits the same way.
+- A new piece of start-up work that the window does not need to show waits for `FinishStartup`.
+
 ## Keyboard Shortcuts
 
 Every shortcut of the app is documented, in one place (origin: `workfiles/20261029-shortcuts-list.md`):
@@ -1460,8 +1476,12 @@ Every control that does something shows an icon, **emoji first** (origin:
   similar images*, *Copy*, the Component updates window's *Install* and its ⚙ entry). A new control takes the field of its
   action, or adds one.
 - **Drawn at 16 logical px in device pixels**, again when the DPI changes; the emoji rendered by
-  Direct2D (`TextRaster`) — GDI draws them in one color —, each size kept once drawn. Never a small
-  bitmap stretched. A menu entry: `UiIcons.Set` on it, `UiIcons.Attach` on its menu, drawn as it opens.
+  Direct2D (`TextRaster`) — GDI draws them in one color — at **four times its side** (`UiIcon.EmFor`), then scaled
+  down, each size kept once drawn. Never a small bitmap stretched.
+- **Kept on the disk** (origin: `workfiles/20261105-initial-load-speed.md`): an emoji icon drawn is written into
+  **`icon-cache\` next to the exe** (`UI/IconCache`), one subfolder per stamp — `IconCache.DrawingVersion` and Segoe
+  UI Emoji's file —, the older ones deleted at the first write; a later start reads it instead of drawing. A change
+  of the emoji drawing raises `DrawingVersion`. Written by the normal instance only. A menu entry: `UiIcons.Set` on it, `UiIcons.Attach` on its menu, drawn as it opens.
   A button: `UiIcons.SetImage`, an icon-only one stretched to its row's height. A drop-down's entry:
   owner-drawn by `UiIcons.DrawItem`.
 - **A button opening a menu of variants** is Windows' own split button (`UI/SplitButton`,
