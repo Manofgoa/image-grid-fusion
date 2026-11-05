@@ -122,6 +122,11 @@ The four open details settled (Q5–Q8): the French text *Ouvrir le dossier*; a 
 *Copy last MP4 / GIF* shows the link on the last video's temp file; a Copy whose previous copy was not
 kept shows none. No open question left.
 
+### Iteration 3 — 2026-11-05 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree (`.claude/worktrees/open-directory-link`, branch
+`feature/open-directory-link`). Scope frozen as of Iteration 2.
+
 ---
 
 ## Implementation Log
