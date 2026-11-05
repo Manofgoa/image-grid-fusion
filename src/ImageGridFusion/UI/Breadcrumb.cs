@@ -14,6 +14,9 @@ internal sealed class Breadcrumb : Control
     private const int UpWidth = 20;
     private const int Spacing = 4;
     private const string Separator = " › ";
+
+    // Before a secondary source's name: another environment, not a child of the folder before it.
+    private const string SourceSeparator = "  │  ";
     private const string Ellipsis = "…";
 
     /// <summary>The blue a secondary source's segments are written in.</summary>
@@ -24,8 +27,8 @@ internal sealed class Breadcrumb : Control
     private readonly List<(Rectangle Bounds, int Depth)> _links = [];
     private IReadOnlyList<string> _segments = [];
 
-    // The first segment of a secondary source, drawn in its blue from there on; int.MaxValue for none.
-    private int _sourceFrom = int.MaxValue;
+    // The segment of a secondary source's name, drawn in its blue after a clear separator; int.MaxValue for none.
+    private int _sourceAt = int.MaxValue;
     private string _trailing = "";
     private Rectangle _up;
 
@@ -48,14 +51,14 @@ internal sealed class Breadcrumb : Control
     private bool CanGoUp => _segments.Count > 1;
 
     /// <summary>
-    /// The path shown — the base folder's name first — and the text after it; the segments from
-    /// <paramref name="sourceFrom"/> on are a secondary source's, drawn in blue (workfiles/20261105-secondary-file-sources.md
-    /// § In the Folder View).
+    /// The path shown — the base folder's name first — and the text after it; the segment at
+    /// <paramref name="sourceAt"/> is a secondary source's name, drawn in blue after a clear separator rather than
+    /// the child's › (workfiles/20261105-secondary-file-sources.md § In the Folder View).
     /// </summary>
-    public void SetPath(IReadOnlyList<string> segments, string trailing, int sourceFrom = int.MaxValue)
+    public void SetPath(IReadOnlyList<string> segments, string trailing, int sourceAt = int.MaxValue)
     {
         _segments = segments;
-        this._sourceFrom = sourceFrom;
+        this._sourceAt = sourceAt;
         _trailing = trailing;
         _hovered = int.MinValue;
         _toolTip.SetToolTip(this, null);
@@ -104,7 +107,8 @@ internal sealed class Breadcrumb : Control
         int first = 0;
         while (first < _segments.Count - 1)
         {
-            int needed = (first > 0 ? Measure(Ellipsis) + separator : 0) + widths[first..].Sum() + separator * (_segments.Count - 1 - first);
+            int needed = (first > 0 ? Measure(Ellipsis) + separator : 0) + widths[first..].Sum()
+                + Enumerable.Range(first + 1, _segments.Count - 1 - first).Sum(next => this.Measure(this.SeparatorBefore(next)));
             if (needed <= available)
             {
                 break;
@@ -127,7 +131,7 @@ internal sealed class Breadcrumb : Control
             {
                 // The open folder: cut with an ellipsis rather than dropped.
                 var bounds = new Rectangle(x, 0, Math.Max(0, Math.Min(widths[depth], limit - x)), ClientSize.Height);
-                TextRenderer.DrawText(g, _segments[depth], Font, bounds, depth >= this._sourceFrom ? SourceColor : SystemColors.ControlText, Flags | TextFormatFlags.EndEllipsis);
+                TextRenderer.DrawText(g, _segments[depth], Font, bounds, depth == this._sourceAt ? SourceColor : SystemColors.ControlText, Flags | TextFormatFlags.EndEllipsis);
                 x = bounds.Right;
                 break;
             }
@@ -135,10 +139,10 @@ internal sealed class Breadcrumb : Control
             _links.Add((new Rectangle(x, 0, widths[depth], ClientSize.Height), depth));
             using (var font = _hovered == depth ? new Font(Font, FontStyle.Underline) : null)
             {
-                x = Draw(g, _segments[depth], x, depth >= this._sourceFrom ? SourceColor : SystemColors.HotTrack, font ?? Font);
+                x = Draw(g, _segments[depth], x, depth == this._sourceAt ? SourceColor : SystemColors.HotTrack, font ?? Font);
             }
 
-            x = Draw(g, Separator, x, SystemColors.GrayText, Font);
+            x = Draw(g, this.SeparatorBefore(depth + 1), x, SystemColors.GrayText, Font);
         }
 
         if (trailing.Length > 0)
@@ -213,6 +217,9 @@ internal sealed class Breadcrumb : Control
         });
         Invalidate();
     }
+
+    /// <summary>What separates a segment from the one before it: a clear bar before a secondary source's name, › otherwise.</summary>
+    private string SeparatorBefore(int depth) => depth == this._sourceAt ? SourceSeparator : Separator;
 
     private int Measure(string text) => text.Length == 0 ? 0 : TextRenderer.MeasureText(text, Font, Size.Empty, Flags).Width;
 

@@ -3193,15 +3193,14 @@ internal sealed partial class FileExplorerPanel : Panel
     {
         string name = Path.GetFileName(fullPath);
 
-        // Inside a secondary source, every folder is drawn in its blue.
-        bool inSource = this.ViewSource is not null;
+        // Inside a secondary source too, a folder keeps the usual color: only the source's own tile is blue.
         if (this.ViewIndex is not { } index || this.ViewRoot is not { } root || this.ViewTree() is not { } tree)
         {
-            return new ExplorerRow(fullPath, name, IsFolder: true, InSource: inSource);
+            return new ExplorerRow(fullPath, name, IsFolder: true);
         }
 
         int count = tree.CountBelow(Path.GetRelativePath(root, fullPath), index.Count);
-        return new ExplorerRow(fullPath, name, IsFolder: true, Count: count, InSource: inSource);
+        return new ExplorerRow(fullPath, name, IsFolder: true, Count: count);
     }
 
     private static string Folders(int count) => count == 1 ? Strings.ExplorerFolderOne : Texts.Format(Strings.ExplorerFolderMany, count);
@@ -3214,7 +3213,7 @@ internal sealed partial class FileExplorerPanel : Panel
         return relative.Length == 0 ? head : [.. head, .. relative.Split(['\\', '/'], StringSplitOptions.RemoveEmptyEntries)];
     }
 
-    /// <summary>The breadcrumb on the open folder, <paramref name="trailing"/> after it — a secondary source's segments in blue.</summary>
+    /// <summary>The breadcrumb on the open folder, <paramref name="trailing"/> after it — a secondary source's name in blue, after a clear separator.</summary>
     private void ShowBreadcrumb(string trailing) =>
         _breadcrumb.SetPath(_baseFolder is null ? [] : SegmentsOf(_openFolder), trailing, this.ViewSource is null ? int.MaxValue : 1);
 
