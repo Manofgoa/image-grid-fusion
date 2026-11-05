@@ -659,7 +659,7 @@ La résolution de sortie est gardée aussi haute que possible pour que les image
 
 ## Compilation et exécution
 
-Voir [CONTRIBUTING.md § Build](CONTRIBUTING.md#build) (en anglais).
+Voir [CONTRIBUTING.fr.md § Compilation](CONTRIBUTING.fr.md#compilation).
 
 ## Technique
 
@@ -673,4 +673,4 @@ C# / WinForms sur .NET 10, avec `System.Drawing` (GDI+) et une interpolation bic
 
 ## Licence
 
-[MIT](LICENSE) © Manofgoa. Contributions : voir [CONTRIBUTING.md](CONTRIBUTING.md) ; problèmes de sécurité : voir [SECURITY.md](SECURITY.md).
+[MIT](LICENSE) © Manofgoa. Contributions : voir [CONTRIBUTING.fr.md](CONTRIBUTING.fr.md) ; problèmes de sécurité : voir [SECURITY.fr.md](SECURITY.fr.md).

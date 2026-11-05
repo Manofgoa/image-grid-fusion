@@ -1,3 +1,5 @@
+<img src="https://flagcdn.com/w20/gb.png" width="20" alt="GB"> English · [<img src="https://flagcdn.com/w20/fr.png" width="20" alt="FR"> Français](CONTRIBUTING.fr.md)
+
 # Contributing
 
 Thanks for your interest in Image Grid Fusion. Issues and pull requests are welcome.
@@ -30,7 +32,7 @@ Its art is Twemoji's, under CC-BY 4.0: see `src/ImageGridFusion/Imaging/TwemojiF
 ## Before changing the code
 
 - [RULES.md](RULES.md) holds the rules every change follows — effects, toolbars, output format,
-  undo history, settings. A change that breaks one of them updates the rule in the same pull request.
+  undo history, settings, UI language. A change that breaks one of them updates the rule in the same pull request.
 - [GLOSSARY.md](GLOSSARY.md) gives each word its one meaning: use its terms in the code, the
   comments and the documentation.
 - [`workfiles/`](workfiles) keeps the design of each feature, the origin of the rules.
@@ -40,4 +42,5 @@ Its art is Twemoji's, under CC-BY 4.0: see `src/ImageGridFusion/Imaging/TwemojiF
 - One feature or fix per pull request, in English: code, comments, commit messages.
 - Match the surrounding code: naming, comment density, idioms.
 - No new dependency: the app uses Windows' own components only, see [README § Tech](README.md#tech).
-- A change the user can see updates [README.md](README.md) and [README.fr.md](README.fr.md).
+- A change the user can see updates [README.md](README.md) and [README.fr.md](README.fr.md); a new
+  UI text is added in English and French (`Resources/Strings.resx`, `Resources/Strings.fr.resx`).
