@@ -98,13 +98,7 @@ internal sealed class IconCache
                 return null;
             }
 
-            var bitmap = new Bitmap(size, size, PixelFormat.Format32bppArgb);
-            using (var g = Graphics.FromImage(bitmap))
-            {
-                g.DrawImageUnscaled(read, 0, 0);
-            }
-
-            return bitmap;
+            return ExactCopy(read);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or ExternalException)
         {
@@ -124,7 +118,7 @@ internal sealed class IconCache
             return Task.CompletedTask;
         }
 
-        var copy = new Bitmap(icon);
+        var copy = ExactCopy(icon);
         bool clean = !this._cleaned;
         this._cleaned = true;
         return Task.Run(() =>
@@ -152,6 +146,40 @@ internal sealed class IconCache
                 }
             }
         });
+    }
+
+    /// <summary>
+    /// <paramref name="from"/> copied byte for byte into a 32-bit bitmap of its own — never drawn, which would round the faint
+    /// pixels of the edges again.
+    /// </summary>
+    public static Bitmap ExactCopy(Bitmap from)
+    {
+        var whole = new Rectangle(Point.Empty, from.Size);
+        var bitmap = new Bitmap(from.Width, from.Height, PixelFormat.Format32bppArgb);
+        var source = from.LockBits(whole, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+        try
+        {
+            var target = bitmap.LockBits(whole, ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
+            try
+            {
+                var row = new byte[from.Width * 4];
+                for (int y = 0; y < from.Height; y++)
+                {
+                    Marshal.Copy(source.Scan0 + y * source.Stride, row, 0, row.Length);
+                    Marshal.Copy(row, 0, target.Scan0 + y * target.Stride, row.Length);
+                }
+            }
+            finally
+            {
+                bitmap.UnlockBits(target);
+            }
+        }
+        finally
+        {
+            from.UnlockBits(source);
+        }
+
+        return bitmap;
     }
 
     // The folders of an older drawing or emoji font, never read again.
