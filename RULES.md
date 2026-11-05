@@ -1100,8 +1100,8 @@ The faces of the indexed images grouped into people, in the file explorer's **Pe
   (`mergedInto`), each person keeping its faces: un-merging restores it exactly; sub-groups are one level
   deep. Acting on an unnamed group first makes it a person, its faces pinned. A face key is its file's
   full path and its box rounded (`FaceKeys`).
-- **The view**: a third view of the file explorer, picked in its **views drop-down** (`ExplorerMode`,
-  saved by name, the older folder-view flag read as before): the groups — named A→Z, then the larger
+- **The view**: a third view of the file explorer, picked in its **views drop-down** (`ExplorerMode`;
+  every start opens on the favorites, the open folder alone remembered): the groups — named A→Z, then the larger
   first — a tile for the hidden ones, a **Low quality** tile for the low-quality faces, then the faces alone
   as file tiles showing the face cut out of their file (`FaceCrops`). A group opened lists its sub-groups,
   then every file of it and of them; the Low quality tile opened lists its faces as the faces alone.

@@ -715,7 +715,8 @@ internal sealed partial class MainForm : Form
         this._explorer.VisualAnalysis = AppSettings.VisualAnalysis;
         this._explorer.SimilarImagesLevel = AppSettings.SimilarImages;
         this._explorer.Captions = AppSettings.Captions;
-        this._explorer.Mode = AppSettings.ExplorerMode;
+        // Every start opens on the favorites, whatever view was left: the open folder alone is remembered.
+        this._explorer.Mode = ExplorerMode.Favorites;
         _explorerSplitter.Visible = _explorer.Open;
         ApplyExplorerSplitterBounds();
         Controls.Add(_preview);

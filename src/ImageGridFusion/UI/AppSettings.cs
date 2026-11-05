@@ -293,22 +293,13 @@ internal static class AppSettings
     /// <summary>Saves the maximum zoom, in percent; throws an <see cref="IsSaveError"/> exception on failure.</summary>
     public static void SaveMaxZoom(int percent) => Save((MaxZoomName, percent));
 
-    /// <summary>
-    /// What the file explorer lists — its views drop-down's — saved by name; read from the older
-    /// folder-view flag when it was not saved, the folder view — the drop-down's first — when neither was.
-    /// See workfiles/20261027-face-detection.md § People View, workfiles/20261029-ctrl-f-view-cycle.md.
-    /// </summary>
-    public static ExplorerMode ExplorerMode =>
-        Text(ExplorerModeName) is { } name && Enum.TryParse(name, out ExplorerMode mode) && mode.ToString() == name ? mode
-        : Int(ExplorerFolderViewName) is int value ? (value != 0 ? ExplorerMode.Folders : ExplorerMode.Favorites)
-        : ExplorerMode.Folders;
-
     /// <summary>The folder the file explorer's folder view has open, relative to the base folder; "" — the base folder — when none was saved.</summary>
     public static string ExplorerOpenFolder => Text(ExplorerOpenFolderName) ?? "";
 
     /// <summary>
     /// Saves what the file explorer lists and its open folder together — the older folder-view flag
-    /// too, for an older version; throws an <see cref="IsSaveError"/> exception on failure.
+    /// too, for an older version; throws an <see cref="IsSaveError"/> exception on failure. The view is
+    /// written for an older version only: every start opens on the favorites, the open folder alone read back.
     /// </summary>
     public static void SaveExplorerMode(ExplorerMode mode, string openFolder) =>
         Save((ExplorerModeName, mode.ToString()), (ExplorerFolderViewName, mode == ExplorerMode.Folders ? 1 : 0), (ExplorerOpenFolderName, openFolder));
