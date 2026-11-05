@@ -697,6 +697,8 @@ internal sealed partial class MainForm : Form
         // the global options row above it, the global tabs row above that and the transport above them,
         // span the whole width; the layout strip takes the left of what remains, the file explorer the
         // right — its splitter docked against it — and the fill control goes first so it gets the rest.
+        // Its content let go once the window has shown (FinishStartup): the window does not wait for it.
+        this._explorer.ContentHeld = true;
         _explorer.Open = AppSettings.ExplorerPanelOpen;
         _explorer.OpenWidth = AppSettings.ExplorerWidth;
         _explorer.TileSize = AppSettings.ExplorerTileSize;
@@ -1404,12 +1406,14 @@ internal sealed partial class MainForm : Form
     }
 
     /// <summary>
-    /// The emoji icons handed out blank while the window was being built, drawn now: each control shows them at its next
-    /// paint, the split buttons — which keep a list of their own — given theirs again.
+    /// What the window did not wait for, once it has shown: the file explorer's content, then the emoji icons handed out
+    /// blank while it was built — each control shows them at its next paint, the split buttons, which keep a list of their
+    /// own, given theirs again.
     /// </summary>
-    private void DrawDeferredIcons(object? sender, EventArgs e)
+    private void FinishStartup(object? sender, EventArgs e)
     {
-        Application.Idle -= this.DrawDeferredIcons;
+        Application.Idle -= this.FinishStartup;
+        this._explorer.ContentHeld = false;
         if (UiIcon.DrawDeferred() > 0)
         {
             this.UpdateEffectIcons();
@@ -1672,9 +1676,9 @@ internal sealed partial class MainForm : Form
         base.OnShown(e);
         _ = Task.Run(CleanTempVideos);
 
-        // The emoji icons the cache did not hold, drawn once the window has painted — the first idle moment, every pending
-        // paint done (workfiles/20261105-initial-load-speed.md § C).
-        Application.Idle += this.DrawDeferredIcons;
+        // The file explorer's content and the emoji icons the cache did not hold, once the window has painted — the first
+        // idle moment, every pending paint done (workfiles/20261105-initial-load-speed.md § C).
+        Application.Idle += this.FinishStartup;
 
         // Copy and Save start disabled, so the slider would take the focus and move with unaimed keys or wheel.
         _preview.Focus();
