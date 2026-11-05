@@ -238,6 +238,11 @@ heart on a GIPHY tile keeps its file in `giphy-favorites\` as an ordinary favori
 Q&A 23–24: no test project, the behaviours checked by hand; the backlog's *Stickers in layers* row split,
 its GIPHY part marked with this workfile. No open question left.
 
+### Iteration 8 — 2026-11-05 — ✅ Implemented
+
+Go given: code, tests and documentation, in a worktree on `feature/online-library-giphy`. The scope is
+frozen as the design sections stand at this iteration.
+
 ---
 
 ## Implementation Log
