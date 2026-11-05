@@ -712,6 +712,8 @@ Restart the app now?</value></data>
   <data name="MainSettingsPeople" xml:space="preserve"><value>People</value></data>
   <data name="MainSettingsRebuildContent" xml:space="preserve"><value>Rebuild content index</value></data>
   <data name="MainSettingsRebuildContentTip" xml:space="preserve"><value>Forgets the text found in every file and extracts it all again — after installing an OCR language, for instance</value></data>
+  <data name="MainSettingsSecondarySources" xml:space="preserve"><value>Secondary sources…</value></data>
+  <data name="MainSettingsSecondarySourcesTip" xml:space="preserve"><value>Other folders shown in blue at the top of the file explorer's folder, each indexed apart — searched only while opened, analysed by 🔄 inside them; remembered between sessions</value></data>
   <data name="MainSettingsSimilarImages" xml:space="preserve"><value>Similar images</value></data>
   <data name="MainSettingsSimilarImagesTip" xml:space="preserve"><value>How clearly an image must stand out to be listed by Find similar images and at the end of a 💡 search — stricter shows fewer, closer images; remembered between sessions</value></data>
   <data name="MainSettingsStartWithWindows" xml:space="preserve"><value>Start with Windows</value></data>
@@ -781,6 +783,7 @@ Restart the app now?</value></data>
   <data name="MainStatusNotSavedGiphyRating" xml:space="preserve"><value>GIPHY content rating not remembered: {0}</value></data>
   <data name="MainStatusNotSavedGuideApproach" xml:space="preserve"><value>Guides distance not remembered: {0}</value></data>
   <data name="MainStatusNotSavedOcrResultStyle" xml:space="preserve"><value>OCR result style not remembered: {0}</value></data>
+  <data name="MainStatusNotSavedSecondarySources" xml:space="preserve"><value>Secondary sources not saved: {0}</value></data>
   <data name="MainStatusNotSavedSimilarImages" xml:space="preserve"><value>Similar images not remembered: {0}</value></data>
   <data name="MainStatusNotSavedTwitterCornersDefault" xml:space="preserve"><value>Twitter corners by default not remembered: {0}</value></data>
   <data name="MainStatusNotSavedVideoSize" xml:space="preserve"><value>Video size not remembered: {0}</value></data>
@@ -988,6 +991,30 @@ Restart the app now?</value></data>
   <data name="PanelStyleTipUser" xml:space="preserve"><value>{0} — right-click to rename, replace or delete it
 {1}</value></data>
   <data name="PanelStylesNotSaved" xml:space="preserve"><value>The text styles could not be saved to {0}: {1}</value></data>
+  <data name="SourcesAdd" xml:space="preserve"><value>Add…</value></data>
+  <data name="SourcesBaseOverlaps" xml:space="preserve"><value>{0} cannot be the file explorer's folder: it overlaps the secondary source {1}. Remove the source first (⚙ menu, Secondary sources…).</value></data>
+  <data name="SourcesClose" xml:space="preserve"><value>Close</value></data>
+  <data name="SourcesEmpty" xml:space="preserve"><value>No secondary source yet</value></data>
+  <data name="SourcesIndexNotDeleted" xml:space="preserve"><value>The index of {0} could not be deleted: {1}</value></data>
+  <data name="SourcesNotFoundTip" xml:space="preserve"><value>Not found — an unplugged drive, a folder moved or deleted?</value></data>
+  <data name="SourcesNothingToAnalyse" xml:space="preserve"><value>Read again — no analysis is turned on in the ⚙ menu</value></data>
+  <data name="SourcesPickerDescription" xml:space="preserve"><value>Folder to add as a secondary source</value></data>
+  <data name="SourcesRefusedBase" xml:space="preserve"><value>it is the file explorer's folder itself</value></data>
+  <data name="SourcesRefusedHoldsBase" xml:space="preserve"><value>it holds the file explorer's folder</value></data>
+  <data name="SourcesRefusedInsideBase" xml:space="preserve"><value>it is inside the file explorer's folder, whose files are indexed already</value></data>
+  <data name="SourcesRefusedListed" xml:space="preserve"><value>it is a secondary source already</value></data>
+  <data name="SourcesRefusedOverlaps" xml:space="preserve"><value>it overlaps the secondary source {0}</value></data>
+  <data name="SourcesRefusedText" xml:space="preserve"><value>{0} cannot be added: {1}.</value></data>
+  <data name="SourcesRefusedTitle" xml:space="preserve"><value>Secondary source not added</value></data>
+  <data name="SourcesRemove" xml:space="preserve"><value>Remove</value></data>
+  <data name="SourcesRemovePrompt" xml:space="preserve"><value>Remove the secondary source {0}?
+
+Its index — the files listed, the texts read, the faces and the visual analysis — is deleted. The folder itself is not touched.</value></data>
+  <data name="SourcesRemoveTitle" xml:space="preserve"><value>Remove a secondary source</value></data>
+  <data name="SourcesSection" xml:space="preserve"><value>Secondary sources</value></data>
+  <data name="SourcesTipRescan" xml:space="preserve"><value>Read this secondary source again and analyse its content — OCR, faces, visual analysis, captions, as the ⚙ menu turns them on; leaving the source pauses the analysis, 🔄 here again picks it up</value></data>
+  <data name="SourcesWindowIntro" xml:space="preserve"><value>Folders shown in blue at the top of the file explorer's folder, each with an index of its own: searched only while opened, their content analysed by 🔄 inside them. Their faces join the People view, their images the similar images.</value></data>
+  <data name="SourcesWindowTitle" xml:space="preserve"><value>Secondary sources</value></data>
   <data name="UiAddImages" xml:space="preserve"><value>Add images</value></data>
   <data name="UiBadgeCuttingOut" xml:space="preserve"><value>✂ Cutting out{0}</value></data>
   <data name="UiBadgeNotUpscaled" xml:space="preserve"><value>⤢ Not upscaled</value></data>

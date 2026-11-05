@@ -25,8 +25,11 @@ namespace ImageGridFusion.UI;
 /// each run of equal titles; null in a list without sections (workfiles/20261103-file-explorer-groups.md).
 /// <paramref name="Online"/>: a result of an online library — GIPHY's — its picture its animated thumbnail, its
 /// <paramref name="FullPath"/> a key of no file, a file only once fetched (workfiles/20261105-online-library-giphy.md).
+/// <paramref name="InSource"/>: a folder of a secondary source — the source itself or a folder inside it — drawn in
+/// blue, another environment; <paramref name="Unavailable"/>: a secondary source not found on the disk, drawn faded,
+/// its tooltip saying so (workfiles/20261105-secondary-file-sources.md § In the Folder View).
 /// </summary>
-internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false, string? ContentWord = null, long? Size = null, int? Count = null, EffectPreset? Preset = null, string? DescriptionWord = null, string? GroupId = null, RectangleF? Face = null, string? FaceKey = null, float? Closeness = null, string? Section = null, Web.GiphyItem? Online = null)
+internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false, string? ContentWord = null, long? Size = null, int? Count = null, EffectPreset? Preset = null, string? DescriptionWord = null, string? GroupId = null, RectangleF? Face = null, string? FaceKey = null, float? Closeness = null, string? Section = null, Web.GiphyItem? Online = null, bool InSource = false, bool Unavailable = false)
 {
     /// <summary>What tells a tile from the others: a file's presets share its path, and its faces.</summary>
     public string Key => this.GroupId is { } group ? "group:" + group : this.FaceKey ?? this.Preset?.Id ?? this.FullPath;
@@ -43,6 +46,7 @@ internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder =
     /// <summary>The tile's tooltip: its path, after a preset's description, then its closeness; a group's name and files; an online result's title.</summary>
     public string Tip => this.Online is not null ? this.Name
         : this.IsGroup ? $"{this.Name}\n{ThumbnailGrid.FileCount(this.Count ?? 0)}"
+        : this.Unavailable ? $"{this.FullPath}\n{Strings.SourcesNotFoundTip}"
         : (this.Preset is { Description.Length: > 0 } preset ? $"{preset.Description.Trim()}\n\n{this.FullPath}" : this.FullPath)
             + (this.ClosenessText is { } closeness ? Texts.Format(Strings.ExplorerTileCloseness, closeness) : "");
 
@@ -1213,7 +1217,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         Rectangle? flap = null;
         if (known && image is null && row.IsFolder)
         {
-            flap = PaintFolderGlyph(g, tile);
+            flap = PaintFolderGlyph(g, tile, row.InSource, row.Unavailable);
         }
         else if (image is not null)
         {
@@ -1221,7 +1225,18 @@ internal sealed class ThumbnailGrid : ScrollableControl
             int width = Math.Max(1, (int)Math.Round(image.Width * scale));
             int height = Math.Max(1, (int)Math.Round(image.Height * scale));
             var target = new Rectangle(tile.X + (tile.Width - width) / 2, tile.Y + (tile.Height - height) / 2, width, height);
-            g.DrawImage(image, target, new Rectangle(0, 0, image.Width, image.Height), GraphicsUnit.Pixel);
+            if (row.IsFolder && row.InSource)
+            {
+                // A secondary source's folder: Windows' thumbnail in blue, another environment.
+                using var blue = new ImageAttributes();
+                blue.SetColorMatrix(SourceTint);
+                g.DrawImage(image, target, 0, 0, image.Width, image.Height, GraphicsUnit.Pixel, blue);
+            }
+            else
+            {
+                g.DrawImage(image, target, new Rectangle(0, 0, image.Width, image.Height), GraphicsUnit.Pixel);
+            }
+
             drawn = target;
             if (row.IsFolder)
             {
@@ -1397,10 +1412,28 @@ internal sealed class ThumbnailGrid : ScrollableControl
     private Font GroupFont => this._groupFont ??= new Font(this._nameFont, FontStyle.Bold);
 
     /// <summary>
-    /// A manila folder centered in the tile, its tab at the top left, 90 % of the tile at its 4:3 shape;
-    /// returns where its name goes, on its front panel.
+    /// The colors a secondary source's folder is drawn in (workfiles/20261105-secondary-file-sources.md § In the
+    /// Folder View): Windows' folder thumbnail turned into shades of blue by its brightness — the manila folder a
+    /// mid blue — and the drawn folder's back and front.
     /// </summary>
-    private static Rectangle PaintFolderGlyph(Graphics g, Rectangle tile)
+    private static readonly ColorMatrix SourceTint = new(
+    [
+        [0.30f * 0.35f, 0.30f * 0.60f, 0.30f, 0, 0],
+        [0.59f * 0.35f, 0.59f * 0.60f, 0.59f, 0, 0],
+        [0.11f * 0.35f, 0.11f * 0.60f, 0.11f, 0, 0],
+        [0, 0, 0, 1, 0],
+        [0.02f, 0.10f, 0.25f, 0, 1],
+    ]);
+
+    private static readonly Color SourceBack = Color.FromArgb(46, 108, 196);
+    private static readonly Color SourceFront = Color.FromArgb(92, 156, 232);
+
+    /// <summary>
+    /// A manila folder centered in the tile, its tab at the top left, 90 % of the tile at its 4:3 shape — in
+    /// blue for a secondary source's (<paramref name="inSource"/>), faded for one not found
+    /// (<paramref name="faded"/>); returns where its name goes, on its front panel.
+    /// </summary>
+    private static Rectangle PaintFolderGlyph(Graphics g, Rectangle tile, bool inSource = false, bool faded = false)
     {
         int height = Math.Max(8, tile.Height * 9 / 10);
         int width = height * 4 / 3;
@@ -1414,14 +1447,15 @@ internal sealed class ThumbnailGrid : ScrollableControl
         var tab = new Rectangle(body.X, body.Y - height / 8, width * 2 / 5, height / 8 + 2);
         var smoothing = g.SmoothingMode;
         g.SmoothingMode = SmoothingMode.AntiAlias;
-        using (var back = new SolidBrush(Color.FromArgb(222, 170, 60)))
+        int alpha = faded ? 90 : 255;
+        using (var back = new SolidBrush(Color.FromArgb(alpha, inSource ? SourceBack : Color.FromArgb(222, 170, 60))))
         {
             g.FillRectangle(back, tab);
             g.FillRectangle(back, body);
         }
 
         var panel = new Rectangle(body.X, body.Y + body.Height / 5, body.Width, body.Height - body.Height / 5);
-        using (var front = new SolidBrush(Color.FromArgb(247, 205, 95)))
+        using (var front = new SolidBrush(Color.FromArgb(alpha, inSource ? SourceFront : Color.FromArgb(247, 205, 95))))
         {
             g.FillRectangle(front, panel);
         }

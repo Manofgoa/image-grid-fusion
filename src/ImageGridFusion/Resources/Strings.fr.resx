@@ -712,6 +712,8 @@ Redémarrer l'application maintenant ?</value></data>
   <data name="MainSettingsPeople" xml:space="preserve"><value>Personnes</value></data>
   <data name="MainSettingsRebuildContent" xml:space="preserve"><value>Reconstruire l'index du contenu</value></data>
   <data name="MainSettingsRebuildContentTip" xml:space="preserve"><value>Oublie le texte trouvé dans chaque fichier et l'extrait de nouveau en entier — après l'installation d'une langue OCR, par exemple</value></data>
+  <data name="MainSettingsSecondarySources" xml:space="preserve"><value>Sources secondaires…</value></data>
+  <data name="MainSettingsSecondarySourcesTip" xml:space="preserve"><value>D'autres dossiers montrés en bleu en tête du dossier de l'explorateur de fichiers, chacun indexé à part — cherchés seulement une fois ouverts, analysés par 🔄 à l'intérieur ; mémorisés d'une session à l'autre</value></data>
   <data name="MainSettingsSimilarImages" xml:space="preserve"><value>Images similaires</value></data>
   <data name="MainSettingsSimilarImagesTip" xml:space="preserve"><value>À quel point une image doit se démarquer pour être listée par Trouver des images similaires et à la fin d'une recherche 💡 — plus strict montre moins d'images, plus proches ; mémorisé d'une session à l'autre</value></data>
   <data name="MainSettingsStartWithWindows" xml:space="preserve"><value>Démarrer avec Windows</value></data>
@@ -781,6 +783,7 @@ Redémarrer l'application maintenant ?</value></data>
   <data name="MainStatusNotSavedGiphyRating" xml:space="preserve"><value>Classification GIPHY non mémorisée : {0}</value></data>
   <data name="MainStatusNotSavedGuideApproach" xml:space="preserve"><value>Distance des guides non mémorisée : {0}</value></data>
   <data name="MainStatusNotSavedOcrResultStyle" xml:space="preserve"><value>Style du résultat OCR non mémorisé : {0}</value></data>
+  <data name="MainStatusNotSavedSecondarySources" xml:space="preserve"><value>Sources secondaires non enregistrées : {0}</value></data>
   <data name="MainStatusNotSavedSimilarImages" xml:space="preserve"><value>Images similaires non mémorisées : {0}</value></data>
   <data name="MainStatusNotSavedTwitterCornersDefault" xml:space="preserve"><value>Coins Twitter par défaut non mémorisés : {0}</value></data>
   <data name="MainStatusNotSavedVideoSize" xml:space="preserve"><value>Taille des vidéos non mémorisée : {0}</value></data>
@@ -988,6 +991,30 @@ Redémarrer l'application maintenant ?</value></data>
   <data name="PanelStyleTipUser" xml:space="preserve"><value>{0} — clic droit pour le renommer, le remplacer ou le supprimer
 {1}</value></data>
   <data name="PanelStylesNotSaved" xml:space="preserve"><value>Impossible d'enregistrer les styles de texte dans {0} : {1}</value></data>
+  <data name="SourcesAdd" xml:space="preserve"><value>Ajouter…</value></data>
+  <data name="SourcesBaseOverlaps" xml:space="preserve"><value>{0} ne peut pas être le dossier de l'explorateur de fichiers : il chevauche la source secondaire {1}. Retirez d'abord la source (menu ⚙, Sources secondaires…).</value></data>
+  <data name="SourcesClose" xml:space="preserve"><value>Fermer</value></data>
+  <data name="SourcesEmpty" xml:space="preserve"><value>Aucune source secondaire pour l'instant</value></data>
+  <data name="SourcesIndexNotDeleted" xml:space="preserve"><value>L'index de {0} n'a pas pu être supprimé : {1}</value></data>
+  <data name="SourcesNotFoundTip" xml:space="preserve"><value>Introuvable — un disque débranché, un dossier déplacé ou supprimé ?</value></data>
+  <data name="SourcesNothingToAnalyse" xml:space="preserve"><value>Relue — aucune analyse n'est activée dans le menu ⚙</value></data>
+  <data name="SourcesPickerDescription" xml:space="preserve"><value>Dossier à ajouter comme source secondaire</value></data>
+  <data name="SourcesRefusedBase" xml:space="preserve"><value>c'est le dossier de l'explorateur de fichiers lui-même</value></data>
+  <data name="SourcesRefusedHoldsBase" xml:space="preserve"><value>il contient le dossier de l'explorateur de fichiers</value></data>
+  <data name="SourcesRefusedInsideBase" xml:space="preserve"><value>il est dans le dossier de l'explorateur de fichiers, dont les fichiers sont déjà indexés</value></data>
+  <data name="SourcesRefusedListed" xml:space="preserve"><value>c'est déjà une source secondaire</value></data>
+  <data name="SourcesRefusedOverlaps" xml:space="preserve"><value>il chevauche la source secondaire {0}</value></data>
+  <data name="SourcesRefusedText" xml:space="preserve"><value>{0} ne peut pas être ajouté : {1}.</value></data>
+  <data name="SourcesRefusedTitle" xml:space="preserve"><value>Source secondaire non ajoutée</value></data>
+  <data name="SourcesRemove" xml:space="preserve"><value>Retirer</value></data>
+  <data name="SourcesRemovePrompt" xml:space="preserve"><value>Retirer la source secondaire {0} ?
+
+Son index — les fichiers listés, les textes lus, les visages et l'analyse visuelle — est supprimé. Le dossier lui-même n'est pas touché.</value></data>
+  <data name="SourcesRemoveTitle" xml:space="preserve"><value>Retirer une source secondaire</value></data>
+  <data name="SourcesSection" xml:space="preserve"><value>Sources secondaires</value></data>
+  <data name="SourcesTipRescan" xml:space="preserve"><value>Relire cette source secondaire et analyser son contenu — OCR, visages, analyse visuelle, descriptions, selon le menu ⚙ ; quitter la source met l'analyse en pause, 🔄 ici la reprend</value></data>
+  <data name="SourcesWindowIntro" xml:space="preserve"><value>Des dossiers montrés en bleu en tête du dossier de l'explorateur de fichiers, chacun avec son propre index : cherchés seulement une fois ouverts, leur contenu analysé par 🔄 à l'intérieur. Leurs visages rejoignent la vue Personnes, leurs images les images similaires.</value></data>
+  <data name="SourcesWindowTitle" xml:space="preserve"><value>Sources secondaires</value></data>
   <data name="UiAddImages" xml:space="preserve"><value>Ajouter des images</value></data>
   <data name="UiBadgeCuttingOut" xml:space="preserve"><value>✂ Détourage{0}</value></data>
   <data name="UiBadgeNotUpscaled" xml:space="preserve"><value>⤢ Non agrandie</value></data>

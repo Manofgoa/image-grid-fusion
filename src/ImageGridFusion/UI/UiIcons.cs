@@ -109,6 +109,11 @@ internal static class UiIcons
     public static readonly UiIcon Guides = UiIcon.Emoji("\U0001F4CF");
     public static readonly UiIcon GapBars = UiIcon.Emoji("\U0001F4D0");
     public static readonly UiIcon Folder = UiIcon.Emoji("\U0001F4C1");
+
+    // The secondary sources (workfiles/20261105-secondary-file-sources.md): the ⚙ menu's entry, its window's buttons.
+    public static readonly UiIcon SecondarySources = UiIcon.Emoji("\U0001F5C4️");
+    public static readonly UiIcon AddSource = UiIcon.Emoji("➕");
+    public static readonly UiIcon RemoveSource = UiIcon.Emoji("➖");
     public static readonly UiIcon Pages = UiIcon.Emoji("\U0001F4C4");
     public static readonly UiIcon Download = UiIcon.Emoji("⬇️");
     public static readonly UiIcon ComponentUpdates = UiIcon.Emoji("\U0001F4E6");

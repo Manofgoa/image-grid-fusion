@@ -922,7 +922,7 @@ internal sealed partial class FileExplorerPanel : Panel
             this._contents = new ContentIndex(this._baseFolder!);
         }
 
-        this.Rescan();
+        this.RescanBase();
     }
 
     /// <summary>A feature of the panel needs components it lacks — the URL zone's yt-dlp: the Component updates window to open on them.</summary>
@@ -974,6 +974,12 @@ internal sealed partial class FileExplorerPanel : Panel
         if (value == this.Mode || !Enum.IsDefined(value))
         {
             return;
+        }
+
+        // Leaving the folder view leaves the source it shows: its run paused (§ 🔄 Inside a Source).
+        if (value != ExplorerMode.Folders)
+        {
+            this.PauseSourceRun();
         }
 
         this._folderView = value == ExplorerMode.Folders;
@@ -1074,6 +1080,9 @@ internal sealed partial class FileExplorerPanel : Panel
             error = ex.Message;
         }
 
+        // The secondary sources' faces too: they are in the People view.
+        error ??= this.ForgetSourceFaces();
+
         try
         {
             this._peopleStore.Clear();
@@ -1093,22 +1102,24 @@ internal sealed partial class FileExplorerPanel : Panel
     }
 
     /// <summary>
-    /// The folder the folder view shows, relative to the base folder — "" for the base folder itself.
+    /// The folder the folder view shows, relative to the base folder — "" for the base folder itself, and
+    /// while a secondary source is open: a source is never remembered, its tile being at the base folder's root.
     /// Set before <see cref="Start"/> to the remembered one; one gone from the disk gives way to its
     /// nearest parent still there when listed. Setting it raises nothing.
     /// </summary>
     [DefaultValue("")]
     public string OpenFolder
     {
-        get => _openFolder;
+        get => this._openSource is null ? _openFolder : "";
         set
         {
             string folder = Path.TrimEndingDirectorySeparator(value ?? "");
-            if (folder == _openFolder)
+            if (folder == _openFolder && this._openSource is null)
             {
                 return;
             }
 
+            this.SetOpenSource(null);
             _openFolder = folder;
             if (_folderView)
             {
@@ -1348,9 +1359,12 @@ internal sealed partial class FileExplorerPanel : Panel
         {
             var mode = this.NextMode(step);
             string? select = null;
-            if (mode == ExplorerMode.Folders && this._openFolder.Length > 0)
+            if (mode == ExplorerMode.Folders && (this._openFolder.Length > 0 || this._openSource is not null))
             {
-                select = this._baseFolder is null ? null : Path.Combine(this._baseFolder, this.SegmentsOf(this._openFolder)[1]);
+                // Out of a secondary source, back at the base folder's root, the source's tile selected.
+                select = this._openSource is { } source ? source.Folder
+                    : this._baseFolder is null ? null : Path.Combine(this._baseFolder, this.SegmentsOf(this._openFolder)[1]);
+                this.SetOpenSource(null);
                 this._openFolder = "";
             }
 
@@ -1390,15 +1404,16 @@ internal sealed partial class FileExplorerPanel : Panel
         this._scanning = false;
         this._activity = null;
         this._progress.HideProgress();
-        _rescan.Enabled = false;
+        this.SetBaseRescan(false);
         string? previous = _baseFolder;
         try
         {
             _baseFolder = folder is null ? null : FileIndex.NormalizeFolder(folder);
 
             // Another base folder: the folder view opens at its root. The first one, at start-up, keeps the remembered folder.
-            if (previous is not null && !string.Equals(previous, _baseFolder, StringComparison.OrdinalIgnoreCase) && _openFolder.Length > 0)
+            if (previous is not null && !string.Equals(previous, _baseFolder, StringComparison.OrdinalIgnoreCase) && (_openFolder.Length > 0 || this._openSource is not null))
             {
+                this.SetOpenSource(null);
                 _openFolder = "";
                 FolderViewChanged?.Invoke(this, EventArgs.Empty);
             }
@@ -1426,6 +1441,7 @@ internal sealed partial class FileExplorerPanel : Panel
         if (disposing)
         {
             _scan?.Cancel();
+            this.StopSources();
             this._textEncoderIdle.Dispose();
             this.ReleaseTextEncoder(force: true);
             _transient.Dispose();
@@ -1778,7 +1794,22 @@ internal sealed partial class FileExplorerPanel : Panel
         await ScanAsync(folder, cancellation);
     }
 
+    /// <summary>
+    /// 🔄: inside a secondary source, that source's folder read again and its content analysed
+    /// (workfiles/20261105-secondary-file-sources.md § 🔄 Inside a Source); anywhere else, the base folder rescanned.
+    /// </summary>
     private void Rescan()
+    {
+        if (this.ViewSource is { } source)
+        {
+            _ = this.LoadAndScanSourceAsync(source, analyse: true);
+            return;
+        }
+
+        this.RescanBase();
+    }
+
+    private void RescanBase()
     {
         if (_baseFolder is { } folder)
         {
@@ -1793,7 +1824,7 @@ internal sealed partial class FileExplorerPanel : Panel
     /// </summary>
     private async Task ScanAsync(string folder, CancellationToken cancellation)
     {
-        _rescan.Enabled = false;
+        this.SetBaseRescan(false);
         this._scanning = true;
         this._activity = null;
         this._progress.ShowUnknown();
@@ -1872,7 +1903,7 @@ internal sealed partial class FileExplorerPanel : Panel
         {
             if (!cancellation.IsCancellationRequested && !IsDisposed)
             {
-                _rescan.Enabled = true;
+                this.SetBaseRescan(true);
                 this._scanning = false;
                 this._progress.HideProgress();
             }
@@ -1892,7 +1923,8 @@ internal sealed partial class FileExplorerPanel : Panel
     /// </summary>
     private void StartExtraction()
     {
-        if (!(this._contentSearch || this._faceAnalysis || this._visualAnalysis || this._captions) || !this._indexScanned || this._scanning || this._index is not { } index
+        // A secondary source's run goes first: the base folder's waits for it (workfiles/20261105-secondary-file-sources.md).
+        if (!(this._contentSearch || this._faceAnalysis || this._visualAnalysis || this._captions) || this._sourceRun is not null || !this._indexScanned || this._scanning || this._index is not { } index
             || this._contents is not { } contents || this._faces is not { } faces || this._vision is not { } vision || this._scan is not { IsCancellationRequested: false } scan)
         {
             return;
@@ -1901,20 +1933,22 @@ internal sealed partial class FileExplorerPanel : Panel
         this.StopExtraction();
         this._extraction = CancellationTokenSource.CreateLinkedTokenSource(scan.Token);
         var passes = new ExtractionSettings(this._contentSearch, this._faceAnalysis, this._visualAnalysis, this._captions);
-        _ = this.ExtractAsync(index, contents, faces, vision, passes, this._extraction.Token);
+        _ = this.ExtractAsync(index, contents, faces, vision, IndexFiles.Main, passes, this._extraction.Token);
     }
 
+    /// <summary>The base folder's passes stopped, and a secondary source's run paused.</summary>
     private void StopExtraction()
     {
         this._extraction?.Cancel();
         this._extraction = null;
+        this.PauseSourceRun();
     }
 
     /// <summary>
     /// Extracts the content texts off the UI thread, pass after pass, one file at a time: each pass's
     /// bar and the status line following it, the search shown refreshed every few seconds and at the end.
     /// </summary>
-    private async Task ExtractAsync(FileIndex index, ContentIndex contents, FaceIndex faces, VisionIndex vision, ExtractionSettings passes, CancellationToken cancellation)
+    private async Task ExtractAsync(FileIndex index, ContentIndex contents, FaceIndex faces, VisionIndex vision, IndexFiles files, ExtractionSettings passes, CancellationToken cancellation)
     {
         bool finished = false;
         var progress = new Progress<ExtractionProgress>(p =>
@@ -1976,7 +2010,7 @@ internal sealed partial class FileExplorerPanel : Panel
         });
         try
         {
-            await Task.Run(() => this.Extract(index, contents, faces, vision, passes, progress, cancellation), cancellation);
+            await Task.Run(() => this.Extract(index, contents, faces, vision, files, passes, progress, cancellation), cancellation);
         }
         catch (OperationCanceledException)
         {
@@ -2021,7 +2055,7 @@ internal sealed partial class FileExplorerPanel : Panel
     /// first, the passes complete hidden; RapidOCR's pass is skipped without its engine. See
     /// workfiles/20261013-complementary-ocr-passes.md § Indexing Passes.
     /// </summary>
-    private void Extract(FileIndex index, ContentIndex contents, FaceIndex faces, VisionIndex vision, ExtractionSettings passes, IProgress<ExtractionProgress> progress, CancellationToken cancellation)
+    private void Extract(FileIndex index, ContentIndex contents, FaceIndex faces, VisionIndex vision, IndexFiles files, ExtractionSettings passes, IProgress<ExtractionProgress> progress, CancellationToken cancellation)
     {
         bool changed = contents.RetainOnly(index.Entries);
         bool facesChanged = faces.RetainOnly(index.Entries);
@@ -2078,7 +2112,7 @@ internal sealed partial class FileExplorerPanel : Panel
                 switch (pass)
                 {
                     case ContentPass.Faces when facesRun:
-                        facesChanged |= this.ExtractFaces(index, faces, imageRead, progress, cancellation);
+                        facesChanged |= this.ExtractFaces(index, faces, files, imageRead, progress, cancellation);
                         break;
                     case ContentPass.Vision when visionRun:
                         RunVision();
@@ -2096,17 +2130,17 @@ internal sealed partial class FileExplorerPanel : Panel
         {
             if (changed)
             {
-                TrySave(contents);
+                TrySave(contents, files);
             }
 
             if (facesChanged)
             {
-                TrySave(faces);
+                TrySave(faces, files);
             }
 
             if (visionChanged)
             {
-                TrySave(vision);
+                TrySave(vision, files);
             }
         }
 
@@ -2209,8 +2243,8 @@ internal sealed partial class FileExplorerPanel : Panel
                     long now = Environment.TickCount64;
                     if (now - saved >= ContentSaveInterval || (unsaved >= ContentSaveEvery && now - saved >= ContentSaveFloor))
                     {
-                        TrySave(vision);
-                        TrySave(contents);
+                        TrySave(vision, files);
+                        TrySave(contents, files);
                         saved = now;
                         unsaved = 0;
                     }
@@ -2281,7 +2315,7 @@ internal sealed partial class FileExplorerPanel : Panel
                     long now = Environment.TickCount64;
                     if (now - saved >= ContentSaveInterval || (unsaved >= ContentSaveEvery && now - saved >= ContentSaveFloor))
                     {
-                        TrySave(contents);
+                        TrySave(contents, files);
                         saved = now;
                         unsaved = 0;
                     }
@@ -2336,7 +2370,7 @@ internal sealed partial class FileExplorerPanel : Panel
                 long now = Environment.TickCount64;
                 if (now - saved >= ContentSaveInterval || (unsaved >= ContentSaveEvery && now - saved >= ContentSaveFloor))
                 {
-                    TrySave(contents);
+                    TrySave(contents, files);
                     saved = now;
                     unsaved = 0;
                 }
@@ -2360,7 +2394,7 @@ internal sealed partial class FileExplorerPanel : Panel
     /// the engine to load is said, the pass waiting for a working one. See
     /// workfiles/20261027-face-detection.md § Face Pass.
     /// </summary>
-    private bool ExtractFaces(FileIndex index, FaceIndex faces, IndexEntry[] read, IProgress<ExtractionProgress> progress, CancellationToken cancellation)
+    private bool ExtractFaces(FileIndex index, FaceIndex faces, IndexFiles files, IndexEntry[] read, IProgress<ExtractionProgress> progress, CancellationToken cancellation)
     {
         var queue = read.Where(e => !faces.IsCurrent(e)).ToArray();
         int before = read.Length - queue.Length;
@@ -2416,7 +2450,7 @@ internal sealed partial class FileExplorerPanel : Panel
                 long now = Environment.TickCount64;
                 if (now - saved >= ContentSaveInterval || (unsaved >= ContentSaveEvery && now - saved >= ContentSaveFloor))
                 {
-                    TrySave(faces);
+                    TrySave(faces, files);
                     saved = now;
                     unsaved = 0;
                 }
@@ -2518,36 +2552,36 @@ internal sealed partial class FileExplorerPanel : Panel
     private bool ExtractionPaused() =>
         this._grid.LoadingThumbnails || Environment.TickCount64 - Interlocked.Read(ref this._lastKeystroke) < KeystrokePause;
 
-    /// <summary>Saves the content texts, a failure left for the next save.</summary>
-    private static void TrySave(ContentIndex contents)
+    /// <summary>Saves the content texts into <paramref name="files"/>, a failure left for the next save.</summary>
+    private static void TrySave(ContentIndex contents, IndexFiles files)
     {
         try
         {
-            contents.Save(ContentIndex.DefaultPath);
+            contents.Save(files.Content);
         }
         catch (Exception ex) when (FileIndex.IsFileError(ex))
         {
         }
     }
 
-    /// <summary>Saves the embeddings, a failure left for the next save.</summary>
-    private static void TrySave(VisionIndex vision)
+    /// <summary>Saves the embeddings into <paramref name="files"/>, a failure left for the next save.</summary>
+    private static void TrySave(VisionIndex vision, IndexFiles files)
     {
         try
         {
-            vision.Save(VisionIndex.DefaultPath);
+            vision.Save(files.Vision);
         }
         catch (Exception ex) when (FileIndex.IsFileError(ex))
         {
         }
     }
 
-    /// <summary>Saves the faces found, a failure left for the next save.</summary>
-    private static void TrySave(FaceIndex faces)
+    /// <summary>Saves the faces found into <paramref name="files"/>, a failure left for the next save.</summary>
+    private static void TrySave(FaceIndex faces, IndexFiles files)
     {
         try
         {
-            faces.Save(FaceIndex.DefaultPath);
+            faces.Save(files.Faces);
         }
         catch (Exception ex) when (FileIndex.IsFileError(ex))
         {
@@ -2656,6 +2690,9 @@ internal sealed partial class FileExplorerPanel : Panel
         string[] words = FileSearch.Words(_search.Text);
         this._grid.HighlightWords = words;
         this._diskSizes.Clear();
+
+        // 🔄 acts on the open secondary source or on the base folder, as the view stands.
+        this.UpdateRescan();
         if (this._peopleView)
         {
             this.RefreshPeopleRows(keepPlace, select, words);
@@ -2685,14 +2722,14 @@ internal sealed partial class FileExplorerPanel : Panel
             {
                 _ = ListFolderAsync(version, keepPlace, select);
             }
-            else if (_index is null)
+            else if (this.ViewIndex is not { } index)
             {
                 ShowRows([], keepPlace, null);
                 ShowBreadcrumb(Strings.ExplorerWaitingForIndex);
             }
             else
             {
-                var (found, trailing) = SearchFolder(_index, words, everything);
+                var (found, trailing) = SearchFolder(index, words, everything);
                 ShowRows(found, keepPlace, select);
                 ShowBreadcrumb(trailing);
             }
@@ -2774,10 +2811,14 @@ internal sealed partial class FileExplorerPanel : Panel
     /// </summary>
     private async Task ListFolderAsync(int version, bool keepPlace, string? select)
     {
-        string root = _baseFolder!;
+        var source = this.ViewSource;
+        string root = source?.Folder ?? _baseFolder!;
         string asked = _openFolder;
         var order = this._fileOrder;
-        var reading = Task.Run(() => ReadFolder(root, asked, order));
+
+        // At the base folder's root, the secondary sources first, each looked for on the disk too.
+        string[] sources = source is null && asked.Length == 0 ? [.. this._sources.Select(s => s.Folder)] : [];
+        var reading = Task.Run(() => (ReadFolder(root, asked, order), sources.Select(Directory.Exists).ToArray()));
         bool noticed = false;
         if (await Task.WhenAny(reading, Task.Delay(ReadingNoticeDelay)) != reading && version == _listVersion && !IsDisposed)
         {
@@ -2785,7 +2826,7 @@ internal sealed partial class FileExplorerPanel : Panel
             noticed = true;
         }
 
-        var listing = await reading;
+        var (listing, found) = await reading;
         if (IsDisposed)
         {
             return;
@@ -2812,7 +2853,14 @@ internal sealed partial class FileExplorerPanel : Panel
 
         var folders = listing.Folders.Select(this.FolderRow).ToList();
         var files = listing.Files.Select(file => new ExplorerRow(Path.Combine(root, file.RelativePath), file.Name, Size: file.Size)).ToList();
-        ShowRows(this._folderGroups ? this.FolderSections(folders, files) : [.. folders, .. files], keepPlace, select);
+        var sourceRows = source is null && listing.Folder.Length == 0 ? this.SourceRows(found) : [];
+        if (this._folderGroups && sourceRows.Count > 0)
+        {
+            string header = Texts.Format("{0} ({1:N0})", Strings.SourcesSection, sourceRows.Count);
+            sourceRows = [.. sourceRows.Select(row => row with { Section = header })];
+        }
+
+        ShowRows([.. sourceRows, .. this._folderGroups ? this.FolderSections(folders, files) : [.. folders, .. files]], keepPlace, select);
         ShowBreadcrumb(listing.Error ?? Texts.Format("{0}, {1}", Folders(listing.Folders.Count), Files(listing.Files.Count)));
     }
 
@@ -2847,8 +2895,8 @@ internal sealed partial class FileExplorerPanel : Panel
     /// </summary>
     private (IReadOnlyList<ExplorerRow> Rows, string Trailing) SearchFolder(FileIndex index, string[] words, bool everything)
     {
-        _tree ??= FolderTree.Of(index.Entries);
-        var folders = _tree.Folders.Where(f => FolderTree.IsUnder(f.RelativePath, _openFolder)).ToArray();
+        var tree = this.ViewTree() ?? FolderTree.Of(index.Entries);
+        var folders = tree.Folders.Where(f => FolderTree.IsUnder(f.RelativePath, _openFolder)).ToArray();
         var files = _openFolder.Length == 0 ? index.Entries : index.Entries.Where(e => FolderTree.IsUnder(e.RelativePath, _openFolder)).ToArray();
         IReadOnlyList<IndexEntry> foundFolders;
         if (everything)
@@ -2918,7 +2966,7 @@ internal sealed partial class FileExplorerPanel : Panel
             // (workfiles/20261027-face-detection.md § Search by Name).
             foreach (var (path, tier) in FileSearch.SearchPeople(this.NamedPeople(), words))
             {
-                if (this.EntryOf(path) is { } entry && (!this._folderView || FolderTree.IsUnder(entry.RelativePath, this._openFolder)) && shown.Add(path))
+                if (this.ViewEntryOf(path) is { } entry && (!this._folderView || FolderTree.IsUnder(entry.RelativePath, this._openFolder)) && shown.Add(path))
                 {
                     extras.Add((tier, new ExplorerRow(path, entry.Name, Size: entry.Size)));
                 }
@@ -3037,28 +3085,32 @@ internal sealed partial class FileExplorerPanel : Panel
     /// the words — by their path or by their content text, as the search criteria ask — best first, the
     /// files of a relevance tier in <see cref="FileOrder"/>.
     /// </summary>
-    private IReadOnlyList<SearchMatch> Find(IReadOnlyList<IndexEntry> entries, string[] words, bool everything)
+    private IReadOnlyList<SearchMatch> Find(IReadOnlyList<IndexEntry> entries, string[] words, bool everything) =>
+        this.Find(entries, words, everything, this.ViewContents, this.ViewVision);
+
+    /// <summary>The files of a search, as <see cref="Find(IReadOnlyList{IndexEntry}, string[], bool)"/> finds them, read in the texts and embeddings of the index they belong to.</summary>
+    private IReadOnlyList<SearchMatch> Find(IReadOnlyList<IndexEntry> entries, string[] words, bool everything, ContentIndex? texts, VisionIndex? embeddings)
     {
         if (everything)
         {
             return FileSearch.All(entries, this._fileOrder).Select(e => new SearchMatch(e, null)).ToArray();
         }
 
-        var contents = this._byContent.Checked ? this._contents : null;
+        var contents = this._byContent.Checked ? texts : null;
         var found = FileSearch.Search(entries, words, contents is null ? null : (e, word) => contents.GradeOf(e.RelativePath, word), this._byName.Checked, this._fileOrder);
-        return this._byContent.Checked ? this.WithSimilar(found, entries, words) : found;
+        return this._byContent.Checked ? this.WithSimilar(found, entries, words, embeddings) : found;
     }
 
     /// <summary>The words around the one the search found in a tile's content text, 4 on each side.</summary>
     private string? ExcerptOf(ExplorerRow row) =>
-        row.ContentWord is { } word && this._contents is { } contents && this._baseFolder is { } root
-            ? contents.ExcerptOf(Path.GetRelativePath(root, row.FullPath), word, 4)
+        row.ContentWord is { } word && this.Locate(row.FullPath) is { } at && this.ContentsAt(at.Source) is { } contents
+            ? contents.ExcerptOf(at.Relative, word, 4)
             : null;
 
     /// <summary>Where the OCR recognised the word the search found in a tile's content, for the bulb's arrow.</summary>
     private RectangleF? SpotOf(ExplorerRow row) =>
-        row.ContentWord is { } word && this._contents is { } contents && this._baseFolder is { } root
-            ? contents.SpotOf(Path.GetRelativePath(root, row.FullPath), word)
+        row.ContentWord is { } word && this.Locate(row.FullPath) is { } at && this.ContentsAt(at.Source) is { } contents
+            ? contents.SpotOf(at.Relative, word)
             : null;
 
     /// <summary>
@@ -3075,8 +3127,8 @@ internal sealed partial class FileExplorerPanel : Panel
             return at >= 0 ? (words, at) : null;
         }
 
-        return row.ContentWord is { } word && this._contents is { } contents && this._baseFolder is { } root
-            ? contents.WordsAround(Path.GetRelativePath(root, row.FullPath), word)
+        return row.ContentWord is { } word && this.Locate(row.FullPath) is { } located && this.ContentsAt(located.Source) is { } contents
+            ? contents.WordsAround(located.Relative, word)
             : null;
     }
 
@@ -3121,13 +3173,12 @@ internal sealed partial class FileExplorerPanel : Panel
     /// </summary>
     private IReadOnlyList<string> FolderFiles(ExplorerRow row, int max)
     {
-        if (!row.IsFolder || max <= 0 || this._index is not { } index || this._baseFolder is null)
+        if (!row.IsFolder || max <= 0 || this.Locate(row.FullPath) is not { } at || this.IndexAt(at.Source) is not { } index || this.TreeAt(at.Source) is not { } tree)
         {
             return [];
         }
 
-        this._tree ??= FolderTree.Of(index.Entries);
-        var files = this._tree.FilesIn(Path.GetRelativePath(this._baseFolder, row.FullPath), this._fileOrder);
+        var files = tree.FilesIn(at.Relative == "." ? "" : at.Relative, this._fileOrder);
         var paths = new string[Math.Min(max, files.Count)];
         for (int i = 0; i < paths.Length; i++)
         {
@@ -3141,27 +3192,30 @@ internal sealed partial class FileExplorerPanel : Panel
     private ExplorerRow FolderRow(string fullPath)
     {
         string name = Path.GetFileName(fullPath);
-        if (_index is null || _baseFolder is null)
+
+        // Inside a secondary source too, a folder keeps the usual color: only the source's own tile is blue.
+        if (this.ViewIndex is not { } index || this.ViewRoot is not { } root || this.ViewTree() is not { } tree)
         {
             return new ExplorerRow(fullPath, name, IsFolder: true);
         }
 
-        _tree ??= FolderTree.Of(_index.Entries);
-        int count = _tree.CountBelow(Path.GetRelativePath(_baseFolder, fullPath), _index.Count);
+        int count = tree.CountBelow(Path.GetRelativePath(root, fullPath), index.Count);
         return new ExplorerRow(fullPath, name, IsFolder: true, Count: count);
     }
 
     private static string Folders(int count) => count == 1 ? Strings.ExplorerFolderOne : Texts.Format(Strings.ExplorerFolderMany, count);
 
-    /// <summary>The base folder's name, then every folder down to <paramref name="relative"/>.</summary>
+    /// <summary>The base folder's name, the open secondary source's when one is, then every folder down to <paramref name="relative"/>.</summary>
     private string[] SegmentsOf(string relative)
     {
         string root = _baseFolder is null ? "" : Path.GetFileName(_baseFolder) is { Length: > 0 } name ? name : _baseFolder;
-        return relative.Length == 0 ? [root] : [root, .. relative.Split(['\\', '/'], StringSplitOptions.RemoveEmptyEntries)];
+        string[] head = this.ViewSource is { } source ? [root, source.Name] : [root];
+        return relative.Length == 0 ? head : [.. head, .. relative.Split(['\\', '/'], StringSplitOptions.RemoveEmptyEntries)];
     }
 
-    /// <summary>The breadcrumb on the open folder, <paramref name="trailing"/> after it.</summary>
-    private void ShowBreadcrumb(string trailing) => _breadcrumb.SetPath(_baseFolder is null ? [] : SegmentsOf(_openFolder), trailing);
+    /// <summary>The breadcrumb on the open folder, <paramref name="trailing"/> after it — a secondary source's name in blue, after a clear separator.</summary>
+    private void ShowBreadcrumb(string trailing) =>
+        _breadcrumb.SetPath(_baseFolder is null ? [] : SegmentsOf(_openFolder), trailing, this.ViewSource is null ? int.MaxValue : 1);
 
     /// <summary>The index, and the folders derived from it, taken over together.</summary>
     private void SetIndex(FileIndex? index, FolderTree? tree)
@@ -3310,9 +3364,13 @@ internal sealed partial class FileExplorerPanel : Panel
         {
             this.OpenGroup(null);
         }
-        else if (_folderView && _baseFolder is not null && _openFolder.Length > 0)
+        else if (_folderView && _baseFolder is not null && this._openSource is not null && _openFolder.Length == 0)
         {
-            Navigate(FolderTree.Parent(_openFolder), Path.Combine(_baseFolder, _openFolder));
+            this.LeaveSource();
+        }
+        else if (_folderView && this.ViewRoot is { } root && _openFolder.Length > 0)
+        {
+            Navigate(FolderTree.Parent(_openFolder), Path.Combine(root, _openFolder));
         }
     }
 
@@ -3341,6 +3399,25 @@ internal sealed partial class FileExplorerPanel : Panel
 
         if (_baseFolder is null)
         {
+            return;
+        }
+
+        // Inside a secondary source: the base folder's name leaves it, the source's name is its root.
+        if (this.ViewSource is { } source)
+        {
+            if (depth == 0)
+            {
+                this.LeaveSource();
+                return;
+            }
+
+            string[] inner = SegmentsOf(_openFolder)[2..];
+            if (depth - 1 >= inner.Length)
+            {
+                return;
+            }
+
+            Navigate(string.Join('\\', inner[..(depth - 1)]), Path.Combine(source.Folder, string.Join('\\', inner[..depth])));
             return;
         }
 
@@ -3460,7 +3537,15 @@ internal sealed partial class FileExplorerPanel : Panel
         }
         else if (row.IsFolder)
         {
-            Navigate(Path.GetRelativePath(_baseFolder!, row.FullPath));
+            // A secondary source's tile, at the base folder's root, opens the source.
+            if (this.ViewSource is null && row.InSource && this.SourceAt(row.FullPath) is { } source)
+            {
+                this.OpenSource(source);
+            }
+            else if (this.ViewRoot is { } root)
+            {
+                Navigate(Path.GetRelativePath(root, row.FullPath));
+            }
         }
         else if (row.Preset is { } preset)
         {
@@ -3725,13 +3810,24 @@ internal sealed partial class FileExplorerPanel : Panel
         }
 
         string? error = null;
-        if (_index?.Remove(row.FullPath) == true)
+        var at = this.Locate(row.FullPath);
+        if (at is { } located && this.IndexAt(located.Source) is { } index && index.Remove(row.FullPath))
         {
-            _tree = null;
-            this._contents?.Remove(Path.GetRelativePath(_index.BaseFolder, row.FullPath));
+            // The base folder's index or a secondary source's, written back into its own files.
+            if (located.Source is { } source)
+            {
+                source.SetIndex(index);
+            }
+            else
+            {
+                _tree = null;
+                this._entriesByPath = null;
+            }
+
+            this.ContentsAt(located.Source)?.Remove(located.Relative);
             try
             {
-                _index.Save(FileIndex.DefaultPath);
+                index.Save((located.Source?.Files ?? IndexFiles.Main).Index);
             }
             catch (Exception ex) when (FileIndex.IsFileError(ex))
             {
@@ -3915,7 +4011,7 @@ internal sealed partial class FileExplorerPanel : Panel
 
     /// <summary>A face close to no other: a file tile showing the face cut out of its file.</summary>
     private ExplorerRow FaceRow(FaceRef face) =>
-        new(face.FullPath, Path.GetFileName(face.FullPath), Size: this.EntryOf(face.FullPath)?.Size, Face: face.Face.Bounds, FaceKey: face.Key);
+        new(face.FullPath, Path.GetFileName(face.FullPath), Size: this.AnyEntryOf(face.FullPath)?.Entry.Size, Face: face.Face.Bounds, FaceKey: face.Key);
 
     /// <summary>A group's name, or <c>Unnamed</c>.</summary>
     private static string GroupName(FaceGroup group) => group.Name.Length > 0 ? group.Name : Strings.ExplorerUnnamed;
@@ -3943,13 +4039,29 @@ internal sealed partial class FileExplorerPanel : Panel
             faceOf.TryAdd(face.FullPath, face);
         }
 
-        var entries = faceOf.Keys.Select(this.EntryOf).OfType<IndexEntry>().ToArray();
-        IEnumerable<IndexEntry> listed = words.Length > 0
-            ? this.Find(entries, words, FileSearch.IsEverything(this._search.Text)).Select(match => match.Entry)
-            : FileSearch.All(entries, this._fileOrder);
+        // The files of the base folder and of the secondary sources alike, each searched in its own index's texts.
+        var located = faceOf.Keys.Select(path => (Path: path, Found: this.AnyEntryOf(path))).Where(item => item.Found is not null).ToArray();
+        var pathOf = new Dictionary<IndexEntry, string>(ReferenceEqualityComparer.Instance);
+        foreach (var item in located)
+        {
+            pathOf[item.Found!.Value.Entry] = item.Path;
+        }
+
+        IEnumerable<IndexEntry> listed;
+        if (words.Length > 0)
+        {
+            bool everything = FileSearch.IsEverything(this._search.Text);
+            listed = located.GroupBy(item => item.Found!.Value.Source).SelectMany(root =>
+                this.Find([.. root.Select(item => item.Found!.Value.Entry)], words, everything, this.ContentsAt(root.Key), this.VisionAt(root.Key)).Select(match => match.Entry));
+        }
+        else
+        {
+            listed = FileSearch.All([.. located.Select(item => item.Found!.Value.Entry)], this._fileOrder);
+        }
+
         return [.. listed.Select(entry =>
         {
-            string path = this._index!.FullPath(entry);
+            string path = pathOf[entry];
             return new ExplorerRow(path, entry.Name, Size: entry.Size, FaceKey: faceOf[path].Key);
         })];
     }
@@ -4037,7 +4149,19 @@ internal sealed partial class FileExplorerPanel : Panel
             return;
         }
 
-        int changes = faces.Changes;
+        // The secondary sources' faces join the base folder's (workfiles/20261105-secondary-file-sources.md § Faces in the People View).
+        var sources = this._sources.Where(source => source.Faces is not null && source.Index is not null)
+            .Select(source => (Index: source.Index!, Faces: source.Faces!)).ToArray();
+        var changed = new HashCode();
+        changed.Add(faces.Changes);
+        foreach (var (sourceIndex, sourceFaces) in sources)
+        {
+            changed.Add(sourceIndex);
+            changed.Add(sourceFaces);
+            changed.Add(sourceFaces.Changes);
+        }
+
+        int changes = changed.ToHashCode();
         if (!force && changes == this._groupedAt)
         {
             return;
@@ -4051,14 +4175,17 @@ internal sealed partial class FileExplorerPanel : Panel
         {
             snapshot = await Task.Run(() =>
             {
-                var entries = index.Entries.ToDictionary(entry => entry.RelativePath, StringComparer.OrdinalIgnoreCase);
                 var found = new List<FaceRef>();
-                foreach (var (relative, boxes) in faces.WithFaces())
+                foreach (var (root, store) in sources.Prepend((index, faces)))
                 {
-                    if (entries.TryGetValue(relative, out var entry))
+                    var entries = root.Entries.ToDictionary(entry => entry.RelativePath, StringComparer.OrdinalIgnoreCase);
+                    foreach (var (relative, boxes) in store.WithFaces())
                     {
-                        string path = index.FullPath(entry);
-                        found.AddRange(boxes.Select(box => new FaceRef(path, box, entry.Created)));
+                        if (entries.TryGetValue(relative, out var entry))
+                        {
+                            string path = root.FullPath(entry);
+                            found.AddRange(boxes.Select(box => new FaceRef(path, box, entry.Created)));
+                        }
                     }
                 }
 
@@ -4225,13 +4352,9 @@ internal sealed partial class FileExplorerPanel : Panel
         }
 
         IReadOnlyList<PhotoPerson> people = [];
-        if (row is not null && this._faceAnalysis && this._faces is { } faces && this._baseFolder is { } root)
+        if (row is not null && this._faceAnalysis && this.Locate(row.FullPath) is { } at && this.FacesAt(at.Source) is { } faces)
         {
-            string relative = Path.GetRelativePath(root, row.FullPath);
-            if (!relative.StartsWith("..", StringComparison.Ordinal) && !Path.IsPathRooted(relative))
-            {
-                people = PhotoPeople.Of(this._snapshot, row.FullPath, faces.FacesOf(relative));
-            }
+            people = PhotoPeople.Of(this._snapshot, row.FullPath, faces.FacesOf(at.Relative));
         }
 
         this._photoPeople.Visible = people.Count > 0;

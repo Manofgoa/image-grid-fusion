@@ -45,26 +45,36 @@ Components involved (all under `src/ImageGridFusion/`):
   actions only.
 - **Refused**: the base folder itself, a folder inside it, a folder holding it, a source already listed
   or inside / holding one — the window saying why. A source never overlaps the base folder nor another
-  source, so a file belongs to one index only.
-- **Removed**: its index files are deleted, its faces leave the People view and its images the similar
+  source, so a file belongs to one index only: a **base folder** chosen in the ⚙ menu that would overlap
+  a source is refused too, the message saying to remove the source first.
+- Every change of the window is **saved and applied at once** (`SourcesChanged`); the window keeps nothing.
+- **Removed** — after a confirmation naming what is deleted —: its index files are deleted once its scan
+  and passes are over, its faces leave the People view and its images the similar
   images. The folder on disk is never touched; a person's pinned faces keep their copy of the embedding
   (§ People), as when a file moves.
 
 ## In the Folder View
 
 - At the **base folder's root**, the sources come **first**, before the real subfolders, in a list
-  section of their own, **Secondary sources** (`FolderSections`) — each a **folder tile**, an
-  `ExplorerRow` marked as a source (a new field), added in `ListFolderAsync` at the root only.
+  section of their own, **Secondary sources** — each a **folder tile**, an `ExplorerRow` marked
+  `InSource`, added in `ListFolderAsync` at the root only, each looked for on the disk on the same worker.
+  With the folder groups off, they still come first, without a section.
 - **Its name**: the folder's own name; its full path in the tooltip.
-- **Blue**: the source's tile, **every folder tile inside the source**, and the source's **breadcrumb
-  segments** are drawn in blue instead of the manila color — `PaintFolderGlyph` given the row's color,
-  the Windows folder thumbnail tinted the same way — so the user always sees they are in another
-  environment.
+- **Blue**: the **source's own tile** and its **name in the breadcrumb** are drawn in blue instead of
+  the manila color — `PaintFolderGlyph` given the row's flag, the Windows folder thumbnail turned into
+  shades of blue by its brightness (a `ColorMatrix`, the files previewed on it blue too), the
+  breadcrumb's source segment (`Breadcrumb.SetPath`'s `sourceAt`) — so the user sees they enter another
+  environment. The folders inside a source keep the usual manila color *(Iteration 6)*.
 - **Opened** (double-click, Enter), the folder view browses the source as it browses the base folder:
   its subfolders A→Z, its files in the sort order, read from the disk; the **breadcrumb** reads
-  `<base> › <source name> › …`, its source segment going back to the source's root, the base segment
-  back to the base folder's root. `_openFolder` can no longer be relative to `_baseFolder` alone: the
-  open folder carries **its root** (the base folder or a source) and its path relative to it.
+  `<base> │ <source name> › …` — a **clear separator** `│` between the base folder's name and the
+  source's, never the child's `›` *(Iteration 7, replacing Iteration 6's ←)* — the base folder's name
+  going back to its root, the source's name to the source's root; ↑ at the source's root leaves it, its
+  tile selected. The open folder
+  is `_openSource` (null: the base folder) plus `_openFolder`, relative to it; the folder view reads
+  through `ViewSource` / `ViewRoot` / `ViewIndex` / `ViewContents` / `ViewTree`.
+- **Not remembered**: `OpenFolder` gives "" while a source is open, so the next start opens at the base
+  folder's root, where the source's tile is.
 - **A source gone** (an unplugged drive, a deleted folder) keeps its tile, faded, its tooltip saying
   it cannot be found; opening it says so on the status line.
 - **Right click**: the tile's menu keeps the explorer's existing **Open in Explorer** entry
@@ -75,9 +85,10 @@ Components involved (all under `src/ImageGridFusion/`):
 
 - **Its own files**: each source has its own `files.index`, `files.content`, `files.faces`,
   `files.vision`, in a kebab-case folder of its own under `index\` —
-  `index\secondary-sources\<id>\` (§ Folder Names, the names in one `FolderName` constant), `<id>` a
-  short hash of the source's full path. The index classes take the folder they read and write instead
-  of their fixed `DefaultPath`.
+  `index\secondary-sources\<id>\` (§ Folder Names, the names in one `FolderName` constant), `<id>` the
+  first 16 hex digits of the SHA-256 of the source's full path, lower-cased — a source moved or renamed is
+  a new one. `IndexFiles` gives the four paths of a folder (`IndexFiles.Main`, `IndexFiles.Of`); the
+  passes save into the one they are given.
 - **Its list of files is read when the source is opened**, then kept in memory and in its
   `files.index` — never at start-up, never in the background while it is closed. Reopened, it shows
   the cached list at once and reads the disk again behind it, as the base folder does at start-up.
@@ -87,7 +98,9 @@ Components involved (all under `src/ImageGridFusion/`):
   read the sources' stores too — below.
 - **Loaded at start-up for those two only**: each source's `files.faces` and `files.vision` (with its
   `files.index`, to turn its keys into full paths) are read from the disk, never the folder itself, so a
-  source analysed before is in the People view and the similar images at once.
+  source analysed before is in the People view and the similar images at once. Its **content texts**
+  are loaded when it is opened: until then, a source's file shown in the People view has no caption,
+  tags nor text in its tooltip.
 
 ## 🔄 Inside a Source
 
@@ -99,8 +112,13 @@ Components involved (all under `src/ImageGridFusion/`):
 - **One worker at a time**: while a source's run goes, the base folder's passes wait, and pick up
   where they were once it ends or pauses.
 - **Leaving the source pauses its run** — going up to the base folder, opening another source,
-  another view. The work done is kept (a pass done is never redone, § Content OCR Passes); the next 🔄
-  in that source picks up where it stopped.
+  another view — and so does anything that stops the passes: a ⚙ analysis setting changed, an engine
+  installed or updated, *Forget faces…*, *Forget visual analysis…*. The work done is kept (a pass done is
+  never redone, § Content OCR Passes); the next 🔄 in that source picks up where it stopped.
+- **Nothing turned on** in the ⚙ menu: 🔄 reads the source's list again and the status line says no
+  analysis is on.
+- Its tooltip says what it does there. The status line keeps the base folder's summary; the source's
+  counts are at the end of the breadcrumb.
 - At the base folder's root or below it, 🔄 is unchanged: the base folder's index, never a source.
 - The base folder's automatic runs (start-up, rescan, `StartExtraction`) never start a source's.
 
@@ -119,6 +137,10 @@ Components involved (all under `src/ImageGridFusion/`):
   among them as ordinary file tiles.
 - The decisions (`people.json`) are keyed by full path already: they apply to a source's faces as to the
   others.
+- **Forget faces…** forgets the sources' faces too — their `files.faces` deleted — since they are in the
+  People view; **Forget visual analysis…** the sources' embeddings, tags and captions likewise.
+- A search inside an open group reads each file in its own index's texts, the base folder's files then
+  each source's.
 - A source's file in an open group follows the explorer's rules for a file: its menu, its *People*
   submenu, its tooltip's 👨‍🦰 line read from the store holding it.
 
@@ -215,6 +237,54 @@ The user asks for a source's index in files of its own, apart from the main inde
 the main `index\` folder for instance. Already the design (§ The Source's Index:
 `index\secondary-sources\<id>\`, the four files each); stated as a requirement now, nothing changed.
 
+### Iteration 4 — 2026-11-05 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree on `feature/secondary-file-sources`.
+The scope is frozen as the sections above stand.
+
+### Iteration 5 — 2026-11-05 — 🧭 Implementation choices
+
+No project rule broken. Choices the frozen design did not state, now in the sections above:
+
+- **A base folder overlapping a source is refused** in the ⚙ menu's picker — the design only refused the
+  other way round; without it, a file could belong to two indexes.
+- **Removing a source asks a confirmation** naming what is deleted; its index is deleted once its scan and
+  passes are over. Every change of the window is saved and applied at once.
+- **Forget faces… and Forget visual analysis… cover the sources too** — their faces and images are in the
+  People view and the similar images, so forgetting the base folder's alone would leave them showing.
+- **Anything that stops the passes pauses a source's run** — a ⚙ analysis setting, an engine swap, a
+  Forget… — like leaving it; 🔄 with no analysis on reads the list again and says so.
+- **The open source is not remembered**: the next start opens at the base folder's root.
+- **The source tiles come first even with the folder groups off**, without a section then.
+- **Windows' folder thumbnail is turned into shades of blue** by a color matrix, the files previewed on it
+  blue too; the drawn folder takes two blues; a source not found is faded.
+- **A source's content texts load when it is opened**, not at start-up: until then, its files' tooltips in
+  the People view show their people only.
+- **The status line keeps the base folder's summary** inside a source; the source's counts are on the
+  breadcrumb.
+- **A search inside an open People group** reads each file's own index, the base folder's matches then each
+  source's, rather than one ranking across them.
+- **The source's id** is the first 16 hex digits of the SHA-256 of its lower-cased full path.
+- A **Delete key** on the window's list, written then removed: no shortcut outside the design
+  (RULES.md § Keyboard Shortcuts would have needed `SHORTCUTS.md`).
+- Docs: besides the README and the glossary, a **§ Secondary Sources** in `RULES.md`, as every feature of
+  the app has.
+
+### Iteration 6 — 2026-11-05 — ⚙️ Post-implementation — Blue root only, back arrow in the breadcrumb
+
+The user, after a first look:
+
+- **Only the source's own tile is blue**: the folders inside a source keep the usual manila color.
+- **The breadcrumb inside a source no longer starts with the base folder's name**: a **←** stands in its
+  place, going back to the base folder's root, then the source's name and the folders down to the open one.
+- Agent's reading, by the same rule: in the breadcrumb, only the source's name is blue.
+
+### Iteration 7 — 2026-11-05 — ⚙️ Post-implementation — A clear separator rather than the back arrow
+
+The user's alternative, then chosen over Iteration 6's ←: the breadcrumb inside a source **keeps the base
+folder's name**, followed by a **clear separator** — `│` — rather than `›`, which would show a child; then
+the source's name, blue, and its folders separated by `›`. The blue root tile only (Iteration 6) stands.
+
 ---
 
 ## Implementation Log
@@ -224,11 +294,12 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
+| Code | 4, 5 | 2026-11-05 | Settings and index folders, blue tiles and breadcrumb, the explorer's sources, the ⚙ window |
 | Unit tests | — | — | No test project in the repository |
-| README | | | |
-| GLOSSARY | | | New term *Secondary source*, English and French |
-| SHORTCUTS | | | Only if a key or gesture is added |
+| README | 5 | 2026-11-05 | § File explorer, English and French |
+| GLOSSARY | 5 | 2026-11-05 | *Secondary source*, English and French |
+| RULES | 5 | 2026-11-05 | § Secondary Sources |
+| SHORTCUTS | — | — | No key or gesture added |
 
 ---
 
@@ -254,6 +325,8 @@ Questions asked by the agent during design, with user responses.
 | 14 | A source's faces: where would they be used? | In the People view — after a 🔄, they join its groups like the base folder's | 2026-11-05 |
 | 15 | *(user, unprompted)* | A source's index lives in files other than the main index's — in subfolders of the main `index\` folder, for example | 2026-11-05 |
 | 16 | Does *Find similar images* span the base folder and every analysed source, whatever the image it starts from? | Yes, everywhere — from any tile, cell or dropped image | 2026-11-05 |
+| 17 | *(user, after delivery)* | The subfolders of a source need not be blue, only its root; the breadcrumb does not start with the base folder inside a source — a left arrow back to the root instead | 2026-11-05 |
+| 18 | Breadcrumb inside a source: the base folder's name with a clear separator, or the ← alone? | The base folder's name, then a clear separator `│`, then the source | 2026-11-05 |
 
 ---
 

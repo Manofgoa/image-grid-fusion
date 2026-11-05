@@ -58,6 +58,7 @@ internal static class AppSettings
     private const string GiphyApiKeyName = "GiphyApiKey";
     private const string GiphyRatingName = "GiphyRating";
     private const string GiphyCallsName = "GiphyCalls";
+    private const string SecondarySourcesName = "SecondarySources";
 
     /// <summary>
     /// The names the settings had as registry values, in the same types (DWORD → int, string → string):
@@ -171,6 +172,19 @@ internal static class AppSettings
 
     /// <summary>Saves the file explorer's folder; throws an <see cref="IsSaveError"/> exception on failure.</summary>
     public static void SaveExplorerFolder(string folder) => Save((ExplorerFolderName, folder));
+
+    /// <summary>
+    /// The secondary sources' folders, as full paths, in the order they were added; empty when none was saved or
+    /// the value is no list of texts. See workfiles/20261105-secondary-file-sources.md § Managing the Sources.
+    /// </summary>
+    public static string[] SecondarySources =>
+        Values[SecondarySourcesName] is JsonArray array
+            ? [.. array.OfType<JsonValue>().Select(node => node.TryGetValue(out string? path) ? path : null).OfType<string>().Where(path => path.Length > 0)]
+            : [];
+
+    /// <summary>Saves the secondary sources' folders; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveSecondarySources(IEnumerable<string> folders) =>
+        Save((SecondarySourcesName, new JsonArray([.. folders.Select(folder => (JsonNode?)folder)])));
 
     /// <summary>
     /// The user's GIPHY API key, the GIPHY view's searches sent with it — kept here only, never in the repository;
