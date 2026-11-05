@@ -2481,8 +2481,8 @@ internal sealed partial class MainForm : Form
                     _lastVideo = last;
                     UpdateButtons();
                     PutOnClipboard(last);
-                    string kept = KeepPrevious(() => PreviousCopy.KeepCopyOf(path, cellFiles));
-                    ShowStatus(AnimationSummary(Texts.Format(Strings.MainStatusCopied, last.FileName), last) + kept);
+                    var (kept, keptFile) = KeepPrevious(() => PreviousCopy.KeepCopyOf(path, cellFiles));
+                    ShowStatus(AnimationSummary(Texts.Format(Strings.MainStatusCopied, last.FileName), last) + kept, savedFile: keptFile);
                     NotifyIfAway(Texts.Format(Strings.MainNotifyCopied, FormatName(animated)), Texts.Format(Strings.MainNotifyCopiedBody, last.FileName, FormatName(animated)), error: false);
                 }
                 catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException or OutOfMemoryException)
@@ -2509,8 +2509,8 @@ internal sealed partial class MainForm : Form
             result.Save(png, ImageFormat.Png);
             var encoding = clock.Elapsed;
             PutStillOnClipboard(result, png);
-            string kept = KeepPrevious(() => PreviousCopy.Keep(png.ToArray(), ".png", cellFiles));
-            ShowStatus(StillSummary(Strings.MainStatusCopiedToClipboard, "PNG", result.Size, png.Length, encoding) + kept);
+            var (kept, keptFile) = KeepPrevious(() => PreviousCopy.Keep(png.ToArray(), ".png", cellFiles));
+            ShowStatus(StillSummary(Strings.MainStatusCopiedToClipboard, "PNG", result.Size, png.Length, encoding) + kept, savedFile: keptFile);
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
@@ -2599,8 +2599,8 @@ internal sealed partial class MainForm : Form
             result.Save(png, ImageFormat.Png);
             var encoding = clock.Elapsed;
             PutStillOnClipboard(result, png);
-            string kept = KeepPrevious(() => PreviousCopy.Keep(png.ToArray(), ".png", [copy.Image.FilePath]));
-            ShowStatus(StillSummary(Texts.Format(Strings.MainStatusWhatCopied, what), "PNG", result.Size, png.Length, encoding) + kept);
+            var (kept, keptFile) = KeepPrevious(() => PreviousCopy.Keep(png.ToArray(), ".png", [copy.Image.FilePath]));
+            ShowStatus(StillSummary(Texts.Format(Strings.MainStatusWhatCopied, what), "PNG", result.Size, png.Length, encoding) + kept, savedFile: keptFile);
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
@@ -2613,18 +2613,18 @@ internal sealed partial class MainForm : Form
 
     /// <summary>
     /// Keeps the copied content in the previous folder (<see cref="PreviousCopy"/>). Returns the status
-    /// line's suffix saying why it could not, empty when it was kept: the Copy succeeded either way.
+    /// line's suffix saying why it could not, empty when it was kept: the Copy succeeded either way — and the
+    /// file kept, for the Open directory link, <c>null</c> when none was (workfiles/20261105-open-directory-link.md).
     /// </summary>
-    private static string KeepPrevious(Action keep)
+    private static (string Suffix, string? File) KeepPrevious(Func<string> keep)
     {
         try
         {
-            keep();
-            return string.Empty;
+            return (string.Empty, keep());
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            return " · " + Texts.Format(Strings.MainStatusNotKept, PreviousCopy.FolderName, e.Message);
+            return (" · " + Texts.Format(Strings.MainStatusNotKept, PreviousCopy.FolderName, e.Message), null);
         }
     }
 
@@ -2663,7 +2663,7 @@ internal sealed partial class MainForm : Form
         try
         {
             PutOnClipboard(last);
-            ShowStatus(AnimationSummary(Texts.Format(Strings.MainStatusCopiedAgain, last.FileName, last.GeneratedAt), last));
+            ShowStatus(AnimationSummary(Texts.Format(Strings.MainStatusCopiedAgain, last.FileName, last.GeneratedAt), last), savedFile: last.FilePath);
         }
         catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException or OutOfMemoryException)
         {
@@ -2696,7 +2696,7 @@ internal sealed partial class MainForm : Form
         try
         {
             File.Copy(last.FilePath, dialog.FileName, overwrite: true);
-            ShowStatus(AnimationSummary(Texts.Format(Strings.MainStatusSavedLast, Path.GetFileName(dialog.FileName), FormatName(last.Format), last.GeneratedAt), last));
+            ShowStatus(AnimationSummary(Texts.Format(Strings.MainStatusSavedLast, Path.GetFileName(dialog.FileName), FormatName(last.Format), last.GeneratedAt), last), savedFile: dialog.FileName);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -2956,8 +2956,8 @@ internal sealed partial class MainForm : Form
             data.SetFileDropList(new StringCollection { path });
             data.SetImage(light);
             Clipboard.SetDataObject(data, copy: true);
-            string kept = KeepPrevious(() => PreviousCopy.KeepCopyOf(path, cellFiles));
-            ShowStatus(StillSummary(Strings.MainStatusCopiedForSharing, "JPEG", light.Size, new FileInfo(path).Length, encoding) + kept);
+            var (kept, keptFile) = KeepPrevious(() => PreviousCopy.KeepCopyOf(path, cellFiles));
+            ShowStatus(StillSummary(Strings.MainStatusCopiedForSharing, "JPEG", light.Size, new FileInfo(path).Length, encoding) + kept, savedFile: keptFile);
         }
         catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException or OutOfMemoryException)
         {
@@ -3062,7 +3062,7 @@ internal sealed partial class MainForm : Form
         {
             if (await ExportAnimationAsync(dialog.FileName, animated) is { } result)
             {
-                ShowStatus(AnimationSummary(saved, dialog.FileName, animated, result, clock.Elapsed));
+                ShowStatus(AnimationSummary(saved, dialog.FileName, animated, result, clock.Elapsed), savedFile: dialog.FileName);
                 NotifyIfAway(Texts.Format(Strings.MainNotifySaved, FormatName(animated)), Path.GetFileName(dialog.FileName), error: false);
             }
 
@@ -3078,7 +3078,7 @@ internal sealed partial class MainForm : Form
         try
         {
             still.Save(dialog.FileName, ImageFormat.Png);
-            ShowStatus(StillSummary(saved, "PNG", still.Size, new FileInfo(dialog.FileName).Length, clock.Elapsed));
+            ShowStatus(StillSummary(saved, "PNG", still.Size, new FileInfo(dialog.FileName).Length, clock.Elapsed), savedFile: dialog.FileName);
         }
         catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException or OutOfMemoryException)
         {
@@ -4540,7 +4540,7 @@ internal sealed partial class MainForm : Form
                     await Task.Run(() => copy.Save(target, ImageFormat.Png));
                 }
 
-                this.ShowStatus(Texts.Format(Strings.MainStatusSavedUpscaled, Path.GetFileName(target), size.Width, size.Height, upscale.Describe()));
+                this.ShowStatus(Texts.Format(Strings.MainStatusSavedUpscaled, Path.GetFileName(target), size.Width, size.Height, upscale.Describe()), savedFile: target);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ExternalException or OutOfMemoryException or ArgumentException)
             {
