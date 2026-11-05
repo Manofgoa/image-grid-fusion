@@ -214,10 +214,10 @@ internal static class UiIcons
     public static readonly UiIcon Timestamps = UiIcon.Emoji("⏱️");
     public static readonly UiIcon Numbers = UiIcon.Emoji("\U0001F522");
 
-    // The online libraries (workfiles/20261105-online-library-giphy.md): the GIPHY view, its stickers, its key and
-    // its content rating; its GIFs take Gif's.
+    // The online libraries (workfiles/20261105-online-library-giphy.md, workfiles/20261105-giphy-gif-sticker-views.md):
+    // the GIPHY views and their ⚙ submenu, their trending, their key and their content rating.
     public static readonly UiIcon OnlineLibrary = UiIcon.Emoji("\U0001F30D");
-    public static readonly UiIcon Sticker = UiIcon.Emoji("\U0001F60E");
+    public static readonly UiIcon Trending = UiIcon.Emoji("\U0001F525");
     public static readonly UiIcon ApiKey = UiIcon.Emoji("\U0001F511");
     public static readonly UiIcon ContentRating = UiIcon.Emoji("\U0001F51E");
 

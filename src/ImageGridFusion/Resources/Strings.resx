@@ -172,8 +172,6 @@ The features needing them are offered them again.</value></data>
   <data name="ExplorerAccDetails" xml:space="preserve"><value>Details</value></data>
   <data name="ExplorerAccExpand" xml:space="preserve"><value>Expand</value></data>
   <data name="ExplorerAccFolderGroups" xml:space="preserve"><value>Folder groups</value></data>
-  <data name="ExplorerAccGiphyGifs" xml:space="preserve"><value>GIFs</value></data>
-  <data name="ExplorerAccGiphyStickers" xml:space="preserve"><value>Stickers</value></data>
   <data name="ExplorerAccName" xml:space="preserve"><value>Name</value></data>
   <data name="ExplorerAccRescan" xml:space="preserve"><value>Rescan</value></data>
   <data name="ExplorerAccSearchGroups" xml:space="preserve"><value>Search groups</value></data>
@@ -277,6 +275,8 @@ The features needing them are offered them again.</value></data>
   <data name="ExplorerInviteFolder" xml:space="preserve"><value>No base folder yet. The search looks through one folder and its subfolders: choose it to index your files.</value></data>
   <data name="ExplorerInviteGiphy" xml:space="preserve"><value>Searching GIPHY needs your own API key, free: create an app on GIPHY's developer site, then paste its key here. It stays on this computer, in the settings file.</value></data>
   <data name="ExplorerInviteGiphyButton" xml:space="preserve"><value>GIPHY API key…</value></data>
+  <data name="ExplorerInviteGiphySearch" xml:space="preserve"><value>Type a search, then press Enter — nothing is asked of GIPHY before. Enter on an empty box, or the button below, shows the trending.</value></data>
+  <data name="ExplorerInviteGiphyTrending" xml:space="preserve"><value>Trending</value></data>
   <data name="ExplorerLoading" xml:space="preserve"><value>Loading…</value></data>
   <data name="ExplorerLoadingIndex" xml:space="preserve"><value>Loading the index…</value></data>
   <data name="ExplorerLookingAtImage" xml:space="preserve"><value>Looking at the image…</value></data>
@@ -306,7 +306,8 @@ It shows inside it as a sub-group, every file of both listed there. Un-merge, on
   <data name="ExplorerMergeTitle" xml:space="preserve"><value>Merge groups</value></data>
   <data name="ExplorerModeFavorites" xml:space="preserve"><value>Favorites</value></data>
   <data name="ExplorerModeFolders" xml:space="preserve"><value>Folders</value></data>
-  <data name="ExplorerModeGiphy" xml:space="preserve"><value>GIPHY</value></data>
+  <data name="ExplorerModeGiphyGifs" xml:space="preserve"><value>GIPHY GIFs</value></data>
+  <data name="ExplorerModeGiphyStickers" xml:space="preserve"><value>GIPHY Stickers</value></data>
   <data name="ExplorerNameRemoved" xml:space="preserve"><value>Name removed</value></data>
   <data name="ExplorerNamed" xml:space="preserve"><value>Named: {0}</value></data>
   <data name="ExplorerNamedAndUnnamed" xml:space="preserve"><value>{0} (+ {1} unnamed)</value></data>
@@ -367,8 +368,6 @@ It shows inside it as a sub-group, every file of both listed there. Un-merge, on
   <data name="ExplorerTipExpand" xml:space="preserve"><value>Show the file explorer</value></data>
   <data name="ExplorerTipFolderGroups" xml:space="preserve"><value>Folder groups: the folder view in sections — the folders sharing their first words, the other folders, the series of named files, the named files, then the files named by a camera, a screenshot, an AI, a site… (⚙ menu: File explorer groups)</value></data>
   <data name="ExplorerTipGiphyAttribution" xml:space="preserve"><value>The results come from GIPHY, as its terms require to say</value></data>
-  <data name="ExplorerTipGiphyGifs" xml:space="preserve"><value>GIPHY's GIFs — a click downloads one, then it can be dragged into a cell; it arrives as an MP4 video</value></data>
-  <data name="ExplorerTipGiphyStickers" xml:space="preserve"><value>GIPHY's stickers, transparent, made for the layers — a click downloads one, then it can be dragged; it arrives as a GIF</value></data>
   <data name="ExplorerTipLargerTiles" xml:space="preserve"><value>Larger tiles</value></data>
   <data name="ExplorerTipModes" xml:space="preserve"><value>What the list shows: the base folder folder by folder, the people the faces were grouped into, the favorites and the search over every file, or GIPHY's GIFs and stickers — Ctrl+F again in the search box: the next view, Ctrl+Shift+F: the previous one</value></data>
   <data name="ExplorerTipRescan" xml:space="preserve"><value>Rescan the folder</value></data>
@@ -690,10 +689,15 @@ Restart the app now?</value></data>
   <data name="MainSettingsGapBarsEdges" xml:space="preserve"><value>Image edges</value></data>
   <data name="MainSettingsGapBarsFrom" xml:space="preserve"><value>Gap bars from</value></data>
   <data name="MainSettingsGapBarsFromTip" xml:space="preserve"><value>The point of the image every guide's bar runs from to the guide: the image's center, or its edge nearest the guide — the same for every guide; remembered between sessions</value></data>
+  <data name="MainSettingsGiphy" xml:space="preserve"><value>GIPHY</value></data>
+  <data name="MainSettingsGiphyGifs" xml:space="preserve"><value>GIPHY GIFs</value></data>
+  <data name="MainSettingsGiphyGifsTip" xml:space="preserve"><value>Whether the file explorer offers its GIPHY GIFs view — in the views drop-down and Ctrl+F's cycle</value></data>
   <data name="MainSettingsGiphyKey" xml:space="preserve"><value>GIPHY API key…</value></data>
   <data name="MainSettingsGiphyKeyTip" xml:space="preserve"><value>The key the file explorer's GIPHY view searches with — made free on developers.giphy.com, kept in the settings file</value></data>
   <data name="MainSettingsGiphyRating" xml:space="preserve"><value>GIPHY content rating</value></data>
   <data name="MainSettingsGiphyRatingTip" xml:space="preserve"><value>The most a GIPHY search may show, from G (all audiences) to R (no filter)</value></data>
+  <data name="MainSettingsGiphyStickers" xml:space="preserve"><value>GIPHY Stickers</value></data>
+  <data name="MainSettingsGiphyStickersTip" xml:space="preserve"><value>Whether the file explorer offers its GIPHY Stickers view — in the views drop-down and Ctrl+F's cycle</value></data>
   <data name="MainSettingsGuideApproach" xml:space="preserve"><value>Guides show from</value></data>
   <data name="MainSettingsGuideApproachTip" xml:space="preserve"><value>How far before its magnetic stop a moved image's guide shows, with a bar measuring the gap left; remembered between sessions</value></data>
   <data name="MainSettingsImageContent" xml:space="preserve"><value>Image content</value></data>
@@ -781,6 +785,7 @@ Restart the app now?</value></data>
   <data name="MainStatusNotSavedGiphyCalls" xml:space="preserve"><value>GIPHY calls of the hour not remembered: {0}</value></data>
   <data name="MainStatusNotSavedGiphyKey" xml:space="preserve"><value>GIPHY API key not remembered: {0}</value></data>
   <data name="MainStatusNotSavedGiphyRating" xml:space="preserve"><value>GIPHY content rating not remembered: {0}</value></data>
+  <data name="MainStatusNotSavedGiphyViews" xml:space="preserve"><value>GIPHY views shown not remembered: {0}</value></data>
   <data name="MainStatusNotSavedGuideApproach" xml:space="preserve"><value>Guides distance not remembered: {0}</value></data>
   <data name="MainStatusNotSavedOcrResultStyle" xml:space="preserve"><value>OCR result style not remembered: {0}</value></data>
   <data name="MainStatusNotSavedSecondarySources" xml:space="preserve"><value>Secondary sources not saved: {0}</value></data>
