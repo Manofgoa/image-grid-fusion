@@ -43,6 +43,8 @@ Enter key, ↑ / breadcrumb), `UI/FileExplorerPanel.Giphy.cs` (the view's lists,
 | Shown or hidden | Each view an app setting, **shown by default** (`AppSettings`, `settings.json`): hidden, it is out of the views drop-down and out of the Ctrl+F cycle; both hidden, GIPHY is out of the explorer |
 | The saved view | Saved by name, as now; a `Giphy` saved by the previous version is read as `GiphyGifs` (`AppSettings.ExplorerMode`) |
 | Everything else | Shared by both: the key, the rating, the quota and its breadcrumb count, the downloads, the hearts, the attribution, the hidden sort / groups buttons |
+| The breadcrumb | Its first segment the view's name (`GIPHY GIFs` / `GIPHY Stickers`), then the search or *Trending*; while the view invites to search, the view's name alone, then *Enter to search* if a text is typed, and the calls of the hour |
+| The views drop-down | Filled with the views offered only (`FileExplorerPanel.FillModes`), its entries the modes themselves (`SelectedItem`, never an index) |
 
 ---
 
@@ -56,8 +58,8 @@ The ⚙ menu's two GIPHY entries (`MainForm.Giphy.cs`: `_giphyKeyItem`, `_giphyR
 | ☑ **GIPHY GIFs** | Shows or hides the GIPHY GIFs view — a toggle, its icon 🌍 framed while checked (RULES.md § Icons) |
 | ☑ **GIPHY Stickers** | Shows or hides the GIPHY Stickers view, the same way |
 | — | A separator |
-| 🔑 **GIPHY API key…** | Unchanged, moved here |
-| **GIPHY content rating** ▸ | Unchanged, moved here, under the key |
+| 🔑 **GIPHY API key…** | Unchanged — its text too — moved here |
+| 🔞 **GIPHY content rating** ▸ | Unchanged — its text too — moved here, under the key |
 
 - A change is saved at once; one that cannot be saved says so on the status line (RULES.md § App Settings).
 - Hiding the view shown sends the explorer to the **folder view** — the drop-down's first, as at the first
@@ -89,11 +91,14 @@ What calls GIPHY, and what no longer does:
   per kind, beside the trending already kept per kind (`_giphyTrending`). Entering the view shows it as it was
   left, its thumbnails loaded again from the CDN (out of the budget).
 - **Nothing yet** → the **invitation**: the view's grid replaced by the invite panel, as without a key — its
-  text *Type a search, then press Enter*, and a **🔥 Trending** button doing what Enter on the empty box does (a
-  new `InviteAction`, its icon a new `UiIcons` field, no link).
+  text *Type a search, then press Enter — nothing is asked of GIPHY before. Enter on an empty box, or the button
+  below, shows the trending.*, and a **🔥 Trending** button doing what ↑ does — the box emptied, the trending shown
+  (`InviteAction.GiphyTrending`, its icon `UiIcons.Trending`, no link).
 - The **box's text** stays as the cycle leaves it (Ctrl+F selects it, as in every view): a text differing from
   the list's query shows *Enter to search* in the breadcrumb, as today.
 - A change of the key or of the rating forgets both views' lists and trending: the invitation shows.
+- A call running when the view changes — to the other GIPHY view too — is cancelled and its answer dropped
+  (`DropGiphyCall`, the answer checked against the kind of the view shown).
 
 ---
 
@@ -174,6 +179,28 @@ or a hidden view saved at start-up — gives the folder view. No question left.
 Go given: code and documentation (no test project), in the worktree `.claude/worktrees/giphy-gif-sticker-views`,
 branch `feature/giphy-gif-sticker-views`.
 
+### Iteration 6 — 2026-11-05 — 🧭 Implementation choices
+
+No rule broken. The choices the design left open:
+
+- **The breadcrumb** names the view (`GIPHY GIFs` / `GIPHY Stickers`) as its first segment, where it said `GIPHY`;
+  while the view invites to search, that name alone, then the calls of the hour.
+- **The invitation's text**: *Type a search, then press Enter — nothing is asked of GIPHY before. Enter on an
+  empty box, or the button below, shows the trending.* (French: *Tapez une recherche, puis Entrée — rien n'est
+  demandé à GIPHY avant…*). Its button **🔥 Trending** / **Tendances** does what ↑ does.
+- **The submenu's entries** keep their texts — *GIPHY API key…*, *GIPHY content rating* — though under a *GIPHY*
+  submenu; the two new toggles are named after the views, *GIPHY GIFs* / *GIPHY Stickers* (French *GIPHY GIF* /
+  *GIPHY Stickers*), with a tooltip each. 🌍 on the submenu and on both toggles.
+- **The removed buttons' strings** (`ExplorerAccGiphy*`, `ExplorerTipGiphyGifs` / `Stickers`) and the
+  `UiIcons.Sticker` icon, used by them alone, are deleted; `ExplorerModeGiphy` gives way to
+  `ExplorerModeGiphyGifs` / `ExplorerModeGiphyStickers`.
+- **The saved setting**: two keys, `GiphyGifsShown` and `GiphyStickersShown` (1 / 0, missing → shown); a saved
+  `Giphy` view read as `GiphyGifs` (`AppSettings.OlderGiphyMode`).
+- **A call running when the view changes** is cancelled and its answer dropped, so a GIFs answer never lands in
+  the Stickers view (`DropGiphyCall`, also on a new key or rating).
+- **Two code commits**, not three: the two views and the no-call rule share the same lines of
+  `FileExplorerPanel.Giphy.cs` (the toggle's removal, the kind per view); the ⚙ submenu is its own commit.
+
 ---
 
 ## Implementation Log
@@ -183,9 +210,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable: the app has no test project |
-| README | | | |
+| Code | 5 | 2026-11-05 | The two views and the no-call rule, then the ⚙ submenu — two commits |
+| Unit tests | 5 | 2026-11-05 | Not applicable: the app has no test project |
+| README | 5 | 2026-11-05 | With RULES.md, GLOSSARY, SHORTCUTS, in English and French — one commit |
 
 ---
 
