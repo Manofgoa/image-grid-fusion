@@ -36,6 +36,9 @@ Components: `Explorer/FileSearch.cs` (`Rank`, `Search`, `SearchFavorites`, the t
 - A **word** of a text is a run of letters and digits in its **folded** form (`FileSearch.Fold`:
   accents dropped, lower case); anything else separates two words — a space, `_`, `-`, `.`, brackets,
   `\` and `/` of the path.
+- A change between a **letter and a digit** separates two words too: *tique2.jpg* holds `tique` whole,
+  *photo01.jpg* holds `photo` whole. A change of **case** does not: *TiqueBulle.jpg* is one word, the
+  folded path being read, never the original one.
 - The **level of a query word in a text** is the best of its occurrences there: whole if one occurrence
   is bounded on both sides, else start if one is bounded on its left, else inside.
 - A **query word** is still one of `FileSearch.Words` — the query folded, split on spaces.
@@ -118,15 +121,15 @@ whatever the sort order.
 
 ## Open Questions
 
-- [ ] Does a change between a letter and a digit separate two words — `tique2.jpg` holding `tique` whole?
-  Proposed: **yes**, file names number their copies that way.
-- [ ] Does a change of case inside a word separate two words — `TiqueBulle.jpg` holding `tique` whole and
-  `bulle` whole? The folded path has lost the case; the original one would be read. Proposed: **no**.
-- [ ] A word found **in the name** outranks a word found **whole** in the subfolders only — for `tique`,
-  *Soviétique.jpg* before *Tique\photo.jpg* — as today's tiers do. Proposed: **yes**, the levels refine a
-  tier and never cross it.
-- [ ] The favorites' file names ranked by the same levels, the preset descriptions and the people's names
-  left as they are. Proposed: **yes**.
+- [x] ~~Does a change between a letter and a digit separate two words — `tique2.jpg` holding `tique` whole?~~
+  → **Yes** (Q&A 5).
+- [x] ~~Does a change of case inside a word separate two words — `TiqueBulle.jpg` holding `tique` whole and
+  `bulle` whole?~~ → **No**: the folded path is read (Q&A 6).
+- [x] ~~A word found **in the name** outranks a word found **whole** in the subfolders only — for `tique`,
+  *Soviétique.jpg* before *Tique\photo.jpg* — as today's tiers do?~~ → **Yes**: the levels refine a tier and
+  never cross it (Q&A 7).
+- [x] ~~The favorites' file names ranked by the same levels, the preset descriptions and the people's names
+  left as they are?~~ → **Yes** (Q&A 8).
 
 ---
 
@@ -143,6 +146,12 @@ Initial design from the user's request and the scoping answers (Q&A 1–4): thre
 inside — refining every path tier and every content grade, the number of words found whole first, then
 at a start; the path always before the content; the favorites' names ranked alike; the tier numbers kept
 one comparable number.
+
+### Iteration 2 — 2026-11-05
+
+Open questions answered (Q&A 5–8), every proposal kept: a letter ↔ digit change separates two words, a
+case change does not; the name stays before the subfolders; the favorites' names ranked alike. § Words
+and Their Boundaries updated.
 
 ---
 
@@ -169,7 +178,10 @@ Questions asked by the agent during design, with user responses.
 | 2 | Where does the whole-word ranking apply? | Path and content — the path always weighing more than the content | 2026-11-05 |
 | 3 | With several query words, how to combine? | Count the words found whole — more ranks higher; on a tie, the best level of the others decides | 2026-11-05 |
 | 4 | Is the subject straightforward or tricky? | Straightforward — one scout pass | 2026-11-05 |
-| 5 | Letter ↔ digit, case change, name vs subfolders, favorites (Open Questions) | | |
+| 5 | Does a change between a letter and a digit separate two words? | Yes | 2026-11-05 |
+| 6 | Does a change of case separate two words? | No | 2026-11-05 |
+| 7 | Does a word in the name outrank a whole word in the subfolders only? | Yes, the name first | 2026-11-05 |
+| 8 | Are the favorites' file names ranked by the same levels? | Yes; preset descriptions and people's names unchanged | 2026-11-05 |
 
 ---
 
