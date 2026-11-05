@@ -122,6 +122,11 @@ The three open questions answered: the draft while typing is accepted; every liv
 sliders, the color dialog, the eyedropper, and the one-shot settings — takes the same route as the text field; the
 final render comes ~300 ms after the last change.
 
+### Iteration 3 — 2026-11-05 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree (`.claude/worktrees/text-layer-typing-refresh`, branch
+`feature/text-layer-typing-refresh`).
+
 ---
 
 ## Implementation Log
