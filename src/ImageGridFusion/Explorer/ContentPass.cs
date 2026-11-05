@@ -59,6 +59,13 @@ internal enum ContentGrade
     SeenInside,
 }
 
+/// <summary>
+/// How a file's content holds a query word: how reliably (<paramref name="Grade"/>), and how within the slot
+/// that holds it best (<paramref name="Level"/>) — a word found joined is inside one. See
+/// workfiles/20261105-whole-word-search-ranking.md § Content Ranking.
+/// </summary>
+internal readonly record struct ContentHit(ContentGrade Grade, WordLevel Level);
+
 internal static class ContentPasses
 {
     /// <summary>Every pass, in the order they run.</summary>

@@ -113,12 +113,11 @@ internal sealed class ContentIndex
     public int Count => this._texts.Count;
 
     /// <summary>
-    /// How reliably a file's content holds <paramref name="foldedWord"/> — accents and case ignored —
-    /// the best way any slot holds it (<see cref="ContentGrade"/>); null when no slot does, or the file
-    /// has no text yet.
+    /// How a file's content holds <paramref name="foldedWord"/> — accents and case ignored — the best way
+    /// any slot holds it (<see cref="ContentHit"/>); null when no slot does, or the file has no text yet.
     /// </summary>
-    public ContentGrade? GradeOf(string relativePath, string foldedWord) =>
-        this._texts.TryGetValue(relativePath, out var text) && Find(text, foldedWord) is var (_, _, grade) ? grade : null;
+    public ContentHit? HitOf(string relativePath, string foldedWord) =>
+        this._texts.TryGetValue(relativePath, out var text) && Find(text, foldedWord) is var (_, _, grade) ? new ContentHit(grade, grade == ContentGrade.Seen ? WordLevel.Whole : WordLevel.Inside) : null;
 
     /// <summary>
     /// The words of a file's text around the first one holding <paramref name="foldedWord"/> — accents

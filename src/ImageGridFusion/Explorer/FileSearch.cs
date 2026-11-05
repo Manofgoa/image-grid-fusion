@@ -60,20 +60,54 @@ internal static class FileSearch
     public static string[] Words(string query) => Fold(query).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     /// <summary>
+    /// How <paramref name="word"/> stands in <paramref name="folded"/> from <paramref name="from"/> on — the
+    /// best of its occurrences: a whole word, the start of a longer one, or inside one; null when it is not
+    /// there. A word is a run of letters, or of digits: anything else, and a change between a letter and a
+    /// digit, separates two words. See workfiles/20261105-whole-word-search-ranking.md § Words and Their Boundaries.
+    /// </summary>
+    public static WordLevel? LevelOf(string folded, string word, int from = 0)
+    {
+        WordLevel? best = null;
+        for (int at = folded.IndexOf(word, from, StringComparison.Ordinal); at >= 0; at = folded.IndexOf(word, at + 1, StringComparison.Ordinal))
+        {
+            int end = at + word.Length;
+            bool left = at == 0 || Splits(folded[at - 1], folded[at]);
+            bool right = end == folded.Length || Splits(folded[end - 1], folded[end]);
+            var level = left && right ? WordLevel.Whole : left ? WordLevel.Start : WordLevel.Inside;
+            if (level == WordLevel.Whole)
+            {
+                return level;
+            }
+
+            if (best is null || level < best)
+            {
+                best = level;
+            }
+        }
+
+        return best;
+    }
+
+    /// <summary>Whether a word ends between two characters.</summary>
+    private static bool Splits(char before, char after) =>
+        !char.IsLetterOrDigit(before) || !char.IsLetterOrDigit(after) || char.IsDigit(before) != char.IsDigit(after);
+
+    /// <summary>
     /// Every entry matching every word, best first — the explorer shows them load by load. A word
-    /// missing from the relative path may be found in the entry's content text, how reliably given by
-    /// <paramref name="contentOf"/> (null: none, or no content search), the match then made by its
+    /// missing from the relative path may be found in the entry's content text, how reliably and how
+    /// given by <paramref name="contentOf"/> (null: none, or no content search), the match then made by its
     /// content; with <paramref name="byName"/> false, the path is not read and every word is looked for in
     /// the content text only. Ranked by the entries matched by their path alone first, then by the words
     /// found in the file name itself, then the content matches by their grade — the least reliable of
-    /// their words' (<see cref="ContentGrade"/>) — then the position of the first word in the name, then
-    /// the shorter name, then the relative path. With an <paramref name="order"/> — the sort drop-down's,
-    /// for files — only the relevance tiers are kept (the path matches by the words found in the name,
-    /// then the content matches by their grade), each tier in that order: see
-    /// workfiles/20261009-search-results-sort.md § Relevance Tiers and
-    /// workfiles/20261013-complementary-ocr-passes.md § Ranking.
+    /// their words' (<see cref="ContentGrade"/>) — each of them then by the words found whole, then at a
+    /// word's start (<see cref="WordLevel"/>), more first; then the position of the first word in the name,
+    /// then the shorter name, then the relative path. With an <paramref name="order"/> — the sort drop-down's,
+    /// for files — only the relevance tiers and their levels are kept, each in that order: see
+    /// workfiles/20261009-search-results-sort.md § Relevance Tiers,
+    /// workfiles/20261013-complementary-ocr-passes.md § Ranking and
+    /// workfiles/20261105-whole-word-search-ranking.md.
     /// </summary>
-    public static IReadOnlyList<SearchMatch> Search(IReadOnlyList<IndexEntry> entries, string[] words, Func<IndexEntry, string, ContentGrade?>? contentOf = null, bool byName = true, FileOrder? order = null)
+    public static IReadOnlyList<SearchMatch> Search(IReadOnlyList<IndexEntry> entries, string[] words, Func<IndexEntry, string, ContentHit?>? contentOf = null, bool byName = true, FileOrder? order = null)
     {
         if (words.Length == 0)
         {
@@ -124,14 +158,16 @@ internal static class FileSearch
         {
             string name = Fold(Path.GetFileName(favorite.FullPath));
             string description = favorite.Preset?.Folded ?? "";
-            int nameHits = 0;
+            int whole = 0;
+            int start = 0;
             string? descriptionWord = null;
             bool matched = true;
             foreach (string word in words)
             {
-                if (name.Contains(word, StringComparison.Ordinal))
+                if (LevelOf(name, word) is { } level)
                 {
-                    nameHits++;
+                    whole += level == WordLevel.Whole ? 1 : 0;
+                    start += level == WordLevel.Start ? 1 : 0;
                 }
                 else if (description.Contains(word, StringComparison.Ordinal))
                 {
@@ -146,7 +182,8 @@ internal static class FileSearch
 
             if (matched)
             {
-                matches.Add(new FavoriteMatch(favorite, descriptionWord, descriptionWord is null ? words.Length - nameHits : DescriptionTier(words.Length)));
+                // Its name holding every word: the first path tier, ranked by its levels as a file's name is.
+                matches.Add(new FavoriteMatch(favorite, descriptionWord, descriptionWord is null ? Numbered(0, words.Length, whole, start) : DescriptionTier(words.Length)));
             }
         }
 
@@ -183,26 +220,47 @@ internal static class FileSearch
 
     // The tiers: the files whose name and content both hold every word -1, the path matches 0 (every
     // word in the name) to words (none in the name), the description matches next, the people's files
-    // after them, then the content matches by their grade.
+    // after them, then the content matches by their grade. Each numbered with its levels folded in
+    // (Numbered): a tier spans Levels(words) numbers, the more words found whole, then at a word's start,
+    // the lower. The description, people and similarity tiers have no levels: their first number.
     private const int NameAndContentTier = -1;
 
-    private static int DescriptionTier(int words) => words + 1;
+    /// <summary>How many numbers a tier spans: one per count of words found whole and at a word's start.</summary>
+    private static int Levels(int words) => (words + 1) * (words + 1);
+
+    /// <summary>
+    /// The number of a match in <paramref name="tier"/> with <paramref name="whole"/> of its
+    /// <paramref name="words"/> found whole and <paramref name="start"/> at a word's start.
+    /// </summary>
+    private static int Numbered(int tier, int words, int whole, int start) =>
+        First(tier, words) + (words - whole) * (words + 1) + (words - start);
+
+    /// <summary>The first number of <paramref name="tier"/>: a tier without levels.</summary>
+    private static int First(int tier, int words) => tier * Levels(words);
+
+    private static int DescriptionBase(int words) => words + 1;
+
+    private static int PersonBase(int words) => DescriptionBase(words) + 1;
+
+    private static int ContentBase(int words, ContentGrade grade) => PersonBase(words) + 1 + (int)grade;
+
+    private static int DescriptionTier(int words) => First(DescriptionBase(words), words);
 
     /// <summary>
     /// Whether a tier — a file's, a preset's, a person's file's — is one of a match by a name: the file's
     /// name or path, a preset's description, a person's name; the search results' <b>Path</b> group, the
     /// others its <b>Content</b> group. See workfiles/20261103-file-explorer-groups.md § Search Result Groups.
     /// </summary>
-    public static bool IsPathTier(int tier, int words) => tier <= PersonTier(words);
+    public static bool IsPathTier(int tier, int words) => tier < First(PersonBase(words) + 1, words);
 
-    private static int PersonTier(int words) => DescriptionTier(words) + 1;
+    private static int PersonTier(int words) => First(PersonBase(words), words);
 
     /// <summary>
     /// The tier of the images found by their similarity to the query — after every content grade, the tags
     /// and the captions included — numbered as <see cref="SearchMatch.Tier"/> numbers the files'. See
     /// workfiles/20261027-image-content-analysis.md § Search Under 💡.
     /// </summary>
-    public static int SimilarityTier(int words) => PersonTier(words) + 1 + (int)ContentGrade.SeenInside + 1;
+    public static int SimilarityTier(int words) => First(ContentBase(words, ContentGrade.SeenInside) + 1, words);
 
     /// <summary>
     /// At most <paramref name="count"/> entries whose embedding — given by <paramref name="embeddingOf"/>,
@@ -264,8 +322,10 @@ internal static class FileSearch
     /// How well an entry matches; lower compares first. <paramref name="AlsoContentWord"/>: for a file whose
     /// name holds every word, the first one when its content text holds them all too — the most relevant
     /// match, its light bulb shown (workfiles/20261103-file-explorer-groups.md § Search Result Groups).
+    /// <paramref name="Whole"/> and <paramref name="Start"/>: how many query words it holds as a whole word,
+    /// and at a word's start — each where it was found: the name, the subfolders, the content text.
     /// </summary>
-    private readonly record struct Rank(string? ContentWord, ContentGrade Grade, int NameHits, int FirstPosition, int NameLength, string Path, string? AlsoContentWord = null) : IComparable<Rank>
+    private readonly record struct Rank(string? ContentWord, ContentGrade Grade, int NameHits, int FirstPosition, int NameLength, string Path, string? AlsoContentWord = null, int Whole = 0, int Start = 0) : IComparable<Rank>
     {
         /// <summary>Whether a word was found in the content text only.</summary>
         public bool ByContent => this.ContentWord is not null;
@@ -273,23 +333,27 @@ internal static class FileSearch
         /// <summary>Whether its name and its content text both hold every word.</summary>
         public bool ByNameAndContent => this.AlsoContentWord is not null;
 
-        /// <summary>Its relevance tier as a number, lower first, comparable with a favorite's (<see cref="SearchFavorites"/>).</summary>
-        public int Tier(int words) => this.ByNameAndContent ? NameAndContentTier : this.ByContent ? PersonTier(words) + 1 + (int)this.Grade : words - this.NameHits;
+        /// <summary>Its relevance tier as a number, its levels folded in, lower first, comparable with a favorite's (<see cref="SearchFavorites"/>).</summary>
+        public int Tier(int words) =>
+            Numbered(this.ByNameAndContent ? NameAndContentTier : this.ByContent ? ContentBase(words, this.Grade) : words - this.NameHits, words, this.Whole, this.Start);
 
         /// <summary>
         /// Null when a word is missing from both the folded relative path — not read unless
         /// <paramref name="byName"/> — and the content text.
         /// </summary>
-        public static Rank? Of(IndexEntry entry, string[] words, Func<IndexEntry, string, ContentGrade?>? contentOf, bool byName)
+        public static Rank? Of(IndexEntry entry, string[] words, Func<IndexEntry, string, ContentHit?>? contentOf, bool byName)
         {
             string folded = entry.Folded;
             int nameStart = entry.NameStart;
             int nameHits = 0;
             int first = int.MaxValue;
+            int whole = 0;
+            int start = 0;
             string? contentWord = null;
             var grade = ContentGrade.Sure;
             for (int i = 0; i < words.Length; i++)
             {
+                WordLevel? level;
                 int inName = byName ? folded.IndexOf(words[i], nameStart, StringComparison.Ordinal) : -1;
                 if (inName >= 0)
                 {
@@ -298,8 +362,14 @@ internal static class FileSearch
                     {
                         first = inName - nameStart;
                     }
+
+                    level = LevelOf(folded, words[i], nameStart);
                 }
-                else if (!byName || folded.IndexOf(words[i], StringComparison.Ordinal) < 0)
+                else if (byName && LevelOf(folded, words[i]) is { } inPath)
+                {
+                    level = inPath;
+                }
+                else
                 {
                     if (contentOf?.Invoke(entry, words[i]) is not { } found)
                     {
@@ -307,8 +377,12 @@ internal static class FileSearch
                     }
 
                     contentWord ??= words[i];
-                    grade = (ContentGrade)Math.Max((int)grade, (int)found);
+                    grade = (ContentGrade)Math.Max((int)grade, (int)found.Grade);
+                    level = found.Level;
                 }
+
+                whole += level == WordLevel.Whole ? 1 : 0;
+                start += level == WordLevel.Start ? 1 : 0;
             }
 
             // Every word in the name: looked for in the content text too, the match then the most relevant.
@@ -318,24 +392,34 @@ internal static class FileSearch
                 alsoContentWord = words[0];
             }
 
-            return new Rank(contentWord, grade, nameHits, first, folded.Length - nameStart, entry.RelativePath, alsoContentWord);
+            return new Rank(contentWord, grade, nameHits, first, folded.Length - nameStart, entry.RelativePath, alsoContentWord, whole, start);
         }
 
         /// <summary>
-        /// The relevance tier only: the files found by their name and their content first, then the path
-        /// matches, the more words in the file name the earlier, then the content matches, the more
-        /// reliable grade the earlier.
+        /// The relevance tier and its levels only: the files found by their name and their content first,
+        /// then the path matches, the more words in the file name the earlier, then the content matches, the
+        /// more reliable grade the earlier; in each, the more words found whole, then at a word's start, the
+        /// earlier.
         /// </summary>
         public int CompareTier(Rank other)
         {
             int order = other.ByNameAndContent.CompareTo(this.ByNameAndContent);
-            if (order != 0)
+            if (order == 0)
             {
-                return order;
+                order = this.ByContent.CompareTo(other.ByContent);
             }
 
-            order = this.ByContent.CompareTo(other.ByContent);
-            return order != 0 ? order : this.ByContent ? this.Grade.CompareTo(other.Grade) : other.NameHits.CompareTo(this.NameHits);
+            if (order == 0)
+            {
+                order = this.ByContent ? this.Grade.CompareTo(other.Grade) : other.NameHits.CompareTo(this.NameHits);
+            }
+
+            if (order == 0)
+            {
+                order = other.Whole.CompareTo(this.Whole);
+            }
+
+            return order != 0 ? order : other.Start.CompareTo(this.Start);
         }
 
         public int CompareTo(Rank other)
@@ -423,6 +507,22 @@ internal readonly record struct SearchMatch(IndexEntry Entry, string? ContentWor
 /// <see cref="SearchMatch.Tier"/>.
 /// </summary>
 internal readonly record struct FavoriteMatch(Favorite Favorite, string? DescriptionWord, int Tier);
+
+/// <summary>
+/// How a query word stands in a text, best first (<see cref="FileSearch.LevelOf"/>). See
+/// workfiles/20261105-whole-word-search-ranking.md.
+/// </summary>
+internal enum WordLevel
+{
+    /// <summary>As a whole word: <c>tique</c> in <c>Tique bulle</c>.</summary>
+    Whole,
+
+    /// <summary>At the start of a longer word: <c>tique</c> in <c>Tiques</c>.</summary>
+    Start,
+
+    /// <summary>Inside a longer word: <c>tique</c> in <c>Soviétique</c>.</summary>
+    Inside,
+}
 
 /// <summary>What tells a file changed since its content text was extracted: its size and last write, in UTC.</summary>
 internal readonly record struct FileStamp(long Size, DateTime Written);

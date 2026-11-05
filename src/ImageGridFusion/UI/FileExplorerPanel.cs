@@ -3097,7 +3097,7 @@ internal sealed partial class FileExplorerPanel : Panel
         }
 
         var contents = this._byContent.Checked ? texts : null;
-        var found = FileSearch.Search(entries, words, contents is null ? null : (e, word) => contents.GradeOf(e.RelativePath, word), this._byName.Checked, this._fileOrder);
+        var found = FileSearch.Search(entries, words, contents is null ? null : (e, word) => contents.HitOf(e.RelativePath, word), this._byName.Checked, this._fileOrder);
         return this._byContent.Checked ? this.WithSimilar(found, entries, words, embeddings) : found;
     }
 
