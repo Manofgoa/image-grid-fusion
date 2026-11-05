@@ -125,8 +125,9 @@ icon buttons, then the text field. Then the lines:
   vertical line**, plainly visible (`SystemColors.ControlDark`), separates two columns (and a tall block from the
   next column).
 - **The controls of a column line up**: its color buttons, then its first slider, its second… stand at one x in
-  every line holding them, a line lacking one leaving the room empty (the *To* line's drop-down pushes the
-  *Automatic color* line's color buttons and slider along).
+  every line **of the same shape** — the same color buttons and sliders before them —, a line lacking one leaving
+  the room empty (the *To* line's drop-down pushes the *Automatic color* line's color buttons and slider along); a
+  slider after thumbnails (the Layers' *Shadow shape*) stays by them, never pulling the color lines' sliders along.
 - **One spacing everywhere**: one gap between two controls (6 logical px), one after the leading element (8),
   one between columns (24), whatever the controls' own margins — the text alignment buttons, touching, aside.
 
