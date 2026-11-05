@@ -44,9 +44,9 @@ internal static class EdgeExtension
     /// <paramref name="g"/> draws at: everything is computed in its pixels, the result stretched over the
     /// cell — the whole at the opacity. In a gradient (<see cref="BackgroundEffect.Style"/>), the fill under
     /// each pixel is the gradient's there, its colors made opaque: <paramref name="flat"/>, the fill before
-    /// <paramref name="adjust"/> turns it, is where it starts.
+    /// <paramref name="adjust"/> turns it, is where it starts, <paramref name="automatic"/> standing for a second color Auto.
     /// </summary>
-    public static void Draw(Graphics g, Bitmap image, Rectangle cell, Rectangle covered, BackgroundEffect background, Color fill, Color flat, Func<Color, Color>? adjust)
+    public static void Draw(Graphics g, Bitmap image, Rectangle cell, Rectangle covered, BackgroundEffect background, Color fill, Color flat, Color automatic, Func<Color, Color>? adjust)
     {
         int width = image.Width;
         int height = image.Height;
@@ -62,7 +62,7 @@ internal static class EdgeExtension
         if (inside.Width < 1 || inside.Height < 1)
         {
             // Too small to have edges at this scale: the fill alone, its opacity its own.
-            background.Style.Paint(g, cell, flat, null, adjust);
+            background.Style.Paint(g, cell, flat, automatic, adjust);
             return;
         }
 
@@ -73,7 +73,7 @@ internal static class EdgeExtension
 
         // Rented rather than allocated at every frame: its length is width × height, never the array's own.
         var pixels = ArrayPool<int>.Shared.Rent(width * height);
-        var flats = background.Style.IsGradient ? background.Style.OpaquePixels(width, height, flat, null, adjust) : null;
+        var flats = background.Style.IsGradient ? background.Style.OpaquePixels(width, height, flat, automatic, adjust) : null;
         try
         {
             if (flats is null)

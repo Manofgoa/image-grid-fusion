@@ -21,6 +21,20 @@ public enum BackgroundFill
     BackgroundCorners,
 }
 
+/// <summary>Where the cell Background's first color comes from — its <b>From</b> (workfiles/20261105-cell-background-auto-colors.md).</summary>
+public enum FirstColor
+{
+    /// <summary>The cell's automatic color: the band color of the part of the image shown, live.</summary>
+    Auto,
+
+    Black,
+
+    White,
+
+    /// <summary>A color picked with the eyedropper or Color….</summary>
+    Chosen,
+}
+
 /// <summary>
 /// The background effect of an image: the fill painted behind it over its whole cell — the bands, and
 /// the image's transparent pixels, show it — in the automatic band color or in a chosen color, at
@@ -33,11 +47,20 @@ public sealed record BackgroundEffect
     /// <summary>The automatic band color, fully opaque: the fill every image had before the effect existed.</summary>
     public static readonly BackgroundEffect Default = new();
 
-    /// <summary>The band color computed from the part of the image shown; else <see cref="Color"/>.</summary>
-    public bool Automatic { get; private init; } = true;
+    /// <summary>Where the first color comes from: the automatic band color by default.</summary>
+    public FirstColor First { get; private init; } = FirstColor.Auto;
 
-    /// <summary>The chosen color, opaque; unused while <see cref="Automatic"/>.</summary>
+    /// <summary>The first color is the band color computed from the part of the image shown.</summary>
+    public bool Automatic => this.First == FirstColor.Auto;
+
+    /// <summary>The chosen color, opaque; read in <see cref="FirstColor.Chosen"/> only.</summary>
     public Color Color { get; private init; }
+
+    /// <summary>
+    /// The automatic band color is read: the first color's source, or a gradient's second color
+    /// (<see cref="SecondColor.Auto"/>, workfiles/20261105-cell-background-auto-colors.md).
+    /// </summary>
+    public bool NeedsAutomatic => this.Automatic || this.Style is { IsGradient: true, Second: SecondColor.Auto };
 
     /// <summary>From 0, no fill, to 1, the fill fully opaque — the extended edges included.</summary>
     public double Opacity { get; private init; } = 1;
@@ -70,13 +93,21 @@ public sealed record BackgroundEffect
     public bool Extends => Mode != BackgroundFill.Color;
 
     /// <summary>
-    /// The chosen color, the automatic mode left. Unchecking <i>Automatic color</i> passes the automatic
-    /// color of the moment, which it freezes.
+    /// The chosen color: <see cref="FirstColor.Chosen"/> from now on. From set to Chosen passes the color the
+    /// source gave at that moment, which it freezes.
     /// </summary>
-    public BackgroundEffect WithColor(Color color) => this with { Automatic = false, Color = Color.FromArgb(255, color) };
+    public BackgroundEffect WithColor(Color color) => this with { First = FirstColor.Chosen, Color = Color.FromArgb(255, color) };
 
     /// <summary>Back to the automatic color: the chosen one is dropped, not remembered.</summary>
-    public BackgroundEffect WithAutomatic() => this with { Automatic = true, Color = default };
+    public BackgroundEffect WithAutomatic() => this.WithFirst(FirstColor.Auto);
+
+    /// <summary>
+    /// The first color's source: Auto, Black or White drop the chosen color; Chosen keeps it — set it with
+    /// <see cref="WithColor"/> to freeze the color of the moment.
+    /// </summary>
+    public BackgroundEffect WithFirst(FirstColor first) => first == FirstColor.Chosen
+        ? this with { First = first }
+        : this with { First = first, Color = default };
 
     public BackgroundEffect WithOpacity(double opacity) => this with { Opacity = Math.Clamp(opacity, 0, 1) };
 
@@ -88,17 +119,27 @@ public sealed record BackgroundEffect
 
     public BackgroundEffect WithEdgeOpacity(double opacity) => this with { EdgeOpacity = Math.Clamp(opacity, 0, 1) };
 
-    /// <summary>A cell offers no Auto second color: the Grid background's own (workfiles/20260926-forced-background.md, Q&amp;A #19).</summary>
-    public BackgroundEffect WithStyle(FillStyle style) => this with { Style = style.Second == SecondColor.Auto ? style.WithSecond(SecondColor.Darker) : style };
+    /// <summary>The fill's style; its <see cref="SecondColor.Auto"/> is the cell's automatic color (workfiles/20261105-cell-background-auto-colors.md).</summary>
+    public BackgroundEffect WithStyle(FillStyle style) => this with { Style = style };
+
+    /// <summary>The first color, opaque, given the <paramref name="automatic"/> band color.</summary>
+    public Color FirstFor(Color automatic) => this.First switch
+    {
+        FirstColor.Auto => Color.FromArgb(255, automatic),
+        FirstColor.Black => Color.Black,
+        FirstColor.White => Color.White,
+        _ => this.Color,
+    };
 
     /// <summary>The fill, given the <paramref name="automatic"/> band color: the color in use at the opacity.</summary>
-    public Color Fill(Color automatic) => Color.FromArgb((int)Math.Round(255 * Opacity), Automatic ? automatic : Color);
+    public Color Fill(Color automatic) => Color.FromArgb((int)Math.Round(255 * Opacity), this.FirstFor(automatic));
 
     /// <summary>Its settings as an effect preset saves them (<see cref="LookPreset"/>), the color as <c>#RRGGBB</c>.</summary>
     internal JsonObject ToJson() => new()
     {
+        ["first"] = this.First.ToString(),
         ["automatic"] = this.Automatic,
-        ["color"] = this.Automatic ? null : $"#{this.Color.R:X2}{this.Color.G:X2}{this.Color.B:X2}",
+        ["color"] = this.First == FirstColor.Chosen ? $"#{this.Color.R:X2}{this.Color.G:X2}{this.Color.B:X2}" : null,
         ["opacity"] = this.Opacity,
         ["mode"] = this.Mode.ToString(),
         ["blend"] = this.Blend,
@@ -107,10 +148,15 @@ public sealed record BackgroundEffect
         ["fill"] = this.Style.ToJson(),
     };
 
-    /// <summary>The settings <see cref="ToJson"/> wrote; an unreadable color gives the automatic one.</summary>
+    /// <summary>
+    /// The settings <see cref="ToJson"/> wrote; an unreadable color gives the automatic one. A preset without
+    /// <c>first</c>, saved before it existed, reads its source from <c>automatic</c>.
+    /// </summary>
     internal static BackgroundEffect FromJson(JsonObject json)
     {
-        bool automatic = PresetJson.Bool(json, "automatic", Default.Automatic);
+        var first = json["first"] is not null
+            ? PresetJson.Enum(json, "first", Default.First)
+            : PresetJson.Bool(json, "automatic", Default.Automatic) ? FirstColor.Auto : FirstColor.Chosen;
         var background = new BackgroundEffect
         {
             Opacity = Math.Clamp(PresetJson.Double(json, "opacity", Default.Opacity), 0, 1),
@@ -119,7 +165,12 @@ public sealed record BackgroundEffect
             Soften = PresetJson.Bool(json, "soften", Default.Soften),
             EdgeOpacity = Math.Clamp(PresetJson.Double(json, "edgeOpacity", Default.EdgeOpacity), 0, 1),
         }.WithStyle(json["fill"] is JsonObject fill ? FillStyle.FromJson(fill, FillStyle.Cell) : FillStyle.Cell);
-        return !automatic && json["color"] is JsonValue value && value.TryGetValue(out string? hex)
+        if (first != FirstColor.Chosen)
+        {
+            return background.WithFirst(first);
+        }
+
+        return json["color"] is JsonValue value && value.TryGetValue(out string? hex)
             && hex.StartsWith('#') && int.TryParse(hex.AsSpan(1), System.Globalization.NumberStyles.HexNumber, null, out int rgb)
                 ? background.WithColor(Color.FromArgb(rgb))
                 : background;

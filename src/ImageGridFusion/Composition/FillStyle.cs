@@ -21,7 +21,7 @@ public enum FillKind
 /// <summary>Where a gradient's second color comes from.</summary>
 public enum SecondColor
 {
-    /// <summary>Given by the fill's user: the Grid background's, the last cell's automatic color. A cell offers none.</summary>
+    /// <summary>Given by the fill's user: the Grid background's, the last cell's automatic color; a cell's, its own.</summary>
     Auto,
 
     /// <summary>The first color darkened.</summary>
@@ -46,7 +46,7 @@ public sealed record FillStyle
     /// <summary>How much of its brightness the first color keeps in <see cref="SecondColor.Darker"/>.</summary>
     public const double DarkerShare = 0.45;
 
-    /// <summary>A cell's Background: solid; a gradient goes to the first color darkened, a cell having no Auto.</summary>
+    /// <summary>A cell's Background: solid; a gradient goes to the first color darkened by default.</summary>
     public static readonly FillStyle Cell = new();
 
     /// <summary>The Grid background: solid; a gradient goes to the last cell's automatic color.</summary>
