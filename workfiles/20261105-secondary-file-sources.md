@@ -215,6 +215,11 @@ The user asks for a source's index in files of its own, apart from the main inde
 the main `index\` folder for instance. Already the design (§ The Source's Index:
 `index\secondary-sources\<id>\`, the four files each); stated as a requirement now, nothing changed.
 
+### Iteration 4 — 2026-11-05 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree on `feature/secondary-file-sources`.
+The scope is frozen as the sections above stand.
+
 ---
 
 ## Implementation Log
