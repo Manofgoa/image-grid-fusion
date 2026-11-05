@@ -376,12 +376,11 @@ In the folder view, the folders come first, A→Z.</value></data>
   <data name="FileSizeBytes" xml:space="preserve"><value>{0} bytes</value></data>
   <data name="FileSizeUnits" xml:space="preserve"><value>KB MB GB TB</value></data>
   <data name="MainArrowThicknessNone" xml:space="preserve"><value>0 (none)</value></data>
-  <data name="MainAutomaticColor" xml:space="preserve"><value>Automatic color</value></data>
-  <data name="MainBackgroundAutomaticTip" xml:space="preserve"><value>The color computed from the edges of the part of the image shown</value></data>
   <data name="MainBackgroundBlendTip" xml:space="preserve"><value>Blends the extended edges into the background color, more with the distance from the image: at 100 %, they vanish by the cell's edge</value></data>
-  <data name="MainBackgroundColorNote" xml:space="preserve"><value>. A color chosen unchecks Automatic color</value></data>
+  <data name="MainBackgroundColorNote" xml:space="preserve"><value>. A color chosen sets the color to Chosen</value></data>
   <data name="MainBackgroundColorTarget" xml:space="preserve"><value>the background color</value></data>
   <data name="MainBackgroundEdgeOpacityTip" xml:space="preserve"><value>The extended edges' opacity over the background color, which keeps its own</value></data>
+  <data name="MainBackgroundFirstTip" xml:space="preserve"><value>Where the background color comes from: Auto, the color computed from the edges of the part of the image shown; Black; White; or Chosen, with the eyedropper or Color…</value></data>
   <data name="MainBackgroundSoftenTip" xml:space="preserve"><value>Blurs the extended edges, more with the distance from the image, the image itself staying sharp</value></data>
   <data name="MainBorderCorners" xml:space="preserve"><value>Corners</value></data>
   <data name="MainBorderDashed" xml:space="preserve"><value>Dashed</value></data>
@@ -828,6 +827,9 @@ Restart the app now?</value></data>
   <data name="PanelFilesSkipped" xml:space="preserve"><value>{0} skipped: no preview available</value></data>
   <data name="PanelFillAngle" xml:space="preserve"><value>Angle: {0}°</value></data>
   <data name="PanelFillAngleTip" xml:space="preserve"><value>The direction the linear gradient goes across {0}: 0° from left to right, 90° from top to bottom</value></data>
+  <data name="PanelFillAutoCell" xml:space="preserve"><value>Auto</value></data>
+  <data name="PanelFillAutoCellTip" xml:space="preserve"><value>Where the gradient's second color comes from — Auto: the cell's automatic color, computed from the edges of the part of the image shown</value></data>
+  <data name="PanelFillFrom" xml:space="preserve"><value>From</value></data>
   <data name="PanelFillSecondAuto" xml:space="preserve"><value>Auto, last cell</value></data>
   <data name="PanelFillSecondBlack" xml:space="preserve"><value>Black</value></data>
   <data name="PanelFillSecondChosen" xml:space="preserve"><value>Chosen</value></data>

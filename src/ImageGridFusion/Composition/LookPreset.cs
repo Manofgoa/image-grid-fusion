@@ -190,7 +190,7 @@ internal static class LookPreset
         ImageEffect.Background => look.Background is not { } background ? Strings.UiDescOffNoFill
             : Texts.Format(
                 Strings.UiDescBackground,
-                background.Automatic ? Strings.UiDescAutomaticColor : $"#{background.Color.R:X2}{background.Color.G:X2}{background.Color.B:X2}",
+                background.Automatic ? Strings.UiDescAutomaticColor : Hex(background.FirstFor(Color.White)),
                 Percent(background.Opacity),
                 FillModeName(background.Mode),
                 !background.Style.IsGradient ? "" : background.Style.Kind == FillKind.Linear ? Strings.UiDescGradientLinear : Strings.UiDescGradientRadial),
@@ -232,6 +232,9 @@ internal static class LookPreset
         : Texts.Number(ratio, "0.##") + ":1";
 
     private static string Percent(double value) => $"{Math.Round(value * 100)} %";
+
+    /// <summary><paramref name="color"/> as <c>#RRGGBB</c>.</summary>
+    private static string Hex(Color color) => $"#{color.R:X2}{color.G:X2}{color.B:X2}";
 
     private static string Signed(double value) => $"{Math.Round(value * 100):+0;-0;0} %";
 

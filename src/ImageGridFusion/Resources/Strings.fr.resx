@@ -376,12 +376,11 @@ Dans la vue Dossiers, les dossiers viennent en premier, de A à Z.</value></data
   <data name="FileSizeBytes" xml:space="preserve"><value>{0} octets</value></data>
   <data name="FileSizeUnits" xml:space="preserve"><value>Ko Mo Go To</value></data>
   <data name="MainArrowThicknessNone" xml:space="preserve"><value>0 (aucune)</value></data>
-  <data name="MainAutomaticColor" xml:space="preserve"><value>Couleur automatique</value></data>
-  <data name="MainBackgroundAutomaticTip" xml:space="preserve"><value>La couleur calculée à partir des bords de la partie de l'image affichée</value></data>
   <data name="MainBackgroundBlendTip" xml:space="preserve"><value>Fond les bords étendus dans la couleur du fond, de plus en plus avec la distance à l'image : à 100 %, ils disparaissent au bord de la cellule</value></data>
-  <data name="MainBackgroundColorNote" xml:space="preserve"><value>. Une couleur choisie décoche Couleur automatique</value></data>
+  <data name="MainBackgroundColorNote" xml:space="preserve"><value>. Une couleur choisie fixe la couleur sur Choisie</value></data>
   <data name="MainBackgroundColorTarget" xml:space="preserve"><value>la couleur du fond</value></data>
   <data name="MainBackgroundEdgeOpacityTip" xml:space="preserve"><value>L'opacité des bords étendus sur la couleur du fond, qui garde la sienne</value></data>
+  <data name="MainBackgroundFirstTip" xml:space="preserve"><value>D'où vient la couleur du fond : Auto, la couleur calculée à partir des bords de la partie de l'image affichée ; Noir ; Blanc ; ou Choisie, avec la pipette ou Couleur…</value></data>
   <data name="MainBackgroundSoftenTip" xml:space="preserve"><value>Floute les bords étendus, de plus en plus avec la distance à l'image, l'image elle-même restant nette</value></data>
   <data name="MainBorderCorners" xml:space="preserve"><value>Coins</value></data>
   <data name="MainBorderDashed" xml:space="preserve"><value>Tirets</value></data>
@@ -828,6 +827,9 @@ Redémarrer l'application maintenant ?</value></data>
   <data name="PanelFilesSkipped" xml:space="preserve"><value>{0} ignoré(s) : aucun aperçu disponible</value></data>
   <data name="PanelFillAngle" xml:space="preserve"><value>Angle : {0}°</value></data>
   <data name="PanelFillAngleTip" xml:space="preserve"><value>Direction du dégradé linéaire sur {0} : 0° de gauche à droite, 90° de haut en bas</value></data>
+  <data name="PanelFillAutoCell" xml:space="preserve"><value>Auto</value></data>
+  <data name="PanelFillAutoCellTip" xml:space="preserve"><value>D'où vient la seconde couleur du dégradé — Auto : la couleur automatique de la cellule, calculée à partir des bords de la partie de l'image affichée</value></data>
+  <data name="PanelFillFrom" xml:space="preserve"><value>De</value></data>
   <data name="PanelFillSecondAuto" xml:space="preserve"><value>Auto, dernière cellule</value></data>
   <data name="PanelFillSecondBlack" xml:space="preserve"><value>Noir</value></data>
   <data name="PanelFillSecondChosen" xml:space="preserve"><value>Choisie</value></data>

@@ -318,7 +318,7 @@ internal sealed partial class MainForm : Form
     private readonly TrackBar _volume = OptionSlider(0, (int)(VolumeEffect.MaxLevel * 100), 10);
     private readonly Label _volumeLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox _mute = new() { Text = Strings.MainMute, AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly CheckBox _backgroundAutomatic = new() { Text = Strings.MainAutomaticColor, AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly Label _backgroundFirstCaption = new() { Text = Strings.MainLineColor, AutoSize = true, Anchor = AnchorStyles.Left, UseMnemonic = false };
     private readonly PictureBox _backgroundOpacityIcon = OpacityIcon();
     private readonly TrackBar _backgroundOpacity = OptionSlider(0, 100, 10);
     private readonly SliderCaption _backgroundOpacityLabel = new();
@@ -1129,9 +1129,7 @@ internal sealed partial class MainForm : Form
             ChangeLook(ImageEffect.Volume, look => look.WithVolume(look.Volume!.WithLevel(_volume.Value / 100.0)));
         };
         _mute.CheckedChanged += (_, _) => ChangeLook(ImageEffect.Volume, look => look.WithVolume(look.Volume!.WithMuted(_mute.Checked)));
-        _toolTip.SetToolTip(_backgroundAutomatic, Strings.MainBackgroundAutomaticTip);
         this._backgroundColor.Describe(this._toolTip, Strings.MainBackgroundColorTarget, Strings.MainBackgroundColorNote);
-        _backgroundAutomatic.CheckedChanged += (_, _) => SetBackgroundAutomatic();
         _backgroundOpacity.ValueChanged += (_, _) =>
         {
             _backgroundOpacityLabel.Text = OpacityText(_backgroundOpacity.Value);
@@ -4571,15 +4569,6 @@ internal sealed partial class MainForm : Form
     };
 
     /// <summary>
-    /// Checked, the automatic color again, the chosen one dropped; unchecked, the automatic color of the
-    /// moment frozen as the chosen one.
-    /// </summary>
-    private void SetBackgroundAutomatic() =>
-        ChangeLook(ImageEffect.Background, look => look.WithBackground(_backgroundAutomatic.Checked
-            ? look.Background!.WithAutomatic()
-            : look.Background!.WithColor(_preview.SelectedAutomaticBackground ?? Color.White)));
-
-    /// <summary>
     /// The Background's color routes: the selected cell's background follows the color shown, the Background on
     /// meanwhile; the color taken leaves the automatic mode — Automatic color unchecked, the Background on — and a
     /// cancel gives the cell its look back (workfiles/20261021-color-eyedropper.md).
@@ -4721,9 +4710,9 @@ internal sealed partial class MainForm : Form
             });
     }
 
-    /// <summary>The color in use: the automatic one of the selected cell, or the chosen one.</summary>
+    /// <summary>The color in use: its From's — the automatic one of the selected cell, black, white or the chosen one.</summary>
     private Color BackgroundShown(BackgroundEffect background) =>
-        background.Automatic ? _preview.SelectedAutomaticBackground ?? Color.White : background.Color;
+        background.FirstFor(background.Automatic ? this._preview.SelectedAutomaticBackground ?? Color.White : Color.White);
 
     /// <summary>The color button's swatch, drawn again only when the color changes: the options follow every move.</summary>
     private void ShowBackgroundColor(Color color)
@@ -4777,7 +4766,6 @@ internal sealed partial class MainForm : Form
             // The automatic color is computed only while the tab shows: it changes with every zoom or move.
             if (look.TurnOn(ImageEffect.Background).Background is { } background)
             {
-                _backgroundAutomatic.Checked = background.Automatic;
                 _backgroundOpacity.Value = (int)Math.Round(background.Opacity * 100);
                 this._backgroundFill.Selected = background.Mode;
                 this._backgroundBlend.Value = (int)Math.Round(background.Blend * 100);

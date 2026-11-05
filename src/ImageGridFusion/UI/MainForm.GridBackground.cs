@@ -21,6 +21,9 @@ internal sealed partial class MainForm
     // The cell Background's gradient options, beside its color.
     private FillControls? _backgroundStyle;
 
+    /// <summary>The cell Background's From: where its first color comes from (workfiles/20261105-cell-background-auto-colors.md).</summary>
+    private ColorChoiceBox<FirstColor>? _backgroundFirst;
+
     // The Grid background's settings, kept while it is off; back to their initial state, off, with its Resets and Clear all.
     private GridBackground _gridBackground = GridBackground.Initial;
     private bool _gridBackgroundOn;
@@ -37,7 +40,7 @@ internal sealed partial class MainForm
     /// <summary>The Grid background's options in its row of the global options toolbar, and their events.</summary>
     private void BuildGridBackgroundOptions()
     {
-        this._gridFill = new FillControls(offersAuto: true, this.GridSecondSwatch);
+        this._gridFill = new FillControls(Strings.PanelFillSecondAuto, Strings.PanelFillSecondTip, this.GridSecondSwatch);
         var firstLine = OptionLine();
         firstLine.Controls.AddRange([this._gridBackgroundColor, this._gridBackgroundOpacityIcon, this._gridBackgroundOpacity, this._gridBackgroundOpacityLabel, .. this._gridFill.AngleControls]);
         var lines = OptionLine();
@@ -62,15 +65,22 @@ internal sealed partial class MainForm
 
     /// <summary>
     /// The cell Background's options, one feature per line (workfiles/20261104-options-toolbar-layout.md): the fill
-    /// modes, the gradient's kinds and angle, the color, the gradient's second color, the extended edges.
+    /// modes, the gradient's kinds and angle, the color — its From —, the gradient's second color, the extended edges.
     /// </summary>
     private void BuildBackgroundOptions(FeatureLinesPanel lines)
     {
-        this._backgroundStyle = new FillControls(offersAuto: false, this.BackgroundSecondSwatch);
+        this._backgroundStyle = new FillControls(Strings.PanelFillAutoCell, Strings.PanelFillAutoCellTip, this.BackgroundSecondSwatch);
         var style = this._backgroundStyle;
+        this._backgroundFirst = new ColorChoiceBox<FirstColor>(Enum.GetValues<FirstColor>(), FirstColorText, this.BackgroundFirstSwatch)
+        {
+            Width = 150,
+            DropDownWidth = 170,
+        };
+        this._backgroundFirst.Picked += (_, first) => this.SetBackgroundFirst(first);
+        this._toolTip.SetToolTip(this._backgroundFirst, Strings.MainBackgroundFirstTip);
         lines.AddLine(Strings.MainLineFill, this._backgroundFill);
         lines.AddLine(Strings.MainLineGradient, style.Kind, new SliderBox(style.Angle, style.AngleLabel));
-        lines.AddLine(this._backgroundAutomatic, this._backgroundColor, new SliderBox(this._backgroundOpacity, this._backgroundOpacityLabel, this._backgroundOpacityIcon));
+        lines.AddLine(this._backgroundFirstCaption, this._backgroundFirst, this._backgroundColor, new SliderBox(this._backgroundOpacity, this._backgroundOpacityLabel, this._backgroundOpacityIcon));
         lines.AddLine(style.SecondCaption, style.Second, style.SecondButton, new SliderBox(style.SecondOpacity, style.SecondOpacityLabel, style.SecondOpacityIcon));
         lines.AddLine(
             Strings.MainLineEdges,
@@ -209,12 +219,42 @@ internal sealed partial class MainForm
         }
 
         this._backgroundStyle.Show(background.Style);
+        if (this._backgroundFirst is not null)
+        {
+            this._backgroundFirst.Choice = background.First;
+            this._backgroundFirstCaption.Text = background.Style.IsGradient ? Strings.PanelFillFrom : Strings.MainLineColor;
+        }
+
         if (this._selectedEffect == ImageEffect.Background)
         {
-            this.SetSwatch(this._backgroundStyle.SecondButton.Dialog, background.Style.SecondFor(this.BackgroundShown(background), null));
+            this.SetSwatch(this._backgroundStyle.SecondButton.Dialog, background.Style.SecondFor(this.BackgroundShown(background), this._preview.SelectedAutomaticBackground));
             this._backgroundStyle.Second.Invalidate();
+            this._backgroundFirst?.Invalidate();
         }
     }
+
+    private static string FirstColorText(FirstColor first) => first switch
+    {
+        FirstColor.Auto => Strings.PanelFillAutoCell,
+        FirstColor.Black => Strings.PanelFillSecondBlack,
+        FirstColor.White => Strings.PanelFillSecondWhite,
+        _ => Strings.PanelFillSecondChosen,
+    };
+
+    /// <summary>The swatch of a cell Background's From choice: the color it gives the selected cell now — Chosen, the color it would keep.</summary>
+    private Color BackgroundFirstSwatch(FirstColor first) =>
+        this._preview.SelectedImage?.Look.TurnOn(ImageEffect.Background).Background is { } background
+            ? first == FirstColor.Chosen ? this.BackgroundShown(background) : background.WithFirst(first).FirstFor(this._preview.SelectedAutomaticBackground ?? Color.White)
+            : BackgroundEffect.Default.WithFirst(first).FirstFor(Color.White);
+
+    /// <summary>
+    /// From picked: Auto, Black or White drop the chosen color; Chosen freezes the color in use at that moment as
+    /// the chosen one — what unchecking <i>Automatic color</i> did.
+    /// </summary>
+    private void SetBackgroundFirst(FirstColor first) =>
+        this.ChangeLook(ImageEffect.Background, look => look.WithBackground(first == FirstColor.Chosen
+            ? look.Background!.WithColor(this.BackgroundShown(look.Background!))
+            : look.Background!.WithFirst(first)));
 
     /// <summary>The swatch of a Grid background's second color choice: the color it gives now.</summary>
     private Color GridSecondSwatch(SecondColor choice) =>
@@ -223,7 +263,7 @@ internal sealed partial class MainForm
     /// <summary>The swatch of a cell Background's second color choice: the color it gives the selected cell now.</summary>
     private Color BackgroundSecondSwatch(SecondColor choice) =>
         this._preview.SelectedImage?.Look.TurnOn(ImageEffect.Background).Background is { } background
-            ? background.Style.WithSecond(choice).SecondFor(this.BackgroundShown(background), null)
+            ? background.Style.WithSecond(choice).SecondFor(this.BackgroundShown(background), this._preview.SelectedAutomaticBackground)
             : FillStyle.Cell.WithSecond(choice).SecondFor(Color.White, null);
 
     /// <summary>
@@ -277,7 +317,7 @@ internal sealed partial class MainForm
         var on = original.TurnOn(ImageEffect.Background);
         var background = on.Background!;
         return new ColorRoute(
-            background.Style.SecondFor(this.BackgroundShown(background), null),
+            background.Style.SecondFor(this.BackgroundShown(background), this._preview.SelectedAutomaticBackground),
             color => this._preview.SetSelectedLook(on.WithBackground(background.WithStyle(background.Style.WithSecondChosen(color)))),
             () =>
             {
@@ -297,18 +337,22 @@ internal sealed partial class MainForm
     /// </summary>
     private sealed class FillControls
     {
-        private readonly SecondColor[] _choices;
-        private readonly Func<SecondColor, Color> _swatchOf;
+        private readonly string _autoTip;
 
-        public FillControls(bool offersAuto, Func<SecondColor, Color> swatchOf)
+        /// <summary>
+        /// The options of a fill whose <see cref="SecondColor.Auto"/> reads <paramref name="autoText"/> — the Grid
+        /// background's last cell, a cell's own automatic color — explained by <paramref name="autoTip"/>.
+        /// </summary>
+        public FillControls(string autoText, string autoTip, Func<SecondColor, Color> swatchOf)
         {
-            this._choices = offersAuto ? Enum.GetValues<SecondColor>() : [.. Enum.GetValues<SecondColor>().Where(c => c != Composition.SecondColor.Auto)];
-            this._swatchOf = swatchOf;
+            this._autoTip = autoTip;
+            this.Second = new ColorChoiceBox<SecondColor>(Enum.GetValues<SecondColor>(), choice => ChoiceText(choice, autoText), swatchOf)
+            {
+                Width = 150,
+                DropDownWidth = 170,
+            };
             this.Angle.Width = 120;
             this.SecondOpacity.Width = 110;
-            this.Second.Items.AddRange([.. this._choices.Select(ChoiceText)]);
-            this.Second.DropDownWidth = 170;
-            this.Second.DrawItem += (_, e) => this.DrawChoice(e);
             this.AngleControls = [this.Angle, this.AngleLabel];
             this.SecondControls = [this.SecondCaption, this.Second, this.SecondButton, this.SecondOpacityIcon, this.SecondOpacity, this.SecondOpacityLabel];
             this.SecondLine = OptionLine();
@@ -319,14 +363,7 @@ internal sealed partial class MainForm
                 this.AngleLabel.Text = GradientAngleText(this.Angle.Value);
                 this.Changed?.Invoke(style => style.WithAngle(this.Angle.Value));
             };
-            this.Second.SelectionChangeCommitted += (_, _) =>
-            {
-                if (this.Second.SelectedIndex >= 0)
-                {
-                    var choice = this._choices[this.Second.SelectedIndex];
-                    this.Changed?.Invoke(style => style.WithSecond(choice));
-                }
-            };
+            this.Second.Picked += (_, choice) => this.Changed?.Invoke(style => style.WithSecond(choice));
             this.SecondOpacity.ValueChanged += (_, _) =>
             {
                 this.SecondOpacityLabel.Text = OpacityText(this.SecondOpacity.Value);
@@ -345,13 +382,7 @@ internal sealed partial class MainForm
 
         public Label SecondCaption { get; } = new() { Text = Strings.PanelFillTo, AutoSize = true, Anchor = AnchorStyles.Left };
 
-        public ComboBox Second { get; } = new()
-        {
-            DropDownStyle = ComboBoxStyle.DropDownList,
-            DrawMode = DrawMode.OwnerDrawFixed,
-            Width = 150,
-            Anchor = AnchorStyles.Left,
-        };
+        public ColorChoiceBox<SecondColor> Second { get; }
 
         public ColorSplitButton SecondButton { get; } = new();
 
@@ -373,7 +404,7 @@ internal sealed partial class MainForm
         public void Describe(ToolTip toolTip, string target)
         {
             toolTip.SetToolTip(this.Angle, Texts.Format(Strings.PanelFillAngleTip, target));
-            toolTip.SetToolTip(this.Second, Strings.PanelFillSecondTip);
+            toolTip.SetToolTip(this.Second, this._autoTip);
             toolTip.SetToolTip(this.SecondOpacity, Strings.PanelFillSecondOpacityTip);
             this.SecondButton.Describe(toolTip, Strings.PanelFillSecondTarget, Strings.PanelFillSecondNote);
         }
@@ -383,8 +414,7 @@ internal sealed partial class MainForm
         {
             this.Kind.Selected = style.Kind;
             this.Angle.Value = Math.Clamp(style.Angle, this.Angle.Minimum, this.Angle.Maximum);
-            int index = Array.IndexOf(this._choices, style.Second);
-            this.Second.SelectedIndex = index;
+            this.Second.Choice = style.Second;
             this.SecondOpacity.Value = (int)Math.Round(style.SecondOpacity * 100);
             this.AngleLabel.Text = GradientAngleText(this.Angle.Value);
             this.SecondOpacityLabel.Text = OpacityText(this.SecondOpacity.Value);
@@ -397,45 +427,14 @@ internal sealed partial class MainForm
             }
         }
 
-        private static string ChoiceText(SecondColor choice) => choice switch
+        private static string ChoiceText(SecondColor choice, string autoText) => choice switch
         {
-            Composition.SecondColor.Auto => Strings.PanelFillSecondAuto,
+            Composition.SecondColor.Auto => autoText,
             Composition.SecondColor.Darker => Strings.PanelFillSecondDarker,
             Composition.SecondColor.Black => Strings.PanelFillSecondBlack,
             Composition.SecondColor.White => Strings.PanelFillSecondWhite,
             Composition.SecondColor.Chosen => Strings.PanelFillSecondChosen,
             _ => choice.ToString(),
         };
-
-        /// <summary>A choice of the drop-down: the swatch of the color it gives now, then its name.</summary>
-        private void DrawChoice(DrawItemEventArgs e)
-        {
-            e.DrawBackground();
-            if (e.Index < 0)
-            {
-                return;
-            }
-
-            var choice = this._choices[e.Index];
-            bool disabled = (e.State & DrawItemState.Disabled) != 0 || !this.Second.Enabled;
-            bool selected = (e.State & DrawItemState.Selected) != 0;
-            int size = this.Second.LogicalToDeviceUnits(14), gap = this.Second.LogicalToDeviceUnits(3);
-            var corner = new Size(this.Second.LogicalToDeviceUnits(5), this.Second.LogicalToDeviceUnits(5));
-            var swatch = new Rectangle(e.Bounds.X + gap, e.Bounds.Y + (e.Bounds.Height - size) / 2, size - 1, size - 1);
-            var g = e.Graphics;
-            var smoothing = g.SmoothingMode;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            using (var fill = new SolidBrush(Color.FromArgb(disabled ? 96 : 255, this._swatchOf(choice))))
-            {
-                g.FillRoundedRectangle(fill, swatch, corner);
-            }
-
-            g.DrawRoundedRectangle(SystemPens.ControlDark, swatch, corner);
-            g.SmoothingMode = smoothing;
-            int x = swatch.Right + 1 + gap;
-            var color = disabled ? SystemColors.GrayText : selected ? SystemColors.HighlightText : e.ForeColor;
-            TextRenderer.DrawText(g, ChoiceText(choice), e.Font ?? this.Second.Font, new Rectangle(x, e.Bounds.Y, Math.Max(0, e.Bounds.Right - x), e.Bounds.Height), color, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
-            e.DrawFocusRectangle();
-        }
     }
 }

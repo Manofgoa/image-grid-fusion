@@ -417,7 +417,8 @@ public static class Compositor
         // none while the effect is off, the cell left transparent — but for the seams fading into it.
         if (look.Background is { } background)
         {
-            var automatic = background.Automatic ? frame.BandColor.For(bitmapPart, frame.Bitmap.Size) : background.Color;
+            // Read only when the source or a gradient's To is Auto: white stands for it, unused, otherwise.
+            var automatic = background.NeedsAutomatic ? frame.BandColor.For(bitmapPart, frame.Bitmap.Size) : Color.White;
             DrawBackground(g, background, automatic, look.Colors, cell, EdgeExtension.Covered(fit.Destination, cell, turn is not null), DrawImage, fast, seams);
         }
         else
@@ -476,17 +477,18 @@ public static class Compositor
             return null;
         }
 
-        var fill = background.Fill(background.Automatic ? AutomaticBackground(frame, cell) : background.Color);
+        var fill = background.Fill(background.Automatic ? AutomaticBackground(frame, cell) : Color.White);
         return look.Colors?.Apply(fill) ?? fill;
     }
 
     /// <summary>
-    /// The background of <paramref name="cell"/>: the flat fill — <paramref name="automatic"/> or the
-    /// chosen color, at the opacity, turned by <paramref name="colors"/> — or, in an extending
+    /// The background of <paramref name="cell"/>: the flat fill — its source's color, <paramref name="automatic"/>
+    /// for Auto, at the opacity, turned by <paramref name="colors"/> — or, in an extending
     /// mode with bands around the image's place <paramref name="covered"/>, the image's edges extended:
     /// read from the image alone, which <paramref name="drawImage"/> draws at the cell's size. The flat
     /// fill fades into the neighbours' along the <paramref name="seams"/>; an extending mode never does. The fill
-    /// is the shared one: solid, or a gradient from it to the style's second color, under the extended edges too.
+    /// is the shared one: solid, or a gradient from it to the style's second color — <paramref name="automatic"/>
+    /// for Auto —, under the extended edges too.
     /// </summary>
     private static void DrawBackground(Graphics g, BackgroundEffect background, Color automatic, ColorsEffect? colors, Rectangle cell, Rectangle? covered, Action<Graphics> drawImage, bool fast, SeamField? seams)
     {
@@ -502,7 +504,7 @@ public static class Compositor
 
         if (!background.Extends || covered is not { } place)
         {
-            background.Style.Paint(g, cell, flat, null, adjust);
+            background.Style.Paint(g, cell, flat, automatic, adjust);
             return;
         }
 
@@ -521,7 +523,7 @@ public static class Compositor
             drawImage(ig);
         }
 
-        EdgeExtension.Draw(g, image, cell, place, background, fill, flat, adjust);
+        EdgeExtension.Draw(g, image, cell, place, background, fill, flat, automatic, adjust);
     }
 
     /// <summary>
@@ -570,7 +572,7 @@ public static class Compositor
         // In an extending mode, the edges of the whole image the view shows are extended.
         if (look.Background is { } background)
         {
-            var automatic = background.Automatic ? AutomaticBackground(frame, cell) : background.Color;
+            var automatic = background.NeedsAutomatic ? AutomaticBackground(frame, cell) : Color.White;
             DrawBackground(g, background, automatic, look.Colors, cell, EdgeExtension.Covered(image, cell, turned: false), DrawImage, fast: false, seams: null);
         }
 

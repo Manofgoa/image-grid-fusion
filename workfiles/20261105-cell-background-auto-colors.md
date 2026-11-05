@@ -185,6 +185,27 @@ it applies here, depending on whether `feature/french-translation` is merged whe
 translation session): the new texts go through `Strings.resx` / `Strings.fr.resx`, both in the same
 commit; the French docs quote the French labels. § Docs updated.
 
+### Iteration 7 — 2026-11-05 — 🧭 Implementation choices
+
+No project rule broken. Choices the design left open:
+
+- **One drop-down for From and To**: `UI/ColorChoiceBox<T>`, the swatch-then-name drawing moved out of
+  `FillControls`; `FillControls` takes its Auto's text and its tooltip from its user (`Auto, last cell` for the
+  Grid background, `Auto` for a cell) instead of `offersAuto`.
+- **The cell's To tooltip** says what its Auto is (`PanelFillAutoCellTip`); the Grid background's keeps its own.
+- **The band color is read only when needed** (`BackgroundEffect.NeedsAutomatic`: From Auto, or a gradient going
+  to Auto); white stands in, unused, otherwise.
+- **Presets**: `first` written, and `automatic` still written beside it, so an older build reads a Black or White
+  source as a chosen one rather than failing; `LookPreset.Describe` shows Black and White as `#000000` / `#FFFFFF`,
+  as a chosen color — no new text.
+- **Texts**: `MainAutomaticColor` and `MainBackgroundAutomaticTip` removed from both resx files; the caption
+  reuses `MainLineColor`; new keys `PanelFillFrom` (*From* / *De*), `PanelFillAutoCell`, `PanelFillAutoCellTip`,
+  `MainBackgroundFirstTip`; `MainBackgroundColorNote` reworded (*sets the color to Chosen*).
+- **RULES.md**: § The Shared Fill gains who gives Auto; § Options Toolbar's list of non-thumbnail controls drops
+  *Automatic color* and adds the fills' From and To.
+- Noticed, not changed: README § Background still says the fill's settings sit on *three lines beside the
+  thumbnails*, from before `options-toolbar-layout` — outside this scope.
+
 ---
 
 ## Implementation Log
@@ -194,9 +215,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project in the repository |
-| README | | | |
+| Code | 7 | 2026-11-05 | Model and painter, then the options and the texts (EN + FR) |
+| Unit tests | 7 | 2026-11-05 | None: no test project in the repository — checked by hand in the app |
+| README | 7 | 2026-11-05 | README, GLOSSARY in English and French, RULES.md |
 
 ---
 
