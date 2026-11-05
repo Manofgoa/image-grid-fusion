@@ -153,6 +153,11 @@ Open questions answered (Q&A 5–8), every proposal kept: a letter ↔ digit cha
 case change does not; the name stays before the subfolders; the favorites' names ranked alike. § Words
 and Their Boundaries updated.
 
+### Iteration 3 — 2026-11-05 — ✅ Implemented
+
+Go given: code and documentation (no test project), in the worktree
+`.claude/worktrees/whole-word-search-ranking`, branch `feature/whole-word-search-ranking`.
+
 ---
 
 ## Implementation Log
