@@ -1211,6 +1211,30 @@ The file explorer's lists in sections under titled headers (origin: `workfiles/2
   (`AppSettings.ExplorerGroups`, `ExplorerPatternsOff`) — 📚 and the submenu's **Series** one state; out of the
   undo history.
 
+## Secondary Sources
+
+Other folders shown in the folder view beside the base folder, each indexed apart (origin:
+`workfiles/20261105-secondary-file-sources.md`), `Explorer/SecondarySources`, `UI/FileExplorerPanel.Sources.cs`:
+
+- **Kept in the settings** (`AppSettings.SecondarySources`), managed in the ⚙ menu's window (`UI/SecondarySourcesWindow`);
+  a source never overlaps the base folder nor another source (`SecondarySources.Refusal`), so a file belongs to one
+  index only — the base folder chosen is refused too when it would overlap one.
+- **One index per source**, its four files in `index\secondary-sources\<id>\` (`IndexFiles.Of`), never the base folder's
+  `_index` / `_contents` / `_faces` / `_vision`: a new reader of the explorer's index reads the root a file belongs to
+  (`Locate`, `AnyEntryOf`), the folder view's through `ViewIndex` / `ViewContents` / `ViewTree`. A removed source's index
+  is deleted once its work is over.
+- **Read when opened, never at start-up**: its list of files is scanned when its tile is opened; only its faces and
+  embeddings are loaded at start-up, from its files, for the two places it is read outside its folder.
+- **Searched only while open**: the search view and the base folder's searches never reach a source. **Two exceptions**:
+  its faces join the People view (`Regroup` gathers every root's), and its images are among the similar images
+  (`SimilarRows`). A new reader beyond them leaves the sources out.
+- **Analysed on demand**: 🔄 inside a source scans it and runs the passes over it (`StartSourceRun`, `Extract` with its
+  `IndexFiles`); one worker at a time, the base folder's passes waiting (`StartExtraction` returns while `_sourceRun` is
+  set); leaving the source — another folder, another view, a setting changed — pauses it (`PauseSourceRun`). The base
+  folder's automatic runs never start a source's.
+- **In blue**: a source's tile, every folder inside it (`ExplorerRow.InSource`) and its breadcrumb segments; a source not
+  found stays, faded (`ExplorerRow.Unavailable`). Not remembered as the open folder.
+
 ## Keyboard Shortcuts
 
 Every shortcut of the app is documented, in one place (origin: `workfiles/20261029-shortcuts-list.md`):
