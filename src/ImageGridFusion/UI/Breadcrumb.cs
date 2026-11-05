@@ -15,11 +15,17 @@ internal sealed class Breadcrumb : Control
     private const int Spacing = 4;
     private const string Separator = " › ";
     private const string Ellipsis = "…";
+
+    /// <summary>The blue a secondary source's segments are written in.</summary>
+    private static readonly Color SourceColor = Color.FromArgb(0, 84, 190);
     private const TextFormatFlags Flags = TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.VerticalCenter;
 
     private readonly ToolTip _toolTip = new();
     private readonly List<(Rectangle Bounds, int Depth)> _links = [];
     private IReadOnlyList<string> _segments = [];
+
+    // The first segment of a secondary source, drawn in its blue from there on; int.MaxValue for none.
+    private int _sourceFrom = int.MaxValue;
     private string _trailing = "";
     private Rectangle _up;
 
@@ -41,10 +47,15 @@ internal sealed class Breadcrumb : Control
     /// <summary>Whether the ↑ button leads anywhere: the open folder is below the base folder.</summary>
     private bool CanGoUp => _segments.Count > 1;
 
-    /// <summary>The path shown — the base folder's name first — and the text after it.</summary>
-    public void SetPath(IReadOnlyList<string> segments, string trailing)
+    /// <summary>
+    /// The path shown — the base folder's name first — and the text after it; the segments from
+    /// <paramref name="sourceFrom"/> on are a secondary source's, drawn in blue (workfiles/20261105-secondary-file-sources.md
+    /// § In the Folder View).
+    /// </summary>
+    public void SetPath(IReadOnlyList<string> segments, string trailing, int sourceFrom = int.MaxValue)
     {
         _segments = segments;
+        this._sourceFrom = sourceFrom;
         _trailing = trailing;
         _hovered = int.MinValue;
         _toolTip.SetToolTip(this, null);
@@ -116,7 +127,7 @@ internal sealed class Breadcrumb : Control
             {
                 // The open folder: cut with an ellipsis rather than dropped.
                 var bounds = new Rectangle(x, 0, Math.Max(0, Math.Min(widths[depth], limit - x)), ClientSize.Height);
-                TextRenderer.DrawText(g, _segments[depth], Font, bounds, SystemColors.ControlText, Flags | TextFormatFlags.EndEllipsis);
+                TextRenderer.DrawText(g, _segments[depth], Font, bounds, depth >= this._sourceFrom ? SourceColor : SystemColors.ControlText, Flags | TextFormatFlags.EndEllipsis);
                 x = bounds.Right;
                 break;
             }
@@ -124,7 +135,7 @@ internal sealed class Breadcrumb : Control
             _links.Add((new Rectangle(x, 0, widths[depth], ClientSize.Height), depth));
             using (var font = _hovered == depth ? new Font(Font, FontStyle.Underline) : null)
             {
-                x = Draw(g, _segments[depth], x, SystemColors.HotTrack, font ?? Font);
+                x = Draw(g, _segments[depth], x, depth >= this._sourceFrom ? SourceColor : SystemColors.HotTrack, font ?? Font);
             }
 
             x = Draw(g, Separator, x, SystemColors.GrayText, Font);
