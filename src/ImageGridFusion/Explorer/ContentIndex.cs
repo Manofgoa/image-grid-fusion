@@ -113,12 +113,11 @@ internal sealed class ContentIndex
     public int Count => this._texts.Count;
 
     /// <summary>
-    /// How reliably a file's content holds <paramref name="foldedWord"/> — accents and case ignored —
-    /// the best way any slot holds it (<see cref="ContentGrade"/>); null when no slot does, or the file
-    /// has no text yet.
+    /// How a file's content holds <paramref name="foldedWord"/> — accents and case ignored — the best way
+    /// any slot holds it (<see cref="ContentHit"/>); null when no slot does, or the file has no text yet.
     /// </summary>
-    public ContentGrade? GradeOf(string relativePath, string foldedWord) =>
-        this._texts.TryGetValue(relativePath, out var text) && Find(text, foldedWord) is var (_, _, grade) ? grade : null;
+    public ContentHit? HitOf(string relativePath, string foldedWord) =>
+        this._texts.TryGetValue(relativePath, out var text) && Find(text, foldedWord) is var (_, _, grade, level) ? new ContentHit(grade, level) : null;
 
     /// <summary>
     /// The words of a file's text around the first one holding <paramref name="foldedWord"/> — accents
@@ -146,7 +145,7 @@ internal sealed class ContentIndex
     /// </summary>
     public (string[] Words, int At)? WordsAround(string relativePath, string foldedWord)
     {
-        if (!this._texts.TryGetValue(relativePath, out var text) || Find(text, foldedWord) is not var (slot, joined, _))
+        if (!this._texts.TryGetValue(relativePath, out var text) || Find(text, foldedWord) is not var (slot, joined, _, _))
         {
             return null;
         }
@@ -174,7 +173,7 @@ internal sealed class ContentIndex
     /// </summary>
     public RectangleF? SpotOf(string relativePath, string foldedWord)
     {
-        if (!this._texts.TryGetValue(relativePath, out var text) || Find(text, foldedWord) is not var (slot, joined, _) || slot.Boxes is not { } boxes)
+        if (!this._texts.TryGetValue(relativePath, out var text) || Find(text, foldedWord) is not var (slot, joined, _, _) || slot.Boxes is not { } boxes)
         {
             return null;
         }
@@ -363,17 +362,20 @@ internal sealed class ContentIndex
 
     /// <summary>
     /// The slot holding <paramref name="foldedWord"/> best, whether it holds it only once its spaces are
-    /// removed, and the grade: a sure slot holding it as a word first, then a sure slot once joined —
-    /// for a word of <see cref="FileSearch.JoinedMinLength"/> characters or more, in words the OCR
-    /// recognised — then a weak slot either way; each in the slots' order. Only then the tags and the
-    /// caption: one holding it as a whole word, then one holding it inside a longer word.
+    /// removed, the grade and the level: a sure slot holding it as a word first, then a sure slot once
+    /// joined — for a word of <see cref="FileSearch.JoinedMinLength"/> characters or more, in words the OCR
+    /// recognised — then a weak slot either way. Only then the tags and the caption: one holding it as a
+    /// whole word, then one holding it at a word's start or inside one. Within a grade, the slot holding it
+    /// at its best level (<see cref="FileSearch.LevelOf"/>), the first in the slots' order on a tie; a word
+    /// found joined is inside one. See workfiles/20261105-whole-word-search-ranking.md § Content Ranking.
     /// </summary>
-    private static (SlotText Slot, bool Joined, ContentGrade Grade)? Find(ContentText text, string foldedWord)
+    private static (SlotText Slot, bool Joined, ContentGrade Grade, WordLevel Level)? Find(ContentText text, string foldedWord)
     {
         bool canJoin = foldedWord.Length >= FileSearch.JoinedMinLength;
-        (SlotText, bool, ContentGrade)? joined = null;
-        (SlotText, bool, ContentGrade)? weak = null;
-        (SlotText, bool, ContentGrade)? seenInside = null;
+        (SlotText Slot, bool Joined, ContentGrade Grade, WordLevel Level)? sure = null;
+        (SlotText Slot, bool Joined, ContentGrade Grade, WordLevel Level)? joined = null;
+        (SlotText Slot, bool Joined, ContentGrade Grade, WordLevel Level)? weak = null;
+        (SlotText Slot, bool Joined, ContentGrade Grade, WordLevel Level)? seen = null;
         for (int i = 0; i < text.Slots.Length; i++)
         {
             if (text.Slots[i] is not { } slot)
@@ -381,39 +383,49 @@ internal sealed class ContentIndex
                 continue;
             }
 
+            var inWords = FileSearch.LevelOf(slot.Folded, foldedWord);
             if (ContentPasses.IsSeen((ContentSlot)i))
             {
-                if (joined is null && weak is null && slot.Folded.Contains(foldedWord, StringComparison.Ordinal))
+                if (inWords is { } level && (seen is null || level < seen.Value.Level))
                 {
-                    if (slot.Folded.Split(' ').Contains(foldedWord, StringComparer.Ordinal))
-                    {
-                        return (slot, false, ContentGrade.Seen);
-                    }
-
-                    seenInside ??= (slot, false, ContentGrade.SeenInside);
+                    seen = (slot, false, level == WordLevel.Whole ? ContentGrade.Seen : ContentGrade.SeenInside, level);
                 }
 
                 continue;
             }
 
-            bool inWords = slot.Folded.Contains(foldedWord, StringComparison.Ordinal);
             // Only the OCR reads letters apart: a text read as text is not joined.
-            bool inJoined = !inWords && canJoin && slot.HasBoxes && slot.Joined.Contains(foldedWord, StringComparison.Ordinal);
+            bool inJoined = inWords is null && canJoin && slot.HasBoxes && slot.Joined.Contains(foldedWord, StringComparison.Ordinal);
             if (ContentPasses.IsWeak((ContentSlot)i))
             {
-                weak ??= inWords || inJoined ? (slot, inJoined, ContentGrade.Weak) : null;
+                if (inWords is { } level && (weak is null || level < weak.Value.Level))
+                {
+                    weak = (slot, false, ContentGrade.Weak, level);
+                }
+                else if (inJoined)
+                {
+                    weak ??= (slot, true, ContentGrade.Weak, WordLevel.Inside);
+                }
             }
-            else if (inWords)
+            else if (inWords is { } level)
             {
-                return (slot, false, ContentGrade.Sure);
+                if (sure is null || level < sure.Value.Level)
+                {
+                    sure = (slot, false, ContentGrade.Sure, level);
+                }
+
+                if (level == WordLevel.Whole)
+                {
+                    return sure;
+                }
             }
             else if (inJoined)
             {
-                joined ??= (slot, true, ContentGrade.Joined);
+                joined ??= (slot, true, ContentGrade.Joined, WordLevel.Inside);
             }
         }
 
-        return joined ?? weak ?? seenInside;
+        return sure ?? joined ?? weak ?? seen;
     }
 
     /// <summary>
