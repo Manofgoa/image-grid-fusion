@@ -54,6 +54,7 @@ internal static class AppSettings
     private const string ExportFolderName = "LastExportFolder";
     private const string CustomColorsName = "CustomColors";
     private const string CustomColorsNextName = "CustomColorsNext";
+    private const string LanguageName = "Language";
 
     /// <summary>
     /// The names the settings had as registry values, in the same types (DWORD → int, string → string):
@@ -145,6 +146,22 @@ internal static class AppSettings
 
     /// <summary>Saves the video size; throws an <see cref="IsSaveError"/> exception on failure.</summary>
     public static void SaveVideoMaxSide(int side) => Save((VideoMaxSideName, side));
+
+    /// <summary>The UI language when nothing was saved: English.</summary>
+    public const string DefaultLanguage = "en";
+
+    /// <summary>The UI languages the ⚙ menu offers, by their culture name.</summary>
+    public static readonly string[] Languages = [DefaultLanguage, "fr"];
+
+    /// <summary>
+    /// The UI language, one of <see cref="Languages"/> — <see cref="DefaultLanguage"/> when nothing was saved or the
+    /// value is none of them. Read once, at start-up (<c>Program.Main</c>): a change applies at the next start.
+    /// See workfiles/20261105-french-translation.md § UI Language Setting.
+    /// </summary>
+    public static string Language => Text(LanguageName) is { } value && Languages.Contains(value) ? value : DefaultLanguage;
+
+    /// <summary>Saves the UI language; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveLanguage(string language) => Save((LanguageName, language));
 
     /// <summary>The folder the file explorer indexes, with its subfolders; null when none was saved.</summary>
     public static string? ExplorerFolder => Text(ExplorerFolderName);

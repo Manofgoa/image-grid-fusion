@@ -4,6 +4,7 @@ using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using ImageGridFusion.Composition;
 using ImageGridFusion.Imaging;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -427,8 +428,8 @@ internal sealed partial class GridPreview
         }
 
         string dots = new('.', 1 + (int)(Environment.TickCount64 / CutoutBadgeTick % 3));
-        return this._cutouts?.IsWorking(image) == true ? $"✂ Cutting out{dots}"
-            : image.Look.Cutout?.NeedsEngine == true && !CutoutEngineFiles.IsAvailable ? "✂ Waiting for the cutout engine"
+        return this._cutouts?.IsWorking(image) == true ? Texts.Format(Strings.UiBadgeCuttingOut, dots)
+            : image.Look.Cutout?.NeedsEngine == true && !CutoutEngineFiles.IsAvailable ? Strings.UiBadgeWaitingEngine
             : null;
     }
 

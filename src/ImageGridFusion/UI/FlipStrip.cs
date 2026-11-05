@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Drawing.Drawing2D;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -61,11 +62,11 @@ internal sealed class FlipStrip : ThumbnailStrip<FlipAxis>
 
     protected override bool IsPressed(FlipAxis axis) => axis == FlipAxis.Horizontal ? this._flipX : this._flipY;
 
-    protected override string Label(FlipAxis axis) => axis.ToString();
+    protected override string Label(FlipAxis axis) => axis == FlipAxis.Horizontal ? Strings.UiFlipHorizontal : Strings.UiFlipVertical;
 
     protected override string Tip(FlipAxis axis) => axis == FlipAxis.Horizontal
-        ? "Mirrors the image left to right"
-        : "Mirrors the image top to bottom";
+        ? Strings.UiFlipHorizontalTip
+        : Strings.UiFlipVerticalTip;
 
     protected override void PaintThumbnail(Graphics g, FlipAxis axis, Rectangle box, bool pressed)
     {

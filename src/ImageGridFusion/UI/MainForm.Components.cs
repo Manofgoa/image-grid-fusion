@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using ImageGridFusion.Components;
 using ImageGridFusion.Imaging;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -34,7 +35,7 @@ internal sealed partial class MainForm : IComponentsHost
     public void ComponentsAtStart(string? manifestError, IReadOnlyList<string> swapped)
     {
         this._componentsStatusError = manifestError is not null;
-        this._componentsStatus = manifestError ?? (swapped.Count > 0 ? $"Updated at start-up: {string.Join(", ", swapped)}" : null);
+        this._componentsStatus = manifestError ?? (swapped.Count > 0 ? Texts.Format(Strings.PanelComponentsUpdatedAtStart, string.Join(", ", swapped)) : null);
     }
 
     private void ShowComponentsStatus()
@@ -89,7 +90,7 @@ internal sealed partial class MainForm : IComponentsHost
         this._emojiFontsOffered = true;
         this.ShowComponents(new ComponentNeed(
             ComponentRegistry.EmojiFontComponents,
-            "A text's emojis can be drawn in another emoji font than Windows' own, picked in the Emoji drop-down beside the text's font. If you close this window without installing one, the launch offers them no more."));
+            Strings.PanelComponentsEmojiOffer));
     }
 
     private void EmojiFontsOfferClosed()
@@ -111,7 +112,7 @@ internal sealed partial class MainForm : IComponentsHost
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            this.ShowStatus($"The emoji fonts' answer not remembered: {ex.Message}", error: true);
+            this.ShowStatus(Texts.Format(Strings.PanelComponentsEmojiAnswerNotSaved, ex.Message), error: true);
         }
     }
 
@@ -151,11 +152,13 @@ internal sealed partial class MainForm : IComponentsHost
         }
     }
 
+    void IComponentsHost.Restart() => this.RestartApp();
+
     /// <summary>
     /// Starts the exe again with this instance's second title and test flag — not its files —, the new process waiting for
-    /// this one to end; then quits as the tray's Exit does.
+    /// this one to end; then quits as the tray's Exit does. The Component updates window's restart and the language's.
     /// </summary>
-    void IComponentsHost.Restart()
+    internal void RestartApp()
     {
         var info = new ProcessStartInfo(Environment.ProcessPath ?? Application.ExecutablePath) { UseShellExecute = false };
         if (!this._savesWindowSize)
@@ -176,7 +179,7 @@ internal sealed partial class MainForm : IComponentsHost
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
         {
-            this.ShowStatus($"Couldn't start the app again: {ex.Message}", error: true);
+            this.ShowStatus(Texts.Format(Strings.PanelComponentsRestartFailed, ex.Message), error: true);
             return;
         }
 

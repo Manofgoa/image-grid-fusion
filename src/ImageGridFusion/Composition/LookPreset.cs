@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.Composition;
 
@@ -156,41 +157,71 @@ internal static class LookPreset
     public static IReadOnlyList<string> Describe(ImageLook look)
     {
         look = look.UnforcedBackground();
-        return Saved(look).Select(effect => $"{effect} — {Values(look, effect)}").ToList();
+        return Saved(look).Select(effect => Texts.Format(Strings.UiDescLine, EffectName(effect), Values(look, effect))).ToList();
     }
+
+    private static string EffectName(ImageEffect effect) => effect switch
+    {
+        ImageEffect.Background => Strings.UiEffectNameBackground,
+        ImageEffect.Crop => Strings.UiEffectNameCrop,
+        ImageEffect.Cutout => Strings.UiEffectNameCutout,
+        ImageEffect.Upscale => Strings.UiEffectNameUpscale,
+        ImageEffect.Zoom => Strings.UiEffectNameZoom,
+        ImageEffect.Animations => Strings.UiEffectNameAnimations,
+        ImageEffect.Rotate => Strings.UiEffectNameRotate,
+        ImageEffect.Flip => Strings.UiEffectNameFlip,
+        ImageEffect.Frames => Strings.UiEffectNameFrames,
+        ImageEffect.Colors => Strings.UiEffectNameColors,
+        ImageEffect.Blur => Strings.UiEffectNameBlur,
+        ImageEffect.Volume => Strings.UiEffectNameVolume,
+        _ => effect.ToString(),
+    };
+
+    private static string FillModeName(BackgroundFill mode) => mode switch
+    {
+        BackgroundFill.Color => Strings.UiDescFillColor,
+        BackgroundFill.CornerPixel => Strings.UiDescFillCornerPixel,
+        BackgroundFill.Miter => Strings.UiDescFillMiter,
+        _ => Strings.UiDescFillBackgroundCorners,
+    };
 
     private static string Values(ImageLook look, ImageEffect effect) => effect switch
     {
-        ImageEffect.Background => look.Background is not { } background ? "off, no fill"
-            : $"{(background.Automatic ? "automatic color" : $"#{background.Color.R:X2}{background.Color.G:X2}{background.Color.B:X2}")}, {Percent(background.Opacity)}, {background.Mode}{(background.Style.IsGradient ? $", {background.Style.Kind} gradient" : "")}",
-        ImageEffect.Crop => look.Crop!.SeenRatio(look) is { } ratio ? $"ratio {RatioName(ratio)}" : "free",
+        ImageEffect.Background => look.Background is not { } background ? Strings.UiDescOffNoFill
+            : Texts.Format(
+                Strings.UiDescBackground,
+                background.Automatic ? Strings.UiDescAutomaticColor : $"#{background.Color.R:X2}{background.Color.G:X2}{background.Color.B:X2}",
+                Percent(background.Opacity),
+                FillModeName(background.Mode),
+                !background.Style.IsGradient ? "" : background.Style.Kind == FillKind.Linear ? Strings.UiDescGradientLinear : Strings.UiDescGradientRadial),
+        ImageEffect.Crop => look.Crop!.SeenRatio(look) is { } ratio ? Texts.Format(Strings.UiDescRatio, RatioName(ratio)) : Strings.UiDescFree,
         ImageEffect.Cutout => look.Cutout!.Describe(),
         ImageEffect.Upscale => look.Upscale!.Describe(),
-        ImageEffect.Zoom => look.ZoomOnArrival ? "image moved, whole at arrival"
-            : look.ZoomFit != ZoomFit.None ? look.ZoomFit.ToString() : Percent(look.Zoom),
-        ImageEffect.Animations => $"{look.Motion!.Kind}, every {look.Motion.Cycle.TotalSeconds.ToString("0.#", CultureInfo.InvariantCulture)} s",
+        ImageEffect.Zoom => look.ZoomOnArrival ? Strings.UiDescZoomMoved
+            : look.ZoomFit != ZoomFit.None ? (look.ZoomFit == ZoomFit.Contain ? Strings.UiFitContain : Strings.UiFitFill) : Percent(look.Zoom),
+        ImageEffect.Animations => Texts.Format(Strings.UiDescMotion, Strings.UiDescMotionZoom, Texts.Number(look.Motion!.Cycle.TotalSeconds, "0.#")),
         ImageEffect.Rotate => $"{look.Angle:+0;-0;0}°",
         ImageEffect.Flip => (look.FlipX, look.FlipY) switch
         {
-            (true, true) => "horizontal and vertical",
-            (true, false) => "horizontal",
-            (false, true) => "vertical",
-            _ => "none",
+            (true, true) => Strings.UiDescFlipBoth,
+            (true, false) => Strings.UiDescFlipH,
+            (false, true) => Strings.UiDescFlipV,
+            _ => Strings.UiDescNone,
         },
         ImageEffect.Frames => Frames(look.Frames!),
-        ImageEffect.Colors => $"saturation {Signed(look.Colors!.Saturation)}, hue {look.Colors.Hue:+0;-0;0}°, brightness {Signed(look.Colors.Brightness)}, contrast {Signed(look.Colors.Contrast)}",
-        ImageEffect.Blur => $"{look.Blur!.Kind}, {Percent(look.Blur.Intensity)}",
-        ImageEffect.Volume => look.Volume!.IsMuted ? "muted" : Percent(look.Volume.Level),
+        ImageEffect.Colors => Texts.Format(Strings.UiDescColors, Signed(look.Colors!.Saturation), look.Colors.Hue, Signed(look.Colors.Brightness), Signed(look.Colors.Contrast)),
+        ImageEffect.Blur => Texts.Format(Strings.UiDescBlur, look.Blur!.Kind == BlurKind.Gaussian ? Strings.UiBlurGaussian : Strings.UiBlurPixelate, Percent(look.Blur.Intensity)),
+        ImageEffect.Volume => look.Volume!.IsMuted ? Strings.UiDescMuted : Percent(look.Volume.Level),
         _ => "",
     };
 
     private static string Frames(FramesEffect frames)
     {
-        string trim = frames.Last is { } last ? $"frames {frames.First} → {last}"
-            : frames.First > 0 ? $"from frame {frames.First}" : "whole";
-        return frames.Frozen ? $"{trim}, frozen"
-            : frames.Speed != FramesEffect.Default.Speed ? $"{trim}, starting at {Percent(frames.Position)}, {FramesEffect.SpeedText(frames.Speed)}"
-            : $"{trim}, starting at {Percent(frames.Position)}";
+        string trim = frames.Last is { } last ? Texts.Format(Strings.UiDescFramesRange, frames.First, last)
+            : frames.First > 0 ? Texts.Format(Strings.UiDescFramesFrom, frames.First) : Strings.UiDescFramesWhole;
+        return frames.Frozen ? Texts.Format(Strings.UiDescFrozen, trim)
+            : frames.Speed != FramesEffect.Default.Speed ? Texts.Format(Strings.UiDescStartingSpeed, trim, Percent(frames.Position), FramesEffect.SpeedText(frames.Speed))
+            : Texts.Format(Strings.UiDescStarting, trim, Percent(frames.Position));
     }
 
     private static string RatioName(double ratio) =>
@@ -198,7 +229,7 @@ internal static class LookPreset
         : CropEffect.Same(ratio, 4 / 3.0) ? "4:3"
         : CropEffect.Same(ratio, 16 / 9.0) ? "16:9"
         : CropEffect.Same(ratio, 9 / 16.0) ? "9:16"
-        : $"{ratio.ToString("0.##", CultureInfo.InvariantCulture)}:1";
+        : Texts.Number(ratio, "0.##") + ":1";
 
     private static string Percent(double value) => $"{Math.Round(value * 100)} %";
 

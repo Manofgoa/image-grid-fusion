@@ -90,6 +90,20 @@ internal static class Program
     }
 
     /// <summary>
+    /// The UI language, read once, before any code of the app runs — <see cref="Main"/> and every type initializer, such as
+    /// the components' purposes in <c>ComponentRegistry.All</c>: every text is looked up in it from then on, the background
+    /// threads' included; a change in the ⚙ menu applies at the next start. Only the UI culture: sorting and casing keep
+    /// the system's (workfiles/20261105-french-translation.md § UI Language Setting).
+    /// </summary>
+    [System.Runtime.CompilerServices.ModuleInitializer]
+    internal static void SetUiLanguage()
+    {
+        var uiCulture = Resources.Texts.CultureOf(AppSettings.Language);
+        System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = uiCulture;
+        System.Globalization.CultureInfo.CurrentUICulture = uiCulture;
+    }
+
+    /// <summary>
     /// The process id a restart gives (<see cref="MainForm.RestartWaitVariable"/>), waited for at most 30 s; the variable
     /// cleared, so the processes this one starts do not wait.
     /// </summary>

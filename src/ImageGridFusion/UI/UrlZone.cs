@@ -1,5 +1,6 @@
 using System.Drawing.Drawing2D;
 using ImageGridFusion.Imaging;
+using ImageGridFusion.Resources;
 using ImageGridFusion.Web;
 
 namespace ImageGridFusion.UI;
@@ -22,20 +23,20 @@ internal sealed class UrlZone : Panel
     private const int SeparatorBand = 7;
     private const int PreviewGap = 6;
 
-    private const string Placeholder = "Paste a URL (X post, image, video…)";
-    private const string EmptyCaption = "Load a URL, then drag its media into a cell";
-    private const string ResolvingCaption = "Looking for the media…";
-    private const string InstallLink = "Install yt-dlp…";
-    private const string CompanionsLink = "Install yt-dlp companions…";
-    private const string MergingCaption = "Joining the video and its sound…";
-    private const string GoneCaption = "The downloaded file is gone: load it again";
-    private const string ReadyTooltip = "Drag into a cell · right-click for more";
+    private static string Placeholder => Strings.CompUrlPlaceholder;
+    private static string EmptyCaption => Strings.CompUrlEmptyCaption;
+    private static string ResolvingCaption => Strings.CompUrlResolving;
+    private static string InstallLink => Strings.CompUrlInstallLink;
+    private static string CompanionsLink => Strings.CompUrlCompanionsLink;
+    private static string MergingCaption => Strings.CompUrlMerging;
+    private static string GoneCaption => Strings.CompUrlGone;
+    private static string ReadyTooltip => Strings.CompUrlReadyTooltip;
 
     private readonly TableLayoutPanel _layout = new() { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 2, Margin = Padding.Empty };
     private readonly UrlPreview _preview = new() { Dock = DockStyle.Fill, Margin = Padding.Empty };
     private readonly TableLayoutPanel _fieldRow = new() { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, AutoSize = true, Margin = Padding.Empty };
     private readonly TextBox _url = new() { PlaceholderText = Placeholder, Anchor = AnchorStyles.Left | AnchorStyles.Right, Margin = new Padding(0, 0, 3, 0) };
-    private readonly Button _load = new() { Text = "Load", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Anchor = AnchorStyles.Right, Enabled = false, Margin = Padding.Empty };
+    private readonly Button _load = new() { Text = Strings.CompUrlLoad, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Anchor = AnchorStyles.Right, Enabled = false, Margin = Padding.Empty };
     private readonly LinkLabel _caption = new() { Dock = DockStyle.Fill, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, Margin = Padding.Empty };
     private readonly ToolTip _toolTip = new();
 
@@ -68,7 +69,7 @@ internal sealed class UrlZone : Panel
         this._layout.Controls.Add(this._caption, 1, 1);
         this.Controls.Add(this._layout);
 
-        this._toolTip.SetToolTip(this._load, "Fetch the photo or video behind the URL");
+        this._toolTip.SetToolTip(this._load, Strings.CompUrlLoadTip);
         this._url.TextChanged += (_, _) => this._load.Enabled = this._url.Text.Trim().Length > 0;
         this._url.KeyDown += OnUrlKeyDown;
         this._load.Click += async (_, _) => await this.LoadAsync();
@@ -120,7 +121,7 @@ internal sealed class UrlZone : Panel
     {
         this.ComponentsRequested?.Invoke(this, new ComponentNeed(
             Components.ComponentRegistry.Of(Components.ComponentRegistry.Deno, Components.ComponentRegistry.Ffmpeg).Where(c => !c.IsInstalled).ToList(),
-            "yt-dlp loads the largest formats with its companions: Deno, the JavaScript runtime YouTube's formats need, and ffmpeg, which joins a video track and its sound. Load the URL again once they are installed."));
+            Strings.CompUrlCompanionsNeed));
         return Task.CompletedTask;
     }
 
@@ -152,7 +153,7 @@ internal sealed class UrlZone : Panel
         if (UrlResolver.Parse(this._url.Text) is not { } url)
         {
             this.CancelLoad();
-            this.ShowFailed("Not a web address");
+            this.ShowFailed(Strings.CompUrlNotAddress);
             return Task.CompletedTask;
         }
 
@@ -167,7 +168,7 @@ internal sealed class UrlZone : Panel
     {
         this.ComponentsRequested?.Invoke(this, new ComponentNeed(
             Components.ComponentRegistry.Of(Components.ComponentRegistry.YtDlp, Components.ComponentRegistry.Deno, Components.ComponentRegistry.Ffmpeg).Where(c => !c.IsInstalled).ToList(),
-            "This site's media is loaded with yt-dlp — with Deno and ffmpeg, its companions, for the largest formats. Load the URL again once they are installed."));
+            Strings.CompUrlYtDlpNeed));
         return Task.CompletedTask;
     }
 
@@ -268,11 +269,11 @@ internal sealed class UrlZone : Panel
     }
 
     private static string DownloadCaption(DownloadingStep step) =>
-        step.Percent is { } percent ? $"Downloading… {percent:0} %"
-        : step.Total is > 0 and { } total ? $"Downloading… {100.0 * step.Received / total:0} %"
-        : $"Downloading… {Megabytes(step.Received)}";
+        step.Percent is { } percent ? Texts.Format(Strings.CompUrlDownloadingPercent, Texts.Number(percent, "0"))
+        : step.Total is > 0 and { } total ? Texts.Format(Strings.CompUrlDownloadingPercent, Texts.Number(100.0 * step.Received / total, "0"))
+        : Texts.Format(Strings.CompUrlDownloadingSize, Megabytes(step.Received));
 
-    private static string Megabytes(long bytes) => $"{bytes / (1024.0 * 1024):0.0} MB";
+    private static string Megabytes(long bytes) => Texts.Format(Strings.CompUrlMegabytes, Texts.Number(bytes / (1024.0 * 1024), "0.0"));
 
     /// <summary>The poster, under the loader while the media downloads; a poster that cannot be read is no matter.</summary>
     private async Task ShowPosterAsync(Uri url, CancellationTokenSource cts)
@@ -376,7 +377,7 @@ internal sealed class UrlZone : Panel
     /// <summary>The site needs yt-dlp, missing: the caption's link offers to install it, then loads this URL again.</summary>
     private void ShowInstallOffer(Uri url)
     {
-        this.ShowFailed($"{InstallLink} This site needs yt-dlp");
+        this.ShowFailed(Texts.Format(Strings.CompUrlInstallOffer, InstallLink, Strings.CompUrlSiteNeedsYtDlp));
         this._installFor = url;
         this._offer = InstallOffer.YtDlp;
         this._caption.Links.Add(0, InstallLink.Length);
@@ -398,7 +399,7 @@ internal sealed class UrlZone : Panel
     private void ShowCompanionsHint(Uri url, string path)
     {
         long size = new FileInfo(path).Length;
-        this.SetCaption($"{CompanionsLink} for a larger format · {Path.GetFileName(path)} · {Megabytes(size)}", error: false);
+        this.SetCaption(Texts.Format(Strings.CompUrlCompanionsHint, CompanionsLink, Path.GetFileName(path), Megabytes(size)), error: false);
         this._installFor = url;
         this._offer = InstallOffer.Companions;
         this._caption.Links.Add(0, CompanionsLink.Length);

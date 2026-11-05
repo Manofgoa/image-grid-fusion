@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.Web;
 
@@ -78,12 +79,12 @@ internal sealed class WingetTool(string name, string folderName, string exeName,
         }
         catch (Win32Exception e)
         {
-            throw new UrlLoadException($"winget isn't available: put {this.ExeName} in {this.Folder}", e);
+            throw new UrlLoadException(Texts.Format(Strings.CompWingetUnavailablePut, this.ExeName, this.Folder), e);
         }
 
         if (this.Find() is null)
         {
-            throw new UrlLoadException($"winget couldn't install {this.Name} ({last ?? $"exit code {exitCode}"}): put {this.ExeName} in {this.Folder}");
+            throw new UrlLoadException(Texts.Format(Strings.CompWingetCouldntInstall, this.Name, last ?? Texts.Format(Strings.CompWingetExitCode, exitCode), this.ExeName, this.Folder));
         }
     }
 

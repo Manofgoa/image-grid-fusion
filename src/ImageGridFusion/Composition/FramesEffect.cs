@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.Composition;
 
@@ -61,7 +62,7 @@ public sealed record FramesEffect
         double.IsFinite(speed) ? Math.Clamp(Math.Round(speed / SpeedStep) * SpeedStep, MinSpeed, MaxSpeed) : Default.Speed;
 
     /// <summary><paramref name="speed"/> as the options and the presets write it: <c>×1</c>, <c>×0.25</c>, <c>×1.5</c>.</summary>
-    public static string SpeedText(double speed) => "×" + speed.ToString("0.##", CultureInfo.InvariantCulture);
+    public static string SpeedText(double speed) => "×" + Texts.Number(speed, "0.##");
 
     /// <summary>The trim's first frame among <paramref name="count"/>.</summary>
     public int FirstOf(int count) => Math.Clamp(this.First, 0, Math.Max(0, count - 1));

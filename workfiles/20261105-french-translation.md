@@ -28,10 +28,11 @@ The work:
 - **`AppSettings.Language`**: `"en"` or `"fr"`, stored by name under `Language` in `settings.json`;
   missing, unreadable or unknown → `"en"`. Saved by `AppSettings.SaveLanguage`, the save error
   reported in the status line like the other settings (`AppSettings.IsSaveError`).
-- **Applied once, at start-up**: `Program.Main` sets `CultureInfo.DefaultThreadCurrentUICulture`
-  and `CultureInfo.CurrentUICulture` from it before any form is created (next to
-  `ImageLook.MaxZoom = …`), so the background tasks get it too. Only the **UI** culture changes:
-  `CurrentCulture` (sorting, `ToUpper`) stays the system's, as today.
+- **Applied once, at start-up**: `Program.SetUiLanguage`, a **module initializer** — run before
+  `Program.Main` and before any type initializer, such as the components' purposes in
+  `ComponentRegistry.All` — sets `CultureInfo.DefaultThreadCurrentUICulture` and
+  `CultureInfo.CurrentUICulture` from it, so the background tasks get it too. Only the **UI**
+  culture changes: `CurrentCulture` (sorting, `ToUpper`) stays the system's, as today.
 - **The ⚙ submenu** mirrors *Video size*: a `ToolStripMenuItem` field, one entry per language
   (`Tag` = its code), checked in `MainForm.ShowSettings` as the menu opens, its click calling
   `MainForm.SetLanguage`. Each language is named **in its own language** — `English`, `Français` —
@@ -84,6 +85,19 @@ Everything the app shows that it wrote itself:
 The French texts use the French terms of [GLOSSARY.fr.md](../GLOSSARY.fr.md) — *Fond*,
 *Recadrage*, *Détourage*, *Agrandissement*, *Disposition*, *Cellule*, *Calque*… A UI term it does
 not give is chosen by the run and added to the French glossary when it is a glossary term.
+
+The tabs: **Fond, Recadrage, Détourage, Agrandissement, Zoom, Animations, Rotation, Miroir, Lecture**
+(Frames), **Couleurs, Flou, Volume**; **Format, Bande son, Fondu, Bordures, Fond de grille, Cascade,
+Calques, Raccords** (Seams). The windows: **Agrandissement** (Upscale), **Mises à jour des composants**
+(Component updates).
+
+### Persisted Ids
+
+A name that is both an id and a label keeps its id, stored or compared as before, and gains a
+displayed name: the built-in text styles (`NamedTextStyle.DisplayName` — *Par défaut, Mème,
+Sous-titre, Étiquette, Néon, Discret* —, `TextStyles.IsReservedForUser` refusing them in both
+languages), the layouts (`GridLayout.DisplayName`), the name patterns (`NameGroup.Title`, looked up by
+`Id`), the views drop-down (`FileExplorerPanel.ModeText`, also given to the accessibility tree).
 
 ### Lookup
 
@@ -138,12 +152,17 @@ French units in every language (`412 Ko`, `Explorer/FileSizes.cs`). They follow 
 
 ## Rules and Docs
 
+- **A build check** (`CheckFrenchTexts`, in `ImageGridFusion.csproj`, before the compilation): a
+  warning names every key of `Strings.resx` missing from `Strings.fr.resx`, and every key of the
+  French file the English one no longer has — the French text can no longer go missing unnoticed.
 - **RULES.md** gains a § **UI Language**: one lookup for every user-visible text; a new text is
   added **in both languages in the same commit**; the out-of-scope list; the culture set once in
   `Program.Main`; `SHORTCUTS.fr.md` embedded and kept in step (already required by § Keyboard
   Shortcuts).
 - **GLOSSARY.md / GLOSSARY.fr.md**: a *UI language* (*langue de l'interface*) row.
 - **README.md / README.fr.md**: the setting mentioned where the ⚙ menu's settings are.
+- `README.fr.md`'s effect sections are titled with the French tabs (`### Fond`, `### Lecture`…),
+  their anchors following; `SHORTCUTS.fr.md`'s `## Pick et pipette` becomes `## Sélection et pipette`.
 - **Every French doc quotes the French UI labels** — `README.fr.md`, `GLOSSARY.fr.md`,
   `SHORTCUTS.fr.md`: `**Copy cell**` becomes the French label the app shows, so a French reader
   finds on screen what the doc says. The English docs keep the English labels.
@@ -190,6 +209,9 @@ no unit test is created or updated. The run checks by hand:
 - [x] ~~The French docs' UI labels with a French UI?~~ → Every French doc (README, GLOSSARY,
   SHORTCUTS) quotes the French labels; the shared rule in `../CLAUDE.md` changes to "the labels in
   the language the app shows them in French"
+- [x] ~~Out of the frozen scope, offered during the run: a build check comparing the two `.resx`,
+  warning when a key has no French text — today a missing French text silently falls back to English?~~
+  → Yes, as a post-implementation adjustment (Iteration 5)
 
 ---
 
@@ -231,6 +253,47 @@ Go given: **code, unit tests and documentation** — the code, the checks by han
 (no test project), the READMEs, the French docs, RULES.md, the glossaries and the shared rule of
 `../CLAUDE.md`. Scope frozen as the sections above stand.
 
+### Iteration 4 — 2026-11-05 — 🧭 Implementation choices
+
+The run's own decisions, none of them a broken rule:
+
+- **The culture in a module initializer** (`Program.SetUiLanguage`) instead of `Program.Main`: the
+  components' purposes are looked up in `ComponentRegistry.All`'s static initializer, which `Main`'s
+  first statements reach — a module initializer runs before both.
+- **The texts moved by five agents in parallel**, one per area of disjoint files, each writing its
+  entries to a file of its own merged into the two `.resx` by a script; keys prefixed by area —
+  `Main`, `Panel` (the other `MainForm` partials and dialogs), `Explorer`, `Comp` (components, Upscale
+  window, URL zone, tray, error box), `Ui` (strips, preview, domain descriptions), plus `FileSize*` —
+  **1 121 entries**. The French docs converted by a sixth agent.
+- **Persisted ids kept**, a displayed name added (§ Persisted Ids).
+- **Terms the glossary did not give**: Frames → *Lecture*, Seams → *Raccords*, the windows
+  *Agrandissement* and *Mises à jour des composants*, the name patterns (*Appareil photo, Captures
+  d'écran, Messageries, IA, Noms génériques, Identifiants, Codes courts, Horodatages…*), the text
+  layer's *Contour, Ombre, Boîte, Gras, Italique, CAPITALES*, the border styles *Continu, Tirets,
+  Pointillé, Double*; the last video *le dernier MP4 / GIF* (masculine).
+- **Left as they were**: the Component updates window's dates (`yyyy-MM-dd` in both languages), the
+  zoom badge and the position readout (integers, unchanged units), the Start with Windows shortcut's
+  description (written to disk), the `errors.log` texts, the X endpoint's `lang=en`.
+- **The views drop-down** gives its translated entry text to the accessibility tree (`Format`), which
+  read the enum's English name — found by the run's check.
+- **Fixed widths**: the Component updates window's main button and Actions column grow with their
+  label; the Grid background's second-color drop-down widened to 150 for *Auto, dernière cellule*.
+  **Not measured on screen**: the Component updates window's column headers (*Mise à jour le*,
+  *Installée le* may end in `…`), the explorer's sort and views drop-downs (92 and 96 px), the Borders
+  style and Animations type drop-downs (90 px).
+- **The per-area commits were not each built**: the final state builds with no warning; an
+  intermediate one may not (the main window's and its partials' changes depend on each other — they
+  share the last commit).
+- **Checks by hand done by the run**: the app starts in French and in English (`--new-instance`), the
+  main window's controls read in French, resp. unchanged in English (UI Automation). The rest of
+  § Test Impact is left to the user.
+
+### Iteration 5 — 2026-11-05 — ⚙️ Post-implementation — Missing French text warning
+
+Requested with the merge (Q&A 9): a build warning when a key of `Strings.resx` has no French text in
+`Strings.fr.resx`, or when the French file keeps a key the English one dropped — an MSBuild target in
+the csproj, run before the compilation; RULES.md § UI Language mentions it.
+
 ---
 
 ## Implementation Log
@@ -240,11 +303,11 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project — checks by hand (see Test Impact) |
-| README | | | Both READMEs: the setting; `README.fr.md`: the French labels |
-| French docs | | | `GLOSSARY.fr.md`, `SHORTCUTS.fr.md`: the French labels |
-| Rules | | | RULES.md § UI Language; `../CLAUDE.md` § French Versions; glossaries' *UI language* row |
+| Code | 3, 4, 5 | 2026-11-05 | Setting, resources, 1 121 texts in English and French, numbers and units, shortcuts window; the build check for missing French texts (tested with a missing and a stale key) |
+| Unit tests | 4 | 2026-11-05 | No test project — start-up in both languages checked by the run, the rest of Test Impact left to the user |
+| README | 4 | 2026-11-05 | Both READMEs: the setting, the sizes' units; `README.fr.md`: the French labels |
+| French docs | 4 | 2026-11-05 | `GLOSSARY.fr.md`, `SHORTCUTS.fr.md`: the French labels, embedded `SHORTCUTS.fr.md` |
+| Rules | 4, 5 | 2026-11-05 | RULES.md § UI Language (its build check in 5); `../CLAUDE.md` § French Versions (propagated to the running sessions); glossaries' *UI language* row |
 
 ---
 
@@ -262,6 +325,7 @@ Questions asked by the agent during design, with user responses.
 | 6 | Numbers and units in French? | The French way: `12,5 s`, `412 Ko` in French; `12.5 s`, `412 KB` in English | 2026-11-05 |
 | 7 | The ⚙ submenu's label: bilingual or translated? | Bilingual, `Language / Langue` | 2026-11-05 |
 | 8 | The French docs' UI labels with a French UI? | Every French doc moves to the French labels; the shared rule changes | 2026-11-05 |
+| 9 | After the tests: the branch? And the build check for missing French texts? | Merge and finish; yes, the check as an adjustment | 2026-11-05 |
 
 ---
 

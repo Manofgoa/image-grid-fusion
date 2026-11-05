@@ -1,0 +1,1156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="CompCutoutFailed" xml:space="preserve"><value>Impossible de détourer l'image : {0}</value></data>
+  <data name="CompErrorDetailsNotWritten" xml:space="preserve"><value>Les détails n'ont pas pu être écrits dans {0}, à côté de l'application.</value></data>
+  <data name="CompErrorDetailsWritten" xml:space="preserve"><value>Les détails ont été écrits dans {0}, à côté de l'application.</value></data>
+  <data name="CompErrorOutOfMemory" xml:space="preserve"><value>Mémoire insuffisante. Fermez d'autres applications ou réduisez la taille des vidéos (menu ⚙).</value></data>
+  <data name="CompErrorSomethingWrong" xml:space="preserve"><value>Un problème est survenu ; l'application continue de fonctionner.
+
+{0}
+
+{1}</value></data>
+  <data name="CompInstallChecking" xml:space="preserve"><value>Vérification…</value></data>
+  <data name="CompInstallCouldntSave" xml:space="preserve"><value>Impossible de l'enregistrer : {0}</value></data>
+  <data name="CompInstallDownloadBroke" xml:space="preserve"><value>Le téléchargement a été interrompu</value></data>
+  <data name="CompInstallHashMismatch" xml:space="preserve"><value>{0} ne correspond pas au contenu attendu</value></data>
+  <data name="CompInstallInstallingWinget" xml:space="preserve"><value>Installation avec winget…</value></data>
+  <data name="CompInstallNotWhatNeeded" xml:space="preserve"><value>{0} n'est pas ce dont {1} a besoin</value></data>
+  <data name="CompInstallPackageDamaged" xml:space="preserve"><value>Le paquet est arrivé endommagé</value></data>
+  <data name="CompInstallPackageMissingEntry" xml:space="preserve"><value>le paquet ne contient pas {0}</value></data>
+  <data name="CompInstallProgressMegabytes" xml:space="preserve"><value>{0} / {1} Mo</value></data>
+  <data name="CompInstallReadingPackage" xml:space="preserve"><value>Lecture du paquet…</value></data>
+  <data name="CompInstallToolInUse" xml:space="preserve"><value>{0} est en cours d'utilisation : réessayez quand le chargement de l'URL sera terminé</value></data>
+  <data name="CompInstallWaitingWinget" xml:space="preserve"><value>En attente de winget…</value></data>
+  <data name="CompManifestUnreadable" xml:space="preserve"><value>Impossible de lire {0} ({1}) : fichier recréé</value></data>
+  <data name="CompManifestUnwritable" xml:space="preserve"><value>Impossible d'écrire {0} : {1}</value></data>
+  <data name="CompPurposeDeno" xml:space="preserve"><value>Permet à yt-dlp de lire les formats de YouTube, pour charger les plus grands</value></data>
+  <data name="CompPurposeEmojiFont" xml:space="preserve"><value>Dessine les emojis d'un calque texte dans le style de {0}, choisi dans la liste Emoji à côté de la police du texte</value></data>
+  <data name="CompPurposeFfmpeg" xml:space="preserve"><value>Réunit une piste vidéo et son son en un seul MP4 pour yt-dlp, pour charger les plus grands formats</value></data>
+  <data name="CompPurposeFlorence" xml:space="preserve"><value>Écrit une phrase décrivant chaque image, trouvée par la recherche sous 💡 (les descriptions)</value></data>
+  <data name="CompPurposeIsNet" xml:space="preserve"><value>Trouve le sujet principal d'une image, pour le mode Sujet du Détourage</value></data>
+  <data name="CompPurposeMobileSam" xml:space="preserve"><value>Sélectionne l'objet sous un clic, pour le mode Sélection du Détourage</value></data>
+  <data name="CompPurposeOcrModels" xml:space="preserve"><value>Lit le texte des images et des pages PDF pour la recherche dans le contenu (💡), dans une passe à part après l'OCR de Windows</value></data>
+  <data name="CompPurposeOnnxRuntime" xml:space="preserve"><value>Exécute les modèles de chaque moteur : nécessaire à tous. Chargé dès qu'un moteur a tourné : remplacé au prochain démarrage</value></data>
+  <data name="CompPurposeRealEsrgan" xml:space="preserve"><value>Agrandit une petite image ×2 ou ×4, pour le modèle Qualité de l'effet Agrandissement</value></data>
+  <data name="CompPurposeRealEsrganCompact" xml:space="preserve"><value>Agrandit une petite image ×2 ou ×4 bien plus vite, un peu moins finement, pour le modèle Rapide de l'effet Agrandissement</value></data>
+  <data name="CompPurposeSFace" xml:space="preserve"><value>Distingue les visages, pour les regrouper en personnes dans la vue Personnes</value></data>
+  <data name="CompPurposeSigLipModels" xml:space="preserve"><value>Voit ce que montrent les images : leurs étiquettes, la recherche par similarité sous 💡 et Trouver des images similaires (l'analyse visuelle)</value></data>
+  <data name="CompPurposeSigLipTokenizer" xml:space="preserve"><value>Transforme les mots d'une recherche en ce que lit le modèle de texte SigLIP 2, pour la recherche par similarité sous 💡</value></data>
+  <data name="CompPurposeSkiaSharp" xml:space="preserve"><value>Décode les images pour RapidOCR, le moteur OCR. Chargé dès que RapidOCR a tourné : remplacé au prochain démarrage</value></data>
+  <data name="CompPurposeYtDlp" xml:space="preserve"><value>Télécharge le média d'une URL que les résolveurs propres à la zone URL ne connaissent pas</value></data>
+  <data name="CompPurposeYuNet" xml:space="preserve"><value>Trouve les visages dans les images indexées, pour la vue Personnes (l'analyse des visages)</value></data>
+  <data name="CompShortcutsTitle" xml:space="preserve"><value>Raccourcis clavier</value></data>
+  <data name="CompSourceAnsweredNothing" xml:space="preserve"><value>{0} n'a rien répondu</value></data>
+  <data name="CompSourceAnsweredUnreadable" xml:space="preserve"><value>{0} a répondu quelque chose d'illisible</value></data>
+  <data name="CompSourceGhNoTag" xml:space="preserve"><value>github.com n'a donné aucun tag de version</value></data>
+  <data name="CompSourceHfNoCommit" xml:space="preserve"><value>huggingface.co n'a donné aucun commit</value></data>
+  <data name="CompSourceNoAssetInRelease" xml:space="preserve"><value>pas de {0} dans sa version {1}</value></data>
+  <data name="CompSourceNoLinkToAsset" xml:space="preserve"><value>pas de lien vers {0}</value></data>
+  <data name="CompSourceNoLongerIn" xml:space="preserve"><value>{0} n'est plus dans {1}</value></data>
+  <data name="CompSourceNuGetNoStable" xml:space="preserve"><value>nuget.org ne liste aucune version stable de {0}</value></data>
+  <data name="CompSourceWingetNoVersion" xml:space="preserve"><value>winget ne liste aucune version de {0}</value></data>
+  <data name="CompSourceWingetUnavailable" xml:space="preserve"><value>winget n'est pas disponible</value></data>
+  <data name="CompTrayOpen" xml:space="preserve"><value>Ouvrir</value></data>
+  <data name="CompTrayQuit" xml:space="preserve"><value>Quitter</value></data>
+  <data name="CompUpscaleButton" xml:space="preserve"><value>Agrandir</value></data>
+  <data name="CompUpscaleCancel" xml:space="preserve"><value>Annuler</value></data>
+  <data name="CompUpscaleCancelled" xml:space="preserve"><value>Annulé</value></data>
+  <data name="CompUpscaleFailed" xml:space="preserve"><value>Impossible d'agrandir l'image : {0}</value></data>
+  <data name="CompUpscaleFile" xml:space="preserve"><value>Fichier : ≈ {0} en {1} (estimation)</value></data>
+  <data name="CompUpscaleLeft" xml:space="preserve"><value>, ≈ {0} restantes</value></data>
+  <data name="CompUpscaleModel" xml:space="preserve"><value>Modèle {0}, ×{1}</value></data>
+  <data name="CompUpscaleModelFast" xml:space="preserve"><value>Rapide</value></data>
+  <data name="CompUpscaleModelFrames" xml:space="preserve"><value>Modèle {0}, ×{1}, {2} images</value></data>
+  <data name="CompUpscaleModelQuality" xml:space="preserve"><value>Qualité</value></data>
+  <data name="CompUpscaleProgress" xml:space="preserve"><value>Agrandissement… {0} %{1}</value></data>
+  <data name="CompUpscaleRunning" xml:space="preserve"><value>Agrandissement…</value></data>
+  <data name="CompUpscaleSize" xml:space="preserve"><value>Taille : {0} × {1}  →  {2} × {3}</value></data>
+  <data name="CompUpscaleStopping" xml:space="preserve"><value>Arrêt après la tuile en cours…</value></data>
+  <data name="CompUpscaleTime" xml:space="preserve"><value>Durée : ≈ {0} sur cet ordinateur (estimation)</value></data>
+  <data name="CompUpscaleTitle" xml:space="preserve"><value>Agrandissement — {0}</value></data>
+  <data name="CompUrlCompanionsHint" xml:space="preserve"><value>{0} pour un plus grand format · {1} · {2}</value></data>
+  <data name="CompUrlCompanionsLink" xml:space="preserve"><value>Installer les compagnons de yt-dlp…</value></data>
+  <data name="CompUrlCompanionsNeed" xml:space="preserve"><value>yt-dlp charge les plus grands formats avec ses compagnons : Deno, l'environnement JavaScript dont ont besoin les formats de YouTube, et ffmpeg, qui assemble une piste vidéo et son son. Chargez à nouveau l'URL une fois qu'ils sont installés.</value></data>
+  <data name="CompUrlDownloadingPercent" xml:space="preserve"><value>Téléchargement… {0} %</value></data>
+  <data name="CompUrlDownloadingSize" xml:space="preserve"><value>Téléchargement… {0}</value></data>
+  <data name="CompUrlEmptyCaption" xml:space="preserve"><value>Chargez une URL, puis glissez son média dans une cellule</value></data>
+  <data name="CompUrlGone" xml:space="preserve"><value>Le fichier téléchargé a disparu : chargez-le à nouveau</value></data>
+  <data name="CompUrlInstallLink" xml:space="preserve"><value>Installer yt-dlp…</value></data>
+  <data name="CompUrlInstallOffer" xml:space="preserve"><value>{0} {1}</value></data>
+  <data name="CompUrlLoad" xml:space="preserve"><value>Charger</value></data>
+  <data name="CompUrlLoadTip" xml:space="preserve"><value>Récupère la photo ou la vidéo derrière l'URL</value></data>
+  <data name="CompUrlMegabytes" xml:space="preserve"><value>{0} Mo</value></data>
+  <data name="CompUrlMerging" xml:space="preserve"><value>Assemblage de la vidéo et de son son…</value></data>
+  <data name="CompUrlNotAddress" xml:space="preserve"><value>Ce n'est pas une adresse web</value></data>
+  <data name="CompUrlPlaceholder" xml:space="preserve"><value>Collez une URL (publication X, image, vidéo…)</value></data>
+  <data name="CompUrlReadyTooltip" xml:space="preserve"><value>Glissez dans une cellule · clic droit pour plus d'options</value></data>
+  <data name="CompUrlResolving" xml:space="preserve"><value>Recherche du média…</value></data>
+  <data name="CompUrlSiteNeedsYtDlp" xml:space="preserve"><value>Ce site a besoin de yt-dlp</value></data>
+  <data name="CompUrlYtDlpNeed" xml:space="preserve"><value>Le média de ce site est chargé avec yt-dlp — avec Deno et ffmpeg, ses compagnons, pour les plus grands formats. Chargez à nouveau l'URL une fois qu'ils sont installés.</value></data>
+  <data name="CompWebCouldntReach" xml:space="preserve"><value>Impossible de joindre {0} : {1}</value></data>
+  <data name="CompWebCouldntSaveFile" xml:space="preserve"><value>Impossible d'enregistrer le fichier : {0}</value></data>
+  <data name="CompWebNoAnswerInTime" xml:space="preserve"><value>{0} n'a pas répondu à temps</value></data>
+  <data name="CompWebServerAnswered" xml:space="preserve"><value>Le serveur a répondu {0} {1}</value></data>
+  <data name="CompWinBackForced" xml:space="preserve"><value>Revenir à la version forcée ({0})</value></data>
+  <data name="CompWinBackPinned" xml:space="preserve"><value>Revenir à la version épinglée ({0})</value></data>
+  <data name="CompWinBalloon" xml:space="preserve"><value>{0}
+
+{1} : {2}.
+
+Cliquez sur Installer sur les lignes en surbrillance.</value></data>
+  <data name="CompWinCheckFailedTip" xml:space="preserve"><value>Vérification impossible : {0}</value></data>
+  <data name="CompWinCheckNow" xml:space="preserve"><value>Vérifier maintenant</value></data>
+  <data name="CompWinCheckedAt" xml:space="preserve"><value>Vérifié à {0:HH:mm}</value></data>
+  <data name="CompWinChecking" xml:space="preserve"><value>{0} Vérification…</value></data>
+  <data name="CompWinColComponent" xml:space="preserve"><value>Composant</value></data>
+  <data name="CompWinColForced" xml:space="preserve"><value>Forcée</value></data>
+  <data name="CompWinColInstalled" xml:space="preserve"><value>Installée</value></data>
+  <data name="CompWinColInstalledOn" xml:space="preserve"><value>Installée le</value></data>
+  <data name="CompWinColLatest" xml:space="preserve"><value>Dernière</value></data>
+  <data name="CompWinColPinned" xml:space="preserve"><value>Épinglée</value></data>
+  <data name="CompWinColReleased" xml:space="preserve"><value>Publiée</value></data>
+  <data name="CompWinColSize" xml:space="preserve"><value>Taille</value></data>
+  <data name="CompWinColUpdatedOn" xml:space="preserve"><value>Mise à jour le</value></data>
+  <data name="CompWinCouldntCheck" xml:space="preserve"><value>Vérification impossible</value></data>
+  <data name="CompWinCouldntOpen" xml:space="preserve"><value>Impossible d'ouvrir {0} : {1}</value></data>
+  <data name="CompWinCouldntOpenExplorer" xml:space="preserve"><value>Impossible d'ouvrir l'Explorateur : {0}</value></data>
+  <data name="CompWinFailed" xml:space="preserve"><value>⚠ Échec</value></data>
+  <data name="CompWinFilesInUse" xml:space="preserve"><value>Certains de ses fichiers sont en cours d'utilisation : redémarrez l'application, puis désinstallez-le à nouveau</value></data>
+  <data name="CompWinGroupEmojiFonts" xml:space="preserve"><value>Polices d'emojis</value></data>
+  <data name="CompWinGroupEngines" xml:space="preserve"><value>Moteurs</value></data>
+  <data name="CompWinGroupRuntimes" xml:space="preserve"><value>Environnements d'exécution</value></data>
+  <data name="CompWinGroupWebTools" xml:space="preserve"><value>Outils web</value></data>
+  <data name="CompWinInstall" xml:space="preserve"><value>Installer</value></data>
+  <data name="CompWinInstallAll" xml:space="preserve"><value>Tout installer</value></data>
+  <data name="CompWinInstallAllCount" xml:space="preserve"><value>Tout installer ({0})</value></data>
+  <data name="CompWinInstalling" xml:space="preserve"><value>Installation…</value></data>
+  <data name="CompWinKilobytes" xml:space="preserve"><value>{0} Ko</value></data>
+  <data name="CompWinManifestNotSaved" xml:space="preserve"><value>Impossible d'enregistrer {0} : {1}</value></data>
+  <data name="CompWinManyDownloads" xml:space="preserve"><value>{0} téléchargements sont en cours. Les annuler et fermer ?</value></data>
+  <data name="CompWinMegabytes" xml:space="preserve"><value>{0} Mo</value></data>
+  <data name="CompWinNeeded" xml:space="preserve"><value>Requis</value></data>
+  <data name="CompWinOneDownload" xml:space="preserve"><value>Un téléchargement est en cours. L'annuler et fermer ?</value></data>
+  <data name="CompWinRestartAsk" xml:space="preserve"><value>{0} : certains fichiers étaient en cours d'utilisation et seront remplacés au prochain démarrage de l'application.
+
+Redémarrer l'application maintenant ?</value></data>
+  <data name="CompWinRestartToFinish" xml:space="preserve"><value>Redémarrer pour terminer</value></data>
+  <data name="CompWinStarting" xml:space="preserve"><value>Démarrage…</value></data>
+  <data name="CompWinTitle" xml:space="preserve"><value>Mises à jour des composants</value></data>
+  <data name="CompWinTotal" xml:space="preserve"><value>Total sur le disque : {0}</value></data>
+  <data name="CompWinUninstall" xml:space="preserve"><value>Désinstaller…</value></data>
+  <data name="CompWinUninstallAll" xml:space="preserve"><value>Tout désinstaller</value></data>
+  <data name="CompWinUninstallAllAsk" xml:space="preserve"><value>Désinstaller {0} composants ? Leurs fichiers sont supprimés ({1}) :
+
+{2}
+
+Les fonctionnalités qui en ont besoin les proposeront à nouveau.</value></data>
+  <data name="CompWinUninstallAllCount" xml:space="preserve"><value>Tout désinstaller ({0})</value></data>
+  <data name="CompWinUninstallAsk" xml:space="preserve"><value>Désinstaller {0} ? Ses fichiers sont supprimés ({1}) ; les fonctionnalités qui en ont besoin le proposeront à nouveau.</value></data>
+  <data name="CompWinUpdate" xml:space="preserve"><value>Mettre à jour</value></data>
+  <data name="CompWinUpdateAll" xml:space="preserve"><value>Tout mettre à jour</value></data>
+  <data name="CompWinUpdateAllCount" xml:space="preserve"><value>Tout mettre à jour ({0})</value></data>
+  <data name="CompWingetCouldntInstall" xml:space="preserve"><value>winget n'a pas pu installer {0} ({1}) : placez {2} dans {3}</value></data>
+  <data name="CompWingetExitCode" xml:space="preserve"><value>code de sortie {0}</value></data>
+  <data name="CompWingetUnavailablePut" xml:space="preserve"><value>winget n'est pas disponible : placez {0} dans {1}</value></data>
+  <data name="CompXPostCouldntRead" xml:space="preserve"><value>Impossible de lire la réponse de X : {0}</value></data>
+  <data name="CompXPostNoMedia" xml:space="preserve"><value>Aucune photo ni vidéo dans cette publication</value></data>
+  <data name="CompXPostNotFound" xml:space="preserve"><value>Publication introuvable ou privée</value></data>
+  <data name="CompXPostUnreadable" xml:space="preserve"><value>X a répondu quelque chose d'illisible</value></data>
+  <data name="CompYtDlpFailed" xml:space="preserve"><value>yt-dlp a échoué (code de sortie {0})</value></data>
+  <data name="CompZipAnswered" xml:space="preserve"><value>{0} a répondu {1} {2}</value></data>
+  <data name="CompZipDamaged" xml:space="preserve"><value>{0} a envoyé un zip endommagé</value></data>
+  <data name="CompZipNoRanges" xml:space="preserve"><value>{0} n'envoie pas de parties de fichier</value></data>
+  <data name="CompZipNotZip" xml:space="preserve"><value>{0} n'a pas envoyé de zip</value></data>
+  <data name="CompZipShortAnswer" xml:space="preserve"><value>{0} a envoyé une réponse trop courte</value></data>
+  <data name="CompZipUnsupportedCompression" xml:space="preserve"><value>{0} : compression non prise en charge {1}</value></data>
+  <data name="ExplorerAccClear" xml:space="preserve"><value>Effacer</value></data>
+  <data name="ExplorerAccCollapse" xml:space="preserve"><value>Réduire</value></data>
+  <data name="ExplorerAccDetails" xml:space="preserve"><value>Détails</value></data>
+  <data name="ExplorerAccExpand" xml:space="preserve"><value>Développer</value></data>
+  <data name="ExplorerAccFolderGroups" xml:space="preserve"><value>Groupes de dossiers</value></data>
+  <data name="ExplorerAccName" xml:space="preserve"><value>Nom</value></data>
+  <data name="ExplorerAccRescan" xml:space="preserve"><value>Réanalyser</value></data>
+  <data name="ExplorerAccSearchGroups" xml:space="preserve"><value>Groupes de recherche</value></data>
+  <data name="ExplorerAccSeries" xml:space="preserve"><value>Séries</value></data>
+  <data name="ExplorerAccThumbnails" xml:space="preserve"><value>Miniatures</value></data>
+  <data name="ExplorerAddedToFavorites" xml:space="preserve"><value>Ajouté aux favoris : {0}{1}</value></data>
+  <data name="ExplorerAddedToFavoritesNotSaved" xml:space="preserve"><value>Ajouté aux favoris : {0}, non enregistré : {1}</value></data>
+  <data name="ExplorerAllCounts" xml:space="preserve"><value>Tout : {0}, {1}</value></data>
+  <data name="ExplorerAllFiles" xml:space="preserve"><value>Tous les fichiers ({0:N0})</value></data>
+  <data name="ExplorerBreadcrumbOpen" xml:space="preserve"><value>Ouvrir {0}</value></data>
+  <data name="ExplorerBreadcrumbUp" xml:space="preserve"><value>Remonter au dossier parent (Backspace, Alt+↑)</value></data>
+  <data name="ExplorerCancel" xml:space="preserve"><value>Annuler</value></data>
+  <data name="ExplorerCaptionEngineFailed" xml:space="preserve"><value>Le moteur de descriptions n'a pas pu démarrer : {0}</value></data>
+  <data name="ExplorerChooseFolder" xml:space="preserve"><value>Choisir un dossier…</value></data>
+  <data name="ExplorerClosenessPercent" xml:space="preserve"><value>{0:0} %</value></data>
+  <data name="ExplorerColorBlue" xml:space="preserve"><value>bleu</value></data>
+  <data name="ExplorerColorGold" xml:space="preserve"><value>doré</value></data>
+  <data name="ExplorerColorGreen" xml:space="preserve"><value>vert</value></data>
+  <data name="ExplorerColorOrange" xml:space="preserve"><value>orange</value></data>
+  <data name="ExplorerColorPink" xml:space="preserve"><value>rose</value></data>
+  <data name="ExplorerColorPurple" xml:space="preserve"><value>violet</value></data>
+  <data name="ExplorerColorTeal" xml:space="preserve"><value>turquoise</value></data>
+  <data name="ExplorerCopied" xml:space="preserve"><value>Copié : {0}</value></data>
+  <data name="ExplorerCopiedAsPng" xml:space="preserve"><value>Copié en PNG : {0} ({1} × {2})</value></data>
+  <data name="ExplorerCopiedPath" xml:space="preserve"><value>Chemin copié : {0}</value></data>
+  <data name="ExplorerCopyFailed" xml:space="preserve"><value>Échec de la copie : {0}</value></data>
+  <data name="ExplorerCounting" xml:space="preserve"><value>Comptage… {0:N0}</value></data>
+  <data name="ExplorerCriterionContent" xml:space="preserve"><value>Rechercher dans le texte contenu dans les fichiers</value></data>
+  <data name="ExplorerCriterionExtractionStopped" xml:space="preserve"><value>L'extraction est arrêtée (⚙ Rechercher dans le contenu des fichiers (OCR)) : seuls les textes déjà extraits sont recherchés</value></data>
+  <data name="ExplorerCriterionLastOn" xml:space="preserve"><value>activé — au moins un critère reste activé</value></data>
+  <data name="ExplorerCriterionName" xml:space="preserve"><value>Rechercher dans les noms de fichiers et de dossiers</value></data>
+  <data name="ExplorerCriterionOff" xml:space="preserve"><value>désactivé — cliquer pour activer</value></data>
+  <data name="ExplorerCriterionOn" xml:space="preserve"><value>activé — cliquer pour désactiver</value></data>
+  <data name="ExplorerCriterionTip" xml:space="preserve"><value>{0} : {1}</value></data>
+  <data name="ExplorerCriterionTipNote" xml:space="preserve"><value>{0} : {1}
+{2}</value></data>
+  <data name="ExplorerDecisionFaceAdded" xml:space="preserve"><value>{0} ajouté à {1}</value></data>
+  <data name="ExplorerDecisionHidden" xml:space="preserve"><value>Masqué : {0}</value></data>
+  <data name="ExplorerDecisionMerged" xml:space="preserve"><value>Fusionné : {0} dans {1}</value></data>
+  <data name="ExplorerDecisionNotPerson" xml:space="preserve"><value>{0} : pas {1}</value></data>
+  <data name="ExplorerDecisionShown" xml:space="preserve"><value>Affiché de nouveau : {0}</value></data>
+  <data name="ExplorerDecisionUnmerged" xml:space="preserve"><value>Défusionné : {0} de {1}</value></data>
+  <data name="ExplorerDeletePresetPrompt" xml:space="preserve"><value>Supprimer ce preset d'effets de {0} ?{1}</value></data>
+  <data name="ExplorerDeletePresetTitle" xml:space="preserve"><value>Supprimer le preset d'effets</value></data>
+  <data name="ExplorerDropAddTo" xml:space="preserve"><value>Ajouter à %1</value></data>
+  <data name="ExplorerDroppedImage" xml:space="preserve"><value>l'image déposée</value></data>
+  <data name="ExplorerFaceEngineFailed" xml:space="preserve"><value>Le moteur de visages n'a pas pu démarrer : {0}</value></data>
+  <data name="ExplorerFaceMany" xml:space="preserve"><value>{0:N0} visages</value></data>
+  <data name="ExplorerFaceOne" xml:space="preserve"><value>1 visage</value></data>
+  <data name="ExplorerFacesForgotten" xml:space="preserve"><value>Visages oubliés : tous les visages trouvés et toutes les personnes sont supprimés</value></data>
+  <data name="ExplorerFacesForgottenPartly" xml:space="preserve"><value>Visages oubliés, certains fichiers n'ont pas été supprimés : {0}</value></data>
+  <data name="ExplorerFavoritesCount" xml:space="preserve"><value>Favoris ({0})</value></data>
+  <data name="ExplorerFavoritesNotSaved" xml:space="preserve"><value>Favoris non enregistrés : {0}</value></data>
+  <data name="ExplorerFileMany" xml:space="preserve"><value>{0:N0} fichiers</value></data>
+  <data name="ExplorerFileNotFoundPreset" xml:space="preserve"><value>Fichier introuvable : {0} — le preset est conservé, son cœur le supprime</value></data>
+  <data name="ExplorerFileNotFoundRemoved" xml:space="preserve"><value>Fichier introuvable — retiré de l'index</value></data>
+  <data name="ExplorerFileNotFoundRemovedNotSaved" xml:space="preserve"><value>Fichier introuvable — retiré de l'index, non enregistré : {0}</value></data>
+  <data name="ExplorerFileOne" xml:space="preserve"><value>1 fichier</value></data>
+  <data name="ExplorerFolderMany" xml:space="preserve"><value>{0:N0} dossiers</value></data>
+  <data name="ExplorerFolderNotFound" xml:space="preserve"><value>Dossier introuvable</value></data>
+  <data name="ExplorerFolderNotFoundBack" xml:space="preserve"><value>Dossier introuvable : {0} — retour à {1}</value></data>
+  <data name="ExplorerFolderNotFoundNamed" xml:space="preserve"><value>Dossier introuvable : {0}</value></data>
+  <data name="ExplorerFolderOne" xml:space="preserve"><value>1 dossier</value></data>
+  <data name="ExplorerFolderSearchPlaceholder" xml:space="preserve"><value>Rechercher dans ce dossier… (Ctrl+F, * pour tout)</value></data>
+  <data name="ExplorerForSessionNotSaved" xml:space="preserve"><value>{0} — pour la session, non enregistré : {1}</value></data>
+  <data name="ExplorerFoundInContent" xml:space="preserve"><value>Trouvé dans son contenu</value></data>
+  <data name="ExplorerFoundInContentExcerpt" xml:space="preserve"><value>Trouvé dans son contenu : {0}</value></data>
+  <data name="ExplorerGroupAi" xml:space="preserve"><value>IA</value></data>
+  <data name="ExplorerGroupCamera" xml:space="preserve"><value>Appareil photo</value></data>
+  <data name="ExplorerGroupDateStamps" xml:space="preserve"><value>Horodatages de date</value></data>
+  <data name="ExplorerGroupGenericNames" xml:space="preserve"><value>Noms génériques</value></data>
+  <data name="ExplorerGroupIdentifiers" xml:space="preserve"><value>Identifiants</value></data>
+  <data name="ExplorerGroupMany" xml:space="preserve"><value>{0:N0} groupes</value></data>
+  <data name="ExplorerGroupMessaging" xml:space="preserve"><value>Messageries</value></data>
+  <data name="ExplorerGroupNumbers" xml:space="preserve"><value>Nombres</value></data>
+  <data name="ExplorerGroupOne" xml:space="preserve"><value>1 groupe</value></data>
+  <data name="ExplorerGroupScreenshots" xml:space="preserve"><value>Captures d'écran</value></data>
+  <data name="ExplorerGroupShortCodes" xml:space="preserve"><value>Codes courts</value></data>
+  <data name="ExplorerGroupTimestamps" xml:space="preserve"><value>Horodatages</value></data>
+  <data name="ExplorerGroupsAndFacesAlone" xml:space="preserve"><value>{0}, {1} hors groupe{2}</value></data>
+  <data name="ExplorerHidden" xml:space="preserve"><value>Masqués</value></data>
+  <data name="ExplorerHiddenSuffix" xml:space="preserve"><value> (masqué)</value></data>
+  <data name="ExplorerImageUnreadable" xml:space="preserve"><value>Impossible de lire cette image</value></data>
+  <data name="ExplorerIndexing" xml:space="preserve"><value>Indexation… {0:N0}/{1:N0}</value></data>
+  <data name="ExplorerIndexingPasses" xml:space="preserve"><value>Passes d'indexation</value></data>
+  <data name="ExplorerInvalidFolder" xml:space="preserve"><value>Dossier invalide : {0}</value></data>
+  <data name="ExplorerInviteFaceEngine" xml:space="preserve"><value>L'analyse des visages a besoin de son moteur : deux modèles d'environ 40 Mo, téléchargés une fois à côté de l'application.</value></data>
+  <data name="ExplorerInviteFaceEngineButton" xml:space="preserve"><value>Télécharger le moteur de visages…</value></data>
+  <data name="ExplorerInviteFacesOff" xml:space="preserve"><value>L'analyse des visages est désactivée. Activée, elle cherche les visages dans les images et PDF du dossier de base — sur cet ordinateur uniquement — et les regroupe en personnes.</value></data>
+  <data name="ExplorerInviteFacesOffButton" xml:space="preserve"><value>Activer l'analyse des visages…</value></data>
+  <data name="ExplorerInviteFolder" xml:space="preserve"><value>Aucun dossier de base pour l'instant. La recherche parcourt un dossier et ses sous-dossiers : choisissez-le pour indexer vos fichiers.</value></data>
+  <data name="ExplorerLoading" xml:space="preserve"><value>Chargement…</value></data>
+  <data name="ExplorerLoadingIndex" xml:space="preserve"><value>Chargement de l'index…</value></data>
+  <data name="ExplorerLookingAtImage" xml:space="preserve"><value>Analyse de l'image…</value></data>
+  <data name="ExplorerLookingForFaces" xml:space="preserve"><value> · recherche de visages…</value></data>
+  <data name="ExplorerLowQuality" xml:space="preserve"><value>Faible qualité</value></data>
+  <data name="ExplorerMenuCopy" xml:space="preserve"><value>Copier</value></data>
+  <data name="ExplorerMenuCopyFullPath" xml:space="preserve"><value>Copier le chemin complet</value></data>
+  <data name="ExplorerMenuCopyPng" xml:space="preserve"><value>Copier en PNG</value></data>
+  <data name="ExplorerMenuEditDescription" xml:space="preserve"><value>Modifier la description…</value></data>
+  <data name="ExplorerMenuFindSimilar" xml:space="preserve"><value>Trouver des images similaires</value></data>
+  <data name="ExplorerMenuHide" xml:space="preserve"><value>Masquer</value></data>
+  <data name="ExplorerMenuHideName" xml:space="preserve"><value>Masquer {0}</value></data>
+  <data name="ExplorerMenuNotPerson" xml:space="preserve"><value>Pas {0}</value></data>
+  <data name="ExplorerMenuNotThisPerson" xml:space="preserve"><value>Pas cette personne</value></data>
+  <data name="ExplorerMenuOpen" xml:space="preserve"><value>Ouvrir</value></data>
+  <data name="ExplorerMenuOpenFileLocation" xml:space="preserve"><value>Ouvrir l'emplacement du fichier</value></data>
+  <data name="ExplorerMenuOpenInExplorer" xml:space="preserve"><value>Ouvrir dans l'Explorateur</value></data>
+  <data name="ExplorerMenuRemove" xml:space="preserve"><value>Retirer</value></data>
+  <data name="ExplorerMenuRemoveFrom" xml:space="preserve"><value>Retirer de {0}</value></data>
+  <data name="ExplorerMenuRename" xml:space="preserve"><value>Renommer…</value></data>
+  <data name="ExplorerMenuUnhide" xml:space="preserve"><value>Afficher</value></data>
+  <data name="ExplorerMenuUnmerge" xml:space="preserve"><value>Défusionner</value></data>
+  <data name="ExplorerMenuUnmergeName" xml:space="preserve"><value>Défusionner {0}</value></data>
+  <data name="ExplorerMergePrompt" xml:space="preserve"><value>Fusionner « {0} » dans « {1} » ?
+
+Il s'affiche à l'intérieur comme un sous-groupe, tous les fichiers des deux y étant listés. Défusionner, sur sa tuile là-bas, le remet comme avant.</value></data>
+  <data name="ExplorerMergeTitle" xml:space="preserve"><value>Fusionner les groupes</value></data>
+  <data name="ExplorerModeFavorites" xml:space="preserve"><value>Favoris</value></data>
+  <data name="ExplorerModeFolders" xml:space="preserve"><value>Dossiers</value></data>
+  <data name="ExplorerNameRemoved" xml:space="preserve"><value>Nom retiré</value></data>
+  <data name="ExplorerNamed" xml:space="preserve"><value>Nommé : {0}</value></data>
+  <data name="ExplorerNamedAndUnnamed" xml:space="preserve"><value>{0} (+ {1} sans nom)</value></data>
+  <data name="ExplorerNewPerson" xml:space="preserve"><value>Nouvelle personne : sans nom</value></data>
+  <data name="ExplorerNoBaseFolder" xml:space="preserve"><value>Aucun dossier de base</value></data>
+  <data name="ExplorerNoImageToCopy" xml:space="preserve"><value>Aucune image à copier : {0}</value></data>
+  <data name="ExplorerNoIndexYet" xml:space="preserve"><value>Aucun index pour l'instant</value></data>
+  <data name="ExplorerNoResult" xml:space="preserve"><value>Aucun résultat</value></data>
+  <data name="ExplorerNotDownloaded" xml:space="preserve"><value>non téléchargé</value></data>
+  <data name="ExplorerNotReadable" xml:space="preserve"><value>Illisible : {0}</value></data>
+  <data name="ExplorerNotStarted" xml:space="preserve"><value>non démarré</value></data>
+  <data name="ExplorerNothingAddedFolders" xml:space="preserve"><value>Rien ajouté : les dossiers ne deviennent pas des favoris</value></data>
+  <data name="ExplorerNothingAddedNoFile" xml:space="preserve"><value>Rien ajouté : aucun fichier à ajouter</value></data>
+  <data name="ExplorerOcrProgress" xml:space="preserve"><value>OCR {0}/{1} · {2} : {3:N0}/{4:N0}</value></data>
+  <data name="ExplorerOpenFailed" xml:space="preserve"><value>Impossible d'ouvrir l'Explorateur : {0}</value></data>
+  <data name="ExplorerPassCaptions" xml:space="preserve"><value>Descriptions</value></data>
+  <data name="ExplorerPassFaces" xml:space="preserve"><value>Visages</value></data>
+  <data name="ExplorerPassInverted" xml:space="preserve"><value>Inversé</value></data>
+  <data name="ExplorerPassRing" xml:space="preserve"><value>Anneau</value></data>
+  <data name="ExplorerPassVision" xml:space="preserve"><value>Analyse visuelle</value></data>
+  <data name="ExplorerPeople" xml:space="preserve"><value>Personnes</value></data>
+  <data name="ExplorerPeopleRestored" xml:space="preserve"><value>Personnes restaurées</value></data>
+  <data name="ExplorerPeopleSearchPlaceholder" xml:space="preserve"><value>Rechercher une personne par son nom… (Ctrl+F)</value></data>
+  <data name="ExplorerPresetSaved" xml:space="preserve"><value>Preset d'effets enregistré : {0}</value></data>
+  <data name="ExplorerPresetSavedNotWritten" xml:space="preserve"><value>Preset d'effets enregistré pour la session, non écrit : {0}</value></data>
+  <data name="ExplorerRapidFailed" xml:space="preserve"><value>RapidOCR n'a pas pu démarrer : {0}</value></data>
+  <data name="ExplorerReadingFolder" xml:space="preserve"><value>Lecture du dossier…</value></data>
+  <data name="ExplorerRecycleFailed" xml:space="preserve"><value>{0} n'a pas pu être envoyé dans la Corbeille : {1}</value></data>
+  <data name="ExplorerRecycled" xml:space="preserve"><value>{0} envoyé dans la Corbeille</value></data>
+  <data name="ExplorerRenamePrompt" xml:space="preserve"><value>Nom de la personne :</value></data>
+  <data name="ExplorerRenameTitle" xml:space="preserve"><value>Renommer</value></data>
+  <data name="ExplorerResultOne" xml:space="preserve"><value>1 résultat</value></data>
+  <data name="ExplorerResults" xml:space="preserve"><value>{0:N0} résultats</value></data>
+  <data name="ExplorerScanFailed" xml:space="preserve"><value>Échec de l'analyse : {0}</value></data>
+  <data name="ExplorerSearchPlaceholder" xml:space="preserve"><value>Rechercher des fichiers… (Ctrl+F, * pour tout)</value></data>
+  <data name="ExplorerSectionContent" xml:space="preserve"><value>Contenu</value></data>
+  <data name="ExplorerSectionNamedFiles" xml:space="preserve"><value>Fichiers nommés</value></data>
+  <data name="ExplorerSectionOtherFolders" xml:space="preserve"><value>Autres dossiers</value></data>
+  <data name="ExplorerSectionPath" xml:space="preserve"><value>Chemin</value></data>
+  <data name="ExplorerSimilarCount" xml:space="preserve"><value>Similaires à {0} ({1:N0})</value></data>
+  <data name="ExplorerSimilarNone" xml:space="preserve"><value>Similaires à {0} — rien d'assez proche</value></data>
+  <data name="ExplorerSkippedFolderOne" xml:space="preserve"><value> — 1 dossier ignoré</value></data>
+  <data name="ExplorerSkippedFolders" xml:space="preserve"><value> — {0} dossiers ignorés</value></data>
+  <data name="ExplorerSortName" xml:space="preserve"><value>Nom A→Z</value></data>
+  <data name="ExplorerSortNewest" xml:space="preserve"><value>Date ↓</value></data>
+  <data name="ExplorerSortOrderName" xml:space="preserve"><value>les fichiers par nom, de A à Z</value></data>
+  <data name="ExplorerSortOrderNewest" xml:space="preserve"><value>les fichiers créés le plus récemment d'abord</value></data>
+  <data name="ExplorerSortOrderSmallest" xml:space="preserve"><value>les plus petits fichiers d'abord</value></data>
+  <data name="ExplorerSortSmallest" xml:space="preserve"><value>Taille ↑</value></data>
+  <data name="ExplorerSummaryIndexed" xml:space="preserve"><value>{0} · indexé {1}</value></data>
+  <data name="ExplorerSummaryNotSaved" xml:space="preserve"><value>{0} · non enregistré : {1}</value></data>
+  <data name="ExplorerTileCloseness" xml:space="preserve"><value>
+≈ {0} de proximité</value></data>
+  <data name="ExplorerTipBackToSearch" xml:space="preserve"><value>Retour à la recherche</value></data>
+  <data name="ExplorerTipClickToRename" xml:space="preserve"><value>Cliquer pour renommer</value></data>
+  <data name="ExplorerTipCollapse" xml:space="preserve"><value>Masquer l'explorateur de fichiers</value></data>
+  <data name="ExplorerTipDetails" xml:space="preserve"><value>Détails : une ligne par fichier — son nom, sa taille, et les mots qu'une recherche a trouvés dans son contenu</value></data>
+  <data name="ExplorerTipExpand" xml:space="preserve"><value>Afficher l'explorateur de fichiers</value></data>
+  <data name="ExplorerTipFolderGroups" xml:space="preserve"><value>Groupes de dossiers : la vue Dossiers en sections — les dossiers partageant leurs premiers mots, les autres dossiers, les séries de fichiers nommés, les fichiers nommés, puis les fichiers nommés par un appareil photo, une capture d'écran, une IA, un site… (menu ⚙ : Groupes de l'explorateur de fichiers)</value></data>
+  <data name="ExplorerTipLargerTiles" xml:space="preserve"><value>Tuiles plus grandes</value></data>
+  <data name="ExplorerTipModes" xml:space="preserve"><value>Ce que la liste affiche : le dossier de base dossier par dossier, les personnes en lesquelles les visages ont été regroupés, ou les favoris et la recherche sur tous les fichiers — Ctrl+F de nouveau dans la zone de recherche : la vue suivante, Ctrl+Shift+F : la précédente</value></data>
+  <data name="ExplorerTipRescan" xml:space="preserve"><value>Réanalyser le dossier</value></data>
+  <data name="ExplorerTipSearchGroups" xml:space="preserve"><value>Groupes de recherche : les résultats de recherche en deux sections — Chemin, trouvés par leur nom ou leurs dossiers, puis Contenu, trouvés par ce qu'ils contiennent</value></data>
+  <data name="ExplorerTipSeries" xml:space="preserve"><value>Séries : les fichiers nommés partageant leurs premiers mots — marlène schiappa …, homme soja … — dans une section chacune, avant les autres fichiers nommés (avec Groupes de dossiers activés ; menu ⚙ : Groupes de l'explorateur de fichiers)</value></data>
+  <data name="ExplorerTipSmallerTiles" xml:space="preserve"><value>Tuiles plus petites</value></data>
+  <data name="ExplorerTipSort" xml:space="preserve"><value>Tri : {0}.
+Une recherche liste d'abord les meilleurs résultats — trouvés dans le nom du fichier, puis dans ses dossiers, puis dans son contenu — chaque groupe étant trié ainsi.
+Dans la vue Dossiers, les dossiers viennent en premier, de A à Z.</value></data>
+  <data name="ExplorerTipThumbnails" xml:space="preserve"><value>Miniatures : des tuiles, autant par ligne que la largeur en permet</value></data>
+  <data name="ExplorerTipTileSize" xml:space="preserve"><value>Taille des tuiles : {0} px</value></data>
+  <data name="ExplorerTitleFiles" xml:space="preserve"><value>Fichiers</value></data>
+  <data name="ExplorerUnnamed" xml:space="preserve"><value>Sans nom</value></data>
+  <data name="ExplorerUnnamedFaceOne" xml:space="preserve"><value>1 visage sans nom</value></data>
+  <data name="ExplorerUnnamedFaces" xml:space="preserve"><value>{0} visages sans nom</value></data>
+  <data name="ExplorerVisionEngineFailed" xml:space="preserve"><value>Le moteur de vision n'a pas pu démarrer : {0}</value></data>
+  <data name="ExplorerVisionForgotten" xml:space="preserve"><value>Analyse visuelle oubliée : tous les plongements, étiquettes et descriptions sont supprimés</value></data>
+  <data name="ExplorerVisionForgottenPartly" xml:space="preserve"><value>Analyse visuelle oubliée, certains fichiers n'ont pas été supprimés : {0}</value></data>
+  <data name="ExplorerVisionImageFailed" xml:space="preserve"><value>Le moteur de vision n'a pas pu analyser l'image : {0}</value></data>
+  <data name="ExplorerVisionSearchFailed" xml:space="preserve"><value>Le moteur de vision n'a pas pu lire la recherche : {0}</value></data>
+  <data name="ExplorerWaitingForIndex" xml:space="preserve"><value>En attente de l'index…</value></data>
+  <data name="FileSizeByte" xml:space="preserve"><value>{0} octet</value></data>
+  <data name="FileSizeBytes" xml:space="preserve"><value>{0} octets</value></data>
+  <data name="FileSizeUnits" xml:space="preserve"><value>Ko Mo Go To</value></data>
+  <data name="MainArrowThicknessNone" xml:space="preserve"><value>0 (aucune)</value></data>
+  <data name="MainAutomaticColor" xml:space="preserve"><value>Couleur automatique</value></data>
+  <data name="MainBackgroundAutomaticTip" xml:space="preserve"><value>La couleur calculée à partir des bords de la partie de l'image affichée</value></data>
+  <data name="MainBackgroundBlendTip" xml:space="preserve"><value>Fond les bords étendus dans la couleur du fond, de plus en plus avec la distance à l'image : à 100 %, ils disparaissent au bord de la cellule</value></data>
+  <data name="MainBackgroundColorNote" xml:space="preserve"><value>. Une couleur choisie décoche Couleur automatique</value></data>
+  <data name="MainBackgroundColorTarget" xml:space="preserve"><value>la couleur du fond</value></data>
+  <data name="MainBackgroundEdgeOpacityTip" xml:space="preserve"><value>L'opacité des bords étendus sur la couleur du fond, qui garde la sienne</value></data>
+  <data name="MainBackgroundSoftenTip" xml:space="preserve"><value>Floute les bords étendus, de plus en plus avec la distance à l'image, l'image elle-même restant nette</value></data>
+  <data name="MainBorderCorners" xml:space="preserve"><value>Coins</value></data>
+  <data name="MainBorderDashed" xml:space="preserve"><value>Tirets</value></data>
+  <data name="MainBorderDotted" xml:space="preserve"><value>Pointillé</value></data>
+  <data name="MainBorderDouble" xml:space="preserve"><value>Double</value></data>
+  <data name="MainBorderSolid" xml:space="preserve"><value>Continu</value></data>
+  <data name="MainBordersColorNote" xml:space="preserve"><value>. La couleur choisie est mémorisée d'une session à l'autre</value></data>
+  <data name="MainBordersColorTarget" xml:space="preserve"><value>la couleur des bordures</value></data>
+  <data name="MainBordersInnerLines" xml:space="preserve"><value>Lignes intérieures</value></data>
+  <data name="MainBordersInnerLinesTip" xml:space="preserve"><value>Dessine les bordures entre les cellules ; décoché, les cellules se touchent</value></data>
+  <data name="MainBordersOpacityTip" xml:space="preserve"><value>Opacité de la couleur des bordures : les équerres des coins sur les images, le cadre et les lignes</value></data>
+  <data name="MainBordersOuterFrame" xml:space="preserve"><value>Cadre extérieur</value></data>
+  <data name="MainBordersOuterFrameTip" xml:space="preserve"><value>Dessine aussi les bordures autour de la grille ; les équerres des coins en sont déjà le cadre</value></data>
+  <data name="MainBordersRoundedTip" xml:space="preserve"><value>Arrondit les coins de la grille comme Twitter / X affiche les images ; les bordures suivent la courbe</value></data>
+  <data name="MainBordersStyleTip" xml:space="preserve"><value>Des équerres aux coins de la grille, ou un espace entre les cellules</value></data>
+  <data name="MainBordersThicknessTip" xml:space="preserve"><value>Largeur des bordures, en part du petit côté de la grille</value></data>
+  <data name="MainBordersTwitterCorners" xml:space="preserve"><value>Coins Twitter</value></data>
+  <data name="MainBordersTwitterCornersOnly" xml:space="preserve"><value>Coins Twitter (format Twitter uniquement)</value></data>
+  <data name="MainBrowse" xml:space="preserve"><value>Parcourir…</value></data>
+  <data name="MainButtonCopyFormat" xml:space="preserve"><value>Copier {0}</value></data>
+  <data name="MainButtonCopyLast" xml:space="preserve"><value>Copier le dernier {0}</value></data>
+  <data name="MainButtonSaveFormat" xml:space="preserve"><value>Enregistrer {0}…</value></data>
+  <data name="MainButtonSaveLast" xml:space="preserve"><value>Enregistrer le dernier {0}…</value></data>
+  <data name="MainCancel" xml:space="preserve"><value>Annuler</value></data>
+  <data name="MainCascadePauseTip" xml:space="preserve"><value>Combien de temps chaque vidéo et GIF animé reste immobile après chaque tour, avant que le suivant ne joue</value></data>
+  <data name="MainCascadeUnavailable" xml:space="preserve"><value>Aucune vidéo ni aucun GIF animé n'est en lecture : il n'y a rien à jouer l'un après l'autre</value></data>
+  <data name="MainClearAll" xml:space="preserve"><value>Tout effacer</value></data>
+  <data name="MainClearAllTip" xml:space="preserve"><value>Retire toutes les images et les effets globaux, et ramène le format à Twitter (Ctrl+N)</value></data>
+  <data name="MainColorBrightness" xml:space="preserve"><value>Luminosité</value></data>
+  <data name="MainColorContrast" xml:space="preserve"><value>Contraste</value></data>
+  <data name="MainColorSaturation" xml:space="preserve"><value>Saturation</value></data>
+  <data name="MainContentCountMany" xml:space="preserve"><value>{0} contenus</value></data>
+  <data name="MainContentCountOne" xml:space="preserve"><value>1 contenu</value></data>
+  <data name="MainCopy" xml:space="preserve"><value>Copier</value></data>
+  <data name="MainCopyLastVideo" xml:space="preserve"><value>Copier la dernière vidéo</value></data>
+  <data name="MainCopyWhatCell" xml:space="preserve"><value>Cellule</value></data>
+  <data name="MainCopyWhatLayer" xml:space="preserve"><value>Calque</value></data>
+  <data name="MainCropKeepCropOff" xml:space="preserve"><value>Activez d'abord le Recadrage : Garder fait de sa partie gardée l'image de la cellule</value></data>
+  <data name="MainCropKeepLayer" xml:space="preserve"><value>Garder s'applique à l'image d'une cellule, pas à un calque</value></data>
+  <data name="MainCropKeepNoCell" xml:space="preserve"><value>Sélectionnez d'abord une cellule</value></data>
+  <data name="MainCropKeepStills" xml:space="preserve"><value>Garder s'applique aux images fixes : un GIF, une vidéo, un PDF ou un texte conserve son recadrage</value></data>
+  <data name="MainCropKeepWhileExporting" xml:space="preserve"><value>Pas pendant un export</value></data>
+  <data name="MainCustomColorsNotSaved" xml:space="preserve"><value>Couleurs personnalisées non mémorisées : {0}</value></data>
+  <data name="MainCustomExactTip" xml:space="preserve"><value>Coché : Largeur × Hauteur sont les pixels exportés, exactement — de 100 à 8192 par côté, réduits, ratio conservé, seulement par une entrée Taille max du PNG ou la Taille des vidéos si elle est plus petite ; décoché, un ratio à la taille native</value></data>
+  <data name="MainCustomHeightTip" xml:space="preserve"><value>La hauteur du format Personnalisé : le second terme d'un ratio, ou ses pixels avec Pixels exacts ; la modifier choisit Personnalisé</value></data>
+  <data name="MainCustomWidthTip" xml:space="preserve"><value>La largeur du format Personnalisé : le premier terme d'un ratio, ou ses pixels avec Pixels exacts ; la modifier choisit Personnalisé</value></data>
+  <data name="MainCutoutAmountBlurTip" xml:space="preserve"><value>Le degré de flou de la partie écartée</value></data>
+  <data name="MainCutoutAmountColorTip" xml:space="preserve"><value>L'opacité de la couleur du masque sur la partie écartée</value></data>
+  <data name="MainCutoutAmountOpacityTip" xml:space="preserve"><value>L'opacité de la partie écartée</value></data>
+  <data name="MainCutoutAmountPixelateTip" xml:space="preserve"><value>La taille des carrés dans lesquels la partie écartée est dessinée</value></data>
+  <data name="MainCutoutColorTarget" xml:space="preserve"><value>la couleur du masque</value></data>
+  <data name="MainCutoutFillHolesPlainTip" xml:space="preserve"><value>Le mode Uni garde déjà ce que le fond enferme</value></data>
+  <data name="MainCutoutFillHolesTip" xml:space="preserve"><value>Garde ce qu'enferme le contour du détourage : les parties de l'image que le modèle a écartées mais que la partie gardée entoure</value></data>
+  <data name="MainCutoutGapsTip" xml:space="preserve"><value>Ferme le contour au-dessus des interstices jusqu'à cette largeur, pour garder aussi ce qu'il enferme presque — mode Uni, ou Boucher les trous</value></data>
+  <data name="MainCutoutGrowTip" xml:space="preserve"><value>Repousse le bord, ou le grignote, pour ne laisser aucune frange de l'ancien fond</value></data>
+  <data name="MainCutoutInvertTip" xml:space="preserve"><value>Garde à la place ce que le détourage laisse de côté</value></data>
+  <data name="MainCutoutSoftenTip" xml:space="preserve"><value>Adoucit le bord sur quelques pixels</value></data>
+  <data name="MainCutoutToleranceTip" xml:space="preserve"><value>À quel point un pixel doit être proche de la couleur des bords pour être retiré — mode Uni</value></data>
+  <data name="MainEffectAnimations" xml:space="preserve"><value>Animations</value></data>
+  <data name="MainEffectBackground" xml:space="preserve"><value>Fond</value></data>
+  <data name="MainEffectBlur" xml:space="preserve"><value>Flou</value></data>
+  <data name="MainEffectColors" xml:space="preserve"><value>Couleurs</value></data>
+  <data name="MainEffectCrop" xml:space="preserve"><value>Recadrage</value></data>
+  <data name="MainEffectCutout" xml:space="preserve"><value>Détourage</value></data>
+  <data name="MainEffectFlip" xml:space="preserve"><value>Miroir</value></data>
+  <data name="MainEffectFrames" xml:space="preserve"><value>Lecture</value></data>
+  <data name="MainEffectResetTip" xml:space="preserve"><value>Ramène cet effet à ses valeurs par défaut</value></data>
+  <data name="MainEffectRotate" xml:space="preserve"><value>Rotation</value></data>
+  <data name="MainEffectUpscale" xml:space="preserve"><value>Agrandissement</value></data>
+  <data name="MainEffectVolume" xml:space="preserve"><value>Volume</value></data>
+  <data name="MainEffectZoom" xml:space="preserve"><value>Zoom</value></data>
+  <data name="MainEffectsLabel" xml:space="preserve"><value>Effets →</value></data>
+  <data name="MainExactPixels" xml:space="preserve"><value>Pixels exacts</value></data>
+  <data name="MainExplorerGroupDetectedSources" xml:space="preserve"><value>Sources détectées</value></data>
+  <data name="MainExplorerGroupSeries" xml:space="preserve"><value>Séries</value></data>
+  <data name="MainExplorerGroupSources" xml:space="preserve"><value>Sources</value></data>
+  <data name="MainExplorerGroupSourcesTip" xml:space="preserve"><value>Fichiers nommés par un outil de téléchargement ou une application, un groupe par source</value></data>
+  <data name="MainFadeDurationTip" xml:space="preserve"><value>Le temps que met le son à monter depuis le silence au début de la vidéo, et à y retomber à la fin</value></data>
+  <data name="MainFadeLinearTip" xml:space="preserve"><value>Linéaire : le gain monte en ligne droite — perçu comme une montée rapide qui se stabilise</value></data>
+  <data name="MainFadeSquaredTip" xml:space="preserve"><value>Quadratique : le son monte lentement, puis plus vite — perçu comme une montée régulière</value></data>
+  <data name="MainFadeUnavailable" xml:space="preserve"><value>Rien n'est audible : aucune vidéo n'est lue avec son son, et aucune bande son n'est activée</value></data>
+  <data name="MainFileMany" xml:space="preserve"><value>{0} fichiers</value></data>
+  <data name="MainFileOne" xml:space="preserve"><value>1 fichier</value></data>
+  <data name="MainFillHoles" xml:space="preserve"><value>Boucher les trous</value></data>
+  <data name="MainFolderNameExport" xml:space="preserve"><value>Export</value></data>
+  <data name="MainForgetFacesAsk" xml:space="preserve"><value>Oublier chaque visage trouvé et chaque personne nommée, masquée ou fusionnée ? L'analyse des visages est désactivée ; réactivée, elle recherche les visages depuis le début.
+
+Le moteur de visages reste téléchargé.</value></data>
+  <data name="MainForgetFacesCaption" xml:space="preserve"><value>Oublier les visages</value></data>
+  <data name="MainForgetVisualAsk" xml:space="preserve"><value>Oublier ce que montrent les images — chaque plongement, étiquette et description ? L'analyse visuelle et les descriptions sont désactivées ; réactivées, elles regardent les images depuis le début.
+
+Les moteurs et votre fichier d'étiquettes (vision-tags.txt) restent.</value></data>
+  <data name="MainForgetVisualCaption" xml:space="preserve"><value>Oublier l'analyse visuelle</value></data>
+  <data name="MainFormatGif" xml:space="preserve"><value>GIF</value></data>
+  <data name="MainFormatJpegSharing" xml:space="preserve"><value>JPEG pour le partage</value></data>
+  <data name="MainFormatMp4Video" xml:space="preserve"><value>Vidéo MP4</value></data>
+  <data name="MainFormatPngMaxSize" xml:space="preserve"><value>Taille max du PNG</value></data>
+  <data name="MainFrameCountMany" xml:space="preserve"><value>{0} images</value></data>
+  <data name="MainFrameCountOne" xml:space="preserve"><value>1 image</value></data>
+  <data name="MainFramesFrozenOn" xml:space="preserve"><value>Figé sur</value></data>
+  <data name="MainFramesStartsAt" xml:space="preserve"><value>Début à</value></data>
+  <data name="MainFreeze" xml:space="preserve"><value>Figer</value></data>
+  <data name="MainFrom" xml:space="preserve"><value>De</value></data>
+  <data name="MainGlobalBorders" xml:space="preserve"><value>Bordures</value></data>
+  <data name="MainGlobalCascade" xml:space="preserve"><value>Cascade</value></data>
+  <data name="MainGlobalEffectResetTip" xml:space="preserve"><value>Ramène ce réglage global à son état initial</value></data>
+  <data name="MainGlobalFade" xml:space="preserve"><value>Fondu</value></data>
+  <data name="MainGlobalFormat" xml:space="preserve"><value>Format</value></data>
+  <data name="MainGlobalGridBackground" xml:space="preserve"><value>Fond de grille</value></data>
+  <data name="MainGlobalLabel" xml:space="preserve"><value>Global →</value></data>
+  <data name="MainGlobalLayers" xml:space="preserve"><value>Calques</value></data>
+  <data name="MainGlobalResetTip" xml:space="preserve"><value>Ramène le format à Twitter et chaque effet global à son état initial ; les cellules ne sont pas touchées</value></data>
+  <data name="MainGlobalSeams" xml:space="preserve"><value>Raccords</value></data>
+  <data name="MainGlobalSoundtrack" xml:space="preserve"><value>Bande son</value></data>
+  <data name="MainGroupTipAi" xml:space="preserve"><value>Images et vidéos créées par une IA : OIG1 (10), grok_video_…, ChatGPT Image …, High_Performance_…</value></data>
+  <data name="MainGroupTipCamera" xml:space="preserve"><value>Fichiers nommés par un appareil photo ou un téléphone : IMG_20220321_132643, PXL_…, DSC_0042</value></data>
+  <data name="MainGroupTipDateStamps" xml:space="preserve"><value>Une date et une heure, en chiffres seulement : 20230809_212344</value></data>
+  <data name="MainGroupTipDetectedSources" xml:space="preserve"><value>Toute autre source trouvée d'elle-même : un mot partagé par 3 fichiers ou plus, suivi d'une date, d'un nombre ou d'un code</value></data>
+  <data name="MainGroupTipGenericNames" xml:space="preserve"><value>Le nom par défaut d'un navigateur ou d'un site : téléchargement (1), images (2), videoplayback (12), maxresdefault</value></data>
+  <data name="MainGroupTipIdentifiers" xml:space="preserve"><value>Noms faits d'un identifiant : un GUID, un hash, un identifiant de média X, un jeton aléatoire comme F3xKz9aWkAA1b2c</value></data>
+  <data name="MainGroupTipMessaging" xml:space="preserve"><value>Fichiers enregistrés depuis une application de messagerie : WhatsApp Image 2026-11-03 at 10.24.09, IMG-20220321-WA0001, Telegram, Signal…</value></data>
+  <data name="MainGroupTipNumbers" xml:space="preserve"><value>Tout autre nom fait de chiffres seulement : 001</value></data>
+  <data name="MainGroupTipScreenshots" xml:space="preserve"><value>Captures d'écran et enregistrements d'écran : Screenshot_2026-11-03-10-24-09, Capture d'écran 2026-11-03…</value></data>
+  <data name="MainGroupTipSeries" xml:space="preserve"><value>Fichiers nommés partageant leurs premiers mots, 3 ou plus : marlène schiappa …, homme soja …</value></data>
+  <data name="MainGroupTipShortCodes" xml:space="preserve"><value>Le code court d'un site de mèmes : d9omli, qy6xu8, -oong5f</value></data>
+  <data name="MainGroupTipSource" xml:space="preserve"><value>Fichiers nommés par {0}</value></data>
+  <data name="MainGroupTipTimestamps" xml:space="preserve"><value>Un temps Unix, en secondes ou millisecondes : 1711612478, 1746944459842</value></data>
+  <data name="MainGuideApproachPercent" xml:space="preserve"><value>{0} % de la cellule</value></data>
+  <data name="MainGuideApproachStopOnly" xml:space="preserve"><value>Au point d'arrêt seulement</value></data>
+  <data name="MainHeightAfterWidth" xml:space="preserve"><value>× Hauteur</value></data>
+  <data name="MainImageCountMany" xml:space="preserve"><value>{0} images</value></data>
+  <data name="MainImageCountOne" xml:space="preserve"><value>1 image</value></data>
+  <data name="MainInvert" xml:space="preserve"><value>Inverser</value></data>
+  <data name="MainLabelAngle" xml:space="preserve"><value>Angle : {0:+0;-0;0}°</value></data>
+  <data name="MainLabelBackAndForth" xml:space="preserve"><value>Aller-retour : {0} s</value></data>
+  <data name="MainLabelBlend" xml:space="preserve"><value>Mélange : {0} %</value></data>
+  <data name="MainLabelBlur" xml:space="preserve"><value>Flou : {0} %</value></data>
+  <data name="MainLabelColor" xml:space="preserve"><value>Couleur : {0} %</value></data>
+  <data name="MainLabelDepth" xml:space="preserve"><value>Profondeur : {0} %</value></data>
+  <data name="MainLabelDuration" xml:space="preserve"><value>Durée : {0:0.0} s</value></data>
+  <data name="MainLabelEdges" xml:space="preserve"><value>Bords : {0} %</value></data>
+  <data name="MainLabelGaps" xml:space="preserve"><value>Interstices : {0:0.0} %</value></data>
+  <data name="MainLabelGrow" xml:space="preserve"><value>Étendre : {0:+0.0;-0.0;0.0} %</value></data>
+  <data name="MainLabelHue" xml:space="preserve"><value>Teinte : {0:+0;-0;0}°</value></data>
+  <data name="MainLabelIntensity" xml:space="preserve"><value>Intensité : {0}%</value></data>
+  <data name="MainLabelOpacity" xml:space="preserve"><value>Opacité : {0} %</value></data>
+  <data name="MainLabelPause" xml:space="preserve"><value>Pause : {0:0.0} s</value></data>
+  <data name="MainLabelPixels" xml:space="preserve"><value>Pixels : {0} %</value></data>
+  <data name="MainLabelSignedPercent" xml:space="preserve"><value>{0} : {1:+0;-0;0} %</value></data>
+  <data name="MainLabelSoften" xml:space="preserve"><value>Adoucir : {0:0.0} %</value></data>
+  <data name="MainLabelSpeed" xml:space="preserve"><value>Vitesse : {0}</value></data>
+  <data name="MainLabelThickness" xml:space="preserve"><value>Épaisseur : {0:0.0} %</value></data>
+  <data name="MainLabelTolerance" xml:space="preserve"><value>Tolérance : {0} %</value></data>
+  <data name="MainLabelVolume" xml:space="preserve"><value>Volume : {0} %</value></data>
+  <data name="MainLabelZoom" xml:space="preserve"><value>Zoom : {0:0} %</value></data>
+  <data name="MainLanguageNextStart" xml:space="preserve"><value>Langue : {0} — appliquée au prochain démarrage de l'application.</value></data>
+  <data name="MainLanguageNotSaved" xml:space="preserve"><value>Langue non mémorisée : {0}</value></data>
+  <data name="MainLanguageRestartAsk" xml:space="preserve"><value>L'application affichera ses textes en français à son prochain démarrage.
+
+Redémarrer l'application maintenant ?</value></data>
+  <data name="MainLanguageRestartCaption" xml:space="preserve"><value>Langue</value></data>
+  <data name="MainLanguageTip" xml:space="preserve"><value>La langue des textes de l'application, appliquée à son prochain démarrage ; mémorisée d'une session à l'autre</value></data>
+  <data name="MainLastNameVideo" xml:space="preserve"><value>vidéo</value></data>
+  <data name="MainLastVideoGeneratedAt" xml:space="preserve"><value>Généré à {0:HH:mm}</value></data>
+  <data name="MainLastVideoGridChanged" xml:space="preserve"><value>la grille a changé depuis</value></data>
+  <data name="MainLayerCountMany" xml:space="preserve"><value>{0} calques</value></data>
+  <data name="MainLayerCountOne" xml:space="preserve"><value>1 calque</value></data>
+  <data name="MainLengthCascade" xml:space="preserve"><value>Vidéo MP4 de {0} : la cascade, {1} l'un après l'autre{2}</value></data>
+  <data name="MainLengthCascadePause" xml:space="preserve"><value>, {0} de pause après chacun</value></data>
+  <data name="MainLengthCellName" xml:space="preserve"><value>cellule {0}</value></data>
+  <data name="MainLengthFrozen" xml:space="preserve"><value>{0} — figé, une image fixe</value></data>
+  <data name="MainLengthItsAnimation" xml:space="preserve"><value>{0} (son animation)</value></data>
+  <data name="MainLengthLongestLoop" xml:space="preserve"><value>Vidéo MP4 de {0} : la boucle la plus longue, {1}</value></data>
+  <data name="MainLengthLoopAnimation" xml:space="preserve"><value>l'animation de {0}</value></data>
+  <data name="MainLengthLoopOf" xml:space="preserve"><value>celle de {0}</value></data>
+  <data name="MainLengthNoImage" xml:space="preserve"><value>Aucune image</value></data>
+  <data name="MainLengthPlays" xml:space="preserve"><value>{0} — {1}, joué {2}</value></data>
+  <data name="MainLengthPng" xml:space="preserve"><value>Un PNG : aucun contenu n'est en lecture et la bande son est désactivée</value></data>
+  <data name="MainLengthSoundtrack" xml:space="preserve"><value>Vidéo MP4 de {0} : la durée de la bande son, {1} ; les images sont fixes</value></data>
+  <data name="MainLengthSoundtrackCut" xml:space="preserve"><value>Bande son {0} — {1}, coupée à {2}</value></data>
+  <data name="MainLengthSoundtrackPlays" xml:space="preserve"><value>Bande son {0} — {1}, jouée {2}</value></data>
+  <data name="MainLengthTurn" xml:space="preserve"><value>{0} — tour de {1}, à partir de {2}</value></data>
+  <data name="MainListAnd" xml:space="preserve"><value>{0} et {1}</value></data>
+  <data name="MainMenuCopyCell" xml:space="preserve"><value>Copier la cellule</value></data>
+  <data name="MainMenuCopyLastAt" xml:space="preserve"><value>Copier le dernier {0} ({1:HH:mm})</value></data>
+  <data name="MainMenuFindSimilar" xml:space="preserve"><value>Trouver des images similaires</value></data>
+  <data name="MainMenuSaveUpscaled" xml:space="preserve"><value>Enregistrer l'image agrandie…</value></data>
+  <data name="MainMotionCycleTip" xml:space="preserve"><value>La durée d'un aller-retour : plus à droite, plus rapide</value></data>
+  <data name="MainMotionKindTip" xml:space="preserve"><value>Le type d'animation jouée dans la cellule</value></data>
+  <data name="MainMotionKindZoom" xml:space="preserve"><value>Zoom</value></data>
+  <data name="MainMute" xml:space="preserve"><value>Muet</value></data>
+  <data name="MainNeedCaptionEngine" xml:space="preserve"><value>Les descriptions sont écrites avec le moteur de descriptions. Réactivez-les une fois le moteur installé.</value></data>
+  <data name="MainNeedCutoutEngine" xml:space="preserve"><value>Les modes Sujet et Sélection du Détourage ont besoin du moteur de détourage pour trouver ce qu'il faut garder.</value></data>
+  <data name="MainNeedFaceEngine" xml:space="preserve"><value>L'analyse des visages regroupe en personnes les visages des images du dossier de base grâce au moteur de visages. Réactivez-la une fois le moteur installé.</value></data>
+  <data name="MainNeedOcrEngine" xml:space="preserve"><value>La recherche de contenu lit avec RapidOCR, un second moteur OCR, le texte stylisé, courbe ou inversé que l'OCR de Windows manque. Sans lui, l'OCR de Windows lit seul les images.</value></data>
+  <data name="MainNeedUpscaleEngine" xml:space="preserve"><value>Le modèle {0} de l'effet Agrandissement agrandit une image avec le moteur d'agrandissement. Cliquez de nouveau sur Agrandir une fois celui-ci installé.</value></data>
+  <data name="MainNeedVisionEngine" xml:space="preserve"><value>L'analyse visuelle étiquette les images du dossier de base et les retrouve par ce qu'elles montrent grâce au moteur de vision. Réactivez-la une fois le moteur installé.</value></data>
+  <data name="MainNotifyCopied" xml:space="preserve"><value>{0} copié</value></data>
+  <data name="MainNotifyCopiedBody" xml:space="preserve"><value>{0} est dans le presse-papiers. S'il est écrasé, Copier la dernière {1} le ramène.</value></data>
+  <data name="MainNotifyCopyFailed" xml:space="preserve"><value>Échec de la copie</value></data>
+  <data name="MainNotifyCopyFailedBody" xml:space="preserve"><value>{0} Copier la dernière {1} remet {2} dans le presse-papiers.</value></data>
+  <data name="MainNotifyExportFailed" xml:space="preserve"><value>Échec de l'export {0}</value></data>
+  <data name="MainNotifySaved" xml:space="preserve"><value>{0} enregistré</value></data>
+  <data name="MainPause" xml:space="preserve"><value>Pause</value></data>
+  <data name="MainPickerAddImages" xml:space="preserve"><value>Ajouter des images</value></data>
+  <data name="MainPickerAllFiles" xml:space="preserve"><value>Tous les fichiers (*.*)</value></data>
+  <data name="MainPickerAudio" xml:space="preserve"><value>Audio</value></data>
+  <data name="MainPickerAudioVideo" xml:space="preserve"><value>Fichiers audio et vidéo</value></data>
+  <data name="MainPickerExplorerFolderDescription" xml:space="preserve"><value>Le dossier dans lequel l'explorateur de fichiers cherche, avec ses sous-dossiers</value></data>
+  <data name="MainPickerImages" xml:space="preserve"><value>Images</value></data>
+  <data name="MainPickerSoundtrackTitle" xml:space="preserve"><value>Choisir une bande son</value></data>
+  <data name="MainPickerSupportedFiles" xml:space="preserve"><value>Fichiers pris en charge</value></data>
+  <data name="MainPickerText" xml:space="preserve"><value>Texte</value></data>
+  <data name="MainPickerVideos" xml:space="preserve"><value>Vidéos</value></data>
+  <data name="MainPlay" xml:space="preserve"><value>Lecture</value></data>
+  <data name="MainPngMaxSizeTip" xml:space="preserve"><value>Un PNG dont le grand côté fait {0} px au plus ; une grille qui en demande moins garde sa propre taille</value></data>
+  <data name="MainPresetEllipsis" xml:space="preserve"><value>Preset…</value></data>
+  <data name="MainPresetNamePastedImage" xml:space="preserve"><value>Image collée — enregistrée dans favorites-from-pasted</value></data>
+  <data name="MainPresetNamePastedText" xml:space="preserve"><value>Texte collé — enregistré dans favorites-from-pasted</value></data>
+  <data name="MainPresetTip" xml:space="preserve"><value>Enregistre les effets activés dans la cellule comme un favori de son fichier, avec une description pour le retrouver</value></data>
+  <data name="MainRefusedFavorite" xml:space="preserve"><value>Non ajouté aux favoris</value></data>
+  <data name="MainRefusedImageNoFile" xml:space="preserve"><value>{0} : cette image n'a pas de fichier et ne peut pas être enregistrée</value></data>
+  <data name="MainRefusedImageNotSaved" xml:space="preserve"><value>{0} : l'image n'a pas pu être enregistrée : {1}</value></data>
+  <data name="MainRefusedPreset" xml:space="preserve"><value>Preset d'effets non enregistré</value></data>
+  <data name="MainRemovedSoundtrack" xml:space="preserve"><value>la bande son</value></data>
+  <data name="MainReset" xml:space="preserve"><value>Réinitialiser</value></data>
+  <data name="MainResetNameBorders" xml:space="preserve"><value>bordures</value></data>
+  <data name="MainResetNameCascade" xml:space="preserve"><value>cascade</value></data>
+  <data name="MainResetNameFade" xml:space="preserve"><value>fondu</value></data>
+  <data name="MainResetNameFormat" xml:space="preserve"><value>format</value></data>
+  <data name="MainResetNameGridBackground" xml:space="preserve"><value>fond de grille</value></data>
+  <data name="MainResetNameLayers" xml:space="preserve"><value>calques</value></data>
+  <data name="MainResetNameSeams" xml:space="preserve"><value>raccords</value></data>
+  <data name="MainResetNameSoundtrack" xml:space="preserve"><value>bande son</value></data>
+  <data name="MainResetTip" xml:space="preserve"><value>Ramène chaque effet de la cellule à ses valeurs par défaut, et les cellules aux tailles de leur disposition</value></data>
+  <data name="MainSaveEllipsis" xml:space="preserve"><value>Enregistrer…</value></data>
+  <data name="MainSaveFilterAnimatedGif" xml:space="preserve"><value>GIF animé (*.gif)|*.gif</value></data>
+  <data name="MainSaveFilterGif" xml:space="preserve"><value>Image GIF (*.gif)|*.gif</value></data>
+  <data name="MainSaveFilterMp4" xml:space="preserve"><value>Vidéo MP4 (*.mp4)|*.mp4</value></data>
+  <data name="MainSaveFilterPng" xml:space="preserve"><value>Image PNG (*.png)|*.png</value></data>
+  <data name="MainSaveLastVideo" xml:space="preserve"><value>Enregistrer la dernière vidéo…</value></data>
+  <data name="MainSeamsDepthTip" xml:space="preserve"><value>Jusqu'où les fonds des cellules voisines se fondent l'un dans l'autre depuis les bords qu'elles partagent, en part du petit côté de la plus petite cellule</value></data>
+  <data name="MainSeamsUnavailable" xml:space="preserve"><value>Les bordures laissent un espace entre les cellules : elles ne se touchent plus</value></data>
+  <data name="MainSettings" xml:space="preserve"><value>Paramètres</value></data>
+  <data name="MainSettingsCaptions" xml:space="preserve"><value>Descriptions</value></data>
+  <data name="MainSettingsCaptionsTip" xml:space="preserve"><value>Indique si l'explorateur de fichiers écrit, en anglais, une phrase disant ce que montre chaque image, trouvée par la recherche et affichée dans la vue Détails — lent : quelques secondes par image ; désactivées tant qu'on ne les active pas, mémorisées d'une session à l'autre</value></data>
+  <data name="MainSettingsComponentUpdates" xml:space="preserve"><value>Mises à jour des composants…</value></data>
+  <data name="MainSettingsComponentUpdatesTip" xml:space="preserve"><value>Liste chaque composant que l'application télécharge — moteurs, environnements d'exécution, outils web, polices d'emojis — avec leurs versions, pour en installer, mettre à jour ou remettre un ou tous</value></data>
+  <data name="MainSettingsContentSearch" xml:space="preserve"><value>Rechercher dans le contenu des fichiers (OCR)</value></data>
+  <data name="MainSettingsContentSearchTip" xml:space="preserve"><value>Indique si la recherche de l'explorateur de fichiers trouve aussi les fichiers par le texte qu'ils contiennent — reconnu dans les images et la première page d'un PDF, lu dans les fichiers texte et HTML — extrait en arrière-plan une fois les fichiers indexés ; mémorisé d'une session à l'autre</value></data>
+  <data name="MainSettingsExplorerFolder" xml:space="preserve"><value>Dossier de l'explorateur de fichiers…</value></data>
+  <data name="MainSettingsExplorerFolderTip" xml:space="preserve"><value>Le dossier dans lequel l'explorateur de fichiers cherche, avec ses sous-dossiers ; mémorisé d'une session à l'autre</value></data>
+  <data name="MainSettingsExplorerGroups" xml:space="preserve"><value>Groupes de l'explorateur de fichiers</value></data>
+  <data name="MainSettingsExplorerGroupsTip" xml:space="preserve"><value>Les groupes de fichiers nommés par une machine que la vue dossiers met à part, chacun après les fichiers nommés ; un fichier d'un groupe désactivé passe au groupe suivant qui lui convient, sinon parmi les fichiers nommés ; mémorisé d'une session à l'autre</value></data>
+  <data name="MainSettingsExplorerPages" xml:space="preserve"><value>Pages par chargement de l'explorateur</value></data>
+  <data name="MainSettingsExplorerPagesTip" xml:space="preserve"><value>Combien d'écrans de tuiles l'explorateur de fichiers charge à la fois, les suivants au fil du défilement de la liste ; mémorisé d'une session à l'autre</value></data>
+  <data name="MainSettingsFaceAnalysis" xml:space="preserve"><value>Analyse des visages</value></data>
+  <data name="MainSettingsFaceAnalysisTip" xml:space="preserve"><value>Indique si l'explorateur de fichiers cherche les visages dans les images et PDF du dossier de base et les regroupe en personnes, pour sa vue Personnes — sur cet ordinateur uniquement ; désactivée tant qu'on ne l'active pas, mémorisée d'une session à l'autre</value></data>
+  <data name="MainSettingsFaceGrouping" xml:space="preserve"><value>Regroupement des visages</value></data>
+  <data name="MainSettingsFaceGroupingTip" xml:space="preserve"><value>À quel point des visages doivent se ressembler pour être regroupés en une même personne dans la vue Personnes — plus strict mélange moins de personnes, plus souple en sépare moins ; vos noms, fusions et visages retirés sont conservés ; mémorisé d'une session à l'autre</value></data>
+  <data name="MainSettingsFileContents" xml:space="preserve"><value>Contenu des fichiers</value></data>
+  <data name="MainSettingsForgetFaces" xml:space="preserve"><value>Oublier les visages…</value></data>
+  <data name="MainSettingsForgetFacesTip" xml:space="preserve"><value>Supprime chaque visage trouvé et chaque personne nommée, masquée ou fusionnée — files.faces et people.json — et désactive l'analyse des visages</value></data>
+  <data name="MainSettingsForgetVisual" xml:space="preserve"><value>Oublier l'analyse visuelle…</value></data>
+  <data name="MainSettingsForgetVisualTip" xml:space="preserve"><value>Supprime chaque plongement, étiquette et description — files.vision et les étiquettes et descriptions de files.content — et désactive l'analyse visuelle et les descriptions</value></data>
+  <data name="MainSettingsGapBarsCenter" xml:space="preserve"><value>Centre de l'image</value></data>
+  <data name="MainSettingsGapBarsEdges" xml:space="preserve"><value>Bords de l'image</value></data>
+  <data name="MainSettingsGapBarsFrom" xml:space="preserve"><value>Barres d'écart depuis</value></data>
+  <data name="MainSettingsGapBarsFromTip" xml:space="preserve"><value>Le point de l'image d'où part la barre de chaque guide vers le guide : le centre de l'image, ou son bord le plus proche du guide — le même pour tous les guides ; mémorisé d'une session à l'autre</value></data>
+  <data name="MainSettingsGuideApproach" xml:space="preserve"><value>Guides affichés dès</value></data>
+  <data name="MainSettingsGuideApproachTip" xml:space="preserve"><value>À quelle distance de son point d'arrêt magnétique le guide d'une image déplacée s'affiche, avec une barre mesurant l'écart restant ; mémorisé d'une session à l'autre</value></data>
+  <data name="MainSettingsImageContent" xml:space="preserve"><value>Contenu des images</value></data>
+  <data name="MainSettingsKeyboardShortcuts" xml:space="preserve"><value>Raccourcis clavier…</value></data>
+  <data name="MainSettingsKeyboardShortcutsTip" xml:space="preserve"><value>Liste chaque touche et chaque geste de souris de l'application et ce qu'ils font, dans une fenêtre qui reste ouverte à côté de celle-ci</value></data>
+  <data name="MainSettingsOcrArrowColor" xml:space="preserve"><value>Couleur de la flèche…</value></data>
+  <data name="MainSettingsOcrArrowColorTip" xml:space="preserve"><value>La couleur de la flèche, son contour sombre restant sombre ; mémorisé d'une session à l'autre</value></data>
+  <data name="MainSettingsOcrArrowCurved" xml:space="preserve"><value>Flèche courbe</value></data>
+  <data name="MainSettingsOcrArrowCurvedTip" xml:space="preserve"><value>Indique si la flèche est une légère courbe arrivant droit vers le bas — ou vers le haut — sur le mot, plutôt qu'une ligne droite ; mémorisé d'une session à l'autre</value></data>
+  <data name="MainSettingsOcrArrowThickness" xml:space="preserve"><value>Épaisseur de la flèche</value></data>
+  <data name="MainSettingsOcrArrowThicknessTip" xml:space="preserve"><value>La largeur du trait coloré de la flèche, son contour sombre non compté ; 0 ne dessine aucune flèche ; mémorisé d'une session à l'autre</value></data>
+  <data name="MainSettingsOcrResultStyle" xml:space="preserve"><value>Style du résultat OCR</value></data>
+  <data name="MainSettingsOcrResultStyleTip" xml:space="preserve"><value>Comment est dessinée la flèche de l'ampoule d'une tuile au mot trouvé par l'OCR ; mémorisé d'une session à l'autre</value></data>
+  <data name="MainSettingsOpenAppFolder" xml:space="preserve"><value>Ouvrir le dossier de l'application</value></data>
+  <data name="MainSettingsOpenAppFolderTip" xml:space="preserve"><value>Ouvre l'Explorateur sur le dossier de cet exe, l'exe sélectionné — là où se trouvent settings.json et les autres fichiers de l'application</value></data>
+  <data name="MainSettingsPeople" xml:space="preserve"><value>Personnes</value></data>
+  <data name="MainSettingsRebuildContent" xml:space="preserve"><value>Reconstruire l'index du contenu</value></data>
+  <data name="MainSettingsRebuildContentTip" xml:space="preserve"><value>Oublie le texte trouvé dans chaque fichier et l'extrait de nouveau en entier — après l'installation d'une langue OCR, par exemple</value></data>
+  <data name="MainSettingsSimilarImages" xml:space="preserve"><value>Images similaires</value></data>
+  <data name="MainSettingsSimilarImagesTip" xml:space="preserve"><value>À quel point une image doit se démarquer pour être listée par Trouver des images similaires et à la fin d'une recherche 💡 — plus strict montre moins d'images, plus proches ; mémorisé d'une session à l'autre</value></data>
+  <data name="MainSettingsStartWithWindows" xml:space="preserve"><value>Démarrer avec Windows</value></data>
+  <data name="MainSettingsTwitterCornersDefault" xml:space="preserve"><value>Coins Twitter par défaut</value></data>
+  <data name="MainSettingsTwitterCornersDefaultTip" xml:space="preserve"><value>Indique si les bordures démarrent avec leurs coins Twitter, au démarrage et après Tout effacer ; mémorisé d'une session à l'autre</value></data>
+  <data name="MainSettingsVideoSize" xml:space="preserve"><value>Taille des vidéos</value></data>
+  <data name="MainSettingsVideoSizeTip" xml:space="preserve"><value>Le grand côté auquel l'export MP4 ou GIF est limité : plus petit, il pèse moins en mémoire et s'encode plus vite ; un PNG garde 4096 px ; mémorisé d'une session à l'autre</value></data>
+  <data name="MainSettingsVisualAnalysis" xml:space="preserve"><value>Analyse visuelle</value></data>
+  <data name="MainSettingsVisualAnalysisTip" xml:space="preserve"><value>Indique si l'explorateur de fichiers regarde ce que montrent les images et PDF du dossier de base — étiquettes en français et en anglais, et images les plus proches d'une recherche ou d'une autre image — sur cet ordinateur uniquement ; désactivée tant qu'on ne l'active pas, mémorisée d'une session à l'autre</value></data>
+  <data name="MainSizeByteUnit" xml:space="preserve"><value>o</value></data>
+  <data name="MainSoften" xml:space="preserve"><value>Adoucir</value></data>
+  <data name="MainSoundFailedMany" xml:space="preserve"><value>{0} : leurs sons ne peuvent pas être ré-encodés</value></data>
+  <data name="MainSoundFailedOne" xml:space="preserve"><value>{0} : son son ne peut pas être ré-encodé</value></data>
+  <data name="MainSoundMixed" xml:space="preserve"><value>son : {0}</value></data>
+  <data name="MainSoundNone" xml:space="preserve"><value>sans son</value></data>
+  <data name="MainSoundNoneWith" xml:space="preserve"><value>sans son ({0})</value></data>
+  <data name="MainSoundtrackBrowseTip" xml:space="preserve"><value>Mixe le son d'un fichier audio ou vidéo par-dessus les vidéos, dans l'aperçu et l'export MP4 ; un fichier peut aussi être déposé sur ces rangées</value></data>
+  <data name="MainSoundtrackNoFile" xml:space="preserve"><value>Aucun fichier</value></data>
+  <data name="MainSpeedTip" xml:space="preserve"><value>La vitesse de lecture du contenu, son son avec lui : ×1 est son rythme propre</value></data>
+  <data name="MainStatusBackToInitial" xml:space="preserve"><value>Retour à l'état initial : {0}.</value></data>
+  <data name="MainStatusBackToInitialPlural" xml:space="preserve"><value>Retour à l'état initial : {0}.</value></data>
+  <data name="MainStatusCopied" xml:space="preserve"><value>Copié : {0}</value></data>
+  <data name="MainStatusCopiedAgain" xml:space="preserve"><value>{0} copié de nouveau (généré à {1:HH:mm})</value></data>
+  <data name="MainStatusCopiedForSharing" xml:space="preserve"><value>Copié pour le partage</value></data>
+  <data name="MainStatusCopiedToClipboard" xml:space="preserve"><value>Copié dans le presse-papiers</value></data>
+  <data name="MainStatusCopyCancelledUpscale" xml:space="preserve"><value>Copie annulée : l'agrandissement d'une image n'est pas calculé</value></data>
+  <data name="MainStatusCopyFailed" xml:space="preserve"><value>Échec de la copie : {0}</value></data>
+  <data name="MainStatusCuttingOutImage" xml:space="preserve"><value>Détourage de l'image…</value></data>
+  <data name="MainStatusCuttingOutImages" xml:space="preserve"><value>Détourage des images…</value></data>
+  <data name="MainStatusDroppedTextEmpty" xml:space="preserve"><value>Rien n'a été ajouté : le texte déposé est vide.</value></data>
+  <data name="MainStatusExplorerNotOpened" xml:space="preserve"><value>Impossible d'ouvrir l'Explorateur : {0}</value></data>
+  <data name="MainStatusExportCancelledGif" xml:space="preserve"><value>Export du GIF annulé.</value></data>
+  <data name="MainStatusExportCancelledVideo" xml:space="preserve"><value>Export de la vidéo annulé.</value></data>
+  <data name="MainStatusExportFailed" xml:space="preserve"><value>Échec de l'export : {0}</value></data>
+  <data name="MainStatusExportingGif" xml:space="preserve"><value>Export du GIF… {0:P0}</value></data>
+  <data name="MainStatusExportingGif0" xml:space="preserve"><value>Export du GIF… 0 %</value></data>
+  <data name="MainStatusExportingVideo" xml:space="preserve"><value>Export de la vidéo… {0:P0}</value></data>
+  <data name="MainStatusExportingVideo0" xml:space="preserve"><value>Export de la vidéo… 0 %</value></data>
+  <data name="MainStatusFileNotFound" xml:space="preserve"><value>Fichier introuvable : {0}</value></data>
+  <data name="MainStatusFilesIgnored" xml:space="preserve"><value>{0} ignoré(s) : la grille contient {1} images au maximum</value></data>
+  <data name="MainStatusFilesSkipped" xml:space="preserve"><value>{0} ignoré(s) : aucun aperçu disponible</value></data>
+  <data name="MainStatusFolderNotSaved" xml:space="preserve"><value>Dossier « {0} » non mémorisé : {1}</value></data>
+  <data name="MainStatusKeepCrop" xml:space="preserve"><value>La partie gardée est maintenant l'image de la cellule — {0} × {1} px ; Ctrl+Z rend l'image entière</value></data>
+  <data name="MainStatusLastVideoGone" xml:space="preserve"><value>Le dernier {0} généré, {1}, a disparu du dossier temporaire.</value></data>
+  <data name="MainStatusLockedWhileExporting" xml:space="preserve"><value>La grille est verrouillée jusqu'à la fin de l'export.</value></data>
+  <data name="MainStatusMaxZoomNotWritten" xml:space="preserve"><value>Zoom maximal non écrit dans {0} : {1}</value></data>
+  <data name="MainStatusMore" xml:space="preserve"><value>encore {0}</value></data>
+  <data name="MainStatusNoSoundTrack" xml:space="preserve"><value>{0} : aucune piste sonore lisible par Windows.</value></data>
+  <data name="MainStatusNotKept" xml:space="preserve"><value>Non conservé dans le dossier {0} : {1}</value></data>
+  <data name="MainStatusNotSavedBorderColor" xml:space="preserve"><value>Couleur des bordures non mémorisée : {0}</value></data>
+  <data name="MainStatusNotSavedCaptions" xml:space="preserve"><value>Descriptions non mémorisées : {0}</value></data>
+  <data name="MainStatusNotSavedContentSearch" xml:space="preserve"><value>Recherche dans le contenu des fichiers non mémorisée : {0}</value></data>
+  <data name="MainStatusNotSavedExplorerFolder" xml:space="preserve"><value>Dossier de l'explorateur de fichiers non mémorisé : {0}</value></data>
+  <data name="MainStatusNotSavedExplorerFolderView" xml:space="preserve"><value>Vue dossiers de l'explorateur de fichiers non mémorisée : {0}</value></data>
+  <data name="MainStatusNotSavedExplorerGroups" xml:space="preserve"><value>Groupes de l'explorateur de fichiers non mémorisés : {0}</value></data>
+  <data name="MainStatusNotSavedExplorerOrder" xml:space="preserve"><value>Ordre de l'explorateur de fichiers non mémorisé : {0}</value></data>
+  <data name="MainStatusNotSavedExplorerPages" xml:space="preserve"><value>Pages par chargement de l'explorateur non mémorisées : {0}</value></data>
+  <data name="MainStatusNotSavedExplorerPanel" xml:space="preserve"><value>État du panneau de l'explorateur de fichiers non mémorisé : {0}</value></data>
+  <data name="MainStatusNotSavedExplorerTileSize" xml:space="preserve"><value>Taille des tuiles de l'explorateur non mémorisée : {0}</value></data>
+  <data name="MainStatusNotSavedExplorerView" xml:space="preserve"><value>Vue de l'explorateur de fichiers non mémorisée : {0}</value></data>
+  <data name="MainStatusNotSavedExplorerWidth" xml:space="preserve"><value>Largeur de l'explorateur de fichiers non mémorisée : {0}</value></data>
+  <data name="MainStatusNotSavedFaceAnalysis" xml:space="preserve"><value>Analyse des visages non mémorisée : {0}</value></data>
+  <data name="MainStatusNotSavedFaceGrouping" xml:space="preserve"><value>Regroupement des visages non mémorisé : {0}</value></data>
+  <data name="MainStatusNotSavedGapBars" xml:space="preserve"><value>Réglage des barres d'écart non mémorisé : {0}</value></data>
+  <data name="MainStatusNotSavedGuideApproach" xml:space="preserve"><value>Distance des guides non mémorisée : {0}</value></data>
+  <data name="MainStatusNotSavedOcrResultStyle" xml:space="preserve"><value>Style du résultat OCR non mémorisé : {0}</value></data>
+  <data name="MainStatusNotSavedSimilarImages" xml:space="preserve"><value>Images similaires non mémorisées : {0}</value></data>
+  <data name="MainStatusNotSavedTwitterCornersDefault" xml:space="preserve"><value>Coins Twitter par défaut non mémorisés : {0}</value></data>
+  <data name="MainStatusNotSavedVideoSize" xml:space="preserve"><value>Taille des vidéos non mémorisée : {0}</value></data>
+  <data name="MainStatusNotSavedVisualAnalysis" xml:space="preserve"><value>Analyse visuelle non mémorisée : {0}</value></data>
+  <data name="MainStatusNotSavedWindowPlacement" xml:space="preserve"><value>Position de la fenêtre non mémorisée : {0}</value></data>
+  <data name="MainStatusNothingMore" xml:space="preserve"><value>plus rien</value></data>
+  <data name="MainStatusNothingToCopy" xml:space="preserve"><value>Rien à copier : l'image n'affiche rien dans sa cellule.</value></data>
+  <data name="MainStatusNothingToPaste" xml:space="preserve"><value>Rien à coller : le presse-papiers ne contient ni image ni texte.</value></data>
+  <data name="MainStatusNothingToRedo" xml:space="preserve"><value>Rien à rétablir</value></data>
+  <data name="MainStatusNothingToUndo" xml:space="preserve"><value>Rien à annuler</value></data>
+  <data name="MainStatusPasteFailed" xml:space="preserve"><value>Échec du collage : {0}</value></data>
+  <data name="MainStatusRedone" xml:space="preserve"><value>↷ Rétabli : {0} — {1}</value></data>
+  <data name="MainStatusRemoved" xml:space="preserve"><value>Retiré : {0}.</value></data>
+  <data name="MainStatusRendering" xml:space="preserve"><value>Rendu de l'image…</value></data>
+  <data name="MainStatusSaveFailed" xml:space="preserve"><value>Échec de l'enregistrement : {0}</value></data>
+  <data name="MainStatusSaved" xml:space="preserve"><value>Enregistré : {0}</value></data>
+  <data name="MainStatusSavedLast" xml:space="preserve"><value>{0} enregistré (le dernier {1} généré, de {2:HH:mm})</value></data>
+  <data name="MainStatusSavedUpscaled" xml:space="preserve"><value>{0} enregistré — {1} × {2} px, agrandi {3}</value></data>
+  <data name="MainStatusSoundtrack" xml:space="preserve"><value>Bande son : {0} · {1}.</value></data>
+  <data name="MainStatusStartWithWindowsFailed" xml:space="preserve"><value>Échec de « Démarrer avec Windows » : {0}</value></data>
+  <data name="MainStatusTextTooLong" xml:space="preserve"><value>Texte trop long : {0:N0} caractères, {1:N0} au maximum.</value></data>
+  <data name="MainStatusUndone" xml:space="preserve"><value>↶ Annulé : {0} — {1}</value></data>
+  <data name="MainStatusUpscaledNotReady" xml:space="preserve"><value>L'image agrandie n'est pas prête : rien n'a été enregistré</value></data>
+  <data name="MainStatusVideoSize" xml:space="preserve"><value>Taille des vidéos : {0} — les prochains exports MP4 ou GIF y sont limités.</value></data>
+  <data name="MainStatusWhatCopied" xml:space="preserve"><value>Copié dans le presse-papiers : {0}</value></data>
+  <data name="MainStrictnessLoose" xml:space="preserve"><value>Souple</value></data>
+  <data name="MainStrictnessNormal" xml:space="preserve"><value>Normal</value></data>
+  <data name="MainStrictnessStrict" xml:space="preserve"><value>Strict</value></data>
+  <data name="MainStrictnessVeryLoose" xml:space="preserve"><value>Très souple</value></data>
+  <data name="MainStrictnessVeryStrict" xml:space="preserve"><value>Très strict</value></data>
+  <data name="MainSummaryEncodedIn" xml:space="preserve"><value>encodé en {0}</value></data>
+  <data name="MainSummaryMp4Video" xml:space="preserve"><value>vidéo MP4</value></data>
+  <data name="MainSummaryPeak" xml:space="preserve"><value>pic {0}</value></data>
+  <data name="MainTimesMany" xml:space="preserve"><value>{0:0.#} fois</value></data>
+  <data name="MainTimesOnce" xml:space="preserve"><value>une fois</value></data>
+  <data name="MainTo" xml:space="preserve"><value>À</value></data>
+  <data name="MainTransportPlayTip" xml:space="preserve"><value>Lit ou met en pause la grille (Space)</value></data>
+  <data name="MainTrimTip" xml:space="preserve"><value>La découpe ne s'applique qu'aux vidéos et aux GIF animés</value></data>
+  <data name="MainUnavailableCutout" xml:space="preserve"><value>Détourage ne fonctionne pour l'instant que sur les images fixes : pas sur les vidéos, les GIF animés ni les contenus de plusieurs pages</value></data>
+  <data name="MainUnavailableFrames" xml:space="preserve"><value>Lecture ne s'applique qu'aux vidéos, aux GIF animés et aux contenus de plusieurs pages</value></data>
+  <data name="MainUnavailableUpscale" xml:space="preserve"><value>Agrandissement fonctionne sur les images fixes et les GIF animés : une vidéo est hors de portée, un PDF, un texte ou une miniature est déjà dessiné net à toute taille</value></data>
+  <data name="MainUnavailableUpscaleTooLarge" xml:space="preserve"><value>Cette image est trop grande pour être agrandie : ×2 dépasserait {0} px sur son grand côté</value></data>
+  <data name="MainUnavailableVolume" xml:space="preserve"><value>Volume ne s'applique qu'aux vidéos avec une piste sonore</value></data>
+  <data name="MainUpscale" xml:space="preserve"><value>Agrandir</value></data>
+  <data name="MainUpscaleButtonTip" xml:space="preserve"><value>Calcule l'agrandissement choisi, après avoir montré sa taille, son poids et sa durée</value></data>
+  <data name="MainUpscaleModelFast" xml:space="preserve"><value>Rapide</value></data>
+  <data name="MainUpscaleModelQuality" xml:space="preserve"><value>Qualité</value></data>
+  <data name="MainUpscaleNameCell" xml:space="preserve"><value>l'image de la cellule</value></data>
+  <data name="MainUpscaleNameCrop" xml:space="preserve"><value>{0} (recadrage)</value></data>
+  <data name="MainUpscaleTooLarge" xml:space="preserve"><value>Trop grande pour être agrandie : {0}</value></data>
+  <data name="MainUpscaleTooLargeMake" xml:space="preserve"><value>×{0} donnerait {1} × {2} px, au-delà des {3} px que peut contenir un PNG</value></data>
+  <data name="MainVideoSizeTip" xml:space="preserve"><value>{0} × {1}, son grand côté au plus la Taille des vidéos, {2} px</value></data>
+  <data name="MainWidth" xml:space="preserve"><value>Largeur</value></data>
+  <data name="PanelAddImagesFolder" xml:space="preserve"><value>Ajouter des images</value></data>
+  <data name="PanelBackgroundDropHere" xml:space="preserve"><value>Déposez une image ici</value></data>
+  <data name="PanelBgImageBoxTipEmpty" xml:space="preserve"><value>L'image du fond de grille, dessinée sur son remplissage, sous les cellules. Déposer ici une image, un GIF ou une vidéo — depuis l'explorateur de fichiers ou l'Explorateur Windows —, ou en choisir une avec Parcourir…</value></data>
+  <data name="PanelBgImageBoxTipFile" xml:space="preserve"><value>{0} — double-clic pour modifier ses effets ; déposer un autre fichier ici, ou Parcourir…, pour le remplacer</value></data>
+  <data name="PanelBgImageBrowse" xml:space="preserve"><value>Parcourir…</value></data>
+  <data name="PanelBgImageBrowseTip" xml:space="preserve"><value>Parcourir… — choisit l'image du fond de grille : une image, un GIF ou une vidéo</value></data>
+  <data name="PanelBgImageDialogTitle" xml:space="preserve"><value>Image du fond de grille</value></data>
+  <data name="PanelBgImageEditTip" xml:space="preserve"><value>Modifier — affiche l'image du fond de grille seule, ses effets agissant comme sur une cellule (double-clic sur sa miniature)</value></data>
+  <data name="PanelBgImageIgnored" xml:space="preserve"><value>{0} ignoré(s) : le fond de grille ne prend qu'une image</value></data>
+  <data name="PanelBgImageNoPreviewMany" xml:space="preserve"><value>Aucun aperçu disponible pour ces fichiers : l'image du fond de grille est inchangée.</value></data>
+  <data name="PanelBgImageNoPreviewOne" xml:space="preserve"><value>Aucun aperçu disponible pour ce fichier : l'image du fond de grille est inchangée.</value></data>
+  <data name="PanelBgImageNothingToPaste" xml:space="preserve"><value>Rien à coller : le presse-papiers ne contient ni image ni fichier.</value></data>
+  <data name="PanelBgImageOpacityTip" xml:space="preserve"><value>Opacité de l'image du fond de grille, par-dessus son remplissage</value></data>
+  <data name="PanelBgImagePasteTip" xml:space="preserve"><value>Coller — l'image du presse-papiers, ou son premier fichier, comme image du fond de grille</value></data>
+  <data name="PanelBgImageRemoveTip" xml:space="preserve"><value>Retirer — enlève l'image du fond de grille, son remplissage seul</value></data>
+  <data name="PanelBgImageZoomText" xml:space="preserve"><value>Zoom : {0:0} %</value></data>
+  <data name="PanelBgImageZoomTip" xml:space="preserve"><value>Zoom de l'image du fond de grille — son effet Zoom, autour de son centre ; en mosaïque, la taille des tuiles</value></data>
+  <data name="PanelColorButton" xml:space="preserve"><value>Couleur…</value></data>
+  <data name="PanelColorDialogTip" xml:space="preserve"><value>Choisit {0} dans la boîte de dialogue de couleur, en la suivant en direct — Annuler redonne la précédente{1}</value></data>
+  <data name="PanelColorEyedropperTip" xml:space="preserve"><value>Prend {0} dans l'aperçu (échantillon : {1} px) : cliquer sur une cellule ; Escape ou un clic droit annule. La flèche choisit l'échantillon, le côté du carré de pixels moyennés</value></data>
+  <data name="PanelColorSampleCaption" xml:space="preserve"><value>Échantillon de la pipette</value></data>
+  <data name="PanelColorSampleSize" xml:space="preserve"><value>{0} px</value></data>
+  <data name="PanelComponentsEmojiAnswerNotSaved" xml:space="preserve"><value>Réponse sur les polices d'emojis non mémorisée : {0}</value></data>
+  <data name="PanelComponentsEmojiOffer" xml:space="preserve"><value>Les emojis d'un texte peuvent être dessinés dans une autre police d'emojis que celle de Windows, choisie dans la liste Emoji à côté de la police du texte. Si cette fenêtre est fermée sans en installer une, le lancement ne les proposera plus.</value></data>
+  <data name="PanelComponentsRestartFailed" xml:space="preserve"><value>Impossible de relancer l'application : {0}</value></data>
+  <data name="PanelComponentsUpdatedAtStart" xml:space="preserve"><value>Mis à jour au démarrage : {0}</value></data>
+  <data name="PanelEditDoneTip" xml:space="preserve"><value>Terminé — rend la grille (Escape)</value></data>
+  <data name="PanelFilesSkipped" xml:space="preserve"><value>{0} ignoré(s) : aucun aperçu disponible</value></data>
+  <data name="PanelFillAngle" xml:space="preserve"><value>Angle : {0}°</value></data>
+  <data name="PanelFillAngleTip" xml:space="preserve"><value>Direction du dégradé linéaire sur {0} : 0° de gauche à droite, 90° de haut en bas</value></data>
+  <data name="PanelFillSecondAuto" xml:space="preserve"><value>Auto, dernière cellule</value></data>
+  <data name="PanelFillSecondBlack" xml:space="preserve"><value>Noir</value></data>
+  <data name="PanelFillSecondChosen" xml:space="preserve"><value>Choisie</value></data>
+  <data name="PanelFillSecondDarker" xml:space="preserve"><value>Plus sombre</value></data>
+  <data name="PanelFillSecondNote" xml:space="preserve"><value>. Une couleur choisie fixe la seconde couleur sur Choisie</value></data>
+  <data name="PanelFillSecondOpacityTip" xml:space="preserve"><value>Opacité de la seconde couleur</value></data>
+  <data name="PanelFillSecondTarget" xml:space="preserve"><value>la seconde couleur du dégradé</value></data>
+  <data name="PanelFillSecondTip" xml:space="preserve"><value>D'où vient la seconde couleur du dégradé</value></data>
+  <data name="PanelFillSecondWhite" xml:space="preserve"><value>Blanc</value></data>
+  <data name="PanelFillTargetCell" xml:space="preserve"><value>la cellule</value></data>
+  <data name="PanelFillTargetGrid" xml:space="preserve"><value>la grille</value></data>
+  <data name="PanelFillTo" xml:space="preserve"><value>À</value></data>
+  <data name="PanelGridBgColorNote" xml:space="preserve"><value>. Tant que le fond de grille n'a pas été activé, elle suit la couleur automatique de la première cellule</value></data>
+  <data name="PanelGridBgColorTarget" xml:space="preserve"><value>la couleur du fond de grille</value></data>
+  <data name="PanelLayerAddDialogTitle" xml:space="preserve"><value>Ajouter des calques</value></data>
+  <data name="PanelLayerAddImageTip" xml:space="preserve"><value>Ajouter une image… — pose des images, GIF ou vidéos sur la grille, choisis dans le sélecteur de fichiers ; des fichiers déposés sur l'onglet Calques font de même</value></data>
+  <data name="PanelLayerAddTextTip" xml:space="preserve"><value>Ajouter un texte — pose un texte sur la grille, saisi dans le champ à côté ; Win+. ouvre le panneau des emojis</value></data>
+  <data name="PanelLayerAdded" xml:space="preserve"><value>Calque ajouté.</value></data>
+  <data name="PanelLayerAlignCenterTip" xml:space="preserve"><value>Centrer — les lignes centrées sur la plus large</value></data>
+  <data name="PanelLayerAlignLeftTip" xml:space="preserve"><value>Aligner à gauche — les lignes commencent au bord gauche de la plus large</value></data>
+  <data name="PanelLayerAlignRightTip" xml:space="preserve"><value>Aligner à droite — les lignes finissent au bord droit de la plus large</value></data>
+  <data name="PanelLayerBackground" xml:space="preserve"><value>Fond</value></data>
+  <data name="PanelLayerBackgroundTip" xml:space="preserve"><value>Dessine une boîte derrière le texte</value></data>
+  <data name="PanelLayerBold" xml:space="preserve"><value>Gras</value></data>
+  <data name="PanelLayerBox" xml:space="preserve"><value>Boîte</value></data>
+  <data name="PanelLayerBoxTip" xml:space="preserve"><value>Boîte — le texte passe à la ligne dans une boîte large de la moitié de la grille, sa largeur se règle avec les poignées sur ses côtés ; décochée, la taille s'ajuste au texte</value></data>
+  <data name="PanelLayerCaps" xml:space="preserve"><value>CAPITALES</value></data>
+  <data name="PanelLayerCapsTip" xml:space="preserve"><value>Dessine le texte en capitales ; le champ garde le texte tel que saisi</value></data>
+  <data name="PanelLayerColorBackground" xml:space="preserve"><value>la couleur du fond</value></data>
+  <data name="PanelLayerColorOpacityTip" xml:space="preserve"><value>Opacité de {0}</value></data>
+  <data name="PanelLayerColorOutline" xml:space="preserve"><value>la couleur du contour</value></data>
+  <data name="PanelLayerColorShadow" xml:space="preserve"><value>la couleur de l'ombre</value></data>
+  <data name="PanelLayerColorText" xml:space="preserve"><value>la couleur du texte</value></data>
+  <data name="PanelLayerCopyTip" xml:space="preserve"><value>Copier — le calque sélectionné seul en PNG : ses effets sauf le fond, transparent autour (Ctrl+C)</value></data>
+  <data name="PanelLayerCopyWhat" xml:space="preserve"><value>Calque</value></data>
+  <data name="PanelLayerDelete" xml:space="preserve"><value>Supprimer</value></data>
+  <data name="PanelLayerDeleteTip" xml:space="preserve"><value>Supprimer — retire le calque sélectionné (Delete)</value></data>
+  <data name="PanelLayerDuplicate" xml:space="preserve"><value>Dupliquer</value></data>
+  <data name="PanelLayerDuplicateFailed" xml:space="preserve"><value>Impossible de dupliquer le calque : {0}</value></data>
+  <data name="PanelLayerDuplicateTip" xml:space="preserve"><value>Dupliquer — pose une copie du calque sélectionné juste au-dessus, un peu décalée ; Ctrl + glisser un calque laisse une copie à sa place</value></data>
+  <data name="PanelLayerDuplicateUnreadable" xml:space="preserve"><value>Impossible de dupliquer le calque : {0} n'a pas pu être relu.</value></data>
+  <data name="PanelLayerDuplicated" xml:space="preserve"><value>Calque dupliqué.</value></data>
+  <data name="PanelLayerEditTip" xml:space="preserve"><value>Modifier — affiche le calque sélectionné seul, en grand, ses effets agissant comme sur une cellule (double-clic sur le calque)</value></data>
+  <data name="PanelLayerEditingBackground" xml:space="preserve"><value>Modification de l'image du fond de grille : ses effets agissent comme sur une cellule. Escape, Terminé ou un double-clic en dehors rend la grille.</value></data>
+  <data name="PanelLayerEditingLayer" xml:space="preserve"><value>Modification du calque : ses effets agissent comme sur une cellule. Escape, Terminé ou un double-clic en dehors rend la grille.</value></data>
+  <data name="PanelLayerEmojiFontTip" xml:space="preserve"><value>Police d'emojis — la police dans laquelle les emojis du texte sont dessinés, les lettres restant dans la police à côté ; Segoe UI Emoji est celle de Windows, les autres sont installées ou téléchargées depuis le menu ⚙</value></data>
+  <data name="PanelLayerFilesIgnored" xml:space="preserve"><value>{0} ignoré(s) : {1} calques au maximum à la fois</value></data>
+  <data name="PanelLayerFindSimilar" xml:space="preserve"><value>Trouver des images similaires</value></data>
+  <data name="PanelLayerItalic" xml:space="preserve"><value>Italique</value></data>
+  <data name="PanelLayerItalicTip" xml:space="preserve"><value>Dessine le texte penché : l'italique de la police, sinon ses lettres inclinées</value></data>
+  <data name="PanelLayerJustifyTip" xml:space="preserve"><value>Justifier — les lignes d'un paragraphe étirées par leurs espaces jusqu'à la plus large, ou jusqu'à la boîte ; sa dernière ligne, et une ligne d'un seul mot, alignées à gauche ; une ligne vide termine un paragraphe, dans une boîte chaque saut de ligne</value></data>
+  <data name="PanelLayerLowerTip" xml:space="preserve"><value>Descendre — descend le calque sélectionné d'un cran</value></data>
+  <data name="PanelLayerNamePasted" xml:space="preserve"><value>Image collée</value></data>
+  <data name="PanelLayerNameText" xml:space="preserve"><value>Texte</value></data>
+  <data name="PanelLayerNothingToPaste" xml:space="preserve"><value>Rien à coller : le presse-papiers ne contient ni image, ni fichier, ni texte.</value></data>
+  <data name="PanelLayerOutline" xml:space="preserve"><value>Contour</value></data>
+  <data name="PanelLayerOutlineTip" xml:space="preserve"><value>Dessine un contour autour des lettres et des emojis, pour que le texte se lise sur n'importe quelle image</value></data>
+  <data name="PanelLayerOutlineWidthText" xml:space="preserve"><value>Épaisseur : {0} %</value></data>
+  <data name="PanelLayerOutlineWidthTip" xml:space="preserve"><value>Épaisseur du contour, en part de ligne</value></data>
+  <data name="PanelLayerPasteTip" xml:space="preserve"><value>Coller — pose l'image, les fichiers ou le texte du presse-papiers sur la grille</value></data>
+  <data name="PanelLayerRaiseTip" xml:space="preserve"><value>Monter — monte le calque sélectionné d'un cran</value></data>
+  <data name="PanelLayerShadow" xml:space="preserve"><value>Ombre</value></data>
+  <data name="PanelLayerShadowSizeText" xml:space="preserve"><value>Taille : {0} %</value></data>
+  <data name="PanelLayerShadowSizeTip" xml:space="preserve"><value>Taille de l'ombre, en part de ligne : jusqu'où va un halo, jusqu'où tombe une ombre portée</value></data>
+  <data name="PanelLayerShadowTip" xml:space="preserve"><value>Dessine une ombre douce sous les lettres et leur contour</value></data>
+  <data name="PanelLayerStylesNotRead" xml:space="preserve"><value>Impossible de lire les styles de texte depuis {0} : seuls ceux fournis sont proposés.</value></data>
+  <data name="PanelLayerTextEmpty" xml:space="preserve"><value>Rien ajouté : le texte est vide.</value></data>
+  <data name="PanelLayerTextNotDrawn" xml:space="preserve"><value>Impossible de dessiner le texte : {0}</value></data>
+  <data name="PanelLayerTextTip" xml:space="preserve"><value>Le texte du calque texte sélectionné, plusieurs lignes possibles ; Win+. ouvre le panneau des emojis</value></data>
+  <data name="PanelLayerToBackTip" xml:space="preserve"><value>Tout en arrière — place le calque sélectionné sous tous les autres</value></data>
+  <data name="PanelLayerToFrontTip" xml:space="preserve"><value>Tout en avant — place le calque sélectionné au-dessus de tous les autres</value></data>
+  <data name="PanelLayersAdded" xml:space="preserve"><value>{0} calques ajoutés.</value></data>
+  <data name="PanelPasteFailed" xml:space="preserve"><value>Échec du collage : {0}</value></data>
+  <data name="PanelPresetCancel" xml:space="preserve"><value>Annuler</value></data>
+  <data name="PanelPresetDescription" xml:space="preserve"><value>&amp;Description — ce qu'il montre, pour le retrouver en cherchant :</value></data>
+  <data name="PanelPresetEditTitle" xml:space="preserve"><value>Modifier le preset d'effets</value></data>
+  <data name="PanelPresetFileOnly" xml:space="preserve"><value>Fichier seul</value></data>
+  <data name="PanelPresetFileOnlyTip" xml:space="preserve"><value>Ajouter le fichier aux favoris tel quel, sans ses effets</value></data>
+  <data name="PanelPresetNoEffect" xml:space="preserve"><value>Aucun effet : le fichier arrive tel quel.</value></data>
+  <data name="PanelPresetSave" xml:space="preserve"><value>Enregistrer</value></data>
+  <data name="PanelPresetSaveTitle" xml:space="preserve"><value>Enregistrer le preset d'effets</value></data>
+  <data name="PanelStyleAlignedLeft" xml:space="preserve"><value>aligné à gauche</value></data>
+  <data name="PanelStyleAlignedRight" xml:space="preserve"><value>aligné à droite</value></data>
+  <data name="PanelStyleAlreadyNamed" xml:space="preserve"><value>Un style s'appelle déjà « {0} » : choisir un autre nom.</value></data>
+  <data name="PanelStyleAt" xml:space="preserve"><value> à {0:0} %</value></data>
+  <data name="PanelStyleBold" xml:space="preserve"><value>gras</value></data>
+  <data name="PanelStyleBox" xml:space="preserve"><value>fond {0} {1:0} %</value></data>
+  <data name="PanelStyleCaps" xml:space="preserve"><value>CAPITALES</value></data>
+  <data name="PanelStyleDefault" xml:space="preserve"><value>Par défaut</value></data>
+  <data name="PanelStyleDeleted" xml:space="preserve"><value>Style « {0} » supprimé.</value></data>
+  <data name="PanelStyleEmojis" xml:space="preserve"><value>emojis {0}</value></data>
+  <data name="PanelStyleItalic" xml:space="preserve"><value>italique</value></data>
+  <data name="PanelStyleJustified" xml:space="preserve"><value>justifié</value></data>
+  <data name="PanelStyleLabel" xml:space="preserve"><value>Étiquette</value></data>
+  <data name="PanelStyleMeme" xml:space="preserve"><value>Mème</value></data>
+  <data name="PanelStyleMenuDelete" xml:space="preserve"><value>Supprimer {0}</value></data>
+  <data name="PanelStyleMenuRename" xml:space="preserve"><value>Renommer…</value></data>
+  <data name="PanelStyleMenuReplace" xml:space="preserve"><value>Remplacer par le style actuel</value></data>
+  <data name="PanelStyleNamePrompt" xml:space="preserve"><value>Nom du style :</value></data>
+  <data name="PanelStyleNeedsName" xml:space="preserve"><value>Un style doit avoir un nom.</value></data>
+  <data name="PanelStyleNeon" xml:space="preserve"><value>Néon</value></data>
+  <data name="PanelStyleNewNamePrompt" xml:space="preserve"><value>Nouveau nom du style :</value></data>
+  <data name="PanelStyleOutline" xml:space="preserve"><value>contour {0} {1:0} %</value></data>
+  <data name="PanelStyleRenameTitle" xml:space="preserve"><value>Renommer le style</value></data>
+  <data name="PanelStyleRenamed" xml:space="preserve"><value>Style « {0} » renommé « {1} ».</value></data>
+  <data name="PanelStyleReplaceConfirm" xml:space="preserve"><value>Remplacer le style « {0} » par celui du texte sélectionné ?</value></data>
+  <data name="PanelStyleReplaced" xml:space="preserve"><value>Style « {0} » remplacé.</value></data>
+  <data name="PanelStyleReserved" xml:space="preserve"><value>« {0} » est le nom d'un style fourni : choisir un autre nom.</value></data>
+  <data name="PanelStyleSave" xml:space="preserve"><value>Enregistrer le style…</value></data>
+  <data name="PanelStyleSaveTip" xml:space="preserve"><value>Enregistrer le style… — garde le style du texte sélectionné sous un nom, pour l'appliquer à d'autres textes</value></data>
+  <data name="PanelStyleSaveTitle" xml:space="preserve"><value>Enregistrer le style</value></data>
+  <data name="PanelStyleSaved" xml:space="preserve"><value>Style « {0} » enregistré.</value></data>
+  <data name="PanelStyleShadowDrop" xml:space="preserve"><value>ombre portée {0} {1:0} %</value></data>
+  <data name="PanelStyleShadowHalo" xml:space="preserve"><value>ombre halo {0} {1:0} %</value></data>
+  <data name="PanelStyleSubtitle" xml:space="preserve"><value>Sous-titre</value></data>
+  <data name="PanelStyleSubtle" xml:space="preserve"><value>Discret</value></data>
+  <data name="PanelStyleTipBuiltIn" xml:space="preserve"><value>{0}
+{1}</value></data>
+  <data name="PanelStyleTipUser" xml:space="preserve"><value>{0} — clic droit pour le renommer, le remplacer ou le supprimer
+{1}</value></data>
+  <data name="PanelStylesNotSaved" xml:space="preserve"><value>Impossible d'enregistrer les styles de texte dans {0} : {1}</value></data>
+  <data name="UiAddImages" xml:space="preserve"><value>Ajouter des images</value></data>
+  <data name="UiBadgeCuttingOut" xml:space="preserve"><value>✂ Détourage{0}</value></data>
+  <data name="UiBadgeNotUpscaled" xml:space="preserve"><value>⤢ Non agrandie</value></data>
+  <data name="UiBadgeStretch" xml:space="preserve"><value>⇔ Étirée</value></data>
+  <data name="UiBadgeTile" xml:space="preserve"><value>▦ Mosaïque</value></data>
+  <data name="UiBadgeWaitingEngine" xml:space="preserve"><value>✂ En attente du moteur de détourage</value></data>
+  <data name="UiBlurGaussian" xml:space="preserve"><value>Gaussien</value></data>
+  <data name="UiBlurGaussianTip" xml:space="preserve"><value>Un flou doux, qui estompe tous les détails</value></data>
+  <data name="UiBlurPixelate" xml:space="preserve"><value>Pixelisé</value></data>
+  <data name="UiBlurPixelateTip" xml:space="preserve"><value>De gros carrés, chacun la moyenne de ses pixels</value></data>
+  <data name="UiCropFree" xml:space="preserve"><value>Libre</value></data>
+  <data name="UiCropFreeTip" xml:space="preserve"><value>Libère le ratio de la partie gardée</value></data>
+  <data name="UiCropKeep" xml:space="preserve"><value>Garder</value></data>
+  <data name="UiCropKeepTip" xml:space="preserve"><value>Fait de la partie gardée l'image de la cellule — ses effets conservés, prête à être agrandie ; Ctrl+Z redonne l'image entière</value></data>
+  <data name="UiCropRatioTip" xml:space="preserve"><value>Garde la partie gardée à {0}</value></data>
+  <data name="UiCropWholeTip" xml:space="preserve"><value>Garde l'image entière : les barres reviennent sur ses bords, le ratio est libéré</value></data>
+  <data name="UiCutBgBlur" xml:space="preserve"><value>Flou</value></data>
+  <data name="UiCutBgBlurTip" xml:space="preserve"><value>Garde la partie écartée, floutée ; se combine avec les autres</value></data>
+  <data name="UiCutBgColorTip" xml:space="preserve"><value>Masque la partie écartée avec une couleur, selon son opacité ; se combine avec les autres</value></data>
+  <data name="UiCutBgOpacity" xml:space="preserve"><value>Opacité</value></data>
+  <data name="UiCutBgOpacityTip" xml:space="preserve"><value>Garde la partie écartée, en transparence selon son opacité ; se combine avec les autres</value></data>
+  <data name="UiCutBgPixelateTip" xml:space="preserve"><value>Garde la partie écartée, en carrés ; se combine avec les autres</value></data>
+  <data name="UiCutBgTransparent" xml:space="preserve"><value>Transparent</value></data>
+  <data name="UiCutBgTransparentTip" xml:space="preserve"><value>La partie écartée devient transparente : tous les traitements sont désactivés</value></data>
+  <data name="UiCutModePick" xml:space="preserve"><value>Sélection</value></data>
+  <data name="UiCutModePickTip" xml:space="preserve"><value>Cliquer sur un objet de la cellule sélectionnée pour le garder à la place ; Shift + clic ajoute une partie, Ctrl + clic en écarte une ; Escape annule</value></data>
+  <data name="UiCutModePlain" xml:space="preserve"><value>Uni</value></data>
+  <data name="UiCutModePlainTip" xml:space="preserve"><value>Retire le fond uni autour du contenu — la couleur des bords de l'image, des bords vers l'intérieur — en gardant tout ce qu'il entoure ; aucun moteur requis</value></data>
+  <data name="UiCutModeSubject" xml:space="preserve"><value>Sujet</value></data>
+  <data name="UiCutModeSubjectTip" xml:space="preserve"><value>Garde le sujet principal de l'image, trouvé par le modèle ; le reste devient transparent</value></data>
+  <data name="UiDescAutomaticColor" xml:space="preserve"><value>couleur automatique</value></data>
+  <data name="UiDescBackground" xml:space="preserve"><value>{0}, {1}, {2}{3}</value></data>
+  <data name="UiDescBlur" xml:space="preserve"><value>{0}, {1}</value></data>
+  <data name="UiDescColors" xml:space="preserve"><value>saturation {0}, teinte {1:+0;-0;0}°, luminosité {2}, contraste {3}</value></data>
+  <data name="UiDescCutGaps" xml:space="preserve"><value>interstices {0} %</value></data>
+  <data name="UiDescCutGrow" xml:space="preserve"><value>extension {0} %</value></data>
+  <data name="UiDescCutHoles" xml:space="preserve"><value>trous bouchés</value></data>
+  <data name="UiDescCutInverted" xml:space="preserve"><value>inversé</value></data>
+  <data name="UiDescCutPicked" xml:space="preserve"><value>sélection, {0} points</value></data>
+  <data name="UiDescCutPickedOne" xml:space="preserve"><value>sélection, {0} point</value></data>
+  <data name="UiDescCutPlain" xml:space="preserve"><value>fond uni, tolérance {0} %</value></data>
+  <data name="UiDescCutReach" xml:space="preserve"><value>, portée {0}</value></data>
+  <data name="UiDescCutSoften" xml:space="preserve"><value>adoucissement {0} %</value></data>
+  <data name="UiDescCutSubject" xml:space="preserve"><value>sujet</value></data>
+  <data name="UiDescCutTreatment" xml:space="preserve"><value>{0}{1} {2} %</value></data>
+  <data name="UiDescFillBackgroundCorners" xml:space="preserve"><value>Coins du fond</value></data>
+  <data name="UiDescFillColor" xml:space="preserve"><value>Couleur</value></data>
+  <data name="UiDescFillCornerPixel" xml:space="preserve"><value>Pixel de coin</value></data>
+  <data name="UiDescFillMiter" xml:space="preserve"><value>Onglet</value></data>
+  <data name="UiDescFlipBoth" xml:space="preserve"><value>horizontal et vertical</value></data>
+  <data name="UiDescFlipH" xml:space="preserve"><value>horizontal</value></data>
+  <data name="UiDescFlipV" xml:space="preserve"><value>vertical</value></data>
+  <data name="UiDescFramesFrom" xml:space="preserve"><value>à partir de l'image {0}</value></data>
+  <data name="UiDescFramesRange" xml:space="preserve"><value>images {0} → {1}</value></data>
+  <data name="UiDescFramesWhole" xml:space="preserve"><value>entier</value></data>
+  <data name="UiDescFree" xml:space="preserve"><value>libre</value></data>
+  <data name="UiDescFrozen" xml:space="preserve"><value>{0}, figé</value></data>
+  <data name="UiDescGradientLinear" xml:space="preserve"><value>, dégradé linéaire</value></data>
+  <data name="UiDescGradientRadial" xml:space="preserve"><value>, dégradé radial</value></data>
+  <data name="UiDescLine" xml:space="preserve"><value>{0} — {1}</value></data>
+  <data name="UiDescMotion" xml:space="preserve"><value>{0}, toutes les {1} s</value></data>
+  <data name="UiDescMotionZoom" xml:space="preserve"><value>Zoom</value></data>
+  <data name="UiDescMuted" xml:space="preserve"><value>muet</value></data>
+  <data name="UiDescNone" xml:space="preserve"><value>aucun</value></data>
+  <data name="UiDescOffNoFill" xml:space="preserve"><value>désactivé, sans remplissage</value></data>
+  <data name="UiDescRatio" xml:space="preserve"><value>ratio {0}</value></data>
+  <data name="UiDescReachAuto" xml:space="preserve"><value>auto</value></data>
+  <data name="UiDescReachObject" xml:space="preserve"><value>objet</value></data>
+  <data name="UiDescReachPart" xml:space="preserve"><value>partie</value></data>
+  <data name="UiDescReachWhole" xml:space="preserve"><value>tout</value></data>
+  <data name="UiDescStarting" xml:space="preserve"><value>{0}, départ à {1}</value></data>
+  <data name="UiDescStartingSpeed" xml:space="preserve"><value>{0}, départ à {1}, {2}</value></data>
+  <data name="UiDescTreatBlur" xml:space="preserve"><value>flou</value></data>
+  <data name="UiDescTreatColor" xml:space="preserve"><value>couleur</value></data>
+  <data name="UiDescTreatOpacity" xml:space="preserve"><value>opacité</value></data>
+  <data name="UiDescTreatPixelate" xml:space="preserve"><value>pixelisé</value></data>
+  <data name="UiDescTreatTransparent" xml:space="preserve"><value>transparent</value></data>
+  <data name="UiDescUpscale" xml:space="preserve"><value>×{0} {1}</value></data>
+  <data name="UiDescZoomMoved" xml:space="preserve"><value>image déplacée, entière à l'arrivée</value></data>
+  <data name="UiEffectNameAnimations" xml:space="preserve"><value>Animations</value></data>
+  <data name="UiEffectNameBackground" xml:space="preserve"><value>Fond</value></data>
+  <data name="UiEffectNameBlur" xml:space="preserve"><value>Flou</value></data>
+  <data name="UiEffectNameColors" xml:space="preserve"><value>Couleurs</value></data>
+  <data name="UiEffectNameCrop" xml:space="preserve"><value>Recadrage</value></data>
+  <data name="UiEffectNameCutout" xml:space="preserve"><value>Détourage</value></data>
+  <data name="UiEffectNameFlip" xml:space="preserve"><value>Miroir</value></data>
+  <data name="UiEffectNameFrames" xml:space="preserve"><value>Lecture</value></data>
+  <data name="UiEffectNameRotate" xml:space="preserve"><value>Rotation</value></data>
+  <data name="UiEffectNameUpscale" xml:space="preserve"><value>Agrandissement</value></data>
+  <data name="UiEffectNameVolume" xml:space="preserve"><value>Volume</value></data>
+  <data name="UiEffectNameZoom" xml:space="preserve"><value>Zoom</value></data>
+  <data name="UiEmptyCanvasPrompt" xml:space="preserve"><value>Cliquez pour choisir de 1 à 4 images, déposez-les ici ou collez-les avec Ctrl+V</value></data>
+  <data name="UiFillBackgroundCorners" xml:space="preserve"><value>Coins du fond</value></data>
+  <data name="UiFillBackgroundCornersTip" xml:space="preserve"><value>Les pixels de bord de l'image étirés jusqu'aux bords de la cellule ; les coins gardent la couleur du fond</value></data>
+  <data name="UiFillColor" xml:space="preserve"><value>Couleur</value></data>
+  <data name="UiFillColorTip" xml:space="preserve"><value>Une couleur unie autour de l'image</value></data>
+  <data name="UiFillCornerPixel" xml:space="preserve"><value>Pixel de coin</value></data>
+  <data name="UiFillCornerPixelTip" xml:space="preserve"><value>Les pixels de bord de l'image étirés jusqu'aux bords de la cellule ; chaque coin de la couleur du pixel de coin de l'image</value></data>
+  <data name="UiFillKindLinear" xml:space="preserve"><value>Linéaire</value></data>
+  <data name="UiFillKindLinearTip" xml:space="preserve"><value>De la première couleur à la seconde, selon l'angle</value></data>
+  <data name="UiFillKindRadial" xml:space="preserve"><value>Radial</value></data>
+  <data name="UiFillKindRadialTip" xml:space="preserve"><value>De la première couleur au centre à la seconde dans les coins</value></data>
+  <data name="UiFillKindSolid" xml:space="preserve"><value>Uni</value></data>
+  <data name="UiFillKindSolidTip" xml:space="preserve"><value>Une seule couleur</value></data>
+  <data name="UiFillMiter" xml:space="preserve"><value>Onglet</value></data>
+  <data name="UiFillMiterTip" xml:space="preserve"><value>Les pixels de bord de l'image étirés jusqu'aux bords de la cellule ; chaque coin coupé selon sa diagonale, chaque moitié de la couleur du pixel de son bord à côté du coin de l'image, la couleur du pixel de coin sur la diagonale</value></data>
+  <data name="UiFitContain" xml:space="preserve"><value>Contenir</value></data>
+  <data name="UiFitContainTip" xml:space="preserve"><value>Affichée en entier, son ratio conservé, le remplissage visible autour</value></data>
+  <data name="UiFitFill" xml:space="preserve"><value>Remplir</value></data>
+  <data name="UiFitFillTip" xml:space="preserve"><value>Couvre toute la grille, son ratio conservé, coupée là où elle dépasse</value></data>
+  <data name="UiFitStretch" xml:space="preserve"><value>Étirer</value></data>
+  <data name="UiFitStretchTip" xml:space="preserve"><value>Exactement la grille, son ratio non conservé</value></data>
+  <data name="UiFitTile" xml:space="preserve"><value>Mosaïque</value></data>
+  <data name="UiFitTileTip" xml:space="preserve"><value>Répétée sur la grille depuis son coin supérieur gauche ; son zoom règle la taille des mosaïques</value></data>
+  <data name="UiFlipHorizontal" xml:space="preserve"><value>Horizontal</value></data>
+  <data name="UiFlipHorizontalTip" xml:space="preserve"><value>Retourne l'image de gauche à droite</value></data>
+  <data name="UiFlipVertical" xml:space="preserve"><value>Vertical</value></data>
+  <data name="UiFlipVerticalTip" xml:space="preserve"><value>Retourne l'image de haut en bas</value></data>
+  <data name="UiFormatCustom" xml:space="preserve"><value>Personnalisé</value></data>
+  <data name="UiFormatCustomExactTip" xml:space="preserve"><value>Personnalisé : chaque export exactement {0} × {1} px — réduit, ratio conservé, par une entrée de taille max du PNG ou la taille des vidéos si elle est plus petite</value></data>
+  <data name="UiFormatCustomNoneTip" xml:space="preserve"><value>Personnalisé : un ratio, ou des pixels exacts, de votre choix — réglé dans les champs Largeur et Hauteur</value></data>
+  <data name="UiFormatCustomRatioTip" xml:space="preserve"><value>Personnalisé : le ratio {0}, à la taille native</value></data>
+  <data name="UiFormatFree" xml:space="preserve"><value>Libre</value></data>
+  <data name="UiFormatFreeTip" xml:space="preserve"><value>Le ratio qui perd le moins des images : {0:0.00}:1 pour cette grille</value></data>
+  <data name="UiFormatLandscape" xml:space="preserve"><value>Paysage 16:9</value></data>
+  <data name="UiFormatLandscapeTip" xml:space="preserve"><value>YouTube, vidéo LinkedIn, écrans</value></data>
+  <data name="UiFormatPortrait" xml:space="preserve"><value>Portrait 4:5</value></data>
+  <data name="UiFormatPortraitTip" xml:space="preserve"><value>Fil Instagram / Facebook en portrait</value></data>
+  <data name="UiFormatSquare" xml:space="preserve"><value>Carré 1:1</value></data>
+  <data name="UiFormatSquareTip" xml:space="preserve"><value>Fil Instagram / Facebook</value></data>
+  <data name="UiFormatStory" xml:space="preserve"><value>Story 9:16</value></data>
+  <data name="UiFormatStoryTip" xml:space="preserve"><value>Stories, Reels, TikTok, Shorts</value></data>
+  <data name="UiFormatTwitter" xml:space="preserve"><value>Twitter</value></data>
+  <data name="UiFormatTwitterTip" xml:space="preserve"><value>Image dans le fil Twitter / X, 1200:628</value></data>
+  <data name="UiHistCellsSwapped" xml:space="preserve"><value>cellules échangées</value></data>
+  <data name="UiHistClearAll" xml:space="preserve"><value>Tout effacer</value></data>
+  <data name="UiHistEffects" xml:space="preserve"><value>effets</value></data>
+  <data name="UiHistFormat" xml:space="preserve"><value>format</value></data>
+  <data name="UiHistGlobalBorders" xml:space="preserve"><value>Bordures</value></data>
+  <data name="UiHistGlobalCascade" xml:space="preserve"><value>Cascade</value></data>
+  <data name="UiHistGlobalFade" xml:space="preserve"><value>Fondu</value></data>
+  <data name="UiHistGlobalLayers" xml:space="preserve"><value>Calques</value></data>
+  <data name="UiHistGlobalSeams" xml:space="preserve"><value>Raccords</value></data>
+  <data name="UiHistGlobalSoundtrack" xml:space="preserve"><value>Bande son</value></data>
+  <data name="UiHistGridBackground" xml:space="preserve"><value>Fond de grille</value></data>
+  <data name="UiHistImageAdded" xml:space="preserve"><value>image ajoutée</value></data>
+  <data name="UiHistImageDeleted" xml:space="preserve"><value>image supprimée</value></data>
+  <data name="UiHistImageReplaced" xml:space="preserve"><value>image remplacée</value></data>
+  <data name="UiHistImages" xml:space="preserve"><value>images</value></data>
+  <data name="UiHistImagesAdded" xml:space="preserve"><value>images ajoutées</value></data>
+  <data name="UiHistImagesDeleted" xml:space="preserve"><value>images supprimées</value></data>
+  <data name="UiHistLayout" xml:space="preserve"><value>disposition</value></data>
+  <data name="UiHistNoChange" xml:space="preserve"><value>aucun changement visible</value></data>
+  <data name="UiHistPeople" xml:space="preserve"><value>personnes</value></data>
+  <data name="UiHistSeparators" xml:space="preserve"><value>séparateurs</value></data>
+  <data name="UiHistSeveral" xml:space="preserve"><value>plusieurs modifications</value></data>
+  <data name="UiLayoutAutoColumnNone" xml:space="preserve"><value>↕ Auto (aucune cellule empilée dans cette disposition)</value></data>
+  <data name="UiLayoutAutoColumnTip" xml:space="preserve"><value>↕ Auto — redimensionne les cellules empilées pour que leurs images, affichées en entier, aient la même largeur</value></data>
+  <data name="UiLayoutAutoRowNone" xml:space="preserve"><value>↔ Auto (aucune cellule côte à côte dans cette disposition)</value></data>
+  <data name="UiLayoutAutoRowTip" xml:space="preserve"><value>↔ Auto — redimensionne les cellules côte à côte pour que leurs images, affichées en entier, aient la même hauteur</value></data>
+  <data name="UiLayoutBigCentre" xml:space="preserve"><value>Grande au centre</value></data>
+  <data name="UiLayoutBigLeft" xml:space="preserve"><value>Grande à gauche</value></data>
+  <data name="UiLayoutBigTop" xml:space="preserve"><value>Grande en haut</value></data>
+  <data name="UiLayoutBigTopUneven" xml:space="preserve"><value>Grande en haut, inégale</value></data>
+  <data name="UiLayoutBricks" xml:space="preserve"><value>Briques</value></data>
+  <data name="UiLayoutCorner" xml:space="preserve"><value>Coin</value></data>
+  <data name="UiLayoutFeatured" xml:space="preserve"><value>Mise en avant</value></data>
+  <data name="UiLayoutFourColumns" xml:space="preserve"><value>Quatre colonnes</value></data>
+  <data name="UiLayoutFourRows" xml:space="preserve"><value>Quatre lignes</value></data>
+  <data name="UiLayoutGrid" xml:space="preserve"><value>Grille</value></data>
+  <data name="UiLayoutHideExtra" xml:space="preserve"><value>Masquer les dispositions supplémentaires</value></data>
+  <data name="UiLayoutMirrorH" xml:space="preserve"><value>Miroir gauche ↔ droite</value></data>
+  <data name="UiLayoutMirrorNone" xml:space="preserve"><value>Miroir (indisponible pour une disposition symétrique)</value></data>
+  <data name="UiLayoutMirrorV" xml:space="preserve"><value>Miroir haut ↔ bas</value></data>
+  <data name="UiLayoutMoreClosed" xml:space="preserve"><value>Plus ▸</value></data>
+  <data name="UiLayoutMoreOpen" xml:space="preserve"><value>Plus ▾</value></data>
+  <data name="UiLayoutShowMore" xml:space="preserve"><value>Afficher plus de dispositions</value></data>
+  <data name="UiLayoutSingle" xml:space="preserve"><value>Seule</value></data>
+  <data name="UiLayoutTallLeftMixed" xml:space="preserve"><value>Haute à gauche, mixte</value></data>
+  <data name="UiLayoutThreeColumns" xml:space="preserve"><value>Trois colonnes</value></data>
+  <data name="UiLayoutThreeQuartersOneQuarter" xml:space="preserve"><value>Trois quarts + un quart</value></data>
+  <data name="UiLayoutThreeRows" xml:space="preserve"><value>Trois lignes</value></data>
+  <data name="UiLayoutTwoColumns" xml:space="preserve"><value>Deux colonnes</value></data>
+  <data name="UiLayoutTwoRows" xml:space="preserve"><value>Deux lignes</value></data>
+  <data name="UiLayoutTwoThirdsOneThird" xml:space="preserve"><value>Deux tiers + un tiers</value></data>
+  <data name="UiLayoutTwoThirdsOneThirdStacked" xml:space="preserve"><value>Deux tiers + un tiers, empilés</value></data>
+  <data name="UiLayoutUnevenGrid" xml:space="preserve"><value>Grille inégale</value></data>
+  <data name="UiReachAuto" xml:space="preserve"><value>Auto</value></data>
+  <data name="UiReachAutoTip" xml:space="preserve"><value>Une sélection garde ce que le modèle juge le plus probable sous le clic</value></data>
+  <data name="UiReachObject" xml:space="preserve"><value>Objet</value></data>
+  <data name="UiReachObjectTip" xml:space="preserve"><value>Une sélection garde une portée moyenne sous le clic — la carrosserie de la voiture</value></data>
+  <data name="UiReachPart" xml:space="preserve"><value>Partie</value></data>
+  <data name="UiReachPartTip" xml:space="preserve"><value>Une sélection garde la plus petite partie sous le clic — un pneu</value></data>
+  <data name="UiReachWhole" xml:space="preserve"><value>Tout</value></data>
+  <data name="UiReachWholeTip" xml:space="preserve"><value>Une sélection garde le plus grand objet sous le clic — toute la voiture</value></data>
+  <data name="UiShadowDrop" xml:space="preserve"><value>Ombre portée</value></data>
+  <data name="UiShadowDropTip" xml:space="preserve"><value>Ombre portée — une ombre douce en bas à droite des lettres</value></data>
+  <data name="UiShadowHalo" xml:space="preserve"><value>Halo</value></data>
+  <data name="UiShadowHaloTip" xml:space="preserve"><value>Halo — une ombre douce tout autour des lettres, comme dans les mèmes</value></data>
+  <data name="UiSourceCrop" xml:space="preserve"><value>{0} (recadrage)</value></data>
+  <data name="UiSourceDroppedText" xml:space="preserve"><value>Texte déposé</value></data>
+  <data name="UiSourcePastedImage" xml:space="preserve"><value>Image collée</value></data>
+  <data name="UiSourcePastedText" xml:space="preserve"><value>Texte collé</value></data>
+  <data name="UiTurnClockwiseTip" xml:space="preserve"><value>Tourne l'image de {0}° dans le sens des aiguilles d'une montre</value></data>
+  <data name="UiTurnLeftTip" xml:space="preserve"><value>Tourne l'image de 90° dans le sens inverse des aiguilles d'une montre</value></data>
+  <data name="UiTurnZeroTip" xml:space="preserve"><value>L'image telle que chargée, l'angle revenu à 0°</value></data>
+  <data name="UiUpscaleFactorTip" xml:space="preserve"><value>Agrandit l'image {0} fois — calculé dès qu'on clique sur Agrandir</value></data>
+  <data name="UiUpscaleFast" xml:space="preserve"><value>Rapide</value></data>
+  <data name="UiUpscaleFastTip" xml:space="preserve"><value>Real-ESRGAN compact : bien plus rapide, un peu moins fin</value></data>
+  <data name="UiUpscaleQuality" xml:space="preserve"><value>Qualité</value></data>
+  <data name="UiUpscaleQualityTip" xml:space="preserve"><value>Real-ESRGAN : les détails les plus fins, lent sur cet ordinateur — des minutes pour un grand ×4</value></data>
+  <data name="UiUpscaleTooLarge" xml:space="preserve"><value>Trop grande pour ×{0} : l'image dépasserait {1} px sur son plus grand côté</value></data>
+  <data name="UiZoomContainTip" xml:space="preserve"><value>Garde toute l'image dans sa cellule, quelle que soit sa taille : des bandes d'un côté</value></data>
+  <data name="UiZoomFillTip" xml:space="preserve"><value>Garde la cellule couverte par l'image, quelle que soit sa taille : le surplus est rogné</value></data>
+</root>

@@ -25,10 +25,14 @@ internal static partial class ShortcutList
 {
     private const string ResourceName = "ImageGridFusion.SHORTCUTS.md";
 
-    /// <summary>The sections of the embedded file.</summary>
+    // SHORTCUTS.fr.md, the same shape in French: what the window shows when the UI is French (workfiles/20261105-french-translation.md § Shortcuts Window).
+    private const string FrenchResourceName = "ImageGridFusion.SHORTCUTS.fr.md";
+
+    /// <summary>The sections of the embedded file in the UI language.</summary>
     public static IReadOnlyList<ShortcutSection> Load()
     {
-        using var stream = typeof(ShortcutList).Assembly.GetManifestResourceStream(ResourceName);
+        string name = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "fr" ? FrenchResourceName : ResourceName;
+        using var stream = typeof(ShortcutList).Assembly.GetManifestResourceStream(name);
         using var reader = new StreamReader(stream!, Encoding.UTF8);
         return Parse(reader.ReadToEnd());
     }

@@ -1,6 +1,7 @@
 using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 using ImageGridFusion.Imaging;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -77,11 +78,11 @@ internal sealed class TextStyleStrip : ThumbnailStrip<TextStyleChoice>
     protected override bool IsApart(TextStyleChoice choice) =>
         choice is ApplyStyle { Style.BuiltIn: false } apply ? this.FirstUserStyle() == apply : choice == TextStyleChoice.Save;
 
-    protected override string Label(TextStyleChoice choice) => choice is ApplyStyle apply ? apply.Style.Name : "Save style…";
+    protected override string Label(TextStyleChoice choice) => choice is ApplyStyle apply ? apply.Style.DisplayName : Strings.PanelStyleSave;
 
     protected override string Tip(TextStyleChoice choice) => choice is ApplyStyle apply
-        ? $"{apply.Style.Name}{(apply.Style.BuiltIn ? "" : " — right-click to rename, replace or delete it")}\n{Describe(apply.Style.Style)}"
-        : "Save style… — keeps the selected text's style under a name, to apply it to other texts";
+        ? Texts.Format(apply.Style.BuiltIn ? Strings.PanelStyleTipBuiltIn : Strings.PanelStyleTipUser, apply.Style.DisplayName, Describe(apply.Style.Style))
+        : Strings.PanelStyleSaveTip;
 
     protected override void PaintThumbnail(Graphics g, TextStyleChoice choice, Rectangle box, bool pressed)
     {
@@ -135,38 +136,46 @@ internal sealed class TextStyleStrip : ThumbnailStrip<TextStyleChoice>
     private static string Describe(LayerTextStyle style)
     {
         var parts = new List<string> { style.Font };
-        parts.AddRange(new[] { (style.Bold, "bold"), (style.Italic, "italic"), (style.Caps, "ALL CAPS") }.Where(p => p.Item1).Select(p => p.Item2));
+        parts.AddRange(new[] { (style.Bold, Strings.PanelStyleBold), (style.Italic, Strings.PanelStyleItalic), (style.Caps, Strings.PanelStyleCaps) }.Where(p => p.Item1).Select(p => p.Item2));
         if (!string.Equals(style.EmojiFont, EmojiFonts.Default, StringComparison.OrdinalIgnoreCase))
         {
-            parts.Add($"emojis {style.EmojiFont}");
+            parts.Add(Texts.Format(Strings.PanelStyleEmojis, style.EmojiFont));
         }
 
         if (style.Alignment != LayerTextAlignment.Center)
         {
-            parts.Add(style.Alignment == LayerTextAlignment.Justified ? "justified" : $"aligned {style.Alignment.ToString().ToLowerInvariant()}");
+            parts.Add(style.Alignment switch
+            {
+                LayerTextAlignment.Justified => Strings.PanelStyleJustified,
+                LayerTextAlignment.Left => Strings.PanelStyleAlignedLeft,
+                _ => Strings.PanelStyleAlignedRight,
+            });
         }
 
         parts.Add(Hex(style.Color) + Opacity(style.Opacity));
         if (style.Outline)
         {
-            parts.Add($"outline {Hex(style.OutlineColor)}{Opacity(style.OutlineOpacity)} {style.OutlineWidth * 100:0} %");
+            parts.Add(Texts.Format(Strings.PanelStyleOutline, Hex(style.OutlineColor) + Opacity(style.OutlineOpacity), style.OutlineWidth * 100));
         }
 
         if (style.Shadow)
         {
-            parts.Add($"{style.ShadowKind.ToString().ToLowerInvariant()} shadow {Hex(style.ShadowColor)}{Opacity(style.ShadowOpacity)} {style.ShadowSize * 100:0} %");
+            parts.Add(Texts.Format(
+                style.ShadowKind == ShadowKind.Halo ? Strings.PanelStyleShadowHalo : Strings.PanelStyleShadowDrop,
+                Hex(style.ShadowColor) + Opacity(style.ShadowOpacity),
+                style.ShadowSize * 100));
         }
 
         if (style.Background)
         {
-            parts.Add($"box {Hex(style.BackgroundColor)} {style.BackgroundOpacity * 100:0} %");
+            parts.Add(Texts.Format(Strings.PanelStyleBox, Hex(style.BackgroundColor), style.BackgroundOpacity * 100));
         }
 
         return string.Join(", ", parts);
     }
 
     /// <summary>A color's opacity after it, said only when below 100 %: " at 60 %".</summary>
-    private static string Opacity(double opacity) => opacity < 1 ? $" at {opacity * 100:0} %" : "";
+    private static string Opacity(double opacity) => opacity < 1 ? Texts.Format(Strings.PanelStyleAt, opacity * 100) : "";
 
     private static string Hex(Color color) => $"#{color.R:X2}{color.G:X2}{color.B:X2}";
 

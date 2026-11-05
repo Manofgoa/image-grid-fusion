@@ -1,5 +1,6 @@
 using System.Drawing.Drawing2D;
 using ImageGridFusion.Composition;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -49,7 +50,7 @@ internal sealed class BackgroundImageBox : Control
         g.DrawRectangle(pen, bounds);
         TextRenderer.DrawText(
             g,
-            "Drop an image here",
+            Strings.PanelBackgroundDropHere,
             this.Font,
             bounds,
             this.Enabled ? SystemColors.ControlText : SystemColors.GrayText,

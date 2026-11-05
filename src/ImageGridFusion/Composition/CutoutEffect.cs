@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.Composition;
 
@@ -304,6 +305,23 @@ public sealed record CutoutEffect
             ? Color.FromArgb(255, Color.FromArgb(rgb))
             : null;
 
+    private static string ReachName(CutoutReach reach) => reach switch
+    {
+        CutoutReach.Auto => Strings.UiDescReachAuto,
+        CutoutReach.Part => Strings.UiDescReachPart,
+        CutoutReach.Object => Strings.UiDescReachObject,
+        _ => Strings.UiDescReachWhole,
+    };
+
+    private static string TreatmentName(CutoutBackground treatment) => treatment switch
+    {
+        CutoutBackground.Transparent => Strings.UiDescTreatTransparent,
+        CutoutBackground.Opacity => Strings.UiDescTreatOpacity,
+        CutoutBackground.Color => Strings.UiDescTreatColor,
+        CutoutBackground.Blur => Strings.UiDescTreatBlur,
+        _ => Strings.UiDescTreatPixelate,
+    };
+
     /// <summary>What the preset dialog lists after its name: the mode, then the options not at their defaults.</summary>
     internal string Describe()
     {
@@ -311,40 +329,41 @@ public sealed record CutoutEffect
         {
             this.Mode switch
             {
-                CutoutMode.Subject => "subject",
-                CutoutMode.Plain => $"plain background, tolerance {Math.Round(this.Tolerance * 100)} %",
-                _ => $"picked, {this.Points.Count} point{(this.Points.Count == 1 ? "" : "s")}{(this.Reach == CutoutReach.Auto ? "" : $", reach {this.Reach.ToString().ToLowerInvariant()}")}",
+                CutoutMode.Subject => Strings.UiDescCutSubject,
+                CutoutMode.Plain => Texts.Format(Strings.UiDescCutPlain, Math.Round(this.Tolerance * 100)),
+                _ => Texts.Format(this.Points.Count == 1 ? Strings.UiDescCutPickedOne : Strings.UiDescCutPicked, this.Points.Count)
+                    + (this.Reach == CutoutReach.Auto ? "" : Texts.Format(Strings.UiDescCutReach, ReachName(this.Reach))),
             },
         };
         if (this.FillHoles && this.Mode != CutoutMode.Plain)
         {
-            parts.Add("holes filled");
+            parts.Add(Strings.UiDescCutHoles);
         }
 
         if (this.ClosesGaps && this.CloseGaps != 0)
         {
-            parts.Add($"gaps {(this.CloseGaps * MaxGap * 100).ToString("0.0", CultureInfo.InvariantCulture)} %");
+            parts.Add(Texts.Format(Strings.UiDescCutGaps, Texts.Number(this.CloseGaps * MaxGap * 100, "0.0")));
         }
 
         if (this.Grow != 0)
         {
-            parts.Add($"grow {(this.Grow * MaxEdge * 100).ToString("+0.0;-0.0", CultureInfo.InvariantCulture)} %");
+            parts.Add(Texts.Format(Strings.UiDescCutGrow, Texts.Number(this.Grow * MaxEdge * 100, "+0.0;-0.0")));
         }
 
         if (this.Soften != 0)
         {
-            parts.Add($"soften {(this.Soften * MaxEdge * 100).ToString("0.0", CultureInfo.InvariantCulture)} %");
+            parts.Add(Texts.Format(Strings.UiDescCutSoften, Texts.Number(this.Soften * MaxEdge * 100, "0.0")));
         }
 
         if (this.Invert)
         {
-            parts.Add("inverted");
+            parts.Add(Strings.UiDescCutInverted);
         }
 
         foreach (var treatment in this.Treatments)
         {
             string color = treatment == CutoutBackground.Color ? $" #{this.Color.R:X2}{this.Color.G:X2}{this.Color.B:X2}" : "";
-            parts.Add($"{treatment.ToString().ToLowerInvariant()}{color} {Math.Round(this.AmountOf(treatment) * 100)} %");
+            parts.Add(Texts.Format(Strings.UiDescCutTreatment, TreatmentName(treatment), color, Math.Round(this.AmountOf(treatment) * 100)));
         }
 
         return string.Join(", ", parts);

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Drawing.Drawing2D;
 using ImageGridFusion.Composition;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -46,15 +47,22 @@ internal sealed class CutoutBackgroundStrip : ThumbnailStrip<CutoutBackground>
     protected override bool IsPressed(CutoutBackground background) =>
         background == CutoutBackground.Transparent ? this._treatments.Count == 0 : this._treatments.Contains(background);
 
-    protected override string Label(CutoutBackground background) => background.ToString();
+    protected override string Label(CutoutBackground background) => background switch
+    {
+        CutoutBackground.Transparent => Strings.UiCutBgTransparent,
+        CutoutBackground.Opacity => Strings.UiCutBgOpacity,
+        CutoutBackground.Color => Strings.UiFillColor,
+        CutoutBackground.Blur => Strings.UiCutBgBlur,
+        _ => Strings.UiBlurPixelate,
+    };
 
     protected override string Tip(CutoutBackground background) => background switch
     {
-        CutoutBackground.Transparent => "The part left out becomes transparent: every treatment turned off",
-        CutoutBackground.Opacity => "Keeps the part left out, see-through at its opacity; combines with the others",
-        CutoutBackground.Color => "Masks the part left out with a color, at its opacity; combines with the others",
-        CutoutBackground.Blur => "Keeps the part left out, blurred; combines with the others",
-        _ => "Keeps the part left out, in squares; combines with the others",
+        CutoutBackground.Transparent => Strings.UiCutBgTransparentTip,
+        CutoutBackground.Opacity => Strings.UiCutBgOpacityTip,
+        CutoutBackground.Color => Strings.UiCutBgColorTip,
+        CutoutBackground.Blur => Strings.UiCutBgBlurTip,
+        _ => Strings.UiCutBgPixelateTip,
     };
 
     protected override void PaintThumbnail(Graphics g, CutoutBackground background, Rectangle box, bool pressed)

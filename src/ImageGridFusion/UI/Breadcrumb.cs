@@ -1,3 +1,5 @@
+using ImageGridFusion.Resources;
+
 namespace ImageGridFusion.UI;
 
 /// <summary>
@@ -194,8 +196,8 @@ internal sealed class Breadcrumb : Control
         Cursor = hit == int.MinValue ? Cursors.Default : Cursors.Hand;
         _toolTip.SetToolTip(this, hit switch
         {
-            -1 => "Up to the parent folder (Backspace, Alt+↑)",
-            >= 0 => $"Open {_segments[hit]}",
+            -1 => Strings.ExplorerBreadcrumbUp,
+            >= 0 => Texts.Format(Strings.ExplorerBreadcrumbOpen, _segments[hit]),
             _ => null,
         });
         Invalidate();

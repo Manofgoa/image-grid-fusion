@@ -3,11 +3,28 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using ImageGridFusion.Explorer;
 using ImageGridFusion.Imaging;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
 /// <summary>A text layer's style under a name: one the app ships, or one the user saved.</summary>
-internal sealed record NamedTextStyle(string Name, LayerTextStyle Style, bool BuiltIn);
+internal sealed record NamedTextStyle(string Name, LayerTextStyle Style, bool BuiltIn)
+{
+    /// <summary>
+    /// The name as displayed: a built-in style's in the UI language — its <see cref="Name"/> stays its stored,
+    /// reserved one — the user's as typed.
+    /// </summary>
+    public string DisplayName => !this.BuiltIn ? this.Name : this.Name switch
+    {
+        "Default" => Strings.PanelStyleDefault,
+        "Meme" => Strings.PanelStyleMeme,
+        "Subtitle" => Strings.PanelStyleSubtitle,
+        "Label" => Strings.PanelStyleLabel,
+        "Neon" => Strings.PanelStyleNeon,
+        "Subtle" => Strings.PanelStyleSubtle,
+        _ => this.Name,
+    };
+}
 
 /// <summary>
 /// The text styles (workfiles/20261029-text-layer-style-presets.md): the built-in ones, fixed and shipped in
@@ -65,6 +82,10 @@ internal sealed class TextStyles
 
     /// <summary>Whether <paramref name="name"/> is a built-in style's, refused to the user's.</summary>
     public static bool IsReserved(string name) => BuiltIn.Any(style => string.Equals(style.Name, name, StringComparison.CurrentCultureIgnoreCase));
+
+    /// <summary>Whether <paramref name="name"/> is a built-in style's, stored or displayed in the UI language: refused when the user names one.</summary>
+    public static bool IsReservedForUser(string name) =>
+        IsReserved(name) || BuiltIn.Any(style => string.Equals(style.DisplayName, name, StringComparison.CurrentCultureIgnoreCase));
 
     /// <summary><paramref name="style"/> kept under <paramref name="name"/>: the user's style of that name replaced in its place, else added last.</summary>
     public NamedTextStyle Put(string name, LayerTextStyle style)

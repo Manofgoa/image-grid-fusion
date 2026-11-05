@@ -1,5 +1,6 @@
 using System.Collections.Specialized;
 using System.Diagnostics;
+using System.Globalization;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
@@ -7,6 +8,7 @@ using ImageGridFusion.Components;
 using ImageGridFusion.Composition;
 using ImageGridFusion.Explorer;
 using ImageGridFusion.Imaging;
+using ImageGridFusion.Resources;
 using ImageGridFusion.Web;
 
 namespace ImageGridFusion.UI;
@@ -38,52 +40,52 @@ internal sealed partial class MainForm : Form
     // Between the preview and the explorer: drags the explorer's width, the preview giving way; hidden while the
     // explorer is collapsed. The system's resize arrow, not WinForms' own VSplit bitmap.
     private readonly Splitter _explorerSplitter = new() { Dock = DockStyle.Right, Width = 6, Cursor = Cursors.SizeWE };
-    private readonly ToolStripMenuItem _explorerFolder = new("File explorer folder…");
+    private readonly ToolStripMenuItem _explorerFolder = new(Strings.MainSettingsExplorerFolder);
     // How many pages of tiles the explorer loads at a time: a submenu of exclusive choices, remembered between sessions.
-    private readonly ToolStripMenuItem _explorerPages = new("File explorer pages per load");
-    private readonly ToolStripMenuItem _explorerGroups = new("File explorer groups");
+    private readonly ToolStripMenuItem _explorerPages = new(Strings.MainSettingsExplorerPages);
+    private readonly ToolStripMenuItem _explorerGroups = new(Strings.MainSettingsExplorerGroups);
     // The file contents' group of the ⚙ menu: a caption, grey and inert, over its entries.
-    private readonly ToolStripMenuItem _contentCaption = new("File contents") { Enabled = false };
-    private readonly ToolStripMenuItem _explorerContentSearch = new("Search file contents (OCR)");
-    private readonly ToolStripMenuItem _rebuildContent = new("Rebuild content index");
+    private readonly ToolStripMenuItem _contentCaption = new(Strings.MainSettingsFileContents) { Enabled = false };
+    private readonly ToolStripMenuItem _explorerContentSearch = new(Strings.MainSettingsContentSearch);
+    private readonly ToolStripMenuItem _rebuildContent = new(Strings.MainSettingsRebuildContent);
     // The faces' group of the ⚙ menu (workfiles/20261027-face-detection.md § Privacy): a caption, then its entries.
-    private readonly ToolStripMenuItem _facesCaption = new("People") { Enabled = false };
-    private readonly ToolStripMenuItem _faceAnalysis = new("Face analysis");
+    private readonly ToolStripMenuItem _facesCaption = new(Strings.MainSettingsPeople) { Enabled = false };
+    private readonly ToolStripMenuItem _faceAnalysis = new(Strings.MainSettingsFaceAnalysis);
     // How strictly the faces are grouped (workfiles/20261028-face-grouping-accuracy.md): a submenu of exclusive levels.
-    private readonly ToolStripMenuItem _faceGrouping = new("Face grouping");
-    private readonly ToolStripMenuItem _forgetFaces = new("Forget faces…");
+    private readonly ToolStripMenuItem _faceGrouping = new(Strings.MainSettingsFaceGrouping);
+    private readonly ToolStripMenuItem _forgetFaces = new(Strings.MainSettingsForgetFaces);
     // The image content analysis' group of the ⚙ menu (workfiles/20261027-image-content-analysis.md § Engine Offer).
-    private readonly ToolStripMenuItem _visualCaption = new("Image content") { Enabled = false };
-    private readonly ToolStripMenuItem _visualAnalysis = new("Visual analysis");
+    private readonly ToolStripMenuItem _visualCaption = new(Strings.MainSettingsImageContent) { Enabled = false };
+    private readonly ToolStripMenuItem _visualAnalysis = new(Strings.MainSettingsVisualAnalysis);
     // How far an image found by its similarity must stand out (workfiles/20261029-similar-images-accuracy.md): a submenu of exclusive levels.
-    private readonly ToolStripMenuItem _similarImages = new("Similar images");
-    private readonly ToolStripMenuItem _captions = new("Captions");
-    private readonly ToolStripMenuItem _forgetVisual = new("Forget visual analysis…");
+    private readonly ToolStripMenuItem _similarImages = new(Strings.MainSettingsSimilarImages);
+    private readonly ToolStripMenuItem _captions = new(Strings.MainSettingsCaptions);
+    private readonly ToolStripMenuItem _forgetVisual = new(Strings.MainSettingsForgetVisual);
     // A cell's context menu, shown while the visual analysis can run: the images like its own.
     private readonly ContextMenuStrip _cellMenu = new();
-    private readonly ToolStripMenuItem _findSimilarCell = new("Find similar images");
-    private readonly ToolStripMenuItem _copyCell = new("Copy cell") { ShortcutKeyDisplayString = "Ctrl+C" };
-    private readonly ToolStripMenuItem _saveUpscaledCell = new("Save upscaled image…");
+    private readonly ToolStripMenuItem _findSimilarCell = new(Strings.MainMenuFindSimilar);
+    private readonly ToolStripMenuItem _copyCell = new(Strings.MainMenuCopyCell) { ShortcutKeyDisplayString = "Ctrl+C" };
+    private readonly ToolStripMenuItem _saveUpscaledCell = new(Strings.MainMenuSaveUpscaled);
 
     /// <summary>The cell the context menu was opened on, by its slot.</summary>
     private int _cellMenuCell = -1;
     // How the light bulb's arrow to the word found is drawn: a submenu of the group, the thickness a
     // submenu of exclusive choices, remembered between sessions. See workfiles/20261007-ocr-result-style.md.
-    private readonly ToolStripMenuItem _ocrResultStyle = new("OCR result style");
-    private readonly ToolStripMenuItem _ocrArrowCurved = new("Curved arrow");
-    private readonly ToolStripMenuItem _ocrArrowThickness = new("Arrow thickness");
-    private readonly ToolStripMenuItem _ocrArrowColor = new("Arrow color…");
+    private readonly ToolStripMenuItem _ocrResultStyle = new(Strings.MainSettingsOcrResultStyle);
+    private readonly ToolStripMenuItem _ocrArrowCurved = new(Strings.MainSettingsOcrArrowCurved);
+    private readonly ToolStripMenuItem _ocrArrowThickness = new(Strings.MainSettingsOcrArrowThickness);
+    private readonly ToolStripMenuItem _ocrArrowColor = new(Strings.MainSettingsOcrArrowColor);
     // The Component updates window, where every component is installed and updated
     // (workfiles/20261102-component-update-verification.md); one at a time.
-    private readonly ToolStripMenuItem _componentUpdates = new("Component updates…");
+    private readonly ToolStripMenuItem _componentUpdates = new(Strings.MainSettingsComponentUpdates);
     private ComponentsWindow? _componentsWindow;
     // The shortcuts window, also opened by F1 (workfiles/20261029-shortcuts-list.md); one at a time.
-    private readonly ToolStripMenuItem _keyboardShortcuts = new("Keyboard shortcuts…") { ShortcutKeyDisplayString = "F1" };
+    private readonly ToolStripMenuItem _keyboardShortcuts = new(Strings.MainSettingsKeyboardShortcuts) { ShortcutKeyDisplayString = "F1" };
     private ShortcutsWindow? _shortcutsWindow;
     // The ⚙ menu's last item, an action rather than a setting: Explorer on the running exe's folder.
-    private readonly ToolStripMenuItem _openAppFolder = new("Open app folder");
-    private readonly Button _clearButton = new() { Text = "Clear all", AutoSize = true };
-    private readonly Button _settingsButton = new() { AccessibleName = "Settings", Size = new Size(32, 23), AutoSize = true };
+    private readonly ToolStripMenuItem _openAppFolder = new(Strings.MainSettingsOpenAppFolder);
+    private readonly Button _clearButton = new() { Text = Strings.MainClearAll, AutoSize = true };
+    private readonly Button _settingsButton = new() { AccessibleName = Strings.MainSettings, Size = new Size(32, 23), AutoSize = true };
     // The length readout: what the exported video would last, always shown, its detail in its tooltip (see RefreshLength).
     private readonly Label _lengthReadout = new() { AutoSize = true, Anchor = AnchorStyles.Left, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 3, 3) };
 
@@ -107,25 +109,25 @@ internal sealed partial class MainForm : Form
     // Moves the timeline's thumb and the grid's time along while the grid plays.
     private readonly System.Windows.Forms.Timer _transportTimer = new() { Interval = 50 };
     private readonly ContextMenuStrip _settingsMenu = new();
-    private readonly ToolStripMenuItem _startWithWindows = new("Start with Windows");
+    private readonly ToolStripMenuItem _startWithWindows = new(Strings.MainSettingsStartWithWindows);
     private readonly ToolTip _toolTip = new();
-    private readonly SplitButton _copyButton = SplitMain("Copy");
+    private readonly SplitButton _copyButton = SplitMain(Strings.MainCopy);
     private readonly ContextMenuStrip _copyMenu = new();
-    private readonly ToolStripMenuItem _copyGif = new("GIF");
-    private readonly ToolStripMenuItem _copyMp4 = new("MP4 Video");
-    private readonly ToolStripMenuItem _copyForSharing = new("JPEG for sharing");
-    private readonly ToolStripMenuItem _copyPngMaxSize = new("PNG max size");
-    private readonly SplitButton _saveButton = SplitMain("Save…");
+    private readonly ToolStripMenuItem _copyGif = new(Strings.MainFormatGif);
+    private readonly ToolStripMenuItem _copyMp4 = new(Strings.MainFormatMp4Video);
+    private readonly ToolStripMenuItem _copyForSharing = new(Strings.MainFormatJpegSharing);
+    private readonly ToolStripMenuItem _copyPngMaxSize = new(Strings.MainFormatPngMaxSize);
+    private readonly SplitButton _saveButton = SplitMain(Strings.MainSaveEllipsis);
     private readonly ContextMenuStrip _saveMenu = new();
-    private readonly ToolStripMenuItem _saveGif = new("GIF");
-    private readonly ToolStripMenuItem _saveMp4 = new("MP4 Video");
-    private readonly ToolStripMenuItem _savePngMaxSize = new("PNG max size");
+    private readonly ToolStripMenuItem _saveGif = new(Strings.MainFormatGif);
+    private readonly ToolStripMenuItem _saveMp4 = new(Strings.MainFormatMp4Video);
+    private readonly ToolStripMenuItem _savePngMaxSize = new(Strings.MainFormatPngMaxSize);
 
     // The last video Copy generated, offered back without generating it again (see LastVideo).
-    private readonly Button _copyLastButton = new() { Text = "Copy last video", AutoSize = true, Enabled = false };
-    private readonly ToolStripMenuItem _copyLast = new("Copy last video") { Enabled = false };
-    private readonly ToolStripMenuItem _saveLast = new("Save last video…") { Enabled = false };
-    private readonly Button _cancelButton = new() { Text = "Cancel", AutoSize = true, Visible = false };
+    private readonly Button _copyLastButton = new() { Text = Strings.MainCopyLastVideo, AutoSize = true, Enabled = false };
+    private readonly ToolStripMenuItem _copyLast = new(Strings.MainCopyLastVideo) { Enabled = false };
+    private readonly ToolStripMenuItem _saveLast = new(Strings.MainSaveLastVideo) { Enabled = false };
+    private readonly Button _cancelButton = new() { Text = Strings.MainCancel, AutoSize = true, Visible = false };
     private readonly Label _status = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly TableLayoutPanel _bottom;
     private readonly FlowLayoutPanel _outputButtons;
@@ -166,7 +168,7 @@ internal sealed partial class MainForm : Form
     private readonly Panel _optionsHost = new() { Dock = DockStyle.Fill, Margin = Padding.Empty };
     private readonly Button _effectResetButton = new()
     {
-        Text = "Reset",
+        Text = Strings.MainReset,
         AutoSize = true,
         Anchor = AnchorStyles.Right,
         TextImageRelation = TextImageRelation.ImageBeforeText,
@@ -182,13 +184,13 @@ internal sealed partial class MainForm : Form
         Padding = new Padding(8, 0, 8, 8),
     };
     // The row's title, in bold and pointing at the tabs, so it does not read as one of them.
-    private readonly Label _effectsLabel = new() { Text = "Effects →", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly Label _effectsLabel = new() { Text = Strings.MainEffectsLabel, AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly EffectTabs<ImageEffect> _effectTabs = new(EffectTitle) { Anchor = AnchorStyles.Left | AnchorStyles.Top, Margin = Padding.Empty };
 
     // Hangs from the options row like the tabs, and as tall as them.
     private readonly Button _resetButton = new()
     {
-        Text = "Reset",
+        Text = Strings.MainReset,
         AutoSize = true,
         Anchor = AnchorStyles.Right | AnchorStyles.Top,
         Margin = new Padding(3, 0, 0, 0),
@@ -198,7 +200,7 @@ internal sealed partial class MainForm : Form
     // Left of the Reset, as tall as it: the selected cell's effects saved as an effect preset.
     private readonly Button _presetButton = new()
     {
-        Text = "Preset…",
+        Text = Strings.MainPresetEllipsis,
         AutoSize = true,
         Anchor = AnchorStyles.Right | AnchorStyles.Top,
         Margin = new Padding(3, 0, 0, 0),
@@ -227,7 +229,7 @@ internal sealed partial class MainForm : Form
     private readonly FlipStrip _flip = new() { Anchor = AnchorStyles.Left };
     private readonly StepSlider _frames = OptionSlider(0, 1, 10);
     private readonly Label _framesLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly CheckBox _freeze = new() { Text = "Freeze", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _freeze = new() { Text = Strings.MainFreeze, AutoSize = true, Anchor = AnchorStyles.Left };
 
     // The Frames effect's speed, in steps of FramesEffect.SpeedStep: ×0.25 to ×4 (workfiles/20260926-frames-speed.md).
     private readonly StepSlider _speed = OptionSlider(
@@ -236,12 +238,12 @@ internal sealed partial class MainForm : Form
     private readonly Label _speedLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
 
     // The Frames effect's trim and its starting point's fields (workfiles/20261008-video-trim.md).
-    private readonly Label _framesCaption = new() { Text = "Starts at", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly Label _framesCaption = new() { Text = Strings.MainFramesStartsAt, AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly FrameField _framesField = new();
-    private readonly Label _trimFromLabel = new() { Text = "From", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly Label _trimFromLabel = new() { Text = Strings.MainFrom, AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly StepSlider _trimFrom = OptionSlider(0, 1, 10);
     private readonly FrameField _trimFromField = new();
-    private readonly Label _trimToLabel = new() { Text = "To", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly Label _trimToLabel = new() { Text = Strings.MainTo, AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly StepSlider _trimTo = OptionSlider(0, 1, 10);
     private readonly FrameField _trimToField = new();
     // A grid, so the From and To sliders line up whatever their captions' widths.
@@ -268,7 +270,7 @@ internal sealed partial class MainForm : Form
     private readonly UpscaleModelStrip _upscaleModel = new() { Anchor = AnchorStyles.Left };
     private readonly Button _upscaleButton = new()
     {
-        Text = "Upscale",
+        Text = Strings.MainUpscale,
         AutoSize = true,
         Anchor = AnchorStyles.Left,
         Margin = new Padding(12, 0, 0, 0),
@@ -290,14 +292,14 @@ internal sealed partial class MainForm : Form
     private readonly Label _cutoutGrowLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly TrackBar _cutoutSoften = CutoutSlider(0, 100);
     private readonly Label _cutoutSoftenLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly CheckBox _cutoutInvert = new() { Text = "Invert", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _cutoutInvert = new() { Text = Strings.MainInvert, AutoSize = true, Anchor = AnchorStyles.Left };
 
     // The enclosed content kept: the plain background's tolerance, the gaps closed, the holes filled (workfiles/20261029-cutout-enclosed-content.md).
     private readonly TrackBar _cutoutTolerance = CutoutSlider(0, 100);
     private readonly Label _cutoutToleranceLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly TrackBar _cutoutGaps = CutoutSlider(0, 100);
     private readonly Label _cutoutGapsLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly CheckBox _cutoutFillHoles = new() { Text = "Fill holes", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _cutoutFillHoles = new() { Text = Strings.MainFillHoles, AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CutoutReachStrip _cutoutReach = new() { Anchor = AnchorStyles.Left };
     private readonly CutoutBackgroundStrip _cutoutBackground = new() { Anchor = AnchorStyles.Left };
 
@@ -320,8 +322,8 @@ internal sealed partial class MainForm : Form
     // The emoji fonts' download or update while it runs (workfiles/20261102-emoji-fonts.md § Shipped Fonts).
     private readonly TrackBar _volume = OptionSlider(0, (int)(VolumeEffect.MaxLevel * 100), 10);
     private readonly Label _volumeLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly CheckBox _mute = new() { Text = "Mute", AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly CheckBox _backgroundAutomatic = new() { Text = "Automatic color", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _mute = new() { Text = Strings.MainMute, AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _backgroundAutomatic = new() { Text = Strings.MainAutomaticColor, AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly PictureBox _backgroundOpacityIcon = OpacityIcon();
     private readonly TrackBar _backgroundOpacity = OptionSlider(0, 100, 10);
     private readonly Label _backgroundOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
@@ -337,7 +339,7 @@ internal sealed partial class MainForm : Form
     private readonly Label _backgroundEdgeOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly TrackBar _backgroundBlend = OptionSlider(0, 100, 10);
     private readonly Label _backgroundBlendLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly CheckBox _backgroundSoften = new() { Text = "Soften", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _backgroundSoften = new() { Text = Strings.MainSoften, AutoSize = true, Anchor = AnchorStyles.Left };
 
     // One dialog for the whole session, its custom colors remembered between sessions.
     private readonly SharedColorDialog _colorDialog;
@@ -357,10 +359,10 @@ internal sealed partial class MainForm : Form
         Padding = new Padding(8, 8, 8, 0),
         AllowDrop = true,
     };
-    private readonly Label _globalLabel = new() { Text = "Global →", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly Label _globalLabel = new() { Text = Strings.MainGlobalLabel, AutoSize = true, Anchor = AnchorStyles.Left };
 
     // The Format is a setting, always in force: its tab has no checkbox.
-    private readonly EffectTabs<GlobalEffect> _globalTabs = new(effect => effect == GlobalEffect.GridBackground ? "Grid background" : effect.ToString(), standing: true, hasCheck: effect => effect != GlobalEffect.Format)
+    private readonly EffectTabs<GlobalEffect> _globalTabs = new(GlobalEffectTitle, standing: true, hasCheck: effect => effect != GlobalEffect.Format)
     {
         Anchor = AnchorStyles.Left | AnchorStyles.Bottom,
         Margin = Padding.Empty,
@@ -369,7 +371,7 @@ internal sealed partial class MainForm : Form
     // Stands on the options row like the tabs, and as tall as them.
     private readonly Button _globalResetButton = new()
     {
-        Text = "Reset",
+        Text = Strings.MainReset,
         AutoSize = true,
         Anchor = AnchorStyles.Right | AnchorStyles.Bottom,
         Margin = new Padding(3, 0, 0, 0),
@@ -387,7 +389,7 @@ internal sealed partial class MainForm : Form
     private readonly Panel _globalOptionsHost = new() { Dock = DockStyle.Fill, Margin = Padding.Empty };
     private readonly Button _globalEffectResetButton = new()
     {
-        Text = "Reset",
+        Text = Strings.MainReset,
         AutoSize = true,
         Anchor = AnchorStyles.Right,
         TextImageRelation = TextImageRelation.ImageBeforeText,
@@ -405,18 +407,18 @@ internal sealed partial class MainForm : Form
 
     // The Custom format's fields, after the format thumbnails (workfiles/20261104-custom-output-format.md);
     // unset, they show greyed the values the first pick of Custom takes.
-    private readonly Label _customWidthLabel = new() { Text = "Width", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(12, 3, 0, 3) };
+    private readonly Label _customWidthLabel = new() { Text = Strings.MainWidth, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(12, 3, 0, 3) };
     private readonly NumericUpDown _customWidth = CustomField();
-    private readonly Label _customHeightLabel = new() { Text = "× Height", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(3, 3, 0, 3) };
+    private readonly Label _customHeightLabel = new() { Text = Strings.MainHeightAfterWidth, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(3, 3, 0, 3) };
     private readonly NumericUpDown _customHeight = CustomField();
-    private readonly CheckBox _customExact = new() { Text = "Exact pixels", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(9, 3, 3, 3) };
+    private readonly CheckBox _customExact = new() { Text = Strings.MainExactPixels, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(9, 3, 3, 3) };
 
     // Set while the Custom fields are written from the state: their events then change nothing.
     private bool _showingCustom;
 
     // The Custom format the canvas's edges drag from: the canvas at the press, in the Custom fields' units and mode.
     private CustomFormat? _canvasResizeFrom;
-    private readonly Button _soundtrackBrowse = new() { Text = "Browse…", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly Button _soundtrackBrowse = new() { Text = Strings.MainBrowse, AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly Label _soundtrackFile = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly TrackBar _soundtrackVolume = OptionSlider(0, (int)(Soundtrack.MaxLevel * 100), 10);
     private readonly Label _soundtrackVolumeLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
@@ -450,17 +452,21 @@ internal sealed partial class MainForm : Form
     private readonly Label _bordersThicknessLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly TrackBar _bordersOpacity = OptionSlider((int)Math.Round(GridBorders.MinOpacity * 100), 100, 10);
     private readonly Label _bordersOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly CheckBox _bordersInnerLines = new() { Text = "Inner lines", AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly CheckBox _bordersOuterFrame = new() { Text = "Outer frame", AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly CheckBox _bordersRounded = new() { Text = "Twitter corners", AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly ToolStripMenuItem _twitterCornersDefault = new("Twitter corners by default");
+    private readonly CheckBox _bordersInnerLines = new() { Text = Strings.MainBordersInnerLines, AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _bordersOuterFrame = new() { Text = Strings.MainBordersOuterFrame, AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _bordersRounded = new() { Text = Strings.MainBordersTwitterCorners, AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly ToolStripMenuItem _twitterCornersDefault = new(Strings.MainSettingsTwitterCornersDefault);
+
+    // The UI language, one of AppSettings.Languages, applied at the next start: its label bilingual, each language named in
+    // its own, whatever the language in force (workfiles/20261105-french-translation.md § UI Language Setting).
+    private readonly ToolStripMenuItem _language = new("Language / Langue");
 
     // The longer side an MP4 or GIF export is clamped to, one of AppSettings.VideoMaxSides (workfiles/20261010-optimisation-lack-of-memory.md § 2.3).
-    private readonly ToolStripMenuItem _videoSize = new("Video size");
-    private readonly ToolStripMenuItem _guideApproach = new("Guides show from");
-    private readonly ToolStripMenuItem _gapBarsFrom = new("Gap bars from");
-    private readonly ToolStripMenuItem _gapBarsFromCenter = new("Image center");
-    private readonly ToolStripMenuItem _gapBarsFromEdges = new("Image edges");
+    private readonly ToolStripMenuItem _videoSize = new(Strings.MainSettingsVideoSize);
+    private readonly ToolStripMenuItem _guideApproach = new(Strings.MainSettingsGuideApproach);
+    private readonly ToolStripMenuItem _gapBarsFrom = new(Strings.MainSettingsGapBarsFrom);
+    private readonly ToolStripMenuItem _gapBarsFromCenter = new(Strings.MainSettingsGapBarsCenter);
+    private readonly ToolStripMenuItem _gapBarsFromEdges = new(Strings.MainSettingsGapBarsEdges);
 
     // Whether the borders' initial state has its Twitter corners: a setting of the ⚙ menu, remembered between sessions.
     private bool _roundedByDefault = AppSettings.TwitterCornersByDefault;
@@ -491,7 +497,7 @@ internal sealed partial class MainForm : Form
         this._savesWindowSize = savesWindowSize;
         this._history = new GridHistory(this.CaptureState, () => this._preview.InGesture);
         this._preview.ReleaseImage = this._history.Release;
-        this._colorDialog = new SharedColorDialog(message => this.ShowStatus($"Custom colors not remembered: {message}", error: true));
+        this._colorDialog = new SharedColorDialog(message => this.ShowStatus(Texts.Format(Strings.MainCustomColorsNotSaved, message), error: true));
         this.WriteMaxZoom();
 
         SuspendLayout();
@@ -612,7 +618,7 @@ internal sealed partial class MainForm : Form
         this._options[ImageEffect.Cutout].Controls.AddRange([this._cutoutMode, cutoutEnclosedLines, this._cutoutReach, this._cutoutBackground, cutoutLines]);
         this._options[ImageEffect.Upscale].Controls.AddRange([this._upscaleModel, this._upscaleStrip, this._upscaleButton, this._upscaleReason]);
         _options[ImageEffect.Zoom].Controls.AddRange([_zoom, _zoomLabel, this._zoomFit]);
-        this._motionKind.Items.AddRange(Enum.GetNames<MotionKind>());
+        this._motionKind.Items.AddRange([Strings.MainMotionKindZoom]);
         this._motionKind.SelectedIndex = (int)MotionEffect.Default.Kind;
         this._motionKind.DrawItem += (_, e) =>
         {
@@ -649,10 +655,10 @@ internal sealed partial class MainForm : Form
             [this._saturation, this._saturationLabel, this._hue, this._hueLabel, this._brightness, this._brightnessLabel, this._contrast, this._contrastLabel]);
 
         // Each label as wide as its widest value, so moving a slider never shifts the ones after it.
-        this._saturationLabel.MinimumSize = new Size(TextRenderer.MeasureText(SignedPercentText("Saturation", -100), this._saturationLabel.Font).Width, 0);
+        this._saturationLabel.MinimumSize = new Size(TextRenderer.MeasureText(SignedPercentText(Strings.MainColorSaturation, -100), this._saturationLabel.Font).Width, 0);
         this._hueLabel.MinimumSize = new Size(TextRenderer.MeasureText(HueText(-ColorsEffect.MaxHue), this._hueLabel.Font).Width, 0);
-        this._brightnessLabel.MinimumSize = new Size(TextRenderer.MeasureText(SignedPercentText("Brightness", -100), this._brightnessLabel.Font).Width, 0);
-        this._contrastLabel.MinimumSize = new Size(TextRenderer.MeasureText(SignedPercentText("Contrast", -100), this._contrastLabel.Font).Width, 0);
+        this._brightnessLabel.MinimumSize = new Size(TextRenderer.MeasureText(SignedPercentText(Strings.MainColorBrightness, -100), this._brightnessLabel.Font).Width, 0);
+        this._contrastLabel.MinimumSize = new Size(TextRenderer.MeasureText(SignedPercentText(Strings.MainColorContrast, -100), this._contrastLabel.Font).Width, 0);
         this._cutoutGrowLabel.MinimumSize = new Size(TextRenderer.MeasureText(GrowText(-100), this._cutoutGrowLabel.Font).Width, 0);
         this._cutoutSoftenLabel.MinimumSize = new Size(TextRenderer.MeasureText(SoftenText(100), this._cutoutSoftenLabel.Font).Width, 0);
         this._cutoutToleranceLabel.MinimumSize = new Size(TextRenderer.MeasureText(ToleranceText(100), this._cutoutToleranceLabel.Font).Width, 0);
@@ -674,7 +680,7 @@ internal sealed partial class MainForm : Form
         _globalOptionsRow.Controls.Add(_globalOptionsHost, 0, 0);
         _globalOptionsRow.Controls.Add(_globalEffectResetButton, 1, 0);
         _globalOptionsHost.Controls.AddRange([.. _globalOptions.Values]);
-        _bordersStyle.Items.AddRange(Enum.GetNames<BorderPattern>());
+        _bordersStyle.Items.AddRange([Strings.MainBorderCorners, Strings.MainBorderSolid, Strings.MainBorderDashed, Strings.MainBorderDotted, Strings.MainBorderDouble]);
         _globalOptions[GlobalEffect.Format].Controls.AddRange([_formatStrip, this._customWidthLabel, this._customWidth, this._customHeightLabel, this._customHeight, this._customExact]);
         _globalOptions[GlobalEffect.Soundtrack].Controls.AddRange([_soundtrackBrowse, _soundtrackFile, _soundtrackVolume, _soundtrackVolumeLabel]);
         _globalOptions[GlobalEffect.Fade].Controls.AddRange([_fadeDuration, _fadeDurationLabel, _fadeSquared, _fadeLinear]);
@@ -734,7 +740,7 @@ internal sealed partial class MainForm : Form
             this.TogglePlayback();
             this._preview.Focus();
         };
-        this._toolTip.SetToolTip(this._playButton, "Plays or pauses the grid (Space)");
+        this._toolTip.SetToolTip(this._playButton, Strings.MainTransportPlayTip);
         this._playButton.MinimumSize = new Size(this.LogicalToDeviceUnits(36), 0);
         this._timeline.SeekStarted += (_, _) => this._preview.HoldPlayback();
         this._timeline.Seeking += (_, time) =>
@@ -746,9 +752,10 @@ internal sealed partial class MainForm : Form
         this._preview.PlaybackChanged += (_, _) => this.RefreshTransport();
         this._transportTimer.Tick += (_, _) => this.RefreshTransportPosition();
         this._transportTimer.Start();
-        this._toolTip.SetToolTip(this._clearButton, "Removes every image and the global effects, and brings the format back to Twitter (Ctrl+N)");
-        _settingsMenu.Items.AddRange([_startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, this._explorerGroups, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._similarImages, this._captions, this._forgetVisual, new ToolStripSeparator(), this._componentUpdates, this._keyboardShortcuts, this._openAppFolder]);
+        this._toolTip.SetToolTip(this._clearButton, Strings.MainClearAllTip);
+        _settingsMenu.Items.AddRange([this._language, _startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, this._explorerGroups, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._similarImages, this._captions, this._forgetVisual, new ToolStripSeparator(), this._componentUpdates, this._keyboardShortcuts, this._openAppFolder]);
         // An icon per action and toggle, never on a caption nor a submenu's values (RULES.md § Icons).
+        UiIcons.Set(this._language, UiIcons.Language);
         UiIcons.Set(this._startWithWindows, UiIcons.StartWithWindows);
         UiIcons.Set(this._twitterCornersDefault, UiIcons.TwitterCorners);
         UiIcons.Set(this._videoSize, UiIcons.Video);
@@ -783,9 +790,9 @@ internal sealed partial class MainForm : Form
 
         // Series first, then the name groups, the known sources in a submenu of their own after AI with the
         // sources found by themselves (workfiles/20261103-file-explorer-groups.md § File Name Patterns).
-        this._explorerGroups.DropDownItems.Add(this.GroupItem(NamePatterns.SeriesId, "Series"));
+        this._explorerGroups.DropDownItems.Add(this.GroupItem(NamePatterns.SeriesId, Strings.MainExplorerGroupSeries));
         this._explorerGroups.DropDownItems.Add(new ToolStripSeparator());
-        var sources = new ToolStripMenuItem("Sources") { ToolTipText = "Files named by a downloader or an app, a group per source" };
+        var sources = new ToolStripMenuItem(Strings.MainExplorerGroupSources) { ToolTipText = Strings.MainExplorerGroupSourcesTip };
         UiIcons.Set(sources, UiIcons.Sources);
         foreach (var group in NamePatterns.Groups)
         {
@@ -803,16 +810,16 @@ internal sealed partial class MainForm : Form
         }
 
         sources.DropDownItems.Add(new ToolStripSeparator());
-        sources.DropDownItems.Add(this.GroupItem(NamePatterns.DetectedSourcesId, "Detected sources"));
+        sources.DropDownItems.Add(this.GroupItem(NamePatterns.DetectedSourcesId, Strings.MainExplorerGroupDetectedSources));
 
         foreach (int percent in GridPreview.GuideApproachChoices)
         {
-            var item = new ToolStripMenuItem(percent == 0 ? "At the stop only" : $"{percent} % of the cell") { Tag = percent };
+            var item = new ToolStripMenuItem(percent == 0 ? Strings.MainGuideApproachStopOnly : Texts.Format(Strings.MainGuideApproachPercent, percent)) { Tag = percent };
             item.Click += (_, _) => this.SetGuideApproach(percent);
             this._guideApproach.DropDownItems.Add(item);
         }
 
-        string[] strictnessLevels = ["Very loose", "Loose", "Normal", "Strict", "Very strict"];
+        string[] strictnessLevels = [Strings.MainStrictnessVeryLoose, Strings.MainStrictnessLoose, Strings.MainStrictnessNormal, Strings.MainStrictnessStrict, Strings.MainStrictnessVeryStrict];
         for (int level = 0; level < strictnessLevels.Length; level++)
         {
             int chosen = level;
@@ -832,17 +839,17 @@ internal sealed partial class MainForm : Form
         for (int thickness = OcrArrowStyle.MinThickness; thickness <= OcrArrowStyle.MaxThickness; thickness++)
         {
             int choice = thickness;
-            var item = new ToolStripMenuItem(choice == 0 ? "0 (none)" : $"{choice} px") { Tag = choice };
+            var item = new ToolStripMenuItem(choice == 0 ? Strings.MainArrowThicknessNone : $"{choice} px") { Tag = choice };
             item.Click += (_, _) => this.SetOcrArrow(this._explorer.ArrowStyle with { Thickness = choice });
             this._ocrArrowThickness.DropDownItems.Add(item);
         }
 
-        _toolTip.SetToolTip(_settingsButton, "Settings");
+        _toolTip.SetToolTip(_settingsButton, Strings.MainSettings);
         _settingsButton.Click += (_, _) => ShowSettings();
         _startWithWindows.Click += (_, _) => ToggleStartWithWindows();
-        _twitterCornersDefault.ToolTipText = "Whether the borders start with their Twitter corners, at start-up and after Clear all; remembered between sessions";
+        _twitterCornersDefault.ToolTipText = Strings.MainSettingsTwitterCornersDefaultTip;
         _twitterCornersDefault.Click += (_, _) => ToggleTwitterCornersDefault();
-        this._videoSize.ToolTipText = "The longer side an MP4 or GIF export is clamped to: smaller is lighter on memory and faster to encode; a PNG keeps 4096 px; remembered between sessions";
+        this._videoSize.ToolTipText = Strings.MainSettingsVideoSizeTip;
         foreach (int side in AppSettings.VideoMaxSides)
         {
             int choice = side;
@@ -851,39 +858,48 @@ internal sealed partial class MainForm : Form
             this._videoSize.DropDownItems.Add(item);
         }
 
-        _explorerFolder.ToolTipText = "The folder the file explorer searches, with its subfolders; remembered between sessions";
+        this._language.ToolTipText = Strings.MainLanguageTip;
+        foreach (string language in AppSettings.Languages)
+        {
+            string choice = language;
+            var item = new ToolStripMenuItem(LanguageName(choice)) { Tag = choice };
+            item.Click += (_, _) => this.SetLanguage(choice);
+            this._language.DropDownItems.Add(item);
+        }
+
+        _explorerFolder.ToolTipText = Strings.MainSettingsExplorerFolderTip;
         _explorerFolder.Click += (_, _) => PickExplorerFolder();
-        this._guideApproach.ToolTipText = "How far before its magnetic stop a moved image's guide shows, with a bar measuring the gap left; remembered between sessions";
-        this._gapBarsFrom.ToolTipText = "The point of the image every guide's bar runs from to the guide: the image's center, or its edge nearest the guide — the same for every guide; remembered between sessions";
-        _explorerPages.ToolTipText = "How many screens of tiles the file explorer loads at a time, the next ones as the list scrolls; remembered between sessions";
-        this._explorerGroups.ToolTipText = "The groups of files named by a machine the folder view sets apart, each after the named files; a file of a group turned off goes to the next group it fits, else among the named files; remembered between sessions";
-        this._explorerContentSearch.ToolTipText = "Whether the file explorer's search also finds files by the text inside them — recognised in images and a PDF's first page, read in text and HTML files — extracted in the background after the files are indexed; remembered between sessions";
+        this._guideApproach.ToolTipText = Strings.MainSettingsGuideApproachTip;
+        this._gapBarsFrom.ToolTipText = Strings.MainSettingsGapBarsFromTip;
+        _explorerPages.ToolTipText = Strings.MainSettingsExplorerPagesTip;
+        this._explorerGroups.ToolTipText = Strings.MainSettingsExplorerGroupsTip;
+        this._explorerContentSearch.ToolTipText = Strings.MainSettingsContentSearchTip;
         this._explorerContentSearch.Click += (_, _) => this.ToggleExplorerContentSearch();
-        this._rebuildContent.ToolTipText = "Forgets the text found in every file and extracts it all again — after installing an OCR language, for instance";
+        this._rebuildContent.ToolTipText = Strings.MainSettingsRebuildContentTip;
         this._rebuildContent.Click += (_, _) => _explorer.RebuildContentIndex();
-        this._faceAnalysis.ToolTipText = "Whether the file explorer looks for the faces in the base folder's images and PDFs and groups them into people, for its People view — on this computer only; off until turned on, remembered between sessions";
+        this._faceAnalysis.ToolTipText = Strings.MainSettingsFaceAnalysisTip;
         this._faceAnalysis.Click += (_, _) => this.ToggleFaceAnalysis();
-        this._faceGrouping.ToolTipText = "How alike faces must be to be grouped as one person in the People view — stricter mixes fewer people, looser splits fewer; your names, merges and removed faces are kept; remembered between sessions";
-        this._forgetFaces.ToolTipText = "Deletes every face found and every person named, hidden or merged — files.faces and people.json — and turns the face analysis off";
+        this._faceGrouping.ToolTipText = Strings.MainSettingsFaceGroupingTip;
+        this._forgetFaces.ToolTipText = Strings.MainSettingsForgetFacesTip;
         this._forgetFaces.Click += (_, _) => this.ForgetFaces();
-        this._visualAnalysis.ToolTipText = "Whether the file explorer looks at what the base folder's images and PDFs show — tags in French and English, and the images closest to a search or to another image — on this computer only; off until turned on, remembered between sessions";
+        this._visualAnalysis.ToolTipText = Strings.MainSettingsVisualAnalysisTip;
         this._visualAnalysis.Click += (_, _) => this.ToggleVisualAnalysis();
-        this._similarImages.ToolTipText = "How clearly an image must stand out to be listed by Find similar images and at the end of a 💡 search — stricter shows fewer, closer images; remembered between sessions";
-        this._captions.ToolTipText = "Whether the file explorer writes a sentence in English saying what every image shows, found by the search and shown in the Details view — slow: a few seconds an image; off until turned on, remembered between sessions";
+        this._similarImages.ToolTipText = Strings.MainSettingsSimilarImagesTip;
+        this._captions.ToolTipText = Strings.MainSettingsCaptionsTip;
         this._captions.Click += (_, _) => this.ToggleCaptions();
-        this._forgetVisual.ToolTipText = "Deletes every embedding, tag and caption — files.vision and the tags and captions of files.content — and turns the visual analysis and the captions off";
+        this._forgetVisual.ToolTipText = Strings.MainSettingsForgetVisualTip;
         this._forgetVisual.Click += (_, _) => this.ForgetVisualAnalysis();
-        this._ocrResultStyle.ToolTipText = "How the arrow from a tile's light bulb to the word the OCR found is drawn; remembered between sessions";
-        this._ocrArrowCurved.ToolTipText = "Whether the arrow is a slight curve arriving straight down — or up — onto the word, rather than a straight line; remembered between sessions";
+        this._ocrResultStyle.ToolTipText = Strings.MainSettingsOcrResultStyleTip;
+        this._ocrArrowCurved.ToolTipText = Strings.MainSettingsOcrArrowCurvedTip;
         this._ocrArrowCurved.Click += (_, _) => this.SetOcrArrow(this._explorer.ArrowStyle with { Curved = !this._explorer.ArrowStyle.Curved });
-        this._ocrArrowThickness.ToolTipText = "The width of the arrow's colored line, its dark outline not counted; 0 draws no arrow; remembered between sessions";
-        this._ocrArrowColor.ToolTipText = "The color of the arrow, its dark outline staying dark; remembered between sessions";
+        this._ocrArrowThickness.ToolTipText = Strings.MainSettingsOcrArrowThicknessTip;
+        this._ocrArrowColor.ToolTipText = Strings.MainSettingsOcrArrowColorTip;
         this._ocrArrowColor.Click += (_, _) => this.PickOcrArrowColor();
-        this._openAppFolder.ToolTipText = "Opens Explorer on the folder of this exe, the exe selected — where settings.json and the app's other files live";
+        this._openAppFolder.ToolTipText = Strings.MainSettingsOpenAppFolderTip;
         this._openAppFolder.Click += (_, _) => this.ShowInExplorer(Environment.ProcessPath ?? Application.ExecutablePath);
-        this._componentUpdates.ToolTipText = "Lists every component the app downloads — engines, runtimes, web tools, emoji fonts — with their versions, to install, update or put back one or all of them";
+        this._componentUpdates.ToolTipText = Strings.MainSettingsComponentUpdatesTip;
         this._componentUpdates.Click += (_, _) => this.ShowComponents();
-        this._keyboardShortcuts.ToolTipText = "Lists every key and mouse gesture of the app and what it does, in a window that stays open beside this one";
+        this._keyboardShortcuts.ToolTipText = Strings.MainSettingsKeyboardShortcutsTip;
         this._keyboardShortcuts.Click += (_, _) => this.ShowShortcuts();
         _explorer.OpenChanged += (_, _) =>
         {
@@ -970,11 +986,11 @@ internal sealed partial class MainForm : Form
         _tabsRow.Paint += (_, e) => PaintOptionsEdge(e.Graphics, _tabsRow, standing: false);
         _effectTabs.TabClicked += (_, effect) => SelectEffect(effect);
         _effectTabs.CheckClicked += (_, effect) => ToggleEffect(effect);
-        _toolTip.SetToolTip(_effectResetButton, "Brings this effect back to its defaults");
-        _toolTip.SetToolTip(_resetButton, "Brings every effect of the cell back to its defaults, and the cells to their layout's sizes");
+        _toolTip.SetToolTip(_effectResetButton, Strings.MainEffectResetTip);
+        _toolTip.SetToolTip(_resetButton, Strings.MainResetTip);
         _effectResetButton.Click += (_, _) => ResetSelectedEffect();
         _resetButton.Click += (_, _) => ResetEffects();
-        this._toolTip.SetToolTip(this._presetButton, "Saves the effects turned on in the cell as a favorite of its file, with a description to find it again");
+        this._toolTip.SetToolTip(this._presetButton, Strings.MainPresetTip);
         this._presetButton.Click += (_, _) =>
         {
             if (this._preview.SelectedImage is { } image)
@@ -985,8 +1001,8 @@ internal sealed partial class MainForm : Form
         _zoom.ValueChanged += (_, _) => SetZoom();
         this._zoom.Wheel = this.StepZoom;
         this._zoomFit.Picked += (_, fit) => this.SetZoomFit(fit);
-        this._toolTip.SetToolTip(this._motionKind, "The kind of animation played in the cell");
-        this._toolTip.SetToolTip(this._motionCycle, "How long one back-and-forth lasts: further right, faster");
+        this._toolTip.SetToolTip(this._motionKind, Strings.MainMotionKindTip);
+        this._toolTip.SetToolTip(this._motionCycle, Strings.MainMotionCycleTip);
         this._motionKind.SelectedIndexChanged += (_, _) => this.ChangeMotion(motion => motion.WithKind((MotionKind)this._motionKind.SelectedIndex));
         this._motionCycle.ValueChanged += (_, _) =>
         {
@@ -1045,7 +1061,7 @@ internal sealed partial class MainForm : Form
         this._trimFromField.ValueChanged += (_, _) => this._trimFrom.Value = this._trimFromField.Value;
         this._trimToField.ValueChanged += (_, _) => this._trimTo.Value = this._trimToField.Value;
         _freeze.CheckedChanged += (_, _) => ChangeFrames(frames => frames.WithFrozen(_freeze.Checked));
-        this._toolTip.SetToolTip(this._speed, "How fast the content plays, its sound with it: ×1 is its own pace");
+        this._toolTip.SetToolTip(this._speed, Strings.MainSpeedTip);
         this._speed.ValueChanged += (_, _) => this.ChangeFrames(frames => frames.WithSpeed(this._speed.Value * FramesEffect.SpeedStep));
         foreach (var slider in (TrackBar[])[this._saturation, this._hue, this._brightness, this._contrast])
         {
@@ -1066,9 +1082,9 @@ internal sealed partial class MainForm : Form
             this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithSoften(this._cutoutSoften.Value / 100.0)));
         };
         this._cutoutInvert.CheckedChanged += (_, _) => this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithInvert(this._cutoutInvert.Checked)));
-        this._toolTip.SetToolTip(this._cutoutGrow, "Pushes the edge out, or eats it in, to leave no fringe of the old background");
-        this._toolTip.SetToolTip(this._cutoutSoften, "Fades the edge over a few pixels");
-        this._toolTip.SetToolTip(this._cutoutInvert, "Keeps what the cutout leaves out instead");
+        this._toolTip.SetToolTip(this._cutoutGrow, Strings.MainCutoutGrowTip);
+        this._toolTip.SetToolTip(this._cutoutSoften, Strings.MainCutoutSoftenTip);
+        this._toolTip.SetToolTip(this._cutoutInvert, Strings.MainCutoutInvertTip);
         this._cutoutTolerance.ValueChanged += (_, _) =>
         {
             this._cutoutToleranceLabel.Text = ToleranceText(this._cutoutTolerance.Value);
@@ -1080,8 +1096,8 @@ internal sealed partial class MainForm : Form
             this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithCloseGaps(this._cutoutGaps.Value / 100.0)));
         };
         this._cutoutFillHoles.CheckedChanged += (_, _) => this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithFillHoles(this._cutoutFillHoles.Checked)));
-        this._toolTip.SetToolTip(this._cutoutTolerance, "How close to the edges' color a pixel must be to be removed — Plain mode");
-        this._toolTip.SetToolTip(this._cutoutGaps, "Closes the outline over gaps up to this width, so what it almost encloses is kept too — Plain mode, or Fill holes");
+        this._toolTip.SetToolTip(this._cutoutTolerance, Strings.MainCutoutToleranceTip);
+        this._toolTip.SetToolTip(this._cutoutGaps, Strings.MainCutoutGapsTip);
         this._preview.Cutouts = this._cutouts;
         this._cutouts.Failed += (_, message) => this.ShowStatus(message, error: true);
         this._preview.Upscales = this._upscales;
@@ -1094,7 +1110,7 @@ internal sealed partial class MainForm : Form
                 this.ApplyUpscale(image, this.UpscaleChosen(image));
             }
         };
-        this._toolTip.SetToolTip(this._upscaleButton, "Computes the enlargement chosen, after showing its size, its weight and its duration");
+        this._toolTip.SetToolTip(this._upscaleButton, Strings.MainUpscaleButtonTip);
         this._preview.CutoutPicked += (_, pick) => this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithPoint(pick.Point, pick.Add)));
         this._preview.CutoutPickEnded += (_, _) => this._cutoutMode.Armed = false;
         this._cutoutReach.Picked += (_, reach) => this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithReach(reach)));
@@ -1108,10 +1124,10 @@ internal sealed partial class MainForm : Form
             label.MinimumSize = new Size(TextRenderer.MeasureText(AmountText(treatment, 100), label.Font).Width, 0);
             this._toolTip.SetToolTip(slider, treatment switch
             {
-                CutoutBackground.Opacity => "The part left out's opacity",
-                CutoutBackground.Color => "The mask color's opacity over the part left out",
-                CutoutBackground.Blur => "How strongly the part left out is blurred",
-                _ => "The size of the squares the part left out is drawn in",
+                CutoutBackground.Opacity => Strings.MainCutoutAmountOpacityTip,
+                CutoutBackground.Color => Strings.MainCutoutAmountColorTip,
+                CutoutBackground.Blur => Strings.MainCutoutAmountBlurTip,
+                _ => Strings.MainCutoutAmountPixelateTip,
             });
             slider.ValueChanged += (_, _) =>
             {
@@ -1120,7 +1136,7 @@ internal sealed partial class MainForm : Form
             };
         }
 
-        this._cutoutColor.Describe(this._toolTip, "the mask's color");
+        this._cutoutColor.Describe(this._toolTip, Strings.MainCutoutColorTarget);
         this._cutoutColor.Dialog.Click += (_, _) => this.PickColor(this.CutoutRoute());
         this._cutoutColor.Eyedropper.Click += (_, _) => this.ArmEyedropper(this._cutoutColor, this.CutoutRoute());
         _blurIntensity.ValueChanged += (_, _) => SetBlurIntensity();
@@ -1130,8 +1146,8 @@ internal sealed partial class MainForm : Form
             ChangeLook(ImageEffect.Volume, look => look.WithVolume(look.Volume!.WithLevel(_volume.Value / 100.0)));
         };
         _mute.CheckedChanged += (_, _) => ChangeLook(ImageEffect.Volume, look => look.WithVolume(look.Volume!.WithMuted(_mute.Checked)));
-        _toolTip.SetToolTip(_backgroundAutomatic, "The color computed from the edges of the part of the image shown");
-        this._backgroundColor.Describe(this._toolTip, "the background color", ". A color chosen unchecks Automatic color");
+        _toolTip.SetToolTip(_backgroundAutomatic, Strings.MainBackgroundAutomaticTip);
+        this._backgroundColor.Describe(this._toolTip, Strings.MainBackgroundColorTarget, Strings.MainBackgroundColorNote);
         _backgroundAutomatic.CheckedChanged += (_, _) => SetBackgroundAutomatic();
         _backgroundOpacity.ValueChanged += (_, _) =>
         {
@@ -1140,14 +1156,14 @@ internal sealed partial class MainForm : Form
         };
         this._backgroundColor.Dialog.Click += (_, _) => this.PickColor(this.BackgroundRoute());
         this._backgroundColor.Eyedropper.Click += (_, _) => this.ArmEyedropper(this._backgroundColor, this.BackgroundRoute());
-        this._toolTip.SetToolTip(this._backgroundEdgeOpacity, "The extended edges' opacity over the background color, which keeps its own");
+        this._toolTip.SetToolTip(this._backgroundEdgeOpacity, Strings.MainBackgroundEdgeOpacityTip);
         this._backgroundEdgeOpacity.ValueChanged += (_, _) =>
         {
             this._backgroundEdgeOpacityLabel.Text = EdgeOpacityText(this._backgroundEdgeOpacity.Value);
             this.ChangeLook(ImageEffect.Background, look => look.WithBackground(look.Background!.WithEdgeOpacity(this._backgroundEdgeOpacity.Value / 100.0)));
         };
-        this._toolTip.SetToolTip(this._backgroundBlend, "Blends the extended edges into the background color, more with the distance from the image: at 100 %, they vanish by the cell's edge");
-        this._toolTip.SetToolTip(this._backgroundSoften, "Blurs the extended edges, more with the distance from the image, the image itself staying sharp");
+        this._toolTip.SetToolTip(this._backgroundBlend, Strings.MainBackgroundBlendTip);
+        this._toolTip.SetToolTip(this._backgroundSoften, Strings.MainBackgroundSoftenTip);
         this._backgroundFill.Picked += (_, mode) => this.ChangeLook(ImageEffect.Background, look => look.WithBackground(look.Background!.WithMode(mode)));
         this._backgroundBlend.ValueChanged += (_, _) =>
         {
@@ -1166,13 +1182,13 @@ internal sealed partial class MainForm : Form
         this._customWidth.TextChanged += (_, _) => this.CustomFieldChanged(width: true, committed: false);
         this._customHeight.TextChanged += (_, _) => this.CustomFieldChanged(width: false, committed: false);
         this._customExact.CheckedChanged += (_, _) => this.CustomExactChanged();
-        this.SetCustomFieldTip(this._customWidth, "The Custom format's width: a ratio's first term, or its pixels with Exact pixels; changing it picks Custom");
-        this.SetCustomFieldTip(this._customHeight, "The Custom format's height: a ratio's second term, or its pixels with Exact pixels; changing it picks Custom");
+        this.SetCustomFieldTip(this._customWidth, Strings.MainCustomWidthTip);
+        this.SetCustomFieldTip(this._customHeight, Strings.MainCustomHeightTip);
         this._toolTip.SetToolTip(
             this._customExact,
-            "Checked: Width × Height are the exported pixels, exactly — 100 to 8192 a side, reduced, ratio kept, only by a PNG max size entry or the Video size when smaller; unchecked, a ratio at the native size");
-        _toolTip.SetToolTip(_globalEffectResetButton, "Brings this global setting back to its initial state");
-        _toolTip.SetToolTip(_globalResetButton, "Brings the format back to Twitter and every global effect back to its initial state; the cells are left alone");
+            Strings.MainCustomExactTip);
+        _toolTip.SetToolTip(_globalEffectResetButton, Strings.MainGlobalEffectResetTip);
+        _toolTip.SetToolTip(_globalResetButton, Strings.MainGlobalResetTip);
         _globalEffectResetButton.Click += (_, _) =>
         {
             if (_selectedGlobalEffect is { } effect)
@@ -1181,12 +1197,12 @@ internal sealed partial class MainForm : Form
             }
         };
         _globalResetButton.Click += (_, _) => ResetGlobalEffects();
-        _toolTip.SetToolTip(_soundtrackBrowse, "Mixes the sound of an audio or video file over the videos, in the preview and the MP4 export; a file can also be dropped on these rows");
+        _toolTip.SetToolTip(_soundtrackBrowse, Strings.MainSoundtrackBrowseTip);
         _soundtrackBrowse.Click += (_, _) => BrowseSoundtrack();
         _soundtrackVolume.ValueChanged += (_, _) => SetSoundtrackVolume();
-        _toolTip.SetToolTip(_fadeDuration, "How long the sound takes to rise from silence at the start of the video, and to fall back to it at the end");
-        _toolTip.SetToolTip(_fadeSquared, "Squared: the sound rises slowly, then faster — heard as a steady rise");
-        _toolTip.SetToolTip(_fadeLinear, "Linear: the gain rises in a straight line — heard as a quick rise that levels off");
+        _toolTip.SetToolTip(_fadeDuration, Strings.MainFadeDurationTip);
+        _toolTip.SetToolTip(_fadeSquared, Strings.MainFadeSquaredTip);
+        _toolTip.SetToolTip(_fadeLinear, Strings.MainFadeLinearTip);
         _fadeDuration.ValueChanged += (_, _) =>
         {
             _fadeDurationLabel.Text = FadeText(_fadeDuration.Value);
@@ -1194,40 +1210,40 @@ internal sealed partial class MainForm : Form
         };
         _fadeSquared.Click += (_, _) => ChangeFade(fade => fade.WithCurve(FadeCurve.Squared));
         _fadeLinear.Click += (_, _) => ChangeFade(fade => fade.WithCurve(FadeCurve.Linear));
-        this._toolTip.SetToolTip(this._seamsDepth, "How far the backgrounds of neighbour cells fade into each other from the edges they share, as a share of the smallest cell's shorter side");
+        this._toolTip.SetToolTip(this._seamsDepth, Strings.MainSeamsDepthTip);
         this._seamsDepth.ValueChanged += (_, _) =>
         {
             this._seamsDepthLabel.Text = DepthText(this._seamsDepth.Value);
             this.ChangeSeams(seams => seams.WithDepth(this._seamsDepth.Value / 100.0));
         };
-        this._toolTip.SetToolTip(this._cascadePause, "How long every video and animated GIF stands still after each turn, before the next one plays");
+        this._toolTip.SetToolTip(this._cascadePause, Strings.MainCascadePauseTip);
         this._cascadePause.ValueChanged += (_, _) =>
         {
             this._cascadePauseLabel.Text = PauseText(this._cascadePause.Value);
             this.ChangeCascade(cascade => cascade.WithPause(TimeSpan.FromSeconds(this._cascadePause.Value / 10.0)));
         };
-        _toolTip.SetToolTip(_bordersStyle, "Brackets at the grid's corners, or a gap between the cells");
-        this._bordersColor.Describe(this._toolTip, "the borders' color", ". The color chosen is remembered between sessions");
+        _toolTip.SetToolTip(_bordersStyle, Strings.MainBordersStyleTip);
+        this._bordersColor.Describe(this._toolTip, Strings.MainBordersColorTarget, Strings.MainBordersColorNote);
         this._bordersColor.Dialog.Click += (_, _) => this.PickBorderColor();
         this._bordersColor.Eyedropper.Click += (_, _) => this.ArmEyedropper(this._bordersColor, this.BordersRoute());
-        _toolTip.SetToolTip(_bordersThickness, "Width of the borders, as a share of the grid's shorter side");
-        _toolTip.SetToolTip(_bordersOuterFrame, "Also draws the borders around the grid; the corner brackets already are its frame");
+        _toolTip.SetToolTip(_bordersThickness, Strings.MainBordersThicknessTip);
+        _toolTip.SetToolTip(_bordersOuterFrame, Strings.MainBordersOuterFrameTip);
         _bordersStyle.SelectedIndexChanged += (_, _) => ChangeBorders(borders => borders with { Pattern = (BorderPattern)_bordersStyle.SelectedIndex });
         _bordersThickness.ValueChanged += (_, _) =>
         {
             _bordersThicknessLabel.Text = ThicknessText(_bordersThickness.Value);
             ChangeBorders(borders => borders with { Thickness = _bordersThickness.Value / 1000.0 });
         };
-        _toolTip.SetToolTip(_bordersOpacity, "Opacity of the borders' color: the corner brackets over the images, the frame and the lines");
+        _toolTip.SetToolTip(_bordersOpacity, Strings.MainBordersOpacityTip);
         _bordersOpacity.ValueChanged += (_, _) =>
         {
             _bordersOpacityLabel.Text = OpacityText(_bordersOpacity.Value);
             ChangeBorders(borders => borders with { Opacity = _bordersOpacity.Value / 100.0 });
         };
-        this._toolTip.SetToolTip(this._bordersInnerLines, "Draws the borders between the cells; unchecked, the cells touch");
+        this._toolTip.SetToolTip(this._bordersInnerLines, Strings.MainBordersInnerLinesTip);
         this._bordersInnerLines.CheckedChanged += (_, _) => this.ChangeBorders(borders => borders with { InnerLines = this._bordersInnerLines.Checked });
         _bordersOuterFrame.CheckedChanged += (_, _) => ChangeBorders(borders => borders with { OuterFrame = _bordersOuterFrame.Checked });
-        _toolTip.SetToolTip(_bordersRounded, "Rounds the grid's corners like Twitter / X shows images; the borders follow the curve");
+        _toolTip.SetToolTip(_bordersRounded, Strings.MainBordersRoundedTip);
         _bordersRounded.CheckedChanged += (_, _) => ChangeBorders(borders => borders with { Rounded = _bordersRounded.Checked });
         foreach (var row in new Control[] { _globalTabsRow, _globalOptionsRow })
         {
@@ -1316,7 +1332,7 @@ internal sealed partial class MainForm : Form
         this._copyCell.Click += (_, _) =>
         {
             int cell = this._cellMenuCell;
-            this.CopyAlone(() => this._preview.RenderCellAlone(cell), "Cell");
+            this.CopyAlone(() => this._preview.RenderCellAlone(cell), Strings.MainCopyWhatCell);
         };
         this._saveUpscaledCell.Click += (_, _) =>
         {
@@ -1924,7 +1940,7 @@ internal sealed partial class MainForm : Form
         }
         else if (e.Data is not null && TextData.TryGet(e.Data) is { } text)
         {
-            await AddTextAsync(text, target, "Nothing added: the dropped text is empty.", dropped: true);
+            await AddTextAsync(text, target, Strings.MainStatusDroppedTextEmpty, dropped: true);
         }
     }
 
@@ -1935,7 +1951,7 @@ internal sealed partial class MainForm : Form
     /// </summary>
     private void AddToFavorites(SourceImage image)
     {
-        if (this.FileOf(image, "Not added to favorites") is { } path)
+        if (this.FileOf(image, Strings.MainRefusedFavorite) is { } path)
         {
             this._explorer.AddFavorites([path]);
         }
@@ -1959,13 +1975,13 @@ internal sealed partial class MainForm : Form
             }
             catch (Exception ex) when (FileIndex.IsFileError(ex) || ex is ExternalException)
             {
-                _explorer.Report($"{refused}: the image could not be saved: {ex.Message}", error: true);
+                _explorer.Report(Texts.Format(Strings.MainRefusedImageNotSaved, refused, ex.Message), error: true);
                 return null;
             }
 
             if (saved is null)
             {
-                _explorer.Report($"{refused}: this image has no file and cannot be saved", error: true);
+                _explorer.Report(Texts.Format(Strings.MainRefusedImageNoFile, refused), error: true);
                 return null;
             }
 
@@ -1986,15 +2002,15 @@ internal sealed partial class MainForm : Form
     {
         var look = image.Look;
         string name = image.FilePath is { } file ? Path.GetFileName(file)
-            : image.TextOrigin is not null ? "Pasted text — saved into favorites-from-pasted"
-            : "Pasted image — saved into favorites-from-pasted";
+            : image.TextOrigin is not null ? Strings.MainPresetNamePastedText
+            : Strings.MainPresetNamePastedImage;
         using var dialog = new EffectPresetDialog(name, LookPreset.Describe(look), "", fromHandle ? EffectPresetDialog.Purpose.SaveOrFileOnly : EffectPresetDialog.Purpose.Save);
         var answer = dialog.ShowDialog(this);
         if (answer == DialogResult.Ignore)
         {
             this.AddToFavorites(image);
         }
-        else if (answer == DialogResult.OK && this.FileOf(image, "Effect preset not saved") is { } path)
+        else if (answer == DialogResult.OK && this.FileOf(image, Strings.MainRefusedPreset) is { } path)
         {
             this._explorer.AddPreset(path, look, dialog.Description);
         }
@@ -2007,14 +2023,14 @@ internal sealed partial class MainForm : Form
     {
         using var dialog = new OpenFileDialog
         {
-            Title = "Add images",
+            Title = Strings.MainPickerAddImages,
             Multiselect = true,
             Filter = PickerFilter(),
             InitialDirectory = ExistingFolder(AppSettings.AddFolder) ?? "",
         };
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
-            RememberFolder(AppSettings.SaveAddFolder, dialog.FileName, "Add images");
+            RememberFolder(AppSettings.SaveAddFolder, dialog.FileName, Strings.MainPickerAddImages);
             await AddFilesAsync(dialog.FileNames);
         }
     }
@@ -2032,17 +2048,17 @@ internal sealed partial class MainForm : Form
     {
         (string Name, string[] Extensions)[] types =
         [
-            ("Images", new[] { "png", "jpg", "jpeg", "bmp", "gif", "tif", "tiff", "webp" }),
-            ("Videos", VideoExtensions),
+            (Strings.MainPickerImages, new[] { "png", "jpg", "jpeg", "bmp", "gif", "tif", "tiff", "webp" }),
+            (Strings.MainPickerVideos, VideoExtensions),
             ("PDF", new[] { "pdf" }),
-            ("Text", new[] { "txt", "md", "log", "csv", "json", "xml" }),
+            (Strings.MainPickerText, new[] { "txt", "md", "log", "csv", "json", "xml" }),
         ];
 
         return string.Join(
             "|",
             types.Select(t => $"{t.Name}|{Patterns(t.Extensions)}")
-                .Prepend($"Supported files|{Patterns(types.SelectMany(t => t.Extensions))}")
-                .Append("All files (*.*)|*.*"));
+                .Prepend($"{Strings.MainPickerSupportedFiles}|{Patterns(types.SelectMany(t => t.Extensions))}")
+                .Append($"{Strings.MainPickerAllFiles}|*.*"));
     }
 
     private async void Paste()
@@ -2052,7 +2068,7 @@ internal sealed partial class MainForm : Form
             return;
         }
 
-        const string Nothing = "Nothing to paste: the clipboard holds no image or text.";
+        string nothing = Strings.MainStatusNothingToPaste;
         string[]? files = null;
         TextData? text = null;
         try
@@ -2078,17 +2094,17 @@ internal sealed partial class MainForm : Form
         }
         catch (ExternalException ex)
         {
-            ShowStatus($"Paste failed: {ex.Message}", error: true);
+            ShowStatus(Texts.Format(Strings.MainStatusPasteFailed, ex.Message), error: true);
             return;
         }
 
         if (text is not null)
         {
-            await AddTextAsync(text, -1, Nothing, dropped: false);
+            await this.AddTextAsync(text, -1, nothing, dropped: false);
         }
         else if (files is null)
         {
-            ShowStatus(Nothing);
+            this.ShowStatus(nothing);
         }
         else
         {
@@ -2123,7 +2139,7 @@ internal sealed partial class MainForm : Form
 
         if (length > StyledText.MaxLength)
         {
-            ShowStatus($"Text too long: {length:N0} characters, {StyledText.MaxLength:N0} at most.");
+            ShowStatus(Texts.Format(Strings.MainStatusTextTooLong, length, StyledText.MaxLength));
         }
         else if (image is null)
         {
@@ -2186,12 +2202,12 @@ internal sealed partial class MainForm : Form
         var messages = new List<string>();
         if (skipped > 0)
         {
-            messages.Add($"{Files(skipped)} skipped: no preview available");
+            messages.Add(Texts.Format(Strings.MainStatusFilesSkipped, Files(skipped)));
         }
 
         if (ignored > 0)
         {
-            messages.Add($"{Files(ignored)} ignored: the grid holds {GridLayout.MaxImages} images at most");
+            messages.Add(Texts.Format(Strings.MainStatusFilesIgnored, Files(ignored), GridLayout.MaxImages));
         }
 
         if (messages.Count > 0)
@@ -2238,7 +2254,7 @@ internal sealed partial class MainForm : Form
 
         if ((undo ? this._history.Undo() : this._history.Redo()) is not { } step)
         {
-            this.ShowStatus(undo ? "Nothing to undo" : "Nothing to redo");
+            this.ShowStatus(undo ? Strings.MainStatusNothingToUndo : Strings.MainStatusNothingToRedo);
             return;
         }
 
@@ -2247,7 +2263,8 @@ internal sealed partial class MainForm : Form
         // An undo names the action it takes back: the one that led from the restored state to the one left.
         string action = undo ? GridHistory.Describe(step.To, step.From) : GridHistory.Describe(step.From, step.To);
         int left = undo ? this._history.UndoCount : this._history.RedoCount;
-        this.ShowStatus($"{(undo ? "↶ Undone" : "↷ Redone")}: {action} — {(left == 0 ? "nothing more" : $"{left} more")}");
+        string remaining = left == 0 ? Strings.MainStatusNothingMore : Texts.Format(Strings.MainStatusMore, left);
+        this.ShowStatus(Texts.Format(undo ? Strings.MainStatusUndone : Strings.MainStatusRedone, action, remaining));
     }
 
     /// <summary>
@@ -2348,67 +2365,73 @@ internal sealed partial class MainForm : Form
         var removed = new List<string>();
         if (count > 0)
         {
-            removed.Add(count == 1 ? "1 image" : $"{count} images");
+            removed.Add(Texts.Format(count == 1 ? Strings.MainImageCountOne : Strings.MainImageCountMany, count));
         }
 
         if (soundtrack)
         {
-            removed.Add(count > 0 ? "the soundtrack" : "The soundtrack");
+            removed.Add(Strings.MainRemovedSoundtrack);
         }
 
         if (layers > 0)
         {
-            string text = layers == 1 ? "1 layer" : $"{layers} layers";
-            removed.Add(removed.Count > 0 ? text : char.ToUpperInvariant(text[0]) + text[1..]);
+            removed.Add(Texts.Format(layers == 1 ? Strings.MainLayerCountOne : Strings.MainLayerCountMany, layers));
         }
 
         // What was only set, not removed: a soundtrack level without a file, the borders, the fade, the format.
         var reset = new List<string>();
         if (!soundtrack && !soundtrackInitial)
         {
-            reset.Add("soundtrack");
+            reset.Add(Strings.MainResetNameSoundtrack);
         }
 
         if (borders)
         {
-            reset.Add("borders");
+            reset.Add(Strings.MainResetNameBorders);
         }
 
         if (fade)
         {
-            reset.Add("fade");
+            reset.Add(Strings.MainResetNameFade);
         }
 
         if (seams)
         {
-            reset.Add("seams");
+            reset.Add(Strings.MainResetNameSeams);
         }
 
         if (gridBackground)
         {
-            reset.Add("grid background");
+            reset.Add(Strings.MainResetNameGridBackground);
         }
 
         if (cascade)
         {
-            reset.Add("cascade");
+            reset.Add(Strings.MainResetNameCascade);
         }
 
         // Turned on with no layer: only its state goes back.
         if (layersSet && layers == 0)
         {
-            reset.Add("layers");
+            reset.Add(Strings.MainResetNameLayers);
         }
 
         if (format)
         {
-            reset.Add("format");
+            reset.Add(Strings.MainResetNameFormat);
         }
 
-        string resetText = reset.Count > 1 ? $"{string.Join(", ", reset[..^1])} and {reset[^1]}" : reset.FirstOrDefault() ?? "";
-        ShowStatus(removed.Count > 0
-            ? $"{string.Join(" and ", removed)} removed."
-            : $"{char.ToUpperInvariant(resetText[0])}{resetText[1..]} back to {(reset.Count > 1 || borders || seams ? "their" : "its")} initial state.");
+        string resetText = reset.Count > 1 ? Texts.Format(Strings.MainListAnd, string.Join(", ", reset[..^1]), reset[^1]) : reset.FirstOrDefault() ?? "";
+        this.ShowStatus(removed.Count > 0
+            ? StartingSentence(Strings.MainStatusRemoved, removed.Aggregate((all, next) => Texts.Format(Strings.MainListAnd, all, next)))
+            : StartingSentence(reset.Count > 1 || borders || seams ? Strings.MainStatusBackToInitialPlural : Strings.MainStatusBackToInitial, resetText));
+    }
+
+    /// <summary>A sentence made of <paramref name="list"/>: capitalized when <paramref name="format"/> starts with it.</summary>
+    private static string StartingSentence(string format, string list)
+    {
+        string text = Texts.Format(format, list);
+        return format.StartsWith("{0}", StringComparison.Ordinal) ? char.ToUpper(text[0], CultureInfo.CurrentUICulture) + text[1..] : text;
     }
 
     /// <summary>Copies the grid in the format its content suits: a PNG, or an MP4 video while a content plays or a soundtrack is on.</summary>
@@ -2446,14 +2469,14 @@ internal sealed partial class MainForm : Form
                     UpdateButtons();
                     PutOnClipboard(last);
                     string kept = KeepPrevious(() => PreviousCopy.KeepCopyOf(path, cellFiles));
-                    ShowStatus(AnimationSummary($"Copied {last.FileName}", last) + kept);
-                    NotifyIfAway($"{FormatName(animated)} copied", $"{last.FileName} is on the clipboard. If it gets overwritten, Copy last {FormatName(animated)} brings it back.", error: false);
+                    ShowStatus(AnimationSummary(Texts.Format(Strings.MainStatusCopied, last.FileName), last) + kept);
+                    NotifyIfAway(Texts.Format(Strings.MainNotifyCopied, FormatName(animated)), Texts.Format(Strings.MainNotifyCopiedBody, last.FileName, FormatName(animated)), error: false);
                 }
                 catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException or OutOfMemoryException)
                 {
                     string why = ErrorLog.Describe(ex);
-                    ShowStatus($"Copy failed: {why}", error: true);
-                    NotifyIfAway("Copy failed", last is null ? why : $"{why} Copy last {FormatName(animated)} puts {last.FileName} on the clipboard again.", error: true);
+                    ShowStatus(Texts.Format(Strings.MainStatusCopyFailed, why), error: true);
+                    NotifyIfAway(Strings.MainNotifyCopyFailed, last is null ? why : Texts.Format(Strings.MainNotifyCopyFailedBody, why, FormatName(animated), last.FileName), error: true);
                 }
             }
 
@@ -2474,11 +2497,11 @@ internal sealed partial class MainForm : Form
             var encoding = clock.Elapsed;
             PutStillOnClipboard(result, png);
             string kept = KeepPrevious(() => PreviousCopy.Keep(png.ToArray(), ".png", cellFiles));
-            ShowStatus(StillSummary("Copied to the clipboard", "PNG", result.Size, png.Length, encoding) + kept);
+            ShowStatus(StillSummary(Strings.MainStatusCopiedToClipboard, "PNG", result.Size, png.Length, encoding) + kept);
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
-            ShowStatus($"Copy failed: {ErrorLog.Describe(ex)}", error: true);
+            ShowStatus(Texts.Format(Strings.MainStatusCopyFailed, ErrorLog.Describe(ex)), error: true);
         }
     }
 
@@ -2503,7 +2526,7 @@ internal sealed partial class MainForm : Form
     {
         if (this._preview.CanCopySelectedAlone)
         {
-            this.CopyAlone(this._preview.RenderSelectedAlone, this._preview.SelectedLayer is null ? "Cell" : "Layer");
+            this.CopyAlone(this._preview.RenderSelectedAlone, this._preview.SelectedLayer is null ? Strings.MainCopyWhatCell : Strings.MainCopyWhatLayer);
         }
         else
         {
@@ -2542,7 +2565,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
-            this.ShowStatus($"Copy failed: {ErrorLog.Describe(ex)}", error: true);
+            this.ShowStatus(Texts.Format(Strings.MainStatusCopyFailed, ErrorLog.Describe(ex)), error: true);
             return;
         }
         finally
@@ -2552,7 +2575,7 @@ internal sealed partial class MainForm : Form
 
         if (rendered is not { } copy)
         {
-            this.ShowStatus("Nothing to copy: the image shows nothing in its cell.");
+            this.ShowStatus(Strings.MainStatusNothingToCopy);
             return;
         }
 
@@ -2564,11 +2587,11 @@ internal sealed partial class MainForm : Form
             var encoding = clock.Elapsed;
             PutStillOnClipboard(result, png);
             string kept = KeepPrevious(() => PreviousCopy.Keep(png.ToArray(), ".png", [copy.Image.FilePath]));
-            ShowStatus(StillSummary($"{what} copied to the clipboard", "PNG", result.Size, png.Length, encoding) + kept);
+            ShowStatus(StillSummary(Texts.Format(Strings.MainStatusWhatCopied, what), "PNG", result.Size, png.Length, encoding) + kept);
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
-            ShowStatus($"Copy failed: {ErrorLog.Describe(ex)}", error: true);
+            ShowStatus(Texts.Format(Strings.MainStatusCopyFailed, ErrorLog.Describe(ex)), error: true);
         }
     }
 
@@ -2588,7 +2611,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            return $" · Not kept in {PreviousCopy.FolderName}\\: {e.Message}";
+            return " · " + Texts.Format(Strings.MainStatusNotKept, PreviousCopy.FolderName, e.Message);
         }
     }
 
@@ -2627,11 +2650,11 @@ internal sealed partial class MainForm : Form
         try
         {
             PutOnClipboard(last);
-            ShowStatus(AnimationSummary($"Copied again {last.FileName} (generated at {last.GeneratedAt:HH:mm})", last));
+            ShowStatus(AnimationSummary(Texts.Format(Strings.MainStatusCopiedAgain, last.FileName, last.GeneratedAt), last));
         }
         catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException or OutOfMemoryException)
         {
-            ShowStatus($"Copy failed: {ErrorLog.Describe(ex)}", error: true);
+            ShowStatus(Texts.Format(Strings.MainStatusCopyFailed, ErrorLog.Describe(ex)), error: true);
         }
     }
 
@@ -2655,16 +2678,16 @@ internal sealed partial class MainForm : Form
             return;
         }
 
-        RememberFolder(AppSettings.SaveExportFolder, dialog.FileName, "Export");
+        RememberFolder(AppSettings.SaveExportFolder, dialog.FileName, Strings.MainFolderNameExport);
 
         try
         {
             File.Copy(last.FilePath, dialog.FileName, overwrite: true);
-            ShowStatus(AnimationSummary($"Saved {Path.GetFileName(dialog.FileName)} (the last generated {FormatName(last.Format)}, from {last.GeneratedAt:HH:mm})", last));
+            ShowStatus(AnimationSummary(Texts.Format(Strings.MainStatusSavedLast, Path.GetFileName(dialog.FileName), FormatName(last.Format), last.GeneratedAt), last));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            ShowStatus($"Save failed: {ex.Message}", error: true);
+            ShowStatus(Texts.Format(Strings.MainStatusSaveFailed, ex.Message), error: true);
         }
     }
 
@@ -2679,7 +2702,7 @@ internal sealed partial class MainForm : Form
             return true;
         }
 
-        ShowStatus($"The last generated {FormatName(last.Format)}, {last.FileName}, is gone from the temp folder.", error: true);
+        ShowStatus(Texts.Format(Strings.MainStatusLastVideoGone, FormatName(last.Format), last.FileName), error: true);
         _lastVideo = null;
         UpdateButtons();
         return false;
@@ -2691,10 +2714,10 @@ internal sealed partial class MainForm : Form
         string text = "";
         if (_lastVideo is { } last)
         {
-            text = AnimationSummary($"Generated at {last.GeneratedAt:HH:mm}", last);
+            text = AnimationSummary(Texts.Format(Strings.MainLastVideoGeneratedAt, last.GeneratedAt), last);
             if (last.GridVersion != _preview.ContentVersion)
             {
-                text += " — the grid has changed since";
+                text += " — " + Strings.MainLastVideoGridChanged;
             }
         }
 
@@ -2776,7 +2799,7 @@ internal sealed partial class MainForm : Form
 
         this._playIconSize = size;
         this._playShowsPlay = paused;
-        this._playButton.AccessibleName = paused ? "Play" : "Pause";
+        this._playButton.AccessibleName = paused ? Strings.MainPlay : Strings.MainPause;
         UiIcons.SetImage(this._playButton, paused ? UiIcons.Play : UiIcons.Pause, size);
     }
 
@@ -2785,7 +2808,7 @@ internal sealed partial class MainForm : Form
     {
         var position = this._timeline.Length > TimeSpan.Zero ? this._preview.PlaybackPosition : TimeSpan.Zero;
         this._timeline.Position = position;
-        this._positionReadout.Text = this._timeline.Length > TimeSpan.Zero ? $"{position.TotalSeconds:0.0} s /" : string.Empty;
+        this._positionReadout.Text = this._timeline.Length > TimeSpan.Zero ? $"{Texts.Number(position.TotalSeconds, "0.0")} s /" : string.Empty;
         this._positionReadout.MinimumSize = new Size(TextRenderer.MeasureText("000.0 s /", this._positionReadout.Font).Width, 0);
     }
 
@@ -2799,12 +2822,12 @@ internal sealed partial class MainForm : Form
     {
         if (images.Count == 0)
         {
-            return "No image";
+            return Strings.MainLengthNoImage;
         }
 
         string Name(SourceImage image) => image.FilePath is { } path
             ? Path.GetFileName(path)
-            : $"cell {Enumerable.Range(0, images.Count).First(n => images[n] == image) + 1}";
+            : Texts.Format(Strings.MainLengthCellName, Enumerable.Range(0, images.Count).First(n => images[n] == image) + 1);
 
         var schedule = cascade is null ? null : CascadeSchedule.Of(images, cascade);
         bool cascading = schedule is not null && schedule.Length > TimeSpan.Zero;
@@ -2816,8 +2839,8 @@ internal sealed partial class MainForm : Form
 
         // A loop is a playing content's, or the cycle of an Animations effect when longer.
         string Loop(SourceImage image) => image.Plays && Beside(image) == image.LoopLength
-            ? $"{Name(image)}'s"
-            : $"{Name(image)}'s animation";
+            ? Texts.Format(Strings.MainLengthLoopOf, Name(image))
+            : Texts.Format(Strings.MainLengthLoopAnimation, Name(image));
 
         var lines = new List<string>();
         var longest = images.Where(i => Beside(i) > TimeSpan.Zero).OrderByDescending(Beside).FirstOrDefault();
@@ -2826,27 +2849,27 @@ internal sealed partial class MainForm : Form
         {
             longest = null;
             int turns = images.Count(CascadeSchedule.TakesPart);
-            string pause = cascade!.Pause > TimeSpan.Zero ? $", {Seconds(cascade.Pause)} of pause after each" : "";
-            lines.Add($"MP4 video of {Seconds(length)}: the cascade, {(turns == 1 ? "1 content" : $"{turns} contents")} one after the other{pause}");
+            string pause = cascade!.Pause > TimeSpan.Zero ? Texts.Format(Strings.MainLengthCascadePause, Seconds(cascade.Pause)) : "";
+            lines.Add(Texts.Format(Strings.MainLengthCascade, Seconds(length), Texts.Format(turns == 1 ? Strings.MainContentCountOne : Strings.MainContentCountMany, turns), pause));
         }
         else if (longest is not null)
         {
-            lines.Add($"MP4 video of {Seconds(length)}: the longest loop, {Loop(longest)}");
+            lines.Add(Texts.Format(Strings.MainLengthLongestLoop, Seconds(length), Loop(longest)));
         }
         else if (soundtrack is not null)
         {
-            lines.Add($"MP4 video of {Seconds(length)}: the soundtrack's length, {Path.GetFileName(soundtrack.Path)}'s; the images are stills");
+            lines.Add(Texts.Format(Strings.MainLengthSoundtrack, Seconds(length), Path.GetFileName(soundtrack.Path)));
         }
         else
         {
-            lines.Add("A PNG: no content plays and the soundtrack is off");
+            lines.Add(Strings.MainLengthPng);
         }
 
         for (int i = 0; cascading && i < images.Count; i++)
         {
             if (schedule!.Has(i))
             {
-                lines.Add($"{Name(images[i])} — turn of {Seconds(CascadeSchedule.TurnOf(images[i]))}, from {Seconds(schedule.TurnAt(i))}");
+                lines.Add(Texts.Format(Strings.MainLengthTurn, Name(images[i]), Seconds(CascadeSchedule.TurnOf(images[i])), Seconds(schedule.TurnAt(i))));
             }
         }
 
@@ -2856,18 +2879,18 @@ internal sealed partial class MainForm : Form
         {
             var loop = Beside(image);
             string what = loop == TimeSpan.Zero
-                ? $"{Name(image)} — frozen, a still"
-                : $"{Name(image)} — {Seconds(loop)}, plays {Times(length, loop)}";
+                ? Texts.Format(Strings.MainLengthFrozen, Name(image))
+                : Texts.Format(Strings.MainLengthPlays, Name(image), Seconds(loop), Times(length, loop));
             bool motion = !image.Plays || (cascading && CascadeSchedule.TakesPart(image));
-            lines.Add(!motion || loop == TimeSpan.Zero ? what : $"{what} (its animation)");
+            lines.Add(!motion || loop == TimeSpan.Zero ? what : Texts.Format(Strings.MainLengthItsAnimation, what));
         }
 
         if (soundtrack is not null && (longest is not null || cascadeSets))
         {
             string name = Path.GetFileName(soundtrack.Path);
             lines.Add(soundtrack.Duration > length
-                ? $"Soundtrack {name} — {Seconds(soundtrack.Duration)}, cut at {Seconds(length)}"
-                : $"Soundtrack {name} — {Seconds(soundtrack.Duration)}, plays {Times(length, soundtrack.Duration)}");
+                ? Texts.Format(Strings.MainLengthSoundtrackCut, name, Seconds(soundtrack.Duration), Seconds(length))
+                : Texts.Format(Strings.MainLengthSoundtrackPlays, name, Seconds(soundtrack.Duration), Times(length, soundtrack.Duration)));
         }
 
         return string.Join(Environment.NewLine, lines);
@@ -2877,7 +2900,7 @@ internal sealed partial class MainForm : Form
     private static string Times(TimeSpan length, TimeSpan loop)
     {
         double times = loop > TimeSpan.Zero ? Math.Round(length.Ticks / (double)loop.Ticks, 1) : 0;
-        return times == 1 ? "once" : $"{times:0.#} times";
+        return times == 1 ? Strings.MainTimesOnce : Texts.Format(Strings.MainTimesMany, times);
     }
 
     private const int SharingMaxEdge = 2560;
@@ -2921,11 +2944,11 @@ internal sealed partial class MainForm : Form
             data.SetImage(light);
             Clipboard.SetDataObject(data, copy: true);
             string kept = KeepPrevious(() => PreviousCopy.KeepCopyOf(path, cellFiles));
-            ShowStatus(StillSummary("Copied for sharing", "JPEG", light.Size, new FileInfo(path).Length, encoding) + kept);
+            ShowStatus(StillSummary(Strings.MainStatusCopiedForSharing, "JPEG", light.Size, new FileInfo(path).Length, encoding) + kept);
         }
         catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException or OutOfMemoryException)
         {
-            ShowStatus($"Copy failed: {ErrorLog.Describe(ex)}", error: true);
+            ShowStatus(Texts.Format(Strings.MainStatusCopyFailed, ErrorLog.Describe(ex)), error: true);
         }
     }
 
@@ -2940,7 +2963,7 @@ internal sealed partial class MainForm : Form
     {
         foreach (var (name, side) in PngMaxSizes)
         {
-            var item = new ToolStripMenuItem(name) { ToolTipText = $"A PNG whose longer side is at most {side} px; a grid needing less keeps its own size" };
+            var item = new ToolStripMenuItem(name) { ToolTipText = Texts.Format(Strings.MainPngMaxSizeTip, side) };
             item.Click += (_, _) => export(side);
             menu.DropDownItems.Add(item);
         }
@@ -2963,7 +2986,7 @@ internal sealed partial class MainForm : Form
     private void RefreshVideoSizeTooltips()
     {
         string? text = this.PngSize(AppSettings.VideoMaxSide) is { } size && Animation.EvenSize(size) is var video
-            ? $"{video.Width} × {video.Height}, its longer side at most the Video size, {AppSettings.VideoMaxSide} px"
+            ? Texts.Format(Strings.MainVideoSizeTip, video.Width, video.Height, AppSettings.VideoMaxSide)
             : null;
         foreach (var item in new[] { this._copyMp4, this._copyGif, this._saveMp4, this._saveGif })
         {
@@ -3018,16 +3041,16 @@ internal sealed partial class MainForm : Form
             return;
         }
 
-        RememberFolder(AppSettings.SaveExportFolder, dialog.FileName, "Export");
+        RememberFolder(AppSettings.SaveExportFolder, dialog.FileName, Strings.MainFolderNameExport);
 
-        string saved = $"Saved {Path.GetFileName(dialog.FileName)}";
+        string saved = Texts.Format(Strings.MainStatusSaved, Path.GetFileName(dialog.FileName));
         var clock = Stopwatch.StartNew();
         if (format is { } animated)
         {
             if (await ExportAnimationAsync(dialog.FileName, animated) is { } result)
             {
                 ShowStatus(AnimationSummary(saved, dialog.FileName, animated, result, clock.Elapsed));
-                NotifyIfAway($"{FormatName(animated)} saved", Path.GetFileName(dialog.FileName), error: false);
+                NotifyIfAway(Texts.Format(Strings.MainNotifySaved, FormatName(animated)), Path.GetFileName(dialog.FileName), error: false);
             }
 
             return;
@@ -3046,7 +3069,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException or OutOfMemoryException)
         {
-            ShowStatus($"Save failed: {ErrorLog.Describe(ex)}", error: true);
+            ShowStatus(Texts.Format(Strings.MainStatusSaveFailed, ErrorLog.Describe(ex)), error: true);
         }
     }
 
@@ -3253,7 +3276,7 @@ internal sealed partial class MainForm : Form
     private string? FadeUnavailable =>
         Animation.Heard(_preview.Images.Concat(this.ActiveBesideCells)).Count > 0 || ActiveSoundtrack is { Level: > 0 }
             ? null
-            : "Nothing is heard: no video plays with its sound, and no soundtrack is on";
+            : Strings.MainFadeUnavailable;
 
     /// <summary>The seams, <c>null</c> while they are off; the compositor leaves them out while the borders leave a gap.</summary>
     private SeamFade? ActiveSeams => this._seamsOn ? this._seams : null;
@@ -3263,7 +3286,7 @@ internal sealed partial class MainForm : Form
 
     /// <summary>Why the seams do not apply — the borders leave a gap, the cells no longer touch — or <c>null</c> when they do.</summary>
     private string? SeamsUnavailable =>
-        this.ActiveBorders is { HasGap: true } ? "The borders leave a gap between the cells: they no longer touch" : null;
+        this.ActiveBorders is { HasGap: true } ? Strings.MainSeamsUnavailable : null;
 
     /// <summary>The cascade, <c>null</c> while it is off.</summary>
     private VideoCascade? ActiveCascade => this._cascadeOn ? this._cascade : null;
@@ -3273,7 +3296,7 @@ internal sealed partial class MainForm : Form
 
     /// <summary>Why the cascade does not apply — no video nor animated GIF plays — or <c>null</c> when it does.</summary>
     private string? CascadeUnavailable =>
-        this._preview.Images.Any(CascadeSchedule.TakesPart) ? null : "No video nor animated GIF plays: there is nothing to play one after the other";
+        this._preview.Images.Any(CascadeSchedule.TakesPart) ? null : Strings.MainCascadeUnavailable;
 
     /// <summary>A video to export: content that plays, or a soundtrack over stills.</summary>
     private bool ProducesVideo => HasAnimation || ActiveSoundtrack is not null;
@@ -3290,9 +3313,9 @@ internal sealed partial class MainForm : Form
 
     private static string SaveFilter(GridExport.Format? format) => format switch
     {
-        GridExport.Format.Mp4 => "MP4 video (*.mp4)|*.mp4",
-        GridExport.Format.Gif => "GIF image (*.gif)|*.gif",
-        _ => "PNG image (*.png)|*.png",
+        GridExport.Format.Mp4 => Strings.MainSaveFilterMp4,
+        GridExport.Format.Gif => Strings.MainSaveFilterGif,
+        _ => Strings.MainSaveFilterPng,
     };
 
     /// <summary>"MP4" or "GIF", as the buttons and the notifications name the format.</summary>
@@ -3322,7 +3345,7 @@ internal sealed partial class MainForm : Form
             }
             catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
             {
-                this.ShowStatus($"Export failed: {ErrorLog.Describe(ex)}", error: true);
+                this.ShowStatus(Texts.Format(Strings.MainStatusExportFailed, ErrorLog.Describe(ex)), error: true);
                 return null;
             }
             finally
@@ -3339,20 +3362,20 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
-            this.ShowStatus($"Export failed: {ErrorLog.Describe(ex)}", error: true);
+            this.ShowStatus(Texts.Format(Strings.MainStatusExportFailed, ErrorLog.Describe(ex)), error: true);
             return null;
         }
 
         using (job)
         {
-            BeginExport("Rendering the image…", cancellable: false);
+            BeginExport(Strings.MainStatusRendering, cancellable: false);
             try
             {
                 return await Task.Run(() => GridExport.RenderStill(job));
             }
             catch (Exception ex) when (ex is ExternalException or InvalidOperationException or OutOfMemoryException)
             {
-                ShowStatus($"Export failed: {ErrorLog.Describe(ex)}", error: true);
+                ShowStatus(Texts.Format(Strings.MainStatusExportFailed, ErrorLog.Describe(ex)), error: true);
                 return null;
             }
             finally
@@ -3383,20 +3406,20 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
-            this.ShowStatus($"Export failed: {ErrorLog.Describe(ex)}", error: true);
+            this.ShowStatus(Texts.Format(Strings.MainStatusExportFailed, ErrorLog.Describe(ex)), error: true);
             return null;
         }
 
         using (job)
         {
-            string what = format == GridExport.Format.Gif ? "GIF" : "video";
-            var cancellation = BeginExport($"Exporting the {what}… 0 %", cancellable: true);
+            bool gif = format == GridExport.Format.Gif;
+            var cancellation = BeginExport(gif ? Strings.MainStatusExportingGif0 : Strings.MainStatusExportingVideo0, cancellable: true);
             var progress = new Progress<double>(done =>
             {
                 // Reports still queued when the export ends are dropped: they would hide its outcome.
                 if (IsExporting)
                 {
-                    ShowStatus($"Exporting the {what}… {done:P0}");
+                    ShowStatus(Texts.Format(gif ? Strings.MainStatusExportingGif : Strings.MainStatusExportingVideo, done));
                 }
             });
             try
@@ -3405,7 +3428,7 @@ internal sealed partial class MainForm : Form
             }
             catch (OperationCanceledException)
             {
-                ShowStatus(format == GridExport.Format.Gif ? "GIF export cancelled." : "Video export cancelled.");
+                ShowStatus(format == GridExport.Format.Gif ? Strings.MainStatusExportCancelledGif : Strings.MainStatusExportCancelledVideo);
                 return null;
             }
             catch (Exception ex) when (ex is ExternalException or InvalidOperationException or IOException or UnauthorizedAccessException or OutOfMemoryException)
@@ -3413,8 +3436,8 @@ internal sealed partial class MainForm : Form
                 // A memory shortage included: Media Foundation's E_OUTOFMEMORY is raised as an OutOfMemoryException,
                 // not a COMException (workfiles/20261010-optimisation-lack-of-memory.md § 1).
                 string why = ErrorLog.Describe(ex);
-                ShowStatus($"Export failed: {why}", error: true);
-                NotifyIfAway($"{FormatName(format)} export failed", why, error: true);
+                ShowStatus(Texts.Format(Strings.MainStatusExportFailed, why), error: true);
+                NotifyIfAway(Texts.Format(Strings.MainNotifyExportFailed, FormatName(format)), why, error: true);
                 return null;
             }
             finally
@@ -3536,7 +3559,7 @@ internal sealed partial class MainForm : Form
     private static string AnimationSummary(string done, string path, GridExport.Format format, GridExport.Result video, TimeSpan encoding) =>
         Summary(
             done,
-            format == GridExport.Format.Gif ? "GIF" : "MP4 video",
+            format == GridExport.Format.Gif ? "GIF" : Strings.MainSummaryMp4Video,
             video.Size,
             new FileInfo(path).Length,
             video.Frames,
@@ -3549,7 +3572,7 @@ internal sealed partial class MainForm : Form
     private static string AnimationSummary(string done, LastVideo last) =>
         Summary(
             done,
-            last.Format == GridExport.Format.Gif ? "GIF" : "MP4 video",
+            last.Format == GridExport.Format.Gif ? "GIF" : Strings.MainSummaryMp4Video,
             last.Video.Size,
             last.Bytes,
             last.Video.Frames,
@@ -3563,10 +3586,10 @@ internal sealed partial class MainForm : Form
     {
         static string Names(IEnumerable<string> paths) => string.Join(" + ", paths.Select(Path.GetFileName));
         string failed = video.FailedSounds.Count == 0 ? ""
-            : $"{Names(video.FailedSounds)}: {(video.FailedSounds.Count == 1 ? "its sound" : "their sounds")} cannot be re-encoded";
+            : Texts.Format(video.FailedSounds.Count == 1 ? Strings.MainSoundFailedOne : Strings.MainSoundFailedMany, Names(video.FailedSounds));
         return video.MixedSounds.Count == 0
-            ? failed.Length == 0 ? "no sound" : $"no sound ({failed})"
-            : $"sound: {Names(video.MixedSounds)}{(failed.Length == 0 ? "" : $" ({failed})")}";
+            ? failed.Length == 0 ? Strings.MainSoundNone : Texts.Format(Strings.MainSoundNoneWith, failed)
+            : Texts.Format(Strings.MainSoundMixed, Names(video.MixedSounds)) + (failed.Length == 0 ? "" : $" ({failed})");
     }
 
     /// <summary>
@@ -3582,7 +3605,7 @@ internal sealed partial class MainForm : Form
             format,
             $"{size.Width} × {size.Height}",
             FileSize(bytes),
-            frames == 1 ? "1 frame" : $"{frames} frames",
+            Texts.Format(frames == 1 ? Strings.MainFrameCountOne : Strings.MainFrameCountMany, frames),
             Seconds(length),
         };
         if (sound is not null)
@@ -3590,25 +3613,29 @@ internal sealed partial class MainForm : Form
             fields.Add(sound);
         }
 
-        fields.Add($"encoded in {Seconds(encoding)}");
+        fields.Add(Texts.Format(Strings.MainSummaryEncodedIn, Seconds(encoding)));
         if (peakBytes > 0)
         {
-            fields.Add($"peak {FileSize(peakBytes)}");
+            fields.Add(Texts.Format(Strings.MainSummaryPeak, FileSize(peakBytes)));
         }
 
         return string.Join(" · ", fields);
     }
 
     /// <summary>Binary units: whole kilobytes, then one decimal.</summary>
-    private static string FileSize(long bytes) => bytes switch
+    private static string FileSize(long bytes)
     {
-        < 1024 => $"{bytes} B",
-        < 1024 * 1024 => $"{bytes / 1024.0:0} KB",
-        < 1024L * 1024 * 1024 => $"{bytes / (1024.0 * 1024):0.0} MB",
-        _ => $"{bytes / (1024.0 * 1024 * 1024):0.0} GB",
-    };
+        string[] units = Strings.FileSizeUnits.Split(' ');
+        return bytes switch
+        {
+            < 1024 => $"{bytes} {Strings.MainSizeByteUnit}",
+            < 1024 * 1024 => $"{Texts.Number(bytes / 1024.0, "0")} {units[0]}",
+            < 1024L * 1024 * 1024 => $"{Texts.Number(bytes / (1024.0 * 1024), "0.0")} {units[1]}",
+            _ => $"{Texts.Number(bytes / (1024.0 * 1024 * 1024), "0.0")} {units[2]}",
+        };
+    }
 
-    private static string Seconds(TimeSpan time) => time == TimeSpan.Zero ? "0 s" : $"{time.TotalSeconds:0.0} s";
+    private static string Seconds(TimeSpan time) => time == TimeSpan.Zero ? "0 s" : $"{Texts.Number(time.TotalSeconds, "0.0")} s";
 
     /// <summary>Videos, GIFs and light JPEGs copied to the clipboard live here: the clipboard holds their path.</summary>
     internal static string TempVideoFolder => Path.Combine(Path.GetTempPath(), "ImageGridFusion");
@@ -3660,7 +3687,7 @@ internal sealed partial class MainForm : Form
     {
         if (IsExporting)
         {
-            ShowStatus("The grid is locked until the export ends.");
+            ShowStatus(Strings.MainStatusLockedWhileExporting);
         }
 
         return IsExporting;
@@ -3707,7 +3734,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            ShowStatus($"{dialog} folder not remembered: {ex.Message}", error: true);
+            ShowStatus(Texts.Format(Strings.MainStatusFolderNotSaved, dialog, ex.Message), error: true);
         }
     }
 
@@ -3719,6 +3746,12 @@ internal sealed partial class MainForm : Form
         foreach (ToolStripMenuItem item in this._videoSize.DropDownItems)
         {
             item.Checked = (int)item.Tag! == AppSettings.VideoMaxSide;
+        }
+
+        // The language saved, which may not be the one in force yet: it applies at the next start.
+        foreach (ToolStripMenuItem item in this._language.DropDownItems)
+        {
+            item.Checked = (string)item.Tag! == AppSettings.Language;
         }
 
         foreach (ToolStripMenuItem item in _explorerPages.DropDownItems)
@@ -3779,7 +3812,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (StartupRegistration.IsStartupError(ex))
         {
-            ShowStatus($"Start with Windows failed: {ex.Message}", error: true);
+            ShowStatus(Texts.Format(Strings.MainStatusStartWithWindowsFailed, ex.Message), error: true);
         }
     }
 
@@ -3794,8 +3827,8 @@ internal sealed partial class MainForm : Form
         // The main parts name what they produce; the menus force a GIF or a video, pointless when nothing
         // plays — the menus stay open for Copy's light JPEG and their PNG max sizes.
         string format = ProducesVideo ? "MP4" : "PNG";
-        _copyButton.Text = $"Copy {format}";
-        _saveButton.Text = $"Save {format}…";
+        _copyButton.Text = Texts.Format(Strings.MainButtonCopyFormat, format);
+        _saveButton.Text = Texts.Format(Strings.MainButtonSaveFormat, format);
         // The last video is offered back whatever the grid, an empty one included: the arrows open for it.
         bool last = _lastVideo is not null && !IsExporting;
         this._copyButton.Enabled = any || last;
@@ -3807,13 +3840,13 @@ internal sealed partial class MainForm : Form
         this._saveButton.Enabled = any || last;
         _saveGif.Enabled = HasAnimation;
         _saveMp4.Enabled = HasAnimation;
-        string lastName = _lastVideo is { } video ? FormatName(video.Format) : "video";
+        string lastName = _lastVideo is { } video ? FormatName(video.Format) : Strings.MainLastNameVideo;
         _copyLastButton.Enabled = last;
-        _copyLastButton.Text = $"Copy last {lastName}";
+        _copyLastButton.Text = Texts.Format(Strings.MainButtonCopyLast, lastName);
         _copyLast.Enabled = last;
-        _copyLast.Text = _lastVideo is { } kept ? $"Copy last {lastName} ({kept.GeneratedAt:HH:mm})" : "Copy last video";
+        _copyLast.Text = _lastVideo is { } kept ? Texts.Format(Strings.MainMenuCopyLastAt, lastName, kept.GeneratedAt) : Strings.MainCopyLastVideo;
         _saveLast.Enabled = last;
-        _saveLast.Text = $"Save last {lastName}…";
+        _saveLast.Text = Texts.Format(Strings.MainButtonSaveLast, lastName);
         RefreshLength();
         RefreshLastVideoTooltips();
         this.RefreshPngSizeTooltips();
@@ -3855,7 +3888,35 @@ internal sealed partial class MainForm : Form
         Anchor = AnchorStyles.Left,
     };
 
-    internal static string EffectTitle(ImageEffect effect) => effect.ToString();
+    internal static string EffectTitle(ImageEffect effect) => effect switch
+    {
+        ImageEffect.Background => Strings.MainEffectBackground,
+        ImageEffect.Crop => Strings.MainEffectCrop,
+        ImageEffect.Cutout => Strings.MainEffectCutout,
+        ImageEffect.Upscale => Strings.MainEffectUpscale,
+        ImageEffect.Zoom => Strings.MainEffectZoom,
+        ImageEffect.Animations => Strings.MainEffectAnimations,
+        ImageEffect.Rotate => Strings.MainEffectRotate,
+        ImageEffect.Flip => Strings.MainEffectFlip,
+        ImageEffect.Frames => Strings.MainEffectFrames,
+        ImageEffect.Colors => Strings.MainEffectColors,
+        ImageEffect.Blur => Strings.MainEffectBlur,
+        ImageEffect.Volume => Strings.MainEffectVolume,
+        _ => effect.ToString(),
+    };
+
+    internal static string GlobalEffectTitle(GlobalEffect effect) => effect switch
+    {
+        GlobalEffect.Format => Strings.MainGlobalFormat,
+        GlobalEffect.Soundtrack => Strings.MainGlobalSoundtrack,
+        GlobalEffect.Fade => Strings.MainGlobalFade,
+        GlobalEffect.Borders => Strings.MainGlobalBorders,
+        GlobalEffect.Seams => Strings.MainGlobalSeams,
+        GlobalEffect.GridBackground => Strings.MainGlobalGridBackground,
+        GlobalEffect.Cascade => Strings.MainGlobalCascade,
+        GlobalEffect.Layers => Strings.MainGlobalLayers,
+        _ => effect.ToString(),
+    };
 
     /// <summary>A slider of the Colors effect, centered on 0: narrower than the others, so its four fit one row.</summary>
     /// <summary>
@@ -3889,15 +3950,15 @@ internal sealed partial class MainForm : Form
 
     private void UpdateColorsLabels()
     {
-        this._saturationLabel.Text = SignedPercentText("Saturation", this._saturation.Value);
+        this._saturationLabel.Text = SignedPercentText(Strings.MainColorSaturation, this._saturation.Value);
         this._hueLabel.Text = HueText(this._hue.Value);
-        this._brightnessLabel.Text = SignedPercentText("Brightness", this._brightness.Value);
-        this._contrastLabel.Text = SignedPercentText("Contrast", this._contrast.Value);
+        this._brightnessLabel.Text = SignedPercentText(Strings.MainColorBrightness, this._brightness.Value);
+        this._contrastLabel.Text = SignedPercentText(Strings.MainColorContrast, this._contrast.Value);
     }
 
-    private static string SignedPercentText(string name, int percent) => $"{name}: {percent:+0;-0;0} %";
+    private static string SignedPercentText(string name, int percent) => Texts.Format(Strings.MainLabelSignedPercent, name, percent);
 
-    private static string HueText(int degrees) => $"Hue: {degrees:+0;-0;0}°";
+    private static string HueText(int degrees) => Texts.Format(Strings.MainLabelHue, degrees);
 
     /// <summary>A click on a tab shows its options, and activates nothing.</summary>
     private void SelectEffect(ImageEffect effect)
@@ -4037,7 +4098,7 @@ internal sealed partial class MainForm : Form
 
     private void ApplyZoom(double zoom)
     {
-        _zoomLabel.Text = $"Zoom: {zoom * 100:0} %";
+        _zoomLabel.Text = Texts.Format(Strings.MainLabelZoom, zoom * 100);
         if (!_syncingEffects && _preview.SelectedImage?.Look is { } look)
         {
             // Acting on an option turns its effect on, from the settings it kept (RULES.md).
@@ -4069,15 +4130,15 @@ internal sealed partial class MainForm : Form
         this.ChangeLook(ImageEffect.Rotate, look => look.WithAngle(this._angle.Value));
     }
 
-    private static string AngleText(int degrees) => $"Angle: {degrees:+0;-0;0}°";
+    private static string AngleText(int degrees) => Texts.Format(Strings.MainLabelAngle, degrees);
 
-    private static string CycleText(int seconds) => $"Back and forth: {seconds} s";
+    private static string CycleText(int seconds) => Texts.Format(Strings.MainLabelBackAndForth, seconds);
 
     /// <summary>Changes the settings of the Animations effect, turning it on first (RULES.md).</summary>
     private void ChangeMotion(Func<MotionEffect, MotionEffect> change) =>
         this.ChangeLook(ImageEffect.Animations, look => look.Motion is { } motion ? look.WithMotion(change(motion)) : look);
 
-    private static string VolumeText(int percent) => $"Volume: {percent} %";
+    private static string VolumeText(int percent) => Texts.Format(Strings.MainLabelVolume, percent);
 
     /// <summary>Not frozen, the slider sets where the content starts playing; frozen, the frame it shows.</summary>
     private void ChangeFrames(Func<FramesEffect, FramesEffect> change)
@@ -4093,14 +4154,14 @@ internal sealed partial class MainForm : Form
     private void UpdateFramesLabel()
     {
         var pages = _preview.SelectedImage?.Pages;
-        this._framesCaption.Text = _freeze.Checked ? "Frozen on" : "Starts at";
+        this._framesCaption.Text = _freeze.Checked ? Strings.MainFramesFrozenOn : Strings.MainFramesStartsAt;
         _framesLabel.Text = pages is null ? "" : pages.Label(Math.Clamp(_frames.Value, 0, pages.Count - 1));
         this._framesField.Set(this._frames.Value, this._frames.Minimum, this._frames.Maximum);
         this._trimFromField.Set(this._trimFrom.Value, this._trimFrom.Minimum, this._trimTo.Value);
         this._trimToField.Set(this._trimTo.Value, this._trimFrom.Value, this._trimTo.Maximum);
 
         // A frozen content plays nothing: its speed is kept for when it plays again.
-        this._speedLabel.Text = "Speed: " + FramesEffect.SpeedText(this._speed.Value * FramesEffect.SpeedStep);
+        this._speedLabel.Text = Texts.Format(Strings.MainLabelSpeed, FramesEffect.SpeedText(this._speed.Value * FramesEffect.SpeedStep));
         this._speed.Enabled = !this._freeze.Checked;
     }
 
@@ -4119,10 +4180,10 @@ internal sealed partial class MainForm : Form
 
     /// <summary>Why the Crop's Keep cannot make the kept part the selected cell's image; <c>null</c> when it can.</summary>
     private string? CropKeepRefusal(SourceImage? image) =>
-        image is null ? "Select a cell first"
-        : this._preview.HasLayerSelection ? "Keep works on a cell's image, not on a layer"
-        : image.Pages is not null ? "Keep works on still images: a GIF, a video, a PDF or a text keeps its crop"
-        : image.Look.Crop is null ? "Turn the Crop on first: Keep makes its kept part the cell's image"
+        image is null ? Strings.MainCropKeepNoCell
+        : this._preview.HasLayerSelection ? Strings.MainCropKeepLayer
+        : image.Pages is not null ? Strings.MainCropKeepStills
+        : image.Look.Crop is null ? Strings.MainCropKeepCropOff
         : null;
 
     /// <summary>
@@ -4158,7 +4219,7 @@ internal sealed partial class MainForm : Form
             CroppedFrom = image.FilePath ?? image.CroppedFrom,
             Look = look.IsActive(ImageEffect.Upscale) ? look.TurnOff(ImageEffect.Upscale) : look,
         });
-        this.ShowStatus($"The kept part is the cell's image now — {kept.Width} × {kept.Height} px; Ctrl+Z gives the whole image back");
+        this.ShowStatus(Texts.Format(Strings.MainStatusKeepCrop, kept.Width, kept.Height));
     }
 
     /// <summary>
@@ -4184,10 +4245,10 @@ internal sealed partial class MainForm : Form
 
     private static string AmountText(CutoutBackground treatment, int value) => treatment switch
     {
-        CutoutBackground.Opacity => $"Opacity: {value} %",
-        CutoutBackground.Color => $"Color: {value} %",
-        CutoutBackground.Blur => $"Blur: {value} %",
-        _ => $"Pixels: {value} %",
+        CutoutBackground.Opacity => Texts.Format(Strings.MainLabelOpacity, value),
+        CutoutBackground.Color => Texts.Format(Strings.MainLabelColor, value),
+        CutoutBackground.Blur => Texts.Format(Strings.MainLabelBlur, value),
+        _ => Texts.Format(Strings.MainLabelPixels, value),
     };
 
     /// <summary>A slider of the Cutout's options, narrower than the others: its two lines hold seven of them.</summary>
@@ -4225,13 +4286,13 @@ internal sealed partial class MainForm : Form
             color => this.ChangeLook(ImageEffect.Cutout, look => look.WithCutout(look.Cutout!.WithTreatment(CutoutBackground.Color, on: true).WithColor(color))));
     }
 
-    private static string GrowText(int value) => $"Grow: {value * CutoutEffect.MaxEdge:+0.0;-0.0;0.0} %";
+    private static string GrowText(int value) => Texts.Format(Strings.MainLabelGrow, value * CutoutEffect.MaxEdge);
 
-    private static string SoftenText(int value) => $"Soften: {value * CutoutEffect.MaxEdge:0.0} %";
+    private static string SoftenText(int value) => Texts.Format(Strings.MainLabelSoften, value * CutoutEffect.MaxEdge);
 
-    private static string ToleranceText(int value) => $"Tolerance: {value} %";
+    private static string ToleranceText(int value) => Texts.Format(Strings.MainLabelTolerance, value);
 
-    private static string GapsText(int value) => $"Gaps: {value * CutoutEffect.MaxGap:0.0} %";
+    private static string GapsText(int value) => Texts.Format(Strings.MainLabelGaps, value * CutoutEffect.MaxGap);
 
     /// <summary>
     /// Whether the Cutout can go from <paramref name="before"/> to <paramref name="after"/>: in a mode
@@ -4259,7 +4320,7 @@ internal sealed partial class MainForm : Form
     {
         this.ShowComponents(new ComponentNeed(
             ComponentRegistry.Of(ComponentRegistry.CutoutSubject, ComponentRegistry.CutoutPick, ComponentRegistry.OnnxRuntime).Where(c => !c.IsInstalled).ToList(),
-            "The Cutout's Subject and Pick modes need the cutout engine to find what to keep."));
+            Strings.MainNeedCutoutEngine));
         return false;
     }
 
@@ -4275,7 +4336,7 @@ internal sealed partial class MainForm : Form
             return;
         }
 
-        this.BeginExport("Cutting out the images…", cancellable: false);
+        this.BeginExport(Strings.MainStatusCuttingOutImages, cancellable: false);
         try
         {
             await this._cutouts.WhenReadyAsync(images);
@@ -4290,7 +4351,7 @@ internal sealed partial class MainForm : Form
     private void OfferUpscaleEngine(UpscaleModel model) =>
         this.ShowComponents(new ComponentNeed(
             ComponentRegistry.Of(model == UpscaleModel.Fast ? ComponentRegistry.UpscaleFast : ComponentRegistry.Upscale, ComponentRegistry.OnnxRuntime).Where(c => !c.IsInstalled).ToList(),
-            $"The Upscale effect's {model} model enlarges an image with the upscale engine. Click Upscale again once it is installed."));
+            Texts.Format(Strings.MainNeedUpscaleEngine, model == UpscaleModel.Fast ? Strings.MainUpscaleModelFast : Strings.MainUpscaleModelQuality)));
 
     /// <summary>
     /// Turns the Upscale on for <paramref name="image"/> with <paramref name="setting"/>: at once when the image holds its
@@ -4314,8 +4375,8 @@ internal sealed partial class MainForm : Form
             }
 
             string name = image.FilePath is { } path ? Path.GetFileName(path)
-                : image.CroppedFrom is { } from ? $"{Path.GetFileNameWithoutExtension(from)} (crop)"
-                : "the cell's image";
+                : image.CroppedFrom is { } from ? Texts.Format(Strings.MainUpscaleNameCrop, Path.GetFileNameWithoutExtension(from))
+                : Strings.MainUpscaleNameCell;
             using var window = new UpscaleWindow(image, setting, this._upscales, name);
             if (window.ShowDialog(this) != DialogResult.OK || image.IsDisposed || !image.HasUpscale(setting))
             {
@@ -4340,7 +4401,7 @@ internal sealed partial class MainForm : Form
         {
             if (!this.ApplyUpscale(image, image.Look.Upscale!))
             {
-                this.ShowStatus("Copy cancelled: an image's Upscale is not computed", error: true);
+                this.ShowStatus(Strings.MainStatusCopyCancelledUpscale, error: true);
                 return false;
             }
         }
@@ -4384,8 +4445,8 @@ internal sealed partial class MainForm : Form
         }
 
         int first = refused[0];
-        string make = $"×{first} would make {size.Width * first} × {size.Height * first} px, past the {CanvasSizer.MaxLongSide} px a PNG holds";
-        return refused.Count == UpscaleEffect.Factors.Count ? $"Too large to upscale: {make}" : make;
+        string make = Texts.Format(Strings.MainUpscaleTooLargeMake, first, size.Width * first, size.Height * first, CanvasSizer.MaxLongSide);
+        return refused.Count == UpscaleEffect.Factors.Count ? Texts.Format(Strings.MainUpscaleTooLarge, make) : make;
     }
 
     /// <summary>A thumbnail of the Upscale options picked: the setting chosen changes, nothing is computed nor turned on.</summary>
@@ -4417,7 +4478,7 @@ internal sealed partial class MainForm : Form
         string extension = animated ? ".gif" : ".png";
         using (var dialog = new SaveFileDialog
         {
-            Filter = animated ? "Animated GIF (*.gif)|*.gif" : "PNG image (*.png)|*.png",
+            Filter = animated ? Strings.MainSaveFilterAnimatedGif : Strings.MainSaveFilterPng,
             DefaultExt = extension,
             FileName = $"{(image.FilePath is { } file ? Path.GetFileNameWithoutExtension(file)
                 : image.CroppedFrom is { } from ? Path.GetFileNameWithoutExtension(from) + "-crop"
@@ -4433,7 +4494,7 @@ internal sealed partial class MainForm : Form
             string target = dialog.FileName;
             if (image.CutoutPending)
             {
-                this.BeginExport("Cutting out the image…", cancellable: false);
+                this.BeginExport(Strings.MainStatusCuttingOutImage, cancellable: false);
                 try
                 {
                     await this._cutouts.WhenReadyAsync([image]);
@@ -4446,7 +4507,7 @@ internal sealed partial class MainForm : Form
 
             if (image.IsDisposed || image.Look.Upscale != upscale || image.UpscalePending)
             {
-                this.ShowStatus("The upscaled image is not ready: nothing saved", error: true);
+                this.ShowStatus(Strings.MainStatusUpscaledNotReady, error: true);
                 return;
             }
 
@@ -4464,11 +4525,11 @@ internal sealed partial class MainForm : Form
                     await Task.Run(() => copy.Save(target, ImageFormat.Png));
                 }
 
-                this.ShowStatus($"Saved {Path.GetFileName(target)} — {size.Width} × {size.Height} px, upscaled {upscale.Describe()}");
+                this.ShowStatus(Texts.Format(Strings.MainStatusSavedUpscaled, Path.GetFileName(target), size.Width, size.Height, upscale.Describe()));
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ExternalException or OutOfMemoryException or ArgumentException)
             {
-                this.ShowStatus($"Save failed: {ErrorLog.Describe(ex)}", error: true);
+                this.ShowStatus(Texts.Format(Strings.MainStatusSaveFailed, ErrorLog.Describe(ex)), error: true);
             }
         }
     }
@@ -4500,18 +4561,18 @@ internal sealed partial class MainForm : Form
 
     private void SetBlurIntensity()
     {
-        _blurIntensityLabel.Text = $"Intensity: {_blurIntensity.Value}%";
+        _blurIntensityLabel.Text = Texts.Format(Strings.MainLabelIntensity, _blurIntensity.Value);
         ChangeLook(ImageEffect.Blur, look => look.Blur is { } blur ? look.WithBlur(blur.WithIntensity(_blurIntensity.Value / 100.0)) : look);
     }
 
-    private static string OpacityText(int percent) => $"Opacity: {percent} %";
+    private static string OpacityText(int percent) => Texts.Format(Strings.MainLabelOpacity, percent);
 
     /// <summary>The icon before a color's opacity slider, drawn at the monitor's DPI with the effects' icons.</summary>
     private static PictureBox OpacityIcon() => new() { SizeMode = PictureBoxSizeMode.CenterImage, Anchor = AnchorStyles.Left };
 
-    private static string BlendText(int percent) => $"Blend: {percent} %";
+    private static string BlendText(int percent) => Texts.Format(Strings.MainLabelBlend, percent);
 
-    private static string EdgeOpacityText(int percent) => $"Edges: {percent} %";
+    private static string EdgeOpacityText(int percent) => Texts.Format(Strings.MainLabelEdges, percent);
 
     /// <summary>A line of options inside an options row, as tall and wide as its controls.</summary>
     private static FlowLayoutPanel OptionLine() => new()
@@ -4767,7 +4828,7 @@ internal sealed partial class MainForm : Form
                 this._crop.Kept = crop.SeenRatio(look);
             }
 
-            this._crop.KeepRefusal = this.IsExporting ? "Not while exporting" : this.CropKeepRefusal(image);
+            this._crop.KeepRefusal = this.IsExporting ? Strings.MainCropKeepWhileExporting : this.CropKeepRefusal(image);
 
             var flipped = look.TurnOn(ImageEffect.Flip);
             this._flip.FlipX = flipped.FlipX;
@@ -4795,7 +4856,7 @@ internal sealed partial class MainForm : Form
             // Only a video or a GIF is trimmed and gets the starting point's fields.
             bool trims = image?.Trims == true;
             this._trimLines.Enabled = trims;
-            this._toolTip.SetToolTip(this._trimLines, trims ? null : "The trim only applies to videos and animated GIFs");
+            this._toolTip.SetToolTip(this._trimLines, trims ? null : Strings.MainTrimTip);
             this._framesField.Visible = trims;
             _framesLabel.Visible = !trims;
 
@@ -4852,12 +4913,12 @@ internal sealed partial class MainForm : Form
             }
         }
 
-        _zoomLabel.Text = $"Zoom: {this._preview.SelectedZoom(look?.TurnOn(ImageEffect.Zoom)) * 100:0} %";
+        _zoomLabel.Text = Texts.Format(Strings.MainLabelZoom, this._preview.SelectedZoom(look?.TurnOn(ImageEffect.Zoom)) * 100);
         this._angleLabel.Text = AngleText(this._angle.Value);
         this._motionCycleLabel.Text = CycleText(-this._motionCycle.Value);
         UpdateFramesLabel();
         this.UpdateColorsLabels();
-        _blurIntensityLabel.Text = $"Intensity: {_blurIntensity.Value}%";
+        _blurIntensityLabel.Text = Texts.Format(Strings.MainLabelIntensity, _blurIntensity.Value);
         this._cutoutGrowLabel.Text = GrowText(this._cutoutGrow.Value);
         this._cutoutSoftenLabel.Text = SoftenText(this._cutoutSoften.Value);
         this._cutoutToleranceLabel.Text = ToleranceText(this._cutoutTolerance.Value);
@@ -4909,8 +4970,8 @@ internal sealed partial class MainForm : Form
         this._cutoutFillHoles.Enabled = !plain;
         this._toolTip.SetToolTip(
             this._cutoutFillHoles,
-            plain ? "The Plain mode keeps what the background encloses already"
-                : "Keeps what the cutout's outline encloses: the parts of the image the model left out but that the part kept surrounds");
+            plain ? Strings.MainCutoutFillHolesPlainTip
+                : Strings.MainCutoutFillHolesTip);
         this._cutoutGaps.Enabled = this._cutoutGapsLabel.Enabled = kept?.ClosesGaps == true;
 
         // The pick's points show, and Pick stays armed, while the Cutout tab is selected and its effect on.
@@ -5093,18 +5154,18 @@ internal sealed partial class MainForm : Form
     {
         using var dialog = new OpenFileDialog
         {
-            Title = "Choose a soundtrack",
+            Title = Strings.MainPickerSoundtrackTitle,
             Filter = string.Join(
                 "|",
-                $"Audio and video files|{Patterns(SoundtrackFile.AudioExtensions.Concat(VideoExtensions))}",
-                $"Audio|{Patterns(SoundtrackFile.AudioExtensions)}",
-                $"Videos|{Patterns(VideoExtensions)}",
-                "All files (*.*)|*.*"),
+                $"{Strings.MainPickerAudioVideo}|{Patterns(SoundtrackFile.AudioExtensions.Concat(VideoExtensions))}",
+                $"{Strings.MainPickerAudio}|{Patterns(SoundtrackFile.AudioExtensions)}",
+                $"{Strings.MainPickerVideos}|{Patterns(VideoExtensions)}",
+                $"{Strings.MainPickerAllFiles}|*.*"),
             InitialDirectory = ExistingFolder(AppSettings.SoundtrackFolder) ?? "",
         };
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
-            RememberFolder(AppSettings.SaveSoundtrackFolder, dialog.FileName, "Soundtrack");
+            RememberFolder(AppSettings.SaveSoundtrackFolder, dialog.FileName, Strings.MainGlobalSoundtrack);
             await LoadSoundtrackAsync(dialog.FileName);
         }
     }
@@ -5123,14 +5184,14 @@ internal sealed partial class MainForm : Form
         var soundtrack = await Task.Run(() => SoundtrackFile.TryOpen(path));
         if (soundtrack is null)
         {
-            ShowStatus($"{Path.GetFileName(path)}: no sound track Windows can read.", error: true);
+            ShowStatus(Texts.Format(Strings.MainStatusNoSoundTrack, Path.GetFileName(path)), error: true);
             return;
         }
 
         _soundtrack = soundtrack.WithLevel(_soundtrack?.Level ?? _soundtrackLevel);
         _soundtrackOn = true;
         ApplySoundtrack();
-        ShowStatus($"Soundtrack: {Path.GetFileName(path)} · {Seconds(soundtrack.Duration)}.");
+        ShowStatus(Texts.Format(Strings.MainStatusSoundtrack, Path.GetFileName(path), Seconds(soundtrack.Duration)));
     }
 
     /// <summary>
@@ -5226,7 +5287,7 @@ internal sealed partial class MainForm : Form
         // A long name is cut, the whole path in its tooltip; the file is kept while the soundtrack is off.
         const int MaxName = 32;
         string? path = _soundtrack?.Path;
-        string name = path is null ? "No file" : Path.GetFileName(path);
+        string name = path is null ? Strings.MainSoundtrackNoFile : Path.GetFileName(path);
         _soundtrackFile.Text = name.Length <= MaxName ? name : name[..(MaxName - 1)] + "…";
         _soundtrackFile.ForeColor = path is null ? SystemColors.GrayText : SystemColors.ControlText;
         _toolTip.SetToolTip(_soundtrackFile, path);
@@ -5281,7 +5342,7 @@ internal sealed partial class MainForm : Form
         UpdateButtons();
     }
 
-    private static string FadeText(int tenths) => $"Duration: {tenths / 10.0:0.0} s";
+    private static string FadeText(int tenths) => Texts.Format(Strings.MainLabelDuration, tenths / 10.0);
 
     /// <summary>The seams' checkbox: on or off, their settings kept.</summary>
     private void ToggleSeams()
@@ -5319,7 +5380,7 @@ internal sealed partial class MainForm : Form
     }
 
     /// <summary>The seams' depth, from percent of the smallest cell's shorter side.</summary>
-    private static string DepthText(int percent) => $"Depth: {percent} %";
+    private static string DepthText(int percent) => Texts.Format(Strings.MainLabelDepth, percent);
 
     /// <summary>The cascade's checkbox: on or off, its settings kept; either way the grid starts over.</summary>
     private void ToggleCascade()
@@ -5357,7 +5418,7 @@ internal sealed partial class MainForm : Form
     }
 
     /// <summary>The cascade's pause, from tenths of a second.</summary>
-    private static string PauseText(int tenths) => $"Pause: {tenths / 10.0:0.0} s";
+    private static string PauseText(int tenths) => Texts.Format(Strings.MainLabelPause, tenths / 10.0);
 
     /// <summary>The borders' checkbox: on or off, their settings kept.</summary>
     private void ToggleBorders()
@@ -5407,7 +5468,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            this.ShowStatus($"Border color not remembered: {ex.Message}", error: true);
+            this.ShowStatus(Texts.Format(Strings.MainStatusNotSavedBorderColor, ex.Message), error: true);
         }
     }
 
@@ -5426,7 +5487,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            ShowStatus($"Twitter corners by default not remembered: {ex.Message}", error: true);
+            ShowStatus(Texts.Format(Strings.MainStatusNotSavedTwitterCornersDefault, ex.Message), error: true);
         }
 
         // The initial state moved: Clear all may now have something to reset, or nothing.
@@ -5451,12 +5512,52 @@ internal sealed partial class MainForm : Form
         try
         {
             AppSettings.SaveVideoMaxSide(side);
-            this.ShowStatus($"Video size: {VideoSizeLabel(side)} — the next MP4 or GIF exports are clamped to it.");
+            this.ShowStatus(Texts.Format(Strings.MainStatusVideoSize, VideoSizeLabel(side)));
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            this.ShowStatus($"Video size not remembered: {ex.Message}", error: true);
+            this.ShowStatus(Texts.Format(Strings.MainStatusNotSavedVideoSize, ex.Message), error: true);
         }
+    }
+
+    /// <summary>A UI language named in its own language, whatever the one in force.</summary>
+    private static string LanguageName(string language) => language == "fr" ? "Français" : "English";
+
+    /// <summary>
+    /// The ⚙ menu's Language / Langue: the language picked is saved, then a restart is offered, asked in that language —
+    /// the texts are read once, at start-up. The language already saved does nothing.
+    /// See workfiles/20261105-french-translation.md § UI Language Setting.
+    /// </summary>
+    private void SetLanguage(string language)
+    {
+        if (language == AppSettings.Language)
+        {
+            return;
+        }
+
+        try
+        {
+            AppSettings.SaveLanguage(language);
+        }
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
+        {
+            this.ShowStatus(Texts.Format(Strings.MainLanguageNotSaved, ex.Message), error: true);
+            return;
+        }
+
+        var culture = Texts.CultureOf(language);
+        if (MessageBox.Show(
+                this,
+                Strings.ResourceManager.GetString(nameof(Strings.MainLanguageRestartAsk), culture),
+                Strings.ResourceManager.GetString(nameof(Strings.MainLanguageRestartCaption), culture),
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question) == DialogResult.Yes)
+        {
+            this.RestartApp();
+            return;
+        }
+
+        this.ShowStatus(Texts.Format(Strings.MainLanguageNextStart, LanguageName(language)));
     }
 
     /// <summary>
@@ -5468,7 +5569,7 @@ internal sealed partial class MainForm : Form
     {
         using var dialog = new FolderBrowserDialog
         {
-            Description = "The folder the file explorer searches, with its subfolders",
+            Description = Strings.MainPickerExplorerFolderDescription,
             UseDescriptionForTitle = true,
             ShowNewFolderButton = false,
         };
@@ -5488,7 +5589,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            ShowStatus($"File explorer folder not remembered: {ex.Message}", error: true);
+            ShowStatus(Texts.Format(Strings.MainStatusNotSavedExplorerFolder, ex.Message), error: true);
         }
 
         _explorer.SetBaseFolder(dialog.SelectedPath);
@@ -5503,7 +5604,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            ShowStatus($"File explorer panel state not remembered: {ex.Message}", error: true);
+            ShowStatus(Texts.Format(Strings.MainStatusNotSavedExplorerPanel, ex.Message), error: true);
         }
     }
 
@@ -5516,7 +5617,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            ShowStatus($"File explorer width not remembered: {ex.Message}", error: true);
+            ShowStatus(Texts.Format(Strings.MainStatusNotSavedExplorerWidth, ex.Message), error: true);
         }
     }
 
@@ -5530,7 +5631,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            this.ShowStatus($"Guides distance not remembered: {ex.Message}", error: true);
+            this.ShowStatus(Texts.Format(Strings.MainStatusNotSavedGuideApproach, ex.Message), error: true);
         }
     }
 
@@ -5544,7 +5645,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            this.ShowStatus($"Face grouping not remembered: {ex.Message}", error: true);
+            this.ShowStatus(Texts.Format(Strings.MainStatusNotSavedFaceGrouping, ex.Message), error: true);
         }
     }
 
@@ -5558,7 +5659,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            this.ShowStatus($"Similar images not remembered: {ex.Message}", error: true);
+            this.ShowStatus(Texts.Format(Strings.MainStatusNotSavedSimilarImages, ex.Message), error: true);
         }
     }
 
@@ -5572,7 +5673,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            this.ShowStatus($"Gap bars setting not remembered: {ex.Message}", error: true);
+            this.ShowStatus(Texts.Format(Strings.MainStatusNotSavedGapBars, ex.Message), error: true);
         }
     }
 
@@ -5586,7 +5687,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            ShowStatus($"File explorer pages per load not remembered: {ex.Message}", error: true);
+            ShowStatus(Texts.Format(Strings.MainStatusNotSavedExplorerPages, ex.Message), error: true);
         }
     }
 
@@ -5605,7 +5706,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            this.ShowStatus($"File content search not remembered: {ex.Message}", error: true);
+            this.ShowStatus(Texts.Format(Strings.MainStatusNotSavedContentSearch, ex.Message), error: true);
         }
 
         if (enable && !OcrEngineFiles.IsAvailable)
@@ -5622,7 +5723,7 @@ internal sealed partial class MainForm : Form
     private void OfferOcrEngineDownload() =>
         this.ShowComponents(new ComponentNeed(
             ComponentRegistry.Of(ComponentRegistry.OcrModels, ComponentRegistry.OnnxRuntime, ComponentRegistry.SkiaSharp).Where(c => !c.IsInstalled).ToList(),
-            "The content search reads the stylised, curved or inverted text Windows OCR misses with RapidOCR, a second OCR engine. Without it, Windows OCR alone reads the images."));
+            Strings.MainNeedOcrEngine));
 
     /// <summary>
     /// The ⚙ menu's Face analysis: the file explorer starts or stops looking for the faces — those already
@@ -5640,7 +5741,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            this.ShowStatus($"Face analysis not remembered: {ex.Message}", error: true);
+            this.ShowStatus(Texts.Format(Strings.MainStatusNotSavedFaceAnalysis, ex.Message), error: true);
         }
 
         if (enable && !FaceEngineFiles.IsAvailable)
@@ -5658,7 +5759,7 @@ internal sealed partial class MainForm : Form
     {
         this.ShowComponents(new ComponentNeed(
             ComponentRegistry.Of(ComponentRegistry.FaceDetection, ComponentRegistry.FaceRecognition, ComponentRegistry.OnnxRuntime).Where(c => !c.IsInstalled).ToList(),
-            "The face analysis groups the faces of the base folder's images into people with the face engine. Turn it on again once the engine is installed."));
+            Strings.MainNeedFaceEngine));
         if (this._explorer.FaceAnalysis && !FaceEngineFiles.IsAvailable)
         {
             this.ToggleFaceAnalysis();
@@ -5673,8 +5774,8 @@ internal sealed partial class MainForm : Form
     {
         if (MessageBox.Show(
                 this,
-                "Forget every face found and every person named, hidden or merged? The face analysis is turned off; turned on again, it looks for the faces from the start.\n\nThe face engine stays downloaded.",
-                "Forget faces",
+                Strings.MainForgetFacesAsk,
+                Strings.MainForgetFacesCaption,
                 MessageBoxButtons.OKCancel,
                 MessageBoxIcon.Warning,
                 MessageBoxDefaultButton.Button2) != DialogResult.OK)
@@ -5728,7 +5829,7 @@ internal sealed partial class MainForm : Form
     /// <summary>The file explorer lists the images closest to a cell's: its file's, else its frame's.</summary>
     private void FindSimilar(SourceImage image)
     {
-        string name = image.FilePath is { } path ? Path.GetFileName(path) : "the cell's image";
+        string name = image.FilePath is { } path ? Path.GetFileName(path) : Strings.MainUpscaleNameCell;
         _ = this._explorer.FindSimilarAsync(image.Bitmap, name, image.FilePath);
     }
 
@@ -5753,7 +5854,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            this.ShowStatus($"Visual analysis not remembered: {ex.Message}", error: true);
+            this.ShowStatus(Texts.Format(Strings.MainStatusNotSavedVisualAnalysis, ex.Message), error: true);
         }
 
         if (enable && !VisionEngineFiles.IsAvailable)
@@ -5774,7 +5875,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            this.ShowStatus($"Captions not remembered: {ex.Message}", error: true);
+            this.ShowStatus(Texts.Format(Strings.MainStatusNotSavedCaptions, ex.Message), error: true);
         }
 
         if (enable && !CaptionEngineFiles.IsAvailable)
@@ -5791,7 +5892,7 @@ internal sealed partial class MainForm : Form
     {
         this.ShowComponents(new ComponentNeed(
             ComponentRegistry.Of(ComponentRegistry.VisionModels, ComponentRegistry.VisionTokenizer, ComponentRegistry.OnnxRuntime).Where(c => !c.IsInstalled).ToList(),
-            "The visual analysis tags the base folder's images and finds them by what they show with the vision engine. Turn it on again once the engine is installed."));
+            Strings.MainNeedVisionEngine));
         if (this._explorer.VisualAnalysis && !VisionEngineFiles.IsAvailable)
         {
             this.ToggleVisualAnalysis();
@@ -5803,7 +5904,7 @@ internal sealed partial class MainForm : Form
     {
         this.ShowComponents(new ComponentNeed(
             ComponentRegistry.Of(ComponentRegistry.CaptionModels, ComponentRegistry.OnnxRuntime).Where(c => !c.IsInstalled).ToList(),
-            "The captions are written with the caption engine. Turn them on again once the engine is installed."));
+            Strings.MainNeedCaptionEngine));
         if (this._explorer.Captions && !CaptionEngineFiles.IsAvailable)
         {
             this.ToggleCaptions();
@@ -5819,8 +5920,8 @@ internal sealed partial class MainForm : Form
     {
         if (MessageBox.Show(
                 this,
-                "Forget what the images show — every embedding, tag and caption? The visual analysis and the captions are turned off; turned on again, they look at the images from the start.\n\nThe engines and your tags file (vision-tags.txt) stay.",
-                "Forget visual analysis",
+                Strings.MainForgetVisualAsk,
+                Strings.MainForgetVisualCaption,
                 MessageBoxButtons.OKCancel,
                 MessageBoxIcon.Warning,
                 MessageBoxDefaultButton.Button2) != DialogResult.OK)
@@ -5864,7 +5965,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            this.ShowStatus($"OCR result style not remembered: {ex.Message}", error: true);
+            this.ShowStatus(Texts.Format(Strings.MainStatusNotSavedOcrResultStyle, ex.Message), error: true);
         }
     }
 
@@ -5877,7 +5978,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            ShowStatus($"File explorer folder view not remembered: {ex.Message}", error: true);
+            ShowStatus(Texts.Format(Strings.MainStatusNotSavedExplorerFolderView, ex.Message), error: true);
         }
     }
 
@@ -5890,7 +5991,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            this.ShowStatus($"File explorer order not remembered: {ex.Message}", error: true);
+            this.ShowStatus(Texts.Format(Strings.MainStatusNotSavedExplorerOrder, ex.Message), error: true);
         }
     }
 
@@ -5903,7 +6004,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            this.ShowStatus($"File explorer groups not remembered: {ex.Message}", error: true);
+            this.ShowStatus(Texts.Format(Strings.MainStatusNotSavedExplorerGroups, ex.Message), error: true);
         }
     }
 
@@ -5941,7 +6042,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            this.ShowStatus($"File explorer groups not remembered: {ex.Message}", error: true);
+            this.ShowStatus(Texts.Format(Strings.MainStatusNotSavedExplorerGroups, ex.Message), error: true);
         }
     }
 
@@ -5964,19 +6065,19 @@ internal sealed partial class MainForm : Form
 
     private static string GroupTip(string id) => id switch
     {
-        NamePatterns.SeriesId => "Named files sharing their first words, 3 or more: marlène schiappa …, homme soja …",
-        "Camera" => "Files named by a camera or a phone: IMG_20220321_132643, PXL_…, DSC_0042",
-        "Screenshots" => "Screenshots and screen recordings: Screenshot_2026-11-03-10-24-09, Capture d'écran 2026-11-03…",
-        "Messaging" => "Files saved from a messaging app: WhatsApp Image 2026-11-03 at 10.24.09, IMG-20220321-WA0001, Telegram, Signal…",
-        "AI" => "Images and videos an AI made: OIG1 (10), grok_video_…, ChatGPT Image …, High_Performance_…",
-        "GenericNames" => "A browser's or a site's default name: téléchargement (1), images (2), videoplayback (12), maxresdefault",
-        "Identifiers" => "Names made of an identifier: a GUID, a hash, an X media id, a random token such as F3xKz9aWkAA1b2c",
-        "ShortCodes" => "A meme site's short code: d9omli, qy6xu8, -oong5f",
-        "DateStamps" => "A date and a time, digits only: 20230809_212344",
-        "Timestamps" => "A Unix time, in seconds or milliseconds: 1711612478, 1746944459842",
-        "Numbers" => "Any other name made of digits only: 001",
-        NamePatterns.DetectedSourcesId => "Any other source found by itself: a word shared by 3 files or more, followed by a date, a number or a code",
-        _ => $"Files named by {id}",
+        NamePatterns.SeriesId => Strings.MainGroupTipSeries,
+        "Camera" => Strings.MainGroupTipCamera,
+        "Screenshots" => Strings.MainGroupTipScreenshots,
+        "Messaging" => Strings.MainGroupTipMessaging,
+        "AI" => Strings.MainGroupTipAi,
+        "GenericNames" => Strings.MainGroupTipGenericNames,
+        "Identifiers" => Strings.MainGroupTipIdentifiers,
+        "ShortCodes" => Strings.MainGroupTipShortCodes,
+        "DateStamps" => Strings.MainGroupTipDateStamps,
+        "Timestamps" => Strings.MainGroupTipTimestamps,
+        "Numbers" => Strings.MainGroupTipNumbers,
+        NamePatterns.DetectedSourcesId => Strings.MainGroupTipDetectedSources,
+        _ => Texts.Format(Strings.MainGroupTipSource, id),
     };
 
     /// <summary>The file explorer's view was switched by the user: remembered between sessions.</summary>
@@ -5988,7 +6089,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            this.ShowStatus($"File explorer view not remembered: {ex.Message}", error: true);
+            this.ShowStatus(Texts.Format(Strings.MainStatusNotSavedExplorerView, ex.Message), error: true);
         }
     }
 
@@ -6001,7 +6102,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            ShowStatus($"File explorer tile size not remembered: {ex.Message}", error: true);
+            ShowStatus(Texts.Format(Strings.MainStatusNotSavedExplorerTileSize, ex.Message), error: true);
         }
     }
 
@@ -6035,7 +6136,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            ShowStatus($"Window placement not remembered: {ex.Message}", error: true);
+            ShowStatus(Texts.Format(Strings.MainStatusNotSavedWindowPlacement, ex.Message), error: true);
         }
     }
 
@@ -6077,22 +6178,22 @@ internal sealed partial class MainForm : Form
         // Outside the Twitter format the corners are not rounded, their setting kept. A disabled
         // checkbox shows no tooltip: its text says why.
         _bordersRounded.Enabled = TwitterCornersApply;
-        _bordersRounded.Text = TwitterCornersApply ? "Twitter corners" : "Twitter corners (Twitter format only)";
+        _bordersRounded.Text = TwitterCornersApply ? Strings.MainBordersTwitterCorners : Strings.MainBordersTwitterCornersOnly;
 
         // Only the corner brackets lie over the images.
     }
 
     /// <summary>The borders' width, from thousandths of the grid's shorter side.</summary>
-    private static string ThicknessText(int thousandths) => $"Thickness: {thousandths / 10.0:0.0} %";
+    private static string ThicknessText(int thousandths) => Texts.Format(Strings.MainLabelThickness, thousandths / 10.0);
 
     /// <summary>Why <paramref name="effect"/> does not apply to <paramref name="image"/>; <c>null</c> when it does.</summary>
     private static string? Unavailable(ImageEffect effect, SourceImage? image) => effect switch
     {
-        ImageEffect.Frames when image is { IsAnimated: false } => "Frames only applies to videos, animated GIFs and content of several pages",
-        ImageEffect.Volume when image is { HasSound: false } => "Volume only applies to videos with a sound track",
-        ImageEffect.Cutout when image is { CutsOut: false } => "Cutout works on still images only for now: not on videos, animated GIFs nor content of several pages",
-        ImageEffect.Upscale when image is { Upscales: false } => "Upscale works on still images and animated GIFs: a video is out of reach, a PDF, a text or a thumbnail is drawn sharp at any size already",
-        ImageEffect.Upscale when image is not null && !UpscaleEffect.Fits(image.UpscaleSize, UpscaleEffect.Factors[0]) => $"This image is too large to upscale: ×2 would go past {CanvasSizer.MaxLongSide} px on its longer side",
+        ImageEffect.Frames when image is { IsAnimated: false } => Strings.MainUnavailableFrames,
+        ImageEffect.Volume when image is { HasSound: false } => Strings.MainUnavailableVolume,
+        ImageEffect.Cutout when image is { CutsOut: false } => Strings.MainUnavailableCutout,
+        ImageEffect.Upscale when image is { Upscales: false } => Strings.MainUnavailableUpscale,
+        ImageEffect.Upscale when image is not null && !UpscaleEffect.Fits(image.UpscaleSize, UpscaleEffect.Factors[0]) => Texts.Format(Strings.MainUnavailableUpscaleTooLarge, CanvasSizer.MaxLongSide),
         _ => null,
     };
 
@@ -6115,7 +6216,7 @@ internal sealed partial class MainForm : Form
         }
         catch (Exception ex) when (AppSettings.IsSaveError(ex))
         {
-            this.ShowStatus($"Maximum zoom not written to {AppSettings.FileName}: {ex.Message}", error: true);
+            this.ShowStatus(Texts.Format(Strings.MainStatusMaxZoomNotWritten, AppSettings.FileName, ex.Message), error: true);
         }
     }
 
@@ -6138,7 +6239,7 @@ internal sealed partial class MainForm : Form
             : null;
         if (!exists)
         {
-            ShowStatus($"File not found: {path}", error: true);
+            ShowStatus(Texts.Format(Strings.MainStatusFileNotFound, path), error: true);
         }
 
         if (arguments is null)
@@ -6152,7 +6253,7 @@ internal sealed partial class MainForm : Form
         }
         catch (System.ComponentModel.Win32Exception ex)
         {
-            ShowStatus($"Explorer could not be opened: {ex.Message}", error: true);
+            ShowStatus(Texts.Format(Strings.MainStatusExplorerNotOpened, ex.Message), error: true);
         }
     }
 
@@ -6174,5 +6275,5 @@ internal sealed partial class MainForm : Form
         }
     }
 
-    private static string Files(int count) => count == 1 ? "1 file" : $"{count} files";
+    private static string Files(int count) => Texts.Format(count == 1 ? Strings.MainFileOne : Strings.MainFileMany, count);
 }

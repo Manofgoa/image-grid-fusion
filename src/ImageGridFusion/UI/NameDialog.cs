@@ -1,3 +1,5 @@
+using ImageGridFusion.Resources;
+
 namespace ImageGridFusion.UI;
 
 /// <summary>
@@ -26,7 +28,7 @@ internal sealed class NameDialog : Form
         this._text.Text = value;
         this._text.Width = this.LogicalToDeviceUnits(320);
         var buttons = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
-        var cancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, AutoSize = true };
+        var cancel = new Button { Text = Strings.ExplorerCancel, DialogResult = DialogResult.Cancel, AutoSize = true };
         var ok = new Button { Text = "OK", DialogResult = DialogResult.OK, AutoSize = true };
         buttons.Controls.AddRange([cancel, ok]);
         layout.Controls.Add(label, 0, 0);

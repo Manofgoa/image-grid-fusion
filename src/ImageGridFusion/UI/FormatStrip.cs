@@ -1,5 +1,6 @@
 using System.Drawing.Drawing2D;
 using ImageGridFusion.Composition;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -61,18 +62,18 @@ internal sealed class FormatStrip : SelectionStrip<OutputFormat>
 
     protected override string Tip(OutputFormat format) => format switch
     {
-        OutputFormat.Free => $"The ratio that loses the least of the images: {_freeRatio:0.00}:1 for this grid",
-        OutputFormat.Twitter => "Twitter / X in-feed image, 1200:628",
-        OutputFormat.Square => "Instagram / Facebook feed",
-        OutputFormat.Portrait => "Instagram / Facebook portrait feed",
-        OutputFormat.Story => "Stories, Reels, TikTok, Shorts",
+        OutputFormat.Free => Texts.Format(Strings.UiFormatFreeTip, _freeRatio),
+        OutputFormat.Twitter => Strings.UiFormatTwitterTip,
+        OutputFormat.Square => Strings.UiFormatSquareTip,
+        OutputFormat.Portrait => Strings.UiFormatPortraitTip,
+        OutputFormat.Story => Strings.UiFormatStoryTip,
         OutputFormat.Custom => this._custom switch
         {
-            null => "Custom: a ratio, or exact pixels, of your own — set in the Width and Height fields",
-            { Exact: true } custom => $"Custom: every export exactly {custom.Width} × {custom.Height} px — reduced, ratio kept, by a PNG max size entry or the Video size when smaller",
-            var custom => $"Custom: the ratio {custom.Label}, at the native size",
+            null => Strings.UiFormatCustomNoneTip,
+            { Exact: true } custom => Texts.Format(Strings.UiFormatCustomExactTip, custom.Width, custom.Height),
+            var custom => Texts.Format(Strings.UiFormatCustomRatioTip, custom.Label),
         },
-        _ => "YouTube, LinkedIn video, screens",
+        _ => Strings.UiFormatLandscapeTip,
     };
 
     protected override void PaintThumbnail(Graphics g, OutputFormat format, Rectangle box, bool active)

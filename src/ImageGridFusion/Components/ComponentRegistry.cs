@@ -1,5 +1,6 @@
 using ImageGridFusion.Explorer;
 using ImageGridFusion.Imaging;
+using ImageGridFusion.Resources;
 using ImageGridFusion.Web;
 
 namespace ImageGridFusion.Components;
@@ -50,38 +51,38 @@ internal static class ComponentRegistry
         var list = new List<Component>
         {
             NuGet(OcrModels, ComponentGroup.Engines, "OCR engine — RapidOCR models", "Apache 2.0",
-                "Reads the text in images and PDF pages for the content search (💡), in a pass of its own after Windows OCR",
+                Strings.CompPurposeOcrModels,
                 [.. ocr.Where(f => f.Package == "rapidocrnet")]),
             Hf(FaceDetection, "Face engine — YuNet", "MIT", "2023mar",
-                "Finds the faces in the indexed images, for the People view (the face analysis)", FaceEngineFiles.Folder, [FaceEngineFiles.DetectionFile]),
+                Strings.CompPurposeYuNet, FaceEngineFiles.Folder, [FaceEngineFiles.DetectionFile]),
             Hf(FaceRecognition, "Face engine — SFace", "Apache 2.0", "2021dec",
-                "Tells the faces apart, to group them into people in the People view", FaceEngineFiles.Folder, [FaceEngineFiles.RecognitionFile]),
+                Strings.CompPurposeSFace, FaceEngineFiles.Folder, [FaceEngineFiles.RecognitionFile]),
             Hf(VisionModels, "Vision engine — SigLIP 2 models", "Apache 2.0", "d1114256",
-                "Sees what the images show: their tags, the similarity search under 💡 and Find similar images (the visual analysis)", VisionEngineFiles.Folder, VisionEngineFiles.ModelFiles),
+                Strings.CompPurposeSigLipModels, VisionEngineFiles.Folder, VisionEngineFiles.ModelFiles),
             Hf(VisionTokenizer, "Vision engine — SigLIP 2 tokenizer", "Apache 2.0", "3f9f96cb",
-                "Turns a search's words into what the SigLIP 2 text model reads, for the similarity search under 💡", VisionEngineFiles.Folder, [VisionEngineFiles.TokenizerFile]),
+                Strings.CompPurposeSigLipTokenizer, VisionEngineFiles.Folder, [VisionEngineFiles.TokenizerFile]),
             Hf(CaptionModels, "Caption engine — Florence-2", "MIT", "d59e0797",
-                "Writes a sentence describing each image, found by the search under 💡 (the captions)", VisionEngineFiles.Folder, CaptionEngineFiles.Files),
-            new(CutoutSubject, ComponentGroup.Engines, "Cutout engine — IS-Net", "Finds an image's main subject, for the Cutout's Subject mode", "Apache 2.0",
+                Strings.CompPurposeFlorence, VisionEngineFiles.Folder, CaptionEngineFiles.Files),
+            new(CutoutSubject, ComponentGroup.Engines, "Cutout engine — IS-Net", Strings.CompPurposeIsNet, "Apache 2.0",
                 CutoutEngineFiles.Folder, Version("v0.0.0", CutoutEngineFiles.SubjectFile), new GitHubReleaseSource("danielgatis/rembg", "v0.0.0", CutoutEngineFiles.SubjectModel, null)),
             Hf(CutoutPick, "Cutout engine — MobileSAM", "MIT", "0d3b4033",
-                "Picks the object under a click, for the Cutout's Pick mode", CutoutEngineFiles.Folder, CutoutEngineFiles.PickFiles),
+                Strings.CompPurposeMobileSam, CutoutEngineFiles.Folder, CutoutEngineFiles.PickFiles),
             Hf(Upscale, "Upscale engine — Real-ESRGAN", "BSD-3-Clause", "09f741ba",
-                "Enlarges a small image ×2 or ×4, for the Upscale effect's Quality model", UpscaleEngineFiles.Folder, UpscaleEngineFiles.QualityFiles),
+                Strings.CompPurposeRealEsrgan, UpscaleEngineFiles.Folder, UpscaleEngineFiles.QualityFiles),
             Hf(UpscaleFast, "Upscale engine — Real-ESRGAN compact", "BSD-3-Clause", "899dc1e4",
-                "Enlarges a small image ×2 or ×4 many times faster, a little less finely, for the Upscale effect's Fast model", UpscaleEngineFiles.Folder, [UpscaleEngineFiles.FastFile]),
+                Strings.CompPurposeRealEsrganCompact, UpscaleEngineFiles.Folder, [UpscaleEngineFiles.FastFile]),
             NuGet(OnnxRuntime, ComponentGroup.Runtimes, "ONNX Runtime", "MIT",
-                "Runs every engine's models: needed by all of them. Loaded once an engine has run: replaced at the next start",
+                Strings.CompPurposeOnnxRuntime,
                 [.. ocr.Where(f => f.Name == OcrEngineFiles.OnnxRuntime)]),
             NuGet(SkiaSharp, ComponentGroup.Runtimes, "SkiaSharp", "MIT",
-                "Decodes the images for RapidOCR, the OCR engine. Loaded once RapidOCR has run: replaced at the next start",
+                Strings.CompPurposeSkiaSharp,
                 [.. ocr.Where(f => f.Name == OcrEngineFiles.SkiaSharp)]),
             Tool(YtDlp, Web.YtDlp.Tool, YtDlpVersion, "Unlicense", "https://github.com/yt-dlp/yt-dlp",
-                "Downloads the media of a URL the URL zone's own resolvers do not know"),
+                Strings.CompPurposeYtDlp),
             Tool(Deno, YtDlpCompanions.Deno, DenoVersion, "MIT", "https://deno.com",
-                "Lets yt-dlp read YouTube's formats, to load the largest ones"),
+                Strings.CompPurposeDeno),
             Tool(Ffmpeg, YtDlpCompanions.Ffmpeg, FfmpegVersion, "GPL 3.0", "https://github.com/yt-dlp/FFmpeg-Builds",
-                "Joins a video track and its sound into one MP4 for yt-dlp, to load the largest formats"),
+                Strings.CompPurposeFfmpeg),
         };
 
         foreach (var font in EmojiFonts.Pinned)
@@ -93,7 +94,7 @@ internal static class ComponentRegistry
                 "emoji-" + font.Family.ToLowerInvariant().Replace(' ', '-'),
                 ComponentGroup.EmojiFonts,
                 font.Family,
-                $"Draws a text layer's emojis in {font.Family}'s style, picked in the Emoji drop-down beside the text's font",
+                Texts.Format(Strings.CompPurposeEmojiFont, font.Family),
                 FontLicense(font.Family),
                 EmojiFonts.Folder,
                 Version(tag, font.File),

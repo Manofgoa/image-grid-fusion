@@ -1,4 +1,5 @@
 using ImageGridFusion.Imaging;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -19,11 +20,11 @@ internal sealed class ShadowKindStrip : SelectionStrip<ShadowKind>
     // A click on the pressed kind turns the shadow on too.
     protected override bool PicksSelected => true;
 
-    protected override string Label(ShadowKind kind) => kind.ToString();
+    protected override string Label(ShadowKind kind) => kind == ShadowKind.Halo ? Strings.UiShadowHalo : Strings.UiShadowDrop;
 
     protected override string Tip(ShadowKind kind) => kind == ShadowKind.Halo
-        ? "Halo — a soft shadow all around the letters, as memes have it"
-        : "Drop — a soft shadow down to the right of the letters";
+        ? Strings.UiShadowHaloTip
+        : Strings.UiShadowDropTip;
 
     protected override void PaintThumbnail(Graphics g, ShadowKind kind, Rectangle box, bool pressed)
     {
