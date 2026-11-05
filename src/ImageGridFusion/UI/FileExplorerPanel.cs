@@ -101,7 +101,7 @@ internal sealed partial class FileExplorerPanel : Panel
 
     // The views drop-down's icons, in ExplorerMode's order (workfiles/20261029-ctrl-f-view-cycle.md § Drop-Down
     // Icons), in full color (workfiles/20261029-menu-icons.md § Other Controls).
-    private static readonly UiIcon[] ModeIcons = [UiIcons.Folder, UiIcons.Group, UiIcons.Favorites];
+    private static readonly UiIcon[] ModeIcons = [UiIcons.Folder, UiIcons.Group, UiIcons.Favorites, UiIcons.OnlineLibrary];
 
     // The sort drop-down's icons, in FileOrder's order; the direction stays in the text (Iteration 11).
     private static readonly UiIcon[] SortIcons = [UiIcons.Date, UiIcons.ByName, UiIcons.FileSize];
@@ -114,7 +114,7 @@ internal sealed partial class FileExplorerPanel : Panel
     private readonly Label _title = new() { Text = Strings.ExplorerTitleFiles, AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly Button _collapse = new() { AccessibleName = Strings.ExplorerAccCollapse, Size = new Size(26, 23), AutoSize = true, Anchor = AnchorStyles.Right };
     private readonly Button _expand = new() { AccessibleName = Strings.ExplorerAccExpand, Dock = DockStyle.Fill, Visible = false, Margin = Padding.Empty };
-    private readonly TableLayoutPanel _searchRow = new() { ColumnCount = 5, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
+    private readonly TableLayoutPanel _searchRow = new() { ColumnCount = 7, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
     // The views drop-down (workfiles/20261027-face-detection.md § People View): its entries in
     // ExplorerMode's order, each after its icon.
     private readonly ComboBox _modes = new() { DropDownStyle = ComboBoxStyle.DropDownList, DrawMode = DrawMode.OwnerDrawFixed, Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0) };
@@ -345,6 +345,8 @@ internal sealed partial class FileExplorerPanel : Panel
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        this._searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        this._searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         foreach (ExplorerMode mode in Enum.GetValues<ExplorerMode>())
@@ -360,11 +362,14 @@ internal sealed partial class FileExplorerPanel : Panel
         this._searchRow.Controls.Add(this._modes, 0, 0);
         this._searchRow.Controls.Add(this._byName, 1, 0);
         this._searchRow.Controls.Add(this._byContent, 2, 0);
-        _searchRow.Controls.Add(_search, 3, 0);
-        _searchRow.Controls.Add(_rescan, 4, 0);
+        this._searchRow.Controls.Add(this._giphyGifs, 3, 0);
+        this._searchRow.Controls.Add(this._giphyStickers, 4, 0);
+        this._searchRow.Controls.Add(this._search, 5, 0);
+        this._searchRow.Controls.Add(this._rescan, 6, 0);
         _captionRow.Controls.Add(_caption);
         _captionRow.Controls.Add(_breadcrumb);
         this._captionRow.Controls.Add(this._similarClear);
+        this._captionRow.Controls.Add(this._giphyAttribution);
         this._similarClear.FlatAppearance.BorderSize = 0;
         _sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _sizeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -397,8 +402,9 @@ internal sealed partial class FileExplorerPanel : Panel
             }
         };
 
-        // Docked to the top in reverse order of addition: the text above the button.
+        // Docked to the top in reverse order of addition: the text above the link — the GIPHY invitation's — above the button.
         _invite.Controls.Add(_chooseFolder);
+        this._invite.Controls.Add(this._inviteLink);
         _invite.Controls.Add(_inviteText);
         _listHost.Controls.Add(_grid);
         _listHost.Controls.Add(_invite);
@@ -440,7 +446,8 @@ internal sealed partial class FileExplorerPanel : Panel
 
         UiIcons.Attach(this._menu);
         _grid.ContextMenuStrip = _menu;
-        _grid.IsFavorite = _favorites.Contains;
+        this._grid.IsFavorite = this.IsFavoritePath;
+        this.InitGiphy();
         this._grid.ContentExcerpt = this.ExcerptOf;
         this._grid.ContentSpot = this.SpotOf;
         this._grid.ContentWords = this.WordsOf;
@@ -515,7 +522,9 @@ internal sealed partial class FileExplorerPanel : Panel
         _menu.Opening += (_, e) =>
         {
             var row = _grid.RowAt(_grid.PointToClient(MousePosition));
-            e.Cancel = row is null;
+
+            // A GIPHY result has no file to copy or show yet: no menu.
+            e.Cancel = row is null || row.Online is not null;
             _openLocation.Text = row?.IsFolder == true ? OpenInExplorerText : OpenFileLocationText;
             bool file = row is { IsFile: true };
             bool group = row is { IsGroup: true } && !IsPeopleTile(row.GroupId);
@@ -955,7 +964,7 @@ internal sealed partial class FileExplorerPanel : Panel
     [DefaultValue(ExplorerMode.Folders)]
     public ExplorerMode Mode
     {
-        get => this._peopleView ? ExplorerMode.People : this._folderView ? ExplorerMode.Folders : ExplorerMode.Favorites;
+        get => this._giphyView ? ExplorerMode.Giphy : this._peopleView ? ExplorerMode.People : this._folderView ? ExplorerMode.Folders : ExplorerMode.Favorites;
         set => this.SetMode(value);
     }
 
@@ -969,6 +978,8 @@ internal sealed partial class FileExplorerPanel : Panel
 
         this._folderView = value == ExplorerMode.Folders;
         this._peopleView = value == ExplorerMode.People;
+        this._giphyView = value == ExplorerMode.Giphy;
+        this._giphyListShown = false;
         this._openGroup = null;
         this._similarTo = null;
         this._syncingToggle = true;
@@ -1423,6 +1434,10 @@ internal sealed partial class FileExplorerPanel : Panel
             _title.Font.Dispose();
             _smallerGlyph.Font.Dispose();
             _largerGlyph.Font.Dispose();
+            this._giphyCall?.Cancel();
+            this._giphyFrames.Dispose();
+            this._giphyThumbnails?.Dispose();
+            this._giphyAttribution.Font.Dispose();
         }
 
         base.Dispose(disposing);
@@ -1516,8 +1531,9 @@ internal sealed partial class FileExplorerPanel : Panel
         {
             (this._byName, UiIcons.ByName), (this._byContent, UiIcons.Caption), (this._rescan, UiIcons.Rescan),
             (this._collapse, UiIcons.Collapse), (this._expand, UiIcons.Expand), (this._similarClear, UiIcons.Clear),
-            (this._thumbnailsView, UiIcons.Thumbnails), (this._detailsView, UiIcons.Details), (this._chooseFolder, UiIcons.Folder),
+            (this._thumbnailsView, UiIcons.Thumbnails), (this._detailsView, UiIcons.Details), (this._chooseFolder, this.InviteIcon),
             (this._folderGroupsButton, UiIcons.FolderGroups), (this._seriesButton, UiIcons.Series), (this._searchGroupsButton, UiIcons.SearchGroups),
+            (this._giphyGifs, UiIcons.Gif), (this._giphyStickers, UiIcons.Sticker),
         })
         {
             UiIcons.SetImage(button, icon, size);
@@ -2646,6 +2662,13 @@ internal sealed partial class FileExplorerPanel : Panel
             return;
         }
 
+        if (this._giphyView)
+        {
+            this._grid.HighlightWords = [];
+            this.RefreshGiphyRows(keepPlace);
+            return;
+        }
+
         this.ShowGroupTitle(null);
         bool inviting = _baseFolder is null && (words.Length > 0 || _folderView);
         this.SetInvite(InviteAction.ChooseFolder);
@@ -3068,6 +3091,12 @@ internal sealed partial class FileExplorerPanel : Panel
             return size;
         }
 
+        // A GIPHY result has no file to measure until it is fetched.
+        if (row.Online is not null)
+        {
+            return null;
+        }
+
         if (!this._diskSizes.TryGetValue(row.FullPath, out var read))
         {
             try
@@ -3144,7 +3173,7 @@ internal sealed partial class FileExplorerPanel : Panel
     }
 
     /// <summary>Whether the list is the favorites: the search view with a blank box.</summary>
-    private bool ShowingFavorites => !_folderView && !this._peopleView && FileSearch.Words(_search.Text).Length == 0;
+    private bool ShowingFavorites => !_folderView && !this._peopleView && !this._giphyView && FileSearch.Words(_search.Text).Length == 0;
 
     /// <summary>Another view picked in the drop-down by the user: it shows, remembered, <paramref name="select"/> selected once listed.</summary>
     private void ChangeMode(ExplorerMode mode, string? select = null)
@@ -3170,7 +3199,7 @@ internal sealed partial class FileExplorerPanel : Panel
         {
             mode = (ExplorerMode)((((int)mode + step) % count + count) % count);
         }
-        while (mode == ExplorerMode.People && !this._faceAnalysis);
+        while ((mode == ExplorerMode.People && !this._faceAnalysis) || (mode == ExplorerMode.Giphy && this._giphyKey is null));
 
         return mode;
     }
@@ -3196,16 +3225,18 @@ internal sealed partial class FileExplorerPanel : Panel
     {
         ExplorerMode.Folders => Strings.ExplorerModeFolders,
         ExplorerMode.People => Strings.ExplorerPeople,
+        ExplorerMode.Giphy => Strings.ExplorerModeGiphy,
         _ => Strings.ExplorerModeFavorites,
     };
 
-    /// <summary>What the view changes around the grid: the caption or the breadcrumb, the search box's hint.</summary>
+    /// <summary>What the view changes around the grid: the caption or the breadcrumb, the search box's hint, the GIPHY view's controls.</summary>
     private void ApplyView()
     {
-        bool trail = _folderView || this._peopleView;
+        bool trail = _folderView || this._peopleView || this._giphyView;
         _caption.Visible = !trail;
         _breadcrumb.Visible = trail;
-        _search.PlaceholderText = this._peopleView ? PeopleSearchPlaceholder : _folderView ? FolderSearchPlaceholder : SearchPlaceholder;
+        _search.PlaceholderText = this._giphyView ? Strings.ExplorerGiphyPlaceholder : this._peopleView ? PeopleSearchPlaceholder : _folderView ? FolderSearchPlaceholder : SearchPlaceholder;
+        this.ApplyGiphyView();
     }
 
     /// <summary>
@@ -3271,7 +3302,11 @@ internal sealed partial class FileExplorerPanel : Panel
     /// <summary>↑, Backspace or Alt+↑: the parent folder, the folder just left selected.</summary>
     private void GoUp()
     {
-        if (this._peopleView && this._openGroup is not null)
+        if (this._giphyView)
+        {
+            this.ShowGiphyTrending();
+        }
+        else if (this._peopleView && this._openGroup is not null)
         {
             this.OpenGroup(null);
         }
@@ -3284,6 +3319,16 @@ internal sealed partial class FileExplorerPanel : Panel
     /// <summary>A folder of the breadcrumb clicked (0: the base folder), the one below it on the way to the open folder selected.</summary>
     private void OpenFolderAtDepth(int depth)
     {
+        if (this._giphyView)
+        {
+            if (depth == 0)
+            {
+                this.ShowGiphyTrending();
+            }
+
+            return;
+        }
+
         if (this._peopleView)
         {
             if (depth == 0)
@@ -3320,7 +3365,11 @@ internal sealed partial class FileExplorerPanel : Panel
     /// </summary>
     private void LoadMore()
     {
-        if (_loaded < _list.Count)
+        if (this._giphyView)
+        {
+            this.LoadMoreGiphy();
+        }
+        else if (_loaded < _list.Count)
         {
             ShowLoaded(_loaded + LoadSize(), keepPlace: true);
         }
@@ -3328,13 +3377,13 @@ internal sealed partial class FileExplorerPanel : Panel
 
     /// <summary>
     /// Shows the first <paramref name="count"/> tiles of the list and the Loading… slot after them —
-    /// or the whole list, without the slot, when the rest would fit in it.
+    /// or the whole list, without the slot, when the rest would fit in it and no online library holds more.
     /// </summary>
     private void ShowLoaded(int count, bool keepPlace)
     {
         _loaded = count + 1 >= _list.Count ? _list.Count : Math.Max(1, count);
-        bool hasMore = _loaded < _list.Count;
-        var rows = hasMore ? _list.Take(_loaded).ToArray() : _list;
+        bool hasMore = _loaded < _list.Count || (this._giphyView && this._giphyHasMore);
+        var rows = _loaded < _list.Count ? _list.Take(_loaded).ToArray() : _list;
         _grid.SetRows(rows, hasMore, keepPlace);
     }
 
@@ -3346,6 +3395,16 @@ internal sealed partial class FileExplorerPanel : Panel
     {
         switch (e.KeyCode)
         {
+            case Keys.Enter when this._giphyView:
+                // The GIPHY view searches on Enter only: typing costs none of the key's calls.
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                if (this._search.Text.Trim() != (this._giphyQuery ?? "") || this._list.Count == 0)
+                {
+                    this.SearchGiphy(this._search.Text);
+                }
+
+                break;
             case Keys.Enter:
                 e.Handled = true;
                 e.SuppressKeyPress = true;
@@ -3380,6 +3439,12 @@ internal sealed partial class FileExplorerPanel : Panel
     /// <summary>A file tile is added like Add images; a folder tile opens its folder.</summary>
     private void Activate(ExplorerRow row)
     {
+        if (row.Online is not null)
+        {
+            _ = this.ActivateGiphyAsync(row);
+            return;
+        }
+
         if (!Exists(row))
         {
             return;
@@ -3414,6 +3479,12 @@ internal sealed partial class FileExplorerPanel : Panel
     /// </summary>
     private void StartDrag(ExplorerRow row)
     {
+        if (row.Online is not null)
+        {
+            this.StartGiphyDrag(row);
+            return;
+        }
+
         // A face group dragged onto another merges into it: inside the panel only.
         if (row.IsGroup)
         {
@@ -3483,6 +3554,12 @@ internal sealed partial class FileExplorerPanel : Panel
     /// </summary>
     private void ToggleFavorite(ExplorerRow row)
     {
+        if (row.Online is { } item)
+        {
+            _ = this.ToggleGiphyFavoriteAsync(row, item);
+            return;
+        }
+
         if (row.Preset is { } preset)
         {
             this.DeletePreset(row, preset);
@@ -3535,23 +3612,12 @@ internal sealed partial class FileExplorerPanel : Panel
     }
 
     /// <summary>
-    /// A favorite or a preset gone: a file of <see cref="PastedFavorites.Folder"/> no favorite holds any
-    /// more goes to the Recycle Bin, and the list follows.
+    /// A favorite or a preset gone: a file of <see cref="PastedFavorites.Folder"/> or <see cref="GiphyFiles.FavoritesFolder"/>
+    /// no favorite holds any more goes to the Recycle Bin, and the list follows.
     /// </summary>
     private void AfterFavoriteRemoved(ExplorerRow row, bool added)
     {
-        if (!added && PastedFavorites.Holds(row.FullPath) && !this._favorites.Uses(row.FullPath))
-        {
-            try
-            {
-                PastedFavorites.Recycle(row.FullPath);
-                ShowTransient(Texts.Format(Strings.ExplorerRecycled, Path.GetFileName(row.FullPath)));
-            }
-            catch (Exception ex) when (FileIndex.IsFileError(ex))
-            {
-                ShowTransient(Texts.Format(Strings.ExplorerRecycleFailed, Path.GetFileName(row.FullPath), ex.Message), error: true);
-            }
-        }
+        this.RecycleUnheld(row.FullPath, added);
 
         if (ShowingFavorites || (!added && row.Preset is not null))
         {
@@ -3621,6 +3687,12 @@ internal sealed partial class FileExplorerPanel : Panel
     /// </summary>
     private bool Exists(ExplorerRow row)
     {
+        // A GIPHY result is no file: its own routes fetch it (FileExplorerPanel.Giphy.cs).
+        if (row.Online is not null)
+        {
+            return false;
+        }
+
         // A group stands for faces, not a file: its files are checked when they are used.
         if (row.IsGroup)
         {
@@ -3687,7 +3759,11 @@ internal sealed partial class FileExplorerPanel : Panel
         ChooseFolder,
         TurnOnFaces,
         DownloadFaceEngine,
+        GiphyKey,
     }
+
+    /// <summary>The invitation's button's icon: the key for GIPHY's, the folder otherwise.</summary>
+    private UiIcon InviteIcon => this._inviteAction == InviteAction.GiphyKey ? UiIcons.ApiKey : UiIcons.Folder;
 
     /// <summary>The invitation's text and button for <paramref name="action"/>.</summary>
     private void SetInvite(InviteAction action)
@@ -3702,8 +3778,14 @@ internal sealed partial class FileExplorerPanel : Panel
         {
             InviteAction.TurnOnFaces => (Strings.ExplorerInviteFacesOff, Strings.ExplorerInviteFacesOffButton),
             InviteAction.DownloadFaceEngine => (Strings.ExplorerInviteFaceEngine, Strings.ExplorerInviteFaceEngineButton),
+            InviteAction.GiphyKey => (Strings.ExplorerInviteGiphy, Strings.ExplorerInviteGiphyButton),
             _ => (FolderInviteText, Strings.ExplorerChooseFolder),
         };
+        this._inviteLink.Visible = action == InviteAction.GiphyKey;
+        if (this.IsHandleCreated)
+        {
+            UiIcons.SetImage(this._chooseFolder, this.InviteIcon, this.LogicalToDeviceUnits(UiIcons.LogicalSize));
+        }
     }
 
     /// <summary>The invitation's button: what it offers asked of the window, as from the ⚙ menu.</summary>
@@ -3716,6 +3798,9 @@ internal sealed partial class FileExplorerPanel : Panel
                 break;
             case InviteAction.DownloadFaceEngine:
                 this.FaceEngineRequested?.Invoke(this, EventArgs.Empty);
+                break;
+            case InviteAction.GiphyKey:
+                this.GiphyKeyRequested?.Invoke(this, EventArgs.Empty);
                 break;
             default:
                 this.ChooseFolderRequested?.Invoke(this, EventArgs.Empty);
