@@ -303,11 +303,11 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 3, 4 | 2026-11-05 | Setting, resources, 1 121 texts in English and French, numbers and units, shortcuts window |
+| Code | 3, 4, 5 | 2026-11-05 | Setting, resources, 1 121 texts in English and French, numbers and units, shortcuts window; the build check for missing French texts (tested with a missing and a stale key) |
 | Unit tests | 4 | 2026-11-05 | No test project — start-up in both languages checked by the run, the rest of Test Impact left to the user |
 | README | 4 | 2026-11-05 | Both READMEs: the setting, the sizes' units; `README.fr.md`: the French labels |
 | French docs | 4 | 2026-11-05 | `GLOSSARY.fr.md`, `SHORTCUTS.fr.md`: the French labels, embedded `SHORTCUTS.fr.md` |
-| Rules | 4 | 2026-11-05 | RULES.md § UI Language; `../CLAUDE.md` § French Versions (propagated to the running sessions); glossaries' *UI language* row |
+| Rules | 4, 5 | 2026-11-05 | RULES.md § UI Language (its build check in 5); `../CLAUDE.md` § French Versions (propagated to the running sessions); glossaries' *UI language* row |
 
 ---
 
