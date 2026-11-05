@@ -31,8 +31,10 @@ Components involved:
 - A `LinkLabel` in `_statusLine`, **right after `_status`** and before `_cancelButton`: the link reads as
   the end of the message. Hidden by default.
 - Text: **Open directory** (`Strings.resx`), **Ouvrir le dossier** in French (`Strings.fr.resx`).
-- Its icon: **📂** before the text (§ Icons), one `UiIcons` field, drawn at 16 logical px and again when
-  the DPI changes, as the buttons' icons.
+- Its icon: **📂** before the text (§ Icons) — `UiIcons.OpenFolder`, the field the tiles' *Open file location*
+  already shows, the same action — drawn as the label's image at 16 logical px, its text pushed right by the
+  icon's width plus 4 px, again when the DPI changes (`MainForm.UpdateOpenFolderLinkIcon`, from
+  `UpdateEffectIcons`).
 - The `LinkLabel`'s own colors — Windows' link blue, the hand cursor, underlined on hover.
 - Its tooltip: the **full path** of the file it opens.
 - `FitStatusWidth` subtracts the link's width while it shows, so a long message wraps before pushing the
@@ -63,8 +65,9 @@ Every route the user chose: Save, Copy, Save last / Save upscaled, Cell copy.
 | Cell copy (key, *Copy cell*, layer list *Copy*) | `CopyAlone` | The previous copy in `previous\` |
 | Copy last MP4 / GIF | `CopyLastVideo` | The last video's file in `%TEMP%\ImageGridFusion` — the one the clipboard points at, emptied at the next start |
 
-- `PreviousCopy.Keep` / `KeepCopyOf` **return the path** of the file kept; `KeepPrevious` returns it with
-  the status suffix, `null` when the copy could not be kept.
+- `PreviousCopy.Keep` / `KeepCopyOf` **return the path** of the file kept; `KeepPrevious` takes a
+  `Func<string>` and returns `(Suffix, File)` — the status suffix, and the file kept, `null` when it could not
+  be kept.
 - A Copy whose previous copy could not be kept (`MainStatusNotKept`): **no link** — the message says why,
   and a PNG copied has no other file.
 
@@ -127,6 +130,20 @@ kept shows none. No open question left.
 Go given: code, unit tests and documentation, in a worktree (`.claude/worktrees/open-directory-link`, branch
 `feature/open-directory-link`). Scope frozen as of Iteration 2.
 
+### Iteration 4 — 2026-11-05 — 🧭 Implementation choices
+
+- **The icon is `UiIcons.OpenFolder`**, the 📂 the tiles' and the URL zone's *Open file location* already show:
+  § Icons gives one field per action, and this is the same action. No new field.
+- **Drawn as the `LinkLabel`'s `Image`**, aligned left, the text pushed right by a left padding of the icon's
+  width plus 4 logical px, its minimum height the icon's; refreshed with the other icons
+  (`UpdateOpenFolderLinkIcon`, called from `UpdateEffectIcons`).
+- **`KeepPrevious`** now takes a `Func<string>` and returns `(Suffix, File)`, rather than a second method.
+- **`ShowStatus(…, error: true)` ignores a `savedFile`**: the link never shows with an error, whatever the caller.
+- **Checked** by an instance launched with `--new-instance`: *Copy PNG* clicked through UI Automation, the link
+  found visible after the message (`Copied to the clipboard · PNG · 1200 × 628…`). The click itself goes
+  through the existing `ShowInExplorer`, not clicked in that check.
+- No rule broken.
+
 ---
 
 ## Implementation Log
@@ -136,9 +153,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | Not applicable — no test project |
-| README | | | |
+| Code | 3 | 2026-11-05 | `PreviousCopy` returns the path; the link in `MainForm`'s status line; every route wired; `Strings` (EN / FR) |
+| Unit tests | 3 | 2026-11-05 | Not applicable — no test project in the repository |
+| README | 3 | 2026-11-05 | `README.md` / `README.fr.md` § Output — the link after the status line's item |
 
 ---
 
