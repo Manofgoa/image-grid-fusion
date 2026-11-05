@@ -1685,7 +1685,7 @@ internal sealed partial class MainForm : Form
 
         // The cached index first, then the folder rescanned in the background: the window is up already.
         _explorer.Start(AppSettings.ExplorerFolder);
-        this._explorer.SecondarySourceFolders = AppSettings.SecondarySources;
+        this._explorer.SecondarySourceEntries = AppSettings.SecondarySources;
 
         // Files dropped on the .exe icon; loaded once the window is visible so startup stays fast.
         string[] files = [.. _startupFiles, .. this._launchFiles];
@@ -5627,7 +5627,7 @@ internal sealed partial class MainForm : Form
         }
 
         // A secondary source never overlaps the base folder (workfiles/20261105-secondary-file-sources.md).
-        if (this._explorer.SecondarySourceFolders.FirstOrDefault(source => Explorer.SecondarySources.Overlap(source, Path.TrimEndingDirectorySeparator(Path.GetFullPath(dialog.SelectedPath)))) is { } overlapped)
+        if (this._explorer.SecondarySourceEntries.Select(source => source.Folder).FirstOrDefault(source => Explorer.SecondarySources.Overlap(source, Path.TrimEndingDirectorySeparator(Path.GetFullPath(dialog.SelectedPath)))) is { } overlapped)
         {
             MessageBox.Show(this, Texts.Format(Strings.SourcesBaseOverlaps, dialog.SelectedPath, overlapped), Strings.MainPickerExplorerFolderDescription, MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
@@ -5651,9 +5651,11 @@ internal sealed partial class MainForm : Form
     /// </summary>
     private void EditSecondarySources()
     {
-        using var window = new SecondarySourcesWindow(this._explorer.SecondarySourceFolders, () => this._explorer.BaseFolder);
-        window.SourcesChanged += (_, sources) =>
+        using var window = new SecondarySourcesWindow([.. this._explorer.SecondarySourceEntries.Select(source => source.Folder)], () => this._explorer.BaseFolder);
+        window.SourcesChanged += (_, folders) =>
         {
+            // The sources kept keep their colors; a new one takes the first free (workfiles/20261105-secondary-file-sources.md § Source Colors).
+            var sources = SecondarySources.Colored(folders, this._explorer.SecondarySourceEntries, SourceColors.Palette.Length);
             try
             {
                 AppSettings.SaveSecondarySources(sources);
@@ -5663,7 +5665,7 @@ internal sealed partial class MainForm : Form
                 this.ShowStatus(Texts.Format(Strings.MainStatusNotSavedSecondarySources, ex.Message), error: true);
             }
 
-            this._explorer.SecondarySourceFolders = sources;
+            this._explorer.SecondarySourceEntries = sources;
         };
         window.ShowDialog(this);
     }

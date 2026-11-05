@@ -27,6 +27,12 @@ internal sealed record IndexFiles(string Folder)
 }
 
 /// <summary>
+/// A secondary source as the settings keep it: its folder, as a full path, and its color — an index into the
+/// palette (<c>UI/SourceColors</c>), given when it is added and kept until it is removed.
+/// </summary>
+internal sealed record SecondarySource(string Folder, int Color);
+
+/// <summary>
 /// The secondary sources: folders on disk, anywhere, shown as folders of the base folder's root in the
 /// folder view, each indexed apart — never overlapping the base folder nor one another, so a file belongs
 /// to one index only. See workfiles/20261105-secondary-file-sources.md.
@@ -102,6 +108,46 @@ internal static class SecondarySources
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// <paramref name="folders"/> with their colors, indexes into a palette of <paramref name="colors"/>: each folder
+    /// already in <paramref name="before"/> keeps its own, so removing a source never recolors the others; a new one
+    /// takes the palette's first color no source holds, else the one the fewest hold. See
+    /// workfiles/20261105-secondary-file-sources.md § Source Colors.
+    /// </summary>
+    public static IReadOnlyList<SecondarySource> Colored(IEnumerable<string> folders, IEnumerable<SecondarySource> before, int colors)
+    {
+        var kept = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var source in before)
+        {
+            kept.TryAdd(source.Folder, source.Color);
+        }
+
+        string[] wanted = [.. folders];
+        int[] held = new int[Math.Max(1, colors)];
+        foreach (string folder in wanted)
+        {
+            if (kept.TryGetValue(folder, out int color) && color >= 0 && color < held.Length)
+            {
+                held[color]++;
+            }
+        }
+
+        var result = new List<SecondarySource>(wanted.Length);
+        foreach (string folder in wanted)
+        {
+            if (!kept.TryGetValue(folder, out int color) || color < 0 || color >= held.Length)
+            {
+                color = Array.IndexOf(held, held.Min());
+                held[color]++;
+                kept[folder] = color;
+            }
+
+            result.Add(new SecondarySource(folder, color));
+        }
+
+        return result;
     }
 
     /// <summary>

@@ -81,6 +81,21 @@ Components involved (all under `src/ImageGridFusion/`):
   (`_openLocation` → `OpenLocation()`), opening the source's own folder on disk — checked to work on a
   source's full path, outside the base folder.
 
+## Source Colors
+
+*(Iteration 8.)* Each source has a **color of its own**, where the first iteration drew them all in blue:
+
+- **The palette** (`UI/SourceColors`): blue — the first source's, as before —, violet, teal, green, plum; never a
+  red, an orange or a yellow, which read as an error or a warning. Past five sources, the least held color again.
+- **Given when the source is added**, the palette's first color no source holds (`SecondarySources.Colored`), and
+  **kept in the settings** with its folder — `SecondarySources` becomes a list of `{ "folder", "color" }`, an older
+  list of bare paths read with its colors given in order. Removing a source never recolors the others.
+- **What takes it**: the source's tile — the drawn folder, Windows' thumbnail tinted (`SourceColor.Tint`), its file
+  count —, its name in the breadcrumb, and the **status line while the source is open** (`FileExplorerPanel.Show`),
+  an error staying red. The folders inside it keep the manila color.
+- **The status line inside a source** gives the source's own index (`4,251 files · indexed …`), then its own
+  run's activity only: before, it gave the base folder's summary beside the source's OCR progress.
+
 ## The Source's Index
 
 - **Its own files**: each source has its own `files.index`, `files.content`, `files.faces`,
@@ -285,6 +300,13 @@ The user's alternative, then chosen over Iteration 6's ←: the breadcrumb insid
 folder's name**, followed by a **clear separator** — `│` — rather than `›`, which would show a child; then
 the source's name, blue, and its folders separated by `›`. The blue root tile only (Iteration 6) stands.
 
+### Iteration 8 — 2026-11-05 — ⚙️ Post-implementation — A color per source
+
+The user, seeing the status line of a source give the base folder's file count beside the source's OCR progress:
+the line must turn blue to show a secondary source — and further, **each source has its color**, from a palette,
+the first blue, none reading as an error; its folder and its messages in that color. Choices asked: the five colors
+above, **fixed when the source is added**, on its tile, its breadcrumb name and the status line — § Source Colors.
+
 ---
 
 ## Implementation Log
@@ -294,11 +316,11 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 4, 5 | 2026-11-05 | Settings and index folders, blue tiles and breadcrumb, the explorer's sources, the ⚙ window |
-| Unit tests | — | — | No test project in the repository |
-| README | 5 | 2026-11-05 | § File explorer, English and French |
-| GLOSSARY | 5 | 2026-11-05 | *Secondary source*, English and French |
-| RULES | 5 | 2026-11-05 | § Secondary Sources |
+| Code | 4, 5, 8 | 2026-11-05 | Settings and index folders, blue tiles and breadcrumb, the explorer's sources, the ⚙ window; a color per source, the status line's own summary |
+| Unit tests | 8 | 2026-11-05 | `SecondarySourceColorsTests`: the colors given, kept, wrapped |
+| README | 5, 8 | 2026-11-05 | § File explorer, English and French |
+| GLOSSARY | 5, 8 | 2026-11-05 | *Secondary source*, English and French |
+| RULES | 5, 8 | 2026-11-05 | § Secondary Sources |
 | SHORTCUTS | — | — | No key or gesture added |
 
 ---

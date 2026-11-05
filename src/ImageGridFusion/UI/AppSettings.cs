@@ -176,17 +176,48 @@ internal static class AppSettings
     public static void SaveExplorerFolder(string folder) => Save((ExplorerFolderName, folder));
 
     /// <summary>
-    /// The secondary sources' folders, as full paths, in the order they were added; empty when none was saved or
-    /// the value is no list of texts. See workfiles/20261105-secondary-file-sources.md § Managing the Sources.
+    /// The secondary sources, in the order they were added, each <c>{ "folder", "color" }</c>; an older list of bare
+    /// paths read with its colors given in order, a missing or foreign color given the first free one; empty when
+    /// none was saved. See workfiles/20261105-secondary-file-sources.md § Managing the Sources, § Source Colors.
     /// </summary>
-    public static string[] SecondarySources =>
-        Values[SecondarySourcesName] is JsonArray array
-            ? [.. array.OfType<JsonValue>().Select(node => node.TryGetValue(out string? path) ? path : null).OfType<string>().Where(path => path.Length > 0)]
-            : [];
+    public static IReadOnlyList<SecondarySource> SecondarySources
+    {
+        get
+        {
+            if (Values[SecondarySourcesName] is not JsonArray array)
+            {
+                return [];
+            }
 
-    /// <summary>Saves the secondary sources' folders; throws an <see cref="IsSaveError"/> exception on failure.</summary>
-    public static void SaveSecondarySources(IEnumerable<string> folders) =>
-        Save((SecondarySourcesName, new JsonArray([.. folders.Select(folder => (JsonNode?)folder)])));
+            var folders = new List<string>();
+            var colored = new List<SecondarySource>();
+            foreach (var node in array)
+            {
+                string? folder = node switch
+                {
+                    JsonValue value when value.TryGetValue(out string? path) => path,
+                    JsonObject entry when entry["folder"] is JsonValue value && value.TryGetValue(out string? path) => path,
+                    _ => null,
+                };
+                if (folder is not { Length: > 0 })
+                {
+                    continue;
+                }
+
+                folders.Add(folder);
+                if (node is JsonObject withColor && withColor["color"] is JsonValue color && color.TryGetValue(out int index))
+                {
+                    colored.Add(new SecondarySource(folder, index));
+                }
+            }
+
+            return Explorer.SecondarySources.Colored(folders, colored, SourceColors.Palette.Length);
+        }
+    }
+
+    /// <summary>Saves the secondary sources, each its folder and its color; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveSecondarySources(IEnumerable<SecondarySource> sources) =>
+        Save((SecondarySourcesName, new JsonArray([.. sources.Select(source => (JsonNode?)new JsonObject { ["folder"] = source.Folder, ["color"] = source.Color })])));
 
     /// <summary>
     /// The user's GIPHY API key, the GIPHY view's searches sent with it — kept here only, never in the repository;

@@ -2657,9 +2657,21 @@ internal sealed partial class FileExplorerPanel : Panel
         ShowSummary();
     }
 
+    /// <summary>
+    /// The summary line: the base folder's index and what runs over it — or, while a secondary source is open, that
+    /// source's index and its own run only, the base folder's activity left out (§ Source Colors).
+    /// </summary>
     private void ShowSummary()
     {
         _transient.Stop();
+        if (this.ViewSource is { } source)
+        {
+            string own = source.Index is { } index ? Summary(index) : Strings.ExplorerNoIndexYet;
+            string?[] running = this._sourceRun == source ? [this._activity, this._engineActivity] : [this._engineActivity];
+            Show(string.Join(" · ", [own, .. running.OfType<string>()]), error: false);
+            return;
+        }
+
         string[] parts = [this._summary, .. new[] { this._activity, this._engineActivity }.OfType<string>()];
         Show(string.Join(" · ", parts), this._summaryError);
     }
@@ -2694,9 +2706,10 @@ internal sealed partial class FileExplorerPanel : Panel
         _transient.Start();
     }
 
+    /// <summary>A message on the status line: an error in red, else in the open secondary source's color, if any.</summary>
     private void Show(string message, bool error)
     {
-        _status.ForeColor = error ? Color.Firebrick : SystemColors.ControlText;
+        _status.ForeColor = error ? Color.Firebrick : this.ViewSource?.Colors.Text ?? SystemColors.ControlText;
         _status.Text = message;
         _toolTip.SetToolTip(_status, message);
     }
@@ -3241,9 +3254,9 @@ internal sealed partial class FileExplorerPanel : Panel
         return relative.Length == 0 ? head : [.. head, .. relative.Split(['\\', '/'], StringSplitOptions.RemoveEmptyEntries)];
     }
 
-    /// <summary>The breadcrumb on the open folder, <paramref name="trailing"/> after it — a secondary source's name in blue, after a clear separator.</summary>
+    /// <summary>The breadcrumb on the open folder, <paramref name="trailing"/> after it — a secondary source's name in its color, after a clear separator.</summary>
     private void ShowBreadcrumb(string trailing) =>
-        _breadcrumb.SetPath(_baseFolder is null ? [] : SegmentsOf(_openFolder), trailing, this.ViewSource is null ? int.MaxValue : 1);
+        _breadcrumb.SetPath(_baseFolder is null ? [] : SegmentsOf(_openFolder), trailing, this.ViewSource is null ? int.MaxValue : 1, this.ViewSource?.Colors.Text ?? default);
 
     /// <summary>The index, and the folders derived from it, taken over together.</summary>
     private void SetIndex(FileIndex? index, FolderTree? tree)

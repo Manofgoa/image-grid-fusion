@@ -25,12 +25,15 @@ namespace ImageGridFusion.UI;
 /// each run of equal titles; null in a list without sections (workfiles/20261103-file-explorer-groups.md).
 /// <paramref name="Online"/>: a result of an online library — GIPHY's — its picture its animated thumbnail, its
 /// <paramref name="FullPath"/> a key of no file, a file only once fetched (workfiles/20261105-online-library-giphy.md).
-/// <paramref name="InSource"/>: a folder of a secondary source — the source itself or a folder inside it — drawn in
-/// blue, another environment; <paramref name="Unavailable"/>: a secondary source not found on the disk, drawn faded,
+/// <paramref name="Source"/>: a secondary source's own tile, drawn in that source's color, another environment
+/// (§ Source Colors); <paramref name="Unavailable"/>: a secondary source not found on the disk, drawn faded,
 /// its tooltip saying so (workfiles/20261105-secondary-file-sources.md § In the Folder View).
 /// </summary>
-internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false, string? ContentWord = null, long? Size = null, int? Count = null, EffectPreset? Preset = null, string? DescriptionWord = null, string? GroupId = null, RectangleF? Face = null, string? FaceKey = null, float? Closeness = null, string? Section = null, Web.GiphyItem? Online = null, bool InSource = false, bool Unavailable = false)
+internal sealed record ExplorerRow(string FullPath, string Name, bool IsFolder = false, string? ContentWord = null, long? Size = null, int? Count = null, EffectPreset? Preset = null, string? DescriptionWord = null, string? GroupId = null, RectangleF? Face = null, string? FaceKey = null, float? Closeness = null, string? Section = null, Web.GiphyItem? Online = null, SourceColor? Source = null, bool Unavailable = false)
 {
+    /// <summary>Whether the tile is a secondary source's own, drawn in its color.</summary>
+    public bool InSource => this.Source is not null;
+
     /// <summary>What tells a tile from the others: a file's presets share its path, and its faces.</summary>
     public string Key => this.GroupId is { } group ? "group:" + group : this.FaceKey ?? this.Preset?.Id ?? this.FullPath;
 
@@ -955,7 +958,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
             row.IsFolder && row.Count is { } count ? FileCount(count) : row.Name,
             _nameFont,
             Scrolled(NameBounds(index)),
-            selected ? SystemColors.Highlight : SystemColors.GrayText,
+            selected ? SystemColors.Highlight : row.Source?.Text ?? SystemColors.GrayText,
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
 
         // A preset: its description's first line under the file's name, the whole description in the tooltip.
@@ -1217,7 +1220,7 @@ internal sealed class ThumbnailGrid : ScrollableControl
         Rectangle? flap = null;
         if (known && image is null && row.IsFolder)
         {
-            flap = PaintFolderGlyph(g, tile, row.InSource, row.Unavailable);
+            flap = PaintFolderGlyph(g, tile, row.Source, row.Unavailable);
         }
         else if (image is not null)
         {
@@ -1225,12 +1228,12 @@ internal sealed class ThumbnailGrid : ScrollableControl
             int width = Math.Max(1, (int)Math.Round(image.Width * scale));
             int height = Math.Max(1, (int)Math.Round(image.Height * scale));
             var target = new Rectangle(tile.X + (tile.Width - width) / 2, tile.Y + (tile.Height - height) / 2, width, height);
-            if (row.IsFolder && row.InSource)
+            if (row.IsFolder && row.Source is { } source)
             {
-                // A secondary source's folder: Windows' thumbnail in blue, another environment.
-                using var blue = new ImageAttributes();
-                blue.SetColorMatrix(SourceTint);
-                g.DrawImage(image, target, 0, 0, image.Width, image.Height, GraphicsUnit.Pixel, blue);
+                // A secondary source's folder: Windows' thumbnail in the source's color, another environment.
+                using var tinted = new ImageAttributes();
+                tinted.SetColorMatrix(source.Tint);
+                g.DrawImage(image, target, 0, 0, image.Width, image.Height, GraphicsUnit.Pixel, tinted);
             }
             else
             {
@@ -1412,28 +1415,11 @@ internal sealed class ThumbnailGrid : ScrollableControl
     private Font GroupFont => this._groupFont ??= new Font(this._nameFont, FontStyle.Bold);
 
     /// <summary>
-    /// The colors a secondary source's folder is drawn in (workfiles/20261105-secondary-file-sources.md § In the
-    /// Folder View): Windows' folder thumbnail turned into shades of blue by its brightness — the manila folder a
-    /// mid blue — and the drawn folder's back and front.
-    /// </summary>
-    private static readonly ColorMatrix SourceTint = new(
-    [
-        [0.30f * 0.35f, 0.30f * 0.60f, 0.30f, 0, 0],
-        [0.59f * 0.35f, 0.59f * 0.60f, 0.59f, 0, 0],
-        [0.11f * 0.35f, 0.11f * 0.60f, 0.11f, 0, 0],
-        [0, 0, 0, 1, 0],
-        [0.02f, 0.10f, 0.25f, 0, 1],
-    ]);
-
-    private static readonly Color SourceBack = Color.FromArgb(46, 108, 196);
-    private static readonly Color SourceFront = Color.FromArgb(92, 156, 232);
-
-    /// <summary>
     /// A manila folder centered in the tile, its tab at the top left, 90 % of the tile at its 4:3 shape — in
-    /// blue for a secondary source's (<paramref name="inSource"/>), faded for one not found
+    /// a secondary source's color for its own (<paramref name="source"/>), faded for one not found
     /// (<paramref name="faded"/>); returns where its name goes, on its front panel.
     /// </summary>
-    private static Rectangle PaintFolderGlyph(Graphics g, Rectangle tile, bool inSource = false, bool faded = false)
+    private static Rectangle PaintFolderGlyph(Graphics g, Rectangle tile, SourceColor? source = null, bool faded = false)
     {
         int height = Math.Max(8, tile.Height * 9 / 10);
         int width = height * 4 / 3;
@@ -1448,14 +1434,14 @@ internal sealed class ThumbnailGrid : ScrollableControl
         var smoothing = g.SmoothingMode;
         g.SmoothingMode = SmoothingMode.AntiAlias;
         int alpha = faded ? 90 : 255;
-        using (var back = new SolidBrush(Color.FromArgb(alpha, inSource ? SourceBack : Color.FromArgb(222, 170, 60))))
+        using (var back = new SolidBrush(Color.FromArgb(alpha, source?.Back ?? Color.FromArgb(222, 170, 60))))
         {
             g.FillRectangle(back, tab);
             g.FillRectangle(back, body);
         }
 
         var panel = new Rectangle(body.X, body.Y + body.Height / 5, body.Width, body.Height - body.Height / 5);
-        using (var front = new SolidBrush(Color.FromArgb(alpha, inSource ? SourceFront : Color.FromArgb(247, 205, 95))))
+        using (var front = new SolidBrush(Color.FromArgb(alpha, source?.Front ?? Color.FromArgb(247, 205, 95))))
         {
             g.FillRectangle(front, panel);
         }

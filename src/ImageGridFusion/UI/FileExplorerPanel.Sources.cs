@@ -21,15 +21,15 @@ internal sealed partial class FileExplorerPanel
     private bool _baseRescanEnabled;
 
     /// <summary>
-    /// The secondary sources' folders, as full paths: set from the settings at start-up and by the sources window.
-    /// A new one has its faces and embeddings loaded from its index — never its folder read — a removed one its
-    /// runs stopped and its index deleted. Setting it raises nothing.
+    /// The secondary sources — their folders, as full paths, and their colors: set from the settings at start-up and
+    /// by the sources window. A new one has its faces and embeddings loaded from its index — never its folder read —
+    /// a removed one its runs stopped and its index deleted, a kept one takes its color. Setting it raises nothing.
     /// </summary>
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public IReadOnlyList<string> SecondarySourceFolders
+    public IReadOnlyList<SecondarySource> SecondarySourceEntries
     {
-        get => [.. this._sources.Select(source => source.Folder)];
+        get => [.. this._sources.Select(source => new SecondarySource(source.Folder, source.Color))];
         set => this.ApplySources(value);
     }
 
@@ -45,6 +45,12 @@ internal sealed partial class FileExplorerPanel
 
         /// <summary>Its name on its tile and in the breadcrumb: the folder's own, a drive root's path.</summary>
         public string Name => Path.GetFileName(this.Folder) is { Length: > 0 } name ? name : this.Folder;
+
+        /// <summary>Its color, an index into <see cref="SourceColors.Palette"/>, kept in the settings.</summary>
+        public int Color { get; set; }
+
+        /// <summary>What its color draws with: its tile, its name in the breadcrumb, the status line while it is open.</summary>
+        public SourceColor Colors => SourceColors.Of(this.Color);
 
         public FileIndex? Index { get; set; }
 
@@ -181,17 +187,19 @@ internal sealed partial class FileExplorerPanel
     /// The sources set: the new ones' faces and embeddings loaded, the removed ones stopped and their index
     /// deleted — the folder view leaving a removed one it showed — the groups and the list made again.
     /// </summary>
-    private void ApplySources(IReadOnlyList<string> folders)
+    private void ApplySources(IReadOnlyList<SecondarySource> sources)
     {
         var wanted = new List<string>();
-        foreach (string folder in folders)
+        var colors = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in sources)
         {
             try
             {
-                string normalized = FileIndex.NormalizeFolder(folder);
+                string normalized = FileIndex.NormalizeFolder(entry.Folder);
                 if (!wanted.Contains(normalized, StringComparer.OrdinalIgnoreCase))
                 {
                     wanted.Add(normalized);
+                    colors[normalized] = entry.Color;
                 }
             }
             catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
@@ -227,11 +235,12 @@ internal sealed partial class FileExplorerPanel
         {
             if (kept.TryGetValue(folder, out var source))
             {
+                source.Color = colors[folder];
                 this._sources.Add(source);
                 continue;
             }
 
-            var added = new SourceRoot(folder);
+            var added = new SourceRoot(folder) { Color = colors[folder] };
             this._sources.Add(added);
             _ = this.LoadSourceStoresAsync(added);
         }
@@ -302,9 +311,9 @@ internal sealed partial class FileExplorerPanel
         this.Regroup(force: true);
     }
 
-    /// <summary>The source tiles of the base folder's root, in the settings' order — each in blue, faded when its folder is not found.</summary>
+    /// <summary>The source tiles of the base folder's root, in the settings' order — each in its color, faded when its folder is not found.</summary>
     private List<ExplorerRow> SourceRows(IReadOnlyList<bool> found) =>
-        [.. this._sources.Select((source, i) => new ExplorerRow(source.Folder, source.Name, IsFolder: true, Count: source.Index?.Count, InSource: true, Unavailable: i < found.Count && !found[i]))];
+        [.. this._sources.Select((source, i) => new ExplorerRow(source.Folder, source.Name, IsFolder: true, Count: source.Index?.Count, Source: source.Colors, Unavailable: i < found.Count && !found[i]))];
 
     /// <summary>
     /// A source opened from its tile: the folder view shows its root — any source's run left paused — its cached
@@ -339,6 +348,11 @@ internal sealed partial class FileExplorerPanel
 
         this._openSource = source;
         this.UpdateRescan();
+        if (!this._transient.Enabled)
+        {
+            // The status line takes the source's color and its index's summary, or gives them back.
+            this.ShowSummary();
+        }
     }
 
     /// <summary>

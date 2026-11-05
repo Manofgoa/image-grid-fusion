@@ -19,16 +19,15 @@ internal sealed class Breadcrumb : Control
     private const string SourceSeparator = "  │  ";
     private const string Ellipsis = "…";
 
-    /// <summary>The blue a secondary source's segments are written in.</summary>
-    private static readonly Color SourceColor = Color.FromArgb(0, 84, 190);
     private const TextFormatFlags Flags = TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.VerticalCenter;
 
     private readonly ToolTip _toolTip = new();
     private readonly List<(Rectangle Bounds, int Depth)> _links = [];
     private IReadOnlyList<string> _segments = [];
 
-    // The segment of a secondary source's name, drawn in its blue after a clear separator; int.MaxValue for none.
+    // The segment of a secondary source's name, drawn in its color after a clear separator; int.MaxValue for none.
     private int _sourceAt = int.MaxValue;
+    private Color _sourceColor;
     private string _trailing = "";
     private Rectangle _up;
 
@@ -52,13 +51,15 @@ internal sealed class Breadcrumb : Control
 
     /// <summary>
     /// The path shown — the base folder's name first — and the text after it; the segment at
-    /// <paramref name="sourceAt"/> is a secondary source's name, drawn in blue after a clear separator rather than
-    /// the child's › (workfiles/20261105-secondary-file-sources.md § In the Folder View).
+    /// <paramref name="sourceAt"/> is a secondary source's name, drawn in its color (<paramref name="sourceColor"/>)
+    /// after a clear separator rather than the child's › (workfiles/20261105-secondary-file-sources.md § In the Folder
+    /// View, § Source Colors).
     /// </summary>
-    public void SetPath(IReadOnlyList<string> segments, string trailing, int sourceAt = int.MaxValue)
+    public void SetPath(IReadOnlyList<string> segments, string trailing, int sourceAt = int.MaxValue, Color sourceColor = default)
     {
         _segments = segments;
         this._sourceAt = sourceAt;
+        this._sourceColor = sourceColor;
         _trailing = trailing;
         _hovered = int.MinValue;
         _toolTip.SetToolTip(this, null);
@@ -131,7 +132,7 @@ internal sealed class Breadcrumb : Control
             {
                 // The open folder: cut with an ellipsis rather than dropped.
                 var bounds = new Rectangle(x, 0, Math.Max(0, Math.Min(widths[depth], limit - x)), ClientSize.Height);
-                TextRenderer.DrawText(g, _segments[depth], Font, bounds, depth == this._sourceAt ? SourceColor : SystemColors.ControlText, Flags | TextFormatFlags.EndEllipsis);
+                TextRenderer.DrawText(g, _segments[depth], Font, bounds, depth == this._sourceAt ? this._sourceColor : SystemColors.ControlText, Flags | TextFormatFlags.EndEllipsis);
                 x = bounds.Right;
                 break;
             }
@@ -139,7 +140,7 @@ internal sealed class Breadcrumb : Control
             _links.Add((new Rectangle(x, 0, widths[depth], ClientSize.Height), depth));
             using (var font = _hovered == depth ? new Font(Font, FontStyle.Underline) : null)
             {
-                x = Draw(g, _segments[depth], x, depth == this._sourceAt ? SourceColor : SystemColors.HotTrack, font ?? Font);
+                x = Draw(g, _segments[depth], x, depth == this._sourceAt ? this._sourceColor : SystemColors.HotTrack, font ?? Font);
             }
 
             x = Draw(g, this.SeparatorBefore(depth + 1), x, SystemColors.GrayText, Font);

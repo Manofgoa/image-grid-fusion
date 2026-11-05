@@ -1270,9 +1270,15 @@ Other folders shown in the folder view beside the base folder, each indexed apar
   `IndexFiles`); one worker at a time, the base folder's passes waiting (`StartExtraction` returns while `_sourceRun` is
   set); leaving the source — another folder, another view, a setting changed — pauses it (`PauseSourceRun`). The base
   folder's automatic runs never start a source's.
-- **In blue**: a source's own tile (`ExplorerRow.InSource`) and its name in the breadcrumb, after a clear `│` rather than
-  the child's `›` (`Breadcrumb.SetPath`'s `sourceAt`); the folders inside it keep their usual color. A source not found
-  stays, faded (`ExplorerRow.Unavailable`). Not remembered as the open folder.
+- **In its color**: a source's own tile (`ExplorerRow.Source`) — its folder and its file count — and its name in the
+  breadcrumb, after a clear `│` rather than the child's `›` (`Breadcrumb.SetPath`'s `sourceAt`); the folders inside it
+  keep their usual color. A source not found stays, faded (`ExplorerRow.Unavailable`). Not remembered as the open folder.
+- **One color per source** (`UI/SourceColors`): blue, violet, teal, green, plum — never a red, an orange or a yellow, read
+  as an error or a warning —, an index into the palette kept with its folder in the settings, given when it is added — the
+  first no source holds, else the least held (`SecondarySources.Colored`) — and kept until it is removed: removing a
+  source never recolors another. A new place drawing a source reads `SourceRoot.Colors`.
+- **The status line while a source is open** is in its color (`FileExplorerPanel.Show`), an error staying red: its own
+  index's summary, then its own run's activity only — never the base folder's (`ShowSummary`).
 
 ## Start-Up
 
