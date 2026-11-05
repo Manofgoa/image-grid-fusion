@@ -58,6 +58,8 @@ internal static class AppSettings
     private const string GiphyApiKeyName = "GiphyApiKey";
     private const string GiphyRatingName = "GiphyRating";
     private const string GiphyCallsName = "GiphyCalls";
+    private const string GiphyGifsShownName = "GiphyGifsShown";
+    private const string GiphyStickersShownName = "GiphyStickersShown";
     private const string SecondarySourcesName = "SecondarySources";
 
     /// <summary>
@@ -203,6 +205,15 @@ internal static class AppSettings
 
     /// <summary>Saves the GIPHY content rating; throws an <see cref="IsSaveError"/> exception on failure.</summary>
     public static void SaveGiphyRating(string rating) => Save((GiphyRatingName, rating));
+
+    /// <summary>
+    /// Whether the file explorer offers its GIPHY GIFs and GIPHY Stickers views — the ⚙ menu's GIPHY submenu; each
+    /// shown when nothing was saved. See workfiles/20261105-giphy-gif-sticker-views.md § The ⚙ Menu's GIPHY Submenu.
+    /// </summary>
+    public static (bool Gifs, bool Stickers) GiphyViewsShown => (Int(GiphyGifsShownName) is not 0, Int(GiphyStickersShownName) is not 0);
+
+    /// <summary>Saves which GIPHY views the file explorer offers; throws an <see cref="IsSaveError"/> exception on failure.</summary>
+    public static void SaveGiphyViewsShown(bool gifs, bool stickers) => Save((GiphyGifsShownName, gifs ? 1 : 0), (GiphyStickersShownName, stickers ? 1 : 0));
 
     /// <summary>
     /// When the app called GIPHY in the last hour, in Unix seconds — the quota counted across sessions, GIPHY giving

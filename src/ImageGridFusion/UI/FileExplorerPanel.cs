@@ -9,6 +9,7 @@ using ImageGridFusion.Composition;
 using ImageGridFusion.Explorer;
 using ImageGridFusion.Imaging;
 using ImageGridFusion.Resources;
+using ImageGridFusion.Web;
 
 namespace ImageGridFusion.UI;
 
@@ -101,7 +102,7 @@ internal sealed partial class FileExplorerPanel : Panel
 
     // The views drop-down's icons, in ExplorerMode's order (workfiles/20261029-ctrl-f-view-cycle.md § Drop-Down
     // Icons), in full color (workfiles/20261029-menu-icons.md § Other Controls).
-    private static readonly UiIcon[] ModeIcons = [UiIcons.Folder, UiIcons.Group, UiIcons.Favorites, UiIcons.OnlineLibrary];
+    private static readonly UiIcon[] ModeIcons = [UiIcons.Folder, UiIcons.Group, UiIcons.Favorites, UiIcons.OnlineLibrary, UiIcons.OnlineLibrary];
 
     // The sort drop-down's icons, in FileOrder's order; the direction stays in the text (Iteration 11).
     private static readonly UiIcon[] SortIcons = [UiIcons.Date, UiIcons.ByName, UiIcons.FileSize];
@@ -345,27 +346,19 @@ internal sealed partial class FileExplorerPanel : Panel
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        this._searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        this._searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        foreach (ExplorerMode mode in Enum.GetValues<ExplorerMode>())
-        {
-            this._modes.Items.Add(mode);
-        }
 
         // The entries' text as drawn, also what the accessibility tree reads — never the enum's name.
         this._modes.FormattingEnabled = true;
         this._modes.Format += (_, e) => e.Value = ModeText((ExplorerMode)e.ListItem!);
-        this._modes.SelectedIndex = (int)this.Mode;
+        this.FillModes();
         this.ApplyView();
         this._searchRow.Controls.Add(this._modes, 0, 0);
         this._searchRow.Controls.Add(this._byName, 1, 0);
         this._searchRow.Controls.Add(this._byContent, 2, 0);
-        this._searchRow.Controls.Add(this._giphyGifs, 3, 0);
-        this._searchRow.Controls.Add(this._giphyStickers, 4, 0);
-        this._searchRow.Controls.Add(this._search, 5, 0);
-        this._searchRow.Controls.Add(this._rescan, 6, 0);
+        this._searchRow.Controls.Add(this._search, 3, 0);
+        this._searchRow.Controls.Add(this._rescan, 4, 0);
         _captionRow.Controls.Add(_caption);
         _captionRow.Controls.Add(_breadcrumb);
         this._captionRow.Controls.Add(this._similarClear);
@@ -504,7 +497,7 @@ internal sealed partial class FileExplorerPanel : Panel
         this._grid.IndexedContent = this.IndexedContentOf;
         this._toolTip.SetToolTip(this._similarClear, Strings.ExplorerTipBackToSearch);
         _search.KeyDown += OnSearchKeyDown;
-        this._modes.SelectionChangeCommitted += (_, _) => this.ChangeMode((ExplorerMode)this._modes.SelectedIndex);
+        this._modes.SelectionChangeCommitted += (_, _) => this.ChangeMode((ExplorerMode)this._modes.SelectedItem!);
         this._modes.DrawItem += this.DrawModeItem;
         this._byName.Click += (_, _) => this.ToggleCriterion(this._byName, this._byContent);
         this._byContent.Click += (_, _) => this.ToggleCriterion(this._byContent, this._byName);
@@ -964,14 +957,25 @@ internal sealed partial class FileExplorerPanel : Panel
     [DefaultValue(ExplorerMode.Folders)]
     public ExplorerMode Mode
     {
-        get => this._giphyView ? ExplorerMode.Giphy : this._peopleView ? ExplorerMode.People : this._folderView ? ExplorerMode.Folders : ExplorerMode.Favorites;
+        get => this._giphyView ? (this._giphyKind == GiphyKind.Stickers ? ExplorerMode.GiphyStickers : ExplorerMode.GiphyGifs) : this._peopleView ? ExplorerMode.People : this._folderView ? ExplorerMode.Folders : ExplorerMode.Favorites;
         set => this.SetMode(value);
     }
 
     /// <summary>The view set as <see cref="Mode"/> does, <paramref name="select"/> selected once listed.</summary>
     private void SetMode(ExplorerMode value, string? select = null)
     {
-        if (value == this.Mode || !Enum.IsDefined(value))
+        if (!Enum.IsDefined(value))
+        {
+            return;
+        }
+
+        // A view hidden from the ⚙ menu gives the folder view, the drop-down's first (§ The ⚙ Menu's GIPHY Submenu).
+        if (!this.IsOffered(value))
+        {
+            value = ExplorerMode.Folders;
+        }
+
+        if (value == this.Mode)
         {
             return;
         }
@@ -984,14 +988,21 @@ internal sealed partial class FileExplorerPanel : Panel
 
         this._folderView = value == ExplorerMode.Folders;
         this._peopleView = value == ExplorerMode.People;
-        this._giphyView = value == ExplorerMode.Giphy;
+        this._giphyView = IsGiphy(value);
+        if (this._giphyView)
+        {
+            this._giphyKind = value == ExplorerMode.GiphyStickers ? GiphyKind.Stickers : GiphyKind.Gifs;
+        }
+
+        // A call of the view left — the other GIPHY view's too — answers into no list.
+        this.DropGiphyCall();
         this._giphyListShown = false;
         this._openGroup = null;
         this._similarTo = null;
         this._syncingToggle = true;
         try
         {
-            this._modes.SelectedIndex = (int)value;
+            this._modes.SelectedItem = value;
         }
         finally
         {
@@ -1549,7 +1560,6 @@ internal sealed partial class FileExplorerPanel : Panel
             (this._collapse, UiIcons.Collapse), (this._expand, UiIcons.Expand), (this._similarClear, UiIcons.Clear),
             (this._thumbnailsView, UiIcons.Thumbnails), (this._detailsView, UiIcons.Details), (this._chooseFolder, this.InviteIcon),
             (this._folderGroupsButton, UiIcons.FolderGroups), (this._seriesButton, UiIcons.Series), (this._searchGroupsButton, UiIcons.SearchGroups),
-            (this._giphyGifs, UiIcons.Gif), (this._giphyStickers, UiIcons.Sticker),
         })
         {
             UiIcons.SetImage(button, icon, size);
@@ -3253,9 +3263,43 @@ internal sealed partial class FileExplorerPanel : Panel
         {
             mode = (ExplorerMode)((((int)mode + step) % count + count) % count);
         }
-        while ((mode == ExplorerMode.People && !this._faceAnalysis) || (mode == ExplorerMode.Giphy && this._giphyKey is null));
+        while (!this.IsOffered(mode) || (mode == ExplorerMode.People && !this._faceAnalysis) || (IsGiphy(mode) && this._giphyKey is null));
 
         return mode;
+    }
+
+    /// <summary>Whether a view is one of GIPHY's.</summary>
+    private static bool IsGiphy(ExplorerMode mode) => mode is ExplorerMode.GiphyGifs or ExplorerMode.GiphyStickers;
+
+    /// <summary>Whether the views drop-down offers a view: every one, but a GIPHY view hidden from the ⚙ menu.</summary>
+    private bool IsOffered(ExplorerMode mode) => mode switch
+    {
+        ExplorerMode.GiphyGifs => this._giphyViewsShown.Gifs,
+        ExplorerMode.GiphyStickers => this._giphyViewsShown.Stickers,
+        _ => true,
+    };
+
+    /// <summary>The views drop-down's entries — the views offered, in <see cref="ExplorerMode"/>'s order — the view shown selected.</summary>
+    private void FillModes()
+    {
+        this._syncingToggle = true;
+        try
+        {
+            this._modes.Items.Clear();
+            foreach (ExplorerMode mode in Enum.GetValues<ExplorerMode>())
+            {
+                if (this.IsOffered(mode))
+                {
+                    this._modes.Items.Add(mode);
+                }
+            }
+
+            this._modes.SelectedItem = this.Mode;
+        }
+        finally
+        {
+            this._syncingToggle = false;
+        }
     }
 
     /// <summary>
@@ -3279,7 +3323,8 @@ internal sealed partial class FileExplorerPanel : Panel
     {
         ExplorerMode.Folders => Strings.ExplorerModeFolders,
         ExplorerMode.People => Strings.ExplorerPeople,
-        ExplorerMode.Giphy => Strings.ExplorerModeGiphy,
+        ExplorerMode.GiphyGifs => Strings.ExplorerModeGiphyGifs,
+        ExplorerMode.GiphyStickers => Strings.ExplorerModeGiphyStickers,
         _ => Strings.ExplorerModeFavorites,
     };
 
@@ -3849,17 +3894,23 @@ internal sealed partial class FileExplorerPanel : Panel
         return false;
     }
 
-    /// <summary>What the invitation's button does: the base folder chosen, the face analysis turned on, the face engine downloaded.</summary>
+    /// <summary>What the invitation's button does: the base folder chosen, the face analysis turned on, the face engine downloaded, GIPHY's key asked for, its trending shown.</summary>
     private enum InviteAction
     {
         ChooseFolder,
         TurnOnFaces,
         DownloadFaceEngine,
         GiphyKey,
+        GiphyTrending,
     }
 
-    /// <summary>The invitation's button's icon: the key for GIPHY's, the folder otherwise.</summary>
-    private UiIcon InviteIcon => this._inviteAction == InviteAction.GiphyKey ? UiIcons.ApiKey : UiIcons.Folder;
+    /// <summary>The invitation's button's icon: the key for GIPHY's key, the flame for its trending, the folder otherwise.</summary>
+    private UiIcon InviteIcon => this._inviteAction switch
+    {
+        InviteAction.GiphyKey => UiIcons.ApiKey,
+        InviteAction.GiphyTrending => UiIcons.Trending,
+        _ => UiIcons.Folder,
+    };
 
     /// <summary>The invitation's text and button for <paramref name="action"/>.</summary>
     private void SetInvite(InviteAction action)
@@ -3875,6 +3926,7 @@ internal sealed partial class FileExplorerPanel : Panel
             InviteAction.TurnOnFaces => (Strings.ExplorerInviteFacesOff, Strings.ExplorerInviteFacesOffButton),
             InviteAction.DownloadFaceEngine => (Strings.ExplorerInviteFaceEngine, Strings.ExplorerInviteFaceEngineButton),
             InviteAction.GiphyKey => (Strings.ExplorerInviteGiphy, Strings.ExplorerInviteGiphyButton),
+            InviteAction.GiphyTrending => (Strings.ExplorerInviteGiphySearch, Strings.ExplorerInviteGiphyTrending),
             _ => (FolderInviteText, Strings.ExplorerChooseFolder),
         };
         this._inviteLink.Visible = action == InviteAction.GiphyKey;
@@ -3897,6 +3949,9 @@ internal sealed partial class FileExplorerPanel : Panel
                 break;
             case InviteAction.GiphyKey:
                 this.GiphyKeyRequested?.Invoke(this, EventArgs.Empty);
+                break;
+            case InviteAction.GiphyTrending:
+                this.ShowGiphyTrending();
                 break;
             default:
                 this.ChooseFolderRequested?.Invoke(this, EventArgs.Empty);

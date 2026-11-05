@@ -7,10 +7,11 @@ using ImageGridFusion.Web;
 namespace ImageGridFusion.UI;
 
 /// <summary>
-/// The GIPHY view, the file explorer's first online library: its search — on Enter only, each search one of the
-/// key's 100 calls an hour — its trending in the empty box, its GIFs / Stickers toggle, its results fetched page by
-/// page, their thumbnails playing; a click downloads a result, which can then be dragged, a double-click adds it;
-/// its heart keeps its file next to the exe as an ordinary favorite. See workfiles/20261105-online-library-giphy.md.
+/// The GIPHY views, GIFs and Stickers, the file explorer's first online library: their search — on Enter only, each
+/// search one of the key's 100 calls an hour, entering a view calling nothing — their trending for an empty box,
+/// their results fetched page by page, their thumbnails playing; a click downloads a result, which can then be
+/// dragged, a double-click adds it; its heart keeps its file next to the exe as an ordinary favorite. See
+/// workfiles/20261105-online-library-giphy.md, workfiles/20261105-giphy-gif-sticker-views.md.
 /// </summary>
 internal sealed partial class FileExplorerPanel
 {
@@ -20,9 +21,6 @@ internal sealed partial class FileExplorerPanel
     // A result's key, never a file: GIPHY's kind and id.
     private const string GiphyKeyPrefix = "giphy:";
 
-    private readonly CheckBox _giphyGifs = new() { AccessibleName = Strings.ExplorerAccGiphyGifs, Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0), Checked = true, AutoCheck = false, Visible = false };
-    private readonly CheckBox _giphyStickers = new() { AccessibleName = Strings.ExplorerAccGiphyStickers, Appearance = Appearance.Button, TextAlign = ContentAlignment.MiddleCenter, Size = new Size(26, 23), Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 3, 0), AutoCheck = false, Visible = false };
-
     // GIPHY's attribution, required by its terms wherever its content shows: at the right end of the breadcrumb line.
     private readonly Label _giphyAttribution = new() { Text = Strings.GiphyAttribution, Dock = DockStyle.Right, AutoSize = true, TextAlign = ContentAlignment.MiddleRight, Visible = false, Margin = Padding.Empty };
     private readonly LinkLabel _inviteLink = new() { Dock = DockStyle.Top, AutoSize = true, Visible = false, Text = Giphy.DeveloperSite.Host };
@@ -31,10 +29,16 @@ internal sealed partial class FileExplorerPanel
 
     private bool _giphyView;
 
-    // Whether the list shows a GIPHY list — false when the view opens, the previous view's list still there.
+    // Which GIPHY views the views drop-down offers — the ⚙ menu's GIPHY submenu.
+    private (bool Gifs, bool Stickers) _giphyViewsShown = (true, true);
+
+    // Whether the list shows a GIPHY list — false when the view opens, the previous view's list still there, and
+    // while it invites to search.
     private bool _giphyListShown;
     private string? _giphyKey;
     private string _giphyRating = Giphy.DefaultRating;
+
+    // The kind of the GIPHY view shown, or last shown.
     private GiphyKind _giphyKind = GiphyKind.Gifs;
 
     // The list shown: what it searched (null: the trending), whether GIPHY holds more after it, the call running —
@@ -46,6 +50,9 @@ internal sealed partial class FileExplorerPanel
 
     // The trending of each kind, kept for the session: the empty box costs one call.
     private readonly Dictionary<GiphyKind, (List<ExplorerRow> Rows, bool HasMore)> _giphyTrending = [];
+
+    // The last list of each view, kept for the session: entering the view shows it again, calling nothing.
+    private readonly Dictionary<GiphyKind, (IReadOnlyList<ExplorerRow> Rows, bool HasMore, string? Query)> _giphyKept = [];
 
     // The results being downloaded, with how far they are, and those whose file is there, with its path.
     private readonly Dictionary<string, double> _giphyProgress = new(StringComparer.Ordinal);
@@ -74,8 +81,8 @@ internal sealed partial class FileExplorerPanel
     }
 
     /// <summary>
-    /// The user's GIPHY API key; null for none — the GIPHY view then invites to set one, and Ctrl+F skips it.
-    /// Setting it raises nothing; the GIPHY view, shown, lists again.
+    /// The user's GIPHY API key; null for none — the GIPHY views then invite to set one, and Ctrl+F skips them.
+    /// Setting it raises nothing and calls nothing: the lists kept are forgotten, a GIPHY view shown invites to search.
     /// </summary>
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -90,8 +97,7 @@ internal sealed partial class FileExplorerPanel
             }
 
             this._giphyKey = value;
-            this._giphyTrending.Clear();
-            this._giphyListShown = false;
+            this.ForgetGiphyLists();
             if (this._giphyView)
             {
                 this.RefreshRows();
@@ -99,7 +105,10 @@ internal sealed partial class FileExplorerPanel
         }
     }
 
-    /// <summary>The content rating every GIPHY request carries; changing it forgets the trending kept. Setting it raises nothing.</summary>
+    /// <summary>
+    /// The content rating every GIPHY request carries. Setting it raises nothing and calls nothing: the lists kept are
+    /// forgotten, a GIPHY view shown invites to search.
+    /// </summary>
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public string GiphyRating
@@ -113,15 +122,57 @@ internal sealed partial class FileExplorerPanel
             }
 
             this._giphyRating = value;
-            this._giphyTrending.Clear();
+            this.ForgetGiphyLists();
             if (this._giphyView)
             {
-                this.SearchGiphy(this._giphyQuery);
+                this.RefreshRows();
             }
         }
     }
 
-    /// <summary>The GIPHY view's controls and their events, from the constructor.</summary>
+    /// <summary>
+    /// Which GIPHY views the views drop-down offers, and Ctrl+F cycles — the ⚙ menu's GIPHY submenu; the view shown
+    /// hidden, the folder view shows, <see cref="FolderViewChanged"/> raised. Setting it raises nothing else.
+    /// </summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public (bool Gifs, bool Stickers) GiphyViewsShown
+    {
+        get => this._giphyViewsShown;
+        set
+        {
+            if (value == this._giphyViewsShown)
+            {
+                return;
+            }
+
+            this._giphyViewsShown = value;
+            if (!this.IsOffered(this.Mode))
+            {
+                this.ChangeMode(ExplorerMode.Folders);
+            }
+
+            this.FillModes();
+        }
+    }
+
+    /// <summary>The lists kept for both GIPHY views forgotten — another key, another rating — the call running dropped.</summary>
+    private void ForgetGiphyLists()
+    {
+        this.DropGiphyCall();
+        this._giphyTrending.Clear();
+        this._giphyKept.Clear();
+        this._giphyListShown = false;
+    }
+
+    /// <summary>The GIPHY call running cancelled, its answer — even one arriving before the cancel lands — dropped.</summary>
+    private void DropGiphyCall()
+    {
+        this._giphyCall?.Cancel();
+        this._giphyListVersion++;
+    }
+
+    /// <summary>The GIPHY views' controls and their events, from the constructor.</summary>
     private void InitGiphy()
     {
         this._giphyThumbnails = new OnlineThumbnails(this);
@@ -136,10 +187,6 @@ internal sealed partial class FileExplorerPanel
             }
         };
         this._giphyFrames.Tick += (_, _) => this.PlayGiphyFrames();
-        this._giphyGifs.Click += (_, _) => this.ChangeGiphyKind(GiphyKind.Gifs);
-        this._giphyStickers.Click += (_, _) => this.ChangeGiphyKind(GiphyKind.Stickers);
-        this._toolTip.SetToolTip(this._giphyGifs, Strings.ExplorerTipGiphyGifs);
-        this._toolTip.SetToolTip(this._giphyStickers, Strings.ExplorerTipGiphyStickers);
         this._toolTip.SetToolTip(this._giphyAttribution, Strings.ExplorerTipGiphyAttribution);
         this._giphyAttribution.Font = new Font(this.Font, FontStyle.Bold);
         this._inviteLink.LinkClicked += (_, _) => OpenDeveloperSite();
@@ -149,28 +196,35 @@ internal sealed partial class FileExplorerPanel
     private static bool IsGiphyKey(string path) => path.StartsWith(GiphyKeyPrefix, StringComparison.Ordinal);
 
     /// <summary>
-    /// The GIPHY view's list: the invitation without a key; the trending of the kind chosen for an empty box —
-    /// kept for the session — else the list of the last search, until Enter asks for another.
+    /// A GIPHY view's list, calling nothing (workfiles/20261105-giphy-gif-sticker-views.md § No Call Without a
+    /// Search): the invitation to set a key without one; the view just entered, its last list kept for the session,
+    /// else the invitation to search; then the list shown, until Enter or the Trending button asks for another —
+    /// emptying the box asks for nothing.
     /// </summary>
     private void RefreshGiphyRows(bool keepPlace)
     {
         this.ShowGroupTitle(null);
         this._similarClear.Visible = false;
-        bool inviting = this._giphyKey is null;
-        this.SetInvite(InviteAction.GiphyKey);
+        if (this._giphyKey is not null && !this._giphyListShown && this._giphyKept.TryGetValue(this._giphyKind, out var kept))
+        {
+            this.ShowGiphyRows(kept.Rows, kept.HasMore, kept.Query, keepPlace: false);
+            return;
+        }
+
+        bool inviting = this._giphyKey is null || !this._giphyListShown;
+        this.SetInvite(this._giphyKey is null ? InviteAction.GiphyKey : InviteAction.GiphyTrending);
+        if (inviting)
+        {
+            // The empty list first: showing a list hides the invitation.
+            this.ShowGiphyRows([], hasMore: false, query: null, keepPlace);
+            this._giphyListShown = false;
+            this.ShowGiphyTrail();
+        }
+
         this._invite.Visible = inviting;
         this._grid.Visible = !inviting;
         if (inviting)
         {
-            this.ShowGiphyRows([], hasMore: false, query: null, keepPlace);
-            this._giphyListShown = false;
-            return;
-        }
-
-        // The view just opened, or its box emptied: the trending; a text typed waits for Enter.
-        if (!this._giphyListShown || (this._search.Text.Trim().Length == 0 && this._giphyQuery is not null))
-        {
-            this.SearchGiphy(null);
             return;
         }
 
@@ -182,14 +236,18 @@ internal sealed partial class FileExplorerPanel
         this.ShowGiphyTrail();
     }
 
-    /// <summary>The breadcrumb's GIPHY or ↑ clicked: the box emptied, the trending shown.</summary>
+    /// <summary>
+    /// The breadcrumb's GIPHY, ↑ or the invitation's Trending button: the box emptied, the trending shown — a call
+    /// unless kept for the session.
+    /// </summary>
     private void ShowGiphyTrending()
     {
         if (this._search.TextLength > 0)
         {
             this._search.Text = "";
         }
-        else if (this._giphyQuery is not null)
+
+        if (this._giphyQuery is not null || !this._giphyListShown)
         {
             this.SearchGiphy(null);
         }
@@ -210,7 +268,8 @@ internal sealed partial class FileExplorerPanel
 
         if (query is null && this._giphyTrending.TryGetValue(this._giphyKind, out var trending))
         {
-            this._giphyCall?.Cancel();
+            this.DropGiphyCall();
+            this._giphyKept[this._giphyKind] = (trending.Rows, trending.HasMore, null);
             this.ShowGiphyRows(trending.Rows, trending.HasMore, query: null, keepPlace: false);
             return;
         }
@@ -242,7 +301,7 @@ internal sealed partial class FileExplorerPanel
         try
         {
             var page = await Giphy.FetchAsync(key, kind, query, offset, this._giphyRating, call.Token);
-            if (version != this._giphyListVersion || this.IsDisposed || !this._giphyView)
+            if (version != this._giphyListVersion || this.IsDisposed || !this._giphyView || kind != this._giphyKind)
             {
                 return;
             }
@@ -264,6 +323,8 @@ internal sealed partial class FileExplorerPanel
             {
                 this._giphyTrending[kind] = (rows, page.HasMore);
             }
+
+            this._giphyKept[kind] = (rows, page.HasMore, query);
 
             this.ShowGiphyRows(rows, page.HasMore, query, keepPlace: append, append ? this._loaded + this.LoadSize() : null);
 
@@ -305,6 +366,12 @@ internal sealed partial class FileExplorerPanel
         this._giphyQuery = query;
         this._giphyHasMore = hasMore;
         this._giphyListShown = true;
+        if (this._giphyKey is not null)
+        {
+            this._invite.Visible = false;
+            this._grid.Visible = true;
+        }
+
         this._list = rows;
         this.ShowLoaded(count ?? (keepPlace ? Math.Max(this._loaded, this.FirstLoad()) : this.FirstLoad()), keepPlace);
         this.ShowGiphyTrail();
@@ -323,13 +390,20 @@ internal sealed partial class FileExplorerPanel
     }
 
     /// <summary>
-    /// The breadcrumb of the GIPHY view: GIPHY, the search, what the list holds — or the text typed, waiting for
-    /// Enter — then the key's calls of the last hour.
+    /// The breadcrumb of a GIPHY view: the view, the search, what the list holds — or the text typed, waiting for
+    /// Enter — then the key's calls of the last hour; while it invites to search, the view and the calls only.
     /// </summary>
     private void ShowGiphyTrail()
     {
         string typed = this._search.Text.Trim();
         this._giphyUsedShown = this._giphyQuota.Used(GiphyQuota.Now);
+        if (this._giphyKey is not null && !this._giphyListShown)
+        {
+            this._breadcrumb.SetPath([ModeText(this.Mode)], (typed.Length > 0 ? Strings.ExplorerGiphyPressEnter : "")
+                + Texts.Format(Strings.ExplorerGiphyCalls, this._giphyUsedShown, GiphyQuota.HourlyCalls));
+            return;
+        }
+
         string trailing = this._giphyKey is null ? ""
             : (typed.Length > 0 && typed != this._giphyQuery ? Strings.ExplorerGiphyPressEnter
                 : Texts.Format(this._giphyKind == GiphyKind.Stickers ? Strings.ExplorerGiphyStickersCount : Strings.ExplorerGiphyGifsCount, this._list.Count)
@@ -338,7 +412,7 @@ internal sealed partial class FileExplorerPanel
         this._breadcrumb.SetPath(this.GiphySegments(this._giphyQuery), trailing);
     }
 
-    private string[] GiphySegments(string? query) => query is null ? [Strings.ExplorerModeGiphy, Strings.ExplorerGiphyTrending] : [Strings.ExplorerModeGiphy, query];
+    private string[] GiphySegments(string? query) => [ModeText(this.Mode), query ?? Strings.ExplorerGiphyTrending];
 
     /// <summary>The Loading… slot of the GIPHY view came into view: the tiles fetched shown, else the next page asked for.</summary>
     private void LoadMoreGiphy()
@@ -351,20 +425,6 @@ internal sealed partial class FileExplorerPanel
         {
             _ = this.FetchGiphyPageAsync(key, this._giphyQuery, append: true);
         }
-    }
-
-    /// <summary>The GIFs / Stickers toggle: the other kind searched — the same text, or its trending.</summary>
-    private void ChangeGiphyKind(GiphyKind kind)
-    {
-        if (kind == this._giphyKind)
-        {
-            return;
-        }
-
-        this._giphyKind = kind;
-        this._giphyGifs.Checked = kind == GiphyKind.Gifs;
-        this._giphyStickers.Checked = kind == GiphyKind.Stickers;
-        this.SearchGiphy(this._giphyQuery);
     }
 
     /// <summary>A result's state for its tile: downloading, how far; fetched, 1; else nothing.</summary>
@@ -537,14 +597,12 @@ internal sealed partial class FileExplorerPanel
         }
     }
 
-    /// <summary>What the GIPHY view changes around the grid: its toggle and attribution shown, the search criteria, the sort and the groups buttons hidden.</summary>
+    /// <summary>What a GIPHY view changes around the grid: its attribution shown, the search criteria, the sort and the groups buttons hidden.</summary>
     private void ApplyGiphyView()
     {
         bool giphy = this._giphyView;
         this._byName.Visible = !giphy;
         this._byContent.Visible = !giphy;
-        this._giphyGifs.Visible = giphy;
-        this._giphyStickers.Visible = giphy;
         this._sort.Visible = !giphy;
         this._folderGroupsButton.Visible = !giphy;
         this._seriesButton.Visible = !giphy;

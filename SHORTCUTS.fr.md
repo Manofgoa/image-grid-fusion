@@ -21,7 +21,7 @@ L'application montre cette liste quand sa langue est le français (menu **⚙** 
 | <kbd>Ctrl</kbd>+<kbd>N</kbd> | Tout effacer, sans confirmation |
 | <kbd>Ctrl</kbd>+<kbd>R</kbd> | Tourner l'image sous la souris — sinon l'image sélectionnée — jusqu'au quart de tour suivant dans le sens horaire : +37° vers 90°, 90° vers 180° |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> | La même chose, dans le sens antihoraire : +37° vers 0°, 0° vers -90° |
-| <kbd>Ctrl</kbd>+<kbd>F</kbd> | Aller dans la zone de recherche de l'explorateur de fichiers ; pressé de nouveau là, la vue suivante — la vue dossiers atteinte ainsi s'ouvrant au dossier de base, la vue GIPHY sautée tant qu'aucune clé n'est saisie |
+| <kbd>Ctrl</kbd>+<kbd>F</kbd> | Aller dans la zone de recherche de l'explorateur de fichiers ; pressé de nouveau là, la vue suivante — la vue dossiers atteinte ainsi s'ouvrant au dossier de base, les vues GIPHY sautées tant qu'aucune clé n'est saisie, et quand elles sont masquées depuis le menu ⚙ |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> | Dans la zone de recherche, la vue précédente — la vue dossiers, au dossier de base aussi |
 | <kbd>Space</kbd> | Lecture / pause de la grille — pas dans un champ de texte |
 
@@ -122,7 +122,7 @@ Tant que ses tuiles ont le focus.
 | <kbd>PageUp</kbd> <kbd>PageDown</kbd> | Avancer d'une page |
 | <kbd>Home</kbd> <kbd>End</kbd> | Première / dernière tuile |
 | <kbd>Enter</kbd>, <kbd>Double-clic</kbd> | Ajouter le fichier à la grille — un résultat GIPHY téléchargé d'abord — ou ouvrir le dossier ou le groupe |
-| <kbd>Backspace</kbd>, <kbd>Alt</kbd>+<kbd>↑</kbd> | Aller au dossier parent ; dans la vue GIPHY, revenir aux tendances |
+| <kbd>Backspace</kbd>, <kbd>Alt</kbd>+<kbd>↑</kbd> | Aller au dossier parent ; dans une vue GIPHY, revenir aux tendances |
 | <kbd>F2</kbd> | Renommer le groupe sélectionné, dans la vue Personnes |
 | <kbd>Ctrl</kbd>+<kbd>C</kbd> | Copier le fichier sélectionné |
 | <kbd>Ctrl</kbd>+<kbd>Molette</kbd> | Tuiles plus grandes ou plus petites, 15 % par cran |
@@ -133,9 +133,9 @@ Tant que ses tuiles ont le focus.
 | Raccourci | Effet |
 |---|---|
 | <kbd>Enter</kbd> dans la zone de recherche | Ajouter le premier résultat à la grille |
-| <kbd>Enter</kbd> dans la zone de recherche de la vue GIPHY | Chercher sur GIPHY — la saisie seule ne lui demande rien |
+| <kbd>Enter</kbd> dans la zone de recherche d'une vue GIPHY | Chercher sur GIPHY — ses tendances pour une zone vide ; saisir ou entrer dans la vue ne lui demande rien |
 | <kbd>↓</kbd> dans la zone de recherche | Aller à la première tuile |
-| <kbd>Alt</kbd>+<kbd>↑</kbd> dans la zone de recherche | Aller au dossier parent ; dans la vue GIPHY, revenir aux tendances |
+| <kbd>Alt</kbd>+<kbd>↑</kbd> dans la zone de recherche | Aller au dossier parent ; dans une vue GIPHY, revenir aux tendances |
 | <kbd>Escape</kbd> dans la zone de recherche | Rendre le focus à la grille, la recherche gardée |
 | <kbd>Enter</kbd> dans le champ URL | Charger l'URL |
 

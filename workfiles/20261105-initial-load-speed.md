@@ -68,7 +68,7 @@ Nothing visible changes; the same window appears sooner.
 - ~~Hidden options built at first use~~ — not taken (Q&A 9): a heavy refactor of `MainForm`, its controls being
   fields, and the options toolbar's height (the tallest tab's, RULES.md § Options Toolbar) to know without them.
 
-### B — Build and Runtime Settings
+### B — Build and Runtime Settings (not taken, Q&A 10)
 
 - ReadyToRun is already on for `dotnet publish`; measured gain ~12 %.
 - For the Debug build: ReadyToRun or `TieredPGO` off at build — little gain expected, and a Debug build is meant
@@ -105,8 +105,8 @@ are the testable ones; a go including unit tests creates `tests/ImageGridFusion.
 
 ## Open Questions
 
-- [x] ~~Which latitude levels — A, B, C — does the work take?~~ → A and C; B pending its explanation (Q&A 5, 8)
-- [ ] B, explained in § B: taken or not?
+- [x] ~~Which latitude levels — A, B, C — does the work take?~~ → A and C; B not taken (Q&A 5, 8, 10)
+- [x] ~~B, explained in § B: taken or not?~~ → Not taken: the time goes into the app's own code, not the JIT (Q&A 10)
 - [x] ~~Which parts of C are deferred after the window shows — the file explorer panel, the icons on a first launch, the tabs' options?~~ → The file explorer panel, and the icons while their cache is empty; the tabs' options stay built at start-up (Q&A 9)
 - [x] ~~May the emoji icons be cached on disk next to the exe, and is a `--new-instance` allowed to write that cache?~~ → Yes, written by the normal instance only; a `--new-instance` reads it and writes nothing (Q&A 6)
 - [x] ~~Should the start-up time be measured inside the app (a Debug log of its phases) to check the gain, or by the
@@ -133,6 +133,11 @@ C narrowed to two parts (Q&A 9): the file explorer panel built after the window 
 it while their cache is empty; the tabs' options built at first selection dropped. B still to be explained in
 plain words (Q&A 8, 10). Test Impact filled: no test project exists yet.
 
+### Iteration 4 — 2026-11-05
+
+B explained in plain words, then not taken (Q&A 10): the build settings stay as they are. No open question left;
+the scope is A and the two parts of C.
+
 ---
 
 ## Implementation Log
@@ -158,7 +163,7 @@ plain words (Q&A 8, 10). Test Impact filled: no test project exists yet.
 | 7 | Start-up time measured inside the app, or by the external script only? | Neither: the user's own feel | 2026-11-05 |
 | 8 | B explained: taken or not? | Asked again what B does — the explanation had not reached them; re-asked in plain text below | 2026-11-05 |
 | 9 | Which parts of C are deferred after the window shows? | The file explorer panel, and the icons on a launch whose cache is empty; not the tabs' options | 2026-11-05 |
-| 10 | B, explained in plain words: taken or not? | | 2026-11-05 |
+| 10 | B, explained in plain words: taken or not? | No, without B | 2026-11-05 |
 
 ---
 
