@@ -58,9 +58,11 @@ Nothing visible changes; the same window appears sooner.
 
 - **Emoji icons drawn at their size**: rendered at an em close to the icon (a few times its side) instead of
   192, so Direct2D rasterises ~1/50 of the pixels and `InkBounds` scans as few. Expected: most of the ~540 ms.
-- **Emoji icons cached on disk** (optional, Q&A 4): the bitmaps drawn kept in a kebab-case folder next to the exe,
-  keyed by glyph, size and the Segoe UI Emoji file's version — a later start reads small PNGs instead of
-  drawing. Expected: what is left of the icons' time after the first launch.
+- **Emoji icons cached on disk** (agreed, Q&A 6): the bitmaps drawn kept in a kebab-case folder next to the exe
+  (one `FolderName` constant, `../CLAUDE.md` § Folder Names), keyed by glyph, size and the Segoe UI Emoji file's
+  version — a later start reads small PNGs instead of drawing. **Written by the normal instance only**: a
+  `--new-instance` reads it and draws what is missing without writing (RULES.md § Single Instance). Expected: what
+  is left of the icons' time after the first launch.
 - **The font drop-down filled when it opens**: its items (every installed family) added at the first drop-down,
   its selected font alone at start-up. Expected: ~150 ms.
 - **Hidden options built at first use**: the options of a tab not selected at start-up (none is) created when
@@ -94,10 +96,12 @@ To be filled once the levers are chosen.
 
 ## Open Questions
 
-- [ ] Which latitude levels — A, B, C — does the work take?
-- [ ] May the emoji icons be cached on disk next to the exe, and is a `--new-instance` allowed to write that cache?
-- [ ] Should the start-up time be measured inside the app (a Debug log of its phases) to check the gain, or by the
-  external script only?
+- [x] ~~Which latitude levels — A, B, C — does the work take?~~ → A and C; B pending its explanation (Q&A 5, 8)
+- [ ] B, explained in § B: taken or not?
+- [ ] Which parts of C are deferred after the window shows — the file explorer panel, the icons on a first launch, the tabs' options?
+- [x] ~~May the emoji icons be cached on disk next to the exe, and is a `--new-instance` allowed to write that cache?~~ → Yes, written by the normal instance only; a `--new-instance` reads it and writes nothing (Q&A 6)
+- [x] ~~Should the start-up time be measured inside the app (a Debug log of its phases) to check the gain, or by the
+  external script only?~~ → Neither: the gain is judged by the user's own feel; nothing added to the app (Q&A 7)
 
 ---
 
@@ -108,6 +112,11 @@ To be filled once the levers are chosen.
 Scope set to the window appearing (Q&A 1); the Debug build is the one the user runs (Q&A 2). Start-up measured
 and profiled: the `MainForm` constructor is 81 % of the time to the window, the emoji icons a quarter of it.
 Levers listed by latitude level, for the user to choose.
+
+### Iteration 2 — 2026-11-05
+
+Levels A and C taken, B to be explained further (Q&A 5). The emoji icons' disk cache agreed, written by the
+normal instance only (Q&A 6). No measurement added to the app: the user judges the gain by feel (Q&A 7).
 
 ---
 
@@ -129,9 +138,11 @@ Levers listed by latitude level, for the user to choose.
 | 2 | What prompted it, how long does it take, in which build? | Launches the Debug exe from its build folder, which suits them for now; optimise what can be optimised at load | 2026-11-05 |
 | 3 | How far may we go: same behaviour, build settings too, visible changes too? | Asked to detail the three possibilities first — re-asked below | 2026-11-05 |
 | 4 | Straightforward or tricky / long? | Straightforward — a single scout pass | 2026-11-05 |
-| 5 | Which latitude levels (A, B, C, detailed in § Candidate Levers)? | | 2026-11-05 |
-| 6 | Emoji icons cached on disk — and by a `--new-instance`? | | 2026-11-05 |
-| 7 | Start-up time measured inside the app, or by the external script only? | | 2026-11-05 |
+| 5 | Which latitude levels (A, B, C, detailed in § Candidate Levers)? | A and C taken; B to be explained further — re-asked below | 2026-11-05 |
+| 6 | Emoji icons cached on disk — and by a `--new-instance`? | Yes, written by the normal instance only | 2026-11-05 |
+| 7 | Start-up time measured inside the app, or by the external script only? | Neither: the user's own feel | 2026-11-05 |
+| 8 | B explained: taken or not? | | 2026-11-05 |
+| 9 | Which parts of C are deferred after the window shows? | | 2026-11-05 |
 
 ---
 
