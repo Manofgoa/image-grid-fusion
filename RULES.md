@@ -977,6 +977,10 @@ A web service of media searched from the file explorer, in a view of its own —
   (`Giphy.PageSize`); a search starts on **Enter** only, the trending of each kind kept for the session, the
   thumbnails and the downloads coming from the CDN, out of the budget. Nothing calls the API in the background
   or per tile. A refusal — an invalid key, the hour used up — is said on the status line, the list kept.
+  GIPHY's answers carry no quota: **the app counts its own calls** of the last hour (`GiphyQuota`), kept in
+  the settings file (`AppSettings.GiphyCalls`) so a restart does not reset it, shown at the end of the
+  breadcrumb; a new route calling the API counts its call there. Each page received says on the status line
+  how many results it brought.
 - **The key is the user's**, in `settings.json` only (`AppSettings.GiphyApiKey`), set from the ⚙ menu or the
   view's invitation; never in the repository, never shipped. The content rating every request carries is an
   app setting too (`AppSettings.GiphyRating`, `r` by default).
