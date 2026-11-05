@@ -1,3 +1,5 @@
+using ImageGridFusion.Resources;
+
 namespace ImageGridFusion.Composition;
 
 /// <summary>
@@ -39,13 +41,13 @@ public static class OutputFormats
 
     public static string Name(OutputFormat format) => format switch
     {
-        OutputFormat.Free => "Free",
-        OutputFormat.Twitter => "Twitter",
-        OutputFormat.Square => "Square 1:1",
-        OutputFormat.Portrait => "Portrait 4:5",
-        OutputFormat.Story => "Story 9:16",
-        OutputFormat.Custom => "Custom",
-        _ => "Landscape 16:9",
+        OutputFormat.Free => Strings.UiFormatFree,
+        OutputFormat.Twitter => Strings.UiFormatTwitter,
+        OutputFormat.Square => Strings.UiFormatSquare,
+        OutputFormat.Portrait => Strings.UiFormatPortrait,
+        OutputFormat.Story => Strings.UiFormatStory,
+        OutputFormat.Custom => Strings.UiFormatCustom,
+        _ => Strings.UiFormatLandscape,
     };
 
     /// <summary>

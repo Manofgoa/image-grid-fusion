@@ -1,3 +1,5 @@
+using ImageGridFusion.Resources;
+
 namespace ImageGridFusion.UI;
 
 /// <summary>
@@ -47,14 +49,20 @@ internal sealed class BackgroundFitStrip : ThumbnailStrip<BackgroundFit>
 
     protected override bool IsPressed(BackgroundFit value) => value == this._pressed;
 
-    protected override string Label(BackgroundFit value) => value.ToString();
+    protected override string Label(BackgroundFit value) => value switch
+    {
+        BackgroundFit.Fill => Strings.UiFitFill,
+        BackgroundFit.Contain => Strings.UiFitContain,
+        BackgroundFit.Stretch => Strings.UiFitStretch,
+        _ => Strings.UiFitTile,
+    };
 
     protected override string Tip(BackgroundFit value) => value switch
     {
-        BackgroundFit.Fill => "Covers the whole grid, its ratio kept, cut where it overflows",
-        BackgroundFit.Contain => "Shown whole, its ratio kept, the fill showing around it",
-        BackgroundFit.Stretch => "Exactly the grid, its ratio not kept",
-        _ => "Repeated over the grid from its top-left corner; its zoom sets the tiles' size",
+        BackgroundFit.Fill => Strings.UiFitFillTip,
+        BackgroundFit.Contain => Strings.UiFitContainTip,
+        BackgroundFit.Stretch => Strings.UiFitStretchTip,
+        _ => Strings.UiFitTileTip,
     };
 
     protected override void PaintThumbnail(Graphics g, BackgroundFit value, Rectangle box, bool pressed)

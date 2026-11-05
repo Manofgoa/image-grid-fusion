@@ -1,5 +1,6 @@
 using System.Drawing.Drawing2D;
 using ImageGridFusion.Composition;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -24,13 +25,18 @@ internal sealed class FillKindStrip : SelectionStrip<FillKind>
 
     protected override bool PicksSelected => true;
 
-    protected override string Label(FillKind kind) => kind.ToString();
+    protected override string Label(FillKind kind) => kind switch
+    {
+        FillKind.Solid => Strings.UiFillKindSolid,
+        FillKind.Linear => Strings.UiFillKindLinear,
+        _ => Strings.UiFillKindRadial,
+    };
 
     protected override string Tip(FillKind kind) => kind switch
     {
-        FillKind.Solid => "One color",
-        FillKind.Linear => "From the first color to the second, along the angle",
-        _ => "From the first color at the center to the second at the corners",
+        FillKind.Solid => Strings.UiFillKindSolidTip,
+        FillKind.Linear => Strings.UiFillKindLinearTip,
+        _ => Strings.UiFillKindRadialTip,
     };
 
     protected override void PaintThumbnail(Graphics g, FillKind kind, Rectangle box, bool pressed)

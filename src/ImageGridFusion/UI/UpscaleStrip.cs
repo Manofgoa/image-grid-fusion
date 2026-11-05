@@ -1,5 +1,6 @@
 using System.Drawing.Drawing2D;
 using ImageGridFusion.Composition;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -46,8 +47,8 @@ internal sealed class UpscaleStrip : SelectionStrip<UpscaleFactor>
     {
         int times = FactorOf(factor);
         return this._fits(times)
-            ? $"Enlarges the image {times} times — computed once Upscale is clicked"
-            : $"Too large for ×{times}: the image would go past {CanvasSizer.MaxLongSide} px on its longer side";
+            ? Texts.Format(Strings.UiUpscaleFactorTip, times)
+            : Texts.Format(Strings.UiUpscaleTooLarge, times, CanvasSizer.MaxLongSide);
     }
 
     protected override void PaintThumbnail(Graphics g, UpscaleFactor factor, Rectangle box, bool pressed)
@@ -98,11 +99,11 @@ internal sealed class UpscaleModelStrip : SelectionStrip<UpscaleModel>
 
     protected override Size Box => EffectBox;
 
-    protected override string Label(UpscaleModel model) => model.ToString();
+    protected override string Label(UpscaleModel model) => model == UpscaleModel.Quality ? Strings.UiUpscaleQuality : Strings.UiUpscaleFast;
 
     protected override string Tip(UpscaleModel model) => model == UpscaleModel.Quality
-        ? "Real-ESRGAN: the finest details, slow on this computer — minutes for a large ×4"
-        : "Real-ESRGAN compact: many times faster, a little less fine";
+        ? Strings.UiUpscaleQualityTip
+        : Strings.UiUpscaleFastTip;
 
     protected override void PaintThumbnail(Graphics g, UpscaleModel model, Rectangle box, bool pressed)
     {

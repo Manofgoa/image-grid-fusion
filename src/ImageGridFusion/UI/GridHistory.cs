@@ -1,5 +1,6 @@
 using ImageGridFusion.Composition;
 using ImageGridFusion.Explorer;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -195,7 +196,7 @@ internal sealed class GridHistory : IDisposable
         bool globals = older.Global != newer.Global || older.Format != newer.Format || older.Custom != newer.Custom;
         if (after.Count == 0 && before.Count > 0 && (before.Count > 1 || globals))
         {
-            return "Clear all";
+            return Strings.UiHistClearAll;
         }
 
         if (!before.SequenceEqual(after))
@@ -203,78 +204,78 @@ internal sealed class GridHistory : IDisposable
             int added = after.Count(i => !before.Contains(i));
             int removed = before.Count(i => !after.Contains(i));
             labels.Add(
-                added == 0 && removed == 0 ? "cells swapped"
-                : removed == 0 ? (added == 1 ? "image added" : "images added")
-                : added == 0 ? (removed == 1 ? "image deleted" : "images deleted")
-                : added == 1 && removed == 1 ? "image replaced"
-                : "images");
+                added == 0 && removed == 0 ? Strings.UiHistCellsSwapped
+                : removed == 0 ? (added == 1 ? Strings.UiHistImageAdded : Strings.UiHistImagesAdded)
+                : added == 0 ? (removed == 1 ? Strings.UiHistImageDeleted : Strings.UiHistImagesDeleted)
+                : added == 1 && removed == 1 ? Strings.UiHistImageReplaced
+                : Strings.UiHistImages);
         }
         else
         {
             var effects = older.Cells.Zip(newer.Cells, (o, n) => o.Look.ChangedEffects(n.Look)).SelectMany(e => e).Distinct().ToList();
             if (effects.Count > 0)
             {
-                labels.Add(effects.Count == 1 ? MainForm.EffectTitle(effects[0]) : "effects");
+                labels.Add(effects.Count == 1 ? MainForm.EffectTitle(effects[0]) : Strings.UiHistEffects);
             }
 
             if (older.Layout is { } layout && !layout.SameAs(newer.Layout))
             {
-                labels.Add(layout.Id == newer.Layout?.Id && layout.IsMirrored == newer.Layout.IsMirrored ? "separators" : "layout");
+                labels.Add(layout.Id == newer.Layout?.Id && layout.IsMirrored == newer.Layout.IsMirrored ? Strings.UiHistSeparators : Strings.UiHistLayout);
             }
         }
 
         if (older.Format != newer.Format || older.Custom != newer.Custom)
         {
-            labels.Add("format");
+            labels.Add(Strings.UiHistFormat);
         }
 
         var (o, n) = (older.Global, newer.Global);
         if (o.Soundtrack != n.Soundtrack || o.SoundtrackOn != n.SoundtrackOn || o.SoundtrackLevel != n.SoundtrackLevel)
         {
-            labels.Add(nameof(GlobalEffect.Soundtrack));
+            labels.Add(Strings.UiHistGlobalSoundtrack);
         }
 
         if (o.Fade != n.Fade || o.FadeOn != n.FadeOn)
         {
-            labels.Add(nameof(GlobalEffect.Fade));
+            labels.Add(Strings.UiHistGlobalFade);
         }
 
         if (o.Borders != n.Borders || o.BordersOn != n.BordersOn)
         {
-            labels.Add(nameof(GlobalEffect.Borders));
+            labels.Add(Strings.UiHistGlobalBorders);
         }
 
         if (o.Seams != n.Seams || o.SeamsOn != n.SeamsOn)
         {
-            labels.Add(nameof(GlobalEffect.Seams));
+            labels.Add(Strings.UiHistGlobalSeams);
         }
 
         if (o.GridBackground != n.GridBackground || o.GridBackgroundOn != n.GridBackgroundOn)
         {
-            labels.Add("Grid background");
+            labels.Add(Strings.UiHistGridBackground);
         }
 
         if (o.Cascade != n.Cascade || o.CascadeOn != n.CascadeOn)
         {
-            labels.Add(nameof(GlobalEffect.Cascade));
+            labels.Add(Strings.UiHistGlobalCascade);
         }
 
         if (o.Layers != n.Layers || o.LayersOn != n.LayersOn)
         {
-            labels.Add(nameof(GlobalEffect.Layers));
+            labels.Add(Strings.UiHistGlobalLayers);
         }
 
         // A decision on the people, named by its own text; one of another generation is never restored.
         if (!ReferenceEquals(older.People, newer.People) && older.People.Generation == newer.People.Generation)
         {
-            labels.Add(newer.People.Done.Length > 0 ? newer.People.Done : "people");
+            labels.Add(newer.People.Done.Length > 0 ? newer.People.Done : Strings.UiHistPeople);
         }
 
         return labels.Count switch
         {
-            0 => "no visible change",
+            0 => Strings.UiHistNoChange,
             1 => labels[0],
-            _ => "several changes",
+            _ => Strings.UiHistSeveral,
         };
     }
 

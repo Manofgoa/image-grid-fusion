@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using ImageGridFusion.Composition;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -132,7 +133,7 @@ internal sealed partial class GridPreview
     }
 
     // What the badge of an image says while its Upscale is on without its enlargement; null for none.
-    private static string? UpscaleBadge(SourceImage image) => image.UpscalePending ? "⤢ Not upscaled" : null;
+    private static string? UpscaleBadge(SourceImage image) => image.UpscalePending ? Strings.UiBadgeNotUpscaled : null;
 
     private void OnUpscaleCompleted(object? sender, SourceImage image)
     {

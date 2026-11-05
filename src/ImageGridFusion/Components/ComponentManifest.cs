@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.Components;
 
@@ -75,7 +76,7 @@ internal sealed class ComponentManifest
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
         {
-            error = $"{FileName} couldn't be read ({e.Message}): recreated";
+            error = Texts.Format(Strings.CompManifestUnreadable, FileName, e.Message);
             if (writes && e is JsonException)
             {
                 try
@@ -115,7 +116,7 @@ internal sealed class ComponentManifest
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
-                manifest.LoadError = $"{FileName} couldn't be written: {e.Message}";
+                manifest.LoadError = Texts.Format(Strings.CompManifestUnwritable, FileName, e.Message);
             }
         }
 

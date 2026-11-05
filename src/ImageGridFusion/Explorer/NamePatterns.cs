@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.Explorer;
 
@@ -8,7 +9,24 @@ namespace ImageGridFusion.Explorer;
 /// a downloader's or an app's prefix — listed in the ⚙ menu's Sources submenu. See
 /// workfiles/20261103-file-explorer-groups.md § File Name Patterns.
 /// </summary>
-internal sealed record NameGroup(string Id, string Title, Func<string, bool> Matches, bool IsSource = false);
+internal sealed record NameGroup(string Id, string Name, Func<string, bool> Matches, bool IsSource = false)
+{
+    /// <summary>The section's title in the UI language; a source's is its own name.</summary>
+    public string Title => this.Id switch
+    {
+        "Camera" => Strings.ExplorerGroupCamera,
+        "Screenshots" => Strings.ExplorerGroupScreenshots,
+        "Messaging" => Strings.ExplorerGroupMessaging,
+        "AI" => Strings.ExplorerGroupAi,
+        "GenericNames" => Strings.ExplorerGroupGenericNames,
+        "Identifiers" => Strings.ExplorerGroupIdentifiers,
+        "ShortCodes" => Strings.ExplorerGroupShortCodes,
+        "DateStamps" => Strings.ExplorerGroupDateStamps,
+        "Timestamps" => Strings.ExplorerGroupTimestamps,
+        "Numbers" => Strings.ExplorerGroupNumbers,
+        _ => this.Name,
+    };
+}
 
 /// <summary>
 /// Which <see cref="NameGroup"/> a file name falls into, on its name without its extension: the first of

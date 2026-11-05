@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using ImageGridFusion.Composition;
 using ImageGridFusion.Imaging;
 using ImageGridFusion.Web;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -38,10 +39,10 @@ internal sealed partial class MainForm
 
     // A layer's context menu, on the working surface and in the list (workfiles/20261029-duplicate-layer.md § The Context Menu).
     private readonly ContextMenuStrip _layerMenu = new();
-    private readonly ToolStripMenuItem _layerMenuDuplicate = new("Duplicate");
-    private readonly ToolStripMenuItem _layerMenuDelete = new("Delete");
+    private readonly ToolStripMenuItem _layerMenuDuplicate = new(Strings.PanelLayerDuplicate);
+    private readonly ToolStripMenuItem _layerMenuDelete = new(Strings.PanelLayerDelete);
     private readonly ToolStripSeparator _layerMenuSeparator = new();
-    private readonly ToolStripMenuItem _layerMenuFindSimilar = new("Find similar images");
+    private readonly ToolStripMenuItem _layerMenuFindSimilar = new(Strings.PanelLayerFindSimilar);
 
     // The list's thumbnails, one per layer content, made once and dropped with it.
     private readonly Dictionary<SourceImage, Bitmap> _layerThumbnails = [];
@@ -59,18 +60,18 @@ internal sealed partial class MainForm
 
     // The emoji font, the letters staying in the font beside (workfiles/20261102-emoji-fonts.md § User Interface).
     private readonly ComboBox _layerEmojiFont = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 64, Anchor = AnchorStyles.Left };
-    private readonly CheckBox _layerBold = new() { Text = "Bold", AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly CheckBox _layerItalic = new() { Text = "Italic", AutoSize = true, Anchor = AnchorStyles.Left };
-    private readonly CheckBox _layerCaps = new() { Text = "ALL CAPS", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _layerBold = new() { Text = Strings.PanelLayerBold, AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _layerItalic = new() { Text = Strings.PanelLayerItalic, AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _layerCaps = new() { Text = Strings.PanelLayerCaps, AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly CheckBox[] _layerAlignment = [.. Enum.GetValues<LayerTextAlignment>().Select(_ => AlignmentButton())];
-    private readonly CheckBox _layerBox = new() { Text = "Box", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _layerBox = new() { Text = Strings.PanelLayerBox, AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly ColorSplitButton _layerColor = new();
 
     // Each color's opacity right after it (workfiles/20261029-eyedropper-ergonomics.md § Color Opacity).
     private readonly PictureBox _layerColorOpacityIcon = OpacityIcon();
     private readonly TrackBar _layerColorOpacity = OptionSlider(0, 100, 10);
     private readonly SliderCaption _layerColorOpacityLabel = new();
-    private readonly CheckBox _layerOutline = new() { Text = "Outline", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _layerOutline = new() { Text = Strings.PanelLayerOutline, AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly ColorSplitButton _layerOutlineColor = new();
     private readonly PictureBox _layerOutlineOpacityIcon = OpacityIcon();
     private readonly TrackBar _layerOutlineOpacity = OptionSlider(0, 100, 10);
@@ -79,12 +80,12 @@ internal sealed partial class MainForm
     // The outline's width in percent of a line.
     private readonly TrackBar _layerOutlineWidth = OptionSlider((int)Math.Round(LayerTextStyle.MinOutlineWidth * 100), (int)Math.Round(LayerTextStyle.MaxOutlineWidth * 100), 2, controlStep: 1);
     private readonly SliderCaption _layerOutlineWidthLabel = new();
-    private readonly CheckBox _layerBackground = new() { Text = "Background", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _layerBackground = new() { Text = Strings.PanelLayerBackground, AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly ColorSplitButton _layerBackgroundColor = new();
     private readonly PictureBox _layerBackgroundOpacityIcon = OpacityIcon();
     private readonly TrackBar _layerBackgroundOpacity = OptionSlider(0, 100, 10);
     private readonly SliderCaption _layerBackgroundOpacityLabel = new();
-    private readonly CheckBox _layerShadow = new() { Text = "Shadow", AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly CheckBox _layerShadow = new() { Text = Strings.PanelLayerShadow, AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly ColorSplitButton _layerShadowColor = new();
     private readonly PictureBox _layerShadowOpacityIcon = OpacityIcon();
     private readonly TrackBar _layerShadowOpacity = OptionSlider(0, 100, 10);
@@ -168,10 +169,10 @@ internal sealed partial class MainForm
         var lines = (FeatureLinesPanel)this._globalOptions[GlobalEffect.Layers];
         lines.AddBlock(buttons);
         lines.AddBlock(this._layerText);
-        lines.AddLine("Style", this._textStyleScroll);
-        lines.AddLine("Font", this._layerFont, this._layerEmojiFont, this._layerBold, this._layerItalic, this._layerCaps);
-        lines.AddLine("Align", [.. this._layerAlignment, this._layerBox]);
-        lines.AddLine("Color", this._layerColor, new SliderBox(this._layerColorOpacity, this._layerColorOpacityLabel, this._layerColorOpacityIcon));
+        lines.AddLine(Strings.MainLineStyle, this._textStyleScroll);
+        lines.AddLine(Strings.MainLineFont, this._layerFont, this._layerEmojiFont, this._layerBold, this._layerItalic, this._layerCaps);
+        lines.AddLine(Strings.MainLineAlign, [.. this._layerAlignment, this._layerBox]);
+        lines.AddLine(Strings.MainLineColor, this._layerColor, new SliderBox(this._layerColorOpacity, this._layerColorOpacityLabel, this._layerColorOpacityIcon));
         lines.AddLine(
             this._layerOutline,
             this._layerOutlineColor,
@@ -179,7 +180,7 @@ internal sealed partial class MainForm
             new SliderBox(this._layerOutlineWidth, this._layerOutlineWidthLabel));
         lines.AddLine(this._layerBackground, this._layerBackgroundColor, new SliderBox(this._layerBackgroundOpacity, this._layerBackgroundOpacityLabel, this._layerBackgroundOpacityIcon));
         lines.AddLine(this._layerShadow, this._layerShadowColor, new SliderBox(this._layerShadowOpacity, this._layerShadowOpacityLabel, this._layerShadowOpacityIcon));
-        lines.AddLine("Shadow shape", this._layerShadowKind, new SliderBox(this._layerShadowSize, this._layerShadowSizeLabel));
+        lines.AddLine(Strings.MainLineShadowShape, this._layerShadowKind, new SliderBox(this._layerShadowSize, this._layerShadowSizeLabel));
 
         var fonts = TextRaster.FontFamilies();
         this._layerFont.Items.AddRange([.. fonts]);
@@ -233,20 +234,20 @@ internal sealed partial class MainForm
             }
         };
 
-        this._toolTip.SetToolTip(this._layerAddImage, "Add image… — lays images, GIFs or videos over the grid, chosen in the file picker; files dropped onto the Layers tab do the same");
-        this._toolTip.SetToolTip(this._layerPaste, "Paste — lays the clipboard's image, files or text over the grid");
-        this._toolTip.SetToolTip(this._layerAddText, "Add text — lays a text over the grid, typed in the field beside; Win+. opens the emoji panel");
-        this._toolTip.SetToolTip(this._layerCopy, "Copy — the selected layer alone as a PNG: its effects but the background, transparent around it (Ctrl+C)");
-        this._toolTip.SetToolTip(this._layerDuplicate, "Duplicate — lays a copy of the selected layer just above it, a little off; Ctrl + drag a layer leaves a copy where it was");
-        this._toolTip.SetToolTip(this._layerDelete, "Delete — removes the selected layer (Delete)");
-        this._toolTip.SetToolTip(this._layerToBack, "To back — puts the selected layer under every other");
-        this._toolTip.SetToolTip(this._layerLower, "Lower — puts the selected layer one place lower");
-        this._toolTip.SetToolTip(this._layerRaise, "Raise — puts the selected layer one place higher");
-        this._toolTip.SetToolTip(this._layerToFront, "To front — puts the selected layer over every other");
-        this._toolTip.SetToolTip(this._layerText, "The selected text layer's text, several lines allowed; Win+. opens the emoji panel");
-        this._toolTip.SetToolTip(this._layerOutline, "Draws an outline around the letters and the emojis, so the text reads on any image");
-        this._toolTip.SetToolTip(this._layerOutlineWidth, "Width of the outline, as a share of a line");
-        this._toolTip.SetToolTip(this._layerBackground, "Draws a box behind the text");
+        this._toolTip.SetToolTip(this._layerAddImage, Strings.PanelLayerAddImageTip);
+        this._toolTip.SetToolTip(this._layerPaste, Strings.PanelLayerPasteTip);
+        this._toolTip.SetToolTip(this._layerAddText, Strings.PanelLayerAddTextTip);
+        this._toolTip.SetToolTip(this._layerCopy, Strings.PanelLayerCopyTip);
+        this._toolTip.SetToolTip(this._layerDuplicate, Strings.PanelLayerDuplicateTip);
+        this._toolTip.SetToolTip(this._layerDelete, Strings.PanelLayerDeleteTip);
+        this._toolTip.SetToolTip(this._layerToBack, Strings.PanelLayerToBackTip);
+        this._toolTip.SetToolTip(this._layerLower, Strings.PanelLayerLowerTip);
+        this._toolTip.SetToolTip(this._layerRaise, Strings.PanelLayerRaiseTip);
+        this._toolTip.SetToolTip(this._layerToFront, Strings.PanelLayerToFrontTip);
+        this._toolTip.SetToolTip(this._layerText, Strings.PanelLayerTextTip);
+        this._toolTip.SetToolTip(this._layerOutline, Strings.PanelLayerOutlineTip);
+        this._toolTip.SetToolTip(this._layerOutlineWidth, Strings.PanelLayerOutlineWidthTip);
+        this._toolTip.SetToolTip(this._layerBackground, Strings.PanelLayerBackgroundTip);
 
         this._layerAddImage.Click += (_, _) => this.PickLayerFiles();
         this._layerPaste.Click += async (_, _) => await this.PasteLayersAsync();
@@ -255,7 +256,7 @@ internal sealed partial class MainForm
         this._preview.LayerCopyDragged += async (_, original) => await this.CopyDraggedLayerAsync(original);
         this._layerEdit.Click += (_, _) => this.ToggleLayerEdit();
         this._layerDelete.Click += (_, _) => this._preview.RemoveSelectedLayer();
-        this._layerCopy.Click += (_, _) => this.CopyAlone(this._preview.RenderSelectedAlone, "Layer");
+        this._layerCopy.Click += (_, _) => this.CopyAlone(this._preview.RenderSelectedAlone, Strings.PanelLayerCopyWhat);
         this._layerList.LayerPicked += (_, index) => this._preview.SelectLayer(index);
         this._layerList.VisibilityClicked += (_, index) => this.ToggleLayerVisibility(index);
         this._preview.LayerEditChanged += (_, _) =>
@@ -263,11 +264,11 @@ internal sealed partial class MainForm
             this.UpdateButtons();
             if (this._preview.EditingBackground)
             {
-                this.ShowStatus("Editing the grid background's image: its effects work as on a cell. Escape, Done or a double-click outside it gives the grid back.");
+                this.ShowStatus(Strings.PanelLayerEditingBackground);
             }
             else if (this._preview.EditingLayer)
             {
-                this.ShowStatus("Editing the layer: its effects work as on a cell. Escape, Done or a double-click outside it gives the grid back.");
+                this.ShowStatus(Strings.PanelLayerEditingLayer);
             }
         };
         this._layerToBack.Click += (_, _) => this.RestackLayer(_ => 0);
@@ -289,7 +290,7 @@ internal sealed partial class MainForm
                 this.ChangeLayerStyle(style => style with { EmojiFont = emojiFont });
             }
         };
-        this._toolTip.SetToolTip(this._layerEmojiFont, "Emoji font — the font the text's emojis are drawn in, the letters staying in the font beside; Segoe UI Emoji is Windows' own, the others are installed or downloaded from the ⚙ menu");
+        this._toolTip.SetToolTip(this._layerEmojiFont, Strings.PanelLayerEmojiFontTip);
         this._layerBold.CheckedChanged += (_, _) => this.ChangeLayerStyle(style => style with { Bold = this._layerBold.Checked });
         this._layerOutline.CheckedChanged += (_, _) => this.ChangeLayerStyle(style => style with { Outline = this._layerOutline.Checked });
         this._layerOutlineWidth.ValueChanged += (_, _) =>
@@ -306,15 +307,15 @@ internal sealed partial class MainForm
             button.Click += (_, _) => this.ChangeLayerStyle(style => style with { Alignment = alignment });
             this._toolTip.SetToolTip(button, alignment switch
             {
-                LayerTextAlignment.Left => "Align left — the lines start at the left edge of the widest one",
-                LayerTextAlignment.Center => "Center — the lines centered on the widest one",
-                LayerTextAlignment.Right => "Align right — the lines end at the right edge of the widest one",
-                _ => "Justify — the lines of a paragraph stretched by their spaces to the widest one, or to the box; its last line, and a line of one word, aligned left; a blank line ends a paragraph, in a box each line break",
+                LayerTextAlignment.Left => Strings.PanelLayerAlignLeftTip,
+                LayerTextAlignment.Center => Strings.PanelLayerAlignCenterTip,
+                LayerTextAlignment.Right => Strings.PanelLayerAlignRightTip,
+                _ => Strings.PanelLayerJustifyTip,
             });
         }
 
         this._layerBox.CheckedChanged += (_, _) => this.ChangeLayerBox(this._layerBox.Checked);
-        this._toolTip.SetToolTip(this._layerBox, "Box — the text wraps in a box half the grid wide, its width dragged by the handles on its sides; unchecked, the size fits the text");
+        this._toolTip.SetToolTip(this._layerBox, Strings.PanelLayerBoxTip);
         this._preview.RenderTextLayer = layer => this.RenderTextLayer(layer.Text!, layer.Style!, layer.Look, layer.Place, layer.TextBox);
 
         this._layerShadow.CheckedChanged += (_, _) => this.ChangeLayerStyle(style => style with { Shadow = this._layerShadow.Checked });
@@ -324,15 +325,15 @@ internal sealed partial class MainForm
             this._layerShadowSizeLabel.Text = ShadowSizeText(this._layerShadowSize.Value);
             this.ChangeLayerStyle(style => style with { Shadow = true, ShadowSize = this._layerShadowSize.Value / 100.0 });
         };
-        this._toolTip.SetToolTip(this._layerItalic, "Draws the text slanted: the font's italic, else its letters leaned");
-        this._toolTip.SetToolTip(this._layerCaps, "Draws the text in capitals; the field keeps the text as typed");
-        this._toolTip.SetToolTip(this._layerShadow, "Draws a soft shadow under the letters and their outline");
-        this._toolTip.SetToolTip(this._layerShadowSize, "Size of the shadow, as a share of a line: how far a halo reaches, how far a drop falls");
+        this._toolTip.SetToolTip(this._layerItalic, Strings.PanelLayerItalicTip);
+        this._toolTip.SetToolTip(this._layerCaps, Strings.PanelLayerCapsTip);
+        this._toolTip.SetToolTip(this._layerShadow, Strings.PanelLayerShadowTip);
+        this._toolTip.SetToolTip(this._layerShadowSize, Strings.PanelLayerShadowSizeTip);
 
         // The text styles: a click applies one or saves a new one, a right click on one of the user's manages it.
         if (!this._textStyles.Load())
         {
-            this.ShowStatus($"The text styles could not be read from {TextStyles.FileName}: only the built-in ones are offered.", error: true);
+            this.ShowStatus(Texts.Format(Strings.PanelLayerStylesNotRead, TextStyles.FileName), error: true);
         }
 
         this._textStyleStrip.SetStyles(this._textStyles.All);
@@ -360,17 +361,17 @@ internal sealed partial class MainForm
         // them on.
         (ColorSplitButton Button, TrackBar Opacity, Label Label, string Name, Func<LayerTextStyle, Color> Get, Func<LayerTextStyle, Color, LayerTextStyle> Set, Func<LayerTextStyle, double, LayerTextStyle> SetOpacity)[] colors =
         [
-            (this._layerColor, this._layerColorOpacity, this._layerColorOpacityLabel, "the text's", style => style.Color, (style, color) => style with { Color = color }, (style, opacity) => style with { Opacity = opacity }),
-            (this._layerOutlineColor, this._layerOutlineOpacity, this._layerOutlineOpacityLabel, "the outline's", style => style.OutlineColor, (style, color) => style with { Outline = true, OutlineColor = color }, (style, opacity) => style with { Outline = true, OutlineOpacity = opacity }),
-            (this._layerBackgroundColor, this._layerBackgroundOpacity, this._layerBackgroundOpacityLabel, "the box's", style => style.BackgroundColor, (style, color) => style with { Background = true, BackgroundColor = color }, (style, opacity) => style with { Background = true, BackgroundOpacity = opacity }),
-            (this._layerShadowColor, this._layerShadowOpacity, this._layerShadowOpacityLabel, "the shadow's", style => style.ShadowColor, (style, color) => style with { Shadow = true, ShadowColor = color }, (style, opacity) => style with { Shadow = true, ShadowOpacity = opacity }),
+            (this._layerColor, this._layerColorOpacity, this._layerColorOpacityLabel, Strings.PanelLayerColorText, style => style.Color, (style, color) => style with { Color = color }, (style, opacity) => style with { Opacity = opacity }),
+            (this._layerOutlineColor, this._layerOutlineOpacity, this._layerOutlineOpacityLabel, Strings.PanelLayerColorOutline, style => style.OutlineColor, (style, color) => style with { Outline = true, OutlineColor = color }, (style, opacity) => style with { Outline = true, OutlineOpacity = opacity }),
+            (this._layerBackgroundColor, this._layerBackgroundOpacity, this._layerBackgroundOpacityLabel, Strings.PanelLayerColorBackground, style => style.BackgroundColor, (style, color) => style with { Background = true, BackgroundColor = color }, (style, opacity) => style with { Background = true, BackgroundOpacity = opacity }),
+            (this._layerShadowColor, this._layerShadowOpacity, this._layerShadowOpacityLabel, Strings.PanelLayerColorShadow, style => style.ShadowColor, (style, color) => style with { Shadow = true, ShadowColor = color }, (style, opacity) => style with { Shadow = true, ShadowOpacity = opacity }),
         ];
         foreach (var (button, opacity, label, name, get, set, setOpacity) in colors)
         {
-            button.Describe(this._toolTip, $"{name} color");
+            button.Describe(this._toolTip, name);
             button.Dialog.Click += (_, _) => this.PickColor(this.LayerColorRoute(get, set));
             button.Eyedropper.Click += (_, _) => this.ArmEyedropper(button, this.LayerColorRoute(get, set));
-            this._toolTip.SetToolTip(opacity, $"Opacity of {name} color");
+            this._toolTip.SetToolTip(opacity, Texts.Format(Strings.PanelLayerColorOpacityTip, name));
             label.MinimumSize = new Size(TextRenderer.MeasureText(OpacityText(100), label.Font).Width, 0);
             opacity.ValueChanged += (_, _) =>
             {
@@ -399,9 +400,9 @@ internal sealed partial class MainForm
         };
     }
 
-    private static string OutlineWidthText(int percent) => $"Width: {percent} %";
+    private static string OutlineWidthText(int percent) => Texts.Format(Strings.PanelLayerOutlineWidthText, percent);
 
-    private static string ShadowSizeText(int percent) => $"Size: {percent} %";
+    private static string ShadowSizeText(int percent) => Texts.Format(Strings.PanelLayerShadowSizeText, percent);
 
     /// <summary>
     /// A row of the font drop-down: the family's name in its own face; for a family of symbols, a sample of
@@ -668,7 +669,7 @@ internal sealed partial class MainForm
             previous?.Dispose();
             this._toolTip.SetToolTip(
                 this._layerEdit,
-                editing ? "Done — gives the grid back (Escape)" : "Edit — shows the selected layer alone, large, its effects working as on a cell (double-click the layer)");
+                editing ? Strings.PanelEditDoneTip : Strings.PanelLayerEditTip);
         }
 
         bool text = enabled && layer is { IsText: true };
@@ -769,9 +770,9 @@ internal sealed partial class MainForm
 
     /// <summary>A layer's name in the list: its file's, its text's first line, else what it was pasted as.</summary>
     private static string LayerName(Layer layer) =>
-        layer.Text is { } text ? (text.Split('\n')[0] is { Length: > 0 } line ? line : "Text")
+        layer.Text is { } text ? (text.Split('\n')[0] is { Length: > 0 } line ? line : Strings.PanelLayerNameText)
         : layer.Image.FilePath is { } path ? Path.GetFileName(path)
-        : "Pasted image";
+        : Strings.PanelLayerNamePasted;
 
     /// <summary>A small copy of <paramref name="bitmap"/>, for the list: its longer side 80 px.</summary>
     private static Bitmap Thumbnail(Bitmap bitmap)
@@ -894,7 +895,7 @@ internal sealed partial class MainForm
         this.TurnLayersOn();
         if (this._preview.InsertLayerCopy(original, copy with { Place = copy.Place.Beside(LayerCascadeStep) }))
         {
-            this.ShowStatus("Layer duplicated.");
+            this.ShowStatus(Strings.PanelLayerDuplicated);
         }
         else
         {
@@ -936,7 +937,7 @@ internal sealed partial class MainForm
 
         if (copy is not null)
         {
-            this.ShowStatus("Layer duplicated.");
+            this.ShowStatus(Strings.PanelLayerDuplicated);
         }
     }
 
@@ -957,7 +958,7 @@ internal sealed partial class MainForm
         {
             if (await Task.Run(() => ImageLoader.TryLoadFile(path)) is not { } loaded)
             {
-                this.ShowStatus($"The layer could not be duplicated: {Path.GetFileName(path)} could not be read again.", error: true);
+                this.ShowStatus(Texts.Format(Strings.PanelLayerDuplicateUnreadable, Path.GetFileName(path)), error: true);
                 return null;
             }
 
@@ -973,7 +974,7 @@ internal sealed partial class MainForm
             }
             catch (Exception ex) when (ex is ExternalException or OutOfMemoryException or ArgumentException)
             {
-                this.ShowStatus($"The layer could not be duplicated: {ErrorLog.Describe(ex)}", error: true);
+                this.ShowStatus(Texts.Format(Strings.PanelLayerDuplicateFailed, ErrorLog.Describe(ex)), error: true);
                 return null;
             }
         }
@@ -1014,7 +1015,7 @@ internal sealed partial class MainForm
             this._preview.AddLayer(new Layer(image, image.Look, place));
         }
 
-        this.ShowStatus(images.Count == 1 ? "Layer added." : $"{images.Count} layers added.");
+        this.ShowStatus(images.Count == 1 ? Strings.PanelLayerAdded : Texts.Format(Strings.PanelLayersAdded, images.Count));
     }
 
     /// <summary>
@@ -1053,7 +1054,7 @@ internal sealed partial class MainForm
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException or ArgumentException)
         {
-            this.ShowStatus($"The text could not be drawn: {ErrorLog.Describe(ex)}", error: true);
+            this.ShowStatus(Texts.Format(Strings.PanelLayerTextNotDrawn, ErrorLog.Describe(ex)), error: true);
             return null;
         }
     }
@@ -1145,14 +1146,14 @@ internal sealed partial class MainForm
 
         using var dialog = new OpenFileDialog
         {
-            Title = "Add layers",
+            Title = Strings.PanelLayerAddDialogTitle,
             Multiselect = true,
             Filter = PickerFilter(),
             InitialDirectory = ExistingFolder(AppSettings.AddFolder) ?? "",
         };
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
-            RememberFolder(AppSettings.SaveAddFolder, dialog.FileName, "Add images");
+            RememberFolder(AppSettings.SaveAddFolder, dialog.FileName, Strings.PanelAddImagesFolder);
             await this.AddLayerFilesAsync(dialog.FileNames);
         }
     }
@@ -1195,12 +1196,12 @@ internal sealed partial class MainForm
         var messages = new List<string>();
         if (unreadable > 0)
         {
-            messages.Add($"{Files(unreadable)} skipped: no preview available");
+            messages.Add(Texts.Format(Strings.PanelFilesSkipped, Files(unreadable)));
         }
 
         if (paths.Length > MaxLayerFiles)
         {
-            messages.Add($"{Files(paths.Length - MaxLayerFiles)} ignored: {MaxLayerFiles} layers at most at once");
+            messages.Add(Texts.Format(Strings.PanelLayerFilesIgnored, Files(paths.Length - MaxLayerFiles), MaxLayerFiles));
         }
 
         if (messages.Count > 0)
@@ -1241,7 +1242,7 @@ internal sealed partial class MainForm
         }
         catch (ExternalException ex)
         {
-            this.ShowStatus($"Paste failed: {ex.Message}", error: true);
+            this.ShowStatus(Texts.Format(Strings.PanelPasteFailed, ex.Message), error: true);
             return;
         }
 
@@ -1255,7 +1256,7 @@ internal sealed partial class MainForm
         }
         else
         {
-            this.ShowStatus("Nothing to paste: the clipboard holds no image, file or text.");
+            this.ShowStatus(Strings.PanelLayerNothingToPaste);
         }
     }
 
@@ -1265,7 +1266,7 @@ internal sealed partial class MainForm
         string? text = data.Plain ?? await Task.Run(() => data.Parse()?.Text.Text);
         if (string.IsNullOrWhiteSpace(text))
         {
-            this.ShowStatus("Nothing added: the text is empty.");
+            this.ShowStatus(Strings.PanelLayerTextEmpty);
             return;
         }
 
@@ -1292,7 +1293,7 @@ internal sealed partial class MainForm
     private void SaveTextStyle()
     {
         if (this.IsExporting || this._preview.SelectedLayer is not { IsText: true } layer
-            || this.AskTextStyleName("Save style", "The style's name:", "", except: null) is not { } name)
+            || this.AskTextStyleName(Strings.PanelStyleSaveTitle, Strings.PanelStyleNamePrompt, "", except: null) is not { } name)
         {
             return;
         }
@@ -1301,8 +1302,8 @@ internal sealed partial class MainForm
         {
             if (MessageBox.Show(
                     this,
-                    $"Replace the style “{existing.Name}” with the selected text's style?",
-                    "Save style",
+                    Texts.Format(Strings.PanelStyleReplaceConfirm, existing.Name),
+                    Strings.PanelStyleSaveTitle,
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question,
                     MessageBoxDefaultButton.Button2) != DialogResult.Yes)
@@ -1314,7 +1315,7 @@ internal sealed partial class MainForm
         }
 
         this._textStyles.Put(name, layer.Style!);
-        this.SaveTextStyles($"Style “{name}” saved.");
+        this.SaveTextStyles(Texts.Format(Strings.PanelStyleSaved, name));
     }
 
     /// <summary>The context menu of one of the user's styles: rename it, replace it with the selected text's style, delete it.</summary>
@@ -1326,13 +1327,13 @@ internal sealed partial class MainForm
         }
 
         this._textStyleMenu.Items.Clear();
-        UiIcons.Set(this._textStyleMenu.Items.Add("Rename…", null, (_, _) => this.RenameTextStyle(style)), UiIcons.Rename);
-        var replace = new ToolStripMenuItem("Replace with current style", null, (_, _) =>
+        UiIcons.Set(this._textStyleMenu.Items.Add(Strings.PanelStyleMenuRename, null, (_, _) => this.RenameTextStyle(style)), UiIcons.Rename);
+        var replace = new ToolStripMenuItem(Strings.PanelStyleMenuReplace, null, (_, _) =>
         {
             if (this._preview.SelectedLayer is { IsText: true } layer)
             {
                 this._textStyles.Put(style.Name, layer.Style!);
-                this.SaveTextStyles($"Style “{style.Name}” replaced.");
+                this.SaveTextStyles(Texts.Format(Strings.PanelStyleReplaced, style.Name));
             }
         })
         {
@@ -1342,11 +1343,11 @@ internal sealed partial class MainForm
         this._textStyleMenu.Items.Add(replace);
 
         // A decision taking something away goes through a submenu (RULES.md § People).
-        var delete = new ToolStripMenuItem("Delete");
-        var confirm = delete.DropDownItems.Add($"Delete {style.Name}", null, (_, _) =>
+        var delete = new ToolStripMenuItem(Strings.PanelLayerDelete);
+        var confirm = delete.DropDownItems.Add(Texts.Format(Strings.PanelStyleMenuDelete, style.Name), null, (_, _) =>
         {
             this._textStyles.Delete(style);
-            this.SaveTextStyles($"Style “{style.Name}” deleted.");
+            this.SaveTextStyles(Texts.Format(Strings.PanelStyleDeleted, style.Name));
         });
         UiIcons.Set(delete, UiIcons.Forget);
         UiIcons.Set(confirm, UiIcons.Forget);
@@ -1356,10 +1357,10 @@ internal sealed partial class MainForm
 
     private void RenameTextStyle(NamedTextStyle style)
     {
-        if (this.AskTextStyleName("Rename style", "The style's new name:", style.Name, except: style) is { } name && name != style.Name)
+        if (this.AskTextStyleName(Strings.PanelStyleRenameTitle, Strings.PanelStyleNewNamePrompt, style.Name, except: style) is { } name && name != style.Name)
         {
             this._textStyles.Rename(style, name);
-            this.SaveTextStyles($"Style “{style.Name}” renamed “{name}”.");
+            this.SaveTextStyles(Texts.Format(Strings.PanelStyleRenamed, style.Name, name));
         }
     }
 
@@ -1378,9 +1379,9 @@ internal sealed partial class MainForm
             }
 
             value = dialog.Value;
-            string? refused = value.Length == 0 ? "A style needs a name."
-                : TextStyles.IsReserved(value) ? $"“{value}” is a built-in style's name: choose another one."
-                : except is not null && this._textStyles.Find(value) is { } other && other != except ? $"A style is already named “{other.Name}”: choose another name."
+            string? refused = value.Length == 0 ? Strings.PanelStyleNeedsName
+                : TextStyles.IsReservedForUser(value) ? Texts.Format(Strings.PanelStyleReserved, value)
+                : except is not null && this._textStyles.Find(value) is { } other && other != except ? Texts.Format(Strings.PanelStyleAlreadyNamed, other.Name)
                 : null;
             if (refused is null)
             {
@@ -1405,7 +1406,7 @@ internal sealed partial class MainForm
         }
         catch (Exception ex) when (Explorer.FileIndex.IsFileError(ex))
         {
-            this.ShowStatus($"The text styles could not be saved to {TextStyles.FileName}: {ErrorLog.Describe(ex)}", error: true);
+            this.ShowStatus(Texts.Format(Strings.PanelStylesNotSaved, TextStyles.FileName, ErrorLog.Describe(ex)), error: true);
         }
     }
 }

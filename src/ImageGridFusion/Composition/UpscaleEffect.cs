@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.Composition;
 
@@ -50,5 +51,5 @@ public sealed record UpscaleEffect
         Default.WithFactor(PresetJson.Int(json, "factor", Default.Factor)).WithModel(PresetJson.Enum(json, "model", Default.Model));
 
     /// <summary>What the preset dialog and the Upscale window name it by.</summary>
-    internal string Describe() => $"×{this.Factor} {this.Model}";
+    internal string Describe() => Texts.Format(Strings.UiDescUpscale, this.Factor, this.Model == UpscaleModel.Quality ? Strings.UiUpscaleQuality : Strings.UiUpscaleFast);
 }

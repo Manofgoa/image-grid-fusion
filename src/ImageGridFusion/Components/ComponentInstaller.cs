@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using ImageGridFusion.Explorer;
+using ImageGridFusion.Resources;
 using ImageGridFusion.Web;
 
 namespace ImageGridFusion.Components;
@@ -55,12 +56,12 @@ internal static class ComponentInstaller
                 {
                     if (!zips.TryGetValue(file.Url, out var directory))
                     {
-                        progress.Report(new InstallProgress(null, "Reading the package…"));
+                        progress.Report(new InstallProgress(null, Strings.CompInstallReadingPackage));
                         directory = await RemoteZip.ReadDirectoryAsync(new Uri(file.Url), token);
                         zips[file.Url] = directory;
                     }
 
-                    sizes.Add(directory.TryGetValue(entry, out var found) ? found.CompressedSize : throw new UrlLoadException($"the package has no {entry}"));
+                    sizes.Add(directory.TryGetValue(entry, out var found) ? found.CompressedSize : throw new UrlLoadException(Texts.Format(Strings.CompInstallPackageMissingEntry, entry)));
                 }
                 else
                 {
@@ -89,7 +90,7 @@ internal static class ComponentInstaller
 
                     reported = now;
                     long done = start + (long)(weight * share);
-                    progress.Report(new InstallProgress((double)done / total, $"{Megabytes(done)} / {Megabytes(total)} MB"));
+                    progress.Report(new InstallProgress((double)done / total, Texts.Format(Strings.CompInstallProgressMegabytes, Megabytes(done), Megabytes(total))));
                 }
 
                 if (file.ZipEntry is { } entry)
@@ -104,16 +105,16 @@ internal static class ComponentInstaller
                 }
 
                 before += weight;
-                progress.Report(new InstallProgress((double)before / total, "Checking…"));
+                progress.Report(new InstallProgress((double)before / total, Strings.CompInstallChecking));
                 string sha256 = DirectEngineDownload.Sha256Of(path);
                 if (file.Sha256 is { } expected && !string.Equals(sha256, expected, StringComparison.OrdinalIgnoreCase))
                 {
-                    throw new UrlLoadException($"{file.Name} does not match its expected content");
+                    throw new UrlLoadException(Texts.Format(Strings.CompInstallHashMismatch, file.Name));
                 }
 
                 if (component.Accepts is { } accepts && !accepts(path))
                 {
-                    throw new UrlLoadException($"{file.Name} is not what {component.Name} needs");
+                    throw new UrlLoadException(Texts.Format(Strings.CompInstallNotWhatNeeded, file.Name, component.Name));
                 }
 
                 files.Add(file with { Sha256 = sha256.ToLowerInvariant(), Size = new FileInfo(path).Length });
@@ -131,9 +132,9 @@ internal static class ComponentInstaller
 
             throw e as UrlLoadException ?? new UrlLoadException(e switch
             {
-                HttpRequestException or OperationCanceledException => "The download broke off",
-                InvalidDataException => "The package arrived damaged",
-                _ => $"Couldn't save it: {e.Message}",
+                HttpRequestException or OperationCanceledException => Strings.CompInstallDownloadBroke,
+                InvalidDataException => Strings.CompInstallPackageDamaged,
+                _ => Texts.Format(Strings.CompInstallCouldntSave, e.Message),
             }, e);
         }
     }
@@ -183,13 +184,13 @@ internal static class ComponentInstaller
     {
         if (WingetGate.CurrentCount == 0)
         {
-            progress.Report(new InstallProgress(null, "Waiting for winget…"));
+            progress.Report(new InstallProgress(null, Strings.CompInstallWaitingWinget));
         }
 
         await WingetGate.WaitAsync(token);
         try
         {
-            progress.Report(new InstallProgress(null, "Installing with winget…"));
+            progress.Report(new InstallProgress(null, Strings.CompInstallInstallingWinget));
             string folder = tool.Folder;
             string previous = folder + PreviousSuffix;
             DeleteFolder(previous);
@@ -201,7 +202,7 @@ internal static class ComponentInstaller
                 }
                 catch (Exception e) when (e is IOException or UnauthorizedAccessException)
                 {
-                    throw new UrlLoadException($"{tool.Name} is in use: try again once the URL load ends", e);
+                    throw new UrlLoadException(Texts.Format(Strings.CompInstallToolInUse, tool.Name), e);
                 }
             }
 
@@ -371,7 +372,7 @@ internal static class ComponentInstaller
         }
     }
 
-    private static string Megabytes(long bytes) => (bytes / 1e6).ToString(bytes < 10_000_000 ? "0.0" : "0", System.Globalization.CultureInfo.InvariantCulture);
+    private static string Megabytes(long bytes) => Texts.Number(bytes / 1e6, bytes < 10_000_000 ? "0.0" : "0");
 
     /// <summary>A progress reported on the reporting thread itself.</summary>
     private sealed class SyncProgress(Action<long> handler) : IProgress<long>

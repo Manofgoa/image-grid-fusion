@@ -1,4 +1,5 @@
 using System.Net;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.Web;
 
@@ -27,11 +28,11 @@ internal static class Downloader
         }
         catch (HttpRequestException e)
         {
-            throw new UrlLoadException($"Couldn't reach {url.Host}: {e.Message}", e);
+            throw new UrlLoadException(Texts.Format(Strings.CompWebCouldntReach, url.Host, e.Message), e);
         }
         catch (TaskCanceledException e) when (!token.IsCancellationRequested)
         {
-            throw new UrlLoadException($"{url.Host} didn't answer in time", e);
+            throw new UrlLoadException(Texts.Format(Strings.CompWebNoAnswerInTime, url.Host), e);
         }
     }
 
@@ -48,7 +49,7 @@ internal static class Downloader
     {
         if (!response.IsSuccessStatusCode)
         {
-            throw new UrlLoadException($"The server answered {(int)response.StatusCode} {response.ReasonPhrase}");
+            throw new UrlLoadException(Texts.Format(Strings.CompWebServerAnswered, (int)response.StatusCode, response.ReasonPhrase));
         }
     }
 
@@ -98,8 +99,8 @@ internal static class Downloader
 
             throw new UrlLoadException(e switch
             {
-                HttpRequestException or OperationCanceledException => "The download broke off",
-                _ => $"Couldn't save the file: {e.Message}",
+                HttpRequestException or OperationCanceledException => Strings.CompInstallDownloadBroke,
+                _ => Texts.Format(Strings.CompWebCouldntSaveFile, e.Message),
             }, e);
         }
     }

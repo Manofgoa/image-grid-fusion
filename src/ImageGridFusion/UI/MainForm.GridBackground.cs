@@ -1,5 +1,6 @@
 using System.Drawing.Drawing2D;
 using ImageGridFusion.Composition;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -45,7 +46,7 @@ internal sealed partial class MainForm
         this._globalOptions[GlobalEffect.GridBackground].Controls.AddRange([this._gridFill.Kind, lines]);
         this.BuildBackgroundImageOptions();
 
-        this._gridBackgroundColor.Describe(this._toolTip, "the grid background's color", ". Until the Grid background is first turned on, it follows the first cell's automatic color");
+        this._gridBackgroundColor.Describe(this._toolTip, Strings.PanelGridBgColorTarget, Strings.PanelGridBgColorNote);
         this._gridBackgroundColor.Dialog.Click += (_, _) => this.PickColor(this.GridBackgroundRoute());
         this._gridBackgroundColor.Eyedropper.Click += (_, _) => this.ArmEyedropper(this._gridBackgroundColor, this.GridBackgroundRoute());
         this._gridBackgroundOpacity.ValueChanged += (_, _) =>
@@ -53,7 +54,7 @@ internal sealed partial class MainForm
             this._gridBackgroundOpacityLabel.Text = OpacityText(this._gridBackgroundOpacity.Value);
             this.ChangeGridBackground(background => background.WithOpacity(this._gridBackgroundOpacity.Value / 100.0));
         };
-        this._gridFill.Describe(this._toolTip, "the grid");
+        this._gridFill.Describe(this._toolTip, Strings.PanelFillTargetGrid);
         this._gridFill.Changed += change => this.ChangeGridBackground(background => background.WithStyle(change(background.Style)));
         this._gridFill.SecondButton.Dialog.Click += (_, _) => this.PickColor(this.GridSecondRoute());
         this._gridFill.SecondButton.Eyedropper.Click += (_, _) => this.ArmEyedropper(this._gridFill.SecondButton, this.GridSecondRoute());
@@ -67,16 +68,16 @@ internal sealed partial class MainForm
     {
         this._backgroundStyle = new FillControls(offersAuto: false, this.BackgroundSecondSwatch);
         var style = this._backgroundStyle;
-        lines.AddLine("Fill", this._backgroundFill);
-        lines.AddLine("Gradient", style.Kind, new SliderBox(style.Angle, style.AngleLabel));
+        lines.AddLine(Strings.MainLineFill, this._backgroundFill);
+        lines.AddLine(Strings.MainLineGradient, style.Kind, new SliderBox(style.Angle, style.AngleLabel));
         lines.AddLine(this._backgroundAutomatic, this._backgroundColor, new SliderBox(this._backgroundOpacity, this._backgroundOpacityLabel, this._backgroundOpacityIcon));
         lines.AddLine(style.SecondCaption, style.Second, style.SecondButton, new SliderBox(style.SecondOpacity, style.SecondOpacityLabel, style.SecondOpacityIcon));
         lines.AddLine(
-            "Edges",
+            Strings.MainLineEdges,
             new SliderBox(this._backgroundEdgeOpacity, this._backgroundEdgeOpacityLabel),
             new SliderBox(this._backgroundBlend, this._backgroundBlendLabel),
             this._backgroundSoften);
-        this._backgroundStyle.Describe(this._toolTip, "the cell");
+        this._backgroundStyle.Describe(this._toolTip, Strings.PanelFillTargetCell);
         this._backgroundStyle.Changed += change =>
             this.ChangeLook(ImageEffect.Background, look => look.WithBackground(look.Background!.WithStyle(change(look.Background.Style))));
         this._backgroundStyle.SecondButton.Dialog.Click += (_, _) => this.PickColor(this.BackgroundSecondRoute());
@@ -288,7 +289,7 @@ internal sealed partial class MainForm
             color => this.ChangeLook(ImageEffect.Background, look => look.WithBackground(look.Background!.WithStyle(look.Background.Style.WithSecondChosen(color)))));
     }
 
-    private static string GradientAngleText(int degrees) => $"Angle: {degrees}°";
+    private static string GradientAngleText(int degrees) => Texts.Format(Strings.PanelFillAngle, degrees);
 
     /// <summary>
     /// The shared fill's options, one set per user — the cell's Background, the Grid background: its kinds as
@@ -306,7 +307,7 @@ internal sealed partial class MainForm
             this.Angle.Width = 120;
             this.SecondOpacity.Width = 110;
             this.Second.Items.AddRange([.. this._choices.Select(ChoiceText)]);
-            this.Second.DropDownWidth = 150;
+            this.Second.DropDownWidth = 170;
             this.Second.DrawItem += (_, e) => this.DrawChoice(e);
             this.AngleControls = [this.Angle, this.AngleLabel];
             this.SecondControls = [this.SecondCaption, this.Second, this.SecondButton, this.SecondOpacityIcon, this.SecondOpacity, this.SecondOpacityLabel];
@@ -342,13 +343,13 @@ internal sealed partial class MainForm
 
         public SliderCaption AngleLabel { get; } = new();
 
-        public Label SecondCaption { get; } = new() { Text = "To", AutoSize = true, Anchor = AnchorStyles.Left };
+        public Label SecondCaption { get; } = new() { Text = Strings.PanelFillTo, AutoSize = true, Anchor = AnchorStyles.Left };
 
         public ComboBox Second { get; } = new()
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
             DrawMode = DrawMode.OwnerDrawFixed,
-            Width = 120,
+            Width = 150,
             Anchor = AnchorStyles.Left,
         };
 
@@ -371,10 +372,10 @@ internal sealed partial class MainForm
 
         public void Describe(ToolTip toolTip, string target)
         {
-            toolTip.SetToolTip(this.Angle, $"The direction the linear gradient goes across {target}: 0° from left to right, 90° from top to bottom");
-            toolTip.SetToolTip(this.Second, "Where the gradient's second color comes from");
-            toolTip.SetToolTip(this.SecondOpacity, "The second color's opacity");
-            this.SecondButton.Describe(toolTip, "the gradient's second color", ". A color chosen sets the second color to Chosen");
+            toolTip.SetToolTip(this.Angle, Texts.Format(Strings.PanelFillAngleTip, target));
+            toolTip.SetToolTip(this.Second, Strings.PanelFillSecondTip);
+            toolTip.SetToolTip(this.SecondOpacity, Strings.PanelFillSecondOpacityTip);
+            this.SecondButton.Describe(toolTip, Strings.PanelFillSecondTarget, Strings.PanelFillSecondNote);
         }
 
         /// <summary>Shows <paramref name="style"/>: the kept settings while its effect is off; the gradient's options enabled for a gradient only.</summary>
@@ -398,7 +399,11 @@ internal sealed partial class MainForm
 
         private static string ChoiceText(SecondColor choice) => choice switch
         {
-            Composition.SecondColor.Auto => "Auto, last cell",
+            Composition.SecondColor.Auto => Strings.PanelFillSecondAuto,
+            Composition.SecondColor.Darker => Strings.PanelFillSecondDarker,
+            Composition.SecondColor.Black => Strings.PanelFillSecondBlack,
+            Composition.SecondColor.White => Strings.PanelFillSecondWhite,
+            Composition.SecondColor.Chosen => Strings.PanelFillSecondChosen,
             _ => choice.ToString(),
         };
 

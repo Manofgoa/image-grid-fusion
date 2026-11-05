@@ -1,3 +1,5 @@
+using ImageGridFusion.Resources;
+
 namespace ImageGridFusion.Web;
 
 /// <summary>Where a URL's load stands, reported to the URL zone as it goes.</summary>
@@ -22,7 +24,7 @@ internal sealed record MergingStep : UrlLoadStep;
 internal class UrlLoadException(string message, Exception? inner = null) : Exception(message, inner);
 
 /// <summary>The URL needs yt-dlp, and it is not installed: the URL zone offers to install it.</summary>
-internal sealed class YtDlpMissingException() : UrlLoadException("This site needs yt-dlp");
+internal sealed class YtDlpMissingException() : UrlLoadException(Strings.CompUrlSiteNeedsYtDlp);
 
 /// <summary>yt-dlp failed while one of its companions is missing: the URL zone offers to install them.</summary>
 internal sealed class YtDlpCompanionsMissingException(string message) : UrlLoadException(message);

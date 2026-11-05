@@ -1,5 +1,6 @@
 using System.Drawing.Drawing2D;
 using ImageGridFusion.Composition;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -20,14 +21,20 @@ internal sealed class CutoutReachStrip : SelectionStrip<CutoutReach>
 
     protected override bool PicksSelected => true;
 
-    protected override string Label(CutoutReach reach) => reach.ToString();
+    protected override string Label(CutoutReach reach) => reach switch
+    {
+        CutoutReach.Auto => Strings.UiReachAuto,
+        CutoutReach.Part => Strings.UiReachPart,
+        CutoutReach.Object => Strings.UiReachObject,
+        _ => Strings.UiReachWhole,
+    };
 
     protected override string Tip(CutoutReach reach) => reach switch
     {
-        CutoutReach.Auto => "A pick keeps what the model finds likeliest under the click",
-        CutoutReach.Part => "A pick keeps the smallest part under the click — a tyre",
-        CutoutReach.Object => "A pick keeps a middle reach under the click — the car's body",
-        _ => "A pick keeps the largest object under the click — the whole car",
+        CutoutReach.Auto => Strings.UiReachAutoTip,
+        CutoutReach.Part => Strings.UiReachPartTip,
+        CutoutReach.Object => Strings.UiReachObjectTip,
+        _ => Strings.UiReachWholeTip,
     };
 
     protected override void PaintThumbnail(Graphics g, CutoutReach reach, Rectangle box, bool pressed)

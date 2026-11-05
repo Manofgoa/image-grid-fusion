@@ -1,5 +1,5 @@
-using System.Globalization;
 using ImageGridFusion.Composition;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -19,8 +19,8 @@ internal sealed class UpscaleWindow : Form
     private readonly UpscaleService _service;
     private readonly Label _status = new() { AutoSize = true, Margin = new Padding(0, 6, 0, 0) };
     private readonly ProgressBar _progress = new() { Dock = DockStyle.Top, Maximum = 1000, Visible = false, Margin = new Padding(0, 8, 0, 0) };
-    private readonly Button _upscale = new() { Text = "Upscale", AutoSize = true };
-    private readonly Button _cancel = new() { Text = "Cancel", AutoSize = true };
+    private readonly Button _upscale = new() { Text = Strings.CompUpscaleButton, AutoSize = true };
+    private readonly Button _cancel = new() { Text = Strings.CompUpscaleCancel, AutoSize = true };
     private readonly System.Diagnostics.Stopwatch _watch = new();
     private CancellationTokenSource? _running;
     private bool _closeWhenStopped;
@@ -30,7 +30,7 @@ internal sealed class UpscaleWindow : Form
         this._image = image;
         this._setting = setting;
         this._service = service;
-        this.Text = $"Upscale — {name}";
+        this.Text = Texts.Format(Strings.CompUpscaleTitle, name);
         this.FormBorderStyle = FormBorderStyle.FixedDialog;
         this.StartPosition = FormStartPosition.CenterParent;
         this.MinimizeBox = false;
@@ -46,10 +46,12 @@ internal sealed class UpscaleWindow : Form
         int frames = image.Pages is { } pages ? pages.Count : 1;
         var lines = new[]
         {
-            $"{setting.Model} model, ×{setting.Factor}{(frames > 1 ? $", {frames} frames" : "")}",
-            $"Size: {from.Width} × {from.Height}  →  {to.Width} × {to.Height}",
-            $"File: ≈ {ComponentsWindow.SizeText(this.EstimatedBytes(to, frames))} as a {(frames > 1 ? "GIF" : "PNG")} (an estimate)",
-            $"Time: ≈ {DurationText(service.Estimate(image, setting))} on this computer (an estimate)",
+            frames > 1
+                ? Texts.Format(Strings.CompUpscaleModelFrames, ModelName(setting.Model), setting.Factor, frames)
+                : Texts.Format(Strings.CompUpscaleModel, ModelName(setting.Model), setting.Factor),
+            Texts.Format(Strings.CompUpscaleSize, from.Width, from.Height, to.Width, to.Height),
+            Texts.Format(Strings.CompUpscaleFile, ComponentsWindow.SizeText(this.EstimatedBytes(to, frames)), frames > 1 ? "GIF" : "PNG"),
+            Texts.Format(Strings.CompUpscaleTime, DurationText(service.Estimate(image, setting))),
         };
 
         var layout = new TableLayoutPanel { ColumnCount = 1, AutoSize = true, Dock = DockStyle.Fill };
@@ -83,6 +85,8 @@ internal sealed class UpscaleWindow : Form
 
         base.OnFormClosing(e);
     }
+
+    private static string ModelName(UpscaleModel model) => model == UpscaleModel.Quality ? Strings.CompUpscaleModelQuality : Strings.CompUpscaleModelFast;
 
     private static string DurationText(TimeSpan duration) => duration.TotalSeconds switch
     {
@@ -118,7 +122,7 @@ internal sealed class UpscaleWindow : Form
         this._progress.Visible = true;
         this._progress.Value = 0;
         this._status.ForeColor = SystemColors.ControlText;
-        this._status.Text = "Upscaling…";
+        this._status.Text = Strings.CompUpscaleRunning;
         this._running = new CancellationTokenSource();
         this._watch.Restart();
         var progress = new Progress<double>(this.ShowProgress);
@@ -139,7 +143,7 @@ internal sealed class UpscaleWindow : Form
                 return;
             }
 
-            this._status.Text = "Cancelled";
+            this._status.Text = Strings.CompUpscaleCancelled;
             this._upscale.Enabled = true;
         }
         catch (Exception ex) when (ex is Microsoft.ML.OnnxRuntime.OnnxRuntimeException or OutOfMemoryException or IOException or UnauthorizedAccessException
@@ -147,7 +151,7 @@ internal sealed class UpscaleWindow : Form
         {
             this._running = null;
             this._status.ForeColor = Color.Firebrick;
-            this._status.Text = $"Couldn't upscale the image: {ErrorLog.Describe(ex)}";
+            this._status.Text = Texts.Format(Strings.CompUpscaleFailed, ErrorLog.Describe(ex));
             this._upscale.Enabled = true;
         }
     }
@@ -160,8 +164,8 @@ internal sealed class UpscaleWindow : Form
         }
 
         this._progress.Value = Math.Clamp((int)(done * 1000), 0, 1000);
-        string left = done > 0.01 ? $", ≈ {DurationText(this._watch.Elapsed * ((1 - done) / done))} left" : "";
-        this._status.Text = string.Create(CultureInfo.InvariantCulture, $"Upscaling… {done * 100:0} %{left}");
+        string left = done > 0.01 ? Texts.Format(Strings.CompUpscaleLeft, DurationText(this._watch.Elapsed * ((1 - done) / done))) : "";
+        this._status.Text = Texts.Format(Strings.CompUpscaleProgress, Texts.Number(done * 100, "0"), left);
     }
 
     private void Stop(bool close)
@@ -175,7 +179,7 @@ internal sealed class UpscaleWindow : Form
 
         this._closeWhenStopped = close;
         this._cancel.Enabled = false;
-        this._status.Text = "Stopping after the current tile…";
+        this._status.Text = Strings.CompUpscaleStopping;
         this._running.Cancel();
     }
 }

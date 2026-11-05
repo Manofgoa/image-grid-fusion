@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Drawing.Drawing2D;
 using System.Globalization;
 using ImageGridFusion.Composition;
+using ImageGridFusion.Resources;
 
 namespace ImageGridFusion.UI;
 
@@ -374,7 +375,7 @@ internal sealed partial class GridPreview
 
         string text = custom.Exact
             ? $"{custom.Width} × {custom.Height} px"
-            : string.Create(CultureInfo.InvariantCulture, $"{custom.Ratio:0.00}:1");
+            : Texts.Number(custom.Ratio, "0.00") + ":1";
         using var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
         using var path = new GraphicsPath();
         path.AddString(text, this.Font.FontFamily, (int)FontStyle.Bold, this.LogicalToDeviceUnits(EdgeReadoutTextSize), new PointF(canvas.Left + canvas.Width / 2f, canvas.Top + canvas.Height / 2f), format);
