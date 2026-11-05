@@ -1183,7 +1183,8 @@ menu's **Language / Langue** (origin: `workfiles/20261105-french-translation.md`
 - **A new text is added in both files in the same commit**, its key named after its place and meaning;
   a text with values is **one** entry with numbered placeholders (`Texts.Format(Strings.X, a, b)`),
   never fragments glued together. The French one uses the French terms of
-  [GLOSSARY.fr.md](GLOSSARY.fr.md).
+  [GLOSSARY.fr.md](GLOSSARY.fr.md). The build warns of a key missing from either file
+  (`CheckFrenchTexts` in the csproj): a build with that warning is not finished.
 - **Read once, at start-up**: `Program.Main` sets the UI culture (`CultureInfo.DefaultThreadCurrentUICulture`)
   from `AppSettings.Language` before any form exists; a change applies at the next start, a restart
   offered (`MainForm.RestartApp`). No text is looked up into a `static readonly` field or a `const`.
