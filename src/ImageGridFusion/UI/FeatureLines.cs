@@ -83,8 +83,31 @@ internal sealed class SliderCaption : Label
         {
             string text = this.Text;
             int colon = text.IndexOf(": ", StringComparison.Ordinal);
-            var (name, value) = colon < 0 ? ("", text) : (text[..colon], text[(colon + 2)..]);
+            // The name trimmed: French writes a space before its colon (Mélange : 40 %).
+            var (name, value) = colon < 0 ? ("", text) : (text[..colon].TrimEnd(), text[(colon + 2)..]);
             return (this._caption ?? name, value);
+        }
+    }
+
+    /// <summary>
+    /// Where the value is drawn, in the caption's coordinates: at its right above the slider, after <c>Name: </c>
+    /// inline — where a field typing the value lies over it (workfiles/20261105-slider-exact-value.md).
+    /// </summary>
+    public Rectangle ValueBounds
+    {
+        get
+        {
+            var (_, value) = this.Parts;
+            int width = TextRenderer.MeasureText(value, this.Font, Size.Empty, Flags).Width;
+            if (this._above)
+            {
+                return new Rectangle(Math.Max(0, this.Width - width), 0, Math.Min(width, this.Width), this.Height);
+            }
+
+            string text = this.Text;
+            int colon = text.IndexOf(": ", StringComparison.Ordinal);
+            int x = this.Padding.Left + (colon < 0 ? 0 : TextRenderer.MeasureText(text[..(colon + 2)], this.Font, Size.Empty, Flags).Width);
+            return new Rectangle(x, 0, width, this.Height);
         }
     }
 
@@ -357,13 +380,97 @@ internal sealed class FeatureLinesPanel : Panel
         this.Arrange();
     }
 
-    private int Gap => this.LogicalToDeviceUnits(4);
+    // One spacing everywhere, whatever the controls' own margins (workfiles/20261104-options-toolbar-layout.md, Iteration 6).
+    private int Gap => this.LogicalToDeviceUnits(6);
 
-    private int LeadGap => this.LogicalToDeviceUnits(6);
+    private int LeadGap => this.LogicalToDeviceUnits(8);
 
     private int LineGap => this.LogicalToDeviceUnits(4);
 
-    private int ColumnGap => this.LogicalToDeviceUnits(17);
+    private int ColumnGap => this.LogicalToDeviceUnits(24);
+
+    /// <summary>The space between two controls of a line: the gap, but between buttons of one row touching (the text alignments).</summary>
+    private int Spacing(Control previous, Control control) =>
+        previous is CheckBox { Appearance: Appearance.Button } && control is CheckBox { Appearance: Appearance.Button }
+            ? this.LogicalToDeviceUnits(1)
+            : this.Gap;
+
+    /// <summary>
+    /// The key a control lines up by in its column — a color button or a slider, named by the color buttons and
+    /// sliders of its line up to it — or none: the controls of one key stand at one x in every line of the column,
+    /// so lines of one shape line up (the Background's two colors) and a slider after thumbnails stays by them.
+    /// </summary>
+    private static IEnumerable<(Control Control, string? Key)> Keyed(Line line)
+    {
+        string path = "";
+        foreach (var control in line.Controls)
+        {
+            if (control is ColorSplitButton or SliderBox)
+            {
+                path += "/" + control.GetType().Name;
+                yield return (control, path);
+            }
+            else
+            {
+                yield return (control, null);
+            }
+        }
+    }
+
+    /// <summary>Where each keyed control of <paramref name="line"/> stands from the controls' start, and where the line ends, the anchors found so far applied.</summary>
+    private (Dictionary<string, int> Offsets, int End) Offsets(Line line, Dictionary<string, int> anchors)
+    {
+        var offsets = new Dictionary<string, int>();
+        int x = 0;
+        Control? previous = null;
+        foreach (var (control, key) in Keyed(line))
+        {
+            if (previous is not null)
+            {
+                x += this.Spacing(previous, control);
+            }
+
+            if (key is { } k)
+            {
+                x = Math.Max(x, anchors.GetValueOrDefault(k));
+                offsets[k] = x;
+            }
+
+            x += this.NaturalSize(control).Width;
+            previous = control;
+        }
+
+        return (offsets, x);
+    }
+
+    /// <summary>The anchors of a column: for each key, in the order the lines hold them, the farthest place a line puts it.</summary>
+    private Dictionary<string, int> Anchors(List<Line> column)
+    {
+        var anchors = new Dictionary<string, int>();
+        var keys = column.SelectMany(line => Keyed(line).Select(keyed => keyed.Key)).OfType<string>().Distinct().ToList();
+        foreach (var key in keys)
+        {
+            anchors[key] = column.Max(line => this.Offsets(line, anchors).Offsets.GetValueOrDefault(key));
+        }
+
+        return anchors;
+    }
+
+    /// <summary>
+    /// Where a line's leading element stands from the line's top: centered on its first row — the sliders' captions,
+    /// or a control's height at most — so it reads at the top of its line, never floating at its middle.
+    /// </summary>
+    private int LeadTop(Line line, int axis, int height)
+    {
+        if (line.Controls.OfType<SliderBox>().FirstOrDefault(box => box.Above) is { } box)
+        {
+            // The caption's row: the box's top, as tall as the box above its slider.
+            int caption = box.Height - (2 * (box.Height - box.Axis));
+            return Math.Max(0, axis - box.Axis + ((caption - line.Lead.Height) / 2));
+        }
+
+        return Math.Max(0, (Math.Min(height, this.LogicalToDeviceUnits(24)) - line.Lead.Height) / 2);
+    }
 
     /// <summary>Where a control's middle is, from its top: its slider's middle for a slider box.</summary>
     private static int AxisOf(Control control) => control is SliderBox box ? box.Axis : control.Height / 2;
@@ -383,8 +490,6 @@ internal sealed class FeatureLinesPanel : Panel
     }
 
     private Size NaturalSize(Control control) => this._stretched.TryGetValue(control, out var size) ? size : control.Size;
-
-    private int ControlsWidth(Line line) => line.Controls.Sum(control => control.Margin.Horizontal + this.NaturalSize(control).Width);
 
     /// <summary>Takes a control into the lines: placed by them from now on, laid out again whenever its size changes.</summary>
     private void Adopt(Control control)
@@ -490,28 +595,40 @@ internal sealed class FeatureLinesPanel : Panel
         foreach (var column in columns)
         {
             int leads = column.Max(line => line.Lead.Width);
-            int controls = column.Max(this.ControlsWidth);
+            var anchors = this.Anchors(column);
+            int controls = column.Max(line => this.Offsets(line, anchors).End);
             int start = x + leads + this.LeadGap;
             y = 0;
             foreach (var line in column)
             {
                 var (axis, below) = Extent(line);
                 int leadX = this._layout == OptionLayout.Grid ? x + leads - line.Lead.Width : x;
-                line.Lead.Location = new Point(leadX, y + axis - (line.Lead.Height / 2));
-                int cx = start;
-                foreach (var control in line.Controls)
+                line.Lead.Location = new Point(leadX, y + this.LeadTop(line, axis, axis + below));
+                int cx = 0;
+                Control? previous = null;
+                foreach (var (control, key) in Keyed(line))
                 {
-                    cx += control.Margin.Left;
+                    if (previous is not null)
+                    {
+                        cx += this.Spacing(previous, control);
+                    }
+
+                    if (key is { } k)
+                    {
+                        cx = Math.Max(cx, anchors.GetValueOrDefault(k));
+                    }
+
                     if (this._stretched.ContainsKey(control) && control is not SliderBox)
                     {
                         // As wide as what its column leaves it, never narrower than its own width.
-                        int rest = start + controls - cx - control.Margin.Right
-                            - line.Controls.SkipWhile(c => c != control).Skip(1).Sum(c => c.Margin.Horizontal + this.NaturalSize(c).Width);
+                        int rest = controls - cx
+                            - line.Controls.SkipWhile(c => c != control).Skip(1).Sum(c => this.Gap + this.NaturalSize(c).Width);
                         control.Width = Math.Max(this.NaturalSize(control).Width, rest);
                     }
 
-                    control.Location = new Point(cx, y + axis - AxisOf(control));
-                    cx += control.Width + control.Margin.Right;
+                    control.Location = new Point(start + cx, y + axis - AxisOf(control));
+                    cx += control.Width;
+                    previous = control;
                 }
 
                 y += axis + below + this.LineGap;
@@ -595,7 +712,7 @@ internal sealed class FeatureLinesPanel : Panel
         {
             base.OnPaint(e);
             int inset = this.LogicalToDeviceUnits(4);
-            using var pen = new Pen(SystemColors.ControlLight);
+            using var pen = new Pen(SystemColors.ControlDark);
             foreach (int x in this.Separators)
             {
                 e.Graphics.DrawLine(pen, x, inset, x, this.Height - 1 - inset);
