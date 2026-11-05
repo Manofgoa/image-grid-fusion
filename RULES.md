@@ -958,6 +958,34 @@ What the URL zone loads (origin: `workfiles/20261009-url-content.md`), `Web/`:
 - The zone — its URL, its preview — is **not persisted** and is **out of the undo history**; a newer
   load cancels the one running, its partial file deleted.
 
+## Online Libraries
+
+A web service of media searched from the file explorer, in a view of its own — GIPHY the first (origin:
+`workfiles/20261105-online-library-giphy.md`), `Web/Giphy`, `UI/FileExplorerPanel.Giphy.cs`:
+
+- **A view of the views drop-down** (`ExplorerMode`), never a row of tabs: its entry after its icon, last in
+  the Ctrl+F cycle, skipped while it cannot answer — no key (`FileExplorerPanel.NextMode`). A new library is
+  another value there.
+- **Its results reach the grid as files**, like the URL zone's (§ Content From a URL): downloaded first —
+  a click on the tile, its gauge then its ✓ — into a kebab-case folder of the temp folder emptied at start-up
+  by the normal instance only (`GiphyFiles.Folder`, `GiphyFiles.Clean`), then dragged as `DataFormats.FileDrop`
+  or added by a double-click through `FileActivated`. No route of its own into the grid.
+- **A row of a result is no file** (`ExplorerRow.Online`): its `FullPath` a key, never handed to the disk —
+  `Exists` refuses it, its menu does not open, its size and indexed content are none; its picture is its
+  animated thumbnail (`ThumbnailGrid.OnlineFrame`, `UI/OnlineThumbnails`), never asked from the Shell.
+- **The key's budget**: a free GIPHY key allows **100 calls an hour**. A call is a search or a page of 50
+  (`Giphy.PageSize`); a search starts on **Enter** only, the trending of each kind kept for the session, the
+  thumbnails and the downloads coming from the CDN, out of the budget. Nothing calls the API in the background
+  or per tile. A refusal — an invalid key, the hour used up — is said on the status line, the list kept.
+- **The key is the user's**, in `settings.json` only (`AppSettings.GiphyApiKey`), set from the ⚙ menu or the
+  view's invitation; never in the repository, never shipped. The content rating every request carries is an
+  app setting too (`AppSettings.GiphyRating`, `r` by default).
+- **The attribution** GIPHY's terms require — **Powered by GIPHY** — shows at the end of the view's breadcrumb
+  line whenever it shows results. A new library's attribution follows its own terms.
+- **A heart** keeps a result's file next to the exe (`GiphyFiles.FavoritesFolder`), an ordinary favorite, its
+  file recycled once no favorite holds it, as a pasted favorite's.
+- Out of the undo history, like the rest of the file explorer.
+
 ## Content OCR Passes
 
 How the content search reads the images and PDF pages (origin:
