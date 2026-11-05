@@ -715,6 +715,7 @@ internal sealed partial class MainForm : Form
         this._explorer.VisualAnalysis = AppSettings.VisualAnalysis;
         this._explorer.SimilarImagesLevel = AppSettings.SimilarImages;
         this._explorer.Captions = AppSettings.Captions;
+        this._explorer.GiphyViewsShown = AppSettings.GiphyViewsShown;
         this._explorer.Mode = AppSettings.ExplorerMode;
         _explorerSplitter.Visible = _explorer.Open;
         ApplyExplorerSplitterBounds();
@@ -764,7 +765,7 @@ internal sealed partial class MainForm : Form
         this._transportTimer.Tick += (_, _) => this.RefreshTransportPosition();
         this._transportTimer.Start();
         this._toolTip.SetToolTip(this._clearButton, Strings.MainClearAllTip);
-        _settingsMenu.Items.AddRange([this._language, _startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, this._secondarySources, _explorerPages, this._explorerGroups, this._giphyKeyItem, this._giphyRatingItem, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._similarImages, this._captions, this._forgetVisual, new ToolStripSeparator(), this._componentUpdates, this._keyboardShortcuts, this._openAppFolder]);
+        _settingsMenu.Items.AddRange([this._language, _startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, this._secondarySources, _explorerPages, this._explorerGroups, this._giphyMenu, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._similarImages, this._captions, this._forgetVisual, new ToolStripSeparator(), this._componentUpdates, this._keyboardShortcuts, this._openAppFolder]);
         // An icon per action and toggle, never on a caption nor a submenu's values (RULES.md § Icons).
         UiIcons.Set(this._language, UiIcons.Language);
         UiIcons.Set(this._startWithWindows, UiIcons.StartWithWindows);
