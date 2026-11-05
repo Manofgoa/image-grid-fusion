@@ -32,7 +32,7 @@ internal static class OcrEngineFiles
         new(Recognition, "rapidocrnet", "4.2.0", "models/v5/" + Recognition, "b20bd37c168a570f583afbc8cd7925603890efbcdc000a59e22c269d160b5f5a"),
         new(Dictionary, "rapidocrnet", "4.2.0", "models/v5/" + Dictionary, "7629ffd77277fd4093b556769752ee9f7c881754a8544c79a7c438cd9a93d1e6"),
         new(OnnxRuntime, "microsoft.ml.onnxruntime", "1.29.0", "runtimes/win-x64/native/" + OnnxRuntime, "69d8e6d3879a3b4001cdc74c8ed9ccc7e7f799a5b847059738323404519ec471"),
-        new(SkiaSharp, "skiasharp.nativeassets.win32", "3.119.1", "runtimes/win-x64/native/" + SkiaSharp, "de22ab3e7b83644614efb55da18ef0965c3976ba4df99017f1025fbdb1893ff1"),
+        new(SkiaSharp, "skiasharp.nativeassets.win32", "4.154.0", "runtimes/win-x64/native/" + SkiaSharp, "82f9b2ee2b2dc91f738ae4baa54cd21fdd1181883c0fa207ab7066c708f07108"),
     ];
 
     private static readonly object Resolving = new();

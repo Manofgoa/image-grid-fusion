@@ -86,7 +86,9 @@
   <ItemGroup>
     <PackageReference Include="RapidOcrNet" Version="4.2.0" ExcludeAssets="build;buildTransitive" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.29.0" ExcludeAssets="native;build;buildTransitive" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.119.1" ExcludeAssets="all" />
+    <!-- SkiaSharp above the 3.119.1 RapidOcrNet asks for: its managed assembly refuses a native DLL of another milestone, so both move together. -->
+    <PackageReference Include="SkiaSharp" Version="4.154.0" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="4.154.0" ExcludeAssets="all" />
   </ItemGroup>
 
   <!-- SigLIP 2's tokenizer, Gemma's SentencePiece (workfiles/20261027-image-content-analysis.md § Models): managed only, its model downloaded with the vision engine. -->
