@@ -1403,6 +1403,20 @@ internal sealed partial class MainForm : Form
         base.Dispose(disposing);
     }
 
+    /// <summary>
+    /// The emoji icons handed out blank while the window was being built, drawn now: each control shows them at its next
+    /// paint, the split buttons — which keep a list of their own — given theirs again.
+    /// </summary>
+    private void DrawDeferredIcons(object? sender, EventArgs e)
+    {
+        Application.Idle -= this.DrawDeferredIcons;
+        if (UiIcon.DrawDeferred() > 0)
+        {
+            this.UpdateEffectIcons();
+            this.Invalidate(invalidateChildren: true);
+        }
+    }
+
     /// <summary>The icons are drawn at the monitor's DPI: again when the window moves to another one.</summary>
     protected override void OnDpiChanged(DpiChangedEventArgs e)
     {
@@ -1657,6 +1671,10 @@ internal sealed partial class MainForm : Form
     {
         base.OnShown(e);
         _ = Task.Run(CleanTempVideos);
+
+        // The emoji icons the cache did not hold, drawn once the window has painted — the first idle moment, every pending
+        // paint done (workfiles/20261105-initial-load-speed.md § C).
+        Application.Idle += this.DrawDeferredIcons;
 
         // Copy and Save start disabled, so the slider would take the focus and move with unaimed keys or wheel.
         _preview.Focus();

@@ -10,38 +10,156 @@ namespace ImageGridFusion.UI;
 /// </summary>
 internal sealed class UiIcon
 {
-    private readonly Func<int, Bitmap> _draw;
-    private readonly Dictionary<int, Bitmap> _drawn = [];
+    // The emoji icons not drawn yet while drawing is deferred, each with the copies handed out meanwhile — filled in place
+    // once drawn (workfiles/20261105-initial-load-speed.md § C).
+    private static readonly Lock DeferredLock = new();
+    private static readonly List<(UiIcon Icon, int Size)> Deferred = [];
 
-    private UiIcon(Func<int, Bitmap> draw) => this._draw = draw;
+    private readonly Func<int, Bitmap> _draw;
+    private readonly string? _glyph;
+    private readonly Dictionary<int, Bitmap> _drawn = [];
+    private readonly Dictionary<int, List<WeakReference<Bitmap>>> _blankCopies = [];
+
+    private UiIcon(Func<int, Bitmap> draw, string? glyph = null)
+    {
+        this._draw = draw;
+        this._glyph = glyph;
+    }
+
+    /// <summary>
+    /// While set — the main window not shown yet —, an emoji icon the cache does not hold is handed out blank and drawn
+    /// by <see cref="DrawDeferred"/>, so its drawing never delays the window (workfiles/20261105-initial-load-speed.md § C).
+    /// </summary>
+    public static bool Deferring { get; set; }
 
     /// <summary>The icon at <paramref name="size"/> device pixels, a copy the caller owns.</summary>
-    public Bitmap Copy(int size) => new(this.At(size));
+    public Bitmap Copy(int size)
+    {
+        var copy = new Bitmap(this.At(size));
+        lock (DeferredLock)
+        {
+            if (this._blankCopies.TryGetValue(size, out var copies))
+            {
+                copies.Add(new WeakReference<Bitmap>(copy));
+            }
+        }
+
+        return copy;
+    }
 
     /// <summary>A Segoe UI Emoji glyph in its own colors, which only Direct2D draws (RULES.md § Layers).</summary>
-    public static UiIcon Emoji(string glyph) => new(size => DrawEmoji(glyph, size));
+    public static UiIcon Emoji(string glyph) => new(size => DrawEmoji(glyph, size), glyph);
 
     /// <summary>An icon the app already draws for that meaning.</summary>
     public static UiIcon Drawn(Func<int, Bitmap> draw) => new(draw);
 
-    /// <summary>The icon at <paramref name="size"/> device pixels, shared: the caller copies it.</summary>
+    /// <summary>
+    /// The icon at <paramref name="size"/> device pixels, shared: the caller copies it. An emoji is read from the
+    /// <see cref="IconCache"/> when it holds it, else drawn and kept there — or, while <see cref="Deferring"/>, handed out
+    /// blank and drawn later.
+    /// </summary>
     public Bitmap At(int size)
     {
-        if (!this._drawn.TryGetValue(size, out var bitmap))
+        if (this._drawn.TryGetValue(size, out var bitmap))
         {
-            bitmap = this._draw(size);
-            this._drawn[size] = bitmap;
+            return bitmap;
         }
 
+        if (this._glyph is null)
+        {
+            bitmap = this._draw(size);
+        }
+        else if (IconCache.Default.TryRead(this._glyph, size) is { } cached)
+        {
+            bitmap = cached;
+        }
+        else if (Deferring)
+        {
+            bitmap = new Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            lock (DeferredLock)
+            {
+                Deferred.Add((this, size));
+                this._blankCopies[size] = [];
+            }
+        }
+        else
+        {
+            bitmap = this._draw(size);
+            _ = IconCache.Default.Write(this._glyph, size, bitmap);
+        }
+
+        this._drawn[size] = bitmap;
         return bitmap;
+    }
+
+    /// <summary>
+    /// Ends <see cref="Deferring"/>: every emoji icon handed out blank is drawn, kept in the cache, and painted into the
+    /// shared bitmap and every copy still alive — the controls showing them repaint them as they are. Returns how many were
+    /// drawn; the caller repaints its window, and gives again the icons a control copied for itself (a split button's list).
+    /// </summary>
+    public static int DrawDeferred()
+    {
+        List<(UiIcon Icon, int Size)> deferred;
+        lock (DeferredLock)
+        {
+            Deferring = false;
+            deferred = [.. Deferred];
+            Deferred.Clear();
+        }
+
+        foreach (var (icon, size) in deferred)
+        {
+            using var drawn = icon._draw(size);
+            _ = IconCache.Default.Write(icon._glyph!, size, drawn);
+            List<WeakReference<Bitmap>> copies;
+            lock (DeferredLock)
+            {
+                copies = icon._blankCopies.Remove(size, out var list) ? list : [];
+            }
+
+            PaintOver(icon._drawn[size], drawn);
+            foreach (var reference in copies)
+            {
+                if (reference.TryGetTarget(out var copy))
+                {
+                    PaintOver(copy, drawn);
+                }
+            }
+        }
+
+        return deferred.Count;
+    }
+
+    // The blank bitmap given the icon's pixels; a copy its control disposed meanwhile is left.
+    private static void PaintOver(Bitmap blank, Bitmap drawn)
+    {
+        try
+        {
+            using var g = Graphics.FromImage(blank);
+            g.CompositingMode = CompositingMode.SourceCopy;
+            g.DrawImageUnscaled(drawn, 0, 0);
+        }
+        catch (ArgumentException)
+        {
+            // Disposed: its control holds another one now.
+        }
     }
 
     private static readonly LayerTextStyle EmojiStyle = new("Segoe UI Emoji", false, Color.Black, false, Color.Black, 0, false, Color.Black, 0);
 
-    /// <summary>The glyph drawn large by <see cref="TextRaster"/>, its ink fitted into a square of <paramref name="size"/>.</summary>
-    private static Bitmap DrawEmoji(string glyph, int size)
+    /// <summary>
+    /// How many times the icon's side the glyph is drawn at before it is scaled down: enough for a smooth reduction, far
+    /// fewer pixels than a text layer's <see cref="TextRaster.EmSize"/> (workfiles/20261105-initial-load-speed.md § A).
+    /// </summary>
+    public const int Oversampling = 4;
+
+    /// <summary>The em size an icon of <paramref name="size"/> device pixels is drawn at.</summary>
+    public static float EmFor(int size) => Math.Max(48, size * Oversampling);
+
+    /// <summary>The glyph drawn by <see cref="TextRaster"/> at <see cref="EmFor"/>, its ink fitted into a square of <paramref name="size"/>.</summary>
+    internal static Bitmap DrawEmoji(string glyph, int size, float? em = null)
     {
-        var (large, _) = TextRaster.Render(glyph, EmojiStyle);
+        var (large, _) = TextRaster.Render(glyph, EmojiStyle, em: em ?? EmFor(size));
         using (large)
         {
             var ink = InkBounds(large);

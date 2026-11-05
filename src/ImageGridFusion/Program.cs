@@ -81,6 +81,11 @@ internal static class Program
             _ = Task.Run(Imaging.UpscaleCache.Clean);
         }
 
+        // The emoji icons the cache does not hold are drawn once the window shows — at once when it starts hidden, its tray
+        // menu needing them —, and kept there by the normal instance only (workfiles/20261105-initial-load-speed.md).
+        IconCache.Default.Writes = !newInstance;
+        UiIcon.Deferring = !hidden;
+
         // Before the main window: its zoom slider takes its range from it.
         ImageLook.MaxZoom = AppSettings.MaxZoom / 100.0;
         var form = new MainForm(files.ToArray(), secondTitle, savesWindowSize: !newInstance);
