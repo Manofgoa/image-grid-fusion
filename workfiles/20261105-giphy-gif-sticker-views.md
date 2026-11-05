@@ -14,7 +14,7 @@ drop-down, its **🎞️ GIFs** and **😎 Stickers** buttons choosing what is s
 **trending** of the kind chosen — a call to GIPHY the first time in the session — and emptying its box shows
 the trending again, a call too when not kept.
 
-Two changes, one goal: **cycling the views with Ctrl+F, or entering a GIPHY view in any way, never spends a
+Three changes, one goal: **cycling the views with Ctrl+F, or entering a GIPHY view in any way, never spends a
 call of the key's 100 an hour**.
 
 1. **Two views**: *GIPHY GIFs* and *GIPHY Stickers*, two entries of the views drop-down, both in the Ctrl+F
@@ -22,6 +22,8 @@ call of the key's 100 an hour**.
 2. **No call without a search**: a GIPHY view calls GIPHY only on **Enter** in its box — an empty box giving
    the trending, as today — or on the next page of the list it shows (the scroll's Loading… slot). Entering the
    view, emptying the box, setting the key call nothing.
+3. **Each view shown or hidden**: a **🌍 GIPHY** submenu of the ⚙ menu, a checkbox per view, the **GIPHY API
+   key…** entry moved into it.
 
 Components: `Explorer/ExplorerMode.cs`, `UI/FileExplorerPanel.cs` (the mode, the cycle, the drop-down, the
 Enter key, ↑ / breadcrumb), `UI/FileExplorerPanel.Giphy.cs` (the view's lists, the kind), `UI/AppSettings.cs`
@@ -37,9 +39,30 @@ Enter key, ↑ / breadcrumb), `UI/FileExplorerPanel.Giphy.cs` (the view's lists,
 | Their names | `GIPHY GIFs` / `GIPHY Stickers` in English, `GIPHY GIF` / `GIPHY Stickers` in French |
 | Their icon | 🌍 (`UiIcons.OnlineLibrary`) for both, their names telling them apart |
 | The kind | Each view's kind is fixed (`GiphyKind.Gifs` / `Stickers`): `_giphyKind` follows the mode, the GIFs / Stickers toggle and `ChangeGiphyKind` are removed, with their strings (`ExplorerAccGiphy*`, `ExplorerTipGiphyGifs` / `Stickers`) — what their tooltips said (*arrives as an MP4*, *made for the layers*) stays in the README |
-| Ctrl+F | Both views in the cycle (`NextMode`), both skipped while no key is set |
+| Ctrl+F | Both views in the cycle (`NextMode`), both skipped while no key is set, each skipped while hidden |
+| Shown or hidden | Each view an app setting, **shown by default** (`AppSettings`, `settings.json`): hidden, it is out of the views drop-down and out of the Ctrl+F cycle; both hidden, GIPHY is out of the explorer |
 | The saved view | Saved by name, as now; a `Giphy` saved by the previous version is read as `GiphyGifs` (`AppSettings.ExplorerMode`) |
 | Everything else | Shared by both: the key, the rating, the quota and its breadcrumb count, the downloads, the hearts, the attribution, the hidden sort / groups buttons |
+
+---
+
+## The ⚙ Menu's GIPHY Submenu
+
+The ⚙ menu's two GIPHY entries (`MainForm.Giphy.cs`: `_giphyKeyItem`, `_giphyRatingItem`) become one
+**🌍 GIPHY** submenu, in their place:
+
+| Entry | Does |
+|---|---|
+| ☑ **GIPHY GIFs** | Shows or hides the GIPHY GIFs view — a toggle, its icon 🌍 framed while checked (RULES.md § Icons) |
+| ☑ **GIPHY Stickers** | Shows or hides the GIPHY Stickers view, the same way |
+| — | A separator |
+| 🔑 **GIPHY API key…** | Unchanged, moved here |
+| **GIPHY content rating** ▸ | *(see Open Questions: moved here, or left where it is)* |
+
+- A change is saved at once; one that cannot be saved says so on the status line (RULES.md § App Settings).
+- Hiding the view shown *(see Open Questions: which view the explorer goes to)*.
+- The saved view at start-up being a hidden one: the same fallback.
+- Out of the undo history, like every app setting.
 
 ---
 
@@ -80,7 +103,7 @@ What calls GIPHY, and what no longer does:
 |---|---|
 | `RULES.md` § Online Libraries | The two views, a view's entry in the views drop-down each; *the trending of each kind kept for the session* → each view's last list kept, nothing called until Enter or a next page |
 | `GLOSSARY.md` / `.fr.md` | *GIPHY view* → the two views, the buttons gone; *File explorer*'s four views → five |
-| `README.md` / `.fr.md` | The GIPHY view paragraph, the views drop-down's list, the Ctrl+F cycle's list |
+| `README.md` / `.fr.md` | The GIPHY view paragraph, the views drop-down's list, the Ctrl+F cycle's list, the ⚙ menu's GIPHY submenu |
 | `SHORTCUTS.md` / `.fr.md` | Ctrl+F's row (*the GIPHY views skipped*), ↑ / Backspace / Alt+↑ rows if their behaviour changes |
 
 ---
@@ -107,6 +130,10 @@ after cycling Ctrl+F through both views.
 - [x] ~~The rating changed while a GIPHY view shows: the search done again, or the kept lists forgotten?~~ → The
       kept lists forgotten, the invitation shown, no call
 
+- [ ] The ⚙ menu's **GIPHY content rating**: moved into the GIPHY submenu too, or left where it is?
+- [ ] Hiding the view the explorer shows (and a hidden view saved at start-up): the folder view, or the view
+      before it in the drop-down's order?
+
 ---
 
 ## Design Iterations
@@ -128,6 +155,13 @@ The four open questions answered (Q&A 5–8): 🌍 for both views; the invitatio
 Backspace, Alt+↑ and the breadcrumb's *GIPHY* keep showing the trending, an explicit action; a rating change
 forgets the kept lists and shows the invitation, no call. The buttons' tooltips are dropped, the README keeping
 what they said. No question left.
+
+### Iteration 3 — 2026-11-05
+
+User request: a **GIPHY** submenu of the ⚙ menu, a checkbox per view to show or hide it, the API key entry
+moved into it. Each view an app setting, shown by default; a hidden view out of the drop-down and of the
+Ctrl+F cycle. Two questions opened: the rating's entry, and where the explorer goes when the view shown is
+hidden.
 
 ---
 
@@ -158,6 +192,8 @@ Questions asked by the agent during design, with user responses.
 | 6 | The invitation's form | Its text and a Trending button | 2026-11-05 |
 | 7 | ↑ / Backspace / Alt+↑ / breadcrumb *GIPHY* | The trending, an explicit action — a call unless kept | 2026-11-05 |
 | 8 | The rating changed while a view shows | The kept lists forgotten, the invitation shown | 2026-11-05 |
+| 9 | The content rating's entry: into the GIPHY submenu, or left where it is? | | 2026-11-05 |
+| 10 | Hiding the view shown: the folder view, or the view before it? | | 2026-11-05 |
 
 ---
 
