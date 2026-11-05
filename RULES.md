@@ -978,12 +978,16 @@ What the URL zone loads (origin: `workfiles/20261009-url-content.md`), `Web/`:
 
 ## Online Libraries
 
-A web service of media searched from the file explorer, in a view of its own — GIPHY the first (origin:
-`workfiles/20261105-online-library-giphy.md`), `Web/Giphy`, `UI/FileExplorerPanel.Giphy.cs`:
+A web service of media searched from the file explorer, in views of its own — GIPHY the first, its GIFs and its
+stickers (origin: `workfiles/20261105-online-library-giphy.md`, `workfiles/20261105-giphy-gif-sticker-views.md`),
+`Web/Giphy`, `UI/FileExplorerPanel.Giphy.cs`:
 
-- **A view of the views drop-down** (`ExplorerMode`), never a row of tabs: its entry after its icon, last in
-  the Ctrl+F cycle, skipped while it cannot answer — no key (`FileExplorerPanel.NextMode`). A new library is
-  another value there.
+- **A view of the views drop-down per kind of media** (`ExplorerMode`: `GiphyGifs`, `GiphyStickers`), never a row
+  of tabs nor a toggle: its entry after its icon, last in the Ctrl+F cycle, skipped while it cannot answer — no
+  key (`FileExplorerPanel.NextMode`). Each is **shown or hidden** from the ⚙ menu's library submenu, an app setting
+  (`AppSettings.GiphyViewsShown`, shown by default): hidden, it is out of the drop-down and of the cycle
+  (`FileExplorerPanel.IsOffered`), and the view shown hidden gives the folder view. A new library, or a new kind of
+  one, is another value there.
 - **Its results reach the grid as files**, like the URL zone's (§ Content From a URL): downloaded first —
   a click on the tile, its gauge then its ✓ — into a kebab-case folder of the temp folder emptied at start-up
   by the normal instance only (`GiphyFiles.Folder`, `GiphyFiles.Clean`), then dragged as `DataFormats.FileDrop`
@@ -992,16 +996,20 @@ A web service of media searched from the file explorer, in a view of its own —
   `Exists` refuses it, its menu does not open, its size and indexed content are none; its picture is its
   animated thumbnail (`ThumbnailGrid.OnlineFrame`, `UI/OnlineThumbnails`), never asked from the Shell.
 - **The key's budget**: a free GIPHY key allows **100 calls an hour**. A call is a search or a page of 50
-  (`Giphy.PageSize`); a search starts on **Enter** only, the trending of each kind kept for the session, the
-  thumbnails and the downloads coming from the CDN, out of the budget. Nothing calls the API in the background
-  or per tile. A refusal — an invalid key, the hour used up — is said on the status line, the list kept.
+  (`Giphy.PageSize`); the thumbnails and the downloads come from the CDN, out of the budget. **Nothing calls the
+  API but a user's request**: **Enter** in the box — an empty box asking for the trending —, the invitation's
+  **Trending** button, ↑ or the breadcrumb's view name (the trending), and the next page of the list shown.
+  Entering a view, the Ctrl+F cycle, emptying the box, a new key or a new rating call nothing: each view shows its
+  **last list, kept for the session** (`_giphyKept`), else **invites to search**; the trending of each kind is kept
+  for the session too, and a new key or rating forgets them all. Nothing calls the API in the background or per
+  tile; a new route calling it answers a user's request the same way. A refusal — an invalid key, the hour used up — is said on the status line, the list kept.
   GIPHY's answers carry no quota: **the app counts its own calls** of the last hour (`GiphyQuota`), kept in
   the settings file (`AppSettings.GiphyCalls`) so a restart does not reset it, shown at the end of the
   breadcrumb; a new route calling the API counts its call there. Each page received says on the status line
   how many results it brought.
-- **The key is the user's**, in `settings.json` only (`AppSettings.GiphyApiKey`), set from the ⚙ menu or the
-  view's invitation; never in the repository, never shipped. The content rating every request carries is an
-  app setting too (`AppSettings.GiphyRating`, `r` by default).
+- **The key is the user's**, in `settings.json` only (`AppSettings.GiphyApiKey`), set from the ⚙ menu's GIPHY
+  submenu or the view's invitation; never in the repository, never shipped. The content rating every request
+  carries is an app setting of the same submenu too (`AppSettings.GiphyRating`, `r` by default).
 - **The attribution** GIPHY's terms require — **Powered by GIPHY** — shows at the end of the view's breadcrumb
   line whenever it shows results. A new library's attribution follows its own terms.
 - **A heart** keeps a result's file next to the exe (`GiphyFiles.FavoritesFolder`), an ordinary favorite, its

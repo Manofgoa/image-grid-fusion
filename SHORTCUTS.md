@@ -20,7 +20,7 @@ words, in the [Glossary](GLOSSARY.md).
 | <kbd>Ctrl</kbd>+<kbd>N</kbd> | Clear all, with no confirmation |
 | <kbd>Ctrl</kbd>+<kbd>R</kbd> | Turn the image under the mouse — else the selected one — onto the next quarter turn clockwise: +37° to 90°, 90° to 180° |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> | The same, counter-clockwise: +37° to 0°, 0° to -90° |
-| <kbd>Ctrl</kbd>+<kbd>F</kbd> | Go to the file explorer's search box; pressed again there, the next view — the folder view reached that way opening at the base folder, the GIPHY view skipped until a key is set |
+| <kbd>Ctrl</kbd>+<kbd>F</kbd> | Go to the file explorer's search box; pressed again there, the next view — the folder view reached that way opening at the base folder, the GIPHY views skipped until a key is set, and while hidden from the ⚙ menu |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> | In the search box, the previous view — the folder view, at the base folder too |
 | <kbd>Space</kbd> | Play / Pause the grid — not in a text field |
 
@@ -121,7 +121,7 @@ While its tiles have the focus.
 | <kbd>PageUp</kbd> <kbd>PageDown</kbd> | Move by a page |
 | <kbd>Home</kbd> <kbd>End</kbd> | First / last tile |
 | <kbd>Enter</kbd>, <kbd>Double-click</kbd> | Add the file to the grid — a GIPHY result downloaded first — or open the folder or the group |
-| <kbd>Backspace</kbd>, <kbd>Alt</kbd>+<kbd>↑</kbd> | Go to the parent folder; in the GIPHY view, back to the trending |
+| <kbd>Backspace</kbd>, <kbd>Alt</kbd>+<kbd>↑</kbd> | Go to the parent folder; in a GIPHY view, back to the trending |
 | <kbd>F2</kbd> | Rename the selected group, in the People view |
 | <kbd>Ctrl</kbd>+<kbd>C</kbd> | Copy the selected file |
 | <kbd>Ctrl</kbd>+<kbd>Wheel</kbd> | Larger or smaller tiles, 15 % a notch |
@@ -132,9 +132,9 @@ While its tiles have the focus.
 | Shortcut | Does |
 |---|---|
 | <kbd>Enter</kbd> in the search box | Add the first result to the grid |
-| <kbd>Enter</kbd> in the GIPHY view's search box | Search GIPHY — typing alone asks nothing of it |
+| <kbd>Enter</kbd> in a GIPHY view's search box | Search GIPHY — its trending for an empty box; typing or entering the view alone asks nothing of it |
 | <kbd>↓</kbd> in the search box | Go to the first tile |
-| <kbd>Alt</kbd>+<kbd>↑</kbd> in the search box | Go to the parent folder; in the GIPHY view, back to the trending |
+| <kbd>Alt</kbd>+<kbd>↑</kbd> in the search box | Go to the parent folder; in a GIPHY view, back to the trending |
 | <kbd>Escape</kbd> in the search box | Give the focus back to the grid, the search kept |
 | <kbd>Enter</kbd> in the URL field | Load the URL |
 
