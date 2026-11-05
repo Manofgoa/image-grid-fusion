@@ -60,15 +60,16 @@ Components involved (all under `src/ImageGridFusion/`):
   `InSource`, added in `ListFolderAsync` at the root only, each looked for on the disk on the same worker.
   With the folder groups off, they still come first, without a section.
 - **Its name**: the folder's own name; its full path in the tooltip.
-- **Blue**: the source's tile, **every folder tile inside the source**, and the source's **breadcrumb
-  segments** are drawn in blue instead of the manila color — `PaintFolderGlyph` given the row's flag,
-  the Windows folder thumbnail turned into shades of blue by its brightness (a `ColorMatrix`, the files
-  previewed on it blue too), the breadcrumb's segments from the source on (`Breadcrumb.SetPath`'s
-  `sourceFrom`) — so the user always sees they are in another environment.
+- **Blue**: the **source's own tile** and its **name in the breadcrumb** are drawn in blue instead of
+  the manila color — `PaintFolderGlyph` given the row's flag, the Windows folder thumbnail turned into
+  shades of blue by its brightness (a `ColorMatrix`, the files previewed on it blue too), the
+  breadcrumb's source segment (`Breadcrumb.SetPath`'s `sourceAt`) — so the user sees they enter another
+  environment. The folders inside a source keep the usual manila color *(Iteration 6)*.
 - **Opened** (double-click, Enter), the folder view browses the source as it browses the base folder:
   its subfolders A→Z, its files in the sort order, read from the disk; the **breadcrumb** reads
-  `<base> › <source name> › …`, its source segment going back to the source's root, the base segment
-  back to the base folder's root; ↑ at the source's root leaves it, its tile selected. The open folder
+  `← <source name> › …` — no base folder's name *(Iteration 6)* — the **←** going back to the base
+  folder's root, the source's name to the source's root; ↑ at the source's root leaves it, its tile
+  selected. The open folder
   is `_openSource` (null: the base folder) plus `_openFolder`, relative to it; the folder view reads
   through `ViewSource` / `ViewRoot` / `ViewIndex` / `ViewContents` / `ViewTree`.
 - **Not remembered**: `OpenFolder` gives "" while a source is open, so the next start opens at the base
@@ -268,6 +269,15 @@ No project rule broken. Choices the frozen design did not state, now in the sect
 - Docs: besides the README and the glossary, a **§ Secondary Sources** in `RULES.md`, as every feature of
   the app has.
 
+### Iteration 6 — 2026-11-05 — ⚙️ Post-implementation — Blue root only, back arrow in the breadcrumb
+
+The user, after a first look:
+
+- **Only the source's own tile is blue**: the folders inside a source keep the usual manila color.
+- **The breadcrumb inside a source no longer starts with the base folder's name**: a **←** stands in its
+  place, going back to the base folder's root, then the source's name and the folders down to the open one.
+- Agent's reading, by the same rule: in the breadcrumb, only the source's name is blue.
+
 ---
 
 ## Implementation Log
@@ -308,6 +318,7 @@ Questions asked by the agent during design, with user responses.
 | 14 | A source's faces: where would they be used? | In the People view — after a 🔄, they join its groups like the base folder's | 2026-11-05 |
 | 15 | *(user, unprompted)* | A source's index lives in files other than the main index's — in subfolders of the main `index\` folder, for example | 2026-11-05 |
 | 16 | Does *Find similar images* span the base folder and every analysed source, whatever the image it starts from? | Yes, everywhere — from any tile, cell or dropped image | 2026-11-05 |
+| 17 | *(user, after delivery)* | The subfolders of a source need not be blue, only its root; the breadcrumb does not start with the base folder inside a source — a left arrow back to the root instead | 2026-11-05 |
 
 ---
 
