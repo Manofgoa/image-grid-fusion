@@ -86,9 +86,12 @@ internal sealed partial class FileExplorerPanel
             error = ex.Message;
         }
 
+        // The secondary sources' too: their images are among the similar images.
+        error ??= this.ForgetSourceVision();
+
         if (this._contents is { } contents && contents.ForgetSeen())
         {
-            TrySave(contents);
+            TrySave(contents, IndexFiles.Main);
         }
 
         this.StartExtraction();
@@ -108,7 +111,7 @@ internal sealed partial class FileExplorerPanel
             return;
         }
 
-        float[]? embedding = this.EntryOf(fullPath) is { } entry ? this._vision?.EmbeddingOf(entry.RelativePath) : null;
+        float[]? embedding = this.AnyEntryOf(fullPath) is { } found ? this.VisionAt(found.Source)?.EmbeddingOf(found.Entry.RelativePath) : null;
         embedding ??= await this.EmbedImageAsync(() =>
         {
             if (ContentExtractor.DecodePixels(fullPath) is not var (pixels, width, height))
@@ -129,7 +132,7 @@ internal sealed partial class FileExplorerPanel
             return;
         }
 
-        float[]? embedding = fullPath is not null && this.EntryOf(fullPath) is { } entry ? this._vision?.EmbeddingOf(entry.RelativePath) : null;
+        float[]? embedding = fullPath is not null && this.AnyEntryOf(fullPath) is { } found ? this.VisionAt(found.Source)?.EmbeddingOf(found.Entry.RelativePath) : null;
         if (embedding is null)
         {
             var copy = new Bitmap(frame);
@@ -273,19 +276,38 @@ internal sealed partial class FileExplorerPanel
     }
 
     /// <summary>
-    /// The rows of a similar images search: the images of the index standing out of the others by the level's
-    /// cutoff, the source itself left out, the farthest first, each with its closeness.
+    /// The rows of a similar images search: the images of the base folder's index and of every secondary source's
+    /// analysed — read together, one spread over them all (workfiles/20261105-secondary-file-sources.md § Similar
+    /// Images Across the Sources) — standing out of the others by the level's cutoff, the source itself left out,
+    /// the farthest first, each with its closeness.
     /// </summary>
     private IEnumerable<ExplorerRow> SimilarRows(SimilarSource source)
     {
-        if (this._index is not { } index || this._vision is not { } vision)
+        var roots = new List<(FileIndex Index, VisionIndex Vision)>();
+        if (this._index is { } index && this._vision is { } vision)
+        {
+            roots.Add((index, vision));
+        }
+
+        roots.AddRange(this._sources.Where(s => s.Index is not null && s.Vision is not null).Select(s => (s.Index!, s.Vision!)));
+        if (roots.Count == 0)
         {
             return [];
         }
 
-        var itself = source.FullPath is { } path && this.EntryOf(path) is { } entry ? new HashSet<IndexEntry> { entry } : null;
-        return FileSearch.SearchSimilar(index.Entries, e => vision.EmbeddingOf(e.RelativePath), source.Embedding, SimilarCount, 0, VisionSimilarity.CutoffOf(this._similarImages), itself)
-            .Select(match => new ExplorerRow(index.FullPath(match.Entry), match.Entry.Name, Size: match.Entry.Size, Closeness: Closeness(match)));
+        var rootOf = new Dictionary<IndexEntry, (FileIndex Index, VisionIndex Vision)>(ReferenceEqualityComparer.Instance);
+        foreach (var root in roots)
+        {
+            foreach (var entry in root.Index.Entries)
+            {
+                rootOf[entry] = root;
+            }
+        }
+
+        IndexEntry[] entries = [.. rootOf.Keys];
+        var itself = source.FullPath is { } path && this.AnyEntryOf(path) is { } found ? new HashSet<IndexEntry>(ReferenceEqualityComparer.Instance) { found.Entry } : null;
+        return FileSearch.SearchSimilar(entries, e => rootOf[e].Vision.EmbeddingOf(e.RelativePath), source.Embedding, SimilarCount, 0, VisionSimilarity.CutoffOf(this._similarImages), itself)
+            .Select(match => new ExplorerRow(rootOf[match.Entry].Index.FullPath(match.Entry), match.Entry.Name, Size: match.Entry.Size, Closeness: Closeness(match)));
     }
 
     /// <summary>The closeness a match is shown with; null for one not found by its similarity.</summary>
@@ -297,9 +319,9 @@ internal sealed partial class FileExplorerPanel
     /// those found already left out — once the query's embedding is known, computed meanwhile; none while
     /// the visual analysis is off. The query is the text typed, its accents kept: the model reads them.
     /// </summary>
-    private IReadOnlyList<SearchMatch> WithSimilar(IReadOnlyList<SearchMatch> found, IReadOnlyList<IndexEntry> entries, string[] words)
+    private IReadOnlyList<SearchMatch> WithSimilar(IReadOnlyList<SearchMatch> found, IReadOnlyList<IndexEntry> entries, string[] words, VisionIndex? embeddings)
     {
-        if (!this.CanFindSimilar || this._vision is not { } vision || vision.Count == 0)
+        if (!this.CanFindSimilar || embeddings is not { } vision || vision.Count == 0)
         {
             return found;
         }
@@ -401,24 +423,20 @@ internal sealed partial class FileExplorerPanel
     /// </summary>
     private TileIndex? IndexedContentOf(ExplorerRow row)
     {
-        if (this._baseFolder is not { } root)
+        // The base folder's file, or a secondary source's (workfiles/20261105-secondary-file-sources.md).
+        if (this.Locate(row.FullPath) is not { } at)
         {
             return null;
         }
 
-        string relative = Path.GetRelativePath(root, row.FullPath);
-        if (relative.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(relative))
-        {
-            return null;
-        }
-
-        var contents = this._contents;
+        string relative = at.Relative;
+        var contents = this.ContentsAt(at.Source);
         string? text = contents?.TextOf(relative, ContentSlot.Windows) ?? contents?.TextOf(relative, ContentSlot.Rapid);
         return new TileIndex(
             contents?.TextOf(relative, ContentSlot.Caption),
             contents?.TextOf(relative, ContentSlot.Tags),
             text is null ? null : $"« {Cut(text, TipTextLength)} »",
-            this.PeopleOf(row.FullPath, relative));
+            this.PeopleOf(row.FullPath, relative, this.FacesAt(at.Source)));
 
         static string Cut(string text, int length)
         {
@@ -437,9 +455,9 @@ internal sealed partial class FileExplorerPanel
     /// named person by that person's name — then the faces of no named person counted; the hidden people
     /// left out; null for a file without a face.
     /// </summary>
-    private string? PeopleOf(string fullPath, string relative)
+    private string? PeopleOf(string fullPath, string relative, FaceIndex? store)
     {
-        if (this._faces is not { } faces)
+        if (store is not { } faces)
         {
             return null;
         }
