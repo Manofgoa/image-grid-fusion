@@ -53,7 +53,10 @@ the same abstraction.
 - The search box queries GIPHY instead of the index; the **🔠 / 💡 criteria**, the sort order and the
   sections buttons do not apply there: they are **hidden** in the GIPHY view (Q&A 20), the room freed
   taking the GIFs / Stickers toggle, and come back in the other views.
-- The breadcrumb reads `GIPHY` then the query, its trailing text what the list holds.
+- The breadcrumb reads `GIPHY` then the query — `Trending` for the empty box — its trailing text what the
+  list holds (`50 GIFs+` while GIPHY holds more), `Enter to search` while a text typed waits, `Searching…`
+  during a call. **↑**, its `GIPHY` segment, Backspace and Alt+↑ go back to the trending (the box emptied).
+- A **GIPHY tile has no context menu**: no file to copy or show until it is fetched.
 - **Ctrl+F** cycles through it, last — Folders → People → Favorites → GIPHY — **skipped while no key is
   set**, as People is while the face analysis is off (`NextMode`, Q&A 15); `SHORTCUTS.md` and its French
   version updated with it.
@@ -61,9 +64,12 @@ the same abstraction.
   (`AppSettings.GiphyRating`, Q&A 13), carried by every request.
 - **Attribution**: GIPHY's API terms (section 5A) require its **Powered By GIPHY** mark, visible wherever
   its content shows. It sits **at the right end of the breadcrumb line** of the GIPHY view (Q&A 17),
-  GIPHY's official mark, always visible, taking no room of its own.
-- **Without a key**, the view shows an invitation to set one, a link to GIPHY's developer site and the
-  ⚙ menu's entry.
+  always visible, taking no room of its own — the words **Powered by GIPHY** in bold, GIPHY's logo file not
+  shipped.
+- **Without a key**, the view shows an invitation to set one, a link to GIPHY's developer site and a 🔑
+  *GIPHY API key…* button opening the same dialog as the ⚙ menu's entry.
+- Its icons: 🌍 the view, 🎞️ GIFs, 😎 Stickers, 🔑 the key, 🔞 the content rating (`UiIcons`).
+- The search asks GIPHY in the UI language (`lang`).
 
 ### GIFs and Stickers
 
@@ -78,10 +84,13 @@ the same abstraction.
 - **The empty box shows the trending** (Q&A 10): `/v1/gifs/trending` or `/v1/stickers/trending`, one
   call when the view opens or the box is emptied — as File System shows the favorites.
 - **Budget**: a beta key allows **100 calls an hour**. A load is one call; nothing is fetched in the
-  background, nothing per tile. A refused call (429) says so in the list's caption, the list kept.
+  background, nothing per tile. A refused call — 401 / 403 an invalid key, 429 the hour used up — is said
+  on the status line, the list kept; a refused next page ends the list as it is.
 - A newer query cancels the one running.
 - **A search starts on Enter only** (Q&A 18): typing costs nothing; the same query pressed again is not
-  asked twice. The box emptied brings the trending back (one call, kept for the session).
+  asked twice. The box emptied brings the trending back (one call, kept for the session). The view opened
+  with a text in the box shows the trending, the text waiting for Enter.
+- A change of the content rating asks the list shown again with it (one call).
 
 ### Loads
 
@@ -92,14 +101,18 @@ the same abstraction.
 
 ### Thumbnails
 
-- A GIPHY tile's thumbnail is one of the media's small renditions, fetched from GIPHY's CDN (media
-  requests do not count against the key's budget), kept in memory for the session.
-- The loader learns a **pseudo-path** for it, as `FaceCrops` did: no file on the disk until the media
-  is used.
+- A GIPHY tile's thumbnail is its `fixed_width_downsampled` rendition — a GIF 200 px wide, fewer frames
+  — else `fixed_width`, else `preview_gif`, fetched from GIPHY's CDN (media requests do not count against
+  the key's budget) four at a time, by `UI/OnlineThumbnails`, the 200 last shown kept; a list replaced
+  forgets them.
+- The tile's row carries the result (`ExplorerRow.Online`), its `FullPath` a key (`giphy:gifs:<id>`) never
+  handed to the Shell nor the disk: the grid asks its picture of `ThumbnailGrid.OnlineFrame`, not of the
+  Shell's thumbnail cache.
 - **The thumbnails play** (Q&A 11): every GIPHY tile in view plays its animation while the results show,
-  not only once clicked — a small animated rendition (a few hundred KB at most), its frames decoded
-  once, the tiles scrolled out of view not drawn. `ThumbnailGrid` has no animated tile today: it gets
-  one, for this view only.
+  not only once clicked. Each GIF is **kept whole, compressed**, a frame decoded when shown — the frame
+  of the clock's moment, its delays read from the file — and the tiles in view are drawn again every
+  40 ms while the view shows and the window is not minimized (`ThumbnailGrid.InvalidateOnline`); the tiles
+  scrolled out of view are not drawn.
 
 ### Reaching the Grid
 
@@ -107,14 +120,17 @@ the same abstraction.
   one `FolderName` constant — `CLAUDE.md` § Folder Names), the same media reused, the folder emptied at
   start-up by the normal instance only, as `UrlDownloads` is.
 - **A click downloads, then the tile can be dragged** (Q&A 9): a click on a GIPHY tile starts its
-  download, a gauge on the tile while it runs; once the file is there the tile is marked ready, and a
-  drag from it carries `DataFormats.FileDrop` as a file tile's does. A drag started from a tile not
+  download (`ThumbnailGrid.RowPressed`), a gauge along the tile's bottom edge while it runs; once the file
+  is there the tile shows a ✓ in a dark label at its bottom left, and a drag from it carries
+  `DataFormats.FileDrop` as a file tile's does. The file is `<title>-giphy-<id>.mp4` or `.gif` in
+  `%TEMP%\ImageGridFusion\giphy-downloads\` (`GiphyFiles`). A drag started from a tile not
   downloaded yet does nothing but start the download. A **double-click** downloads if needed, then calls
   `AddFilesAsync` — a cell, as a file tile's double-click does.
 - From then on it goes the file's way — a cell, a layer (a drop on the Layers tab), the Grid background
   alike, with no route of its own.
 - **The rendition downloaded** (Q&A 8): a GIF's **MP4** — light and sharp, the app plays videos; a
-  sticker's **GIF** — the only rendition keeping its transparency.
+  sticker's **GIF** — the only rendition keeping its transparency. A GIF without an MP4 rendition arrives as
+  its GIF.
 
 ### Favorites
 
@@ -124,14 +140,15 @@ the same abstraction.
   (`favorites-from-pasted\`). Un-hearted, its file follows the pasted favorites' rule: to the Recycle
   Bin once no effect preset holds it.
 - A GIPHY tile already a favorite shows its heart filled, matched by the GIPHY id kept in the file's
-  name.
+  name. A result downloaded already is copied from the temp folder rather than downloaded again.
 
 ### API Key
 
 - A string app setting, `AppSettings.GiphyApiKey`, in `settings.json` next to the exe (Q&A 6) — never in
   the repository.
 - Set from a **⚙ menu** entry, *GIPHY API key…*, through `NameDialog`, its value **shown in clear**
-  (Q&A 22) — it lies in clear in `settings.json` anyway — and from the view's invitation.
+  (Q&A 22) — it lies in clear in `settings.json` anyway — and from the view's invitation. An empty key
+  forgets it.
 - Out of the undo history.
 
 ---
@@ -145,7 +162,7 @@ this work (Q&A 23): the behaviours below are checked by hand in the app launched
 |---|---|---|
 | A GIPHY search answer parsed into rows (id, title, renditions, total count) | — (by hand) | — |
 | The next page asked with the right offset, none once the total is reached | — | — |
-| A 429 / an invalid key reported in the caption, the list kept | — | — |
+| A 429 / an invalid key reported on the status line, the list kept | — | — |
 | `ExplorerMode.Giphy` saved and read back by name | — | — |
 
 ---
@@ -243,6 +260,35 @@ its GIPHY part marked with this workfile. No open question left.
 Go given: code, tests and documentation, in a worktree on `feature/online-library-giphy`. The scope is
 frozen as the design sections stand at this iteration.
 
+### Iteration 9 — 2026-11-05 — 🧭 Implementation choices
+
+No project rule broken. The choices the frozen design left open, or took another way, now in the domain
+sections:
+
+- **Attribution as text**: the words *Powered by GIPHY* in bold, not GIPHY's logo image — shipping its file
+  would have meant downloading it into the repository; the text is what the design's sources said suffices.
+- **Thumbnails apart from the Shell's cache**: a class of their own, `UI/OnlineThumbnails`, rather than a
+  pseudo-path in `ThumbnailCache`'s loader — that cache scales one still per path; an animation needed its
+  frames and their timings. Each GIF is kept compressed, a frame decoded when shown, rather than every frame
+  decoded once: 50 results × their frames at 200 px would have cost hundreds of MB.
+- **Rendition**: `fixed_width_downsampled` for the tiles (fallbacks `fixed_width`, `preview_gif`); a GIF
+  without an MP4 rendition is brought as its GIF.
+- **The breadcrumb's ↑, its GIPHY segment, Backspace and Alt+↑** go back to the trending — the folder
+  keys' meaning in this view. `SHORTCUTS.md` / `.fr.md` say it, with Enter searching GIPHY and a double-click
+  downloading first.
+- **No context menu on a GIPHY tile**, and `Exists`, the size and the indexed content refuse its row: its
+  `FullPath` is a key, never a file.
+- **Refusals on the status line**, not the caption: the breadcrumb is the GIPHY view's caption line.
+- **The view opened with a text typed** shows the trending, the text waiting for Enter; **a rating change**
+  asks the list shown again.
+- **Icons**: 🌍 the view, 🎞️ GIFs (the existing GIF icon), 😎 Stickers, 🔑 the key, 🔞 the rating.
+- **An empty key forgets it**; the invitation's button takes the 🔑 icon.
+- **Hidden in the view**: 🔠 / 💡, the sort and the three groups buttons; the rescan and the Thumbnails /
+  Details buttons stay.
+- **Checks by hand**: the build is clean, both resources complete; GIPHY's refusal of an invalid key was
+  checked against the live API (401, *Unauthorized*). The results, the paging, the thumbnails, the
+  download and the drag could not be checked without a GIPHY key: they are left to the user's checks.
+
 ---
 
 ## Implementation Log
@@ -252,12 +298,12 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | — | | None: no test project, checks by hand (Q&A 23) |
-| README (EN + FR) | | | The GIPHY view, the key, the attribution |
-| GLOSSARY (EN + FR) | | | *Online library*, *GIPHY view*; the file explorer's views |
-| SHORTCUTS (EN + FR) | | | Ctrl+F through the GIPHY view; Enter searching it |
-| RULES.md | | | A § Online Libraries: budget, files' route, attribution, key |
+| Code | 8, 9 | 2026-11-05 | `Web/Giphy`, `Web/GiphyFiles`, `UI/OnlineThumbnails`, `UI/FileExplorerPanel.Giphy.cs`, `UI/MainForm.Giphy.cs`, the grid's online tiles, the texts EN + FR |
+| Unit tests | — | 2026-11-05 | None: no test project, checks by hand (Q&A 23) |
+| README (EN + FR) | 9 | 2026-11-05 | The GIPHY view, the key, the budget, the attribution; Tech |
+| GLOSSARY (EN + FR) | 9 | 2026-11-05 | *Online library*, *GIPHY view*, *Content rating*; four views |
+| SHORTCUTS (EN + FR) | 9 | 2026-11-05 | Ctrl+F through the GIPHY view; Enter searching it; ↑ keys back to the trending; double-click downloading first |
+| RULES.md | 9 | 2026-11-05 | § Online Libraries |
 
 ---
 
