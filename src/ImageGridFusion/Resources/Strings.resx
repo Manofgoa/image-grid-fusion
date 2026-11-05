@@ -484,7 +484,6 @@ The engines and your tags file (vision-tags.txt) stay.</value></data>
   <data name="MainFramesFrozenOn" xml:space="preserve"><value>Frozen on</value></data>
   <data name="MainFramesStartsAt" xml:space="preserve"><value>Starts at</value></data>
   <data name="MainFreeze" xml:space="preserve"><value>Freeze</value></data>
-  <data name="MainFrom" xml:space="preserve"><value>From</value></data>
   <data name="MainGlobalBorders" xml:space="preserve"><value>Borders</value></data>
   <data name="MainGlobalCascade" xml:space="preserve"><value>Cascade</value></data>
   <data name="MainGlobalEffectResetTip" xml:space="preserve"><value>Brings this global setting back to its initial state</value></data>
@@ -564,6 +563,18 @@ Restart the app now?</value></data>
   <data name="MainLengthSoundtrackCut" xml:space="preserve"><value>Soundtrack {0} — {1}, cut at {2}</value></data>
   <data name="MainLengthSoundtrackPlays" xml:space="preserve"><value>Soundtrack {0} — {1}, plays {2}</value></data>
   <data name="MainLengthTurn" xml:space="preserve"><value>{0} — turn of {1}, from {2}</value></data>
+  <data name="MainLineAlign" xml:space="preserve"><value>Align</value></data>
+  <data name="MainLineColor" xml:space="preserve"><value>Color</value></data>
+  <data name="MainLineEdges" xml:space="preserve"><value>Edges</value></data>
+  <data name="MainLineFill" xml:space="preserve"><value>Fill</value></data>
+  <data name="MainLineFont" xml:space="preserve"><value>Font</value></data>
+  <data name="MainLineGradient" xml:space="preserve"><value>Gradient</value></data>
+  <data name="MainLineOpacity" xml:space="preserve"><value>Opacity</value></data>
+  <data name="MainLineShadowShape" xml:space="preserve"><value>Shadow shape</value></data>
+  <data name="MainLineSpeed" xml:space="preserve"><value>Speed</value></data>
+  <data name="MainLineStyle" xml:space="preserve"><value>Style</value></data>
+  <data name="MainLineTrimFrom" xml:space="preserve"><value>Trim from</value></data>
+  <data name="MainLineTrimTo" xml:space="preserve"><value>Trim to</value></data>
   <data name="MainListAnd" xml:space="preserve"><value>{0} and {1}</value></data>
   <data name="MainMenuCopyCell" xml:space="preserve"><value>Copy cell</value></data>
   <data name="MainMenuCopyLastAt" xml:space="preserve"><value>Copy last {0} ({1:HH:mm})</value></data>
@@ -770,7 +781,6 @@ Restart the app now?</value></data>
   <data name="MainSummaryPeak" xml:space="preserve"><value>peak {0}</value></data>
   <data name="MainTimesMany" xml:space="preserve"><value>{0:0.#} times</value></data>
   <data name="MainTimesOnce" xml:space="preserve"><value>once</value></data>
-  <data name="MainTo" xml:space="preserve"><value>To</value></data>
   <data name="MainTransportPlayTip" xml:space="preserve"><value>Plays or pauses the grid (Space)</value></data>
   <data name="MainTrimTip" xml:space="preserve"><value>The trim only applies to videos and animated GIFs</value></data>
   <data name="MainUnavailableCutout" xml:space="preserve"><value>Cutout works on still images only for now: not on videos, animated GIFs nor content of several pages</value></data>

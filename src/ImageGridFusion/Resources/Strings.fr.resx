@@ -484,7 +484,6 @@ Les moteurs et votre fichier d'étiquettes (vision-tags.txt) restent.</value></d
   <data name="MainFramesFrozenOn" xml:space="preserve"><value>Figé sur</value></data>
   <data name="MainFramesStartsAt" xml:space="preserve"><value>Début à</value></data>
   <data name="MainFreeze" xml:space="preserve"><value>Figer</value></data>
-  <data name="MainFrom" xml:space="preserve"><value>De</value></data>
   <data name="MainGlobalBorders" xml:space="preserve"><value>Bordures</value></data>
   <data name="MainGlobalCascade" xml:space="preserve"><value>Cascade</value></data>
   <data name="MainGlobalEffectResetTip" xml:space="preserve"><value>Ramène ce réglage global à son état initial</value></data>
@@ -564,6 +563,18 @@ Redémarrer l'application maintenant ?</value></data>
   <data name="MainLengthSoundtrackCut" xml:space="preserve"><value>Bande son {0} — {1}, coupée à {2}</value></data>
   <data name="MainLengthSoundtrackPlays" xml:space="preserve"><value>Bande son {0} — {1}, jouée {2}</value></data>
   <data name="MainLengthTurn" xml:space="preserve"><value>{0} — tour de {1}, à partir de {2}</value></data>
+  <data name="MainLineAlign" xml:space="preserve"><value>Alignement</value></data>
+  <data name="MainLineColor" xml:space="preserve"><value>Couleur</value></data>
+  <data name="MainLineEdges" xml:space="preserve"><value>Bords</value></data>
+  <data name="MainLineFill" xml:space="preserve"><value>Remplissage</value></data>
+  <data name="MainLineFont" xml:space="preserve"><value>Police</value></data>
+  <data name="MainLineGradient" xml:space="preserve"><value>Dégradé</value></data>
+  <data name="MainLineOpacity" xml:space="preserve"><value>Opacité</value></data>
+  <data name="MainLineShadowShape" xml:space="preserve"><value>Forme de l'ombre</value></data>
+  <data name="MainLineSpeed" xml:space="preserve"><value>Vitesse</value></data>
+  <data name="MainLineStyle" xml:space="preserve"><value>Style</value></data>
+  <data name="MainLineTrimFrom" xml:space="preserve"><value>Début de découpe</value></data>
+  <data name="MainLineTrimTo" xml:space="preserve"><value>Fin de découpe</value></data>
   <data name="MainListAnd" xml:space="preserve"><value>{0} et {1}</value></data>
   <data name="MainMenuCopyCell" xml:space="preserve"><value>Copier la cellule</value></data>
   <data name="MainMenuCopyLastAt" xml:space="preserve"><value>Copier le dernier {0} ({1:HH:mm})</value></data>
@@ -770,7 +781,6 @@ Redémarrer l'application maintenant ?</value></data>
   <data name="MainSummaryPeak" xml:space="preserve"><value>pic {0}</value></data>
   <data name="MainTimesMany" xml:space="preserve"><value>{0:0.#} fois</value></data>
   <data name="MainTimesOnce" xml:space="preserve"><value>une fois</value></data>
-  <data name="MainTo" xml:space="preserve"><value>À</value></data>
   <data name="MainTransportPlayTip" xml:space="preserve"><value>Lit ou met en pause la grille (Space)</value></data>
   <data name="MainTrimTip" xml:space="preserve"><value>La découpe ne s'applique qu'aux vidéos et aux GIF animés</value></data>
   <data name="MainUnavailableCutout" xml:space="preserve"><value>Détourage ne fonctionne pour l'instant que sur les images fixes : pas sur les vidéos, les GIF animés ni les contenus de plusieurs pages</value></data>

@@ -70,31 +70,31 @@ internal sealed partial class MainForm
     // Each color's opacity right after it (workfiles/20261029-eyedropper-ergonomics.md § Color Opacity).
     private readonly PictureBox _layerColorOpacityIcon = OpacityIcon();
     private readonly TrackBar _layerColorOpacity = OptionSlider(0, 100, 10);
-    private readonly Label _layerColorOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly SliderCaption _layerColorOpacityLabel = new();
     private readonly CheckBox _layerOutline = new() { Text = Strings.PanelLayerOutline, AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly ColorSplitButton _layerOutlineColor = new();
     private readonly PictureBox _layerOutlineOpacityIcon = OpacityIcon();
     private readonly TrackBar _layerOutlineOpacity = OptionSlider(0, 100, 10);
-    private readonly Label _layerOutlineOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly SliderCaption _layerOutlineOpacityLabel = new();
 
     // The outline's width in percent of a line.
     private readonly TrackBar _layerOutlineWidth = OptionSlider((int)Math.Round(LayerTextStyle.MinOutlineWidth * 100), (int)Math.Round(LayerTextStyle.MaxOutlineWidth * 100), 2, controlStep: 1);
-    private readonly Label _layerOutlineWidthLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly SliderCaption _layerOutlineWidthLabel = new();
     private readonly CheckBox _layerBackground = new() { Text = Strings.PanelLayerBackground, AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly ColorSplitButton _layerBackgroundColor = new();
     private readonly PictureBox _layerBackgroundOpacityIcon = OpacityIcon();
     private readonly TrackBar _layerBackgroundOpacity = OptionSlider(0, 100, 10);
-    private readonly Label _layerBackgroundOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly SliderCaption _layerBackgroundOpacityLabel = new();
     private readonly CheckBox _layerShadow = new() { Text = Strings.PanelLayerShadow, AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly ColorSplitButton _layerShadowColor = new();
     private readonly PictureBox _layerShadowOpacityIcon = OpacityIcon();
     private readonly TrackBar _layerShadowOpacity = OptionSlider(0, 100, 10);
-    private readonly Label _layerShadowOpacityLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly SliderCaption _layerShadowOpacityLabel = new();
     private readonly ShadowKindStrip _layerShadowKind = new() { Anchor = AnchorStyles.Left };
 
     // The shadow's size in percent of a line.
     private readonly TrackBar _layerShadowSize = OptionSlider((int)Math.Round(LayerTextStyle.MinShadowSize * 100), (int)Math.Round(LayerTextStyle.MaxShadowSize * 100), 2, controlStep: 1);
-    private readonly Label _layerShadowSizeLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
+    private readonly SliderCaption _layerShadowSizeLabel = new();
 
     // The text styles (workfiles/20261029-text-layer-style-presets.md): their strip above the text's settings, scrolled
     // sideways past the width it has; the styles themselves kept in text-styles.json.
@@ -145,9 +145,10 @@ internal sealed partial class MainForm
     };
 
     /// <summary>
-    /// The Layers options: the layer list over its icon buttons, then a text field and, on two lines, a
-    /// text's font, color, outline and background — each color with its eyedropper and sample (RULES.md
-    /// § Color Options). The list shows about four layers: the global options toolbar grows to it.
+    /// The Layers options: the layer list over its icon buttons and the text field, each as tall as the toolbar, then
+    /// the text's settings one feature per line (workfiles/20261104-options-toolbar-layout.md) — each color with its
+    /// eyedropper and sample (RULES.md § Color Options). The list shows about four layers: the global options toolbar
+    /// grows to it.
     /// </summary>
     private void BuildLayerOptions()
     {
@@ -158,31 +159,28 @@ internal sealed partial class MainForm
         buttons.FlowDirection = FlowDirection.TopDown;
         buttons.Controls.AddRange([this._layerList, iconLine]);
 
-        // The text styles' strip over the font and outline lines, as wide as they are, scrolled sideways past it.
+        // The text styles' strip, as wide as its column, scrolled sideways past it.
         this._textStyleScroll.Controls.Add(this._textStyleStrip);
         this._textStyleScroll.Height = this._textStyleStrip.Height + SystemInformation.HorizontalScrollBarHeight;
         this._textStyleScroll.Width = this.LogicalToDeviceUnits(100);
-        var fontLine = OptionLine();
-        fontLine.Controls.AddRange([this._layerFont, this._layerEmojiFont, this._layerBold, this._layerItalic, this._layerCaps, .. this._layerAlignment, this._layerBox, this._layerColor, this._layerColorOpacityIcon, this._layerColorOpacity, this._layerColorOpacityLabel]);
-        var outlineLine = OptionLine();
-        outlineLine.Controls.AddRange([this._layerOutline, this._layerOutlineColor, this._layerOutlineOpacityIcon, this._layerOutlineOpacity, this._layerOutlineOpacityLabel, this._layerOutlineWidth, this._layerOutlineWidthLabel]);
-        var styleLines = OptionLine();
-        styleLines.FlowDirection = FlowDirection.TopDown;
-        styleLines.Controls.AddRange([this._textStyleScroll, fontLine, outlineLine]);
-
-        // The box's line, then the shadow's two below it.
-        var backgroundLine = OptionLine();
-        backgroundLine.Controls.AddRange([this._layerBackground, this._layerBackgroundColor, this._layerBackgroundOpacityIcon, this._layerBackgroundOpacity, this._layerBackgroundOpacityLabel]);
-        var shadowLine = OptionLine();
-        shadowLine.Controls.AddRange([this._layerShadow, this._layerShadowColor, this._layerShadowOpacityIcon, this._layerShadowOpacity, this._layerShadowOpacityLabel]);
-        var shadowShapeLine = OptionLine();
-        shadowShapeLine.Controls.AddRange([this._layerShadowKind, this._layerShadowSize, this._layerShadowSizeLabel]);
-        var backgroundLines = OptionLine();
-        backgroundLines.FlowDirection = FlowDirection.TopDown;
-        backgroundLines.Controls.AddRange([backgroundLine, shadowLine, shadowShapeLine]);
-
         this._layerText.Height = this.LogicalToDeviceUnits(4 * 34);
-        this._globalOptions[GlobalEffect.Layers].Controls.AddRange([buttons, this._layerText, styleLines, backgroundLines]);
+
+        // The tall blocks, then one feature per line (workfiles/20261104-options-toolbar-layout.md § Layers).
+        var lines = (FeatureLinesPanel)this._globalOptions[GlobalEffect.Layers];
+        lines.AddBlock(buttons);
+        lines.AddBlock(this._layerText);
+        lines.AddLine(Strings.MainLineStyle, this._textStyleScroll);
+        lines.AddLine(Strings.MainLineFont, this._layerFont, this._layerEmojiFont, this._layerBold, this._layerItalic, this._layerCaps);
+        lines.AddLine(Strings.MainLineAlign, [.. this._layerAlignment, this._layerBox]);
+        lines.AddLine(Strings.MainLineColor, this._layerColor, new SliderBox(this._layerColorOpacity, this._layerColorOpacityLabel, this._layerColorOpacityIcon));
+        lines.AddLine(
+            this._layerOutline,
+            this._layerOutlineColor,
+            new SliderBox(this._layerOutlineOpacity, this._layerOutlineOpacityLabel, this._layerOutlineOpacityIcon),
+            new SliderBox(this._layerOutlineWidth, this._layerOutlineWidthLabel));
+        lines.AddLine(this._layerBackground, this._layerBackgroundColor, new SliderBox(this._layerBackgroundOpacity, this._layerBackgroundOpacityLabel, this._layerBackgroundOpacityIcon));
+        lines.AddLine(this._layerShadow, this._layerShadowColor, new SliderBox(this._layerShadowOpacity, this._layerShadowOpacityLabel, this._layerShadowOpacityIcon));
+        lines.AddLine(Strings.MainLineShadowShape, this._layerShadowKind, new SliderBox(this._layerShadowSize, this._layerShadowSizeLabel));
 
         var fonts = TextRaster.FontFamilies();
         this._layerFont.Items.AddRange([.. fonts]);
