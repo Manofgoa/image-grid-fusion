@@ -92,6 +92,17 @@ the same abstraction.
   with a text in the box shows the trending, the text waiting for Enter.
 - A change of the content rating asks the list shown again with it (one call).
 
+### Quota
+
+- **GIPHY gives no quota**: its answers carry no rate-limit header. The app **counts its own calls** of the
+  last hour (`Web/GiphyQuota`, sent calls in Unix seconds, those older than an hour forgotten) — right
+  while the key serves this app alone — **kept in `settings.json`** (`AppSettings.GiphyCalls`), so a
+  restart does not reset it (Q&A 25).
+- **Shown at the end of the breadcrumb**, after what the list holds: `150 GIFs+ · 12/100 calls this hour`
+  (Q&A 26), following the calls as they leave the hour.
+- **Each page received says on the status line what it brought**: `+50 GIFs loaded — 150 in the list`
+  (Q&A 27).
+
 ### Loads
 
 - The view's list is **fetched page by page**: `LoadMore` asks the library for the next page while it
@@ -295,7 +306,9 @@ The user asks whether the key's usable / remaining quota can be known, and for e
 images it brought. Findings: GIPHY's answers carry no rate-limit header (checked on its live API: no
 `X-RateLimit-*`, only `Retry-After`; a valid key's answer could not be checked) — the remaining calls can
 only be **counted by the app**, over a sliding hour, its own calls only. Where and how the count and the
-load's images show: asked (Q&A 25–27).
+load's images show: asked (Q&A 25–27) — the calls kept across sessions, shown in the breadcrumb; each load's
+count on the status line. Delivered: § Quota; README, GLOSSARY (EN + FR) and RULES.md § Online Libraries
+follow.
 
 ---
 
@@ -306,12 +319,12 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 8, 9 | 2026-11-05 | `Web/Giphy`, `Web/GiphyFiles`, `UI/OnlineThumbnails`, `UI/FileExplorerPanel.Giphy.cs`, `UI/MainForm.Giphy.cs`, the grid's online tiles, the texts EN + FR |
+| Code | 8, 9, 10 | 2026-11-05 | `Web/Giphy`, `Web/GiphyFiles`, `UI/OnlineThumbnails`, `UI/FileExplorerPanel.Giphy.cs`, `UI/MainForm.Giphy.cs`, the grid's online tiles, the texts EN + FR; `Web/GiphyQuota` |
 | Unit tests | — | 2026-11-05 | None: no test project, checks by hand (Q&A 23) |
-| README (EN + FR) | 9 | 2026-11-05 | The GIPHY view, the key, the budget, the attribution; Tech |
-| GLOSSARY (EN + FR) | 9 | 2026-11-05 | *Online library*, *GIPHY view*, *Content rating*; four views |
+| README (EN + FR) | 9, 10 | 2026-11-05 | The GIPHY view, the key, the budget, the attribution; Tech |
+| GLOSSARY (EN + FR) | 9, 10 | 2026-11-05 | *Online library*, *GIPHY view*, *Content rating*; four views |
 | SHORTCUTS (EN + FR) | 9 | 2026-11-05 | Ctrl+F through the GIPHY view; Enter searching it; ↑ keys back to the trending; double-click downloading first |
-| RULES.md | 9 | 2026-11-05 | § Online Libraries |
+| RULES.md | 9, 10 | 2026-11-05 | § Online Libraries |
 
 ---
 
@@ -345,9 +358,9 @@ Questions asked by the agent during design, with user responses.
 | 22 | The API key shown in clear or masked | In clear | 2026-11-05 |
 | 23 | Unit tests: a test project, or checks by hand | Checks by hand | 2026-11-05 |
 | 24 | The backlog's *Stickers in layers* row | Split the row | 2026-11-05 |
-| 25 | (User) Can the usable / remaining quota be known? How is it counted and kept? | | 2026-11-05 |
-| 26 | Where the quota shows | | 2026-11-05 |
-| 27 | (User) Say at each load how many images it brought — where? | | 2026-11-05 |
+| 25 | (User) Can the usable / remaining quota be known? How is it counted and kept? | GIPHY gives none; the app counts its calls, kept across sessions | 2026-11-05 |
+| 26 | Where the quota shows | The breadcrumb | 2026-11-05 |
+| 27 | (User) Say at each load how many images it brought — where? | The status line | 2026-11-05 |
 
 ---
 
