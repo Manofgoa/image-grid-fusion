@@ -169,6 +169,11 @@ hidden.
 Q&A 9–10 answered: the content rating moves into the GIPHY submenu too, under the key; hiding the view shown —
 or a hidden view saved at start-up — gives the folder view. No question left.
 
+### Iteration 5 — 2026-11-05 — ✅ Implemented
+
+Go given: code and documentation (no test project), in the worktree `.claude/worktrees/giphy-gif-sticker-views`,
+branch `feature/giphy-gif-sticker-views`.
+
 ---
 
 ## Implementation Log
