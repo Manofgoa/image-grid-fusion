@@ -40,12 +40,16 @@ The undo history commits once the state settles (~300 ms): not a per-key cost.
 
 ## Design
 
-### Pending Text, Rendered at a Limited Rate
+### Pending Text and Style, Rendered at a Limited Rate
 
-- `ChangeLayerText` no longer renders: it **records the text wanted** for the selected text layer and asks for a
-  render. The field is never blocked.
-- A render runs **at most every ~50 ms** while keys keep coming (throttle), the **last text wanted** always
-  winning: a text typed while a render runs is drawn by the next one, the ones in between are never drawn.
+- **One route for every live change of a text layer**: the text field (`ChangeLayerText`) and the style's live
+  changes (`ChangeLayerStyle`) — the outline width, shadow size and opacity sliders, the color dialog and the
+  eyedropper following the cursor (`LayerColorRoute`). They no longer render: they **record the text and style
+  wanted** for the selected text layer and ask for a render. The field and the sliders are never blocked.
+- One-shot changes (a checkbox, the font, an alignment, a style applied from the strip, Box) take the route too,
+  their final render following at once rather than after the pause.
+- A render runs **at most every ~50 ms** while changes keep coming (throttle), the **last text and style wanted**
+  always winning: a change made while a render runs is drawn by the next one, the ones in between are never drawn.
 - **Off the UI thread**: `TextRaster.Render` runs on a worker, one at a time (its factories are per thread
   already, `[ThreadStatic]`); the result is put in place on the UI thread only if the layer is still the one it
   was asked for and its text, style and box unchanged meanwhile — dropped otherwise, as a cutout request whose
@@ -58,7 +62,7 @@ The undo history commits once the state settles (~300 ms): not a per-key cost.
 
 - **Draft render** while keys come: the text drawn at the em the preview actually shows — its line height in
   device pixels, at least 32 px — instead of 192 px; the layer's place is unchanged (its size measures a line,
-  `LinePixels` follows the bitmap). *(Open Question 1.)*
+  `LinePixels` follows the bitmap): slightly less sharp until the pause, as agreed.
 - **Fast redraw**: the preview's area redrawn with `fast: true` while typing, as during a gesture.
 - **`UpdateButtons` once**, not twice: a text change keeps the selection — the layer's content replaced in
   place does not raise `SelectedImageChanged` when only its text changed.
@@ -67,7 +71,7 @@ The undo history commits once the state settles (~300 ms): not a per-key cost.
 
 ### Final Render
 
-- **~300 ms after the last key** — the undo history's settle time — the text is rendered once more at full
+- **~300 ms after the last change** — the undo history's settle time — the text is rendered once more at full
   resolution (`EmSize`), redrawn at full quality, the thumbnail made, `UpdateButtons` run once.
 - The undo history keeps its rule: one step once the state settles. Typing is held as a gesture (`InGesture`)
   until the final render is in place, so the step holds the full-resolution content, never a draft.
@@ -88,12 +92,12 @@ then Ctrl+Z.
 
 ## Open Questions
 
-- [ ] While typing, may the text show **slightly less sharp** (draft at the preview's resolution) until the pause,
-  then sharp — or must every step stay at full resolution, only throttled?
-- [ ] Do the **other live changes of a text layer** — its sliders (outline width, shadow size, opacities), the
+- [x] ~~While typing, may the text show **slightly less sharp** (draft at the preview's resolution) until the pause,
+  then sharp — or must every step stay at full resolution, only throttled?~~ → Draft while typing, sharp at the pause
+- [x] ~~Do the **other live changes of a text layer** — its sliders (outline width, shadow size, opacities), the
   color dialog and the eyedropper following the cursor — take the same route (throttled, off the UI thread, draft
-  then final), or the text field only?
-- [ ] The **final render's delay** after the last key: ~300 ms (the undo history's settle), or shorter?
+  then final), or the text field only?~~ → All of them, one route
+- [x] ~~The **final render's delay** after the last key: ~300 ms (the undo history's settle), or shorter?~~ → ~300 ms
 
 ---
 
@@ -111,6 +115,12 @@ the whole app all lag; slow from a 16-character text; exploration straightforwar
 rendered off the UI thread at a limited rate, the last text winning; a draft at the preview's resolution, a fast
 redraw and the options touched only while typing; a full render ~300 ms after the last key, typing held as a gesture
 so the undo step holds it. No row of `TODO-FEATURES.md` matches.
+
+### Iteration 2 — 2026-11-05
+
+The three open questions answered: the draft while typing is accepted; every live change of a text layer — its
+sliders, the color dialog, the eyedropper, and the one-shot settings — takes the same route as the text field; the
+final render comes ~300 ms after the last change.
 
 ---
 
@@ -137,9 +147,9 @@ Questions asked by the agent during design, with user responses.
 | 2 | What is slow, concretely? | The field itself, the preview late, the whole app frozen | 2026-11-05 |
 | 3 | When is it slowest? | From a text as short as `edgd dgsdg sdgds` | 2026-11-05 |
 | 4 | Exploration depth? | Straightforward | 2026-11-05 |
-| 5 | May the text show slightly less sharp while typing (draft)? | | |
-| 6 | Same route for the text layer's other live changes? | | |
-| 7 | Final render's delay after the last key? | | |
+| 5 | May the text show slightly less sharp while typing (draft)? | Yes, draft | 2026-11-05 |
+| 6 | Same route for the text layer's other live changes? | Yes, all of them | 2026-11-05 |
+| 7 | Final render's delay after the last key? | ~300 ms | 2026-11-05 |
 
 ---
 
