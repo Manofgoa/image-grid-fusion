@@ -241,8 +241,11 @@ The features needing them are offered them again.</value></data>
   <data name="ExplorerForSessionNotSaved" xml:space="preserve"><value>{0} — for the session, not saved: {1}</value></data>
   <data name="ExplorerFoundInContent" xml:space="preserve"><value>Found in its content</value></data>
   <data name="ExplorerFoundInContentExcerpt" xml:space="preserve"><value>Found in its content: {0}</value></data>
+  <data name="ExplorerGiphyCalls" xml:space="preserve"><value> · {0}/{1} calls this hour</value></data>
   <data name="ExplorerGiphyDownloadFailed" xml:space="preserve"><value>{0} could not be downloaded: {1}</value></data>
   <data name="ExplorerGiphyGifsCount" xml:space="preserve"><value>{0:N0} GIFs</value></data>
+  <data name="ExplorerGiphyLoadedGifs" xml:space="preserve"><value>+{0:N0} GIFs loaded — {1:N0} in the list</value></data>
+  <data name="ExplorerGiphyLoadedStickers" xml:space="preserve"><value>+{0:N0} stickers loaded — {1:N0} in the list</value></data>
   <data name="ExplorerGiphyPlaceholder" xml:space="preserve"><value>Search GIPHY, then Enter</value></data>
   <data name="ExplorerGiphyPressEnter" xml:space="preserve"><value>Enter to search</value></data>
   <data name="ExplorerGiphySearching" xml:space="preserve"><value>Searching…</value></data>
@@ -774,6 +777,7 @@ Restart the app now?</value></data>
   <data name="MainStatusNotSavedFaceAnalysis" xml:space="preserve"><value>Face analysis not remembered: {0}</value></data>
   <data name="MainStatusNotSavedFaceGrouping" xml:space="preserve"><value>Face grouping not remembered: {0}</value></data>
   <data name="MainStatusNotSavedGapBars" xml:space="preserve"><value>Gap bars setting not remembered: {0}</value></data>
+  <data name="MainStatusNotSavedGiphyCalls" xml:space="preserve"><value>GIPHY calls of the hour not remembered: {0}</value></data>
   <data name="MainStatusNotSavedGiphyKey" xml:space="preserve"><value>GIPHY API key not remembered: {0}</value></data>
   <data name="MainStatusNotSavedGiphyRating" xml:space="preserve"><value>GIPHY content rating not remembered: {0}</value></data>
   <data name="MainStatusNotSavedGuideApproach" xml:space="preserve"><value>Guides distance not remembered: {0}</value></data>

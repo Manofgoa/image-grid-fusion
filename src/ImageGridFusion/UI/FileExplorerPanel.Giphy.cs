@@ -51,8 +51,27 @@ internal sealed partial class FileExplorerPanel
     private readonly Dictionary<string, double> _giphyProgress = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _giphyFetched = new(StringComparer.Ordinal);
 
+    // The key's calls of the last hour, counted by the app, and the count the breadcrumb shows.
+    private GiphyQuota _giphyQuota = new([]);
+    private int _giphyUsedShown = -1;
+
     /// <summary>The GIPHY API key was asked for, from the GIPHY view's invitation.</summary>
     public event EventHandler? GiphyKeyRequested;
+
+    /// <summary>A call was sent to GIPHY: <see cref="GiphyCalls"/> to remember.</summary>
+    public event EventHandler? GiphyCallsChanged;
+
+    /// <summary>
+    /// When the app called GIPHY in the last hour, in Unix seconds — its quota, counted across sessions; set at
+    /// start-up from the settings. Setting it raises nothing.
+    /// </summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public IReadOnlyList<long> GiphyCalls
+    {
+        get => this._giphyQuota.Calls;
+        set => this._giphyQuota = new GiphyQuota(value);
+    }
 
     /// <summary>
     /// The user's GIPHY API key; null for none — the GIPHY view then invites to set one, and Ctrl+F skips it.
@@ -218,6 +237,8 @@ internal sealed partial class FileExplorerPanel
         }
 
         this._breadcrumb.SetPath(this.GiphySegments(query), Strings.ExplorerGiphySearching);
+        this._giphyQuota.Add(GiphyQuota.Now);
+        this.GiphyCallsChanged?.Invoke(this, EventArgs.Empty);
         try
         {
             var page = await Giphy.FetchAsync(key, kind, query, offset, this._giphyRating, call.Token);
@@ -228,12 +249,14 @@ internal sealed partial class FileExplorerPanel
 
             var rows = append ? new List<ExplorerRow>(this._list) : [];
             var shown = new HashSet<string>(rows.Select(row => row.Key), StringComparer.Ordinal);
+            int added = 0;
             foreach (var item in page.Items)
             {
                 var row = this.GiphyRow(item);
                 if (shown.Add(row.Key))
                 {
                     rows.Add(row);
+                    added++;
                 }
             }
 
@@ -243,6 +266,9 @@ internal sealed partial class FileExplorerPanel
             }
 
             this.ShowGiphyRows(rows, page.HasMore, query, keepPlace: append, append ? this._loaded + this.LoadSize() : null);
+
+            // What the call brought, said each time (workfiles/20261105-online-library-giphy.md § Quota).
+            this.ShowTransient(Texts.Format(kind == GiphyKind.Stickers ? Strings.ExplorerGiphyLoadedStickers : Strings.ExplorerGiphyLoadedGifs, added, rows.Count));
         }
         catch (Exception ex) when (ex is UrlLoadException or OperationCanceledException)
         {
@@ -296,14 +322,19 @@ internal sealed partial class FileExplorerPanel
         return row;
     }
 
-    /// <summary>The breadcrumb of the GIPHY view: GIPHY, the search, what the list holds — or the key typed, waiting for Enter.</summary>
+    /// <summary>
+    /// The breadcrumb of the GIPHY view: GIPHY, the search, what the list holds — or the text typed, waiting for
+    /// Enter — then the key's calls of the last hour.
+    /// </summary>
     private void ShowGiphyTrail()
     {
         string typed = this._search.Text.Trim();
+        this._giphyUsedShown = this._giphyQuota.Used(GiphyQuota.Now);
         string trailing = this._giphyKey is null ? ""
-            : typed.Length > 0 && typed != this._giphyQuery ? Strings.ExplorerGiphyPressEnter
-            : Texts.Format(this._giphyKind == GiphyKind.Stickers ? Strings.ExplorerGiphyStickersCount : Strings.ExplorerGiphyGifsCount, this._list.Count)
-                + (this._giphyHasMore ? "+" : "");
+            : (typed.Length > 0 && typed != this._giphyQuery ? Strings.ExplorerGiphyPressEnter
+                : Texts.Format(this._giphyKind == GiphyKind.Stickers ? Strings.ExplorerGiphyStickersCount : Strings.ExplorerGiphyGifsCount, this._list.Count)
+                    + (this._giphyHasMore ? "+" : ""))
+              + Texts.Format(Strings.ExplorerGiphyCalls, this._giphyUsedShown, GiphyQuota.HourlyCalls);
         this._breadcrumb.SetPath(this.GiphySegments(this._giphyQuery), trailing);
     }
 
@@ -493,6 +524,13 @@ internal sealed partial class FileExplorerPanel
     /// <summary>The thumbnails in view drawn again while the GIPHY view shows a list and the window can be seen.</summary>
     private void PlayGiphyFrames()
     {
+        // A call older than an hour freed: the count shown follows.
+        if (this._giphyView && this._giphyKey is not null && this._giphyCall is null && this._giphyUsedShown >= 0
+            && this._giphyQuota.Used(GiphyQuota.Now) != this._giphyUsedShown)
+        {
+            this.ShowGiphyTrail();
+        }
+
         if (this._giphyView && this._open && this._grid.Visible && this._giphyThumbnails?.Any == true && this.FindForm() is { WindowState: not FormWindowState.Minimized, Visible: true })
         {
             this._grid.InvalidateOnline();

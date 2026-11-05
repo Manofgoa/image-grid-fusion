@@ -241,8 +241,11 @@ Les fonctionnalités qui en ont besoin les proposeront à nouveau.</value></data
   <data name="ExplorerForSessionNotSaved" xml:space="preserve"><value>{0} — pour la session, non enregistré : {1}</value></data>
   <data name="ExplorerFoundInContent" xml:space="preserve"><value>Trouvé dans son contenu</value></data>
   <data name="ExplorerFoundInContentExcerpt" xml:space="preserve"><value>Trouvé dans son contenu : {0}</value></data>
+  <data name="ExplorerGiphyCalls" xml:space="preserve"><value> · {0}/{1} appels cette heure</value></data>
   <data name="ExplorerGiphyDownloadFailed" xml:space="preserve"><value>{0} n'a pas pu être téléchargé : {1}</value></data>
   <data name="ExplorerGiphyGifsCount" xml:space="preserve"><value>{0:N0} GIF</value></data>
+  <data name="ExplorerGiphyLoadedGifs" xml:space="preserve"><value>+{0:N0} GIF chargés — {1:N0} dans la liste</value></data>
+  <data name="ExplorerGiphyLoadedStickers" xml:space="preserve"><value>+{0:N0} stickers chargés — {1:N0} dans la liste</value></data>
   <data name="ExplorerGiphyPlaceholder" xml:space="preserve"><value>Chercher sur GIPHY, puis Entrée</value></data>
   <data name="ExplorerGiphyPressEnter" xml:space="preserve"><value>Entrée pour chercher</value></data>
   <data name="ExplorerGiphySearching" xml:space="preserve"><value>Recherche…</value></data>
@@ -774,6 +777,7 @@ Redémarrer l'application maintenant ?</value></data>
   <data name="MainStatusNotSavedFaceAnalysis" xml:space="preserve"><value>Analyse des visages non mémorisée : {0}</value></data>
   <data name="MainStatusNotSavedFaceGrouping" xml:space="preserve"><value>Regroupement des visages non mémorisé : {0}</value></data>
   <data name="MainStatusNotSavedGapBars" xml:space="preserve"><value>Réglage des barres d'écart non mémorisé : {0}</value></data>
+  <data name="MainStatusNotSavedGiphyCalls" xml:space="preserve"><value>Appels GIPHY de l'heure non mémorisés : {0}</value></data>
   <data name="MainStatusNotSavedGiphyKey" xml:space="preserve"><value>Clé d'API GIPHY non mémorisée : {0}</value></data>
   <data name="MainStatusNotSavedGiphyRating" xml:space="preserve"><value>Classification GIPHY non mémorisée : {0}</value></data>
   <data name="MainStatusNotSavedGuideApproach" xml:space="preserve"><value>Distance des guides non mémorisée : {0}</value></data>

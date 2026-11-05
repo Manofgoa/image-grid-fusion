@@ -29,7 +29,22 @@ internal sealed partial class MainForm
 
         this._explorer.GiphyApiKey = AppSettings.GiphyApiKey;
         this._explorer.GiphyRating = AppSettings.GiphyRating;
+        this._explorer.GiphyCalls = AppSettings.GiphyCalls;
         this._explorer.GiphyKeyRequested += (_, _) => this.AskGiphyKey();
+        this._explorer.GiphyCallsChanged += (_, _) => this.SaveGiphyCalls();
+    }
+
+    /// <summary>A call sent to GIPHY: the last hour's calls kept, so the quota counted survives a restart.</summary>
+    private void SaveGiphyCalls()
+    {
+        try
+        {
+            AppSettings.SaveGiphyCalls(this._explorer.GiphyCalls);
+        }
+        catch (Exception ex) when (AppSettings.IsSaveError(ex))
+        {
+            this.ShowStatus(Texts.Format(Strings.MainStatusNotSavedGiphyCalls, ex.Message), error: true);
+        }
     }
 
     /// <summary>The ⚙ menu's GIPHY entries ticked from the settings as they are now.</summary>
