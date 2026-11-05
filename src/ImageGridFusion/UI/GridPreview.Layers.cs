@@ -71,6 +71,13 @@ internal sealed partial class GridPreview
     /// <summary>Raised when a layer's edit view opens or closes.</summary>
     public event EventHandler? LayerEditChanged;
 
+    /// <summary>
+    /// Raised before an edit view — a layer's or the background's — is opened: the layers given from outside
+    /// meanwhile would close it, so the form puts a text being drawn in place first
+    /// (workfiles/20261105-text-layer-typing-refresh.md § Pending Text and Style).
+    /// </summary>
+    public event EventHandler? EditOpening;
+
     /// <summary>Whether a layer's edit view shows (workfiles/20261029-layers.md § Edit View).</summary>
     public bool EditingLayer => this._edit is not null;
 
@@ -169,7 +176,13 @@ internal sealed partial class GridPreview
     /// which the undo history keeps alive). <paramref name="selected"/> becomes the selected layer — none for
     /// -1 —, else the selection stays where it was while it still exists.
     /// </summary>
-    public void SetLayers(GridLayers layers, int? selected = null)
+    public void SetLayers(GridLayers layers, int? selected = null) => this.SetLayers(layers, selected, sameContent: false);
+
+    /// <summary>
+    /// <see cref="SetLayers(GridLayers, int?)"/>; with <paramref name="sameContent"/>, the selected layer's new content
+    /// stands for the one it replaces — a text drawn again —, so the selection is not changed by it.
+    /// </summary>
+    private void SetLayers(GridLayers layers, int? selected, bool sameContent)
     {
         // Given from outside, the layers change under the edit view: it closes first.
         this.EndLayerEdit();
@@ -199,7 +212,7 @@ internal sealed partial class GridPreview
         int selection = selected ?? this._selectedLayer;
         selection = selection >= 0 && selection < layers.Count ? selection : -1;
         bool selectionChanged = selection != this._selectedLayer
-            || (selection >= 0 && (selection >= before.Count || before.Items[selection].Image != layers.Items[selection].Image));
+            || (selection >= 0 && !sameContent && (selection >= before.Count || before.Items[selection].Image != layers.Items[selection].Image));
         this._selectedLayer = selection;
         if (this._selectedLayer >= 0)
         {
@@ -321,6 +334,43 @@ internal sealed partial class GridPreview
         {
             this.SetLayers(this._layers.With(this._selectedLayer, layer));
         }
+    }
+
+    /// <summary>
+    /// The text layer showing <paramref name="previous"/> takes <paramref name="drawn"/>'s content — its bitmap, line,
+    /// text, style and box —, keeping its own look, place and visibility as they stand now; the selection stays as
+    /// it is (workfiles/20261105-text-layer-typing-refresh.md). False when no layer shows <paramref name="previous"/>
+    /// any more.
+    /// </summary>
+    public bool ReplaceTextContent(SourceImage previous, Layer drawn)
+    {
+        int index = this._layers.Items.ToList().FindIndex(l => l.Image == previous);
+        if (index < 0)
+        {
+            return false;
+        }
+
+        var current = this._layers.Items[index];
+        var layer = current with
+        {
+            Image = drawn.Image,
+            Place = current.Place with { LinePixels = drawn.Place.LinePixels },
+            Text = drawn.Text,
+            Style = drawn.Style,
+            TextBox = drawn.TextBox,
+        };
+        this.SetLayers(this._layers.With(index, layer), null, sameContent: true);
+        return true;
+    }
+
+    /// <summary>
+    /// The height of one of <paramref name="layer"/>'s lines as the preview draws it, in device pixels; 0 while the
+    /// canvas is empty.
+    /// </summary>
+    public double LayerLinePixels(Layer layer)
+    {
+        var canvas = this.CanvasBounds();
+        return canvas.IsEmpty ? 0 : Math.Min(canvas.Width, canvas.Height) * layer.Place.Size;
     }
 
     /// <summary>Selects the layer at <paramref name="index"/> — none for -1 —, clearing the cell's selection.</summary>
@@ -1060,6 +1110,11 @@ internal sealed partial class GridPreview
     /// </summary>
     public void BeginLayerEdit()
     {
+        if (this._edit is null)
+        {
+            this.EditOpening?.Invoke(this, EventArgs.Empty);
+        }
+
         if (this._edit is not null || this.SelectedLayer is not { Visible: true } layer || this._locked || !this._layersShown)
         {
             return;

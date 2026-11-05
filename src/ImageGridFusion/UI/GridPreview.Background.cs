@@ -123,6 +123,11 @@ internal sealed partial class GridPreview
     /// </summary>
     public void BeginBackgroundEdit()
     {
+        if (this._edit is null)
+        {
+            this.EditOpening?.Invoke(this, EventArgs.Empty);
+        }
+
         if (this._edit is not null || this._gridBackground?.Image is not { } background || this._locked)
         {
             return;

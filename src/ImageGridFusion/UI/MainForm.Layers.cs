@@ -296,7 +296,7 @@ internal sealed partial class MainForm
         this._layerOutlineWidth.ValueChanged += (_, _) =>
         {
             this._layerOutlineWidthLabel.Text = OutlineWidthText(this._layerOutlineWidth.Value);
-            this.ChangeLayerStyle(style => style with { Outline = true, OutlineWidth = this._layerOutlineWidth.Value / 100.0 });
+            this.ChangeLayerStyle(style => style with { Outline = true, OutlineWidth = this._layerOutlineWidth.Value / 100.0 }, live: true);
         };
         this._layerBackground.CheckedChanged += (_, _) => this.ChangeLayerStyle(style => style with { Background = this._layerBackground.Checked });
         this._layerItalic.CheckedChanged += (_, _) => this.ChangeLayerStyle(style => style with { Italic = this._layerItalic.Checked });
@@ -316,14 +316,22 @@ internal sealed partial class MainForm
 
         this._layerBox.CheckedChanged += (_, _) => this.ChangeLayerBox(this._layerBox.Checked);
         this._toolTip.SetToolTip(this._layerBox, Strings.PanelLayerBoxTip);
-        this._preview.RenderTextLayer = layer => this.RenderTextLayer(layer.Text!, layer.Style!, layer.Look, layer.Place, layer.TextBox);
+
+        // A text box's side dragged draws the layer itself, with the text and style last wanted: nothing left to draw.
+        this._preview.RenderTextLayer = layer =>
+        {
+            var (text, style, _) = this.WantedOf(layer);
+            this.CancelTextRender();
+            return this.RenderTextLayer(text, style, layer.Look, layer.Place, layer.TextBox);
+        };
+        this.SetUpTextRendering();
 
         this._layerShadow.CheckedChanged += (_, _) => this.ChangeLayerStyle(style => style with { Shadow = this._layerShadow.Checked });
         this._layerShadowKind.Picked += (_, kind) => this.ChangeLayerStyle(style => style with { Shadow = true, ShadowKind = kind });
         this._layerShadowSize.ValueChanged += (_, _) =>
         {
             this._layerShadowSizeLabel.Text = ShadowSizeText(this._layerShadowSize.Value);
-            this.ChangeLayerStyle(style => style with { Shadow = true, ShadowSize = this._layerShadowSize.Value / 100.0 });
+            this.ChangeLayerStyle(style => style with { Shadow = true, ShadowSize = this._layerShadowSize.Value / 100.0 }, live: true);
         };
         this._toolTip.SetToolTip(this._layerItalic, Strings.PanelLayerItalicTip);
         this._toolTip.SetToolTip(this._layerCaps, Strings.PanelLayerCapsTip);
@@ -376,7 +384,7 @@ internal sealed partial class MainForm
             opacity.ValueChanged += (_, _) =>
             {
                 label.Text = OpacityText(opacity.Value);
-                this.ChangeLayerStyle(style => setOpacity(style, opacity.Value / 100.0));
+                this.ChangeLayerStyle(style => setOpacity(style, opacity.Value / 100.0), live: true);
             };
         }
 
@@ -386,10 +394,16 @@ internal sealed partial class MainForm
         this._layerShadowSizeLabel.Text = ShadowSizeText(this._layerShadowSize.Value);
         this._layerShadowSizeLabel.MinimumSize = new Size(TextRenderer.MeasureText(ShadowSizeText(30), this._layerShadowSizeLabel.Font).Width, 0);
 
-        // A move or a turn by a gesture updates the options alone; any other change the buttons and rows too.
+        // A move or a turn by a gesture updates the options alone; any other change the buttons and rows too. A text
+        // being drawn updates the list's rows only, the rest following its full render
+        // (workfiles/20261105-text-layer-typing-refresh.md § Cheaper Steps While Typing).
         this._preview.LayersChanged += (_, _) =>
         {
-            if (this._preview.InGesture)
+            if (this._preview.TextLayerTyping)
+            {
+                this.UpdateLayerList();
+            }
+            else if (this._preview.InGesture)
             {
                 this.UpdateLayerOptions();
             }
@@ -448,6 +462,7 @@ internal sealed partial class MainForm
     {
         this.FillEmojiFonts();
         this._layerEmojiFont.Invalidate();
+        this.FlushTextRender();
         var layers = this._preview.Layers;
         var redrawn = layers;
         for (int i = 0; i < layers.Count; i++)
@@ -686,11 +701,10 @@ internal sealed partial class MainForm
             control.Enabled = text;
         }
 
-        // The text layer's own settings shown — a new text's style while none is selected; the field left
-        // alone while it already holds the text, so its caret stays where the user types.
-        var style = layer is { IsText: true } ? layer.Style! : this._textStyles.NewTextStyle;
-        this._textStyleStrip.Current = layer is { IsText: true } ? layer.Style : null;
-        string shownText = layer is { IsText: true } ? layer.Text! : "";
+        // The text layer's own settings shown — as last changed while they are being drawn, a new text's style while
+        // none is selected; the field left alone while it already holds the text, so its caret stays where the user types.
+        var (shownText, style, shownBox) = layer is { IsText: true } ? this.WantedOf(layer) : ("", this._textStyles.NewTextStyle, null);
+        this._textStyleStrip.Current = layer is { IsText: true } ? style : null;
         bool syncing = this._syncingEffects;
         this._syncingEffects = true;
         if (this._layerText.Text != shownText)
@@ -718,7 +732,7 @@ internal sealed partial class MainForm
             this._layerAlignment[(int)alignment].Checked = style.Alignment == alignment;
         }
 
-        this._layerBox.Checked = layer is { IsText: true, TextBox: not null };
+        this._layerBox.Checked = layer is { IsText: true } && shownBox is not null;
 
         this._layerShadow.Checked = style.Shadow;
         this._layerShadowKind.Selected = style.ShadowKind;
@@ -950,7 +964,9 @@ internal sealed partial class MainForm
     {
         if (original.IsText)
         {
-            return this.RenderTextLayer(original.Text!, original.Style!, original.Look, original.Place, original.TextBox);
+            // As last wanted, a change still being drawn included.
+            var (text, style, box) = this.WantedOf(original);
+            return this.RenderTextLayer(text, style, original.Look, original.Place, box);
         }
 
         SourceImage image;
@@ -1059,29 +1075,40 @@ internal sealed partial class MainForm
         }
     }
 
-    /// <summary>The selected text layer takes <paramref name="text"/>, drawn again in its style.</summary>
+    /// <summary>
+    /// The selected text layer takes <paramref name="text"/>, drawn again in its style: a draft while the keys come, in
+    /// full after the pause (workfiles/20261105-text-layer-typing-refresh.md).
+    /// </summary>
     private void ChangeLayerText(string text)
-    {
-        if (this._syncingEffects || this.IsExporting || this._preview.SelectedLayer is not { IsText: true } layer || text == layer.Text)
-        {
-            return;
-        }
-
-        this.ReplaceTextLayer(layer, text, layer.Style!);
-    }
-
-    /// <summary>A setting of the selected text layer changed: drawn again in the new style, the Layers turned on (RULES.md).</summary>
-    private void ChangeLayerStyle(Func<LayerTextStyle, LayerTextStyle> change)
     {
         if (this._syncingEffects || this.IsExporting || this._preview.SelectedLayer is not { IsText: true } layer)
         {
             return;
         }
 
-        var style = change(layer.Style!);
-        if (style != layer.Style)
+        var (current, style, box) = this.WantedOf(layer);
+        if (text != current)
         {
-            this.ReplaceTextLayer(layer, layer.Text!, style);
+            this.RequestTextRender(layer, text, style, box, live: true);
+        }
+    }
+
+    /// <summary>
+    /// A setting of the selected text layer changed: drawn again in the new style, the Layers turned on (RULES.md) —
+    /// <paramref name="live"/>, a slider or a color followed, as the text's keys; else in full at once.
+    /// </summary>
+    private void ChangeLayerStyle(Func<LayerTextStyle, LayerTextStyle> change, bool live = false)
+    {
+        if (this._syncingEffects || this.IsExporting || this._preview.SelectedLayer is not { IsText: true } layer)
+        {
+            return;
+        }
+
+        var (text, current, box) = this.WantedOf(layer);
+        var style = change(current);
+        if (style != current)
+        {
+            this.RequestTextRender(layer, text, style, box, live);
         }
     }
 
@@ -1091,25 +1118,20 @@ internal sealed partial class MainForm
     /// </summary>
     private void ChangeLayerBox(bool box)
     {
-        if (this._syncingEffects || this.IsExporting || this._preview.SelectedLayer is not { IsText: true } layer || box == layer.TextBox is not null)
+        if (this._syncingEffects || this.IsExporting || this._preview.SelectedLayer is not { IsText: true } layer)
+        {
+            return;
+        }
+
+        var (text, style, current) = this.WantedOf(layer);
+        if (box == current is not null)
         {
             return;
         }
 
         double ratio = this._preview.CanvasRatio;
         double half = Math.Clamp(0.5 * ratio / (Math.Min(ratio, 1) * layer.Place.Size), Layer.MinTextBox, Layer.MaxTextBox);
-        this.ReplaceTextLayer(layer, layer.Text!, layer.Style!, box ? half : null);
-    }
-
-    private void ReplaceTextLayer(Layer layer, string text, LayerTextStyle style) => this.ReplaceTextLayer(layer, text, style, layer.TextBox);
-
-    private void ReplaceTextLayer(Layer layer, string text, LayerTextStyle style, double? box)
-    {
-        if (this.RenderTextLayer(text, style, layer.Look, layer.Place, box) is { } drawn)
-        {
-            this.TurnLayersOn();
-            this._preview.ReplaceSelectedLayer(drawn);
-        }
+        this.RequestTextRender(layer, text, style, box ? half : null, live: false);
     }
 
     /// <summary>
@@ -1123,14 +1145,16 @@ internal sealed partial class MainForm
             return null;
         }
 
+        // The style as last wanted, a change still being drawn included; followed live, taken or given back in full.
+        var originalStyle = this.WantedOf(original).Style;
         return new ColorRoute(
-            get(original.Style!),
-            color => this.ChangeLayerStyle(style => set(style, color)),
+            get(originalStyle),
+            color => this.ChangeLayerStyle(style => set(style, color), live: true),
             () =>
             {
-                if (this._preview.SelectedLayer is { IsText: true } layer && layer.Style != original.Style)
+                if (this._preview.SelectedLayer is { IsText: true } layer && this.WantedOf(layer) is var (text, style, box) && style != originalStyle)
                 {
-                    this.ReplaceTextLayer(layer, layer.Text!, original.Style!);
+                    this.RequestTextRender(layer, text, originalStyle, box, live: false);
                 }
             },
             color => this.ChangeLayerStyle(style => set(style, color)));
@@ -1314,7 +1338,7 @@ internal sealed partial class MainForm
             name = existing.Name;
         }
 
-        this._textStyles.Put(name, layer.Style!);
+        this._textStyles.Put(name, this.WantedOf(layer).Style);
         this.SaveTextStyles(Texts.Format(Strings.PanelStyleSaved, name));
     }
 
@@ -1332,7 +1356,7 @@ internal sealed partial class MainForm
         {
             if (this._preview.SelectedLayer is { IsText: true } layer)
             {
-                this._textStyles.Put(style.Name, layer.Style!);
+                this._textStyles.Put(style.Name, this.WantedOf(layer).Style);
                 this.SaveTextStyles(Texts.Format(Strings.PanelStyleReplaced, style.Name));
             }
         })

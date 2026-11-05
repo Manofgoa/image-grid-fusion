@@ -569,6 +569,17 @@ one definition, `Composition/GridLayers`:
 - A **text layer** is drawn into a bitmap by `Imaging/TextRaster` — DirectWrite through Direct2D, called
   through their COM tables: the only way the app draws emojis in color; GDI and GDI+ never do (§ Text
   Emojis).
+- **A text layer's changes are drawn off the UI thread** (origin: `workfiles/20261105-text-layer-typing-refresh.md`),
+  `UI/MainForm.TextRender.cs`: every change of its text, style or box goes through `MainForm.RequestTextRender` — a
+  key, a slider or a color followed **live**: a draft at the preview's resolution at most every 50 ms, then the full
+  render 300 ms after the last change; any other change drawn in full at once — by `UI/TextLayerRenderer`, its own
+  worker, the last request winning. Meanwhile the preview holds a gesture (`GridPreview.TextLayerTyping`), so the
+  undo step holds the full render.
+  - What a text layer is wanted to draw is read through **`MainForm.WantedOf`**, never its `Text` / `Style` /
+    `TextBox` directly: a new reader of them does the same.
+  - A route reading the layers to draw or keep them — an export (`EnsureUpscaled`, `BeginExport`), an edit view
+    (`GridPreview.EditOpening`), the emoji fonts redrawn — puts the change in place first, in full
+    (`MainForm.FlushTextRender`); a route drawing the layer itself drops it (`CancelTextRender`).
 
 ### Grid Background Image
 

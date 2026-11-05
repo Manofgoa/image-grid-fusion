@@ -146,7 +146,8 @@ public enum ShadowKind
 /// <summary>
 /// Draws a text into a bitmap with DirectWrite through Direct2D — the emojis in their own colors, which
 /// GDI and GDI+ cannot draw (workfiles/20261029-layers.md § Rendering). Windows' own components, called
-/// through their COM tables here rather than through a library; used on the UI thread.
+/// through their COM tables here rather than through a library; used on the UI thread, and on the text layers'
+/// own worker (<c>UI/TextLayerRenderer</c>), each thread with its own factories.
 /// </summary>
 internal static unsafe class TextRaster
 {
@@ -185,14 +186,15 @@ internal static unsafe class TextRaster
     /// The text drawn in <paramref name="style"/>, on a transparent background, and the height of one of its
     /// lines in the bitmap's pixels — what a text layer's size measures. An empty text gives an empty box
     /// half a line wide. In a <paramref name="box"/> — its width in lines — the lines are wrapped within it,
-    /// and the bitmap is as wide as it (workfiles/20261029-text-layer-alignment.md § Size Mode).
+    /// and the bitmap is as wide as it (workfiles/20261029-text-layer-alignment.md § Size Mode). At a smaller
+    /// <paramref name="em"/> than <see cref="EmSize"/>, a draft: the same drawing in fewer pixels, the line with it
+    /// (workfiles/20261105-text-layer-typing-refresh.md § Cheaper Steps While Typing).
     /// </summary>
-    public static (Bitmap Bitmap, double LinePixels) Render(string text, LayerTextStyle style, double? box = null)
+    public static (Bitmap Bitmap, double LinePixels) Render(string text, LayerTextStyle style, double? box = null, float em = EmSize)
     {
         var factories = Factories.Get();
         text = style.Drawn(text);
         bool colorShapes = EmojiFontOf(factories, style.EmojiFont) is not null;
-        float em = EmSize;
         for (int attempt = 0; ; attempt++)
         {
             var layout = CreateLayout(factories, text.Length == 0 ? " " : text, style, em, box);

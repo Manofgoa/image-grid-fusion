@@ -54,14 +54,20 @@ The undo history commits once the state settles (~300 ms): not a per-key cost.
   already, `[ThreadStatic]`); the result is put in place on the UI thread only if the layer is still the one it
   was asked for and its text, style and box unchanged meanwhile — dropped otherwise, as a cutout request whose
   look changed (RULES.md § The Cutout Exception).
-- **Selection change, undo, export, edit view, layer removed** while a render is pending: the pending text is
-  applied at once (synchronously) before the change, or dropped when its layer is gone — so the undo history
-  and the exports never miss the last keys.
+- The result is matched to its layer by **content** (`GridPreview.ReplaceTextContent`): the layer showing the content
+  the change was asked from takes the new bitmap, line, text, style and box, keeping its look, place and visibility
+  as they stand then; a result older than what shows is dropped (a request number).
+- **What the layer is wanted to draw** — its text, style and box as last changed — is what every reader takes while
+  a render is pending (`MainForm.WantedOf`): the options shown, the next change composed on it, Duplicate, Save style.
+- **Export, copy, edit view, another layer's change, the emoji fonts redrawn** while a render is pending: the
+  pending change is drawn in full at once (synchronously) and put in place first (`MainForm.FlushTextRender`), or
+  dropped when its layer is gone — so the undo history and the exports never miss the last keys. A text box's
+  side dragged draws the layer itself with the wanted text and style, the pending change dropped.
 
 ### Cheaper Steps While Typing
 
-- **Draft render** while keys come: the text drawn at the em the preview actually shows — its line height in
-  device pixels, at least 32 px — instead of 192 px; the layer's place is unchanged (its size measures a line,
+- **Draft render** while keys come: the text drawn at the font size whose line is as tall as the preview shows it —
+  at least 32 px — instead of 192 px; the layer's place is unchanged (its size measures a line,
   `LinePixels` follows the bitmap): slightly less sharp until the pause, as agreed.
 - **Fast redraw**: the preview's area redrawn with `fast: true` while typing, as during a gesture.
 - **`UpdateButtons` once**, not twice: a text change keeps the selection — the layer's content replaced in
@@ -122,6 +128,35 @@ The three open questions answered: the draft while typing is accepted; every liv
 sliders, the color dialog, the eyedropper, and the one-shot settings — takes the same route as the text field; the
 final render comes ~300 ms after the last change.
 
+### Iteration 3 — 2026-11-05 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree (`.claude/worktrees/text-layer-typing-refresh`, branch
+`feature/text-layer-typing-refresh`).
+
+### Iteration 4 — 2026-11-05 — 🧭 Implementation choices
+
+- **The worker** is a dedicated background thread (`UI/TextLayerRenderer`), not the thread pool: `TextRaster`'s
+  factories are per thread, so they are made once. It catches every exception and hands it back, so a failure ends
+  the gesture and is said on the status line rather than killing the worker.
+- **The draft's font size** is computed from the line per pixel of font size of the content shown
+  (`TextWanted.LinePerEm`) — a content drawn in full gives `LinePixels / EmSize`, a draft its own —, since the
+  current content may itself be a draft.
+- **The result is matched by content**, the layer keeping its place and look as they stand when it arrives
+  (`GridPreview.ReplaceTextContent`), rather than by index or by the layer record: a layer moved meanwhile keeps the
+  text.
+- **One wanted change at a time**: a change of another layer puts the pending one in place first.
+- **The flush points** are `EnsureUpscaled` (every export and copy route calls it) and `BeginExport`, a new
+  `GridPreview.EditOpening` event raised before the layer and background edit views open (applying layers would close
+  them), and `EmojiFontsChanged`.
+- **The text box's side drag** (a gesture of its own, out of the frozen scope) still draws in full synchronously, now
+  with the wanted text and style, the pending change dropped — so it never loses keys.
+- **The color dialog's OK and the eyedropper's pick** compose on the wanted style; a pick equal to the last followed
+  color asks nothing, the final render already on its way.
+- **Docs**: a bullet in RULES.md § Layers (the route, `WantedOf`, the flush points). README, GLOSSARY and their French
+  versions unchanged: nothing the user reads about the layers changes but the draft's sharpness while typing.
+- **Not verified in the app by the agent**: the checking instance could not be brought to the front over the user's
+  desktop, and driving keys blind was dropped. The build passes (0 warnings); the typing is to be checked by hand.
+
 ---
 
 ## Implementation Log
@@ -131,9 +166,10 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | No test project in the repository |
-| README | | | |
+| Code | 3, 4 | 2026-11-05 | Worker, preview, form routing; build 0 warnings |
+| Unit tests | 3 | 2026-11-05 | Not applicable: no test project in the repository |
+| README | 4 | 2026-11-05 | Unchanged (nothing user-facing to document); RULES.md § Layers updated |
+| Hand check in the app | | | Left to the user (see Iteration 4) |
 
 ---
 
