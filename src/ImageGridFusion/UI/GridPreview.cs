@@ -548,12 +548,20 @@ internal sealed partial class GridPreview : Control
     public bool ColorDialogOpen { get; set; }
 
     /// <summary>
+    /// Whether a text layer's changes are being drawn — a draft shown, its full render to come: a gesture, so that a
+    /// burst of keys is one undo step holding the full render, and the layer is drawn fast meanwhile
+    /// (workfiles/20261105-text-layer-typing-refresh.md § Final Render).
+    /// </summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool TextLayerTyping { get; set; }
+
+    /// <summary>
     /// Whether a gesture is changing the grid right now — a cell pressed (pan, ✥ swap), a bar or a
     /// separator dragged, a crop moved, a zoom by the wheel or the slider not yet at rest, a color dialog
-    /// open: the undo history commits nothing before it ends.
+    /// open, a text layer's changes being drawn: the undo history commits nothing before it ends.
     /// </summary>
     public bool InGesture =>
-        this.ColorDialogOpen || this._pressed >= 0 || this._draggedBar is not null || this._draggedCorner is not null || this._draggedSeparator is not null
+        this.ColorDialogOpen || this.TextLayerTyping || this._pressed >= 0 || this._draggedBar is not null || this._draggedCorner is not null || this._draggedSeparator is not null
         || this._movedCrop is not null || this._live is not null || this._wheelEnd.Enabled || this._eyedropper is not null || this._pressedLayer >= 0 || this._rotatingLayer || this._resizingBox != 0 || this._layerCopyPending
         || this._edgeDrag is not null;
 
