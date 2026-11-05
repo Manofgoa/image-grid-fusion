@@ -166,8 +166,8 @@ Every question the design cannot settle on its own.
 - [x] ~~**Find similar images from a file of a source**: that source only, or disabled?~~ → Across every
   source: the base folder and every analysed source, whatever the image it starts from.
 - [x] ~~**Favorites**: with every favorite, or only while the source is open?~~ → With every favorite.
-- [ ] **"Toutes sources" confirmed?** Find similar images across the base folder and every analysed
-  source, whatever the image it starts from — a tile of the base folder included?
+- [x] ~~**"Toutes sources" confirmed?** Find similar images across the base folder and every analysed
+  source, whatever the image it starts from — a tile of the base folder included?~~ → Yes, everywhere.
 
 ---
 
@@ -206,7 +206,7 @@ The open questions answered:
   folder's passes waiting meanwhile.
 - **Find similar images spans every source** — the base folder and every analysed source, whatever the
   image it starts from — the second exception to *apart*. The 💡 similarity tier stays within the
-  search's scope. *Interpretation of the answer "Toutes sources", to be confirmed.*
+  search's scope. *(Interpretation of the answer "Toutes sources", confirmed by #16.)*
 - Favorites: a source's file hearted is an ordinary favorite.
 
 ### Iteration 3 — 2026-11-05
@@ -253,7 +253,7 @@ Questions asked by the agent during design, with user responses.
 | 13 | A hearted file of a source among the favorites? | With every favorite | 2026-11-05 |
 | 14 | A source's faces: where would they be used? | In the People view — after a 🔄, they join its groups like the base folder's | 2026-11-05 |
 | 15 | *(user, unprompted)* | A source's index lives in files other than the main index's — in subfolders of the main `index\` folder, for example | 2026-11-05 |
-| 16 | Does *Find similar images* span the base folder and every analysed source, whatever the image it starts from? | | |
+| 16 | Does *Find similar images* span the base folder and every analysed source, whatever the image it starts from? | Yes, everywhere — from any tile, cell or dropped image | 2026-11-05 |
 
 ---
 
