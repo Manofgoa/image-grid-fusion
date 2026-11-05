@@ -1232,8 +1232,9 @@ Other folders shown in the folder view beside the base folder, each indexed apar
   `IndexFiles`); one worker at a time, the base folder's passes waiting (`StartExtraction` returns while `_sourceRun` is
   set); leaving the source — another folder, another view, a setting changed — pauses it (`PauseSourceRun`). The base
   folder's automatic runs never start a source's.
-- **In blue**: a source's tile, every folder inside it (`ExplorerRow.InSource`) and its breadcrumb segments; a source not
-  found stays, faded (`ExplorerRow.Unavailable`). Not remembered as the open folder.
+- **In blue**: a source's own tile (`ExplorerRow.InSource`) and its name in the breadcrumb, after a clear `│` rather than
+  the child's `›` (`Breadcrumb.SetPath`'s `sourceAt`); the folders inside it keep their usual color. A source not found
+  stays, faded (`ExplorerRow.Unavailable`). Not remembered as the open folder.
 
 ## Keyboard Shortcuts
 
