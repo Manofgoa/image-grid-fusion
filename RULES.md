@@ -278,7 +278,11 @@ others keeping their `FlowLayoutPanel` until then:
   above it; **A — Grid**, the leading elements right-aligned, each slider's value after it; **B — Groups**, one
   framed group per feature, its controls stacked, its caption at the bottom. The lines run top-down, a new column
   to the right when the height is full; in a column the leading elements share one width, so the controls start
-  aligned, and a thin line separates two columns.
+  aligned, each at the top of its line, and a thin visible line separates two columns.
+- **A column lines up**: the color buttons and the sliders of its lines of one shape — the same color buttons and
+  sliders before them — stand at one x, a line lacking a control leaving its room empty (`FeatureLinesPanel.Keyed`).
+  **One spacing**: 6 logical px between two controls, 8 after the leading element, 24 between columns, whatever
+  the controls' margins — touching buttons of one row (the text alignments) aside.
 - **Fixed per tab**, never recomputed on a resize: the first of C, A, B whose columns fit the toolbar with the
   window **1920 logical px wide**, the Reset aside — the Background and the Frames in C, the Layers in A. A tab
   migrated measures its own.
@@ -291,7 +295,7 @@ others keeping their `FlowLayoutPanel` until then:
   at one frame among many `LongWidth` (200) —, its icon at its left. Its caption is a `SliderCaption`: the text
   the code sets, `Name: value`, drawn split above the slider — the name at the left, the value at the right —
   or whole after it in the Grid; its `Caption` replaces the name, `""` drawing the value alone when the line's
-  caption names it already.
+  caption names it already. `SliderCaption.ValueBounds` gives where the value is drawn.
 
 ### Color Options
 
