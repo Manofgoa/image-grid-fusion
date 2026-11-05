@@ -152,6 +152,9 @@ French units in every language (`412 Ko`, `Explorer/FileSizes.cs`). They follow 
 
 ## Rules and Docs
 
+- **A build check** (`CheckFrenchTexts`, in `ImageGridFusion.csproj`, before the compilation): a
+  warning names every key of `Strings.resx` missing from `Strings.fr.resx`, and every key of the
+  French file the English one no longer has — the French text can no longer go missing unnoticed.
 - **RULES.md** gains a § **UI Language**: one lookup for every user-visible text; a new text is
   added **in both languages in the same commit**; the out-of-scope list; the culture set once in
   `Program.Main`; `SHORTCUTS.fr.md` embedded and kept in step (already required by § Keyboard
@@ -206,8 +209,9 @@ no unit test is created or updated. The run checks by hand:
 - [x] ~~The French docs' UI labels with a French UI?~~ → Every French doc (README, GLOSSARY,
   SHORTCUTS) quotes the French labels; the shared rule in `../CLAUDE.md` changes to "the labels in
   the language the app shows them in French"
-- [ ] Out of the frozen scope, offered during the run: a build check comparing the two `.resx`,
-  warning when a key has no French text — today a missing French text silently falls back to English?
+- [x] ~~Out of the frozen scope, offered during the run: a build check comparing the two `.resx`,
+  warning when a key has no French text — today a missing French text silently falls back to English?~~
+  → Yes, as a post-implementation adjustment (Iteration 5)
 
 ---
 
@@ -284,6 +288,12 @@ The run's own decisions, none of them a broken rule:
   main window's controls read in French, resp. unchanged in English (UI Automation). The rest of
   § Test Impact is left to the user.
 
+### Iteration 5 — 2026-11-05 — ⚙️ Post-implementation — Missing French text warning
+
+Requested with the merge (Q&A 9): a build warning when a key of `Strings.resx` has no French text in
+`Strings.fr.resx`, or when the French file keeps a key the English one dropped — an MSBuild target in
+the csproj, run before the compilation; RULES.md § UI Language mentions it.
+
 ---
 
 ## Implementation Log
@@ -315,6 +325,7 @@ Questions asked by the agent during design, with user responses.
 | 6 | Numbers and units in French? | The French way: `12,5 s`, `412 Ko` in French; `12.5 s`, `412 KB` in English | 2026-11-05 |
 | 7 | The ⚙ submenu's label: bilingual or translated? | Bilingual, `Language / Langue` | 2026-11-05 |
 | 8 | The French docs' UI labels with a French UI? | Every French doc moves to the French labels; the shared rule changes | 2026-11-05 |
+| 9 | After the tests: the branch? And the build check for missing French texts? | Merge and finish; yes, the check as an adjustment | 2026-11-05 |
 
 ---
 
