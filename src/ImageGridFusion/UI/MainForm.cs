@@ -41,6 +41,7 @@ internal sealed partial class MainForm : Form
     // explorer is collapsed. The system's resize arrow, not WinForms' own VSplit bitmap.
     private readonly Splitter _explorerSplitter = new() { Dock = DockStyle.Right, Width = 6, Cursor = Cursors.SizeWE };
     private readonly ToolStripMenuItem _explorerFolder = new(Strings.MainSettingsExplorerFolder);
+    private readonly ToolStripMenuItem _secondarySources = new(Strings.MainSettingsSecondarySources);
     // How many pages of tiles the explorer loads at a time: a submenu of exclusive choices, remembered between sessions.
     private readonly ToolStripMenuItem _explorerPages = new(Strings.MainSettingsExplorerPages);
     private readonly ToolStripMenuItem _explorerGroups = new(Strings.MainSettingsExplorerGroups);
@@ -763,7 +764,7 @@ internal sealed partial class MainForm : Form
         this._transportTimer.Tick += (_, _) => this.RefreshTransportPosition();
         this._transportTimer.Start();
         this._toolTip.SetToolTip(this._clearButton, Strings.MainClearAllTip);
-        _settingsMenu.Items.AddRange([this._language, _startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, _explorerPages, this._explorerGroups, this._giphyKeyItem, this._giphyRatingItem, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._similarImages, this._captions, this._forgetVisual, new ToolStripSeparator(), this._componentUpdates, this._keyboardShortcuts, this._openAppFolder]);
+        _settingsMenu.Items.AddRange([this._language, _startWithWindows, _twitterCornersDefault, this._videoSize, this._guideApproach, this._gapBarsFrom, _explorerFolder, this._secondarySources, _explorerPages, this._explorerGroups, this._giphyKeyItem, this._giphyRatingItem, new ToolStripSeparator(), this._contentCaption, this._explorerContentSearch, this._rebuildContent, this._ocrResultStyle, new ToolStripSeparator(), this._facesCaption, this._faceAnalysis, this._faceGrouping, this._forgetFaces, new ToolStripSeparator(), this._visualCaption, this._visualAnalysis, this._similarImages, this._captions, this._forgetVisual, new ToolStripSeparator(), this._componentUpdates, this._keyboardShortcuts, this._openAppFolder]);
         // An icon per action and toggle, never on a caption nor a submenu's values (RULES.md § Icons).
         UiIcons.Set(this._language, UiIcons.Language);
         UiIcons.Set(this._startWithWindows, UiIcons.StartWithWindows);
@@ -772,6 +773,7 @@ internal sealed partial class MainForm : Form
         UiIcons.Set(this._guideApproach, UiIcons.Guides);
         UiIcons.Set(this._gapBarsFrom, UiIcons.GapBars);
         UiIcons.Set(this._explorerFolder, UiIcons.Folder);
+        UiIcons.Set(this._secondarySources, UiIcons.SecondarySources);
         UiIcons.Set(this._explorerPages, UiIcons.Pages);
         UiIcons.Set(this._explorerGroups, UiIcons.FolderGroups);
         UiIcons.Set(this._explorerContentSearch, UiIcons.TextRead);
@@ -880,6 +882,8 @@ internal sealed partial class MainForm : Form
 
         _explorerFolder.ToolTipText = Strings.MainSettingsExplorerFolderTip;
         _explorerFolder.Click += (_, _) => PickExplorerFolder();
+        this._secondarySources.ToolTipText = Strings.MainSettingsSecondarySourcesTip;
+        this._secondarySources.Click += (_, _) => this.EditSecondarySources();
         this._guideApproach.ToolTipText = Strings.MainSettingsGuideApproachTip;
         this._gapBarsFrom.ToolTipText = Strings.MainSettingsGapBarsFromTip;
         _explorerPages.ToolTipText = Strings.MainSettingsExplorerPagesTip;
@@ -1657,6 +1661,7 @@ internal sealed partial class MainForm : Form
 
         // The cached index first, then the folder rescanned in the background: the window is up already.
         _explorer.Start(AppSettings.ExplorerFolder);
+        this._explorer.SecondarySourceFolders = AppSettings.SecondarySources;
 
         // Files dropped on the .exe icon; loaded once the window is visible so startup stays fast.
         string[] files = [.. _startupFiles, .. this._launchFiles];
@@ -5593,6 +5598,13 @@ internal sealed partial class MainForm : Form
             return;
         }
 
+        // A secondary source never overlaps the base folder (workfiles/20261105-secondary-file-sources.md).
+        if (this._explorer.SecondarySourceFolders.FirstOrDefault(source => Explorer.SecondarySources.Overlap(source, Path.TrimEndingDirectorySeparator(Path.GetFullPath(dialog.SelectedPath)))) is { } overlapped)
+        {
+            MessageBox.Show(this, Texts.Format(Strings.SourcesBaseOverlaps, dialog.SelectedPath, overlapped), Strings.MainPickerExplorerFolderDescription, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
         try
         {
             AppSettings.SaveExplorerFolder(dialog.SelectedPath);
@@ -5603,6 +5615,29 @@ internal sealed partial class MainForm : Form
         }
 
         _explorer.SetBaseFolder(dialog.SelectedPath);
+    }
+
+    /// <summary>
+    /// The ⚙ menu's Secondary sources…: its window, every change saved and applied to the file explorer at once
+    /// (workfiles/20261105-secondary-file-sources.md § Managing the Sources).
+    /// </summary>
+    private void EditSecondarySources()
+    {
+        using var window = new SecondarySourcesWindow(this._explorer.SecondarySourceFolders, () => this._explorer.BaseFolder);
+        window.SourcesChanged += (_, sources) =>
+        {
+            try
+            {
+                AppSettings.SaveSecondarySources(sources);
+            }
+            catch (Exception ex) when (AppSettings.IsSaveError(ex))
+            {
+                this.ShowStatus(Texts.Format(Strings.MainStatusNotSavedSecondarySources, ex.Message), error: true);
+            }
+
+            this._explorer.SecondarySourceFolders = sources;
+        };
+        window.ShowDialog(this);
     }
 
     /// <summary>The file explorer's panel was opened or collapsed by the user: remembered between sessions.</summary>
