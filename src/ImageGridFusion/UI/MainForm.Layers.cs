@@ -58,6 +58,9 @@ internal sealed partial class MainForm
 
     private readonly ComboBox _layerFont = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 150, Anchor = AnchorStyles.Left };
 
+    // Whether the font drop-down lists every installed family yet (FillFonts).
+    private bool _layerFontsFilled;
+
     // The emoji font, the letters staying in the font beside (workfiles/20261102-emoji-fonts.md § User Interface).
     private readonly ComboBox _layerEmojiFont = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 64, Anchor = AnchorStyles.Left };
     private readonly CheckBox _layerBold = new() { Text = Strings.PanelLayerBold, AutoSize = true, Anchor = AnchorStyles.Left };
@@ -182,8 +185,10 @@ internal sealed partial class MainForm
         lines.AddLine(this._layerShadow, this._layerShadowColor, new SliderBox(this._layerShadowOpacity, this._layerShadowOpacityLabel, this._layerShadowOpacityIcon));
         lines.AddLine(Strings.MainLineShadowShape, this._layerShadowKind, new SliderBox(this._layerShadowSize, this._layerShadowSizeLabel));
 
-        var fonts = TextRaster.FontFamilies();
-        this._layerFont.Items.AddRange([.. fonts]);
+        // Every installed family listed when the list is first opened or focused, the selected one alone until then: hundreds
+        // of entries added natively would delay the window (workfiles/20261105-initial-load-speed.md § A).
+        this._layerFont.DropDown += (_, _) => this.FillFonts();
+        this._layerFont.Enter += (_, _) => this.FillFonts();
 
         // Each font shown in its own face, in the list and in the closed box (workfiles/20261029-layers.md, Iteration 13).
         this._layerFont.DrawMode = DrawMode.OwnerDrawFixed;
@@ -477,6 +482,43 @@ internal sealed partial class MainForm
         if (!ReferenceEquals(redrawn, layers) && !this.IsExporting)
         {
             this._preview.SetLayers(redrawn);
+        }
+    }
+
+    /// <summary>
+    /// The font drop-down filled with every installed family, once — its selection kept, a family it showed that is not
+    /// installed kept too.
+    /// </summary>
+    private void FillFonts()
+    {
+        if (this._layerFontsFilled)
+        {
+            return;
+        }
+
+        this._layerFontsFilled = true;
+        var selected = this._layerFont.SelectedItem;
+        bool syncing = this._syncingEffects;
+        this._syncingEffects = true;
+        this._layerFont.BeginUpdate();
+        try
+        {
+            this._layerFont.Items.Clear();
+            this._layerFont.Items.AddRange([.. TextRaster.FontFamilies()]);
+            if (selected is string family)
+            {
+                if (!this._layerFont.Items.Contains(family))
+                {
+                    this._layerFont.Items.Add(family);
+                }
+
+                this._layerFont.SelectedItem = family;
+            }
+        }
+        finally
+        {
+            this._layerFont.EndUpdate();
+            this._syncingEffects = syncing;
         }
     }
 
