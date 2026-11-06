@@ -20,7 +20,7 @@ internal static class GridExport
     /// </summary>
     public sealed class Job : IDisposable
     {
-        private Job(IReadOnlyList<Item> items, int cellCount, IReadOnlyList<LayerPlacement> layerPlaces, GridLayout? layout, double ratio, GridBorders? borders, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack, SoundFade? fade, SeamFade? seams, CascadeSchedule? cascade, int videoMaxSide, int stillMaxSide, GridBackground? background, Size? exact)
+        private Job(IReadOnlyList<Item> items, int cellCount, IReadOnlyList<LayerPlacement> layerPlaces, GridLayout? layout, double ratio, GridBorders? borders, IReadOnlyList<SourceImage> heard, Soundtrack? soundtrack, SoundFade? fade, SeamFade? seams, CascadeSchedule? cascade, int videoMaxSide, int stillMaxSide, GridBackground? background, Size? exact, VideoRange? range)
         {
             Items = items;
             this.CellCount = cellCount;
@@ -42,18 +42,20 @@ internal static class GridExport
                 .DefaultIfEmpty(TimeSpan.Zero)
                 .Max();
             var grid = cascade is not null && cascade.Length > beside ? cascade.Length : beside;
-            Length = Animation.VideoLength(grid, soundtrack);
+            Length = Animation.VideoLength(grid, soundtrack, range);
+            this.Start = Animation.VideoStart(Animation.NaturalLength(grid, soundtrack), range);
 
-            // The soundtrack loops on its own length, cut where the video ends; in the cascade, a video is
-            // heard during its turn only.
+            // The soundtrack loops on its part, or plays it once, cut where the video ends; in the cascade, a video is
+            // heard during its turn only. Every sound begins where the range does (workfiles/20261106-video-range.md).
+            var start = this.Start;
             var sounds = heard.Select(i =>
             {
                 int index = items.ToList().FindIndex(item => item.Image == i);
                 return cascade is not null && cascade.Has(index)
-                    ? new MixedSound(i.FilePath!, i.LoopLength, i.StartTime, i.Look.SoundGain, i.PlayedFrom, cascade.TurnAt(index), cascade.Length, i.Speed)
-                    : new MixedSound(i.FilePath!, i.LoopLength, i.StartTime, i.Look.SoundGain, i.PlayedFrom, Speed: i.Speed);
+                    ? new MixedSound(i.FilePath!, i.LoopLength, i.StartTime, i.Look.SoundGain, i.PlayedFrom, cascade.TurnAt(index), cascade.Length, i.Speed, At: start)
+                    : new MixedSound(i.FilePath!, i.LoopLength, i.StartTime, i.Look.SoundGain, i.PlayedFrom, Speed: i.Speed, At: start);
             });
-            Sounds = (soundtrack is null ? sounds : sounds.Append(new MixedSound(soundtrack.Path, soundtrack.Duration, TimeSpan.Zero, soundtrack.Level))).ToList();
+            Sounds = (soundtrack is null ? sounds : sounds.Append(new MixedSound(soundtrack.Path, soundtrack.PlayedLength, TimeSpan.Zero, soundtrack.Level, soundtrack.From, At: start, Once: !soundtrack.Loops))).ToList();
         }
 
         /// <summary>The cells, then the layers over them (<see cref="CellCount"/> tells them apart): every content that plays or shows.</summary>
@@ -107,8 +109,14 @@ internal static class GridExport
         /// <summary>The sounds mixed into the video: each from the starting point of its video, at its volume; the soundtrack last.</summary>
         public IReadOnlyList<MixedSound> Sounds { get; }
 
-        /// <summary>Length of the video (<see cref="Animation.VideoLength(TimeSpan, Soundtrack?)"/>): the longest loop, motion cycles included; with a soundtrack and no loop, the soundtrack's.</summary>
+        /// <summary>
+        /// Length of the video (<see cref="Animation.VideoLength(TimeSpan, Soundtrack?, VideoRange?)"/>): the range's when one
+        /// is set; else the longest loop, motion cycles included; with a soundtrack and no loop, the soundtrack's part.
+        /// </summary>
         public TimeSpan Length { get; }
+
+        /// <summary>The grid's time the video's first frame shows: the range's start, 0 without one (workfiles/20261106-video-range.md).</summary>
+        public TimeSpan Start { get; }
 
         /// <summary>
         /// The grid as it stands, at its <paramref name="ratio"/>, with its <paramref name="borders"/>,
@@ -118,9 +126,10 @@ internal static class GridExport
         /// canvas clamped to <paramref name="videoMaxSide"/>, a still's to <paramref name="stillMaxSide"/>; the
         /// <paramref name="layers"/> over everything, playing beside the cells, never taking a turn in the cascade; the
         /// Grid <paramref name="background"/> under everything when it is on; the canvas the Custom format's
-        /// <paramref name="exact"/> pixels when they are on.
+        /// <paramref name="exact"/> pixels when they are on; the video the part <paramref name="range"/> of the grid's
+        /// timeline when one is set.
         /// </summary>
-        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout? layout, double ratio, GridBorders? borders, Soundtrack? soundtrack = null, SoundFade? fade = null, SeamFade? seams = null, VideoCascade? cascade = null, int videoMaxSide = CanvasSizer.MaxSharedLongSide, int stillMaxSide = CanvasSizer.MaxLongSide, GridLayers? layers = null, GridBackground? background = null, Size? exact = null)
+        public static Job Capture(IReadOnlyList<SourceImage> images, GridLayout? layout, double ratio, GridBorders? borders, Soundtrack? soundtrack = null, SoundFade? fade = null, SeamFade? seams = null, VideoCascade? cascade = null, int videoMaxSide = CanvasSizer.MaxSharedLongSide, int stillMaxSide = CanvasSizer.MaxLongSide, GridLayers? layers = null, GridBackground? background = null, Size? exact = null, VideoRange? range = null)
         {
             var layered = layers?.Items ?? [];
             var contents = images.Concat(layered.Select(l => l.Image)).ToList();
@@ -145,7 +154,8 @@ internal static class GridExport
                 videoMaxSide,
                 stillMaxSide,
                 background,
-                exact);
+                exact,
+                range);
         }
 
         private static Item ItemOf(SourceImage i) => i.Plays
@@ -297,12 +307,14 @@ internal static class GridExport
                 : VideoEncoder.Create(path, canvas, job.Length, job.Sounds, job.Fade);
             probe.Sample(0, encoder, $"encoder created, canvas {canvas.Width} x {canvas.Height}");
 
+            // The contents and the motions on the grid's clock, from the range's start; the encoders on the video's own.
             int count = Animation.FrameCount(job.Length);
             for (int k = 0; k < count; k++)
             {
                 cancellation.ThrowIfCancellationRequested();
-                var time = Animation.FrameTime(k);
-                for (int i = 0; k > 0 && i < readers.Length; i++)
+                var at = Animation.FrameTime(k);
+                var time = job.Start + at;
+                for (int i = 0; (k > 0 || job.Start > TimeSpan.Zero) && i < readers.Length; i++)
                 {
                     if (readers[i]?.FrameAt(job.ContentTime(i, time)) is { } next)
                     {
@@ -322,7 +334,7 @@ internal static class GridExport
                 g.Clear(Color.White);
                 job.Layers(frames, layers);
                 Compositor.Draw(g, job.Cells(frames), job.Layout, canvas, job.Borders, job.Seams, layers: layers, background: job.Background, backgroundImage: job.BackgroundImage(frames));
-                encoder.WriteFrame(bitmap, time, Animation.FrameTime(k + 1) - time);
+                encoder.WriteFrame(bitmap, at, Animation.FrameTime(k + 1) - at);
                 if ((k + 1) % MemoryProbe.EveryFrames == 0)
                 {
                     probe.Sample(k + 1, encoder);
