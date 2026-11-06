@@ -44,10 +44,13 @@ internal sealed class PlaybackTimeline : Control
     private const int EdgeZone = 32;
 
     // Loops of the grid a second the end grows by with the pointer on the edge; the square of the closeness scales it.
-    private const double GrowthAtEdge = 0.5;
+    private const double GrowthAtEdge = 0.1;
 
-    // Past the edge, the closeness goes on growing up to this: 8 loops a second at most.
-    private const double MaxCloseness = 4;
+    // Past the edge, the closeness goes on growing up to this: 90 % of the loop a second at most (Iteration 10).
+    private const double MaxCloseness = 3;
+
+    // How far right of its press the pointer must go before an end handle grabbed in the edge zone grows, in logical px.
+    private const int GrowthArming = 4;
 
     private TimeSpan _length;
     private TimeSpan _position;
@@ -65,6 +68,10 @@ internal sealed class PlaybackTimeline : Control
     private readonly System.Windows.Forms.Timer _growTimer = new() { Interval = 30 };
     private readonly System.Diagnostics.Stopwatch _growWatch = new();
     private int _lastX;
+
+    // Where the end handle was pressed, and whether it may grow: armed at once out of the zone, else once moved right.
+    private int _pressX;
+    private bool _growArmed;
 
     public PlaybackTimeline()
     {
@@ -183,6 +190,8 @@ internal sealed class PlaybackTimeline : Control
         {
             this._handleDrag = handle;
             this._dragLength = this._length;
+            this._pressX = e.X;
+            this._growArmed = GrowthRate(e.X, this.Track(), this.LogicalToDeviceUnits(EdgeZone)) <= 0;
             this.HandleDragStarted?.Invoke(this, EventArgs.Empty);
             this.MoveHandle(e.X);
             if (handle == TimelineHandle.End)
@@ -353,6 +362,11 @@ internal sealed class PlaybackTimeline : Control
     {
         var track = this.Track();
         this._lastX = x;
+        if (x >= this._pressX + this.LogicalToDeviceUnits(GrowthArming) || GrowthRate(x, track, this.LogicalToDeviceUnits(EdgeZone)) <= 0)
+        {
+            this._growArmed = true;
+        }
+
         var time = this.TimeAt(x, track);
 
         // At the edge, the end grows on its own (GrowEnd): the pointer there never brings it back.
@@ -426,7 +440,7 @@ internal sealed class PlaybackTimeline : Control
         }
 
         var track = this.Track();
-        double rate = GrowthRate(this._lastX, track, this.LogicalToDeviceUnits(EdgeZone));
+        double rate = this._growArmed ? GrowthRate(this._lastX, track, this.LogicalToDeviceUnits(EdgeZone)) : 0;
         if (rate <= 0)
         {
             return;
