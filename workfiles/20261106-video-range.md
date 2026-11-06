@@ -77,10 +77,12 @@ Findings from the exploration (inputs, not decisions):
 - The track is **extensible**: it maps x ↔ time against its **extent** (`VideoRange.Extent`) — the grid
   loop, or, the range ending past it, the range's end plus one grid loop of room. While the end handle is
   dragged near the track's right edge — the last 32 logical px — or past it, the end **grows on its own**,
-  by a share of the grid's loop a second that rises with the closeness to the edge (50 % a second at the
-  edge, the square of the closeness, faster past it, up to 8 loops a second), and the track **rescales
+  by a share of the grid's loop a second that rises with the closeness to the edge (10 % a second at the
+  edge, the square of the closeness, faster past it, up to 90 % a second), and the track **rescales
   live** so the handle stays under the pointer, the loop's part of the track shrinking — with no limit
-  (Iteration 7). Elsewhere the drag maps the pointer as usual; released, the track takes its extent. The grid loop's end is marked on the track (a dashed tick), and the Cascade's
+  (Iterations 7, 10). A handle pressed already in the zone grows nothing until the pointer has moved right.
+- An **Auto** button on the range's line gives the range back to the whole loop — the length the videos
+  set —, enabled while a range is set (Iteration 9). Elsewhere the drag maps the pointer as usual; released, the track takes its extent. The grid loop's end is marked on the track (a dashed tick), and the Cascade's
   ticks repeat past it.
 - A click or a scrub stays inside the range; the time shown beside the timeline counts from the range's
   start, as the exported video does.
@@ -289,6 +291,21 @@ No rule broken. The choices the frozen design did not state:
 - Request: the length must grow only close to the edge, never along the way, or no position can be held.
 - Confirmed: no growth out of the edge zone, the drag there mapping the pointer on a span that no longer
   changes; the zone narrowed from 48 to 32 logical px, so it stays at the edge.
+
+
+### Iteration 9 — 2026-11-06 — ⚙️ Post-implementation — Auto button
+
+- Request: a button **Auto** to bring the length back to the one the videos set.
+- On the range's line under the timeline, after the end field: it gives the range back to the whole loop
+  (*whole*, `null`), one undo step, enabled while a range is set; Keep range untouched. Its icon 🔁.
+
+### Iteration 10 — 2026-11-06 — ⚙️ Post-implementation — Slower growth at the edge
+
+- Request: dragging the length with the mouse makes it grow far too fast, it is unusable.
+- The rate falls to `0.1 × closeness²` loops a second, the closeness capped at 3: 10 % of the loop a second at
+  the edge, 90 % at most past it (was 50 % and 8 loops). The end handle grabbed while already in the edge zone —
+  the whole loop's end lies on the right edge — no longer grows at once: growth waits until the pointer has
+  moved 4 logical px to the right of the press.
 
 ---
 
