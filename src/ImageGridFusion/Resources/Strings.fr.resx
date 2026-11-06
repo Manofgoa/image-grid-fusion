@@ -837,7 +837,7 @@ Redémarrer l'application maintenant ?</value></data>
   <data name="MainSummaryEncodedIn" xml:space="preserve"><value>encodé en {0}</value></data>
   <data name="MainSummaryMp4Video" xml:space="preserve"><value>vidéo MP4</value></data>
   <data name="MainSummaryPeak" xml:space="preserve"><value>pic {0}</value></data>
-  <data name="MainTimelineTip" xml:space="preserve"><value>Cliquer ou glisser pour se déplacer dans la grille ; glisser les poignées pour choisir où la vidéo commence et se termine — glisser la fin au-delà du bord droit allonge la ligne de temps</value></data>
+  <data name="MainTimelineTip" xml:space="preserve"><value>Cliquer ou glisser pour se déplacer dans la grille ; glisser les poignées pour choisir où la vidéo commence et se termine — la fin tenue au bord droit, ou au-delà, allonge la vidéo, d'autant plus vite qu'elle en est proche</value></data>
   <data name="MainTimesMany" xml:space="preserve"><value>{0:0.#} fois</value></data>
   <data name="MainTimesOnce" xml:space="preserve"><value>une fois</value></data>
   <data name="MainTransportPlayTip" xml:space="preserve"><value>Lit ou met en pause la grille (Space)</value></data>

@@ -837,7 +837,7 @@ Restart the app now?</value></data>
   <data name="MainSummaryEncodedIn" xml:space="preserve"><value>encoded in {0}</value></data>
   <data name="MainSummaryMp4Video" xml:space="preserve"><value>MP4 video</value></data>
   <data name="MainSummaryPeak" xml:space="preserve"><value>peak {0}</value></data>
-  <data name="MainTimelineTip" xml:space="preserve"><value>Click or drag to move in the grid; drag the handles to choose where the video starts and ends — dragging the end past the right edge lengthens the timeline</value></data>
+  <data name="MainTimelineTip" xml:space="preserve"><value>Click or drag to move in the grid; drag the handles to choose where the video starts and ends — the end held at the right edge, or past it, lengthens the video, faster the closer</value></data>
   <data name="MainTimesMany" xml:space="preserve"><value>{0:0.#} times</value></data>
   <data name="MainTimesOnce" xml:space="preserve"><value>once</value></data>
   <data name="MainTransportPlayTip" xml:space="preserve"><value>Plays or pauses the grid (Space)</value></data>

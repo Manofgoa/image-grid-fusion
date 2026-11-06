@@ -22,8 +22,9 @@ internal sealed class TimelineHandleEventArgs(TimelineHandle handle, TimeSpan ti
 /// The transport's timeline: a track spanning <see cref="Length"/> — the grid's loop, or more when the range ends
 /// past it — its played part filled up to a thumb at the grid's time, a tick across it where each turn of the
 /// Cascade begins, another where the grid's loop ends. Two <b>range handles</b> mark where the video starts and
-/// ends, the track dimmed outside them; dragged, they move the range — the end past the track's right edge
-/// too, the track lengthened once released (workfiles/20261106-video-range.md § Timeline). Pressed elsewhere, it
+/// ends, the track dimmed outside them; dragged, they move the range. The end held at the track's right edge, or
+/// past it, grows on its own — faster the closer the pointer — the track rescaling live under it
+/// (workfiles/20261106-video-range.md § Timeline, Iterations 7 and 8). Pressed elsewhere, it
 /// seeks there, within the range; dragged, it scrubs (workfiles/20261009-playback-controls.md). Never takes the focus.
 /// </summary>
 internal sealed class PlaybackTimeline : Control
@@ -39,6 +40,15 @@ internal sealed class PlaybackTimeline : Control
     private const int HandleReach = 6;
     private const int SnapReach = 6;
 
+    // The end handle held within this many logical px of the right edge, or past it, makes the end grow.
+    private const int EdgeZone = 32;
+
+    // Loops of the grid a second the end grows by with the pointer on the edge; the square of the closeness scales it.
+    private const double GrowthAtEdge = 0.5;
+
+    // Past the edge, the closeness goes on growing up to this: 8 loops a second at most.
+    private const double MaxCloseness = 4;
+
     private TimeSpan _length;
     private TimeSpan _position;
     private TimeSpan _loop;
@@ -51,6 +61,11 @@ internal sealed class PlaybackTimeline : Control
     private TimelineHandle? _handleDrag;
     private TimeSpan _dragLength;
 
+    // Grows the end while it is held at the edge, from the pointer's last place, timed by the watch.
+    private readonly System.Windows.Forms.Timer _growTimer = new() { Interval = 30 };
+    private readonly System.Diagnostics.Stopwatch _growWatch = new();
+    private int _lastX;
+
     public PlaybackTimeline()
     {
         this.SetStyle(
@@ -59,6 +74,7 @@ internal sealed class PlaybackTimeline : Control
             true);
         this.SetStyle(ControlStyles.Selectable, false);
         this.TabStop = false;
+        this._growTimer.Tick += (_, _) => this.GrowEnd();
     }
 
     /// <summary>Raised when the timeline is pressed, before the first <see cref="Seeking"/>.</summary>
@@ -169,6 +185,12 @@ internal sealed class PlaybackTimeline : Control
             this._dragLength = this._length;
             this.HandleDragStarted?.Invoke(this, EventArgs.Empty);
             this.MoveHandle(e.X);
+            if (handle == TimelineHandle.End)
+            {
+                this._growWatch.Restart();
+                this._growTimer.Start();
+            }
+
             return;
         }
 
@@ -330,7 +352,20 @@ internal sealed class PlaybackTimeline : Control
     private void MoveHandle(int x)
     {
         var track = this.Track();
+        this._lastX = x;
         var time = this.TimeAt(x, track);
+
+        // At the edge, the end grows on its own (GrowEnd): the pointer there never brings it back.
+        if (this._handleDrag == TimelineHandle.End && GrowthRate(x, track, this.LogicalToDeviceUnits(EdgeZone)) > 0)
+        {
+            if (time > this._rangeEnd)
+            {
+                this.HandleMoved?.Invoke(this, new TimelineHandleEventArgs(TimelineHandle.End, time));
+            }
+
+            return;
+        }
+
         if (this._handleDrag == TimelineHandle.Start && time > this.MapLength)
         {
             time = this.MapLength;
@@ -354,6 +389,56 @@ internal sealed class PlaybackTimeline : Control
         this.HandleMoved?.Invoke(this, new TimelineHandleEventArgs(this._handleDrag!.Value, time));
     }
 
+    /// <summary>
+    /// Loops of the grid a second the end grows by with the pointer at <paramref name="x"/>: none before the edge zone
+    /// of <paramref name="zone"/> px, then <see cref="GrowthAtEdge"/> times the square of the closeness — 0 at the
+    /// zone's start, 1 at the track's right edge, on past it up to <see cref="MaxCloseness"/>.
+    /// </summary>
+    internal static double GrowthRate(int x, Rectangle track, int zone)
+    {
+        double closeness = (x - (track.Right - zone)) / (double)Math.Max(1, zone);
+        return closeness <= 0 ? 0 : GrowthAtEdge * Math.Pow(Math.Min(closeness, MaxCloseness), 2);
+    }
+
+    /// <summary>
+    /// The track's span with <paramref name="end"/> under the pointer at <paramref name="x"/> — on the right edge when
+    /// the pointer is past it —, never less than <paramref name="span"/>: the live rescale while the end grows.
+    /// </summary>
+    internal static TimeSpan SpanFor(TimeSpan end, int x, Rectangle track, TimeSpan span)
+    {
+        double share = (Math.Min(x, track.Right) - track.Left) / (double)track.Width;
+        var needed = share <= 0 ? end : TimeSpan.FromTicks((long)(end.Ticks / share));
+        return needed > span ? needed : span;
+    }
+
+    /// <summary>
+    /// The end handle held at the edge: the end grows by its rate times the grid's loop for the time elapsed, and the
+    /// track rescales so the handle stays under the pointer, the loop's part shrinking (Iteration 7).
+    /// </summary>
+    private void GrowEnd()
+    {
+        double seconds = this._growWatch.Elapsed.TotalSeconds;
+        this._growWatch.Restart();
+        if (this._handleDrag != TimelineHandle.End)
+        {
+            this._growTimer.Stop();
+            return;
+        }
+
+        var track = this.Track();
+        double rate = GrowthRate(this._lastX, track, this.LogicalToDeviceUnits(EdgeZone));
+        if (rate <= 0)
+        {
+            return;
+        }
+
+        var loop = this._loop > TimeSpan.Zero ? this._loop : this._dragLength;
+        var end = this._rangeEnd + TimeSpan.FromTicks((long)(loop.Ticks * rate * seconds));
+        this._dragLength = SpanFor(end, this._lastX, track, this._dragLength);
+        this.HandleMoved?.Invoke(this, new TimelineHandleEventArgs(TimelineHandle.End, end));
+        this.Invalidate();
+    }
+
     /// <summary>Seeks to the time under <paramref name="x"/>, within the range: its end stands for its start again.</summary>
     private void SeekTo(int x)
     {
@@ -374,6 +459,7 @@ internal sealed class PlaybackTimeline : Control
 
         this._dragging = false;
         this.Capture = false;
+        this._growTimer.Stop();
         if (this._handleDrag is not null)
         {
             this._handleDrag = null;
@@ -383,6 +469,16 @@ internal sealed class PlaybackTimeline : Control
         }
 
         this.SeekEnded?.Invoke(this, EventArgs.Empty);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            this._growTimer.Dispose();
+        }
+
+        base.Dispose(disposing);
     }
 
     private void Set(ref TimeSpan field, TimeSpan value)
