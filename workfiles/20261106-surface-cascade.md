@@ -199,6 +199,10 @@ and `MixedSound`.
 | 2 | Where is a surface's duration (Auto / fixed) set? | Per surface | 2026-11-06 |
 | 3 | How does it live with the current Cascade (cell after cell)? | Both combinable: the cell Cascade plays inside each surface; in Auto, a surface lasts its whole cell cascade | 2026-11-06 |
 | 4 | Straightforward or tricky / long? | Straightforward — a single scout pass | 2026-11-06 |
+| 5 | Activation: a Global toolbar tab with its checkbox, or always on from two surfaces? | | 2026-11-06 |
+| 6 | Preview while editing: the whole sequence, or the active surface looping alone? | | 2026-11-06 |
+| 7 | Multi-surface layer: on every surface or chosen ones; one shared layer or copies? | | 2026-11-06 |
+| 8 | Transition between surfaces: cut or crossfade? | | 2026-11-06 |
 
 ---
 
