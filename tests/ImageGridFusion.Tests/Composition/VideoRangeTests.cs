@@ -39,20 +39,14 @@ public sealed class VideoRangeTests
     }
 
     [TestMethod]
-    public void KeptRangeStaysWhileItsStartIsInTheLoop()
+    public void KeptRangeStartingPastAShorterLoopPlaysAsSet()
     {
-        var range = VideoRange.Of(S(2), S(30));
+        // A range set over a 3-minute soundtrack, then an animated layer making the loop 4 s (Iteration 15).
+        var range = VideoRange.Of(S(60), S(90));
 
-        Assert.AreSame(range, range.KeptIn(S(10)));
-    }
-
-    [TestMethod]
-    public void KeptRangeHasItsStartBroughtIntoAShorterLoop()
-    {
-        var kept = VideoRange.Of(S(8), S(30)).KeptIn(S(4));
-
-        Assert.AreEqual(S(4) - VideoRange.MinLength, kept.Start);
-        Assert.AreEqual(S(30), kept.End);
+        Assert.AreEqual(S(60), Animation.VideoStart(S(4), range));
+        Assert.AreEqual(S(30), Animation.VideoLength(S(4), null, range));
+        Assert.AreEqual(S(94), VideoRange.Extent(S(4), range));
     }
 
     [TestMethod]
