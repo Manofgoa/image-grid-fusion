@@ -2970,15 +2970,16 @@ internal sealed partial class MainForm : Form
     /// <summary>The range set, or the whole loop: what a handle or a field moves from.</summary>
     private VideoRange CurrentRange => this._range ?? VideoRange.Whole(this.NaturalVideoLength);
 
-    /// <summary>The grid's loop has become <paramref name="natural"/>: Keep range checked, the range is kept, its start
-    /// brought into the loop; unchecked, it goes back to the whole loop. A step put back keeps the range it holds.</summary>
+    /// <summary>The grid's loop has become <paramref name="natural"/>: Keep range checked, the range is kept as it is, its
+    /// start included, the contents looping past a shorter loop; unchecked, it goes back to the whole loop. A step put back
+    /// keeps the range it holds (Iteration 15).</summary>
     private void FollowLoop(TimeSpan natural)
     {
         if (natural != this._rangeLoop)
         {
             if (!this._restoringState && this._range is not null)
             {
-                this._range = this._keepRangeOn ? this._range.KeptIn(natural) : null;
+                this._range = this._keepRangeOn ? this._range : null;
             }
 
             this._rangeLoop = natural;
@@ -2989,7 +2990,9 @@ internal sealed partial class MainForm : Form
 
     /// <summary>
     /// Sets the range — the whole loop when <paramref name="range"/> covers it exactly —, the preview looping on it
-    /// and the exports playing it. An ordinary change: one step of the undo history.
+    /// and the exports playing it. An ordinary change: one step of the undo history. Called by the user's settings only
+    /// — a handle, a field, Fit to soundtrack, Auto —, it checks Keep range for a range set, unchecks it for the whole
+    /// loop: what the user set is never lost to a content added (Iteration 15).
     /// </summary>
     private void SetRange(VideoRange range)
     {
@@ -3000,6 +3003,7 @@ internal sealed partial class MainForm : Form
         }
 
         this._range = range.IsWhole(natural) ? null : range;
+        this._keepRangeOn = this._range is not null;
         this._preview.PlaybackRange = this._range;
         this.UpdateButtons();
     }

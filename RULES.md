@@ -829,8 +829,11 @@ contents looping meanwhile (origin: `workfiles/20261106-video-range.md`), one de
   10th second, in the preview and the export alike.
 - **Part of the composed state** (`GlobalState.Range`, with `KeepRange`): an undo step, reset — the whole
   loop, Keep range unchecked — by the Global toolbar's Reset and *Clear all*; not persisted.
-- **When the natural length changes** (`MainForm.FollowLoop`): Keep range checked, the range is kept, its start
-  brought into a shorter loop (`VideoRange.KeptIn`); unchecked, it goes back to the whole loop. A step put back
+- **When the natural length changes** (`MainForm.FollowLoop`): Keep range checked, the range is kept as it is, its
+  start included, the contents looping past a shorter loop; unchecked, it goes back to the whole loop.
+- **A range the user sets is kept** (`MainForm.SetRange`, the user's routes only — a handle, a field, *Fit to
+  soundtrack*, *Auto*): a range set checks Keep range, the whole loop (*Auto*) unchecks it, so a content added never
+  takes away what the user set (origin: `workfiles/20261106-video-range.md` Iteration 15). A step put back
   keeps the range it holds (`MainForm.RestoreState`).
 - **The timeline** (`UI/PlaybackTimeline`) spans the loop, or the range's end plus one loop when the range ends
   past it (`VideoRange.Extent`): its handles drag the start and the end, snapping onto the loop's end and the

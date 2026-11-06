@@ -488,7 +488,7 @@ In the folder view, the folders come first, A→Z.</value></data>
   <data name="MainFileOne" xml:space="preserve"><value>1 file</value></data>
   <data name="MainFillHoles" xml:space="preserve"><value>Fill holes</value></data>
   <data name="MainFitToSoundtrack" xml:space="preserve"><value>Fit to soundtrack</value></data>
-  <data name="MainFitToSoundtrackTip" xml:space="preserve"><value>The video lasts one play of the soundtrack's part, from the grid's start</value></data>
+  <data name="MainFitToSoundtrackTip" xml:space="preserve"><value>The video lasts one play of the soundtrack's part, from the grid's start, Keep range checked</value></data>
   <data name="MainFolderNameExport" xml:space="preserve"><value>Export</value></data>
   <data name="MainForgetFacesAsk" xml:space="preserve"><value>Forget every face found and every person named, hidden or merged? The face analysis is turned off; turned on again, it looks for the faces from the start.
 
@@ -544,7 +544,7 @@ The engines and your tags file (vision-tags.txt) stay.</value></data>
   <data name="MainImageCountOne" xml:space="preserve"><value>1 image</value></data>
   <data name="MainInvert" xml:space="preserve"><value>Invert</value></data>
   <data name="MainKeepRange" xml:space="preserve"><value>Keep range</value></data>
-  <data name="MainKeepRangeTip" xml:space="preserve"><value>Keeps the range as set when the grid's loop changes — a video dropped, removed or trimmed; unchecked, the range goes back to the whole loop</value></data>
+  <data name="MainKeepRangeTip" xml:space="preserve"><value>Keeps the range as set when the grid's loop changes — a video or a layer added, removed or trimmed; checked by itself when the range is set, unchecked by Auto; unchecked, the range goes back to the whole loop</value></data>
   <data name="MainLabelAngle" xml:space="preserve"><value>Angle: {0:+0;-0;0}°</value></data>
   <data name="MainLabelBackAndForth" xml:space="preserve"><value>Back and forth: {0} s</value></data>
   <data name="MainLabelBlend" xml:space="preserve"><value>Blend: {0} %</value></data>
@@ -647,7 +647,7 @@ Restart the app now?</value></data>
   <data name="MainPresetNamePastedText" xml:space="preserve"><value>Pasted text — saved into favorites-from-pasted</value></data>
   <data name="MainPresetTip" xml:space="preserve"><value>Saves the effects turned on in the cell as a favorite of its file, with a description to find it again</value></data>
   <data name="MainRangeAuto" xml:space="preserve"><value>Auto</value></data>
-  <data name="MainRangeAutoTip" xml:space="preserve"><value>Gives the video back the length its videos set: the grid's whole loop</value></data>
+  <data name="MainRangeAutoTip" xml:space="preserve"><value>Gives the video back the length its videos set: the grid's whole loop, Keep range unchecked</value></data>
   <data name="MainRangeEndTip" xml:space="preserve"><value>Where the video ends on the timeline (minutes : seconds : frame) — past the grid's loop, its contents loop</value></data>
   <data name="MainRangeLoop" xml:space="preserve"><value>Loop {0}</value></data>
   <data name="MainRangeLoopGap" xml:space="preserve"><value>Loop {0} · {1}</value></data>

@@ -488,7 +488,7 @@ Dans la vue Dossiers, les dossiers viennent en premier, de A à Z.</value></data
   <data name="MainFileOne" xml:space="preserve"><value>1 fichier</value></data>
   <data name="MainFillHoles" xml:space="preserve"><value>Boucher les trous</value></data>
   <data name="MainFitToSoundtrack" xml:space="preserve"><value>Caler sur la bande son</value></data>
-  <data name="MainFitToSoundtrackTip" xml:space="preserve"><value>La vidéo dure une lecture de la partie jouée de la bande son, depuis le début de la grille</value></data>
+  <data name="MainFitToSoundtrackTip" xml:space="preserve"><value>La vidéo dure une lecture de la partie jouée de la bande son, depuis le début de la grille, Garder la plage cochée</value></data>
   <data name="MainFolderNameExport" xml:space="preserve"><value>Export</value></data>
   <data name="MainForgetFacesAsk" xml:space="preserve"><value>Oublier chaque visage trouvé et chaque personne nommée, masquée ou fusionnée ? L'analyse des visages est désactivée ; réactivée, elle recherche les visages depuis le début.
 
@@ -544,7 +544,7 @@ Les moteurs et votre fichier d'étiquettes (vision-tags.txt) restent.</value></d
   <data name="MainImageCountOne" xml:space="preserve"><value>1 image</value></data>
   <data name="MainInvert" xml:space="preserve"><value>Inverser</value></data>
   <data name="MainKeepRange" xml:space="preserve"><value>Garder la plage</value></data>
-  <data name="MainKeepRangeTip" xml:space="preserve"><value>Garde la plage telle qu'elle est réglée quand la boucle de la grille change — une vidéo déposée, retirée ou découpée ; décochée, la plage revient à toute la boucle</value></data>
+  <data name="MainKeepRangeTip" xml:space="preserve"><value>Garde la plage telle qu'elle est réglée quand la boucle de la grille change — une vidéo ou un calque ajouté, retiré ou découpé ; cochée d'elle-même quand la plage est réglée, décochée par Auto ; décochée, la plage revient à toute la boucle</value></data>
   <data name="MainLabelAngle" xml:space="preserve"><value>Angle : {0:+0;-0;0}°</value></data>
   <data name="MainLabelBackAndForth" xml:space="preserve"><value>Aller-retour : {0} s</value></data>
   <data name="MainLabelBlend" xml:space="preserve"><value>Mélange : {0} %</value></data>
@@ -647,7 +647,7 @@ Redémarrer l'application maintenant ?</value></data>
   <data name="MainPresetNamePastedText" xml:space="preserve"><value>Texte collé — enregistré dans favorites-from-pasted</value></data>
   <data name="MainPresetTip" xml:space="preserve"><value>Enregistre les effets activés dans la cellule comme un favori de son fichier, avec une description pour le retrouver</value></data>
   <data name="MainRangeAuto" xml:space="preserve"><value>Auto</value></data>
-  <data name="MainRangeAutoTip" xml:space="preserve"><value>Rend à la vidéo la durée que fixent ses vidéos : toute la boucle de la grille</value></data>
+  <data name="MainRangeAutoTip" xml:space="preserve"><value>Rend à la vidéo la durée que fixent ses vidéos : toute la boucle de la grille, Garder la plage décochée</value></data>
   <data name="MainRangeEndTip" xml:space="preserve"><value>Où la vidéo se termine sur la ligne de temps (minutes : secondes : image) — au-delà de la boucle de la grille, ses contenus bouclent</value></data>
   <data name="MainRangeLoop" xml:space="preserve"><value>Boucle {0}</value></data>
   <data name="MainRangeLoopGap" xml:space="preserve"><value>Boucle {0} · {1}</value></data>
