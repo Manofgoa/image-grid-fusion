@@ -82,7 +82,8 @@ Findings from the exploration (inputs, not decisions):
   live** so the handle stays under the pointer, the loop's part of the track shrinking — with no limit
   (Iterations 7, 10). A handle pressed already in the zone grows nothing until the pointer has moved right.
 - An **Auto** button on the range's line gives the range back to the whole loop — the length the videos
-  set —, enabled while a range is set (Iteration 9).
+  set —, enabled while a range is set (Iteration 9), and unchecks Keep range, the range following the loop
+  again (Iteration 15).
 - **The real content shows on the track** (Iteration 11): inside the range, the grid's loop is the plain track
   and the part past it — the contents looping — is hatched, the played fill hatched there too; outside the
   range, the loop's part left out is a mid grey, the rest of the track light. Growing or shrinking, the loop's
@@ -110,10 +111,11 @@ Findings from the exploration (inputs, not decisions):
 - A `VideoRange` value: a start, an end, or *whole* — the whole grid loop, today's behaviour.
 - A **Keep range** checkbox (*Garder la plage*) beside the time fields decides what happens when the grid
   loop changes — a video dropped or removed, a trim changed:
-  - **checked**: the range typed or dragged is **kept** as it is, in seconds — its start clamped into the
-    new loop if the loop got shorter;
+  - **checked**: the range typed or dragged is **kept** as it is, in seconds, its start included — even past a
+    shorter loop, the contents looping (Iteration 15);
   - **unchecked**: the range goes back to *whole*, so the video lasts the new grid loop.
-- The checkbox unchecked by default, and not checked by itself when a handle is dragged or a field typed.
+- The checkbox unchecked by default; **checked by itself whenever the user sets a range** — a handle dragged, a
+  field typed, *Fit to soundtrack* — and unchecked by *Auto* (Iteration 15).
 - The reset follows the **natural length** — the video length without the range — whatever changed it (a
   drop, a removal, a trim, the Cascade, the soundtrack over stills): `MainForm.FollowLoop`, read with the
   length readout. A step of the undo history put back keeps the range it holds.
@@ -130,7 +132,8 @@ Findings from the exploration (inputs, not decisions):
   the Keep range checkbox, enabled while the Soundtrack is on: it sets the range to **0 → the soundtrack's
   played part** (`To − From`), so the video lasts one play of the chosen part of the music — longer or
   shorter than the grid loop.
-- An ordinary change of the range: one undo step; it does not check Keep range by itself (§ State).
+- An ordinary change of the range: one undo step; like every range the user sets, it checks Keep range
+  (§ State, Iteration 15).
 
 ### Soundtrack Under the Range
 
@@ -173,7 +176,7 @@ Findings from the exploration (inputs, not decisions):
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
 | `Animation.VideoLength` gives the range's length when set, the grid loop or the soundtrack's part otherwise | `tests/ImageGridFusion.Tests/Composition/AnimationTests.cs` | Create |
-| A range past the grid loop is kept; a range kept in seconds is clamped when the loop shortens; *whole* follows it | `tests/ImageGridFusion.Tests/Composition/VideoRangeTests.cs` | Create |
+| A range past the grid loop is kept; *whole* follows it — the clamping of a kept range's start removed (Iteration 15), its two tests with it | `tests/ImageGridFusion.Tests/Composition/VideoRangeTests.cs` | Create, then update |
 | `Soundtrack.LoopIn` gives `To − From` for a grid of stills; From / To clamped into the file, a minimum part | `tests/ImageGridFusion.Tests/Composition/SoundtrackTests.cs` | Create |
 | *Fit to soundtrack* gives the range 0 → `To − From`, past the grid loop or short of it | `tests/ImageGridFusion.Tests/Composition/VideoRangeTests.cs` | Create |
 | The soundtrack's own time at a grid time: on the clock, within its part, looped or silent past it (Loop off) | `tests/ImageGridFusion.Tests/Composition/SoundtrackTests.cs` | Create |
@@ -189,7 +192,8 @@ Findings from the exploration (inputs, not decisions):
       Global toolbar?~~ → Handles on the timeline plus two time fields
 - [x] ~~When the grid loop changes (a video added or removed, a trim changed), what becomes of a set range:
       kept in seconds and clamped, reset to the whole loop, or kept as fractions?~~ → A **Keep range**
-      checkbox: checked, the range is kept; unchecked, it goes back to the whole loop
+      checkbox: checked, the range is kept; unchecked, it goes back to the whole loop *(revised 2026-11-06, see
+      Iteration 15: setting a range checks it, Auto unchecks it, the start is never clamped)*
 - [x] ~~How far past the grid loop can the end go, and how does the track show it?~~ → No limit: an
       extensible track, the end plus one loop of room, lengthened when the end handle reaches its edge
 - [x] ~~Under a range not starting at 0, where does the soundtrack stand: on the grid's clock (its 10th
@@ -357,6 +361,18 @@ The user asked for the choices to be made without them. No rule broken.
 - **Not checked by hand**: the hatched extension and the shrinking were not dragged in the app in this run;
   the readout and the disabled Auto were seen on a capture.
 
+### Iteration 15 — 2026-11-06 — ⚙️ Post-implementation — A range set by hand is kept
+
+- Request, after a test in the app: once a length has been set by hand, it must be kept whatever video or layer
+  is added — Keep range checked by itself —; *Auto* gives back the normal length. The user set a long range to
+  reach a given part of the music, and lost it several times, adding layers.
+- Cause found: over stills with a soundtrack the loop is the soundtrack's part; an animated layer added makes
+  it the layer's loop, much shorter. Keep range unchecked, the range went back to the whole loop; checked, its
+  start was brought into the new loop (`VideoRange.KeptIn`).
+- Agreed (Q&A 12): **every range the user sets checks Keep range** — a handle, a field, *Fit to soundtrack* —;
+  **Auto** gives the whole loop back and unchecks it; **checked, the range never moves**, its start included,
+  the contents looping past a shorter loop. `VideoRange.KeptIn` and its two tests go.
+
 ---
 
 ## Implementation Log
@@ -388,6 +404,7 @@ The user asked for the choices to be made without them. No rule broken.
 | 9 | Range in the undo history and the Resets? | Not answered — the user sent row 10 instead | 2026-11-06 |
 | 10 | (User's message on row 4) | The extended value is an option, a checkbox: checked, the duration entered is kept; unchecked, dropping a new video computes the duration again | 2026-11-06 |
 | 11 | Rows 6–9 again, with the recommendations as defaults? | Yes, the recommendations: the soundtrack on the grid's clock, the Frames trim's controls plus Loop, a *Fit to soundtrack* button, the range in the undo history like the Format | 2026-11-06 |
+| 12 | (After a test) a range set by hand checks Keep range, Auto unchecks it, a kept range never moves — the three, and where? | The three, with tests and docs, in a worktree | 2026-11-06 |
 
 ---
 
