@@ -70,7 +70,8 @@ Findings from the exploration (inputs, not decisions):
 
 - `UI/PlaybackTimeline` gets two **range handles**, start and end, dragged along the track; the part
   outside the range drawn dimmed, the played fill and the thumb inside it.
-- Two **time fields**, start and end, beside the timeline in the transport, for an exact value: typing
+- Two **time fields**, start and end, on a line **under the timeline** in the transport, with Keep range and
+  Fit to soundtrack, so the timeline keeps its width (Iteration 6), for an exact value: typing
   one moves its handle, dragging a handle updates its field. The end field accepts a time past the grid
   loop.
 - The track is **extensible**: it maps x ↔ time against its **extent** (`VideoRange.Extent`) — the grid
@@ -262,13 +263,20 @@ No rule broken. The choices the frozen design did not state:
 - **Not checked by hand**: the app was launched with a video (the handles and the fields shown), but no
   range was dragged, exported or heard in this run — left to the user's test.
 
+### Iteration 6 — 2026-11-06 — ⚙️ Post-implementation — Range controls under the timeline
+
+- Request: the range's controls beside the timeline take too much room — put them under it.
+- The transport gets a second line: the start and end fields, Keep range and Fit to soundtrack under the
+  timeline, aligned with it; the timeline takes the row's whole width again. The docs saying *beside the
+  timeline* follow.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 4 | 2026-11-06 | Model, export, preview, timeline, transport, Soundtrack options |
+| Code | 4, 6 | 2026-11-06 | Model, export, preview, timeline, transport, Soundtrack options; the range's controls under the timeline |
 | Unit tests | 4 | 2026-11-06 | `VideoRangeTests`, `SoundtrackTests`, `AnimationTests`, `PlaybackTimelineTests` — 21 passed |
 | RULES.md (§ Video Length, § Transport, Soundtrack) | 4 | 2026-11-06 | § Transport, § Video Length, new § Video Range and § Soundtrack Part |
 | GLOSSARY.md / GLOSSARY.fr.md (Range, soundtrack trim) | 4 | 2026-11-06 | Range added; Soundtrack, Video length, Transport, Timeline updated |
