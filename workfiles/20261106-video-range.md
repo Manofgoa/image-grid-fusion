@@ -341,19 +341,35 @@ No rule broken. The choices the frozen design did not state:
   tenths of it), down to the loop; then the drag maps the pointer on the loop. Between the tick and the edge
   zone, direct mapping on the span as it stands.
 
+
+### Iteration 14 — 2026-11-06 — 🧭 Implementation choices (Iterations 9 to 13)
+
+The user asked for the choices to be made without them. No rule broken.
+
+- **Auto** sits after the gap readout, its icon 🔁, the readout before it so the numbers sit next to the fields.
+- **The extension's look**: a wide upward diagonal hatch, grey on light outside the played part, blue on a
+  translucent blue inside it; the loop's part left out of the range at 110/255 of the dark track colour.
+- **The gap readout** shows `Loop 14.3 s` greyed without a range, `Loop 14.3 s · +5.7 s` with one; a gap of
+  zero shows the loop alone. The sign `−` is the true minus sign.
+- **Shrinking** uses the growth's curve mirrored on the loop's tick (`ShrinkRate`), the handle held at nine
+  tenths of the track; reaching the loop, the span puts the loop's end under the pointer, so the drag goes on
+  without a jump. A pointer between the tick and the edge zone maps directly, never moving the span.
+- **Not checked by hand**: the hatched extension and the shrinking were not dragged in the app in this run;
+  the readout and the disabled Auto were seen on a capture.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 4, 6, 7, 8 | 2026-11-06 | Model, export, preview, timeline, transport, Soundtrack options; the range's controls under the timeline; the end growing at the edge |
-| Unit tests | 4, 7 | 2026-11-06 | `VideoRangeTests`, `SoundtrackTests`, `AnimationTests`, `PlaybackTimelineTests` — 21 passed, then 6 timeline tests with the growth |
+| Code | 4, 6–13 | 2026-11-06 | Model, export, preview, timeline, transport, Soundtrack options; the range's controls under the timeline; the end growing at the edge, slower; Auto; the loop drawn apart; the gap readout; the progressive shrinking |
+| Unit tests | 4, 7, 10, 13 | 2026-11-06 | `VideoRangeTests`, `SoundtrackTests`, `AnimationTests`, `PlaybackTimelineTests` — 21 passed at first; the timeline's growth and shrinking rates since, 16 passed in the last run of the two touched classes |
 | RULES.md (§ Video Length, § Transport, Soundtrack) | 4, 7 | 2026-11-06 | § Transport, § Video Length, new § Video Range and § Soundtrack Part |
 | GLOSSARY.md / GLOSSARY.fr.md (Range, soundtrack trim) | 4, 6, 7 | 2026-11-06 | Range added; Soundtrack, Video length, Transport, Timeline updated |
 | SHORTCUTS.md / SHORTCUTS.fr.md (handle gestures) | 4 | 2026-11-06 | The time fields' rows cover the Soundtrack's and the range's; a plain handle drag is no shortcut |
 | Strings.resx / Strings.fr.resx | 4, 7 | 2026-11-06 | 16 texts, both languages; the timeline's tooltip for the growth |
-| README | 4, 6, 7 | 2026-11-06 | § Soundtrack and § Transport, English and French |
+| README | 4, 6, 7, 9–13 | 2026-11-06 | § Soundtrack and § Transport, English and French |
 
 ---
 
