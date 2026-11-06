@@ -54,8 +54,9 @@ Agreed in the scoping batch (Q&A 1):
 | **Shared by every surface** | Output format (Custom included), Soundtrack, Fade, Cascade (cell cascade) settings |
 | **Open** | Seams — per surface like the Borders, or shared (§ Open Questions) |
 
-- **Multi-surface layer**: a layer can be flagged to show on several surfaces (Q&A 1). Which surfaces, and
-  whether it is one layer or a copy per surface, are open (§ Open Questions).
+- **Multi-surface layer**: a layer flagged *multi-surface* shows on **every** surface (Q&A 1, Q&A 7). It is **one
+  shared layer**, held once, outside the surfaces: an edit — its place, its look, its content — changes it on every
+  surface. Its playback and sound across the surfaces are open (§ Open Questions).
 - The format is shared: one video has one canvas size (§ Export).
 
 ---
@@ -72,6 +73,19 @@ Agreed (Q&A 2, Q&A 3):
 - **Fixed** shorter than the contents: they are cut at the surface's end. Longer: they keep looping until it.
 - **Combined with the cell Cascade**: the Cascade plays inside each surface; the surface cascade plays the
   surfaces one after the other. Two separate settings.
+
+---
+
+## Activation and Preview
+
+- **A Surfaces tab** of the Global toolbar (a global effect, RULES.md § Global Toolbar), with its activation
+  checkbox (Q&A 5). **Off**: only the active surface plays, is heard and is exported; the other surfaces are kept as
+  they are. **On**: the surfaces play one after the other, in their order.
+- **The preview loops the active surface alone** while editing (Q&A 6). The transport's **timeline shows the whole
+  sequence** while the Surfaces effect is on; **Play** or a click on the timeline plays the sequence, the surface
+  shown following the clock. How the preview goes back to the active surface alone is part of the UI proposal.
+- **A plain cut** from one surface to the next (Q&A 8); no crossfade in this workfile — the backlog's *Cascade
+  transitions* row keeps it.
 
 ---
 
@@ -141,20 +155,20 @@ reordered; where a surface's duration is set; where the multi-surface flag of a 
 
 ## Open Questions
 
-- [ ] **Activation**: is the surface cascade a global effect (a Global toolbar tab with its checkbox, off = only
-  the active surface plays and exports), or always on as soon as there are two surfaces?
-- [ ] **Preview**: while editing, does the preview play the whole sequence (the shown surface following the clock),
-  or loop the active surface alone, the sequence played only on demand?
+- [x] ~~**Activation**: a global effect with its checkbox, or always on from two surfaces?~~ → A **Surfaces** tab of
+  the Global toolbar, with its checkbox (Q&A 5)
+- [x] ~~**Preview**: the whole sequence, or the active surface looping alone?~~ → The active surface loops alone; the
+  sequence is played from the timeline (Q&A 6)
 - [ ] **Surfaces UI**: where are they listed, switched, added, removed, reordered? (mockups to come)
 - [ ] **Duration UI**: where is a surface's Auto / fixed duration set?
 - [ ] **Stills-only surface in Auto**: which default duration (e.g. 3 s)?
-- [ ] **Multi-surface layer**: shown on every surface, or on surfaces the user picks? One shared layer (an edit
-  changes it everywhere) or a copy per surface?
+- [x] ~~**Multi-surface layer**: every surface or chosen ones? Shared or copies?~~ → Every surface, one shared layer
+  (Q&A 7)
 - [ ] **Multi-surface layer's playback and sound**: does its content play on continuously across surfaces, or start
   over with each surface? Is it heard on every surface it shows on?
 - [ ] **Seams**: per surface like the Borders, or shared?
-- [ ] **Transition**: a plain cut between surfaces, or a crossfade? (the backlog's *Cascade transitions* row
-  covers a crossfade between cell turns — a partial match)
+- [x] ~~**Transition**: cut or crossfade?~~ → A plain cut; the crossfade stays in the backlog's *Cascade
+  transitions* row (Q&A 8)
 - [ ] **Fade**: only at the whole video's start and end, or also at each surface change?
 - [ ] **Cell Cascade settings**: shared by every surface (one on / off and pause), or per surface?
 - [ ] **PNG and Cell copy**: the active surface only?
@@ -175,6 +189,13 @@ cell Cascade plays inside each surface. One clock, a surface schedule mapping th
 local time; only the playing surface heard, the soundtrack across all; one export canvas, the largest surface's.
 Scout pass (three read-only agents): the seams in `GridState` / `GlobalState`, `AnimationPlayer`, `GridExport.Job`
 and `MixedSound`.
+
+### Iteration 2 — 2026-11-06
+
+Answers to Q&A 5–8: a **Surfaces** tab of the Global toolbar with its checkbox, off leaving the active surface
+alone; the preview loops the active surface while editing, the timeline playing the whole sequence on demand; a
+multi-surface layer shows on every surface, one shared layer; a plain cut between surfaces. New § Activation and
+Preview; § What a Surface Holds updated.
 
 ---
 
@@ -199,10 +220,14 @@ and `MixedSound`.
 | 2 | Where is a surface's duration (Auto / fixed) set? | Per surface | 2026-11-06 |
 | 3 | How does it live with the current Cascade (cell after cell)? | Both combinable: the cell Cascade plays inside each surface; in Auto, a surface lasts its whole cell cascade | 2026-11-06 |
 | 4 | Straightforward or tricky / long? | Straightforward — a single scout pass | 2026-11-06 |
-| 5 | Activation: a Global toolbar tab with its checkbox, or always on from two surfaces? | | 2026-11-06 |
-| 6 | Preview while editing: the whole sequence, or the active surface looping alone? | | 2026-11-06 |
-| 7 | Multi-surface layer: on every surface or chosen ones; one shared layer or copies? | | 2026-11-06 |
-| 8 | Transition between surfaces: cut or crossfade? | | 2026-11-06 |
+| 5 | Activation: a Global toolbar tab with its checkbox, or always on from two surfaces? | A **Surfaces** tab of the Global toolbar with its checkbox; off, only the active surface plays and exports, the others kept | 2026-11-06 |
+| 6 | Preview while editing: the whole sequence, or the active surface looping alone? | The active surface loops alone; the timeline shows the whole sequence, Play or a click on it plays the sequence, the surface shown following the clock | 2026-11-06 |
+| 7 | Multi-surface layer: on every surface or chosen ones; one shared layer or copies? | On **every** surface, **one shared** layer: an edit changes it everywhere | 2026-11-06 |
+| 8 | Transition between surfaces: cut or crossfade? | A plain **cut**; the crossfade stays in the backlog | 2026-11-06 |
+| 9 | A stills-only surface in Auto: which default duration? | | 2026-11-06 |
+| 10 | Seams: per surface or shared? | | 2026-11-06 |
+| 11 | Cell Cascade settings: shared by every surface, or per surface? | | 2026-11-06 |
+| 12 | A multi-surface layer's content: plays on continuously across surfaces, or starts over with each one? Heard on every surface? | | 2026-11-06 |
 
 ---
 
