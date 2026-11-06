@@ -70,6 +70,21 @@ Three places show it:
   `DownloadedContent.Holds(path)` (name decided at implementation), shared by every place.
 - Disabled while exporting, like its neighbour.
 
+### The App's Other Save Dialogs
+
+Every save dialog opens on the **same initial folder** as Save… (§ The Save As Dialog), one method:
+
+| Dialog | Today | Now |
+|---|---|---|
+| The grid's **Save** — the button and its ▾ entries (PNG max sizes…) | `MainForm.ExportFolder`: the last folder an export was saved into, else the first cell's file's folder, else *Pictures* | The explorer's open folder |
+| **Save last…** (the last video) | `MainForm.ExportFolder` | The explorer's open folder |
+| **Save upscaled image…** | Its image's folder | The explorer's open folder |
+
+- The last export folder is **no longer remembered**: `AppSettings.ExportFolder` / `SaveExportFolder`
+  and the `RememberFolder` calls for it go; a `LastExportFolder` key left in `settings.json` is ignored.
+- `MainForm.DefaultSaveFolder` (the first cell's file's folder) goes with it if nothing else reads it.
+- The open dialogs (*Browse…*, the soundtrack) keep their own remembered folders: they are not saves.
+
 ### Out of Scope
 
 - A **layer** or the **background image** holding a downloaded content: no Save… in the layer list's
@@ -109,7 +124,7 @@ The menus and the dialog themselves are UI, checked by hand.
 - [x] ~~After saving into the base folder: the file shown at once (indexed alone / the open folder rescanned), or only after 🔄 as today?~~ → Shown at once: the saved file is added to the index alone
 - [x] ~~A cell from download: does it **adopt** the saved file (`SourceImage.AdoptFile`), so a heart or a preset then points to the kept file rather than the temp one emptied at next start?~~ → Yes, the cell adopts the saved file
 - [x] ~~A **GIPHY favorite** (hearted, in `giphy-favorites\` next to the exe) in a cell: also downloaded content offering Save…?~~ → Yes
-- [ ] Should the grid's existing **Save** button (and its ▾ entries) also open its dialog on the explorer's open folder, as this Save… does?
+- [x] ~~Should the grid's existing **Save** button (and its ▾ entries) also open its dialog on the explorer's open folder, as this Save… does?~~ → Yes: every save dialog opens on the explorer's open folder; the last export folder is no longer remembered
 - [x] ~~A secondary source open in the folder view (`OpenFolder` is then `""`): initial folder the source's folder being browsed, or the base folder?~~ → The folder browsed in the source
 - [x] ~~A **layer** or the **background image** holding downloaded content: Save… in the layer list's menu too, or out of scope?~~ → Out of scope
 - [x] ~~Default file name for GIPHY: kept as `<title>-giphy-<id>.<ext>`, or the title alone?~~ → Kept as it is, `<title>-giphy-<id>.<ext>`
@@ -148,6 +163,12 @@ export was saved into** (`AppSettings.ExportFolder`, `LastExportFolder` in `sett
 folder of the first cell's file, else *Pictures* (`MainForm.ExportFolder`, also used by *Save last…*);
 *Save upscaled image…* opens on its image's folder. Confirmation asked with that in hand.
 
+### Iteration 4 — 2026-11-07
+
+Confirmed: every save dialog — the grid's Save and its ▾ entries, *Save last…*, *Save upscaled
+image…* — opens on the explorer's open folder, like the new Save…; the last export folder is no longer
+remembered. New section § The App's Other Save Dialogs.
+
 ---
 
 ## Implementation Log
@@ -159,6 +180,7 @@ folder of the first cell's file, else *Pictures* (`MainForm.ExportFolder`, also 
 | README (EN + FR) | | | |
 | GLOSSARY (EN + FR) — URL zone, GIPHY view rows | | | |
 | RULES.md — § Content From a URL, § Online Libraries | | | |
+| Strings.resx + Strings.fr.resx | | | |
 
 ---
 
@@ -178,7 +200,7 @@ folder of the first cell's file, else *Pictures* (`MainForm.ExportFolder`, also 
 | 10 | Save… for a layer / the background image? | Out of scope | 2026-11-07 |
 | 11 | GIPHY default file name? | Kept as it is | 2026-11-07 |
 | 12 | The grid's Save button opens on the explorer's open folder too? | "Yes — what did it do until now?" → today's behaviour explained, confirmation asked (#13) | 2026-11-07 |
-| 13 | Knowing the grid's Save remembers its last folder: replace that by the open folder? | | |
+| 13 | Knowing the grid's Save remembers its last folder: replace that by the open folder? | Yes, the explorer's open folder | 2026-11-07 |
 
 ---
 
