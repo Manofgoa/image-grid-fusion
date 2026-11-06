@@ -35,8 +35,9 @@ Three places show it:
 - Windows' standard `SaveFileDialog`, as *Save upscaled image…* uses (`MainForm.SaveUpscaledAsync`):
   overwrite prompt on, its filter the file's own type (`*.mp4`, `*.gif`, `*.png`…) then *All files*.
 - **Initial folder**: the folder view's **open folder** — `Path.Combine(BaseFolder, OpenFolder)` —
-  whatever view the explorer shows; the base folder while none is open; *Pictures* when no base
-  folder is set or the folder is gone.
+  whatever view the explorer shows; inside a **secondary source**, the folder browsed in that source;
+  the base folder while none is open; *Pictures* when no base folder is set or the folder is gone.
+  One method gives it (`FileExplorerPanel.BrowsedFolder`, name decided at implementation).
 - **Default file name**: the downloaded file's name, as the temp folder holds it
   (`UrlDownloads.PathOf` — the stem and the height —, `GiphyFiles.NameOf` — `<title>-giphy-<id>.<ext>`).
 - **What is written**: a **plain copy of the downloaded file** (`File.Copy`, overwrite after the
@@ -68,6 +69,11 @@ Three places show it:
   `GiphyFiles.FavoritesFolder` (a hearted GIPHY result) — one test,
   `DownloadedContent.Holds(path)` (name decided at implementation), shared by every place.
 - Disabled while exporting, like its neighbour.
+
+### Out of Scope
+
+- A **layer** or the **background image** holding a downloaded content: no Save… in the layer list's
+  menu nor the Grid background's options.
 
 ### Texts and Icon
 
@@ -104,9 +110,9 @@ The menus and the dialog themselves are UI, checked by hand.
 - [x] ~~A cell from download: does it **adopt** the saved file (`SourceImage.AdoptFile`), so a heart or a preset then points to the kept file rather than the temp one emptied at next start?~~ → Yes, the cell adopts the saved file
 - [x] ~~A **GIPHY favorite** (hearted, in `giphy-favorites\` next to the exe) in a cell: also downloaded content offering Save…?~~ → Yes
 - [ ] Should the grid's existing **Save** button (and its ▾ entries) also open its dialog on the explorer's open folder, as this Save… does?
-- [ ] A secondary source open in the folder view (`OpenFolder` is then `""`): initial folder the source's folder being browsed, or the base folder?
-- [ ] A **layer** or the **background image** holding downloaded content: Save… in the layer list's menu too, or out of scope?
-- [ ] Default file name for GIPHY: kept as `<title>-giphy-<id>.<ext>`, or the title alone?
+- [x] ~~A secondary source open in the folder view (`OpenFolder` is then `""`): initial folder the source's folder being browsed, or the base folder?~~ → The folder browsed in the source
+- [x] ~~A **layer** or the **background image** holding downloaded content: Save… in the layer list's menu too, or out of scope?~~ → Out of scope
+- [x] ~~Default file name for GIPHY: kept as `<title>-giphy-<id>.<ext>`, or the title alone?~~ → Kept as it is, `<title>-giphy-<id>.<ext>`
 
 ---
 
@@ -132,6 +138,15 @@ First batch of open questions answered: the label stays **Save…** as asked (th
 is pointing at the right folder); a file saved under the base folder is added to the index alone, at
 once; a downloaded cell adopts the saved file; a hearted GIPHY result in a cell offers Save… too. New
 question from the label answer: should the grid's own Save also open on the explorer's open folder?
+
+### Iteration 3 — 2026-11-07
+
+Second batch: inside a secondary source, the initial folder is the folder browsed there; layers and
+the background image are out of scope; GIPHY's default name stays `<title>-giphy-<id>.<ext>`. The
+grid's Save: the user answered *yes* while asking what it did — it opens on the **last folder an
+export was saved into** (`AppSettings.ExportFolder`, `LastExportFolder` in `settings.json`), else the
+folder of the first cell's file, else *Pictures* (`MainForm.ExportFolder`, also used by *Save last…*);
+*Save upscaled image…* opens on its image's folder. Confirmation asked with that in hand.
 
 ---
 
@@ -159,10 +174,11 @@ question from the label answer: should the grid's own Save also open on the expl
 | 6 | Saved file shown in the explorer at once, or after 🔄? | At once, added to the index | 2026-11-07 |
 | 7 | A downloaded cell adopts the saved file? | Yes | 2026-11-07 |
 | 8 | A GIPHY favorite in a cell offers Save… too? | Yes | 2026-11-07 |
-| 9 | Initial folder while a secondary source is open? | | |
-| 10 | Save… for a layer / the background image? | | |
-| 11 | GIPHY default file name? | | |
-| 12 | The grid's Save button opens on the explorer's open folder too? | | |
+| 9 | Initial folder while a secondary source is open? | The folder browsed in the source | 2026-11-07 |
+| 10 | Save… for a layer / the background image? | Out of scope | 2026-11-07 |
+| 11 | GIPHY default file name? | Kept as it is | 2026-11-07 |
+| 12 | The grid's Save button opens on the explorer's open folder too? | "Yes — what did it do until now?" → today's behaviour explained, confirmation asked (#13) | 2026-11-07 |
+| 13 | Knowing the grid's Save remembers its last folder: replace that by the open folder? | | |
 
 ---
 
