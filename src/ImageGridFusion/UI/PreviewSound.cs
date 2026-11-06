@@ -126,7 +126,27 @@ internal sealed class PreviewSound : IDisposable
     /// </summary>
     public void Span(SourceImage image, TimeSpan from, TimeSpan to)
     {
-        if (!this._voices.TryGetValue(image, out var voice) || voice.Node is not { } node)
+        if (this._voices.TryGetValue(image, out var voice))
+        {
+            SpanVoice(voice, from, to);
+        }
+    }
+
+    /// <summary>
+    /// The part of the soundtrack heard, from <paramref name="from"/> to <paramref name="to"/> in its file, looping on
+    /// it: the soundtrack's trim (workfiles/20261106-video-range.md § Soundtrack Trim).
+    /// </summary>
+    public void SpanSoundtrack(TimeSpan from, TimeSpan to)
+    {
+        if (this._soundtrack is { } voice)
+        {
+            SpanVoice(voice, from, to);
+        }
+    }
+
+    private static void SpanVoice(Voice voice, TimeSpan from, TimeSpan to)
+    {
+        if (voice.Node is not { } node)
         {
             return;
         }
@@ -147,7 +167,7 @@ internal sealed class PreviewSound : IDisposable
         }
         catch (Exception)
         {
-            // Windows refuses this part: the whole sound loops, its frames still trimmed.
+            // Windows refuses this part: the whole sound loops, its frames — or the soundtrack's clock — still trimmed.
         }
     }
 

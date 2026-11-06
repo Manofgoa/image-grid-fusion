@@ -64,6 +64,9 @@ internal sealed class AnimationPlayer : IDisposable
     private SoundFade? _fade;
     private VideoCascade? _cascade;
 
+    // The part of the timeline played, looping on it; null for the whole loop (workfiles/20261106-video-range.md).
+    private VideoRange? _range;
+
     public AnimationPlayer()
     {
         _soundtrackTimer.Tick += (_, _) => SyncSoundtrack();
@@ -97,13 +100,54 @@ internal sealed class AnimationPlayer : IDisposable
     public bool Running => !this._paused && this._holds == 0;
 
     /// <summary>
-    /// The grid's loop — the video length (RULES.md § Video Length), the Cascade and the soundtrack
-    /// included — or zero without one: the length of the timeline.
+    /// What the preview loops on — the video length (RULES.md § Video Length), the Cascade, the soundtrack
+    /// and the range included — or zero without one.
     /// </summary>
-    public TimeSpan LoopLength => this._images.Count == 0 && this._layers.Count == 0 ? TimeSpan.Zero : Animation.VideoLength(this._images, this._soundtrack, this._cascade, this._layers);
+    public TimeSpan LoopLength => this._images.Count == 0 && this._layers.Count == 0 ? TimeSpan.Zero : Animation.VideoLength(this._images, this._soundtrack, this._cascade, this._layers, this._range);
 
-    /// <summary>Where the grid stands in its loop: the time the exported video shows the same instant at.</summary>
-    public TimeSpan LoopPosition => Animation.LoopTime(this.GridTime, this.LoopLength);
+    /// <summary>The grid's loop without the range: what a range is set on.</summary>
+    public TimeSpan NaturalLength => this._images.Count == 0 && this._layers.Count == 0 ? TimeSpan.Zero : Animation.VideoLength(this._images, this._soundtrack, this._cascade, this._layers);
+
+    /// <summary>Where the loop begins on the grid's timeline: the range's start, else 0.</summary>
+    public TimeSpan LoopStart => Animation.VideoStart(this.NaturalLength, this._range);
+
+    /// <summary>
+    /// Where the grid stands on its timeline, within the part it loops on: the time the exported video shows the
+    /// same instant at, counted from the grid's time 0 — past its loop where the range ends past it.
+    /// </summary>
+    public TimeSpan LoopPosition
+    {
+        get
+        {
+            var start = this.LoopStart;
+            return start + Animation.LoopTime(this.GridTime - start, this.LoopLength);
+        }
+    }
+
+    /// <summary>
+    /// Loops on <paramref name="range"/> of the timeline, or on the whole loop when <c>null</c>: a grid standing outside
+    /// it goes to its start, as the exported video begins (workfiles/20261106-video-range.md).
+    /// </summary>
+    public void SetRange(VideoRange? range)
+    {
+        if (range == this._range)
+        {
+            return;
+        }
+
+        this._range = range;
+        var start = this.LoopStart;
+        var length = this.LoopLength;
+        if (length > TimeSpan.Zero && (this.GridTime < start || this.GridTime >= start + length))
+        {
+            this.Seek(start);
+            return;
+        }
+
+        this.SyncSoundtrack();
+        this.SyncFade();
+        this.PlaybackChanged?.Invoke(this, EventArgs.Empty);
+    }
 
     /// <summary>Stands the grid still until <see cref="Release"/>, whatever the user's pause; holds add up.</summary>
     public void Hold()
@@ -339,7 +383,7 @@ internal sealed class AnimationPlayer : IDisposable
     /// second for the images <see cref="Sync"/> starts later; a frozen image stays where it stands, and
     /// the sounds follow their frames by themselves. Paused, the grid stays paused, at its start.
     /// </summary>
-    public void Restart() => this.Seek(TimeSpan.Zero);
+    public void Restart() => this.Seek(this.LoopStart);
 
     /// <summary>
     /// The clock of the grid, from its last start over: the time the motions of the Animations effects
@@ -466,13 +510,17 @@ internal sealed class AnimationPlayer : IDisposable
         this.PlaybackChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>Once the clock reaches the end of the grid's loop, the grid starts its loop again, as the exported video loops.</summary>
+    /// <summary>
+    /// Once the clock reaches the end of the part it loops on — the grid's loop, or its range — the grid goes back to
+    /// its start, as the exported video loops.
+    /// </summary>
     private void WrapLoop()
     {
         var loop = this.LoopLength;
-        if (this.Running && loop > TimeSpan.Zero && this.GridTime >= loop)
+        var start = this.LoopStart;
+        if (this.Running && loop > TimeSpan.Zero && (this.GridTime >= start + loop || this.GridTime < start))
         {
-            this.Seek(Animation.LoopTime(this.GridTime, loop));
+            this.Seek(start + Animation.LoopTime(this.GridTime - start, loop));
         }
     }
 
@@ -537,8 +585,9 @@ internal sealed class AnimationPlayer : IDisposable
     }
 
     /// <summary>
-    /// Keeps the soundtrack on the grid's loop — the longest playing content, else its own length —
-    /// looping within it when shorter, cut at its end when longer.
+    /// Keeps the soundtrack on the grid's clock — its part looped, or played once and silent after
+    /// (workfiles/20261106-video-range.md § Soundtrack Under the Range); the clock going back to the start of the
+    /// loop or the range takes it back with it, as the export plays it.
     /// </summary>
     private void SyncSoundtrack()
     {
@@ -547,9 +596,9 @@ internal sealed class AnimationPlayer : IDisposable
             return;
         }
 
-        var loop = Animation.VideoLength(_images, soundtrack, this._cascade, this._layers);
-        var time = Animation.LoopTime(Animation.LoopTime(_clock.Elapsed - start, loop), soundtrack.Duration);
-        _sound.SyncSoundtrack(time, soundtrack.Level, this.Running || this._snippet);
+        var time = soundtrack.FileTimeAt(_clock.Elapsed - start);
+        this._sound.SpanSoundtrack(soundtrack.From, soundtrack.To);
+        _sound.SyncSoundtrack(time ?? soundtrack.From, soundtrack.Level, time is not null && (this.Running || this._snippet));
     }
 
     /// <summary>The fade follows the grid while it holds an image; without it, the mix plays as it is.</summary>
@@ -569,7 +618,8 @@ internal sealed class AnimationPlayer : IDisposable
     /// <summary>
     /// The fade's gain at the grid's time within its loop — the video length (RULES.md § Video Length),
     /// so the preview sounds like the export: timed from the clock's origin, where the grid started
-    /// over, or from the soundtrack's start over a grid of stills, the soundtrack alone giving it a length.
+    /// over, or from the soundtrack's start over a grid of stills, the soundtrack alone giving it a length;
+    /// in at the range's start, out at its end.
     /// </summary>
     private void SyncFade()
     {
@@ -578,8 +628,8 @@ internal sealed class AnimationPlayer : IDisposable
             return;
         }
 
-        var loop = Animation.VideoLength(_images, _soundtrack, this._cascade, this._layers);
-        var origin = Animation.GridLength(_images, this._cascade, this._layers) > TimeSpan.Zero ? TimeSpan.Zero : _soundtrackStart ?? TimeSpan.Zero;
+        var loop = this.LoopLength;
+        var origin = (Animation.GridLength(_images, this._cascade, this._layers) > TimeSpan.Zero ? TimeSpan.Zero : _soundtrackStart ?? TimeSpan.Zero) + this.LoopStart;
         _sound.MasterGain = fade.GainAt(Animation.LoopTime(_clock.Elapsed - origin, loop), loop);
     }
 

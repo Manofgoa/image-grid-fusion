@@ -70,13 +70,34 @@ Findings from the exploration (inputs, not decisions):
 
 - `UI/PlaybackTimeline` gets two **range handles**, start and end, dragged along the track; the part
   outside the range drawn dimmed, the played fill and the thumb inside it.
-- Two **time fields**, start and end, beside the timeline in the transport, for an exact value: typing
+- Two **time fields**, start and end, on a line **under the timeline** in the transport, with Keep range and
+  Fit to soundtrack, so the timeline keeps its width (Iteration 6), for an exact value: typing
   one moves its handle, dragging a handle updates its field. The end field accepts a time past the grid
   loop.
-- The track is **extensible**: it maps x ↔ time against its **extent**, no longer the grid loop alone —
-  the range's end plus one grid loop of room, and at least the grid loop. Bringing the end handle to the
-  track's right edge lengthens the track, with no limit. The grid loop's end is marked on the track (a
-  tick), and the Cascade's ticks repeat past it.
+- The track is **extensible**: it maps x ↔ time against its **extent** (`VideoRange.Extent`) — the grid
+  loop, or, the range ending past it, the range's end plus one grid loop of room. While the end handle is
+  dragged near the track's right edge — the last 32 logical px — or past it, the end **grows on its own**,
+  by a share of the grid's loop a second that rises with the closeness to the edge (10 % a second at the
+  edge, the square of the closeness, faster past it, up to 90 % a second), and the track **rescales
+  live** so the handle stays under the pointer, the loop's part of the track shrinking — with no limit
+  (Iterations 7, 10). A handle pressed already in the zone grows nothing until the pointer has moved right.
+- An **Auto** button on the range's line gives the range back to the whole loop — the length the videos
+  set —, enabled while a range is set (Iteration 9).
+- **The real content shows on the track** (Iteration 11): inside the range, the grid's loop is the plain track
+  and the part past it — the contents looping — is hatched, the played fill hatched there too; outside the
+  range, the loop's part left out is a mid grey, the rest of the track light. Growing or shrinking, the loop's
+  part visibly shrinks or grows as the track rescales.
+- **The gap with the loop is told** (Iteration 12): a readout on the range's line, `Loop 14.3 s · +5.7 s` —
+  the grid's loop, then how much the range lasts more (`+`) or less (`−`) than it; the loop alone without a
+  range. Live while a handle moves.
+- **Shrinking is progressive too** (Iteration 13): the end handle dragged while the range ends past the loop,
+  the pointer brought **left of the loop's tick** shrinks the end on its own, at the growth's rate measured from
+  that tick (0.1 × closeness² loops a second, 0.9 at most), the track rescaling live — the handle at nine
+  tenths of it — until the end meets the loop; the drag then maps the pointer on the loop as usual. Between the
+  loop's tick and the edge zone, the pointer maps on the span as it stands, so a position can be held. Elsewhere the drag maps the pointer as usual; released, the track takes its extent. The grid loop's end is marked on the track (a dashed tick), and the Cascade's
+  ticks repeat past it.
+- A click or a scrub stays inside the range; the time shown beside the timeline counts from the range's
+  start, as the exported video does.
 - Dragging a handle holds the grid like a seek (`SeekStarted` / `SeekEnded`), the playhead following the
   handle, scrub audio at its place.
 - The handles snap onto the grid loop's end and onto the Cascade's ticks, within 6 logical px.
@@ -92,8 +113,11 @@ Findings from the exploration (inputs, not decisions):
   - **checked**: the range typed or dragged is **kept** as it is, in seconds — its start clamped into the
     new loop if the loop got shorter;
   - **unchecked**: the range goes back to *whole*, so the video lasts the new grid loop.
-- *Proposed*: the checkbox unchecked by default, and not checked by itself when a handle is dragged or a
-  field typed.
+- The checkbox unchecked by default, and not checked by itself when a handle is dragged or a field typed.
+- The reset follows the **natural length** — the video length without the range — whatever changed it (a
+  drop, a removal, a trim, the Cascade, the soundtrack over stills): `MainForm.FollowLoop`, read with the
+  length readout. A step of the undo history put back keeps the range it holds.
+- A range covering the loop exactly is stored as *whole* (`null`).
 - `VideoRange` and the checkbox held in `GlobalState`, a global setting with no tab, like the Format: part
   of the composed state — an undo step, restored —, reset (*whole*, unchecked) by the Global toolbar's
   Reset and *Clear all*; not persisted.
@@ -126,8 +150,10 @@ Findings from the exploration (inputs, not decisions):
 
 - `Soundtrack` gains **From**, **To** (the played part, the whole file by default) and **Loop** (on by
   default — today's behaviour).
-- Options: the Frames trim's controls — a two-thumb slider over the file's duration and `m : s` fields
-  for From and To — then a **Loop** checkbox, after the file and the volume.
+- Options: the Frames trim's controls — a slider and a minutes : seconds : frame field each for **From**
+  and **To**, in frames of the export's rate (30 fps), over the file's duration — then a **Loop** checkbox,
+  after the file and the volume. They wait for a file (disabled without one); a new file plays whole,
+  keeping the previous one's Loop.
 - **Loop on**: the part repeats for as long as the video lasts. **Loop off**: the part plays once from
   the video's time 0 and silence follows.
 - A grid of stills takes the **part's length** as its loop (`Soundtrack.LoopIn` returns `To − From`).
@@ -218,19 +244,132 @@ in the order the requests were made.
 - No Open Question left. Still proposals in § State: the Keep range checkbox unchecked by default, and not
   checked by itself when the range is edited.
 
+### Iteration 4 — 2026-11-06 — ✅ Implemented
+
+- Go given: code, unit tests and documentation, in a worktree (`feature/video-range`).
+
+### Iteration 5 — 2026-11-06 — 🧭 Implementation choices
+
+No rule broken. The choices the frozen design did not state:
+
+- **The track's extent**: the grid loop, or the range's end plus one loop when the range ends past it
+  (`VideoRange.Extent`); with no range set, the end handle sits on the right edge and is dragged past it.
+  The extent is frozen during a handle drag so the handle stays under the pointer; it is recomputed on release.
+- **Seeks clamped into the range**: a click or a scrub outside the range lands on its nearest edge.
+- **The time readout** beside the timeline counts from the range's start (`3.2 s / ⏱ 10.0 s` is the video's
+  time over its length), the thumb staying on the grid's timeline.
+- **A range covering the loop exactly is stored as `null`** (*whole*), so it follows the loop like no range.
+- **The reset of an unkept range** follows any change of the natural length — not only a drop —, as the
+  scoping answer named a trim too; checked in `MainForm.FollowLoop` with the length readout, held off while
+  a step is restored.
+- **Soundtrack trim controls**: two sliders and two minutes : seconds : frame fields (the Frames trim's
+  shape, the "two-thumb slider" of the design not existing in the app), in frames of the export's 30 fps;
+  disabled, Loop included, until a file is chosen; a new file plays whole and keeps the previous Loop.
+  The Soundtrack's own Reset still forgets the file, its part with it.
+- **Fit to soundtrack**: a button after Keep range, its icon 🎼 (`UiIcons.FitToSoundtrack`), enabled with
+  the Soundtrack on over a video; the range 0 → the part's length.
+- **The undo label** *Video range* is given only when the cells did not change, so a drop resetting the
+  range is named by the drop.
+- **The range belongs to no tab**: only the Global toolbar's Reset and *Clear all* reset it, not a tab's own Reset.
+- **The export**: the GIF plays the range too; the mixer's voices take the range's start (`MixedSound.At`) —
+  a cascade voice seeded at its place in the cascade — and a soundtrack not looped plays once
+  (`MixedSound.Once`).
+- **Test Impact**: the timeline's mapping is pinned through two static helpers (`PlaybackTimeline.XOf`,
+  `TimeAt`) rather than by driving the control; the soundtrack's own time is tested through
+  `Soundtrack.FileTimeAt`, the video length through its `TimeSpan` overload (a `SourceImage` needs files).
+- **Not checked by hand**: the app was launched with a video (the handles and the fields shown), but no
+  range was dragged, exported or heard in this run — left to the user's test.
+
+### Iteration 6 — 2026-11-06 — ⚙️ Post-implementation — Range controls under the timeline
+
+- Request: the range's controls beside the timeline take too much room — put them under it.
+- The transport gets a second line: the start and end fields, Keep range and Fit to soundtrack under the
+  timeline, aligned with it; the timeline takes the row's whole width again. The docs saying *beside the
+  timeline* follow.
+
+### Iteration 7 — 2026-11-06 — ⚙️ Post-implementation — Growing the range at the edge
+
+- Request: lengthening the range with the mouse is not handy. Brought to the end, the timeline should resize
+  *during* the drag, the bar of the real content shrinking with it; and the length should grow by a share of
+  the video's duration, faster the closer the pointer is to the right edge.
+- The end handle held in the edge zone — the last 48 logical px of the track — or past the edge grows the end
+  on a timer by `rate × loop` a second, the rate `0.5 × closeness²` loops a second (closeness 0 at the zone's
+  start, 1 at the edge, up to 4 past it); the track's span follows live so the handle stays under the pointer.
+  Moving the pointer there never shortens the end; out of the zone, it maps as before. Replaces the frozen
+  span and the lengthening on release only (Iteration 5).
+
+### Iteration 8 — 2026-11-06 — ⚙️ Post-implementation — Growing only at the edge
+
+- Request: the length must grow only close to the edge, never along the way, or no position can be held.
+- Confirmed: no growth out of the edge zone, the drag there mapping the pointer on a span that no longer
+  changes; the zone narrowed from 48 to 32 logical px, so it stays at the edge.
+
+
+### Iteration 9 — 2026-11-06 — ⚙️ Post-implementation — Auto button
+
+- Request: a button **Auto** to bring the length back to the one the videos set.
+- On the range's line under the timeline, after the end field: it gives the range back to the whole loop
+  (*whole*, `null`), one undo step, enabled while a range is set; Keep range untouched. Its icon 🔁.
+
+### Iteration 10 — 2026-11-06 — ⚙️ Post-implementation — Slower growth at the edge
+
+- Request: dragging the length with the mouse makes it grow far too fast, it is unusable.
+- The rate falls to `0.1 × closeness²` loops a second, the closeness capped at 3: 10 % of the loop a second at
+  the edge, 90 % at most past it (was 50 % and 8 loops). The end handle grabbed while already in the edge zone —
+  the whole loop's end lies on the right edge — no longer grows at once: growth waits until the pointer has
+  moved 4 logical px to the right of the press.
+
+
+### Iteration 11 — 2026-11-06 — ⚙️ Post-implementation — The real content on the track
+
+- Request: the blue bar is not reduced live, so one cannot tell how much is added.
+- The track draws the grid's loop apart from what lies past it: inside the range, the loop plain, the part
+  past it hatched — the played fill hatched there too —; outside the range, the loop's part left out mid grey,
+  the rest light. As the end grows, the loop's part shrinks live.
+
+### Iteration 12 — 2026-11-06 — ⚙️ Post-implementation — The gap with the loop
+
+- Request: no way to know by how much the real video goes past, or when a shorter part is chosen.
+- A readout on the range's line: `Loop 14.3 s · +5.7 s` (`Boucle 14,3 s · +5,7 s`), the grid's loop then the
+  range's length less it, signed; the loop alone without a range; its tooltip says what the numbers are.
+
+### Iteration 13 — 2026-11-06 — ⚙️ Post-implementation — Progressive shrinking
+
+- Request: resizing backwards is not handy, it does not shrink as the growth grows, progressively and live.
+- With the range ending past the loop, the end handle dragged with the pointer left of the loop's tick shrinks
+  the end on its own, at the growth's rate measured from the tick, the track rescaling live (the handle at nine
+  tenths of it), down to the loop; then the drag maps the pointer on the loop. Between the tick and the edge
+  zone, direct mapping on the span as it stands.
+
+
+### Iteration 14 — 2026-11-06 — 🧭 Implementation choices (Iterations 9 to 13)
+
+The user asked for the choices to be made without them. No rule broken.
+
+- **Auto** sits after the gap readout, its icon 🔁, the readout before it so the numbers sit next to the fields.
+- **The extension's look**: a wide upward diagonal hatch, grey on light outside the played part, blue on a
+  translucent blue inside it; the loop's part left out of the range at 110/255 of the dark track colour.
+- **The gap readout** shows `Loop 14.3 s` greyed without a range, `Loop 14.3 s · +5.7 s` with one; a gap of
+  zero shows the loop alone. The sign `−` is the true minus sign.
+- **Shrinking** uses the growth's curve mirrored on the loop's tick (`ShrinkRate`), the handle held at nine
+  tenths of the track; reaching the loop, the span puts the loop's end under the pointer, so the drag goes on
+  without a jump. A pointer between the tick and the edge zone maps directly, never moving the span.
+- **Not checked by hand**: the hatched extension and the shrinking were not dragged in the app in this run;
+  the readout and the disabled Auto were seen on a capture.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| RULES.md (§ Video Length, § Transport, Soundtrack) | | | |
-| GLOSSARY.md / GLOSSARY.fr.md (Range, soundtrack trim) | | | |
-| SHORTCUTS.md / SHORTCUTS.fr.md (handle gestures) | | | |
-| Strings.resx / Strings.fr.resx | | | |
-| README | | | |
+| Code | 4, 6–13 | 2026-11-06 | Model, export, preview, timeline, transport, Soundtrack options; the range's controls under the timeline; the end growing at the edge, slower; Auto; the loop drawn apart; the gap readout; the progressive shrinking |
+| Unit tests | 4, 7, 10, 13 | 2026-11-06 | `VideoRangeTests`, `SoundtrackTests`, `AnimationTests`, `PlaybackTimelineTests` — 21 passed at first; the timeline's growth and shrinking rates since, 16 passed in the last run of the two touched classes |
+| RULES.md (§ Video Length, § Transport, Soundtrack) | 4, 7 | 2026-11-06 | § Transport, § Video Length, new § Video Range and § Soundtrack Part |
+| GLOSSARY.md / GLOSSARY.fr.md (Range, soundtrack trim) | 4, 6, 7 | 2026-11-06 | Range added; Soundtrack, Video length, Transport, Timeline updated |
+| SHORTCUTS.md / SHORTCUTS.fr.md (handle gestures) | 4 | 2026-11-06 | The time fields' rows cover the Soundtrack's and the range's; a plain handle drag is no shortcut |
+| Strings.resx / Strings.fr.resx | 4, 7 | 2026-11-06 | 16 texts, both languages; the timeline's tooltip for the growth |
+| README | 4, 6, 7, 9–13 | 2026-11-06 | § Soundtrack and § Transport, English and French |
 
 ---
 

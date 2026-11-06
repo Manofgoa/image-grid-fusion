@@ -436,6 +436,10 @@ internal sealed class VideoEncoder : IFrameEncoder
         private readonly double _gain;
         private readonly double _speed;
 
+        // The grid's time the video begins at (its range's start), and whether the loop plays once only.
+        private readonly long _at;
+        private readonly bool _once;
+
         // The rate the sound is decoded at: the mix's, divided by the speed.
         private int _rate;
         private int _channels;
@@ -468,6 +472,8 @@ internal sealed class VideoEncoder : IFrameEncoder
             this._cycle = sound.Cycle.Ticks;
             _gain = sound.Gain;
             this._speed = sound.Speed;
+            this._at = sound.At.Ticks;
+            this._once = sound.Once;
             _reader = MediaFoundation.CreateSourceReader(sound.Path, attributes: null);
             try
             {
@@ -536,14 +542,33 @@ internal sealed class VideoEncoder : IFrameEncoder
                 throw new InvalidOperationException("No loop to play the sound in.");
             }
 
-            // The first loop is cut short: the video's time 0 is the sound's time start.
-            _position = _start * rate / TimeSpan.TicksPerSecond % _loopFrames;
+            // The first loop is cut short: the grid's time 0 is the sound's time start, and the video begins at the
+            // grid's time _at (workfiles/20261106-video-range.md) — in the cascade, its turn counted from there.
+            long start = _start * rate / TimeSpan.TicksPerSecond;
+            long at = this._at * rate / TimeSpan.TicksPerSecond;
             this._turnFrame = this._turnAt * rate / TimeSpan.TicksPerSecond;
             this._cycleFrames = this._cycle * rate / TimeSpan.TicksPerSecond;
-            long start = this._from + (long)(this._start * this._speed);
-            if (start > 0)
+            if (this._cycleFrames > 0)
             {
-                this._reader.SetCurrentPosition(Guid.Empty, PropVariant.FromLong(start));
+                this._cyclePosition = at % this._cycleFrames;
+                bool inTurn = this._cyclePosition >= this._turnFrame && this._cyclePosition < this._turnFrame + this._loopFrames;
+                _position = (start + (inTurn ? this._cyclePosition - this._turnFrame : 0)) % _loopFrames;
+            }
+            else
+            {
+                // Played once, a video beginning past the loop hears nothing of it.
+                _position = this._once ? Math.Min(start + at, _loopFrames) : (start + at) % _loopFrames;
+            }
+
+            if (_position >= _loopFrames)
+            {
+                return;
+            }
+
+            long seek = this._from + (long)(_position * TimeSpan.TicksPerSecond / rate * this._speed);
+            if (seek > 0)
+            {
+                this._reader.SetCurrentPosition(Guid.Empty, PropVariant.FromLong(seek));
             }
         }
 
@@ -592,6 +617,12 @@ internal sealed class VideoEncoder : IFrameEncoder
             {
                 if (_position >= _loopFrames)
                 {
+                    // Played once: silent from the end of its loop on.
+                    if (this._once)
+                    {
+                        return;
+                    }
+
                     Rewind();
                 }
 
@@ -728,5 +759,7 @@ internal sealed class VideoEncoder : IFrameEncoder
 /// in every cascade of that length (workfiles/20261008-video-cascade.md). <paramref name="Loop"/>,
 /// <paramref name="Start"/> and the turn are on the video's clock, <paramref name="From"/> in the file:
 /// the sound plays at <paramref name="Speed"/>, its frames effect's (workfiles/20260926-frames-speed.md).
+/// The video begins at the grid's time <paramref name="At"/>, its range's start; <paramref name="Once"/>, the loop
+/// plays once from the grid's time 0, silence following — a soundtrack not looped (workfiles/20261106-video-range.md).
 /// </summary>
-internal sealed record MixedSound(string Path, TimeSpan Loop, TimeSpan Start, double Gain, TimeSpan From = default, TimeSpan TurnAt = default, TimeSpan Cycle = default, double Speed = 1);
+internal sealed record MixedSound(string Path, TimeSpan Loop, TimeSpan Start, double Gain, TimeSpan From = default, TimeSpan TurnAt = default, TimeSpan Cycle = default, double Speed = 1, TimeSpan At = default, bool Once = false);

@@ -102,11 +102,11 @@ Tant que l'onglet Format est sélectionné : les bords et les coins du canevas m
 | <kbd>Ctrl</kbd>+<kbd>Molette</kbd> sur un curseur | 5 % par cran, sur les multiples de 5 |
 | <kbd>Molette</kbd> sur le curseur Zoom | Les pas de zoom de la molette sur une cellule — <kbd>Ctrl</kbd> pour les plus fins |
 | <kbd>←</kbd> <kbd>→</kbd>, <kbd>PageUp</kbd> <kbd>PageDown</kbd>, <kbd>Home</kbd> <kbd>End</kbd> sur un curseur | Le déplacer d'un petit pas, d'un grand pas, jusqu'à un bout |
-| <kbd>↑</kbd> <kbd>↓</kbd> dans un champ Lecture | Une image de plus ou de moins, reportée d'un champ à l'autre |
-| <kbd>Ctrl</kbd>+<kbd>↑</kbd> <kbd>Ctrl</kbd>+<kbd>↓</kbd> dans un champ Lecture | 5 images |
-| <kbd>Molette</kbd> sur un champ Lecture | Une image par cran — 5 avec <kbd>Ctrl</kbd> |
-| <kbd>Enter</kbd> dans un champ Lecture | Appliquer le nombre saisi |
-| <kbd>Escape</kbd> dans un champ Lecture | Remettre la valeur |
+| <kbd>↑</kbd> <kbd>↓</kbd> dans un champ de temps (Lecture, Bande son, la plage) | Une image de plus ou de moins, reportée d'un champ à l'autre |
+| <kbd>Ctrl</kbd>+<kbd>↑</kbd> <kbd>Ctrl</kbd>+<kbd>↓</kbd> dans un champ de temps (Lecture, Bande son, la plage) | 5 images |
+| <kbd>Molette</kbd> sur un champ de temps (Lecture, Bande son, la plage) | Une image par cran — 5 avec <kbd>Ctrl</kbd> |
+| <kbd>Enter</kbd> dans un champ de temps (Lecture, Bande son, la plage) | Appliquer le nombre saisi |
+| <kbd>Escape</kbd> dans un champ de temps (Lecture, Bande son, la plage) | Remettre la valeur |
 | <kbd>↑</kbd> <kbd>↓</kbd>, <kbd>Molette</kbd> dans le champ Largeur ou Hauteur du Format | Un de plus ou de moins, en choisissant Personnalisé |
 | <kbd>Enter</kbd> dans le champ Largeur ou Hauteur du Format | Appliquer le nombre saisi, ramené dans les bornes |
 | <kbd>Molette</kbd> sur la bande des dispositions | Faire défiler les dispositions |

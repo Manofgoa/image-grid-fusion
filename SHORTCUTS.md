@@ -101,11 +101,11 @@ While the Format tab is selected: the canvas's edges and corners show green grip
 | <kbd>Ctrl</kbd>+<kbd>Wheel</kbd> over a slider | 5 % a notch, onto the multiples of 5 |
 | <kbd>Wheel</kbd> over the Zoom slider | The zoom steps of the wheel over a cell — <kbd>Ctrl</kbd> for the finer ones |
 | <kbd>←</kbd> <kbd>→</kbd>, <kbd>PageUp</kbd> <kbd>PageDown</kbd>, <kbd>Home</kbd> <kbd>End</kbd> on a slider | Move it by a small step, a large step, to an end |
-| <kbd>↑</kbd> <kbd>↓</kbd> in a Frames field | One frame more or less, carried from field to field |
-| <kbd>Ctrl</kbd>+<kbd>↑</kbd> <kbd>Ctrl</kbd>+<kbd>↓</kbd> in a Frames field | 5 frames |
-| <kbd>Wheel</kbd> over a Frames field | One frame a notch — 5 with <kbd>Ctrl</kbd> |
-| <kbd>Enter</kbd> in a Frames field | Apply the number typed |
-| <kbd>Escape</kbd> in a Frames field | Put the value back |
+| <kbd>↑</kbd> <kbd>↓</kbd> in a time field (Frames, Soundtrack, the range's) | One frame more or less, carried from field to field |
+| <kbd>Ctrl</kbd>+<kbd>↑</kbd> <kbd>Ctrl</kbd>+<kbd>↓</kbd> in a time field (Frames, Soundtrack, the range's) | 5 frames |
+| <kbd>Wheel</kbd> over a time field (Frames, Soundtrack, the range's) | One frame a notch — 5 with <kbd>Ctrl</kbd> |
+| <kbd>Enter</kbd> in a time field (Frames, Soundtrack, the range's) | Apply the number typed |
+| <kbd>Escape</kbd> in a time field (Frames, Soundtrack, the range's) | Put the value back |
 | <kbd>↑</kbd> <kbd>↓</kbd>, <kbd>Wheel</kbd> in the Format's Width or Height field | One more or less, picking Custom |
 | <kbd>Enter</kbd> in the Format's Width or Height field | Apply the number typed, brought within the bounds |
 | <kbd>Wheel</kbd> over the layout strip | Scroll the layouts |
