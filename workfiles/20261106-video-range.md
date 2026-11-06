@@ -75,9 +75,12 @@ Findings from the exploration (inputs, not decisions):
   one moves its handle, dragging a handle updates its field. The end field accepts a time past the grid
   loop.
 - The track is **extensible**: it maps x ↔ time against its **extent** (`VideoRange.Extent`) — the grid
-  loop, or, the range ending past it, the range's end plus one grid loop of room. While a handle is dragged
-  the extent is frozen and the end follows the pointer past the track's right edge; released, the track
-  lengthens — with no limit. The grid loop's end is marked on the track (a dashed tick), and the Cascade's
+  loop, or, the range ending past it, the range's end plus one grid loop of room. While the end handle is
+  dragged near the track's right edge — the last 48 logical px — or past it, the end **grows on its own**,
+  by a share of the grid's loop a second that rises with the closeness to the edge (50 % a second at the
+  edge, the square of the closeness, faster past it, up to 8 loops a second), and the track **rescales
+  live** so the handle stays under the pointer, the loop's part of the track shrinking — with no limit
+  (Iteration 7). Elsewhere the drag maps the pointer as usual; released, the track takes its extent. The grid loop's end is marked on the track (a dashed tick), and the Cascade's
   ticks repeat past it.
 - A click or a scrub stays inside the range; the time shown beside the timeline counts from the range's
   start, as the exported video does.
@@ -269,6 +272,17 @@ No rule broken. The choices the frozen design did not state:
 - The transport gets a second line: the start and end fields, Keep range and Fit to soundtrack under the
   timeline, aligned with it; the timeline takes the row's whole width again. The docs saying *beside the
   timeline* follow.
+
+### Iteration 7 — 2026-11-06 — ⚙️ Post-implementation — Growing the range at the edge
+
+- Request: lengthening the range with the mouse is not handy. Brought to the end, the timeline should resize
+  *during* the drag, the bar of the real content shrinking with it; and the length should grow by a share of
+  the video's duration, faster the closer the pointer is to the right edge.
+- The end handle held in the edge zone — the last 48 logical px of the track — or past the edge grows the end
+  on a timer by `rate × loop` a second, the rate `0.5 × closeness²` loops a second (closeness 0 at the zone's
+  start, 1 at the edge, up to 4 past it); the track's span follows live so the handle stays under the pointer.
+  Moving the pointer there never shortens the end; out of the zone, it maps as before. Replaces the frozen
+  span and the lengthening on release only (Iteration 5).
 
 ---
 
