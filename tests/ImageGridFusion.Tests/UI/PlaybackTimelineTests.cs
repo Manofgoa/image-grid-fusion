@@ -50,6 +50,16 @@ public sealed class PlaybackTimelineTests
     }
 
     [TestMethod]
+    public void EndShrinksOnlyLeftOfTheLoopTick()
+    {
+        // The loop's tick at 150, zones of 32 px.
+        Assert.AreEqual(0, PlaybackTimeline.ShrinkRate(150, 150, 32));
+        Assert.AreEqual(0, PlaybackTimeline.ShrinkRate(180, 150, 32));
+        Assert.AreEqual(0.1, PlaybackTimeline.ShrinkRate(118, 150, 32), 1e-9);
+        Assert.AreEqual(0.9, PlaybackTimeline.ShrinkRate(0, 150, 32), 1e-9);
+    }
+
+    [TestMethod]
     public void SpanFollowsTheGrowingEndUnderThePointer()
     {
         var span = TimeSpan.FromSeconds(20);
