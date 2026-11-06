@@ -141,6 +141,13 @@ tells a downloaded cell by its folder; no file watcher in the explorer.
 | 2 | A GIPHY tile not downloaded yet? | Save… greyed until downloaded | 2026-11-07 |
 | 3 | The dialog's initial folder? | The folder view's open folder | 2026-11-07 |
 | 4 | Exploration depth? | Straightforward — one scout pass | 2026-11-07 |
+| 5 | Label: Save…, Save as… or Save file…? | | |
+| 6 | Saved file shown in the explorer at once, or after 🔄? | | |
+| 7 | A downloaded cell adopts the saved file? | | |
+| 8 | A GIPHY favorite in a cell offers Save… too? | | |
+| 9 | Initial folder while a secondary source is open? | | |
+| 10 | Save… for a layer / the background image? | | |
+| 11 | GIPHY default file name? | | |
 
 ---
 
