@@ -48,14 +48,6 @@ public sealed record VideoRange
     /// <summary>The end moved to <paramref name="end"/>, kept after the start by <see cref="MinLength"/>; the start stays.</summary>
     public VideoRange WithEnd(TimeSpan end) => Of(this.Start, end);
 
-    /// <summary>
-    /// The range kept over a grid whose loop became <paramref name="loop"/> (the Keep range checkbox checked): as it
-    /// is, its start brought back into the loop when the loop got shorter than it; the end never moves unless the start
-    /// pushes it.
-    /// </summary>
-    public VideoRange KeptIn(TimeSpan loop) =>
-        loop <= TimeSpan.Zero || this.Start <= loop - MinLength ? this : Of(loop > MinLength ? loop - MinLength : TimeSpan.Zero, this.End);
-
     /// <summary>Whether it covers exactly a loop of <paramref name="length"/>: the whole loop, as without a range.</summary>
     public bool IsWhole(TimeSpan length) => this.Start == TimeSpan.Zero && this.End == length;
 
