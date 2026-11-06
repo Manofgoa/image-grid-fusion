@@ -42,7 +42,8 @@ Components touched: `Composition/Animation`, `Composition/Soundtrack`, `UI/Playb
 
 ### What It Drives
 
-*Proposed — see Open Questions 1 and 5.*
+*Agreed: the export and the preview, the Fade at the range's edges (Q&A 2). The soundtrack's place under
+the range is still open (Open Question 5).*
 
 | Consumer | Today | With a range |
 |---|---|---|
@@ -66,13 +67,17 @@ Findings from the exploration (inputs, not decisions):
 
 ### Timeline
 
-*Proposed — see Open Questions 2 and 4.*
+*Agreed: handles plus fields (Q&A 3), an extensible track (Q&A 5).*
 
 - `UI/PlaybackTimeline` gets two **range handles**, start and end, dragged along the track; the part
   outside the range drawn dimmed, the played fill and the thumb inside it.
-- The track maps x ↔ time against its **extent**, no longer the grid loop alone: the extent is at least the
-  grid loop and reaches past the end (Open Question 4), so the end handle can be dragged beyond the loop.
-  The grid loop's end is marked on the track (a tick), and the Cascade's ticks repeat past it.
+- Two **time fields**, start and end, beside the timeline in the transport, for an exact value: typing
+  one moves its handle, dragging a handle updates its field. The end field accepts a time past the grid
+  loop.
+- The track is **extensible**: it maps x ↔ time against its **extent**, no longer the grid loop alone —
+  the range's end plus one grid loop of room, and at least the grid loop. Bringing the end handle to the
+  track's right edge lengthens the track, with no limit. The grid loop's end is marked on the track (a
+  tick), and the Cascade's ticks repeat past it.
 - Dragging a handle holds the grid like a seek (`SeekStarted` / `SeekEnded`), the playhead following the
   handle, scrub audio at its place.
 - The handles snap onto the grid loop's end and onto the Cascade's ticks, within 6 logical px.
@@ -80,13 +85,20 @@ Findings from the exploration (inputs, not decisions):
 
 ### State
 
-*Proposed — see Open Questions 3 and 8.*
+*Agreed: the Keep range checkbox (Q&A 10, revising Q&A 4). Its place in the undo history is still open
+(Open Question 8).*
 
-- A `VideoRange` value (start, end, or *whole*), held in `GlobalState` — a global setting with no tab, part
-  of the composed state: an undo step, restored, reset to *whole* by the Global toolbar's Reset and *Clear
-  all*; not persisted.
-- *Whole* follows the grid loop as today; a set range is kept in seconds when the grid loop changes, its
-  start clamped into the loop.
+- A `VideoRange` value: a start, an end, or *whole* — the whole grid loop, today's behaviour.
+- A **Keep range** checkbox (*Garder la plage*) beside the time fields decides what happens when the grid
+  loop changes — a video dropped or removed, a trim changed:
+  - **checked**: the range typed or dragged is **kept** as it is, in seconds — its start clamped into the
+    new loop if the loop got shorter;
+  - **unchecked**: the range goes back to *whole*, so the video lasts the new grid loop.
+- *Proposed*: the checkbox unchecked by default, and not checked by itself when a handle is dragged or a
+  field typed.
+- *Proposed (Open Question 8)*: `VideoRange` and the checkbox held in `GlobalState`, a global setting with
+  no tab, part of the composed state: an undo step, restored, reset (*whole*, unchecked) by the Global
+  toolbar's Reset and *Clear all*; not persisted.
 
 ### Soundtrack Under the Range
 
@@ -135,13 +147,15 @@ Findings from the exploration (inputs, not decisions):
 
 ## Open Questions
 
-- [ ] What does the range drive: the export and the preview (the preview loops inside it, the Fade at its
-      edges), the export only, or the preview only?
-- [ ] How are the start and the end set: handles on the timeline, handles plus time fields, or a tab of the
-      Global toolbar?
-- [ ] When the grid loop changes (a video added or removed, a trim changed), what becomes of a set range:
-      kept in seconds and clamped, reset to the whole loop, or kept as fractions?
-- [ ] How far past the grid loop can the end go, and how does the track show it?
+- [x] ~~What does the range drive: the export and the preview (the preview loops inside it, the Fade at its
+      edges), the export only, or the preview only?~~ → The export and the preview, the Fade at its edges
+- [x] ~~How are the start and the end set: handles on the timeline, handles plus time fields, or a tab of the
+      Global toolbar?~~ → Handles on the timeline plus two time fields
+- [x] ~~When the grid loop changes (a video added or removed, a trim changed), what becomes of a set range:
+      kept in seconds and clamped, reset to the whole loop, or kept as fractions?~~ → A **Keep range**
+      checkbox: checked, the range is kept; unchecked, it goes back to the whole loop
+- [x] ~~How far past the grid loop can the end go, and how does the track show it?~~ → No limit: an
+      extensible track, the end plus one loop of room, lengthened when the end handle reaches its edge
 - [ ] Under a range not starting at 0, where does the soundtrack stand: on the grid's clock (its 10th
       second at 10 s), or starting at the range's start?
 - [ ] How are the soundtrack's From / To set: the Frames trim's controls (slider + fields), or another way?
@@ -172,6 +186,17 @@ in the order the requests were made.
   and the export; the wrap, the playhead, the soundtrack and the Fade are the places reading the loop.
 - First proposal written in the domain sections, each part marked with the Open Questions it depends on.
 
+### Iteration 2 — 2026-11-06
+
+- Answers: the range drives the export and the preview (the Fade at its edges); it is set by handles
+  **and** two time fields; the track is extensible, with no limit past the grid loop.
+- Answer: a set range goes back to the whole loop when the loop changes — then **refined** by the user: a
+  **Keep range** checkbox decides it — checked, the range typed is kept; unchecked, dropping a new video
+  computes the length again. § Video Range › State rewritten; the checkbox's default (unchecked) and that
+  editing the range does not check it are proposals.
+- The second batch (soundtrack under the range, soundtrack trim controls, *Fit to soundtrack*, undo
+  history) was dismissed by that message: Open Questions 5–8 stay open.
+
 ---
 
 ## Implementation Log
@@ -193,14 +218,16 @@ in the order the requests were made.
 | # | Question | Answer | Date |
 |---|---|---|---|
 | 1 | Scoping batch: scope, controls, a changing loop, exploration depth | Not answered as choices — replaced by two messages: the end may go past the loop (contents looping), and the soundtrack gets its own start / end / loop | 2026-11-06 |
-| 2 | What does the range drive? | | |
-| 3 | How are start and end set? | | |
-| 4 | A set range when the grid loop changes? | | |
-| 5 | How far past the grid loop can the end go? | | |
-| 6 | Where does the soundtrack stand under a range not starting at 0? | | |
-| 7 | How are the soundtrack's From / To set? | | |
-| 8 | *Fit to soundtrack* action? | | |
-| 9 | Range in the undo history and the Resets? | | |
+| 2 | What does the range drive? | The export and the preview (recommended) | 2026-11-06 |
+| 3 | How are start and end set? | Handles plus time fields | 2026-11-06 |
+| 4 | A set range when the grid loop changes? | Reset to the whole loop — then refined by row 10 | 2026-11-06 |
+| 5 | How far past the grid loop can the end go? | An extensible track (recommended) | 2026-11-06 |
+| 6 | Where does the soundtrack stand under a range not starting at 0? | Not answered — the user sent row 10 instead | 2026-11-06 |
+| 7 | How are the soundtrack's From / To set? | Not answered — the user sent row 10 instead | 2026-11-06 |
+| 8 | *Fit to soundtrack* action? | Not answered — the user sent row 10 instead | 2026-11-06 |
+| 9 | Range in the undo history and the Resets? | Not answered — the user sent row 10 instead | 2026-11-06 |
+| 10 | (User's message on row 4) | The extended value is an option, a checkbox: checked, the duration entered is kept; unchecked, dropping a new video computes the duration again | 2026-11-06 |
+| 11 | Rows 6–9 again, with the recommendations as defaults? | | |
 
 ---
 
