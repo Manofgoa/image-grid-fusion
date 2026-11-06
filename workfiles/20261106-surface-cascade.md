@@ -103,9 +103,10 @@ Agreed (Q&A 2, Q&A 3):
 - **A surface starts over** when it begins: its contents from their starting points, its cell cascade from its
   first turn (RULES.md § Preview Playback).
 - **Only the playing surface is heard** — its cells' and its layers' sounds; the others are silent. The
-  multi-surface layers and the soundtrack are heard throughout.
+  multi-surface layers and the soundtrack are heard throughout. A surface's sounds are **cut** at its bounds, no
+  fade (Q&A 13).
 - **The Soundtrack** plays across the whole sequence, its loop on the total length, never restarted at a surface
-  change. The Fade applies to the whole video's start and end (between surfaces: open).
+  change. The Fade applies to the **whole video's start and end** only (Q&A 13).
 - **The video length** (`Animation.VideoLength`) becomes the sum of the surfaces' durations while the surface
   cascade plays.
 
@@ -121,7 +122,11 @@ Agreed (Q&A 2, Q&A 3):
   from the surface the schedule gives, by the same `Compositor.Draw`.
 - The mix's voices of a surface are **windowed** on its span: heard from its start to its end only, their
   `TurnAt` / `Cycle` relative to the surface's start; the soundtrack voice unchanged.
-- A PNG (Copy / Save) gives the **active surface** (to confirm, § Open Questions).
+- A PNG (Copy / Save, a *PNG max size* entry) gives the **active surface**, with the multi-surface layers; the Cell
+  copy copies the selected cell or layer of the active surface (Q&A 14).
+- **Video range** ([20261106-video-range.md](20261106-video-range.md)) is implemented **first** (Q&A 16): its start
+  and end then stand on the whole sequence's timeline while the Surfaces effect is on. This workfile is designed
+  against its delivered state — § Timing and Sound is re-read against it before the go.
 
 ---
 
@@ -135,6 +140,10 @@ Agreed (Q&A 2, Q&A 3):
   (RULES.md § Undo History). Switching the active surface is not — like the selection — but a restore touching
   another surface switches to it.
 - Not persisted, like the rest of the composition.
+- **The Global Reset and *Clear all* remove every surface but one** (Q&A 15): the Global Reset keeps the **active**
+  surface — its cells and layers kept, its Borders, Seams, Grid background and cell Cascade reset with the other
+  global effects — and turns the Surfaces effect off; *Clear all* leaves one empty surface, as today. The
+  multi-surface layers go with *Clear all* only, like every layer. One undo step each.
 
 ---
 
@@ -174,12 +183,13 @@ reordered; where a surface's duration is set; where the multi-surface flag of a 
 - [x] ~~**Seams**: per surface or shared?~~ → Per surface (Q&A 10)
 - [x] ~~**Transition**: cut or crossfade?~~ → A plain cut; the crossfade stays in the backlog's *Cascade
   transitions* row (Q&A 8)
-- [ ] **Fade**: only at the whole video's start and end, or also at each surface change?
+- [x] ~~**Fade**: only at the whole video's start and end, or also at each surface change?~~ → The video's start and
+  end only; a surface's sounds cut at its bounds (Q&A 13)
 - [x] ~~**Cell Cascade settings**: shared or per surface?~~ → Per surface, on / off and pause (Q&A 11)
-- [ ] **PNG and Cell copy**: the active surface only?
-- [ ] **Resets and Clear all**: does the Global Reset / *Clear all* remove every surface but one?
-- [ ] **Video range** ([20261106-video-range.md](20261106-video-range.md)): its start and end apply on the whole
-  sequence's timeline; which workfile is implemented first?
+- [x] ~~**PNG and Cell copy**: the active surface only?~~ → The active surface (Q&A 14)
+- [x] ~~**Resets and Clear all**: every surface removed but one?~~ → Both: the Global Reset keeps the active surface,
+  *Clear all* one empty surface (Q&A 15)
+- [x] ~~**Video range**: which workfile first?~~ → Video range first (Q&A 16)
 
 ---
 
@@ -208,6 +218,13 @@ Answers to Q&A 9–12: a stills-only surface lasts 3 s in Auto; the Seams and th
 move to each surface; a multi-surface layer plays continuously on the global clock and is heard on every surface,
 outside every surface's cascade and Auto duration. § What a Surface Holds, § Surface Duration and § Timing and
 Sound updated.
+
+### Iteration 4 — 2026-11-06
+
+Answers to Q&A 13–16: the Fade stays on the whole video's start and end, a surface's sounds cut at its bounds; a
+PNG and a Cell copy give the active surface; the Global Reset and *Clear all* both leave one surface — the active
+one kept by the Reset, an empty one by *Clear all*; the video range workfile is implemented first, this one then
+re-read against it. § Timing and Sound, § Export, § Composed State and Undo updated.
 
 ---
 
@@ -240,10 +257,11 @@ Sound updated.
 | 10 | Seams: per surface or shared? | Per surface | 2026-11-06 |
 | 11 | Cell Cascade settings: shared by every surface, or per surface? | Per surface | 2026-11-06 |
 | 12 | A multi-surface layer's content: plays on continuously across surfaces, or starts over with each one? Heard on every surface? | Continuous across the sequence, heard on every surface | 2026-11-06 |
-| 13 | Fade: only at the whole video's start and end, or also at each surface change? | | 2026-11-06 |
-| 14 | PNG Copy / Save and Cell copy with the Surfaces effect on: the active surface? | | 2026-11-06 |
-| 15 | Global Reset and Clear all: every surface removed but one? | | 2026-11-06 |
-| 16 | Video range workfile: which one is implemented first? | | 2026-11-06 |
+| 13 | Fade: only at the whole video's start and end, or also at each surface change? | The video's start and end only | 2026-11-06 |
+| 14 | PNG Copy / Save and Cell copy with the Surfaces effect on: the active surface? | The active surface | 2026-11-06 |
+| 15 | Global Reset and Clear all: every surface removed but one? | Both leave one surface | 2026-11-06 |
+| 16 | Video range workfile: which one is implemented first? | Video range first | 2026-11-06 |
+| 17 | Surfaces UI: where are the surfaces listed, switched, added, removed, reordered, and their duration set? (mockups) | | 2026-11-06 |
 
 ---
 
