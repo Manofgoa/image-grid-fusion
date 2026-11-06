@@ -50,13 +50,17 @@ Agreed in the scoping batch (Q&A 1):
 
 | Belongs to | Items |
 |---|---|
-| **Each surface** | Layout (separators included), cells (image + `ImageLook`), layers (+ the Layers on / off), Borders (+ on / off), Grid background (+ on / off, its background image included) |
-| **Shared by every surface** | Output format (Custom included), Soundtrack, Fade, Cascade (cell cascade) settings |
-| **Open** | Seams — per surface like the Borders, or shared (§ Open Questions) |
+| **Each surface** | Layout (separators included), cells (image + `ImageLook`), layers (+ the Layers on / off), Borders (+ on / off), Seams (+ on / off), Grid background (+ on / off, its background image included), cell Cascade (+ on / off, its pause), its duration |
+| **Shared by every surface** | Output format (Custom included), Soundtrack, Fade, the Surfaces effect's on / off, the multi-surface layers |
+
+- Seams per surface, like the Borders: they follow the layout (Q&A 10). The cell Cascade per surface: one surface
+  may cascade its cells, the next play them all at once (Q&A 11).
 
 - **Multi-surface layer**: a layer flagged *multi-surface* shows on **every** surface (Q&A 1, Q&A 7). It is **one
   shared layer**, held once, outside the surfaces: an edit — its place, its look, its content — changes it on every
-  surface. Its playback and sound across the surfaces are open (§ Open Questions).
+  surface. Its content plays **continuously** across the whole sequence, on the global clock like the soundtrack —
+  never started over at a surface change — and is **heard on every surface** (Q&A 12). It takes no part in a
+  surface's cell cascade, and counts in no surface's Auto duration.
 - The format is shared: one video has one canvas size (§ Export).
 
 ---
@@ -67,9 +71,9 @@ Agreed (Q&A 2, Q&A 3):
 
 - **Per surface**: each surface has its own mode — **Auto** or a **fixed** duration.
 - **Auto** = the surface's own grid length: `Animation.GridLength(images, cascade, layers)` over that surface
-  only — its longest playing content, an Animations cycle, or **its whole cell cascade** when the Cascade is on —
-  **without the soundtrack**.
-- A surface of stills only has no grid length: its Auto duration falls back to a default (value open).
+  only — its longest playing content, an Animations cycle, or **its whole cell cascade** when its Cascade is on —
+  **without the soundtrack** nor the multi-surface layers.
+- A surface of stills only has no grid length: its Auto duration is **3 s** (Q&A 9).
 - **Fixed** shorter than the contents: they are cut at the surface's end. Longer: they keep looping until it.
 - **Combined with the cell Cascade**: the Cascade plays inside each surface; the surface cascade plays the
   surfaces one after the other. Two separate settings.
@@ -98,7 +102,8 @@ Agreed (Q&A 2, Q&A 3):
   `TurnOf`, `InTurn`), the export (`GridExport.Job.ContentTime`), the mix (`MixedSound`).
 - **A surface starts over** when it begins: its contents from their starting points, its cell cascade from its
   first turn (RULES.md § Preview Playback).
-- **Only the playing surface is heard** — its cells' and its layers' sounds; the others are silent.
+- **Only the playing surface is heard** — its cells' and its layers' sounds; the others are silent. The
+  multi-surface layers and the soundtrack are heard throughout.
 - **The Soundtrack** plays across the whole sequence, its loop on the total length, never restarted at a surface
   change. The Fade applies to the whole video's start and end (between surfaces: open).
 - **The video length** (`Animation.VideoLength`) becomes the sum of the surfaces' durations while the surface
@@ -161,16 +166,16 @@ reordered; where a surface's duration is set; where the multi-surface flag of a 
   sequence is played from the timeline (Q&A 6)
 - [ ] **Surfaces UI**: where are they listed, switched, added, removed, reordered? (mockups to come)
 - [ ] **Duration UI**: where is a surface's Auto / fixed duration set?
-- [ ] **Stills-only surface in Auto**: which default duration (e.g. 3 s)?
+- [x] ~~**Stills-only surface in Auto**: which default duration?~~ → 3 s (Q&A 9)
 - [x] ~~**Multi-surface layer**: every surface or chosen ones? Shared or copies?~~ → Every surface, one shared layer
   (Q&A 7)
-- [ ] **Multi-surface layer's playback and sound**: does its content play on continuously across surfaces, or start
-  over with each surface? Is it heard on every surface it shows on?
-- [ ] **Seams**: per surface like the Borders, or shared?
+- [x] ~~**Multi-surface layer's playback and sound**: continuous or started over? Heard everywhere?~~ → Continuous
+  on the global clock, heard on every surface (Q&A 12)
+- [x] ~~**Seams**: per surface or shared?~~ → Per surface (Q&A 10)
 - [x] ~~**Transition**: cut or crossfade?~~ → A plain cut; the crossfade stays in the backlog's *Cascade
   transitions* row (Q&A 8)
 - [ ] **Fade**: only at the whole video's start and end, or also at each surface change?
-- [ ] **Cell Cascade settings**: shared by every surface (one on / off and pause), or per surface?
+- [x] ~~**Cell Cascade settings**: shared or per surface?~~ → Per surface, on / off and pause (Q&A 11)
 - [ ] **PNG and Cell copy**: the active surface only?
 - [ ] **Resets and Clear all**: does the Global Reset / *Clear all* remove every surface but one?
 - [ ] **Video range** ([20261106-video-range.md](20261106-video-range.md)): its start and end apply on the whole
@@ -196,6 +201,13 @@ Answers to Q&A 5–8: a **Surfaces** tab of the Global toolbar with its checkbox
 alone; the preview loops the active surface while editing, the timeline playing the whole sequence on demand; a
 multi-surface layer shows on every surface, one shared layer; a plain cut between surfaces. New § Activation and
 Preview; § What a Surface Holds updated.
+
+### Iteration 3 — 2026-11-06
+
+Answers to Q&A 9–12: a stills-only surface lasts 3 s in Auto; the Seams and the cell Cascade (on / off, pause)
+move to each surface; a multi-surface layer plays continuously on the global clock and is heard on every surface,
+outside every surface's cascade and Auto duration. § What a Surface Holds, § Surface Duration and § Timing and
+Sound updated.
 
 ---
 
@@ -224,10 +236,14 @@ Preview; § What a Surface Holds updated.
 | 6 | Preview while editing: the whole sequence, or the active surface looping alone? | The active surface loops alone; the timeline shows the whole sequence, Play or a click on it plays the sequence, the surface shown following the clock | 2026-11-06 |
 | 7 | Multi-surface layer: on every surface or chosen ones; one shared layer or copies? | On **every** surface, **one shared** layer: an edit changes it everywhere | 2026-11-06 |
 | 8 | Transition between surfaces: cut or crossfade? | A plain **cut**; the crossfade stays in the backlog | 2026-11-06 |
-| 9 | A stills-only surface in Auto: which default duration? | | 2026-11-06 |
-| 10 | Seams: per surface or shared? | | 2026-11-06 |
-| 11 | Cell Cascade settings: shared by every surface, or per surface? | | 2026-11-06 |
-| 12 | A multi-surface layer's content: plays on continuously across surfaces, or starts over with each one? Heard on every surface? | | 2026-11-06 |
+| 9 | A stills-only surface in Auto: which default duration? | 3 s | 2026-11-06 |
+| 10 | Seams: per surface or shared? | Per surface | 2026-11-06 |
+| 11 | Cell Cascade settings: shared by every surface, or per surface? | Per surface | 2026-11-06 |
+| 12 | A multi-surface layer's content: plays on continuously across surfaces, or starts over with each one? Heard on every surface? | Continuous across the sequence, heard on every surface | 2026-11-06 |
+| 13 | Fade: only at the whole video's start and end, or also at each surface change? | | 2026-11-06 |
+| 14 | PNG Copy / Save and Cell copy with the Surfaces effect on: the active surface? | | 2026-11-06 |
+| 15 | Global Reset and Clear all: every surface removed but one? | | 2026-11-06 |
+| 16 | Video range workfile: which one is implemented first? | | 2026-11-06 |
 
 ---
 
