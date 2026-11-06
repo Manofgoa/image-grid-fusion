@@ -742,13 +742,14 @@ The preview is played, paused and moved like a video (origin: `workfiles/2026100
   motions, the Cascade, the soundtrack and the Fade all read it, so a pause or a seek moves them
   together. A new consumer of the grid's time reads it there, never a stopwatch of its own.
 - **Seek** (`AnimationPlayer.Seek`) puts the grid where the exported video stands at that time: every
-  playing content from its starting point at the clock's origin, the soundtrack from its beginning;
-  `Restart` is a seek to 0. The clock **wraps at the end of the grid's loop**
-  (`Animation.VideoLength`) the same way, so the preview loops as the video does.
+  playing content from its starting point at the clock's origin, the soundtrack on the clock;
+  `Restart` is a seek to the range's start (§ Video Range), 0 without one. The clock **wraps at the end
+  of what the preview loops on** — the grid's loop, or the range — back to its start
+  (`AnimationPlayer.WrapLoop`, `LoopStart`, `LoopLength`), so the preview loops as the video does.
 - **Paused** — by the user (Play / Pause, Space) or **held** (`AnimationPlayer.Hold` / `Release`, a
   counter): the clock stands still, nothing is heard, a frame is decoded only where a content was
   moved or laid out again. The global pause never reuses a frozen content's `Playback.PausedAt`.
-- **Starting over while paused stays paused**, at 0.
+- **Starting over while paused stays paused**, at the range's start.
 - A **Copy or an export holds the grid** from `MainForm.BeginExport` to `EndExport` — and around
   the synchronous still render — then gives it back as it was. A drag of the timeline holds it too,
   each scrub step sounding a short snippet of the mix there (`AnimationPlayer.Scrub`).
@@ -795,10 +796,11 @@ Applies to everything the user composes (origin: `workfiles/20261006-undo-redo.m
 ## Video Length
 
 The length of the exported video has **one definition**, `Animation.VideoLength` (origin:
-`workfiles/20260930-exported-video-length.md`): the grid's loop — the longest **playing** content,
-a frozen one being a still, the cycle of an Animations effect counting as a loop
-(`Animation.LoopOf`, origin: `workfiles/20260926-animated-zoom.md`) — or the soundtrack's length
-for a grid of stills; none for a PNG.
+`workfiles/20260930-exported-video-length.md`): the **range**'s when one is set (§ Video Range); else the
+grid's loop — the longest **playing** content, a frozen one being a still, the cycle of an Animations
+effect counting as a loop (`Animation.LoopOf`, origin: `workfiles/20260926-animated-zoom.md`) — or the
+soundtrack's part for a grid of stills; none for a PNG. Without the range, it is the **natural length**
+(`Animation.NaturalLength`), what a range is set on.
 
 - The **export** (`GridExport.Job.Length`), the **preview's soundtrack loop**
   (`AnimationPlayer.SyncSoundtrack`), the **loop the preview wraps at** (`AnimationPlayer.LoopLength`)
@@ -806,6 +808,46 @@ for a grid of stills; none for a PNG.
   there too, never re-derives it.
 - The readout is refreshed **with the Copy / Save captions** (`MainForm.UpdateButtons`): what the
   buttons say they produce and the length shown never disagree.
+
+### Video Range
+
+The video plays and exports a **part of the grid's timeline**, its end possibly past the grid's loop, the
+contents looping meanwhile (origin: `workfiles/20261106-video-range.md`), one definition,
+`Composition/VideoRange`:
+
+- A **start** and an **end** in grid time, at least a frame apart; `null` wherever it is read stands for the
+  whole loop, and a range covering the loop exactly is stored as `null` (`MainForm.SetRange`). It only
+  applies over a video: a still grid ignores it (`Animation.VideoStart`, `VideoLength`).
+- **The export plays it** (`GridExport.Job.Start`, `Length`): the contents, the motions and the layers at
+  grid time `Start + FrameTime(k)`, the encoders at the video's own time `FrameTime(k)`; every sound of the mix
+  begins there too (`MixedSound.At`) — a cascade voice seeded at its place in the cascade. The Fade covers the
+  range, in at its start, out at its end.
+- **The preview loops on it** (`AnimationPlayer.SetRange`, `GridPreview.PlaybackRange`): it wraps from its end
+  to its start, its Fade there too, and a grid standing outside it goes to its start. The playhead reads
+  `LoopPosition`, the grid's time within the range — never wrapped at the grid's loop.
+- **The soundtrack stands on the grid's clock** (`Soundtrack.FileTimeAt`): a range starting at 10 s hears its
+  10th second, in the preview and the export alike.
+- **Part of the composed state** (`GlobalState.Range`, with `KeepRange`): an undo step, reset — the whole
+  loop, Keep range unchecked — by the Global toolbar's Reset and *Clear all*; not persisted.
+- **When the natural length changes** (`MainForm.FollowLoop`): Keep range checked, the range is kept, its start
+  brought into a shorter loop (`VideoRange.KeptIn`); unchecked, it goes back to the whole loop. A step put back
+  keeps the range it holds (`MainForm.RestoreState`).
+- **The timeline** (`UI/PlaybackTimeline`) spans the loop, or the range's end plus one loop when the range ends
+  past it (`VideoRange.Extent`): its handles drag the start and the end — the end past the right edge, the
+  track lengthened once released —, snapping onto the loop's end and the Cascade's ticks; a seek stays inside
+  the range. The time shown beside it counts from the range's start, as the exported video does.
+
+### Soundtrack Part
+
+The soundtrack plays a **part of its file**, looped or once (origin: `workfiles/20261106-video-range.md`
+§ Soundtrack Trim), on `Soundtrack`:
+
+- **From** and **To** in the file — the whole file by default — and **Loops**, on by default; a new file plays
+  whole, keeping the previous one's Loops. A grid of stills lasts the part (`Soundtrack.LoopIn`).
+- Its time at a grid time is `Soundtrack.FileTimeAt`: within the part, looped — or, played once, `null` past
+  it, silence. The preview's node plays that part (`PreviewSound.SpanSoundtrack`), the export's voice too
+  (`MixedSound.From`, `Loop` the part, `Once`).
+- Its options are ordinary options of the Soundtrack: they turn it on, are undone, and wait for a file.
 
 ### Cascade
 
