@@ -108,7 +108,36 @@ Agreed (Q&A 2, Q&A 3):
 - **The Soundtrack** plays across the whole sequence, its loop on the total length, never restarted at a surface
   change. The Fade applies to the **whole video's start and end** only (Q&A 13).
 - **The video length** (`Animation.VideoLength`) becomes the sum of the surfaces' durations while the surface
-  cascade plays.
+  cascade plays — see § With the Video Range for how the range stands on it.
+
+---
+
+## With the Video Range
+
+The video range ([20261106-video-range.md](20261106-video-range.md), RULES.md § Video Range, § Soundtrack Part) is
+delivered (merge `471ce6e`). This workfile builds on it:
+
+- **The sequence is the grid's loop**: while the Surfaces effect is on, the grid length handed to
+  `Animation.NaturalLength` is the **sum of the surfaces' durations** — the surface schedule's total — instead of
+  `Animation.GridLength`. Every surface lasts 3 s at least, so the soundtrack's part never gives the length then
+  (`Soundtrack.LoopIn` only acts on a grid of no length); a range ending past the sequence covers a longer music.
+- **The range stands on the whole sequence's timeline**: one `VideoRange`, shared — it stays in the shared part of
+  the composed state (`GlobalState.Range`, `KeepRange`), never in a surface.
+- **Past the sequence's end**, the sequence loops — the first surface again — as the contents loop past the grid's
+  loop today: the surface schedule wraps the grid time at its total.
+- **A change of the sequence's length** — a surface added, removed, its duration or its content changed, the
+  Surfaces effect turned on or off — is a change of the natural length: `MainForm.FollowLoop` applies as delivered
+  (Keep range checked: kept, its start brought into a shorter sequence; unchecked: the whole sequence again).
+- **The export** starts at the range's start (`GridExport.Job.Start`): the surface schedule gives the surface at
+  `Start + FrameTime(k)`; a surface's voices are **seeded at their place in the sequence**, as a cascade voice is
+  (`MixedSound.At`), windowed on that surface's spans — several spans when the range runs past the sequence's end.
+- **The soundtrack** already stands on the grid's clock (`Soundtrack.FileTimeAt`): it plays across the surfaces
+  unchanged, as agreed. **The Fade** covers the range — the video's start and end — as agreed (Q&A 13).
+- **The timeline** (`UI/PlaybackTimeline`) spans the sequence (or `VideoRange.Extent` past it). Its ticks and the
+  range handles' snapping — the Cascade's ticks today — and what it shows while the preview loops the active surface
+  alone (Q&A 6) are open (§ Open Questions).
+- **Two *Auto***: the range's **Auto** button (the whole loop back) and a surface duration's **Auto** (its grid
+  length) are different settings in different places; the UI labels must not let them be confused.
 
 ---
 
@@ -124,9 +153,8 @@ Agreed (Q&A 2, Q&A 3):
   `TurnAt` / `Cycle` relative to the surface's start; the soundtrack voice unchanged.
 - A PNG (Copy / Save, a *PNG max size* entry) gives the **active surface**, with the multi-surface layers; the Cell
   copy copies the selected cell or layer of the active surface (Q&A 14).
-- **Video range** ([20261106-video-range.md](20261106-video-range.md)) is implemented **first** (Q&A 16): its start
-  and end then stand on the whole sequence's timeline while the Surfaces effect is on. This workfile is designed
-  against its delivered state — § Timing and Sound is re-read against it before the go.
+- **Video range** ([20261106-video-range.md](20261106-video-range.md)) was implemented **first** (Q&A 16) and is
+  delivered: § With the Video Range says how the export reads it.
 
 ---
 
@@ -189,7 +217,14 @@ reordered; where a surface's duration is set; where the multi-surface flag of a 
 - [x] ~~**PNG and Cell copy**: the active surface only?~~ → The active surface (Q&A 14)
 - [x] ~~**Resets and Clear all**: every surface removed but one?~~ → Both: the Global Reset keeps the active surface,
   *Clear all* one empty surface (Q&A 15)
-- [x] ~~**Video range**: which workfile first?~~ → Video range first (Q&A 16)
+- [x] ~~**Video range**: which workfile first?~~ → Video range first (Q&A 16) — delivered, see § With the Video
+  Range
+- [ ] **Timeline while the active surface loops alone**: does it show the whole sequence, the active surface's span
+  highlighted and the playhead moving inside it, or the active surface alone?
+- [ ] **A seek into another surface**: does a click on the timeline in another surface's span make it the active
+  surface (the one edited), or only show it while the sequence plays?
+- [ ] **Surface ticks**: does the timeline draw a tick at every surface boundary, the range handles snapping onto
+  them like onto the Cascade's ticks?
 
 ---
 
@@ -226,6 +261,15 @@ PNG and a Cell copy give the active surface; the Global Reset and *Clear all* bo
 one kept by the Reset, an empty one by *Clear all*; the video range workfile is implemented first, this one then
 re-read against it. § Timing and Sound, § Export, § Composed State and Undo updated.
 
+### Iteration 5 — 2026-11-06
+
+The video range workfile is delivered (merge `471ce6e`, request of the user: refresh the analysis against it). New
+§ With the Video Range: the sequence's total is the grid length the natural length is computed from; one shared
+range on the sequence's timeline, past its end the sequence looping; `FollowLoop` applying to every change of the
+sequence's length; the export's surfaces and voices seeded at the range's start (`MixedSound.At`); the soundtrack
+and the Fade already right. Three new open questions on the timeline: what it shows while the active surface loops
+alone, whether a seek changes the active surface, and the surface ticks.
+
 ---
 
 ## Implementation Log
@@ -261,7 +305,11 @@ re-read against it. § Timing and Sound, § Export, § Composed State and Undo u
 | 14 | PNG Copy / Save and Cell copy with the Surfaces effect on: the active surface? | The active surface | 2026-11-06 |
 | 15 | Global Reset and Clear all: every surface removed but one? | Both leave one surface | 2026-11-06 |
 | 16 | Video range workfile: which one is implemented first? | Video range first | 2026-11-06 |
-| 17 | Surfaces UI: where are the surfaces listed, switched, added, removed, reordered, and their duration set? (mockups) | | 2026-11-06 |
+| 17 | Surfaces UI: where are the surfaces listed, switched, added, removed, reordered, and their duration set? (mockups) | Not answered — the user asked to refresh the analysis after the video range's delivery first; asked again | 2026-11-06 |
+| 18 | Surfaces UI (asked again, mockups A–D) | | 2026-11-06 |
+| 19 | Timeline while the active surface loops alone | | 2026-11-06 |
+| 20 | A seek into another surface: makes it active, or only shows it? | | 2026-11-06 |
+| 21 | Surface ticks and range snapping on the timeline | | 2026-11-06 |
 
 ---
 
