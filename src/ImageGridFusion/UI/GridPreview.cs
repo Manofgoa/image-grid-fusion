@@ -273,6 +273,9 @@ internal sealed partial class GridPreview : Control
     /// </summary>
     public int ContentVersion { get; private set; }
 
+    // The part of the timeline played and exported; null for the whole loop.
+    private VideoRange? _playbackRange;
+
     /// <summary>The soundtrack mixed over the videos while the grid holds an image; <c>null</c> when it is off.</summary>
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public Soundtrack? Soundtrack
@@ -1728,11 +1731,32 @@ internal sealed partial class GridPreview : Control
         set => this._player.Paused = value;
     }
 
-    /// <summary>The length of the timeline: the grid's loop, zero without one.</summary>
+    /// <summary>What the preview loops on: the grid's loop, or its range; zero without one.</summary>
     public TimeSpan PlaybackLength => this._player.LoopLength;
 
-    /// <summary>Where the grid stands in its loop.</summary>
+    /// <summary>Where the grid stands on its timeline, within the part it loops on.</summary>
     public TimeSpan PlaybackPosition => this._player.LoopPosition;
+
+    /// <summary>
+    /// The part of the timeline the preview loops on, as the export plays it; <c>null</c> for the whole loop
+    /// (workfiles/20261106-video-range.md).
+    /// </summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public VideoRange? PlaybackRange
+    {
+        get => this._playbackRange;
+        set
+        {
+            if (value == this._playbackRange)
+            {
+                return;
+            }
+
+            this._playbackRange = value;
+            this._player.SetRange(value);
+            this.ContentVersion++;
+        }
+    }
 
     /// <summary>Stands the grid still — a Copy, an export, a drag of the timeline — until <see cref="ReleasePlayback"/>.</summary>
     public void HoldPlayback() => this._player.Hold();
