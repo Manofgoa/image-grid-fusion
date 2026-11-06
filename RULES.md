@@ -838,7 +838,11 @@ contents looping meanwhile (origin: `workfiles/20261106-video-range.md`), one de
   past the edge **grows on its own**, by `PlaybackTimeline.GrowthRate` loops of the grid a second (0.1 × the
   square of the closeness, 0.9 at most), the track rescaling live under the pointer (`SpanFor`); out of the zone
   it never grows, so a position can be held, and a handle grabbed in the zone waits for the pointer to move right.
-  **Auto**, on the range's line, gives the whole loop back. The time shown beside it counts from the range's start, as the exported video does.
+  The range ending past the loop, the end handle with the pointer **left of the loop's tick** shrinks the end
+  on its own at the same rate measured from the tick (`ShrinkRate`), the track rescaling live, down to the loop.
+  The track draws the loop apart from what lies past it — plain, then hatched — and the loop's part left out
+  mid grey. **Auto**, on the range's line, gives the whole loop back; its readout gives the loop and the range's
+  gap with it (`MainForm.ShowRangeGap`). The time shown beside it counts from the range's start, as the exported video does.
 
 ### Soundtrack Part
 
