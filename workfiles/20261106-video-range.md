@@ -218,6 +218,10 @@ in the order the requests were made.
 - No Open Question left. Still proposals in § State: the Keep range checkbox unchecked by default, and not
   checked by itself when the range is edited.
 
+### Iteration 4 — 2026-11-06 — ✅ Implemented
+
+- Go given: code, unit tests and documentation, in a worktree (`feature/video-range`).
+
 ---
 
 ## Implementation Log
