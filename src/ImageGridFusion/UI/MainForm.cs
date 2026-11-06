@@ -3007,7 +3007,7 @@ internal sealed partial class MainForm : Form
         int last = RangeFrame(start + length);
         this._showingRange = true;
         this._rangeStartField.Set(first, 0, Math.Max(0, last - 1));
-        this._rangeEndField.Set(last, first + 1, RangeFrame(TimeSpan.FromHours(10)));
+        this._rangeEndField.Set(last, length > TimeSpan.Zero ? first + 1 : first, RangeFrame(TimeSpan.FromHours(10)));
         this._keepRange.Checked = this._keepRangeOn;
         this._showingRange = false;
         bool enabled = this._timeline.Enabled;
