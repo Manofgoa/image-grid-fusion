@@ -86,21 +86,34 @@ public static class Animation
         look.Motion is { Cycle: var cycle } && cycle > content ? cycle : content;
 
     /// <summary>
-    /// Length of the exported video — the one rule the export, the preview's soundtrack loop and the
-    /// bottom bar's length readout read (RULES.md § Video Length): the grid's loop of
-    /// <paramref name="gridLength"/>, the shorter contents starting over until it ends; for a grid of
-    /// stills with a <paramref name="soundtrack"/>, the soundtrack's length; <see cref="TimeSpan.Zero"/>
-    /// without either, the export being a still.
+    /// Length of the exported video — the one rule the export, the preview's loop and the bottom bar's
+    /// length readout read (RULES.md § Video Length): the <paramref name="range"/>'s when one is set over a
+    /// video (workfiles/20261106-video-range.md); else the grid's loop of <paramref name="gridLength"/>, the
+    /// shorter contents starting over until it ends; for a grid of stills with a <paramref name="soundtrack"/>,
+    /// the soundtrack's part; <see cref="TimeSpan.Zero"/> without either, the export being a still.
     /// </summary>
-    public static TimeSpan VideoLength(TimeSpan gridLength, Soundtrack? soundtrack) =>
-        soundtrack?.LoopIn(gridLength) ?? gridLength;
+    public static TimeSpan VideoLength(TimeSpan gridLength, Soundtrack? soundtrack, VideoRange? range = null)
+    {
+        var natural = NaturalLength(gridLength, soundtrack);
+        return range is not null && natural > TimeSpan.Zero ? range.Length : natural;
+    }
 
     /// <summary>
-    /// The <see cref="VideoLength(TimeSpan, Soundtrack?)"/> of <paramref name="images"/> as they stand, the Cascade
+    /// The <see cref="VideoLength(TimeSpan, Soundtrack?, VideoRange?)"/> of <paramref name="images"/> as they stand, the Cascade
     /// <paramref name="cascade"/> on unless <c>null</c>, the contents of the <paramref name="layers"/> beside them.
     /// </summary>
-    public static TimeSpan VideoLength(IEnumerable<SourceImage> images, Soundtrack? soundtrack, VideoCascade? cascade = null, IEnumerable<SourceImage>? layers = null) =>
-        VideoLength(GridLength(images, cascade, layers), soundtrack);
+    public static TimeSpan VideoLength(IEnumerable<SourceImage> images, Soundtrack? soundtrack, VideoCascade? cascade = null, IEnumerable<SourceImage>? layers = null, VideoRange? range = null) =>
+        VideoLength(GridLength(images, cascade, layers), soundtrack, range);
+
+    /// <summary>
+    /// What the video lasts without a range — the grid's loop, else the soundtrack's part over stills: the loop a
+    /// range is set on, the one its reset follows (workfiles/20261106-video-range.md § State).
+    /// </summary>
+    public static TimeSpan NaturalLength(TimeSpan gridLength, Soundtrack? soundtrack) => soundtrack?.LoopIn(gridLength) ?? gridLength;
+
+    /// <summary>Where the video begins on the grid's timeline: the <paramref name="range"/>'s start over a video, else 0.</summary>
+    public static TimeSpan VideoStart(TimeSpan naturalLength, VideoRange? range) =>
+        range is not null && naturalLength > TimeSpan.Zero ? range.Start : TimeSpan.Zero;
 
     /// <summary>Number of frames of a video of <paramref name="length"/>, the last one possibly shown shorter.</summary>
     public static int FrameCount(TimeSpan length) => Math.Max(1, (int)Math.Ceiling(length.TotalSeconds * FramesPerSecond - 1e-6));
