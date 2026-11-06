@@ -833,9 +833,11 @@ contents looping meanwhile (origin: `workfiles/20261106-video-range.md`), one de
   brought into a shorter loop (`VideoRange.KeptIn`); unchecked, it goes back to the whole loop. A step put back
   keeps the range it holds (`MainForm.RestoreState`).
 - **The timeline** (`UI/PlaybackTimeline`) spans the loop, or the range's end plus one loop when the range ends
-  past it (`VideoRange.Extent`): its handles drag the start and the end — the end past the right edge, the
-  track lengthened once released —, snapping onto the loop's end and the Cascade's ticks; a seek stays inside
-  the range. The time shown beside it counts from the range's start, as the exported video does.
+  past it (`VideoRange.Extent`): its handles drag the start and the end, snapping onto the loop's end and the
+  Cascade's ticks; a seek stays inside the range. The end held in the **edge zone** — the last 32 logical px — or
+  past the edge **grows on its own**, by `PlaybackTimeline.GrowthRate` loops of the grid a second (0.5 × the
+  square of the closeness, 8 at most), the track rescaling live under the pointer (`SpanFor`); out of the zone
+  it never grows, so a position can be held. The time shown beside it counts from the range's start, as the exported video does.
 
 ### Soundtrack Part
 
