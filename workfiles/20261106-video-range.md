@@ -82,7 +82,19 @@ Findings from the exploration (inputs, not decisions):
   live** so the handle stays under the pointer, the loop's part of the track shrinking — with no limit
   (Iterations 7, 10). A handle pressed already in the zone grows nothing until the pointer has moved right.
 - An **Auto** button on the range's line gives the range back to the whole loop — the length the videos
-  set —, enabled while a range is set (Iteration 9). Elsewhere the drag maps the pointer as usual; released, the track takes its extent. The grid loop's end is marked on the track (a dashed tick), and the Cascade's
+  set —, enabled while a range is set (Iteration 9).
+- **The real content shows on the track** (Iteration 11): inside the range, the grid's loop is the plain track
+  and the part past it — the contents looping — is hatched, the played fill hatched there too; outside the
+  range, the loop's part left out is a mid grey, the rest of the track light. Growing or shrinking, the loop's
+  part visibly shrinks or grows as the track rescales.
+- **The gap with the loop is told** (Iteration 12): a readout on the range's line, `Loop 14.3 s · +5.7 s` —
+  the grid's loop, then how much the range lasts more (`+`) or less (`−`) than it; the loop alone without a
+  range. Live while a handle moves.
+- **Shrinking is progressive too** (Iteration 13): the end handle dragged while the range ends past the loop,
+  the pointer brought **left of the loop's tick** shrinks the end on its own, at the growth's rate measured from
+  that tick (0.1 × closeness² loops a second, 0.9 at most), the track rescaling live — the handle at nine
+  tenths of it — until the end meets the loop; the drag then maps the pointer on the loop as usual. Between the
+  loop's tick and the edge zone, the pointer maps on the span as it stands, so a position can be held. Elsewhere the drag maps the pointer as usual; released, the track takes its extent. The grid loop's end is marked on the track (a dashed tick), and the Cascade's
   ticks repeat past it.
 - A click or a scrub stays inside the range; the time shown beside the timeline counts from the range's
   start, as the exported video does.
@@ -306,6 +318,28 @@ No rule broken. The choices the frozen design did not state:
   the edge, 90 % at most past it (was 50 % and 8 loops). The end handle grabbed while already in the edge zone —
   the whole loop's end lies on the right edge — no longer grows at once: growth waits until the pointer has
   moved 4 logical px to the right of the press.
+
+
+### Iteration 11 — 2026-11-06 — ⚙️ Post-implementation — The real content on the track
+
+- Request: the blue bar is not reduced live, so one cannot tell how much is added.
+- The track draws the grid's loop apart from what lies past it: inside the range, the loop plain, the part
+  past it hatched — the played fill hatched there too —; outside the range, the loop's part left out mid grey,
+  the rest light. As the end grows, the loop's part shrinks live.
+
+### Iteration 12 — 2026-11-06 — ⚙️ Post-implementation — The gap with the loop
+
+- Request: no way to know by how much the real video goes past, or when a shorter part is chosen.
+- A readout on the range's line: `Loop 14.3 s · +5.7 s` (`Boucle 14,3 s · +5,7 s`), the grid's loop then the
+  range's length less it, signed; the loop alone without a range; its tooltip says what the numbers are.
+
+### Iteration 13 — 2026-11-06 — ⚙️ Post-implementation — Progressive shrinking
+
+- Request: resizing backwards is not handy, it does not shrink as the growth grows, progressively and live.
+- With the range ending past the loop, the end handle dragged with the pointer left of the loop's tick shrinks
+  the end on its own, at the growth's rate measured from the tick, the track rescaling live (the handle at nine
+  tenths of it), down to the loop; then the drag maps the pointer on the loop. Between the tick and the edge
+  zone, direct mapping on the span as it stands.
 
 ---
 
