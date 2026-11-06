@@ -96,8 +96,8 @@ internal sealed partial class MainForm : Form
     {
         Dock = DockStyle.Bottom,
         AutoSize = true,
-        ColumnCount = 5,
-        RowCount = 1,
+        ColumnCount = 4,
+        RowCount = 2,
         Padding = new Padding(8, 4, 8, 0),
     };
     // The size and state the Play / Pause icon was drawn at.
@@ -110,14 +110,14 @@ internal sealed partial class MainForm : Form
     // Moves the timeline's thumb and the grid's time along while the grid plays.
     private readonly System.Windows.Forms.Timer _transportTimer = new() { Interval = 50 };
 
-    // The video range's controls, after the timeline: its start and its end on the grid's timeline, at the export's
+    // The video range's controls, under the timeline: its start and its end on the grid's timeline, at the export's
     // frame rate, the Keep range checkbox and Fit to soundtrack (workfiles/20261106-video-range.md).
     private readonly FlowLayoutPanel _rangeControls = new()
     {
         AutoSize = true,
         AutoSizeMode = AutoSizeMode.GrowAndShrink,
         WrapContents = false,
-        Margin = new Padding(0, 0, 3, 0),
+        Margin = new Padding(0, 0, 3, 3),
         Anchor = AnchorStyles.Left,
     };
     private readonly FrameField _rangeStartField = new();
@@ -609,19 +609,20 @@ internal sealed partial class MainForm : Form
         _bottom.Controls.Add(_outputButtons, 2, 0);
 
         // Play / Pause, the timeline taking the rest, then the grid's time and the length readout as its total.
-        // The range's controls between the timeline and the grid's time (workfiles/20261106-video-range.md § Timeline).
+        // The range's controls on a line of their own under the timeline, which keeps the row's width
+        // (workfiles/20261106-video-range.md § Timeline, Iteration 6).
         this._transportRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         this._transportRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         this._transportRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         this._transportRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        this._transportRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        this._transportRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         this._transportRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         this._rangeControls.Controls.AddRange([this._rangeStartField, this._rangeDash, this._rangeEndField, this._keepRange, this._fitToSoundtrack]);
         this._transportRow.Controls.Add(this._playButton, 0, 0);
         this._transportRow.Controls.Add(this._timeline, 1, 0);
-        this._transportRow.Controls.Add(this._rangeControls, 2, 0);
-        this._transportRow.Controls.Add(this._positionReadout, 3, 0);
-        this._transportRow.Controls.Add(this._lengthReadout, 4, 0);
+        this._transportRow.Controls.Add(this._positionReadout, 2, 0);
+        this._transportRow.Controls.Add(this._lengthReadout, 3, 0);
+        this._transportRow.Controls.Add(this._rangeControls, 1, 1);
 
         _tabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _tabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -809,7 +810,7 @@ internal sealed partial class MainForm : Form
         this._timeline.SeekEnded += (_, _) => this._preview.ReleasePlayback();
 
         // The range: its handles hold the grid like a seek, the grid shown where the handle stands; its fields, its
-        // checkbox and Fit to soundtrack beside the timeline (workfiles/20261106-video-range.md).
+        // checkbox and Fit to soundtrack under the timeline (workfiles/20261106-video-range.md).
         this._toolTip.SetToolTip(this._timeline, Strings.MainTimelineTip);
         this._timeline.HandleDragStarted += (_, _) => this._preview.HoldPlayback();
         this._timeline.HandleMoved += (_, e) => this.MoveRangeHandle(e.Handle, e.Time);
