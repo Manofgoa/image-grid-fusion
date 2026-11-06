@@ -76,7 +76,7 @@ Findings from the exploration (inputs, not decisions):
   loop.
 - The track is **extensible**: it maps x ↔ time against its **extent** (`VideoRange.Extent`) — the grid
   loop, or, the range ending past it, the range's end plus one grid loop of room. While the end handle is
-  dragged near the track's right edge — the last 48 logical px — or past it, the end **grows on its own**,
+  dragged near the track's right edge — the last 32 logical px — or past it, the end **grows on its own**,
   by a share of the grid's loop a second that rises with the closeness to the edge (50 % a second at the
   edge, the square of the closeness, faster past it, up to 8 loops a second), and the track **rescales
   live** so the handle stays under the pointer, the loop's part of the track shrinking — with no limit
@@ -283,6 +283,12 @@ No rule broken. The choices the frozen design did not state:
   start, 1 at the edge, up to 4 past it); the track's span follows live so the handle stays under the pointer.
   Moving the pointer there never shortens the end; out of the zone, it maps as before. Replaces the frozen
   span and the lengthening on release only (Iteration 5).
+
+### Iteration 8 — 2026-11-06 — ⚙️ Post-implementation — Growing only at the edge
+
+- Request: the length must grow only close to the edge, never along the way, or no position can be held.
+- Confirmed: no growth out of the edge zone, the drag there mapping the pointer on a span that no longer
+  changes; the zone narrowed from 48 to 32 logical px, so it stays at the edge.
 
 ---
 
