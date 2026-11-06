@@ -649,6 +649,9 @@ Redémarrer l'application maintenant ?</value></data>
   <data name="MainRangeAuto" xml:space="preserve"><value>Auto</value></data>
   <data name="MainRangeAutoTip" xml:space="preserve"><value>Rend à la vidéo la durée que fixent ses vidéos : toute la boucle de la grille</value></data>
   <data name="MainRangeEndTip" xml:space="preserve"><value>Où la vidéo se termine sur la ligne de temps (minutes : secondes : image) — au-delà de la boucle de la grille, ses contenus bouclent</value></data>
+  <data name="MainRangeLoop" xml:space="preserve"><value>Boucle {0}</value></data>
+  <data name="MainRangeLoopGap" xml:space="preserve"><value>Boucle {0} · {1}</value></data>
+  <data name="MainRangeLoopTip" xml:space="preserve"><value>La boucle de la grille — la durée du contenu réel — puis de combien la vidéo dure plus (+) ou moins (−) qu'elle</value></data>
   <data name="MainRangeStartTip" xml:space="preserve"><value>Où la vidéo commence sur la ligne de temps (minutes : secondes : image)</value></data>
   <data name="MainRefusedFavorite" xml:space="preserve"><value>Non ajouté aux favoris</value></data>
   <data name="MainRefusedImageNoFile" xml:space="preserve"><value>{0} : cette image n'a pas de fichier et ne peut pas être enregistrée</value></data>

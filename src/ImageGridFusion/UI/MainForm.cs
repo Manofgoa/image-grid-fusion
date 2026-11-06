@@ -123,6 +123,8 @@ internal sealed partial class MainForm : Form
     private readonly FrameField _rangeStartField = new();
     private readonly Label _rangeDash = new() { Text = "–", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(2, 3, 2, 3) };
     private readonly FrameField _rangeEndField = new();
+    // The grid's loop and the range's gap with it, `Loop 14.3 s · +5.7 s` (Iteration 12).
+    private readonly Label _rangeLoopReadout = new() { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(9, 3, 3, 3) };
     private readonly Button _rangeAuto = new() { Text = Strings.MainRangeAuto, AutoSize = true, Anchor = AnchorStyles.Left, TabStop = false, Margin = new Padding(6, 3, 3, 3) };
     private readonly CheckBox _keepRange = new() { Text = Strings.MainKeepRange, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(9, 3, 3, 3) };
     private readonly Button _fitToSoundtrack = new() { Text = Strings.MainFitToSoundtrack, AutoSize = true, Anchor = AnchorStyles.Left, TabStop = false, Margin = new Padding(6, 3, 3, 3) };
@@ -618,7 +620,7 @@ internal sealed partial class MainForm : Form
         this._transportRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         this._transportRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         this._transportRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        this._rangeControls.Controls.AddRange([this._rangeStartField, this._rangeDash, this._rangeEndField, this._rangeAuto, this._keepRange, this._fitToSoundtrack]);
+        this._rangeControls.Controls.AddRange([this._rangeStartField, this._rangeDash, this._rangeEndField, this._rangeLoopReadout, this._rangeAuto, this._keepRange, this._fitToSoundtrack]);
         this._transportRow.Controls.Add(this._playButton, 0, 0);
         this._transportRow.Controls.Add(this._timeline, 1, 0);
         this._transportRow.Controls.Add(this._positionReadout, 2, 0);
@@ -845,6 +847,7 @@ internal sealed partial class MainForm : Form
         };
         // Auto: the length the videos set, the whole loop again (Iteration 9).
         this._toolTip.SetToolTip(this._rangeAuto, Strings.MainRangeAutoTip);
+        this._toolTip.SetToolTip(this._rangeLoopReadout, Strings.MainRangeLoopTip);
         this._rangeAuto.Click += (_, _) =>
         {
             this.SetRange(VideoRange.Whole(this.NaturalVideoLength));
@@ -2953,6 +2956,7 @@ internal sealed partial class MainForm : Form
         this._timeline.Marks = CascadeMarks(images, this.ActiveCascade, extent);
         this._timeline.Enabled = length > TimeSpan.Zero && !this.IsExporting;
         this.ShowRangeControls(start, length);
+        this.ShowRangeGap(natural, length);
         this.RefreshTransport();
     }
 
@@ -3025,6 +3029,19 @@ internal sealed partial class MainForm : Form
         this._rangeAuto.Enabled = enabled && this._range is not null;
         this._keepRange.Enabled = !this.IsExporting;
         this._fitToSoundtrack.Enabled = enabled && this.ActiveSoundtrack is not null;
+    }
+
+    /// <summary>
+    /// The grid's loop and how much the video lasts more (`+`) or less (`−`) than it: what the range adds past the
+    /// real content, or cuts from it (Iteration 12); the loop alone without a range, nothing without a video.
+    /// </summary>
+    private void ShowRangeGap(TimeSpan natural, TimeSpan length)
+    {
+        var gap = length - natural;
+        this._rangeLoopReadout.Text = length <= TimeSpan.Zero ? string.Empty
+            : this._range is null || gap == TimeSpan.Zero ? Texts.Format(Strings.MainRangeLoop, Seconds(natural))
+            : Texts.Format(Strings.MainRangeLoopGap, Seconds(natural), (gap > TimeSpan.Zero ? "+" : "−") + Seconds(gap.Duration()));
+        this._rangeLoopReadout.ForeColor = this._range is null ? SystemColors.GrayText : SystemColors.ControlText;
     }
 
     /// <summary>The frame of the exported video at <paramref name="time"/>, rounded.</summary>

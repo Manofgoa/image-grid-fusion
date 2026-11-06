@@ -649,6 +649,9 @@ Restart the app now?</value></data>
   <data name="MainRangeAuto" xml:space="preserve"><value>Auto</value></data>
   <data name="MainRangeAutoTip" xml:space="preserve"><value>Gives the video back the length its videos set: the grid's whole loop</value></data>
   <data name="MainRangeEndTip" xml:space="preserve"><value>Where the video ends on the timeline (minutes : seconds : frame) — past the grid's loop, its contents loop</value></data>
+  <data name="MainRangeLoop" xml:space="preserve"><value>Loop {0}</value></data>
+  <data name="MainRangeLoopGap" xml:space="preserve"><value>Loop {0} · {1}</value></data>
+  <data name="MainRangeLoopTip" xml:space="preserve"><value>The grid's loop — the real content's length — then how much the video lasts more (+) or less (−) than it</value></data>
   <data name="MainRangeStartTip" xml:space="preserve"><value>Where the video starts on the timeline (minutes : seconds : frame)</value></data>
   <data name="MainRefusedFavorite" xml:space="preserve"><value>Not added to favorites</value></data>
   <data name="MainRefusedImageNoFile" xml:space="preserve"><value>{0}: this image has no file and cannot be saved</value></data>
