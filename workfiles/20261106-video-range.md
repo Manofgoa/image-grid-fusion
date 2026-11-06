@@ -42,8 +42,7 @@ Components touched: `Composition/Animation`, `Composition/Soundtrack`, `UI/Playb
 
 ### What It Drives
 
-*Agreed: the export and the preview, the Fade at the range's edges (Q&A 2). The soundtrack's place under
-the range is still open (Open Question 5).*
+*Agreed: the export and the preview, the Fade at the range's edges (Q&A 2).*
 
 | Consumer | Today | With a range |
 |---|---|---|
@@ -85,8 +84,7 @@ Findings from the exploration (inputs, not decisions):
 
 ### State
 
-*Agreed: the Keep range checkbox (Q&A 10, revising Q&A 4). Its place in the undo history is still open
-(Open Question 8).*
+*Agreed: the Keep range checkbox (Q&A 10, revising Q&A 4); the undo history and the Resets (Q&A 11).*
 
 - A `VideoRange` value: a start, an end, or *whole* — the whole grid loop, today's behaviour.
 - A **Keep range** checkbox (*Garder la plage*) beside the time fields decides what happens when the grid
@@ -96,13 +94,23 @@ Findings from the exploration (inputs, not decisions):
   - **unchecked**: the range goes back to *whole*, so the video lasts the new grid loop.
 - *Proposed*: the checkbox unchecked by default, and not checked by itself when a handle is dragged or a
   field typed.
-- *Proposed (Open Question 8)*: `VideoRange` and the checkbox held in `GlobalState`, a global setting with
-  no tab, part of the composed state: an undo step, restored, reset (*whole*, unchecked) by the Global
-  toolbar's Reset and *Clear all*; not persisted.
+- `VideoRange` and the checkbox held in `GlobalState`, a global setting with no tab, like the Format: part
+  of the composed state — an undo step, restored —, reset (*whole*, unchecked) by the Global toolbar's
+  Reset and *Clear all*; not persisted.
+
+### Fit to Soundtrack
+
+*Agreed (Q&A 11).*
+
+- A **Fit to soundtrack** button (*Caler sur la bande son*) in the transport, after the time fields and
+  the Keep range checkbox, enabled while the Soundtrack is on: it sets the range to **0 → the soundtrack's
+  played part** (`To − From`), so the video lasts one play of the chosen part of the music — longer or
+  shorter than the grid loop.
+- An ordinary change of the range: one undo step; it does not check Keep range by itself (§ State).
 
 ### Soundtrack Under the Range
 
-*Proposed — see Open Questions 5 and 7.*
+*Agreed (Q&A 11).*
 
 - The soundtrack plays on the grid's clock: at grid time t, its own time is `t` within its played part
   (looped or not, § Soundtrack Trim) — the same in the preview and the export, whatever the range. A
@@ -114,7 +122,7 @@ Findings from the exploration (inputs, not decisions):
 
 ## Soundtrack Trim
 
-*Proposed — see Open Question 6.*
+*Agreed (Q&A 11).*
 
 - `Soundtrack` gains **From**, **To** (the played part, the whole file by default) and **Loop** (on by
   default — today's behaviour).
@@ -141,6 +149,8 @@ Findings from the exploration (inputs, not decisions):
 | `Animation.VideoLength` gives the range's length when set, the grid loop or the soundtrack's part otherwise | `tests/ImageGridFusion.Tests/Composition/AnimationTests.cs` | Create |
 | A range past the grid loop is kept; a range kept in seconds is clamped when the loop shortens; *whole* follows it | `tests/ImageGridFusion.Tests/Composition/VideoRangeTests.cs` | Create |
 | `Soundtrack.LoopIn` gives `To − From` for a grid of stills; From / To clamped into the file, a minimum part | `tests/ImageGridFusion.Tests/Composition/SoundtrackTests.cs` | Create |
+| *Fit to soundtrack* gives the range 0 → `To − From`, past the grid loop or short of it | `tests/ImageGridFusion.Tests/Composition/VideoRangeTests.cs` | Create |
+| The soundtrack's own time at a grid time: on the clock, within its part, looped or silent past it (Loop off) | `tests/ImageGridFusion.Tests/Composition/SoundtrackTests.cs` | Create |
 | The timeline's x ↔ time mapping against an extent longer than the loop | `tests/ImageGridFusion.Tests/UI/PlaybackTimelineTests.cs` | Create |
 
 ---
@@ -156,13 +166,14 @@ Findings from the exploration (inputs, not decisions):
       checkbox: checked, the range is kept; unchecked, it goes back to the whole loop
 - [x] ~~How far past the grid loop can the end go, and how does the track show it?~~ → No limit: an
       extensible track, the end plus one loop of room, lengthened when the end handle reaches its edge
-- [ ] Under a range not starting at 0, where does the soundtrack stand: on the grid's clock (its 10th
-      second at 10 s), or starting at the range's start?
-- [ ] How are the soundtrack's From / To set: the Frames trim's controls (slider + fields), or another way?
-- [ ] A soundtrack longer than the grid loop: an action setting the range's end to the soundtrack's part
-      (*Fit to soundtrack*), or nothing beyond dragging the end?
-- [ ] The range in the undo history and reset by the Global Resets and *Clear all* (like the Format), or out
-      of the history like the playback position?
+- [x] ~~Under a range not starting at 0, where does the soundtrack stand: on the grid's clock (its 10th
+      second at 10 s), or starting at the range's start?~~ → On the grid's clock
+- [x] ~~How are the soundtrack's From / To set: the Frames trim's controls (slider + fields), or another way?~~
+      → The Frames trim's controls, then a Loop checkbox
+- [x] ~~A soundtrack longer than the grid loop: an action setting the range's end to the soundtrack's part
+      (*Fit to soundtrack*), or nothing beyond dragging the end?~~ → A *Fit to soundtrack* button
+- [x] ~~The range in the undo history and reset by the Global Resets and *Clear all* (like the Format), or out
+      of the history like the playback position?~~ → In the history, reset by the Resets, like the Format
 
 ---
 
@@ -197,6 +208,16 @@ in the order the requests were made.
 - The second batch (soundtrack under the range, soundtrack trim controls, *Fit to soundtrack*, undo
   history) was dismissed by that message: Open Questions 5–8 stay open.
 
+### Iteration 3 — 2026-11-06
+
+- The user took the recommendations for Open Questions 5–8: the soundtrack stands on the grid's clock;
+  its From / To set by the Frames trim's controls, then a Loop checkbox; a **Fit to soundtrack** button
+  in the transport (new § Fit to Soundtrack); the range in the undo history and reset by the Global Resets
+  and *Clear all*, like the Format.
+- Test Impact: *Fit to soundtrack* and the soundtrack's own time at a grid time added.
+- No Open Question left. Still proposals in § State: the Keep range checkbox unchecked by default, and not
+  checked by itself when the range is edited.
+
 ---
 
 ## Implementation Log
@@ -227,7 +248,7 @@ in the order the requests were made.
 | 8 | *Fit to soundtrack* action? | Not answered — the user sent row 10 instead | 2026-11-06 |
 | 9 | Range in the undo history and the Resets? | Not answered — the user sent row 10 instead | 2026-11-06 |
 | 10 | (User's message on row 4) | The extended value is an option, a checkbox: checked, the duration entered is kept; unchecked, dropping a new video computes the duration again | 2026-11-06 |
-| 11 | Rows 6–9 again, with the recommendations as defaults? | | |
+| 11 | Rows 6–9 again, with the recommendations as defaults? | Yes, the recommendations: the soundtrack on the grid's clock, the Frames trim's controls plus Loop, a *Fit to soundtrack* button, the range in the undo history like the Format | 2026-11-06 |
 
 ---
 
