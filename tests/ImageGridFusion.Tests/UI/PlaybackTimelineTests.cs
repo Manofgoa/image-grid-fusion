@@ -30,4 +30,38 @@ public sealed class PlaybackTimelineTests
     {
         Assert.AreEqual(TimeSpan.FromSeconds(30), PlaybackTimeline.TimeAt(310, Track, TimeSpan.FromSeconds(20)));
     }
+
+    [TestMethod]
+    public void EndGrowsOnlyAtTheEdge()
+    {
+        // The track ends at 210; a zone of 32 px starts at 178.
+        Assert.AreEqual(0, PlaybackTimeline.GrowthRate(100, Track, 32));
+        Assert.AreEqual(0, PlaybackTimeline.GrowthRate(178, Track, 32));
+        Assert.AreEqual(0.125, PlaybackTimeline.GrowthRate(194, Track, 32), 1e-9);
+        Assert.AreEqual(0.5, PlaybackTimeline.GrowthRate(210, Track, 32), 1e-9);
+    }
+
+    [TestMethod]
+    public void EndGrowsFasterPastTheEdgeUpToACap()
+    {
+        Assert.AreEqual(2, PlaybackTimeline.GrowthRate(242, Track, 32), 1e-9);
+        Assert.AreEqual(8, PlaybackTimeline.GrowthRate(338, Track, 32), 1e-9);
+        Assert.AreEqual(8, PlaybackTimeline.GrowthRate(900, Track, 32), 1e-9);
+    }
+
+    [TestMethod]
+    public void SpanFollowsTheGrowingEndUnderThePointer()
+    {
+        var span = TimeSpan.FromSeconds(20);
+
+        // Pointer at the edge: the end on the right edge.
+        Assert.AreEqual(TimeSpan.FromSeconds(30), PlaybackTimeline.SpanFor(TimeSpan.FromSeconds(30), 210, Track, span));
+
+        // Past the edge too.
+        Assert.AreEqual(TimeSpan.FromSeconds(30), PlaybackTimeline.SpanFor(TimeSpan.FromSeconds(30), 400, Track, span));
+
+        // Halfway, the span doubles the end; never below the span it had.
+        Assert.AreEqual(TimeSpan.FromSeconds(60), PlaybackTimeline.SpanFor(TimeSpan.FromSeconds(30), 110, Track, span));
+        Assert.AreEqual(span, PlaybackTimeline.SpanFor(TimeSpan.FromSeconds(5), 210, Track, span));
+    }
 }
