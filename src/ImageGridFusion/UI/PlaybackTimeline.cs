@@ -292,12 +292,20 @@ internal sealed class PlaybackTimeline : Control
         return new Rectangle(radius, 0, Math.Max(1, this.ClientSize.Width - 2 * radius), this.ClientSize.Height);
     }
 
-    private int XOf(TimeSpan time, Rectangle track) =>
-        track.Left + (int)Math.Round(track.Width * Math.Clamp(time.Ticks / (double)this.MapLength.Ticks, 0, 1));
+    private int XOf(TimeSpan time, Rectangle track) => XOf(time, track, this.MapLength);
 
-    /// <summary>The time under <paramref name="x"/>, past the track's ends when it lies beyond them.</summary>
-    private TimeSpan TimeAt(int x, Rectangle track) =>
-        TimeSpan.FromTicks((long)(this.MapLength.Ticks * ((x - track.Left) / (double)track.Width)));
+    private TimeSpan TimeAt(int x, Rectangle track) => TimeAt(x, track, this.MapLength);
+
+    /// <summary>Where <paramref name="time"/> stands on a <paramref name="track"/> spanning <paramref name="length"/>, kept on it.</summary>
+    internal static int XOf(TimeSpan time, Rectangle track, TimeSpan length) =>
+        track.Left + (int)Math.Round(track.Width * Math.Clamp(time.Ticks / (double)length.Ticks, 0, 1));
+
+    /// <summary>
+    /// The time under <paramref name="x"/> on a <paramref name="track"/> spanning <paramref name="length"/>, past the
+    /// track's ends when it lies beyond them: the end handle dragged past the right edge goes past the track's span.
+    /// </summary>
+    internal static TimeSpan TimeAt(int x, Rectangle track, TimeSpan length) =>
+        TimeSpan.FromTicks((long)(length.Ticks * ((x - track.Left) / (double)track.Width)));
 
     /// <summary>The handle within reach of <paramref name="x"/>, the nearer one when both are; <c>null</c> for none.</summary>
     private TimelineHandle? HandleAt(int x)
