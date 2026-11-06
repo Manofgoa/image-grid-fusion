@@ -296,13 +296,13 @@ No rule broken. The choices the frozen design did not state:
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | 4, 6 | 2026-11-06 | Model, export, preview, timeline, transport, Soundtrack options; the range's controls under the timeline |
-| Unit tests | 4 | 2026-11-06 | `VideoRangeTests`, `SoundtrackTests`, `AnimationTests`, `PlaybackTimelineTests` — 21 passed |
-| RULES.md (§ Video Length, § Transport, Soundtrack) | 4 | 2026-11-06 | § Transport, § Video Length, new § Video Range and § Soundtrack Part |
-| GLOSSARY.md / GLOSSARY.fr.md (Range, soundtrack trim) | 4 | 2026-11-06 | Range added; Soundtrack, Video length, Transport, Timeline updated |
+| Code | 4, 6, 7, 8 | 2026-11-06 | Model, export, preview, timeline, transport, Soundtrack options; the range's controls under the timeline; the end growing at the edge |
+| Unit tests | 4, 7 | 2026-11-06 | `VideoRangeTests`, `SoundtrackTests`, `AnimationTests`, `PlaybackTimelineTests` — 21 passed, then 6 timeline tests with the growth |
+| RULES.md (§ Video Length, § Transport, Soundtrack) | 4, 7 | 2026-11-06 | § Transport, § Video Length, new § Video Range and § Soundtrack Part |
+| GLOSSARY.md / GLOSSARY.fr.md (Range, soundtrack trim) | 4, 6, 7 | 2026-11-06 | Range added; Soundtrack, Video length, Transport, Timeline updated |
 | SHORTCUTS.md / SHORTCUTS.fr.md (handle gestures) | 4 | 2026-11-06 | The time fields' rows cover the Soundtrack's and the range's; a plain handle drag is no shortcut |
-| Strings.resx / Strings.fr.resx | 4 | 2026-11-06 | 16 texts, both languages |
-| README | 4 | 2026-11-06 | § Soundtrack and § Transport, English and French |
+| Strings.resx / Strings.fr.resx | 4, 7 | 2026-11-06 | 16 texts, both languages; the timeline's tooltip for the growth |
+| README | 4, 6, 7 | 2026-11-06 | § Soundtrack and § Transport, English and French |
 
 ---
 
