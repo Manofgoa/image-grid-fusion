@@ -646,6 +646,8 @@ Redémarrer l'application maintenant ?</value></data>
   <data name="MainPresetNamePastedImage" xml:space="preserve"><value>Image collée — enregistrée dans favorites-from-pasted</value></data>
   <data name="MainPresetNamePastedText" xml:space="preserve"><value>Texte collé — enregistré dans favorites-from-pasted</value></data>
   <data name="MainPresetTip" xml:space="preserve"><value>Enregistre les effets activés dans la cellule comme un favori de son fichier, avec une description pour le retrouver</value></data>
+  <data name="MainRangeAuto" xml:space="preserve"><value>Auto</value></data>
+  <data name="MainRangeAutoTip" xml:space="preserve"><value>Rend à la vidéo la durée que fixent ses vidéos : toute la boucle de la grille</value></data>
   <data name="MainRangeEndTip" xml:space="preserve"><value>Où la vidéo se termine sur la ligne de temps (minutes : secondes : image) — au-delà de la boucle de la grille, ses contenus bouclent</value></data>
   <data name="MainRangeStartTip" xml:space="preserve"><value>Où la vidéo commence sur la ligne de temps (minutes : secondes : image)</value></data>
   <data name="MainRefusedFavorite" xml:space="preserve"><value>Non ajouté aux favoris</value></data>

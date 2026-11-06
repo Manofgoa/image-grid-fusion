@@ -123,6 +123,7 @@ internal sealed partial class MainForm : Form
     private readonly FrameField _rangeStartField = new();
     private readonly Label _rangeDash = new() { Text = "–", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(2, 3, 2, 3) };
     private readonly FrameField _rangeEndField = new();
+    private readonly Button _rangeAuto = new() { Text = Strings.MainRangeAuto, AutoSize = true, Anchor = AnchorStyles.Left, TabStop = false, Margin = new Padding(6, 3, 3, 3) };
     private readonly CheckBox _keepRange = new() { Text = Strings.MainKeepRange, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(9, 3, 3, 3) };
     private readonly Button _fitToSoundtrack = new() { Text = Strings.MainFitToSoundtrack, AutoSize = true, Anchor = AnchorStyles.Left, TabStop = false, Margin = new Padding(6, 3, 3, 3) };
 
@@ -617,7 +618,7 @@ internal sealed partial class MainForm : Form
         this._transportRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         this._transportRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         this._transportRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        this._rangeControls.Controls.AddRange([this._rangeStartField, this._rangeDash, this._rangeEndField, this._keepRange, this._fitToSoundtrack]);
+        this._rangeControls.Controls.AddRange([this._rangeStartField, this._rangeDash, this._rangeEndField, this._rangeAuto, this._keepRange, this._fitToSoundtrack]);
         this._transportRow.Controls.Add(this._playButton, 0, 0);
         this._transportRow.Controls.Add(this._timeline, 1, 0);
         this._transportRow.Controls.Add(this._positionReadout, 2, 0);
@@ -841,6 +842,13 @@ internal sealed partial class MainForm : Form
             {
                 this.SetRange(this.CurrentRange.WithEnd(Animation.FrameTime(this._rangeEndField.Value)));
             }
+        };
+        // Auto: the length the videos set, the whole loop again (Iteration 9).
+        this._toolTip.SetToolTip(this._rangeAuto, Strings.MainRangeAutoTip);
+        this._rangeAuto.Click += (_, _) =>
+        {
+            this.SetRange(VideoRange.Whole(this.NaturalVideoLength));
+            this._preview.Focus();
         };
         this._toolTip.SetToolTip(this._keepRange, Strings.MainKeepRangeTip);
         this._keepRange.CheckedChanged += (_, _) =>
@@ -1599,7 +1607,7 @@ internal sealed partial class MainForm : Form
         {
             (this._presetButton, UiIcons.Preset), (this._clearButton, UiIcons.ClearAll), (this._settingsButton, UiIcons.Settings),
             (this._copyLastButton, UiIcons.LastVideo), (this._soundtrackBrowse, UiIcons.OpenFolder),
-            (this._fitToSoundtrack, UiIcons.FitToSoundtrack),
+            (this._fitToSoundtrack, UiIcons.FitToSoundtrack), (this._rangeAuto, UiIcons.RangeAuto),
         })
         {
             UiIcons.SetImage(button, icon, size);
@@ -3014,6 +3022,7 @@ internal sealed partial class MainForm : Form
         bool enabled = this._timeline.Enabled;
         this._rangeStartField.Enabled = enabled;
         this._rangeEndField.Enabled = enabled;
+        this._rangeAuto.Enabled = enabled && this._range is not null;
         this._keepRange.Enabled = !this.IsExporting;
         this._fitToSoundtrack.Enabled = enabled && this.ActiveSoundtrack is not null;
     }

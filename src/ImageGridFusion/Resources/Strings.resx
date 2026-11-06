@@ -646,6 +646,8 @@ Restart the app now?</value></data>
   <data name="MainPresetNamePastedImage" xml:space="preserve"><value>Pasted image — saved into favorites-from-pasted</value></data>
   <data name="MainPresetNamePastedText" xml:space="preserve"><value>Pasted text — saved into favorites-from-pasted</value></data>
   <data name="MainPresetTip" xml:space="preserve"><value>Saves the effects turned on in the cell as a favorite of its file, with a description to find it again</value></data>
+  <data name="MainRangeAuto" xml:space="preserve"><value>Auto</value></data>
+  <data name="MainRangeAutoTip" xml:space="preserve"><value>Gives the video back the length its videos set: the grid's whole loop</value></data>
   <data name="MainRangeEndTip" xml:space="preserve"><value>Where the video ends on the timeline (minutes : seconds : frame) — past the grid's loop, its contents loop</value></data>
   <data name="MainRangeStartTip" xml:space="preserve"><value>Where the video starts on the timeline (minutes : seconds : frame)</value></data>
   <data name="MainRefusedFavorite" xml:space="preserve"><value>Not added to favorites</value></data>
