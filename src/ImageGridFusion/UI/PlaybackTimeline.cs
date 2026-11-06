@@ -52,6 +52,9 @@ internal sealed class PlaybackTimeline : Control
     // How far right of its press the pointer must go before an end handle grabbed in the edge zone grows, in logical px.
     private const int GrowthArming = 4;
 
+    // Where the end handle stands on the track while the end shrinks: nine tenths of it.
+    private const double ShrinkShare = 0.9;
+
     private TimeSpan _length;
     private TimeSpan _position;
     private TimeSpan _loop;
@@ -257,14 +260,20 @@ internal sealed class PlaybackTimeline : Control
             return;
         }
 
-        // Outside the range, the track is dimmed: what the video leaves out.
+        // The grid's loop apart from what lies past it (Iteration 11): inside the range, the loop plain and the part
+        // past it hatched — its contents looping —; outside the range, the loop's part left out mid grey, the rest light.
         int start = this.XOf(this._rangeStart, track);
         int end = this.XOf(this._rangeEnd, track);
+        int loopEnd = this._loop > TimeSpan.Zero ? this.XOf(this._loop, track) : track.Right;
         using (var outside = new SolidBrush(SystemColors.ControlLight))
+        using (var leftOut = new SolidBrush(Color.FromArgb(110, SystemColors.ControlDark)))
         using (var inside = new SolidBrush(SystemColors.ControlDark))
+        using (var looping = new HatchBrush(HatchStyle.WideUpwardDiagonal, SystemColors.ControlDark, SystemColors.ControlLight))
         {
             g.FillRectangle(outside, track.Left, top, track.Width, trackHeight);
-            g.FillRectangle(inside, start, top, Math.Max(1, end - start), trackHeight);
+            g.FillRectangle(leftOut, track.Left, top, Math.Max(0, loopEnd - track.Left), trackHeight);
+            FillSpan(g, inside, start, Math.Min(end, loopEnd), top, trackHeight);
+            FillSpan(g, looping, Math.Max(start, loopEnd), end, top, trackHeight);
         }
 
         using (var tick = new Pen(SystemColors.ControlText, this.LogicalToDeviceUnits(1)))
@@ -287,11 +296,11 @@ internal sealed class PlaybackTimeline : Control
 
         int thumb = this.XOf(this._position, track);
         using (var fill = new SolidBrush(played))
+        using (var playedLooping = new HatchBrush(HatchStyle.WideUpwardDiagonal, played, Color.FromArgb(90, played)))
         {
-            if (thumb > start)
-            {
-                g.FillRectangle(fill, start, top, thumb - start, trackHeight);
-            }
+            // Played, the loop solid and the part past it hatched: what is added shows whatever the thumb.
+            FillSpan(g, fill, start, Math.Min(thumb, loopEnd), top, trackHeight);
+            FillSpan(g, playedLooping, Math.Max(start, loopEnd), thumb, top, trackHeight);
 
             this.PaintHandle(g, fill, start, middle, TimelineHandle.Start);
             this.PaintHandle(g, fill, end, middle, TimelineHandle.End);
@@ -300,6 +309,15 @@ internal sealed class PlaybackTimeline : Control
                 int radius = this.LogicalToDeviceUnits(ThumbRadius);
                 g.FillEllipse(fill, thumb - radius, middle - radius, 2 * radius, 2 * radius);
             }
+        }
+    }
+
+    /// <summary>Fills the track from <paramref name="left"/> to <paramref name="right"/>, nothing when they are crossed.</summary>
+    private static void FillSpan(Graphics g, Brush brush, int left, int right, int top, int height)
+    {
+        if (right > left)
+        {
+            g.FillRectangle(brush, left, top, right - left, height);
         }
     }
 
@@ -380,6 +398,12 @@ internal sealed class PlaybackTimeline : Control
             return;
         }
 
+        // Left of the loop's tick while the range ends past the loop, the end shrinks on its own (Iteration 13).
+        if (this._handleDrag == TimelineHandle.End && this.Shrinking(x, track))
+        {
+            return;
+        }
+
         if (this._handleDrag == TimelineHandle.Start && time > this.MapLength)
         {
             time = this.MapLength;
@@ -415,6 +439,21 @@ internal sealed class PlaybackTimeline : Control
     }
 
     /// <summary>
+    /// Loops of the grid a second the end shrinks by with the pointer at <paramref name="x"/>, left of the loop's tick
+    /// at <paramref name="loopX"/>: the growth's rate, the closeness measured from the tick leftwards in zones of
+    /// <paramref name="zone"/> px (Iteration 13).
+    /// </summary>
+    internal static double ShrinkRate(int x, int loopX, int zone)
+    {
+        double closeness = (loopX - x) / (double)Math.Max(1, zone);
+        return closeness <= 0 ? 0 : GrowthAtEdge * Math.Pow(Math.Min(closeness, MaxCloseness), 2);
+    }
+
+    /// <summary>Whether the end handle at <paramref name="x"/> shrinks the end: the range ending past the loop, the pointer left of its tick.</summary>
+    private bool Shrinking(int x, Rectangle track) =>
+        this._loop > TimeSpan.Zero && this._rangeEnd > this._loop && x < this.XOf(this._loop, track);
+
+    /// <summary>
     /// The track's span with <paramref name="end"/> under the pointer at <paramref name="x"/> — on the right edge when
     /// the pointer is past it —, never less than <paramref name="span"/>: the live rescale while the end grows.
     /// </summary>
@@ -440,7 +479,14 @@ internal sealed class PlaybackTimeline : Control
         }
 
         var track = this.Track();
-        double rate = this._growArmed ? GrowthRate(this._lastX, track, this.LogicalToDeviceUnits(EdgeZone)) : 0;
+        int zone = this.LogicalToDeviceUnits(EdgeZone);
+        if (this.Shrinking(this._lastX, track))
+        {
+            this.ShrinkEnd(track, zone, seconds);
+            return;
+        }
+
+        double rate = this._growArmed ? GrowthRate(this._lastX, track, zone) : 0;
         if (rate <= 0)
         {
             return;
@@ -449,6 +495,30 @@ internal sealed class PlaybackTimeline : Control
         var loop = this._loop > TimeSpan.Zero ? this._loop : this._dragLength;
         var end = this._rangeEnd + TimeSpan.FromTicks((long)(loop.Ticks * rate * seconds));
         this._dragLength = SpanFor(end, this._lastX, track, this._dragLength);
+        this.HandleMoved?.Invoke(this, new TimelineHandleEventArgs(TimelineHandle.End, end));
+        this.Invalidate();
+    }
+
+    /// <summary>
+    /// The end shrinks by its rate times the grid's loop for the time elapsed, down to the loop, the track rescaling
+    /// live with the handle at nine tenths of it; reaching the loop, the span puts the loop's end under the pointer, so
+    /// the drag goes on from there without a jump (Iteration 13).
+    /// </summary>
+    private void ShrinkEnd(Rectangle track, int zone, double seconds)
+    {
+        double rate = ShrinkRate(this._lastX, this.XOf(this._loop, track), zone);
+        var end = this._rangeEnd - TimeSpan.FromTicks((long)(this._loop.Ticks * rate * seconds));
+        if (end <= this._loop)
+        {
+            end = this._loop;
+            this._dragLength = SpanFor(end, Math.Max(this._lastX, track.Left + 1), track, this._loop);
+        }
+        else
+        {
+            var span = TimeSpan.FromTicks((long)(end.Ticks / ShrinkShare));
+            this._dragLength = span > this._loop ? span : this._loop;
+        }
+
         this.HandleMoved?.Invoke(this, new TimelineHandleEventArgs(TimelineHandle.End, end));
         this.Invalidate();
     }
