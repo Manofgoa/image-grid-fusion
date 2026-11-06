@@ -487,6 +487,8 @@ Dans la vue Dossiers, les dossiers viennent en premier, de A à Z.</value></data
   <data name="MainFileMany" xml:space="preserve"><value>{0} fichiers</value></data>
   <data name="MainFileOne" xml:space="preserve"><value>1 fichier</value></data>
   <data name="MainFillHoles" xml:space="preserve"><value>Boucher les trous</value></data>
+  <data name="MainFitToSoundtrack" xml:space="preserve"><value>Caler sur la bande son</value></data>
+  <data name="MainFitToSoundtrackTip" xml:space="preserve"><value>La vidéo dure une lecture de la partie jouée de la bande son, depuis le début de la grille</value></data>
   <data name="MainFolderNameExport" xml:space="preserve"><value>Export</value></data>
   <data name="MainForgetFacesAsk" xml:space="preserve"><value>Oublier chaque visage trouvé et chaque personne nommée, masquée ou fusionnée ? L'analyse des visages est désactivée ; réactivée, elle recherche les visages depuis le début.
 
@@ -541,6 +543,8 @@ Les moteurs et votre fichier d'étiquettes (vision-tags.txt) restent.</value></d
   <data name="MainImageCountMany" xml:space="preserve"><value>{0} images</value></data>
   <data name="MainImageCountOne" xml:space="preserve"><value>1 image</value></data>
   <data name="MainInvert" xml:space="preserve"><value>Inverser</value></data>
+  <data name="MainKeepRange" xml:space="preserve"><value>Garder la plage</value></data>
+  <data name="MainKeepRangeTip" xml:space="preserve"><value>Garde la plage telle qu'elle est réglée quand la boucle de la grille change — une vidéo déposée, retirée ou découpée ; décochée, la plage revient à toute la boucle</value></data>
   <data name="MainLabelAngle" xml:space="preserve"><value>Angle : {0:+0;-0;0}°</value></data>
   <data name="MainLabelBackAndForth" xml:space="preserve"><value>Aller-retour : {0} s</value></data>
   <data name="MainLabelBlend" xml:space="preserve"><value>Mélange : {0} %</value></data>
@@ -586,8 +590,10 @@ Redémarrer l'application maintenant ?</value></data>
   <data name="MainLengthNoImage" xml:space="preserve"><value>Aucune image</value></data>
   <data name="MainLengthPlays" xml:space="preserve"><value>{0} — {1}, joué {2}</value></data>
   <data name="MainLengthPng" xml:space="preserve"><value>Un PNG : aucun contenu n'est en lecture et la bande son est désactivée</value></data>
+  <data name="MainLengthRange" xml:space="preserve"><value>Plage de {0} à {1} de la ligne de temps ; la boucle de la grille dure {2}</value></data>
   <data name="MainLengthSoundtrack" xml:space="preserve"><value>Vidéo MP4 de {0} : la durée de la bande son, {1} ; les images sont fixes</value></data>
   <data name="MainLengthSoundtrackCut" xml:space="preserve"><value>Bande son {0} — {1}, coupée à {2}</value></data>
+  <data name="MainLengthSoundtrackOnce" xml:space="preserve"><value>Bande son {0} — {1}, jouée une fois, puis silence</value></data>
   <data name="MainLengthSoundtrackPlays" xml:space="preserve"><value>Bande son {0} — {1}, jouée {2}</value></data>
   <data name="MainLengthTurn" xml:space="preserve"><value>{0} — tour de {1}, à partir de {2}</value></data>
   <data name="MainLineAlign" xml:space="preserve"><value>Alignement</value></data>
@@ -640,6 +646,8 @@ Redémarrer l'application maintenant ?</value></data>
   <data name="MainPresetNamePastedImage" xml:space="preserve"><value>Image collée — enregistrée dans favorites-from-pasted</value></data>
   <data name="MainPresetNamePastedText" xml:space="preserve"><value>Texte collé — enregistré dans favorites-from-pasted</value></data>
   <data name="MainPresetTip" xml:space="preserve"><value>Enregistre les effets activés dans la cellule comme un favori de son fichier, avec une description pour le retrouver</value></data>
+  <data name="MainRangeEndTip" xml:space="preserve"><value>Où la vidéo se termine sur la ligne de temps (minutes : secondes : image) — au-delà de la boucle de la grille, ses contenus bouclent</value></data>
+  <data name="MainRangeStartTip" xml:space="preserve"><value>Où la vidéo commence sur la ligne de temps (minutes : secondes : image)</value></data>
   <data name="MainRefusedFavorite" xml:space="preserve"><value>Non ajouté aux favoris</value></data>
   <data name="MainRefusedImageNoFile" xml:space="preserve"><value>{0} : cette image n'a pas de fichier et ne peut pas être enregistrée</value></data>
   <data name="MainRefusedImageNotSaved" xml:space="preserve"><value>{0} : l'image n'a pas pu être enregistrée : {1}</value></data>
@@ -652,6 +660,7 @@ Redémarrer l'application maintenant ?</value></data>
   <data name="MainResetNameFormat" xml:space="preserve"><value>format</value></data>
   <data name="MainResetNameGridBackground" xml:space="preserve"><value>fond de grille</value></data>
   <data name="MainResetNameLayers" xml:space="preserve"><value>calques</value></data>
+  <data name="MainResetNameRange" xml:space="preserve"><value>plage vidéo</value></data>
   <data name="MainResetNameSeams" xml:space="preserve"><value>raccords</value></data>
   <data name="MainResetNameSoundtrack" xml:space="preserve"><value>bande son</value></data>
   <data name="MainResetTip" xml:space="preserve"><value>Ramène chaque effet de la cellule à ses valeurs par défaut, et les cellules aux tailles de leur disposition</value></data>
@@ -735,7 +744,12 @@ Redémarrer l'application maintenant ?</value></data>
   <data name="MainSoundNone" xml:space="preserve"><value>sans son</value></data>
   <data name="MainSoundNoneWith" xml:space="preserve"><value>sans son ({0})</value></data>
   <data name="MainSoundtrackBrowseTip" xml:space="preserve"><value>Mixe le son d'un fichier audio ou vidéo par-dessus les vidéos, dans l'aperçu et l'export MP4 ; un fichier peut aussi être déposé sur ces rangées</value></data>
+  <data name="MainSoundtrackFrom" xml:space="preserve"><value>Début</value></data>
+  <data name="MainSoundtrackLoop" xml:space="preserve"><value>Boucle</value></data>
+  <data name="MainSoundtrackLoopTip" xml:space="preserve"><value>Répète la partie aussi longtemps que dure la vidéo ; décochée, elle est jouée une fois depuis le début de la vidéo, puis silence</value></data>
   <data name="MainSoundtrackNoFile" xml:space="preserve"><value>Aucun fichier</value></data>
+  <data name="MainSoundtrackTo" xml:space="preserve"><value>Fin</value></data>
+  <data name="MainSoundtrackTrimTip" xml:space="preserve"><value>La partie du fichier jouée, de son début à sa fin (minutes : secondes : image)</value></data>
   <data name="MainSpeedTip" xml:space="preserve"><value>La vitesse de lecture du contenu, son son avec lui : ×1 est son rythme propre</value></data>
   <data name="MainStatusBackToInitial" xml:space="preserve"><value>Retour à l'état initial : {0}.</value></data>
   <data name="MainStatusBackToInitialPlural" xml:space="preserve"><value>Retour à l'état initial : {0}.</value></data>
@@ -823,6 +837,7 @@ Redémarrer l'application maintenant ?</value></data>
   <data name="MainSummaryEncodedIn" xml:space="preserve"><value>encodé en {0}</value></data>
   <data name="MainSummaryMp4Video" xml:space="preserve"><value>vidéo MP4</value></data>
   <data name="MainSummaryPeak" xml:space="preserve"><value>pic {0}</value></data>
+  <data name="MainTimelineTip" xml:space="preserve"><value>Cliquer ou glisser pour se déplacer dans la grille ; glisser les poignées pour choisir où la vidéo commence et se termine — glisser la fin au-delà du bord droit allonge la ligne de temps</value></data>
   <data name="MainTimesMany" xml:space="preserve"><value>{0:0.#} fois</value></data>
   <data name="MainTimesOnce" xml:space="preserve"><value>une fois</value></data>
   <data name="MainTransportPlayTip" xml:space="preserve"><value>Lit ou met en pause la grille (Space)</value></data>
@@ -1174,6 +1189,7 @@ Son index — les fichiers listés, les textes lus, les visages et l'analyse vis
   <data name="UiHistLayout" xml:space="preserve"><value>disposition</value></data>
   <data name="UiHistNoChange" xml:space="preserve"><value>aucun changement visible</value></data>
   <data name="UiHistPeople" xml:space="preserve"><value>personnes</value></data>
+  <data name="UiHistRange" xml:space="preserve"><value>Plage vidéo</value></data>
   <data name="UiHistSeparators" xml:space="preserve"><value>séparateurs</value></data>
   <data name="UiHistSeveral" xml:space="preserve"><value>plusieurs modifications</value></data>
   <data name="UiLayoutAutoColumnNone" xml:space="preserve"><value>↕ Auto (aucune cellule empilée dans cette disposition)</value></data>

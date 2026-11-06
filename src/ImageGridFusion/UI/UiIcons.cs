@@ -307,6 +307,7 @@ internal static class UiIcons
     public static readonly UiIcon SaveUpscaled = UiIcon.Emoji("\U0001F4BE");
     public static readonly UiIcon Play = UiIcon.Emoji("▶️");
     public static readonly UiIcon Pause = UiIcon.Emoji("⏸️");
+    public static readonly UiIcon FitToSoundtrack = UiIcon.Emoji("\U0001F3BC");
     public static readonly UiIcon ByName = UiIcon.Emoji("\U0001F520");
     public static readonly UiIcon Rescan = UiIcon.Emoji("\U0001F504");
     public static readonly UiIcon Collapse = UiIcon.Emoji("⏩");

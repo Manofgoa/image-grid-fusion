@@ -96,7 +96,7 @@ internal sealed partial class MainForm : Form
     {
         Dock = DockStyle.Bottom,
         AutoSize = true,
-        ColumnCount = 4,
+        ColumnCount = 5,
         RowCount = 1,
         Padding = new Padding(8, 4, 8, 0),
     };
@@ -109,6 +109,34 @@ internal sealed partial class MainForm : Form
 
     // Moves the timeline's thumb and the grid's time along while the grid plays.
     private readonly System.Windows.Forms.Timer _transportTimer = new() { Interval = 50 };
+
+    // The video range's controls, after the timeline: its start and its end on the grid's timeline, at the export's
+    // frame rate, the Keep range checkbox and Fit to soundtrack (workfiles/20261106-video-range.md).
+    private readonly FlowLayoutPanel _rangeControls = new()
+    {
+        AutoSize = true,
+        AutoSizeMode = AutoSizeMode.GrowAndShrink,
+        WrapContents = false,
+        Margin = new Padding(0, 0, 3, 0),
+        Anchor = AnchorStyles.Left,
+    };
+    private readonly FrameField _rangeStartField = new();
+    private readonly Label _rangeDash = new() { Text = "–", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(2, 3, 2, 3) };
+    private readonly FrameField _rangeEndField = new();
+    private readonly CheckBox _keepRange = new() { Text = Strings.MainKeepRange, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(9, 3, 3, 3) };
+    private readonly Button _fitToSoundtrack = new() { Text = Strings.MainFitToSoundtrack, AutoSize = true, Anchor = AnchorStyles.Left, TabStop = false, Margin = new Padding(6, 3, 3, 3) };
+
+    // The range set, null for the whole loop; whether it is kept when the loop changes; the loop it was last read
+    // against, a change of which resets it unless kept. Part of the composed state, not persisted.
+    private VideoRange? _range;
+    private bool _keepRangeOn;
+    private TimeSpan _rangeLoop;
+
+    // Set while a step of the undo history is put back: the range restored is not reset by the loop it comes back with.
+    private bool _restoringState;
+
+    // Set while the range's controls are written from the state: their events then change nothing.
+    private bool _showingRange;
     private readonly ContextMenuStrip _settingsMenu = new();
     private readonly ToolStripMenuItem _startWithWindows = new(Strings.MainSettingsStartWithWindows);
     private readonly ToolTip _toolTip = new();
@@ -440,6 +468,16 @@ internal sealed partial class MainForm : Form
     private readonly TrackBar _soundtrackVolume = OptionSlider(0, (int)(Soundtrack.MaxLevel * 100), 10);
     private readonly Label _soundtrackVolumeLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
 
+    // The soundtrack's part — its From and To in the file, in frames of the export's rate, as the Frames trim's — and
+    // whether it loops (workfiles/20261106-video-range.md § Soundtrack Trim).
+    private readonly Label _soundtrackFromLabel = new() { Text = Strings.MainSoundtrackFrom, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(12, 3, 0, 3) };
+    private readonly StepSlider _soundtrackFrom = OptionSlider(0, 1, Animation.FramesPerSecond, controlStep: Animation.FramesPerSecond);
+    private readonly FrameField _soundtrackFromField = new();
+    private readonly Label _soundtrackToLabel = new() { Text = Strings.MainSoundtrackTo, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(9, 3, 0, 3) };
+    private readonly StepSlider _soundtrackTo = OptionSlider(0, 1, Animation.FramesPerSecond, controlStep: Animation.FramesPerSecond);
+    private readonly FrameField _soundtrackToField = new();
+    private readonly CheckBox _soundtrackLoop = new() { Text = Strings.MainSoundtrackLoop, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(12, 3, 3, 3) };
+
     // The soundtrack's file and level, kept while it is off; cleared by its Resets and Clear all.
     private Soundtrack? _soundtrack;
     private bool _soundtrackOn;
@@ -571,15 +609,19 @@ internal sealed partial class MainForm : Form
         _bottom.Controls.Add(_outputButtons, 2, 0);
 
         // Play / Pause, the timeline taking the rest, then the grid's time and the length readout as its total.
+        // The range's controls between the timeline and the grid's time (workfiles/20261106-video-range.md § Timeline).
         this._transportRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         this._transportRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         this._transportRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         this._transportRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        this._transportRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         this._transportRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        this._rangeControls.Controls.AddRange([this._rangeStartField, this._rangeDash, this._rangeEndField, this._keepRange, this._fitToSoundtrack]);
         this._transportRow.Controls.Add(this._playButton, 0, 0);
         this._transportRow.Controls.Add(this._timeline, 1, 0);
-        this._transportRow.Controls.Add(this._positionReadout, 2, 0);
-        this._transportRow.Controls.Add(this._lengthReadout, 3, 0);
+        this._transportRow.Controls.Add(this._rangeControls, 2, 0);
+        this._transportRow.Controls.Add(this._positionReadout, 3, 0);
+        this._transportRow.Controls.Add(this._lengthReadout, 4, 0);
 
         _tabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _tabsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -680,7 +722,8 @@ internal sealed partial class MainForm : Form
         _globalOptionsHost.Controls.AddRange([.. _globalOptions.Values]);
         _bordersStyle.Items.AddRange([Strings.MainBorderCorners, Strings.MainBorderSolid, Strings.MainBorderDashed, Strings.MainBorderDotted, Strings.MainBorderDouble]);
         _globalOptions[GlobalEffect.Format].Controls.AddRange([_formatStrip, this._customWidthLabel, this._customWidth, this._customHeightLabel, this._customHeight, this._customExact]);
-        _globalOptions[GlobalEffect.Soundtrack].Controls.AddRange([_soundtrackBrowse, _soundtrackFile, _soundtrackVolume, _soundtrackVolumeLabel]);
+        _globalOptions[GlobalEffect.Soundtrack].Controls.AddRange(
+            [_soundtrackBrowse, _soundtrackFile, _soundtrackVolume, _soundtrackVolumeLabel, this._soundtrackFromLabel, this._soundtrackFrom, this._soundtrackFromField, this._soundtrackToLabel, this._soundtrackTo, this._soundtrackToField, this._soundtrackLoop]);
         _globalOptions[GlobalEffect.Fade].Controls.AddRange([_fadeDuration, _fadeDurationLabel, _fadeSquared, _fadeLinear]);
         _globalOptions[GlobalEffect.Borders].Controls.AddRange(
             [_bordersStyle, this._bordersColor, this._bordersOpacityIcon, _bordersOpacity, _bordersOpacityLabel, _bordersThickness, _bordersThicknessLabel, this._bordersInnerLines, _bordersOuterFrame, _bordersRounded]);
@@ -764,6 +807,59 @@ internal sealed partial class MainForm : Form
             this.RefreshTransportPosition();
         };
         this._timeline.SeekEnded += (_, _) => this._preview.ReleasePlayback();
+
+        // The range: its handles hold the grid like a seek, the grid shown where the handle stands; its fields, its
+        // checkbox and Fit to soundtrack beside the timeline (workfiles/20261106-video-range.md).
+        this._toolTip.SetToolTip(this._timeline, Strings.MainTimelineTip);
+        this._timeline.HandleDragStarted += (_, _) => this._preview.HoldPlayback();
+        this._timeline.HandleMoved += (_, e) => this.MoveRangeHandle(e.Handle, e.Time);
+        this._timeline.HandleDragEnded += (_, _) =>
+        {
+            this._preview.ReleasePlayback();
+            this.RefreshLength();
+        };
+        this._rangeStartField.SetFrameRate(Animation.FramesPerSecond);
+        this._rangeEndField.SetFrameRate(Animation.FramesPerSecond);
+        this._toolTip.SetToolTip(this._rangeStartField, Strings.MainRangeStartTip);
+        this._toolTip.SetToolTip(this._rangeEndField, Strings.MainRangeEndTip);
+        foreach (var field in this._rangeStartField.Controls.Cast<Control>().Concat(this._rangeEndField.Controls.Cast<Control>()))
+        {
+            this._toolTip.SetToolTip(field, this._rangeStartField.Contains(field) ? Strings.MainRangeStartTip : Strings.MainRangeEndTip);
+        }
+
+        this._rangeStartField.ValueChanged += (_, _) =>
+        {
+            if (!this._showingRange)
+            {
+                this.SetRange(this.CurrentRange.WithStart(Animation.FrameTime(this._rangeStartField.Value)));
+            }
+        };
+        this._rangeEndField.ValueChanged += (_, _) =>
+        {
+            if (!this._showingRange)
+            {
+                this.SetRange(this.CurrentRange.WithEnd(Animation.FrameTime(this._rangeEndField.Value)));
+            }
+        };
+        this._toolTip.SetToolTip(this._keepRange, Strings.MainKeepRangeTip);
+        this._keepRange.CheckedChanged += (_, _) =>
+        {
+            if (!this._showingRange && !this.IsExporting)
+            {
+                this._keepRangeOn = this._keepRange.Checked;
+                this.UpdateButtons();
+            }
+        };
+        this._toolTip.SetToolTip(this._fitToSoundtrack, Strings.MainFitToSoundtrackTip);
+        this._fitToSoundtrack.Click += (_, _) =>
+        {
+            if (this.ActiveSoundtrack is { } soundtrack)
+            {
+                this.SetRange(VideoRange.FitTo(soundtrack));
+            }
+
+            this._preview.Focus();
+        };
         this._preview.PlaybackChanged += (_, _) => this.RefreshTransport();
         this._transportTimer.Tick += (_, _) => this.RefreshTransportPosition();
         this._transportTimer.Start();
@@ -1217,6 +1313,21 @@ internal sealed partial class MainForm : Form
         _toolTip.SetToolTip(_soundtrackBrowse, Strings.MainSoundtrackBrowseTip);
         _soundtrackBrowse.Click += (_, _) => BrowseSoundtrack();
         _soundtrackVolume.ValueChanged += (_, _) => SetSoundtrackVolume();
+
+        // The soundtrack's part and its loop (workfiles/20261106-video-range.md § Soundtrack Trim).
+        this._soundtrackFromField.SetFrameRate(Animation.FramesPerSecond);
+        this._soundtrackToField.SetFrameRate(Animation.FramesPerSecond);
+        foreach (var control in new Control[] { this._soundtrackFromLabel, this._soundtrackFrom, this._soundtrackToLabel, this._soundtrackTo })
+        {
+            this._toolTip.SetToolTip(control, Strings.MainSoundtrackTrimTip);
+        }
+
+        this._toolTip.SetToolTip(this._soundtrackLoop, Strings.MainSoundtrackLoopTip);
+        this._soundtrackFrom.ValueChanged += (_, _) => this.TrimSoundtrack(Animation.FrameTime(this._soundtrackFrom.Value), null);
+        this._soundtrackTo.ValueChanged += (_, _) => this.TrimSoundtrack(null, Animation.FrameTime(this._soundtrackTo.Value));
+        this._soundtrackFromField.ValueChanged += (_, _) => this.TrimSoundtrack(Animation.FrameTime(this._soundtrackFromField.Value), null);
+        this._soundtrackToField.ValueChanged += (_, _) => this.TrimSoundtrack(null, Animation.FrameTime(this._soundtrackToField.Value));
+        this._soundtrackLoop.CheckedChanged += (_, _) => this.LoopSoundtrack(this._soundtrackLoop.Checked);
         _toolTip.SetToolTip(_fadeDuration, Strings.MainFadeDurationTip);
         _toolTip.SetToolTip(_fadeSquared, Strings.MainFadeSquaredTip);
         _toolTip.SetToolTip(_fadeLinear, Strings.MainFadeLinearTip);
@@ -1487,6 +1598,7 @@ internal sealed partial class MainForm : Form
         {
             (this._presetButton, UiIcons.Preset), (this._clearButton, UiIcons.ClearAll), (this._settingsButton, UiIcons.Settings),
             (this._copyLastButton, UiIcons.LastVideo), (this._soundtrackBrowse, UiIcons.OpenFolder),
+            (this._fitToSoundtrack, UiIcons.FitToSoundtrack),
         })
         {
             UiIcons.SetImage(button, icon, size);
@@ -2279,7 +2391,9 @@ internal sealed partial class MainForm : Form
             this._preview.Layers,
             this._layersOn,
             this._gridBackground,
-            this._gridBackgroundOn),
+            this._gridBackgroundOn,
+            this._range,
+            this._keepRangeOn),
         this._explorer.PeopleState);
 
     /// <summary>
@@ -2315,7 +2429,25 @@ internal sealed partial class MainForm : Form
     /// </summary>
     private void RestoreState(GridState from, GridState to)
     {
+        this._restoringState = true;
+        try
+        {
+            this.RestoreStateAs(from, to);
+        }
+        finally
+        {
+            this._restoringState = false;
+        }
+
+        this.UpdateButtons();
+    }
+
+    /// <summary>The body of <see cref="RestoreState"/>, the range's reset held off meanwhile.</summary>
+    private void RestoreStateAs(GridState from, GridState to)
+    {
         var global = to.Global;
+        this._range = global.Range;
+        this._keepRangeOn = global.KeepRange;
         this._soundtrack = global.Soundtrack;
         this._soundtrackOn = global.SoundtrackOn;
         this._soundtrackLevel = global.SoundtrackLevel;
@@ -2350,7 +2482,10 @@ internal sealed partial class MainForm : Form
         this._layersOn = global.LayersOn;
         this._preview.SetLayers(global.Layers);
         this._preview.LayersShown = this._layersOn;
-        this.UpdateButtons();
+
+        // The loop the restored range stands on, read once everything is back: no reset follows (RestoreState).
+        this._rangeLoop = this.NaturalVideoLength;
+        this._preview.PlaybackRange = this._range;
 
         // The people's decisions, unless the step is of a generation gone — loaded, or forgotten since:
         // the step then takes the people as they stand, so the history sees no change to commit.
@@ -2395,8 +2530,9 @@ internal sealed partial class MainForm : Form
         int layers = this._preview.Layers.Count;
         bool layersSet = !this.LayersInitial;
         bool format = !FormatInitial;
+        bool range = !this.RangeInitial;
         bool soundtrackInitial = SoundtrackInitial;
-        if (count == 0 && soundtrackInitial && !borders && !fade && !seams && !gridBackground && !cascade && !layersSet && !format)
+        if (count == 0 && soundtrackInitial && !borders && !fade && !seams && !gridBackground && !cascade && !layersSet && !format && !range)
         {
             return;
         }
@@ -2461,6 +2597,11 @@ internal sealed partial class MainForm : Form
         if (format)
         {
             reset.Add(Strings.MainResetNameFormat);
+        }
+
+        if (range)
+        {
+            reset.Add(Strings.MainResetNameRange);
         }
 
         string resetText = reset.Count > 1 ? Texts.Format(Strings.MainListAnd, string.Join(", ", reset[..^1]), reset[^1]) : reset.FirstOrDefault() ?? "";
@@ -2778,18 +2919,109 @@ internal sealed partial class MainForm : Form
     {
         var images = _preview.Images;
         var soundtrack = ActiveSoundtrack;
-        var length = !this.HasContent ? TimeSpan.Zero : Animation.VideoLength(images, soundtrack, this.ActiveCascade, this.ActiveBesideCells);
+        var natural = this.NaturalVideoLength;
+        this.FollowLoop(natural);
+        var length = !this.HasContent ? TimeSpan.Zero : Animation.VideoLength(images, soundtrack, this.ActiveCascade, this.ActiveBesideCells, this._range);
+        var start = Animation.VideoStart(natural, this._range);
         _lengthReadout.Text = length > TimeSpan.Zero ? $"⏱ {Seconds(length)}" : "⏱ —";
         // As wide as a length under 1000 s: the digits change without moving the gear.
         _lengthReadout.MinimumSize = new Size(TextRenderer.MeasureText("⏱ 000.0 s", _lengthReadout.Font).Width, 0);
-        _toolTip.SetToolTip(_lengthReadout, LengthDetail(images, soundtrack, length, this.ActiveCascade));
+        string detail = LengthDetail(images, soundtrack, natural, this.ActiveCascade);
+        if (length > TimeSpan.Zero && this._range is not null)
+        {
+            detail = Texts.Format(Strings.MainLengthRange, Seconds(start), Seconds(start + length), Seconds(natural)) + Environment.NewLine + detail;
+        }
 
-        // The transport's timeline is that length, disabled without one and while an export holds the grid.
-        this._timeline.Length = length;
-        this._timeline.Marks = CascadeMarks(images, this.ActiveCascade, length);
+        _toolTip.SetToolTip(_lengthReadout, detail);
+
+        // The transport's timeline spans the grid's loop — further while the range ends past it —, its handles on the
+        // range, disabled without a length and while an export holds the grid.
+        var extent = length > TimeSpan.Zero ? VideoRange.Extent(natural, this._range) : TimeSpan.Zero;
+        this._timeline.Length = extent;
+        this._timeline.Loop = natural;
+        this._timeline.RangeStart = start;
+        this._timeline.RangeEnd = start + length;
+        this._timeline.Marks = CascadeMarks(images, this.ActiveCascade, extent);
         this._timeline.Enabled = length > TimeSpan.Zero && !this.IsExporting;
+        this.ShowRangeControls(start, length);
         this.RefreshTransport();
     }
+
+    /// <summary>
+    /// What the video lasts without a range — the grid's loop, else the soundtrack's part over stills —, zero for a
+    /// still: the loop the range is set on (workfiles/20261106-video-range.md § State).
+    /// </summary>
+    private TimeSpan NaturalVideoLength =>
+        !this.HasContent ? TimeSpan.Zero : Animation.VideoLength(this._preview.Images, this.ActiveSoundtrack, this.ActiveCascade, this.ActiveBesideCells);
+
+    /// <summary>The range set, or the whole loop: what a handle or a field moves from.</summary>
+    private VideoRange CurrentRange => this._range ?? VideoRange.Whole(this.NaturalVideoLength);
+
+    /// <summary>The grid's loop has become <paramref name="natural"/>: Keep range checked, the range is kept, its start
+    /// brought into the loop; unchecked, it goes back to the whole loop. A step put back keeps the range it holds.</summary>
+    private void FollowLoop(TimeSpan natural)
+    {
+        if (natural != this._rangeLoop)
+        {
+            if (!this._restoringState && this._range is not null)
+            {
+                this._range = this._keepRangeOn ? this._range.KeptIn(natural) : null;
+            }
+
+            this._rangeLoop = natural;
+        }
+
+        this._preview.PlaybackRange = this._range;
+    }
+
+    /// <summary>
+    /// Sets the range — the whole loop when <paramref name="range"/> covers it exactly —, the preview looping on it
+    /// and the exports playing it. An ordinary change: one step of the undo history.
+    /// </summary>
+    private void SetRange(VideoRange range)
+    {
+        var natural = this.NaturalVideoLength;
+        if (this.IsExporting || natural <= TimeSpan.Zero)
+        {
+            return;
+        }
+
+        this._range = range.IsWhole(natural) ? null : range;
+        this._preview.PlaybackRange = this._range;
+        this.UpdateButtons();
+    }
+
+    /// <summary>A range handle dragged to <paramref name="time"/>: the range follows, the grid shown where the handle stands.</summary>
+    private void MoveRangeHandle(TimelineHandle handle, TimeSpan time)
+    {
+        var range = handle == TimelineHandle.Start ? this.CurrentRange.WithStart(time) : this.CurrentRange.WithEnd(time);
+        this.SetRange(range);
+        this._preview.SeekPlayback(handle == TimelineHandle.Start ? range.Start : range.End - TimeSpan.FromTicks(1), scrub: true);
+        this.RefreshTransportPosition();
+    }
+
+    /// <summary>The range's fields on its start and end, its checkbox on Keep range, Fit to soundtrack enabled with a soundtrack.</summary>
+    private void ShowRangeControls(TimeSpan start, TimeSpan length)
+    {
+        int first = RangeFrame(start);
+        int last = RangeFrame(start + length);
+        this._showingRange = true;
+        this._rangeStartField.Set(first, 0, Math.Max(0, last - 1));
+        this._rangeEndField.Set(last, first + 1, RangeFrame(TimeSpan.FromHours(10)));
+        this._keepRange.Checked = this._keepRangeOn;
+        this._showingRange = false;
+        bool enabled = this._timeline.Enabled;
+        this._rangeStartField.Enabled = enabled;
+        this._rangeEndField.Enabled = enabled;
+        this._keepRange.Enabled = !this.IsExporting;
+        this._fitToSoundtrack.Enabled = enabled && this.ActiveSoundtrack is not null;
+    }
+
+    /// <summary>The frame of the exported video at <paramref name="time"/>, rounded.</summary>
+    private static int RangeFrame(TimeSpan time) => (int)Math.Round(time.Ticks * (double)Animation.FramesPerSecond / TimeSpan.TicksPerSecond);
+
+    /// <summary>The range as the Global toolbar's Reset and Clear all leave it: the whole loop, Keep range unchecked.</summary>
+    private bool RangeInitial => this._range is null && !this._keepRangeOn;
 
     /// <summary>
     /// The timeline's ticks: where each turn of the Cascade begins over the whole <paramref name="length"/>,
@@ -2845,12 +3077,16 @@ internal sealed partial class MainForm : Form
         UiIcons.SetImage(this._playButton, paused ? UiIcons.Play : UiIcons.Pause, size);
     }
 
-    /// <summary>The timeline's thumb on the grid's time, and that time left of the length readout: as wide as under 1000 s, so nothing moves.</summary>
+    /// <summary>
+    /// The timeline's thumb on the grid's time, and the video's time — counted from the range's start, as the exported
+    /// video counts it — left of the length readout: as wide as under 1000 s, so nothing moves.
+    /// </summary>
     private void RefreshTransportPosition()
     {
         var position = this._timeline.Length > TimeSpan.Zero ? this._preview.PlaybackPosition : TimeSpan.Zero;
         this._timeline.Position = position;
-        this._positionReadout.Text = this._timeline.Length > TimeSpan.Zero ? $"{Texts.Number(position.TotalSeconds, "0.0")} s /" : string.Empty;
+        var inVideo = position - this._timeline.RangeStart;
+        this._positionReadout.Text = this._timeline.Length > TimeSpan.Zero ? $"{Texts.Number(Math.Max(0, inVideo.TotalSeconds), "0.0")} s /" : string.Empty;
         this._positionReadout.MinimumSize = new Size(TextRenderer.MeasureText("000.0 s /", this._positionReadout.Font).Width, 0);
     }
 
@@ -2930,9 +3166,10 @@ internal sealed partial class MainForm : Form
         if (soundtrack is not null && (longest is not null || cascadeSets))
         {
             string name = Path.GetFileName(soundtrack.Path);
-            lines.Add(soundtrack.Duration > length
-                ? Texts.Format(Strings.MainLengthSoundtrackCut, name, Seconds(soundtrack.Duration), Seconds(length))
-                : Texts.Format(Strings.MainLengthSoundtrackPlays, name, Seconds(soundtrack.Duration), Times(length, soundtrack.Duration)));
+            var part = soundtrack.PlayedLength;
+            lines.Add(!soundtrack.Loops && part < length ? Texts.Format(Strings.MainLengthSoundtrackOnce, name, Seconds(part))
+                : part > length ? Texts.Format(Strings.MainLengthSoundtrackCut, name, Seconds(part), Seconds(length))
+                : Texts.Format(Strings.MainLengthSoundtrackPlays, name, Seconds(part), Times(length, part)));
         }
 
         return string.Join(Environment.NewLine, lines);
@@ -3444,7 +3681,7 @@ internal sealed partial class MainForm : Form
         GridExport.Job job;
         try
         {
-            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout, _preview.CanvasRatio, ActiveBorders, ActiveSoundtrack, ActiveFade, this.ActiveSeams, this.ActiveCascade, AppSettings.VideoMaxSide, layers: this.ActiveLayers, background: this.ActiveGridBackground, exact: this._preview.ExactSize);
+            job = GridExport.Job.Capture(_preview.Images, _preview.ActiveLayout, _preview.CanvasRatio, ActiveBorders, ActiveSoundtrack, ActiveFade, this.ActiveSeams, this.ActiveCascade, AppSettings.VideoMaxSide, layers: this.ActiveLayers, background: this.ActiveGridBackground, exact: this._preview.ExactSize, range: this._range);
         }
         catch (Exception ex) when (ex is ExternalException or OutOfMemoryException)
         {
@@ -3865,7 +4102,7 @@ internal sealed partial class MainForm : Form
     private void UpdateButtons()
     {
         bool any = this.HasContent && !IsExporting;
-        _clearButton.Enabled = (_preview.Images.Count > 0 || !SoundtrackInitial || !BordersInitial || !FadeInitial || !this.SeamsInitial || !this.GridBackgroundInitial || !this.CascadeInitial || !this.LayersInitial || !FormatInitial) && !IsExporting;
+        _clearButton.Enabled = (_preview.Images.Count > 0 || !SoundtrackInitial || !BordersInitial || !FadeInitial || !this.SeamsInitial || !this.GridBackgroundInitial || !this.CascadeInitial || !this.LayersInitial || !FormatInitial || !this.RangeInitial) && !IsExporting;
         // One system split button each: its main part acts with something to copy, its arrow with the last video too.
         this._copyButton.MainEnabled = any;
         this._saveButton.MainEnabled = any;
@@ -4165,7 +4402,8 @@ internal sealed partial class MainForm : Form
     }
 
     /// <summary>A field of the Frames options holds the focus: it keeps the editing keys (RULES.md § Undo History).</summary>
-    private bool IsEditingFrameField => this._framesField.IsEditing || this._trimFromField.IsEditing || this._trimToField.IsEditing;
+    private bool IsEditingFrameField => this._framesField.IsEditing || this._trimFromField.IsEditing || this._trimToField.IsEditing
+        || this._rangeStartField.IsEditing || this._rangeEndField.IsEditing || this._soundtrackFromField.IsEditing || this._soundtrackToField.IsEditing;
 
     /// <summary>The frames, or pages, of the selected image's content; 1 without one.</summary>
     private int FrameCount => this._preview.SelectedImage?.Pages?.Count ?? 1;
@@ -5169,6 +5407,14 @@ internal sealed partial class MainForm : Form
             this._preview.LayersShown = false;
         }
 
+        // The video range belongs to no tab: the Global toolbar's Reset and Clear all give the whole loop back.
+        if (effect is null)
+        {
+            this._range = null;
+            this._keepRangeOn = false;
+            this._preview.PlaybackRange = null;
+        }
+
         UpdateButtons();
     }
 
@@ -5231,7 +5477,8 @@ internal sealed partial class MainForm : Form
             return;
         }
 
-        _soundtrack = soundtrack.WithLevel(_soundtrack?.Level ?? _soundtrackLevel);
+        // A new file plays whole, looped or not as the previous one.
+        _soundtrack = soundtrack.WithLevel(_soundtrack?.Level ?? _soundtrackLevel).WithLoops(this._soundtrack?.Loops ?? true);
         _soundtrackOn = true;
         ApplySoundtrack();
         ShowStatus(Texts.Format(Strings.MainStatusSoundtrack, Path.GetFileName(path), Seconds(soundtrack.Duration)));
@@ -5262,6 +5509,35 @@ internal sealed partial class MainForm : Form
         ApplySoundtrack();
     }
 
+    /// <summary>
+    /// The soundtrack's part, from <paramref name="from"/> to <paramref name="to"/> in its file — each kept as it is
+    /// when <c>null</c>; acting on it turns the soundtrack on (RULES.md). Nothing without a file.
+    /// </summary>
+    private void TrimSoundtrack(TimeSpan? from, TimeSpan? to)
+    {
+        if (this._syncingEffects || this.IsExporting || this._soundtrack is not { } soundtrack)
+        {
+            return;
+        }
+
+        this._soundtrack = soundtrack.WithTrim(from ?? soundtrack.From, to ?? soundtrack.To);
+        this._soundtrackOn = true;
+        this.ApplySoundtrack();
+    }
+
+    /// <summary>The soundtrack's part looped, or played once; acting on it turns the soundtrack on. Nothing without a file.</summary>
+    private void LoopSoundtrack(bool loops)
+    {
+        if (this._syncingEffects || this.IsExporting || this._soundtrack is not { } soundtrack)
+        {
+            return;
+        }
+
+        this._soundtrack = soundtrack.WithLoops(loops);
+        this._soundtrackOn = true;
+        this.ApplySoundtrack();
+    }
+
     /// <summary>The soundtrack as it stands, to the preview, then to the row and the output buttons.</summary>
     private void ApplySoundtrack()
     {
@@ -5289,7 +5565,7 @@ internal sealed partial class MainForm : Form
         this._globalTabs.SetState(GlobalEffect.Layers, this._layersOn, unavailable: null);
         _globalTabs.Selected = _selectedGlobalEffect;
         _globalTabs.Enabled = enabled;
-        _globalResetButton.Enabled = enabled && !(SoundtrackInitial && BordersInitial && FadeInitial && this.SeamsInitial && this.GridBackgroundInitial && this.CascadeInitial && this.LayersInitial && FormatInitial);
+        _globalResetButton.Enabled = enabled && !(SoundtrackInitial && BordersInitial && FadeInitial && this.SeamsInitial && this.GridBackgroundInitial && this.CascadeInitial && this.LayersInitial && FormatInitial && this.RangeInitial);
 
         // The layers take the mouse only while their tab is selected; never during an export.
         this._preview.LayersActive = this._selectedGlobalEffect == GlobalEffect.Layers && enabled;
@@ -5338,6 +5614,12 @@ internal sealed partial class MainForm : Form
         bool syncing = _syncingEffects;
         _syncingEffects = true;
         _soundtrackVolume.Value = (int)Math.Round((_soundtrack?.Level ?? _soundtrackLevel) * 100);
+        int fileFrames = this._soundtrack is { } file ? Math.Max(1, RangeFrame(file.Duration)) : 1;
+        this._soundtrackFrom.SetRange(0, fileFrames);
+        this._soundtrackTo.SetRange(0, fileFrames);
+        this._soundtrackFrom.Value = Math.Clamp(this._soundtrack is null ? 0 : RangeFrame(this._soundtrack.From), 0, fileFrames);
+        this._soundtrackTo.Value = Math.Clamp(this._soundtrack is null ? fileFrames : RangeFrame(this._soundtrack.To), 0, fileFrames);
+        this._soundtrackLoop.Checked = this._soundtrack?.Loops ?? true;
         _fadeDuration.Value = (int)Math.Round(_fade.Duration.TotalSeconds * 10);
         _fadeSquared.Checked = _fade.Curve == FadeCurve.Squared;
         _fadeLinear.Checked = _fade.Curve == FadeCurve.Linear;
@@ -5345,6 +5627,14 @@ internal sealed partial class MainForm : Form
         this._cascadePause.Value = (int)Math.Round(this._cascade.Pause.TotalSeconds * 10);
         _syncingEffects = syncing;
         _soundtrackVolumeLabel.Text = VolumeText(_soundtrackVolume.Value);
+        this._soundtrackFromField.Set(this._soundtrackFrom.Value, 0, this._soundtrackFrom.Maximum);
+        this._soundtrackToField.Set(this._soundtrackTo.Value, 0, this._soundtrackTo.Maximum);
+        foreach (var control in new Control[] { this._soundtrackFromLabel, this._soundtrackFrom, this._soundtrackFromField, this._soundtrackToLabel, this._soundtrackTo, this._soundtrackToField, this._soundtrackLoop })
+        {
+            // A part of nothing: the trim and the loop wait for a file.
+            control.Enabled = this._soundtrack is not null;
+        }
+
         _fadeDurationLabel.Text = FadeText(_fadeDuration.Value);
         this._seamsDepthLabel.Text = DepthText(this._seamsDepth.Value);
         this._cascadePauseLabel.Text = PauseText(this._cascadePause.Value);

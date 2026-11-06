@@ -8,7 +8,8 @@ namespace ImageGridFusion.UI;
 internal readonly record struct CellState(SourceImage Image, ImageLook Look);
 
 /// <summary>
-/// The global effects as a step holds them, the borders' color among their settings.
+/// The global effects as a step holds them, the borders' color among their settings, and the video range with its
+/// Keep range checkbox (workfiles/20261106-video-range.md).
 /// </summary>
 internal sealed record GlobalState(
     Soundtrack? Soundtrack,
@@ -25,7 +26,9 @@ internal sealed record GlobalState(
     GridLayers Layers,
     bool LayersOn,
     GridBackground GridBackground,
-    bool GridBackgroundOn);
+    bool GridBackgroundOn,
+    VideoRange? Range,
+    bool KeepRange);
 
 /// <summary>
 /// Everything the user composes, as it stood after an action: the cells' images and looks, the layout
@@ -263,6 +266,12 @@ internal sealed class GridHistory : IDisposable
         if (o.Layers != n.Layers || o.LayersOn != n.LayersOn)
         {
             labels.Add(Strings.UiHistGlobalLayers);
+        }
+
+        // A range reset by the images that changed the loop is theirs: named only when the cells stayed.
+        if ((o.Range != n.Range || o.KeepRange != n.KeepRange) && before.SequenceEqual(after))
+        {
+            labels.Add(Strings.UiHistRange);
         }
 
         // A decision on the people, named by its own text; one of another generation is never restored.
