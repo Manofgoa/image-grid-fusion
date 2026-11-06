@@ -37,16 +37,16 @@ public sealed class PlaybackTimelineTests
         // The track ends at 210; a zone of 32 px starts at 178.
         Assert.AreEqual(0, PlaybackTimeline.GrowthRate(100, Track, 32));
         Assert.AreEqual(0, PlaybackTimeline.GrowthRate(178, Track, 32));
-        Assert.AreEqual(0.125, PlaybackTimeline.GrowthRate(194, Track, 32), 1e-9);
-        Assert.AreEqual(0.5, PlaybackTimeline.GrowthRate(210, Track, 32), 1e-9);
+        Assert.AreEqual(0.025, PlaybackTimeline.GrowthRate(194, Track, 32), 1e-9);
+        Assert.AreEqual(0.1, PlaybackTimeline.GrowthRate(210, Track, 32), 1e-9);
     }
 
     [TestMethod]
     public void EndGrowsFasterPastTheEdgeUpToACap()
     {
-        Assert.AreEqual(2, PlaybackTimeline.GrowthRate(242, Track, 32), 1e-9);
-        Assert.AreEqual(8, PlaybackTimeline.GrowthRate(338, Track, 32), 1e-9);
-        Assert.AreEqual(8, PlaybackTimeline.GrowthRate(900, Track, 32), 1e-9);
+        Assert.AreEqual(0.4, PlaybackTimeline.GrowthRate(242, Track, 32), 1e-9);
+        Assert.AreEqual(0.9, PlaybackTimeline.GrowthRate(274, Track, 32), 1e-9);
+        Assert.AreEqual(0.9, PlaybackTimeline.GrowthRate(900, Track, 32), 1e-9);
     }
 
     [TestMethod]
