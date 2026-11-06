@@ -169,6 +169,10 @@ Confirmed: every save dialog — the grid's Save and its ▾ entries, *Save last
 image…* — opens on the explorer's open folder, like the new Save…; the last export folder is no longer
 remembered. New section § The App's Other Save Dialogs.
 
+### Iteration 5 — 2026-11-07 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree on `feature/save-downloaded-content`.
+
 ---
 
 ## Implementation Log
