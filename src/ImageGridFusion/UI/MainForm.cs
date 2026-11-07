@@ -1,4 +1,4 @@
-using System.Collections.Specialized;
+﻿using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Globalization;
 using System.Drawing.Drawing2D;
@@ -586,6 +586,7 @@ internal sealed partial class MainForm : Form
         _outputButtons.Controls.Add(_copyButton);
         _outputButtons.Controls.Add(_copyLastButton);
         _outputButtons.Controls.Add(_saveButton);
+        this.SetUpOutputReadout();
 
         // Clear button on the left, then the status line, output buttons on the right.
         _bottom = new TableLayoutPanel
@@ -1496,6 +1497,7 @@ internal sealed partial class MainForm : Form
             this._cutouts.Dispose();
             this._upscales.Dispose();
             this._transportTimer.Dispose();
+            this._outputTimer.Dispose();
             _settingsMenu.Dispose();
             this._cellMenu.Dispose();
             _copyMenu.Dispose();
@@ -2638,6 +2640,7 @@ internal sealed partial class MainForm : Form
         {
             string path = TempExportPath(Extension(animated));
             int gridVersion = _preview.ContentVersion;
+            var expected = this.MainOutput();
             var animationClock = Stopwatch.StartNew();
             if (await ExportAnimationAsync(path, animated) is { } animation)
             {
@@ -2648,6 +2651,7 @@ internal sealed partial class MainForm : Form
                     // Kept before the clipboard step: a copy failing there is retried with Copy last.
                     last = new LastVideo(path, animated, DateTime.Now, animation, new FileInfo(path).Length, encoding, gridVersion);
                     _lastVideo = last;
+                    this.KeepOutputSize(expected, animated, stillMaxSide, last.Bytes, gridVersion);
                     UpdateButtons();
                     PutOnClipboard(last);
                     var (kept, keptFile) = KeepPrevious(() => PreviousCopy.KeepCopyOf(path, cellFiles));
@@ -2666,6 +2670,8 @@ internal sealed partial class MainForm : Form
         }
 
         var clock = Stopwatch.StartNew();
+        int stillVersion = this._preview.ContentVersion;
+        var stillExpected = this.MainOutput();
         using var result = await this.RenderStillAsync(stillMaxSide);
         if (result is null)
         {
@@ -2677,6 +2683,7 @@ internal sealed partial class MainForm : Form
             using var png = new MemoryStream();
             result.Save(png, ImageFormat.Png);
             var encoding = clock.Elapsed;
+            this.KeepOutputSize(stillExpected, null, stillMaxSide, png.Length, stillVersion);
             PutStillOnClipboard(result, png);
             var (kept, keptFile) = KeepPrevious(() => PreviousCopy.Keep(png.ToArray(), ".png", cellFiles));
             ShowStatus(StillSummary(Strings.MainStatusCopiedToClipboard, "PNG", result.Size, png.Length, encoding) + kept, savedFile: keptFile);
@@ -3338,10 +3345,13 @@ internal sealed partial class MainForm : Form
 
         string saved =Texts.Format(Strings.MainStatusSaved, Path.GetFileName(dialog.FileName));
         var clock = Stopwatch.StartNew();
+        int gridVersion = this._preview.ContentVersion;
+        var expected = this.MainOutput();
         if (format is { } animated)
         {
             if (await ExportAnimationAsync(dialog.FileName, animated) is { } result)
             {
+                this.KeepSavedSize(expected, format, stillMaxSide, dialog.FileName, gridVersion);
                 ShowStatus(AnimationSummary(saved, dialog.FileName, animated, result, clock.Elapsed), savedFile: dialog.FileName);
                 NotifyIfAway(Texts.Format(Strings.MainNotifySaved, FormatName(animated)), Path.GetFileName(dialog.FileName), error: false);
             }
@@ -3358,6 +3368,7 @@ internal sealed partial class MainForm : Form
         try
         {
             still.Save(dialog.FileName, ImageFormat.Png);
+            this.KeepSavedSize(expected, null, stillMaxSide, dialog.FileName, gridVersion);
             ShowStatus(StillSummary(saved, "PNG", still.Size, new FileInfo(dialog.FileName).Length, clock.Elapsed), savedFile: dialog.FileName);
         }
         catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException or OutOfMemoryException)
@@ -3706,6 +3717,7 @@ internal sealed partial class MainForm : Form
         using (job)
         {
             bool gif = format == GridExport.Format.Gif;
+            this.BeginWriting(path, format);
             var cancellation = BeginExport(gif ? Strings.MainStatusExportingGif0 : Strings.MainStatusExportingVideo0, cancellable: true);
             var progress = new Progress<double>(done =>
             {
@@ -3735,6 +3747,7 @@ internal sealed partial class MainForm : Form
             }
             finally
             {
+                this.EndWriting();
                 EndExport();
             }
         }
@@ -4134,6 +4147,7 @@ internal sealed partial class MainForm : Form
         RefreshLength();
         RefreshLastVideoTooltips();
         this.RefreshPngSizeTooltips();
+        this.RefreshOutputReadout();
         UpdateEffects();
         UpdateGlobalEffects();
     }

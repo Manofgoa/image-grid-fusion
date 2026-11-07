@@ -633,6 +633,16 @@ Redémarrer l'application maintenant ?</value></data>
   <data name="MainNotifyCopyFailedBody" xml:space="preserve"><value>{0} Copier la dernière {1} remet {2} dans le presse-papiers.</value></data>
   <data name="MainNotifyExportFailed" xml:space="preserve"><value>Échec de l'export {0}</value></data>
   <data name="MainNotifySaved" xml:space="preserve"><value>{0} enregistré</value></data>
+  <data name="MainOutputEstimate" xml:space="preserve"><value>≈ {0}</value></data>
+  <data name="MainOutputReadout" xml:space="preserve"><value>{0} · {1} · {2} × {3}</value></data>
+  <data name="MainOutputReadoutNoSize" xml:space="preserve"><value>{0} · {1}</value></data>
+  <data name="MainOutputTipKnown" xml:space="preserve"><value>Ce que produisent Copier et Enregistrer : la taille du fichier donné par le dernier Copier ou Enregistrer, la grille inchangée depuis</value></data>
+  <data name="MainOutputTipMp4" xml:space="preserve"><value>Ce que produisent Copier et Enregistrer, une vidéo MP4 : sa taille au pire, la vidéo à {0} Mb/s pendant {1}, son conteneur compris</value></data>
+  <data name="MainOutputTipMp4Sound" xml:space="preserve"><value>Ce que produisent Copier et Enregistrer, une vidéo MP4 : sa taille au pire, la vidéo à {0} Mb/s pendant {1} plus sa piste son, son conteneur compris</value></data>
+  <data name="MainOutputTipNone" xml:space="preserve"><value>Rien à exporter : le format, la taille et les dimensions de ce que produisent Copier et Enregistrer s'affichent ici</value></data>
+  <data name="MainOutputTipPng" xml:space="preserve"><value>Ce que produisent Copier et Enregistrer, un PNG : sa taille au pire, stocké sans compression — le vrai fichier est en général bien plus petit</value></data>
+  <data name="MainOutputTipWriting" xml:space="preserve"><value>Ce que l'export en cours a écrit jusqu'ici</value></data>
+  <data name="MainOutputWriting" xml:space="preserve"><value>{0}…</value></data>
   <data name="MainPause" xml:space="preserve"><value>Pause</value></data>
   <data name="MainPickerAddImages" xml:space="preserve"><value>Ajouter des images</value></data>
   <data name="MainPickerAllFiles" xml:space="preserve"><value>Tous les fichiers (*.*)</value></data>
