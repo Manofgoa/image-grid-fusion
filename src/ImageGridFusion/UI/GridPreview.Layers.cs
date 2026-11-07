@@ -18,6 +18,12 @@ internal sealed partial class GridPreview
     /// <summary>A notch of Shift + wheel turns the selected layer by 5°.</summary>
     private const double LayerTurnNotch = 5;
 
+    /// <summary>
+    /// The least side, in logical px, of the area around the selected layer's center taking the wheel and a press:
+    /// a layer shrunk to a speck can still be grown back (workfiles/20261107-layer-size-limits.md).
+    /// </summary>
+    private const int SelectedLayerReach = 24;
+
     private const int LayerOutlineWidth = 2;
     private const int LayerHaloWidth = 5;
 
@@ -439,12 +445,15 @@ internal sealed partial class GridPreview
         return canvas.IsEmpty ? -1 : this._layers.At(new PointF(location.X - canvas.X, location.Y - canvas.Y), canvas.Size);
     }
 
-    /// <summary>Whether <paramref name="location"/> of the control falls on the selected layer, whatever lies over it.</summary>
+    /// <summary>
+    /// Whether <paramref name="location"/> of the control falls on the selected layer, whatever lies over it — its box,
+    /// grown to <see cref="SelectedLayerReach"/> around its center while smaller.
+    /// </summary>
     private bool OnSelectedLayer(Point location)
     {
         var canvas = this.CanvasBounds();
         return this.SelectedLayer is { Visible: true } layer && !canvas.IsEmpty
-            && layer.Place.Contains(new PointF(location.X - canvas.X, location.Y - canvas.Y), layer.Shown, canvas.Size);
+            && layer.Place.Reaches(new PointF(location.X - canvas.X, location.Y - canvas.Y), layer.Shown, canvas.Size, this.LogicalToDeviceUnits(SelectedLayerReach));
     }
 
     /// <summary>
