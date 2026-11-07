@@ -561,6 +561,12 @@ one definition, `Composition/GridLayers`:
   is the selected layer's content when there is one, so the effects toolbar acts on it; the cell-only code
   reads `SelectedCellImage`. A layer's default look has the **Background off** (`Layer.DefaultLook`) — the
   layers' exception to § The Background Exception.
+- **Its size** goes from 0.5 % to 500 % of the grid's shorter side (`LayerPlacement.MinSize` / `MaxSize`, origin:
+  `workfiles/20261107-layer-size-limits.md`). The **selected** layer takes the wheel and a press over its box grown
+  to at least 24 logical px around its center (`LayerPlacement.Reaches`, `GridPreview.OnSelectedLayer`), so a speck
+  can be grown back; a new gesture on the selected layer tests it there. A box larger than the canvas keeps
+  `Compositor.DrawCell`'s intermediate bitmaps within `CanvasSizer.MaxLongSide` (`Compositor.IntermediateCap`): a
+  new one sized on the cell is capped there too.
 - Their contents **play beside the cells**: the player, the export, the sound mix and the video length take
   them (`AnimationPlayer.Sync`, `GridExport.Job.Capture`, `Animation.GridLength`), never the Cascade.
 - Every change makes a **new `GridLayers`**, held by `GlobalState`: the undo history covers them, and a
