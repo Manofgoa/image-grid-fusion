@@ -100,11 +100,11 @@ be 2 px in the preview: the pointer would miss it, and the layer could never be 
 
 ## Open Questions
 
-- [ ] Are **0.5 %** and **500 %** the bounds you want, or other values (e.g. 1 % / 1000 %)?
-- [ ] The **grown reach** of a tiny selected layer (24 × 24 logical px around its center): keep it in this scope, or
-      leave a tiny layer reachable from the layer list only?
-- [ ] The **memory cap** on the per-cell intermediate bitmaps: keep it in this scope (needed for 500 % to be safe),
-      or limit the max instead so that it is not needed?
+- [x] ~~Are **0.5 %** and **500 %** the bounds you want, or other values (e.g. 1 % / 1000 %)?~~ → 0.5 %–500 % (Q&A #5)
+- [x] ~~The **grown reach** of a tiny selected layer (24 × 24 logical px around its center): keep it in this scope, or
+      leave a tiny layer reachable from the layer list only?~~ → In scope (Q&A #6)
+- [x] ~~The **memory cap** on the per-cell intermediate bitmaps: keep it in this scope (needed for 500 % to be safe),
+      or limit the max instead so that it is not needed?~~ → In scope, capped at 8192 px (Q&A #7)
 
 ---
 
@@ -116,6 +116,11 @@ Scoping batch answered: the layer's size (wheel), both bounds, values proposed b
 subject. Explored directly — one chained question (where the bounds live, then what depends on them).
 Proposed: 0.5 %–500 % of the grid's shorter side; the selected layer's reach grown to 24 × 24 logical px so a tiny
 layer can be grown back; the per-cell intermediate bitmaps capped at 8192 px so a huge layer cannot exhaust memory.
+
+### Iteration 2 — 2026-11-07
+
+Open questions answered (Q&A #5–#7): the three proposals confirmed as they stand — 0.5 %–500 %, the grown reach,
+the 8192-px cap. No design change; nothing left open.
 
 ---
 
@@ -137,9 +142,9 @@ layer can be grown back; the per-cell intermediate bitmaps capped at 8192 px so 
 | 2 | Which way does the limit hinder — max, min, both? | Both ways | 2026-11-07 |
 | 3 | How far should the new limit go? | Left to the agent to propose | 2026-11-07 |
 | 4 | Straightforward or tricky / long to explore? | Straightforward | 2026-11-07 |
-| 5 | Bounds 0.5 % / 500 %? | | |
-| 6 | Grown reach of a tiny selected layer in scope? | | |
-| 7 | Memory cap on the per-cell intermediate bitmaps in scope? | | |
+| 5 | Bounds 0.5 % / 500 %? | Yes, 0.5 %–500 % | 2026-11-07 |
+| 6 | Grown reach of a tiny selected layer in scope? | Yes, in this scope | 2026-11-07 |
+| 7 | Memory cap on the per-cell intermediate bitmaps in scope? | Yes, capped at 8192 px | 2026-11-07 |
 
 ---
 
