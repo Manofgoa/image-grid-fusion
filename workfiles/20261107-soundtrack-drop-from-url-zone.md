@@ -149,6 +149,11 @@ Open Questions answered (Q&A 7–8): the Grid background's tab takes a drop like
 for the three file-taking global effects; while exporting, every drop on the Global toolbar is refused at
 the hover. No question left open.
 
+### Iteration 3 — 2026-11-07 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree on `feature/soundtrack-drop-from-url-zone`.
+The scope is frozen as the sections above stand.
+
 ---
 
 ## Implementation Log
