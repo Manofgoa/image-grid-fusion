@@ -43,7 +43,7 @@ One decision, `GlobalDrop` (a pure function, tested), from where the cursor stan
 |---|---|---|
 | The **Soundtrack** tab | any | Soundtrack |
 | The **Layers** tab | any | Layers |
-| The **Grid background** tab | any | *Open Question 1* |
+| The **Grid background** tab | any | Grid background (its image) |
 | Another tab (Format, Fade, Borders, Seams, Cascade) | any | **Nothing — refused** |
 | The global options toolbar | Soundtrack | Soundtrack |
 | The global options toolbar | Layers | Layers |
@@ -53,6 +53,8 @@ One decision, `GlobalDrop` (a pure function, tested), from where the cursor stan
 
 - **Restricted** (user decision): a drop on the Format, Borders… tab or options **no longer** loads the
   soundtrack. Only the Soundtrack tab and its options do.
+- The Grid background's **tab** takes a drop too (user decision), so the three file-taking effects
+  follow one rule: their tab, or their options while selected.
 - A drop on a tab **selects it** before acting, as the Layers drop does today
   (`DropLayerFilesAsync` → `SelectGlobalEffect`): the Soundtrack's options then show the file loaded.
 - **The cursor tells before the drop**: `DragOver` gives `Copy` where the drop would act, `None` (the
@@ -60,7 +62,8 @@ One decision, `GlobalDrop` (a pure function, tested), from where the cursor stan
 - Every control of the two rows is a drop target — the tab strip, the options host, every options
   panel and its children — each routed to the one handler (a recursive wiring, a control added later
   covered by itself). The cell effects' rows and the preview keep their own handlers, untouched.
-- **While exporting**: *Open Question 2*.
+- **While exporting** the Global toolbar is locked: every drop is **refused at the hover** — `None`,
+  the forbidden cursor — Soundtrack, Layers and Grid background alike.
 
 ## Soundtrack Drop
 
@@ -94,11 +97,12 @@ only. The design fixes it either way; the cause is recorded so the rules can say
 ## Docs and Rules
 
 - **RULES.md § Global Toolbar**: a line — a file dropped onto the Global toolbar goes to the effect under
-  the cursor only (the table above), the cursor refusing elsewhere; one decision, `GlobalDrop`.
+  the cursor only — the Soundtrack, the Layers or the Grid background, its tab or its options while
+  selected —, the cursor refusing elsewhere and while exporting; one decision, `GlobalDrop`.
 - **README.md / README.fr.md § Soundtrack**: "dropped on the Global tabs or options" → "dropped onto the
   Soundtrack tab, or its options while it is selected — from the URL zone, the file explorer or
   Windows' Explorer"; a file that cannot carry sound refused. § Layers: the URL zone named among the
-  sources.
+  sources. § Grid background: its tab takes a drop too.
 - The comment above `_globalTabsRow` (*"A file dropped anywhere on either row becomes the soundtrack"*)
   follows.
 - No new UI text is expected (the refusal is the cursor; the no-sound message exists). One added after
@@ -112,8 +116,9 @@ only. The design fixes it either way; the cause is recorded so the rules can say
 |---|---|---|
 | `GlobalDrop`: the Soundtrack tab → Soundtrack, whatever tab is selected | `tests/ImageGridFusion.Tests/UI/GlobalDropTests.cs` | Create |
 | `GlobalDrop`: the Layers tab → Layers; the options with Layers selected → Layers | `tests/ImageGridFusion.Tests/UI/GlobalDropTests.cs` | Create |
-| `GlobalDrop`: the options with Grid background selected → Grid background | `tests/ImageGridFusion.Tests/UI/GlobalDropTests.cs` | Create |
-| `GlobalDrop`: the Format / Borders tab, the options of another effect or none → nothing | `tests/ImageGridFusion.Tests/UI/GlobalDropTests.cs` | Create |
+| `GlobalDrop`: the Grid background tab, and the options with it selected → Grid background | `tests/ImageGridFusion.Tests/UI/GlobalDropTests.cs` | Create |
+| `GlobalDrop`: the Format / Borders tab, the options of another effect or none → nothing |
+| `GlobalDrop`: while exporting → nothing, wherever the cursor stands | `tests/ImageGridFusion.Tests/UI/GlobalDropTests.cs` | Create |
 | `SoundtrackFile.MayCarrySound`: mp3, m4a, mp4, webm (any case) yes; jpg, png, gif, txt, no extension no | `tests/ImageGridFusion.Tests/UI/GlobalDropTests.cs` | Create |
 | The Soundtrack's pick among several files: the first that may carry sound, none → refused | `tests/ImageGridFusion.Tests/UI/GlobalDropTests.cs` | Create |
 
@@ -121,12 +126,9 @@ only. The design fixes it either way; the cause is recorded so the rules can say
 
 ## Open Questions
 
-- [ ] **1. The Grid background tab**: today only its **options** take a drop (its image). Should its
-  **tab** take one too, like the Soundtrack and the Layers — *recommended, one rule for the three* — or
-  stay refused?
-- [ ] **2. While exporting**: the Global toolbar is locked. Refuse the drag at the hover (forbidden
-  cursor) — *recommended* — or keep accepting it and refuse at the drop with the existing status
-  message?
+- [x] ~~**1. The Grid background tab**: should its tab take a drop too?~~ → Yes, its tab too: one rule
+  for the Soundtrack, the Layers and the Grid background
+- [x] ~~**2. While exporting**: refuse at the hover or at the drop?~~ → At the hover, the forbidden cursor
 
 ---
 
@@ -140,6 +142,12 @@ exploration; the user sees the forbidden cursor over the Soundtrack tab today; t
 restricted to the Soundtrack tab and its options. Proposed: one per-position decision for the Global
 toolbar (`GlobalDrop`), every control of its rows a drop target with a `DragOver`, the extension check
 `SoundtrackFile.MayCarrySound`, the root cause reproduced and recorded at the start of the run.
+
+### Iteration 2 — 2026-11-07
+
+Open Questions answered (Q&A 7–8): the Grid background's tab takes a drop like its options, one rule
+for the three file-taking global effects; while exporting, every drop on the Global toolbar is refused at
+the hover. No question left open.
 
 ---
 
@@ -164,8 +172,8 @@ toolbar (`GlobalDrop`), every control of its rows a drop target with a `DragOver
 | 4 | Exploration depth? | Straightforward | 2026-11-07 |
 | 5 | What happens today when the thumbnail is dragged onto the Soundtrack tab? | Forbidden cursor, nothing | 2026-11-07 |
 | 6 | Keep the soundtrack drop on every Global tab and options, or restrict it? | Restrict to the Soundtrack tab and its options | 2026-11-07 |
-| 7 | Should the Grid background's tab take a drop too? | | |
-| 8 | While exporting: refuse at the hover, or at the drop? | | |
+| 7 | Should the Grid background's tab take a drop too? | Yes, its tab too | 2026-11-07 |
+| 8 | While exporting: refuse at the hover, or at the drop? | At the hover | 2026-11-07 |
 
 ---
 
