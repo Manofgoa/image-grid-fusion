@@ -396,7 +396,8 @@ internal sealed partial class MainForm : Form
     private bool _syncingEffects;
 
     // The Global toolbar — the format, then the global effects — the mirror of the cell effects: its tabs
-    // standing on their options row, just above the bottom bar (see RULES.md). A file dropped anywhere on either row becomes the soundtrack.
+    // standing on their options row, just above the bottom bar (see RULES.md). A file dropped onto them goes to the
+    // effect under the cursor — the Soundtrack, the Layers or the Grid background — and is refused elsewhere (MainForm.GlobalDrops.cs).
     private readonly TableLayoutPanel _globalTabsRow = new()
     {
         Dock = DockStyle.Bottom,
@@ -1388,32 +1389,9 @@ internal sealed partial class MainForm : Form
         _bordersOuterFrame.CheckedChanged += (_, _) => ChangeBorders(borders => borders with { OuterFrame = _bordersOuterFrame.Checked });
         _toolTip.SetToolTip(_bordersRounded, Strings.MainBordersRoundedTip);
         _bordersRounded.CheckedChanged += (_, _) => ChangeBorders(borders => borders with { Rounded = _bordersRounded.Checked });
-        foreach (var row in new Control[] { _globalTabsRow, _globalOptionsRow })
-        {
-            row.DragEnter += (_, e) => e.Effect = e.Data?.GetDataPresent(DataFormats.FileDrop) == true ? DragDropEffects.Copy : DragDropEffects.None;
-            row.DragDrop += async (_, e) =>
-            {
-                if (e.Data?.GetData(DataFormats.FileDrop) is not string[] { Length: > 0 } paths)
-                {
-                    return;
-                }
-
-                // Onto the Layers tab, or its options while it is selected: laid over the grid (workfiles/20261029-layers.md).
-                if (this.DroppedOnLayers(new Point(e.X, e.Y)))
-                {
-                    await this.DropLayerFilesAsync(paths);
-                }
-                else if (this.DroppedOnGridBackground(new Point(e.X, e.Y)))
-                {
-                    // Onto the Grid background's options: its image (workfiles/20261104-grid-background-image.md § Drop and Browse).
-                    await this.SetBackgroundImageFromFilesAsync(paths, FileExplorerPanel.PresetLookOf(e.Data));
-                }
-                else
-                {
-                    await LoadSoundtrackAsync(paths[0]);
-                }
-            };
-        }
+        // A file dropped onto the Global toolbar goes to the effect under the cursor (workfiles/20261107-soundtrack-drop-from-url-zone.md).
+        this.WireGlobalDrops(this._globalTabsRow);
+        this.WireGlobalDrops(this._globalOptionsRow);
         // Freezing the last playing content turns the export back into an image.
         _preview.SelectedImageChanged += (_, _) => UpdateButtons();
         _preview.ImagesChanged += (_, _) => UpdateButtons();
@@ -2213,9 +2191,6 @@ internal sealed partial class MainForm : Form
         }
     }
 
-    /// <summary>Videos the pickers offer, mirroring <see cref="VideoFrames"/>.</summary>
-    private static readonly string[] VideoExtensions = ["mp4", "m4v", "mov", "avi", "wmv", "asf", "mkv", "webm", "3gp", "3g2", "mpg", "mpeg", "ts", "m2ts", "mts"];
-
     private static string Patterns(IEnumerable<string> extensions) => string.Join(";", extensions.Select(e => $"*.{e}"));
 
     /// <summary>
@@ -2227,7 +2202,7 @@ internal sealed partial class MainForm : Form
         (string Name, string[] Extensions)[] types =
         [
             (Strings.MainPickerImages, new[] { "png", "jpg", "jpeg", "bmp", "gif", "tif", "tiff", "webp" }),
-            (Strings.MainPickerVideos, VideoExtensions),
+            (Strings.MainPickerVideos, SoundtrackFile.VideoExtensions),
             ("PDF", new[] { "pdf" }),
             (Strings.MainPickerText, new[] { "txt", "md", "log", "csv", "json", "xml" }),
         ];
@@ -5491,9 +5466,9 @@ internal sealed partial class MainForm : Form
             Title = Strings.MainPickerSoundtrackTitle,
             Filter = string.Join(
                 "|",
-                $"{Strings.MainPickerAudioVideo}|{Patterns(SoundtrackFile.AudioExtensions.Concat(VideoExtensions))}",
+                $"{Strings.MainPickerAudioVideo}|{Patterns(SoundtrackFile.AudioExtensions.Concat(SoundtrackFile.VideoExtensions))}",
                 $"{Strings.MainPickerAudio}|{Patterns(SoundtrackFile.AudioExtensions)}",
-                $"{Strings.MainPickerVideos}|{Patterns(VideoExtensions)}",
+                $"{Strings.MainPickerVideos}|{Patterns(SoundtrackFile.VideoExtensions)}",
                 $"{Strings.MainPickerAllFiles}|*.*"),
             InitialDirectory = ExistingFolder(AppSettings.SoundtrackFolder) ?? "",
         };

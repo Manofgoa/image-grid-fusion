@@ -60,8 +60,13 @@ One decision, `GlobalDrop` (a pure function, tested), from where the cursor stan
 - **The cursor tells before the drop**: `DragOver` gives `Copy` where the drop would act, `None` (the
   forbidden cursor) elsewhere — computed at each move, never once at `DragEnter`.
 - Every control of the two rows is a drop target — the tab strip, the options host, every options
-  panel and its children — each routed to the one handler (a recursive wiring, a control added later
-  covered by itself). The cell effects' rows and the preview keep their own handlers, untouched.
+  panel and its children — each routed to the one handler (`MainForm.WireGlobalDrops`, in
+  `UI/MainForm.GlobalDrops.cs`: recursive, a control added later covered by itself). A **text field**
+  (`TextBoxBase`, a `NumericUpDown`'s inner edit included) is left out: its parent takes its drops, so its
+  own text editing is untouched. The cell effects' rows and the preview keep their own handlers, untouched.
+- "Over the options" is the **options host** (`_globalOptionsHost`), so the effect's own Reset button
+  at the end of the row refuses, as the table says. `DroppedOnLayers` and `DroppedOnGridBackground` are
+  gone, replaced by `MainForm.GlobalDropTargetAt` → `GlobalDrop.TargetOf`.
 - **While exporting** the Global toolbar is locked: every drop is **refused at the hover** — `None`,
   the forbidden cursor — Soundtrack, Layers and Grid background alike.
 
@@ -70,9 +75,10 @@ One decision, `GlobalDrop` (a pure function, tested), from where the cursor stan
 - **Any file drag** — the URL zone, the explorer's tiles, the GIPHY results, Windows Explorer — goes
   through the same route (user decision).
 - **A file that cannot carry sound is refused at the hover** (user decision): the drag holds a file
-  whose extension may carry a sound track — `SoundtrackFile.AudioExtensions` or the video extensions —
-  → `Copy`; none → `None`, the forbidden cursor. One check, `SoundtrackFile.MayCarrySound(path)`, the
-  video extensions moved where both the picker and it read them.
+  whose extension may carry a sound track — `SoundtrackFile.AudioExtensions` or
+  `SoundtrackFile.VideoExtensions`, any case — → `Copy`; none → `None`, the forbidden cursor. One check,
+  `SoundtrackFile.MayCarrySound(path)`; the video extensions moved from `MainForm` into `SoundtrackFile`,
+  where the pickers and it read them. The hover's accept is `GlobalDrop.Accepts`.
 - **Several files**: the first one that may carry sound is loaded; the others are ignored.
 - **At the drop**, `LoadSoundtrackAsync` as today: a file Windows reads no sound track from — a video
   without sound, a GIPHY MP4, a YouTube video track downloaded without ffmpeg — changes nothing, the
@@ -89,10 +95,13 @@ One decision, `GlobalDrop` (a pure function, tested), from where the cursor stan
 
 ## Root Cause
 
-To be established at the start of the implementation run, by reproducing the refused drag (the URL zone
-→ the Soundtrack tab, then → the Layers tab) before any change, and recorded in the 🧭 entry. Leads:
-the tab strip and the options panels are not drop targets themselves; the rows decide at `DragEnter`
-only. The design fixes it either way; the cause is recorded so the rules can say it.
+**Not established** (see Iteration 4). A minimal probe — a form, a `TableLayoutPanel` with `AllowDrop`
+and a `DragEnter` giving `Copy`, a custom `Control` child without `AllowDrop`, an in-process
+`DataObject(FileDrop)` drag — showed the drop **does** reach the row through the child (OLE walks up to the
+nearest registered parent): the hierarchy alone does not explain the refusal. Reproducing in the real app
+would have meant driving the mouse while the user was working in their own instance, so it was not done.
+The change does not depend on the cause — every control a target, the effect decided at each move — and
+the user's manual test after delivery confirms it or not.
 
 ## Docs and Rules
 
@@ -149,16 +158,40 @@ Open Questions answered (Q&A 7–8): the Grid background's tab takes a drop like
 for the three file-taking global effects; while exporting, every drop on the Global toolbar is refused at
 the hover. No question left open.
 
+### Iteration 3 — 2026-11-07 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree on `feature/soundtrack-drop-from-url-zone`.
+The scope is frozen as the sections above stand.
+
+### Iteration 4 — 2026-11-07 — 🧭 Implementation choices
+
+- **Root cause not established**: a probe showed the parent row does receive a drop over an
+  unregistered child; the live reproduction in the app was dropped because the user's own instance was
+  in front and in use, and simulating a drag moves the real mouse. The fix applies as designed; § Root
+  Cause says what is known.
+- **Text fields left out of the wiring** (`TextBoxBase`, so a `NumericUpDown`'s edit too): registering them
+  would take their native text editing; their parent, registered, takes the file drops over them.
+- **"Over the options" is the options host**, not the whole options row: the effect's Reset button and the
+  row's padding refuse, as the table's last row says.
+- **The hover decision reads the file names** (`GetData(FileDrop)` at each `DragOver`), so the Soundtrack's
+  sound check runs before the drop; the drop checks again with the same `GlobalDrop.Accepts`.
+- **`GlobalDropTarget`** (an enum: None, Soundtrack, Layers, GridBackground) and `GlobalDrop.Accepts` added
+  beside `TargetOf` and `SoundtrackFileOf`, so the whole hover / drop decision is tested without a form.
+- **Glossary**: the Background image's entry says its tab or options take a drop, in English and French —
+  a doc the design's § Docs and Rules did not list.
+- No rule broken.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
-| RULES.md | | | |
+| Code | 3 | 2026-11-07 | `UI/GlobalDrop.cs`, `UI/MainForm.GlobalDrops.cs`, `SoundtrackFile.MayCarrySound`; the old hit-tests removed |
+| Unit tests | 3 | 2026-11-07 | `UI/GlobalDropTests.cs`, 11 tests, passing |
+| README | 3 | 2026-11-07 | README.md / README.fr.md § Soundtrack, § Grid background, § Layers; GLOSSARY.md / GLOSSARY.fr.md Background image |
+| RULES.md | 3 | 2026-11-07 | § Global Toolbar, one line |
+| Manual test | 3 | | Root cause not reproduced: the user's drag from the URL zone onto the Soundtrack and Layers tabs confirms the fix |
 
 ---
 

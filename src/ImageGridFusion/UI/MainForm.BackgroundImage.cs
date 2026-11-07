@@ -220,11 +220,6 @@ internal sealed partial class MainForm
         this.ShowBackgroundImageOptions();
     }
 
-    /// <summary>Whether a drop at <paramref name="screen"/> falls on the Grid background's options while its tab is selected.</summary>
-    private bool DroppedOnGridBackground(Point screen) =>
-        this._selectedGlobalEffect == GlobalEffect.GridBackground
-        && this._globalOptionsRow.RectangleToScreen(this._globalOptionsRow.ClientRectangle).Contains(screen);
-
     /// <summary>The file picker's image, GIF or video as the Grid background's image.</summary>
     private async Task BrowseBackgroundImageAsync()
     {

@@ -517,6 +517,13 @@ The **mirror of the cell effects' toolbars** at the bottom of the window (origin
   effects: the export keeps the settings it started with.
 - An effect that needs a file before it can be on (the Soundtrack) opens the file picker when its
   checkbox is checked without one; the effect stays off if it is cancelled.
+- **A file dropped onto the toolbar goes to the effect under the cursor** — the Soundtrack, the Layers or
+  the Grid background, on its tab or on its options while it is selected — and is refused everywhere else
+  and while exporting (origin: `workfiles/20261107-soundtrack-drop-from-url-zone.md`). One decision,
+  `UI/GlobalDrop`, read at each move of the drag (`MainForm.OnGlobalDragOver`), so the cursor refuses before
+  the drop; the Soundtrack refuses a drag holding no file that may carry sound (`SoundtrackFile.MayCarrySound`).
+  Every control of the two rows is a drop target (`MainForm.WireGlobalDrops`, a control added later
+  included). A new global effect taking files adds its case to `GlobalDrop`.
 - A **global setting** (the Format) is a tab of the same toolbar for a value **always in force**: its
   tab has **no activation checkbox**, its options show its value, its own **Reset** brings back its
   default, and the tabs' **Reset** and *Clear all* reset it with the global effects. Like them, it is
