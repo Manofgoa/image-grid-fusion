@@ -283,6 +283,11 @@ Les fonctionnalités qui en ont besoin les proposeront à nouveau.</value></data
   <data name="ExplorerLookingForFaces" xml:space="preserve"><value> · recherche de visages…</value></data>
   <data name="ExplorerLowQuality" xml:space="preserve"><value>Faible qualité</value></data>
   <data name="ExplorerMenuCopy" xml:space="preserve"><value>Copier</value></data>
+  <data name="ExplorerMenuSave" xml:space="preserve"><value>Enregistrer…</value></data>
+  <data name="ExplorerSaveFilterType" xml:space="preserve"><value>Fichier {0} (*{1})</value></data>
+  <data name="ExplorerStatusSaved" xml:space="preserve"><value>{0} enregistré dans {1}</value></data>
+  <data name="ExplorerStatusSaveFailed" xml:space="preserve"><value>Échec de l'enregistrement : {0}</value></data>
+  <data name="ExplorerTipSaveNotDownloaded" xml:space="preserve"><value>Cliquez d'abord sur la tuile pour la télécharger</value></data>
   <data name="ExplorerMenuCopyFullPath" xml:space="preserve"><value>Copier le chemin complet</value></data>
   <data name="ExplorerMenuCopyPng" xml:space="preserve"><value>Copier en PNG</value></data>
   <data name="ExplorerMenuEditDescription" xml:space="preserve"><value>Modifier la description…</value></data>

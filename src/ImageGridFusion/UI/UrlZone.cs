@@ -83,6 +83,7 @@ internal sealed class UrlZone : Panel
             this.MenuItem(FileExplorerPanel.CopyFullPathText, FileAction.CopyFullPath, UiIcons.CopyPath),
             new ToolStripSeparator(),
             this.MenuItem(FileExplorerPanel.OpenFileLocationText, FileAction.OpenFileLocation, UiIcons.OpenFolder),
+            this.MenuItem(FileExplorerPanel.SaveText, FileAction.Save, UiIcons.Save),
         ]);
         UiIcons.Attach(this._menu);
         this._menu.Opening += (_, e) => e.Cancel = this._preview.State != PreviewState.Ready;
@@ -105,6 +106,9 @@ internal sealed class UrlZone : Panel
         CopyPng,
         CopyFullPath,
         OpenFileLocation,
+
+        /// <summary>Its file copied where the user chooses (workfiles/20261107-save-downloaded-content.md).</summary>
+        Save,
     }
 
     /// <summary>The URL field has the focus: the keys editing text are its own.</summary>

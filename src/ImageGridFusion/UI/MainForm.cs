@@ -68,6 +68,9 @@ internal sealed partial class MainForm : Form
     private readonly ToolStripMenuItem _copyCell = new(Strings.MainMenuCopyCell) { ShortcutKeyDisplayString = "Ctrl+C" };
     private readonly ToolStripMenuItem _saveUpscaledCell = new(Strings.MainMenuSaveUpscaled);
 
+    // A downloaded content's file copied where the user chooses (workfiles/20261107-save-downloaded-content.md § Cells).
+    private readonly ToolStripMenuItem _saveDownloadedCell = new(FileExplorerPanel.SaveText);
+
     /// <summary>The cell the context menu was opened on, by its slot.</summary>
     private int _cellMenuCell = -1;
     // How the light bulb's arrow to the word found is drawn: a submenu of the group, the thickness a
@@ -1481,10 +1484,19 @@ internal sealed partial class MainForm : Form
                 _ = this.SaveUpscaledAsync(image);
             }
         };
+        this._saveDownloadedCell.Click += (_, _) =>
+        {
+            if (this._cellMenu.Tag is SourceImage image && this._preview.Images.Contains(image))
+            {
+                _ = this.SaveDownloadedAsync(image);
+            }
+        };
         this._cellMenu.Items.Add(this._copyCell);
         this._cellMenu.Items.Add(this._findSimilarCell);
+        this._cellMenu.Items.Add(this._saveDownloadedCell);
         this._cellMenu.Items.Add(this._saveUpscaledCell);
         UiIcons.Set(this._copyCell, UiIcons.Copy);
+        UiIcons.Set(this._saveDownloadedCell, UiIcons.Save);
         UiIcons.Set(this._saveUpscaledCell, UiIcons.SaveUpscaled);
         UiIcons.Set(this._findSimilarCell, UiIcons.FindSimilar);
         UiIcons.Attach(this._cellMenu);
@@ -4780,6 +4792,25 @@ internal sealed partial class MainForm : Form
     }
 
     /// <summary>
+    /// Save… on a cell holding a downloaded content: its file copied where the user chooses — the explorer's dialog —
+    /// then adopted by the cell, so a heart or a preset made afterwards points to the file kept, not to the temp one
+    /// emptied at the next start (workfiles/20261107-save-downloaded-content.md § Cells).
+    /// </summary>
+    private async Task SaveDownloadedAsync(SourceImage image)
+    {
+        if (this.RefuseWhileExporting() || image.IsDisposed || image.FilePath is not { } path)
+        {
+            return;
+        }
+
+        if (await this._explorer.SaveDownloadedAsync(path) is { } saved && !image.IsDisposed)
+        {
+            image.AdoptFile(saved);
+            this._preview.RefreshSourceName();
+        }
+    }
+
+    /// <summary>
     /// Save upscaled image…: the image enlarged by its Upscale, whole — cut out while its Cutout is on — written where the
     /// user chooses, a still as a PNG, an animated GIF as an animated GIF of its enlarged frames; the cell untouched.
     /// Offered once the enlargement is computed (workfiles/20261029-image-upscale.md § Save Upscaled Image).
@@ -6215,6 +6246,8 @@ internal sealed partial class MainForm : Form
         this._cellMenuCell = cell;
         this._copyCell.Enabled = !this.IsExporting;
         var menuImage = this._preview.Images[cell];
+        this._saveDownloadedCell.Visible = DownloadedContent.Holds(menuImage.FilePath);
+        this._saveDownloadedCell.Enabled = !this.IsExporting && File.Exists(menuImage.FilePath);
         this._saveUpscaledCell.Visible = menuImage.Upscales;
         this._saveUpscaledCell.Enabled = !this.IsExporting && menuImage.Look.IsActive(ImageEffect.Upscale) && !menuImage.UpscalePending;
         this._findSimilarCell.Visible = this._explorer.CanFindSimilar;
