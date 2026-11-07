@@ -155,6 +155,34 @@ internal sealed class FileIndex
     }
 
     /// <summary>
+    /// Records <paramref name="fullPath"/>, a file written under <see cref="BaseFolder"/> since the scan — its entry
+    /// replaced when it had one —, read from the disk as the scan would; false when it is outside the folder or
+    /// gone. Its content texts, if any, are the caller's to drop. See workfiles/20261107-save-downloaded-content.md.
+    /// </summary>
+    public bool Add(string fullPath)
+    {
+        var file = new FileInfo(fullPath);
+        string relative = Path.GetRelativePath(BaseFolder, file.FullName);
+        if (!file.Exists || Path.IsPathRooted(relative) || relative.Split(Path.DirectorySeparatorChar)[0] == "..")
+        {
+            return false;
+        }
+
+        var entry = new IndexEntry(relative, file.CreationTimeUtc, new FileStamp(file.Length, file.LastWriteTimeUtc));
+        int at = _entries.FindIndex(e => string.Equals(e.RelativePath, relative, StringComparison.OrdinalIgnoreCase));
+        if (at < 0)
+        {
+            _entries.Add(entry);
+        }
+        else
+        {
+            _entries[at] = entry;
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Scans <paramref name="baseFolder"/> and its subfolders, on the calling thread: a first pass counts
     /// the files, so the second, which records them, reports an exact ratio. Hidden and system entries
     /// are skipped with their content, inaccessible folders too. Each file's creation time, size and
