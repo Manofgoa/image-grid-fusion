@@ -122,6 +122,10 @@ layer can be grown back; the per-cell intermediate bitmaps capped at 8192 px so 
 Open questions answered (Q&A #5–#7): the three proposals confirmed as they stand — 0.5 %–500 %, the grown reach,
 the 8192-px cap. No design change; nothing left open.
 
+### Iteration 3 — 2026-11-07 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree (`feature/layer-size-limits`).
+
 ---
 
 ## Implementation Log
