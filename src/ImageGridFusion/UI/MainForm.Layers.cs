@@ -869,19 +869,6 @@ internal sealed partial class MainForm
         }
     }
 
-    /// <summary>Whether a drop at <paramref name="screen"/> falls on the Layers tab, or on the Global options while it is selected.</summary>
-    private bool DroppedOnLayers(Point screen)
-    {
-        var onTabs = this._globalTabs.PointToClient(screen);
-        if (this._globalTabs.ClientRectangle.Contains(onTabs))
-        {
-            return this._globalTabs.EffectAt(onTabs) == GlobalEffect.Layers;
-        }
-
-        return this._selectedGlobalEffect == GlobalEffect.Layers
-            && this._globalOptionsRow.RectangleToScreen(this._globalOptionsRow.ClientRectangle).Contains(screen);
-    }
-
     /// <summary>Files dropped onto the Layers tab or its options: its tab selected, they are laid over the grid.</summary>
     private async Task DropLayerFilesAsync(string[] paths)
     {
