@@ -49,8 +49,8 @@ No row of `workfiles/TODO-FEATURES.md` matches this request.
   It does not depend on yt-dlp being installed — the zone already offers its install when a site needs it.
 - **Its tooltip** completes it: direct links to an image or a video, and the 1 800+ sites yt-dlp supports, X / Twitter
   posts read without it.
-- Drawn as one `Label` painting its two runs (bold, then regular grey), cut with `…` when the panel is narrow — the
-  bold part first to stay.
+- Drawn by one control of its own (`UrlZone.UrlTitle`) painting its two runs (bold, then regular grey), each cut with
+  `…` when the panel is narrow — the sources first, the bold part last.
 - `UrlZone.LogicalHeight` grows by the title's line; the explorer's layout reads it already.
 
 ---
@@ -73,15 +73,15 @@ The caption of a ready media (`UrlZone.ShowReady`, and `ShowCompanionsHint`'s te
 - **Name**: the downloaded file's name **without its extension** — the file is now named after its source's title
   (§ File Names below), so the name shown and the file are the same.
 - **Size**: as today (`Megabytes`, in the UI culture: `12,4 Mo` in French).
-- **Dimensions**: the media's pixel size, read off the UI thread with the thumbnail (`Task.Run` in `RunAsync`):
-  - an image or a GIF: its header (`Image.FromStream` without validation, or `ImageLoader`'s size);
-  - a video: its frame size as the app reads it (`VideoFrames`, Media Foundation);
-  - unreadable: the part left out, never `?×?`.
-- **Duration**: for a video or an animated GIF only — its whole length as loaded (`PageSource.LoopDuration`, read with
-  the dimensions), written `m:ss` (`h:mm:ss` from an hour, `0:04` under a minute; `0.8 s` under a second). A still
-  shows none; unreadable, left out.
-- **Cut when narrow**: the name is cut with `…`, the size, the dimensions and the duration always shown at the end — the caption
-  painted in two parts rather than one `AutoEllipsis` text.
+- **Dimensions**: the media's pixel size as the app loads it — `ImageLoader.TryLoadFile`, the bitmap's size: an image, a
+  GIF's frame, a video's frame — read off the UI thread with the thumbnail (`UrlZone.Inspect`); unreadable, the part
+  left out, never `?×?`.
+- **Duration**: for a content that plays frame by frame only (`PageSource.HasFrames`: a video, an animated GIF) — its
+  whole length as loaded (`PageSource.LoopDuration`), written `m:ss` (`h:mm:ss` from an hour, `0:04` under a minute;
+  `0.8 s` under a second, `UrlCaption.Duration`). A still or a PDF shows none; unreadable, left out.
+- **Cut when narrow**: the name is cut with `…`, the size, the dimensions and the duration always shown at the end —
+  the caption's text rebuilt to the zone's width (`UrlCaption.Fit`, again on every resize), the companions' link kept
+  at its start.
 - **Tooltip**: the caption's whole text, as today, plus the file's full name (with its extension).
 
 ### File Names
@@ -92,12 +92,12 @@ name and *Previous copy* reading it:
 | Resolver | Today | New stem |
 |---|---|---|
 | yt-dlp | `%(extractor)s-%(id)s-<height>p` | `%(title).80B [%(id)s]-<height>p` — its title, then its id, so two videos titled alike never share a file and the reuse of a file already there (§ Content From a URL) still holds |
-| X / Twitter post | `x-<user>-<id>` | `<author's name> - <start of the post's text> [<id>]`, the text cut at a word near 60 characters, its links (`https://t.co/…`) removed; no text → `<author's name> [<id>]` |
-| Direct link | `<URL stem>-<tag>` | Unchanged when the URL's stem is a telling name; the `Content-Disposition` file name when the server gives one; else `<host>-<tag>` as today |
+| X / Twitter post | `x-<user>-<id>` | `<author's name> - <start of the post's text> [<id>]` — the display name (30 characters at most), else the handle —, the text cut at a word near 60 characters and within 80 with the id kept whole, its links (`https://t.co/…`) removed; no text → `<author's name> [<id>]` (`XPostResolver.StemOf`) |
+| Direct link | `<URL stem>-<tag>` | `<URL stem>-<tag>` when the URL's stem is a telling name; else `<the Content-Disposition file name's stem>-<tag>` when the server gives one; else `<host>-<tag>` (`DirectMediaResolver.StemOf`) |
 
 - Every stem goes through `UrlDownloads.SafeStem` (invalid characters, 80 characters at most).
-- A **telling name**: one holding at least one letter run of 3 or more and not a long hexadecimal or digit run
-  (`a3f9c0…`, `1234567890`) — `UrlDownloads.IsTelling`.
+- A **telling name**: one holding a letter run of **4** or more — `photo`, not `IMG` nor `DSC` — and not a hexadecimal
+  id (`a3f9c0d1e2`, `deadbeefcafe`) — `UrlDownloads.IsTelling`.
 - The GIPHY files keep their own names (`GiphyFiles.NameOf`, already title + id).
 
 ---
@@ -107,7 +107,9 @@ name and *Previous copy* reading it:
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
 | `SafeStem` keeps a title readable, cuts at 80, replaces invalid characters | `tests/ImageGridFusion.Tests/Web/UrlDownloadsTests.cs` | Create |
-| `IsTelling`: `photo-beach` yes; `a3f9c0d1e2`, `1234567890`, `img` no | `tests/ImageGridFusion.Tests/Web/UrlDownloadsTests.cs` | Create |
+| `IsTelling`: `photo-beach` yes; `a3f9c0d1e2`, `deadbeefcafe`, `1234567890`, `IMG_1234`, `img` no | `tests/ImageGridFusion.Tests/Web/UrlDownloadsTests.cs` | Create |
+| `Words`: a text on one line cut at a space, a single long word cut within | `tests/ImageGridFusion.Tests/Web/UrlDownloadsTests.cs` | Create |
+| `Fit`: the name cut with `…`, the details kept | `tests/ImageGridFusion.Tests/UI/UrlZoneCaptionTests.cs` | Create |
 | The X post's stem: author + start of the text cut at a word, links removed, id kept; no text → author + id | `tests/ImageGridFusion.Tests/Web/XPostResolverTests.cs` | Create |
 | The direct link's stem: telling URL stem kept, `Content-Disposition` name next, host + tag last | `tests/ImageGridFusion.Tests/Web/DirectMediaResolverTests.cs` | Create |
 | yt-dlp's output template carries the title then the id | `tests/ImageGridFusion.Tests/Web/YtDlpTests.cs` | Create |
@@ -149,17 +151,37 @@ other sources in its tooltip only. § Media Information and § Test Impact updat
 
 Go given: code, unit tests and documentation, in a worktree on `feature/content-download-improvements`.
 
+### Iteration 4 — 2026-11-07 — 🧭 Implementation choices
+
+- ⚠️ **Rule broken — a shortcut's `SHORTCUTS.md` rows in the same commit as its code** (RULES.md § Keyboard Shortcuts):
+  Ctrl+L's handler (`53fe2a5`) and its rows (`1be324f`) landed in two commits, the run keeping code and docs apart.
+  Nothing was blocking: an oversight, not a forced choice. The branch holds both; a squash on merge would rejoin them.
+- **A telling name needs 4 letters in a run**, not 3 as designed: 3 would have taken `IMG` and `DSC` — camera names, not
+  telling ones — for names.
+- **The server's `Content-Disposition` name is taken whatever it is**, not checked for being telling: it is the name the
+  server chose for its file.
+- **The direct link's name is cut to leave its tag whole** (`Words` within 80 minus the tag): before, a long URL stem
+  could lose its tag to `SafeStem`'s cut.
+- **The title is a control of its own** (`UrlZone.UrlTitle`) rather than a `Label`: a label draws one font.
+- **The dimensions are read through `ImageLoader.TryLoadFile`** — the same load the thumbnail already fell back to —
+  rather than a header read per format: one route for an image, a GIF and a video; the thumbnail is still Windows' own
+  first.
+- **The caption's fitting is a text rebuilt to the width** (`UrlCaption.Fit`, binary search on the name's length,
+  measured by `TextRenderer`) rather than two painted parts: the `LinkLabel` and its companions' link stay as they were.
+- **Commits**: the URL zone's title, placeholder and caption landed together (`bae359e`, one file, `UrlZone.cs`), Ctrl+L's
+  wiring apart (`53fe2a5`).
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
-| SHORTCUTS | | | |
-| RULES / GLOSSARY | | | |
+| Code | 3, 4 | 2026-11-07 | `bae359e` URL zone title, placeholder, caption · `53fe2a5` Ctrl+L · `84b751f` file names |
+| Unit tests | 3, 4 | 2026-11-07 | `7e342a1` — 18 tests, 5 classes, all passing |
+| README | 3, 4 | 2026-11-07 | `1be324f` — English and French |
+| SHORTCUTS | 3, 4 | 2026-11-07 | `1be324f` — Ctrl+L row, Ctrl+F row says it opens the explorer |
+| RULES / GLOSSARY | 3, 4 | 2026-11-07 | `1be324f` — RULES § Content From a URL; the URL zone row, English and French |
 
 ---
 
