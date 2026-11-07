@@ -36,39 +36,47 @@ Three places show it:
   overwrite prompt on, its filter the file's own type (`*.mp4`, `*.gif`, `*.png`…) then *All files*.
 - **Initial folder**: the folder view's **open folder** — `Path.Combine(BaseFolder, OpenFolder)` —
   whatever view the explorer shows; inside a **secondary source**, the folder browsed in that source;
-  the base folder while none is open; *Pictures* when no base folder is set or the folder is gone.
-  One method gives it (`FileExplorerPanel.BrowsedFolder`, name decided at implementation).
+  the base folder while none is open; its nearest parent still there when it is gone; *Pictures* when
+  no base folder is set. `FileExplorerPanel.BrowsedFolder` gives the folder, `FileExplorerPanel.SaveFolder`
+  the dialog's (`DownloadedContent.InitialFolder`).
+- The whole route is one method, `FileExplorerPanel.SaveDownloadedAsync(path)`: dialog, copy off the UI
+  thread (`File.Copy`, skipped when the target is the file itself), index, status line; it returns the file
+  written, null when cancelled or failed.
 - **Default file name**: the downloaded file's name, as the temp folder holds it
   (`UrlDownloads.PathOf` — the stem and the height —, `GiphyFiles.NameOf` — `<title>-giphy-<id>.<ext>`).
 - **What is written**: a **plain copy of the downloaded file** (`File.Copy`, overwrite after the
   dialog's confirmation) — never re-encoded, no effect of the cell applied. A GIPHY GIF is its MP4, a
   sticker its GIF, as downloaded.
-- The status line says where it was saved, or why it failed (the explorer's / the main window's).
+- The status line says where it was saved, or why it failed — the explorer's (`FileExplorerPanel.Report`),
+  the main window's while the panel is collapsed — whatever the place it was asked from.
 - Out of the undo history. The URL zone and the tile are left as they are; a **cell adopts the saved
   file** (`SourceImage.AdoptFile`): a heart or a preset made afterwards points to the kept file, not to
   the temp one emptied at the next start.
 
 ### URL Zone
 
-- A new `UrlZone.FileAction.Save` and its menu item, after *Open file location* (or before it — a
-  placement decided at implementation), raised through `FileActionRequested(path, action)` and run by
-  `FileExplorerPanel.RunUrlFileActionAsync` like the others.
+- A new `UrlZone.FileAction.Save` and its menu item, last, right after *Open file location*, raised
+  through `FileActionRequested(path, action)` and run by `FileExplorerPanel.RunUrlFileActionAsync` like
+  the others.
 
 ### GIPHY Tiles
 
-- The tile menu's `Opening` (`FileExplorerPanel.cs:522`) refuses an online row today
-  (`row.Online is not null`). For an online row it now opens a menu holding **Save…** only — the file
-  rows' entries (copy, open location, heart…) do not apply to a result.
-- Downloaded = `_giphyFetched` holds the row's key and the file exists; otherwise the item is greyed.
+- The tile menu's `Opening` no longer refuses an online row: its last call, `ShowSaveDownloaded`
+  (`UI/FileExplorerPanel.Save.cs`), hides every other entry and shows **Save…** alone on a result — the
+  file rows' entries (copy, open location…) do not apply to it —, and hides it on any other tile.
+- Downloaded = `GiphyFileOf(row)`: `_giphyFetched` holds the row's key and the file exists, or the
+  result is hearted and its file is in `giphy-favorites\`; otherwise the item is greyed, its tooltip
+  saying to click the tile first.
 - RULES.md § Online Libraries (*"its menu does not open"*) changes accordingly.
 
 ### Cells
 
 - In `MainForm.ShowCellMenu` (`MainForm.cs:6195`), next to *Save upscaled image…*: visible when the
   cell's `SourceImage.FilePath` lies directly in `UrlDownloads.Folder`, `GiphyFiles.Folder` or
-  `GiphyFiles.FavoritesFolder` (a hearted GIPHY result) — one test,
-  `DownloadedContent.Holds(path)` (name decided at implementation), shared by every place.
-- Disabled while exporting, like its neighbour.
+  `GiphyFiles.FavoritesFolder` (a hearted GIPHY result) — one test, `DownloadedContent.Holds(path)`
+  (`Web/DownloadedContent.cs`), placed before *Save upscaled image…*.
+- Disabled while exporting or once its file is gone. `MainForm.SaveDownloadedAsync` calls the explorer's
+  route, then adopts the file written (`AdoptFile`, `GridPreview.RefreshSourceName`).
 
 ### The App's Other Save Dialogs
 
@@ -81,8 +89,9 @@ Every save dialog opens on the **same initial folder** as Save… (§ The Save A
 | **Save upscaled image…** | Its image's folder | The explorer's open folder |
 
 - The last export folder is **no longer remembered**: `AppSettings.ExportFolder` / `SaveExportFolder`
-  and the `RememberFolder` calls for it go; a `LastExportFolder` key left in `settings.json` is ignored.
-- `MainForm.DefaultSaveFolder` (the first cell's file's folder) goes with it if nothing else reads it.
+  and the `RememberFolder` calls for it are gone, with their `MainFolderNameExport` text; a
+  `LastExportFolder` key left in `settings.json` is ignored.
+- `MainForm.ExportFolder` and `MainForm.DefaultSaveFolder` (the first cell's file's folder) are gone too.
 - The open dialogs (*Browse…*, the soundtrack) keep their own remembered folders: they are not saves.
 
 ### Out of Scope
@@ -92,17 +101,19 @@ Every save dialog opens on the **same initial folder** as Save… (§ The Save A
 
 ### Texts and Icon
 
-- New `Strings.resx` / `Strings.fr.resx` entries: the menu label, the dialog title, the status
-  messages — French terms of `GLOSSARY.fr.md`.
+- New `Strings.resx` / `Strings.fr.resx` entries: `ExplorerMenuSave` (**Save…** / **Enregistrer…**,
+  `FileExplorerPanel.SaveText`, every place), `ExplorerSaveFilterType`, `ExplorerStatusSaved`,
+  `ExplorerStatusSaveFailed`, `ExplorerTipSaveNotDownloaded`. The dialog keeps Windows' own title.
 - Icon: the existing `UiIcons.Save` (💾), shared by every place (RULES.md § Icons › One icon per
   action).
 
 ### After Saving
 
-- The explorer has no file watcher: a file saved **under the base folder** is **added to the index
-  alone** at once — its entry (creation date, size) written, the folder view shown again if it lists
-  that folder — with no full rescan; its content passes run with the next ones. A file saved elsewhere
-  changes nothing in the explorer.
+- The explorer has no file watcher: a file saved **under the base folder** — or a secondary source
+  whose index is loaded — is **added to the index alone** at once (`FileIndex.Add`,
+  `FileExplorerPanel.AddSavedToIndex`): its entry (creation date, size, stamp) written or replaced, the
+  index saved, its content texts dropped, the list shown again — with no full rescan; its content passes
+  run with the next ones. A file saved elsewhere changes nothing in the explorer.
 
 ---
 
@@ -110,9 +121,9 @@ Every save dialog opens on the **same initial folder** as Save… (§ The Save A
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| A path in `url-downloads\`, the GIPHY download folder or `giphy-favorites\` is downloaded content; one elsewhere (base folder, a subfolder, a sibling folder sharing the prefix) is not | `tests/ImageGridFusion.Tests/UI/DownloadedContentTests.cs` | Create |
-| A file saved under the base folder is added to the index alone (its entry present, nothing else rescanned); one saved outside it is not | `tests/ImageGridFusion.Tests/Explorer/` — the index's test file, located at implementation | Create / Update |
-| The initial folder: base + open folder; the base folder when none is open; *Pictures* without a base folder or when the folder is gone | `tests/ImageGridFusion.Tests/UI/DownloadedContentTests.cs` | Create |
+| A path in `url-downloads\`, the GIPHY download folder or `giphy-favorites\` is downloaded content; one elsewhere (base folder, a subfolder, a sibling folder sharing the prefix) is not | `tests/ImageGridFusion.Tests/Web/DownloadedContentTests.cs` | Create |
+| A file saved under the base folder is added to the index alone (its entry present, nothing else rescanned), an overwritten one replaced; one saved outside it, or gone, is not | `tests/ImageGridFusion.Tests/Explorer/FileIndexAddTests.cs` | Create |
+| The initial folder: the browsed folder; its nearest parent when gone; *Pictures* without one; the filter offers the file's type first | `tests/ImageGridFusion.Tests/Web/DownloadedContentTests.cs` | Create |
 
 The menus and the dialog themselves are UI, checked by hand.
 
@@ -173,18 +184,38 @@ remembered. New section § The App's Other Save Dialogs.
 
 Go given: code, unit tests and documentation, in a worktree on `feature/save-downloaded-content`.
 
+### Iteration 6 — 2026-11-07 — 🧭 Implementation choices
+
+No project rule broken. Choices the frozen design did not state:
+
+- **One route** for the three places, `FileExplorerPanel.SaveDownloadedAsync` — the cell's goes through it
+  too, so its status shows on the explorer's line (the main window's while collapsed).
+- **A hearted GIPHY result** counts as downloaded on its tile too (its file in `giphy-favorites\`), not only
+  in a cell, so its Save… is never greyed while a file exists.
+- **The greyed GIPHY entry** carries a tooltip, *Click the tile to download it first*.
+- **URL zone**: Save… is the last entry, after *Open file location*.
+- **Cell menu**: Save… sits before *Save upscaled image…*, and is greyed once its file is gone.
+- **The initial folder**, when the browsed one is gone, takes its nearest parent still there (as the app's
+  other remembered folders do), *Pictures* only without any.
+- **A file overwritten** in the index has its content texts dropped, so the passes read it again.
+- **A secondary source** whose index is not loaded yet: the saved file is not recorded; its scan, at its
+  opening, finds it.
+- **Tests** live in `tests/…/Web/` beside `DownloadedContent` (`Web/`), not `UI/` as planned.
+- **RULES.md**: a new § Save Dialogs holds the rule; § Content From a URL left unchanged.
+- **`MainFolderNameExport`** removed from both resx files, unused once the export folder is no longer remembered.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README (EN + FR) | | | |
-| GLOSSARY (EN + FR) — URL zone, GIPHY view rows | | | |
-| RULES.md — § Content From a URL, § Online Libraries | | | |
-| Strings.resx + Strings.fr.resx | | | |
+| Code | 5 | 2026-11-07 | `FileIndex.Add`; Save… on the URL zone, GIPHY tiles and cells; every save dialog on the explorer's open folder |
+| Unit tests | 5 | 2026-11-07 | `DownloadedContentTests`, `FileIndexAddTests` — 9 passing |
+| README (EN + FR) | 5 | 2026-11-07 | URL zone, GIPHY views, a new *Save… a downloaded content* bullet, *Last folders* |
+| GLOSSARY (EN + FR) — URL zone, GIPHY view rows | 5 | 2026-11-07 | |
+| RULES.md — § Online Libraries, new § Save Dialogs | 5 | 2026-11-07 | § Content From a URL left as is: the new § Save Dialogs holds the rule |
+| Strings.resx + Strings.fr.resx | 5 | 2026-11-07 | 5 new keys, `MainFolderNameExport` removed |
 
 ---
 
