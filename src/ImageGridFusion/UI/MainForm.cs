@@ -2213,9 +2213,6 @@ internal sealed partial class MainForm : Form
         }
     }
 
-    /// <summary>Videos the pickers offer, mirroring <see cref="VideoFrames"/>.</summary>
-    private static readonly string[] VideoExtensions = ["mp4", "m4v", "mov", "avi", "wmv", "asf", "mkv", "webm", "3gp", "3g2", "mpg", "mpeg", "ts", "m2ts", "mts"];
-
     private static string Patterns(IEnumerable<string> extensions) => string.Join(";", extensions.Select(e => $"*.{e}"));
 
     /// <summary>
@@ -2227,7 +2224,7 @@ internal sealed partial class MainForm : Form
         (string Name, string[] Extensions)[] types =
         [
             (Strings.MainPickerImages, new[] { "png", "jpg", "jpeg", "bmp", "gif", "tif", "tiff", "webp" }),
-            (Strings.MainPickerVideos, VideoExtensions),
+            (Strings.MainPickerVideos, SoundtrackFile.VideoExtensions),
             ("PDF", new[] { "pdf" }),
             (Strings.MainPickerText, new[] { "txt", "md", "log", "csv", "json", "xml" }),
         ];
@@ -5491,9 +5488,9 @@ internal sealed partial class MainForm : Form
             Title = Strings.MainPickerSoundtrackTitle,
             Filter = string.Join(
                 "|",
-                $"{Strings.MainPickerAudioVideo}|{Patterns(SoundtrackFile.AudioExtensions.Concat(VideoExtensions))}",
+                $"{Strings.MainPickerAudioVideo}|{Patterns(SoundtrackFile.AudioExtensions.Concat(SoundtrackFile.VideoExtensions))}",
                 $"{Strings.MainPickerAudio}|{Patterns(SoundtrackFile.AudioExtensions)}",
-                $"{Strings.MainPickerVideos}|{Patterns(VideoExtensions)}",
+                $"{Strings.MainPickerVideos}|{Patterns(SoundtrackFile.VideoExtensions)}",
                 $"{Strings.MainPickerAllFiles}|*.*"),
             InitialDirectory = ExistingFolder(AppSettings.SoundtrackFolder) ?? "",
         };
