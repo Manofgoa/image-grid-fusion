@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using ImageGridFusion.UI;
 
 namespace ImageGridFusion.Web;
@@ -9,12 +10,15 @@ namespace ImageGridFusion.Web;
 /// emptied at start-up — a download lives as long as the session that loaded it.
 /// See workfiles/20261009-url-content.md § Download.
 /// </summary>
-internal static class UrlDownloads
+internal static partial class UrlDownloads
 {
     public const string FolderName = "url-downloads";
 
-    // A file name's stem past this length is cut: the temp folder's path comes on top of it.
-    private const int MaxStemLength = 80;
+    /// <summary>A file name's stem past this length is cut: the temp folder's path comes on top of it.</summary>
+    public const int MaxStemLength = 80;
+
+    // A telling name holds a run of letters at least this long: "photo", not "IMG" nor "DSC".
+    private const int TellingLetters = 4;
 
     public static string Folder => Path.Combine(MainForm.TempVideoFolder, FolderName);
 
@@ -54,6 +58,57 @@ internal static class UrlDownloads
             // The folder unreadable: nothing to clean this time.
         }
     }
+
+    /// <summary>
+    /// Whether <paramref name="stem"/> names its content for a reader — <c>beach-sunset</c> — rather than identifies it
+    /// for a machine: a run of <see cref="TellingLetters"/> letters at least, and not a hexadecimal id
+    /// (<c>a3f9c0d1e2</c>, <c>deadbeefcafe</c>) — see workfiles/20261107-content-download-improvements.md § File Names.
+    /// </summary>
+    public static bool IsTelling(string stem)
+    {
+        int run = 0;
+        int longest = 0;
+        foreach (char c in stem)
+        {
+            run = char.IsLetter(c) ? run + 1 : 0;
+            longest = Math.Max(longest, run);
+        }
+
+        return longest >= TellingLetters && !HexId().IsMatch(stem);
+    }
+
+    /// <summary>
+    /// <paramref name="text"/> on one line, cut at the last space within <paramref name="max"/> characters — at
+    /// <paramref name="max"/> itself when that space would keep less than half of it; empty for a <paramref name="max"/>
+    /// of 0 or less.
+    /// </summary>
+    public static string Words(string text, int max)
+    {
+        string flat = Spaces().Replace(text, " ").Trim();
+        if (max <= 0)
+        {
+            return "";
+        }
+
+        if (flat.Length <= max)
+        {
+            return flat;
+        }
+
+        int cut = flat.LastIndexOf(' ', max);
+        if (cut <= max / 2)
+        {
+            cut = char.IsHighSurrogate(flat[max - 1]) ? max - 1 : max;
+        }
+
+        return flat[..cut].TrimEnd();
+    }
+
+    [GeneratedRegex(@"^[0-9a-fA-F_\-]{8,}$")]
+    private static partial Regex HexId();
+
+    [GeneratedRegex(@"\s+")]
+    private static partial Regex Spaces();
 
     internal static string SafeStem(string stem)
     {

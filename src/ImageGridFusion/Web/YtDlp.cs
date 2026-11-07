@@ -29,6 +29,13 @@ internal static class YtDlp
     // for the sound; the resolution first, whatever the codec.
     private const string SortOrder = "res,+codec:avc:m4a";
 
+    /// <summary>
+    /// The downloaded file's name: the media's title — 80 bytes at most — then its id, so two medias titled alike never
+    /// share a file, then its height, so a larger format is not taken for the one already there (see
+    /// workfiles/20261107-content-download-improvements.md § File Names).
+    /// </summary>
+    public const string OutputTemplate = "%(title).80B [%(id)s]%(height&-{}p|)s.%(ext)s";
+
     public static string Folder => Tool.Folder;
 
     /// <summary>yt-dlp.exe at the root of its folder, else the first one below it; null when it is not there.</summary>
@@ -137,7 +144,7 @@ internal static class YtDlp
             "--progress-template", $"download:{ProgressMark} %(progress.status)s %(info.format_id)s %(progress.downloaded_bytes)s %(progress.total_bytes,progress.total_bytes_estimate)s",
             "-S", SortOrder,
             "-f", FormatSelector(AppSettings.VideoMaxSide, merge: ffmpeg is not null),
-            "-o", Path.Combine(UrlDownloads.Folder, "%(extractor)s-%(id)s%(height&-{}p|)s.%(ext)s"),
+            "-o", Path.Combine(UrlDownloads.Folder, OutputTemplate),
             // Deno only from its own folder: never one on the PATH.
             "--no-js-runtimes",
         ];

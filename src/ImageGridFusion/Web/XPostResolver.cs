@@ -17,6 +17,10 @@ internal static partial class XPostResolver
     private const string Endpoint = "https://cdn.syndication.twimg.com/tweet-result";
     private const string Digits = "0123456789abcdefghijklmnopqrstuvwxyz";
 
+    // A file's name: the author's name and the post's text kept up to these lengths.
+    private const int AuthorLength = 30;
+    private const int TextLength = 60;
+
     // The hosts a post link comes from, a leading "www." or "mobile." aside.
     private static readonly HashSet<string> Hosts = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -66,9 +70,25 @@ internal static partial class XPostResolver
             progress.Report(new PosterStep(poster));
         }
 
-        string user = root.TryGetProperty("user", out var author) ? Text(author, "screen_name") ?? "post" : "post";
-        string path = UrlDownloads.PathOf($"x-{user}-{id}", Extension(media));
+        bool hasAuthor = root.TryGetProperty("user", out var author) && author.ValueKind == JsonValueKind.Object;
+        string stem = StemOf(hasAuthor ? Text(author, "name") : null, hasAuthor ? Text(author, "screen_name") : null, Text(root, "text"), id);
+        string path = UrlDownloads.PathOf(stem, Extension(media));
         return File.Exists(path) ? path : await Downloader.DownloadAsync(media, path, progress, token);
+    }
+
+    /// <summary>
+    /// The downloaded file's stem: <c>&lt;author&gt; - &lt;start of the text&gt; [&lt;id&gt;]</c> — the author's display name,
+    /// else their handle; the text's links removed, cut at a word near <see cref="TextLength"/> characters, within
+    /// <see cref="UrlDownloads.MaxStemLength"/> with the id kept whole; no text, <c>&lt;author&gt; [&lt;id&gt;]</c> (see
+    /// workfiles/20261107-content-download-improvements.md § File Names).
+    /// </summary>
+    public static string StemOf(string? name, string? handle, string? text, ulong id)
+    {
+        string tail = $" [{id}]";
+        string who = name?.Trim() is { Length: > 0 } shown ? shown : handle?.Trim() is { Length: > 0 } at ? at : "post";
+        who = UrlDownloads.Words(who, AuthorLength);
+        string words = UrlDownloads.Words(Links().Replace(text ?? "", " "), Math.Min(TextLength, UrlDownloads.MaxStemLength - tail.Length - who.Length - 3));
+        return words.Length == 0 ? who + tail : $"{who} - {words}{tail}";
     }
 
     /// <summary>
@@ -224,4 +244,8 @@ internal static partial class XPostResolver
     // A post's path: /<user>/status/<id> or /i/status/<id>, anything after it ignored.
     [GeneratedRegex(@"^/(?:i|[A-Za-z0-9_]{1,15})/status/(\d{1,20})(?:/|$)")]
     private static partial Regex StatusPath();
+
+    // A link in a post's text — the t.co ones X shortens every link and media to.
+    [GeneratedRegex(@"https?://\S+")]
+    private static partial Regex Links();
 }
