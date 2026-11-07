@@ -3,7 +3,7 @@
     "mini-apps-local": {
       "source": {
         "source": "directory",
-        "path": "C:\\Dev\\Perso\\mini-apps\\shared"
+        "path": "D:\\Perso\\mini-apps\\shared"
       }
     }
   },
