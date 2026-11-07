@@ -913,6 +913,26 @@ definition, on `SourceImage`:
   file at the mix's rate divided by the speed and mixes it sample for sample (`MixedSound.Speed`).
   No time-stretching.
 
+## Output Readout
+
+What Copy / Save produce, shown before they run (origin: `workfiles/20261107-status-bar-file-size.md`),
+`UI/MainForm.OutputReadout.cs`:
+
+- **The main part's output only**: an MP4 while `ProducesVideo`, else the PNG at its native size
+  (`MainForm.MainOutput`), its dimensions from `PngSize` — the video's even, clamped to the Video size. The ▾
+  entries keep their own captions and tooltips.
+- **The worst case has one definition**, `Composition/OutputEstimate`: the PNG stored uncompressed, the MP4 at the
+  encoder's bitrate over the video length, its AAC track with sound, its container's share — never an encode. The
+  encoder reads its bitrates there (`OutputEstimate.VideoBitrate`, `AacBytesPerSecond`): a change of the encoder's
+  bitrate is made there, and the estimate follows.
+- **Exact while unchanged**: a Copy or a Save of the main part keeps its file's size with `GridPreview.ContentVersion`
+  and the dimensions (`MainForm.KeepOutputSize`); shown without `≈` while they and the format still match. A new
+  export route of the main part keeps its size the same way.
+- **Refreshed by itself**: on a 250 ms timer comparing `ContentVersion` and the Video size with what it was computed
+  for, and in `UpdateButtons` — a new route changing the rendered result bumps `ContentVersion` and is covered.
+- **During an animated export**, the bytes its file holds so far (`BeginWriting` / `EndWriting`), read on the same
+  timer, never per frame.
+
 ## Export Memory
 
 What keeps an animated export within memory, whatever the grid holds (origin:
