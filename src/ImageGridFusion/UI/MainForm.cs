@@ -2009,6 +2009,10 @@ internal sealed partial class MainForm : Form
             case Keys.Control | Keys.Shift | Keys.F when this._explorer.IsEditingText || this.FocusedControl() is not TextBoxBase:
                 this._explorer.FocusSearch(-1);
                 return true;
+            // The URL zone's field, under Ctrl+F's guard (workfiles/20261107-content-download-improvements.md § Ctrl+L).
+            case Keys.Control | Keys.L when this._explorer.IsEditingText || this.FocusedControl() is not TextBoxBase:
+                this._explorer.FocusUrl();
+                return true;
             // Play / Pause over every control but a text field — a focused button included, so Space never
             // runs a Copy or a Save again; the transport disabled (no length, an export running), it does nothing.
             case Keys.Space when this._timeline.Enabled && !this._explorer.IsEditingText && !this.IsEditingFrameField && this.FocusedControl() is not TextBoxBase:
