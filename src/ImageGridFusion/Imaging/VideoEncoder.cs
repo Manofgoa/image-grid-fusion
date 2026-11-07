@@ -13,7 +13,7 @@ namespace ImageGridFusion.Imaging;
 /// </summary>
 internal sealed class VideoEncoder : IFrameEncoder
 {
-    private const int AacBytesPerSecond = 24000;
+    private const int AacBytesPerSecond = OutputEstimate.AacBytesPerSecond;
 
     /// <summary>Sound is written this far ahead of the video, so the file interleaves both.</summary>
     private static readonly long SoundLead = TimeSpan.FromSeconds(1).Ticks;
@@ -216,8 +216,9 @@ internal sealed class VideoEncoder : IFrameEncoder
 
     private static int AddVideoStream(IMFSinkWriter writer, Size size)
     {
-        // Enough for sharp stills and text at 30 fps: about 0.12 bit per pixel and frame.
-        long bitrate = Math.Clamp((long)(size.Width * (double)size.Height * Animation.FramesPerSecond * 0.12), 2_000_000, 40_000_000);
+        // Enough for sharp stills and text at 30 fps: about 0.12 bit per pixel and frame — the output readout's
+        // estimate reads the same formula (workfiles/20261107-status-bar-file-size.md § Estimate).
+        long bitrate = OutputEstimate.VideoBitrate(size);
 
         var output = MediaFoundation.CreateMediaType();
         var input = MediaFoundation.CreateMediaType();

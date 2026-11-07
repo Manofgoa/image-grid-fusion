@@ -633,6 +633,16 @@ Restart the app now?</value></data>
   <data name="MainNotifyCopyFailedBody" xml:space="preserve"><value>{0} Copy last {1} puts {2} on the clipboard again.</value></data>
   <data name="MainNotifyExportFailed" xml:space="preserve"><value>{0} export failed</value></data>
   <data name="MainNotifySaved" xml:space="preserve"><value>{0} saved</value></data>
+  <data name="MainOutputEstimate" xml:space="preserve"><value>≈ {0}</value></data>
+  <data name="MainOutputReadout" xml:space="preserve"><value>{0} · {1} · {2} × {3}</value></data>
+  <data name="MainOutputReadoutNoSize" xml:space="preserve"><value>{0} · {1}</value></data>
+  <data name="MainOutputTipKnown" xml:space="preserve"><value>What Copy and Save produce: the size of the file the last Copy or Save gave, the grid unchanged since</value></data>
+  <data name="MainOutputTipMp4" xml:space="preserve"><value>What Copy and Save produce, an MP4 video: its worst-case size, the video at {0} Mb/s over {1}, its container included</value></data>
+  <data name="MainOutputTipMp4Sound" xml:space="preserve"><value>What Copy and Save produce, an MP4 video: its worst-case size, the video at {0} Mb/s over {1} plus its sound, its container included</value></data>
+  <data name="MainOutputTipNone" xml:space="preserve"><value>Nothing to export: the format, size and dimensions of what Copy and Save produce show here</value></data>
+  <data name="MainOutputTipPng" xml:space="preserve"><value>What Copy and Save produce, a PNG: its worst-case size, stored uncompressed — the real file is usually much smaller</value></data>
+  <data name="MainOutputTipWriting" xml:space="preserve"><value>What the export running has written so far</value></data>
+  <data name="MainOutputWriting" xml:space="preserve"><value>{0}…</value></data>
   <data name="MainPause" xml:space="preserve"><value>Pause</value></data>
   <data name="MainPickerAddImages" xml:space="preserve"><value>Add images</value></data>
   <data name="MainPickerAllFiles" xml:space="preserve"><value>All files (*.*)</value></data>
