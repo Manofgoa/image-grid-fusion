@@ -1046,7 +1046,7 @@ stickers (origin: `workfiles/20261105-online-library-giphy.md`, `workfiles/20261
   by the normal instance only (`GiphyFiles.Folder`, `GiphyFiles.Clean`), then dragged as `DataFormats.FileDrop`
   or added by a double-click through `FileActivated`. No route of its own into the grid.
 - **A row of a result is no file** (`ExplorerRow.Online`): its `FullPath` a key, never handed to the disk —
-  `Exists` refuses it, its menu does not open, its size and indexed content are none; its picture is its
+  `Exists` refuses it, its menu holds **Save…** alone, greyed until downloaded (§ Save Dialogs), its size and indexed content are none; its picture is its
   animated thumbnail (`ThumbnailGrid.OnlineFrame`, `UI/OnlineThumbnails`), never asked from the Shell.
 - **The key's budget**: a free GIPHY key allows **100 calls an hour**. A call is a search or a page of 50
   (`Giphy.PageSize`); the thumbnails and the downloads come from the CDN, out of the budget. **Nothing calls the
@@ -1068,6 +1068,24 @@ stickers (origin: `workfiles/20261105-online-library-giphy.md`, `workfiles/20261
 - **A heart** keeps a result's file next to the exe (`GiphyFiles.FavoritesFolder`), an ordinary favorite, its
   file recycled once no favorite holds it, as a pasted favorite's.
 - Out of the undo history, like the rest of the file explorer.
+
+## Save Dialogs
+
+Saving a downloaded content, and where every save dialog opens (origin: `workfiles/20261107-save-downloaded-content.md`):
+
+- **Save…** on a **downloaded content** — the URL zone's preview, a GIPHY result once downloaded, a cell whose file
+  is one (`DownloadedContent.Holds`: directly in `UrlDownloads.Folder`, `GiphyFiles.Folder` or
+  `GiphyFiles.FavoritesFolder`) — copies its file, as downloaded, where the user chooses: one route,
+  `FileExplorerPanel.SaveDownloadedAsync`. A new place showing a downloaded content offers it there.
+- **A cell adopts the saved file** (`SourceImage.AdoptFile`), so a favorite or a preset made afterwards outlives the
+  temp folder. Layers and the Grid background's image are out of it.
+- **A file saved under the base folder or a secondary source is indexed at once**, alone (`FileIndex.Add`,
+  `FileExplorerPanel.AddSavedToIndex`), its content texts dropped for the next passes; no rescan.
+- **Every save dialog opens on `FileExplorerPanel.SaveFolder`**: the folder view's open folder — the folder browsed
+  in a secondary source, the base folder at first — or its nearest parent still there, else *Pictures*
+  (`DownloadedContent.InitialFolder`). The grid's Save and its ▾ entries, *Save last…*, *Save upscaled image…* and
+  Save… read it; no save folder is remembered. A new save dialog reads it too; the open dialogs (*Add images*, the
+  soundtrack) keep their own remembered folders.
 
 ## Content OCR Passes
 
