@@ -86,10 +86,14 @@
   <data name="CompUrlMegabytes" xml:space="preserve"><value>{0} Mo</value></data>
   <data name="CompUrlMerging" xml:space="preserve"><value>Assemblage de la vidéo et de son son…</value></data>
   <data name="CompUrlNotAddress" xml:space="preserve"><value>Ce n'est pas une adresse web</value></data>
-  <data name="CompUrlPlaceholder" xml:space="preserve"><value>Collez une URL (publication X, image, vidéo…)</value></data>
+  <data name="CompUrlPlaceholder" xml:space="preserve"><value>Collez une URL (Ctrl+L)</value></data>
   <data name="CompUrlReadyTooltip" xml:space="preserve"><value>Glissez dans une cellule · clic droit pour plus d'options</value></data>
   <data name="CompUrlResolving" xml:space="preserve"><value>Recherche du média…</value></data>
+  <data name="CompUrlSeconds" xml:space="preserve"><value>{0} s</value></data>
   <data name="CompUrlSiteNeedsYtDlp" xml:space="preserve"><value>Ce site a besoin de yt-dlp</value></data>
+  <data name="CompUrlTitle" xml:space="preserve"><value>Téléchargement de contenu</value></data>
+  <data name="CompUrlTitleSources" xml:space="preserve"><value>(X / Twitter, YouTube, Instagram, TikTok, Reddit…)</value></data>
+  <data name="CompUrlTitleTip" xml:space="preserve"><value>Liens directs vers une image ou une vidéo, publications X / Twitter, et les plus de 1 800 sites que yt-dlp prend en charge — yt-dlp installé depuis la fenêtre Mises à jour des composants</value></data>
   <data name="CompUrlYtDlpNeed" xml:space="preserve"><value>Le média de ce site est chargé avec yt-dlp — avec Deno et ffmpeg, ses compagnons, pour les plus grands formats. Chargez à nouveau l'URL une fois qu'ils sont installés.</value></data>
   <data name="CompWebCouldntReach" xml:space="preserve"><value>Impossible de joindre {0} : {1}</value></data>
   <data name="CompWebCouldntSaveFile" xml:space="preserve"><value>Impossible d'enregistrer le fichier : {0}</value></data>

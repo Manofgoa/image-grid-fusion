@@ -9,18 +9,20 @@ namespace ImageGridFusion.UI;
 /// The URL zone, the file explorer's last row (see workfiles/20261009-url-content.md § URL Zone): a URL
 /// typed or pasted, Load — or Enter — fetches the media behind it into the temp folder, a loader then
 /// the media's thumbnail showing in the preview at the left, which is dragged into a cell like a tile.
-/// One compact row: the preview, then the field and its button over a caption saying where the load
-/// stands. Neither persisted nor in the undo history.
+/// A title naming the sources, then one compact row: the preview, then the field and its button over a
+/// caption saying where the load stands — the ready media's name, size, dimensions and duration (see
+/// workfiles/20261107-content-download-improvements.md). Neither persisted nor in the undo history.
 /// </summary>
 internal sealed class UrlZone : Panel
 {
-    /// <summary>The zone's height in logical pixels: the separator's band and the preview.</summary>
-    public const int LogicalHeight = SeparatorBand + PreviewSide;
+    /// <summary>The zone's height in logical pixels: the separator's band, the title and the preview.</summary>
+    public const int LogicalHeight = SeparatorBand + TitleHeight + PreviewSide;
 
     // In logical pixels: the preview's side, the band above the row holding the separator line, the
-    // gap between the preview and the field.
+    // title's line, the gap between the preview and the field.
     private const int PreviewSide = 56;
     private const int SeparatorBand = 7;
+    private const int TitleHeight = 20;
     private const int PreviewGap = 6;
 
     private static string Placeholder => Strings.CompUrlPlaceholder;
@@ -38,7 +40,14 @@ internal sealed class UrlZone : Panel
     private readonly TextBox _url = new() { PlaceholderText = Placeholder, Anchor = AnchorStyles.Left | AnchorStyles.Right, Margin = new Padding(0, 0, 3, 0) };
     private readonly Button _load = new() { Text = Strings.CompUrlLoad, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Anchor = AnchorStyles.Right, Enabled = false, Margin = Padding.Empty };
     private readonly LinkLabel _caption = new() { Dock = DockStyle.Fill, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, Margin = Padding.Empty };
+    private readonly UrlTitle _title = new() { Dock = DockStyle.Top, Margin = Padding.Empty };
     private readonly ToolTip _toolTip = new();
+
+    // The ready media's caption, fitted again when the zone's width changes: its name, the text made of it,
+    // and the length of the link at its start (0 for none).
+    private string? _captionName;
+    private Func<string, string>? _captionOf;
+    private int _captionLink;
 
     // A file tile's menu on the ready media (see workfiles/20261014-url-zone-context-menu.md).
     private readonly ContextMenuStrip _menu = new();
@@ -67,9 +76,14 @@ internal sealed class UrlZone : Panel
         this._layout.SetRowSpan(this._preview, 2);
         this._layout.Controls.Add(this._fieldRow, 1, 0);
         this._layout.Controls.Add(this._caption, 1, 1);
+
+        // Docked in reverse order: the title, added last, takes the top first, the layout the rest.
         this.Controls.Add(this._layout);
+        this.Controls.Add(this._title);
 
         this._toolTip.SetToolTip(this._load, Strings.CompUrlLoadTip);
+        this._toolTip.SetToolTip(this._title, Strings.CompUrlTitleTip);
+        this._caption.SizeChanged += (_, _) => this.FitCaption();
         this._url.TextChanged += (_, _) => this._load.Enabled = this._url.Text.Trim().Length > 0;
         this._url.KeyDown += OnUrlKeyDown;
         this._load.Click += async (_, _) => await this.LoadAsync();
@@ -114,6 +128,13 @@ internal sealed class UrlZone : Panel
     /// <summary>The URL field has the focus: the keys editing text are its own.</summary>
     public bool IsEditingText => this._url.Focused;
 
+    /// <summary>Ctrl+L: the URL field focused, its text selected, as a browser's address bar.</summary>
+    public void FocusField()
+    {
+        this._url.Focus();
+        this._url.SelectAll();
+    }
+
     /// <summary>yt-dlp or its companions missing: the Component updates window to open on them, what they are for said.</summary>
     public event EventHandler<ComponentNeed>? ComponentsRequested;
 
@@ -135,6 +156,7 @@ internal sealed class UrlZone : Panel
         this._layout.ColumnStyles[0].Width = this.LogicalToDeviceUnits(PreviewSide + PreviewGap);
         this._preview.Margin = new Padding(0, 0, this.LogicalToDeviceUnits(PreviewGap), 0);
         this.Padding = new Padding(0, this.LogicalToDeviceUnits(SeparatorBand), 0, 0);
+        this._title.Height = this.LogicalToDeviceUnits(TitleHeight);
         UiIcons.SetImage(this._load, UiIcons.Download, this.LogicalToDeviceUnits(UiIcons.LogicalSize));
         this.Invalidate();
     }
@@ -203,17 +225,17 @@ internal sealed class UrlZone : Panel
         try
         {
             string path = await Task.Run(() => load(url, progress, cts.Token), cts.Token);
-            Bitmap? thumbnail = await Task.Run(() => Thumbnail(path, side));
+            var (thumbnail, facts) = await Task.Run(() => Inspect(path, side));
             if (this._loading != cts)
             {
                 thumbnail?.Dispose();
                 return;
             }
 
-            this.ShowReady(path, thumbnail);
+            this.ShowReady(path, thumbnail, facts);
             if (withoutCompanions && url is not null && YtDlpCompanions.Missing.Count > 0)
             {
-                this.ShowCompanionsHint(url, path);
+                this.ShowCompanionsHint(url, path, facts);
             }
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested)
@@ -275,9 +297,7 @@ internal sealed class UrlZone : Panel
     private static string DownloadCaption(DownloadingStep step) =>
         step.Percent is { } percent ? Texts.Format(Strings.CompUrlDownloadingPercent, Texts.Number(percent, "0"))
         : step.Total is > 0 and { } total ? Texts.Format(Strings.CompUrlDownloadingPercent, Texts.Number(100.0 * step.Received / total, "0"))
-        : Texts.Format(Strings.CompUrlDownloadingSize, Megabytes(step.Received));
-
-    private static string Megabytes(long bytes) => Texts.Format(Strings.CompUrlMegabytes, Texts.Number(bytes / (1024.0 * 1024), "0.0"));
+        : Texts.Format(Strings.CompUrlDownloadingSize, UrlCaption.Megabytes(step.Received));
 
     /// <summary>The poster, under the loader while the media downloads; a poster that cannot be read is no matter.</summary>
     private async Task ShowPosterAsync(Uri url, CancellationTokenSource cts)
@@ -314,24 +334,32 @@ internal sealed class UrlZone : Panel
         }
     }
 
-    /// <summary>Windows' thumbnail of the file, else its first frame as the app loads it, fitted to the preview.</summary>
-    private static Bitmap? Thumbnail(string path, int side)
+    /// <summary>
+    /// The preview's thumbnail — Windows' own, else the frame the app shows, fitted to the preview — and what the caption
+    /// tells of the media: its dimensions as the app loads it and, for a content that plays frame by frame (a video, an
+    /// animated GIF), its duration; each null when it cannot be read. Off the UI thread.
+    /// </summary>
+    private static (Bitmap? Thumbnail, MediaFacts Facts) Inspect(string path, int side)
     {
+        Bitmap? thumbnail = null;
+        var facts = new MediaFacts(null, null);
         try
         {
-            using var shell = ShellThumbnail.TryLoad(path, side);
-            if (shell is not null)
+            using var source = ImageLoader.TryLoadFile(path);
+            if (source is not null)
             {
-                return Fit(shell, side);
+                facts = new MediaFacts(source.Bitmap.Size, source.Pages is { HasFrames: true, LoopDuration: var length } && length > TimeSpan.Zero ? length : null);
             }
 
-            using var source = ImageLoader.TryLoadFile(path);
-            return source is null ? null : Fit(source.Bitmap, side);
+            using var shell = ShellThumbnail.TryLoad(path, side);
+            thumbnail = shell is not null ? Fit(shell, side) : source is null ? null : Fit(source.Bitmap, side);
         }
         catch (Exception e) when (e is ArgumentException or OutOfMemoryException or IOException or System.Runtime.InteropServices.ExternalException)
         {
-            return null;
+            // No thumbnail, or no facts: the caption leaves out what is unknown.
         }
+
+        return (thumbnail, facts);
     }
 
     /// <summary><paramref name="image"/> scaled to fit a square of <paramref name="side"/>, its ratio kept.</summary>
@@ -361,14 +389,17 @@ internal sealed class UrlZone : Panel
         this.SetCaption(caption, error: false);
     }
 
-    private void ShowReady(string path, Bitmap? thumbnail)
+    private void ShowReady(string path, Bitmap? thumbnail, MediaFacts facts)
     {
         this._path = path;
         this._preview.Display(PreviewState.Ready, thumbnail, VideoFrames.IsVideoFile(path));
         this._toolTip.SetToolTip(this._preview, ReadyTooltip);
-        long size = new FileInfo(path).Length;
-        this.SetCaption($"{Path.GetFileName(path)} · {Megabytes(size)}", error: false);
+        string details = Details(path, facts);
+        this.SetFittedCaption(path, name => $"{name}{UrlCaption.Separator}{details}", link: 0);
     }
+
+    /// <summary>The size, the dimensions and the duration of the ready media, as the caption shows them after its name.</summary>
+    private static string Details(string path, MediaFacts facts) => UrlCaption.Details(new FileInfo(path).Length, facts.Size, facts.Duration);
 
     private void ShowFailed(string message)
     {
@@ -400,22 +431,58 @@ internal sealed class UrlZone : Panel
     /// The media is ready, loaded by yt-dlp without a companion: the caption's link offers to install
     /// them for a larger format, then loads this URL again; its file stays draggable meanwhile.
     /// </summary>
-    private void ShowCompanionsHint(Uri url, string path)
+    private void ShowCompanionsHint(Uri url, string path, MediaFacts facts)
     {
-        long size = new FileInfo(path).Length;
-        this.SetCaption(Texts.Format(Strings.CompUrlCompanionsHint, CompanionsLink, Path.GetFileName(path), Megabytes(size)), error: false);
+        string details = Details(path, facts);
+        this.SetFittedCaption(path, name => Texts.Format(Strings.CompUrlCompanionsHint, CompanionsLink, name, details), CompanionsLink.Length);
         this._installFor = url;
         this._offer = InstallOffer.Companions;
-        this._caption.Links.Add(0, CompanionsLink.Length);
     }
 
     /// <summary>The caption's text, no link in it, its whole text in its tooltip.</summary>
     private void SetCaption(string text, bool error, bool dim = false)
     {
+        this._captionName = null;
+        this._captionOf = null;
         this._caption.Text = text;
         this._caption.Links.Clear();
         this._caption.ForeColor = error ? Color.Firebrick : dim ? SystemColors.GrayText : SystemColors.ControlText;
         this._toolTip.SetToolTip(this._caption, text);
+    }
+
+    /// <summary>
+    /// A ready media's caption: <paramref name="compose"/> given its file's name without its extension, the name cut
+    /// to fit the zone's width — again whenever it changes — the details never; a link of <paramref name="link"/>
+    /// characters at its start. The tooltip holds the whole text with the file's full name.
+    /// </summary>
+    private void SetFittedCaption(string path, Func<string, string> compose, int link)
+    {
+        this.SetCaption(compose(Path.GetFileName(path)), error: false);
+        this._captionName = Path.GetFileNameWithoutExtension(path);
+        this._captionOf = compose;
+        this._captionLink = link;
+        this.FitCaption();
+    }
+
+    private void FitCaption()
+    {
+        if (this._captionName is not { } name || this._captionOf is not { } compose)
+        {
+            return;
+        }
+
+        var font = this._caption.Font;
+        int available = this._caption.ClientSize.Width - this._caption.Padding.Horizontal - this.LogicalToDeviceUnits(4);
+        string text = UrlCaption.Fit(name, compose, t => TextRenderer.MeasureText(t, font, Size.Empty, TextFormatFlags.NoPadding).Width, available);
+        if (text != this._caption.Text || this._caption.Links.Count != (this._captionLink > 0 ? 1 : 0))
+        {
+            this._caption.Text = text;
+            this._caption.Links.Clear();
+            if (this._captionLink > 0)
+            {
+                this._caption.Links.Add(0, this._captionLink);
+            }
+        }
     }
 
     private ToolStripMenuItem MenuItem(string text, FileAction action, UiIcon icon)
@@ -465,6 +532,9 @@ internal sealed class UrlZone : Panel
         }
     }
 
+    /// <summary>What the caption tells of a ready media besides its file: its dimensions and its duration, null when unknown.</summary>
+    private readonly record struct MediaFacts(Size? Size, TimeSpan? Duration);
+
     /// <summary>What the caption's link offers to install.</summary>
     private enum InstallOffer
     {
@@ -478,6 +548,62 @@ internal sealed class UrlZone : Panel
         Busy,
         Ready,
         Failed,
+    }
+
+    /// <summary>
+    /// The zone's title: <b>Content download</b> in bold, then the sources in parentheses in the grey of a hint — the
+    /// sources cut with … first when the zone is narrow, then the bold part.
+    /// </summary>
+    private sealed class UrlTitle : Control
+    {
+        private const TextFormatFlags Flags = TextFormatFlags.NoPadding | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis;
+
+        private Font? _bold;
+
+        public UrlTitle()
+        {
+            this.SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.UserPaint, true);
+        }
+
+        protected override void OnFontChanged(EventArgs e)
+        {
+            this._bold?.Dispose();
+            this._bold = null;
+            base.OnFontChanged(e);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            using (var back = new SolidBrush(this.BackColor))
+            {
+                g.FillRectangle(back, this.ClientRectangle);
+            }
+
+            this._bold ??= new Font(this.Font, FontStyle.Bold);
+            string title = Strings.CompUrlTitle;
+            int titleWidth = TextRenderer.MeasureText(g, title, this._bold, Size.Empty, TextFormatFlags.NoPadding).Width;
+            var titleBox = new Rectangle(0, 0, Math.Min(titleWidth, this.Width), this.Height);
+            TextRenderer.DrawText(g, title, this._bold, titleBox, this.ForeColor, Flags);
+
+            int gap = TextRenderer.MeasureText(g, " ", this.Font, Size.Empty, TextFormatFlags.NoPadding).Width;
+            var sourcesBox = new Rectangle(titleBox.Right + gap, 0, this.Width - titleBox.Right - gap, this.Height);
+            if (sourcesBox.Width > 0)
+            {
+                TextRenderer.DrawText(g, Strings.CompUrlTitleSources, this.Font, sourcesBox, SystemColors.GrayText, Flags);
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                this._bold?.Dispose();
+                this._bold = null;
+            }
+
+            base.Dispose(disposing);
+        }
     }
 
     /// <summary>

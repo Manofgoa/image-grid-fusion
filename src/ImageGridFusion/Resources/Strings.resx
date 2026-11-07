@@ -86,10 +86,14 @@
   <data name="CompUrlMegabytes" xml:space="preserve"><value>{0} MB</value></data>
   <data name="CompUrlMerging" xml:space="preserve"><value>Joining the video and its sound…</value></data>
   <data name="CompUrlNotAddress" xml:space="preserve"><value>Not a web address</value></data>
-  <data name="CompUrlPlaceholder" xml:space="preserve"><value>Paste a URL (X post, image, video…)</value></data>
+  <data name="CompUrlPlaceholder" xml:space="preserve"><value>Paste a URL (Ctrl+L)</value></data>
   <data name="CompUrlReadyTooltip" xml:space="preserve"><value>Drag into a cell · right-click for more</value></data>
   <data name="CompUrlResolving" xml:space="preserve"><value>Looking for the media…</value></data>
+  <data name="CompUrlSeconds" xml:space="preserve"><value>{0} s</value></data>
   <data name="CompUrlSiteNeedsYtDlp" xml:space="preserve"><value>This site needs yt-dlp</value></data>
+  <data name="CompUrlTitle" xml:space="preserve"><value>Content download</value></data>
+  <data name="CompUrlTitleSources" xml:space="preserve"><value>(X / Twitter, YouTube, Instagram, TikTok, Reddit…)</value></data>
+  <data name="CompUrlTitleTip" xml:space="preserve"><value>Direct links to an image or a video, X / Twitter posts, and the 1,800+ sites yt-dlp supports — yt-dlp installed from the Component updates window</value></data>
   <data name="CompUrlYtDlpNeed" xml:space="preserve"><value>This site's media is loaded with yt-dlp — with Deno and ffmpeg, its companions, for the largest formats. Load the URL again once they are installed.</value></data>
   <data name="CompWebCouldntReach" xml:space="preserve"><value>Couldn't reach {0}: {1}</value></data>
   <data name="CompWebCouldntSaveFile" xml:space="preserve"><value>Couldn't save the file: {0}</value></data>
