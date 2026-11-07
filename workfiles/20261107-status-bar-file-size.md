@@ -43,9 +43,9 @@ Relevant code:
 
 ### Placement and Content
 
-- A **label in the bottom bar, just left of the output buttons** — inside `_outputButtons` before Copy, or a
-  column of its own between the status line and them (implementation's choice): the status line keeps the rest
-  of the width, and `FitStatusWidth` subtracts the readout's width.
+- A **label in the bottom bar, just left of Copy** — inside `_outputButtons` before Copy, or a column of its own
+  between the status line and the buttons (implementation's choice): it reads as the caption of the buttons after
+  it; the status line keeps the rest of the width, and `FitStatusWidth` subtracts the readout's width.
 - **Text**: `<format> · <size> · <width> × <height>` — `PNG · ≈ 24,7 Mo · 2400 × 1256`,
   `MP4 · 4,18 Mo · 1920 × 1004` (exact, no `≈`).
 - **Format**: the one the main part of Copy / Save produces — `MP4` while `ProducesVideo`, else `PNG` — so the
@@ -53,8 +53,20 @@ Relevant code:
   sizes) are not covered: their own captions / tooltips already give their size.
 - **Size** in the UI language's units through `FileSizes` (`Ko` / `KB`…), `≈ ` before an estimate.
 - **Dimensions**: the PNG's native size, or the MP4's even size clamped to the Video size.
-- **Always shown** while the grid has content (`HasContent`), whatever the status line says; locked exports
-  leave it as it stood. Empty grid → see Open Questions.
+- **Always shown**, whatever the status line says: with an empty grid (`!HasContent`) it reads `—`, as the length
+  readout's `⏱ —`, so nothing in the bar moves when the grid empties or fills; its minimum width keeps it steady
+  while its digits change.
+
+### During an Export
+
+- While an export runs (`BeginExport` → `EndExport`), the readout shows **that export's progress**: its format
+  (the one actually exported — a GIF or a forced MP4 from the ▾ menus included), the **bytes written so far**, its
+  dimensions — `MP4 · 1,6 Mo… · 1920 × 1004`. The bytes read from the file being written (or the sink writer's
+  statistics), refreshed on a timer, never per frame.
+- When it ends, the produced size is shown exact, without `≈`, if it is the main part's format (it becomes the
+  known size, § Exact Size); otherwise — a GIF, a PNG max size, a JPEG for sharing — the readout goes back to the
+  main part's figure. A cancelled or failed export goes back to it too.
+- A still export (PNG) is synchronous and short: no progress, its exact size at the end.
 - **Tooltip**: how the figure was obtained — the estimate's basis (*worst case: uncompressed PNG, the file is
   usually much smaller* / *8,4 Mb/s × 12,5 s + sound*), or *size of the file the last Copy / Save produced*.
 
@@ -116,9 +128,9 @@ delivery launch.
 
 ## Open Questions
 
-- [ ] With an empty grid, is the readout hidden, or shown as `—`?
-- [ ] Placement: just left of Copy (between the status line and the buttons), or right of Save, at the far right?
-- [ ] During an export: keep the readout as it stood, or show the export's progress there instead?
+- [x] ~~With an empty grid, is the readout hidden, or shown as `—`?~~ → Shown as `—`
+- [x] ~~Placement: just left of Copy (between the status line and the buttons), or right of Save, at the far right?~~ → Just left of Copy
+- [x] ~~During an export: keep the readout as it stood, or show the export's progress there instead?~~ → The export's progress: bytes written so far, then the exact size
 
 ---
 
@@ -136,6 +148,12 @@ Save (PNG / MP4); the size is a worst-case formula marked `≈`, exact without `
 is unchanged; the readout shows format, size and dimensions. Exploration (one pass, the questions chained around
 `MainForm.UpdateButtons`) found the bitrate formula in `VideoEncoder`, the last video's exact size and
 `GridPreview.ContentVersion`, whose documented coverage misses a few export inputs.
+
+### Iteration 2 — 2026-11-07
+
+Open questions answered (Q5–Q7): the readout reads `—` on an empty grid; it sits just left of Copy; during an export
+it shows that export's progress — its format, the bytes written so far, its dimensions — then the exact size, or
+goes back to the main part's figure when the export was another format, cancelled or failed. New § During an Export.
 
 ---
 
@@ -163,9 +181,9 @@ Questions asked by the agent during design, with user responses.
 | 2 | How is the file size obtained? | Worst-case formula with `≈`; exact, without `≈`, after a Copy / Save while the grid is unchanged | 2026-11-07 |
 | 3 | What does the readout show? | Format + size + dimensions | 2026-11-07 |
 | 4 | Simple or tricky to explore? | Simple — one scout pass | 2026-11-07 |
-| 5 | Empty grid: readout hidden or `—`? | | |
-| 6 | Placement: left of Copy or right of Save? | | |
-| 7 | During an export: readout kept, or progress shown there? | | |
+| 5 | Empty grid: readout hidden or `—`? | Shown as `—` | 2026-11-07 |
+| 6 | Placement: left of Copy or right of Save? | Just left of Copy | 2026-11-07 |
+| 7 | During an export: readout kept, or progress shown there? | Progress shown: bytes written so far, then the exact size | 2026-11-07 |
 
 ---
 
