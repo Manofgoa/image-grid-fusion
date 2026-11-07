@@ -155,6 +155,11 @@ Open questions answered (Q5–Q7): the readout reads `—` on an empty grid; it 
 it shows that export's progress — its format, the bytes written so far, its dimensions — then the exact size, or
 goes back to the main part's figure when the export was another format, cancelled or failed. New § During an Export.
 
+### Iteration 3 — 2026-11-07 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree (`.claude/worktrees/status-bar-file-size`, branch
+`feature/status-bar-file-size`). The scope is the design sections as they stand at this entry.
+
 ---
 
 ## Implementation Log
