@@ -21,8 +21,9 @@ L'application montre cette liste quand sa langue est le français (menu **⚙** 
 | <kbd>Ctrl</kbd>+<kbd>N</kbd> | Tout effacer, sans confirmation |
 | <kbd>Ctrl</kbd>+<kbd>R</kbd> | Tourner l'image sous la souris — sinon l'image sélectionnée — jusqu'au quart de tour suivant dans le sens horaire : +37° vers 90°, 90° vers 180° |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> | La même chose, dans le sens antihoraire : +37° vers 0°, 0° vers -90° |
-| <kbd>Ctrl</kbd>+<kbd>F</kbd> | Aller dans la zone de recherche de l'explorateur de fichiers ; pressé de nouveau là, la vue suivante — la vue dossiers atteinte ainsi s'ouvrant au dossier de base, les vues GIPHY sautées tant qu'aucune clé n'est saisie, et quand elles sont masquées depuis le menu ⚙ |
+| <kbd>Ctrl</kbd>+<kbd>F</kbd> | Aller dans la zone de recherche de l'explorateur de fichiers, en l'ouvrant s'il est replié ; pressé de nouveau là, la vue suivante — la vue dossiers atteinte ainsi s'ouvrant au dossier de base, les vues GIPHY sautées tant qu'aucune clé n'est saisie, et quand elles sont masquées depuis le menu ⚙ |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> | Dans la zone de recherche, la vue précédente — la vue dossiers, au dossier de base aussi |
+| <kbd>Ctrl</kbd>+<kbd>L</kbd> | Aller dans le champ de la zone URL, son texte sélectionné, en ouvrant l'explorateur de fichiers s'il est replié |
 | <kbd>Space</kbd> | Lecture / pause de la grille — pas dans un champ de texte |
 
 Dans un champ de texte, <kbd>Ctrl</kbd>+<kbd>V</kbd>, <kbd>Ctrl</kbd>+<kbd>C</kbd>, <kbd>Ctrl</kbd>+<kbd>Z</kbd>,
