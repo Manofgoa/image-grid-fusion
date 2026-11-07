@@ -51,7 +51,6 @@ internal static class AppSettings
     private const string WindowScreenName = "WindowScreen";
     private const string AddFolderName = "LastAddFolder";
     private const string SoundtrackFolderName = "LastSoundtrackFolder";
-    private const string ExportFolderName = "LastExportFolder";
     private const string CustomColorsName = "CustomColors";
     private const string CustomColorsNextName = "CustomColorsNext";
     private const string LanguageName = "Language";
@@ -504,15 +503,6 @@ internal static class AppSettings
 
     /// <summary>Saves the soundtrack dialog's folder; throws an <see cref="IsSaveError"/> exception on failure.</summary>
     public static void SaveSoundtrackFolder(string folder) => Save((SoundtrackFolderName, folder));
-
-    /// <summary>
-    /// The folder of the file last saved by an export or Save last…, shared by both; null until a first
-    /// one was saved.
-    /// </summary>
-    public static string? ExportFolder => Text(ExportFolderName);
-
-    /// <summary>Saves the exports' folder; throws an <see cref="IsSaveError"/> exception on failure.</summary>
-    public static void SaveExportFolder(string folder) => Save((ExportFolderName, folder));
 
     /// <summary>
     /// The color dialog's custom colors, as the dialog holds them (COLORREF, <c>0x00BBGGRR</c>); null when none

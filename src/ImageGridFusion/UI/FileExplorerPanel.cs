@@ -443,6 +443,7 @@ internal sealed partial class FileExplorerPanel : Panel
         _grid.ContextMenuStrip = _menu;
         this._grid.IsFavorite = this.IsFavoritePath;
         this.InitGiphy();
+        this.InitSaveDownloaded();
         this._grid.ContentExcerpt = this.ExcerptOf;
         this._grid.ContentSpot = this.SpotOf;
         this._grid.ContentWords = this.WordsOf;
@@ -518,10 +519,10 @@ internal sealed partial class FileExplorerPanel : Panel
         {
             var row = _grid.RowAt(_grid.PointToClient(MousePosition));
 
-            // A GIPHY result has no file to copy or show yet: no menu.
-            e.Cancel = row is null || row.Online is not null;
+            // A GIPHY result has no file of the user's: its menu holds Save… alone (ShowSaveDownloaded, last).
+            e.Cancel = row is null;
             _openLocation.Text = row?.IsFolder == true ? OpenInExplorerText : OpenFileLocationText;
-            bool file = row is { IsFile: true };
+            bool file = row is { IsFile: true, Online: null };
             bool group = row is { IsGroup: true } && !IsPeopleTile(row.GroupId);
             var shown = group ? this._snapshot.ById.GetValueOrDefault(row!.GroupId!) : null;
             this._copy.Visible = file;
@@ -545,6 +546,7 @@ internal sealed partial class FileExplorerPanel : Panel
             this._peopleSeparator.Visible = row?.IsGroup == true || this._notThisPerson.Visible;
             this.FillPhotoPeople(file ? row : null);
             this._photoPeopleSeparator.Visible = this._photoPeople.Visible;
+            this.ShowSaveDownloaded(row);
         };
         this._openGroupItem.Click += (_, _) => { if (this._grid.SelectedRow is { } row) { this.Activate(row); } };
         this._renameGroup.Click += (_, _) => { if (this._grid.SelectedRow is { } row) { this.RenameGroup(row); } };
@@ -1365,6 +1367,9 @@ internal sealed partial class FileExplorerPanel : Panel
                 break;
             case UrlZone.FileAction.OpenFileLocation:
                 this.OpenInExplorer(path, folder: false);
+                break;
+            case UrlZone.FileAction.Save:
+                await this.SaveDownloadedAsync(path);
                 break;
         }
     }

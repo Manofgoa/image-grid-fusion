@@ -283,6 +283,11 @@ The features needing them are offered them again.</value></data>
   <data name="ExplorerLookingForFaces" xml:space="preserve"><value> · looking for faces…</value></data>
   <data name="ExplorerLowQuality" xml:space="preserve"><value>Low quality</value></data>
   <data name="ExplorerMenuCopy" xml:space="preserve"><value>Copy</value></data>
+  <data name="ExplorerMenuSave" xml:space="preserve"><value>Save…</value></data>
+  <data name="ExplorerSaveFilterType" xml:space="preserve"><value>{0} file (*{1})</value></data>
+  <data name="ExplorerStatusSaved" xml:space="preserve"><value>Saved {0} in {1}</value></data>
+  <data name="ExplorerStatusSaveFailed" xml:space="preserve"><value>Save failed: {0}</value></data>
+  <data name="ExplorerTipSaveNotDownloaded" xml:space="preserve"><value>Click the tile to download it first</value></data>
   <data name="ExplorerMenuCopyFullPath" xml:space="preserve"><value>Copy full path</value></data>
   <data name="ExplorerMenuCopyPng" xml:space="preserve"><value>Copy PNG</value></data>
   <data name="ExplorerMenuEditDescription" xml:space="preserve"><value>Edit description…</value></data>
@@ -489,7 +494,6 @@ In the folder view, the folders come first, A→Z.</value></data>
   <data name="MainFillHoles" xml:space="preserve"><value>Fill holes</value></data>
   <data name="MainFitToSoundtrack" xml:space="preserve"><value>Fit to soundtrack</value></data>
   <data name="MainFitToSoundtrackTip" xml:space="preserve"><value>The video lasts one play of the soundtrack's part, from the grid's start, Keep range checked</value></data>
-  <data name="MainFolderNameExport" xml:space="preserve"><value>Export</value></data>
   <data name="MainForgetFacesAsk" xml:space="preserve"><value>Forget every face found and every person named, hidden or merged? The face analysis is turned off; turned on again, it looks for the faces from the start.
 
 The face engine stays downloaded.</value></data>

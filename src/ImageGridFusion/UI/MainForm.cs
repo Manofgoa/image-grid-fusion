@@ -68,6 +68,9 @@ internal sealed partial class MainForm : Form
     private readonly ToolStripMenuItem _copyCell = new(Strings.MainMenuCopyCell) { ShortcutKeyDisplayString = "Ctrl+C" };
     private readonly ToolStripMenuItem _saveUpscaledCell = new(Strings.MainMenuSaveUpscaled);
 
+    // A downloaded content's file copied where the user chooses (workfiles/20261107-save-downloaded-content.md § Cells).
+    private readonly ToolStripMenuItem _saveDownloadedCell = new(FileExplorerPanel.SaveText);
+
     /// <summary>The cell the context menu was opened on, by its slot.</summary>
     private int _cellMenuCell = -1;
     // How the light bulb's arrow to the word found is drawn: a submenu of the group, the thickness a
@@ -1481,10 +1484,19 @@ internal sealed partial class MainForm : Form
                 _ = this.SaveUpscaledAsync(image);
             }
         };
+        this._saveDownloadedCell.Click += (_, _) =>
+        {
+            if (this._cellMenu.Tag is SourceImage image && this._preview.Images.Contains(image))
+            {
+                _ = this.SaveDownloadedAsync(image);
+            }
+        };
         this._cellMenu.Items.Add(this._copyCell);
         this._cellMenu.Items.Add(this._findSimilarCell);
+        this._cellMenu.Items.Add(this._saveDownloadedCell);
         this._cellMenu.Items.Add(this._saveUpscaledCell);
         UiIcons.Set(this._copyCell, UiIcons.Copy);
+        UiIcons.Set(this._saveDownloadedCell, UiIcons.Save);
         UiIcons.Set(this._saveUpscaledCell, UiIcons.SaveUpscaled);
         UiIcons.Set(this._findSimilarCell, UiIcons.FindSimilar);
         UiIcons.Attach(this._cellMenu);
@@ -2866,14 +2878,12 @@ internal sealed partial class MainForm : Form
             Filter = SaveFilter(last.Format),
             DefaultExt = Extension(last.Format),
             FileName = last.FileName,
-            InitialDirectory = ExportFolder(),
+            InitialDirectory = this._explorer.SaveFolder,
         };
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
             return;
         }
-
-        RememberFolder(AppSettings.SaveExportFolder, dialog.FileName, Strings.MainFolderNameExport);
 
         try
         {
@@ -3344,16 +3354,14 @@ internal sealed partial class MainForm : Form
             Filter = SaveFilter(format),
             DefaultExt = extension,
             FileName = $"fusion-{DateTime.Now:yyyyMMdd-HHmmss}.{extension}",
-            InitialDirectory = ExportFolder(),
+            InitialDirectory = this._explorer.SaveFolder,
         };
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
             return;
         }
 
-        RememberFolder(AppSettings.SaveExportFolder, dialog.FileName, Strings.MainFolderNameExport);
-
-        string saved = Texts.Format(Strings.MainStatusSaved, Path.GetFileName(dialog.FileName));
+        string saved =Texts.Format(Strings.MainStatusSaved, Path.GetFileName(dialog.FileName));
         var clock = Stopwatch.StartNew();
         if (format is { } animated)
         {
@@ -4004,19 +4012,6 @@ internal sealed partial class MainForm : Form
 
         return IsExporting;
     }
-
-    /// <summary>Folder of the first image that came from a file, else the user's Pictures folder.</summary>
-    private string DefaultSaveFolder()
-    {
-        string? file = _preview.Images.Select(i => i.FilePath).FirstOrDefault(p => p is not null);
-        return Path.GetDirectoryName(file) ?? Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
-    }
-
-    /// <summary>
-    /// Where the exports and Save last… open: the folder of the last file they saved — or its nearest parent
-    /// still there — and <see cref="DefaultSaveFolder"/> until a first one was saved.
-    /// </summary>
-    private string ExportFolder() => ExistingFolder(AppSettings.ExportFolder) ?? DefaultSaveFolder();
 
     /// <summary>A remembered folder, or its nearest parent that still exists (a drive unplugged, a folder deleted); null when none does.</summary>
     private static string? ExistingFolder(string? folder)
@@ -4780,6 +4775,25 @@ internal sealed partial class MainForm : Form
     }
 
     /// <summary>
+    /// Save… on a cell holding a downloaded content: its file copied where the user chooses — the explorer's dialog —
+    /// then adopted by the cell, so a heart or a preset made afterwards points to the file kept, not to the temp one
+    /// emptied at the next start (workfiles/20261107-save-downloaded-content.md § Cells).
+    /// </summary>
+    private async Task SaveDownloadedAsync(SourceImage image)
+    {
+        if (this.RefuseWhileExporting() || image.IsDisposed || image.FilePath is not { } path)
+        {
+            return;
+        }
+
+        if (await this._explorer.SaveDownloadedAsync(path) is { } saved && !image.IsDisposed)
+        {
+            image.AdoptFile(saved);
+            this._preview.RefreshSourceName();
+        }
+    }
+
+    /// <summary>
     /// Save upscaled image…: the image enlarged by its Upscale, whole — cut out while its Cutout is on — written where the
     /// user chooses, a still as a PNG, an animated GIF as an animated GIF of its enlarged frames; the cell untouched.
     /// Offered once the enlargement is computed (workfiles/20261029-image-upscale.md § Save Upscaled Image).
@@ -4800,7 +4814,7 @@ internal sealed partial class MainForm : Form
             FileName = $"{(image.FilePath is { } file ? Path.GetFileNameWithoutExtension(file)
                 : image.CroppedFrom is { } from ? Path.GetFileNameWithoutExtension(from) + "-crop"
                 : "upscaled")}-x{upscale.Factor}{extension}",
-            InitialDirectory = (image.FilePath ?? image.CroppedFrom) is { } path ? Path.GetDirectoryName(path) : Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+            InitialDirectory = this._explorer.SaveFolder,
         })
         {
             if (dialog.ShowDialog(this) != DialogResult.OK)
@@ -6215,6 +6229,8 @@ internal sealed partial class MainForm : Form
         this._cellMenuCell = cell;
         this._copyCell.Enabled = !this.IsExporting;
         var menuImage = this._preview.Images[cell];
+        this._saveDownloadedCell.Visible = DownloadedContent.Holds(menuImage.FilePath);
+        this._saveDownloadedCell.Enabled = !this.IsExporting && File.Exists(menuImage.FilePath);
         this._saveUpscaledCell.Visible = menuImage.Upscales;
         this._saveUpscaledCell.Enabled = !this.IsExporting && menuImage.Look.IsActive(ImageEffect.Upscale) && !menuImage.UpscalePending;
         this._findSimilarCell.Visible = this._explorer.CanFindSimilar;
