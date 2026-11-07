@@ -494,7 +494,6 @@ Dans la vue Dossiers, les dossiers viennent en premier, de A à Z.</value></data
   <data name="MainFillHoles" xml:space="preserve"><value>Boucher les trous</value></data>
   <data name="MainFitToSoundtrack" xml:space="preserve"><value>Caler sur la bande son</value></data>
   <data name="MainFitToSoundtrackTip" xml:space="preserve"><value>La vidéo dure une lecture de la partie jouée de la bande son, depuis le début de la grille, Garder la plage cochée</value></data>
-  <data name="MainFolderNameExport" xml:space="preserve"><value>Export</value></data>
   <data name="MainForgetFacesAsk" xml:space="preserve"><value>Oublier chaque visage trouvé et chaque personne nommée, masquée ou fusionnée ? L'analyse des visages est désactivée ; réactivée, elle recherche les visages depuis le début.
 
 Le moteur de visages reste téléchargé.</value></data>

@@ -2878,14 +2878,12 @@ internal sealed partial class MainForm : Form
             Filter = SaveFilter(last.Format),
             DefaultExt = Extension(last.Format),
             FileName = last.FileName,
-            InitialDirectory = ExportFolder(),
+            InitialDirectory = this._explorer.SaveFolder,
         };
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
             return;
         }
-
-        RememberFolder(AppSettings.SaveExportFolder, dialog.FileName, Strings.MainFolderNameExport);
 
         try
         {
@@ -3356,16 +3354,14 @@ internal sealed partial class MainForm : Form
             Filter = SaveFilter(format),
             DefaultExt = extension,
             FileName = $"fusion-{DateTime.Now:yyyyMMdd-HHmmss}.{extension}",
-            InitialDirectory = ExportFolder(),
+            InitialDirectory = this._explorer.SaveFolder,
         };
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
             return;
         }
 
-        RememberFolder(AppSettings.SaveExportFolder, dialog.FileName, Strings.MainFolderNameExport);
-
-        string saved = Texts.Format(Strings.MainStatusSaved, Path.GetFileName(dialog.FileName));
+        string saved =Texts.Format(Strings.MainStatusSaved, Path.GetFileName(dialog.FileName));
         var clock = Stopwatch.StartNew();
         if (format is { } animated)
         {
@@ -4016,19 +4012,6 @@ internal sealed partial class MainForm : Form
 
         return IsExporting;
     }
-
-    /// <summary>Folder of the first image that came from a file, else the user's Pictures folder.</summary>
-    private string DefaultSaveFolder()
-    {
-        string? file = _preview.Images.Select(i => i.FilePath).FirstOrDefault(p => p is not null);
-        return Path.GetDirectoryName(file) ?? Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
-    }
-
-    /// <summary>
-    /// Where the exports and Save last… open: the folder of the last file they saved — or its nearest parent
-    /// still there — and <see cref="DefaultSaveFolder"/> until a first one was saved.
-    /// </summary>
-    private string ExportFolder() => ExistingFolder(AppSettings.ExportFolder) ?? DefaultSaveFolder();
 
     /// <summary>A remembered folder, or its nearest parent that still exists (a drive unplugged, a folder deleted); null when none does.</summary>
     private static string? ExistingFolder(string? folder)
@@ -4831,7 +4814,7 @@ internal sealed partial class MainForm : Form
             FileName = $"{(image.FilePath is { } file ? Path.GetFileNameWithoutExtension(file)
                 : image.CroppedFrom is { } from ? Path.GetFileNameWithoutExtension(from) + "-crop"
                 : "upscaled")}-x{upscale.Factor}{extension}",
-            InitialDirectory = (image.FilePath ?? image.CroppedFrom) is { } path ? Path.GetDirectoryName(path) : Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+            InitialDirectory = this._explorer.SaveFolder,
         })
         {
             if (dialog.ShowDialog(this) != DialogResult.OK)

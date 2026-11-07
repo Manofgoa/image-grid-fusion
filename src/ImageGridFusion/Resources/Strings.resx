@@ -494,7 +494,6 @@ In the folder view, the folders come first, A→Z.</value></data>
   <data name="MainFillHoles" xml:space="preserve"><value>Fill holes</value></data>
   <data name="MainFitToSoundtrack" xml:space="preserve"><value>Fit to soundtrack</value></data>
   <data name="MainFitToSoundtrackTip" xml:space="preserve"><value>The video lasts one play of the soundtrack's part, from the grid's start, Keep range checked</value></data>
-  <data name="MainFolderNameExport" xml:space="preserve"><value>Export</value></data>
   <data name="MainForgetFacesAsk" xml:space="preserve"><value>Forget every face found and every person named, hidden or merged? The face analysis is turned off; turned on again, it looks for the faces from the start.
 
 The face engine stays downloaded.</value></data>
