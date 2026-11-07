@@ -62,14 +62,13 @@ No row of `workfiles/TODO-FEATURES.md` matches this request.
   - French: `Collez une URL (Ctrl+L)`
 - The sources, until now in the placeholder (`X post, image, video…`), move to the title.
 
-*(Wording to confirm — see Open Questions.)*
-
 ---
 
 ## Media Information
 
 The caption of a ready media (`UrlZone.ShowReady`, and `ShowCompanionsHint`'s text) reads
-`<name> · <size> · <width>×<height>`, e.g. `Rick Astley - Never Gonna Give You Up · 12.4 MB · 1920×1080`.
+`<name> · <size> · <width>×<height>`, then ` · <duration>` for a content that plays, e.g.
+`Rick Astley - Never Gonna Give You Up · 12.4 MB · 1920×1080 · 3:33`.
 
 - **Name**: the downloaded file's name **without its extension** — the file is now named after its source's title
   (§ File Names below), so the name shown and the file are the same.
@@ -78,7 +77,10 @@ The caption of a ready media (`UrlZone.ShowReady`, and `ShowCompanionsHint`'s te
   - an image or a GIF: its header (`Image.FromStream` without validation, or `ImageLoader`'s size);
   - a video: its frame size as the app reads it (`VideoFrames`, Media Foundation);
   - unreadable: the part left out, never `?×?`.
-- **Cut when narrow**: the name is cut with `…`, the size and the dimensions always shown at the end — the caption
+- **Duration**: for a video or an animated GIF only — its whole length as loaded (`PageSource.LoopDuration`, read with
+  the dimensions), written `m:ss` (`h:mm:ss` from an hour, `0:04` under a minute; `0.8 s` under a second). A still
+  shows none; unreadable, left out.
+- **Cut when narrow**: the name is cut with `…`, the size, the dimensions and the duration always shown at the end — the caption
   painted in two parts rather than one `AutoEllipsis` text.
 - **Tooltip**: the caption's whole text, as today, plus the file's full name (with its extension).
 
@@ -109,7 +111,8 @@ name and *Previous copy* reading it:
 | The X post's stem: author + start of the text cut at a word, links removed, id kept; no text → author + id | `tests/ImageGridFusion.Tests/Web/XPostResolverTests.cs` | Create |
 | The direct link's stem: telling URL stem kept, `Content-Disposition` name next, host + tag last | `tests/ImageGridFusion.Tests/Web/DirectMediaResolverTests.cs` | Create |
 | yt-dlp's output template carries the title then the id | `tests/ImageGridFusion.Tests/Web/YtDlpTests.cs` | Create |
-| The caption's text: name · size · dimensions, the dimensions left out when unknown | `tests/ImageGridFusion.Tests/UI/UrlZoneCaptionTests.cs` | Create |
+| The caption's text: name · size · dimensions · duration, each unknown part left out, no duration for a still | `tests/ImageGridFusion.Tests/UI/UrlZoneCaptionTests.cs` | Create |
+| The duration's format: `0:04`, `3:33`, `1:02:05`, `0.8 s` | `tests/ImageGridFusion.Tests/UI/UrlZoneCaptionTests.cs` | Create |
 
 Ctrl+L, the title's drawing and the focus are UI — checked by hand at the launch.
 
@@ -117,11 +120,13 @@ Ctrl+L, the title's drawing and the focus are UI — checked by hand at the laun
 
 ## Open Questions
 
-- [ ] Placeholder wording: `Paste a URL (Ctrl+L)`, or keep a hint of what to paste?
-- [ ] Videos and GIFs: show their **duration** too, after the dimensions?
-- [ ] X / Twitter post's name: author + start of the text, or something else?
-- [ ] The title's sources: a fixed list of known sites with the rest in a tooltip — or a link to yt-dlp's list of
-      supported sites?
+- [x] ~~Placeholder wording: `Paste a URL (Ctrl+L)`, or keep a hint of what to paste?~~ → `Paste a URL (Ctrl+L)` /
+      `Collez une URL (Ctrl+L)`
+- [x] ~~Videos and GIFs: show their **duration** too, after the dimensions?~~ → Yes, for a content that plays only
+- [x] ~~X / Twitter post's name: author + start of the text, or something else?~~ → Author's display name + start of
+      the text, `[id]` after
+- [x] ~~The title's sources: a fixed list of known sites with the rest in a tooltip — or a link to yt-dlp's list of
+      supported sites?~~ → Tooltip only, no link
 
 ---
 
@@ -133,6 +138,12 @@ Initial design from the request and the scoping answers: Ctrl+L anywhere (Ctrl+F
 selecting the field's text; a fixed list of known sites in the title; the downloaded file named after its source's
 title on disk, not only in the caption; the caption `name · size · dimensions`, the name cut first. Ctrl+F already opens
 the collapsed explorer — only its shortcut row changes.
+
+### Iteration 2 — 2026-11-07
+
+Open questions answered: the placeholder `Paste a URL (Ctrl+L)`; the **duration** added after the dimensions for a video
+or an animated GIF; an X post's media named after its author's display name and the start of its text; the title's
+other sources in its tooltip only. § Media Information and § Test Impact updated.
 
 ---
 
@@ -157,10 +168,11 @@ the collapsed explorer — only its shortcut row changes.
 | 3 | Where does the name come from when the file has no telling name? | The source's title (yt-dlp's title, the X post's text / author), else the URL's; the file named so on disk too | 2026-11-07 |
 | 4 | Is the subject straightforward or tricky? | Straightforward — one scout pass | 2026-11-07 |
 | 5 | *(user, unprompted)* Ctrl+F must open the explorer too, if it does not already | It already does (`FocusSearch`); its `SHORTCUTS.md` row will say so | 2026-11-07 |
-| 6 | Placeholder wording | | |
-| 7 | Duration for videos and GIFs | | |
-| 8 | X post's name | | |
-| 9 | Title's sources: tooltip or link | | |
+| 6 | Placeholder wording | `Paste a URL (Ctrl+L)` | 2026-11-07 |
+| 7 | Duration for videos and GIFs | Yes, after the dimensions | 2026-11-07 |
+| 8 | X post's name | Author's display name - start of the text | 2026-11-07 |
+| 9 | Title's sources: tooltip or link | Tooltip | 2026-11-07 |
+| 10 | Go for implementation (scope, where) | | |
 
 ---
 
