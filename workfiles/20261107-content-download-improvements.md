@@ -145,6 +145,10 @@ Open questions answered: the placeholder `Paste a URL (Ctrl+L)`; the **duration*
 or an animated GIF; an X post's media named after its author's display name and the start of its text; the title's
 other sources in its tooltip only. § Media Information and § Test Impact updated.
 
+### Iteration 3 — 2026-11-07 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree on `feature/content-download-improvements`.
+
 ---
 
 ## Implementation Log
@@ -172,7 +176,7 @@ other sources in its tooltip only. § Media Information and § Test Impact updat
 | 7 | Duration for videos and GIFs | Yes, after the dimensions | 2026-11-07 |
 | 8 | X post's name | Author's display name - start of the text | 2026-11-07 |
 | 9 | Title's sources: tooltip or link | Tooltip | 2026-11-07 |
-| 10 | Go for implementation (scope, where) | | |
+| 10 | Go for implementation (scope, where) | Code, unit tests and documentation; worktree | 2026-11-07 |
 
 ---
 
