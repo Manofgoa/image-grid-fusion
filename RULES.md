@@ -1053,6 +1053,17 @@ What the URL zone loads (origin: `workfiles/20261009-url-content.md`), `Web/`:
   without it, the largest single file. The file's name carries its height, so a larger format is not
   taken for the one already there; one gauge runs over all its tracks, then *Joining…* while ffmpeg
   merges them.
+- **A downloaded file is named after its source** (origin: `workfiles/20261107-content-download-improvements.md`):
+  yt-dlp's title then its id (`YtDlp.OutputTemplate`); an X post's author — its display name, else its handle — and the
+  start of its text, its links removed, then its id (`XPostResolver.StemOf`); a direct link's own name when it is a
+  telling one (`UrlDownloads.IsTelling`), else the server's (`Content-Disposition`), else the host, then the URL's tag
+  (`DirectMediaResolver.StemOf`). The id or the tag keeps two medias apart, and a file already there is still reused. A
+  new resolver names its file the same way, within `UrlDownloads.MaxStemLength`.
+- **The caption of a ready media** reads its name — its file's, without the extension —, its size, its dimensions and,
+  for a content that plays frame by frame, its duration, each left out when unknown (`UI/UrlCaption`); the name is cut
+  first when narrow, the details never (`UrlCaption.Fit`).
+- **Ctrl+L** focuses its field from anywhere, under Ctrl+F's guard, the file explorer opened when collapsed
+  (`FileExplorerPanel.FocusUrl`). Its **title** names the best-known sites in a fixed list, the others in its tooltip.
 - The zone — its URL, its preview — is **not persisted** and is **out of the undo history**; a newer
   load cancels the one running, its partial file deleted.
 

@@ -64,9 +64,23 @@ internal static class DirectMediaResolver
             return null;
         }
 
-        string stem = Path.GetFileNameWithoutExtension(Uri.UnescapeDataString(url.AbsolutePath.TrimEnd('/')));
-        string path = UrlDownloads.PathOf($"{(stem.Length == 0 ? url.Host : stem)}-{UrlDownloads.Tag(url)}", extension);
+        var disposition = response.Content.Headers.ContentDisposition;
+        string path = UrlDownloads.PathOf(StemOf(url, disposition?.FileNameStar ?? disposition?.FileName), extension);
         return File.Exists(path) ? path : await Downloader.SaveAsync(response, path, progress, token);
+    }
+
+    /// <summary>
+    /// The downloaded file's stem: the URL's own name when it is a telling one (<see cref="UrlDownloads.IsTelling"/>),
+    /// else the name the server gives (<c>Content-Disposition</c>), else the host — then the URL's tag, so two links
+    /// ending alike never share a file (workfiles/20261107-content-download-improvements.md § File Names).
+    /// </summary>
+    public static string StemOf(Uri url, string? given)
+    {
+        string urlStem = Path.GetFileNameWithoutExtension(Uri.UnescapeDataString(url.AbsolutePath.TrimEnd('/')));
+        string? givenStem = given is null ? null : Path.GetFileNameWithoutExtension(given.Trim('"', ' '));
+        string name = UrlDownloads.IsTelling(urlStem) ? urlStem : givenStem is { Length: > 0 } ? givenStem : url.Host;
+        string tag = "-" + UrlDownloads.Tag(url);
+        return UrlDownloads.Words(name, UrlDownloads.MaxStemLength - tag.Length) + tag;
     }
 
     /// <summary>The extension of a media response, or null when it is not one.</summary>

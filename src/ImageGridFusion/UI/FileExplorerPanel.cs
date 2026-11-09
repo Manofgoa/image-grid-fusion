@@ -1410,6 +1410,20 @@ internal sealed partial class FileExplorerPanel : Panel
     }
 
     /// <summary>
+    /// Ctrl+L: the panel opened if collapsed, as Ctrl+F does, then the URL zone's field focused, its text selected (see
+    /// workfiles/20261107-content-download-improvements.md § Ctrl+L).
+    /// </summary>
+    public void FocusUrl()
+    {
+        if (!this._open)
+        {
+            this.SetOpen(true);
+        }
+
+        this._urlZone.FocusField();
+    }
+
+    /// <summary>
     /// Loads the favorites and the cached index of <paramref name="baseFolder"/> — usable at once —
     /// then rescans the folder in the background; null when no folder was chosen yet.
     /// </summary>
