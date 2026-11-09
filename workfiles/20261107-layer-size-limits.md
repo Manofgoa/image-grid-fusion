@@ -68,8 +68,9 @@ be 2 px in the preview: the pointer would miss it, and the layer could never be 
 8192-px canvas, the box's longer side could reach ≈ 41 000 px — a 6.7 GB bitmap.
 
 - Those per-cell intermediate bitmaps get their resolution **capped at `CanvasSizer.MaxLongSide` (8192) on their
-  longer side**, the result stretched over the box — the same mechanism the blur's small bitmap already uses
-  (`DrawScale`). A cell never reaches the cap, so nothing changes for the cells; an extension is stretched edge
+  longer side** (`Compositor.IntermediateCap`, applied in `DrawBackground` on top of `DrawScale`), the result
+  stretched over the box — the same mechanism the blur's small bitmap already uses. `EdgeExtension` and
+  `FillStyle.OpaquePixels` work at that bitmap's size, so they follow. A cell never reaches the cap, so nothing changes for the cells; an extension is stretched edge
   pixels, so the lower resolution does not show.
 - A text layer whose lines are long already has this risk at 100 % (its size measures one line): the cap covers it too.
 - The blur's small bitmap is already bounded (its block grows with the cell); the Cutout and Upscale are computed on
@@ -82,7 +83,8 @@ be 2 px in the preview: the pointer would miss it, and the layer could never be 
 - `README.md` / `README.fr.md` § Layers, the wheel line: the range added — *from 0.5 % to 500 % of the grid's shorter
   side*.
 - `SHORTCUTS.md` / `SHORTCUTS.fr.md`: the wheel's row unchanged (no bounds there).
-- `RULES.md` § Layers: one line for the reach of the selected layer (a new hit-test rule a future gesture follows).
+- `RULES.md` § Layers: one bullet — the size bounds, the reach of the selected layer (a hit-test rule a future
+  gesture follows) and the intermediate bitmaps' cap (a rule a future per-cell bitmap follows).
 - `GLOSSARY.md` / `GLOSSARY.fr.md`: unchanged.
 
 ---
@@ -93,8 +95,8 @@ be 2 px in the preview: the pointer would miss it, and the layer could never be 
 |---|---|---|
 | `WithSize` clamps to [0.005, 5.0]; a size inside is kept | `tests/ImageGridFusion.Tests/Composition/LayerPlacementTests.cs` | Create |
 | `BoxSize` at 500 % on a landscape canvas: the content's longer side is 5 × the canvas's shorter side | `tests/ImageGridFusion.Tests/Composition/LayerPlacementTests.cs` | Create |
-| The selected layer's reach: a 2-px box is hit within 12 logical px of its center, turned; a large box's reach is its box | `tests/ImageGridFusion.Tests/Composition/LayerPlacementTests.cs` (if the reach lives on `LayerPlacement`) | Create |
-| The edge extension's intermediate bitmap is capped at 8192 on its longer side for a box larger than that | `tests/ImageGridFusion.Tests/Composition/` — the class holding the cap's computation | Create |
+| The selected layer's reach: a 5-px box is hit within 12 px of its center, turned; a large box's reach is its box | `tests/ImageGridFusion.Tests/Composition/LayerPlacementTests.cs` | Create |
+| The edge extension's intermediate bitmap is capped at 8192 on its longer side for a box larger than that | `tests/ImageGridFusion.Tests/Composition/IntermediateCapTests.cs` | Create |
 
 ---
 
@@ -122,15 +124,33 @@ layer can be grown back; the per-cell intermediate bitmaps capped at 8192 px so 
 Open questions answered (Q&A #5–#7): the three proposals confirmed as they stand — 0.5 %–500 %, the grown reach,
 the 8192-px cap. No design change; nothing left open.
 
+### Iteration 3 — 2026-11-07 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree (`feature/layer-size-limits`).
+
+### Iteration 4 — 2026-11-07 — 🧭 Implementation choices
+
+- **The reach** is `LayerPlacement.Reaches(point, shown, canvas, minimum)`, sharing a private `Within` with
+  `Contains`; `GridPreview.OnSelectedLayer` passes `SelectedLayerReach` (24) through `LogicalToDeviceUnits`. Every
+  route reading `OnSelectedLayer` — the wheel, a press, the hit of the selected layer — takes it.
+- **The cap** is `Compositor.IntermediateCap(width, height)`, internal so it is tested on its own; it multiplies the
+  scale `DrawScale` gives in `DrawBackground` only — the one per-cell bitmap sized on the cell.
+- **The cap's test** lives in its own class, `IntermediateCapTests`, rather than in `LayerPlacementTests`.
+- **RULES.md** got one bullet holding the three rules (bounds, reach, cap), the cap included since a future per-cell
+  bitmap must follow it.
+- No rule broken.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
+| Code | 3 | 2026-11-07 | Bounds and reach (`GridLayers.cs`, `GridPreview.Layers.cs`), the cap (`Compositor.cs`) |
+| Unit tests | 3 | 2026-11-07 | `LayerPlacementTests` (6), `IntermediateCapTests` (2): 8 passed |
+| README | 3 | 2026-11-07 | `README.md` / `README.fr.md` § Layers, the wheel line |
+| RULES.md | 3 | 2026-11-07 | § Layers, one bullet |
+| SHORTCUTS / GLOSSARY | 3 | 2026-11-07 | Unchanged: no bounds stated there |
 
 ---
 

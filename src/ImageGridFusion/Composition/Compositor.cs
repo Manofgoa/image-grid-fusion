@@ -511,6 +511,9 @@ public static class Compositor
         // The image alone, at the cell's size — or at the scale g draws at: the blur's small bitmap gets
         // its extension computed at its own size rather than the cell's, then shrunk.
         var (scaleX, scaleY) = DrawScale(g);
+        double cap = IntermediateCap(cell.Width * scaleX, cell.Height * scaleY);
+        scaleX *= cap;
+        scaleY *= cap;
         var size = new Size(Math.Max(1, (int)Math.Ceiling(cell.Width * scaleX)), Math.Max(1, (int)Math.Ceiling(cell.Height * scaleY)));
         using var image = new Bitmap(size.Width, size.Height, PixelFormat.Format32bppPArgb);
         using (var ig = Graphics.FromImage(image))
@@ -524,6 +527,17 @@ public static class Compositor
         }
 
         EdgeExtension.Draw(g, image, cell, place, background, fill, flat, automatic, adjust);
+    }
+
+    /// <summary>
+    /// The factor, 1 or below, bringing an intermediate bitmap of <paramref name="width"/> by <paramref name="height"/>
+    /// within <see cref="CanvasSizer.MaxLongSide"/> on its longer side: a layer's box may be much larger than the
+    /// canvas, a cell never is (workfiles/20261107-layer-size-limits.md § A Large Layer Stays Within Memory).
+    /// </summary>
+    internal static double IntermediateCap(double width, double height)
+    {
+        double longer = Math.Max(width, height);
+        return longer > CanvasSizer.MaxLongSide ? CanvasSizer.MaxLongSide / longer : 1;
     }
 
     /// <summary>

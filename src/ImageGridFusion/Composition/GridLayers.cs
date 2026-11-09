@@ -13,8 +13,12 @@ namespace ImageGridFusion.Composition;
 /// </summary>
 public sealed record LayerPlacement(double X, double Y, double Size, double Angle, double LinePixels = 0)
 {
-    public const double MinSize = 0.03;
-    public const double MaxSize = 1.0;
+    /// <summary>
+    /// The smallest and largest size, of the grid's shorter side: a speck at every export size, and large
+    /// enough for a 9:16 content to cover a 21:9 grid with room to spare (workfiles/20261107-layer-size-limits.md).
+    /// </summary>
+    public const double MinSize = 0.005;
+    public const double MaxSize = 5.0;
 
     /// <summary>The size of a new image layer, and of a new text's line.</summary>
     public const double ImageSize = 0.4;
@@ -52,9 +56,22 @@ public sealed record LayerPlacement(double X, double Y, double Size, double Angl
     }
 
     /// <summary>Whether <paramref name="point"/> of the canvas falls in the box, turned with it.</summary>
-    public bool Contains(PointF point, Size shown, Size canvas)
+    public bool Contains(PointF point, Size shown, Size canvas) => this.Within(point, this.BoxSize(shown, canvas), canvas);
+
+    /// <summary>
+    /// Whether <paramref name="point"/> of the canvas falls in the box grown to at least <paramref name="minimum"/>
+    /// pixels on each side around its center, turned with it: the selected layer's reach, so a tiny layer stays
+    /// under the pointer (workfiles/20261107-layer-size-limits.md § A Small Layer Stays Reachable).
+    /// </summary>
+    public bool Reaches(PointF point, Size shown, Size canvas, float minimum)
     {
         var box = this.BoxSize(shown, canvas);
+        return this.Within(point, new SizeF(Math.Max(box.Width, minimum), Math.Max(box.Height, minimum)), canvas);
+    }
+
+    /// <summary>Whether <paramref name="point"/> of the canvas falls in a box of <paramref name="box"/> on the layer's center, turned with it.</summary>
+    private bool Within(PointF point, SizeF box, Size canvas)
+    {
         var center = this.Center(canvas);
         double radians = -this.Angle * Math.PI / 180;
         double dx = point.X - center.X, dy = point.Y - center.Y;
