@@ -20,8 +20,8 @@ words, in the [Glossary](GLOSSARY.md).
 | <kbd>Ctrl</kbd>+<kbd>N</kbd> | Clear all, with no confirmation |
 | <kbd>Ctrl</kbd>+<kbd>R</kbd> | Turn the image under the mouse — else the selected one — onto the next quarter turn clockwise: +37° to 90°, 90° to 180° |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> | The same, counter-clockwise: +37° to 0°, 0° to -90° |
-| <kbd>Ctrl</kbd>+<kbd>F</kbd> | Go to the file explorer's search box, opening the file explorer when collapsed; pressed again there, the next view — the folder view reached that way opening at the base folder, the GIPHY views skipped until a key is set, and while hidden from the ⚙ menu |
-| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> | In the search box, the previous view — the folder view, at the base folder too |
+| <kbd>Ctrl</kbd>+<kbd>F</kbd> | Go to the file explorer's search box, opening the file explorer when collapsed; pressed again there, the next view — the first press of a cycle giving the folder view, whatever the view shown, the cycle ending when the search box loses the focus or its text changes; the folder view reached that way opening at the base folder, the GIPHY views skipped until a key is set, and while hidden from the ⚙ menu |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> | In the search box, the previous view — the first press of a cycle giving the folder view too; the folder view, at the base folder too |
 | <kbd>Ctrl</kbd>+<kbd>L</kbd> | Go to the URL zone's field, its text selected, opening the file explorer when collapsed |
 | <kbd>Space</kbd> | Play / Pause the grid — not in a text field |
 

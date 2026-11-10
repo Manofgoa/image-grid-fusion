@@ -274,6 +274,12 @@ internal sealed partial class FileExplorerPanel : Panel
     private FolderTree? _tree;
     private int _listVersion;
     private bool _clearingSearch;
+
+    // A Ctrl+F view cycle running: its first press gave the folder view; ended by the search box losing the
+    // focus or its text changing, except while the cycle itself changes the view (see
+    // workfiles/20261110-ctrl-f-cycle-starts-at-folders.md).
+    private bool _viewCycling;
+    private bool _changingCycleView;
     private bool _syncingToggle;
 
     // The People view (workfiles/20261027-face-detection.md): whether it shows, the group open in it —
@@ -478,6 +484,7 @@ internal sealed partial class FileExplorerPanel : Panel
         _search.TextChanged += (_, _) =>
         {
             Interlocked.Exchange(ref this._lastKeystroke, Environment.TickCount64);
+            this.EndViewCycle();
             if (!_clearingSearch)
             {
                 this._similarTo = null;
@@ -500,6 +507,7 @@ internal sealed partial class FileExplorerPanel : Panel
         this._grid.IndexedContent = this.IndexedContentOf;
         this._toolTip.SetToolTip(this._similarClear, Strings.ExplorerTipBackToSearch);
         _search.KeyDown += OnSearchKeyDown;
+        this._search.Leave += (_, _) => this.EndViewCycle();
         this._modes.SelectionChangeCommitted += (_, _) => this.ChangeMode((ExplorerMode)this._modes.SelectedItem!);
         this._modes.DrawItem += this.DrawModeItem;
         this._byName.Click += (_, _) => this.ToggleCriterion(this._byName, this._byContent);
@@ -1381,7 +1389,10 @@ internal sealed partial class FileExplorerPanel : Panel
     /// Ctrl+F, -1 for Ctrl+Shift+F — round the end, People skipped while the face analysis is off (see
     /// workfiles/20261029-ctrl-f-view-cycle.md). The folder view reached that way opens at the base folder,
     /// the folder left on its way selected, so pressing it until Folders comes back goes up to the top (see
-    /// workfiles/20261102-ctrl-f-cycle-folder-root.md); the drop-down keeps the folder left.
+    /// workfiles/20261102-ctrl-f-cycle-folder-root.md); the drop-down keeps the folder left. The first press of a
+    /// cycle — either key — gives the folder view, whatever the view shown, the next ones going on from there; the
+    /// search box losing the focus or its text changing ends the cycle (see
+    /// workfiles/20261110-ctrl-f-cycle-starts-at-folders.md).
     /// </summary>
     public void FocusSearch(int step)
     {
@@ -1393,7 +1404,8 @@ internal sealed partial class FileExplorerPanel : Panel
         {
             var mode = this.NextMode(step);
             string? select = null;
-            if (mode == ExplorerMode.Folders && (this._openFolder.Length > 0 || this._openSource is not null))
+            bool backToBase = mode == ExplorerMode.Folders && (this._openFolder.Length > 0 || this._openSource is not null);
+            if (backToBase)
             {
                 // Out of a secondary source, back at the base folder's root, the source's tile selected.
                 select = this._openSource is { } source ? source.Folder
@@ -1402,11 +1414,46 @@ internal sealed partial class FileExplorerPanel : Panel
                 this._openFolder = "";
             }
 
-            this.ChangeMode(mode, select);
+            this._changingCycleView = true;
+            try
+            {
+                if (mode == this.Mode)
+                {
+                    // A cycle starting on the folder view stays on it, at the base folder: listed again, remembered.
+                    if (backToBase)
+                    {
+                        this.RefreshRows(select: select);
+                        this.FolderViewChanged?.Invoke(this, EventArgs.Empty);
+                    }
+                }
+                else
+                {
+                    this.ChangeMode(mode, select);
+                }
+
+                this._search.Focus();
+                this._search.SelectAll();
+            }
+            finally
+            {
+                this._changingCycleView = false;
+            }
+
+            this._viewCycling = true;
+            return;
         }
 
         this._search.Focus();
         this._search.SelectAll();
+    }
+
+    /// <summary>Ends the Ctrl+F view cycle running, unless the cycle itself is changing the view.</summary>
+    private void EndViewCycle()
+    {
+        if (!this._changingCycleView)
+        {
+            this._viewCycling = false;
+        }
     }
 
     /// <summary>
@@ -3312,21 +3359,15 @@ internal sealed partial class FileExplorerPanel : Panel
     }
 
     /// <summary>
-    /// The view <paramref name="step"/> away from the current one in <see cref="ExplorerMode"/>'s order, round
-    /// the end, People skipped while the face analysis is off.
+    /// The view a cycling press gives (<see cref="ViewCycle.Next"/>): the folder view at a cycle's start, else the
+    /// view <paramref name="step"/> away from the current one in <see cref="ExplorerMode"/>'s order, round the end,
+    /// People skipped while the face analysis is off, a GIPHY view while hidden or without a key.
     /// </summary>
-    private ExplorerMode NextMode(int step)
-    {
-        int count = Enum.GetValues<ExplorerMode>().Length;
-        var mode = this.Mode;
-        do
-        {
-            mode = (ExplorerMode)((((int)mode + step) % count + count) % count);
-        }
-        while (!this.IsOffered(mode) || (mode == ExplorerMode.People && !this._faceAnalysis) || (IsGiphy(mode) && this._giphyKey is null));
-
-        return mode;
-    }
+    private ExplorerMode NextMode(int step) => ViewCycle.Next(
+        this.Mode,
+        step,
+        this._viewCycling,
+        mode => this.IsOffered(mode) && (mode != ExplorerMode.People || this._faceAnalysis) && (!IsGiphy(mode) || this._giphyKey is not null));
 
     /// <summary>Whether a view is one of GIPHY's.</summary>
     private static bool IsGiphy(ExplorerMode mode) => mode is ExplorerMode.GiphyGifs or ExplorerMode.GiphyStickers;
