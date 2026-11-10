@@ -34,6 +34,9 @@ Components: `Explorer/FileIndex.cs`, `UI/FileExplorerPanel.Sources.cs`, `UI/File
   `ViewRoot` while a source is open): `""` at the source's root — the whole source, as today — otherwise that subfolder,
   **recursively** (its descendants included).
 - The scope is taken **when 🔄 is clicked** and held by the run: navigating afterwards does not change what it covers.
+- **A subfolder gone from the disk**: the scope becomes its **nearest parent still on the disk** — the source's root at
+  worst — and the folder view goes there; that parent's scan drops the entries of the folder gone, as it drops any file
+  gone. (A source whose root itself is gone fails as today: *folder not found*.)
 
 ## Scan of a Subfolder
 
@@ -47,6 +50,8 @@ Components: `Explorer/FileIndex.cs`, `UI/FileExplorerPanel.Sources.cs`, `UI/File
 - The merged index is saved into the source's own `files.index` and taken over through `SourceRoot.SetIndex`, exactly as
   a whole scan's — the tile's file count, the folder tree and the entries by path follow by themselves.
 - Progress: the status line and the first bar show the subfolder's counting and recording, the same texts as today.
+- **The status line does not name the subfolder** (user's decision), during the scan or the passes: the texts stay
+  today's — the pass, its rank, the file's name — only their counts are the subfolder's.
 
 ## Passes Over a Subfolder
 
@@ -67,7 +72,14 @@ Components: `Explorer/FileIndex.cs`, `UI/FileExplorerPanel.Sources.cs`, `UI/File
 
 ## 🔄 Tooltip
 
-- See Open Questions.
+- **Inside a subfolder of a source**, 🔄's tooltip names that folder: a new text, `SourcesTipRescanFolder`, in both
+  `Strings.resx` and `Strings.fr.resx` — e.g. *Read the folder {0} and its subfolders again and analyse their content —
+  OCR, faces, visual analysis, captions, as the ⚙ menu turns them on; leaving the source pauses the analysis, 🔄 here
+  again picks it up* / *Relire le dossier {0} et ses sous-dossiers et analyser leur contenu — OCR, visages, analyse
+  visuelle, descriptions, selon le menu ⚙ ; quitter la source met l'analyse en pause, 🔄 ici la reprend* — `{0}` the
+  open folder's own name.
+- **At the source's root**, the current `SourcesTipRescan`, unchanged.
+- The tooltip follows the navigation: `UpdateRescan` is called whenever the open folder changes inside a source.
 
 ---
 
@@ -88,9 +100,12 @@ not unit-tested beyond it.
 
 ## Open Questions
 
-- [ ] What happens when the open subfolder **no longer exists** on the disk when 🔄 is clicked?
-- [ ] Does the 🔄 **tooltip** change inside a subfolder of a source?
-- [ ] Does the status line **name the subfolder** being analysed during a scoped run?
+- [x] ~~What happens when the open subfolder **no longer exists** on the disk when 🔄 is clicked?~~ → The 🔄 applies to
+  its nearest parent still on the disk, the view going there
+- [x] ~~Does the 🔄 **tooltip** change inside a subfolder of a source?~~ → Yes, a new text naming the open folder; the
+  source's text at its root
+- [x] ~~Does the status line **name the subfolder** being analysed during a scoped run?~~ → No, today's texts, the counts
+  the subfolder's
 
 ---
 
@@ -113,6 +128,19 @@ ne lancer l'indexation que sur ce dossier là »*) and the scoping batch (Q&A 1�
 - Code read: `Extract` starts with `RetainOnly(index.Entries)`, so the scope cannot be given by passing a filtered index
   — it would drop the texts, faces and embeddings of the rest of the source. Hence a scope parameter beside the whole
   index, and a scan whose result is merged into the index rather than replacing it.
+
+### Iteration 2 — 2026-11-10
+
+Open Questions answered (Q&A 5–7):
+
+- A subfolder gone from the disk: the scope becomes its nearest parent still there, the view going there
+  (§ The Scope of a 🔄).
+- 🔄's tooltip names the open folder inside a subfolder — new text `SourcesTipRescanFolder`, both languages
+  (§ 🔄 Tooltip).
+- The status line keeps today's texts; only its counts are the subfolder's (§ Scan of a Subfolder).
+
+Documentation to update at implementation: RULES.md § Secondary Sources (*Analysed on demand*), GLOSSARY.md /
+GLOSSARY.fr.md *Secondary source*, and the README / README.fr if they describe 🔄 inside a source.
 
 ---
 
@@ -139,9 +167,9 @@ Questions asked by the agent during design, with user responses.
 | 2 | Does the same apply to the base folder's 🔄 in one of its subfolders? | No — secondary sources only | 2026-11-10 |
 | 3 | During a run started on a subfolder, another folder of the same source is opened: what becomes of it? | It goes on while inside the source, paused only when the source is left — as today | 2026-11-10 |
 | 4 | How deep should the code exploration go? | Straightforward — a single scout pass | 2026-11-10 |
-| 5 | The open subfolder no longer exists when 🔄 is clicked: what happens? | | |
-| 6 | Does the 🔄 tooltip change inside a subfolder of a source? | | |
-| 7 | Does the status line name the subfolder being analysed? | | |
+| 5 | The open subfolder no longer exists when 🔄 is clicked: what happens? | The 🔄 applies to its nearest parent still on the disk, the view going there | 2026-11-10 |
+| 6 | Does the 🔄 tooltip change inside a subfolder of a source? | Yes, it names the folder; the source's text at its root | 2026-11-10 |
+| 7 | Does the status line name the subfolder being analysed? | No, today's texts, the counts the subfolder's | 2026-11-10 |
 
 ---
 
