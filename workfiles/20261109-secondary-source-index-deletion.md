@@ -63,8 +63,10 @@ no orphan to look at.
 - Run off the UI thread, next to the other start-up cleanups (`Program.Main`: `UrlDownloads.Clean`,
   `GiphyFiles.Clean`), before the explorer loads the sources' stores — so it never races a source's own load.
 - One definition: `SecondarySources.Orphans(folderNames, sources)` gives the folders to delete (pure, tested),
-  `SecondarySources.CleanOrphans()` deletes them, a failure left for the next start.
-- Whether it says anything: see Open Questions.
+  `SecondarySources.CleanOrphans()` deletes them and gives how many went, a failure left for the next start.
+- **Said only when it deleted something**: once the window shows, the status line says how many orphan indexes
+  were deleted (e.g. *2 indexes of removed sources deleted*, English and French texts); nothing is said
+  otherwise, nor for a failure (tried again at the next start).
 
 ---
 
@@ -75,6 +77,14 @@ no orphan to look at.
   folder takes on disk (`SecondarySources.IndexSize(sourceFolder)`, the sum of its files' lengths), formatted
   like the other sizes (`Texts`, `KB` / `Ko`).
 - No index on disk yet (a source never opened) → the prompt as today, without the size.
+
+---
+
+## What Is Not an Index
+
+- The **decisions on the people** (`people.json`) are kept: the faces of a removed source pinned to a person or
+  excluded from one stay, each with its copy of the embedding, so re-adding the source finds its faces in their
+  people again. Only `index\secondary-sources\<id>\` goes.
 - English and French texts changed together (RULES.md § UI Language).
 
 ---
@@ -103,11 +113,12 @@ no orphan to look at.
 
 ## Open Questions
 
-- [ ] Start-up cleanup: silent, or a status line saying how many orphan indexes were deleted?
-- [ ] Faces of the removed source pinned to a person in `people.json` (decisions on faces, each keeping a copy
-      of its embedding): kept — re-adding the source finds them again — or forgotten with the index?
-- [ ] Reproduction: when the folder stayed, was a 🔄 analysis running in that source, or was the app closed
-      soon after the removal? (Not blocking: the design covers both.)
+- [x] ~~Start-up cleanup: silent, or a status line saying how many orphan indexes were deleted?~~ → The status
+      line says it, only when at least one was deleted
+- [x] ~~Faces of the removed source pinned to a person in `people.json`: kept or forgotten with the index?~~ →
+      Kept: they are decisions, not an index
+- [x] ~~Reproduction: when the folder stayed, was a 🔄 analysis running in that source, or was the app closed
+      soon after the removal?~~ → Not remembered; the design covers every case
 
 ---
 
@@ -120,6 +131,12 @@ start-up; the removal's confirmation gives the room freed; the subject is expect
 Code read: the deletion exists but runs once, without retry, and is lost when the app closes first; nothing
 ever deletes an orphan. Proposed: retries at removal, start-up cleanup of the folders matching no source by the
 normal instance, the size in the confirmation.
+
+### Iteration 2 — 2026-11-10
+
+Answers: the start-up cleanup says on the status line how many orphan indexes it deleted, nothing otherwise;
+the pinned and excluded faces of a removed source stay in `people.json`; the reproduction context is not
+remembered. No open question left.
 
 ---
 
@@ -142,10 +159,10 @@ normal instance, the size in the confirmation.
 | 2 | Clean orphan index folders at start-up? | Yes, at start-up (normal instance) | 2026-11-09 |
 | 3 | Confirmation when removing a source? | Confirm, with the room freed | 2026-11-09 |
 | 4 | Depth of the subject? | Straightforward | 2026-11-09 |
-| 5 | Start-up cleanup: silent or said? | | |
-| 6 | Pinned faces of a removed source: kept or forgotten? | | |
-| 7 | Reproduction context? | | |
+| 5 | Start-up cleanup: silent or said? | Status line, only when something was deleted | 2026-11-10 | |
+| 6 | Pinned faces of a removed source: kept or forgotten? | Kept | 2026-11-10 | |
+| 7 | Reproduction context? | Not remembered | 2026-11-10 | |
 
 ---
 
-*Last updated: 2026-11-09*
+*Last updated: 2026-11-10*
