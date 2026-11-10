@@ -1842,14 +1842,15 @@ internal sealed partial class FileExplorerPanel : Panel
     }
 
     /// <summary>
-    /// 🔄: inside a secondary source, that source's folder read again and its content analysed
-    /// (workfiles/20261105-secondary-file-sources.md § 🔄 Inside a Source); anywhere else, the base folder rescanned.
+    /// 🔄: inside a secondary source, the open folder of that source — the whole source at its root — read again and
+    /// its content analysed (workfiles/20261105-secondary-file-sources.md § 🔄 Inside a Source,
+    /// workfiles/20261110-secondary-source-subfolder-rescan.md); anywhere else, the base folder rescanned.
     /// </summary>
     private void Rescan()
     {
         if (this.ViewSource is { } source)
         {
-            _ = this.LoadAndScanSourceAsync(source, analyse: true);
+            _ = this.LoadAndScanSourceAsync(source, analyse: true, this._openFolder);
             return;
         }
 
@@ -1980,7 +1981,7 @@ internal sealed partial class FileExplorerPanel : Panel
         this.StopExtraction();
         this._extraction = CancellationTokenSource.CreateLinkedTokenSource(scan.Token);
         var passes = new ExtractionSettings(this._contentSearch, this._faceAnalysis, this._visualAnalysis, this._captions);
-        _ = this.ExtractAsync(index, contents, faces, vision, IndexFiles.Main, passes, this._extraction.Token);
+        _ = this.ExtractAsync(index, contents, faces, vision, IndexFiles.Main, passes, "", this._extraction.Token);
     }
 
     /// <summary>The base folder's passes stopped, and a secondary source's run paused.</summary>
@@ -1993,9 +1994,10 @@ internal sealed partial class FileExplorerPanel : Panel
 
     /// <summary>
     /// Extracts the content texts off the UI thread, pass after pass, one file at a time: each pass's
-    /// bar and the status line following it, the search shown refreshed every few seconds and at the end.
+    /// bar and the status line following it, the search shown refreshed every few seconds and at the end. The passes
+    /// read the files under <paramref name="scope"/> only — <c>""</c> every file of the index.
     /// </summary>
-    private async Task ExtractAsync(FileIndex index, ContentIndex contents, FaceIndex faces, VisionIndex vision, IndexFiles files, ExtractionSettings passes, CancellationToken cancellation)
+    private async Task ExtractAsync(FileIndex index, ContentIndex contents, FaceIndex faces, VisionIndex vision, IndexFiles files, ExtractionSettings passes, string scope, CancellationToken cancellation)
     {
         bool finished = false;
         var progress = new Progress<ExtractionProgress>(p =>
@@ -2057,7 +2059,7 @@ internal sealed partial class FileExplorerPanel : Panel
         });
         try
         {
-            await Task.Run(() => this.Extract(index, contents, faces, vision, files, passes, progress, cancellation), cancellation);
+            await Task.Run(() => this.Extract(index, contents, faces, vision, files, passes, scope, progress, cancellation), cancellation);
         }
         catch (OperationCanceledException)
         {
@@ -2100,9 +2102,11 @@ internal sealed partial class FileExplorerPanel : Panel
     /// embeddings each saved every 50 files — no sooner than 5 s after the previous save — every half minute
     /// whatever the count, and at the end, so a pass cut short resumes where it stopped. Every bar is set
     /// first, the passes complete hidden; RapidOCR's pass is skipped without its engine. See
-    /// workfiles/20261013-complementary-ocr-passes.md § Indexing Passes.
+    /// workfiles/20261013-complementary-ocr-passes.md § Indexing Passes. The passes read the files under
+    /// <paramref name="scope"/> only, what is dropped stays the whole index's
+    /// (workfiles/20261110-secondary-source-subfolder-rescan.md § Passes Over a Subfolder).
     /// </summary>
-    private void Extract(FileIndex index, ContentIndex contents, FaceIndex faces, VisionIndex vision, IndexFiles files, ExtractionSettings passes, IProgress<ExtractionProgress> progress, CancellationToken cancellation)
+    private void Extract(FileIndex index, ContentIndex contents, FaceIndex faces, VisionIndex vision, IndexFiles files, ExtractionSettings passes, string scope, IProgress<ExtractionProgress> progress, CancellationToken cancellation)
     {
         bool changed = contents.RetainOnly(index.Entries);
         bool facesChanged = faces.RetainOnly(index.Entries);
@@ -2111,7 +2115,7 @@ internal sealed partial class FileExplorerPanel : Panel
         int unsaved = 0;
         long saved = Environment.TickCount64;
         long refreshed = saved;
-        var imageRead = ReadImages(index);
+        var imageRead = ReadImages(index, scope);
         bool facesRun = passes.Faces && FaceEngineFiles.IsAvailable;
         bool visionRun = passes.Vision && VisionEngineFiles.IsAvailable;
         bool captionsRun = passes.Captions && CaptionEngineFiles.IsAvailable;
@@ -2144,7 +2148,7 @@ internal sealed partial class FileExplorerPanel : Panel
 
                     case ContentPass.Windows or ContentPass.Rapid or ContentPass.Inverted or ContentPass.Ring when passes.Ocr:
                     {
-                        var read = Read(index, pass);
+                        var read = Read(index, pass, scope);
                         int done = read.Count(e => contents.IsCurrent(e, pass));
                         bool runs = done < read.Length && (pass != ContentPass.Rapid || OcrEngineFiles.IsAvailable);
                         progress.Report(new ExtractionProgress(pass, 0, 0, done, read.Length, null, ContentKind.None, false, Finished: !runs));
@@ -2380,7 +2384,7 @@ internal sealed partial class FileExplorerPanel : Panel
 
         void RunPass(ContentPass pass)
         {
-            var read = Read(index, pass);
+            var read = Read(index, pass, scope);
             var queue = read.Where(e => (pass == ContentPass.Windows || contents.IsCurrent(e, ContentPass.Windows)) && !contents.IsCurrent(e, pass)).ToArray();
             int before = read.Length - queue.Length;
             if (queue.Length == 0)
@@ -2524,14 +2528,17 @@ internal sealed partial class FileExplorerPanel : Panel
         }
     }
 
-    /// <summary>The scanned files the face and Vision passes read: the images and PDFs.</summary>
-    private static IndexEntry[] ReadImages(FileIndex index) =>
-        index.Entries.Where(e => e.Stamp is not null && ContentExtractor.KindOf(e.RelativePath) is ContentKind.Image or ContentKind.Pdf).ToArray();
+    /// <summary>The scanned files under <paramref name="scope"/> the face and Vision passes read: the images and PDFs.</summary>
+    private static IndexEntry[] ReadImages(FileIndex index, string scope) =>
+        index.Entries.Where(e => e.Stamp is not null && InScope(e, scope) && ContentExtractor.KindOf(e.RelativePath) is ContentKind.Image or ContentKind.Pdf).ToArray();
 
-    /// <summary>The scanned files a pass reads: every one for the Windows pass, the images and PDFs for the later ones.</summary>
-    private static IndexEntry[] Read(FileIndex index, ContentPass pass) =>
-        index.Entries.Where(e => e.Stamp is not null
+    /// <summary>The scanned files under <paramref name="scope"/> a pass reads: every one for the Windows pass, the images and PDFs for the later ones.</summary>
+    private static IndexEntry[] Read(FileIndex index, ContentPass pass, string scope) =>
+        index.Entries.Where(e => e.Stamp is not null && InScope(e, scope)
             && (pass == ContentPass.Windows || ContentExtractor.KindOf(e.RelativePath) is ContentKind.Image or ContentKind.Pdf)).ToArray();
+
+    /// <summary>A file the passes read: any for <c>""</c>, else one under that folder or its subfolders.</summary>
+    private static bool InScope(IndexEntry entry, string scope) => scope.Length == 0 || FolderTree.IsUnder(entry.RelativePath, scope);
 
     /// <summary>
     /// The bars as the settings stand, in the order the passes run: the Windows pass's — the scan's too —
@@ -2909,6 +2916,9 @@ internal sealed partial class FileExplorerPanel : Panel
             select = null;
             FolderViewChanged?.Invoke(this, EventArgs.Empty);
             Report(Texts.Format(Strings.ExplorerFolderNotFoundBack, asked, SegmentsOf(listing.Folder)[^1]), error: false);
+
+            // 🔄's tooltip names the open folder inside a source.
+            this.UpdateRescan();
         }
 
         var folders = listing.Folders.Select(this.FolderRow).ToList();
