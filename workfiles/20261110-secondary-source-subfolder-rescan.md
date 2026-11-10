@@ -36,7 +36,9 @@ Components: `Explorer/FileIndex.cs`, `UI/FileExplorerPanel.Sources.cs`, `UI/File
 - The scope is taken **when 🔄 is clicked** and held by the run: navigating afterwards does not change what it covers.
 - **A subfolder gone from the disk**: the scope becomes its **nearest parent still on the disk** — the source's root at
   worst — and the folder view goes there; that parent's scan drops the entries of the folder gone, as it drops any file
-  gone. (A source whose root itself is gone fails as today: *folder not found*.)
+  gone. (A source whose root itself is gone fails as today: *folder not found*.) The parent is looked for **off the UI
+  thread** (`NearestFolder`, a NAS may answer slowly), and the view moves only if it still shows that source on the folder
+  🔄 was clicked in.
 
 ## Scan of a Subfolder
 
@@ -60,7 +62,12 @@ Components: `Explorer/FileIndex.cs`, `UI/FileExplorerPanel.Sources.cs`, `UI/File
 - Each pass's files — `ReadImages(index)`, `Read(index, pass)` — are **filtered to the scope**
   (`FolderTree.IsUnder(entry.RelativePath, scope)`), so every bar, every `n / total` of the status line and every
   *finished* counts the subfolder's files only.
-- The tags recomputed when the vocabulary changed (Vision pass) read no image: they stay computed over the whole index.
+- The tags recomputed when the vocabulary changed (Vision pass) read no image: they stay computed over the whole index
+  (`vision.WithEmbeddings()`). The tags **lost while the embeddings stayed** are computed again for the files under the
+  scope only — they follow the pass's own list (`imageRead`); the rest gets them at the next 🔄 covering it.
+- The filter is one helper, `FileExplorerPanel.InScope`, read by `ReadImages` and `Read`; `ExtractAsync` / `Extract`
+  take the scope as a required parameter, the base folder's passes giving `""`.
+- **A source without an index yet** (never scanned, its cache unreadable) is read whole, whatever the open folder.
 - The base folder's passes wait meanwhile and resume once the run ends or is paused, as today (`RunSourceAsync`'s
   `finally` → `StartExtraction`).
 
@@ -79,7 +86,8 @@ Components: `Explorer/FileIndex.cs`, `UI/FileExplorerPanel.Sources.cs`, `UI/File
   visuelle, descriptions, selon le menu ⚙ ; quitter la source met l'analyse en pause, 🔄 ici la reprend* — `{0}` the
   open folder's own name.
 - **At the source's root**, the current `SourcesTipRescan`, unchanged.
-- The tooltip follows the navigation: `UpdateRescan` is called whenever the open folder changes inside a source.
+- The tooltip follows the navigation: `UpdateRescan` already runs at every `RefreshRows`, and is called again when the
+  folder listing falls back to a parent of a folder gone (`ListFolderAsync`).
 
 ---
 
@@ -147,6 +155,23 @@ GLOSSARY.fr.md *Secondary source*, and the README / README.fr if they describe �
 Go given: code, unit tests and documentation, in a worktree (`.claude/worktrees/secondary-source-subfolder-rescan`,
 branch `feature/secondary-source-subfolder-rescan`). The scope is frozen as the sections above stand.
 
+### Iteration 4 — 2026-11-10 — 🧭 Implementation choices
+
+No project rule broken. Choices the frozen design left open:
+
+- **Lost tags scoped**: the tags lost while the embeddings stayed are recomputed for the scope's files only (they follow
+  `imageRead`); the vocabulary-change recomputation stays whole, as designed.
+- **No index yet → whole source**: a 🔄 in a subfolder of a source whose index is missing reads the whole source, a
+  merge needing an index to merge into.
+- **Nearest parent off the UI thread**: `NearestFolder` runs in `Task.Run`; the view moves to the parent only if it still
+  shows that folder of that source.
+- **Tooltip on the listing's fallback**: `UpdateRescan` also called when `ListFolderAsync` falls back to a parent.
+- **Signatures**: `FileIndex.Scan(baseFolder, relativeFolder, …)` beside the existing overload, `FileIndex.WithFolder`
+  (refuses a scan of another folder), `InScope` helper, `scope` a required parameter of `ExtractAsync` / `Extract`,
+  optional (`""`) on `LoadAndScanSourceAsync` / `ScanSourceAsync`.
+- **Docs**: RULES.md § Secondary Sources gets its own bullet; README / README.fr § Secondary sources and both glossaries'
+  *Secondary source* say it in one clause.
+
 ---
 
 ## Implementation Log
@@ -156,9 +181,9 @@ says so rather than staying blank.
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| README | | | |
+| Code | 4 | 2026-11-10 | `FileIndex` scan under a folder + merge; panel scope through scan and passes; 🔄 tooltip EN/FR |
+| Unit tests | 4 | 2026-11-10 | `FileIndexSubfolderScanTests` (6 tests) — with `FileIndexAddTests`, 9/9 green |
+| README | 4 | 2026-11-10 | README / README.fr § Secondary sources, GLOSSARY / GLOSSARY.fr, RULES.md § Secondary Sources |
 
 ---
 
