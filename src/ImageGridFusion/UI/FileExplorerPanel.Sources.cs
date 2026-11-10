@@ -372,14 +372,17 @@ internal sealed partial class FileExplorerPanel
 
     /// <summary>
     /// 🔄 enabled as the folder view stands — inside a source, while its folder is not being read; elsewhere, as
-    /// the base folder's scan left it — and its tooltip saying what it does there.
+    /// the base folder's scan left it — and its tooltip saying what it does there: inside a source's subfolder, that
+    /// folder named (workfiles/20261110-secondary-source-subfolder-rescan.md § 🔄 Tooltip).
     /// </summary>
     private void UpdateRescan()
     {
         if (this.ViewSource is { } source)
         {
             this._rescan.Enabled = !source.Scanning;
-            this._toolTip.SetToolTip(this._rescan, Strings.SourcesTipRescan);
+            this._toolTip.SetToolTip(
+                this._rescan,
+                this._openFolder.Length == 0 ? Strings.SourcesTipRescan : Texts.Format(Strings.SourcesTipRescanFolder, Path.GetFileName(this._openFolder)));
         }
         else
         {
@@ -398,9 +401,11 @@ internal sealed partial class FileExplorerPanel
     /// <summary>
     /// A source's cached texts, faces and embeddings loaded when missing, then its folder read again — the list
     /// shown following — and, for 🔄 (<paramref name="analyse"/>), its passes run once its list is there, if it is
-    /// still the one shown.
+    /// still the one shown. <paramref name="scope"/>, the folder 🔄 was clicked in, limits both to it and its
+    /// subfolders — its nearest parent still on the disk when it is gone, the view going there; <c>""</c>, or a
+    /// source without an index yet, the whole source (workfiles/20261110-secondary-source-subfolder-rescan.md).
     /// </summary>
-    private async Task LoadAndScanSourceAsync(SourceRoot source, bool analyse)
+    private async Task LoadAndScanSourceAsync(SourceRoot source, bool analyse, string scope = "")
     {
         if (source.Contents is null || source.Faces is null || source.Vision is null)
         {
@@ -419,20 +424,57 @@ internal sealed partial class FileExplorerPanel
             this.RefreshContentResults();
         }
 
-        bool scanned = await this.ScanSourceAsync(source);
+        if (scope.Length > 0)
+        {
+            string asked = scope;
+            scope = source.Index is null ? "" : await Task.Run(() => NearestFolder(source.Folder, asked));
+            if (source.Removed || this.IsDisposed)
+            {
+                return;
+            }
+
+            if (!string.Equals(scope, asked, StringComparison.OrdinalIgnoreCase) && this.ViewSource == source
+                && string.Equals(this._openFolder, asked, StringComparison.OrdinalIgnoreCase))
+            {
+                this.Navigate(scope);
+            }
+        }
+
+        bool scanned = await this.ScanSourceAsync(source, scope);
         if (analyse && scanned && !this.IsDisposed && this.ViewSource == source)
         {
-            this.StartSourceRun(source);
+            this.StartSourceRun(source, scope);
         }
+    }
+
+    /// <summary>
+    /// <paramref name="relative"/>, a folder of <paramref name="root"/>, or its nearest parent still on the disk —
+    /// <c>""</c>, the root, at worst.
+    /// </summary>
+    private static string NearestFolder(string root, string relative)
+    {
+        while (relative.Length > 0 && !Directory.Exists(Path.Combine(root, relative)))
+        {
+            relative = FolderTree.Parent(relative);
+        }
+
+        return relative;
     }
 
     /// <summary>
     /// A source's folder scanned off the UI thread — the progress on the status line and the first bar while it
     /// shows — its index written into its own files, then taken over unless the source was scanned again or
-    /// removed meanwhile; true once taken over.
+    /// removed meanwhile; true once taken over. A <paramref name="scope"/> reads that folder and its subfolders only,
+    /// merged into the source's index (<see cref="FileIndex.WithFolder"/>).
     /// </summary>
-    private async Task<bool> ScanSourceAsync(SourceRoot source)
+    private async Task<bool> ScanSourceAsync(SourceRoot source, string scope = "")
     {
+        var current = source.Index;
+        if (current is null)
+        {
+            scope = "";
+        }
+
         source.Scan?.Cancel();
         var scan = new CancellationTokenSource();
         source.Scan = scan;
@@ -463,7 +505,9 @@ internal sealed partial class FileExplorerPanel
                     throw new DirectoryNotFoundException(Texts.Format(Strings.ExplorerFolderNotFoundNamed, source.Folder));
                 }
 
-                var scanned = FileIndex.Scan(source.Folder, progress, cancellation);
+                var scanned = scope.Length == 0
+                    ? FileIndex.Scan(source.Folder, progress, cancellation)
+                    : current!.WithFolder(scope, FileIndex.Scan(source.Folder, scope, progress, cancellation));
                 string? error = null;
                 try
                 {
@@ -539,9 +583,9 @@ internal sealed partial class FileExplorerPanel
     /// <summary>
     /// 🔄 in a source: its passes run over it — each under its ⚙ setting, as the base folder's — the base folder's
     /// waiting meanwhile and any other source's paused; they resume once it ends or is paused. Nothing turned on:
-    /// the status line says so.
+    /// the status line says so. The passes read the files under <paramref name="scope"/> only, <c>""</c> the whole source.
     /// </summary>
-    private void StartSourceRun(SourceRoot source)
+    private void StartSourceRun(SourceRoot source, string scope)
     {
         if (!(this._contentSearch || this._faceAnalysis || this._visualAnalysis || this._captions))
         {
@@ -559,16 +603,16 @@ internal sealed partial class FileExplorerPanel
         source.Extraction = extraction;
         this._sourceRun = source;
         var passes = new ExtractionSettings(this._contentSearch, this._faceAnalysis, this._visualAnalysis, this._captions);
-        var run = this.RunSourceAsync(source, index, contents, faces, vision, passes, extraction);
+        var run = this.RunSourceAsync(source, index, contents, faces, vision, passes, scope, extraction);
         source.Work.Add(run);
         _ = run.ContinueWith(_ => source.Work.Remove(run), TaskScheduler.FromCurrentSynchronizationContext());
     }
 
-    private async Task RunSourceAsync(SourceRoot source, FileIndex index, ContentIndex contents, FaceIndex faces, VisionIndex vision, ExtractionSettings passes, CancellationTokenSource extraction)
+    private async Task RunSourceAsync(SourceRoot source, FileIndex index, ContentIndex contents, FaceIndex faces, VisionIndex vision, ExtractionSettings passes, string scope, CancellationTokenSource extraction)
     {
         try
         {
-            await this.ExtractAsync(index, contents, faces, vision, source.Files, passes, extraction.Token);
+            await this.ExtractAsync(index, contents, faces, vision, source.Files, passes, scope, extraction.Token);
         }
         finally
         {

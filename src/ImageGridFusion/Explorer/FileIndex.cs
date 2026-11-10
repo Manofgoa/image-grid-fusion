@@ -190,9 +190,19 @@ internal sealed class FileIndex
     /// memory only, for the content texts. Throws like the enumeration does when the folder
     /// itself cannot be read.
     /// </summary>
-    public static FileIndex Scan(string baseFolder, IProgress<ScanProgress>? progress, CancellationToken cancellation)
+    public static FileIndex Scan(string baseFolder, IProgress<ScanProgress>? progress, CancellationToken cancellation) =>
+        Scan(baseFolder, "", progress, cancellation);
+
+    /// <summary>
+    /// Scans <paramref name="relativeFolder"/> of <paramref name="baseFolder"/> and its subfolders only, as
+    /// <see cref="Scan(string, IProgress{ScanProgress}?, CancellationToken)"/> does the whole folder — every relative path
+    /// still against <paramref name="baseFolder"/>, so the result merges into its index (<see cref="WithFolder"/>).
+    /// <c>""</c> scans the whole folder. See workfiles/20261110-secondary-source-subfolder-rescan.md § Scan of a Subfolder.
+    /// </summary>
+    public static FileIndex Scan(string baseFolder, string relativeFolder, IProgress<ScanProgress>? progress, CancellationToken cancellation)
     {
         string root = NormalizeFolder(baseFolder);
+        string start = relativeFolder.Length == 0 ? root : Path.Combine(root, relativeFolder);
         var options = new EnumerationOptions
         {
             RecurseSubdirectories = true,
@@ -212,18 +222,19 @@ internal sealed class FileIndex
         }
 
         int count = 0;
-        foreach (var _ in Directory.EnumerateFiles(root, "*", options))
+        foreach (var _ in Directory.EnumerateFiles(start, "*", options))
         {
             cancellation.ThrowIfCancellationRequested();
             count++;
             Report(ScanPhase.Counting, count, 0);
         }
 
-        // The enumeration prefixes each path with the root as given; a drive root already ends with its separator.
+        // The enumeration prefixes each path with the folder as given — the root, then the subfolder if any; a drive
+        // root already ends with its separator.
         int prefix = root.EndsWith(Path.DirectorySeparatorChar) ? root.Length : root.Length + 1;
         var entries = new List<IndexEntry>(count);
         var files = new FileSystemEnumerable<(string Path, DateTime Created, long Size, DateTime Written)>(
-            root,
+            start,
             (ref FileSystemEntry entry) => (entry.ToFullPath(), entry.CreationTimeUtc.UtcDateTime, entry.Length, entry.LastWriteTimeUtc.UtcDateTime),
             options)
         {
@@ -240,6 +251,25 @@ internal sealed class FileIndex
         }
 
         return new FileIndex(root, DateTime.Now, entries);
+    }
+
+    /// <summary>
+    /// A new index: this one's entries outside <paramref name="relativeFolder"/> kept as they are, those under it — its
+    /// subfolders included — replaced by <paramref name="scanned"/>'s, a scan of that folder alone
+    /// (<see cref="Scan(string, string, IProgress{ScanProgress}?, CancellationToken)"/>); this index's scan date kept, the
+    /// whole folder not having been read. See workfiles/20261110-secondary-source-subfolder-rescan.md § Scan of a Subfolder.
+    /// </summary>
+    public FileIndex WithFolder(string relativeFolder, FileIndex scanned)
+    {
+        if (!SameFolder(scanned.BaseFolder, this.BaseFolder))
+        {
+            throw new ArgumentException($"The scan of {scanned.BaseFolder} cannot be merged into the index of {this.BaseFolder}.", nameof(scanned));
+        }
+
+        var entries = new List<IndexEntry>(this._entries.Count);
+        entries.AddRange(this._entries.Where(e => !FolderTree.IsUnder(e.RelativePath, relativeFolder)));
+        entries.AddRange(scanned.Entries.Where(e => FolderTree.IsUnder(e.RelativePath, relativeFolder)));
+        return new FileIndex(this.BaseFolder, this.ScannedAt, entries);
     }
 
     public static bool IsFileError(Exception ex) => ex is IOException or UnauthorizedAccessException or System.Security.SecurityException;

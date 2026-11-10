@@ -1056,6 +1056,7 @@ Its index — the files listed, the texts read, the faces and the visual analysi
   <data name="SourcesRemoveTitle" xml:space="preserve"><value>Remove a secondary source</value></data>
   <data name="SourcesSection" xml:space="preserve"><value>Secondary sources</value></data>
   <data name="SourcesTipRescan" xml:space="preserve"><value>Read this secondary source again and analyse its content — OCR, faces, visual analysis, captions, as the ⚙ menu turns them on; leaving the source pauses the analysis, 🔄 here again picks it up</value></data>
+  <data name="SourcesTipRescanFolder" xml:space="preserve"><value>Read the folder {0} and its subfolders again and analyse their content — OCR, faces, visual analysis, captions, as the ⚙ menu turns them on; leaving the source pauses the analysis, 🔄 here again picks it up</value></data>
   <data name="SourcesWindowIntro" xml:space="preserve"><value>Folders shown in blue at the top of the file explorer's folder, each with an index of its own: searched only while opened, their content analysed by 🔄 inside them. Their faces join the People view, their images the similar images.</value></data>
   <data name="SourcesWindowTitle" xml:space="preserve"><value>Secondary sources</value></data>
   <data name="UiAddImages" xml:space="preserve"><value>Add images</value></data>
