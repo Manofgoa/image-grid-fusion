@@ -142,6 +142,11 @@ Open Questions answered (Q&A 5–7):
 Documentation to update at implementation: RULES.md § Secondary Sources (*Analysed on demand*), GLOSSARY.md /
 GLOSSARY.fr.md *Secondary source*, and the README / README.fr if they describe 🔄 inside a source.
 
+### Iteration 3 — 2026-11-10 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree (`.claude/worktrees/secondary-source-subfolder-rescan`,
+branch `feature/secondary-source-subfolder-rescan`). The scope is frozen as the sections above stand.
+
 ---
 
 ## Implementation Log
