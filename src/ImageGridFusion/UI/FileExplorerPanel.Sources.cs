@@ -372,14 +372,17 @@ internal sealed partial class FileExplorerPanel
 
     /// <summary>
     /// 🔄 enabled as the folder view stands — inside a source, while its folder is not being read; elsewhere, as
-    /// the base folder's scan left it — and its tooltip saying what it does there.
+    /// the base folder's scan left it — and its tooltip saying what it does there: inside a source's subfolder, that
+    /// folder named (workfiles/20261110-secondary-source-subfolder-rescan.md § 🔄 Tooltip).
     /// </summary>
     private void UpdateRescan()
     {
         if (this.ViewSource is { } source)
         {
             this._rescan.Enabled = !source.Scanning;
-            this._toolTip.SetToolTip(this._rescan, Strings.SourcesTipRescan);
+            this._toolTip.SetToolTip(
+                this._rescan,
+                this._openFolder.Length == 0 ? Strings.SourcesTipRescan : Texts.Format(Strings.SourcesTipRescanFolder, Path.GetFileName(this._openFolder)));
         }
         else
         {
