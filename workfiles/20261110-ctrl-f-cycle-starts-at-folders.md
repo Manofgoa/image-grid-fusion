@@ -72,6 +72,10 @@ Components:
 - In `FocusSearch`, the search box focused: the mode is `ExplorerMode.Folders` when no cycle is
   running — whatever the step, the folder view itself included — `NextMode(step)` otherwise; the
   rest unchanged (the open folder reset to the base folder, the folder left selected, `ChangeMode`).
+- As built: a cycle starting **on** the folder view does not go through `ChangeMode` (which returns
+  on the same mode): the open folder reset, it is listed again (`RefreshRows(select)`) and remembered
+  (`FolderViewChanged`), as `Navigate` does without clearing the search box. Already at the base
+  folder, nothing is listed again.
 - The choice of the next view moved into a pure function the tests can reach
   (`Explorer/ViewCycle.Next(current, step, cycling, available)`), `NextMode` calling it with
   `IsOffered` and the People / GIPHY skips.
@@ -144,16 +148,28 @@ the view. Behaviour table, planned code, documentation and tests updated. No ope
 Go given: code, unit tests and documentation, in a worktree
 (`.claude/worktrees/ctrl-f-cycle-starts-at-folders`, branch `feature/ctrl-f-cycle-starts-at-folders`).
 
+### Iteration 4 — 2026-11-10 — 🧭 Implementation choices
+
+- **The folder view shown at a cycle's start**: `ChangeMode` returns when the mode does not change,
+  so the open folder reset was not listed. That case lists it again and raises `FolderViewChanged`
+  itself, the search box untouched (§ Planned code, *As built*).
+- **Text changes ending the cycle**: every change of the box's text counts, the code's included (a
+  navigation clearing the box, ↑ in the folder view, a similar search) — those are user actions ending
+  the cycle anyway; only the changes made while the cycle changes the view are guarded.
+- **The glossary** follows: the *File explorer* row (EN / FR) says each cycle starts on the folder
+  view. README untouched — it does not describe the cycle (§ Documentation).
+- No rule broken.
+
 ---
 
 ## Implementation Log
 
 | Step | Iteration | Date | Notes |
 |---|---|---|---|
-| Code | | | |
-| Unit tests | | | |
-| SHORTCUTS.md / .fr.md | | | |
-| README | | | |
+| Code | 4 | 2026-11-10 | `Explorer/ViewCycle`, `FileExplorerPanel.FocusSearch` / `NextMode` / `EndViewCycle`; built, not checked in the app by the agent |
+| Unit tests | 4 | 2026-11-10 | `ViewCycleTests`, 6 tests, passing |
+| SHORTCUTS.md / .fr.md | 4 | 2026-11-10 | `Ctrl+F` and `Ctrl+Shift+F` rows, in the code's commit |
+| README | 4 | 2026-11-10 | Not applicable — the README does not describe the cycle; the glossary's *File explorer* row updated instead |
 
 ---
 
