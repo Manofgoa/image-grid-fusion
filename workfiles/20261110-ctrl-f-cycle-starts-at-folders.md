@@ -139,6 +139,11 @@ The three points settled: the folder view already shown stays (back at the base 
 the focus leaving does — `_search.TextChanged` clears the flag, guarded while `FocusSearch` changes
 the view. Behaviour table, planned code, documentation and tests updated. No open question left.
 
+### Iteration 3 — 2026-11-10 — ✅ Implemented
+
+Go given: code, unit tests and documentation, in a worktree
+(`.claude/worktrees/ctrl-f-cycle-starts-at-folders`, branch `feature/ctrl-f-cycle-starts-at-folders`).
+
 ---
 
 ## Implementation Log
