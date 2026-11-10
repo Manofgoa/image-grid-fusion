@@ -49,9 +49,11 @@ Relevant code:
 - While a secondary source is **open in the folder view** (`FileExplorerPanel.ViewSource` not `null`), the list's
   background (`ThumbnailGrid.BackColor`) is the source's **pastel** instead of `SystemColors.Window` (Q&A #2); it goes
   back to white as soon as the source is left — its root's parent, another view, the search view.
-- **The pastel is a member of `SourceColor`**, `Pastel`, computed once from `Text` — one definition for the palette,
-  a new color getting its pastel by itself. Its strength: Open Question #2.
-- **Its extent**: Open Question #1 — the list alone, or the breadcrumb and status rows with it.
+- **The pastel is a member of `SourceColor`**, `Pastel`, computed once from `Text` — **6 % of it over white**
+  (blue `#F0F5FB`, violet `#F6F3FB`), a tint rather than a color (Q&A #5) — one definition for the palette, a new
+  color getting its pastel by itself.
+- **The list alone** takes it — the tiles' grid and the Details view (Q&A #4): the breadcrumb and the status line keep
+  their background, so their text in the source's color stays as legible as today.
 - **What stays as it is**, drawn over the pastel: the tiles' checkerboard (transparency), the folder tiles' manila
   drawing, the selection and hover washes, the section headers, the Details view's rows and strips, the Loading… tile.
 - **Set in one place**: where the breadcrumb is set for the folder view (`ShowBreadcrumb`), so every route that opens
@@ -73,16 +75,17 @@ Relevant code:
 
 | Behaviour to pin | Test file | Create / Update |
 |---|---|---|
-| Each palette color's `Pastel` is light — every channel at least 220 — and keeps its hue: its strongest channel is `Text`'s | `tests/ImageGridFusion.Tests/Explorer/SecondarySourceColorsTests.cs` | Update |
+| Each palette color's `Pastel` is 6 % of `Text` over white — every channel at least 235 — and keeps its hue: its strongest channel is `Text`'s | `tests/ImageGridFusion.Tests/Explorer/SecondarySourceColorsTests.cs` | Update |
 | `Breadcrumb.SegmentColor`: a segment before `sourceAt` is a link blue (black when it is the open folder), every segment from `sourceAt` down — the open folder included — the source's color; without a source, as today | `tests/ImageGridFusion.Tests/UI/BreadcrumbColorsTests.cs` | Create |
 
 ---
 
 ## Open Questions
 
-- [ ] Which rows take the pastel: the list alone, or the breadcrumb and the status line above it too?
-- [ ] How strong is the pastel: very light (≈ 6 % of the color over white — blue `#F0F5FB`, violet `#F6F3FB`), or
-  light (≈ 12 % — blue `#E0EAF7`, violet `#EDE8F6`)?
+- [x] ~~Which rows take the pastel: the list alone, or the breadcrumb and the status line above it too?~~ → The list
+  alone
+- [x] ~~How strong is the pastel: very light (≈ 6 % of the color over white — blue `#F0F5FB`, violet `#F6F3FB`), or
+  light (≈ 12 % — blue `#E0EAF7`, violet `#EDE8F6`)?~~ → Very light, 6 %
 
 ---
 
@@ -99,6 +102,11 @@ Initial design from the request ("every subfolder of a secondary source in the s
 batch: the whole breadcrumb from the source's name down — the open folder included, the separators grey — in the
 source's color; the folder tiles unchanged; instead, the list's background a pastel of the source's color while the
 source is open. Two open questions: the pastel's extent and its strength.
+
+### Iteration 2 — 2026-11-10
+
+Both open questions answered: the pastel covers the list alone — the breadcrumb and the status line keep their
+background — and is very light, 6 % of the source's color over white.
 
 ---
 
@@ -127,8 +135,8 @@ Questions asked by the agent during design, with user responses.
 | 1 | In the breadcrumb inside a source, which segments take its color? | All of them: the folder links and the open folder; the separators stay grey | 2026-11-10 |
 | 2 | Do the folder tiles inside a source change too? | Not the folders — instead, the explorer's background in a pastel of the color, in place of the white | 2026-11-10 |
 | 3 | Is the subject straightforward or tricky? | Straightforward: one exploration pass | 2026-11-10 |
-| 4 | Which rows take the pastel: the list alone, or the breadcrumb and status line too? | | |
-| 5 | How strong is the pastel? | | |
+| 4 | Which rows take the pastel: the list alone, or the breadcrumb and status line too? | The list alone | 2026-11-10 |
+| 5 | How strong is the pastel? | Very light, ≈ 6 % | 2026-11-10 |
 
 ---
 
