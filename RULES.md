@@ -1384,6 +1384,12 @@ Other folders shown in the folder view beside the base folder, each indexed apar
   `IndexFiles`); one worker at a time, the base folder's passes waiting (`StartExtraction` returns while `_sourceRun` is
   set); leaving the source — another folder, another view, a setting changed — pauses it (`PauseSourceRun`). The base
   folder's automatic runs never start a source's.
+- **🔄 in a subfolder covers that subfolder** (origin: `workfiles/20261110-secondary-source-subfolder-rescan.md`): its
+  scope is the open folder when clicked — its subfolders included, its nearest parent still on the disk when it is gone,
+  `""` at the source's root for the whole source. The scan reads that folder alone (`FileIndex.Scan` with a relative
+  folder), merged into the source's index (`FileIndex.WithFolder`: the rest kept, its scan date too); the passes read the
+  files under it only (`Extract`'s `scope`, `InScope`), what they drop staying the whole index's (`RetainOnly`). The base
+  folder's 🔄 always covers the whole base folder.
 - **In its color**: a source's own tile (`ExplorerRow.Source`) — its folder and its file count — and its name in the
   breadcrumb, after a clear `│` rather than the child's `›` (`Breadcrumb.SetPath`'s `sourceAt`); the folders inside it
   keep their usual color. A source not found stays, faded (`ExplorerRow.Unavailable`). Not remembered as the open folder.
